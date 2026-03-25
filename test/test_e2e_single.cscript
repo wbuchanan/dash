@@ -117,6 +117,7 @@ file read `fh4' lv
 while r(eof) == 0 {
     if strpos(`"`lv'"', "Mileage") > 0 {
         local found_label = 1
+        continue, break
     }
     file read `fh4' lv
 }
@@ -140,6 +141,7 @@ file read `fh5' lw
 while r(eof) == 0 {
     if strpos(`"`lw'"', "Domestic") > 0 | strpos(`"`lw'"', "Foreign") > 0 {
         local found_vallabel = 1
+        continue, break
     }
     file read `fh5' lw
 }
