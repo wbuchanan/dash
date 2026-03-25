@@ -1477,7 +1477,16 @@ source.change.emit();
         arr = np.array([v for v in source.data[varname]
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
+        if len(arr) == 0:
+            # No valid data for this variable; return a disabled dummy slider
+            widget = Slider(title=safe_var, start=0, end=1, value=0, step=1,
+                            disabled=True)
+            callback = CustomJS(args={}, code="")
+            return widget, callback
         vmin, vmax = float(arr.min()), float(arr.max())
+        # Ensure end > start for Bokeh Slider (required constraint)
+        if vmin == vmax:
+            vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
         widget = Slider(title=safe_var, start=vmin, end=vmax,
@@ -1536,7 +1545,16 @@ source.change.emit();
         arr = np.array([v for v in source.data[varname]
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
+        if len(arr) == 0:
+            # No valid data for this variable; return a disabled dummy range slider
+            widget = RangeSlider(title=safe_var, start=0, end=1,
+                                 value=(0, 1), step=1, disabled=True)
+            callback = CustomJS(args={}, code="")
+            return widget, callback
         vmin, vmax = float(arr.min()), float(arr.max())
+        # Ensure end > start for Bokeh RangeSlider (required constraint)
+        if vmin == vmax:
+            vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
         widget = RangeSlider(title=safe_var,

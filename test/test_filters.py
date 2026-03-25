@@ -228,3 +228,63 @@ class TestFilterSecurity:
             assert "<script>" not in label, (
                 f"Unescaped <script> found in dropdown option: {label}"
             )
+
+
+# ================================================================
+# Regression tests — empty / all-NaN data in slider and range
+# ================================================================
+class TestSliderEdgeCases:
+    """Regression tests: build_slider and build_range must not crash on
+    empty or all-NaN data."""
+
+    def test_slider_empty_data_returns_disabled_widget(self):
+        """Regression: build_slider with all-NaN values returns a disabled Slider."""
+        nan_cds = ColumnDataSource({"weight": [float("nan")] * 5})
+        widget, callback = FilterBuilder.build_slider(
+            "weight", nan_cds, pd.DataFrame({"weight": [float("nan")] * 5}),
+            exclude_names=[], all_figure_names=["s1"]
+        )
+        assert isinstance(widget, Slider)
+        assert widget.disabled is True
+
+    def test_slider_all_none_data_returns_disabled_widget(self):
+        """Regression: build_slider with all-None values returns a disabled Slider."""
+        none_cds = ColumnDataSource({"weight": [None, None, None]})
+        widget, callback = FilterBuilder.build_slider(
+            "weight", none_cds, pd.DataFrame({"weight": [None, None, None]}),
+            exclude_names=[], all_figure_names=["s1"]
+        )
+        assert isinstance(widget, Slider)
+        assert widget.disabled is True
+
+    def test_range_slider_empty_data_returns_disabled_widget(self):
+        """Regression: build_range with all-NaN values returns a disabled RangeSlider."""
+        nan_cds = ColumnDataSource({"price": [float("nan")] * 4})
+        widget, callback = FilterBuilder.build_range(
+            "price", nan_cds, pd.DataFrame({"price": [float("nan")] * 4}),
+            exclude_names=[], all_figure_names=["s1"]
+        )
+        assert isinstance(widget, RangeSlider)
+        assert widget.disabled is True
+
+    def test_slider_constant_data_does_not_crash(self):
+        """Regression: build_slider with all-identical values must not crash."""
+        const_cds = ColumnDataSource({"weight": [3000.0, 3000.0, 3000.0]})
+        widget, callback = FilterBuilder.build_slider(
+            "weight", const_cds, pd.DataFrame({"weight": [3000.0] * 3}),
+            exclude_names=[], all_figure_names=["s1"]
+        )
+        assert isinstance(widget, Slider)
+        # end must be strictly greater than start for Bokeh
+        assert widget.end > widget.start
+
+    def test_range_slider_constant_data_does_not_crash(self):
+        """Regression: build_range with all-identical values must not crash."""
+        const_cds = ColumnDataSource({"price": [15000.0] * 5})
+        widget, callback = FilterBuilder.build_range(
+            "price", const_cds, pd.DataFrame({"price": [15000.0] * 5}),
+            exclude_names=[], all_figure_names=["s1"]
+        )
+        assert isinstance(widget, RangeSlider)
+        # end must be strictly greater than start for Bokeh
+        assert widget.end > widget.start
