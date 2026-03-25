@@ -709,3 +709,47 @@ def test_compute_kpi_sd_uses_ddof1(dr_module, auto_df):
         os.unlink(spec_path)
         os.unlink(data_path)
         os.unlink(out_f.name)
+
+
+# ---------------------------------------------------------------------------
+# Regression: _compute_kdensity handles constant data without crashing
+# ---------------------------------------------------------------------------
+
+def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
+    """Regression: _compute_kdensity with constant-value column returns empty dict.
+
+    scipy.stats.gaussian_kde raises LinAlgError on zero-variance data.
+    The generated server code must guard against this.
+    """
+    spec = _make_spec_json()
+    spec_path, data_path = _write_temp_files(auto_df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+
+    try:
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+
+        app_spec_obj = importlib.util.spec_from_file_location("_test_kde_const", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec_obj)
+        app_spec_obj.loader.exec_module(app_mod)
+
+        # Constant-value column — gaussian_kde would raise LinAlgError without guard
+        const_df = auto_df.copy()
+        const_df["mpg"] = 22.0
+
+        result = app_mod._compute_kdensity(const_df, "mpg")
+        assert result == {"x": [], "y": []}, (
+            f"Expected empty dict for constant data, got {result}"
+        )
+
+        # Single-point column
+        single_df = auto_df.iloc[:1].copy()
+        result2 = app_mod._compute_kdensity(single_df, "mpg")
+        assert result2 == {"x": [], "y": []}, (
+            f"Expected empty dict for single-point data, got {result2}"
+        )
+    finally:
+        os.unlink(spec_path)
+        os.unlink(data_path)
+        os.unlink(out_f.name)

@@ -2633,7 +2633,7 @@ class ServerAppBuilder:
             "def _compute_kdensity(df, varname):",
             '    """Return line source dict for kernel density estimate."""',
             "    data = df[varname].dropna().values.astype(float)",
-            "    if len(data) < 2:",
+            "    if len(data) < 2 or float(np.std(data)) == 0.0:",
             "        return dict(x=[], y=[])",
             "    kde = scipy_stats.gaussian_kde(data)",
             "    x_range = np.linspace(data.min(), data.max(), 200)",
