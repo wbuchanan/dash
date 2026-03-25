@@ -74,6 +74,14 @@ manually:
 {phang2}{cmd:jsonio} — installed automatically from SSC if missing.
 See {helpb jsonio} for details on this package.
 
+{pstd}{ul:Bokeh Server / Tornado}
+
+{phang2}The {cmd:dash serve} subcommand and {cmd:dash build, server} option use
+the Bokeh Server, which is built on the Tornado web framework.
+Tornado is bundled with Bokeh 3.0 and later — no additional installation
+is required.  {cmd:dash_setup} verifies that the installed bokeh version
+is 3.0 or later, which guarantees Tornado availability.
+
 
 {marker troubleshooting}
 {title:Troubleshooting}

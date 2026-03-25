@@ -450,116 +450,116 @@ Status: [ ] not started | [~] in progress | [x] complete
 
 ### dash.ado — `serve` Subcommand Entry Point
 
-- [ ] P4-01  dash.ado: detect `serve` as first token of `$0`; route to `_dash_serve`
-- [ ] P4-02  dash.ado: implement `_dash_serve` program with `syntax [, PORT(string) NOBROWSER TIMEOUT(string)]`
-- [ ] P4-03  dash.ado: `_dash_serve` — validate port() is a positive integer using `regexm`; default to 5006
-- [ ] P4-04  dash.ado: `_dash_serve` — validate port() is in range 1024–65535; exit(198) with descriptive message if not
-- [ ] P4-05  dash.ado: `_dash_serve` — validate timeout() is non-negative integer; default to 0 (no timeout)
-- [ ] P4-06  dash.ado: `_dash_serve` — require `$dash_graph_registry` non-empty; exit(198) with descriptive message if empty
-- [ ] P4-07  dash.ado: `_dash_serve` — determine all required variables (identical logic to `_dash_build`)
-- [ ] P4-08  dash.ado: `_dash_serve` — serialize variables via jsonio to temp data.json (identical to `_dash_build`)
-- [ ] P4-09  dash.ado: `_dash_serve` — assemble master JSON including `"mode":"server"` in build_options
-- [ ] P4-10  dash.ado: `_dash_serve` — call `dash_render.py --mode server` via `python:` block; write temp `_app.py`
-- [ ] P4-11  dash.ado: `_dash_serve` — display server URL and stop instructions before blocking
-- [ ] P4-12  dash.ado: `_dash_serve` — launch Bokeh Server via second `python:` block using `bokeh.server.server.Server`
-- [ ] P4-13  dash.ado: `_dash_serve` — open browser at localhost:{port} unless `nobrowser` option specified
-- [ ] P4-14  dash.ado: `_dash_serve` — implement timeout via `tornado.ioloop.IOLoop.call_later()` when timeout() > 0
-- [ ] P4-15  dash.ado: `_dash_serve` — clean shutdown on KeyboardInterrupt; display "dash serve: Server stopped."
+- [x] P4-01  dash.ado: detect `serve` as first token of `$0`; route to `_dash_serve`
+- [x] P4-02  dash.ado: implement `_dash_serve` program with `syntax [, PORT(string) NOBROWSER TIMEOUT(string)]`
+- [x] P4-03  dash.ado: `_dash_serve` — validate port() is a positive integer using `regexm`; default to 5006
+- [x] P4-04  dash.ado: `_dash_serve` — validate port() is in range 1024–65535; exit(198) with descriptive message if not
+- [x] P4-05  dash.ado: `_dash_serve` — validate timeout() is non-negative integer; default to 0 (no timeout)
+- [x] P4-06  dash.ado: `_dash_serve` — require `$dash_graph_registry` non-empty; exit(198) with descriptive message if empty
+- [x] P4-07  dash.ado: `_dash_serve` — determine all required variables (identical logic to `_dash_build`)
+- [x] P4-08  dash.ado: `_dash_serve` — serialize variables via jsonio to temp data.json (identical to `_dash_build`)
+- [x] P4-09  dash.ado: `_dash_serve` — assemble master JSON including `"mode":"server"` in build_options
+- [x] P4-10  dash.ado: `_dash_serve` — call `dash_render.py --mode server` via `python:` block; write temp `_app.py`
+- [x] P4-11  dash.ado: `_dash_serve` — display server URL and stop instructions before blocking
+- [x] P4-12  dash.ado: `_dash_serve` — launch Bokeh Server via second `python:` block using `bokeh.server.server.Server`
+- [x] P4-13  dash.ado: `_dash_serve` — open browser at localhost:{port} unless `nobrowser` option specified
+- [x] P4-14  dash.ado: `_dash_serve` — implement timeout via `tornado.ioloop.IOLoop.call_later()` when timeout() > 0
+- [x] P4-15  dash.ado: `_dash_serve` — clean shutdown on KeyboardInterrupt; display "dash serve: Server stopped."
 
 ### dash.ado — `dash build, server` Option
 
-- [ ] P4-16  dash.ado: add `SERVER` to `_dash_build` syntax options
-- [ ] P4-17  dash.ado: when `server` option present, output path must end in `.py` not `.html`; validate accordingly
-- [ ] P4-18  dash.ado: when `server` option present, pass `--mode server` to `dash_render.py`; do NOT block; do NOT open browser
-- [ ] P4-19  dash.ado: after writing app file with `server` option, display `bokeh serve <file>` command for user
+- [x] P4-16  dash.ado: add `SERVER` to `_dash_build` syntax options
+- [x] P4-17  dash.ado: when `server` option present, output path must end in `.py` not `.html`; validate accordingly
+- [x] P4-18  dash.ado: when `server` option present, pass `--mode server` to `dash_render.py`; do NOT block; do NOT open browser
+- [x] P4-19  dash.ado: after writing app file with `server` option, display `bokeh serve <file>` command for user
 
 ### dash_render.py — Argparse CLI Interface
 
-- [ ] P4-20  dash_render.py: replace positional-arg `__main__` block with `argparse` — required flags `--spec`, `--data`, `--output`
-- [ ] P4-21  dash_render.py: add optional `--mode` flag to argparse (values: `standalone`, `server`; default `standalone`)
-- [ ] P4-22  dash_render.py: update `main()` signature to `main(spec, data, output, mode='standalone')`
-- [ ] P4-23  dash_render.py: when `mode == 'standalone'` — existing `DashRenderer.render()` path unchanged
-- [ ] P4-24  dash_render.py: when `mode == 'server'` — instantiate `ServerAppBuilder` and call `build(output_path)`
+- [x] P4-20  dash_render.py: replace positional-arg `__main__` block with `argparse` — required flags `--spec`, `--data`, `--output`
+- [x] P4-21  dash_render.py: add optional `--mode` flag to argparse (values: `standalone`, `server`; default `standalone`)
+- [x] P4-22  dash_render.py: update `main()` signature to `main(spec, data, output, mode='standalone')`
+- [x] P4-23  dash_render.py: when `mode == 'standalone'` — existing `DashRenderer.render()` path unchanged
+- [x] P4-24  dash_render.py: when `mode == 'server'` — instantiate `ServerAppBuilder` and call `build(output_path)`
 
 ### dash_render.py — `ServerAppBuilder` Class
 
-- [ ] P4-25  dash_render.py: define `ServerAppBuilder` class with `__init__(spec_path, data_path)`
-- [ ] P4-26  dash_render.py: `ServerAppBuilder.__init__` — load and parse spec JSON and data JSON using same logic as `DashRenderer._load_data()`
-- [ ] P4-27  dash_render.py: `ServerAppBuilder.build(output_path, port=5006)` — generate server app `.py` file and write to `output_path`
-- [ ] P4-28  dash_render.py: `ServerAppBuilder._embed_data()` — base64-encode spec JSON and data JSON; return (spec_b64, data_b64) tuple
-- [ ] P4-29  dash_render.py: `ServerAppBuilder._generate_app_source(port)` — return complete Python source string for server app
-- [ ] P4-30  dash_render.py: generated app — import block: base64, html, json, math, numpy, pandas, all required bokeh.models, bokeh.server.server.Server, Application, FunctionHandler
-- [ ] P4-31  dash_render.py: generated app — `_SPEC_B64` and `_DATA_B64` constants holding base64-encoded JSON
-- [ ] P4-32  dash_render.py: generated app — `_load_spec_and_data()` helper that decodes base64, parses JSON, builds DataFrame with correct dtypes, extracts variableLabels/valueLabels
-- [ ] P4-33  dash_render.py: generated app — `_compute_histogram(df, varname, bins=20)` helper returning dict(top, left, right)
-- [ ] P4-34  dash_render.py: generated app — `_compute_lfit(df, yvar, xvar)` helper returning dict(x, y) over data range with 100 points
-- [ ] P4-35  dash_render.py: generated app — `_compute_qfit(df, yvar, xvar)` helper for quadratic fit
-- [ ] P4-36  dash_render.py: generated app — `_compute_kdensity(df, varname)` helper using scipy.stats.gaussian_kde
-- [ ] P4-37  dash_render.py: generated app — `_compute_lowess(df, yvar, xvar)` helper using statsmodels
-- [ ] P4-38  dash_render.py: generated app — `_compute_kpi(df, stat, varname)` implementing all 11 supported statistics including dcount (using pd.Series.nunique)
-- [ ] P4-39  dash_render.py: generated app — `make_document(doc)` function as Bokeh Server document factory
-- [ ] P4-40  dash_render.py: generated app — `make_document`: call `_load_spec_and_data()` on each invocation (supports multi-user server)
-- [ ] P4-41  dash_render.py: generated app — `make_document`: build one shared ColumnDataSource per linked group for raw-data plots
-- [ ] P4-42  dash_render.py: generated app — `make_document`: build separate ColumnDataSource for each aggregated plot layer (histogram, lfit, qfit, kdensity, lowess)
-- [ ] P4-43  dash_render.py: generated app — `make_document`: build Bokeh figures, add glyphs using same plot type dispatch as GlyphMapper
-- [ ] P4-44  dash_render.py: generated app — `make_document`: build KPI Div widgets with styled HTML
-- [ ] P4-45  dash_render.py: generated app — `make_document`: build filter widgets (Select, Slider, RangeSlider) with Python `on_change` callbacks — NOT CustomJS
-- [ ] P4-46  dash_render.py: generated app — filter `on_change` callback: recompute boolean mask from all active widget values; replace raw source.data with filtered DataFrame dict
-- [ ] P4-47  dash_render.py: generated app — filter `on_change` callback: recompute each aggregate ColumnDataSource (histogram bins, lfit line, etc.) from filtered DataFrame and replace `.data`
-- [ ] P4-48  dash_render.py: generated app — filter `on_change` callback: recompute KPI values for all KPIs with `update in ('filter', 'both')`; update `Div.text`
-- [ ] P4-49  dash_render.py: generated app — brush callback via `source.selected.on_change('indices', cb)`: recompute KPIs for `update in ('brush', 'both')` from selected rows
-- [ ] P4-50  dash_render.py: generated app — assemble layout: filter bar row above gridplot (same structure as standalone)
-- [ ] P4-51  dash_render.py: generated app — `doc.add_root(layout)`; `doc.title` set to HTML-escaped dashboard title
-- [ ] P4-52  dash_render.py: generated app — `__main__` block: `Server({'/': Application(FunctionHandler(make_document))}, port=PORT, allow_websocket_origin=['localhost:PORT'])`
-- [ ] P4-53  dash_render.py: generated app — `__main__` block: `server.io_loop.add_callback(server.show, '/')`; graceful KeyboardInterrupt → `server.stop()`
-- [ ] P4-54  dash_render.py: security — HTML-escape all user strings (title, subtitle, KPI labels, variable names in Div.text) before embedding in generated Python string literals
-- [ ] P4-55  dash_render.py: security — base64 encoding of data payload prevents special chars (quotes, backslashes, newlines) in data from breaking generated Python file syntax
-- [ ] P4-56  dash_render.py: security — `allow_websocket_origin` restricted to `['localhost:{port}']`; no wildcard
+- [x] P4-25  dash_render.py: define `ServerAppBuilder` class with `__init__(spec_path, data_path)`
+- [x] P4-26  dash_render.py: `ServerAppBuilder.__init__` — load and parse spec JSON and data JSON using same logic as `DashRenderer._load_data()`
+- [x] P4-27  dash_render.py: `ServerAppBuilder.build(output_path, port=5006)` — generate server app `.py` file and write to `output_path`
+- [x] P4-28  dash_render.py: `ServerAppBuilder._embed_data()` — base64-encode spec JSON and data JSON; return (spec_b64, data_b64) tuple
+- [x] P4-29  dash_render.py: `ServerAppBuilder._generate_app_source(port)` — return complete Python source string for server app
+- [x] P4-30  dash_render.py: generated app — import block: base64, html, json, math, numpy, pandas, all required bokeh.models, bokeh.server.server.Server, Application, FunctionHandler
+- [x] P4-31  dash_render.py: generated app — `_SPEC_B64` and `_DATA_B64` constants holding base64-encoded JSON
+- [x] P4-32  dash_render.py: generated app — `_load_spec_and_data()` helper that decodes base64, parses JSON, builds DataFrame with correct dtypes, extracts variableLabels/valueLabels
+- [x] P4-33  dash_render.py: generated app — `_compute_histogram(df, varname, bins=20)` helper returning dict(top, left, right)
+- [x] P4-34  dash_render.py: generated app — `_compute_lfit(df, yvar, xvar)` helper returning dict(x, y) over data range with 100 points
+- [x] P4-35  dash_render.py: generated app — `_compute_qfit(df, yvar, xvar)` helper for quadratic fit
+- [x] P4-36  dash_render.py: generated app — `_compute_kdensity(df, varname)` helper using scipy.stats.gaussian_kde
+- [x] P4-37  dash_render.py: generated app — `_compute_lowess(df, yvar, xvar)` helper using statsmodels
+- [x] P4-38  dash_render.py: generated app — `_compute_kpi(df, stat, varname)` implementing all 11 supported statistics including dcount (using pd.Series.nunique)
+- [x] P4-39  dash_render.py: generated app — `make_document(doc)` function as Bokeh Server document factory
+- [x] P4-40  dash_render.py: generated app — `make_document`: call `_load_spec_and_data()` on each invocation (supports multi-user server)
+- [x] P4-41  dash_render.py: generated app — `make_document`: build one shared ColumnDataSource per linked group for raw-data plots
+- [x] P4-42  dash_render.py: generated app — `make_document`: build separate ColumnDataSource for each aggregated plot layer (histogram, lfit, qfit, kdensity, lowess)
+- [x] P4-43  dash_render.py: generated app — `make_document`: build Bokeh figures, add glyphs using same plot type dispatch as GlyphMapper
+- [x] P4-44  dash_render.py: generated app — `make_document`: build KPI Div widgets with styled HTML
+- [x] P4-45  dash_render.py: generated app — `make_document`: build filter widgets (Select, Slider, RangeSlider) with Python `on_change` callbacks — NOT CustomJS
+- [x] P4-46  dash_render.py: generated app — filter `on_change` callback: recompute boolean mask from all active widget values; replace raw source.data with filtered DataFrame dict
+- [x] P4-47  dash_render.py: generated app — filter `on_change` callback: recompute each aggregate ColumnDataSource (histogram bins, lfit line, etc.) from filtered DataFrame and replace `.data`
+- [x] P4-48  dash_render.py: generated app — filter `on_change` callback: recompute KPI values for all KPIs with `update in ('filter', 'both')`; update `Div.text`
+- [x] P4-49  dash_render.py: generated app — brush callback via `source.selected.on_change('indices', cb)`: recompute KPIs for `update in ('brush', 'both')` from selected rows
+- [x] P4-50  dash_render.py: generated app — assemble layout: filter bar row above gridplot (same structure as standalone)
+- [x] P4-51  dash_render.py: generated app — `doc.add_root(layout)`; `doc.title` set to HTML-escaped dashboard title
+- [x] P4-52  dash_render.py: generated app — `__main__` block: `Server({'/': Application(FunctionHandler(make_document))}, port=PORT, allow_websocket_origin=['localhost:PORT'])`
+- [x] P4-53  dash_render.py: generated app — `__main__` block: `server.io_loop.add_callback(server.show, '/')`; graceful KeyboardInterrupt → `server.stop()`
+- [x] P4-54  dash_render.py: security — HTML-escape all user strings (title, subtitle, KPI labels, variable names in Div.text) before embedding in generated Python string literals
+- [x] P4-55  dash_render.py: security — base64 encoding of data payload prevents special chars (quotes, backslashes, newlines) in data from breaking generated Python file syntax
+- [x] P4-56  dash_render.py: security — `allow_websocket_origin` restricted to `['localhost:{port}']`; no wildcard
 
 ### Python Unit Tests — Phase 4
 
-- [ ] P4-57  test/test_server.py: `ServerAppBuilder.build()` on minimal 1-graph spec → output file compiles without error (`compile(source, '', 'exec')`)
-- [ ] P4-58  test/test_server.py: generated file contains `def make_document(doc):` definition
-- [ ] P4-59  test/test_server.py: generated file contains `if __name__ == '__main__':` block
-- [ ] P4-60  test/test_server.py: generated file contains `Server` and `allow_websocket_origin` strings
-- [ ] P4-61  test/test_server.py: `make_document` importable from generated file — call it with a Bokeh `Document()`; assert `doc.roots` is non-empty
-- [ ] P4-62  test/test_server.py: filter callback correctly recomputes histogram CDS — verify `top` array changes when filtered to half the rows
-- [ ] P4-63  test/test_server.py: filter callback correctly recomputes lfit CDS — verify `y` values change when filtered to subset
-- [ ] P4-64  test/test_server.py: filter callback updates KPI Div.text — verify mean recomputes from filtered DataFrame
-- [ ] P4-65  test/test_server.py: brush callback updates brush-mode KPI Div.text — verify mean from selection indices
-- [ ] P4-66  test/test_server.py: base64-encoded data round-trips correctly — encode → decode → same DataFrame
-- [ ] P4-67  test/test_server.py: `title("<script>alert(1)</script>")` — verify generated file does not contain unescaped `<script>` tag
-- [ ] P4-68  test/test_server.py: data column containing Python string escape chars (`\n`, `\'`) — generated file still compiles without SyntaxError
-- [ ] P4-69  test/test_server.py: `--mode standalone` with existing spec → still produces valid HTML file (regression)
-- [ ] P4-70  test/test_server.py: `_compute_histogram` returns dict with keys top/left/right; len(top) == bins
-- [ ] P4-71  test/test_server.py: `_compute_kpi` for stat='mean' returns correct mean; stat='dcount' returns unique count
-- [ ] P4-72  test/test_server.py: `_compute_lfit` returns 100 x-points and corresponding y-points
+- [x] P4-57  test/test_server.py: `ServerAppBuilder.build()` on minimal 1-graph spec → output file compiles without error (`compile(source, '', 'exec')`)
+- [x] P4-58  test/test_server.py: generated file contains `def make_document(doc):` definition
+- [x] P4-59  test/test_server.py: generated file contains `if __name__ == '__main__':` block
+- [x] P4-60  test/test_server.py: generated file contains `Server` and `allow_websocket_origin` strings
+- [x] P4-61  test/test_server.py: `make_document` importable from generated file — call it with a Bokeh `Document()`; assert `doc.roots` is non-empty
+- [x] P4-62  test/test_server.py: filter callback correctly recomputes histogram CDS — verify `top` array changes when filtered to half the rows
+- [x] P4-63  test/test_server.py: filter callback correctly recomputes lfit CDS — verify `y` values change when filtered to subset
+- [x] P4-64  test/test_server.py: filter callback updates KPI Div.text — verify mean recomputes from filtered DataFrame
+- [x] P4-65  test/test_server.py: brush callback updates brush-mode KPI Div.text — verify mean from selection indices
+- [x] P4-66  test/test_server.py: base64-encoded data round-trips correctly — encode → decode → same DataFrame
+- [x] P4-67  test/test_server.py: `title("<script>alert(1)</script>")` — verify generated file does not contain unescaped `<script>` tag
+- [x] P4-68  test/test_server.py: data column containing Python string escape chars (`\n`, `\'`) — generated file still compiles without SyntaxError
+- [x] P4-69  test/test_server.py: `--mode standalone` with existing spec → still produces valid HTML file (regression)
+- [x] P4-70  test/test_server.py: `_compute_histogram` returns dict with keys top/left/right; len(top) == bins
+- [x] P4-71  test/test_server.py: `_compute_kpi` for stat='mean' returns correct mean; stat='dcount' returns unique count
+- [x] P4-72  test/test_server.py: `_compute_lfit` returns 100 x-points and corresponding y-points
 
 ### Certification Scripts (Stata) — Phase 4
 
-- [ ] P4-73  test/test_e2e_serve.cscript: write cscript header and Python/jsonio availability checks (same pattern as test_e2e_single.cscript)
-- [ ] P4-74  test/test_e2e_serve.cscript: `dash serve` with empty registry → rc==198 and error message contains "no graphs registered"
-- [ ] P4-75  test/test_e2e_serve.cscript: `dash serve, port(99999)` after registering a graph → rc==198
-- [ ] P4-76  test/test_e2e_serve.cscript: `dash serve, port(0)` → rc==198
-- [ ] P4-77  test/test_e2e_serve.cscript: `dash serve, port(abc)` → rc==198
-- [ ] P4-78  test/test_e2e_serve.cscript: `dash build, saving(t.py) server` → `.py` file created; confirm file exists
-- [ ] P4-79  test/test_e2e_serve.cscript: verify generated `.py` file is syntactically valid Python using `python: import ast; ast.parse(open(path).read())`
-- [ ] P4-80  test/test_e2e_serve.cscript: verify generated `.py` file contains string "make_document"
-- [ ] P4-81  test/test_e2e_serve.cscript: verify generated `.py` file contains string "Server"
-- [ ] P4-82  test/test_e2e_serve.cscript: verify generated `.py` file contains string "allow_websocket_origin"
-- [ ] P4-83  test/test_e2e_serve.cscript: call `make_document` on a Bokeh `Document()` from within `python:` block; assert no exception; assert document has at least one root
+- [x] P4-73  test/test_e2e_serve.cscript: write cscript header and Python/jsonio availability checks (same pattern as test_e2e_single.cscript)
+- [x] P4-74  test/test_e2e_serve.cscript: `dash serve` with empty registry → rc==198 and error message contains "no graphs registered"
+- [x] P4-75  test/test_e2e_serve.cscript: `dash serve, port(99999)` after registering a graph → rc==198
+- [x] P4-76  test/test_e2e_serve.cscript: `dash serve, port(0)` → rc==198
+- [x] P4-77  test/test_e2e_serve.cscript: `dash serve, port(abc)` → rc==198
+- [x] P4-78  test/test_e2e_serve.cscript: `dash build, saving(t.py) server` → `.py` file created; confirm file exists
+- [x] P4-79  test/test_e2e_serve.cscript: verify generated `.py` file is syntactically valid Python using `python: import ast; ast.parse(open(path).read())`
+- [x] P4-80  test/test_e2e_serve.cscript: verify generated `.py` file contains string "make_document"
+- [x] P4-81  test/test_e2e_serve.cscript: verify generated `.py` file contains string "Server"
+- [x] P4-82  test/test_e2e_serve.cscript: verify generated `.py` file contains string "allow_websocket_origin"
+- [x] P4-83  test/test_e2e_serve.cscript: call `make_document` on a Bokeh `Document()` from within `python:` block; assert no exception; assert document has at least one root
 
 ### Adversarial Tests — Phase 4
 
-- [ ] P4-84  test/test_adversarial.cscript: add test — `dash serve, port(5006); import os` — semicolon in port value → rejected by integer regex
-- [ ] P4-85  test/test_adversarial.cscript: add test — KPI title `"<script>alert(1)</script>"` in server mode → HTML-escaped in generated Div.text; `<script>` not present unescaped
-- [ ] P4-86  test/test_adversarial.cscript: add test — data value containing `'); exec('id')` → base64-encoded; verify generated .py file compiles cleanly
+- [x] P4-84  test/test_adversarial.cscript: add test — `dash serve, port(5006); import os` — semicolon in port value → rejected by integer regex
+- [x] P4-85  test/test_adversarial.cscript: add test — KPI title `"<script>alert(1)</script>"` in server mode → HTML-escaped in generated Div.text; `<script>` not present unescaped
+- [x] P4-86  test/test_adversarial.cscript: add test — data value containing `'); exec('id')` → base64-encoded; verify generated .py file compiles cleanly
 
 ### SMCL Help Updates — Phase 4
 
-- [ ] P4-87  dash.sthlp: add `dash serve` to Syntax section with options port(), nobrowser, timeout()
-- [ ] P4-88  dash.sthlp: add `server` option to `dash build` Syntax section
-- [ ] P4-89  dash.sthlp: add "Server Mode" section explaining blocking behavior, Ctrl+C to stop, what it enables vs standalone
-- [ ] P4-90  dash.sthlp: add comparison table: standalone vs server capabilities (KPI recompute, histogram recompute, all glyphs in brush, deployment model)
-- [ ] P4-91  dash.sthlp: add Phase 4 example to Examples section showing `dash serve` workflow
-- [ ] P4-92  dash_setup.sthlp: add note that Bokeh Server uses Tornado (bundled with Bokeh >=3.0); no additional installation required
+- [x] P4-87  dash.sthlp: add `dash serve` to Syntax section with options port(), nobrowser, timeout()
+- [x] P4-88  dash.sthlp: add `server` option to `dash build` Syntax section
+- [x] P4-89  dash.sthlp: add "Server Mode" section explaining blocking behavior, Ctrl+C to stop, what it enables vs standalone
+- [x] P4-90  dash.sthlp: add comparison table: standalone vs server capabilities (KPI recompute, histogram recompute, all glyphs in brush, deployment model)
+- [x] P4-91  dash.sthlp: add Phase 4 example to Examples section showing `dash serve` workflow
+- [x] P4-92  dash_setup.sthlp: add note that Bokeh Server uses Tornado (bundled with Bokeh >=3.0); no additional installation required
