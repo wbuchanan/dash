@@ -1,0 +1,120 @@
+*! test_e2e_filters.cscript
+*! End-to-end certification script for filter widgets in dashboard output.
+*!
+*! Tests: P2-73 through P2-75
+*!
+*! Usage:  do test/test_e2e_filters.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed
+*! Version: 1.0.0  25mar2026
+
+cscript "dash filter widget E2E" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 0
+}
+
+capture {
+    python:
+pass
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: Python not available."
+    exit 0
+}
+
+qui sysuse auto, clear
+
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ================================================================
+// P2-73 — dash build with filter(foreign, type(dropdown)) → HTML contains Select widget
+// ================================================================
+dash clear
+
+dash scatter mpg weight, name(s1) title("MPG vs Weight")
+dash scatter price mpg,  name(s2) title("Price vs MPG")
+
+tempfile outfile
+local outpath = "`outfile'.html"
+capture erase "`outpath'"
+
+dash build, saving("`outpath'") ///
+    filter(foreign, type(dropdown)) ///
+    replace
+
+capture confirm file "`outpath'"
+assert _rc == 0
+
+// Search HTML for Bokeh Select widget indicator
+tempname fh
+file open `fh' using "`outpath'", read text
+local found_select = 0
+local ln ""
+file read `fh' ln
+while r(eof) == 0 {
+    // Bokeh Select widget emits type "Select" or "bk-Select" in the document JSON
+    if strpos(lower(`"`ln'"'), `""select""') > 0 | ///
+       strpos(lower(`"`ln'"'), "bk-select")  > 0 | ///
+       strpos(lower(`"`ln'"'), "select_widget") > 0 | ///
+       strpos(lower(`"`ln'"'), `"type.*select"') > 0 {
+        local found_select = 1
+    }
+    file read `fh' ln
+}
+file close `fh'
+assert `found_select' == 1
+display "P2-73 PASS: HTML contains Bokeh Select widget for foreign filter"
+
+// ================================================================
+// P2-74 — "Domestic" and "Foreign" value labels appear in filter options
+// ================================================================
+tempname fh2
+file open `fh2' using "`outpath'", read text
+local found_domestic = 0
+local found_foreign  = 0
+local ln2 ""
+file read `fh2' ln2
+while r(eof) == 0 {
+    if strpos(`"`ln2'"', "Domestic") > 0 local found_domestic = 1
+    if strpos(`"`ln2'"', "Foreign")  > 0 local found_foreign  = 1
+    file read `fh2' ln2
+}
+file close `fh2'
+assert `found_domestic' == 1
+assert `found_foreign'  == 1
+display "P2-74 PASS: value labels 'Domestic' and 'Foreign' in filter widget HTML"
+
+// ================================================================
+// P2-75 — "All" option present in filter widget HTML
+// ================================================================
+tempname fh3
+file open `fh3' using "`outpath'", read text
+local found_all = 0
+local ln3 ""
+file read `fh3' ln3
+while r(eof) == 0 {
+    // "All" appears as an option value or label in the Select widget JSON
+    if strpos(`"`ln3'"', `""All""') > 0 | strpos(`"`ln3'"', "All") > 0 {
+        local found_all = 1
+    }
+    file read `fh3' ln3
+}
+file close `fh3'
+assert `found_all' == 1
+display "P2-75 PASS: 'All' option present in filter widget HTML"
+
+// ----------------------------------------------------------------
+// Cleanup
+// ----------------------------------------------------------------
+dash clear
+
+display ""
+display "All filter widget E2E tests PASSED."

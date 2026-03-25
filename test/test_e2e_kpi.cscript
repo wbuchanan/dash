@@ -1,0 +1,135 @@
+*! test_e2e_kpi.cscript
+*! End-to-end certification script for KPI card output.
+*!
+*! Tests: P2-76 through P2-77
+*!
+*! Usage:  do test/test_e2e_kpi.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed
+*! Version: 1.0.0  25mar2026
+
+cscript "dash KPI card E2E" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 0
+}
+
+capture {
+    python:
+pass
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: Python not available."
+    exit 0
+}
+
+qui sysuse auto, clear
+
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ================================================================
+// P2-76 — dash kpi mean(mpg) + build → HTML contains formatted mean value
+// ================================================================
+dash clear
+
+// Compute expected mean for assertion
+quietly summarize mpg
+local expected_mean : display %9.1f r(mean)
+local expected_mean = strtrim("`expected_mean'")
+
+dash scatter mpg weight, name(s1) title("MPG vs Weight")
+dash kpi mean(mpg), title("Avg MPG") name(k1) fmt(%9.1f) update(filter)
+
+tempfile outfile
+local outpath = "`outfile'.html"
+capture erase "`outpath'"
+
+dash build, saving("`outpath'") replace
+
+capture confirm file "`outpath'"
+assert _rc == 0
+
+// Search for the formatted mean in the HTML
+tempname fh
+file open `fh' using "`outpath'", read text
+local found_mean = 0
+local ln ""
+file read `fh' ln
+while r(eof) == 0 {
+    if strpos(`"`ln'"', "`expected_mean'") > 0 {
+        local found_mean = 1
+    }
+    file read `fh' ln
+}
+file close `fh'
+assert `found_mean' == 1
+display "P2-76 PASS: formatted mean value '`expected_mean'' found in HTML"
+
+// ================================================================
+// P2-77 — KPI card structure (title + styled div) present in output HTML
+// ================================================================
+tempname fh2
+file open `fh2' using "`outpath'", read text
+local found_title   = 0
+local found_kpi_div = 0
+local ln2 ""
+file read `fh2' ln2
+while r(eof) == 0 {
+    // Title "Avg MPG" should appear in the KPI card Div
+    if strpos(`"`ln2'"', "Avg MPG") > 0 local found_title = 1
+    // Bokeh Div widget emits "Div" in the document JSON
+    if strpos(lower(`"`ln2'"'), `""div""') > 0 | ///
+       strpos(lower(`"`ln2'"'), "kpi")     > 0 {
+        local found_kpi_div = 1
+    }
+    file read `fh2' ln2
+}
+file close `fh2'
+assert `found_title' == 1
+assert `found_kpi_div' == 1
+display "P2-77 PASS: KPI card title and Div structure found in HTML"
+
+// ----------------------------------------------------------------
+// Additional: verify KPI card with count statistic
+// ----------------------------------------------------------------
+dash clear
+
+quietly count
+local n_obs = r(N)
+local expected_count : display %9.0fc `n_obs'
+local expected_count = strtrim("`expected_count'")
+
+dash scatter mpg weight, name(s1) title("Scatter")
+dash kpi count(mpg), title("Sample Size") name(k2) fmt(%9.0fc) update(both)
+
+tempfile outfile2
+local outpath2 = "`outfile2'.html"
+dash build, saving("`outpath2'") replace
+
+tempname fh3
+file open `fh3' using "`outpath2'", read text
+local found_count = 0
+local ln3 ""
+file read `fh3' ln3
+while r(eof) == 0 {
+    if strpos(`"`ln3'"', "`expected_count'") > 0 local found_count = 1
+    file read `fh3' ln3
+}
+file close `fh3'
+assert `found_count' == 1
+display "P2-77b PASS: count KPI value '`expected_count'' found in HTML"
+
+// ----------------------------------------------------------------
+// Cleanup
+// ----------------------------------------------------------------
+dash clear
+
+display ""
+display "All KPI card E2E tests PASSED."

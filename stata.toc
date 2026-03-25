@@ -1,0 +1,3 @@
+v 3
+d dash: Interactive HTML dashboards from Stata twoway syntax
+p dash dash.pkg

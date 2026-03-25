@@ -1,0 +1,117 @@
+*! test_e2e_multi.cscript
+*! End-to-end certification script for multi-graph dashboard output.
+*!
+*! Tests: P1B-67 through P1B-69
+*!
+*! Usage:  do test/test_e2e_multi.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed
+*! Version: 1.0.0  25mar2026
+
+cscript "dash multi-graph E2E" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 0
+}
+
+capture {
+    python:
+pass
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: Python not available."
+    exit 0
+}
+
+qui sysuse auto, clear
+
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ================================================================
+// P1B-67 — 3 named graphs + dash build → HTML file exists and is non-empty
+// ================================================================
+dash clear
+
+dash scatter mpg weight, name(s1) title("MPG vs Weight")
+dash scatter mpg length, name(s2) title("MPG vs Length")
+dash histogram mpg,      name(h1) title("MPG Distribution")
+
+tempfile outfile
+local outpath = "`outfile'.html"
+capture erase "`outpath'"
+
+dash build, saving("`outpath'") layout(2 2) replace
+
+// Verify file exists
+capture confirm file "`outpath'"
+assert _rc == 0
+display "P1B-67a PASS: multi-graph HTML file created"
+
+// Verify non-empty
+tempname fh
+file open `fh' using "`outpath'", read text
+file read `fh' line
+file close `fh'
+assert length("`line'") > 0
+display "P1B-67b PASS: multi-graph HTML file is non-empty"
+
+// ================================================================
+// P1B-68 — output HTML contains all 3 graph identifiers
+// ================================================================
+// The HTML should contain references to s1, s2, h1 as Bokeh model
+// ids or data attributes embedded in the JavaScript.
+tempname fh2
+file open `fh2' using "`outpath'", read text
+local found_s1 = 0
+local found_s2 = 0
+local found_h1 = 0
+local ln ""
+file read `fh2' ln
+while r(eof) == 0 {
+    if strpos(`"`ln'"', "s1") > 0 local found_s1 = 1
+    if strpos(`"`ln'"', "s2") > 0 local found_s2 = 1
+    if strpos(`"`ln'"', "h1") > 0 local found_h1 = 1
+    file read `fh2' ln
+}
+file close `fh2'
+assert `found_s1' == 1
+assert `found_s2' == 1
+assert `found_h1' == 1
+display "P1B-68 PASS: HTML contains identifiers s1, s2, h1"
+
+// ================================================================
+// P1B-69 — output HTML contains Bokeh gridplot structure
+// ================================================================
+// Bokeh's gridplot emits a JSON model with type "GridPlot" or
+// embeds "gridplot" references in the Bokeh document JSON.
+tempname fh3
+file open `fh3' using "`outpath'", read text
+local found_grid = 0
+local ln3 ""
+file read `fh3' ln3
+while r(eof) == 0 {
+    if strpos(lower(`"`ln3'"'), "gridplot") > 0 | ///
+       strpos(lower(`"`ln3'"'), "grid_plot") > 0 | ///
+       strpos(lower(`"`ln3'"'), "gridlayout") > 0 {
+        local found_grid = 1
+    }
+    file read `fh3' ln3
+}
+file close `fh3'
+assert `found_grid' == 1
+display "P1B-69 PASS: HTML contains Bokeh gridplot structure"
+
+// ================================================================
+// Cleanup
+// ================================================================
+dash clear
+
+display ""
+display "All multi-graph E2E tests PASSED."

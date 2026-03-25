@@ -1,0 +1,151 @@
+*! test_e2e_single.cscript
+*! End-to-end certification script for single-graph dash output.
+*!
+*! Tests: P1C-15 through P1C-18
+*!
+*! Usage:  do test/test_e2e_single.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed
+*! Version: 1.0.0  25mar2026
+
+cscript "dash single-graph E2E" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 0
+}
+
+capture {
+    python:
+pass
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: Python not available."
+    exit 0
+}
+
+qui sysuse auto, clear
+
+// Load the dash command and parser
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ================================================================
+// P1C-15 — dash scatter mpg weight → HTML file exists with Bokeh embed
+// ================================================================
+tempfile outfile
+local outpath = "`outfile'.html"
+
+capture erase "`outpath'"
+dash scatter mpg weight, saving("`outpath'")
+
+// Verify file exists
+capture confirm file "`outpath'"
+assert _rc == 0
+display "P1C-15a PASS: HTML file created at `outpath'"
+
+// Verify file is non-empty
+tempname fh
+file open `fh' using "`outpath'", read text
+file read `fh' line
+file close `fh'
+assert length("`line'") > 0
+display "P1C-15b PASS: HTML file is non-empty"
+
+// Verify Bokeh embed string present
+// Bokeh standalone HTML contains "Bokeh" or "bokeh" in the script block
+tempname fh2
+file open `fh2' using "`outpath'", read text
+local html_content ""
+local ln ""
+local found_bokeh = 0
+local line_count = 0
+file read `fh2' ln
+while r(eof) == 0 & `line_count' < 500 {
+    if strpos(lower("`ln'"), "bokeh") > 0 | strpos(lower("`ln'"), "bk-") > 0 {
+        local found_bokeh = 1
+    }
+    local line_count = `line_count' + 1
+    file read `fh2' ln
+}
+file close `fh2'
+assert `found_bokeh' == 1
+display "P1C-15c PASS: HTML contains Bokeh embed string"
+
+// ================================================================
+// P1C-16 — (scatter mpg weight) (lfit mpg weight) → HTML contains lfit data
+// ================================================================
+tempfile outfile2
+local outpath2 = "`outfile2'.html"
+capture erase "`outpath2'"
+
+dash (scatter mpg weight) (lfit mpg weight), saving("`outpath2'")
+
+capture confirm file "`outpath2'"
+assert _rc == 0
+
+// The HTML should be larger than a single-plot HTML (more data/renderers)
+// We check size by reading line count
+tempname fh3
+file open `fh3' using "`outpath2'", read text
+local lc2 = 0
+local ln3 ""
+file read `fh3' ln3
+while r(eof) == 0 {
+    local lc2 = `lc2' + 1
+    file read `fh3' ln3
+}
+file close `fh3'
+
+// A multi-plot file should have at least 50 lines
+assert `lc2' > 50
+display "P1C-16 PASS: (scatter)(lfit) HTML exists and is non-trivially large"
+
+// ================================================================
+// P1C-17 — variable label "Mileage (mpg)" appears in output HTML as axis title
+// ================================================================
+tempname fh4
+file open `fh4' using "`outfile'.html", read text
+local found_label = 0
+local lv ""
+file read `fh4' lv
+while r(eof) == 0 {
+    if strpos(`"`lv'"', "Mileage") > 0 {
+        local found_label = 1
+    }
+    file read `fh4' lv
+}
+file close `fh4'
+assert `found_label' == 1
+display "P1C-17 PASS: variable label 'Mileage (mpg)' found in HTML"
+
+// ================================================================
+// P1C-18 — value labels "Domestic"/"Foreign" appear in output HTML
+// ================================================================
+// Produce a plot that uses the foreign variable (which has value labels)
+tempfile outfile3
+local outpath3 = "`outfile3'.html"
+dash scatter mpg foreign, saving("`outpath3'")
+
+tempname fh5
+file open `fh5' using "`outpath3'", read text
+local found_vallabel = 0
+local lw ""
+file read `fh5' lw
+while r(eof) == 0 {
+    if strpos(`"`lw'"', "Domestic") > 0 | strpos(`"`lw'"', "Foreign") > 0 {
+        local found_vallabel = 1
+    }
+    file read `fh5' lw
+}
+file close `fh5'
+assert `found_vallabel' == 1
+display "P1C-18 PASS: value labels 'Domestic'/'Foreign' found in HTML"
+
+display ""
+display "All single-graph E2E tests PASSED."

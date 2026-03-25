@@ -1,0 +1,25 @@
+d 'DASH': Interactive HTML dashboards from twoway syntax
+d
+d dash converts Stata twoway plot syntax into standalone interactive
+d HTML dashboards powered by the Bokeh visualization library.
+d Features include: multi-graph layouts, linked brushing, filter
+d widgets (dropdown/slider/range), KPI cards, and full twoway
+d option compatibility for scatter, line, area, bar, spike, lfit,
+d qfit, lowess, histogram, kdensity, and range plots.
+d
+d All output is a self-contained HTML file that runs offline in
+d any modern browser without a server or internet connection.
+d
+d Requires: Python 3.8+, bokeh>=3.0, numpy>=1.23, scipy>=1.9,
+d           statsmodels>=0.13, pandas>=1.5, jsonio (SSC).
+d
+d Run -dash_setup- once after installation to install all dependencies.
+d
+d Version: 1.0.0  25mar2026
+d
+f dash.ado
+f dash.sthlp
+f dash_setup.ado
+f dash_setup.sthlp
+f dash_parse.mata
+f dash_render.py
