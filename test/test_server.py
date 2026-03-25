@@ -131,8 +131,11 @@ def _build_app(dr_module, df, spec_dict) -> str:
         with open(out_f.name, "r", encoding="utf-8") as f:
             return f.read()
     finally:
-        os.unlink(spec_path)
-        os.unlink(data_path)
+        for _p in (spec_path, data_path, out_f.name):
+            try:
+                os.unlink(_p)
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------
