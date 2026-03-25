@@ -635,7 +635,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
-    ) -> list:
+    ) -> "GlyphRenderer":
         """Add an area glyph (filled between y=0 and y=yvar) to *fig*.
 
         Args:
@@ -676,7 +676,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
-    ) -> list:
+    ) -> "GlyphRenderer":
         """Add vertical bar glyphs to *fig*.
 
         Bar width is automatically computed as 80% of the smallest gap between
@@ -727,7 +727,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
-    ) -> list:
+    ) -> "GlyphRenderer":
         """Add vertical spike glyphs (segments from y=0 to y=yvar) to *fig*.
 
         Args:
