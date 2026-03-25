@@ -1,0 +1,300 @@
+*! test_e2e_serve.cscript
+*! End-to-end certification script for dash serve subcommand and
+*! dash build, server option.
+*!
+*! Tests: P4-73 through P4-83
+*!
+*! Usage:  do test/test_e2e_serve.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed
+*! Version: 1.0.0  25mar2026
+
+cscript "dash serve E2E" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup — check dependencies
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 0
+}
+
+capture {
+    python:
+pass
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: Python not available."
+    exit 0
+}
+
+// Check Bokeh available
+capture {
+    python:
+import bokeh
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 0
+}
+
+qui sysuse auto, clear
+
+// Load the dash command and parser
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ================================================================
+// P4-74 — dash serve with empty registry → rc == 198
+// ================================================================
+dash clear
+capture dash serve
+assert _rc == 198
+display "P4-74 PASS: dash serve with empty registry returns rc=198"
+
+// ================================================================
+// P4-75 — dash serve, port(99999) → rc == 198
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+capture dash serve, port(99999)
+assert _rc == 198
+display "P4-75 PASS: dash serve, port(99999) returns rc=198"
+dash clear
+
+// ================================================================
+// P4-76 — dash serve, port(0) → rc == 198
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+capture dash serve, port(0)
+assert _rc == 198
+display "P4-76 PASS: dash serve, port(0) returns rc=198"
+dash clear
+
+// ================================================================
+// P4-77 — dash serve, port(abc) → rc == 198
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+capture dash serve, port(abc)
+assert _rc == 198
+display "P4-77 PASS: dash serve, port(abc) returns rc=198"
+dash clear
+
+// ================================================================
+// P4-78 — dash build, server → .py file created
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+
+tempfile outpy
+local outpath = "`outpy'.py"
+capture erase "`outpath'"
+
+dash build, saving("`outpath'") server replace
+
+// Verify file exists
+capture confirm file "`outpath'"
+assert _rc == 0
+display "P4-78a PASS: dash build server → .py file created"
+
+// Verify file is non-empty
+tempname fh
+file open `fh' using "`outpath'", read text
+file read `fh' line
+file close `fh'
+assert length("`line'") > 0
+display "P4-78b PASS: generated .py file is non-empty"
+
+dash clear
+
+// ================================================================
+// P4-79 — generated .py is syntactically valid Python (ast.parse)
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+
+tempfile outpy2
+local outpath2 = "`outpy2'.py"
+capture erase "`outpath2'"
+dash build, saving("`outpath2'") server replace
+
+local parse_rc = 0
+capture {
+    python:
+import ast
+with open(r"`outpath2'", "r", encoding="utf-8") as _f:
+    _src = _f.read()
+ast.parse(_src)
+    end
+}
+if _rc != 0 local parse_rc = _rc
+
+assert `parse_rc' == 0
+display "P4-79 PASS: generated .py file passes ast.parse()"
+
+dash clear
+
+// ================================================================
+// P4-80 — generated .py contains "make_document"
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+
+tempfile outpy3
+local outpath3 = "`outpy3'.py"
+capture erase "`outpath3'"
+dash build, saving("`outpath3'") server replace
+
+// Read file content and check for make_document
+local found_mk = 0
+capture {
+    python:
+with open(r"`outpath3'", "r", encoding="utf-8") as _f:
+    _src = _f.read()
+if "def make_document" in _src:
+    from sfi import Macro
+    Macro.setLocal("found_mk", "1")
+    end
+}
+
+// Verify the string was found
+tempname fh3
+file open `fh3' using "`outpath3'", read text
+local found_in_file = 0
+local eof_flag = 0
+while `eof_flag' == 0 {
+    file read `fh3' line
+    if _rc != 0 {
+        local eof_flag = 1
+        continue
+    }
+    if strpos("`line'", "make_document") > 0 {
+        local found_in_file = 1
+        local eof_flag = 1
+    }
+}
+file close `fh3'
+assert `found_in_file' == 1
+display "P4-80 PASS: generated .py contains 'make_document'"
+
+dash clear
+
+// ================================================================
+// P4-81 — generated .py contains "Server"
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+
+tempfile outpy4
+local outpath4 = "`outpy4'.py"
+capture erase "`outpath4'"
+dash build, saving("`outpath4'") server replace
+
+tempname fh4
+file open `fh4' using "`outpath4'", read text
+local found_server = 0
+local eof4 = 0
+while `eof4' == 0 {
+    file read `fh4' line
+    if _rc != 0 {
+        local eof4 = 1
+        continue
+    }
+    if strpos("`line'", "Server") > 0 {
+        local found_server = 1
+        local eof4 = 1
+    }
+}
+file close `fh4'
+assert `found_server' == 1
+display "P4-81 PASS: generated .py contains 'Server'"
+
+dash clear
+
+// ================================================================
+// P4-82 — generated .py contains "allow_websocket_origin"
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+
+tempfile outpy5
+local outpath5 = "`outpy5'.py"
+capture erase "`outpath5'"
+dash build, saving("`outpath5'") server replace
+
+tempname fh5
+file open `fh5' using "`outpath5'", read text
+local found_wso = 0
+local eof5 = 0
+while `eof5' == 0 {
+    file read `fh5' line
+    if _rc != 0 {
+        local eof5 = 1
+        continue
+    }
+    if strpos("`line'", "allow_websocket_origin") > 0 {
+        local found_wso = 1
+        local eof5 = 1
+    }
+}
+file close `fh5'
+assert `found_wso' == 1
+display "P4-82 PASS: generated .py contains 'allow_websocket_origin'"
+
+dash clear
+
+// ================================================================
+// P4-83 — call make_document on a Bokeh Document; no error; has roots
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+dash kpi mean(mpg), title("Avg MPG") name(k1) fmt(%9.1f)
+
+tempfile outpy6
+local outpath6 = "`outpy6'.py"
+capture erase "`outpath6'"
+dash build, saving("`outpath6'") server replace
+
+local make_doc_rc = 0
+capture {
+    python:
+import importlib.util, sys
+from bokeh.document import Document
+
+_spec = importlib.util.spec_from_file_location("_test_serve_app", r"`outpath6'")
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+_doc = Document()
+_mod.make_document(_doc)
+assert len(_doc.roots) > 0, "make_document produced no roots"
+del _spec, _mod, _doc
+    end
+}
+if _rc != 0 local make_doc_rc = _rc
+
+assert `make_doc_rc' == 0
+display "P4-83 PASS: make_document callable with Bokeh Document; has roots"
+
+dash clear
+
+// ================================================================
+// Final summary
+// ================================================================
+display ""
+display "All dash serve E2E tests PASSED."
+display "  P4-74: empty registry → error"
+display "  P4-75: port 99999 → error"
+display "  P4-76: port 0 → error"
+display "  P4-77: port abc → error"
+display "  P4-78: dash build server → .py file created"
+display "  P4-79: generated .py passes ast.parse()"
+display "  P4-80: generated .py contains make_document"
+display "  P4-81: generated .py contains Server"
+display "  P4-82: generated .py contains allow_websocket_origin"
+display "  P4-83: make_document callable; Document has roots"
