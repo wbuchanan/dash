@@ -20,6 +20,7 @@ Tests:
   P4-70  _compute_histogram returns correct structure
   P4-71  _compute_kpi returns correct values for mean and dcount
   P4-72  _compute_lfit returns 100 x/y points
+  P4-73  _compute_kpi sd uses ddof=1 matching Stata (regression)
 """
 
 from __future__ import annotations
@@ -662,6 +663,45 @@ def test_compute_lfit_100_points(dr_module, auto_df):
         assert len(result["y"]) == 100, f"Expected 100 y-points, got {len(result['y'])}"
         # x should be sorted (linspace)
         assert result["x"][0] < result["x"][-1]
+    finally:
+        os.unlink(spec_path)
+        os.unlink(data_path)
+        os.unlink(out_f.name)
+
+
+# ---------------------------------------------------------------------------
+# P4-73 (regression): _compute_kpi sd uses ddof=1 matching Stata
+# ---------------------------------------------------------------------------
+
+def test_compute_kpi_sd_uses_ddof1(dr_module, auto_df):
+    """Regression: _compute_kpi sd result matches pandas ddof=1 (Stata's unbiased SD).
+
+    Ensures the generated server code uses series.std(ddof=1), not the
+    population-SD default of numpy/ddof=0, so server-mode KPI values match
+    standalone-mode values exactly.
+    """
+    spec = _make_spec_json()
+    spec_path, data_path = _write_temp_files(auto_df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+
+    try:
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+
+        app_spec_obj = importlib.util.spec_from_file_location("_test_sd_ddof", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec_obj)
+        app_spec_obj.loader.exec_module(app_mod)
+
+        sd_val = app_mod._compute_kpi(auto_df, "sd", "mpg")
+        expected_ddof1 = float(auto_df["mpg"].std(ddof=1))
+        expected_ddof0 = float(auto_df["mpg"].std(ddof=0))
+
+        # Must match ddof=1 (sample SD, Stata default)
+        assert abs(sd_val - expected_ddof1) < 1e-9, (
+            f"sd mismatch: got {sd_val}, expected ddof=1 value {expected_ddof1} "
+            f"(ddof=0 would give {expected_ddof0})"
+        )
     finally:
         os.unlink(spec_path)
         os.unlink(data_path)

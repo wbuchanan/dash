@@ -2616,7 +2616,7 @@ class ServerAppBuilder:
             "    if stat == 'dcount': return float(series.nunique())",
             "    if stat == 'min':    return float(series.min())",
             "    if stat == 'max':    return float(series.max())",
-            "    if stat == 'sd':     return float(series.std())",
+            "    if stat == 'sd':     return float(series.std(ddof=1))",
             "    if stat in ('median', 'p50'): return float(series.median())",
             "    if stat == 'p25':    return float(series.quantile(0.25))",
             "    if stat == 'p75':    return float(series.quantile(0.75))",
