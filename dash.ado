@@ -310,7 +310,7 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     // Extract all "yvar", "xvar", "var", "yvar1", "yvar2" values from JSON
     string rowvector keys
     string scalar found, varlist, val
-    real scalar pos, endpos
+    real scalar pos, endpos, orig_pos, local_pos
 
     keys    = ("\"yvar\":", "\"xvar\":", "\"var\":", "\"yvar1\":", "\"yvar2\":")
     varlist = ""
@@ -319,10 +319,11 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     for (k = 1; k <= cols(keys); k++) {
         pos = 1
         while (pos <= strlen(json_str)) {
-            pos = strpos(substr(json_str, pos, .), keys[k])
-            if (pos == 0) break
-            // advance to start of value (past the key and colon)
-            pos = pos + strlen(keys[k]) + (pos - 1)
+            orig_pos  = pos
+            local_pos = strpos(substr(json_str, orig_pos, .), keys[k])
+            if (local_pos == 0) break
+            // advance past the key: convert local substring position to absolute position
+            pos = orig_pos + local_pos - 1 + strlen(keys[k])
             // skip whitespace and opening quote
             while (pos <= strlen(json_str) & (substr(json_str, pos, 1) == " " | substr(json_str, pos, 1) == char(9))) pos++
             if (pos <= strlen(json_str) & substr(json_str, pos, 1) == char(34)) {
