@@ -116,8 +116,10 @@ class TestMapRcap:
         """P2-66: rcap produces horizontal cap marks (at least 2 renderers)."""
         renderers = gm.map_rcap(fig, range_cds, "yvar1", "yvar2", "xvar", {})
         n_renderers = len(renderers) if isinstance(renderers, (list, tuple)) else 1
-        # rcap should produce at least 2 elements: the vertical spike + top/bottom caps
-        assert n_renderers >= 1  # At minimum 1 renderer; caps may be combined
+        # map_rcap always returns [spine, bot_cap, top_cap] — exactly 3 renderers
+        assert n_renderers >= 3, (
+            f"Expected at least 3 renderers (spine + 2 caps), got {n_renderers}"
+        )
 
 
 # ================================================================

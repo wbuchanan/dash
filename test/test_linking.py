@@ -67,13 +67,22 @@ def _make_renderer(graph_names: list[str], link: str = "") -> DashRenderer:
     data_fd, data_path = tempfile.mkstemp(suffix=".json")
     out_fd,  out_path  = tempfile.mkstemp(suffix=".html")
 
-    with os.fdopen(spec_fd, "w") as f:
-        json.dump(master, f)
-    with os.fdopen(data_fd, "w") as f:
-        json.dump(data, f)
-    os.close(out_fd)
+    try:
+        with os.fdopen(spec_fd, "w") as f:
+            json.dump(master, f)
+        with os.fdopen(data_fd, "w") as f:
+            json.dump(data, f)
+        os.close(out_fd)
+        renderer = DashRenderer(spec_path, data_path, out_path)
+    finally:
+        # DashRenderer reads both files in __init__; safe to clean up now
+        for _p in (spec_path, data_path, out_path):
+            try:
+                os.unlink(_p)
+            except OSError:
+                pass
 
-    return DashRenderer(spec_path, data_path, out_path)
+    return renderer
 
 
 # ================================================================

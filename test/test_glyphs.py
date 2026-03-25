@@ -92,8 +92,12 @@ class TestMapScatter:
         renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"msymbol": "square"})
         glyph = renderer.glyph
         glyph_type = type(glyph).__name__.lower()
-        assert "square" in glyph_type or glyph.marker == "square" or True
-        # Marker was processed without error — the glyph was created
+        # map_scatter uses fig.scatter() which always produces a Scatter glyph
+        # with a .marker attribute.  Verify the marker was actually set.
+        assert "square" in glyph_type or glyph.marker == "square", (
+            f"Expected marker 'square', got glyph_type='{glyph_type}' "
+            f"marker='{getattr(glyph, 'marker', '<none>')}'"
+        )
 
     def test_scatter_msize_applied(self, fig, cds, gm):
         """P1A-95: msize option translated and applied to scatter glyph size."""
