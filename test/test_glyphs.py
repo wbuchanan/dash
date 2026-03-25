@@ -479,3 +479,26 @@ class TestEdgeCasesEmptyData:
         r = gm.map_kdensity(fig, single_cds, "mpg", {})
         assert r is not None
         assert len(r.data_source.data["x"]) == 0
+
+    def test_qfitci_fewer_than_3_points_returns_two_renderers(self, fig, gm):
+        """Regression: map_qfitci with only 2 valid points returns empty renderers."""
+        two_cds = ColumnDataSource({"mpg": [20.0, 25.0],
+                                    "weight": [2500.0, 3000.0]})
+        renderers = gm.map_qfitci(fig, two_cds, "mpg", "weight", {})
+        assert len(renderers) == 2
+        assert len(renderers[0].data_source.data["x_fit"]) == 0
+
+    def test_lowess_fewer_than_2_points_returns_renderer(self, fig, gm):
+        """Regression: map_lowess with only 1 valid point returns empty renderer."""
+        single_cds = ColumnDataSource({"mpg": [22.0], "weight": [2800.0]})
+        r = gm.map_lowess(fig, single_cds, "mpg", "weight", {})
+        assert r is not None
+        assert len(r.data_source.data["x_lw"]) == 0
+
+    def test_lowess_all_nan_returns_renderer(self, fig, gm):
+        """Regression: map_lowess with all-NaN data returns empty renderer."""
+        nan_cds = ColumnDataSource({"mpg": [float("nan")] * 4,
+                                    "weight": [float("nan")] * 4})
+        r = gm.map_lowess(fig, nan_cds, "mpg", "weight", {})
+        assert r is not None
+        assert len(r.data_source.data["x_lw"]) == 0

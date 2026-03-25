@@ -943,6 +943,19 @@ class GlyphMapper:
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
 
+        # Need at least 3 points for a degree-2 polyfit
+        if len(x) < 3:
+            empty_ci_src = ColumnDataSource({
+                "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
+            })
+            band_r = fig.varea(
+                x="x_fit", y1="y_lower", y2="y_upper",
+                source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
+            )
+            line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
+                              line_color="#d62728", line_width=2.0)
+            return [line_r, band_r]
+
         coeffs = np.polyfit(x, y, 2)
         x_fit = np.linspace(x.min(), x.max(), 200)
         y_fit = np.polyval(coeffs, x_fit)
@@ -997,6 +1010,11 @@ class GlyphMapper:
         y = np.array(source.data[yvar], dtype=float)
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
+
+        # Need at least 2 points for lowess
+        if len(x) < 2:
+            empty = ColumnDataSource({"x_lw": [], "y_lw": []})
+            return fig.line(x="x_lw", y="y_lw", source=empty)
 
         # Default bandwidth: 0.8 (same as Stata's default)
         bw = float(options.get("bwidth", "0.8"))
