@@ -59,6 +59,7 @@ import html
 import json
 import math
 import os
+import re
 from typing import Any
 
 import numpy as np
@@ -2442,7 +2443,6 @@ class ServerAppBuilder:
                 fpart = fpart.strip()
                 if not fpart:
                     continue
-                import re
                 m_type = re.search(r"type\(([^)]+)\)", fpart)
                 m_excl = re.search(r"exclude\(([^)]+)\)", fpart)
                 fvar = re.split(r"[,\s]", fpart.strip())[0]
