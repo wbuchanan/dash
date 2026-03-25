@@ -69,6 +69,7 @@ file read `fh2' ln
 while r(eof) == 0 & `line_count' < 500 {
     if strpos(lower("`ln'"), "bokeh") > 0 | strpos(lower("`ln'"), "bk-") > 0 {
         local found_bokeh = 1
+        continue, break
     }
     local line_count = `line_count' + 1
     file read `fh2' ln
