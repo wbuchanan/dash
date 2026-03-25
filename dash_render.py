@@ -789,6 +789,11 @@ class GlyphMapper:
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
 
+        # Need at least 2 points to fit a line
+        if len(x) < 2:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return fig.line(x="x", y="y", source=empty)
+
         coeffs = np.polyfit(x, y, 1)  # [slope, intercept]
         x_fit = np.linspace(x.min(), x.max(), 200)
         y_fit = np.polyval(coeffs, x_fit)
@@ -823,6 +828,11 @@ class GlyphMapper:
         y = np.array(source.data[yvar], dtype=float)
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
+
+        # Need at least 3 points for a degree-2 polyfit
+        if len(x) < 3:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return fig.line(x="x", y="y", source=empty)
 
         coeffs = np.polyfit(x, y, 2)
         x_fit = np.linspace(x.min(), x.max(), 200)
@@ -862,14 +872,29 @@ class GlyphMapper:
         x, y = x[mask], y[mask]
         n = len(x)
 
+        # Need at least 3 points: df = n-2 must be >= 1, and we need
+        # x to vary (non-zero variance) to avoid division by zero in se_fit.
+        empty_ci_src = ColumnDataSource({
+            "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
+        })
+        if n < 3 or np.std(x) == 0.0:
+            band_r = fig.varea(
+                x="x_fit", y1="y_lower", y2="y_upper",
+                source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
+            )
+            line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
+                              line_color="#d62728", line_width=2.0)
+            return [line_r, band_r]
+
         slope, intercept, _, _, se = scipy_stats.linregress(x, y)
         x_fit = np.linspace(x.min(), x.max(), 200)
         y_fit = intercept + slope * x_fit
 
         # SE of the fit line at each x_fit point
         x_mean = x.mean()
+        x_ss = np.sum((x - x_mean) ** 2)  # guaranteed > 0 after np.std check
         se_fit = se * np.sqrt(
-            1 / n + (x_fit - x_mean) ** 2 / np.sum((x - x_mean) ** 2)
+            1 / n + (x_fit - x_mean) ** 2 / x_ss
         ) * np.sqrt(n - 2)
         t_crit = scipy_stats.t.ppf(0.975, df=n - 2)
 
@@ -1059,6 +1084,11 @@ class GlyphMapper:
             options = {}
         arr = np.array(source.data[yvar], dtype=float)
         arr = arr[~np.isnan(arr)]
+
+        # gaussian_kde requires at least 2 points and non-constant data
+        if len(arr) < 2 or np.std(arr) == 0.0:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return fig.line(x="x", y="y", source=empty)
 
         kde = gaussian_kde(arr)
         # Extend range beyond data min/max to capture distribution tails
