@@ -49,7 +49,11 @@ def _make_data_json(n: int = 20) -> dict:
 
 def _make_renderer(n_graphs: int, layout: str = "auto",
                    link: str = "") -> DashRenderer:
-    """Create a DashRenderer with n_graphs scatter specs."""
+    """Create a DashRenderer with n_graphs scatter specs.
+
+    Temp files are created, used for DashRenderer construction (which reads
+    them immediately in __init__), then deleted before returning.
+    """
     graphs = [_make_graph_spec(f"g{i+1}") for i in range(n_graphs)]
     master_spec = {
         "graphs": graphs,
@@ -66,11 +70,10 @@ def _make_renderer(n_graphs: int, layout: str = "auto",
     }
     data_json = _make_data_json()
 
-    # Write temp files
-    import tempfile, os
+    import tempfile
     spec_fd, spec_path = tempfile.mkstemp(suffix=".json")
     data_fd, data_path = tempfile.mkstemp(suffix=".json")
-    out_fd, out_path   = tempfile.mkstemp(suffix=".html")
+    out_fd,  out_path  = tempfile.mkstemp(suffix=".html")
 
     try:
         with os.fdopen(spec_fd, "w") as f:
@@ -80,9 +83,14 @@ def _make_renderer(n_graphs: int, layout: str = "auto",
         os.close(out_fd)
         renderer = DashRenderer(spec_path, data_path, out_path)
     finally:
-        pass  # paths cleaned up by caller after test
+        # DashRenderer reads both files in __init__; safe to clean up now
+        for _p in (spec_path, data_path, out_path):
+            try:
+                os.unlink(_p)
+            except OSError:
+                pass
 
-    return renderer, spec_path, data_path, out_path
+    return renderer
 
 
 # ================================================================
@@ -91,16 +99,16 @@ def _make_renderer(n_graphs: int, layout: str = "auto",
 class TestExplicitLayout:
     def test_2x2_layout_with_4_graphs(self):
         """P1B-31: layout('2 2') with 4 graphs produces a 2x2 grid."""
-        renderer, sp, dp, op = _make_renderer(4, layout="2 2")
+        renderer = _make_renderer(4, layout="2 2")
         rows_cols = renderer._compute_grid(4, "2 2")
         assert rows_cols == (2, 2)
 
     def test_1x3_layout_with_3_graphs(self):
-        rows_cols = _make_renderer(3, layout="1 3")[0]._compute_grid(3, "1 3")
+        rows_cols = _make_renderer(3, layout="1 3")._compute_grid(3, "1 3")
         assert rows_cols == (1, 3)
 
     def test_3x1_layout_with_3_graphs(self):
-        rows_cols = _make_renderer(3, layout="3 1")[0]._compute_grid(3, "3 1")
+        rows_cols = _make_renderer(3, layout="3 1")._compute_grid(3, "3 1")
         assert rows_cols == (3, 1)
 
 
@@ -110,13 +118,13 @@ class TestExplicitLayout:
 class TestAutoLayout:
     def test_auto_3_graphs(self):
         """P1B-32: auto layout with 3 graphs → at least 2 columns (e.g. 2x2)."""
-        renderer = _make_renderer(3)[0]
+        renderer = _make_renderer(3)
         rows, cols = renderer._compute_grid(3, "auto")
         assert rows * cols >= 3
         assert cols >= 2
 
     def test_auto_4_graphs(self):
-        renderer = _make_renderer(4)[0]
+        renderer = _make_renderer(4)
         rows, cols = renderer._compute_grid(4, "auto")
         assert rows * cols >= 4
         assert rows == 2 and cols == 2
@@ -126,18 +134,18 @@ class TestAutoLayout:
     # ----------------------------------------------------------------
     def test_auto_1_graph(self):
         """P1B-33: auto layout with 1 graph → 1x1."""
-        renderer = _make_renderer(1)[0]
+        renderer = _make_renderer(1)
         rows, cols = renderer._compute_grid(1, "auto")
         assert rows == 1
         assert cols == 1
 
     def test_auto_6_graphs(self):
-        renderer = _make_renderer(6)[0]
+        renderer = _make_renderer(6)
         rows, cols = renderer._compute_grid(6, "auto")
         assert rows * cols >= 6
 
     def test_auto_9_graphs(self):
-        renderer = _make_renderer(9)[0]
+        renderer = _make_renderer(9)
         rows, cols = renderer._compute_grid(9, "auto")
         assert rows == 3 and cols == 3
 
@@ -148,20 +156,20 @@ class TestAutoLayout:
 class TestEmptyCells:
     def test_3_graphs_in_2x2_has_empty_cell(self):
         """P1B-34: 3 graphs in a 2x2 layout → 1 None cell."""
-        renderer = _make_renderer(3, layout="2 2")[0]
+        renderer = _make_renderer(3, layout="2 2")
         # _build_grid_children should pad with None
         children = renderer._pad_grid_children(["a", "b", "c"], rows=2, cols=2)
         assert len(children) == 4
         assert children[-1] is None
 
     def test_1_graph_in_2x2_has_3_empty_cells(self):
-        renderer = _make_renderer(1, layout="2 2")[0]
+        renderer = _make_renderer(1, layout="2 2")
         children = renderer._pad_grid_children(["a"], rows=2, cols=2)
         assert len(children) == 4
         assert children.count(None) == 3
 
     def test_4_graphs_no_empty_cells(self):
-        renderer = _make_renderer(4, layout="2 2")[0]
+        renderer = _make_renderer(4, layout="2 2")
         children = renderer._pad_grid_children(["a", "b", "c", "d"], rows=2, cols=2)
         assert None not in children
 
@@ -172,8 +180,7 @@ class TestEmptyCells:
 class TestSizingMode:
     def test_figures_have_stretch_width(self):
         """P1B-35: all figures built by DashRenderer use sizing_mode='stretch_width'."""
-        import tempfile, os
-        renderer, sp, dp, op = _make_renderer(2)
+        renderer = _make_renderer(2)
         figs = renderer._build_figures()
         for name, fig in figs.items():
             assert fig.sizing_mode == "stretch_width", (
@@ -181,7 +188,7 @@ class TestSizingMode:
             )
 
     def test_single_figure_stretch_width(self):
-        renderer, sp, dp, op = _make_renderer(1)
+        renderer = _make_renderer(1)
         figs = renderer._build_figures()
         for fig in figs.values():
             assert fig.sizing_mode == "stretch_width"

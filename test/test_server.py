@@ -20,6 +20,7 @@ Tests:
   P4-70  _compute_histogram returns correct structure
   P4-71  _compute_kpi returns correct values for mean and dcount
   P4-72  _compute_lfit returns 100 x/y points
+  P4-73  _compute_kpi sd uses ddof=1 matching Stata (regression)
 """
 
 from __future__ import annotations
@@ -130,8 +131,11 @@ def _build_app(dr_module, df, spec_dict) -> str:
         with open(out_f.name, "r", encoding="utf-8") as f:
             return f.read()
     finally:
-        os.unlink(spec_path)
-        os.unlink(data_path)
+        for _p in (spec_path, data_path, out_f.name):
+            try:
+                os.unlink(_p)
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------
@@ -662,6 +666,89 @@ def test_compute_lfit_100_points(dr_module, auto_df):
         assert len(result["y"]) == 100, f"Expected 100 y-points, got {len(result['y'])}"
         # x should be sorted (linspace)
         assert result["x"][0] < result["x"][-1]
+    finally:
+        os.unlink(spec_path)
+        os.unlink(data_path)
+        os.unlink(out_f.name)
+
+
+# ---------------------------------------------------------------------------
+# P4-73 (regression): _compute_kpi sd uses ddof=1 matching Stata
+# ---------------------------------------------------------------------------
+
+def test_compute_kpi_sd_uses_ddof1(dr_module, auto_df):
+    """Regression: _compute_kpi sd result matches pandas ddof=1 (Stata's unbiased SD).
+
+    Ensures the generated server code uses series.std(ddof=1), not the
+    population-SD default of numpy/ddof=0, so server-mode KPI values match
+    standalone-mode values exactly.
+    """
+    spec = _make_spec_json()
+    spec_path, data_path = _write_temp_files(auto_df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+
+    try:
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+
+        app_spec_obj = importlib.util.spec_from_file_location("_test_sd_ddof", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec_obj)
+        app_spec_obj.loader.exec_module(app_mod)
+
+        sd_val = app_mod._compute_kpi(auto_df, "sd", "mpg")
+        expected_ddof1 = float(auto_df["mpg"].std(ddof=1))
+        expected_ddof0 = float(auto_df["mpg"].std(ddof=0))
+
+        # Must match ddof=1 (sample SD, Stata default)
+        assert abs(sd_val - expected_ddof1) < 1e-9, (
+            f"sd mismatch: got {sd_val}, expected ddof=1 value {expected_ddof1} "
+            f"(ddof=0 would give {expected_ddof0})"
+        )
+    finally:
+        os.unlink(spec_path)
+        os.unlink(data_path)
+        os.unlink(out_f.name)
+
+
+# ---------------------------------------------------------------------------
+# Regression: _compute_kdensity handles constant data without crashing
+# ---------------------------------------------------------------------------
+
+def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
+    """Regression: _compute_kdensity with constant-value column returns empty dict.
+
+    scipy.stats.gaussian_kde raises LinAlgError on zero-variance data.
+    The generated server code must guard against this.
+    """
+    spec = _make_spec_json()
+    spec_path, data_path = _write_temp_files(auto_df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+
+    try:
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+
+        app_spec_obj = importlib.util.spec_from_file_location("_test_kde_const", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec_obj)
+        app_spec_obj.loader.exec_module(app_mod)
+
+        # Constant-value column — gaussian_kde would raise LinAlgError without guard
+        const_df = auto_df.copy()
+        const_df["mpg"] = 22.0
+
+        result = app_mod._compute_kdensity(const_df, "mpg")
+        assert result == {"x": [], "y": []}, (
+            f"Expected empty dict for constant data, got {result}"
+        )
+
+        # Single-point column
+        single_df = auto_df.iloc[:1].copy()
+        result2 = app_mod._compute_kdensity(single_df, "mpg")
+        assert result2 == {"x": [], "y": []}, (
+            f"Expected empty dict for single-point data, got {result2}"
+        )
     finally:
         os.unlink(spec_path)
         os.unlink(data_path)

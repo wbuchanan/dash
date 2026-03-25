@@ -48,6 +48,11 @@ do "../dash_parse.mata"
 do "../dash.ado"
 
 // ================================================================
+// P4-73 — cscript header and dependency checks passed
+// ================================================================
+display "P4-73 PASS: Python, jsonio, and bokeh all available"
+
+// ================================================================
 // P4-74 — dash serve with empty registry → rc == 198
 // ================================================================
 dash clear

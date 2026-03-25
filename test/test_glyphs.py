@@ -92,8 +92,12 @@ class TestMapScatter:
         renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"msymbol": "square"})
         glyph = renderer.glyph
         glyph_type = type(glyph).__name__.lower()
-        assert "square" in glyph_type or glyph.marker == "square" or True
-        # Marker was processed without error — the glyph was created
+        # map_scatter uses fig.scatter() which always produces a Scatter glyph
+        # with a .marker attribute.  Verify the marker was actually set.
+        assert "square" in glyph_type or glyph.marker == "square", (
+            f"Expected marker 'square', got glyph_type='{glyph_type}' "
+            f"marker='{getattr(glyph, 'marker', '<none>')}'"
+        )
 
     def test_scatter_msize_applied(self, fig, cds, gm):
         """P1A-95: msize option translated and applied to scatter glyph size."""
@@ -414,3 +418,87 @@ class TestMapKdensity:
         assert abs(integral - 1.0) < 0.05, (
             f"kdensity integral={integral:.4f}, expected ~1.0"
         )
+
+
+# ----------------------------------------------------------------
+# Regression tests — edge cases for empty / degenerate data
+# ----------------------------------------------------------------
+class TestEdgeCasesEmptyData:
+    """Regression tests ensuring graceful handling of degenerate inputs."""
+
+    def test_lfit_empty_after_nan_filter_returns_renderer(self, fig, gm):
+        """Regression: map_lfit with all-NaN data returns an empty renderer."""
+        nan_cds = ColumnDataSource({"mpg": [float("nan")] * 5,
+                                   "weight": [float("nan")] * 5})
+        r = gm.map_lfit(fig, nan_cds, "mpg", "weight", {})
+        assert r is not None
+        assert len(r.data_source.data["x"]) == 0
+
+    def test_lfit_single_point_returns_renderer(self, fig, gm):
+        """Regression: map_lfit with only 1 valid point returns empty renderer."""
+        single_cds = ColumnDataSource({"mpg": [22.0, float("nan")],
+                                       "weight": [2800.0, float("nan")]})
+        r = gm.map_lfit(fig, single_cds, "mpg", "weight", {})
+        assert r is not None
+        assert len(r.data_source.data["x"]) == 0
+
+    def test_qfit_fewer_than_3_points_returns_renderer(self, fig, gm):
+        """Regression: map_qfit with only 2 valid points returns empty renderer."""
+        two_cds = ColumnDataSource({"mpg": [20.0, 25.0],
+                                    "weight": [2500.0, 3000.0]})
+        r = gm.map_qfit(fig, two_cds, "mpg", "weight", {})
+        assert r is not None
+        assert len(r.data_source.data["x"]) == 0
+
+    def test_lfitci_fewer_than_3_points_returns_two_renderers(self, fig, gm):
+        """Regression: map_lfitci with only 2 valid points returns empty renderers."""
+        two_cds = ColumnDataSource({"mpg": [20.0, 25.0],
+                                    "weight": [2500.0, 3000.0]})
+        renderers = gm.map_lfitci(fig, two_cds, "mpg", "weight", {})
+        assert len(renderers) == 2
+        assert len(renderers[0].data_source.data["x_fit"]) == 0
+
+    def test_lfitci_constant_xvar_returns_two_renderers(self, fig, gm):
+        """Regression: map_lfitci with zero-variance x returns empty renderers."""
+        const_cds = ColumnDataSource({"mpg": [20.0, 22.0, 24.0, 26.0],
+                                      "weight": [3000.0, 3000.0, 3000.0, 3000.0]})
+        renderers = gm.map_lfitci(fig, const_cds, "mpg", "weight", {})
+        assert len(renderers) == 2
+        assert len(renderers[0].data_source.data["x_fit"]) == 0
+
+    def test_kdensity_constant_data_returns_renderer(self, fig, gm):
+        """Regression: map_kdensity with constant data returns empty renderer."""
+        const_cds = ColumnDataSource({"mpg": [22.0, 22.0, 22.0, 22.0, 22.0]})
+        r = gm.map_kdensity(fig, const_cds, "mpg", {})
+        assert r is not None
+        assert len(r.data_source.data["x"]) == 0
+
+    def test_kdensity_single_point_returns_renderer(self, fig, gm):
+        """Regression: map_kdensity with a single data point returns empty renderer."""
+        single_cds = ColumnDataSource({"mpg": [22.0]})
+        r = gm.map_kdensity(fig, single_cds, "mpg", {})
+        assert r is not None
+        assert len(r.data_source.data["x"]) == 0
+
+    def test_qfitci_fewer_than_3_points_returns_two_renderers(self, fig, gm):
+        """Regression: map_qfitci with only 2 valid points returns empty renderers."""
+        two_cds = ColumnDataSource({"mpg": [20.0, 25.0],
+                                    "weight": [2500.0, 3000.0]})
+        renderers = gm.map_qfitci(fig, two_cds, "mpg", "weight", {})
+        assert len(renderers) == 2
+        assert len(renderers[0].data_source.data["x_fit"]) == 0
+
+    def test_lowess_fewer_than_2_points_returns_renderer(self, fig, gm):
+        """Regression: map_lowess with only 1 valid point returns empty renderer."""
+        single_cds = ColumnDataSource({"mpg": [22.0], "weight": [2800.0]})
+        r = gm.map_lowess(fig, single_cds, "mpg", "weight", {})
+        assert r is not None
+        assert len(r.data_source.data["x_lw"]) == 0
+
+    def test_lowess_all_nan_returns_renderer(self, fig, gm):
+        """Regression: map_lowess with all-NaN data returns empty renderer."""
+        nan_cds = ColumnDataSource({"mpg": [float("nan")] * 4,
+                                    "weight": [float("nan")] * 4})
+        r = gm.map_lowess(fig, nan_cds, "mpg", "weight", {})
+        assert r is not None
+        assert len(r.data_source.data["x_lw"]) == 0

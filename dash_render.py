@@ -59,6 +59,7 @@ import html
 import json
 import math
 import os
+import re
 from typing import Any
 
 import numpy as np
@@ -634,7 +635,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
-    ) -> list:
+    ) -> "GlyphRenderer":
         """Add an area glyph (filled between y=0 and y=yvar) to *fig*.
 
         Args:
@@ -675,7 +676,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
-    ) -> list:
+    ) -> "GlyphRenderer":
         """Add vertical bar glyphs to *fig*.
 
         Bar width is automatically computed as 80% of the smallest gap between
@@ -726,7 +727,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
-    ) -> list:
+    ) -> "GlyphRenderer":
         """Add vertical spike glyphs (segments from y=0 to y=yvar) to *fig*.
 
         Args:
@@ -788,6 +789,11 @@ class GlyphMapper:
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
 
+        # Need at least 2 points to fit a line
+        if len(x) < 2:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return fig.line(x="x", y="y", source=empty)
+
         coeffs = np.polyfit(x, y, 1)  # [slope, intercept]
         x_fit = np.linspace(x.min(), x.max(), 200)
         y_fit = np.polyval(coeffs, x_fit)
@@ -822,6 +828,11 @@ class GlyphMapper:
         y = np.array(source.data[yvar], dtype=float)
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
+
+        # Need at least 3 points for a degree-2 polyfit
+        if len(x) < 3:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return fig.line(x="x", y="y", source=empty)
 
         coeffs = np.polyfit(x, y, 2)
         x_fit = np.linspace(x.min(), x.max(), 200)
@@ -861,14 +872,29 @@ class GlyphMapper:
         x, y = x[mask], y[mask]
         n = len(x)
 
+        # Need at least 3 points: df = n-2 must be >= 1, and we need
+        # x to vary (non-zero variance) to avoid division by zero in se_fit.
+        empty_ci_src = ColumnDataSource({
+            "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
+        })
+        if n < 3 or np.std(x) == 0.0:
+            band_r = fig.varea(
+                x="x_fit", y1="y_lower", y2="y_upper",
+                source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
+            )
+            line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
+                              line_color="#d62728", line_width=2.0)
+            return [line_r, band_r]
+
         slope, intercept, _, _, se = scipy_stats.linregress(x, y)
         x_fit = np.linspace(x.min(), x.max(), 200)
         y_fit = intercept + slope * x_fit
 
         # SE of the fit line at each x_fit point
         x_mean = x.mean()
+        x_ss = np.sum((x - x_mean) ** 2)  # guaranteed > 0 after np.std check
         se_fit = se * np.sqrt(
-            1 / n + (x_fit - x_mean) ** 2 / np.sum((x - x_mean) ** 2)
+            1 / n + (x_fit - x_mean) ** 2 / x_ss
         ) * np.sqrt(n - 2)
         t_crit = scipy_stats.t.ppf(0.975, df=n - 2)
 
@@ -916,6 +942,19 @@ class GlyphMapper:
         y = np.array(source.data[yvar], dtype=float)
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
+
+        # Need at least 3 points for a degree-2 polyfit
+        if len(x) < 3:
+            empty_ci_src = ColumnDataSource({
+                "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
+            })
+            band_r = fig.varea(
+                x="x_fit", y1="y_lower", y2="y_upper",
+                source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
+            )
+            line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
+                              line_color="#d62728", line_width=2.0)
+            return [line_r, band_r]
 
         coeffs = np.polyfit(x, y, 2)
         x_fit = np.linspace(x.min(), x.max(), 200)
@@ -971,6 +1010,11 @@ class GlyphMapper:
         y = np.array(source.data[yvar], dtype=float)
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
+
+        # Need at least 2 points for lowess
+        if len(x) < 2:
+            empty = ColumnDataSource({"x_lw": [], "y_lw": []})
+            return fig.line(x="x_lw", y="y_lw", source=empty)
 
         # Default bandwidth: 0.8 (same as Stata's default)
         bw = float(options.get("bwidth", "0.8"))
@@ -1058,6 +1102,11 @@ class GlyphMapper:
             options = {}
         arr = np.array(source.data[yvar], dtype=float)
         arr = arr[~np.isnan(arr)]
+
+        # gaussian_kde requires at least 2 points and non-constant data
+        if len(arr) < 2 or np.std(arr) == 0.0:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return fig.line(x="x", y="y", source=empty)
 
         kde = gaussian_kde(arr)
         # Extend range beyond data min/max to capture distribution tails
@@ -1446,7 +1495,16 @@ source.change.emit();
         arr = np.array([v for v in source.data[varname]
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
+        if len(arr) == 0:
+            # No valid data for this variable; return a disabled dummy slider
+            widget = Slider(title=safe_var, start=0, end=1, value=0, step=1,
+                            disabled=True)
+            callback = CustomJS(args={}, code="")
+            return widget, callback
         vmin, vmax = float(arr.min()), float(arr.max())
+        # Ensure end > start for Bokeh Slider (required constraint)
+        if vmin == vmax:
+            vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
         widget = Slider(title=safe_var, start=vmin, end=vmax,
@@ -1505,7 +1563,16 @@ source.change.emit();
         arr = np.array([v for v in source.data[varname]
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
+        if len(arr) == 0:
+            # No valid data for this variable; return a disabled dummy range slider
+            widget = RangeSlider(title=safe_var, start=0, end=1,
+                                 value=(0, 1), step=1, disabled=True)
+            callback = CustomJS(args={}, code="")
+            return widget, callback
         vmin, vmax = float(arr.min()), float(arr.max())
+        # Ensure end > start for Bokeh RangeSlider (required constraint)
+        if vmin == vmax:
+            vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
         widget = RangeSlider(title=safe_var,
@@ -2442,7 +2509,6 @@ class ServerAppBuilder:
                 fpart = fpart.strip()
                 if not fpart:
                     continue
-                import re
                 m_type = re.search(r"type\(([^)]+)\)", fpart)
                 m_excl = re.search(r"exclude\(([^)]+)\)", fpart)
                 fvar = re.split(r"[,\s]", fpart.strip())[0]
@@ -2468,6 +2534,7 @@ class ServerAppBuilder:
             "import html",
             "import json",
             "import math",
+            "import re",
             "import numpy as np",
             "import pandas as pd",
             "from scipy import stats as scipy_stats",
@@ -2584,7 +2651,7 @@ class ServerAppBuilder:
             "def _compute_kdensity(df, varname):",
             '    """Return line source dict for kernel density estimate."""',
             "    data = df[varname].dropna().values.astype(float)",
-            "    if len(data) < 2:",
+            "    if len(data) < 2 or float(np.std(data)) == 0.0:",
             "        return dict(x=[], y=[])",
             "    kde = scipy_stats.gaussian_kde(data)",
             "    x_range = np.linspace(data.min(), data.max(), 200)",
@@ -2615,7 +2682,7 @@ class ServerAppBuilder:
             "    if stat == 'dcount': return float(series.nunique())",
             "    if stat == 'min':    return float(series.min())",
             "    if stat == 'max':    return float(series.max())",
-            "    if stat == 'sd':     return float(series.std())",
+            "    if stat == 'sd':     return float(series.std(ddof=1))",
             "    if stat in ('median', 'p50'): return float(series.median())",
             "    if stat == 'p25':    return float(series.quantile(0.25))",
             "    if stat == 'p75':    return float(series.quantile(0.75))",
@@ -2630,13 +2697,11 @@ class ServerAppBuilder:
             '    """',
             "    if math.isnan(value):",
             "        return '.'",
-            "    import re",
-            "    m = re.match(r'%[0-9]*\\.([0-9]+)([fge])', (fmt_str or '').lstrip('%').replace('%', '%'))",
             "    if fmt_str:",
-            "        m2 = re.match(r'%[0-9]*\\.([0-9]+)([fge])', fmt_str)",
-            "        if m2:",
-            "            decimals = int(m2.group(1))",
-            "            kind = m2.group(2)",
+            "        m = re.match(r'%[0-9]*\\.([0-9]+)([fge])', fmt_str)",
+            "        if m:",
+            "            decimals = int(m.group(1))",
+            "            kind = m.group(2)",
             "            if kind == 'f':  return f'{value:,.{decimals}f}'",
             "            if kind == 'g':  return f'{value:.{decimals}g}'",
             "            if kind == 'e':  return f'{value:.{decimals}e}'",
