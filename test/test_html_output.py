@@ -463,3 +463,60 @@ class TestXssInHtmlOutput:
         assert "content-security-policy" in html.lower() or \
                "Content-Security-Policy" in html, \
                "HTML must include a CSP meta tag"
+
+
+# ================================================================
+# pcarrow — Arrow glyph
+# ================================================================
+class TestPcarrowHtmlOutput:
+    def test_pcarrow_html_contains_arrow_or_segment(self):
+        """pcarrow plot HTML contains Arrow or Segment glyph."""
+        base_data = {
+            "y1": [float(i) for i in range(1, 11)],
+            "x1": [float(i) for i in range(1, 11)],
+            "y2": [float(i) * 1.5 for i in range(1, 11)],
+            "x2": [float(i) * 1.2 for i in range(1, 11)],
+        }
+        data_json = _make_data_json(base_data)
+        graph = {
+            "plots": [{"type": "pcarrow", "y1var": "y1", "x1var": "x1",
+                       "y2var": "y2", "x2var": "x2", "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {"graphs": [graph], "kpis": [], "build_options": {
+            "layout": "auto", "link": "", "filter": "",
+            "theme": "default", "title": "", "subtitle": "", "registry": "g1",
+        }}
+        html = _render_to_html(spec, data_json)
+        # pcarrow uses segment shaft + Arrow annotation; check glyph or non-empty
+        assert len(html) > 500, "pcarrow should produce non-trivial HTML"
+        assert "Segment" in html or "Arrow" in html or '"segment"' in html.lower()
+
+
+# ================================================================
+# pcbarrow — bidirectional Arrow glyph
+# ================================================================
+class TestPcbarrowHtmlOutput:
+    def test_pcbarrow_html_contains_arrow_or_segment(self):
+        """pcbarrow plot HTML contains Arrow or Segment glyph."""
+        base_data = {
+            "y1": [float(i) for i in range(1, 11)],
+            "x1": [float(i) for i in range(1, 11)],
+            "y2": [float(i) * 1.5 for i in range(1, 11)],
+            "x2": [float(i) * 1.2 for i in range(1, 11)],
+        }
+        data_json = _make_data_json(base_data)
+        graph = {
+            "plots": [{"type": "pcbarrow", "y1var": "y1", "x1var": "x1",
+                       "y2var": "y2", "x2var": "x2", "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {"graphs": [graph], "kpis": [], "build_options": {
+            "layout": "auto", "link": "", "filter": "",
+            "theme": "default", "title": "", "subtitle": "", "registry": "g1",
+        }}
+        html = _render_to_html(spec, data_json)
+        assert len(html) > 500, "pcbarrow should produce non-trivial HTML"
+        assert "Segment" in html or "Arrow" in html or '"segment"' in html.lower()

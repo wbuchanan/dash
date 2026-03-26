@@ -800,3 +800,46 @@ class TestMlabelOption:
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": ""})
         label_sets = _get_labelsets(fig)
         assert len(label_sets) == 0
+
+
+class TestMlabelOnNonScatter:
+    """P6-21b: mlabel works for non-scatter standard plot types via _add_glyph()."""
+
+    def _cds_with_label(self, std_df):
+        """Return a CDS built from std_df (cols: 'y', 'x') plus a 'lbl' column."""
+        df = std_df.copy()
+        df["lbl"] = [f"p{i}" for i in range(len(df))]
+        from bokeh.models import ColumnDataSource
+        return ColumnDataSource(df)
+
+    def test_mlabel_on_line(self, fig, std_df):
+        from bokeh.models import LabelSet
+        gm = GlyphMapper()
+        src = self._cds_with_label(std_df)
+        gm.map_line(fig, src, "y", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on line should add a LabelSet"
+
+    def test_mlabel_on_bar(self, fig, std_df):
+        from bokeh.models import LabelSet
+        gm = GlyphMapper()
+        src = self._cds_with_label(std_df)
+        gm.map_bar(fig, src, "y", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on bar should add a LabelSet"
+
+    def test_mlabel_on_spike(self, fig, std_df):
+        from bokeh.models import LabelSet
+        gm = GlyphMapper()
+        src = self._cds_with_label(std_df)
+        gm.map_spike(fig, src, "y", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1
+
+    def test_mlabel_on_dot(self, fig, std_df):
+        from bokeh.models import LabelSet
+        gm = GlyphMapper()
+        src = self._cds_with_label(std_df)
+        gm.map_dot(fig, src, "y", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1

@@ -655,8 +655,8 @@ Previously-parsed graph options (xtitle, ytitle, aspectratio, note, caption, leg
 - [x] P6-13  xlabel(numlist)/ylabel(numlist) → FixedTicker; labeled form ('val "Label"') → CustomJSTickFormatter; DashRenderer._parse_axis_label_opt() static helper; 6 tests in TestXlabelYlabel
 
 - [x] P6-19  subtitle/xlabel/ylabel in server-mode generated app — _generate_app_source() now emits subtitle Label annotation and _parse_axlabel() helper + FixedTicker/CustomJSTickFormatter for xlabel/ylabel; 3 tests in TestServerGraphOptionsExtended
-- [x] P6-21  mlabel/mlabcolor/mlabsize/mlabposition/mlabgap → GlyphMapper._apply_mlabel_opts(); creates LabelSet with clock-position offset mapping; wired to map_scatter(); 8 tests in TestMlabelOption
-- [x] P6-22  HTML output tests for all 30 plot types — 18 new test classes in test_html_output.py covering connected/area/qfit/lfitci/qfitci/lowess/kdensity/rbar/rspike/rcap/rline/rconnected/dot/rcapsym/scatteri/pcspike/tsline/tsrline
+- [x] P6-21  mlabel/mlabcolor/mlabsize/mlabposition/mlabgap → GlyphMapper._apply_mlabel_opts(); wired to map_scatter, map_line, map_area, map_bar, map_spike, map_connected, map_dropline (8 tests scatter + 4 tests non-scatter)
+- [x] P6-22  HTML output tests for all 30 plot types — all 30 types covered including pcarrow and pcbarrow (added TestPcarrowHtmlOutput, TestPcbarrowHtmlOutput)
 - [x] P6-23  Unit tests for _parse_axis_label_opt() — 10 edge-case tests in TestParseAxisLabelOpt (pure numeric, comma-sep, labeled ticks, empty, mixed valid/invalid, negatives, floats, single value, single-quoted labels, sorted output guarantee)
 
 ### Remaining / Not Yet Implemented

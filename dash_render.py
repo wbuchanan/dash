@@ -709,6 +709,7 @@ class GlyphMapper:
             line_width=1.5,
         )
         self._apply_line_opts(r, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         fig.add_tools(self._hover_tool(yvar, xvar))
         return r
 
@@ -732,10 +733,14 @@ class GlyphMapper:
         Returns:
             List of two GlyphRenderers [line_renderer, scatter_renderer].
         """
-        return [
-            self.map_line(fig, source, yvar, xvar, options),
-            self.map_scatter(fig, source, yvar, xvar, options),
+        # Pass options without mlabel to sub-calls; apply mlabel once below
+        opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
+        renderers = [
+            self.map_line(fig, source, yvar, xvar, opts_no_label),
+            self.map_scatter(fig, source, yvar, xvar, opts_no_label),
         ]
+        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
+        return renderers
 
     def map_area(
         self,
@@ -777,6 +782,7 @@ class GlyphMapper:
                 pass
 
         self._apply_fill_opts(r, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return r
 
     def map_bar(
@@ -829,6 +835,7 @@ class GlyphMapper:
             except ValueError:
                 pass
         self._apply_fill_opts(r, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return r
 
     def map_spike(
@@ -866,6 +873,7 @@ class GlyphMapper:
                         source=seg_source,
                         line_color="#1f77b4", line_width=1.5)
         self._apply_line_opts(r, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return r
 
     # ------------------------------------------------------------------
@@ -1509,6 +1517,7 @@ class GlyphMapper:
         dot = fig.scatter(x="x", y="y", source=dl_source,
                           fill_color=color, line_color=color, size=8)
         self._apply_line_opts(seg, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return [seg, dot]
 
     def map_rcapsym(
