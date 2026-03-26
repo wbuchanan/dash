@@ -112,6 +112,40 @@ _CSP_META = (
 
 
 # ===========================================================================
+# Region option helpers — parse plotregion() / graphregion() sub-options
+# ===========================================================================
+
+def _extract_region_color(val: str) -> str:
+    """Extract color name from region option value like 'color(ltblue) lwidth(thin)'.
+
+    Accepts color() or fcolor() sub-option.  Returns the raw color string or ''.
+    """
+    m = re.search(r'\bf?color\s*\(([^)]+)\)', val, re.IGNORECASE)
+    return m.group(1).strip() if m else ""
+
+
+def _extract_region_lcolor(val: str) -> str:
+    """Extract line-color name from region option value (lcolor() sub-option)."""
+    m = re.search(r'\blcolor\s*\(([^)]+)\)', val, re.IGNORECASE)
+    return m.group(1).strip() if m else ""
+
+
+def _extract_region_lwidth(val: str) -> float | None:
+    """Extract line-width from region option value (lwidth() sub-option).
+
+    Returns numeric pixels or None if absent/invalid.
+    """
+    m = re.search(r'\blwidth\s*\(([^)]+)\)', val, re.IGNORECASE)
+    if not m:
+        return None
+    raw = m.group(1).strip()
+    try:
+        return float(raw)
+    except ValueError:
+        return OptionTranslator.translate_lwidth(raw) if raw else None
+
+
+# ===========================================================================
 # OptionTranslator
 # ===========================================================================
 
@@ -195,6 +229,13 @@ class OptionTranslator:
         "gs15":          "#ffffff",
         "gs16":          "#ffffff",
         "eggshell":      "#f0ead2",
+        # Scheme-specific named colors
+        "ltbluishgray":  "#d9e8f0",
+        "ltbluishgrey":  "#d9e8f0",
+        "ebg":           "#f2e8ca",   # Economist background (cream/tan)
+        "edkbg":         "#e8e3d2",   # Economist dark background
+        "sunflowerlime": "#c8db2a",
+        "chocolate":     "#7b3f00",
         # Transparent / none — map to white (6-char hex; full RGBA not supported here)
         "none":          "#ffffff",
         "":              "#000000",
@@ -435,6 +476,421 @@ class OptionTranslator:
 
 
 # ===========================================================================
+# SchemeParser — parse Stata .scheme files for Bokeh-mappable properties
+# ===========================================================================
+
+class SchemeParser:
+    """Parses a Stata .scheme file and extracts properties relevant to Bokeh.
+
+    Supports the ``#include schemename`` inheritance directive.  Child
+    properties override parent properties.
+
+    Usage::
+
+        sp = SchemeParser("s2color")          # built-in bundled scheme
+        sp = SchemeParser("myscheme.scheme")  # custom file from CWD
+
+    All color values are translated to CSS hex strings via
+    ``OptionTranslator.translate_mcolor()``.
+    """
+
+    _SCHEMES_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemes")
+
+    _BUILTIN_NAMES: frozenset[str] = frozenset(
+        {"s2color", "s1color", "s1mono", "economist", "sj"}
+    )
+
+    # Stata gsize keyword → CSS pt string
+    _GSIZE_PT: dict[str, str] = {
+        "minuscule": "6pt",
+        "third_tiny": "6pt",
+        "half_tiny":  "6pt",
+        "tiny":     "7pt",
+        "vsmall":   "8pt",
+        "small":    "9pt",
+        "medsmall": "10pt",
+        "medium":   "11pt",
+        "medlarge": "12pt",
+        "large":    "13pt",
+        "vlarge":   "15pt",
+        "huge":     "18pt",
+        "vhuge":    "22pt",
+        "zero":     "0pt",
+    }
+
+    # Stata intensity keyword → float 0–1
+    _INTENSITY: dict[str, float] = {
+        "inten0":   0.0,  "inten10":  0.10, "inten20":  0.20,
+        "inten30":  0.30, "inten40":  0.40, "inten50":  0.50,
+        "inten60":  0.60, "inten70":  0.70, "inten80":  0.80,
+        "inten90":  0.90, "inten100": 1.0,  "full":     1.0,
+    }
+
+    def __init__(self, scheme_name: str = "s2color") -> None:
+        raw = (scheme_name or "s2color").strip()
+        path = self._resolve_path(raw)
+        raw_props = self._parse_file(path, _visited=set())
+        self._props = raw_props
+        self._init_properties()
+
+    # ------------------------------------------------------------------
+    # Path resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_path(self, name: str) -> str:
+        """Return absolute path for a scheme name, blocking path traversal."""
+        is_file_ref = name.endswith(".scheme") or os.sep in name or "/" in name
+
+        if is_file_ref:
+            # Try CWD first, then schemes/
+            candidates = [
+                os.path.abspath(os.path.join(os.getcwd(), name)),
+                os.path.abspath(os.path.join(self._SCHEMES_DIR, name)),
+            ]
+        else:
+            candidates = [
+                os.path.abspath(
+                    os.path.join(self._SCHEMES_DIR, name + ".scheme")
+                )
+            ]
+
+        for candidate in candidates:
+            # Security: must be within allowed dirs
+            allowed = [
+                os.path.abspath(self._SCHEMES_DIR),
+                os.path.abspath(os.getcwd()),
+            ]
+            in_allowed = any(
+                candidate.startswith(d + os.sep) or candidate == d
+                for d in allowed
+            )
+            if not in_allowed:
+                raise ValueError(
+                    f"dash scheme: path '{name}' resolves outside allowed "
+                    "directories (CWD or the dash schemes/ folder)."
+                )
+            if os.path.isfile(candidate):
+                return candidate
+
+        built_in_list = ", ".join(sorted(self._BUILTIN_NAMES))
+        raise ValueError(
+            f"dash: scheme '{name}' not found. "
+            f"Built-in schemes: {built_in_list}. "
+            "For a custom scheme, place a .scheme file in the current "
+            "working directory and pass its filename."
+        )
+
+    # ------------------------------------------------------------------
+    # File parsing
+    # ------------------------------------------------------------------
+
+    def _parse_file(self, path: str, _visited: set[str]) -> dict[str, str]:
+        """Parse one .scheme file and return a flat key→value dict.
+
+        Handles ``#include`` by recursively loading the parent first;
+        child properties override parent properties.
+        """
+        real = os.path.realpath(path)
+        if real in _visited:
+            return {}   # circular include guard
+        _visited.add(real)
+
+        props: dict[str, str] = {}
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                lines = fh.readlines()
+        except OSError as exc:
+            raise ValueError(f"dash: cannot read scheme file '{path}': {exc}") from exc
+
+        for raw_line in lines:
+            line = raw_line.strip()
+            if not line or line.startswith("*"):
+                continue
+
+            # #include directive — load parent first
+            if line.startswith("#include"):
+                parts = line.split(None, 1)
+                if len(parts) == 2:
+                    parent_name = parts[1].strip()
+                    try:
+                        parent_path = self._resolve_path(parent_name)
+                        parent_props = self._parse_file(parent_path, _visited)
+                        # Parent provides base; will be overridden by child
+                        for k, v in parent_props.items():
+                            if k not in props:
+                                props[k] = v
+                    except ValueError:
+                        pass  # silently skip unresolvable includes
+                continue
+
+            tokens = line.split()
+            if len(tokens) < 2:
+                continue  # malformed line — skip
+
+            category = tokens[0]
+            value = tokens[-1]
+            subcats = tokens[1:-1]
+            key = (category + " " + " ".join(subcats)).strip() if subcats else category
+            props[key] = value
+
+        return props
+
+    # ------------------------------------------------------------------
+    # Property extraction
+    # ------------------------------------------------------------------
+
+    def _color(self, key: str, default: str = "#000000") -> str:
+        """Translate a raw scheme color value to hex, falling back to default."""
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default
+        try:
+            return OptionTranslator.translate_mcolor(raw)
+        except ValueError:
+            return default
+
+    def _gsize(self, key: str, default: str = "10pt") -> str:
+        raw = self._props.get(key, "").strip().lower()
+        if raw in self._GSIZE_PT:
+            return self._GSIZE_PT[raw]
+        # Numeric value like "3.0" → assume Stata points → rough CSS approximation
+        try:
+            val = float(raw)
+            return f"{max(6, int(val * 1.2))}pt"
+        except (ValueError, TypeError):
+            return default
+
+    def _intensity(self, key: str, default: float = 0.8) -> float:
+        raw = self._props.get(key, "").strip().lower()
+        if raw in self._INTENSITY:
+            return self._INTENSITY[raw]
+        try:
+            return max(0.0, min(1.0, float(raw) / 100.0))
+        except (ValueError, TypeError):
+            return default
+
+    def _lpattern(self, key: str) -> list:
+        raw = self._props.get(key, "solid").strip().lower()
+        return OptionTranslator.translate_lpattern(raw)
+
+    def _lwidth(self, key: str, default: float = 1.5) -> float:
+        raw = self._props.get(key, "").strip().lower()
+        if not raw:
+            return default
+        try:
+            return float(raw)
+        except ValueError:
+            try:
+                return OptionTranslator.translate_lwidth(raw)
+            except ValueError:
+                return default
+
+    def _symbol(self, key: str, default: str = "circle") -> str:
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default
+        try:
+            return OptionTranslator.translate_msymbol(raw)
+        except ValueError:
+            return default
+
+    def _init_properties(self) -> None:
+        """Extract all Bokeh-relevant properties into named attributes."""
+        # Background / region colors
+        self.background_color: str = self._color("color background", "#d9e8f0")
+        self.plotregion_color: str = self._color("color plotregion", "#ffffff")
+        self.legend_bg_color: str = self._color("color legend", "#ffffff")
+        self.legend_border_color: str = self._color("color legend_line", "#000000")
+        self.grid_color: str = self._color(
+            "color major_grid",
+            self._color("color grid", "#d9e8f0"),
+        )
+        self.minor_grid_color: str = self._color("color minor_grid", "#cccccc")
+        self.title_color: str = self._color("color heading", "#000000")
+        self.axis_line_color: str = self._color("color axisline", "#000000")
+
+        # Per-plot color cycles (15 entries)
+        self.p_colors: list[str] = [
+            self._color(f"color p{i}") for i in range(1, 16)
+        ]
+        self.p_line_colors: list[str] = [
+            self._color(f"color p{i}line", self.p_colors[i - 1])
+            for i in range(1, 16)
+        ]
+        self.p_bar_colors: list[str] = [
+            self._color(f"color p{i}bar", self.p_colors[i - 1])
+            for i in range(1, 16)
+        ]
+        self.p_mark_colors: list[str] = [
+            self._color(f"color p{i}mark", self.p_colors[i - 1])
+            for i in range(1, 16)
+        ]
+
+        # Marker symbol cycle
+        self.p_symbols: list[str] = [
+            self._symbol(f"symbol p{i}") for i in range(1, 16)
+        ]
+
+        # Line pattern cycle
+        self.p_line_patterns: list = [
+            self._lpattern(f"linepattern p{i}line") for i in range(1, 16)
+        ]
+
+        # Default line/grid widths
+        self.default_line_width: float = self._lwidth("linewidth p", 1.5)
+        self.grid_line_width: float = self._lwidth("linewidth major_grid", 0.8)
+
+        # Fill intensities
+        self.fill_alpha: float = self._intensity("intensity p", 0.8)
+        self.bar_alpha: float = self._intensity("intensity bar", 0.8)
+        self.area_alpha: float = self._intensity("intensity area", 0.8)
+
+        # Font sizes
+        self.text_font_size: str = self._gsize("gsize text", "10pt")
+        self.heading_font_size: str = self._gsize("gsize heading", "13pt")
+        self.axis_title_font_size: str = self._gsize("gsize axis_title", "10pt")
+        self.tick_label_font_size: str = self._gsize("gsize tick_label", "10pt")
+        self.note_font_size: str = self._gsize("gsize note", "9pt")
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def default_color(self, index: int, plot_type: str = "scatter") -> str:
+        """Return the default CSS hex color for the plot at *index*.
+
+        Args:
+            index:     Zero-based plot index within the figure.
+            plot_type: One of ``"scatter"``, ``"line"``, ``"connected"``,
+                       ``"bar"``, ``"area"``, ``"rbar"``, ``"rarea"``.
+        """
+        idx = index % 15
+        if plot_type in {"line", "connected", "tsline", "tsrline",
+                         "mspline", "mband", "rline", "rconnected"}:
+            return self.p_line_colors[idx]
+        if plot_type in {"bar", "rbar", "area", "rarea", "histogram"}:
+            return self.p_bar_colors[idx]
+        return self.p_colors[idx]
+
+    def default_symbol(self, index: int) -> str:
+        """Return the Bokeh marker string for the plot at *index*."""
+        return self.p_symbols[index % 15]
+
+    def default_line_pattern(self, index: int) -> list:
+        """Return the Bokeh dash list for the line plot at *index*."""
+        return self.p_line_patterns[index % 15]
+
+    def apply_to_figure(self, fig: Any) -> None:
+        """Apply scheme defaults to *fig*.
+
+        Called before explicit graph_opts so that explicit options override.
+        """
+        fig.background_fill_color = self.plotregion_color
+        fig.border_fill_color = self.background_color
+        if self.axis_line_color:
+            fig.outline_line_color = self.axis_line_color
+
+        for grid in list(fig.xgrid) + list(fig.ygrid):
+            grid.grid_line_color = self.grid_color
+            grid.grid_line_width = self.grid_line_width
+
+        for axis in list(fig.xaxis) + list(fig.yaxis):
+            axis.axis_line_color = self.axis_line_color
+            axis.axis_label_text_font_size = self.axis_title_font_size
+            axis.major_label_text_font_size = self.tick_label_font_size
+
+    def css_block(self) -> str:
+        """Return a ``<style>`` block for the dashboard outer chrome."""
+        bg = html.escape(self.background_color)
+        tc = html.escape(self.title_color)
+        hs = html.escape(self.heading_font_size)
+        ts = html.escape(self.text_font_size)
+        lbg = html.escape(self.legend_bg_color)
+        return (
+            f"<style>\n"
+            f"  body, .bk-root {{ background-color: {bg}; }}\n"
+            f"  .dash-title {{ color: {tc}; font-size: {hs}; }}\n"
+            f"  .dash-subtitle {{ color: {tc}; font-size: {ts}; }}\n"
+            f"  .kpi-card {{ background-color: {lbg}; }}\n"
+            f"</style>\n"
+        )
+
+
+# ===========================================================================
+# Module-level helpers
+# ===========================================================================
+
+def _apply_jitter(
+    x_arr: "np.ndarray",
+    y_arr: "np.ndarray",
+    jitter_pct: float,
+    seed: "int | None" = None,
+) -> "tuple[np.ndarray, np.ndarray]":
+    """Return jittered copies of *x_arr* and *y_arr*.
+
+    Args:
+        x_arr:      1-D numeric array of x values.
+        y_arr:      1-D numeric array of y values (same length).
+        jitter_pct: Percentage (1–100) of axis range used as jitter half-width.
+        seed:       Optional integer RNG seed for reproducibility.
+
+    Returns:
+        ``(x_jit, y_jit)`` — copies with uniform noise added independently
+        to each axis.
+    """
+    if len(x_arr) == 0:
+        return x_arr.copy(), y_arr.copy()
+    pct = max(0.0, min(100.0, float(jitter_pct))) / 100.0
+    if pct == 0.0:
+        return x_arr.copy(), y_arr.copy()
+    rng = np.random.default_rng(seed)
+    x_range = float(np.nanmax(x_arr) - np.nanmin(x_arr)) or 1.0
+    y_range = float(np.nanmax(y_arr) - np.nanmin(y_arr)) or 1.0
+    half_x = pct * x_range / 2.0
+    half_y = pct * y_range / 2.0
+    x_noise = rng.uniform(-half_x, half_x, size=len(x_arr))
+    y_noise = rng.uniform(-half_y, half_y, size=len(y_arr))
+    return x_arr + x_noise, y_arr + y_noise
+
+
+def _compute_secondary_range(
+    df: "pd.DataFrame",
+    plots: list[dict],
+    axis_key: str,
+    var_key: str,
+    axis_number: int = 2,
+    padding_pct: float = 0.05,
+) -> "tuple[float, float]":
+    """Compute data min/max for all plot layers assigned to *axis_number*.
+
+    Args:
+        df:           Full graph DataFrame (after graph-level filter).
+        plots:        List of plot spec dicts for this graph.
+        axis_key:     ``"yaxis"`` or ``"xaxis"``.
+        var_key:      ``"yvar"`` or ``"xvar"``.
+        axis_number:  The secondary axis number (2).
+        padding_pct:  Fractional padding added to each side of the range.
+
+    Returns:
+        ``(lo, hi)`` range with padding, or ``(0.0, 1.0)`` if no valid data.
+    """
+    vals: list[float] = []
+    for plot in plots:
+        opts = plot.get("options", {})
+        if str(opts.get(axis_key, "1")).strip() != str(axis_number):
+            continue
+        varname = plot.get(var_key, "")
+        if varname and varname in df.columns:
+            col = pd.to_numeric(df[varname], errors="coerce").dropna()
+            vals.extend(col.tolist())
+    if not vals:
+        return 0.0, 1.0
+    lo, hi = float(np.min(vals)), float(np.max(vals))
+    span = hi - lo if hi != lo else 1.0
+    return lo - padding_pct * span, hi + padding_pct * span
+
+
+# ===========================================================================
 # GlyphMapper
 # ===========================================================================
 
@@ -460,6 +916,60 @@ class GlyphMapper:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Jitter helper
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_jitter_source(
+        source: ColumnDataSource,
+        xvar: str,
+        yvar: str,
+        options: dict[str, str],
+    ) -> "tuple[ColumnDataSource, str, str]":
+        """Return a (possibly jittered) source and effective x/y column names.
+
+        If the ``jitter`` option is absent or zero, returns the original
+        *source* unchanged.  Otherwise adds ``_x_jit`` / ``_y_jit`` columns
+        and returns a new CDS that also contains the original columns so that
+        hover tooltips and mlabel annotations can reference them.
+
+        Returns:
+            ``(plot_source, effective_xvar, effective_yvar)``
+        """
+        jitter_raw = options.get("jitter", "").strip()
+        if not jitter_raw:
+            return source, xvar, yvar
+
+        try:
+            jitter_pct = float(jitter_raw)
+        except (ValueError, TypeError):
+            return source, xvar, yvar
+
+        if jitter_pct <= 0:
+            return source, xvar, yvar
+
+        # Clamp to [1, 100]
+        jitter_pct = min(100.0, jitter_pct)
+
+        seed_raw = options.get("jseed", "").strip()
+        seed_val: int | None = None
+        if seed_raw:
+            try:
+                seed_val = int(float(seed_raw))
+            except (ValueError, TypeError):
+                pass
+
+        x_arr = np.asarray(source.data[xvar], dtype=float)
+        y_arr = np.asarray(source.data[yvar], dtype=float)
+        x_jit, y_jit = _apply_jitter(x_arr, y_arr, jitter_pct, seed_val)
+
+        # Build new data dict preserving all original columns
+        new_data = {k: list(v) for k, v in source.data.items()}
+        new_data["_x_jit"] = x_jit.tolist()
+        new_data["_y_jit"] = y_jit.tolist()
+        return ColumnDataSource(new_data), "_x_jit", "_y_jit"
 
     def _hover_tool(self, yvar: str, xvar: str) -> HoverTool:
         """Return a HoverTool that shows variable names and values."""
@@ -496,8 +1006,20 @@ class GlyphMapper:
         renderer: Any,
         options: dict[str, str],
     ) -> None:
-        """Apply mcolor/msymbol/msize options to a scatter-type glyph renderer."""
+        """Apply mcolor/msymbol/msize options to a scatter-type glyph renderer.
+
+        The generic ``marker`` key (produced by the Mata parser's ``m()``
+        abbreviation expansion) is treated as an alias for ``msymbol``.
+        If both ``marker`` and ``msymbol`` are present, ``msymbol`` wins
+        because it is applied last.
+        """
         glyph = renderer.glyph
+        # Handle generic 'm → marker' abbreviation as msymbol alias
+        if "marker" in options and "msymbol" not in options:
+            try:
+                glyph.marker = self.tr.translate_msymbol(options["marker"])
+            except (ValueError, AttributeError):
+                pass
         if "mcolor" in options:
             try:
                 color = self.tr.translate_mcolor(options["mcolor"])
@@ -505,10 +1027,34 @@ class GlyphMapper:
                 glyph.line_color = color
             except ValueError:
                 pass
+        if "msymbol" in options:
+            try:
+                glyph.marker = self.tr.translate_msymbol(options["msymbol"])
+            except (ValueError, AttributeError):
+                pass
         if "msize" in options:
             try:
                 glyph.size = self.tr.translate_msize(options["msize"])
             except ValueError:
+                pass
+        # mfcolor sets the fill color independently of the line/outline color.
+        # Applied after mcolor so it overrides any fill_color set by mcolor.
+        if "mfcolor" in options:
+            try:
+                glyph.fill_color = self.tr.translate_mcolor(options["mfcolor"])
+            except ValueError:
+                pass
+        # lcolor sets the marker border (outline) color independently of fill.
+        if "lcolor" in options:
+            try:
+                glyph.line_color = self.tr.translate_mcolor(options["lcolor"])
+            except (ValueError, AttributeError):
+                pass
+        # lwidth sets the marker border width.
+        if "lwidth" in options:
+            try:
+                glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
+            except (ValueError, AttributeError):
                 pass
 
     def _apply_fill_opts(self, renderer: Any, options: dict[str, str]) -> None:
@@ -611,6 +1157,12 @@ class GlyphMapper:
             except (ValueError, TypeError):
                 pass
 
+        # mlabwidth: Stata label width in character units.  Bokeh's LabelSet
+        # does not support text wrapping, so this option is accepted but has
+        # no visual effect.  It is handled here to prevent an "unknown option"
+        # error if the user specifies it.
+        options.get("mlabwidth")  # consumed; no-op
+
         ls = LabelSet(**kwargs)
         fig.add_layout(ls)
 
@@ -658,18 +1210,25 @@ class GlyphMapper:
         else:
             clean_source = source
 
+        # Apply jitter if requested
+        plot_source, eff_x, eff_y = self._build_jitter_source(
+            clean_source, xvar, yvar, options
+        )
+
         r = fig.scatter(
-            x=xvar,
-            y=yvar,
-            source=clean_source,
+            x=eff_x,
+            y=eff_y,
+            source=plot_source,
             marker=marker,
             size=8,
             fill_color="#1f77b4",
             line_color="#1f77b4",
             alpha=0.7,
+            legend_label=yvar,
         )
         self._apply_marker_opts(r, options)
-        self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar)
+        # mlabel uses original column names (not jittered) for readable labels
+        self._apply_mlabel_opts(fig, plot_source, options, xvar, yvar)
         fig.add_tools(self._hover_tool(yvar, xvar))
         return r
 
@@ -707,6 +1266,7 @@ class GlyphMapper:
             source=sorted_source,
             line_color="#ff7f0e",
             line_width=1.5,
+            legend_label=yvar,
         )
         self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
@@ -767,12 +1327,19 @@ class GlyphMapper:
         # Drop NaN rows
         mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
         x_arr, y_arr = x_arr[mask], y_arr[mask]
-        y1_zeros = np.zeros_like(y_arr)
+        # base() option sets the lower boundary; default 0
+        base_val = 0.0
+        if "base" in options:
+            try:
+                base_val = float(options["base"])
+            except (ValueError, TypeError):
+                pass
+        y1_base = np.full_like(y_arr, base_val)
 
-        # y1 = baseline (zeros), y2 = upper boundary (yvar values)
-        area_source = ColumnDataSource({"x": x_arr, "y1": y1_zeros, "y2": y_arr})
+        # y1 = baseline, y2 = upper boundary (yvar values)
+        area_source = ColumnDataSource({"x": x_arr, "y1": y1_base, "y2": y_arr})
         r = fig.varea(x="x", y1="y1", y2="y2", source=area_source,
-                      fill_color="#aec7e8", fill_alpha=0.5)
+                      fill_color="#aec7e8", fill_alpha=0.5, legend_label=yvar)
 
         # Honour fill color option
         if "color" in options:
@@ -782,6 +1349,18 @@ class GlyphMapper:
                 pass
 
         self._apply_fill_opts(r, options)
+
+        # Add an optional border line on top of the area when line options are given.
+        # VArea has no native border; a separate Line renderer is required.
+        _LINE_KEYS = ("lcolor", "lwidth", "lpattern")
+        if any(k in options for k in _LINE_KEYS):
+            # Default border color = same as fill color
+            border_color = r.glyph.fill_color or "#aec7e8"
+            border_source = ColumnDataSource({"x": x_arr, "y": y_arr})
+            line_r = fig.line(x="x", y="y", source=border_source,
+                               line_color=border_color, line_width=1.5)
+            self._apply_line_opts(line_r, options)
+
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return r
 
@@ -820,11 +1399,29 @@ class GlyphMapper:
         else:
             bar_width = 0.8
 
+        # barwidth() / width() options override the auto-computed bar width
+        for key in ("barwidth", "width"):
+            if key in options:
+                try:
+                    bar_width = float(options[key])
+                    break
+                except (ValueError, TypeError):
+                    pass
+
+        # base() option sets the bar bottom; default 0
+        base_val = 0.0
+        if "base" in options:
+            try:
+                base_val = float(options["base"])
+            except (ValueError, TypeError):
+                pass
+
         r = fig.vbar(
-            x=xvar, top=yvar, source=clean_source,
+            x=xvar, top=yvar, bottom=base_val, source=clean_source,
             width=bar_width,
             fill_color="#1f77b4",
             line_color="#1f77b4",
+            legend_label=yvar,
             fill_alpha=0.8,
         )
         if "color" in options:
@@ -834,7 +1431,21 @@ class GlyphMapper:
                 r.glyph.line_color = c
             except ValueError:
                 pass
+        # bfcolor / blcolor — bar-specific fill / line color overrides
+        if "bfcolor" in options:
+            try:
+                r.glyph.fill_color = self.tr.translate_mcolor(options["bfcolor"])
+            except ValueError:
+                pass
+        if "blcolor" in options:
+            try:
+                r.glyph.line_color = self.tr.translate_mcolor(options["blcolor"])
+            except ValueError:
+                pass
         self._apply_fill_opts(r, options)
+        # VBar supports line_width/line_dash/line_color natively; lcolor/lwidth/lpattern
+        # are applied after bfcolor/blcolor so blcolor retains priority for line color.
+        self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return r
 
@@ -863,15 +1474,23 @@ class GlyphMapper:
         # Drop NaN rows
         mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
         x_arr, y_arr = x_arr[mask], y_arr[mask]
-        zeros = np.zeros_like(x_arr)
+        # base() option sets the spike origin; default 0
+        base_val = 0.0
+        if "base" in options:
+            try:
+                base_val = float(options["base"])
+            except (ValueError, TypeError):
+                pass
+        y0_base = np.full_like(x_arr, base_val)
 
         seg_source = ColumnDataSource({
-            "x0": x_arr, "y0": zeros,
+            "x0": x_arr, "y0": y0_base,
             "x1": x_arr, "y1": y_arr,
         })
         r = fig.segment(x0="x0", y0="y0", x1="x1", y1="y1",
                         source=seg_source,
-                        line_color="#1f77b4", line_width=1.5)
+                        line_color="#1f77b4", line_width=1.5,
+                        legend_label=yvar)
         self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return r
@@ -919,7 +1538,8 @@ class GlyphMapper:
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
-                     line_color="#d62728", line_width=2.0, line_dash="solid")
+                     line_color="#d62728", line_width=2.0, line_dash="solid",
+                     legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
 
@@ -959,7 +1579,8 @@ class GlyphMapper:
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
-                     line_color="#d62728", line_width=2.0)
+                     line_color="#d62728", line_width=2.0,
+                     legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
 
@@ -1002,7 +1623,8 @@ class GlyphMapper:
                 source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color="#d62728", line_width=2.0)
+                              line_color="#d62728", line_width=2.0,
+                              legend_label=yvar)
             return [line_r, band_r]
 
         slope, intercept, _, _, se = scipy_stats.linregress(x, y)
@@ -1030,8 +1652,10 @@ class GlyphMapper:
             source=ci_source, fill_alpha=0.2, fill_color="#d62728"
         )
         line_r = fig.line(x="x_fit", y="y_fit", source=ci_source,
-                          line_color="#d62728", line_width=2.0)
+                          line_color="#d62728", line_width=2.0,
+                          legend_label=yvar)
         self._apply_line_opts(line_r, options)
+        self._apply_fill_opts(band_r, options)
         return [line_r, band_r]
 
     def map_qfitci(
@@ -1072,7 +1696,8 @@ class GlyphMapper:
                 source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color="#d62728", line_width=2.0)
+                              line_color="#d62728", line_width=2.0,
+                              legend_label=yvar)
             return [line_r, band_r]
 
         coeffs = np.polyfit(x, y, 2)
@@ -1099,8 +1724,10 @@ class GlyphMapper:
             source=ci_source, fill_alpha=0.2, fill_color="#d62728"
         )
         line_r = fig.line(x="x_fit", y="y_fit", source=ci_source,
-                          line_color="#d62728", line_width=2.0)
+                          line_color="#d62728", line_width=2.0,
+                          legend_label=yvar)
         self._apply_line_opts(line_r, options)
+        self._apply_fill_opts(band_r, options)
         return [line_r, band_r]
 
     def map_lowess(
@@ -1144,7 +1771,8 @@ class GlyphMapper:
             "y_lw": smoothed[:, 1],
         })
         r = fig.line(x="x_lw", y="y_lw", source=lw_source,
-                     line_color="#2ca02c", line_width=2.0)
+                     line_color="#2ca02c", line_width=2.0,
+                     legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
 
@@ -1175,7 +1803,10 @@ class GlyphMapper:
         arr = np.array(source.data[yvar], dtype=float)
         arr = arr[~np.isnan(arr)]
 
-        n_bins = int(options.get("bin", 10))
+        # Cap bin count to prevent resource exhaustion from huge values
+        _MAX_BINS = 1000
+        n_bins = min(int(options.get("bin", 10)), _MAX_BINS)
+        n_bins = max(n_bins, 1)  # Must be at least 1
         counts, edges = np.histogram(arr, bins=n_bins)
 
         hist_source = ColumnDataSource({
@@ -1186,7 +1817,7 @@ class GlyphMapper:
         r = fig.quad(top="top", bottom=0, left="left", right="right",
                      source=hist_source,
                      fill_color="#1f77b4", line_color="white",
-                     fill_alpha=0.8)
+                     fill_alpha=0.8, legend_label=yvar)
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -1194,6 +1825,8 @@ class GlyphMapper:
             except ValueError:
                 pass
         self._apply_fill_opts(r, options)
+        # Quad supports line_width/line_dash/line_color for bin border styling
+        self._apply_line_opts(r, options)
         return r
 
     def map_kdensity(
@@ -1236,7 +1869,8 @@ class GlyphMapper:
 
         kd_source = ColumnDataSource({"x": x_range, "y": density})
         r = fig.line(x="x", y="y", source=kd_source,
-                     line_color="#9467bd", line_width=2.0)
+                     line_color="#9467bd", line_width=2.0,
+                     legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
 
@@ -1267,8 +1901,10 @@ class GlyphMapper:
             List with the single VArea GlyphRenderer.
         """
         r = fig.varea(x=xvar, y1=y1var, y2=y2var, source=source,
-                      fill_color="#aec7e8", fill_alpha=0.5)
+                      fill_color="#aec7e8", fill_alpha=0.5,
+                      legend_label=y1var)
         self._apply_fill_opts(r, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [r]
 
     def map_rbar(
@@ -1300,8 +1936,10 @@ class GlyphMapper:
             default=0.8,
         )
         r = fig.vbar(x=xvar, bottom=y1var, top=y2var, source=source,
-                     width=bar_width, fill_color="#1f77b4", line_color="white")
+                     width=bar_width, fill_color="#1f77b4", line_color="white",
+                     legend_label=y1var)
         self._apply_fill_opts(r, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [r]
 
     def map_rspike(
@@ -1327,8 +1965,10 @@ class GlyphMapper:
             List with the single Segment GlyphRenderer.
         """
         r = fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
-                        line_color="#1f77b4", line_width=1.5)
+                        line_color="#1f77b4", line_width=1.5,
+                        legend_label=y1var)
         self._apply_line_opts(r, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [r]
 
     def map_rcap(
@@ -1371,13 +2011,17 @@ class GlyphMapper:
 
         spine = fig.segment(x0="x", y0="y1", x1="x", y1="y2",
                             source=cap_source,
-                            line_color="#1f77b4", line_width=1.5)
+                            line_color="#1f77b4", line_width=1.5,
+                            legend_label=y1var)
         bot_cap = fig.segment(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
                               source=cap_source,
                               line_color="#1f77b4", line_width=1.5)
         top_cap = fig.segment(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
                               source=cap_source,
                               line_color="#1f77b4", line_width=1.5)
+        for seg in (spine, bot_cap, top_cap):
+            self._apply_line_opts(seg, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [spine, bot_cap, top_cap]
 
     def map_rline(
@@ -1403,11 +2047,13 @@ class GlyphMapper:
             List with [lower_line_renderer, upper_line_renderer].
         """
         r1 = fig.line(x=xvar, y=y1var, source=source,
-                      line_color="#1f77b4", line_width=1.5)
+                      line_color="#1f77b4", line_width=1.5,
+                      legend_label=y1var)
         r2 = fig.line(x=xvar, y=y2var, source=source,
                       line_color="#ff7f0e", line_width=1.5)
         self._apply_line_opts(r1, options)
         self._apply_line_opts(r2, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [r1, r2]
 
     def map_rconnected(
@@ -1500,8 +2146,16 @@ class GlyphMapper:
         x_arr, y_arr = x_arr[mask], y_arr[mask]
         zeros = np.zeros_like(x_arr)
 
+        # Apply jitter if requested (jitters x and y)
+        x_plot, y_plot = _apply_jitter(
+            x_arr, y_arr,
+            float(options.get("jitter", 0) or 0),
+            int(float(options["jseed"])) if "jseed" in options else None,
+        ) if options.get("jitter") else (x_arr, y_arr)
+
         dl_source = ColumnDataSource({
-            "x": x_arr, "y": y_arr, "y0": zeros,
+            "x": x_plot, "y": y_plot, "y0": zeros,
+            xvar: x_arr, yvar: y_arr,
         })
         color = "#1f77b4"
         try:
@@ -1515,9 +2169,10 @@ class GlyphMapper:
         seg = fig.segment(x0="x", y0="y0", x1="x", y1="y",
                           source=dl_source, line_color=color, line_width=1.5)
         dot = fig.scatter(x="x", y="y", source=dl_source,
-                          fill_color=color, line_color=color, size=8)
+                          fill_color=color, line_color=color, size=8,
+                          legend_label=yvar)
         self._apply_line_opts(seg, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
+        self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar)
         return [seg, dot]
 
     def map_rcapsym(
@@ -1572,7 +2227,8 @@ class GlyphMapper:
             pass
 
         spine   = fig.segment(x0="x",     y0="y1",  x1="x",     y1="y2",
-                              source=cap_source, line_color=color, line_width=1.5)
+                              source=cap_source, line_color=color, line_width=1.5,
+                              legend_label=y1var)
         bot_cap = fig.segment(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
                               source=cap_source, line_color=color, line_width=1.5)
         top_cap = fig.segment(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
@@ -1581,7 +2237,11 @@ class GlyphMapper:
                               fill_color=color, line_color=color, size=7)
         top_dot = fig.scatter(x="x", y="y2", source=cap_source,
                               fill_color=color, line_color=color, size=7)
-        self._apply_line_opts(spine, options)
+        for seg in (spine, bot_cap, top_cap):
+            self._apply_line_opts(seg, options)
+        for dot in (bot_dot, top_dot):
+            self._apply_marker_opts(dot, options)
+        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [spine, bot_cap, top_cap, bot_dot, top_dot]
 
     def map_scatteri(
@@ -1608,9 +2268,27 @@ class GlyphMapper:
             empty = ColumnDataSource({"x": [], "y": []})
             return [fig.scatter(x="x", y="y", source=empty)]
 
-        y_vals = [float(pair[0]) for pair in values]
-        x_vals = [float(pair[1]) for pair in values]
-        si_source = ColumnDataSource({"x": x_vals, "y": y_vals})
+        y_vals = np.array([float(pair[0]) for pair in values])
+        x_vals = np.array([float(pair[1]) for pair in values])
+
+        # Apply jitter if requested
+        jitter_raw = options.get("jitter", "")
+        if jitter_raw:
+            try:
+                jitter_pct = float(jitter_raw)
+            except (ValueError, TypeError):
+                jitter_pct = 0.0
+            if jitter_pct > 0:
+                seed_raw = options.get("jseed", "")
+                seed_val: int | None = None
+                if seed_raw:
+                    try:
+                        seed_val = int(float(seed_raw))
+                    except (ValueError, TypeError):
+                        pass
+                x_vals, y_vals = _apply_jitter(x_vals, y_vals, jitter_pct, seed_val)
+
+        si_source = ColumnDataSource({"x": x_vals.tolist(), "y": y_vals.tolist()})
 
         color = "#1f77b4"
         try:
@@ -1666,8 +2344,84 @@ class GlyphMapper:
         source_clean = ColumnDataSource(clean)
         r = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                         source=source_clean,
-                        line_color="#1f77b4", line_width=1.5)
+                        line_color="#1f77b4", line_width=1.5,
+                        legend_label=y1var)
         self._apply_line_opts(r, options)
+        return [r]
+
+    def map_pci(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        x1var: str,
+        y2var: str,
+        x2var: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add paired-coordinate line segments to *fig*.
+
+        ``twoway pci`` draws a straight line from ``(x1var, y1var)`` to
+        ``(x2var, y2var)`` for each observation.  Implemented identically to
+        :meth:`map_pcspike` — both use Bokeh ``Segment`` glyphs.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            y1var:   Name of the start y variable.
+            x1var:   Name of the start x variable.
+            y2var:   Name of the end y variable.
+            x2var:   Name of the end x variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the single Segment GlyphRenderer.
+        """
+        return self.map_pcspike(fig, source, y1var, x1var, y2var, x2var, options)
+
+    def map_pcscatter(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        x1var: str,
+        y2var: str,
+        x2var: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add paired-coordinate scatter glyphs to *fig*.
+
+        ``twoway pcscatter`` places a scatter marker at each of the two
+        endpoints ``(x1var, y1var)`` and ``(x2var, y2var)`` per observation.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            y1var:   Name of the start y variable.
+            x1var:   Name of the start x variable.
+            y2var:   Name of the end y variable.
+            x2var:   Name of the end x variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the single scatter GlyphRenderer.
+        """
+        clean = pd.DataFrame({
+            y1var: source.data[y1var],
+            x1var: source.data[x1var],
+            y2var: source.data[y2var],
+            x2var: source.data[x2var],
+        }).dropna()
+
+        # Concatenate both endpoint sets into one scatter source
+        x_all = np.concatenate([clean[x1var].values, clean[x2var].values])
+        y_all = np.concatenate([clean[y1var].values, clean[y2var].values])
+        pc_source = ColumnDataSource({"x": x_all.tolist(), "y": y_all.tolist()})
+
+        r = fig.scatter("x", "y", source=pc_source,
+                        size=8, color="#1f77b4",
+                        legend_label=y1var)
+        self._apply_marker_opts(r, options)
         return [r]
 
     def map_pcarrow(
@@ -1715,7 +2469,12 @@ class GlyphMapper:
             pass
 
         seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                          source=pc_source, line_color=color, line_width=1.5)
+                          source=pc_source, line_color=color, line_width=1.5,
+                          legend_label=y1var)
+        self._apply_line_opts(seg, options)
+
+        # Resolve line_width for Arrow annotations (same value as segment after opts applied)
+        arrow_lw = seg.glyph.line_width
 
         # Add Arrow head annotations for each row
         for _, row in clean.iterrows():
@@ -1726,7 +2485,7 @@ class GlyphMapper:
                 x_end=float(row[x2var]),
                 y_end=float(row[y2var]),
                 line_color=color,
-                line_width=1.5,
+                line_width=arrow_lw,
             )
             fig.add_layout(arrow)
 
@@ -1777,7 +2536,12 @@ class GlyphMapper:
             pass
 
         seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                          source=pc_source, line_color=color, line_width=1.5)
+                          source=pc_source, line_color=color, line_width=1.5,
+                          legend_label=y1var)
+        self._apply_line_opts(seg, options)
+
+        # Resolve line_width for Arrow annotations (same value as segment after opts applied)
+        arrow_lw = seg.glyph.line_width
 
         # Add bidirectional Arrow annotations for each row
         for _, row in clean.iterrows():
@@ -1789,7 +2553,7 @@ class GlyphMapper:
                 x_end=float(row[x2var]),
                 y_end=float(row[y2var]),
                 line_color=color,
-                line_width=1.5,
+                line_width=arrow_lw,
             )
             fig.add_layout(arrow)
 
@@ -1847,6 +2611,51 @@ class GlyphMapper:
         """
         return self.map_rline(fig, source, y1var, y2var, xvar, options)
 
+    def map_rscatter(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        y2var: str,
+        xvar: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add range scatter glyphs to *fig*.
+
+        ``twoway rscatter`` places a scatter marker at ``(xvar, y1var)`` and a
+        second marker at ``(xvar, y2var)`` for each observation — the range
+        equivalent of ``scatter``.
+
+        Args:
+            fig:    Bokeh Figure object.
+            source: Shared ColumnDataSource.
+            y1var:  Lower y-boundary variable.
+            y2var:  Upper y-boundary variable.
+            xvar:   x-axis variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the single scatter GlyphRenderer.
+        """
+        x_arr = np.array(source.data[xvar], dtype=float)
+        y1_arr = np.array(source.data[y1var], dtype=float)
+        y2_arr = np.array(source.data[y2var], dtype=float)
+
+        # Interleave both y-boundary points at the same x
+        x_all = np.concatenate([x_arr, x_arr])
+        y_all = np.concatenate([y1_arr, y2_arr])
+        mask = ~(np.isnan(x_all) | np.isnan(y_all))
+
+        rs_source = ColumnDataSource({
+            "x": x_all[mask].tolist(),
+            "y": y_all[mask].tolist(),
+        })
+        r = fig.scatter("x", "y", source=rs_source,
+                        size=8, color="#1f77b4",
+                        legend_label=y1var)
+        self._apply_marker_opts(r, options)
+        return [r]
+
     def map_mspline(
         self,
         fig: Any,
@@ -1884,18 +2693,102 @@ class GlyphMapper:
         x_clean = x_clean[order]
         y_clean = y_clean[order]
 
-        # Need at least 2 valid points for interpolation
+        # Deduplicate x values — PchipInterpolator requires strictly increasing x.
+        # For duplicate x values take the mean y to produce a single representative point.
+        unique_x, inv = np.unique(x_clean, return_inverse=True)
+        if len(unique_x) < len(x_clean):
+            y_agg = np.zeros(len(unique_x))
+            counts = np.zeros(len(unique_x))
+            for i, j in enumerate(inv):
+                y_agg[j] += y_clean[i]
+                counts[j] += 1
+            x_clean = unique_x
+            y_clean = y_agg / counts
+
+        # Need at least 2 valid (distinct) points for interpolation
         if len(x_clean) < 2:
-            empty = ColumnDataSource({"x_ms": [], "y_ms": []})
-            return [fig.line(x="x_ms", y="y_ms", source=empty)]
+            empty = ColumnDataSource({"x_sp": [], "y_sp": []})
+            r = fig.line(x="x_sp", y="y_sp", source=empty)
+            return [r]
 
         interp = PchipInterpolator(x_clean, y_clean)
         x_grid = np.linspace(x_clean.min(), x_clean.max(), 200)
         y_grid = interp(x_grid)
 
-        ms_source = ColumnDataSource({"x_ms": x_grid, "y_ms": y_grid})
-        r = fig.line(x="x_ms", y="y_ms", source=ms_source,
-                     line_color="#2ca02c", line_width=2.0)
+        ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
+        r = fig.line(x="x_sp", y="y_sp", source=ms_source,
+                     line_color="#2ca02c", line_width=2.0,
+                     legend_label=yvar)
+        self._apply_line_opts(r, options)
+        return [r]
+
+    def map_mband(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add a median band smoother to *fig*.
+
+        ``twoway mband`` replicates Stata's median-band plot: the x range is
+        divided into equal-width bands and the median of *yvar* within each
+        band is plotted as a step-through line.  The number of bands defaults
+        to ``min(ceil(n/5), 20)`` so that each band contains at least ~5
+        observations on average.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable.
+            xvar:    Name of the x variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the single GlyphRenderer for the median-band line.
+        """
+        x_arr = np.array(source.data[xvar], dtype=float)
+        y_arr = np.array(source.data[yvar], dtype=float)
+        mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
+        x_clean = x_arr[mask]
+        y_clean = y_arr[mask]
+
+        empty = ColumnDataSource({"x_mb": [], "y_mb": []})
+
+        if len(x_clean) < 4:
+            r = fig.line(x="x_mb", y="y_mb", source=empty)
+            return [r]
+
+        # Number of bands: at least 2, at most 20, targeting ~5 obs per band
+        n_bands = int(np.clip(int(np.ceil(len(x_clean) / 5)), 2, 20))
+        x_min, x_max = float(x_clean.min()), float(x_clean.max())
+        if x_max == x_min:
+            r = fig.line(x="x_mb", y="y_mb", source=empty)
+            return [r]
+
+        edges = np.linspace(x_min, x_max, n_bands + 1)
+        x_mids: list[float] = []
+        y_meds: list[float] = []
+        for i in range(n_bands):
+            lo, hi = edges[i], edges[i + 1]
+            # Include right edge in the last band
+            in_band = (
+                (x_clean >= lo) & (x_clean <= hi) if i == n_bands - 1
+                else (x_clean >= lo) & (x_clean < hi)
+            )
+            if in_band.sum() > 0:
+                x_mids.append(float(0.5 * (lo + hi)))
+                y_meds.append(float(np.median(y_clean[in_band])))
+
+        if not x_mids:
+            r = fig.line(x="x_mb", y="y_mb", source=empty)
+            return [r]
+
+        mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
+        r = fig.line(x="x_mb", y="y_mb", source=mb_source,
+                     line_color="#2ca02c", line_width=2.0,
+                     legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
 
@@ -2031,7 +2924,8 @@ class GlyphMapper:
 
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
         r = fig.line(x="x_fn", y="y_fn", source=fn_source,
-                     line_color="#d62728", line_width=2.0)
+                     line_color="#d62728", line_width=2.0,
+                     legend_label=expr[:40])
         self._apply_line_opts(r, options)
         return [r]
 
@@ -2357,6 +3251,15 @@ class DashRenderer:
         self.mapper = GlyphMapper()
         self.translator = OptionTranslator()
 
+        # Load scheme — falls back to s2color if unrecognised
+        _scheme_name = (
+            self.master_spec.get("build_options", {}).get("scheme", "") or "s2color"
+        )
+        try:
+            self.scheme: SchemeParser = SchemeParser(_scheme_name)
+        except (ValueError, OSError):
+            self.scheme = SchemeParser("s2color")
+
         # Populated during _load_data()
         self.df: pd.DataFrame = pd.DataFrame()
         self.variable_labels: dict[str, str] = {}
@@ -2373,6 +3276,9 @@ class DashRenderer:
 
         # Tracks KPI update mode ("filter" | "brush" | "both") by KPI name.
         self._kpi_update_modes: dict[str, str] = {}
+
+        # Facet map: graph_name → [(facet_key, facet_label), ...]
+        self._facet_map: dict[str, list[tuple[str, str]]] = {}
 
         self._load_data()
 
@@ -2446,6 +3352,52 @@ class DashRenderer:
             ValueError: If stat is unknown or varname not in DataFrame.
         """
         col = self._df[varname].dropna()
+        s = stat.strip().lower()
+        if s == "mean":
+            return float(col.mean())
+        if s == "sum":
+            return float(col.sum())
+        if s == "count":
+            return float(len(col))
+        if s == "dcount":
+            return float(col.nunique())
+        if s == "min":
+            return float(col.min())
+        if s == "max":
+            return float(col.max())
+        if s in ("median", "p50"):
+            return float(col.median())
+        if s == "sd":
+            return float(col.std(ddof=1))
+        if s == "p25":
+            return float(col.quantile(0.25))
+        if s == "p75":
+            return float(col.quantile(0.75))
+        raise ValueError(f"Unknown KPI statistic: '{stat}'")
+
+    def _compute_kpi_stat_on_df(
+        self, df: "pd.DataFrame", stat: str, varname: str
+    ) -> float:
+        """Compute a KPI statistic on an arbitrary DataFrame.
+
+        Identical to :meth:`_compute_kpi_stat` but operates on *df* instead
+        of ``self._df``.  Used for per-facet KPI computation.
+
+        Args:
+            df:      DataFrame to compute the statistic on.
+            stat:    One of: mean, sum, count, dcount, min, max, median,
+                     sd, p25, p50, p75.
+            varname: Column name in *df*.
+
+        Returns:
+            Computed statistic as a float.
+
+        Raises:
+            ValueError: If stat is unknown or varname not in *df*.
+        """
+        if varname not in df.columns:
+            raise ValueError(f"Variable '{varname}' not in DataFrame")
+        col = df[varname].dropna()
         s = stat.strip().lower()
         if s == "mean":
             return float(col.mean())
@@ -2577,7 +3529,10 @@ class DashRenderer:
             # Security: only allow column names, literals, operators
             # Reject any expression containing shell-injection characters or
             # Python code constructs.
-            _UNSAFE = _re.compile(r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b')
+            _UNSAFE = _re.compile(
+                r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
+                r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
+            )
             if _UNSAFE.search(pandas_expr):
                 pass  # silently skip unsafe if_expr
             else:
@@ -2589,6 +3544,150 @@ class DashRenderer:
                     pass  # malformed if_expr → no filtering; don't crash
 
         return df
+
+    @staticmethod
+    def _parse_by_raw(by_raw: str) -> "tuple[str, int, bool, bool]":
+        """Parse a ``by()`` option value string into its components.
+
+        Handles the Stata syntax ``varlist [, cols(#) total missing]`` where
+        the Mata parser passes the entire content of ``by(...)`` as a single
+        string.
+
+        Args:
+            by_raw: Raw string from ``graph_options["by"]``, e.g.
+                    ``"foreign, cols(2) total"`` or just ``"foreign"``.
+
+        Returns:
+            A 4-tuple ``(varlist, by_cols, by_total, by_missing)`` where
+            *varlist* is the space-separated variable name(s), *by_cols* is
+            the requested column count (0 = auto), and *by_total* /
+            *by_missing* are boolean flags.
+        """
+        import re as _re
+
+        if "," in by_raw:
+            varlist_part, subopts = by_raw.split(",", 1)
+        else:
+            varlist_part, subopts = by_raw, ""
+
+        varlist = varlist_part.strip()
+        subopts = subopts.strip()
+
+        cols_m = _re.search(r"\bcols?\((\d+)\)", subopts, _re.IGNORECASE)
+        by_cols = int(cols_m.group(1)) if cols_m else 0
+        by_total = bool(_re.search(r"\btotal\b", subopts, _re.IGNORECASE))
+        by_missing = bool(_re.search(r"\bmissing\b", subopts, _re.IGNORECASE))
+
+        return varlist, by_cols, by_total, by_missing
+
+    def _expand_by_groups(
+        self,
+        graph_spec: dict,
+        base_df: "pd.DataFrame | None" = None,
+    ) -> "list[tuple[str, pd.DataFrame]]":
+        """Return a list of ``(facet_label, filtered_df)`` for ``by()`` groups.
+
+        If no ``by()`` option is present, returns ``[("", df)]`` — a single
+        group with an empty label so that callers can iterate uniformly.
+
+        Args:
+            graph_spec: A single graph specification dict.
+            base_df:    Optional pre-filtered DataFrame (e.g. after if/in).
+                        Defaults to ``self.df``.
+
+        Returns:
+            List of ``(label, DataFrame)`` tuples, one per facet group.
+        """
+        import re as _re
+
+        df = base_df if base_df is not None else self.df
+        graph_opts = graph_spec.get("graph_options", {})
+        by_raw = (graph_opts.get("by") or "").strip()
+        if not by_raw:
+            return [("", df)]
+
+        # Security: reject injection patterns in by-variable names
+        _UNSAFE_BY = _re.compile(
+            r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
+            r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
+        )
+        if _UNSAFE_BY.search(by_raw):
+            return [("", df)]
+
+        # Parse varlist + suboptions from the raw by() string
+        varlist, by_cols_parsed, by_total_parsed, by_missing_parsed = \
+            self._parse_by_raw(by_raw)
+
+        by_vars = varlist.split()
+        # Validate that all by-variables exist in the DataFrame
+        valid_vars = [v for v in by_vars if v in df.columns]
+        if not valid_vars:
+            return [("", df)]
+
+        # Honour both the parsed suboptions and any separate graph_options keys
+        # (separate keys take precedence for backwards compatibility with tests
+        # that set by_total / by_missing directly).
+        by_total = (
+            by_total_parsed
+            or graph_opts.get("by_total", "0") == "1"
+        )
+        by_missing = (
+            by_missing_parsed
+            or graph_opts.get("by_missing", "0") == "1"
+        )
+
+        work_df = df.copy()
+        if not by_missing:
+            work_df = work_df.dropna(subset=valid_vars)
+
+        if work_df.empty:
+            return [("", df)]
+
+        groups: list[tuple[str, pd.DataFrame]] = []
+        # Use a scalar (not list) for single by-var so groupby returns scalar keys
+        groupby_key = valid_vars[0] if len(valid_vars) == 1 else valid_vars
+        for key, group_df in work_df.groupby(groupby_key, sort=True, dropna=False):
+            key_vals = (key,) if len(valid_vars) == 1 else key
+            if not by_missing and any(pd.isna(v) for v in key_vals):
+                continue
+            label = self._facet_label(valid_vars, key)
+            groups.append((label, group_df.copy()))
+
+        if by_total:
+            groups.append(("Total", work_df.copy()))
+
+        return groups if groups else [("", df)]
+
+    def _facet_label(self, by_vars: list[str], key) -> str:
+        """Build a human-readable label for one facet group key.
+
+        Uses Stata value labels when available.
+
+        Args:
+            by_vars: List of by-variable names.
+            key:     Group key — scalar for single var, tuple for multiple.
+
+        Returns:
+            A display string like ``"Domestic"`` or ``"Domestic / 3"``.
+        """
+        if len(by_vars) == 1:
+            keys = [key]
+        else:
+            keys = list(key)
+
+        parts = []
+        for var, val in zip(by_vars, keys):
+            if pd.isna(val):
+                parts.append("Missing")
+                continue
+            labelset = self.value_label_names.get(var, "")
+            vlabels = self.value_labels.get(labelset, {})
+            # Try raw string and int-string lookups for value labels
+            str_val = str(val)
+            int_str = str(int(val)) if isinstance(val, float) and val == int(val) else str_val
+            label = vlabels.get(str_val) or vlabels.get(int_str) or str_val
+            parts.append(html.escape(label))
+        return " / ".join(parts)
 
     # ------------------------------------------------------------------
     # Figure construction helpers
@@ -2698,6 +3797,62 @@ class DashRenderer:
 
         fig = bokeh_figure(**fig_kwargs)
 
+        # Apply scheme defaults (before explicit graph options so they take precedence)
+        self.scheme.apply_to_figure(fig)
+
+        # Figure background colors
+        # bgcolor  → border_fill_color  (outer area around the plot)
+        # plotbgcolor → background_fill_color (inner plot canvas)
+        raw_bgcolor = graph_opts.get("bgcolor", "")
+        if raw_bgcolor:
+            try:
+                fig.border_fill_color = OptionTranslator.translate_mcolor(raw_bgcolor)
+            except (ValueError, TypeError):
+                pass
+
+        raw_plotbgcolor = graph_opts.get("plotbgcolor", "")
+        if raw_plotbgcolor:
+            try:
+                fig.background_fill_color = OptionTranslator.translate_mcolor(raw_plotbgcolor)
+            except (ValueError, TypeError):
+                pass
+
+        # plotregion() — inner plot canvas background/border
+        # Accepts sub-options: color(X)/fcolor(X) → background_fill_color
+        #                      lcolor(X)           → outline_line_color
+        #                      lwidth(X)           → outline_line_width
+        raw_plotregion = graph_opts.get("plotregion", "")
+        if raw_plotregion:
+            _pr_bg = _extract_region_color(raw_plotregion)
+            if _pr_bg:
+                try:
+                    fig.background_fill_color = OptionTranslator.translate_mcolor(_pr_bg)
+                except (ValueError, TypeError):
+                    pass
+            _pr_lc = _extract_region_lcolor(raw_plotregion)
+            if _pr_lc:
+                try:
+                    fig.outline_line_color = OptionTranslator.translate_mcolor(_pr_lc)
+                except (ValueError, TypeError):
+                    pass
+            _pr_lw = _extract_region_lwidth(raw_plotregion)
+            if _pr_lw is not None:
+                try:
+                    fig.outline_line_width = _pr_lw
+                except (ValueError, TypeError):
+                    pass
+
+        # graphregion() — outer graph border / margin area background
+        # Accepts sub-options: color(X)/fcolor(X) → border_fill_color
+        raw_graphregion = graph_opts.get("graphregion", "")
+        if raw_graphregion:
+            _gr_bg = _extract_region_color(raw_graphregion)
+            if _gr_bg:
+                try:
+                    fig.border_fill_color = OptionTranslator.translate_mcolor(_gr_bg)
+                except (ValueError, TypeError):
+                    pass
+
         # Log scale options
         if graph_opts.get("xscale") == "log":
             # Rebuild with log x-axis
@@ -2708,6 +3863,91 @@ class DashRenderer:
             kw = {**fig_kwargs, "y_axis_type": "log"}
             kw.pop("tools", None)
             fig = bokeh_figure(**kw)
+
+        # Secondary axes (yaxis(2) / xaxis(2))
+        # Detect whether any plot layers request a secondary axis
+        from bokeh.models import LinearAxis, LogAxis
+        _has_y2 = any(
+            str(p.get("options", {}).get("yaxis", "1")).strip() == "2"
+            for p in plots
+        )
+        _has_x2 = any(
+            str(p.get("options", {}).get("xaxis", "1")).strip() == "2"
+            for p in plots
+        )
+        if _has_y2:
+            from bokeh.models import Range1d as _Range1d
+            _y2_lo, _y2_hi = _compute_secondary_range(
+                self.df, plots, "yaxis", "yvar", 2
+            )
+            fig.extra_y_ranges["y2"] = _Range1d(_y2_lo, _y2_hi)
+            _y2_scale = graph_opts.get("yscale2", "")
+            _y2_ax = (LogAxis if _y2_scale == "log" else LinearAxis)(
+                y_range_name="y2",
+                axis_label=html.escape(graph_opts.get("ytitle2", "")),
+            )
+            fig.add_layout(_y2_ax, "right")
+            # Custom ticks for secondary y-axis
+            _raw_yla2 = graph_opts.get("ylabel2", "")
+            if _raw_yla2:
+                from bokeh.models.tickers import FixedTicker
+                from bokeh.models.formatters import CustomJSTickFormatter
+                _ticks2, _labels2 = self._parse_axis_label_opt(_raw_yla2)
+                if _ticks2:
+                    _y2_ax.ticker = FixedTicker(ticks=_ticks2)
+                    if _labels2:
+                        _safe2 = {str(k): html.escape(str(v)) for k, v in _labels2.items()}
+                        _y2_ax.formatter = CustomJSTickFormatter(
+                            code=f"const m = {json.dumps(_safe2)}; "
+                                 "return m[String(tick)] || String(tick);"
+                        )
+        if _has_x2:
+            from bokeh.models import Range1d as _Range1d
+            _x2_lo, _x2_hi = _compute_secondary_range(
+                self.df, plots, "xaxis", "xvar", 2
+            )
+            fig.extra_x_ranges["x2"] = _Range1d(_x2_lo, _x2_hi)
+            _x2_scale = graph_opts.get("xscale2", "")
+            _x2_ax = (LogAxis if _x2_scale == "log" else LinearAxis)(
+                x_range_name="x2",
+                axis_label=html.escape(graph_opts.get("xtitle2", "")),
+            )
+            fig.add_layout(_x2_ax, "above")
+            # Custom ticks for secondary x-axis
+            _raw_xla2 = graph_opts.get("xlabel2", "")
+            if _raw_xla2:
+                from bokeh.models.tickers import FixedTicker
+                from bokeh.models.formatters import CustomJSTickFormatter
+                _ticks2, _labels2 = self._parse_axis_label_opt(_raw_xla2)
+                if _ticks2:
+                    _x2_ax.ticker = FixedTicker(ticks=_ticks2)
+                    if _labels2:
+                        _safe2 = {str(k): html.escape(str(v)) for k, v in _labels2.items()}
+                        _x2_ax.formatter = CustomJSTickFormatter(
+                            code=f"const m = {json.dumps(_safe2)}; "
+                                 "return m[String(tick)] || String(tick);"
+                        )
+
+        # Axis range limits (xrange / yrange)
+        raw_xrange = graph_opts.get("xrange", "")
+        if raw_xrange:
+            parts = raw_xrange.split()
+            if len(parts) >= 2:
+                try:
+                    from bokeh.models import Range1d
+                    fig.x_range = Range1d(float(parts[0]), float(parts[1]))
+                except (ValueError, TypeError):
+                    pass
+
+        raw_yrange = graph_opts.get("yrange", "")
+        if raw_yrange:
+            parts = raw_yrange.split()
+            if len(parts) >= 2:
+                try:
+                    from bokeh.models import Range1d
+                    fig.y_range = Range1d(float(parts[0]), float(parts[1]))
+                except (ValueError, TypeError):
+                    pass
 
         # Reference lines
         # Reference lines — support both string "xline"/"yline" (parser output)
@@ -2761,26 +4001,6 @@ class DashRenderer:
             )
             fig.add_layout(subtitle_lbl, "above")
 
-        # Legend placement
-        legend_opt = graph_opts.get("legend", "")
-        if legend_opt and fig.legend:
-            loc_map = {
-                "off": None,
-                "on": "top_right",
-                "ring": "top_right",
-                "top": "top_center",
-                "bottom": "bottom_center",
-                "left": "center_left",
-                "right": "center_right",
-            }
-            if legend_opt == "off":
-                fig.legend.visible = False
-            elif legend_opt in loc_map and loc_map[legend_opt]:
-                try:
-                    fig.legend.location = loc_map[legend_opt]
-                except Exception:
-                    pass
-
         # Custom axis tick values (xlabel / ylabel)
         from bokeh.models.tickers import FixedTicker
         from bokeh.models.formatters import CustomJSTickFormatter
@@ -2814,6 +4034,15 @@ class DashRenderer:
             pxvar = plot.get("xvar", xvar)
             popts = plot.get("options", {})
 
+            # Determine secondary axis assignments for this plot layer
+            _plot_yaxis = str(popts.get("yaxis", "1")).strip()
+            _plot_xaxis = str(popts.get("xaxis", "1")).strip()
+            _use_y2 = _has_y2 and _plot_yaxis == "2"
+            _use_x2 = _has_x2 and _plot_xaxis == "2"
+
+            # Snapshot renderer list so new glyphs can be identified
+            _r_before = len(fig.renderers)
+
             if ptype.lower() == "scatteri":
                 # Inline coordinate list — no shared source variable needed
                 self.mapper.map_scatteri(fig, plot.get("values", []), popts)
@@ -2845,13 +4074,64 @@ class DashRenderer:
                             pass
                 if "n" in popts:
                     try:
-                        n_pts = int(popts["n"])
+                        # Cap point count to prevent resource exhaustion
+                        n_pts = min(int(popts["n"]), 10000)
+                        n_pts = max(n_pts, 2)
                     except ValueError:
                         pass
                 self.mapper.map_function(fig, pexpr, (x_lo, x_hi), n_pts, popts)
             else:
                 pyvar = plot.get("yvar", yvar)
                 self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
+
+            # Assign secondary axis range names to newly added renderers
+            if _use_y2 or _use_x2:
+                for _r in fig.renderers[_r_before:]:
+                    try:
+                        if _use_y2:
+                            _r.y_range_name = "y2"
+                        if _use_x2:
+                            _r.x_range_name = "x2"
+                    except AttributeError:
+                        pass
+
+        # Legend placement and label overrides — must run after glyphs are added
+        # so that legend items exist and can be manipulated.
+        legend_opt = graph_opts.get("legend", "")
+        if legend_opt:
+            loc_map = {
+                "off": None,
+                "on": "top_right",
+                "ring": "top_right",
+                "top": "top_center",
+                "bottom": "bottom_center",
+                "left": "center_left",
+                "right": "center_right",
+            }
+            if legend_opt == "off":
+                for leg in fig.legend:
+                    leg.visible = False
+            else:
+                # Apply position keyword if present (check for keywords in string)
+                for kw, loc in loc_map.items():
+                    if kw != "off" and loc and re.search(r'\b' + re.escape(kw) + r'\b', legend_opt):
+                        for leg in fig.legend:
+                            leg.location = loc
+                        break
+
+                # Parse label(N "text") overrides — e.g. label(1 "First") label(2 "Second")
+                # Security: HTML-escape label text to prevent XSS
+                label_overrides: dict[int, str] = {}
+                for m in re.finditer(r'label\(\s*(\d+)\s+"([^"]*)"\s*\)', legend_opt):
+                    idx = int(m.group(1))
+                    text = html.escape(m.group(2))
+                    label_overrides[idx] = text
+                if label_overrides and fig.legend:
+                    items = fig.legend[0].items
+                    for n, text in label_overrides.items():
+                        item_idx = n - 1  # Stata uses 1-based indexing
+                        if 0 <= item_idx < len(items):
+                            items[item_idx].label = {"value": text}
 
         return fig
 
@@ -2899,6 +4179,7 @@ class DashRenderer:
             "dropline":   self.mapper.map_dropline,
             "tsline":     self.mapper.map_tsline,
             "mspline":    self.mapper.map_mspline,
+            "mband":      self.mapper.map_mband,
         }
         # Range plot (y1var, y2var, xvar) dispatch
         range_dispatch = {
@@ -2910,6 +4191,7 @@ class DashRenderer:
             "rconnected": self.mapper.map_rconnected,
             "rcapsym":    self.mapper.map_rcapsym,
             "tsrline":    self.mapper.map_tsrline,
+            "rscatter":   self.mapper.map_rscatter,
         }
 
         pt = plot_type.lower()
@@ -2944,7 +4226,8 @@ class DashRenderer:
         Args:
             fig:        Bokeh Figure to add the glyph to.
             source:     ColumnDataSource.
-            plot_type:  Paired-coordinate plot type name (pcspike, pcarrow, pcbarrow).
+            plot_type:  Paired-coordinate plot type name (pcspike, pcarrow, pcbarrow,
+                        pci, pcscatter).
             y1var:      Start y variable name.
             x1var:      Start x variable name.
             y2var:      End y variable name.
@@ -2952,9 +4235,11 @@ class DashRenderer:
             options:    Plot-level options dict.
         """
         pc_dispatch = {
-            "pcspike":  self.mapper.map_pcspike,
-            "pcarrow":  self.mapper.map_pcarrow,
-            "pcbarrow": self.mapper.map_pcbarrow,
+            "pcspike":   self.mapper.map_pcspike,
+            "pcarrow":   self.mapper.map_pcarrow,
+            "pcbarrow":  self.mapper.map_pcbarrow,
+            "pci":       self.mapper.map_pci,
+            "pcscatter": self.mapper.map_pcscatter,
         }
         fn = pc_dispatch.get(plot_type.lower())
         if fn is not None:
@@ -3123,9 +4408,22 @@ class DashRenderer:
                     for k in _VK if p.get(k)
                 ]
                 filtered_df = self._apply_graph_filter(g)
-                sources[name] = self._make_source(
-                    list(dict.fromkeys(g_vars)), df=filtered_df
-                )
+                by_groups = self._expand_by_groups(g, base_df=filtered_df)
+                if len(by_groups) == 1 and by_groups[0][0] == "":
+                    # No faceting — standard path
+                    sources[name] = self._make_source(
+                        list(dict.fromkeys(g_vars)), df=filtered_df
+                    )
+                else:
+                    # Faceted: one CDS per group
+                    facet_entries = []
+                    for idx, (label, group_df) in enumerate(by_groups):
+                        fkey = f"{name}__by__{idx}"
+                        sources[fkey] = self._make_source(
+                            list(dict.fromkeys(g_vars)), df=group_df
+                        )
+                        facet_entries.append((fkey, label))
+                    self._facet_map[name] = facet_entries
 
         return sources
 
@@ -3134,9 +4432,15 @@ class DashRenderer:
 
         Uses ``_setup_sources()`` to obtain ``ColumnDataSource`` objects and
         applies ``nonselection_alpha`` to renderers in linked figures.
+        For graphs with ``by()`` faceting, creates one figure per facet
+        group, keyed as ``"graphname__by__N"``.
 
         Returns:
-            Dict mapping each graph name to its fully-configured Figure.
+            Dict mapping each graph name (or facet key) to its Figure.
+
+        Raises:
+            ValueError: If ``by()`` and ``link()`` are used together (not
+                        supported in the current version).
         """
         sources = self._setup_sources()
         build = self.master_spec.get("build_options", {})
@@ -3154,30 +4458,64 @@ class DashRenderer:
         if "_all" in link_names:
             link_names = list(all_graph_names)
 
+        # Validate by() + link() incompatibility
+        for g in graphs:
+            gname = g.get("graph_options", {}).get("name", "")
+            by_raw = (g.get("graph_options", {}).get("by") or "").strip()
+            if by_raw and gname in link_names:
+                raise ValueError(
+                    f"by() and link() cannot be combined in the current "
+                    f"version (graph '{gname}')"
+                )
+
         figs: dict[str, Any] = {}
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
-            src = sources.get(name)
-            if src is None:
-                continue
-            try:
-                fig = self._make_figure(g, src)
-                # Apply nonselection dimming for linked figures
-                if name in link_names:
-                    for renderer in fig.renderers:
-                        if (hasattr(renderer, "nonselection_glyph")
-                                and renderer.nonselection_glyph is not None):
-                            ns = renderer.nonselection_glyph
-                            if hasattr(ns, "fill_alpha"):
-                                ns.fill_alpha = _NONSELECTION_ALPHA
-                            if hasattr(ns, "line_alpha"):
-                                ns.line_alpha = _NONSELECTION_ALPHA
-                figs[name] = fig
-            except Exception as exc:
-                raise RuntimeError(
-                    f"dash_render: failed to build figure '{name}': {exc}"
-                ) from exc
 
+            # Check if this graph is faceted
+            if name in self._facet_map:
+                for fkey, label in self._facet_map[name]:
+                    src = sources.get(fkey)
+                    if src is None:
+                        continue
+                    try:
+                        fig = self._make_figure(g, src)
+                        # Override title to include facet label
+                        orig_title = fig.title.text if fig.title else ""
+                        if orig_title:
+                            fig.title.text = f"{orig_title} — {label}"
+                        else:
+                            fig.title.text = label
+                        figs[fkey] = fig
+                    except Exception as exc:
+                        raise RuntimeError(
+                            f"dash_render: failed to build facet figure "
+                            f"'{fkey}': {exc}"
+                        ) from exc
+            else:
+                src = sources.get(name)
+                if src is None:
+                    continue
+                try:
+                    fig = self._make_figure(g, src)
+                    # Apply nonselection dimming for linked figures
+                    if name in link_names:
+                        for renderer in fig.renderers:
+                            if (hasattr(renderer, "nonselection_glyph")
+                                    and renderer.nonselection_glyph is not None):
+                                ns = renderer.nonselection_glyph
+                                if hasattr(ns, "fill_alpha"):
+                                    ns.fill_alpha = _NONSELECTION_ALPHA
+                                if hasattr(ns, "line_alpha"):
+                                    ns.line_alpha = _NONSELECTION_ALPHA
+                    figs[name] = fig
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"dash_render: failed to build figure '{name}': {exc}"
+                    ) from exc
+
+        # Store sources on self for test access
+        self.sources = sources
         return figs
 
     # ------------------------------------------------------------------
@@ -3217,9 +4555,30 @@ class DashRenderer:
             v = fc.get("varname")
             if v and v not in all_vars:
                 all_vars.append(v)
+        # Include by-variables so faceting can group by them
+        for g in graphs:
+            by_raw = (g.get("graph_options", {}).get("by") or "").strip()
+            if by_raw:
+                varlist, _, _, _ = DashRenderer._parse_by_raw(by_raw)
+                for bv in varlist.split():
+                    if bv and bv not in all_vars:
+                        all_vars.append(bv)
 
         # ---- 2. Build ColumnDataSources ----
         # Linked graphs share one source; unlinked get their own.
+
+        # Validate by() + link() incompatibility before building sources
+        if link_names:
+            for g in graphs:
+                gname = g.get("graph_options", {}).get("name", "")
+                if gname in link_names:
+                    by_raw_check = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw_check:
+                        raise ValueError(
+                            f"by() and link() cannot be combined in the current "
+                            f"version (graph '{gname}')"
+                        )
+
         if link_names:
             # All link_names share a single source with the union of their vars
             linked_vars: list[str] = []
@@ -3253,24 +4612,100 @@ class DashRenderer:
                           for k in _VAR_KEYS if p.get(k)]
                 self.sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
 
+        # ---- 2b. Handle by() faceting on unlinked sources ----
+        for g in graphs:
+            name = g.get("graph_options", {}).get("name", "")
+            by_raw = (g.get("graph_options", {}).get("by") or "").strip()
+            if by_raw and name not in (link_names if isinstance(link_names, list) else []):
+                # Faceted graph: use self.df for grouping (has all columns)
+                base_src = self.sources.pop(name, None)
+                if base_src is None:
+                    continue
+                src_df = self.df
+                by_groups = self._expand_by_groups(g, base_df=src_df)
+                if len(by_groups) == 1 and by_groups[0][0] == "":
+                    # No valid faceting — restore original source
+                    self.sources[name] = base_src
+                else:
+                    g_vars = list(base_src.data.keys())
+                    facet_entries = []
+                    for idx, (label, group_df) in enumerate(by_groups):
+                        fkey = f"{name}__by__{idx}"
+                        self.sources[fkey] = self._make_source(g_vars, df=group_df)
+                        facet_entries.append((fkey, label))
+                    self._facet_map[name] = facet_entries
+
         # ---- 3. Build figures ----
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
-            src  = self.sources.get(name)
-            if src is None:
-                continue
-            try:
-                self.figures[name] = self._make_figure(g, src)
-            except Exception as exc:
-                raise RuntimeError(
-                    f"dash_render: failed to build figure '{name}': {exc}"
-                ) from exc
+            if name in self._facet_map:
+                # Faceted: build one figure per facet group
+                for fkey, label in self._facet_map[name]:
+                    src = self.sources.get(fkey)
+                    if src is None:
+                        continue
+                    try:
+                        fig = self._make_figure(g, src)
+                        orig_title = fig.title.text if fig.title else ""
+                        if orig_title:
+                            fig.title.text = f"{orig_title} — {label}"
+                        else:
+                            fig.title.text = label
+                        self.figures[fkey] = fig
+                    except Exception as exc:
+                        raise RuntimeError(
+                            f"dash_render: failed to build facet figure "
+                            f"'{fkey}': {exc}"
+                        ) from exc
+            else:
+                src = self.sources.get(name)
+                if src is None:
+                    continue
+                try:
+                    self.figures[name] = self._make_figure(g, src)
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"dash_render: failed to build figure '{name}': {exc}"
+                    ) from exc
 
         # ---- 4. Build KPI Divs ----
         for kpi in kpis:
             name = kpi.get("name", "kpi")
             kpi["name"] = name  # ensure name key present in def
-            self.kpi_divs[name] = self._make_kpi_div(kpi)
+
+            update_graph = kpi.get("update", "")
+            stat = kpi.get("stat", "")
+            varname = kpi.get("var") or kpi.get("varname", "")
+
+            if update_graph and update_graph in self._facet_map and stat and varname:
+                # Per-facet KPIs: create one card per facet group, computing
+                # the statistic on each group's filtered DataFrame.
+                for idx, (fkey, facet_label) in enumerate(
+                    self._facet_map[update_graph]
+                ):
+                    facet_src = self.sources.get(fkey)
+                    facet_df = (
+                        pd.DataFrame(facet_src.data) if facet_src is not None
+                        else pd.DataFrame()
+                    )
+                    facet_kpi = dict(kpi)
+                    fkpi_name = f"{name}__by__{idx}"
+                    facet_kpi["name"] = fkpi_name
+                    orig_title = facet_kpi.get("title", "")
+                    facet_kpi["title"] = (
+                        f"{orig_title} ({facet_label})" if orig_title
+                        else facet_label
+                    )
+                    try:
+                        val = self._compute_kpi_stat_on_df(facet_df, stat, varname)
+                        facet_kpi["value"] = self._format_kpi_value(
+                            val, kpi.get("fmt", "")
+                        )
+                    except (ValueError, KeyError, TypeError):
+                        facet_kpi["value"] = "—"
+                    self.kpi_divs[fkpi_name] = self._make_kpi_div(facet_kpi)
+            else:
+                self.kpi_divs[name] = self._make_kpi_div(kpi)
 
         # ---- 5. Build filter widgets ----
         # Determine a CDSView per (figure × filter) for non-excluded graphs.
@@ -3330,17 +4765,58 @@ class DashRenderer:
             self.filter_callbacks.append(cb)
 
         # ---- 6. Assemble layout ----
-        all_names = (
-            [g.get("graph_options", {}).get("name", "") for g in graphs]
-            + list(self.kpi_divs.keys())
-        )
+        # Build the list of names, expanding faceted graphs into sub-grids
+        all_names: list[str] = []
+        for g in graphs:
+            name = g.get("graph_options", {}).get("name", "")
+            if name in self._facet_map:
+                # Add a placeholder name for the faceted group
+                all_names.append(name)
+            else:
+                all_names.append(name)
+        all_names += list(self.kpi_divs.keys())
 
         rows_n, cols_n = self._compute_grid(all_names, layout_opt)
 
         # Build grid cells: figures then KPI divs, in registration order
         cells: list[Any] = []
         for name in all_names:
-            if name in self.figures:
+            if name in self._facet_map:
+                # Build a sub-grid of facet figures
+                facet_figs = []
+                for fkey, _label in self._facet_map[name]:
+                    fig = self.figures.get(fkey)
+                    if fig is not None:
+                        facet_figs.append(fig)
+                if facet_figs:
+                    gopts = {}
+                    for g in graphs:
+                        if g.get("graph_options", {}).get("name") == name:
+                            gopts = g.get("graph_options", {})
+                            break
+                    # by_cols can come from the parsed raw string or a separate key
+                    _, by_cols_from_raw, _, _ = DashRenderer._parse_by_raw(
+                        (gopts.get("by") or "")
+                    )
+                    by_cols_key_raw = gopts.get("by_cols", "0")
+                    try:
+                        by_cols_key = int(by_cols_key_raw) if by_cols_key_raw else 0
+                    except (ValueError, TypeError):
+                        by_cols_key = 0
+                    by_cols_n = by_cols_from_raw or by_cols_key
+                    if by_cols_n <= 0:
+                        by_cols_n = min(len(facet_figs), max(1, math.ceil(math.sqrt(len(facet_figs)))))
+                    sub_rows = [
+                        facet_figs[i:i + by_cols_n]
+                        for i in range(0, len(facet_figs), by_cols_n)
+                    ]
+                    # Pad last row
+                    while len(sub_rows[-1]) < by_cols_n:
+                        sub_rows[-1].append(None)
+                    cells.append(gridplot(sub_rows, sizing_mode="stretch_width"))
+                else:
+                    cells.append(None)
+            elif name in self.figures:
                 cells.append(self.figures[name])
             elif name in self.kpi_divs:
                 cells.append(self.kpi_divs[name])
@@ -3375,8 +4851,13 @@ class DashRenderer:
         # ---- 7. Render to HTML ----
         html_str = file_html(layout_root, CDN, title=title_text or "dash")
 
-        # Inject CSP meta tag into <head>
-        html_str = html_str.replace("<head>", f"<head>\n    {_CSP_META}", 1)
+        # Inject CSP meta tag and scheme CSS into <head>
+        _scheme_css = self.scheme.css_block()
+        html_str = html_str.replace(
+            "<head>",
+            f"<head>\n    {_CSP_META}\n{_scheme_css}",
+            1,
+        )
 
         return html_str
 
@@ -3546,12 +5027,17 @@ class ServerAppBuilder:
             "from bokeh.application.handlers.function import FunctionHandler",
             "from bokeh.layouts import column, gridplot, row",
             "from bokeh.models import (",
+            "    Arrow,",
             "    BoxSelectTool,",
             "    ColumnDataSource,",
             "    Div,",
             "    HoverTool,",
+            "    LabelSet,",
             "    LassoSelectTool,",
+            "    NormalHead,",
+            "    OpenHead,",
             "    PanTool,",
+            "    Range1d,",
             "    RangeSlider,",
             "    ResetTool,",
             "    Select,",
@@ -3644,6 +5130,49 @@ class ServerAppBuilder:
             "    coeffs = np.polyfit(clean[xvar].values, clean[yvar].values, 2)",
             "    x_range = np.linspace(clean[xvar].min(), clean[xvar].max(), 100)",
             "    return dict(x=x_range.tolist(), y=np.polyval(coeffs, x_range).tolist())",
+            "",
+            "",
+            "def _compute_lfitci(df, yvar, xvar):",
+            '    """Return CI band source dict for OLS fit with 95% confidence interval."""',
+            "    from scipy import stats as _sp_stats",
+            "    clean = df[[xvar, yvar]].dropna()",
+            "    x = clean[xvar].values.astype(float)",
+            "    y = clean[yvar].values.astype(float)",
+            "    n = len(x)",
+            "    if n < 3 or float(np.std(x)) == 0.0:",
+            "        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])",
+            "    slope, intercept, _, _, se = _sp_stats.linregress(x, y)",
+            "    x_fit = np.linspace(x.min(), x.max(), 200)",
+            "    y_fit = intercept + slope * x_fit",
+            "    x_mean = x.mean()",
+            "    x_ss = float(np.sum((x - x_mean) ** 2))",
+            "    se_fit = se * np.sqrt(1/n + (x_fit - x_mean)**2 / x_ss) * np.sqrt(n - 2)",
+            "    t_crit = _sp_stats.t.ppf(0.975, df=n - 2)",
+            "    return dict(x_fit=x_fit.tolist(), y_fit=y_fit.tolist(),",
+            "                y_lower=(y_fit - t_crit*se_fit).tolist(),",
+            "                y_upper=(y_fit + t_crit*se_fit).tolist())",
+            "",
+            "",
+            "def _compute_qfitci(df, yvar, xvar):",
+            '    """Return CI band source dict for quadratic fit with 95% confidence interval."""',
+            "    from scipy import stats as _sp_stats",
+            "    clean = df[[xvar, yvar]].dropna()",
+            "    x = clean[xvar].values.astype(float)",
+            "    y = clean[yvar].values.astype(float)",
+            "    n = len(x)",
+            "    if n < 4 or float(np.std(x)) == 0.0:",
+            "        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])",
+            "    coeffs = np.polyfit(x, y, 2)",
+            "    x_fit = np.linspace(x.min(), x.max(), 200)",
+            "    y_fit = np.polyval(coeffs, x_fit)",
+            "    # Estimate residual SE for prediction interval approximation",
+            "    y_pred = np.polyval(coeffs, x)",
+            "    residuals = y - y_pred",
+            "    se_resid = float(np.std(residuals, ddof=3)) if n > 3 else 0.0",
+            "    t_crit = _sp_stats.t.ppf(0.975, df=max(1, n - 3))",
+            "    return dict(x_fit=x_fit.tolist(), y_fit=y_fit.tolist(),",
+            "                y_lower=(y_fit - t_crit*se_resid).tolist(),",
+            "                y_upper=(y_fit + t_crit*se_resid).tolist())",
             "",
             "",
             "def _compute_kdensity(df, varname):",
@@ -3776,6 +5305,25 @@ class ServerAppBuilder:
             "    # key: (gname, plot_index) → {'source': CDS, 'compute': callable}",
             "    agg_sources: dict = {}",
             "",
+            "    # ---- Color resolution helper (handles named Stata colors + hex + RGB) ----",
+            "    _SCOLOR = " + repr(dict(OptionTranslator._COLOR_MAP)),
+            "    import re as _re_clr",
+            "    def _resolve_color(c):",
+            "        if not c or not isinstance(c, str): return ''",
+            "        c = c.strip()",
+            "        if _re_clr.fullmatch(r'#[0-9a-fA-F]{6}', c): return c",
+            "        named = _SCOLOR.get(c.lower())",
+            "        if named: return named",
+            "        # RGB triplet '255 0 128'",
+            "        parts = c.split()",
+            "        if len(parts) == 3:",
+            "            try:",
+            "                r,g,b = [int(x) for x in parts]",
+            "                if all(0 <= v <= 255 for v in (r,g,b)):",
+            "                    return '#{:02x}{:02x}{:02x}'.format(r,g,b)",
+            "            except ValueError: pass",
+            "        return ''",
+            "",
             "    # ---- Build figures ----",
             "    figures: dict = {}",
             "    TOOLS = [PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()]",
@@ -3784,6 +5332,22 @@ class ServerAppBuilder:
             "        go = g.get('graph_options', {})",
             "        gname = go.get('name', '')",
             "        src = graph_sources.get(gname, shared_source)",
+            "        # ---- Per-graph if_expr / in_expr filtering ----",
+            "        g_df = df.copy()",
+            "        _g_in = (go.get('in_expr') or '').strip()",
+            "        if _g_in:",
+            "            _g_m = _re_clr.match(r'^(\\d+)/(\\d+)$', _g_in)",
+            "            if _g_m:",
+            "                _g_lo = max(0, int(_g_m.group(1)) - 1)",
+            "                _g_hi = int(_g_m.group(2))",
+            "                g_df = g_df.iloc[_g_lo:_g_hi].copy()",
+            "        _g_if = (go.get('if_expr') or '').strip()",
+            "        if _g_if:",
+            "            _g_px = _g_if.replace('~=', '!=')",
+            "            _UNSAFE_G = _re_clr.compile(r'[;`$\\\\]|import\\s|__|\beval\b|\bexec\b|\bopen\b|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b')",
+            "            if not _UNSAFE_G.search(_g_px):",
+            "                try: g_df = g_df.query(_g_px, engine='python')",
+            "                except Exception: pass",
             "",
             "        x_label = ''",
             "        y_label = ''",
@@ -3810,7 +5374,63 @@ class ServerAppBuilder:
             "        if _raw_ar:",
             "            try: _fig_kw['aspect_ratio'] = float(_raw_ar)",
             "            except (ValueError, TypeError): pass",
+            "        if go.get('xscale') == 'log':",
+            "            _fig_kw['x_axis_type'] = 'log'",
+            "        if go.get('yscale') == 'log':",
+            "            _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
+            "        # bgcolor / plotbgcolor — figure background colors",
+            "        _raw_bgc = go.get('bgcolor', '')",
+            "        if _raw_bgc:",
+            "            _bgc_resolved = _resolve_color(_raw_bgc)",
+            "            if _bgc_resolved: fig.border_fill_color = _bgc_resolved",
+            "        _raw_pbgc = go.get('plotbgcolor', '')",
+            "        if _raw_pbgc:",
+            "            _pbgc_resolved = _resolve_color(_raw_pbgc)",
+            "            if _pbgc_resolved: fig.background_fill_color = _pbgc_resolved",
+            "        # plotregion() / graphregion() — Stata-standard region styling",
+            "        def _region_color(val):",
+            "            import re as _re2",
+            "            m = _re2.search(r'\\bf?color\\s*\\(([^)]+)\\)', val, _re2.IGNORECASE)",
+            "            return m.group(1).strip() if m else ''",
+            "        def _region_lcolor(val):",
+            "            import re as _re2",
+            "            m = _re2.search(r'\\blcolor\\s*\\(([^)]+)\\)', val, _re2.IGNORECASE)",
+            "            return m.group(1).strip() if m else ''",
+            "        _raw_pr = go.get('plotregion', '')",
+            "        if _raw_pr:",
+            "            _pr_bg = _region_color(_raw_pr)",
+            "            if _pr_bg:",
+            "                _c = _resolve_color(_pr_bg)",
+            "                if _c: fig.background_fill_color = _c",
+            "            _pr_lc = _region_lcolor(_raw_pr)",
+            "            if _pr_lc:",
+            "                _c = _resolve_color(_pr_lc)",
+            "                if _c: fig.outline_line_color = _c",
+            "            import re as _re_lw",
+            "            _pr_lw_m = _re_lw.search(r'\\blwidth\\s*\\(([^)]+)\\)', _raw_pr, _re_lw.IGNORECASE)",
+            "            if _pr_lw_m:",
+            "                try: fig.outline_line_width = float(_pr_lw_m.group(1).strip())",
+            "                except (ValueError, TypeError): pass",
+            "        _raw_gr = go.get('graphregion', '')",
+            "        if _raw_gr:",
+            "            _gr_bg = _region_color(_raw_gr)",
+            "            if _gr_bg:",
+            "                _c = _resolve_color(_gr_bg)",
+            "                if _c: fig.border_fill_color = _c",
+            "        # xrange / yrange axis limits",
+            "        _raw_xr = go.get('xrange', '')",
+            "        if _raw_xr:",
+            "            _xr_parts = _raw_xr.split()",
+            "            if len(_xr_parts) >= 2:",
+            "                try: fig.x_range = Range1d(float(_xr_parts[0]), float(_xr_parts[1]))",
+            "                except (ValueError, TypeError): pass",
+            "        _raw_yr = go.get('yrange', '')",
+            "        if _raw_yr:",
+            "            _yr_parts = _raw_yr.split()",
+            "            if len(_yr_parts) >= 2:",
+            "                try: fig.y_range = Range1d(float(_yr_parts[0]), float(_yr_parts[1]))",
+            "                except (ValueError, TypeError): pass",
             "        # note / caption annotations",
             "        from bokeh.models import Label as _Label",
             "        for _ann_key in ('note', 'caption'):",
@@ -3823,14 +5443,34 @@ class ServerAppBuilder:
             "        if _sub_txt:",
             "            fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
             "                text=html.escape(_sub_txt), text_font_size='13px', text_color='#444444'), 'above')",
-            "        # legend placement",
+            "        # xline / yline reference lines",
+            "        for _refkey, _dim in (('xline', 'height'), ('yline', 'width')):",
+            "            _refraw = go.get(_refkey, '')",
+            "            if _refraw:",
+            "                for _rv in str(_refraw).split():",
+            "                    try:",
+            "                        fig.add_layout(Span(location=float(_rv),",
+            "                            dimension=_dim, line_color='#888888',",
+            "                            line_dash='dashed', line_width=1.0))",
+            "                    except (ValueError, TypeError):",
+            "                        pass",
+            "        # legend placement and label() overrides",
             "        _leg_opt = go.get('legend', '')",
             "        if _leg_opt and fig.legend:",
             "            if _leg_opt == 'off': fig.legend.visible = False",
-            "            elif _leg_opt in ('top',): fig.legend.location = 'top_center'",
-            "            elif _leg_opt in ('bottom',): fig.legend.location = 'bottom_center'",
-            "            elif _leg_opt in ('left',): fig.legend.location = 'center_left'",
-            "            elif _leg_opt in ('right',): fig.legend.location = 'center_right'",
+            "            else:",
+            "                _leg_pos_map = {'top': 'top_center', 'bottom': 'bottom_center',",
+            "                    'left': 'center_left', 'right': 'center_right', 'on': 'top_right'}",
+            "                import re as _re_leg",
+            "                for _kw, _loc in _leg_pos_map.items():",
+            "                    if _re_leg.search(r'\\b' + _kw + r'\\b', _leg_opt):",
+            "                        fig.legend.location = _loc; break",
+            "                # label(N \"text\") overrides — XSS-safe via html.escape",
+            "                for _lm in _re_leg.finditer(r'label\\(\\s*(\\d+)\\s+\"([^\"]*)\"\\s*\\)', _leg_opt):",
+            "                    _li = int(_lm.group(1)) - 1",
+            "                    _lt = html.escape(_lm.group(2))",
+            "                    if fig.legend and 0 <= _li < len(fig.legend[0].items):",
+            "                        fig.legend[0].items[_li].label = {'value': _lt}",
             "        # xlabel / ylabel custom tick values",
             "        from bokeh.models.tickers import FixedTicker as _FT",
             "        from bokeh.models.formatters import CustomJSTickFormatter as _CJSF",
@@ -3868,190 +5508,430 @@ class ServerAppBuilder:
             "",
             "            color = '#1f77b4'",
             "            if 'mcolor' in opts or 'lcolor' in opts:",
-            "                c = opts.get('mcolor', opts.get('lcolor', '#1f77b4'))",
-            "                # Basic color mapping — use as-is if hex, else default",
-            "                if c.startswith('#'): color = c",
+            "                _c = opts.get('mcolor', opts.get('lcolor', ''))",
+            "                _resolved = _resolve_color(_c)",
+            "                if _resolved: color = _resolved",
+            "            # lwidth / lpattern — common to all line-bearing plot types",
+            "            _lw_map = {'vvthin':0.4,'vthin':0.6,'thin':0.8,'medthin':1.0,",
+            "                       'medium':1.5,'medthick':2.0,'thick':2.5,'vthick':3.5,'vvthick':5.0}",
+            "            _lp_map = {'solid':[],'dash':[8,4],'dot':[2,4],'dash_dot':[8,4,2,4],",
+            "                       'shortdash':[4,4],'shortdot':[2,2],'longdash':[16,4],'blank':[0,100]}",
+            "            _line_width = _lw_map.get(opts.get('lwidth',''), 1.5)",
+            "            _lpattern = opts.get('lpattern', '')",
+            "            _line_dash = _lp_map.get(_lpattern, []) if _lpattern else []",
             "",
             "            if ptype in ('scatter',):",
-            "                clean = df[[xvar, yvar]].dropna() if xvar and yvar else df",
+            "                _sc_label_var = opts.get('mlabel', '')",
+            "                _sc_cols = [c for c in [xvar, yvar, _sc_label_var] if c and c in g_df.columns]",
+            "                clean = g_df[_sc_cols].dropna() if xvar and yvar else g_df",
             "                csrc = ColumnDataSource(clean) if xvar and yvar else src",
-            "                r = fig.scatter(x=xvar, y=yvar, source=csrc,",
-            "                               fill_color=color, line_color=color,",
-            "                               size=8, alpha=0.7,",
+            "                # --- jitter ---",
+            "                _jitter_raw = opts.get('jitter', '')",
+            "                _eff_x, _eff_y = xvar, yvar",
+            "                if _jitter_raw:",
+            "                    try:",
+            "                        _jitter_pct = float(_jitter_raw)",
+            "                    except (ValueError, TypeError):",
+            "                        _jitter_pct = 0.0",
+            "                    if _jitter_pct > 0:",
+            "                        import numpy as _jnp",
+            "                        _jseed_raw = opts.get('jseed', '')",
+            "                        _jseed = int(float(_jseed_raw)) if _jseed_raw else None",
+            "                        try: _jseed = int(float(_jseed_raw)) if _jseed_raw else None",
+            "                        except (ValueError, TypeError): _jseed = None",
+            "                        _jrng = _jnp.random.default_rng(_jseed)",
+            "                        _xa = _jnp.asarray(csrc.data[xvar], dtype=float)",
+            "                        _ya = _jnp.asarray(csrc.data[yvar], dtype=float)",
+            "                        _xr = float(_jnp.nanmax(_xa) - _jnp.nanmin(_xa)) or 1.0",
+            "                        _yr = float(_jnp.nanmax(_ya) - _jnp.nanmin(_ya)) or 1.0",
+            "                        _hw_x = min(100.0, _jitter_pct) / 100.0 * _xr / 2.0",
+            "                        _hw_y = min(100.0, _jitter_pct) / 100.0 * _yr / 2.0",
+            "                        _jdata = dict(csrc.data)",
+            "                        _jdata['_x_jit'] = (_xa + _jrng.uniform(-_hw_x, _hw_x, len(_xa))).tolist()",
+            "                        _jdata['_y_jit'] = (_ya + _jrng.uniform(-_hw_y, _hw_y, len(_ya))).tolist()",
+            "                        csrc = ColumnDataSource(_jdata)",
+            "                        _eff_x, _eff_y = '_x_jit', '_y_jit'",
+            "                _sc_fill = color",
+            "                _mfc_val = opts.get('mfcolor', '')",
+            "                if _mfc_val:",
+            "                    _mfc_resolved = _resolve_color(_mfc_val)",
+            "                    if _mfc_resolved: _sc_fill = _mfc_resolved",
+            "                _ms_map = {'circle':'circle','square':'square','triangle':'triangle',",
+            "                           'diamond':'diamond','plus':'plus','x':'x',",
+            "                           'circle_cross':'circle_cross','circle_x':'circle_x',",
+            "                           'square_cross':'square_cross','square_x':'square_x',",
+            "                           'asterisk':'asterisk','cross':'cross'}",
+            "                _sc_marker = _ms_map.get(opts.get('msymbol',''), 'circle')",
+            "                _sz_map = {'tiny':4,'vsmall':5,'small':6,'medsmall':7,'medium':8,",
+            "                           'medlarge':10,'large':12,'vlarge':16,'huge':20}",
+            "                _sc_size = _sz_map.get(opts.get('msize',''), 8)",
+            "                if opts.get('msize','').replace('.','',1).isdigit():",
+            "                    _sc_size = float(opts.get('msize','8'))",
+            "                r = fig.scatter(x=_eff_x, y=_eff_y, source=csrc,",
+            "                               fill_color=_sc_fill, line_color=color,",
+            "                               size=_sc_size, marker=_sc_marker, alpha=0.7,",
             "                               nonselection_alpha=0.15)",
             "                fig.add_tools(HoverTool(tooltips=[(yvar, f'@{yvar}'), (xvar, f'@{xvar}')]))",
+            "                # mlabel — add LabelSet annotation if option is set",
+            "                _mlab_var = opts.get('mlabel', '')",
+            "                if _mlab_var and _mlab_var in csrc.data:",
+            "                    _mlab_kw = dict(x=xvar, y=yvar, text=_mlab_var, source=csrc,",
+            "                                    text_font_size='9px', text_color='#333333',",
+            "                                    x_offset=5, y_offset=5)",
+            "                    _mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                    if _mlc: _mlab_kw['text_color'] = _mlc",
+            "                    _mls_map = {'tiny':'7px','vsmall':'8px','small':'9px','medsmall':'10px',",
+            "                                'medium':'11px','medlarge':'12px','large':'14px',",
+            "                                'vlarge':'16px','huge':'20px'}",
+            "                    _mls = _mls_map.get(opts.get('mlabsize',''), '')",
+            "                    if _mls: _mlab_kw['text_font_size'] = _mls",
+            "                    # mlabposition — clock position (0-12) → x/y offset",
+            "                    _mlabpos_map = {",
+            "                        '0':(0,10),'12':(0,10),'1':(7,7),'2':(10,0),'3':(10,-5),",
+            "                        '4':(7,-7),'5':(4,-10),'6':(0,-10),'7':(-7,-7),'8':(-10,-5),",
+            "                        '9':(-10,0),'10':(-7,7),'11':(-4,10)",
+            "                    }",
+            "                    _mlp = opts.get('mlabposition', '')",
+            "                    if _mlp in _mlabpos_map:",
+            "                        _mlabpos_x, _mlabpos_y = _mlabpos_map[_mlp]",
+            "                        _mlab_kw['x_offset'] = _mlabpos_x",
+            "                        _mlab_kw['y_offset'] = _mlabpos_y",
+            "                    fig.add_layout(LabelSet(**_mlab_kw))",
             "                graph_sources[gname] = csrc  # update to clean source",
             "",
             "            elif ptype == 'line':",
-            "                clean = df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else df",
+            "                _line_mlab = opts.get('mlabel', '')",
+            "                _line_cols = [c for c in [xvar, yvar, _line_mlab] if c and c in g_df.columns]",
+            "                clean = g_df[_line_cols].dropna().sort_values(xvar) if xvar and yvar else g_df",
             "                csrc = ColumnDataSource(clean)",
-            "                fig.line(x=xvar, y=yvar, source=csrc,",
-            "                         line_color=color, line_width=1.5)",
+            "                _line_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _line_kw['line_dash'] = _line_dash",
+            "                fig.line(x=xvar, y=yvar, source=csrc, **_line_kw)",
             "                graph_sources[gname] = csrc",
             "",
             "            elif ptype == 'lfit':",
-            "                fit_data = _compute_lfit(df, yvar, xvar)",
+            "                fit_data = _compute_lfit(g_df, yvar, xvar)",
             "                fit_src = ColumnDataSource(fit_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'source': fit_src,",
             "                    'type': 'lfit',",
             "                    'yvar': yvar, 'xvar': xvar,",
             "                }",
-            "                fig.line(x='x', y='y', source=fit_src,",
-            "                         line_color=color, line_width=2)",
+            "                _lfit_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _lfit_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x', y='y', source=fit_src, **_lfit_kw)",
             "",
             "            elif ptype == 'qfit':",
-            "                fit_data = _compute_qfit(df, yvar, xvar)",
+            "                fit_data = _compute_qfit(g_df, yvar, xvar)",
             "                fit_src = ColumnDataSource(fit_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'source': fit_src,",
             "                    'type': 'qfit',",
             "                    'yvar': yvar, 'xvar': xvar,",
             "                }",
-            "                fig.line(x='x', y='y', source=fit_src,",
-            "                         line_color=color, line_width=2)",
+            "                _qfit_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _qfit_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x', y='y', source=fit_src, **_qfit_kw)",
             "",
             "            elif ptype == 'histogram':",
             "                hvar = yvar or xvar",
             "                nbins = int(opts.get('bin', 20))",
-            "                hist_data = _compute_histogram(df, hvar, nbins)",
+            "                hist_data = _compute_histogram(g_df, hvar, nbins)",
             "                hist_src = ColumnDataSource(hist_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'source': hist_src,",
             "                    'type': 'histogram',",
             "                    'var': hvar, 'bins': nbins,",
             "                }",
+            "                _hist_fill = color",
+            "                _hfc = opts.get('fcolor', '')",
+            "                if _hfc:",
+            "                    _hfc_r = _resolve_color(_hfc)",
+            "                    if _hfc_r: _hist_fill = _hfc_r",
+            "                _hist_alpha = 0.8",
+            "                _hfi = opts.get('fintensity', '')",
+            "                if _hfi:",
+            "                    try:",
+            "                        _hv = _hfi.strip()",
+            "                        _hist_alpha = min(1.0, max(0.0, float(_hv[5:])/100.0 if _hv.startswith('inten') else float(_hv)/100.0))",
+            "                    except (ValueError, AttributeError): pass",
+            "                _hist_line = 'white'",
+            "                _hlc = opts.get('lcolor', '')",
+            "                if _hlc:",
+            "                    _hlc_r = _resolve_color(_hlc)",
+            "                    if _hlc_r: _hist_line = _hlc_r",
+            "                _hist_quad_kw = dict(fill_color=_hist_fill, line_color=_hist_line,",
+            "                                     alpha=_hist_alpha, line_width=_line_width)",
+            "                if _line_dash: _hist_quad_kw['line_dash'] = _line_dash",
             "                fig.quad(top='top', bottom=0, left='left', right='right',",
-            "                         source=hist_src,",
-            "                         fill_color=color, line_color='white', alpha=0.8)",
+            "                         source=hist_src, **_hist_quad_kw)",
             "",
             "            elif ptype == 'kdensity':",
             "                kvar = yvar or xvar",
-            "                kde_data = _compute_kdensity(df, kvar)",
+            "                kde_data = _compute_kdensity(g_df, kvar)",
             "                kde_src = ColumnDataSource(kde_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'source': kde_src,",
             "                    'type': 'kdensity',",
             "                    'var': kvar,",
             "                }",
-            "                fig.line(x='x', y='y', source=kde_src,",
-            "                         line_color=color, line_width=2)",
+            "                _kde_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _kde_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x', y='y', source=kde_src, **_kde_kw)",
             "",
             "            elif ptype == 'lowess':",
-            "                lw_data = _compute_lowess(df, yvar, xvar)",
+            "                lw_data = _compute_lowess(g_df, yvar, xvar)",
             "                lw_src = ColumnDataSource(lw_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'source': lw_src,",
             "                    'type': 'lowess',",
             "                    'yvar': yvar, 'xvar': xvar,",
             "                }",
-            "                fig.line(x='x', y='y', source=lw_src,",
-            "                         line_color=color, line_width=2)",
+            "                _lowess_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _lowess_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x', y='y', source=lw_src, **_lowess_kw)",
             "",
             "            elif ptype in ('area',):",
-            "                clean = df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else df",
+            "                clean = g_df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else g_df",
             "                asrc = ColumnDataSource(clean)",
-            "                zeros = [0.0] * len(clean)",
-            "                asrc.data['_zero'] = zeros",
+            "                _ar_base = 0.0",
+            "                try: _ar_base = float(opts.get('base', '0') or '0')",
+            "                except (ValueError, TypeError): pass",
+            "                asrc.data['_zero'] = [_ar_base] * len(clean)",
+            "                _ar_fill = color",
+            "                _afc = opts.get('fcolor', '')",
+            "                if _afc:",
+            "                    _afc_r = _resolve_color(_afc)",
+            "                    if _afc_r: _ar_fill = _afc_r",
+            "                _ar_alpha = 0.4",
+            "                _afi = opts.get('fintensity', '')",
+            "                if _afi:",
+            "                    try:",
+            "                        _av = _afi.strip()",
+            "                        _ar_alpha = min(1.0, max(0.0, float(_av[5:])/100.0 if _av.startswith('inten') else float(_av)/100.0))",
+            "                    except (ValueError, AttributeError): pass",
             "                fig.varea(x=xvar, y1='_zero', y2=yvar, source=asrc,",
-            "                          fill_color=color, alpha=0.4)",
+            "                          fill_color=_ar_fill, alpha=_ar_alpha)",
             "                graph_sources[gname] = asrc",
             "",
             "            elif ptype == 'bar':",
-            "                clean = df[[xvar, yvar]].dropna() if xvar and yvar else df",
+            "                clean = g_df[[xvar, yvar]].dropna() if xvar and yvar else g_df",
             "                bsrc = ColumnDataSource(clean)",
             "                x_arr = clean[xvar].values",
             "                width = float(np.diff(np.sort(np.unique(x_arr))).min()) * 0.8 if len(np.unique(x_arr)) > 1 else 1.0",
-            "                fig.vbar(x=xvar, top=yvar, source=bsrc,",
-            "                         width=width, fill_color=color, line_color='white')",
+            "                for _bwkey in ('barwidth', 'width'):",
+            "                    if opts.get(_bwkey):",
+            "                        try: width = float(opts[_bwkey]); break",
+            "                        except (ValueError, TypeError): pass",
+            "                _bar_bottom = 0.0",
+            "                try: _bar_bottom = float(opts.get('base', '0') or '0')",
+            "                except (ValueError, TypeError): pass",
+            "                _bar_fill = color",
+            "                _bfc_raw = opts.get('bfcolor', '') or opts.get('fcolor', '')",
+            "                if _bfc_raw:",
+            "                    _bfc_r = _resolve_color(_bfc_raw)",
+            "                    if _bfc_r: _bar_fill = _bfc_r",
+            "                _bar_line = 'white'",
+            "                _blc_raw = opts.get('blcolor', '')",
+            "                if _blc_raw:",
+            "                    _blc_r = _resolve_color(_blc_raw)",
+            "                    if _blc_r: _bar_line = _blc_r",
+            "                _bar_vbar_kw = dict(width=width, fill_color=_bar_fill,",
+            "                                   line_color=_bar_line, line_width=_line_width)",
+            "                if _line_dash: _bar_vbar_kw['line_dash'] = _line_dash",
+            "                fig.vbar(x=xvar, top=yvar, bottom=_bar_bottom, source=bsrc, **_bar_vbar_kw)",
             "                graph_sources[gname] = bsrc",
             "",
             "            elif ptype == 'spike':",
-            "                clean = df[[xvar, yvar]].dropna() if xvar and yvar else df",
+            "                clean = g_df[[xvar, yvar]].dropna() if xvar and yvar else g_df",
             "                ssrc = ColumnDataSource(clean)",
-            "                ssrc.data['_zero'] = [0.0] * len(clean)",
+            "                _sp_base = 0.0",
+            "                try: _sp_base = float(opts.get('base', '0') or '0')",
+            "                except (ValueError, TypeError): pass",
+            "                ssrc.data['_zero'] = [_sp_base] * len(clean)",
+            "                _seg_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _seg_kw['line_dash'] = _line_dash",
             "                fig.segment(x0=xvar, x1=xvar, y0='_zero', y1=yvar,",
-            "                             source=ssrc, line_color=color, line_width=1)",
+            "                             source=ssrc, **_seg_kw)",
             "                graph_sources[gname] = ssrc",
             "",
             "            elif ptype == 'connected':",
-            "                clean = df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else df",
+            "                _conn_mlab = opts.get('mlabel', '')",
+            "                _conn_cols = [c for c in [xvar, yvar, _conn_mlab] if c and c in g_df.columns]",
+            "                clean = g_df[_conn_cols].dropna().sort_values(xvar) if xvar and yvar else g_df",
             "                csrc = ColumnDataSource(clean)",
-            "                fig.line(x=xvar, y=yvar, source=csrc,",
-            "                         line_color=color, line_width=1.5)",
-            "                fig.scatter(x=xvar, y=yvar, source=csrc,",
-            "                            fill_color=color, size=8, alpha=0.7)",
+            "                _conn_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _conn_kw['line_dash'] = _line_dash",
+            "                fig.line(x=xvar, y=yvar, source=csrc, **_conn_kw)",
+            "                _conn_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                _conn_sz = _conn_ms_map.get(opts.get('msize',''), 8)",
+            "                _conn_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
+            "                _conn_sym = _conn_sym_map.get(opts.get('msymbol',''), 'circle')",
+            "                _conn_mfc = color",
+            "                _conn_mfc_raw = opts.get('mfcolor', '')",
+            "                if _conn_mfc_raw:",
+            "                    _cmfc_r = _resolve_color(_conn_mfc_raw)",
+            "                    if _cmfc_r: _conn_mfc = _cmfc_r",
+            "                fig.scatter(x=xvar, y=yvar, source=csrc, marker=_conn_sym,",
+            "                            fill_color=_conn_mfc, line_color=color, size=_conn_sz, alpha=0.7)",
             "                graph_sources[gname] = csrc",
             "",
             "            elif ptype == 'dot':",
-            "                clean = df[[xvar, yvar]].dropna() if xvar and yvar else df",
+            "                _dot_mlab = opts.get('mlabel', '')",
+            "                _dot_cols = [c for c in [xvar, yvar, _dot_mlab] if c and c in g_df.columns]",
+            "                clean = g_df[_dot_cols].dropna() if xvar and yvar else g_df",
             "                dsrc = ColumnDataSource(clean)",
-            "                fig.scatter(x=xvar, y=yvar, source=dsrc,",
-            "                            fill_color=color, size=8, alpha=0.7)",
+            "                _dot_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                _dot_sz = _dot_ms_map.get(opts.get('msize',''), 8)",
+            "                _dot_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
+            "                _dot_sym = _dot_sym_map.get(opts.get('msymbol',''), 'circle')",
+            "                _dot_mfc = color",
+            "                _dot_mfc_raw = opts.get('mfcolor', '')",
+            "                if _dot_mfc_raw:",
+            "                    _dmfc_r = _resolve_color(_dot_mfc_raw)",
+            "                    if _dmfc_r: _dot_mfc = _dmfc_r",
+            "                fig.scatter(x=xvar, y=yvar, source=dsrc, marker=_dot_sym,",
+            "                            fill_color=_dot_mfc, line_color=color, size=_dot_sz, alpha=0.7)",
             "                graph_sources[gname] = dsrc",
             "",
             "            elif ptype == 'lfitci':",
-            "                fit_data = _compute_lfit(df, yvar, xvar)",
-            "                fit_src = ColumnDataSource(fit_data)",
+            "                ci_data = _compute_lfitci(g_df, yvar, xvar)",
+            "                fit_src = ColumnDataSource(ci_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'source': fit_src,",
-            "                    'type': 'lfit',",
+            "                    'type': 'lfitci',",
             "                    'yvar': yvar, 'xvar': xvar,",
             "                }",
-            "                fig.varea(x='x', y1='y', y2='y', source=fit_src,",
-            "                          fill_color=color, alpha=0.2)",
-            "                fig.line(x='x', y='y', source=fit_src,",
-            "                         line_color=color, line_width=2)",
+            "                _lfci_fill = color",
+            "                _lfci_fc = opts.get('fcolor', '')",
+            "                if _lfci_fc:",
+            "                    _lfci_fc_r = _resolve_color(_lfci_fc)",
+            "                    if _lfci_fc_r: _lfci_fill = _lfci_fc_r",
+            "                _lfci_alpha = 0.2",
+            "                _lfci_fi = opts.get('fintensity', '')",
+            "                if _lfci_fi:",
+            "                    try:",
+            "                        _v = _lfci_fi.strip()",
+            "                        _lfci_alpha = min(1.0, max(0.0, float(_v[5:])/100.0 if _v.startswith('inten') else float(_v)/100.0))",
+            "                    except (ValueError, AttributeError): pass",
+            "                fig.varea(x='x_fit', y1='y_lower', y2='y_upper',",
+            "                          source=fit_src, fill_color=_lfci_fill, alpha=_lfci_alpha)",
+            "                _lfci_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _lfci_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x_fit', y='y_fit', source=fit_src, **_lfci_kw)",
             "",
             "            elif ptype == 'qfitci':",
-            "                fit_data = _compute_qfit(df, yvar, xvar)",
-            "                fit_src = ColumnDataSource(fit_data)",
+            "                ci_data = _compute_qfitci(g_df, yvar, xvar)",
+            "                fit_src = ColumnDataSource(ci_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'source': fit_src,",
-            "                    'type': 'qfit',",
+            "                    'type': 'qfitci',",
             "                    'yvar': yvar, 'xvar': xvar,",
             "                }",
-            "                fig.varea(x='x', y1='y', y2='y', source=fit_src,",
-            "                          fill_color=color, alpha=0.2)",
-            "                fig.line(x='x', y='y', source=fit_src,",
-            "                         line_color=color, line_width=2)",
+            "                _qfci_fill = color",
+            "                _qfci_fc = opts.get('fcolor', '')",
+            "                if _qfci_fc:",
+            "                    _qfci_fc_r = _resolve_color(_qfci_fc)",
+            "                    if _qfci_fc_r: _qfci_fill = _qfci_fc_r",
+            "                _qfci_alpha = 0.2",
+            "                _qfci_fi = opts.get('fintensity', '')",
+            "                if _qfci_fi:",
+            "                    try:",
+            "                        _v = _qfci_fi.strip()",
+            "                        _qfci_alpha = min(1.0, max(0.0, float(_v[5:])/100.0 if _v.startswith('inten') else float(_v)/100.0))",
+            "                    except (ValueError, AttributeError): pass",
+            "                fig.varea(x='x_fit', y1='y_lower', y2='y_upper',",
+            "                          source=fit_src, fill_color=_qfci_fill, alpha=_qfci_alpha)",
+            "                _qfci_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _qfci_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x_fit', y='y_fit', source=fit_src, **_qfci_kw)",
             "",
             "            elif ptype == 'rarea':",
             "                if y1var and y2var and xvar:",
-            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna()",
+            "                    _ra_mlab = opts.get('mlabel', '')",
+            "                    rcols = [c for c in [y1var, y2var, xvar, _ra_mlab] if c and c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna()",
             "                    rsrc = ColumnDataSource(rclean)",
+            "                    _ra_fill = color",
+            "                    _ra_fc = opts.get('fcolor', '')",
+            "                    if _ra_fc:",
+            "                        _ra_fc_r = _resolve_color(_ra_fc)",
+            "                        if _ra_fc_r: _ra_fill = _ra_fc_r",
+            "                    _ra_alpha = 0.4",
+            "                    _ra_fi = opts.get('fintensity', '')",
+            "                    if _ra_fi:",
+            "                        try:",
+            "                            _rav = _ra_fi.strip()",
+            "                            _ra_alpha = min(1.0, max(0.0, float(_rav[5:])/100.0 if _rav.startswith('inten') else float(_rav)/100.0))",
+            "                        except (ValueError, AttributeError): pass",
             "                    fig.varea(x=xvar, y1=y1var, y2=y2var, source=rsrc,",
-            "                              fill_color=color, alpha=0.4)",
+            "                              fill_color=_ra_fill, alpha=_ra_alpha)",
+            "                    if _ra_mlab and _ra_mlab in rsrc.data:",
+            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_ra_mlab, source=rsrc,",
+            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
+            "                                          x_offset=5, y_offset=5)",
+            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
             "                    graph_sources[gname] = rsrc",
             "",
             "            elif ptype == 'rbar':",
             "                if y1var and y2var and xvar:",
-            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna()",
+            "                    _rb_mlab = opts.get('mlabel', '')",
+            "                    rcols = [c for c in [y1var, y2var, xvar, _rb_mlab] if c and c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna()",
             "                    rsrc = ColumnDataSource(rclean)",
             "                    x_arr = rclean[xvar].values",
             "                    rw = float(np.diff(np.sort(np.unique(x_arr))).min()) * 0.8 if len(np.unique(x_arr)) > 1 else 1.0",
-            "                    fig.vbar(x=xvar, bottom=y1var, top=y2var, source=rsrc,",
-            "                             width=rw, fill_color=color, line_color='white')",
+            "                    _rb_fill = color",
+            "                    _rb_bfc = opts.get('bfcolor', '') or opts.get('fcolor', '')",
+            "                    if _rb_bfc:",
+            "                        _rb_bfc_r = _resolve_color(_rb_bfc)",
+            "                        if _rb_bfc_r: _rb_fill = _rb_bfc_r",
+            "                    _rb_line = 'white'",
+            "                    _rb_blc = opts.get('blcolor', '')",
+            "                    if _rb_blc:",
+            "                        _rb_blc_r = _resolve_color(_rb_blc)",
+            "                        if _rb_blc_r: _rb_line = _rb_blc_r",
+            "                    _rbar_kw = dict(width=rw, fill_color=_rb_fill,",
+            "                                   line_color=_rb_line, line_width=_line_width)",
+            "                    if _line_dash: _rbar_kw['line_dash'] = _line_dash",
+            "                    fig.vbar(x=xvar, bottom=y1var, top=y2var, source=rsrc, **_rbar_kw)",
+            "                    if _rb_mlab and _rb_mlab in rsrc.data:",
+            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_rb_mlab, source=rsrc,",
+            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
+            "                                          x_offset=5, y_offset=5)",
+            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
             "                    graph_sources[gname] = rsrc",
             "",
             "            elif ptype == 'rspike':",
             "                if y1var and y2var and xvar:",
-            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna()",
+            "                    _rsp_mlab = opts.get('mlabel', '')",
+            "                    rcols = [c for c in [y1var, y2var, xvar, _rsp_mlab] if c and c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna()",
             "                    rsrc = ColumnDataSource(rclean)",
+            "                    _rsp_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _rsp_kw['line_dash'] = _line_dash",
             "                    fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var,",
-            "                                source=rsrc, line_color=color, line_width=1.5)",
+            "                                source=rsrc, **_rsp_kw)",
+            "                    if _rsp_mlab and _rsp_mlab in rsrc.data:",
+            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_rsp_mlab, source=rsrc,",
+            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
+            "                                          x_offset=5, y_offset=5)",
+            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
             "                    graph_sources[gname] = rsrc",
             "",
             "            elif ptype == 'rcap':",
             "                if y1var and y2var and xvar:",
-            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna()",
+            "                    _rcap_mlab = opts.get('mlabel', '')",
+            "                    rcols = [c for c in [y1var, y2var, xvar, _rcap_mlab] if c and c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna()",
             "                    rsrc = ColumnDataSource(rclean)",
+            "                    _rcap_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _rcap_kw['line_dash'] = _line_dash",
             "                    fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var,",
-            "                                source=rsrc, line_color=color, line_width=1.5)",
+            "                                source=rsrc, **_rcap_kw)",
             "                    # Horizontal caps",
             "                    x_arr = rclean[xvar].values",
             "                    cap_hw = float(np.diff(np.sort(np.unique(x_arr))).min()) * 0.2 if len(np.unique(x_arr)) > 1 else 0.2",
@@ -4061,55 +5941,99 @@ class ServerAppBuilder:
             "                    )",
             "                    cap_src = ColumnDataSource(cap_data)",
             "                    fig.segment(x0='x0_c', y0='yb', x1='x1_c', y1='yb',",
-            "                                source=cap_src, line_color=color, line_width=1.5)",
+            "                                source=cap_src, **_rcap_kw)",
             "                    fig.segment(x0='x0_c', y0='yt', x1='x1_c', y1='yt',",
-            "                                source=cap_src, line_color=color, line_width=1.5)",
+            "                                source=cap_src, **_rcap_kw)",
+            "                    if _rcap_mlab and _rcap_mlab in rsrc.data:",
+            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_rcap_mlab, source=rsrc,",
+            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
+            "                                          x_offset=5, y_offset=5)",
+            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
             "                    graph_sources[gname] = rsrc",
             "",
             "            elif ptype == 'rline':",
             "                if y1var and y2var and xvar:",
-            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna().sort_values(xvar)",
+            "                    _rl_mlab = opts.get('mlabel', '')",
+            "                    rcols = [c for c in [y1var, y2var, xvar, _rl_mlab] if c and c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna().sort_values(xvar)",
             "                    rsrc = ColumnDataSource(rclean)",
-            "                    fig.line(x=xvar, y=y1var, source=rsrc,",
-            "                             line_color=color, line_width=1.5)",
-            "                    fig.line(x=xvar, y=y2var, source=rsrc,",
-            "                             line_color=color, line_width=1.5, line_dash='dashed')",
+            "                    _rl_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _rl_kw['line_dash'] = _line_dash",
+            "                    fig.line(x=xvar, y=y1var, source=rsrc, **_rl_kw)",
+            "                    _rl2_kw = dict(line_color=color, line_width=_line_width, line_dash='dashed')",
+            "                    if _line_dash: _rl2_kw['line_dash'] = _line_dash",
+            "                    fig.line(x=xvar, y=y2var, source=rsrc, **_rl2_kw)",
+            "                    if _rl_mlab and _rl_mlab in rsrc.data:",
+            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_rl_mlab, source=rsrc,",
+            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
+            "                                          x_offset=5, y_offset=5)",
+            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
             "                    graph_sources[gname] = rsrc",
             "",
             "            elif ptype == 'rconnected':",
             "                if y1var and y2var and xvar:",
-            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna().sort_values(xvar)",
+            "                    _rconn_mlab = opts.get('mlabel', '')",
+            "                    rcols = [c for c in [y1var, y2var, xvar, _rconn_mlab] if c and c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna().sort_values(xvar)",
             "                    rsrc = ColumnDataSource(rclean)",
-            "                    fig.line(x=xvar, y=y1var, source=rsrc,",
-            "                             line_color=color, line_width=1.5)",
-            "                    fig.scatter(x=xvar, y=y1var, source=rsrc,",
-            "                                fill_color=color, size=6)",
-            "                    fig.line(x=xvar, y=y2var, source=rsrc,",
-            "                             line_color=color, line_width=1.5, line_dash='dashed')",
-            "                    fig.scatter(x=xvar, y=y2var, source=rsrc,",
-            "                                fill_color=color, size=6)",
+            "                    _rc1_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _rc1_kw['line_dash'] = _line_dash",
+            "                    fig.line(x=xvar, y=y1var, source=rsrc, **_rc1_kw)",
+            "                    _rc_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _rc_sz = _rc_ms_map.get(opts.get('msize',''), 6)",
+            "                    _rc_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
+            "                    _rc_sym = _rc_sym_map.get(opts.get('msymbol',''), 'circle')",
+            "                    _rc_mfc = color",
+            "                    _rc_mfc_raw = opts.get('mfcolor', '')",
+            "                    if _rc_mfc_raw:",
+            "                        _rc_mfc_r = _resolve_color(_rc_mfc_raw)",
+            "                        if _rc_mfc_r: _rc_mfc = _rc_mfc_r",
+            "                    fig.scatter(x=xvar, y=y1var, source=rsrc, marker=_rc_sym,",
+            "                                fill_color=_rc_mfc, line_color=color, size=_rc_sz)",
+            "                    _rc2_kw = dict(line_color=color, line_width=_line_width, line_dash='dashed')",
+            "                    if _line_dash: _rc2_kw['line_dash'] = _line_dash",
+            "                    fig.line(x=xvar, y=y2var, source=rsrc, **_rc2_kw)",
+            "                    fig.scatter(x=xvar, y=y2var, source=rsrc, marker=_rc_sym,",
+            "                                fill_color=_rc_mfc, line_color=color, size=_rc_sz)",
+            "                    if _rconn_mlab and _rconn_mlab in rsrc.data:",
+            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_rconn_mlab, source=rsrc,",
+            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
+            "                                          x_offset=5, y_offset=5)",
+            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
             "                    graph_sources[gname] = rsrc",
             "",
             "            elif ptype == 'dropline':",
             "                if yvar and xvar:",
-            "                    clean = df[[xvar, yvar]].dropna()",
+            "                    _dl_mlab = opts.get('mlabel', '')",
+            "                    _dl_cols = [c for c in [xvar, yvar, _dl_mlab] if c and c in g_df.columns]",
+            "                    clean = g_df[_dl_cols].dropna()",
             "                    dsrc = ColumnDataSource({",
             "                        'x': clean[xvar].values,",
             "                        'y': clean[yvar].values,",
             "                        'y0': np.zeros(len(clean)),",
             "                    })",
+            "                    if _dl_mlab and _dl_mlab in clean.columns:",
+            "                        dsrc.data[_dl_mlab] = clean[_dl_mlab].values",
+            "                    _dl_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _dl_kw['line_dash'] = _line_dash",
             "                    fig.segment(x0='x', y0='y0', x1='x', y1='y',",
-            "                                source=dsrc, line_color=color, line_width=1.5)",
-            "                    fig.scatter(x='x', y='y', source=dsrc,",
-            "                                fill_color=color, line_color=color, size=8)",
+            "                                source=dsrc, **_dl_kw)",
+            "                    _dl_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _dl_sz = _dl_ms_map.get(opts.get('msize',''), 8)",
+            "                    _dl_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
+            "                    _dl_sym = _dl_sym_map.get(opts.get('msymbol',''), 'circle')",
+            "                    fig.scatter(x='x', y='y', source=dsrc, marker=_dl_sym,",
+            "                                fill_color=color, line_color=color, size=_dl_sz)",
             "                    graph_sources[gname] = dsrc",
             "",
             "            elif ptype == 'rcapsym':",
             "                if y1var and y2var and xvar:",
-            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna()",
+            "                    _rcsym_mlab = opts.get('mlabel', '')",
+            "                    rcols = [c for c in [y1var, y2var, xvar, _rcsym_mlab] if c and c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna()",
             "                    x_arr = rclean[xvar].values",
             "                    uniq_x = np.unique(x_arr)",
             "                    cap_hw = float(np.diff(np.sort(uniq_x)).min()) * 0.2 if len(uniq_x) > 1 else 0.2",
@@ -4118,17 +6042,36 @@ class ServerAppBuilder:
             "                        y1=rclean[y1var].values, y2=rclean[y2var].values,",
             "                        x0_c=x_arr - cap_hw, x1_c=x_arr + cap_hw,",
             "                    )",
+            "                    if _rcsym_mlab and _rcsym_mlab in rclean.columns:",
+            "                        cap_data[_rcsym_mlab] = rclean[_rcsym_mlab].values",
             "                    csrc = ColumnDataSource(cap_data)",
+            "                    _rcs_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _rcs_kw['line_dash'] = _line_dash",
             "                    fig.segment(x0='x', y0='y1', x1='x', y1='y2',",
-            "                                source=csrc, line_color=color, line_width=1.5)",
+            "                                source=csrc, **_rcs_kw)",
             "                    fig.segment(x0='x0_c', y0='y1', x1='x1_c', y1='y1',",
-            "                                source=csrc, line_color=color, line_width=1.5)",
+            "                                source=csrc, **_rcs_kw)",
             "                    fig.segment(x0='x0_c', y0='y2', x1='x1_c', y1='y2',",
-            "                                source=csrc, line_color=color, line_width=1.5)",
-            "                    fig.scatter(x='x', y='y1', source=csrc,",
-            "                                fill_color=color, size=7)",
-            "                    fig.scatter(x='x', y='y2', source=csrc,",
-            "                                fill_color=color, size=7)",
+            "                                source=csrc, **_rcs_kw)",
+            "                    _rcsym_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _rcsym_sz = _rcsym_ms_map.get(opts.get('msize',''), 7)",
+            "                    _rcsym_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
+            "                    _rcsym_sym = _rcsym_sym_map.get(opts.get('msymbol',''), 'circle')",
+            "                    _rcsym_mfc = color",
+            "                    _rcsym_mfc_raw = opts.get('mfcolor', '')",
+            "                    if _rcsym_mfc_raw:",
+            "                        _rcsym_mfc_r = _resolve_color(_rcsym_mfc_raw)",
+            "                        if _rcsym_mfc_r: _rcsym_mfc = _rcsym_mfc_r",
+            "                    fig.scatter(x='x', y='y1', source=csrc, marker=_rcsym_sym,",
+            "                                fill_color=_rcsym_mfc, line_color=color, size=_rcsym_sz)",
+            "                    fig.scatter(x='x', y='y2', source=csrc, marker=_rcsym_sym,",
+            "                                fill_color=_rcsym_mfc, line_color=color, size=_rcsym_sz)",
+            "                    if _rcsym_mlab and _rcsym_mlab in csrc.data:",
+            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
+            "                        _r_mlab_kw = dict(x='x', y='y2', text=_rcsym_mlab, source=csrc,",
+            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
+            "                                          x_offset=5, y_offset=5)",
+            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
             "                    graph_sources[gname] = csrc",
             "",
             "            elif ptype == 'scatteri':",
@@ -4137,57 +6080,153 @@ class ServerAppBuilder:
             "                    si_y = [float(p[0]) for p in vals]",
             "                    si_x = [float(p[1]) for p in vals]",
             "                    si_src = ColumnDataSource({'x': si_x, 'y': si_y})",
-            "                    fig.scatter(x='x', y='y', source=si_src,",
-            "                                fill_color=color, size=8)",
+            "                    _si_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _si_sz = _si_ms_map.get(opts.get('msize',''), 8)",
+            "                    _si_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
+            "                    _si_sym = _si_sym_map.get(opts.get('msymbol',''), 'circle')",
+            "                    _si_mfc = color",
+            "                    _si_mfc_raw = opts.get('mfcolor', '')",
+            "                    if _si_mfc_raw:",
+            "                        _si_mfc_r = _resolve_color(_si_mfc_raw)",
+            "                        if _si_mfc_r: _si_mfc = _si_mfc_r",
+            "                    fig.scatter(x='x', y='y', source=si_src, marker=_si_sym,",
+            "                                fill_color=_si_mfc, line_color=color, size=_si_sz)",
             "",
-            "            elif ptype in ('pcspike', 'pcarrow', 'pcbarrow'):",
+            "            elif ptype == 'pcspike':",
             "                pc_y1 = plot.get('y1var', '')",
             "                pc_x1 = plot.get('x1var', '')",
             "                pc_y2 = plot.get('y2var', '')",
             "                pc_x2 = plot.get('x2var', '')",
             "                if pc_y1 and pc_x1 and pc_y2 and pc_x2:",
-            "                    cols = [c for c in [pc_y1, pc_x1, pc_y2, pc_x2] if c in df.columns]",
+            "                    cols = [c for c in [pc_y1, pc_x1, pc_y2, pc_x2] if c in g_df.columns]",
             "                    if len(cols) == 4:",
-            "                        pclean = df[cols].dropna()",
+            "                        pclean = g_df[cols].dropna()",
             "                        pcsrc = ColumnDataSource(pclean)",
+            "                        _pcs_kw = dict(line_color=color, line_width=_line_width)",
+            "                        if _line_dash: _pcs_kw['line_dash'] = _line_dash",
             "                        fig.segment(x0=pc_x1, y0=pc_y1, x1=pc_x2, y1=pc_y2,",
-            "                                    source=pcsrc, line_color=color, line_width=1.5)",
+            "                                    source=pcsrc, **_pcs_kw)",
+            "                        graph_sources[gname] = pcsrc",
+            "",
+            "            elif ptype in ('pcarrow', 'pcbarrow'):",
+            "                pc_y1 = plot.get('y1var', '')",
+            "                pc_x1 = plot.get('x1var', '')",
+            "                pc_y2 = plot.get('y2var', '')",
+            "                pc_x2 = plot.get('x2var', '')",
+            "                if pc_y1 and pc_x1 and pc_y2 and pc_x2:",
+            "                    cols = [c for c in [pc_y1, pc_x1, pc_y2, pc_x2] if c in g_df.columns]",
+            "                    if len(cols) == 4:",
+            "                        pclean = g_df[cols].dropna()",
+            "                        pcsrc = ColumnDataSource(pclean)",
+            "                        _pca_kw = dict(line_color=color, line_width=_line_width)",
+            "                        if _line_dash: _pca_kw['line_dash'] = _line_dash",
+            "                        seg = fig.segment(x0=pc_x1, y0=pc_y1, x1=pc_x2, y1=pc_y2,",
+            "                                    source=pcsrc, **_pca_kw)",
+            "                        for _, _row in pclean.iterrows():",
+            "                            _head_cls = NormalHead if ptype == 'pcbarrow' else OpenHead",
+            "                            _arrow_kw = dict(end=_head_cls(size=10, line_color=color),",
+            "                                x_start=float(_row[pc_x1]), y_start=float(_row[pc_y1]),",
+            "                                x_end=float(_row[pc_x2]), y_end=float(_row[pc_y2]),",
+            "                                line_color=color, line_width=_line_width)",
+            "                            if ptype == 'pcbarrow':",
+            "                                _arrow_kw['start'] = NormalHead(size=10, line_color=color)",
+            "                            fig.add_layout(Arrow(**_arrow_kw))",
             "                        graph_sources[gname] = pcsrc",
             "",
             "            elif ptype == 'tsline':",
-            "                clean = df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else df",
+            "                _ts_mlab = opts.get('mlabel', '')",
+            "                _ts_cols = [c for c in [xvar, yvar, _ts_mlab] if c and c in g_df.columns]",
+            "                clean = g_df[_ts_cols].dropna().sort_values(xvar) if xvar and yvar else g_df",
             "                csrc = ColumnDataSource(clean)",
-            "                fig.line(x=xvar, y=yvar, source=csrc,",
-            "                         line_color=color, line_width=1.5)",
+            "                _ts_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _ts_kw['line_dash'] = _line_dash",
+            "                fig.line(x=xvar, y=yvar, source=csrc, **_ts_kw)",
             "                graph_sources[gname] = csrc",
             "",
             "            elif ptype == 'tsrline':",
             "                ts_y1 = plot.get('yvar1', '')",
             "                ts_y2 = plot.get('yvar2', '')",
             "                if ts_y1 and ts_y2 and xvar:",
-            "                    rcols = [c for c in [ts_y1, ts_y2, xvar] if c in df.columns]",
-            "                    rclean = df[rcols].dropna().sort_values(xvar)",
+            "                    rcols = [c for c in [ts_y1, ts_y2, xvar] if c in g_df.columns]",
+            "                    rclean = g_df[rcols].dropna().sort_values(xvar)",
             "                    rsrc = ColumnDataSource(rclean)",
-            "                    fig.line(x=xvar, y=ts_y1, source=rsrc,",
-            "                             line_color=color, line_width=1.5)",
-            "                    fig.line(x=xvar, y=ts_y2, source=rsrc,",
-            "                             line_color=color, line_width=1.5, line_dash='dashed')",
+            "                    _tsr1_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _tsr1_kw['line_dash'] = _line_dash",
+            "                    fig.line(x=xvar, y=ts_y1, source=rsrc, **_tsr1_kw)",
+            "                    _tsr2_kw = dict(line_color=color, line_width=_line_width, line_dash='dashed')",
+            "                    if _line_dash: _tsr2_kw['line_dash'] = _line_dash",
+            "                    fig.line(x=xvar, y=ts_y2, source=rsrc, **_tsr2_kw)",
             "                    graph_sources[gname] = rsrc",
             "",
             "            elif ptype == 'mspline':",
             "                if xvar and yvar:",
             "                    try:",
             "                        from scipy.interpolate import PchipInterpolator",
-            "                        mclean = df[[xvar, yvar]].dropna().sort_values(xvar)",
+            "                        mclean = g_df[[xvar, yvar]].dropna().sort_values(xvar)",
             "                        if len(mclean) >= 2:",
             "                            interp = PchipInterpolator(mclean[xvar].values, mclean[yvar].values)",
             "                            x_grid = np.linspace(mclean[xvar].min(), mclean[xvar].max(), 200)",
             "                            y_grid = interp(x_grid)",
-            "                            ms_src = ColumnDataSource({'x_ms': x_grid.tolist(), 'y_ms': y_grid.tolist()})",
-            "                            fig.line(x='x_ms', y='y_ms', source=ms_src,",
-            "                                     line_color=color, line_width=2.0)",
+            "                            ms_src = ColumnDataSource({'x_sp': x_grid.tolist(), 'y_sp': y_grid.tolist()})",
+            "                            _ms_kw = dict(line_color=color, line_width=_line_width)",
+            "                            if _line_dash: _ms_kw['line_dash'] = _line_dash",
+            "                            fig.line(x='x_sp', y='y_sp', source=ms_src, **_ms_kw)",
             "                    except Exception:",
             "                        pass",
+            "",
+            "            elif ptype == 'mband':",
+            "                if xvar and yvar:",
+            "                    try:",
+            "                        mb_clean = g_df[[xvar, yvar]].dropna()",
+            "                        if len(mb_clean) >= 4:",
+            "                            _mb_x = mb_clean[xvar].values",
+            "                            _mb_y = mb_clean[yvar].values",
+            "                            _n_bands = int(np.clip(int(np.ceil(len(_mb_x) / 5)), 2, 20))",
+            "                            _x_edges = np.linspace(_mb_x.min(), _mb_x.max(), _n_bands + 1)",
+            "                            _mb_xmids, _mb_ymeds = [], []",
+            "                            for _bi in range(_n_bands):",
+            "                                _sel = (_mb_x >= _x_edges[_bi]) & ((_mb_x < _x_edges[_bi+1]) if _bi < _n_bands-1 else (_mb_x <= _x_edges[_bi+1]))",
+            "                                if _sel.sum() > 0:",
+            "                                    _mb_xmids.append(float(0.5*(_x_edges[_bi]+_x_edges[_bi+1])))",
+            "                                    _mb_ymeds.append(float(np.median(_mb_y[_sel])))",
+            "                            if _mb_xmids:",
+            "                                _mb_src = ColumnDataSource({'x_mb': _mb_xmids, 'y_mb': _mb_ymeds})",
+            "                                _mb_kw = dict(line_color=color, line_width=_line_width)",
+            "                                if _line_dash: _mb_kw['line_dash'] = _line_dash",
+            "                                fig.line(x='x_mb', y='y_mb', source=_mb_src, **_mb_kw)",
+            "                    except Exception:",
+            "                        pass",
+            "",
+            "            elif ptype == 'rscatter':",
+            "                y1v = plot.get('yvar', '') or plot.get('y1var', '')",
+            "                y2v = plot.get('y2var', '')",
+            "                xv  = plot.get('xvar', '')",
+            "                if y1v and y2v and xv and y1v in g_df.columns and y2v in g_df.columns and xv in g_df.columns:",
+            "                    _rs_x = np.concatenate([g_df[xv].values, g_df[xv].values])",
+            "                    _rs_y = np.concatenate([g_df[y1v].values, g_df[y2v].values])",
+            "                    _rs_mask = ~(np.isnan(_rs_x) | np.isnan(_rs_y))",
+            "                    _rs_src = ColumnDataSource({'x': _rs_x[_rs_mask].tolist(), 'y': _rs_y[_rs_mask].tolist()})",
+            "                    fig.scatter('x', 'y', source=_rs_src, size=6, color=color, legend_label=y1v)",
+            "",
+            "            elif ptype in ('pci', 'pcscatter'):",
+            "                y1v = plot.get('y1var', '')",
+            "                x1v = plot.get('x1var', '')",
+            "                y2v = plot.get('y2var', '')",
+            "                x2v = plot.get('x2var', '')",
+            "                if y1v and x1v and y2v and x2v:",
+            "                    _cols = [c for c in [y1v, x1v, y2v, x2v] if c in g_df.columns]",
+            "                    if len(_cols) == 4:",
+            "                        _pc_clean = g_df[_cols].dropna()",
+            "                        if ptype == 'pci':",
+            "                            _pc_src = ColumnDataSource({y1v: _pc_clean[y1v].tolist(), x1v: _pc_clean[x1v].tolist(), y2v: _pc_clean[y2v].tolist(), x2v: _pc_clean[x2v].tolist()})",
+            "                            _pc_kw = dict(line_color=color, line_width=_line_width)",
+            "                            if _line_dash: _pc_kw['line_dash'] = _line_dash",
+            "                            fig.segment(x0=x1v, y0=y1v, x1=x2v, y1=y2v, source=_pc_src, **_pc_kw)",
+            "                        else:  # pcscatter",
+            "                            _sc_x = np.concatenate([_pc_clean[x1v].values, _pc_clean[x2v].values])",
+            "                            _sc_y = np.concatenate([_pc_clean[y1v].values, _pc_clean[y2v].values])",
+            "                            _sc_src = ColumnDataSource({'x': _sc_x.tolist(), 'y': _sc_y.tolist()})",
+            "                            fig.scatter('x', 'y', source=_sc_src, size=6, color=color, legend_label=y1v)",
             "",
             "            elif ptype == 'function':",
             "                import ast as _ast",
@@ -4229,12 +6268,236 @@ class ServerAppBuilder:
             "                           'sqrt': np.sqrt, 'abs': np.abs, 'floor': np.floor, 'ceil': np.ceil}",
             "                    _y = eval(_code, {'__builtins__': {}}, _ns)",
             "                    fn_src = ColumnDataSource({'x_fn': _x.tolist(), 'y_fn': np.asarray(_y, dtype=float).tolist()})",
-            "                    fig.line(x='x_fn', y='y_fn', source=fn_src,",
-            "                             line_color=color, line_width=2.0)",
+            "                    _fn_kw = dict(line_color=color, line_width=_line_width)",
+            "                    if _line_dash: _fn_kw['line_dash'] = _line_dash",
+            "                    fig.line(x='x_fn', y='y_fn', source=fn_src, **_fn_kw)",
             "                except Exception:",
             "                    pass",
             "",
+            "            # ---- Common mlabel block (applies to all point/line plot types) ----",
+            "            # Runs after each plot type's glyph is rendered",
+            "            _mlab_var = opts.get('mlabel', '')",
+            "            if (_mlab_var and xvar and yvar",
+            "                    and ptype not in ('scatter',)",
+            "                    and ptype not in ('histogram','hist','kdensity','lfit','qfit',",
+            "                                      'lfitci','qfitci','lowess','mspline','function',",
+            "                                      'rarea','rbar','rspike','rcap','rline','rconnected',",
+            "                                      'rcapsym','scatteri','pcspike','pcarrow','pcbarrow',",
+            "                                      'tsrline')):",
+            "                _cur_src = graph_sources.get(gname)",
+            "                if _cur_src and _mlab_var in _cur_src.data:",
+            "                    _mlab_kw2 = dict(x=xvar, y=yvar, text=_mlab_var, source=_cur_src,",
+            "                                     text_font_size='9px', text_color='#333333',",
+            "                                     x_offset=5, y_offset=5)",
+            "                    _mlc2 = _resolve_color(opts.get('mlabcolor', ''))",
+            "                    if _mlc2: _mlab_kw2['text_color'] = _mlc2",
+            "                    _mls_map2 = {'tiny':'7px','vsmall':'8px','small':'9px','medsmall':'10px',",
+            "                                 'medium':'11px','medlarge':'12px','large':'14px',",
+            "                                 'vlarge':'16px','huge':'20px'}",
+            "                    _mls2 = _mls_map2.get(opts.get('mlabsize',''), '')",
+            "                    if _mls2: _mlab_kw2['text_font_size'] = _mls2",
+            "                    _mlabpos_map2 = {",
+            "                        '0':(0,10),'12':(0,10),'1':(7,7),'2':(10,0),'3':(10,-5),",
+            "                        '4':(7,-7),'5':(4,-10),'6':(0,-10),'7':(-7,-7),'8':(-10,-5),",
+            "                        '9':(-10,0),'10':(-7,7),'11':(-4,10)",
+            "                    }",
+            "                    _mlp2 = opts.get('mlabposition', '')",
+            "                    if _mlp2 in _mlabpos_map2:",
+            "                        _xoff2, _yoff2 = _mlabpos_map2[_mlp2]",
+            "                        _mlab_kw2['x_offset'] = _xoff2",
+            "                        _mlab_kw2['y_offset'] = _yoff2",
+            "                    fig.add_layout(LabelSet(**_mlab_kw2))",
+            "",
             "        figures[gname] = fig",
+            "",
+            "    # ---- by() faceting: split figures into per-group panels ----",
+            "    _facet_map = {}  # gname → [(facet_key, label)]",
+            "    _facet_group_vals = {}  # facet_key → (by_vars, raw_group_key)",
+            "    _UNSAFE_BY = _re_clr.compile(",
+            "        r'[;`$\\\\]|import\\s|__|\beval\b|\bexec\b|\bopen\b'",
+            "        r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'",
+            "    )",
+            "    for g in graphs:",
+            "        go = g.get('graph_options', {})",
+            "        gname = go.get('name', '')",
+            "        by_raw = (go.get('by') or '').strip()",
+            "        if not by_raw or _UNSAFE_BY.search(by_raw):",
+            "            continue",
+            "        # Parse varlist + suboptions from the raw by() string",
+            "        _by_comma = by_raw.split(',', 1)",
+            "        _by_varlist = _by_comma[0].strip()",
+            "        _by_subopts = _by_comma[1].strip() if len(_by_comma) > 1 else ''",
+            "        by_vars = [v for v in _by_varlist.split() if v in df.columns]",
+            "        if not by_vars:",
+            "            continue",
+            "        import re as _re_by",
+            "        _cols_m = _re_by.search(r'cols?\\((\\d+)\\)', _by_subopts, _re_by.IGNORECASE)",
+            "        by_total = (bool(_re_by.search(r'\\btotal\\b', _by_subopts, _re_by.IGNORECASE))",
+            "                    or go.get('by_total', '0') == '1')",
+            "        by_missing = (bool(_re_by.search(r'\\bmissing\\b', _by_subopts, _re_by.IGNORECASE))",
+            "                      or go.get('by_missing', '0') == '1')",
+            "        work_df = df.copy()",
+            "        if not by_missing:",
+            "            work_df = work_df.dropna(subset=by_vars)",
+            "        if work_df.empty:",
+            "            continue",
+            "        groupby_key = by_vars[0] if len(by_vars) == 1 else by_vars",
+            "        facet_entries = []",
+            "        # Remove the unfaceted figure",
+            "        orig_fig = figures.pop(gname, None)",
+            "        orig_src = graph_sources.pop(gname, None)",
+            "        for _fac_idx, (_fac_key, _fac_gdf) in enumerate(",
+            "            work_df.groupby(groupby_key, sort=True, dropna=False)",
+            "        ):",
+            "            _fac_vals = (_fac_key,) if len(by_vars) == 1 else _fac_key",
+            "            if not by_missing and any(pd.isna(v) for v in _fac_vals):",
+            "                continue",
+            "            # Build facet label using value labels",
+            "            _fac_parts = []",
+            "            for _bv, _bval in zip(by_vars, _fac_vals):",
+            "                if pd.isna(_bval):",
+            "                    _fac_parts.append('Missing')",
+            "                    continue",
+            "                _lset = val_label_names.get(_bv, '')",
+            "                _vl = val_labels.get(_lset, {})",
+            "                _sv = str(_bval)",
+            "                _iv = str(int(_bval)) if isinstance(_bval, float) and _bval == int(_bval) else _sv",
+            "                _fac_parts.append(html.escape(_vl.get(_sv) or _vl.get(_iv) or _sv))",
+            "            _fac_label = ' / '.join(_fac_parts)",
+            "            _fac_name = f'{gname}__by__{_fac_idx}'",
+            "            # Build CDS for this facet",
+            "            _fac_gvars = []",
+            "            for p in g.get('plots', []):",
+            "                for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
+            "                    v = p.get(k, '')",
+            "                    if v and v in _fac_gdf.columns and v not in _fac_gvars:",
+            "                        _fac_gvars.append(v)",
+            "            graph_sources[_fac_name] = ColumnDataSource(",
+            "                {v: _fac_gdf[v].tolist() for v in _fac_gvars}",
+            "            ) if _fac_gvars else ColumnDataSource({})",
+            "            # Clone the figure for this facet (rebuild from spec)",
+            "            _fac_title = html.escape(go.get('title', '') or '')",
+            "            if _fac_title:",
+            "                _fac_title = f'{_fac_title} \\u2014 {_fac_label}'",
+            "            else:",
+            "                _fac_title = _fac_label",
+            "            _fac_kw = dict(",
+            "                title=_fac_title,",
+            "                x_axis_label=var_labels.get(",
+            "                    g.get('plots', [{}])[0].get('xvar', ''), ''),",
+            "                y_axis_label=var_labels.get(",
+            "                    g.get('plots', [{}])[0].get('yvar', '') or g.get('plots', [{}])[0].get('var', ''), ''),",
+            "                tools=[PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()],",
+            "                sizing_mode='stretch_width',",
+            "                output_backend='webgl' if len(df) > 10000 else 'canvas',",
+            "            )",
+            "            _fac_fig = bokeh_figure(**_fac_kw)",
+            "            # Render plots on facet figure using facet CDS",
+            "            _fac_src = graph_sources[_fac_name]",
+            "            for pi, plot in enumerate(g.get('plots', [])):",
+            "                ptype = plot.get('type', '').lower()",
+            "                opts = plot.get('options', {})",
+            "                yvar_f = plot.get('yvar', '') or plot.get('var', '')",
+            "                xvar_f = plot.get('xvar', '')",
+            "                color = _resolve_color(opts.get('lcolor') or opts.get('mcolor', '')) or '#1f77b4'",
+            "                if ptype == 'scatter':",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f)",
+            "                elif ptype == 'line':",
+            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f)",
+            "                elif ptype in ('bar',):",
+            "                    _fac_fig.vbar(x=xvar_f, top=yvar_f, source=_fac_src, width=0.8, color=color, legend_label=yvar_f)",
+            "                elif ptype == 'area':",
+            "                    _fac_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_fac_src, fill_color=color, fill_alpha=0.4, legend_label=yvar_f)",
+            "                elif ptype in ('histogram', 'hist'):",
+            "                    _hvar = plot.get('var', '') or yvar_f",
+            "                    _hdata = _compute_histogram(_fac_gdf, _hvar)",
+            "                    _hsrc = ColumnDataSource(_hdata)",
+            "                    agg_sources[(_fac_name, pi)] = {'source': _hsrc, 'type': 'histogram', 'var': _hvar, 'bins': 20}",
+            "                    _fac_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6, legend_label=_hvar)",
+            "                elif ptype == 'lfit':",
+            "                    _lfdata = _compute_lfit(_fac_gdf, yvar_f, xvar_f)",
+            "                    _lfsrc = ColumnDataSource(_lfdata)",
+            "                    agg_sources[(_fac_name, pi)] = {'source': _lfsrc, 'type': 'lfit', 'yvar': yvar_f, 'xvar': xvar_f}",
+            "                    _fac_fig.line('x', 'y', source=_lfsrc, line_width=1.5, color=color, legend_label=f'lfit {yvar_f}')",
+            "                elif ptype == 'qfit':",
+            "                    _qfdata = _compute_qfit(_fac_gdf, yvar_f, xvar_f)",
+            "                    _qfsrc = ColumnDataSource(_qfdata)",
+            "                    agg_sources[(_fac_name, pi)] = {'source': _qfsrc, 'type': 'qfit', 'yvar': yvar_f, 'xvar': xvar_f}",
+            "                    _fac_fig.line('x', 'y', source=_qfsrc, line_width=1.5, color=color, legend_label=f'qfit {yvar_f}')",
+            "                elif ptype == 'kdensity':",
+            "                    _kdvar = plot.get('var', '') or yvar_f",
+            "                    _kddata = _compute_kdensity(_fac_gdf, _kdvar)",
+            "                    _kdsrc = ColumnDataSource(_kddata)",
+            "                    agg_sources[(_fac_name, pi)] = {'source': _kdsrc, 'type': 'kdensity', 'var': _kdvar}",
+            "                    _fac_fig.line('x', 'y', source=_kdsrc, line_width=1.5, color=color, legend_label=_kdvar)",
+            "                elif ptype == 'lowess':",
+            "                    _lwdata = _compute_lowess(_fac_gdf, yvar_f, xvar_f)",
+            "                    _lwsrc = ColumnDataSource(_lwdata)",
+            "                    agg_sources[(_fac_name, pi)] = {'source': _lwsrc, 'type': 'lowess', 'yvar': yvar_f, 'xvar': xvar_f}",
+            "                    _fac_fig.line('x', 'y', source=_lwsrc, line_width=1.5, color=color, legend_label=f'lowess {yvar_f}')",
+            "                elif ptype in ('connected',):",
+            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color)",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f)",
+            "                elif ptype in ('dot',):",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=8, color=color, marker='circle', legend_label=yvar_f)",
+            "                elif ptype in ('spike',):",
+            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f)",
+            "                elif ptype in ('dropline',):",
+            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.0, color=color)",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f)",
+            "                elif ptype == 'mband':",
+            "                    if xvar_f and yvar_f:",
+            "                        _mb_d = _fac_gdf[[xvar_f, yvar_f]].dropna() if xvar_f in _fac_gdf.columns and yvar_f in _fac_gdf.columns else None",
+            "                        if _mb_d is not None and len(_mb_d) >= 4:",
+            "                            _mb_x = _mb_d[xvar_f].values; _mb_y = _mb_d[yvar_f].values",
+            "                            _n_b = int(np.clip(int(np.ceil(len(_mb_x)/5)), 2, 20))",
+            "                            _x_e = np.linspace(_mb_x.min(), _mb_x.max(), _n_b+1)",
+            "                            _xm, _ym = [], []",
+            "                            for _bi in range(_n_b):",
+            "                                _s = (_mb_x >= _x_e[_bi]) & ((_mb_x < _x_e[_bi+1]) if _bi < _n_b-1 else (_mb_x <= _x_e[_bi+1]))",
+            "                                if _s.sum(): _xm.append(float(0.5*(_x_e[_bi]+_x_e[_bi+1]))); _ym.append(float(np.median(_mb_y[_s])))",
+            "                            if _xm:",
+            "                                _fac_fig.line('x_mb', 'y_mb', source=ColumnDataSource({'x_mb': _xm, 'y_mb': _ym}), line_width=1.5, color=color, legend_label=yvar_f)",
+            "            figures[_fac_name] = _fac_fig",
+            "            facet_entries.append((_fac_name, _fac_label))",
+            "            _facet_group_vals[_fac_name] = (by_vars, _fac_key)",
+            "        if by_total:",
+            "            _tot_name = f'{gname}__by__{len(facet_entries)}'",
+            "            _tot_gvars = []",
+            "            for p in g.get('plots', []):",
+            "                for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2'):",
+            "                    v = p.get(k, '')",
+            "                    if v and v in work_df.columns and v not in _tot_gvars:",
+            "                        _tot_gvars.append(v)",
+            "            graph_sources[_tot_name] = ColumnDataSource(",
+            "                {v: work_df[v].tolist() for v in _tot_gvars}",
+            "            )",
+            "            _tot_fig = bokeh_figure(",
+            "                title='Total',",
+            "                tools=[PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()],",
+            "                sizing_mode='stretch_width',",
+            "                output_backend='webgl' if len(df) > 10000 else 'canvas',",
+            "            )",
+            "            _tot_src = graph_sources[_tot_name]",
+            "            for pi, plot in enumerate(g.get('plots', [])):",
+            "                ptype = plot.get('type', '').lower()",
+            "                opts = plot.get('options', {})",
+            "                yvar_f = plot.get('yvar', '') or plot.get('var', '')",
+            "                xvar_f = plot.get('xvar', '')",
+            "                color = _resolve_color(opts.get('lcolor') or opts.get('mcolor', '')) or '#1f77b4'",
+            "                if ptype == 'scatter':",
+            "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color)",
+            "                elif ptype == 'line':",
+            "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=1.5, color=color)",
+            "                elif ptype in ('histogram', 'hist'):",
+            "                    _hvar = plot.get('var', '') or yvar_f",
+            "                    _hdata = _compute_histogram(work_df, _hvar)",
+            "                    _hsrc = ColumnDataSource(_hdata)",
+            "                    _tot_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6)",
+            "            figures[_tot_name] = _tot_fig",
+            "            facet_entries.append((_tot_name, 'Total'))",
+            "            _facet_group_vals[_tot_name] = (by_vars, None)  # Total = no group filter",
+            "        _facet_map[gname] = facet_entries",
             "",
             "    # ---- Build KPI Divs ----",
             "    kpi_divs: dict = {}",
@@ -4329,7 +6592,7 @@ class ServerAppBuilder:
             "        filter_var_widgets[fvar] = widget",
             "",
             "    # ---- Wire filter callbacks ----",
-            "    def _make_filter_cb(_all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref):",
+            "    def _make_filter_cb(_all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals):",
             "        def _on_filter_change(attr, old, new):",
             "            # 1. Build combined mask from all active widgets",
             "            mask = pd.Series([True] * len(_df_ref), index=_df_ref.index)",
@@ -4351,17 +6614,34 @@ class ServerAppBuilder:
             "                elif isinstance(w, Slider):",
             "                    mask &= (_df_ref[wvar] >= w.value)",
             "            fdf = _df_ref[mask]",
-            "            # 2. Replace raw source data",
+            "            # 2. Replace raw source data (facet-aware)",
             "            for gname, src in _all_sources.items():",
             "                excl = []",
             "                for w in _all_widgets:",
             "                    excl.extend(getattr(w, '_dash_exclude', []))",
             "                if gname in excl:",
             "                    continue",
+            "                # For faceted sources, further filter by group value",
+            "                if gname in _fgvals:",
+            "                    _bvs, _gkey = _fgvals[gname]",
+            "                    if _gkey is None:",
+            "                        # Total facet: use global filtered data",
+            "                        _gdf = fdf",
+            "                    else:",
+            "                        # Apply group filter on top of global mask",
+            "                        _facet_mask = mask.copy()",
+            "                        if len(_bvs) == 1:",
+            "                            _facet_mask = mask & (_df_ref[_bvs[0]] == _gkey)",
+            "                        else:",
+            "                            for _bv, _gv in zip(_bvs, _gkey):",
+            "                                _facet_mask = _facet_mask & (_df_ref[_bv] == _gv)",
+            "                        _gdf = _df_ref[_facet_mask]",
+            "                else:",
+            "                    _gdf = fdf",
             "                new_data = {}",
             "                for col in src.data:",
-            "                    if col in fdf.columns:",
-            "                        new_data[col] = fdf[col].tolist()",
+            "                    if col in _gdf.columns:",
+            "                        new_data[col] = _gdf[col].tolist()",
             "                    else:",
             "                        new_data[col] = []",
             "                src.data = new_data",
@@ -4384,6 +6664,10 @@ class ServerAppBuilder:
             "                    agg['source'].data = _compute_kdensity(fdf, agg['var'])",
             "                elif atype == 'lowess':",
             "                    agg['source'].data = _compute_lowess(fdf, agg['yvar'], agg['xvar'])",
+            "                elif atype == 'lfitci':",
+            "                    agg['source'].data = _compute_lfitci(fdf, agg['yvar'], agg['xvar'])",
+            "                elif atype == 'qfitci':",
+            "                    agg['source'].data = _compute_qfitci(fdf, agg['yvar'], agg['xvar'])",
             "            # 4. Recompute filter-mode KPIs",
             "            for kpi in _kpi_defs:",
             "                kupdate = kpi.get('update', 'filter')",
@@ -4414,7 +6698,8 @@ class ServerAppBuilder:
             "        return _on_filter_change",
             "",
             "    _filter_cb = _make_filter_cb(",
-            "        filter_widgets, graph_sources, agg_sources, kpi_divs, kpi_defs, df",
+            "        filter_widgets, graph_sources, agg_sources, kpi_divs, kpi_defs, df,",
+            "        _facet_map, _facet_group_vals",
             "    )",
             "    for w in filter_widgets:",
             "        if isinstance(w, Select):",
@@ -4472,7 +6757,25 @@ class ServerAppBuilder:
             "",
             "    cells = []",
             "    for name in all_names:",
-            "        if name in figures:",
+            "        if name in _facet_map:",
+            "            # Build a sub-grid of facet figures",
+            "            _fac_figs = [figures[fk] for fk, _ in _facet_map[name] if fk in figures]",
+            "            if _fac_figs:",
+            "                _go = {}",
+            "                for _gx in graphs:",
+            "                    if _gx.get('graph_options', {}).get('name') == name:",
+            "                        _go = _gx.get('graph_options', {})",
+            "                        break",
+            "                _by_cols_raw = _go.get('by_cols', '0')",
+            "                try: _by_cn = int(_by_cols_raw) if _by_cols_raw else 0",
+            "                except (ValueError, TypeError): _by_cn = 0",
+            "                if _by_cn <= 0: _by_cn = min(len(_fac_figs), max(1, math.ceil(math.sqrt(len(_fac_figs)))))",
+            "                _sub_rows = [_fac_figs[_si:_si+_by_cn] for _si in range(0, len(_fac_figs), _by_cn)]",
+            "                while len(_sub_rows[-1]) < _by_cn: _sub_rows[-1].append(None)",
+            "                cells.append(gridplot(_sub_rows, sizing_mode='stretch_width'))",
+            "            else:",
+            "                cells.append(None)",
+            "        elif name in figures:",
             "            cells.append(figures[name])",
             "        elif name in kpi_divs:",
             "            cells.append(kpi_divs[name])",

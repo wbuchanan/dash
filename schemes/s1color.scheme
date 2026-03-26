@@ -1,0 +1,128 @@
+* s1color.scheme
+* dash bundled approximation of Stata's s1color scheme.
+* White background, colored foreground.
+
+label "s1 color"
+
+color background      white
+color foreground      black
+color plotregion      white
+color legend          white
+color legend_line     black
+color grid            gs14
+color major_grid      gs14
+color minor_grid      gs10
+color heading         black
+color axisline        black
+
+color p1      navy
+color p2      maroon
+color p3      forest_green
+color p4      dkorange
+color p5      teal
+color p6      cranberry
+color p7      lavender
+color p8      khaki
+color p9      sienna
+color p10     emidblue
+color p11     emerald
+color p12     brown
+color p13     erose
+color p14     gold
+color p15     bluishgray
+
+color p1line   navy
+color p2line   maroon
+color p3line   forest_green
+color p4line   dkorange
+color p5line   teal
+color p6line   cranberry
+color p7line   lavender
+color p8line   khaki
+color p9line   sienna
+color p10line  emidblue
+color p11line  emerald
+color p12line  brown
+color p13line  erose
+color p14line  gold
+color p15line  bluishgray
+
+color p1bar    navy
+color p2bar    maroon
+color p3bar    forest_green
+color p4bar    dkorange
+color p5bar    teal
+color p6bar    cranberry
+color p7bar    lavender
+color p8bar    khaki
+color p9bar    sienna
+color p10bar   emidblue
+color p11bar   emerald
+color p12bar   brown
+color p13bar   erose
+color p14bar   gold
+color p15bar   bluishgray
+
+color p1mark   navy
+color p2mark   maroon
+color p3mark   forest_green
+color p4mark   dkorange
+color p5mark   teal
+color p6mark   cranberry
+color p7mark   lavender
+color p8mark   khaki
+color p9mark   sienna
+color p10mark  emidblue
+color p11mark  emerald
+color p12mark  brown
+color p13mark  erose
+color p14mark  gold
+color p15mark  bluishgray
+
+symbol p1     circle
+symbol p2     diamond
+symbol p3     square
+symbol p4     triangle
+symbol p5     x
+symbol p6     plus
+symbol p7     circle_hollow
+symbol p8     diamond_hollow
+symbol p9     square_hollow
+symbol p10    triangle_hollow
+symbol p11    smcircle
+symbol p12    smdiamond
+symbol p13    smsquare
+symbol p14    smtriangle
+symbol p15    smx
+
+linepattern p1line   solid
+linepattern p2line   dash
+linepattern p3line   longdash
+linepattern p4line   dot
+linepattern p5line   longdash_dot
+linepattern p6line   dash_dot
+linepattern p7line   solid
+linepattern p8line   shortdash
+linepattern p9line   shortdash_dot
+linepattern p10line  solid
+linepattern p11line  dash
+linepattern p12line  longdash
+linepattern p13line  dot
+linepattern p14line  longdash_dot
+linepattern p15line  dash_dot
+
+linewidth p           medium
+linewidth major_grid  thin
+linewidth minor_grid  thin
+
+intensity p        inten80
+intensity bar      inten80
+intensity area     inten80
+
+gsize text          medsmall
+gsize heading       large
+gsize subheading    medium
+gsize axis_title    medsmall
+gsize tick_label    medsmall
+gsize note          small
+gsize body          medsmall

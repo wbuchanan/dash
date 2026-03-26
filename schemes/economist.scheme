@@ -1,0 +1,133 @@
+* economist.scheme
+* dash bundled approximation of Stata's economist scheme.
+* Tan/cream background, Economist-style typography.
+
+#include s2color
+
+label "Economist"
+
+* Override background colors
+color background      ebg
+color foreground      black
+color plotregion      ebg
+color legend          ebg
+color legend_line     black
+color grid            edkbg
+color major_grid      edkbg
+color minor_grid      edkbg
+color heading         black
+color axisline        black
+
+* Economist-style color palette
+color p1      navy
+color p2      cranberry
+color p3      dkorange
+color p4      teal
+color p5      forest_green
+color p6      maroon
+color p7      emidblue
+color p8      sienna
+color p9      khaki
+color p10     emerald
+color p11     lavender
+color p12     gold
+color p13     erose
+color p14     brown
+color p15     bluishgray
+
+color p1line   navy
+color p2line   cranberry
+color p3line   dkorange
+color p4line   teal
+color p5line   forest_green
+color p6line   maroon
+color p7line   emidblue
+color p8line   sienna
+color p9line   khaki
+color p10line  emerald
+color p11line  lavender
+color p12line  gold
+color p13line  erose
+color p14line  brown
+color p15line  bluishgray
+
+color p1bar    navy
+color p2bar    cranberry
+color p3bar    dkorange
+color p4bar    teal
+color p5bar    forest_green
+color p6bar    maroon
+color p7bar    emidblue
+color p8bar    sienna
+color p9bar    khaki
+color p10bar   emerald
+color p11bar   lavender
+color p12bar   gold
+color p13bar   erose
+color p14bar   brown
+color p15bar   bluishgray
+
+color p1mark   navy
+color p2mark   cranberry
+color p3mark   dkorange
+color p4mark   teal
+color p5mark   forest_green
+color p6mark   maroon
+color p7mark   emidblue
+color p8mark   sienna
+color p9mark   khaki
+color p10mark  emerald
+color p11mark  lavender
+color p12mark  gold
+color p13mark  erose
+color p14mark  brown
+color p15mark  bluishgray
+
+symbol p1     circle
+symbol p2     diamond
+symbol p3     square
+symbol p4     triangle
+symbol p5     x
+symbol p6     plus
+symbol p7     circle_hollow
+symbol p8     diamond_hollow
+symbol p9     square_hollow
+symbol p10    triangle_hollow
+symbol p11    smcircle
+symbol p12    smdiamond
+symbol p13    smsquare
+symbol p14    smtriangle
+symbol p15    smx
+
+linepattern p1line   solid
+linepattern p2line   dash
+linepattern p3line   longdash
+linepattern p4line   dot
+linepattern p5line   longdash_dot
+linepattern p6line   dash_dot
+linepattern p7line   solid
+linepattern p8line   shortdash
+linepattern p9line   shortdash_dot
+linepattern p10line  solid
+linepattern p11line  dash
+linepattern p12line  longdash
+linepattern p13line  dot
+linepattern p14line  longdash_dot
+linepattern p15line  dash_dot
+
+linewidth p           medthick
+linewidth major_grid  thin
+linewidth minor_grid  thin
+
+intensity p        inten90
+intensity bar      inten90
+intensity area     inten90
+
+* Economist uses larger fonts
+gsize text          medium
+gsize heading       vlarge
+gsize subheading    medlarge
+gsize axis_title    medium
+gsize tick_label    medium
+gsize note          large
+gsize body          medium

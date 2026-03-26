@@ -1,0 +1,130 @@
+* sj.scheme
+* dash bundled approximation of the Stata Journal (sj) scheme.
+* White background, black-and-white/grayscale suitable for print.
+
+label "Stata Journal"
+
+color background      white
+color foreground      black
+color plotregion      white
+color legend          white
+color legend_line     black
+color grid            gs14
+color major_grid      gs14
+color minor_grid      gs10
+color heading         black
+color axisline        black
+
+* Grayscale cycle for print compatibility
+color p1      black
+color p2      gs8
+color p3      gs6
+color p4      gs4
+color p5      gs10
+color p6      gs2
+color p7      gs12
+color p8      black
+color p9      gs8
+color p10     gs6
+color p11     gs4
+color p12     gs10
+color p13     gs2
+color p14     gs12
+color p15     gs5
+
+color p1line   black
+color p2line   black
+color p3line   black
+color p4line   black
+color p5line   black
+color p6line   black
+color p7line   black
+color p8line   black
+color p9line   black
+color p10line  black
+color p11line  black
+color p12line  black
+color p13line  black
+color p14line  black
+color p15line  black
+
+color p1bar    gs6
+color p2bar    gs10
+color p3bar    gs8
+color p4bar    black
+color p5bar    gs12
+color p6bar    gs4
+color p7bar    gs2
+color p8bar    gs6
+color p9bar    gs10
+color p10bar   gs8
+color p11bar   black
+color p12bar   gs12
+color p13bar   gs4
+color p14bar   gs2
+color p15bar   gs6
+
+color p1mark   black
+color p2mark   black
+color p3mark   black
+color p4mark   black
+color p5mark   black
+color p6mark   black
+color p7mark   black
+color p8mark   black
+color p9mark   black
+color p10mark  black
+color p11mark  black
+color p12mark  black
+color p13mark  black
+color p14mark  black
+color p15mark  black
+
+symbol p1     circle
+symbol p2     diamond
+symbol p3     square
+symbol p4     triangle
+symbol p5     x
+symbol p6     plus
+symbol p7     circle_hollow
+symbol p8     diamond_hollow
+symbol p9     square_hollow
+symbol p10    triangle_hollow
+symbol p11    smcircle
+symbol p12    smdiamond
+symbol p13    smsquare
+symbol p14    smtriangle
+symbol p15    smx
+
+* Strongly differentiated line patterns for B&W print
+linepattern p1line   solid
+linepattern p2line   dash
+linepattern p3line   dot
+linepattern p4line   longdash
+linepattern p5line   dash_dot
+linepattern p6line   shortdash
+linepattern p7line   longdash_dot
+linepattern p8line   shortdash_dot
+linepattern p9line   solid
+linepattern p10line  dash
+linepattern p11line  dot
+linepattern p12line  longdash
+linepattern p13line  dash_dot
+linepattern p14line  shortdash
+linepattern p15line  longdash_dot
+
+linewidth p           medium
+linewidth major_grid  thin
+linewidth minor_grid  thin
+
+intensity p        inten80
+intensity bar      inten80
+intensity area     inten80
+
+gsize text          medsmall
+gsize heading       large
+gsize subheading    medium
+gsize axis_title    medsmall
+gsize tick_label    medsmall
+gsize note          small
+gsize body          medsmall
