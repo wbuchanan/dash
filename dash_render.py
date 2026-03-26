@@ -2500,56 +2500,108 @@ class DashRenderer:
         xvar = plots[0].get("xvar", "") if plots else ""
         yvar = plots[0].get("yvar", "") if plots else ""
 
+        # Resolve axis labels: user-specified xtitle/ytitle take priority
+        raw_xtitle = graph_opts.get("xtitle", "")
+        raw_ytitle = graph_opts.get("ytitle", "")
+        x_label = html.escape(raw_xtitle) if raw_xtitle else self._axis_label(xvar)
+        y_label = html.escape(raw_ytitle) if raw_ytitle else self._axis_label(yvar)
+
         # Enable WebGL for large datasets
         n_rows = len(self.df)
         backend = "webgl" if n_rows > _WEBGL_THRESHOLD else "canvas"
 
-        fig = bokeh_figure(
+        # Aspect ratio
+        aspect_ratio = None
+        raw_ar = graph_opts.get("aspectratio", "")
+        if raw_ar:
+            try:
+                aspect_ratio = float(raw_ar)
+            except (ValueError, TypeError):
+                pass
+
+        fig_kwargs = dict(
             title=html.escape(graph_opts.get("title", "")),
-            x_axis_label=self._axis_label(xvar),
-            y_axis_label=self._axis_label(yvar),
+            x_axis_label=x_label,
+            y_axis_label=y_label,
             output_backend=backend,
             sizing_mode="stretch_width",
             tools="pan,wheel_zoom,box_select,lasso_select,reset",
         )
+        if aspect_ratio is not None:
+            fig_kwargs["aspect_ratio"] = aspect_ratio
+
+        fig = bokeh_figure(**fig_kwargs)
 
         # Log scale options
         if graph_opts.get("xscale") == "log":
-            fig.xaxis.axis_label = self._axis_label(xvar)
             # Rebuild with log x-axis
-            fig = bokeh_figure(
-                title=html.escape(graph_opts.get("title", "")),
-                x_axis_type="log",
-                x_axis_label=self._axis_label(xvar),
-                y_axis_label=self._axis_label(yvar),
-                output_backend=backend,
-                sizing_mode="stretch_width",
-            )
+            kw = {**fig_kwargs, "x_axis_type": "log"}
+            kw.pop("tools", None)
+            fig = bokeh_figure(**kw)
         if graph_opts.get("yscale") == "log":
-            fig = bokeh_figure(
-                title=html.escape(graph_opts.get("title", "")),
-                y_axis_type="log",
-                x_axis_label=self._axis_label(xvar),
-                y_axis_label=self._axis_label(yvar),
-                output_backend=backend,
-                sizing_mode="stretch_width",
-            )
+            kw = {**fig_kwargs, "y_axis_type": "log"}
+            kw.pop("tools", None)
+            fig = bokeh_figure(**kw)
 
         # Reference lines
-        for xline_val in graph_opts.get("xline_values", []):
+        # Reference lines — support both string "xline"/"yline" (parser output)
+        # and legacy list "xline_values"/"yline_values" forms.
+        def _parse_refline(opt_key: str, list_key: str) -> list:
+            """Return a flat list of numeric strings/values for a reference line option."""
+            raw = graph_opts.get(opt_key, "")
+            if raw:
+                # String from Mata parser: space- or comma-separated numbers
+                return [v.strip() for v in raw.replace(",", " ").split() if v.strip()]
+            return graph_opts.get(list_key, [])
+
+        for xline_val in _parse_refline("xline", "xline_values"):
             try:
                 fig.add_layout(Span(location=float(xline_val),
                                     dimension="height",
                                     line_color="gray", line_dash="dashed"))
             except (ValueError, TypeError):
                 pass
-        for yline_val in graph_opts.get("yline_values", []):
+        for yline_val in _parse_refline("yline", "yline_values"):
             try:
                 fig.add_layout(Span(location=float(yline_val),
                                     dimension="width",
                                     line_color="gray", line_dash="dashed"))
             except (ValueError, TypeError):
                 pass
+
+        # Note / caption annotations
+        from bokeh.models import Label
+        for ann_key in ("note", "caption"):
+            ann_text = graph_opts.get(ann_key, "")
+            if ann_text:
+                lbl = Label(
+                    x=0, y=0,
+                    x_units="screen", y_units="screen",
+                    text=html.escape(ann_text),
+                    text_font_size="11px",
+                    text_color="#555555",
+                )
+                fig.add_layout(lbl, "below")
+
+        # Legend placement
+        legend_opt = graph_opts.get("legend", "")
+        if legend_opt and fig.legend:
+            loc_map = {
+                "off": None,
+                "on": "top_right",
+                "ring": "top_right",
+                "top": "top_center",
+                "bottom": "bottom_center",
+                "left": "center_left",
+                "right": "center_right",
+            }
+            if legend_opt == "off":
+                fig.legend.visible = False
+            elif legend_opt in loc_map and loc_map[legend_opt]:
+                try:
+                    fig.legend.location = loc_map[legend_opt]
+                except Exception:
+                    pass
 
         # Plot categories that use non-standard JSON variable keys
         _RANGE_TYPES = frozenset({
@@ -3542,12 +3594,14 @@ class ServerAppBuilder:
             "        if plots:",
             "            xv = plots[0].get('xvar', '')",
             "            yv = plots[0].get('yvar', '') or plots[0].get('var', '')",
-            "            x_label = var_labels.get(xv, xv)",
-            "            y_label = var_labels.get(yv, yv)",
+            "            raw_xt = go.get('xtitle', '')",
+            "            raw_yt = go.get('ytitle', '')",
+            "            x_label = html.escape(raw_xt) if raw_xt else var_labels.get(xv, xv)",
+            "            y_label = html.escape(raw_yt) if raw_yt else var_labels.get(yv, yv)",
             "",
             "        n_rows = len(df)",
             "        backend = 'webgl' if n_rows > 10000 else 'canvas'",
-            "        fig = bokeh_figure(",
+            "        _fig_kw = dict(",
             "            title=html.escape(go.get('title', '') or ''),",
             "            x_axis_label=x_label,",
             "            y_axis_label=y_label,",
@@ -3555,6 +3609,26 @@ class ServerAppBuilder:
             "            sizing_mode='stretch_width',",
             "            output_backend=backend,",
             "        )",
+            "        _raw_ar = go.get('aspectratio', '')",
+            "        if _raw_ar:",
+            "            try: _fig_kw['aspect_ratio'] = float(_raw_ar)",
+            "            except (ValueError, TypeError): pass",
+            "        fig = bokeh_figure(**_fig_kw)",
+            "        # note / caption annotations",
+            "        from bokeh.models import Label as _Label",
+            "        for _ann_key in ('note', 'caption'):",
+            "            _ann_txt = go.get(_ann_key, '')",
+            "            if _ann_txt:",
+            "                fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
+            "                    text=html.escape(_ann_txt), text_font_size='11px', text_color='#555555'), 'below')",
+            "        # legend placement",
+            "        _leg_opt = go.get('legend', '')",
+            "        if _leg_opt and fig.legend:",
+            "            if _leg_opt == 'off': fig.legend.visible = False",
+            "            elif _leg_opt in ('top',): fig.legend.location = 'top_center'",
+            "            elif _leg_opt in ('bottom',): fig.legend.location = 'bottom_center'",
+            "            elif _leg_opt in ('left',): fig.legend.location = 'center_left'",
+            "            elif _leg_opt in ('right',): fig.legend.location = 'center_right'",
             "",
             "        for pi, plot in enumerate(plots):",
             "            ptype = plot.get('type', '')",

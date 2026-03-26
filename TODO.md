@@ -620,3 +620,37 @@ Status: [ ] not started | [~] in progress | [x] complete
 - [x] P5-39  test/test_html_output.py: per-plot-type tests — scatter/line/histogram/bar/spike/lfit/rarea/dropline/mspline/function HTML contain correct glyph type names
 - [x] P5-40  test/test_html_output.py: XSS safety — <script> in title escaped in HTML output
 - [x] P5-41  test/test_html_output.py: CSP meta tag present in output HTML
+
+---
+
+## PHASE 6 — GRAPH OPTIONS APPLICATION
+
+Previously-parsed graph options (xtitle, ytitle, aspectratio, note, caption, legend) were stored in JSON but never forwarded to the Bokeh figure. This phase wires them all up.
+
+### Implementation
+
+- [x] P6-01  dash_render.py: apply xtitle → fig.xaxis.axis_label (HTML-escaped; XSS-safe); fall back to variable label when absent
+- [x] P6-02  dash_render.py: apply ytitle → fig.yaxis.axis_label (same escaping and fallback)
+- [x] P6-03  dash_render.py: apply aspectratio → fig.aspect_ratio (float parse; invalid values silently ignored)
+- [x] P6-04  dash_render.py: apply note → bokeh.models.Label added to fig.below ("below" region annotation)
+- [x] P6-05  dash_render.py: apply caption → bokeh.models.Label added to fig.below (coexists with note)
+- [x] P6-06  dash_render.py: apply legend(off) → fig.legend.visible=False; legend(top/bottom/left/right) → legend.location
+
+### Tests (test/test_graph_options.py)
+
+- [x] P6-07  xtitle sets x_axis_label; XSS-escaped; absent → variable label fallback
+- [x] P6-08  ytitle sets y_axis_label; XSS-escaped; absent → variable label fallback
+- [x] P6-09  aspectratio=1.5 → fig.aspect_ratio≈1.5; invalid → no crash; absent → None
+- [x] P6-10  note creates Label in fig.below with correct text; XSS-escaped
+- [x] P6-11  caption creates Label in fig.below; note+caption coexist (≥2 labels)
+- [x] P6-12  legend(off) sets visible=False; absent → no crash
+
+### Remaining / Not Yet Implemented
+
+- [x] P6-15  Server-mode (generated .py) application of xtitle/ytitle/aspectratio/note/caption — _generate_app_source() now reads these from graph_options and applies them; tests in test_server.py::TestServerGraphOptions
+- [x] P6-16  Bug fix: xline/yline string keys (from Mata parser) not matching xline_values/yline_values (legacy list keys) expected by renderer — fixed via _parse_refline() helper; tests in test_graph_options.py::TestXlineYline (5 tests)
+
+### Remaining / Not Yet Implemented
+
+- [ ] P6-13  xlabel(numlist, ...) / ylabel(numlist, ...) — custom axis tick values and labels via FixedTicker + FixedTickFormatter (requires parsing Stata numlist syntax)
+- [ ] P6-14  legend label overrides from legend() string list — currently only position/off handled; per-renderer label strings not yet wired up

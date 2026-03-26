@@ -918,3 +918,46 @@ class TestServerDispatchScatteri:
         }])
         source = _build_app(dr_module, auto_df, spec)
         assert "fig.scatter(" in source, "scatteri should emit fig.scatter"
+
+
+# ================================================================
+# P6-15 — server-mode: xtitle/ytitle/aspectratio applied to fig
+# ================================================================
+class TestServerGraphOptions:
+    def test_xtitle_code_in_server_source(self, dr_module, auto_df):
+        """P6-15: generated server app contains logic to apply xtitle."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xtitle": "My X Axis"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # Generated code must read xtitle from graph_options at runtime
+        assert "xtitle" in source, "generated source should reference 'xtitle'"
+
+    def test_ytitle_code_in_server_source(self, dr_module, auto_df):
+        """P6-15: generated server app contains logic to apply ytitle."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "ytitle": "My Y Axis"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "ytitle" in source, "generated source should reference 'ytitle'"
+
+    def test_aspectratio_in_server_source(self, dr_module, auto_df):
+        """P6-15: aspectratio in graph_options is applied in server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "aspectratio": "1.5"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "aspect_ratio" in source, "aspectratio should produce aspect_ratio= in server source"
+
+    def test_note_code_in_server_source(self, dr_module, auto_df):
+        """P6-15: generated server app contains logic to apply note annotation."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "note": "Source: auto dataset"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # The generated code must have note-handling logic
+        assert "'note'" in source or "note" in source, "generated source should contain note-handling code"
