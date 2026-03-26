@@ -277,3 +277,70 @@ class TestQfitciBasicFunctionality:
         assert len(result) == 2, (
             f"Expected 2 renderers (line + band), got {len(result)}"
         )
+
+
+# ================================================================
+# T1-09 — dropline through full pipeline
+# ================================================================
+class TestPipelineDropline:
+    def test_dropline_renders(self):
+        """dropline spec produces >=2 renderers (segment + scatter)."""
+        graph = {
+            "plots": [{"type": "dropline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "dl1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = _make_master_spec([graph])
+        renderer = _build_renderer(spec, STANDARD_DATA)
+        figs = renderer._build_figures()
+        assert "dl1" in figs
+        fig = figs["dl1"]
+        assert len(fig.renderers) >= 2
+
+
+# ================================================================
+# T1-10 — rcapsym through full pipeline
+# ================================================================
+class TestPipelineRcapsym:
+    def test_rcapsym_renders(self):
+        """rcapsym spec produces >=5 renderers (spine+2 caps+2 dots)."""
+        graph = {
+            "plots": [{
+                "type": "rcapsym",
+                "yvar1": "lo", "yvar2": "hi", "xvar": "x",
+                "options": {},
+            }],
+            "graph_options": {"name": "rcs1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = _make_master_spec([graph])
+        renderer = _build_renderer(spec, RANGE_DATA)
+        figs = renderer._build_figures()
+        assert "rcs1" in figs
+        fig = figs["rcs1"]
+        assert len(fig.renderers) >= 5
+
+
+# ================================================================
+# T1-11 — scatteri through full pipeline
+# ================================================================
+class TestPipelineScatteri:
+    def test_scatteri_renders_inline_coords(self):
+        """scatteri spec with values list produces scatter renderer."""
+        graph = {
+            "plots": [{
+                "type": "scatteri",
+                "values": [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
+                "options": {},
+            }],
+            "graph_options": {"name": "si1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = _make_master_spec([graph])
+        # scatteri doesn't need any dataset variables
+        empty_data = _make_data_json({"dummy": [0.0]})
+        renderer = _build_renderer(spec, empty_data)
+        figs = renderer._build_figures()
+        assert "si1" in figs
+        fig = figs["si1"]
+        assert len(fig.renderers) >= 1

@@ -563,3 +563,60 @@ Status: [ ] not started | [~] in progress | [x] complete
 - [x] P4-90  dash.sthlp: add comparison table: standalone vs server capabilities (KPI recompute, histogram recompute, all glyphs in brush, deployment model)
 - [x] P4-91  dash.sthlp: add Phase 4 example to Examples section showing `dash serve` workflow
 - [x] P4-92  dash_setup.sthlp: add note that Bokeh Server uses Tornado (bundled with Bokeh >=3.0); no additional installation required
+
+---
+
+## PHASE 5 — NEW PLOT TYPES & BUG FIXES
+
+### Phase 3 — Easy New Plot Types (dropline, rcapsym, scatteri)
+
+- [x] P5-01  dash_parse.mata: add dropline, rcapsym, scatteri to `_is_supported_plot()`
+- [x] P5-02  dash_parse.mata: add abbreviations: dr→dropline; scatteri, rcapsym exact match
+- [x] P5-03  dash_parse.mata: for scatteri — validate all varlist words are numeric; require even count; build JSON "values" array
+- [x] P5-04  dash_parse.mata: for rcapsym — add to range-plot branch (yvar1 yvar2 xvar)
+- [x] P5-05  dash_render.py: GlyphMapper.map_dropline — segment(x,0→x,y) + scatter; return [seg, dot]
+- [x] P5-06  dash_render.py: GlyphMapper.map_rcapsym — rcap spine + 2 end caps + 2 scatter markers; return 5 renderers
+- [x] P5-07  dash_render.py: GlyphMapper.map_scatteri — inline ColumnDataSource from "values" list; return [scatter]
+- [x] P5-08  dash_render.py: standalone dispatch — dropline in _add_glyph(); rcapsym in range_dispatch; scatteri in _make_figure() special branch
+- [x] P5-09  dash_render.py: server dispatch — dropline, rcapsym, scatteri elif branches in _generate_app_source()
+- [x] P5-10  test/test_glyphs.py: map_dropline returns [seg, scatter]; seg drops to y=0
+- [x] P5-11  test/test_glyphs.py: map_rcapsym returns 5 renderers [spine, cap, cap, dot, dot]
+- [x] P5-12  test/test_glyphs.py: map_scatteri renders inline coords; empty values → empty renderer
+- [x] P5-13  test/test_pipeline_integration.py: dropline, rcapsym, scatteri full pipeline tests
+- [x] P5-14  test/test_server.py: dropline, rcapsym, scatteri server dispatch tests
+
+### Phase 4 — Medium New Plot Types
+
+- [x] P5-15  dash_parse.mata: add pcspike, pcarrow, pcbarrow with 4-var parsing (y1var x1var y2var x2var)
+- [x] P5-16  dash_parse.mata: add tsline, tsrline, mspline as standard/range types
+- [x] P5-17  dash_parse.mata: add function with expression parsing (collect all tokens, validate chars)
+- [x] P5-18  dash_render.py: GlyphMapper.map_pcspike — segment(x0=x1,y0=y1,x1=x2,y1=y2)
+- [x] P5-19  dash_render.py: GlyphMapper.map_pcarrow — segment shaft + Arrow(OpenHead) per row
+- [x] P5-20  dash_render.py: GlyphMapper.map_pcbarrow — segment shaft + Arrow(NormalHead both ends) per row
+- [x] P5-21  dash_render.py: GlyphMapper.map_tsline — delegates to map_line
+- [x] P5-22  dash_render.py: GlyphMapper.map_tsrline — delegates to map_rline
+- [x] P5-23  dash_render.py: GlyphMapper.map_mspline — PchipInterpolator 200-point smooth line
+- [x] P5-24  dash_render.py: GlyphMapper.map_function — AST-whitelisted expression evaluator (NEVER raw eval)
+- [x] P5-25  dash_render.py: standalone dispatch — PC types via _add_pc_glyph(); tsline/mspline in dispatch; tsrline in range_dispatch; function in _make_figure() special branch
+- [x] P5-26  dash_render.py: server dispatch — pcspike/pcarrow/pcbarrow/tsline/tsrline/mspline/function in _generate_app_source()
+- [x] P5-27  dash_render.py: extend _VK and _VAR_KEYS with y1var/x1var/y2var/x2var for PC type variable collection
+- [x] P5-28  test/test_phase4_plots.py: 70 tests covering all 7 new plot types
+
+### Phase 5 — Missing Abbreviations & Bug 5
+
+- [x] P5-29  dash_parse.mata: add mlp→mlabposition, mlg→mlabgap, mlw→mlabwidth
+- [x] P5-30  dash_parse.mata: add fc→fcolor, fi→fintensity, asp→aspectratio
+- [x] P5-31  dash_parse.mata: add abbreviations for Phase 3-4 plot types (dr, tsl, tsrl, msp, func)
+- [x] P5-32  dash_render.py: DashRenderer._apply_graph_filter — apply per-graph if_expr/in_expr
+- [x] P5-33  dash_render.py: _make_source — accept optional df= parameter for filtered slice
+- [x] P5-34  dash_render.py: _setup_sources — call _apply_graph_filter for each non-linked graph
+- [x] P5-35  test/test_phase5.py: in_expr '1/10' → 10 rows; if_expr 'y > 10' → filtered rows
+- [x] P5-36  test/test_phase5.py: injection in if_expr blocked; two graphs with disjoint filters
+- [x] P5-37  test/test_phase5.py: _apply_graph_filter unit tests (in_expr slicing, if_expr equality)
+
+### HTML Output Validation Tests
+
+- [x] P5-38  test/test_html_output.py: HTML structure tests — doctype, Bokeh root, script tags, JSON data
+- [x] P5-39  test/test_html_output.py: per-plot-type tests — scatter/line/histogram/bar/spike/lfit/rarea/dropline/mspline/function HTML contain correct glyph type names
+- [x] P5-40  test/test_html_output.py: XSS safety — <script> in title escaped in HTML output
+- [x] P5-41  test/test_html_output.py: CSP meta tag present in output HTML

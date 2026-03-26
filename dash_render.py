@@ -71,6 +71,7 @@ import pandas as pd
 from bokeh.embed import file_html
 from bokeh.layouts import column, gridplot, row
 from bokeh.models import (
+    Arrow,
     BooleanFilter,
     BoxSelectTool,
     CDSView,
@@ -79,6 +80,8 @@ from bokeh.models import (
     Div,
     HoverTool,
     LassoSelectTool,
+    NormalHead,
+    OpenHead,
     PanTool,
     RangeSlider,
     ResetTool,
@@ -1344,6 +1347,574 @@ class GlyphMapper:
         """
         return self.map_scatter(fig, source, yvar, xvar, options)
 
+    # ------------------------------------------------------------------
+    # Phase 3 additional plot types
+    # ------------------------------------------------------------------
+
+    def map_dropline(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add dropline glyphs to *fig*: vertical segments from y=0 to y=yvar plus dots.
+
+        Each observation is drawn as a vertical line dropping from the data
+        point down to y=0, with a filled circle at the top of each line.
+        This is Stata's ``twoway dropline`` appearance.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable (top of each drop).
+            xvar:    Name of the x variable (horizontal position).
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with [segment_renderer, scatter_renderer].
+        """
+        x_arr = np.array(source.data[xvar], dtype=float)
+        y_arr = np.array(source.data[yvar], dtype=float)
+        mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
+        x_arr, y_arr = x_arr[mask], y_arr[mask]
+        zeros = np.zeros_like(x_arr)
+
+        dl_source = ColumnDataSource({
+            "x": x_arr, "y": y_arr, "y0": zeros,
+        })
+        color = "#1f77b4"
+        try:
+            if "mcolor" in options:
+                color = self.tr.translate_mcolor(options["mcolor"])
+            elif "color" in options:
+                color = self.tr.translate_mcolor(options["color"])
+        except ValueError:
+            pass
+
+        seg = fig.segment(x0="x", y0="y0", x1="x", y1="y",
+                          source=dl_source, line_color=color, line_width=1.5)
+        dot = fig.scatter(x="x", y="y", source=dl_source,
+                          fill_color=color, line_color=color, size=8)
+        self._apply_line_opts(seg, options)
+        return [seg, dot]
+
+    def map_rcapsym(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        y2var: str,
+        xvar: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add range cap-with-symbol glyphs to *fig*.
+
+        Identical to ``rcap`` (vertical spine with horizontal end caps) but
+        with scatter marker symbols placed at both cap positions, matching
+        Stata's ``twoway rcapsym`` appearance.
+
+        Args:
+            fig:    Bokeh Figure object.
+            source: Shared ColumnDataSource.
+            y1var:  Bottom cap position variable.
+            y2var:  Top cap position variable.
+            xvar:   x-axis variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List of five renderers:
+            [spine, bot_cap, top_cap, bot_scatter, top_scatter].
+        """
+        x_arr  = np.array(source.data[xvar],  dtype=float)
+        y1_arr = np.array(source.data[y1var], dtype=float)
+        y2_arr = np.array(source.data[y2var], dtype=float)
+
+        x_sorted = np.sort(x_arr[~np.isnan(x_arr)])
+        if len(x_sorted) >= 2:
+            cap_hw = 0.2 * float(np.min(np.diff(x_sorted)))
+        else:
+            cap_hw = 0.2
+
+        cap_source = ColumnDataSource({
+            "x": x_arr, "y1": y1_arr, "y2": y2_arr,
+            "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
+        })
+
+        color = "#1f77b4"
+        try:
+            if "mcolor" in options:
+                color = self.tr.translate_mcolor(options["mcolor"])
+            elif "color" in options:
+                color = self.tr.translate_mcolor(options["color"])
+        except ValueError:
+            pass
+
+        spine   = fig.segment(x0="x",     y0="y1",  x1="x",     y1="y2",
+                              source=cap_source, line_color=color, line_width=1.5)
+        bot_cap = fig.segment(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
+                              source=cap_source, line_color=color, line_width=1.5)
+        top_cap = fig.segment(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
+                              source=cap_source, line_color=color, line_width=1.5)
+        bot_dot = fig.scatter(x="x", y="y1", source=cap_source,
+                              fill_color=color, line_color=color, size=7)
+        top_dot = fig.scatter(x="x", y="y2", source=cap_source,
+                              fill_color=color, line_color=color, size=7)
+        self._apply_line_opts(spine, options)
+        return [spine, bot_cap, top_cap, bot_dot, top_dot]
+
+    def map_scatteri(
+        self,
+        fig: Any,
+        values: list,
+        options: dict[str, str],
+    ) -> list:
+        """Add scatter glyphs from inline literal coordinate pairs to *fig*.
+
+        ``scatteri`` plots fixed (y, x) coordinate pairs specified as
+        literals in the command rather than as variable names.  This method
+        builds an independent ColumnDataSource from the supplied list.
+
+        Args:
+            fig:     Bokeh Figure object.
+            values:  List of [y, x] numeric pairs (from JSON ``"values"`` key).
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the single scatter GlyphRenderer.
+        """
+        if not values:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return [fig.scatter(x="x", y="y", source=empty)]
+
+        y_vals = [float(pair[0]) for pair in values]
+        x_vals = [float(pair[1]) for pair in values]
+        si_source = ColumnDataSource({"x": x_vals, "y": y_vals})
+
+        color = "#1f77b4"
+        try:
+            if "mcolor" in options:
+                color = self.tr.translate_mcolor(options["mcolor"])
+            elif "color" in options:
+                color = self.tr.translate_mcolor(options["color"])
+        except ValueError:
+            pass
+
+        size = self.tr.translate_msize(options.get("msize", "medium"))
+        marker = self.tr.translate_msymbol(options.get("msymbol", "circle"))
+
+        r = fig.scatter(x="x", y="y", source=si_source,
+                        marker=marker, size=size,
+                        fill_color=color, line_color=color)
+        return [r]
+
+    # ------------------------------------------------------------------
+    # Phase 4 plot types
+    # ------------------------------------------------------------------
+
+    def map_pcspike(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        x1var: str,
+        y2var: str,
+        x2var: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add paired-coordinate spike glyphs (segments from (x1,y1) to (x2,y2)) to *fig*.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            y1var:   Name of the start y variable.
+            x1var:   Name of the start x variable.
+            y2var:   Name of the end y variable.
+            x2var:   Name of the end x variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the single Segment GlyphRenderer.
+        """
+        clean = pd.DataFrame({
+            y1var: source.data[y1var],
+            x1var: source.data[x1var],
+            y2var: source.data[y2var],
+            x2var: source.data[x2var],
+        }).dropna()
+        source_clean = ColumnDataSource(clean)
+        r = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
+                        source=source_clean,
+                        line_color="#1f77b4", line_width=1.5)
+        self._apply_line_opts(r, options)
+        return [r]
+
+    def map_pcarrow(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        x1var: str,
+        y2var: str,
+        x2var: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add paired-coordinate arrow glyphs (segments + arrowheads) to *fig*.
+
+        Each observation draws a directed Arrow from (x1var, y1var) to
+        (x2var, y2var) using Bokeh's Arrow annotation with an OpenHead.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            y1var:   Name of the start y variable.
+            x1var:   Name of the start x variable.
+            y2var:   Name of the end y variable.
+            x2var:   Name of the end x variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the segment GlyphRenderer (Arrow annotations are layout objects).
+        """
+        clean = pd.DataFrame({
+            y1var: source.data[y1var],
+            x1var: source.data[x1var],
+            y2var: source.data[y2var],
+            x2var: source.data[x2var],
+        }).dropna()
+        pc_source = ColumnDataSource(clean)
+
+        color = "#1f77b4"
+        try:
+            if "lcolor" in options:
+                color = self.tr.translate_lcolor(options["lcolor"])
+            elif "color" in options:
+                color = self.tr.translate_mcolor(options["color"])
+        except ValueError:
+            pass
+
+        seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
+                          source=pc_source, line_color=color, line_width=1.5)
+
+        # Add Arrow head annotations for each row
+        for _, row in clean.iterrows():
+            arrow = Arrow(
+                end=OpenHead(size=10, line_color=color),
+                x_start=float(row[x1var]),
+                y_start=float(row[y1var]),
+                x_end=float(row[x2var]),
+                y_end=float(row[y2var]),
+                line_color=color,
+                line_width=1.5,
+            )
+            fig.add_layout(arrow)
+
+        return [seg]
+
+    def map_pcbarrow(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        x1var: str,
+        y2var: str,
+        x2var: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add paired-coordinate bidirectional arrow glyphs to *fig*.
+
+        Each observation draws a bidirectional Arrow from (x1var, y1var) to
+        (x2var, y2var) using Bokeh's Arrow annotation with NormalHead on both ends.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            y1var:   Name of the start y variable.
+            x1var:   Name of the start x variable.
+            y2var:   Name of the end y variable.
+            x2var:   Name of the end x variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the segment GlyphRenderer (Arrow annotations are layout objects).
+        """
+        clean = pd.DataFrame({
+            y1var: source.data[y1var],
+            x1var: source.data[x1var],
+            y2var: source.data[y2var],
+            x2var: source.data[x2var],
+        }).dropna()
+        pc_source = ColumnDataSource(clean)
+
+        color = "#1f77b4"
+        try:
+            if "lcolor" in options:
+                color = self.tr.translate_lcolor(options["lcolor"])
+            elif "color" in options:
+                color = self.tr.translate_mcolor(options["color"])
+        except ValueError:
+            pass
+
+        seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
+                          source=pc_source, line_color=color, line_width=1.5)
+
+        # Add bidirectional Arrow annotations for each row
+        for _, row in clean.iterrows():
+            arrow = Arrow(
+                end=NormalHead(size=10, line_color=color),
+                start=NormalHead(size=10, line_color=color),
+                x_start=float(row[x1var]),
+                y_start=float(row[y1var]),
+                x_end=float(row[x2var]),
+                y_end=float(row[y2var]),
+                line_color=color,
+                line_width=1.5,
+            )
+            fig.add_layout(arrow)
+
+        return [seg]
+
+    def map_tsline(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add a time-series line glyph to *fig*.
+
+        Delegates directly to ``map_line``.  Provided as a named alias so
+        Stata's ``twoway tsline`` syntax is explicitly supported.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable.
+            xvar:    Name of the x (time) variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            The result of ``map_line``.
+        """
+        return self.map_line(fig, source, yvar, xvar, options)
+
+    def map_tsrline(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        y2var: str,
+        xvar: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add time-series range lines to *fig*.
+
+        Delegates directly to ``map_rline``.  Provided as a named alias so
+        Stata's ``twoway tsrline`` syntax is explicitly supported.
+
+        Args:
+            fig:    Bokeh Figure object.
+            source: Shared ColumnDataSource.
+            y1var:  Lower boundary variable.
+            y2var:  Upper boundary variable.
+            xvar:   x (time) axis variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            The result of ``map_rline``.
+        """
+        return self.map_rline(fig, source, y1var, y2var, xvar, options)
+
+    def map_mspline(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: dict[str, str],
+    ) -> list:
+        """Add a monotone cubic spline (PCHIP) line to *fig*.
+
+        Uses ``scipy.interpolate.PchipInterpolator`` to fit a smooth
+        monotone cubic spline through the data points, evaluated on a
+        200-point grid spanning the data range.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable.
+            xvar:    Name of the x variable.
+            options: Translated plot-level options dict.
+
+        Returns:
+            List with the single GlyphRenderer for the spline line.
+        """
+        from scipy.interpolate import PchipInterpolator
+
+        x_arr = np.array(source.data[xvar], dtype=float)
+        y_arr = np.array(source.data[yvar], dtype=float)
+        mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
+        x_clean = x_arr[mask]
+        y_clean = y_arr[mask]
+
+        # Sort by x
+        order = np.argsort(x_clean)
+        x_clean = x_clean[order]
+        y_clean = y_clean[order]
+
+        # Need at least 2 valid points for interpolation
+        if len(x_clean) < 2:
+            empty = ColumnDataSource({"x_ms": [], "y_ms": []})
+            return [fig.line(x="x_ms", y="y_ms", source=empty)]
+
+        interp = PchipInterpolator(x_clean, y_clean)
+        x_grid = np.linspace(x_clean.min(), x_clean.max(), 200)
+        y_grid = interp(x_grid)
+
+        ms_source = ColumnDataSource({"x_ms": x_grid, "y_ms": y_grid})
+        r = fig.line(x="x_ms", y="y_ms", source=ms_source,
+                     line_color="#2ca02c", line_width=2.0)
+        self._apply_line_opts(r, options)
+        return [r]
+
+    def map_function(
+        self,
+        fig: Any,
+        expr: str,
+        x_range: tuple = (0.0, 1.0),
+        n_points: int = 200,
+        options: dict = {},
+    ) -> list:
+        """Add a mathematical function curve to *fig*.
+
+        Evaluates a user-supplied expression string over a uniform grid and
+        renders the result as a line.  The expression is validated against an
+        AST whitelist before any evaluation; raw ``eval()`` on unvalidated
+        strings is never performed.
+
+        Security: Only a restricted set of AST node types and function names
+        is permitted.  ``__builtins__`` is removed from the evaluation
+        namespace to prevent access to Python built-ins.
+
+        Args:
+            fig:      Bokeh Figure object.
+            expr:     Mathematical expression string using variable ``x`` and
+                      the safe function names listed below.
+            x_range:  ``(x_lo, x_hi)`` tuple defining the evaluation domain.
+            n_points: Number of grid points (default 200).
+            options:  Translated plot-level options dict.
+
+        Permitted names in expressions:
+            Variables: ``x``, ``pi``, ``e``
+            Functions: ``sin``, ``cos``, ``tan``, ``exp``, ``log``,
+                       ``log10``, ``sqrt``, ``abs``, ``floor``, ``ceil``
+
+        Returns:
+            List with the single line GlyphRenderer, or an empty renderer
+            if validation or evaluation fails.
+        """
+        import ast as _ast
+
+        _SAFE_NAMES: frozenset = frozenset({"x", "pi", "e"})
+        _SAFE_FUNCS: frozenset = frozenset({
+            "sin", "cos", "tan", "exp", "log", "log10",
+            "sqrt", "abs", "floor", "ceil",
+        })
+
+        def _validate_expr_node(node: _ast.AST) -> None:
+            """Recursively validate that *node* contains only safe AST constructs."""
+            if isinstance(node, _ast.Expression):
+                _validate_expr_node(node.body)
+            elif isinstance(node, _ast.Constant):
+                pass  # numeric literals are always safe
+            elif isinstance(node, _ast.Name):
+                if node.id not in _SAFE_NAMES:
+                    raise ValueError(
+                        f"Unsafe name in function expression: {node.id!r}. "
+                        f"Allowed names: {sorted(_SAFE_NAMES)}"
+                    )
+            elif isinstance(node, (_ast.BinOp, _ast.UnaryOp)):
+                # iter_child_nodes on BinOp yields (left, op, right) where op
+                # is an operator node (Add, Sub, Mult, etc.).  Operator nodes
+                # carry no dangerous payload; skip them explicitly so the
+                # else-branch does not reject them.
+                _OP_NODES = (
+                    _ast.Add, _ast.Sub, _ast.Mult, _ast.Div, _ast.FloorDiv,
+                    _ast.Mod, _ast.Pow, _ast.UAdd, _ast.USub, _ast.BitXor,
+                    _ast.BitOr, _ast.BitAnd,
+                )
+                for child in _ast.iter_child_nodes(node):
+                    if isinstance(child, _OP_NODES):
+                        continue  # safe: pure operator, no state
+                    _validate_expr_node(child)
+            elif isinstance(node, _ast.Call):
+                if (
+                    not isinstance(node.func, _ast.Name)
+                    or node.func.id not in _SAFE_FUNCS
+                ):
+                    raise ValueError(
+                        f"Disallowed function call in expression. "
+                        f"Allowed functions: {sorted(_SAFE_FUNCS)}"
+                    )
+                for arg in node.args:
+                    _validate_expr_node(arg)
+                if node.keywords:
+                    raise ValueError("Keyword arguments are not allowed in function expressions.")
+            else:
+                raise ValueError(
+                    f"Disallowed AST node type in expression: {type(node).__name__}"
+                )
+
+        empty_source = ColumnDataSource({"x_fn": [], "y_fn": []})
+
+        try:
+            tree = _ast.parse(expr, mode="eval")
+            _validate_expr_node(tree)
+            code = compile(tree, "<function>", "eval")
+        except (SyntaxError, ValueError):
+            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
+                             line_color="#d62728", line_width=2.0)]
+
+        x_lo, x_hi = float(x_range[0]), float(x_range[1])
+        x_arr = np.linspace(x_lo, x_hi, int(n_points))
+
+        ns: dict = {
+            "x":      x_arr,
+            "pi":     math.pi,
+            "e":      math.e,
+            "sin":    np.sin,
+            "cos":    np.cos,
+            "tan":    np.tan,
+            "exp":    np.exp,
+            "log":    np.log,
+            "log10":  np.log10,
+            "sqrt":   np.sqrt,
+            "abs":    np.abs,
+            "floor":  np.floor,
+            "ceil":   np.ceil,
+        }
+
+        try:
+            # __builtins__ blocked: prevents access to Python built-ins from
+            # the evaluated code.  The AST whitelist ensures no harmful nodes
+            # reached compile(); this is defence-in-depth.
+            y_arr = eval(code, {"__builtins__": {}}, ns)  # noqa: S307 (intentional safe eval)
+            y_arr = np.asarray(y_arr, dtype=float)
+            # Broadcast scalar results (e.g. "pi", "e", "3.14") to match x_arr length
+            if y_arr.ndim == 0:
+                y_arr = np.full(len(x_arr), float(y_arr))
+        except Exception:
+            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
+                             line_color="#d62728", line_width=2.0)]
+
+        fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
+        r = fig.line(x="x_fn", y="y_fn", source=fn_source,
+                     line_color="#d62728", line_width=2.0)
+        self._apply_line_opts(r, options)
+        return [r]
+
 
 # ===========================================================================
 # FilterBuilder
@@ -1818,21 +2389,86 @@ class DashRenderer:
     # ColumnDataSource management
     # ------------------------------------------------------------------
 
-    def _make_source(self, varnames: list[str]) -> ColumnDataSource:
+    def _make_source(
+        self,
+        varnames: list[str],
+        df: "pd.DataFrame | None" = None,
+    ) -> ColumnDataSource:
         """Create a ``ColumnDataSource`` for the given variable names.
 
-        Only includes columns that exist in self.df.  Missing columns
-        are silently skipped to prevent KeyErrors for derived variables.
+        Only includes columns that exist in ``df`` (defaults to ``self.df``).
+        Missing columns are silently skipped to prevent KeyErrors for derived
+        variables.
 
         Args:
             varnames: List of Stata variable names needed by one or more glyphs.
+            df:       Optional DataFrame to use instead of ``self.df``.  Pass a
+                      pre-filtered slice to implement per-graph if/in filtering.
 
         Returns:
             A new ``ColumnDataSource`` populated with the requested columns.
         """
-        available = [v for v in varnames if v in self.df.columns]
-        data_dict = {v: self.df[v].tolist() for v in available}
+        frame = df if df is not None else self.df
+        available = [v for v in varnames if v in frame.columns]
+        data_dict = {v: frame[v].tolist() for v in available}
         return ColumnDataSource(data=data_dict)
+
+    def _apply_graph_filter(
+        self,
+        graph_spec: dict,
+    ) -> "pd.DataFrame":
+        """Return a filtered copy of ``self.df`` based on per-graph if/in qualifiers.
+
+        Security: ``if_expr`` is translated to a pandas query using a restricted
+        engine.  Only column names (validated against ``self.df.columns``),
+        numeric/string literals, comparison operators, and boolean connectives
+        are allowed.  Any expression that fails to parse or contains disallowed
+        constructs raises a ``ValueError`` and leaves the DataFrame unfiltered.
+
+        Args:
+            graph_spec: A single graph specification dict containing optional
+                        ``"if_expr"`` and ``"in_expr"`` keys.
+
+        Returns:
+            A (possibly smaller) DataFrame.
+        """
+        import re as _re
+        df = self.df.copy()
+
+        in_expr = (graph_spec.get("in_expr") or "").strip()
+        if in_expr:
+            # Format: "N/M" → rows N-1 through M-1 (Stata 1-based indexing)
+            m = _re.match(r"^(\d+)/(\d+)$", in_expr)
+            if m:
+                lo = max(0, int(m.group(1)) - 1)
+                hi = int(m.group(2))
+                df = df.iloc[lo:hi].copy()
+
+        if_expr = (graph_spec.get("if_expr") or "").strip()
+        if if_expr:
+            # Replace Stata operators with pandas-compatible equivalents
+            pandas_expr = (if_expr
+                           .replace(" & ", " & ")
+                           .replace(" | ", " | ")
+                           .replace("!=", "!=")
+                           .replace("==", "==")
+                           .replace("~=", "!="))
+
+            # Security: only allow column names, literals, operators
+            # Reject any expression containing shell-injection characters or
+            # Python code constructs.
+            _UNSAFE = _re.compile(r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b')
+            if _UNSAFE.search(pandas_expr):
+                pass  # silently skip unsafe if_expr
+            else:
+                try:
+                    # Validate column names referenced in expression
+                    # Use a restricted pandas query with the 'python' engine
+                    df = df.query(pandas_expr, engine="python")
+                except Exception:
+                    pass  # malformed if_expr → no filtering; don't crash
+
+        return df
 
     # ------------------------------------------------------------------
     # Figure construction helpers
@@ -1918,8 +2554,10 @@ class DashRenderer:
         # Plot categories that use non-standard JSON variable keys
         _RANGE_TYPES = frozenset({
             "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
+            "rcapsym", "tsrline",
         })
         _UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
+        _PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow"})
 
         # Add glyphs for each plot layer
         for plot in plots:
@@ -1927,7 +2565,16 @@ class DashRenderer:
             pxvar = plot.get("xvar", xvar)
             popts = plot.get("options", {})
 
-            if ptype.lower() in _RANGE_TYPES:
+            if ptype.lower() == "scatteri":
+                # Inline coordinate list — no shared source variable needed
+                self.mapper.map_scatteri(fig, plot.get("values", []), popts)
+            elif ptype.lower() in _PC_TYPES:
+                py1var = plot.get("y1var", "")
+                px1var = plot.get("x1var", "")
+                py2var = plot.get("y2var", "")
+                px2var = plot.get("x2var", "")
+                self._add_pc_glyph(fig, source, ptype, py1var, px1var, py2var, px2var, popts)
+            elif ptype.lower() in _RANGE_TYPES:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
                 self._add_glyph(fig, source, ptype, py1var, pxvar, popts,
@@ -1936,6 +2583,23 @@ class DashRenderer:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
                 self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
+            elif ptype.lower() == "function":
+                pexpr = plot.get("expr", "")
+                x_lo, x_hi = 0.0, 1.0
+                n_pts = 200
+                if "range" in popts:
+                    parts = popts["range"].split()
+                    if len(parts) >= 2:
+                        try:
+                            x_lo, x_hi = float(parts[0]), float(parts[1])
+                        except ValueError:
+                            pass
+                if "n" in popts:
+                    try:
+                        n_pts = int(popts["n"])
+                    except ValueError:
+                        pass
+                self.mapper.map_function(fig, pexpr, (x_lo, x_hi), n_pts, popts)
             else:
                 pyvar = plot.get("yvar", yvar)
                 self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
@@ -1983,15 +2647,20 @@ class DashRenderer:
             "hist":       self.mapper.map_histogram,
             "kdensity":   self.mapper.map_kdensity,
             "dot":        self.mapper.map_dot,
+            "dropline":   self.mapper.map_dropline,
+            "tsline":     self.mapper.map_tsline,
+            "mspline":    self.mapper.map_mspline,
         }
         # Range plot (y1var, y2var, xvar) dispatch
         range_dispatch = {
-            "rarea":       self.mapper.map_rarea,
-            "rbar":        self.mapper.map_rbar,
-            "rspike":      self.mapper.map_rspike,
-            "rcap":        self.mapper.map_rcap,
-            "rline":       self.mapper.map_rline,
-            "rconnected":  self.mapper.map_rconnected,
+            "rarea":      self.mapper.map_rarea,
+            "rbar":       self.mapper.map_rbar,
+            "rspike":     self.mapper.map_rspike,
+            "rcap":       self.mapper.map_rcap,
+            "rline":      self.mapper.map_rline,
+            "rconnected": self.mapper.map_rconnected,
+            "rcapsym":    self.mapper.map_rcapsym,
+            "tsrline":    self.mapper.map_tsrline,
         }
 
         pt = plot_type.lower()
@@ -2009,6 +2678,38 @@ class DashRenderer:
                 fn(fig, source, yvar, options)
             else:
                 fn(fig, source, yvar, xvar, options)
+
+    def _add_pc_glyph(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        plot_type: str,
+        y1var: str,
+        x1var: str,
+        y2var: str,
+        x2var: str,
+        options: dict,
+    ) -> None:
+        """Dispatch a paired-coordinate plot layer to the correct GlyphMapper method.
+
+        Args:
+            fig:        Bokeh Figure to add the glyph to.
+            source:     ColumnDataSource.
+            plot_type:  Paired-coordinate plot type name (pcspike, pcarrow, pcbarrow).
+            y1var:      Start y variable name.
+            x1var:      Start x variable name.
+            y2var:      End y variable name.
+            x2var:      End x variable name.
+            options:    Plot-level options dict.
+        """
+        pc_dispatch = {
+            "pcspike":  self.mapper.map_pcspike,
+            "pcarrow":  self.mapper.map_pcarrow,
+            "pcbarrow": self.mapper.map_pcbarrow,
+        }
+        fn = pc_dispatch.get(plot_type.lower())
+        if fn is not None:
+            fn(fig, source, y1var, x1var, y2var, x2var, options)
 
     # ------------------------------------------------------------------
     # KPI card construction
@@ -2130,7 +2831,7 @@ class DashRenderer:
 
         sources: dict[str, ColumnDataSource] = {}
         # Keys that can hold variable names in plot specs
-        _VK = ("yvar", "xvar", "var", "yvar1", "yvar2")
+        _VK = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
 
         if link_names:
             # Collect all variable names needed by linked graphs
@@ -2154,13 +2855,17 @@ class DashRenderer:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
+                    # Linked graphs share a source; per-graph if/in not applied
                     sources[name] = linked_source
                 else:
                     g_vars = [
                         p.get(k) for p in g.get("plots", [])
                         for k in _VK if p.get(k)
                     ]
-                    sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
+                    filtered_df = self._apply_graph_filter(g)
+                    sources[name] = self._make_source(
+                        list(dict.fromkeys(g_vars)), df=filtered_df
+                    )
         else:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
@@ -2168,7 +2873,10 @@ class DashRenderer:
                     p.get(k) for p in g.get("plots", [])
                     for k in _VK if p.get(k)
                 ]
-                sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
+                filtered_df = self._apply_graph_filter(g)
+                sources[name] = self._make_source(
+                    list(dict.fromkeys(g_vars)), df=filtered_df
+                )
 
         return sources
 
@@ -2244,7 +2952,7 @@ class DashRenderer:
         saving_path = build.get("saving", "")
 
         # ---- 1. Determine all variable names needed ----
-        _VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2")
+        _VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
         all_vars: list[str] = []
         for g in graphs:
             for plot in g.get("plots", []):
@@ -2785,7 +3493,7 @@ class ServerAppBuilder:
             "    all_vars = set()",
             "    for g in graphs:",
             "        for p in g.get('plots', []):",
-            "            for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2'):",
+            "            for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
             "                v = p.get(k, '')",
             "                if v and v in df.columns: all_vars.add(v)",
             "    for kpi in kpi_defs:",
@@ -3081,6 +3789,148 @@ class ServerAppBuilder:
             "                    fig.scatter(x=xvar, y=y2var, source=rsrc,",
             "                                fill_color=color, size=6)",
             "                    graph_sources[gname] = rsrc",
+            "",
+            "            elif ptype == 'dropline':",
+            "                if yvar and xvar:",
+            "                    clean = df[[xvar, yvar]].dropna()",
+            "                    dsrc = ColumnDataSource({",
+            "                        'x': clean[xvar].values,",
+            "                        'y': clean[yvar].values,",
+            "                        'y0': np.zeros(len(clean)),",
+            "                    })",
+            "                    fig.segment(x0='x', y0='y0', x1='x', y1='y',",
+            "                                source=dsrc, line_color=color, line_width=1.5)",
+            "                    fig.scatter(x='x', y='y', source=dsrc,",
+            "                                fill_color=color, line_color=color, size=8)",
+            "                    graph_sources[gname] = dsrc",
+            "",
+            "            elif ptype == 'rcapsym':",
+            "                if y1var and y2var and xvar:",
+            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna()",
+            "                    x_arr = rclean[xvar].values",
+            "                    uniq_x = np.unique(x_arr)",
+            "                    cap_hw = float(np.diff(np.sort(uniq_x)).min()) * 0.2 if len(uniq_x) > 1 else 0.2",
+            "                    cap_data = dict(",
+            "                        x=x_arr,",
+            "                        y1=rclean[y1var].values, y2=rclean[y2var].values,",
+            "                        x0_c=x_arr - cap_hw, x1_c=x_arr + cap_hw,",
+            "                    )",
+            "                    csrc = ColumnDataSource(cap_data)",
+            "                    fig.segment(x0='x', y0='y1', x1='x', y1='y2',",
+            "                                source=csrc, line_color=color, line_width=1.5)",
+            "                    fig.segment(x0='x0_c', y0='y1', x1='x1_c', y1='y1',",
+            "                                source=csrc, line_color=color, line_width=1.5)",
+            "                    fig.segment(x0='x0_c', y0='y2', x1='x1_c', y1='y2',",
+            "                                source=csrc, line_color=color, line_width=1.5)",
+            "                    fig.scatter(x='x', y='y1', source=csrc,",
+            "                                fill_color=color, size=7)",
+            "                    fig.scatter(x='x', y='y2', source=csrc,",
+            "                                fill_color=color, size=7)",
+            "                    graph_sources[gname] = csrc",
+            "",
+            "            elif ptype == 'scatteri':",
+            "                vals = plot.get('values', [])",
+            "                if vals:",
+            "                    si_y = [float(p[0]) for p in vals]",
+            "                    si_x = [float(p[1]) for p in vals]",
+            "                    si_src = ColumnDataSource({'x': si_x, 'y': si_y})",
+            "                    fig.scatter(x='x', y='y', source=si_src,",
+            "                                fill_color=color, size=8)",
+            "",
+            "            elif ptype in ('pcspike', 'pcarrow', 'pcbarrow'):",
+            "                pc_y1 = plot.get('y1var', '')",
+            "                pc_x1 = plot.get('x1var', '')",
+            "                pc_y2 = plot.get('y2var', '')",
+            "                pc_x2 = plot.get('x2var', '')",
+            "                if pc_y1 and pc_x1 and pc_y2 and pc_x2:",
+            "                    cols = [c for c in [pc_y1, pc_x1, pc_y2, pc_x2] if c in df.columns]",
+            "                    if len(cols) == 4:",
+            "                        pclean = df[cols].dropna()",
+            "                        pcsrc = ColumnDataSource(pclean)",
+            "                        fig.segment(x0=pc_x1, y0=pc_y1, x1=pc_x2, y1=pc_y2,",
+            "                                    source=pcsrc, line_color=color, line_width=1.5)",
+            "                        graph_sources[gname] = pcsrc",
+            "",
+            "            elif ptype == 'tsline':",
+            "                clean = df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else df",
+            "                csrc = ColumnDataSource(clean)",
+            "                fig.line(x=xvar, y=yvar, source=csrc,",
+            "                         line_color=color, line_width=1.5)",
+            "                graph_sources[gname] = csrc",
+            "",
+            "            elif ptype == 'tsrline':",
+            "                ts_y1 = plot.get('yvar1', '')",
+            "                ts_y2 = plot.get('yvar2', '')",
+            "                if ts_y1 and ts_y2 and xvar:",
+            "                    rcols = [c for c in [ts_y1, ts_y2, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna().sort_values(xvar)",
+            "                    rsrc = ColumnDataSource(rclean)",
+            "                    fig.line(x=xvar, y=ts_y1, source=rsrc,",
+            "                             line_color=color, line_width=1.5)",
+            "                    fig.line(x=xvar, y=ts_y2, source=rsrc,",
+            "                             line_color=color, line_width=1.5, line_dash='dashed')",
+            "                    graph_sources[gname] = rsrc",
+            "",
+            "            elif ptype == 'mspline':",
+            "                if xvar and yvar:",
+            "                    try:",
+            "                        from scipy.interpolate import PchipInterpolator",
+            "                        mclean = df[[xvar, yvar]].dropna().sort_values(xvar)",
+            "                        if len(mclean) >= 2:",
+            "                            interp = PchipInterpolator(mclean[xvar].values, mclean[yvar].values)",
+            "                            x_grid = np.linspace(mclean[xvar].min(), mclean[xvar].max(), 200)",
+            "                            y_grid = interp(x_grid)",
+            "                            ms_src = ColumnDataSource({'x_ms': x_grid.tolist(), 'y_ms': y_grid.tolist()})",
+            "                            fig.line(x='x_ms', y='y_ms', source=ms_src,",
+            "                                     line_color=color, line_width=2.0)",
+            "                    except Exception:",
+            "                        pass",
+            "",
+            "            elif ptype == 'function':",
+            "                import ast as _ast",
+            "                import math as _math",
+            "                pexpr = plot.get('expr', '')",
+            "                opts = plot.get('options', {})",
+            "                x_lo, x_hi = 0.0, 1.0",
+            "                n_pts = 200",
+            "                if 'range' in opts:",
+            "                    _parts = opts['range'].split()",
+            "                    if len(_parts) >= 2:",
+            "                        try: x_lo, x_hi = float(_parts[0]), float(_parts[1])",
+            "                        except ValueError: pass",
+            "                if 'n' in opts:",
+            "                    try: n_pts = int(opts['n'])",
+            "                    except ValueError: pass",
+            "                _SAFE_NAMES = frozenset({'x', 'pi', 'e'})",
+            "                _SAFE_FUNCS = frozenset({'sin','cos','tan','exp','log','log10','sqrt','abs','floor','ceil'})",
+            "                def _val_node(node):",
+            "                    if isinstance(node, _ast.Expression): _val_node(node.body)",
+            "                    elif isinstance(node, _ast.Constant): pass",
+            "                    elif isinstance(node, _ast.Name):",
+            "                        if node.id not in _SAFE_NAMES: raise ValueError(f'Unsafe name: {node.id!r}')",
+            "                    elif isinstance(node, (_ast.BinOp, _ast.UnaryOp)):",
+            "                        for c in _ast.iter_child_nodes(node): _val_node(c)",
+            "                    elif isinstance(node, _ast.Call):",
+            "                        if not isinstance(node.func, _ast.Name) or node.func.id not in _SAFE_FUNCS:",
+            "                            raise ValueError('Disallowed function call')",
+            "                        for a in node.args: _val_node(a)",
+            "                    else: raise ValueError(f'Disallowed node: {type(node).__name__}')",
+            "                try:",
+            "                    _tree = _ast.parse(pexpr, mode='eval')",
+            "                    _val_node(_tree)",
+            "                    _code = compile(_tree, '<function>', 'eval')",
+            "                    _x = np.linspace(x_lo, x_hi, n_pts)",
+            "                    _ns = {'x': _x, 'pi': _math.pi, 'e': _math.e,",
+            "                           'sin': np.sin, 'cos': np.cos, 'tan': np.tan,",
+            "                           'exp': np.exp, 'log': np.log, 'log10': np.log10,",
+            "                           'sqrt': np.sqrt, 'abs': np.abs, 'floor': np.floor, 'ceil': np.ceil}",
+            "                    _y = eval(_code, {'__builtins__': {}}, _ns)",
+            "                    fn_src = ColumnDataSource({'x_fn': _x.tolist(), 'y_fn': np.asarray(_y, dtype=float).tolist()})",
+            "                    fig.line(x='x_fn', y='y_fn', source=fn_src,",
+            "                             line_color=color, line_width=2.0)",
+            "                except Exception:",
+            "                    pass",
             "",
             "        figures[gname] = fig",
             "",

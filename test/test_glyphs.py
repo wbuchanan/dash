@@ -502,3 +502,120 @@ class TestEdgeCasesEmptyData:
         r = gm.map_lowess(fig, nan_cds, "mpg", "weight", {})
         assert r is not None
         assert len(r.data_source.data["x_lw"]) == 0
+
+
+# ================================================================
+# Phase 3 — dropline, rcapsym, scatteri  (P3-26 through P3-36)
+# ================================================================
+
+@pytest.fixture
+def range_df():
+    x = np.linspace(1, 10, 15)
+    return pd.DataFrame({"lo": x * 0.5, "hi": x * 1.5, "xvar": x})
+
+
+@pytest.fixture
+def range_cds(range_df):
+    return ColumnDataSource(range_df)
+
+
+@pytest.fixture
+def std_df():
+    x = np.linspace(1, 10, 15)
+    return pd.DataFrame({"y": x * 0.8 + 1.0, "x": x})
+
+
+@pytest.fixture
+def std_cds(std_df):
+    return ColumnDataSource(std_df)
+
+
+class TestMapDropline:
+    """P3-26 through P3-29: dropline produces segment + scatter."""
+
+    def test_dropline_returns_two_renderers(self, fig, std_cds, gm):
+        """P3-26: map_dropline returns exactly [segment, scatter]."""
+        result = gm.map_dropline(fig, std_cds, "y", "x", {})
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+    def test_dropline_segment_glyph(self, fig, std_cds, gm):
+        """P3-27: first renderer is a Segment glyph."""
+        from bokeh.models.glyphs import Segment
+        result = gm.map_dropline(fig, std_cds, "y", "x", {})
+        assert isinstance(result[0].glyph, Segment)
+
+    def test_dropline_scatter_glyph(self, fig, std_cds, gm):
+        """P3-28: second renderer is a Scatter glyph."""
+        from bokeh.models.glyphs import Scatter
+        result = gm.map_dropline(fig, std_cds, "y", "x", {})
+        assert isinstance(result[1].glyph, Scatter)
+
+    def test_dropline_segment_drops_to_zero(self, fig, std_cds, gm):
+        """P3-29: segment y0 column is all zeros."""
+        result = gm.map_dropline(fig, std_cds, "y", "x", {})
+        seg = result[0]
+        y0_data = seg.data_source.data["y0"]
+        assert all(v == 0.0 for v in y0_data)
+
+
+class TestMapRcapsym:
+    """P3-30 through P3-33: rcapsym = rcap + scatter markers."""
+
+    def test_rcapsym_returns_five_renderers(self, fig, range_cds, gm):
+        """P3-30: map_rcapsym returns exactly 5 renderers (spine+2 caps+2 dots)."""
+        result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
+        assert isinstance(result, list)
+        assert len(result) == 5
+
+    def test_rcapsym_spine_is_segment(self, fig, range_cds, gm):
+        """P3-31: first renderer (spine) is a Segment glyph."""
+        from bokeh.models.glyphs import Segment
+        result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
+        assert isinstance(result[0].glyph, Segment)
+
+    def test_rcapsym_caps_are_segments(self, fig, range_cds, gm):
+        """P3-32: renderers 1 and 2 (horizontal caps) are Segment glyphs."""
+        from bokeh.models.glyphs import Segment
+        result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
+        assert isinstance(result[1].glyph, Segment)
+        assert isinstance(result[2].glyph, Segment)
+
+    def test_rcapsym_dots_are_scatter(self, fig, range_cds, gm):
+        """P3-33: renderers 3 and 4 (cap markers) are Scatter glyphs."""
+        from bokeh.models.glyphs import Scatter
+        result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
+        assert isinstance(result[3].glyph, Scatter)
+        assert isinstance(result[4].glyph, Scatter)
+
+
+class TestMapScatteri:
+    """P3-34 through P3-36: scatteri uses inline coordinate pairs."""
+
+    def test_scatteri_returns_list(self, fig, gm):
+        """P3-34: map_scatteri returns a list."""
+        values = [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
+        result = gm.map_scatteri(fig, values, {})
+        assert isinstance(result, list)
+        assert len(result) == 1
+
+    def test_scatteri_scatter_glyph(self, fig, gm):
+        """P3-35: renderer is a Scatter glyph."""
+        from bokeh.models.glyphs import Scatter
+        values = [[1.0, 2.0], [3.0, 4.0]]
+        result = gm.map_scatteri(fig, values, {})
+        assert isinstance(result[0].glyph, Scatter)
+
+    def test_scatteri_correct_coordinates(self, fig, gm):
+        """P3-36: ColumnDataSource contains the exact supplied coordinates."""
+        values = [[10.0, 20.0], [30.0, 40.0]]
+        result = gm.map_scatteri(fig, values, {})
+        data = result[0].data_source.data
+        assert list(data["y"]) == [10.0, 30.0]
+        assert list(data["x"]) == [20.0, 40.0]
+
+    def test_scatteri_empty_values_no_error(self, fig, gm):
+        """P3-37: empty values list returns empty renderer without error."""
+        result = gm.map_scatteri(fig, [], {})
+        assert result is not None
+        assert len(result) == 1

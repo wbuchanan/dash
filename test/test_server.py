@@ -880,3 +880,41 @@ class TestServerDispatchRconnected:
         source = _build_app(dr_module, rdf, spec)
         assert source.count("fig.line(") >= 2, "rconnected should produce >=2 fig.line"
         assert source.count("fig.scatter(") >= 2, "rconnected should produce >=2 fig.scatter"
+
+
+class TestServerDispatchDropline:
+    def test_dropline_in_server_source(self, dr_module, auto_df):
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "dropline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "dl1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "fig.segment(" in source, "dropline should emit fig.segment"
+        assert "fig.scatter(" in source, "dropline should emit fig.scatter"
+
+
+class TestServerDispatchRcapsym:
+    def test_rcapsym_in_server_source(self, dr_module):
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rcapsym", "yvar1": "lo", "yvar2": "hi", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "rcs1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        # rcapsym: spine + 2 caps (segments) + 2 scatter markers
+        assert source.count("fig.segment(") >= 3, "rcapsym should produce >=3 fig.segment calls"
+        assert source.count("fig.scatter(") >= 2, "rcapsym should produce >=2 fig.scatter calls"
+
+
+class TestServerDispatchScatteri:
+    def test_scatteri_in_server_source(self, dr_module, auto_df):
+        spec = _make_spec_json(graphs=[{
+            "plots": [{
+                "type": "scatteri",
+                "values": [[1.0, 2.0], [3.0, 4.0]],
+                "options": {},
+            }],
+            "graph_options": {"name": "si1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "fig.scatter(" in source, "scatteri should emit fig.scatter"
