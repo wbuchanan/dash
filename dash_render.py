@@ -333,11 +333,59 @@ class OptionTranslator:
     }
 
     @staticmethod
+    def parse_color_alpha(value: str) -> "tuple[str | None, float | None]":
+        """Parse a Stata color+alpha spec such as ``'red%50'`` or ``'%30'``.
+
+        Stata allows an optional ``%N`` suffix on any color spec where *N* is
+        0-100 and represents opacity percentage (0 = transparent, 100 = opaque).
+        A bare ``%N`` with no color prefix means "use current color, change
+        alpha only".
+
+        Args:
+            value: Raw option value from a Stata mcolor()/fcolor()/lcolor()
+                   call, e.g. ``"navy%80"`` or ``"%50"`` or ``"navy"``.
+
+        Returns:
+            A ``(hex_color_or_None, alpha_0_to_1_or_None)`` tuple.  Either
+            element can be ``None`` if absent.
+        """
+        v = value.strip()
+        alpha: "float | None" = None
+        hex_color: "str | None" = None
+
+        # Split on the LAST '%' to find an optional alpha suffix.
+        pct_idx = v.rfind("%")
+        if pct_idx >= 0:
+            alpha_str = v[pct_idx + 1:].strip()
+            color_part = v[:pct_idx].strip()
+            try:
+                alpha_val = float(alpha_str)
+                if 0.0 <= alpha_val <= 100.0:
+                    alpha = alpha_val / 100.0
+                    v = color_part          # strip alpha from the color string
+            except ValueError:
+                pass   # '%' is part of the color name — fall through
+
+        # Resolve color (may be empty if bare '%N' form)
+        if v:
+            try:
+                hex_color = OptionTranslator.translate_mcolor(v)
+            except ValueError:
+                pass   # unrecognised — return None
+
+        return hex_color, alpha
+
+    @staticmethod
     def translate_mcolor(value: str) -> str:
         """Return a CSS hex color string for a Stata mcolor() value.
 
+        Strips any trailing ``%alpha`` suffix before resolving the color so
+        that ``translate_mcolor`` can be used as a plain color resolver while
+        ``parse_color_alpha`` handles the full ``color%alpha`` syntax.
+
         Args:
-            value: A Stata color name (e.g. "navy") or RGB string "R G B".
+            value: A Stata color name (e.g. "navy"), RGB string "R G B", or
+                   hex code.  A ``%N`` alpha suffix is silently stripped.
 
         Returns:
             A CSS hex color string, e.g. "#1a476f".
@@ -345,7 +393,18 @@ class OptionTranslator:
         Raises:
             ValueError: If the value cannot be recognised as a valid color.
         """
-        v = value.strip().lower()
+        # Strip alpha suffix before color resolution
+        v = value.strip()
+        pct_idx = v.rfind("%")
+        if pct_idx >= 0:
+            alpha_str = v[pct_idx + 1:].strip()
+            try:
+                alpha_val = float(alpha_str)
+                if 0.0 <= alpha_val <= 100.0:
+                    v = v[:pct_idx].strip()
+            except ValueError:
+                pass  # literal '%' in value — keep as-is
+        v = v.lower()
 
         # RGB triplet: "255 0 128" or "255,0,128"
         parts = v.replace(",", " ").split()
@@ -983,12 +1042,16 @@ class GlyphMapper:
         renderer: Any,
         options: dict[str, str],
     ) -> None:
-        """Apply lcolor/lwidth/lpattern options to a line-type glyph renderer."""
+        """Apply lcolor/lwidth/lpattern/lalpha options to a line-type glyph renderer."""
         glyph = renderer.glyph
         if "lcolor" in options:
             try:
-                glyph.line_color = self.tr.translate_lcolor(options["lcolor"])
-            except ValueError:
+                color, alpha = self.tr.parse_color_alpha(options["lcolor"])
+                if color:
+                    glyph.line_color = color
+                if alpha is not None and hasattr(glyph, "line_alpha"):
+                    glyph.line_alpha = alpha
+            except (ValueError, AttributeError):
                 pass
         if "lwidth" in options:
             try:
@@ -1000,13 +1063,26 @@ class GlyphMapper:
                 glyph.line_dash = self.tr.translate_lpattern(options["lpattern"])
             except ValueError:
                 pass
+        # lalpha: standalone line opacity, 0-100%
+        if "lalpha" in options:
+            try:
+                la = float(options["lalpha"].strip())
+                if 0.0 <= la <= 100.0 and hasattr(glyph, "line_alpha"):
+                    glyph.line_alpha = la / 100.0
+            except (ValueError, AttributeError):
+                pass
 
     def _apply_marker_opts(
         self,
         renderer: Any,
         options: dict[str, str],
     ) -> None:
-        """Apply mcolor/msymbol/msize options to a scatter-type glyph renderer.
+        """Apply mcolor/msymbol/msize/malpha options to a scatter-type glyph renderer.
+
+        Supports Stata's ``color%alpha`` notation on ``mcolor``, ``mfcolor``,
+        and ``lcolor`` (e.g. ``mcolor(red%50)``).  A standalone ``malpha``
+        option overrides the alpha of both fill and line; ``lalpha`` overrides
+        only the line alpha.
 
         The generic ``marker`` key (produced by the Mata parser's ``m()``
         abbreviation expansion) is treated as an alias for ``msymbol``.
@@ -1022,10 +1098,16 @@ class GlyphMapper:
                 pass
         if "mcolor" in options:
             try:
-                color = self.tr.translate_mcolor(options["mcolor"])
-                glyph.fill_color = color
-                glyph.line_color = color
-            except ValueError:
+                color, alpha = self.tr.parse_color_alpha(options["mcolor"])
+                if color:
+                    glyph.fill_color = color
+                    glyph.line_color = color
+                if alpha is not None:
+                    if hasattr(glyph, "fill_alpha"):
+                        glyph.fill_alpha = alpha
+                    if hasattr(glyph, "line_alpha"):
+                        glyph.line_alpha = alpha
+            except (ValueError, AttributeError):
                 pass
         if "msymbol" in options:
             try:
@@ -1038,16 +1120,24 @@ class GlyphMapper:
             except ValueError:
                 pass
         # mfcolor sets the fill color independently of the line/outline color.
-        # Applied after mcolor so it overrides any fill_color set by mcolor.
+        # Supports color%alpha notation; applied after mcolor so it wins.
         if "mfcolor" in options:
             try:
-                glyph.fill_color = self.tr.translate_mcolor(options["mfcolor"])
-            except ValueError:
+                color, alpha = self.tr.parse_color_alpha(options["mfcolor"])
+                if color:
+                    glyph.fill_color = color
+                if alpha is not None and hasattr(glyph, "fill_alpha"):
+                    glyph.fill_alpha = alpha
+            except (ValueError, AttributeError):
                 pass
         # lcolor sets the marker border (outline) color independently of fill.
         if "lcolor" in options:
             try:
-                glyph.line_color = self.tr.translate_mcolor(options["lcolor"])
+                color, alpha = self.tr.parse_color_alpha(options["lcolor"])
+                if color and hasattr(glyph, "line_color"):
+                    glyph.line_color = color
+                if alpha is not None and hasattr(glyph, "line_alpha"):
+                    glyph.line_alpha = alpha
             except (ValueError, AttributeError):
                 pass
         # lwidth sets the marker border width.
@@ -1056,9 +1146,32 @@ class GlyphMapper:
                 glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
             except (ValueError, AttributeError):
                 pass
+        # malpha: standalone fill+line opacity override, 0-100%.
+        # Applied last so it wins over any alpha embedded in mcolor/mfcolor/lcolor.
+        if "malpha" in options:
+            try:
+                ma = float(options["malpha"].strip())
+                if 0.0 <= ma <= 100.0:
+                    if hasattr(glyph, "fill_alpha"):
+                        glyph.fill_alpha = ma / 100.0
+                    if hasattr(glyph, "line_alpha"):
+                        glyph.line_alpha = ma / 100.0
+            except (ValueError, AttributeError):
+                pass
+        # lalpha: standalone line-only opacity, 0-100%.
+        if "lalpha" in options:
+            try:
+                la = float(options["lalpha"].strip())
+                if 0.0 <= la <= 100.0 and hasattr(glyph, "line_alpha"):
+                    glyph.line_alpha = la / 100.0
+            except (ValueError, AttributeError):
+                pass
 
     def _apply_fill_opts(self, renderer: Any, options: dict[str, str]) -> None:
         """Apply fcolor/fintensity options to a filled glyph renderer.
+
+        Supports Stata's ``color%alpha`` notation on ``fcolor``
+        (e.g. ``fcolor(red%60)``).
 
         Args:
             renderer: A Bokeh GlyphRenderer whose glyph has fill_color /
@@ -1068,7 +1181,11 @@ class GlyphMapper:
         glyph = renderer.glyph
         if "fcolor" in options:
             try:
-                glyph.fill_color = self.tr.translate_mcolor(options["fcolor"])
+                color, alpha = self.tr.parse_color_alpha(options["fcolor"])
+                if color:
+                    glyph.fill_color = color
+                if alpha is not None and hasattr(glyph, "fill_alpha"):
+                    glyph.fill_alpha = alpha
             except (ValueError, AttributeError):
                 pass
         if "fintensity" in options:
@@ -1084,6 +1201,134 @@ class GlyphMapper:
                     glyph.fill_alpha = pct
             except (ValueError, AttributeError):
                 pass
+
+    # Supported palette names → Bokeh palette identifiers
+    _PALETTE_MAP: "dict[str, str]" = {
+        "viridis":    "Viridis256",
+        "magma":      "Magma256",
+        "inferno":    "Inferno256",
+        "plasma":     "Plasma256",
+        "cividis":    "Cividis256",
+        "turbo":      "Turbo256",
+        "blues":      "Blues256",
+        "greens":     "Greens256",
+        "reds":       "Reds256",
+        "greys":      "Greys256",
+        "oranges":    "Oranges256",
+        "purples":    "Purples256",
+        "spectral":   "Spectral11",
+        "rdylgn":     "RdYlGn11",
+        "rdbu":       "RdBu11",
+        "category10": "Category10_10",
+        "category20": "Category20_20",
+        "set1":       "Set1_9",
+        "set2":       "Set2_8",
+        "set3":       "Set3_12",
+        "paired":     "Paired_12",
+    }
+
+    def _apply_colorvar(
+        self,
+        fig: Any,
+        renderer: Any,
+        source: "ColumnDataSource",
+        options: dict[str, str],
+    ) -> None:
+        """Map a CDS variable's values to glyph fill/line color.
+
+        When ``colorvar(varname)`` is present and *varname* is a column in
+        *source*, a ``LinearColorMapper`` (numeric data) or
+        ``CategoricalColorMapper`` (string/boolean data) is applied and a
+        ``ColorBar`` is added on the right side of *fig*.
+
+        An optional ``colpalette(name)`` option selects the palette.  Supported
+        names are the keys of ``_PALETTE_MAP`` (e.g. ``viridis``, ``magma``,
+        ``category10``).  Defaults to ``viridis`` for continuous data and
+        ``category10`` for categorical data.
+
+        Args:
+            fig:      Bokeh Figure object.
+            renderer: GlyphRenderer whose fill/line color will be driven by the
+                      mapper.
+            source:   ColumnDataSource containing *varname* as a column.
+            options:  Per-plot options dict (may contain ``colorvar`` and
+                      ``colpalette``).
+        """
+        varname = options.get("colorvar", "").strip()
+        if not varname or varname not in source.data:
+            return
+
+        # Security: validate varname is a safe identifier
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", varname):
+            return
+
+        from bokeh.models import (
+            LinearColorMapper, CategoricalColorMapper, ColorBar,
+        )
+        from bokeh import palettes as _bk_palettes
+
+        raw_col = source.data[varname]
+        palette_key = options.get("colpalette", "").strip().lower()
+
+        # Determine if the column is numeric or categorical
+        try:
+            col_vals = np.array(raw_col, dtype=float)
+            is_numeric = not np.all(np.isnan(col_vals))
+        except (ValueError, TypeError):
+            is_numeric = False
+
+        if is_numeric:
+            lo = float(np.nanmin(col_vals))
+            hi = float(np.nanmax(col_vals))
+            if lo == hi:
+                hi = lo + 1.0
+            pal_name = self._PALETTE_MAP.get(palette_key or "viridis", "Viridis256")
+            palette = getattr(_bk_palettes, pal_name, None)
+            if palette is None:
+                palette = _bk_palettes.Viridis256
+            mapper = LinearColorMapper(palette=palette, low=lo, high=hi,
+                                       nan_color="grey")
+        else:
+            # Categorical: convert all values to strings, get unique sorted factors
+            factors = sorted({str(v) for v in raw_col
+                               if v is not None and str(v) != "nan"})
+            if not factors:
+                return
+            pal_name = self._PALETTE_MAP.get(palette_key or "category10",
+                                             "Category10_10")
+            palette = getattr(_bk_palettes, pal_name, None)
+            if palette is None:
+                palette = _bk_palettes.Category10_10
+            # Extend palette if more factors than palette entries
+            pal_list = list(palette)
+            while len(pal_list) < len(factors):
+                pal_list += pal_list
+            palette = pal_list[:len(factors)]
+            # Re-encode source column as strings for CategoricalColorMapper
+            source.data[varname] = [str(v) for v in raw_col]
+            mapper = CategoricalColorMapper(factors=factors, palette=palette)
+
+        # Apply mapper to the glyph fill and line color
+        glyph = renderer.glyph
+        color_spec = {"field": varname, "transform": mapper}
+        try:
+            glyph.fill_color = color_spec
+            glyph.line_color = color_spec
+        except (AttributeError, ValueError):
+            pass
+
+        # Add a ColorBar to the right of the figure
+        try:
+            color_bar = ColorBar(
+                color_mapper=mapper,
+                label_standoff=8,
+                width=12,
+                location=(0, 0),
+                title=html.escape(varname),
+            )
+            fig.add_layout(color_bar, "right")
+        except Exception:   # noqa: BLE001 — never crash the render
+            pass
 
     def _apply_mlabel_opts(
         self,
@@ -1227,6 +1472,8 @@ class GlyphMapper:
             legend_label=yvar,
         )
         self._apply_marker_opts(r, options)
+        # colorvar: map a variable's values to fill/line color via a color mapper
+        self._apply_colorvar(fig, r, plot_source, options)
         # mlabel uses original column names (not jittered) for readable labels
         self._apply_mlabel_opts(fig, plot_source, options, xvar, yvar)
         fig.add_tools(self._hover_tool(yvar, xvar))
@@ -4366,6 +4613,22 @@ class DashRenderer:
         sources: dict[str, ColumnDataSource] = {}
         # Keys that can hold variable names in plot specs
         _VK = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
+        # Option keys whose values are also variable names (not plot-level keys)
+        _OPT_VAR_KEYS = ("colorvar", "mlabel")
+
+        def _collect_plot_vars(plots_list: list) -> list:
+            """Return deduplicated list of all variable columns needed by plots."""
+            seen: list[str] = []
+            for plot in plots_list:
+                for key in _VK:
+                    v = plot.get(key)
+                    if v and v not in seen:
+                        seen.append(v)
+                for key in _OPT_VAR_KEYS:
+                    v = plot.get("options", {}).get(key, "").strip()
+                    if v and v not in seen:
+                        seen.append(v)
+            return seen
 
         if link_names:
             # Collect all variable names needed by linked graphs
@@ -4373,11 +4636,9 @@ class DashRenderer:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
-                    for plot in g.get("plots", []):
-                        for key in _VK:
-                            v = plot.get(key)
-                            if v and v not in linked_vars:
-                                linked_vars.append(v)
+                    for vname in _collect_plot_vars(g.get("plots", [])):
+                        if vname not in linked_vars:
+                            linked_vars.append(vname)
             # Add filter variables so filter callbacks work on the shared source
             for fc in filters_cfg:
                 v = fc.get("varname")
@@ -4392,36 +4653,24 @@ class DashRenderer:
                     # Linked graphs share a source; per-graph if/in not applied
                     sources[name] = linked_source
                 else:
-                    g_vars = [
-                        p.get(k) for p in g.get("plots", [])
-                        for k in _VK if p.get(k)
-                    ]
+                    g_vars = _collect_plot_vars(g.get("plots", []))
                     filtered_df = self._apply_graph_filter(g)
-                    sources[name] = self._make_source(
-                        list(dict.fromkeys(g_vars)), df=filtered_df
-                    )
+                    sources[name] = self._make_source(g_vars, df=filtered_df)
         else:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
-                g_vars = [
-                    p.get(k) for p in g.get("plots", [])
-                    for k in _VK if p.get(k)
-                ]
+                g_vars = _collect_plot_vars(g.get("plots", []))
                 filtered_df = self._apply_graph_filter(g)
                 by_groups = self._expand_by_groups(g, base_df=filtered_df)
                 if len(by_groups) == 1 and by_groups[0][0] == "":
                     # No faceting — standard path
-                    sources[name] = self._make_source(
-                        list(dict.fromkeys(g_vars)), df=filtered_df
-                    )
+                    sources[name] = self._make_source(g_vars, df=filtered_df)
                 else:
                     # Faceted: one CDS per group
                     facet_entries = []
                     for idx, (label, group_df) in enumerate(by_groups):
                         fkey = f"{name}__by__{idx}"
-                        sources[fkey] = self._make_source(
-                            list(dict.fromkeys(g_vars)), df=group_df
-                        )
+                        sources[fkey] = self._make_source(g_vars, df=group_df)
                         facet_entries.append((fkey, label))
                     self._facet_map[name] = facet_entries
 
@@ -4540,13 +4789,28 @@ class DashRenderer:
 
         # ---- 1. Determine all variable names needed ----
         _VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
-        all_vars: list[str] = []
-        for g in graphs:
-            for plot in g.get("plots", []):
+        # Option keys whose values are also variable names
+        _OPT_VAR_KEYS = ("colorvar", "mlabel")
+
+        def _collect_plot_vars_render(plots_list: list) -> list:
+            """Return deduplicated list of variable columns needed by a graph's plots."""
+            seen: list[str] = []
+            for plot in plots_list:
                 for key in _VAR_KEYS:
                     v = plot.get(key)
-                    if v and v not in all_vars:
-                        all_vars.append(v)
+                    if v and v not in seen:
+                        seen.append(v)
+                for key in _OPT_VAR_KEYS:
+                    v = plot.get("options", {}).get(key, "").strip()
+                    if v and v not in seen:
+                        seen.append(v)
+            return seen
+
+        all_vars: list[str] = []
+        for g in graphs:
+            for vname in _collect_plot_vars_render(g.get("plots", [])):
+                if vname not in all_vars:
+                    all_vars.append(vname)
         for kpi in kpis:
             v = kpi.get("varname")
             if v and v not in all_vars:
@@ -4584,11 +4848,9 @@ class DashRenderer:
             linked_vars: list[str] = []
             for g in graphs:
                 if g.get("graph_options", {}).get("name") in link_names:
-                    for plot in g.get("plots", []):
-                        for key in _VAR_KEYS:
-                            v = plot.get(key)
-                            if v and v not in linked_vars:
-                                linked_vars.append(v)
+                    for vname in _collect_plot_vars_render(g.get("plots", [])):
+                        if vname not in linked_vars:
+                            linked_vars.append(vname)
             # Also include filter vars in linked source
             for fc in filters_cfg:
                 v = fc.get("varname")
@@ -4602,15 +4864,15 @@ class DashRenderer:
                 if name in link_names:
                     self.sources[name] = linked_source
                 else:
-                    g_vars = [p.get(k) for p in g.get("plots", [])
-                              for k in _VAR_KEYS if p.get(k)]
-                    self.sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
+                    g_vars = _collect_plot_vars_render(g.get("plots", []))
+                    filtered_df = self._apply_graph_filter(g)
+                    self.sources[name] = self._make_source(g_vars, df=filtered_df)
         else:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
-                g_vars = [p.get(k) for p in g.get("plots", [])
-                          for k in _VAR_KEYS if p.get(k)]
-                self.sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
+                g_vars = _collect_plot_vars_render(g.get("plots", []))
+                filtered_df = self._apply_graph_filter(g)
+                self.sources[name] = self._make_source(g_vars, df=filtered_df)
 
         # ---- 2b. Handle by() faceting on unlinked sources ----
         for g in graphs:

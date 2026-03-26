@@ -308,6 +308,12 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "fc")    return("fcolor")
     if (name == "fi")    return("fintensity")
 
+    // ---- marker fill / bar color options ----
+    if (name == "mfc")   return("mfcolor")
+    if (name == "blc")   return("blcolor")
+    if (name == "bfc")   return("bfcolor")
+    if (name == "bw")    return("barwidth")
+
     // ---- line options  (P1A-11) ----
     if (name == "lc")    return("lcolor")
     if (name == "lw")    return("lwidth")
@@ -331,6 +337,39 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "xl")    return("xline")
     if (name == "yl")    return("yline")
     if (name == "asp")   return("aspectratio")
+    if (name == "bgc")   return("bgcolor")
+    if (name == "pbgc")  return("plotbgcolor")
+    if (name == "plotr") return("plotregion")
+    if (name == "graphr") return("graphregion")
+
+    // jitter options (plot-level)
+    if (name == "jit")   return("jitter")
+    if (name == "jse")   return("jseed")
+
+    // dual-axis options (plot-level)
+    if (name == "yax")   return("yaxis")
+    if (name == "xax")   return("xaxis")
+
+    // secondary-axis graph-level options
+    if (name == "yti2")  return("ytitle2")
+    if (name == "xti2")  return("xtitle2")
+    if (name == "yla2")  return("ylabel2")
+    if (name == "xla2")  return("xlabel2")
+    if (name == "ysc2")  return("yscale2")
+    if (name == "xsc2")  return("xscale2")
+
+    // scheme option (build-level, but also parsed at graph level for pass-through)
+    if (name == "sch")   return("scheme")
+
+    // alpha / transparency options
+    if (name == "mal")   return("malpha")
+    if (name == "lal")   return("lalpha")
+    if (name == "fal")   return("falpha")
+
+    // variable color mapping
+    if (name == "cv")    return("colorvar")
+    if (name == "colv")  return("colorvar")
+    if (name == "colpal")  return("colpalette")
 
     // no match — return original (handles full names and unknown abbrevs)
     return(name)
@@ -347,9 +386,11 @@ real scalar _is_supported_plot(string scalar ptype) {
                  "histogram", "kdensity",
                  "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
                  "dot", "dropline", "rcapsym", "scatteri",
-                 "pcspike", "pcarrow", "pcbarrow",
+                 "pcspike", "pcarrow", "pcbarrow", "pci", "pcscatter",
                  "tsline", "tsrline",
-                 "mspline", "function")
+                 "mspline", "mband",
+                 "rscatter",
+                 "function")
     return(anyof(supported, ptype))
 }
 

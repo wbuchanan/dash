@@ -357,14 +357,14 @@ class TestMapMspline:
         """P4-33: mspline evaluates on a 200-point grid by default."""
         result = gm.map_mspline(fig, ts_cds, "yval", "t", {})
         src_data = result[0].data_source.data
-        assert len(src_data["x_ms"]) == 200
+        assert len(src_data["x_sp"]) == 200
 
     def test_mspline_grid_spans_data_range(self, fig, ts_cds, gm):
         """P4-34: mspline grid spans from data min to max of x."""
         t_min = float(np.min(ts_cds.data["t"]))
         t_max = float(np.max(ts_cds.data["t"]))
         result = gm.map_mspline(fig, ts_cds, "yval", "t", {})
-        src_x = result[0].data_source.data["x_ms"]
+        src_x = result[0].data_source.data["x_sp"]
         assert abs(float(src_x[0]) - t_min) < 1e-9
         assert abs(float(src_x[-1]) - t_max) < 1e-9
 
@@ -379,7 +379,7 @@ class TestMapMspline:
         tfig = figure()
         result = gm.map_mspline(tfig, cds, "y", "t", {})
         assert isinstance(result[0].glyph, Line)
-        assert len(result[0].data_source.data["x_ms"]) == 200
+        assert len(result[0].data_source.data["x_sp"]) == 200
 
     def test_mspline_insufficient_points_returns_empty_renderer(self, gm):
         """P4-36: mspline with fewer than 2 valid points returns an empty line renderer."""
@@ -390,7 +390,7 @@ class TestMapMspline:
         result = gm.map_mspline(tfig, cds, "y", "t", {})
         assert isinstance(result[0].glyph, Line)
         # Empty source
-        assert len(result[0].data_source.data["x_ms"]) == 0
+        assert len(result[0].data_source.data["x_sp"]) == 0
 
     def test_mspline_default_line_color(self, fig, ts_cds, gm):
         """P4-37: mspline uses the expected default green color."""
@@ -411,11 +411,11 @@ class TestMapMspline:
         cds = ColumnDataSource(df)
         tfig = figure()
         result = gm.map_mspline(tfig, cds, "y", "t", {})
-        x_ms = np.array(result[0].data_source.data["x_ms"])
-        y_ms = np.array(result[0].data_source.data["y_ms"])
+        x_sp = np.array(result[0].data_source.data["x_sp"])
+        y_sp = np.array(result[0].data_source.data["y_sp"])
         # Spline values should closely match sin at interior grid points
-        expected = np.sin(x_ms)
-        max_err = np.max(np.abs(y_ms - expected))
+        expected = np.sin(x_sp)
+        max_err = np.max(np.abs(y_sp - expected))
         assert max_err < 0.01, f"mspline max error {max_err:.6f} exceeds threshold 0.01"
 
 

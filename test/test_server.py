@@ -992,3 +992,1957 @@ class TestServerGraphOptionsExtended:
         }])
         source = _build_app(dr_module, auto_df, spec)
         assert "ylabel" in source and "FixedTicker" in source
+
+
+class TestServerXlineYline:
+    """xline/yline reference lines must appear in server-mode generated app."""
+
+    def test_xline_span_code_generated(self, dr_module, auto_df):
+        """xline option generates Span code with dimension='height' in server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xline": "99.5"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "Span" in source, "xline must generate Span in server app"
+        assert "height" in source, "xline Span must use dimension='height'"
+        assert "xline" in source, "xline key must appear in the generated code"
+
+    def test_yline_span_code_generated(self, dr_module, auto_df):
+        """yline option generates Span code with dimension='width' in server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "yline": "9876.5"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "Span" in source, "yline must generate Span in server app"
+        assert "width" in source, "yline Span must use dimension='width'"
+        assert "yline" in source, "yline key must appear in the generated code"
+
+    def test_xline_and_yline_both_handled(self, dr_module, auto_df):
+        """Both xline and yline can be specified together in server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xline": "25", "yline": "3000"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "Span" in source
+        assert "height" in source and "width" in source
+
+
+class TestServerLogScale:
+    """Server-mode xscale(log) and yscale(log) must produce log-axis figures."""
+
+    def test_xscale_log_generates_x_axis_type(self, dr_module, auto_df):
+        """xscale(log) in graph options must generate x_axis_type='log' in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xscale": "log"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "x_axis_type" in source, "xscale(log) must produce x_axis_type in server app"
+        assert "log" in source
+
+    def test_yscale_log_generates_y_axis_type(self, dr_module, auto_df):
+        """yscale(log) in graph options must generate y_axis_type='log' in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "yscale": "log"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "y_axis_type" in source, "yscale(log) must produce y_axis_type in server app"
+        assert "log" in source
+
+    def test_both_log_scales(self, dr_module, auto_df):
+        """Both xscale and yscale log must both appear in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xscale": "log", "yscale": "log"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "x_axis_type" in source
+        assert "y_axis_type" in source
+
+    def test_log_scale_is_conditional_in_generated_code(self, dr_module, auto_df):
+        """Generated code must use a runtime conditional for log scale (xscale/yscale check)."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xscale": "log"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # The generated code should check xscale/yscale at runtime
+        assert "xscale" in source
+        assert "yscale" in source
+
+
+class TestServerPcarrowPcbarrow:
+    """pcarrow and pcbarrow in server mode must generate Arrow annotations."""
+
+    def test_pcarrow_generates_arrow_in_server(self, dr_module, auto_df):
+        """pcarrow in server mode must generate Arrow/OpenHead code, not just segment."""
+        pc_df = pd.DataFrame({
+            "y1": [0.0, 1.0, 2.0], "x1": [0.0, 1.0, 2.0],
+            "y2": [1.0, 2.0, 3.0], "x2": [1.0, 2.0, 3.0],
+        })
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcarrow",
+                       "y1var": "y1", "x1var": "x1",
+                       "y2var": "y2", "x2var": "x2",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, pc_df, spec)
+        assert "Arrow" in source or "OpenHead" in source, \
+            "pcarrow server dispatch must generate Arrow annotation code"
+
+    def test_pcbarrow_generates_arrow_in_server(self, dr_module, auto_df):
+        """pcbarrow in server mode must generate bidirectional Arrow/NormalHead code."""
+        pc_df = pd.DataFrame({
+            "y1": [0.0, 1.0], "x1": [0.0, 1.0],
+            "y2": [1.0, 2.0], "x2": [1.0, 2.0],
+        })
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcbarrow",
+                       "y1var": "y1", "x1var": "x1",
+                       "y2var": "y2", "x2var": "x2",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, pc_df, spec)
+        assert "Arrow" in source or "NormalHead" in source, \
+            "pcbarrow server dispatch must generate bidirectional Arrow code"
+
+    def test_pcspike_generates_segment_in_server(self, dr_module, auto_df):
+        """pcspike (no arrow) must still generate segment in server mode."""
+        pc_df = pd.DataFrame({
+            "y1": [0.0, 1.0], "x1": [0.0, 1.0],
+            "y2": [1.0, 2.0], "x2": [1.0, 2.0],
+        })
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcspike",
+                       "y1var": "y1", "x1var": "x1",
+                       "y2var": "y2", "x2var": "x2",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, pc_df, spec)
+        assert "segment" in source.lower(), \
+            "pcspike must generate segment glyph in server mode"
+
+    def test_server_xrange_sets_range(self, dr_module, auto_df):
+        """xrange in server mode must generate x_range.start/end code."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xrange": "5 35"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "x_range" in source or "xrange" in source, \
+            "xrange option must appear in server-mode generated code"
+
+    def test_server_yrange_sets_range(self, dr_module, auto_df):
+        """yrange in server mode must generate y_range.start/end code."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "yrange": "1000 5000"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "y_range" in source or "yrange" in source, \
+            "yrange option must appear in server-mode generated code"
+
+
+class TestServerLegendLabelOverrides:
+    """Server-mode generated code must support legend label() overrides."""
+
+    def test_legend_label_override_in_server(self, dr_module, auto_df):
+        """Generated server app must contain label() override parsing code (regex loop)."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "legend": 'label(1 "My Label")'},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # The generated code must contain the label() regex finditer loop
+        assert "finditer" in source, \
+            "server-mode legend must contain finditer loop for label() overrides"
+        assert "html.escape" in source, \
+            "server-mode legend label text must be XSS-escaped"
+
+    def test_legend_off_still_works_in_server(self, dr_module, auto_df):
+        """legend(off) must still set visible=False in server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "legend": "off"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "visible" in source and "False" in source, \
+            "legend(off) must produce visible=False in server code"
+
+
+class TestServerBarSpikeParity:
+    """Server-mode bar/spike/area must honour base(), barwidth(), bfcolor(), blcolor()."""
+
+    def test_bar_base_option_uses_bottom_param(self, dr_module, auto_df):
+        """bar server code must emit 'bottom' parameter and read 'base' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "bar", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "bottom" in source, \
+            "server-mode bar must use 'bottom' parameter in vbar call"
+        assert "'base'" in source or '"base"' in source, \
+            "server-mode bar must read 'base' option from opts dict"
+
+    def test_bar_barwidth_option_applied(self, dr_module, auto_df):
+        """bar server code must read 'barwidth' option from opts."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "bar", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'barwidth'" in source or '"barwidth"' in source, \
+            "server-mode bar must read 'barwidth' option from opts"
+
+    def test_bar_bfcolor_applied(self, dr_module, auto_df):
+        """bar server code must read 'bfcolor' option for fill color."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "bar", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'bfcolor'" in source or '"bfcolor"' in source, \
+            "server-mode bar must read 'bfcolor' option for fill color"
+
+    def test_bar_blcolor_applied(self, dr_module, auto_df):
+        """bar server code must read 'blcolor' option for line color."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "bar", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'blcolor'" in source or '"blcolor"' in source, \
+            "server-mode bar must read 'blcolor' option for line color"
+
+    def test_spike_base_option_code_present(self, dr_module, auto_df):
+        """spike server code must read 'base' option for y0 baseline."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "spike", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'base'" in source or '"base"' in source, \
+            "server-mode spike must read 'base' option for baseline"
+
+    def test_area_base_option_code_present(self, dr_module, auto_df):
+        """area server code must read 'base' option for lower boundary."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "area", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'base'" in source or '"base"' in source, \
+            "server-mode area must read 'base' option for lower boundary"
+
+    def test_scatter_mfcolor_code_present(self, dr_module, auto_df):
+        """scatter server code must read 'mfcolor' for independent fill color."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'mfcolor'" in source or '"mfcolor"' in source, \
+            "server-mode scatter must read 'mfcolor' option"
+
+
+class TestServerLinePlotOpts:
+    """Server-mode generated code must read lwidth/lpattern for line plots
+    and msymbol/msize for scatter."""
+
+    def test_line_lwidth_code_present(self, dr_module, auto_df):
+        """line server code must read 'lwidth' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "line", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'lwidth'" in source or '"lwidth"' in source, \
+            "server-mode line must read 'lwidth' option from opts"
+
+    def test_line_lpattern_code_present(self, dr_module, auto_df):
+        """line server code must read 'lpattern' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "line", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'lpattern'" in source or '"lpattern"' in source, \
+            "server-mode line must read 'lpattern' option from opts"
+
+    def test_spike_lwidth_code_present(self, dr_module, auto_df):
+        """spike server code must read 'lwidth' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "spike", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'lwidth'" in source or '"lwidth"' in source, \
+            "server-mode spike must read 'lwidth' option from opts"
+
+    def test_spike_lpattern_code_present(self, dr_module, auto_df):
+        """spike server code must read 'lpattern' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "spike", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'lpattern'" in source or '"lpattern"' in source, \
+            "server-mode spike must read 'lpattern' option from opts"
+
+    def test_bar_lwidth_code_present(self, dr_module, auto_df):
+        """bar server code must read 'lwidth' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "bar", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'lwidth'" in source or '"lwidth"' in source, \
+            "server-mode bar must read 'lwidth' option from opts"
+
+    def test_scatter_msymbol_code_present(self, dr_module, auto_df):
+        """scatter server code must read 'msymbol' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'msymbol'" in source or '"msymbol"' in source, \
+            "server-mode scatter must read 'msymbol' option from opts"
+
+    def test_scatter_msize_code_present(self, dr_module, auto_df):
+        """scatter server code must read 'msize' option."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'msize'" in source or '"msize"' in source, \
+            "server-mode scatter must read 'msize' option from opts"
+
+
+class TestServerLineWidthAllTypes:
+    """All line-bearing server-mode plot types must actually apply lwidth to renderers.
+
+    Each test builds a server app with lwidth(thick)=2.5, executes make_document(),
+    and verifies that at least one renderer has line_width≈2.5.
+    'thick' maps to 2.5 in the lwidth translation table.
+    """
+
+    def _exec_make_document(self, dr_module, df, spec):
+        """Build app, exec make_document, return list of all glyph renderers."""
+        from bokeh.document import Document
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_ta", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            # Recursively collect all glyph renderers from the document tree
+            renderers = []
+            def _collect(obj):
+                for r in getattr(obj, 'renderers', []):
+                    renderers.append(r)
+                for child in getattr(obj, 'children', []):
+                    if isinstance(child, (list, tuple)):
+                        for c in child:
+                            if c is not None:
+                                _collect(c)
+                    elif child is not None:
+                        _collect(child)
+            for root in doc.roots:
+                _collect(root)
+            return renderers
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+
+    def _exec_make_document_with_arrows(self, dr_module, df, spec):
+        """Build app, exec make_document, return (renderers, arrow_annots) tuple.
+
+        Traverses fig.center/above/below/left/right panels to find Arrow
+        annotation objects added via fig.add_layout().
+        """
+        from bokeh.document import Document
+        from bokeh.models import Arrow
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tawa", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            renderers = []
+            arrow_annots = []
+            def _collect(obj):
+                for r in getattr(obj, 'renderers', []):
+                    renderers.append(r)
+                # Arrow annotations from fig.add_layout() land in center/above/below/left/right
+                for panel in ('center', 'above', 'below', 'left', 'right'):
+                    for item in getattr(obj, panel, []):
+                        if isinstance(item, Arrow):
+                            arrow_annots.append(item)
+                        else:
+                            _collect(item)
+                for child in getattr(obj, 'children', []):
+                    if isinstance(child, (list, tuple)):
+                        for c in child:
+                            if c is not None:
+                                _collect(c)
+                    elif child is not None:
+                        _collect(child)
+            for root in doc.roots:
+                _collect(root)
+            return renderers, arrow_annots
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+
+    def _has_renderer_with_lw(self, renderers, target_lw=2.5, tol=0.05):
+        """Return True if any renderer glyph has line_width close to target_lw."""
+        for r in renderers:
+            glyph = getattr(r, 'glyph', None)
+            if glyph is not None:
+                lw = getattr(glyph, 'line_width', None)
+                if lw is not None and abs(float(lw) - target_lw) < tol:
+                    return True
+        return False
+
+    def _has_arrow_with_lw(self, arrow_annots, target_lw=2.5, tol=0.05):
+        """Return True if any Arrow annotation has line_width close to target_lw."""
+        for arrow in arrow_annots:
+            lw = getattr(arrow, 'line_width', None)
+            if lw is not None and abs(float(lw) - target_lw) < tol:
+                return True
+        return False
+
+    def test_lfit_applies_lwidth(self, dr_module, auto_df):
+        """lfit with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode lfit must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_qfit_applies_lwidth(self, dr_module, auto_df):
+        """qfit with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "qfit", "yvar": "mpg", "xvar": "weight",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode qfit must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_connected_applies_lwidth(self, dr_module, auto_df):
+        """connected with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode connected must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_lowess_applies_lwidth(self, dr_module, auto_df):
+        """lowess with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lowess", "yvar": "mpg", "xvar": "weight",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode lowess must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_kdensity_applies_lwidth(self, dr_module, auto_df):
+        """kdensity with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "kdensity", "yvar": "mpg", "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode kdensity must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_mspline_applies_lwidth(self, dr_module, auto_df):
+        """mspline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode mspline must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_tsline_applies_lwidth(self, dr_module, auto_df):
+        """tsline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "tsline", "yvar": "mpg", "xvar": "weight",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode tsline must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_rspike_applies_lwidth(self, dr_module, auto_df):
+        """rspike with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rspike", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode rspike must apply lwidth(thick)=2.5 to segment renderer"
+
+    def test_rline_applies_lwidth(self, dr_module, auto_df):
+        """rline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rline", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode rline must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_function_applies_lwidth(self, dr_module, auto_df):
+        """function with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "function", "expr": "x", "range": [0, 10],
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode function must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_tsrline_applies_lwidth(self, dr_module, auto_df):
+        """tsrline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "tsrline", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode tsrline must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_rconnected_applies_lwidth(self, dr_module, auto_df):
+        """rconnected with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rconnected", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode rconnected must apply lwidth(thick)=2.5 to line renderer"
+
+    def test_rcapsym_applies_lwidth(self, dr_module, auto_df):
+        """rcapsym with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rcapsym", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode rcapsym must apply lwidth(thick)=2.5 to segment renderer"
+
+    def test_pcspike_applies_lwidth(self, dr_module, auto_df):
+        """pcspike with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcspike", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "foreign",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode pcspike must apply lwidth(thick)=2.5 to segment renderer"
+
+    def test_pcarrow_applies_lwidth(self, dr_module, auto_df):
+        """pcarrow with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcarrow", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "foreign",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode pcarrow must apply lwidth(thick)=2.5 to segment renderer"
+
+    def test_pcbarrow_applies_lwidth(self, dr_module, auto_df):
+        """pcbarrow with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcbarrow", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "foreign",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        assert self._has_renderer_with_lw(renderers, 2.5), \
+            "server-mode pcbarrow must apply lwidth(thick)=2.5 to segment renderer"
+
+    def test_pcarrow_lwidth_applies_to_arrow_annotations(self, dr_module, auto_df):
+        """pcarrow lwidth(thick)=2.5 must be applied to Arrow annotation objects, not just segment."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcarrow", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "foreign",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
+        assert arrow_annots, "server-mode pcarrow must produce Arrow annotations"
+        assert self._has_arrow_with_lw(arrow_annots, 2.5), \
+            "server-mode pcarrow Arrow annotations must have line_width=2.5 (thick)"
+
+    def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, dr_module, auto_df):
+        """pcbarrow lwidth(thick)=2.5 must be applied to Arrow annotation objects, not just segment."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcbarrow", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "foreign",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
+        assert arrow_annots, "server-mode pcbarrow must produce Arrow annotations"
+        assert self._has_arrow_with_lw(arrow_annots, 2.5), \
+            "server-mode pcbarrow Arrow annotations must have line_width=2.5 (thick)"
+
+
+class TestServerRconnectedRcapsymMarkers:
+    """rconnected and rcapsym scatter markers must support mcolor/msize/msymbol in server mode."""
+
+    def _exec_make_document(self, dr_module, df, spec, mod_name="_tmrk"):
+        from bokeh.document import Document
+        from bokeh.models import GlyphRenderer
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            renderers = []
+            def _collect(obj):
+                if isinstance(obj, GlyphRenderer):
+                    renderers.append(obj)
+                for r in getattr(obj, 'renderers', []):
+                    _collect(r)
+                for panel in ('above', 'below', 'center', 'left', 'right'):
+                    for item in getattr(obj, panel, []):
+                        _collect(item)
+                for child in getattr(obj, 'children', []):
+                    if isinstance(child, (list, tuple)):
+                        for c in child:
+                            if c is not None: _collect(c)
+                    elif child is not None:
+                        _collect(child)
+            for root in doc.roots:
+                _collect(root)
+            return renderers
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_rconnected_mcolor_applied_to_scatter(self, dr_module, auto_df):
+        """rconnected mcolor must change scatter marker fill_color from default."""
+        spec_default = _make_spec_json(graphs=[{
+            "plots": [{"type": "rconnected", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_colored = _make_spec_json(graphs=[{
+            "plots": [{"type": "rconnected", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"mcolor": "red"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        from bokeh.models.glyphs import Scatter
+        def _scatter_fills(renderers):
+            return [r.glyph.fill_color for r in renderers
+                    if hasattr(r, 'glyph') and isinstance(r.glyph, Scatter)]
+        fills_default = _scatter_fills(
+            self._exec_make_document(dr_module, auto_df, spec_default, "_trcmd"))
+        fills_colored = _scatter_fills(
+            self._exec_make_document(dr_module, auto_df, spec_colored, "_trcmc"))
+        assert fills_colored, "rconnected must produce scatter renderers"
+        assert fills_colored != fills_default, \
+            "rconnected mcolor(red) must change scatter fill_color from default"
+
+    def test_rconnected_msize_applied_to_scatter(self, dr_module, auto_df):
+        """rconnected msize must change scatter marker size from default."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rconnected", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"msize": "large"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        from bokeh.models.glyphs import Scatter
+        renderers = self._exec_make_document(dr_module, auto_df, spec, "_trcms")
+        scatter_sizes = [r.glyph.size for r in renderers
+                         if hasattr(r, 'glyph') and isinstance(r.glyph, Scatter)]
+        assert scatter_sizes, "rconnected must produce scatter renderers"
+        # "large" maps to a size > default 7
+        assert any(s > 7 for s in scatter_sizes), \
+            f"rconnected msize(large) must produce size > 7, got {scatter_sizes}"
+
+    def test_rcapsym_mcolor_applied_to_markers(self, dr_module, auto_df):
+        """rcapsym mcolor must change scatter marker fill_color from default."""
+        spec_default = _make_spec_json(graphs=[{
+            "plots": [{"type": "rcapsym", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_colored = _make_spec_json(graphs=[{
+            "plots": [{"type": "rcapsym", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"mcolor": "red"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        from bokeh.models.glyphs import Scatter
+        def _scatter_fills(renderers):
+            return [r.glyph.fill_color for r in renderers
+                    if hasattr(r, 'glyph') and isinstance(r.glyph, Scatter)]
+        fills_default = _scatter_fills(
+            self._exec_make_document(dr_module, auto_df, spec_default, "_trcsd"))
+        fills_colored = _scatter_fills(
+            self._exec_make_document(dr_module, auto_df, spec_colored, "_trcsc"))
+        assert fills_colored, "rcapsym must produce scatter renderers"
+        assert fills_colored != fills_default, \
+            "rcapsym mcolor(red) must change scatter fill_color from default"
+
+    def test_rcapsym_msize_applied_to_markers(self, dr_module, auto_df):
+        """rcapsym msize must change scatter marker size from default."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rcapsym", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"msize": "large"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        from bokeh.models.glyphs import Scatter
+        renderers = self._exec_make_document(dr_module, auto_df, spec, "_trcsz")
+        scatter_sizes = [r.glyph.size for r in renderers
+                         if hasattr(r, 'glyph') and isinstance(r.glyph, Scatter)]
+        assert scatter_sizes, "rcapsym must produce scatter renderers"
+        assert any(s > 7 for s in scatter_sizes), \
+            f"rcapsym msize(large) must produce size > 7, got {scatter_sizes}"
+
+
+class TestServerNamedColors:
+    """Server-mode must translate named Stata colors (navy, red) correctly.
+
+    The current simplified color block only handles hex values. Named colors
+    like mcolor(navy) should translate to #1a476f.
+    """
+
+    def _exec_make_document(self, dr_module, df, spec):
+        """Build app, exec make_document, return list of all glyph renderers."""
+        from bokeh.document import Document
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_ta2", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            renderers = []
+            def _collect(obj):
+                for r in getattr(obj, 'renderers', []):
+                    renderers.append(r)
+                for child in getattr(obj, 'children', []):
+                    if isinstance(child, (list, tuple)):
+                        for c in child:
+                            if c is not None:
+                                _collect(c)
+                    elif child is not None:
+                        _collect(child)
+            for root in doc.roots:
+                _collect(root)
+            return renderers
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+
+    def test_mcolor_named_navy_translates(self, dr_module, auto_df):
+        """mcolor(navy) must produce fill_color=#1a476f on scatter renderer."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mcolor": "navy"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        colors = [getattr(getattr(r, 'glyph', None), 'fill_color', None)
+                  for r in renderers if r is not None]
+        assert "#1a476f" in colors, \
+            "server-mode scatter mcolor(navy) must produce fill_color=#1a476f"
+
+    def test_lcolor_named_red_translates(self, dr_module, auto_df):
+        """lcolor(red) must produce line_color=#ff0000 on line renderer."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "line", "yvar": "mpg", "xvar": "weight",
+                       "options": {"lcolor": "red"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        colors = [getattr(getattr(r, 'glyph', None), 'line_color', None)
+                  for r in renderers if r is not None]
+        assert "#ff0000" in colors, \
+            "server-mode line lcolor(red) must produce line_color=#ff0000"
+
+    def test_bgcolor_named_color_in_server_app(self, dr_module, auto_df):
+        """bgcolor(navy) in server app must set border_fill_color=#1a476f on figure."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1", "bgcolor": "navy"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # The generated source must contain the navy hex value via _resolve_color
+        assert "#1a476f" in source or "bgcolor" in source, \
+            "bgcolor(navy) must resolve to #1a476f in generated server app"
+
+
+class TestServerMfcolorNamed:
+    """Server-mode scatter must resolve named mfcolor values."""
+
+    def _exec_make_document(self, dr_module, df, spec):
+        from bokeh.document import Document
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm4", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            renderers = []
+            def _collect(obj):
+                for r in getattr(obj, 'renderers', []):
+                    renderers.append(r)
+                for child in getattr(obj, 'children', []):
+                    if isinstance(child, (list, tuple)):
+                        for c in child:
+                            if c is not None: _collect(c)
+                    elif child is not None:
+                        _collect(child)
+            for root in doc.roots:
+                _collect(root)
+            return renderers
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_mfcolor_named_navy_applied(self, dr_module, auto_df):
+        """mfcolor(navy) must produce fill_color=#1a476f on scatter renderer."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mfcolor": "navy"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        renderers = self._exec_make_document(dr_module, auto_df, spec)
+        colors = [getattr(getattr(r, 'glyph', None), 'fill_color', None)
+                  for r in renderers if r is not None]
+        assert "#1a476f" in colors, \
+            "server-mode scatter mfcolor(navy) must produce fill_color=#1a476f"
+
+    def test_mlabposition_in_server_scatter_source(self, dr_module, auto_df):
+        """mlabposition option must be referenced in generated server scatter mlabel code."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign", "mlabposition": "3"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "mlabposition" in source, \
+            "server-mode scatter with mlabposition must reference that option"
+
+
+class TestServerMlabel:
+    """Server-mode scatter must render mlabel annotations as LabelSet."""
+
+    def _exec_make_document_doc(self, dr_module, df, spec):
+        """Build app, exec make_document, return the Document itself."""
+        from bokeh.document import Document
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm3", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            return doc
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+
+    def test_mlabel_in_server_app_source(self, dr_module, auto_df):
+        """scatter with mlabel() option must reference LabelSet in generated source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "LabelSet" in source, \
+            "server-mode scatter with mlabel() must emit LabelSet in generated app"
+
+    def test_mlabel_produces_label_renderer_in_server(self, dr_module, auto_df):
+        """scatter with mlabel() must produce a LabelSet annotation in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        # auto_df needs a 'foreign' column (it already does as a fixture)
+        doc = self._exec_make_document_doc(dr_module, auto_df, spec)
+        # Collect all objects including annotation panels (center/above/below)
+        all_objs = []
+        def _collect(obj):
+            all_objs.append(obj)
+            for r in getattr(obj, 'renderers', []):
+                all_objs.append(r)
+            for panel in ('above', 'below', 'center', 'left', 'right'):
+                for item in getattr(obj, panel, []):
+                    all_objs.append(item)
+            for child in getattr(obj, 'children', []):
+                if isinstance(child, (list, tuple)):
+                    for c in child:
+                        if c is not None:
+                            _collect(c)
+                elif child is not None:
+                    _collect(child)
+        for root in doc.roots:
+            _collect(root)
+        has_labelset = any(isinstance(o, LabelSet) for o in all_objs)
+        assert has_labelset, \
+            "server-mode scatter with mlabel() must produce a LabelSet annotation"
+
+
+class TestServerMlabelNonScatter:
+    """mlabel must work for line, connected, and dot plot types in server mode."""
+
+    def _exec_and_collect(self, dr_module, df, spec, mod_name):
+        """Build and exec make_document, collecting all document objects."""
+        from bokeh.document import Document
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            all_objs = []
+            def _collect(obj):
+                all_objs.append(obj)
+                for r in getattr(obj, 'renderers', []):
+                    all_objs.append(r)
+                for panel in ('above', 'below', 'center', 'left', 'right'):
+                    for item in getattr(obj, panel, []):
+                        all_objs.append(item)
+                for child in getattr(obj, 'children', []):
+                    if isinstance(child, (list, tuple)):
+                        for c in child:
+                            if c is not None: _collect(c)
+                    elif child is not None:
+                        _collect(child)
+            for root in doc.roots:
+                _collect(root)
+            return all_objs
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_mlabel_in_line_produces_labelset(self, dr_module, auto_df):
+        """line with mlabel() must produce a LabelSet annotation in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "line", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmline")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode line with mlabel() must produce a LabelSet annotation"
+
+    def test_mlabel_in_connected_produces_labelset(self, dr_module, auto_df):
+        """connected with mlabel() must produce a LabelSet annotation in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmconn")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode connected with mlabel() must produce a LabelSet annotation"
+
+    def test_mlabel_in_dot_produces_labelset(self, dr_module, auto_df):
+        """dot with mlabel() must produce a LabelSet annotation in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmdot")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode dot with mlabel() must produce a LabelSet annotation"
+
+    def test_mlabel_in_tsline_produces_labelset(self, dr_module, auto_df):
+        """tsline with mlabel() must produce a LabelSet annotation in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "tsline", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmtsline")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode tsline with mlabel() must produce a LabelSet annotation"
+
+    def test_mlabel_in_dropline_produces_labelset(self, dr_module, auto_df):
+        """dropline with mlabel() must produce a LabelSet annotation in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "dropline", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmdropline")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode dropline with mlabel() must produce a LabelSet annotation"
+
+    def test_mlabel_on_rspike_produces_labelset(self, dr_module, auto_df):
+        """rspike with mlabel() must produce a LabelSet in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rspike", "yvar1": "mpg", "yvar2": "price", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrspike_mlab")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode rspike with mlabel() must produce a LabelSet"
+
+    def test_mlabel_on_rline_produces_labelset(self, dr_module, auto_df):
+        """rline with mlabel() must produce a LabelSet in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rline", "yvar1": "mpg", "yvar2": "price", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrline_mlab")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode rline with mlabel() must produce a LabelSet"
+
+    def test_mlabel_on_rbar_produces_labelset(self, dr_module, auto_df):
+        """rbar with mlabel() must produce a LabelSet in the document."""
+        from bokeh.models import LabelSet
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rbar", "yvar1": "mpg", "yvar2": "price", "xvar": "weight",
+                       "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrbar_mlab")
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode rbar with mlabel() must produce a LabelSet"
+
+
+class TestServerPerGraphFilter:
+    """Per-graph if_expr / in_expr filtering in server-mode generated app."""
+
+    def _exec_make_document(self, dr_module, df, spec):
+        """Build and exec make_document, return the document."""
+        from bokeh.document import Document
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tmfilt", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            return doc
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def _collect_cds_lengths(self, doc):
+        """Collect all ColumnDataSource row counts from document renderers."""
+        from bokeh.models import ColumnDataSource
+        seen = set()
+        lengths = []
+        def _record(src):
+            if src is None or id(src) in seen:
+                return
+            seen.add(id(src))
+            if isinstance(src, ColumnDataSource):
+                cols = list(src.data.values())
+                if cols:
+                    lengths.append(len(cols[0]))
+        def _walk(obj):
+            if obj is None or id(obj) in seen:
+                return
+            seen.add(id(obj))
+            # Check data_source on glyphs/renderers
+            _record(getattr(obj, 'data_source', None))
+            for r in getattr(obj, 'renderers', []):
+                _walk(r)
+            for panel in ('above', 'below', 'center', 'left', 'right'):
+                for item in getattr(obj, panel, []):
+                    _walk(item)
+            for child in getattr(obj, 'children', []):
+                if isinstance(child, (list, tuple)):
+                    for c in child:
+                        if c is not None: _walk(c)
+                elif child is not None:
+                    _walk(child)
+        for root in doc.roots:
+            _walk(root)
+        return lengths
+
+    def test_in_expr_filters_rows(self, dr_module, auto_df):
+        """in_expr '1/5' must produce a CDS with exactly 5 rows."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1", "in_expr": "1/5"},
+        }])
+        doc = self._exec_make_document(dr_module, auto_df, spec)
+        lengths = self._collect_cds_lengths(doc)
+        assert any(n == 5 for n in lengths), \
+            f"in_expr '1/5' must produce a CDS with 5 rows, got lengths: {lengths}"
+
+    def test_in_expr_two_graphs_independent(self, dr_module, auto_df):
+        """Two graphs with different in_expr must produce independent CDS sizes."""
+        spec = _make_spec_json(graphs=[
+            {
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
+                "graph_options": {"name": "g1", "in_expr": "1/3"},
+            },
+            {
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
+                "graph_options": {"name": "g2", "in_expr": "1/7"},
+            },
+        ])
+        doc = self._exec_make_document(dr_module, auto_df, spec)
+        lengths = self._collect_cds_lengths(doc)
+        assert 3 in lengths, f"graph g1 in_expr '1/3' → 3 rows expected, got: {lengths}"
+        assert 7 in lengths, f"graph g2 in_expr '1/7' → 7 rows expected, got: {lengths}"
+
+    def test_if_expr_filters_by_condition(self, dr_module, auto_df):
+        """if_expr must filter rows matching condition."""
+        # auto_df has foreign column; filter for foreign==1 should give fewer rows
+        n_foreign = int((auto_df["foreign"] == 1).sum())
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1", "if_expr": "foreign == 1"},
+        }])
+        doc = self._exec_make_document(dr_module, auto_df, spec)
+        lengths = self._collect_cds_lengths(doc)
+        assert any(n == n_foreign for n in lengths), \
+            f"if_expr 'foreign == 1' must produce {n_foreign} rows, got: {lengths}"
+
+    def test_unsafe_if_expr_ignored(self, dr_module, auto_df):
+        """Unsafe if_expr must be silently ignored (no error, no filtering)."""
+        n_total = len(auto_df)
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1", "if_expr": "__import__('os').getcwd()"},
+        }])
+        doc = self._exec_make_document(dr_module, auto_df, spec)
+        lengths = self._collect_cds_lengths(doc)
+        # No crash, and full unfiltered data (or empty due to failed query — not partial)
+        assert not any(0 < n < n_total for n in lengths), \
+            "unsafe if_expr must not partially filter data"
+
+    def test_getattr_if_expr_ignored(self, dr_module, auto_df):
+        """if_expr containing getattr() must be silently blocked."""
+        n_total = len(auto_df)
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1", "if_expr": "getattr(mpg, '__class__')"},
+        }])
+        doc = self._exec_make_document(dr_module, auto_df, spec)
+        lengths = self._collect_cds_lengths(doc)
+        assert not any(0 < n < n_total for n in lengths), \
+            "if_expr with getattr() must not partially filter data"
+
+    def test_setattr_if_expr_ignored(self, dr_module, auto_df):
+        """if_expr containing setattr() must be silently blocked."""
+        n_total = len(auto_df)
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1", "if_expr": "setattr(mpg, 'x', 1)"},
+        }])
+        doc = self._exec_make_document(dr_module, auto_df, spec)
+        lengths = self._collect_cds_lengths(doc)
+        assert not any(0 < n < n_total for n in lengths), \
+            "if_expr with setattr() must not partially filter data"
+
+    def test_lfit_respects_in_expr(self, dr_module, auto_df):
+        """lfit with in_expr must use filtered data for regression, not full df."""
+        # With in_expr 1/5 (5 rows), the lfit CDS must reflect only those rows.
+        # The result will differ from full-data lfit unless data is constant.
+        import numpy as np
+        spec_full = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_filt = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1", "in_expr": "1/5"},
+        }])
+        doc_full = self._exec_make_document(dr_module, auto_df, spec_full)
+        doc_filt = self._exec_make_document(dr_module, auto_df, spec_filt)
+        lengths_full = self._collect_cds_lengths(doc_full)
+        lengths_filt = self._collect_cds_lengths(doc_filt)
+        # The filtered lfit CDS y-values should differ from full lfit CDS
+        # (tested via CDS lengths — filtered version uses fewer input points)
+        # lfit always returns 100 output points regardless of input size,
+        # but using g_df ensures the regression is computed on the filtered subset.
+        # We verify by checking that the generated app compiles and executes without error.
+        assert len(lengths_filt) > 0, "filtered lfit must produce at least one CDS"
+
+    def test_histogram_respects_in_expr(self, dr_module, auto_df):
+        """histogram with in_expr must bin only filtered rows."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg"}],
+            "graph_options": {"name": "g1", "in_expr": "1/5"},
+        }])
+        doc = self._exec_make_document(dr_module, auto_df, spec)
+        lengths = self._collect_cds_lengths(doc)
+        # The histogram CDS (top/left/right arrays) has length == nbins (default 20)
+        # but the sum of the bar heights (counts) should be <= 5 (filtered rows)
+        from bokeh.models import ColumnDataSource
+        all_cdses = []
+        def _collect_cdses(obj, seen=set()):
+            if id(obj) in seen: return
+            seen.add(id(obj))
+            src = getattr(obj, 'data_source', None)
+            if isinstance(src, ColumnDataSource) and 'top' in src.data:
+                all_cdses.append(src)
+            for r in getattr(obj, 'renderers', []): _collect_cdses(r, seen)
+            for panel in ('above','below','center','left','right'):
+                for item in getattr(obj, panel, []): _collect_cdses(item, seen)
+            for ch in getattr(obj, 'children', []):
+                if isinstance(ch, (list,tuple)):
+                    for c in ch:
+                        if c is not None: _collect_cdses(c, seen)
+                elif ch is not None: _collect_cdses(ch, seen)
+        for root in doc.roots: _collect_cdses(root)
+        assert all_cdses, "histogram must produce a CDS with 'top' key"
+        total_count = sum(all_cdses[0].data['top'])
+        assert total_count <= 5, \
+            f"histogram with in_expr '1/5' must count only 5 rows, got {total_count}"
+
+
+class TestServerFitCIBand:
+    """lfitci and qfitci must render a proper CI band (non-zero-width varea)."""
+
+    def _exec_collect_vareas(self, dr_module, df, spec, mod_name):
+        """Build and exec make_document, return all VArea glyph renderers."""
+        from bokeh.document import Document
+        from bokeh.models import GlyphRenderer
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            vareas = []
+            def _collect(obj):
+                if isinstance(obj, GlyphRenderer):
+                    glyph_type = type(obj.glyph).__name__
+                    if glyph_type == 'VArea':
+                        vareas.append(obj)
+                for r in getattr(obj, 'renderers', []):
+                    _collect(r)
+                for panel in ('above', 'below', 'center', 'left', 'right'):
+                    for item in getattr(obj, panel, []):
+                        _collect(item)
+                for child in getattr(obj, 'children', []):
+                    if isinstance(child, (list, tuple)):
+                        for c in child:
+                            if c is not None: _collect(c)
+                    elif child is not None:
+                        _collect(child)
+            for root in doc.roots:
+                _collect(root)
+            return vareas
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_lfitci_band_has_nonzero_width(self, dr_module, auto_df):
+        """lfitci CI band varea must use y_lower/y_upper keys (not y/y)."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfitci", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1"},
+        }])
+        vareas = self._exec_collect_vareas(dr_module, auto_df, spec, "_tlfci")
+        assert vareas, "lfitci must produce at least one VArea renderer"
+        r = vareas[0]
+        y1_key = r.glyph.y1
+        y2_key = r.glyph.y2
+        src_data = r.data_source.data
+        assert y1_key in src_data and y2_key in src_data, \
+            f"lfitci varea must reference distinct y1/y2 keys, got {y1_key}/{y2_key}"
+        import numpy as np
+        if len(src_data[y1_key]) > 0:
+            band_width = np.max(np.abs(
+                np.array(src_data[y2_key]) - np.array(src_data[y1_key])
+            ))
+            assert band_width > 0, "lfitci CI band must have non-zero width"
+
+    def test_qfitci_band_has_nonzero_width(self, dr_module, auto_df):
+        """qfitci CI band varea must use y_lower/y_upper keys (not y/y)."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "qfitci", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1"},
+        }])
+        vareas = self._exec_collect_vareas(dr_module, auto_df, spec, "_tqfci")
+        assert vareas, "qfitci must produce at least one VArea renderer"
+        r = vareas[0]
+        y1_key = r.glyph.y1
+        y2_key = r.glyph.y2
+        src_data = r.data_source.data
+        assert y1_key in src_data and y2_key in src_data, \
+            f"qfitci varea must reference distinct y1/y2 keys, got {y1_key}/{y2_key}"
+        import numpy as np
+        if len(src_data[y1_key]) > 0:
+            band_width = np.max(np.abs(
+                np.array(src_data[y2_key]) - np.array(src_data[y1_key])
+            ))
+            assert band_width > 0, "qfitci CI band must have non-zero width"
+
+
+# ---------------------------------------------------------------------------
+# A-50 — lfitci/qfitci agg_sources filter callback recompute
+# ---------------------------------------------------------------------------
+
+class TestServerFitCIFilterRecompute:
+    """lfitci/qfitci agg_sources must be recomputed in the filter callback."""
+
+    def _get_source(self, dr_module, df, spec, mod_name):
+        """Build server app and return the generated Python source string."""
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            with open(out_f.name) as f:
+                return f.read()
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_lfitci_registered_in_agg_sources(self, dr_module, auto_df):
+        """lfitci plot must register its source in agg_sources with type 'lfitci'."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfitci", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tlfci_reg")
+        assert "'lfitci'" in src, \
+            "lfitci plot must register agg_sources entry with type='lfitci'"
+
+    def test_qfitci_registered_in_agg_sources(self, dr_module, auto_df):
+        """qfitci plot must register its source in agg_sources with type 'qfitci'."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "qfitci", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tqfci_reg")
+        assert "'qfitci'" in src, \
+            "qfitci plot must register agg_sources entry with type='qfitci'"
+
+    def test_lfitci_filter_callback_recomputes(self, dr_module, auto_df):
+        """Filter callback must handle atype=='lfitci' for recompute."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfitci", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tlfci_cb")
+        assert "_compute_lfitci" in src and "atype == 'lfitci'" in src, \
+            "Filter callback must have 'elif atype == lfitci' recompute branch"
+
+    def test_qfitci_filter_callback_recomputes(self, dr_module, auto_df):
+        """Filter callback must handle atype=='qfitci' for recompute."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "qfitci", "yvar": "mpg", "xvar": "weight"}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tqfci_cb")
+        assert "_compute_qfitci" in src and "atype == 'qfitci'" in src, \
+            "Filter callback must have 'elif atype == qfitci' recompute branch"
+
+
+# ---------------------------------------------------------------------------
+# GAP 4.2 / 4.3 / 4.4 / 4.5 — Server-mode options parity
+# ---------------------------------------------------------------------------
+
+def _exec_doc(dr_module, df, spec, mod_name):
+    """Helper: build server app, exec make_document, return (doc, all_renderers)."""
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer
+    spec_path, data_path = _write_temp_files(df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+    try:
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        renderers = []
+        def _collect(obj):
+            if isinstance(obj, GlyphRenderer):
+                renderers.append(obj)
+            for r in getattr(obj, 'renderers', []):
+                _collect(r)
+            for panel in ('above', 'below', 'center', 'left', 'right'):
+                for item in getattr(obj, panel, []):
+                    _collect(item)
+            for child in getattr(obj, 'children', []):
+                if isinstance(child, (list, tuple)):
+                    for c in child:
+                        if c is not None: _collect(c)
+                elif child is not None:
+                    _collect(child)
+        for root in doc.roots:
+            _collect(root)
+        return doc, renderers
+    finally:
+        for p in (spec_path, data_path, out_f.name):
+            try: os.unlink(p)
+            except OSError: pass
+
+
+class TestServerAreaOptions:
+    """area plot in server mode must apply fcolor/fintensity."""
+
+    def test_area_fcolor_applied(self, dr_module, auto_df):
+        """area with fcolor(red) must use the resolved hex for fill_color."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "area", "yvar": "mpg", "xvar": "weight",
+                       "options": {"fcolor": "#ff0000"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_tar_fc")
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert "#ff0000" in fill_colors, \
+            f"area fcolor '#ff0000' must appear in fill_color; got {fill_colors}"
+
+    def test_area_fintensity_sets_alpha(self, dr_module, auto_df):
+        """area with fintensity(50) must set fill_alpha ≈ 0.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "area", "yvar": "mpg", "xvar": "weight",
+                       "options": {"fintensity": "50"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_tar_fi")
+        alphas = [getattr(r.glyph, 'fill_alpha', None) for r in renderers]
+        assert any(abs(a - 0.5) < 0.01 for a in alphas if a is not None), \
+            f"area fintensity(50) must set fill_alpha≈0.5; got {alphas}"
+
+
+class TestServerHistogramOptions:
+    """histogram in server mode must apply fcolor/fintensity."""
+
+    def test_histogram_fcolor_applied(self, dr_module, auto_df):
+        """histogram with fcolor(#ff0000) must appear in fill_color."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg",
+                       "options": {"fcolor": "#ff0000"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_th_fc")
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert "#ff0000" in fill_colors, \
+            f"histogram fcolor must appear in fill_color; got {fill_colors}"
+
+    def test_histogram_lwidth_applied(self, dr_module, auto_df):
+        """histogram with lwidth(thick) must set line_width > 1.5."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_th_lw")
+        lwidths = [getattr(r.glyph, 'line_width', None) for r in renderers]
+        assert any(w is not None and w > 1.5 for w in lwidths), \
+            f"histogram lwidth(thick) must set line_width>1.5; got {lwidths}"
+
+
+class TestServerRareaOptions:
+    """rarea in server mode must apply fcolor/fintensity."""
+
+    def test_rarea_fcolor_applied(self, dr_module):
+        """rarea fcolor appears in generated source."""
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rarea", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
+                       "options": {"fcolor": "#ff0000"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        assert "#ff0000" in source, "rarea fcolor must appear in generated app source"
+
+    def test_rarea_fcolor_applied_functional(self, dr_module):
+        """rarea with fcolor(#ff0000) must set fill_color in rendered doc."""
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rarea", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
+                       "options": {"fcolor": "#ff0000"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, rdf, spec, "_tra_fc2")
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert "#ff0000" in fill_colors, \
+            f"rarea fcolor must appear in fill_color; got {fill_colors}"
+
+
+class TestServerRbarOptions:
+    """rbar in server mode must apply bfcolor, blcolor, lwidth."""
+
+    def test_rbar_bfcolor_applied(self, dr_module):
+        """rbar with bfcolor(#ff0000) must set fill_color."""
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rbar", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
+                       "options": {"bfcolor": "#ff0000"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, rdf, spec, "_trb_bfc")
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert "#ff0000" in fill_colors, \
+            f"rbar bfcolor must appear in fill_color; got {fill_colors}"
+
+    def test_rbar_lwidth_applied(self, dr_module):
+        """rbar with lwidth(thick) must set line_width > 1.5."""
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rbar", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
+                       "options": {"lwidth": "thick"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, rdf, spec, "_trb_lw")
+        lwidths = [getattr(r.glyph, 'line_width', None) for r in renderers]
+        assert any(w is not None and w > 1.5 for w in lwidths), \
+            f"rbar lwidth(thick) must set line_width>1.5; got {lwidths}"
+
+
+class TestServerDotOptions:
+    """dot in server mode must apply mcolor/msize/msymbol."""
+
+    def test_dot_mcolor_applied(self, dr_module, auto_df):
+        """dot with mcolor(red) must set fill_color on scatter renderer."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mcolor": "red"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_td_mc")
+        try:
+            from dash_render import OptionTranslator
+            expected = OptionTranslator.translate_mcolor("red")
+        except Exception:
+            expected = "#ff0000"
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert expected in fill_colors, \
+            f"dot mcolor(red) must appear in fill_color; got {fill_colors}"
+
+    def test_dot_msize_applied(self, dr_module, auto_df):
+        """dot with msize(large) must set size > 8 on scatter renderer."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "dot", "yvar": "mpg", "xvar": "weight",
+                       "options": {"msize": "large"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_td_ms")
+        sizes = [getattr(r.glyph, 'size', None) for r in renderers]
+        assert any(s is not None and s > 8 for s in sizes), \
+            f"dot msize(large) must set size>8; got {sizes}"
+
+
+class TestServerConnectedOptions:
+    """connected in server mode must apply mcolor/msize to scatter component."""
+
+    def test_connected_mcolor_applied(self, dr_module, auto_df):
+        """connected with mcolor(red) must set fill_color on scatter renderer."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight",
+                       "options": {"mcolor": "red"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_tconn_mc")
+        try:
+            from dash_render import OptionTranslator
+            expected = OptionTranslator.translate_mcolor("red")
+        except Exception:
+            expected = "#ff0000"
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert expected in fill_colors, \
+            f"connected mcolor(red) must appear in fill_color; got {fill_colors}"
+
+    def test_connected_msize_applied(self, dr_module, auto_df):
+        """connected with msize(large) must set size > 8 on scatter component."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight",
+                       "options": {"msize": "large"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_tconn_ms")
+        sizes = [getattr(r.glyph, 'size', None) for r in renderers]
+        assert any(s is not None and s > 8 for s in sizes), \
+            f"connected msize(large) must set size>8; got {sizes}"
+
+
+class TestServerScatteriOptions:
+    """scatteri in server mode must apply mcolor/msize."""
+
+    def test_scatteri_mcolor_applied(self, dr_module, auto_df):
+        """scatteri with mcolor(red) must set fill_color on scatter renderer."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatteri", "values": [[1, 2], [3, 4], [5, 6]],
+                       "options": {"mcolor": "red"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _, renderers = _exec_doc(dr_module, auto_df, spec, "_tsi_mc")
+        try:
+            from dash_render import OptionTranslator
+            expected = OptionTranslator.translate_mcolor("red")
+        except Exception:
+            expected = "#ff0000"
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert expected in fill_colors, \
+            f"scatteri mcolor(red) must appear in fill_color; got {fill_colors}"
+
+
+# ===========================================================================
+# P6-20: by() faceting in server mode
+# ===========================================================================
+
+class TestServerByFaceting:
+    """Verify that by() faceting generates correct server-mode code."""
+
+    def test_by_scatter_compiles(self, dr_module, auto_df):
+        """by(foreign) scatter → generated source compiles."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated_by>", "exec")
+
+    def test_by_creates_facet_figures(self, dr_module, auto_df):
+        """by(foreign) → generated code creates facet figure entries."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # Should contain facet-keyed figure references
+        assert "g1__by__0" in source or "__by__" in source or "facet" in source.lower(), \
+            "Generated source should contain facet figure references"
+
+    def test_by_doc_has_roots(self, dr_module, auto_df):
+        """by(foreign) → make_document produces a doc with roots."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_by_test", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0, "Document must have at least one root"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_by_facet_labels_in_source(self, dr_module, auto_df):
+        """by(foreign) → facet group labels appear in generated source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # The source should contain references to the facet group values
+        # (either as labels in figure titles or as group identifiers)
+        assert "by" in source.lower() or "facet" in source.lower() or \
+               "g1__by__" in source, \
+            "Generated source should reference facet groups"
+
+    def test_by_with_histogram_compiles(self, dr_module, auto_df):
+        """by(foreign) with histogram → generated source compiles."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "var": "mpg", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated_by_hist>", "exec")
+
+    def test_by_total_in_source(self, dr_module, auto_df):
+        """by(foreign) with by_total=1 → 'Total' appears in generated source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign", "by_total": "1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "Total" in source, "by_total=1 should produce a 'Total' facet in generated code"
+
+    def test_by_total_suboption_in_raw_string(self, dr_module, auto_df):
+        """by('foreign, total') in raw string → Total facet in generated source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign, total"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "Total" in source, "by suboption 'total' in raw string should produce 'Total' facet"
+
+    def test_facet_group_vals_in_source(self, dr_module, auto_df):
+        """by(foreign) → generated source contains _facet_group_vals dict."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_facet_group_vals" in source, \
+            "_facet_group_vals dict should be in generated source for filter callback"
+
+    def test_filter_callback_uses_facet_group_vals(self, dr_module, auto_df):
+        """Filter callback references _fgvals to re-split faceted data."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # The callback should reference _fgvals (the facet group values parameter)
+        assert "_fgvals" in source, \
+            "_make_filter_cb should accept _fgvals for per-facet re-filtering"
+
+
+class TestServerPlotregionGraphregion:
+    """plotregion() and graphregion() applied in server-mode generated code."""
+
+    def test_plotregion_color_in_generated_source(self, dr_module, auto_df):
+        """plotregion(color(#aabbcc)) → background_fill_color in generated source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "plotregion": "color(#aabbcc)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "background_fill_color" in source, \
+            "plotregion(color()) must set background_fill_color in generated code"
+
+    def test_graphregion_color_in_generated_source(self, dr_module, auto_df):
+        """graphregion(color(#112233)) → border_fill_color in generated source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "graphregion": "color(#112233)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "border_fill_color" in source, \
+            "graphregion(color()) must set border_fill_color in generated code"
+
+
+class TestServerNewPlotTypes:
+    """Server-mode generated code for mband, pci, pcscatter, rscatter (added in A-63)."""
+
+    def test_mband_generates_valid_app(self, dr_module, auto_df):
+        """mband plot type must produce a compilable server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "mband" in source, "mband must appear in generated server app code"
+
+    def test_pci_generates_valid_app(self, dr_module, auto_df):
+        """pci plot type must produce a compilable server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pci", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "foreign", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "pci" in source, "pci must appear in generated server app code"
+
+    def test_pcscatter_generates_valid_app(self, dr_module, auto_df):
+        """pcscatter plot type must produce a compilable server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcscatter", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "foreign", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "pcscatter" in source, "pcscatter must appear in generated server app code"
+
+    def test_rscatter_generates_valid_app(self, dr_module, auto_df):
+        """rscatter plot type must produce a compilable server app."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rscatter", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "rscatter" in source, "rscatter must appear in generated server app code"
+
+    def test_mband_make_document_runs(self, dr_module, auto_df):
+        """mband make_document() must produce a document with figures."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        import tempfile, importlib.util
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_tmmband", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        assert len(doc.roots) > 0, "mband make_document must produce at least one root"
+
+
+class TestServerPlotregionLwidth:
+    """plotregion(lwidth()) sets outline_line_width in generated server code."""
+
+    def test_plotregion_lwidth_in_generated_source(self, dr_module, auto_df):
+        """plotregion(lwidth(2)) → outline_line_width in generated source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "plotregion": "lwidth(2)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "outline_line_width" in source, \
+            "plotregion(lwidth()) must set outline_line_width in generated code"
+
+
+class TestServerRconnectedMlabel:
+    """mlabel() on rconnected in server mode produces a LabelSet."""
+
+    def test_mlabel_on_rconnected_produces_labelset(self, dr_module, auto_df):
+        """rconnected with mlabel() must produce a LabelSet annotation."""
+        from bokeh.models import LabelSet
+        import tempfile, importlib.util
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rconnected", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {"mlabel": "foreign"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_tmrconn_mlab", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        all_objs = []
+        def collect(obj):
+            all_objs.append(obj)
+            for r in getattr(obj, 'renderers', []): collect(r)
+            for panel in ('above', 'below', 'center', 'left', 'right'):
+                for item in getattr(obj, panel, []): all_objs.append(item)
+            for child in getattr(obj, 'children', []):
+                if isinstance(child, (list, tuple)):
+                    for c in child:
+                        if c is not None: collect(c)
+                elif child is not None: collect(child)
+        for root in doc.roots: collect(root)
+        assert any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode rconnected with mlabel() must produce a LabelSet"

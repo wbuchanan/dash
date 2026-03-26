@@ -106,6 +106,21 @@ class TestMapScatter:
         expected_size = OptionTranslator.translate_msize("large")
         assert glyph.size == expected_size
 
+    def test_scatter_lcolor_sets_line_color(self, fig, cds, gm):
+        """GAP 3.2: lcolor sets marker outline (line_color) on scatter glyph."""
+        renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        glyph = renderer.glyph
+        expected = OptionTranslator.translate_mcolor("red")
+        assert glyph.line_color == expected, \
+            f"scatter lcolor should set line_color; expected {expected}, got {glyph.line_color}"
+
+    def test_scatter_lwidth_sets_line_width(self, fig, cds, gm):
+        """GAP 3.2: lwidth sets marker border width on scatter glyph."""
+        renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"lwidth": "thick"})
+        glyph = renderer.glyph
+        assert glyph.line_width > 1.0, \
+            f"scatter lwidth 'thick' should set line_width > 1.0, got {glyph.line_width}"
+
 
 # ================================================================
 # P1A-89 — line glyph data is sorted by x variable
@@ -207,6 +222,35 @@ class TestMapArea:
 
 
 # ================================================================
+# dot plot type — scatter glyph renderer
+# ================================================================
+class TestMapDot:
+    """Unit tests for map_dot — scatter (circle) renderer."""
+
+    def test_dot_returns_renderer(self, fig, cds, gm):
+        """map_dot returns a GlyphRenderer."""
+        from bokeh.models import GlyphRenderer
+        r = gm.map_dot(fig, cds, "mpg", "weight", {})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_dot_produces_scatter_glyph(self, fig, cds, gm):
+        """map_dot produces a Scatter glyph (circle marker)."""
+        from bokeh.models.glyphs import Scatter
+        r = gm.map_dot(fig, cds, "mpg", "weight", {})
+        assert isinstance(r.glyph, Scatter)
+
+    def test_dot_mcolor_applied(self, fig, cds, gm):
+        """mcolor option applied to dot fill color."""
+        r = gm.map_dot(fig, cds, "mpg", "weight", {"mcolor": "red"})
+        assert r.glyph.fill_color == "#ff0000"
+
+    def test_dot_msize_applied(self, fig, cds, gm):
+        """msize(large) option applied to dot size."""
+        r = gm.map_dot(fig, cds, "mpg", "weight", {"msize": "large"})
+        assert r.glyph.size > 8  # large is bigger than default
+
+
+# ================================================================
 # P1A-92 — bar glyph produces vbar renderer
 # ================================================================
 class TestMapBar:
@@ -239,6 +283,25 @@ class TestMapSpike:
             assert all(v == 0 for v in data), "Spike y0 is not 0"
         else:
             assert y0 == 0
+
+    def test_spike_lcolor_applied(self, fig, cds, gm):
+        """spike lcolor option must change glyph line_color from default."""
+        default = gm.map_spike(fig, cds, "mpg", "weight", {}).glyph.line_color
+        renderer = gm.map_spike(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        assert renderer.glyph.line_color != default, \
+            f"lcolor='red' must change line_color from default {default!r}"
+
+    def test_spike_lwidth_applied(self, fig, cds, gm):
+        """spike lwidth option must set glyph line_width."""
+        renderer = gm.map_spike(fig, cds, "mpg", "weight", {"lwidth": "3"})
+        assert renderer.glyph.line_width == 3.0, \
+            f"Expected line_width=3.0, got {renderer.glyph.line_width!r}"
+
+    def test_spike_lpattern_applied(self, fig, cds, gm):
+        """spike lpattern option must set glyph line_dash."""
+        renderer = gm.map_spike(fig, cds, "mpg", "weight", {"lpattern": "dash"})
+        assert renderer.glyph.line_dash != [], \
+            f"Expected non-empty line_dash for lpattern='dash', got {renderer.glyph.line_dash!r}"
 
 
 # ================================================================
@@ -843,3 +906,1381 @@ class TestMlabelOnNonScatter:
         gm.map_dot(fig, src, "y", "x", {"mlabel": "lbl"})
         ls = [r for r in fig.center if isinstance(r, LabelSet)]
         assert len(ls) >= 1
+
+
+class TestMlabelOnRangePlots:
+    """A-59 resolved: mlabel() labels at y2 (top boundary) for range plot types."""
+
+    def _range_cds_with_label(self):
+        """Return a range CDS with y1, y2, x, and lbl columns."""
+        df = pd.DataFrame({
+            "lo":  [1.0, 2.0, 3.0, 4.0, 5.0],
+            "hi":  [2.0, 4.0, 6.0, 8.0, 10.0],
+            "x":   [10.0, 20.0, 30.0, 40.0, 50.0],
+            "lbl": ["a", "b", "c", "d", "e"],
+        })
+        return ColumnDataSource(df)
+
+    def test_mlabel_on_rspike(self, fig):
+        """mlabel on rspike adds a LabelSet positioned at y2."""
+        from bokeh.models import LabelSet
+        src = self._range_cds_with_label()
+        gm = GlyphMapper()
+        gm.map_rspike(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on rspike must add LabelSet"
+
+    def test_mlabel_on_rcap(self, fig):
+        """mlabel on rcap adds a LabelSet positioned at y2."""
+        from bokeh.models import LabelSet
+        src = self._range_cds_with_label()
+        gm = GlyphMapper()
+        gm.map_rcap(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on rcap must add LabelSet"
+
+    def test_mlabel_on_rline(self, fig):
+        """mlabel on rline adds a LabelSet positioned at y2."""
+        from bokeh.models import LabelSet
+        src = self._range_cds_with_label()
+        gm = GlyphMapper()
+        gm.map_rline(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on rline must add LabelSet"
+
+    def test_mlabel_on_rarea(self, fig):
+        """mlabel on rarea adds a LabelSet positioned at y2."""
+        from bokeh.models import LabelSet
+        src = self._range_cds_with_label()
+        gm = GlyphMapper()
+        gm.map_rarea(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on rarea must add LabelSet"
+
+    def test_mlabel_on_rbar(self, fig):
+        """mlabel on rbar adds a LabelSet positioned at y2."""
+        from bokeh.models import LabelSet
+        src = self._range_cds_with_label()
+        gm = GlyphMapper()
+        gm.map_rbar(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on rbar must add LabelSet"
+
+    def test_mlabel_on_rcapsym(self, fig):
+        """mlabel on rcapsym adds a LabelSet positioned at y2."""
+        from bokeh.models import LabelSet
+        src = self._range_cds_with_label()
+        gm = GlyphMapper()
+        gm.map_rcapsym(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) >= 1, "mlabel on rcapsym must add LabelSet"
+
+    def test_mlabel_absent_no_labelset(self, fig):
+        """No mlabel option → no LabelSet added."""
+        from bokeh.models import LabelSet
+        src = self._range_cds_with_label()
+        gm = GlyphMapper()
+        gm.map_rspike(fig, src, "lo", "hi", "x", {})
+        ls = [r for r in fig.center if isinstance(r, LabelSet)]
+        assert len(ls) == 0, "no mlabel option must not add LabelSet"
+
+
+# ================================================================
+# Bug regression tests — written BEFORE fixes (CLAUDE.md rule 8)
+# ================================================================
+
+@pytest.fixture
+def range_cds_small():
+    """Small range ColumnDataSource for range-plot tests."""
+    df = pd.DataFrame({
+        "lo":   [1.0, 2.0, 3.0, 4.0, 5.0],
+        "hi":   [2.0, 4.0, 6.0, 8.0, 10.0],
+        "xvar": [10.0, 20.0, 30.0, 40.0, 50.0],
+    })
+    return ColumnDataSource(df)
+
+
+@pytest.fixture
+def fit_cds():
+    """ColumnDataSource with enough points for regression fits."""
+    np.random.seed(0)
+    n = 30
+    x = np.linspace(1, 10, n)
+    y = 2 * x + np.random.randn(n)
+    return ColumnDataSource({"y": y, "x": x})
+
+
+# ----------------------------------------------------------------
+# Bug 1: _apply_marker_opts() missing msymbol (regressed from map_scatter inline)
+# ----------------------------------------------------------------
+class TestApplyMarkerOptsMsymbol:
+    """_apply_marker_opts() must handle the msymbol option."""
+
+    def test_marker_opts_msymbol_square(self, fig, cds, gm):
+        """msymbol=square passed via options dict must update the glyph marker."""
+        renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"msymbol": "square"})
+        glyph = renderer.glyph
+        assert getattr(glyph, "marker", None) == "square", (
+            f"Expected marker 'square', got '{getattr(glyph, 'marker', None)}'"
+        )
+
+    def test_marker_opts_msymbol_triangle(self, fig, cds, gm):
+        """msymbol=triangle must update glyph marker."""
+        renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"msymbol": "triangle"})
+        assert getattr(renderer.glyph, "marker", None) == "triangle"
+
+    def test_marker_opts_invalid_msymbol_falls_back(self, fig, cds, gm):
+        """Invalid msymbol value must not crash; glyph still renders."""
+        renderer = gm.map_scatter(fig, cds, "mpg", "weight",
+                                  {"msymbol": "nonexistent_shape"})
+        assert renderer is not None
+
+    def test_apply_marker_opts_sets_msymbol(self, fig, cds, gm):
+        """Calling _apply_marker_opts with msymbol on an existing renderer changes marker."""
+        renderer = gm.map_scatter(fig, cds, "mpg", "weight", {})
+        original_marker = getattr(renderer.glyph, "marker", "circle")
+        gm._apply_marker_opts(renderer, {"msymbol": "diamond"})
+        assert getattr(renderer.glyph, "marker", None) == "diamond", (
+            f"_apply_marker_opts should set marker to 'diamond', "
+            f"original was '{original_marker}'"
+        )
+
+
+# ----------------------------------------------------------------
+# Bug 2: map_rcap() applies no line options
+# ----------------------------------------------------------------
+class TestMapRcapOptions:
+    """map_rcap must apply lcolor/lwidth/lpattern to all segment renderers."""
+
+    def test_rcap_lcolor_applied_to_spine(self, fig, range_cds_small, gm):
+        """lcolor option must be applied to the spine segment."""
+        renderers = gm.map_rcap(fig, range_cds_small, "lo", "hi", "xvar",
+                                {"lcolor": "red"})
+        spine = renderers[0]
+        assert spine.glyph.line_color == "#ff0000", (
+            f"Expected #ff0000, got {spine.glyph.line_color!r}"
+        )
+
+    def test_rcap_lcolor_applied_to_caps(self, fig, range_cds_small, gm):
+        """lcolor must be applied to both horizontal cap segments."""
+        renderers = gm.map_rcap(fig, range_cds_small, "lo", "hi", "xvar",
+                                {"lcolor": "navy"})
+        bot_cap, top_cap = renderers[1], renderers[2]
+        assert bot_cap.glyph.line_color == "#1a476f"
+        assert top_cap.glyph.line_color == "#1a476f"
+
+    def test_rcap_lwidth_applied(self, fig, range_cds_small, gm):
+        """lwidth option must be applied to all rcap segments."""
+        renderers = gm.map_rcap(fig, range_cds_small, "lo", "hi", "xvar",
+                                {"lwidth": "thick"})
+        from dash_render import OptionTranslator
+        expected = OptionTranslator().translate_lwidth("thick")
+        for r in renderers:
+            assert r.glyph.line_width == expected, (
+                f"Expected line_width={expected}, got {r.glyph.line_width}"
+            )
+
+
+# ----------------------------------------------------------------
+# Bug 3: map_lfitci/map_qfitci don't apply fill options to VArea
+# ----------------------------------------------------------------
+class TestFitCIFillOptions:
+    """map_lfitci and map_qfitci must apply fcolor/fintensity to VArea band."""
+
+    def test_lfitci_fcolor_applied_to_band(self, fig, fit_cds, gm):
+        """fcolor option must set fill_color on the VArea CI band."""
+        renderers = gm.map_lfitci(fig, fit_cds, "y", "x", {"fcolor": "navy"})
+        band_r = renderers[1]   # band is second renderer
+        assert band_r.glyph.fill_color == "#1a476f", (
+            f"Expected #1a476f, got {band_r.glyph.fill_color!r}"
+        )
+
+    def test_lfitci_fintensity_applied_to_band(self, fig, fit_cds, gm):
+        """fintensity option must set fill_alpha on the VArea CI band."""
+        renderers = gm.map_lfitci(fig, fit_cds, "y", "x", {"fintensity": "50"})
+        band_r = renderers[1]
+        assert abs(band_r.glyph.fill_alpha - 0.5) < 0.01, (
+            f"Expected fill_alpha ~0.5, got {band_r.glyph.fill_alpha}"
+        )
+
+    def test_qfitci_fcolor_applied_to_band(self, fig, fit_cds, gm):
+        """fcolor option must set fill_color on the qfitci VArea CI band."""
+        renderers = gm.map_qfitci(fig, fit_cds, "y", "x", {"fcolor": "maroon"})
+        band_r = renderers[1]
+        assert band_r.glyph.fill_color == "#90353b", (
+            f"Expected #90353b, got {band_r.glyph.fill_color!r}"
+        )
+
+    def test_qfitci_fintensity_applied_to_band(self, fig, fit_cds, gm):
+        """fintensity option must set fill_alpha on the qfitci VArea CI band."""
+        renderers = gm.map_qfitci(fig, fit_cds, "y", "x", {"fintensity": "30"})
+        band_r = renderers[1]
+        assert abs(band_r.glyph.fill_alpha - 0.3) < 0.01
+
+
+# ----------------------------------------------------------------
+# Bug 4: map_rcapsym() applies line opts to spine only
+# ----------------------------------------------------------------
+class TestMapRcapsymOptions:
+    """map_rcapsym must apply lcolor consistently to spine AND cap segments."""
+
+    def test_rcapsym_lcolor_applied_to_all_segments(self, fig, range_cds_small, gm):
+        """lcolor must be applied to spine, bot_cap, and top_cap."""
+        renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
+                                   {"lcolor": "maroon"})
+        spine, bot_cap, top_cap = renderers[0], renderers[1], renderers[2]
+        for seg, name in [(spine, "spine"), (bot_cap, "bot_cap"), (top_cap, "top_cap")]:
+            assert seg.glyph.line_color == "#90353b", (
+                f"{name} expected #90353b, got {seg.glyph.line_color!r}"
+            )
+
+    def test_rcapsym_lwidth_applied_to_spine(self, fig, range_cds_small, gm):
+        """lwidth must be applied to at least the spine segment."""
+        renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
+                                   {"lwidth": "thick"})
+        from dash_render import OptionTranslator
+        expected = OptionTranslator().translate_lwidth("thick")
+        assert renderers[0].glyph.line_width == expected
+
+    def test_rcapsym_mcolor_applied_to_scatter_markers(self, fig, range_cds_small, gm):
+        """mcolor must be applied to the scatter marker renderers (indices 3 and 4)."""
+        renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
+                                   {"mcolor": "red"})
+        # renderers[3] and renderers[4] are scatter markers at cap positions
+        default_color = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
+                                       {})
+        default_fill = default_color[3].glyph.fill_color
+        assert renderers[3].glyph.fill_color != default_fill, \
+            "mcolor must change scatter marker fill_color from default"
+
+    def test_rcapsym_msize_applied_to_scatter_markers(self, fig, range_cds_small, gm):
+        """msize must be applied to the scatter marker renderers."""
+        renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
+                                   {"msize": "large"})
+        from dash_render import OptionTranslator
+        expected = OptionTranslator().translate_msize("large")
+        assert renderers[3].glyph.size == expected, \
+            f"Expected size={expected}, got {renderers[3].glyph.size}"
+
+
+# ================================================================
+# Missing unit tests for plot types not yet in test_glyphs.py
+# ================================================================
+
+@pytest.fixture
+def std_cds_small():
+    """Small standard CDS for basic glyph tests."""
+    df = pd.DataFrame({
+        "y":  [1.0, 2.0, 3.0, 4.0, 5.0],
+        "x":  [1.0, 2.0, 3.0, 4.0, 5.0],
+        "lo": [0.5, 1.0, 1.5, 2.0, 2.5],
+        "hi": [1.5, 3.0, 4.5, 6.0, 7.5],
+    })
+    return ColumnDataSource(df)
+
+
+class TestMapQfitci:
+    """Unit tests for map_qfitci."""
+
+    def test_qfitci_returns_two_renderers(self, fig, fit_cds, gm):
+        """map_qfitci returns [line_renderer, band_renderer]."""
+        result = gm.map_qfitci(fig, fit_cds, "y", "x", {})
+        assert len(result) == 2
+
+    def test_qfitci_line_renderer_is_line(self, fig, fit_cds, gm):
+        """First renderer is a Line glyph."""
+        from bokeh.models.glyphs import Line
+        result = gm.map_qfitci(fig, fit_cds, "y", "x", {})
+        assert isinstance(result[0].glyph, Line)
+
+    def test_qfitci_band_renderer_is_varea(self, fig, fit_cds, gm):
+        """Second renderer is a VArea glyph (confidence band)."""
+        from bokeh.models.glyphs import VArea
+        result = gm.map_qfitci(fig, fit_cds, "y", "x", {})
+        assert isinstance(result[1].glyph, VArea)
+
+    def test_qfitci_lcolor_applied_to_line(self, fig, fit_cds, gm):
+        """lcolor option must be applied to the fit line."""
+        result = gm.map_qfitci(fig, fit_cds, "y", "x", {"lcolor": "navy"})
+        assert result[0].glyph.line_color == "#1a476f"
+
+
+class TestMapLowess:
+    """Unit tests for map_lowess."""
+
+    def test_lowess_returns_renderer(self, fig, cds, gm):
+        """map_lowess returns a single GlyphRenderer."""
+        r = gm.map_lowess(fig, cds, "mpg", "weight", {})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_lowess_line_glyph(self, fig, cds, gm):
+        """Lowess renderer is a Line glyph."""
+        from bokeh.models.glyphs import Line
+        r = gm.map_lowess(fig, cds, "mpg", "weight", {})
+        assert isinstance(r.glyph, Line)
+
+    def test_lowess_lcolor_applied(self, fig, cds, gm):
+        """lcolor option applied to lowess line."""
+        r = gm.map_lowess(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        assert r.glyph.line_color == "#ff0000"
+
+    def test_lowess_source_sorted_by_x(self, fig, cds, gm):
+        """Lowess source data is sorted by x."""
+        r = gm.map_lowess(fig, cds, "mpg", "weight", {})
+        x_data = list(r.data_source.data["x_lw"])
+        assert x_data == sorted(x_data)
+
+
+class TestMapRarea:
+    """Unit tests for map_rarea."""
+
+    def test_rarea_returns_list(self, fig, std_cds_small, gm):
+        """map_rarea returns a list."""
+        result = gm.map_rarea(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result, list)
+
+    def test_rarea_varea_glyph(self, fig, std_cds_small, gm):
+        """map_rarea produces a VArea glyph."""
+        from bokeh.models.glyphs import VArea
+        result = gm.map_rarea(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result[0].glyph, VArea)
+
+    def test_rarea_fcolor_applied(self, fig, std_cds_small, gm):
+        """fcolor option applied to rarea VArea fill."""
+        result = gm.map_rarea(fig, std_cds_small, "lo", "hi", "x",
+                              {"fcolor": "navy"})
+        assert result[0].glyph.fill_color == "#1a476f"
+
+
+class TestMapRbar:
+    """Unit tests for map_rbar."""
+
+    def test_rbar_returns_list(self, fig, std_cds_small, gm):
+        """map_rbar returns a list."""
+        result = gm.map_rbar(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result, list)
+
+    def test_rbar_vbar_glyph(self, fig, std_cds_small, gm):
+        """map_rbar produces a VBar glyph."""
+        from bokeh.models.glyphs import VBar
+        result = gm.map_rbar(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result[0].glyph, VBar)
+
+    def test_rbar_fcolor_applied(self, fig, std_cds_small, gm):
+        """fcolor option applied to rbar fill."""
+        result = gm.map_rbar(fig, std_cds_small, "lo", "hi", "x",
+                             {"fcolor": "maroon"})
+        assert result[0].glyph.fill_color == "#90353b"
+
+
+class TestMapRspike:
+    """Unit tests for map_rspike."""
+
+    def test_rspike_returns_list(self, fig, std_cds_small, gm):
+        """map_rspike returns a list."""
+        result = gm.map_rspike(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result, list)
+
+    def test_rspike_segment_glyph(self, fig, std_cds_small, gm):
+        """map_rspike produces a Segment glyph."""
+        from bokeh.models.glyphs import Segment
+        result = gm.map_rspike(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result[0].glyph, Segment)
+
+    def test_rspike_lcolor_applied(self, fig, std_cds_small, gm):
+        """lcolor option applied to rspike segment."""
+        result = gm.map_rspike(fig, std_cds_small, "lo", "hi", "x",
+                               {"lcolor": "red"})
+        assert result[0].glyph.line_color == "#ff0000"
+
+    def test_rspike_lpattern_applied(self, fig, std_cds_small, gm):
+        """lpattern option applied to rspike segment as line_dash."""
+        result = gm.map_rspike(fig, std_cds_small, "lo", "hi", "x",
+                               {"lpattern": "dash"})
+        assert result[0].glyph.line_dash != []
+
+
+class TestMapRcap:
+    """Unit tests for map_rcap."""
+
+    def test_rcap_returns_list_of_three(self, fig, std_cds_small, gm):
+        """map_rcap returns [spine, bot_cap, top_cap]."""
+        result = gm.map_rcap(fig, std_cds_small, "lo", "hi", "x", {})
+        assert len(result) == 3
+
+    def test_rcap_all_segments(self, fig, std_cds_small, gm):
+        """All three rcap renderers are Segment glyphs."""
+        from bokeh.models.glyphs import Segment
+        result = gm.map_rcap(fig, std_cds_small, "lo", "hi", "x", {})
+        for r in result:
+            assert isinstance(r.glyph, Segment)
+
+    def test_rcap_lpattern_applied_to_all_segments(self, fig, std_cds_small, gm):
+        """lpattern applied to all three rcap segment renderers."""
+        result = gm.map_rcap(fig, std_cds_small, "lo", "hi", "x",
+                             {"lpattern": "dot"})
+        for r in result:
+            assert r.glyph.line_dash != [], "lpattern must propagate to all rcap segments"
+
+
+class TestMapRline:
+    """Unit tests for map_rline."""
+
+    def test_rline_returns_list(self, fig, std_cds_small, gm):
+        """map_rline returns a list."""
+        result = gm.map_rline(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result, list)
+
+    def test_rline_has_two_line_renderers(self, fig, std_cds_small, gm):
+        """map_rline produces two Line glyphs (one per boundary)."""
+        from bokeh.models.glyphs import Line
+        result = gm.map_rline(fig, std_cds_small, "lo", "hi", "x", {})
+        lines = [r for r in result if isinstance(r.glyph, Line)]
+        assert len(lines) == 2
+
+    def test_rline_lcolor_applied(self, fig, std_cds_small, gm):
+        """lcolor option applied to both rline renderers."""
+        result = gm.map_rline(fig, std_cds_small, "lo", "hi", "x",
+                              {"lcolor": "navy"})
+        for r in result:
+            assert r.glyph.line_color == "#1a476f"
+
+    def test_rline_lpattern_applied_to_both_lines(self, fig, std_cds_small, gm):
+        """lpattern applied to both rline boundary lines."""
+        result = gm.map_rline(fig, std_cds_small, "lo", "hi", "x",
+                              {"lpattern": "dash"})
+        for r in result:
+            assert r.glyph.line_dash != [], "lpattern must propagate to both rline renderers"
+
+
+class TestMapRconnected:
+    """Unit tests for map_rconnected."""
+
+    def test_rconnected_returns_list(self, fig, std_cds_small, gm):
+        """map_rconnected returns a list of renderers."""
+        result = gm.map_rconnected(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result, list)
+        assert len(result) >= 2
+
+    def test_rconnected_has_lines(self, fig, std_cds_small, gm):
+        """map_rconnected includes Line glyphs."""
+        from bokeh.models.glyphs import Line
+        result = gm.map_rconnected(fig, std_cds_small, "lo", "hi", "x", {})
+        lines = [r for r in result if isinstance(r.glyph, Line)]
+        assert len(lines) >= 1
+
+
+class TestMapPcspike:
+    """Unit tests for map_pcspike."""
+
+    @pytest.fixture
+    def pc_cds(self):
+        df = pd.DataFrame({
+            "y1": [1.0, 2.0, 3.0],
+            "x1": [1.0, 2.0, 3.0],
+            "y2": [2.0, 3.0, 4.0],
+            "x2": [2.0, 3.0, 4.0],
+        })
+        return ColumnDataSource(df)
+
+    def test_pcspike_returns_renderer(self, fig, pc_cds, gm):
+        """map_pcspike returns a GlyphRenderer."""
+        r = gm.map_pcspike(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        assert r is not None
+
+    def test_pcspike_segment_glyph(self, fig, pc_cds, gm):
+        """map_pcspike produces a Segment glyph."""
+        from bokeh.models.glyphs import Segment
+        r = gm.map_pcspike(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        if isinstance(r, list):
+            r = r[0]
+        assert isinstance(r.glyph, Segment)
+
+    def test_pcspike_lcolor_applied(self, fig, pc_cds, gm):
+        """lcolor option applied to pcspike segment."""
+        r = gm.map_pcspike(fig, pc_cds, "y1", "x1", "y2", "x2",
+                           {"lcolor": "red"})
+        if isinstance(r, list):
+            r = r[0]
+        assert r.glyph.line_color == "#ff0000"
+
+
+class TestMapPcarrow:
+    """Unit tests for map_pcarrow."""
+
+    @pytest.fixture
+    def pc_cds(self):
+        df = pd.DataFrame({
+            "y1": [1.0, 2.0, 3.0],
+            "x1": [1.0, 2.0, 3.0],
+            "y2": [2.0, 3.0, 4.0],
+            "x2": [2.0, 3.0, 4.0],
+        })
+        return ColumnDataSource(df)
+
+    def test_pcarrow_returns_result(self, fig, pc_cds, gm):
+        """map_pcarrow returns at least one renderer or annotation."""
+        r = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        assert r is not None
+
+    def test_pcarrow_lwidth_applied(self, fig, pc_cds, gm):
+        """lwidth(thick)=2.5 applied to segment renderer via _apply_line_opts."""
+        renderers = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
+                                   {"lwidth": "thick"})
+        seg = renderers[0]
+        assert abs(seg.glyph.line_width - 2.5) < 0.01, \
+            "map_pcarrow must apply lwidth(thick)=2.5 to segment"
+
+    def test_pcarrow_lcolor_applied(self, fig, pc_cds, gm):
+        """lcolor option applied to segment renderer."""
+        renderers = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
+                                   {"lcolor": "red"})
+        seg = renderers[0]
+        assert seg.glyph.line_color == "#ff0000", \
+            "map_pcarrow must apply lcolor to segment"
+
+    def test_pcarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
+        """lwidth(thick)=2.5 must also be applied to Arrow annotation objects.
+
+        Arrow annotations added via fig.add_layout() are stored in fig.center.
+        """
+        from bokeh.models import Arrow
+        gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lwidth": "thick"})
+        arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
+        assert arrow_annots, "map_pcarrow must add Arrow annotations to fig"
+        for arrow in arrow_annots:
+            assert abs(arrow.line_width - 2.5) < 0.01, \
+                f"Arrow annotation line_width must be 2.5 (thick) but got {arrow.line_width}"
+
+
+class TestMapPcbarrow:
+    """Unit tests for map_pcbarrow."""
+
+    @pytest.fixture
+    def pc_cds(self):
+        df = pd.DataFrame({
+            "y1": [1.0, 2.0, 3.0],
+            "x1": [1.0, 2.0, 3.0],
+            "y2": [2.0, 3.0, 4.0],
+            "x2": [2.0, 3.0, 4.0],
+        })
+        return ColumnDataSource(df)
+
+    def test_pcbarrow_returns_result(self, fig, pc_cds, gm):
+        """map_pcbarrow returns at least one renderer or annotation."""
+        r = gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        assert r is not None
+
+    def test_pcbarrow_lwidth_applied(self, fig, pc_cds, gm):
+        """lwidth(thick)=2.5 applied to segment renderer via _apply_line_opts."""
+        renderers = gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
+                                    {"lwidth": "thick"})
+        seg = renderers[0]
+        assert abs(seg.glyph.line_width - 2.5) < 0.01, \
+            "map_pcbarrow must apply lwidth(thick)=2.5 to segment"
+
+    def test_pcbarrow_lcolor_applied(self, fig, pc_cds, gm):
+        """lcolor option applied to segment renderer."""
+        renderers = gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
+                                    {"lcolor": "red"})
+        seg = renderers[0]
+        assert seg.glyph.line_color == "#ff0000", \
+            "map_pcbarrow must apply lcolor to segment"
+
+    def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
+        """lwidth(thick)=2.5 must also be applied to Arrow annotation objects.
+
+        Arrow annotations added via fig.add_layout() are stored in fig.center.
+        """
+        from bokeh.models import Arrow
+        gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lwidth": "thick"})
+        arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
+        assert arrow_annots, "map_pcbarrow must add Arrow annotations to fig"
+        for arrow in arrow_annots:
+            assert abs(arrow.line_width - 2.5) < 0.01, \
+                f"Arrow annotation line_width must be 2.5 (thick) but got {arrow.line_width}"
+
+
+class TestMapTsline:
+    """Unit tests for map_tsline."""
+
+    def test_tsline_returns_renderer(self, fig, cds, gm):
+        """map_tsline returns a GlyphRenderer."""
+        r = gm.map_tsline(fig, cds, "mpg", "weight", {})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_tsline_line_glyph(self, fig, cds, gm):
+        """map_tsline produces a Line glyph."""
+        from bokeh.models.glyphs import Line
+        r = gm.map_tsline(fig, cds, "mpg", "weight", {})
+        assert isinstance(r.glyph, Line)
+
+    def test_tsline_lcolor_applied(self, fig, cds, gm):
+        """lcolor option applied via tsline."""
+        r = gm.map_tsline(fig, cds, "mpg", "weight", {"lcolor": "navy"})
+        assert r.glyph.line_color == "#1a476f"
+
+
+class TestMapTsrline:
+    """Unit tests for map_tsrline."""
+
+    def test_tsrline_returns_list(self, fig, std_cds_small, gm):
+        """map_tsrline returns a list of renderers."""
+        result = gm.map_tsrline(fig, std_cds_small, "lo", "hi", "x", {})
+        assert isinstance(result, list)
+
+    def test_tsrline_has_lines(self, fig, std_cds_small, gm):
+        """map_tsrline includes Line glyphs."""
+        from bokeh.models.glyphs import Line
+        result = gm.map_tsrline(fig, std_cds_small, "lo", "hi", "x", {})
+        lines = [r for r in result if isinstance(r.glyph, Line)]
+        assert len(lines) >= 1
+
+
+class TestMapMspline:
+    """Unit tests for map_mspline. map_mspline returns a list."""
+
+    def test_mspline_returns_list(self, fig, cds, gm):
+        """map_mspline returns a list with one GlyphRenderer."""
+        result = gm.map_mspline(fig, cds, "mpg", "weight", {})
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], GlyphRenderer)
+
+    def test_mspline_line_glyph(self, fig, cds, gm):
+        """map_mspline produces a Line glyph."""
+        from bokeh.models.glyphs import Line
+        result = gm.map_mspline(fig, cds, "mpg", "weight", {})
+        assert isinstance(result[0].glyph, Line)
+
+    def test_mspline_smooth_output(self, fig, cds, gm):
+        """map_mspline outputs more points than input (smooth interpolation)."""
+        result = gm.map_mspline(fig, cds, "mpg", "weight", {})
+        n_output = len(result[0].data_source.data["x_sp"])
+        assert n_output >= 50, f"Expected >=50 interpolated points, got {n_output}"
+
+    def test_mspline_lcolor_applied(self, fig, cds, gm):
+        """lcolor option applied to mspline."""
+        result = gm.map_mspline(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        assert result[0].glyph.line_color == "#ff0000"
+
+    def test_mspline_handles_duplicate_x(self, fig, gm):
+        """map_mspline deduplicates x values to satisfy PchipInterpolator."""
+        dup_df = pd.DataFrame({
+            "y": [1.0, 2.0, 2.0, 3.0, 4.0],
+            "x": [1.0, 2.0, 2.0, 3.0, 4.0],   # duplicate x=2.0
+        })
+        dup_cds = ColumnDataSource(dup_df)
+        result = gm.map_mspline(fig, dup_cds, "y", "x", {})
+        assert isinstance(result, list)
+        assert result[0].data_source.data["x_sp"] is not None
+
+
+class TestMapFunction:
+    """Unit tests for map_function. map_function returns a list."""
+
+    def test_function_returns_list(self, fig, gm):
+        """map_function returns a list with one GlyphRenderer."""
+        result = gm.map_function(fig, "x", (0.0, 1.0), 100, {})
+        assert isinstance(result, list)
+        assert isinstance(result[0], GlyphRenderer)
+
+    def test_function_line_glyph(self, fig, gm):
+        """map_function produces a Line glyph."""
+        from bokeh.models.glyphs import Line
+        result = gm.map_function(fig, "x", (0.0, 1.0), 100, {})
+        assert isinstance(result[0].glyph, Line)
+
+    def test_function_sin_renders(self, fig, gm):
+        """map_function with sin(x) produces 100 data points."""
+        result = gm.map_function(fig, "sin(x)", (0.0, 6.28), 100, {})
+        assert len(result[0].data_source.data["x_fn"]) == 100
+
+    def test_function_injection_rejected(self, fig, gm):
+        """Dangerous expressions are rejected safely — empty renderer, no crash."""
+        result = gm.map_function(fig, "__import__('os').system('id')", (0.0, 1.0), 10, {})
+        assert isinstance(result, list)
+        assert len(result[0].data_source.data.get("x_fn", [])) == 0
+
+    def test_function_lcolor_applied(self, fig, gm):
+        """lcolor option applied to function line."""
+        result = gm.map_function(fig, "x", (0.0, 1.0), 50, {"lcolor": "navy"})
+        assert result[0].glyph.line_color == "#1a476f"
+
+
+# ================================================================
+# Legend label coverage — all map_* methods must produce a legend entry
+# ================================================================
+
+def _legend_items(fig):
+    """Return list of (label_text, renderer) tuples from fig.legend."""
+    items = []
+    for leg in fig.legend:
+        for item in leg.items:
+            lbl = item.label
+            text = lbl.value if hasattr(lbl, "value") else str(lbl)
+            items.append(text)
+    return items
+
+
+class TestLegendLabelCoverage:
+    """Every map_* method must produce at least one legend entry with the yvar name."""
+
+    def _range_cds(self):
+        df = pd.DataFrame({
+            "lo": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "hi": [2.0, 3.0, 4.0, 5.0, 6.0],
+            "x":  [1.0, 2.0, 3.0, 4.0, 5.0],
+        })
+        return ColumnDataSource(df)
+
+    def _pc_cds(self):
+        df = pd.DataFrame({
+            "y1": [0.0, 1.0, 2.0],
+            "x1": [0.0, 1.0, 2.0],
+            "y2": [1.0, 2.0, 3.0],
+            "x2": [1.0, 2.0, 3.0],
+        })
+        return ColumnDataSource(df)
+
+    def test_spike_legend(self, fig, cds, gm):
+        """map_spike must create a legend entry for yvar."""
+        gm.map_spike(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_lfit_legend(self, fig, cds, gm):
+        """map_lfit must create a legend entry for yvar."""
+        gm.map_lfit(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_qfit_legend(self, fig, cds, gm):
+        """map_qfit must create a legend entry for yvar."""
+        gm.map_qfit(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_lfitci_legend(self, fig, cds, gm):
+        """map_lfitci must create a legend entry for yvar."""
+        gm.map_lfitci(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_qfitci_legend(self, fig, cds, gm):
+        """map_qfitci must create a legend entry for yvar."""
+        gm.map_qfitci(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_lowess_legend(self, fig, cds, gm):
+        """map_lowess must create a legend entry for yvar."""
+        gm.map_lowess(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_histogram_legend(self, fig, cds, gm):
+        """map_histogram must create a legend entry for yvar."""
+        gm.map_histogram(fig, cds, "mpg", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_kdensity_legend(self, fig, cds, gm):
+        """map_kdensity must create a legend entry for yvar."""
+        gm.map_kdensity(fig, cds, "mpg", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_rarea_legend(self, fig, gm):
+        """map_rarea must create a legend entry for y1var."""
+        gm.map_rarea(fig, self._range_cds(), "lo", "hi", "x", {})
+        assert "lo" in _legend_items(fig)
+
+    def test_rbar_legend(self, fig, gm):
+        """map_rbar must create a legend entry for y1var."""
+        gm.map_rbar(fig, self._range_cds(), "lo", "hi", "x", {})
+        assert "lo" in _legend_items(fig)
+
+    def test_rspike_legend(self, fig, gm):
+        """map_rspike must create a legend entry for y1var."""
+        gm.map_rspike(fig, self._range_cds(), "lo", "hi", "x", {})
+        assert "lo" in _legend_items(fig)
+
+    def test_rcap_legend(self, fig, gm):
+        """map_rcap must create a legend entry for y1var."""
+        gm.map_rcap(fig, self._range_cds(), "lo", "hi", "x", {})
+        assert "lo" in _legend_items(fig)
+
+    def test_rline_legend(self, fig, gm):
+        """map_rline must create a legend entry for y1var."""
+        gm.map_rline(fig, self._range_cds(), "lo", "hi", "x", {})
+        assert "lo" in _legend_items(fig)
+
+    def test_dropline_legend(self, fig, cds, gm):
+        """map_dropline must create a legend entry for yvar."""
+        gm.map_dropline(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_rcapsym_legend(self, fig, gm):
+        """map_rcapsym must create a legend entry for y1var."""
+        gm.map_rcapsym(fig, self._range_cds(), "lo", "hi", "x", {})
+        assert "lo" in _legend_items(fig)
+
+    def test_pcspike_legend(self, fig, gm):
+        """map_pcspike must create a legend entry for y1var."""
+        gm.map_pcspike(fig, self._pc_cds(), "y1", "x1", "y2", "x2", {})
+        assert "y1" in _legend_items(fig)
+
+    def test_pcarrow_legend(self, fig, gm):
+        """map_pcarrow must create a legend entry for y1var."""
+        gm.map_pcarrow(fig, self._pc_cds(), "y1", "x1", "y2", "x2", {})
+        assert "y1" in _legend_items(fig)
+
+    def test_pcbarrow_legend(self, fig, gm):
+        """map_pcbarrow must create a legend entry for y1var."""
+        gm.map_pcbarrow(fig, self._pc_cds(), "y1", "x1", "y2", "x2", {})
+        assert "y1" in _legend_items(fig)
+
+    def test_mspline_legend(self, fig, cds, gm):
+        """map_mspline must create a legend entry for yvar."""
+        gm.map_mspline(fig, cds, "mpg", "weight", {})
+        assert "mpg" in _legend_items(fig)
+
+    def test_function_legend(self, fig, gm):
+        """map_function must create a legend entry."""
+        gm.map_function(fig, "x", (0.0, 1.0), 50, {})
+        assert len(_legend_items(fig)) >= 1
+
+
+class TestMlabwidth:
+    """mlabwidth option in _apply_mlabel_opts must not crash."""
+
+    def test_mlabwidth_does_not_crash(self, fig, gm):
+        """Providing mlabwidth must not raise an exception."""
+        df = pd.DataFrame({"y": [1.0, 2.0, 3.0], "x": [1.0, 2.0, 3.0], "lbl": ["a", "b", "c"]})
+        src = ColumnDataSource(df)
+        # Should complete without error
+        gm._apply_mlabel_opts(fig, src, {"mlabel": "lbl", "mlabwidth": "20"}, "x", "y")
+        assert len(fig.renderers) >= 0  # just verifies no exception
+
+    def test_mlabwidth_label_still_created(self, fig, gm):
+        """LabelSet must still be added to the figure when mlabwidth is present."""
+        from bokeh.models import LabelSet
+        df = pd.DataFrame({"y": [1.0, 2.0], "x": [1.0, 2.0], "lbl": ["a", "b"]})
+        src = ColumnDataSource(df)
+        gm._apply_mlabel_opts(fig, src, {"mlabel": "lbl", "mlabwidth": "15"}, "x", "y")
+        label_sets = [c for c in fig.center if isinstance(c, LabelSet)]
+        assert len(label_sets) >= 1
+
+
+class TestMarkerGenericOption:
+    """The 'm' abbreviation expands to 'marker' in the parser.
+    _apply_marker_opts must treat 'marker' as an alias for 'msymbol'."""
+
+    def test_marker_option_applies_symbol(self, fig, cds, gm):
+        """options={'marker':'triangle'} must set glyph.marker = 'triangle'."""
+        r = gm.map_scatter(fig, cds, "mpg", "weight", {"marker": "triangle"})
+        from bokeh.models.glyphs import Scatter
+        assert isinstance(r.glyph, Scatter)
+        assert r.glyph.marker == "triangle", \
+            "generic 'marker' option must set glyph marker type"
+
+    def test_marker_option_coexists_with_msymbol(self, fig, cds, gm):
+        """When both 'marker' and 'msymbol' are present, msymbol takes precedence
+        (applied after) but 'marker' must not crash."""
+        r = gm.map_scatter(fig, cds, "mpg", "weight",
+                           {"marker": "triangle", "msymbol": "circle"})
+        assert r.glyph.marker == "circle", \
+            "msymbol must win when both marker and msymbol specified"
+
+
+class TestMfcolor:
+    """mfcolor sets the marker FILL color independently of the outline color."""
+
+    def test_mfcolor_sets_fill_independently(self, fig, cds, gm):
+        """mfcolor(red) should set fill_color=red but leave line_color as default."""
+        r = gm.map_scatter(fig, cds, "mpg", "weight", {"mfcolor": "red"})
+        assert r.glyph.fill_color == "#ff0000", \
+            "mfcolor must set fill_color"
+
+    def test_mfcolor_does_not_change_line_color(self, fig, cds, gm):
+        """mfcolor alone must not change the line/outline color."""
+        default_line = gm.map_scatter(fig, cds, "mpg", "weight", {}).glyph.line_color
+        r = gm.map_scatter(fig, cds, "mpg", "weight", {"mfcolor": "red"})
+        assert r.glyph.line_color == default_line, \
+            "mfcolor must not alter line_color"
+
+    def test_mcolor_plus_mfcolor_mfcolor_wins_fill(self, fig, cds, gm):
+        """When mcolor and mfcolor both present, mfcolor overrides fill_color."""
+        r = gm.map_scatter(fig, cds, "mpg", "weight",
+                           {"mcolor": "blue", "mfcolor": "red"})
+        assert r.glyph.fill_color == "#ff0000", \
+            "mfcolor must override fill_color set by mcolor"
+        assert r.glyph.line_color == "#0000ff", \
+            "mcolor must still set line_color when mfcolor present"
+
+    def test_mfcolor_invalid_no_crash(self, fig, cds, gm):
+        """Invalid mfcolor value must not raise; glyph must still be created."""
+        r = gm.map_scatter(fig, cds, "mpg", "weight", {"mfcolor": "notacolor"})
+        assert r is not None
+
+
+class TestBarOptions:
+    """barwidth(), base(), blcolor(), bfcolor() options for map_bar()."""
+
+    def test_barwidth_overrides_auto_width(self, fig, cds, gm):
+        """barwidth(0.3) must set bar width to 0.3."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"barwidth": "0.3"})
+        assert abs(r.glyph.width - 0.3) < 1e-9, \
+            "barwidth option must override auto-computed width"
+
+    def test_width_alias_for_barwidth(self, fig, cds, gm):
+        """width(0.5) must also set bar width to 0.5."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"width": "0.5"})
+        assert abs(r.glyph.width - 0.5) < 1e-9, \
+            "width option must set bar width"
+
+    def test_barwidth_invalid_no_crash(self, fig, cds, gm):
+        """Non-numeric barwidth must not raise; auto width used instead."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"barwidth": "abc"})
+        assert r is not None
+
+    def test_base_changes_bar_bottom(self, fig, cds, gm):
+        """base(5) must shift bar bottom to 5 (vbar bottom attribute)."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"base": "5"})
+        assert r.glyph.bottom == 5.0, \
+            "base option must set vbar bottom attribute"
+
+    def test_base_default_is_zero(self, fig, cds, gm):
+        """Absent base option must default bar bottom to 0."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {})
+        assert r.glyph.bottom == 0, "default bar bottom must be 0"
+
+    def test_bfcolor_sets_fill(self, fig, cds, gm):
+        """bfcolor(red) must set bar fill_color to #ff0000."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"bfcolor": "red"})
+        assert r.glyph.fill_color == "#ff0000", \
+            "bfcolor must set bar fill_color"
+
+    def test_blcolor_sets_line(self, fig, cds, gm):
+        """blcolor(navy) must set bar line_color to navy hex."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"blcolor": "navy"})
+        assert r.glyph.line_color == "#1a476f", \
+            "blcolor must set bar line_color"
+
+    def test_blcolor_bfcolor_independent(self, fig, cds, gm):
+        """blcolor and bfcolor must be settable independently."""
+        r = gm.map_bar(fig, cds, "mpg", "weight",
+                       {"bfcolor": "red", "blcolor": "navy"})
+        assert r.glyph.fill_color == "#ff0000"
+        assert r.glyph.line_color == "#1a476f"
+
+
+class TestAreaBase:
+    """base() option for map_area() changes the lower boundary."""
+
+    def test_base_changes_area_lower_boundary(self, fig, cds, gm):
+        """base(5) must set the lower boundary of the area glyph to 5."""
+        r = gm.map_area(fig, cds, "mpg", "weight", {"base": "5"})
+        # VArea uses y1 column for lower boundary — check CDS values
+        src = r.data_source
+        y1_vals = src.data["y1"]
+        assert all(v == 5.0 for v in y1_vals), \
+            "base option must set lower area boundary to specified value"
+
+    def test_base_default_is_zero(self, fig, cds, gm):
+        """Absent base must default to 0 (all y1 == 0)."""
+        r = gm.map_area(fig, cds, "mpg", "weight", {})
+        assert all(v == 0 for v in r.data_source.data["y1"])
+
+
+class TestSpikeBase:
+    """base() option for map_spike() changes the spike origin."""
+
+    def test_base_changes_spike_origin(self, fig, cds, gm):
+        """base(3) must set segment y0 values to 3."""
+        r = gm.map_spike(fig, cds, "mpg", "weight", {"base": "3"})
+        y0_vals = r.data_source.data["y0"]
+        assert all(v == 3.0 for v in y0_vals), \
+            "base option must set spike y0 (origin) to specified value"
+
+    def test_base_default_is_zero(self, fig, cds, gm):
+        """Absent base must default spike y0 to 0."""
+        r = gm.map_spike(fig, cds, "mpg", "weight", {})
+        assert all(v == 0 for v in r.data_source.data["y0"])
+
+
+class TestBarLineOpts:
+    """lwidth and lpattern must be applied to map_bar() border via _apply_line_opts()."""
+
+    def test_bar_lwidth_applied(self, fig, cds, gm):
+        """lwidth(thick) must set bar glyph line_width."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"lwidth": "thick"})
+        assert r.glyph.line_width > 1.0, \
+            "lwidth(thick) must increase bar border line_width above default"
+
+    def test_bar_lpattern_applied(self, fig, cds, gm):
+        """lpattern(dash) must set bar glyph line_dash."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"lpattern": "dash"})
+        assert r.glyph.line_dash not in ([], "solid", None), \
+            "lpattern(dash) must set non-solid line_dash on bar border"
+
+    def test_bar_lcolor_via_line_opts(self, fig, cds, gm):
+        """lcolor(red) applied via _apply_line_opts must set bar line_color."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        assert r.glyph.line_color == "#ff0000", \
+            "lcolor via _apply_line_opts must set bar border line_color"
+
+
+class TestHistogramLineOpts:
+    """lwidth and lpattern must be applied to map_histogram() border via _apply_line_opts()."""
+
+    def test_histogram_lwidth_applied(self, fig, cds, gm):
+        """lwidth(thick) must set histogram quad line_width."""
+        r = gm.map_histogram(fig, cds, "mpg", {"lwidth": "thick"})
+        assert r.glyph.line_width > 1.0, \
+            "lwidth(thick) must increase histogram quad border line_width"
+
+    def test_histogram_lpattern_applied(self, fig, cds, gm):
+        """lpattern(dot) must set histogram quad line_dash."""
+        r = gm.map_histogram(fig, cds, "mpg", {"lpattern": "dot"})
+        assert r.glyph.line_dash not in ([], "solid", None), \
+            "lpattern(dot) must set non-solid line_dash on histogram quad"
+
+    def test_histogram_lcolor_via_line_opts(self, fig, cds, gm):
+        """lcolor(navy) applied via _apply_line_opts must set histogram quad line_color."""
+        r = gm.map_histogram(fig, cds, "mpg", {"lcolor": "navy"})
+        assert r.glyph.line_color == "#1a476f", \
+            "lcolor via _apply_line_opts must set histogram quad line_color"
+
+
+class TestAreaBorderLine:
+    """When lcolor/lwidth/lpattern specified, map_area() must add a border line renderer."""
+
+    def test_area_lcolor_adds_border_line(self, fig, cds, gm):
+        """lcolor(red) must add a Line renderer on top of the area."""
+        from bokeh.models import GlyphRenderer
+        from bokeh.models.glyphs import Line
+        renderers_before = len(fig.renderers)
+        gm.map_area(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        line_renderers = [r for r in fig.renderers
+                          if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
+        assert len(line_renderers) >= 1, \
+            "lcolor option must add a Line renderer as area border"
+        assert line_renderers[-1].glyph.line_color == "#ff0000", \
+            "border line must use the specified lcolor"
+
+    def test_area_lwidth_applied_to_border(self, fig, cds, gm):
+        """lwidth(thick) must set border line line_width."""
+        from bokeh.models import GlyphRenderer
+        from bokeh.models.glyphs import Line
+        gm.map_area(fig, cds, "mpg", "weight", {"lwidth": "thick"})
+        line_renderers = [r for r in fig.renderers
+                          if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
+        assert len(line_renderers) >= 1, "lwidth must trigger border line"
+        assert line_renderers[-1].glyph.line_width > 1.0, \
+            "border line_width must be > default"
+
+    def test_area_no_line_opts_no_border_line(self, fig, cds, gm):
+        """With no line options, map_area must NOT add an extra Line renderer."""
+        from bokeh.models import GlyphRenderer
+        from bokeh.models.glyphs import Line
+        gm.map_area(fig, cds, "mpg", "weight", {})
+        line_renderers = [r for r in fig.renderers
+                          if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
+        assert len(line_renderers) == 0, \
+            "no line options must not add a border line renderer"
+
+
+# ================================================================
+# New plot types: pci, pcscatter, rscatter, mband
+# ================================================================
+
+class TestNewPlotTypes:
+    """Tests for the 4 new plot types added in iteration N+1:
+       pci, pcscatter, rscatter, mband.
+    """
+
+    @pytest.fixture
+    def pc_cds(self):
+        """CDS with paired-coordinate variables."""
+        return ColumnDataSource({
+            "y1": [1.0, 2.0, 3.0],
+            "x1": [0.0, 1.0, 2.0],
+            "y2": [4.0, 5.0, 6.0],
+            "x2": [3.0, 4.0, 5.0],
+        })
+
+    @pytest.fixture
+    def range_cds(self):
+        """CDS with range variables (y1, y2, x)."""
+        return ColumnDataSource({
+            "y1": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "y2": [6.0, 7.0, 8.0, 9.0, 10.0],
+            "x":  [1.0, 2.0, 3.0, 4.0, 5.0],
+        })
+
+    @pytest.fixture
+    def xy_cds(self):
+        """CDS with simple x/y variables (20 rows for mband)."""
+        np.random.seed(7)
+        n = 20
+        return ColumnDataSource({
+            "y": np.random.randn(n).tolist(),
+            "x": np.linspace(0, 10, n).tolist(),
+        })
+
+    def test_map_pci_adds_renderers(self, fig, pc_cds):
+        """map_pci() adds at least one renderer (segment) to the figure."""
+        gm = GlyphMapper(OptionTranslator())
+        gm.map_pci(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        assert len(fig.renderers) >= 1
+
+    def test_map_pci_delegates_to_pcspike(self, fig, pc_cds):
+        """map_pci and map_pcspike produce the same number of renderers."""
+        gm = GlyphMapper(OptionTranslator())
+        fig2 = figure()
+        gm.map_pcspike(fig,  pc_cds, "y1", "x1", "y2", "x2", {})
+        gm.map_pci(    fig2, pc_cds, "y1", "x1", "y2", "x2", {})
+        assert len(fig.renderers) == len(fig2.renderers)
+
+    def test_map_pcscatter_adds_scatter_renderer(self, fig, pc_cds):
+        """map_pcscatter() adds a scatter renderer with 2×n points."""
+        from bokeh.models.glyphs import Scatter
+        gm = GlyphMapper(OptionTranslator())
+        gm.map_pcscatter(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        scatter_rs = [r for r in fig.renderers
+                      if isinstance(r, GlyphRenderer)
+                      and isinstance(r.glyph, Scatter)]
+        assert len(scatter_rs) == 1
+        # 3 observations × 2 endpoints = 6 points
+        assert len(scatter_rs[0].data_source.data["x"]) == 6
+
+    def test_map_rscatter_adds_scatter_renderer(self, fig, range_cds):
+        """map_rscatter() adds a scatter renderer with 2×n points."""
+        from bokeh.models.glyphs import Scatter
+        gm = GlyphMapper(OptionTranslator())
+        gm.map_rscatter(fig, range_cds, "y1", "y2", "x", {})
+        scatter_rs = [r for r in fig.renderers
+                      if isinstance(r, GlyphRenderer)
+                      and isinstance(r.glyph, Scatter)]
+        assert len(scatter_rs) == 1
+        assert len(scatter_rs[0].data_source.data["x"]) == 10  # 5 × 2
+
+    def test_map_rscatter_handles_nan(self, fig):
+        """map_rscatter() drops NaN rows."""
+        from bokeh.models.glyphs import Scatter
+        gm = GlyphMapper(OptionTranslator())
+        cds_nan = ColumnDataSource({
+            "y1": [1.0, float("nan"), 3.0],
+            "y2": [4.0, 5.0, 6.0],
+            "x":  [1.0, 2.0, 3.0],
+        })
+        gm.map_rscatter(fig, cds_nan, "y1", "y2", "x", {})
+        scatter_rs = [r for r in fig.renderers
+                      if isinstance(r, GlyphRenderer)
+                      and isinstance(r.glyph, Scatter)]
+        # Row 0: both valid; row 1: y1=NaN drops that x from y1-side only;
+        # row 2: both valid → 5 valid points across both sides
+        assert len(scatter_rs[0].data_source.data["x"]) == 5
+
+    def test_map_mband_adds_line_renderer(self, fig, xy_cds):
+        """map_mband() adds a line renderer."""
+        from bokeh.models.glyphs import Line
+        gm = GlyphMapper(OptionTranslator())
+        gm.map_mband(fig, xy_cds, "y", "x", {})
+        line_rs = [r for r in fig.renderers
+                   if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
+        assert len(line_rs) >= 1
+
+    def test_map_mband_fewer_points_than_raw(self, fig, xy_cds):
+        """map_mband() produces ≤ n_raw data points (band aggregation)."""
+        from bokeh.models.glyphs import Line
+        gm = GlyphMapper(OptionTranslator())
+        gm.map_mband(fig, xy_cds, "y", "x", {})
+        line_rs = [r for r in fig.renderers
+                   if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
+        n_raw = len(xy_cds.data["x"])
+        n_band = len(line_rs[0].data_source.data["x_mb"])
+        assert n_band <= n_raw
+
+    def test_map_mband_too_few_rows_returns_empty(self):
+        """map_mband() with < 4 rows returns an empty line (no crash)."""
+        from bokeh.models.glyphs import Line
+        gm = GlyphMapper(OptionTranslator())
+        fig2 = figure()
+        cds_small = ColumnDataSource({"y": [1.0, 2.0], "x": [1.0, 2.0]})
+        gm.map_mband(fig2, cds_small, "y", "x", {})
+        line_rs = [r for r in fig2.renderers
+                   if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
+        assert len(line_rs) == 1
+        assert len(line_rs[0].data_source.data["x_mb"]) == 0
+
+    def test_pci_in_dispatch(self, fig, pc_cds):
+        """_add_pc_glyph dispatches 'pci' correctly."""
+        from dash_render import GlyphMapper
+        gm = GlyphMapper(OptionTranslator())
+
+        class _FakeFigureWrapper:
+            """Wrap a real figure via a DashRenderer-like helper."""
+
+        import json, tempfile
+        from dash_render import DashRenderer
+        vals = [{"mpg": float(i), "weight": float(i), "y1": float(i),
+                 "x1": float(i), "y2": float(i+1), "x2": float(i+1)}
+                for i in range(1, 6)]
+        spec = {
+            "graphs": [{
+                "plots": [{"type": "pci", "y1var": "y1", "x1var": "x1",
+                           "y2var": "y2", "x2var": "x2", "options": {}}],
+                "graph_options": {"name": "g1"},
+                "if_expr": "", "in_expr": "",
+            }],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "filter": "",
+                "theme": "default", "title": "", "subtitle": "", "registry": "g1",
+            },
+        }
+        dj = {
+            "StataJSON": {
+                "variableNames": ["mpg", "weight", "y1", "x1", "y2", "x2"],
+                "variableLabels": {v: v for v in ["mpg", "weight", "y1", "x1", "y2", "x2"]},
+                "valueLabels": {}, "valueLabelNames": {},
+                "variableTypeIsString": {v: False for v in ["mpg", "weight", "y1", "x1", "y2", "x2"]},
+                "values": vals,
+            }
+        }
+        spec_fd, sp = tempfile.mkstemp(suffix=".json")
+        data_fd, dp = tempfile.mkstemp(suffix=".json")
+        out_fd, op  = tempfile.mkstemp(suffix=".html")
+        try:
+            import os
+            with os.fdopen(spec_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(data_fd, "w") as f: json.dump(dj, f)
+            os.close(out_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        figs = r._build_figures()
+        assert "g1" in figs, "pci plot should produce a figure"
+
+    def test_pcscatter_in_dispatch(self):
+        """pcscatter dispatches via _add_pc_glyph to map_pcscatter."""
+        import json, tempfile, os
+        from dash_render import DashRenderer
+        vals = [{"y1": float(i), "x1": float(i), "y2": float(i+1), "x2": float(i+1)}
+                for i in range(1, 6)]
+        spec = {
+            "graphs": [{
+                "plots": [{"type": "pcscatter", "y1var": "y1", "x1var": "x1",
+                           "y2var": "y2", "x2var": "x2", "options": {}}],
+                "graph_options": {"name": "g1"},
+                "if_expr": "", "in_expr": "",
+            }],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "filter": "",
+                "theme": "default", "title": "", "subtitle": "", "registry": "g1",
+            },
+        }
+        dj = {
+            "StataJSON": {
+                "variableNames": ["y1", "x1", "y2", "x2"],
+                "variableLabels": {v: v for v in ["y1", "x1", "y2", "x2"]},
+                "valueLabels": {}, "valueLabelNames": {},
+                "variableTypeIsString": {v: False for v in ["y1", "x1", "y2", "x2"]},
+                "values": vals,
+            }
+        }
+        spec_fd, sp = tempfile.mkstemp(suffix=".json")
+        data_fd, dp = tempfile.mkstemp(suffix=".json")
+        out_fd, op  = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(spec_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(data_fd, "w") as f: json.dump(dj, f)
+            os.close(out_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        figs = r._build_figures()
+        assert "g1" in figs
+
+    def test_rscatter_in_dispatch(self):
+        """rscatter dispatches via _add_glyph range_dispatch."""
+        import json, tempfile, os
+        from dash_render import DashRenderer
+        vals = [{"y1": float(i), "y2": float(i+5), "x": float(i)} for i in range(1, 11)]
+        spec = {
+            "graphs": [{
+                "plots": [{"type": "rscatter", "yvar": "y1", "y2var": "y2",
+                           "xvar": "x", "options": {}}],
+                "graph_options": {"name": "g1"},
+                "if_expr": "", "in_expr": "",
+            }],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "filter": "",
+                "theme": "default", "title": "", "subtitle": "", "registry": "g1",
+            },
+        }
+        dj = {
+            "StataJSON": {
+                "variableNames": ["y1", "y2", "x"],
+                "variableLabels": {v: v for v in ["y1", "y2", "x"]},
+                "valueLabels": {}, "valueLabelNames": {},
+                "variableTypeIsString": {v: False for v in ["y1", "y2", "x"]},
+                "values": vals,
+            }
+        }
+        spec_fd, sp = tempfile.mkstemp(suffix=".json")
+        data_fd, dp = tempfile.mkstemp(suffix=".json")
+        out_fd, op  = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(spec_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(data_fd, "w") as f: json.dump(dj, f)
+            os.close(out_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        figs = r._build_figures()
+        assert "g1" in figs
+
+    def test_mband_in_dispatch(self):
+        """mband dispatches via _add_glyph standard dispatch."""
+        import json, tempfile, os
+        from dash_render import DashRenderer
+        vals = [{"y": float(i), "x": float(i)} for i in range(1, 25)]
+        spec = {
+            "graphs": [{
+                "plots": [{"type": "mband", "yvar": "y", "xvar": "x", "options": {}}],
+                "graph_options": {"name": "g1"},
+                "if_expr": "", "in_expr": "",
+            }],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "filter": "",
+                "theme": "default", "title": "", "subtitle": "", "registry": "g1",
+            },
+        }
+        dj = {
+            "StataJSON": {
+                "variableNames": ["y", "x"],
+                "variableLabels": {"y": "y", "x": "x"},
+                "valueLabels": {}, "valueLabelNames": {},
+                "variableTypeIsString": {"y": False, "x": False},
+                "values": vals,
+            }
+        }
+        spec_fd, sp = tempfile.mkstemp(suffix=".json")
+        data_fd, dp = tempfile.mkstemp(suffix=".json")
+        out_fd, op  = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(spec_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(data_fd, "w") as f: json.dump(dj, f)
+            os.close(out_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        figs = r._build_figures()
+        assert "g1" in figs

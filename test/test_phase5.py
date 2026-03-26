@@ -177,6 +177,23 @@ class TestPerGraphIfFilter:
         sources = renderer._setup_sources()
         assert "g1" in sources
 
+    def test_if_expr_getattr_blocked(self):
+        """P5-sec01: if_expr with getattr() call must be blocked."""
+        renderer = _build_renderer(
+            self._spec_with_if("getattr(x, '__class__')"), DATA_20
+        )
+        sources = renderer._setup_sources()
+        # Must not raise; full data or empty (not partial)
+        assert "g1" in sources
+
+    def test_if_expr_setattr_blocked(self):
+        """P5-sec02: if_expr with setattr() call must be blocked."""
+        renderer = _build_renderer(
+            self._spec_with_if("setattr(x, 'foo', 1)"), DATA_20
+        )
+        sources = renderer._setup_sources()
+        assert "g1" in sources
+
     def test_two_graphs_different_if_expr(self):
         """P5-09: two graphs with different if_expr → disjoint CDS data."""
         g1 = {
@@ -229,3 +246,146 @@ class TestApplyGraphFilter:
         g = {"if_expr": "x == 5", "in_expr": ""}
         df = renderer._apply_graph_filter(g)
         assert len(df) == 1 and list(df["x"])[0] == 5.0
+
+
+# ================================================================
+# P6-20: by() security and edge case tests
+# ================================================================
+
+class TestByFacetingSecurity:
+    """Security hardening tests for by() faceting."""
+
+    @pytest.fixture
+    def renderer(self):
+        """Renderer with a simple dataset for security tests."""
+        data = {
+            "y": [float(i) for i in range(1, 21)],
+            "x": [float(i) for i in range(1, 21)],
+            "grp": [float(i % 2) for i in range(20)],
+        }
+        data_json = _make_data_json(data)
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1", "by": "grp"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph], "kpis": [],
+            "build_options": {"layout": "auto", "link": "", "filter": "",
+                              "theme": "default", "title": "", "subtitle": "",
+                              "registry": "g1"},
+        }
+        spec_fd, spec_path = tempfile.mkstemp(suffix=".json")
+        data_fd, data_path = tempfile.mkstemp(suffix=".json")
+        out_fd, out_path = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(spec_fd, "w") as f:
+                json.dump(spec, f)
+            with os.fdopen(data_fd, "w") as f:
+                json.dump(data_json, f)
+            os.close(out_fd)
+            r = DashRenderer(spec_path, data_path, out_path)
+        finally:
+            for p in (spec_path, data_path, out_path):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+        return r
+
+    def test_by_import_injection_blocked(self, renderer):
+        """by('__import__(\"os\")') → falls back to no faceting."""
+        g = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1", "by": '__import__("os")'},
+            "if_expr": "", "in_expr": "",
+        }
+        groups = renderer._expand_by_groups(g)
+        # Should return single unfaceted group (injection blocked)
+        assert len(groups) == 1 and groups[0][0] == ""
+
+    def test_by_eval_injection_blocked(self, renderer):
+        """by('eval(\"1+1\")') → falls back to no faceting."""
+        g = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1", "by": 'eval("1+1")'},
+            "if_expr": "", "in_expr": "",
+        }
+        groups = renderer._expand_by_groups(g)
+        assert len(groups) == 1 and groups[0][0] == ""
+
+    def test_by_getattr_injection_blocked(self, renderer):
+        """by('getattr(x, \"y\")') → falls back to no faceting."""
+        g = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1", "by": 'getattr(x, "y")'},
+            "if_expr": "", "in_expr": "",
+        }
+        groups = renderer._expand_by_groups(g)
+        assert len(groups) == 1 and groups[0][0] == ""
+
+    def test_by_shell_injection_blocked(self, renderer):
+        """by('grp; rm -rf /') → falls back to no faceting."""
+        g = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1", "by": "grp; rm -rf /"},
+            "if_expr": "", "in_expr": "",
+        }
+        groups = renderer._expand_by_groups(g)
+        assert len(groups) == 1 and groups[0][0] == ""
+
+    def test_by_dunder_blocked(self, renderer):
+        """by('__class__') → blocked by __ pattern."""
+        g = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1", "by": "__class__"},
+            "if_expr": "", "in_expr": "",
+        }
+        groups = renderer._expand_by_groups(g)
+        assert len(groups) == 1 and groups[0][0] == ""
+
+    def test_by_xss_in_facet_label_escaped(self):
+        """XSS payload in by-variable value → escaped in facet title."""
+        data = {
+            "y": [1.0, 2.0, 3.0, 4.0],
+            "x": [1.0, 2.0, 3.0, 4.0],
+            "grp": [0.0, 0.0, 1.0, 1.0],
+        }
+        data_json = _make_data_json(data)
+        # Inject XSS in value labels
+        data_json["StataJSON"]["valueLabels"] = {
+            "grp_lbl": {"0": '<script>alert(1)</script>', "1": "Normal"}
+        }
+        data_json["StataJSON"]["valueLabelNames"] = {"grp": "grp_lbl"}
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1", "by": "grp"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph], "kpis": [],
+            "build_options": {"layout": "auto", "link": "", "filter": "",
+                              "theme": "default", "title": "", "subtitle": "",
+                              "registry": "g1"},
+        }
+        spec_fd, spec_path = tempfile.mkstemp(suffix=".json")
+        data_fd, data_path = tempfile.mkstemp(suffix=".json")
+        out_fd, out_path = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(spec_fd, "w") as f:
+                json.dump(spec, f)
+            with os.fdopen(data_fd, "w") as f:
+                json.dump(data_json, f)
+            os.close(out_fd)
+            r = DashRenderer(spec_path, data_path, out_path)
+        finally:
+            for p in (spec_path, data_path, out_path):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+        figs = r._build_figures()
+        titles = [figs[k].title.text for k in figs if "__by__" in k]
+        # Ensure XSS payload is escaped
+        for t in titles:
+            assert "<script>" not in t, f"Unescaped XSS in facet title: {t}"
