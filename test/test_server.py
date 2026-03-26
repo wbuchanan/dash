@@ -753,3 +753,130 @@ def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
         os.unlink(spec_path)
         os.unlink(data_path)
         os.unlink(out_f.name)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Server-mode dispatch tests for previously missing plot types
+# ---------------------------------------------------------------------------
+
+def _range_data():
+    """DataFrame with lo/hi/x columns for range plot tests."""
+    rng = np.random.default_rng(42)
+    n = 20
+    return pd.DataFrame({
+        "lo": rng.uniform(1, 5, n),
+        "hi": rng.uniform(6, 10, n),
+        "x":  np.linspace(0, 10, n),
+    })
+
+
+class TestServerDispatchConnected:
+    def test_connected_in_server_source(self, dr_module, auto_df):
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "c1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "fig.line(" in source, "connected should produce fig.line"
+        assert "fig.scatter(" in source, "connected should produce fig.scatter"
+
+
+class TestServerDispatchDot:
+    def test_dot_in_server_source(self, dr_module, auto_df):
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "dot", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "d1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "fig.scatter(" in source, "dot should produce fig.scatter"
+
+
+class TestServerDispatchLfitci:
+    def test_lfitci_in_server_source(self, dr_module, auto_df):
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfitci", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "lc1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "fig.line(" in source, "lfitci should produce fig.line"
+        assert "fig.varea(" in source, "lfitci should produce fig.varea"
+
+
+class TestServerDispatchQfitci:
+    def test_qfitci_in_server_source(self, dr_module, auto_df):
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "qfitci", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "qc1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "fig.line(" in source, "qfitci should produce fig.line"
+        assert "fig.varea(" in source, "qfitci should produce fig.varea"
+
+
+class TestServerDispatchRarea:
+    def test_rarea_in_server_source(self, dr_module):
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rarea", "yvar1": "lo", "yvar2": "hi", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "ra1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        assert "fig.varea(" in source, "rarea should produce fig.varea"
+
+
+class TestServerDispatchRbar:
+    def test_rbar_in_server_source(self, dr_module):
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rbar", "yvar1": "lo", "yvar2": "hi", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "rb1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        assert "fig.vbar(" in source, "rbar should produce fig.vbar"
+
+
+class TestServerDispatchRspike:
+    def test_rspike_in_server_source(self, dr_module):
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rspike", "yvar1": "lo", "yvar2": "hi", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "rs1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        assert "fig.segment(" in source, "rspike should produce fig.segment"
+
+
+class TestServerDispatchRcap:
+    def test_rcap_in_server_source(self, dr_module):
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rcap", "yvar1": "lo", "yvar2": "hi", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "rc1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        # rcap produces spine + 2 cap segments = at least 3 fig.segment calls
+        assert source.count("fig.segment(") >= 3, "rcap should produce >=3 fig.segment calls"
+
+
+class TestServerDispatchRline:
+    def test_rline_in_server_source(self, dr_module):
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rline", "yvar1": "lo", "yvar2": "hi", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "rl1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        # rline produces 2 fig.line calls (one for each boundary)
+        assert source.count("fig.line(") >= 2, "rline should produce >=2 fig.line calls"
+
+
+class TestServerDispatchRconnected:
+    def test_rconnected_in_server_source(self, dr_module):
+        rdf = _range_data()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rconnected", "yvar1": "lo", "yvar2": "hi", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "rn1"},
+        }])
+        source = _build_app(dr_module, rdf, spec)
+        assert source.count("fig.line(") >= 2, "rconnected should produce >=2 fig.line"
+        assert source.count("fig.scatter(") >= 2, "rconnected should produce >=2 fig.scatter"
