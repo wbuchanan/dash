@@ -1148,7 +1148,7 @@ class GlyphMapper:
         """
         r = fig.varea(x=xvar, y1=y1var, y2=y2var, source=source,
                       fill_color="#aec7e8", fill_alpha=0.5)
-        return r
+        return [r]
 
     def map_rbar(
         self,
@@ -1180,7 +1180,7 @@ class GlyphMapper:
         )
         r = fig.vbar(x=xvar, bottom=y1var, top=y2var, source=source,
                      width=bar_width, fill_color="#1f77b4", line_color="white")
-        return r
+        return [r]
 
     def map_rspike(
         self,
@@ -1915,14 +1915,30 @@ class DashRenderer:
             except (ValueError, TypeError):
                 pass
 
+        # Plot categories that use non-standard JSON variable keys
+        _RANGE_TYPES = frozenset({
+            "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
+        })
+        _UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
+
         # Add glyphs for each plot layer
         for plot in plots:
             ptype = plot.get("type", "scatter")
-            pyvar = plot.get("yvar", yvar)
             pxvar = plot.get("xvar", xvar)
             popts = plot.get("options", {})
 
-            self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
+            if ptype.lower() in _RANGE_TYPES:
+                py1var = plot.get("yvar1", "")
+                py2var = plot.get("yvar2", "")
+                self._add_glyph(fig, source, ptype, py1var, pxvar, popts,
+                                y2var=py2var)
+            elif ptype.lower() in _UNIVARIATE_TYPES:
+                pyvar = (plot.get("yvar", "") or plot.get("var", "")
+                         or yvar)
+                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
+            else:
+                pyvar = plot.get("yvar", yvar)
+                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
 
         return fig
 
@@ -1934,6 +1950,7 @@ class DashRenderer:
         yvar: str,
         xvar: str,
         options: dict,
+        y2var: str = "",
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -1941,10 +1958,13 @@ class DashRenderer:
             fig:        Bokeh Figure to add the glyph to.
             source:     ColumnDataSource.
             plot_type:  Stata twoway plot type name.
-            yvar:       y variable name.
+            yvar:       y variable name (or y1var for range plots).
             xvar:       x variable name.
             options:    Plot-level options dict.
+            y2var:      Second y variable for range plot types (empty for
+                        non-range plots).
         """
+        # Standard (yvar, xvar) dispatch
         dispatch = {
             "scatter":    self.mapper.map_scatter,
             "sc":         self.mapper.map_scatter,
@@ -1964,10 +1984,28 @@ class DashRenderer:
             "kdensity":   self.mapper.map_kdensity,
             "dot":        self.mapper.map_dot,
         }
-        fn = dispatch.get(plot_type.lower())
+        # Range plot (y1var, y2var, xvar) dispatch
+        range_dispatch = {
+            "rarea":       self.mapper.map_rarea,
+            "rbar":        self.mapper.map_rbar,
+            "rspike":      self.mapper.map_rspike,
+            "rcap":        self.mapper.map_rcap,
+            "rline":       self.mapper.map_rline,
+            "rconnected":  self.mapper.map_rconnected,
+        }
+
+        pt = plot_type.lower()
+
+        # Range plots: (fig, source, y1var, y2var, xvar, options)
+        rfn = range_dispatch.get(pt)
+        if rfn is not None and y2var:
+            rfn(fig, source, yvar, y2var, xvar, options)
+            return
+
+        fn = dispatch.get(pt)
         if fn is not None:
             # histogram and kdensity are univariate — no xvar positional arg
-            if plot_type.lower() in ("histogram", "hist", "kdensity"):
+            if pt in ("histogram", "hist", "kdensity"):
                 fn(fig, source, yvar, options)
             else:
                 fn(fig, source, yvar, xvar, options)
@@ -2091,6 +2129,8 @@ class DashRenderer:
             link_names = list(all_graph_names)
 
         sources: dict[str, ColumnDataSource] = {}
+        # Keys that can hold variable names in plot specs
+        _VK = ("yvar", "xvar", "var", "yvar1", "yvar2")
 
         if link_names:
             # Collect all variable names needed by linked graphs
@@ -2099,7 +2139,7 @@ class DashRenderer:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
                     for plot in g.get("plots", []):
-                        for key in ("yvar", "xvar"):
+                        for key in _VK:
                             v = plot.get(key)
                             if v and v not in linked_vars:
                                 linked_vars.append(v)
@@ -2118,7 +2158,7 @@ class DashRenderer:
                 else:
                     g_vars = [
                         p.get(k) for p in g.get("plots", [])
-                        for k in ("yvar", "xvar") if p.get(k)
+                        for k in _VK if p.get(k)
                     ]
                     sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
         else:
@@ -2126,7 +2166,7 @@ class DashRenderer:
                 name = g.get("graph_options", {}).get("name", "")
                 g_vars = [
                     p.get(k) for p in g.get("plots", [])
-                    for k in ("yvar", "xvar") if p.get(k)
+                    for k in _VK if p.get(k)
                 ]
                 sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
 
@@ -2204,10 +2244,11 @@ class DashRenderer:
         saving_path = build.get("saving", "")
 
         # ---- 1. Determine all variable names needed ----
+        _VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2")
         all_vars: list[str] = []
         for g in graphs:
             for plot in g.get("plots", []):
-                for key in ("yvar", "xvar"):
+                for key in _VAR_KEYS:
                     v = plot.get(key)
                     if v and v not in all_vars:
                         all_vars.append(v)
@@ -2228,7 +2269,7 @@ class DashRenderer:
             for g in graphs:
                 if g.get("graph_options", {}).get("name") in link_names:
                     for plot in g.get("plots", []):
-                        for key in ("yvar", "xvar"):
+                        for key in _VAR_KEYS:
                             v = plot.get(key)
                             if v and v not in linked_vars:
                                 linked_vars.append(v)
@@ -2246,13 +2287,13 @@ class DashRenderer:
                     self.sources[name] = linked_source
                 else:
                     g_vars = [p.get(k) for p in g.get("plots", [])
-                              for k in ("yvar", "xvar") if p.get(k)]
+                              for k in _VAR_KEYS if p.get(k)]
                     self.sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
         else:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 g_vars = [p.get(k) for p in g.get("plots", [])
-                          for k in ("yvar", "xvar") if p.get(k)]
+                          for k in _VAR_KEYS if p.get(k)]
                 self.sources[name] = self._make_source(list(dict.fromkeys(g_vars)))
 
         # ---- 3. Build figures ----
@@ -2811,6 +2852,8 @@ class ServerAppBuilder:
             "            ptype = plot.get('type', '')",
             "            yvar = plot.get('yvar', '') or plot.get('var', '')",
             "            xvar = plot.get('xvar', '')",
+            "            y1var = plot.get('yvar1', '')",
+            "            y2var = plot.get('yvar2', '')",
             "            opts = plot.get('options', {})",
             "",
             "            color = '#1f77b4'",
@@ -2920,6 +2963,124 @@ class ServerAppBuilder:
             "                fig.segment(x0=xvar, x1=xvar, y0='_zero', y1=yvar,",
             "                             source=ssrc, line_color=color, line_width=1)",
             "                graph_sources[gname] = ssrc",
+            "",
+            "            elif ptype == 'connected':",
+            "                clean = df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else df",
+            "                csrc = ColumnDataSource(clean)",
+            "                fig.line(x=xvar, y=yvar, source=csrc,",
+            "                         line_color=color, line_width=1.5)",
+            "                fig.scatter(x=xvar, y=yvar, source=csrc,",
+            "                            fill_color=color, size=8, alpha=0.7)",
+            "                graph_sources[gname] = csrc",
+            "",
+            "            elif ptype == 'dot':",
+            "                clean = df[[xvar, yvar]].dropna() if xvar and yvar else df",
+            "                dsrc = ColumnDataSource(clean)",
+            "                fig.scatter(x=xvar, y=yvar, source=dsrc,",
+            "                            fill_color=color, size=8, alpha=0.7)",
+            "                graph_sources[gname] = dsrc",
+            "",
+            "            elif ptype == 'lfitci':",
+            "                fit_data = _compute_lfit(df, yvar, xvar)",
+            "                fit_src = ColumnDataSource(fit_data)",
+            "                agg_sources[(gname, pi)] = {",
+            "                    'source': fit_src,",
+            "                    'type': 'lfit',",
+            "                    'yvar': yvar, 'xvar': xvar,",
+            "                }",
+            "                fig.varea(x='x', y1='y', y2='y', source=fit_src,",
+            "                          fill_color=color, alpha=0.2)",
+            "                fig.line(x='x', y='y', source=fit_src,",
+            "                         line_color=color, line_width=2)",
+            "",
+            "            elif ptype == 'qfitci':",
+            "                fit_data = _compute_qfit(df, yvar, xvar)",
+            "                fit_src = ColumnDataSource(fit_data)",
+            "                agg_sources[(gname, pi)] = {",
+            "                    'source': fit_src,",
+            "                    'type': 'qfit',",
+            "                    'yvar': yvar, 'xvar': xvar,",
+            "                }",
+            "                fig.varea(x='x', y1='y', y2='y', source=fit_src,",
+            "                          fill_color=color, alpha=0.2)",
+            "                fig.line(x='x', y='y', source=fit_src,",
+            "                         line_color=color, line_width=2)",
+            "",
+            "            elif ptype == 'rarea':",
+            "                if y1var and y2var and xvar:",
+            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna()",
+            "                    rsrc = ColumnDataSource(rclean)",
+            "                    fig.varea(x=xvar, y1=y1var, y2=y2var, source=rsrc,",
+            "                              fill_color=color, alpha=0.4)",
+            "                    graph_sources[gname] = rsrc",
+            "",
+            "            elif ptype == 'rbar':",
+            "                if y1var and y2var and xvar:",
+            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna()",
+            "                    rsrc = ColumnDataSource(rclean)",
+            "                    x_arr = rclean[xvar].values",
+            "                    rw = float(np.diff(np.sort(np.unique(x_arr))).min()) * 0.8 if len(np.unique(x_arr)) > 1 else 1.0",
+            "                    fig.vbar(x=xvar, bottom=y1var, top=y2var, source=rsrc,",
+            "                             width=rw, fill_color=color, line_color='white')",
+            "                    graph_sources[gname] = rsrc",
+            "",
+            "            elif ptype == 'rspike':",
+            "                if y1var and y2var and xvar:",
+            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna()",
+            "                    rsrc = ColumnDataSource(rclean)",
+            "                    fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var,",
+            "                                source=rsrc, line_color=color, line_width=1.5)",
+            "                    graph_sources[gname] = rsrc",
+            "",
+            "            elif ptype == 'rcap':",
+            "                if y1var and y2var and xvar:",
+            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna()",
+            "                    rsrc = ColumnDataSource(rclean)",
+            "                    fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var,",
+            "                                source=rsrc, line_color=color, line_width=1.5)",
+            "                    # Horizontal caps",
+            "                    x_arr = rclean[xvar].values",
+            "                    cap_hw = float(np.diff(np.sort(np.unique(x_arr))).min()) * 0.2 if len(np.unique(x_arr)) > 1 else 0.2",
+            "                    cap_data = dict(",
+            "                        x0_c=x_arr - cap_hw, x1_c=x_arr + cap_hw,",
+            "                        yb=rclean[y1var].values, yt=rclean[y2var].values,",
+            "                    )",
+            "                    cap_src = ColumnDataSource(cap_data)",
+            "                    fig.segment(x0='x0_c', y0='yb', x1='x1_c', y1='yb',",
+            "                                source=cap_src, line_color=color, line_width=1.5)",
+            "                    fig.segment(x0='x0_c', y0='yt', x1='x1_c', y1='yt',",
+            "                                source=cap_src, line_color=color, line_width=1.5)",
+            "                    graph_sources[gname] = rsrc",
+            "",
+            "            elif ptype == 'rline':",
+            "                if y1var and y2var and xvar:",
+            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna().sort_values(xvar)",
+            "                    rsrc = ColumnDataSource(rclean)",
+            "                    fig.line(x=xvar, y=y1var, source=rsrc,",
+            "                             line_color=color, line_width=1.5)",
+            "                    fig.line(x=xvar, y=y2var, source=rsrc,",
+            "                             line_color=color, line_width=1.5, line_dash='dashed')",
+            "                    graph_sources[gname] = rsrc",
+            "",
+            "            elif ptype == 'rconnected':",
+            "                if y1var and y2var and xvar:",
+            "                    rcols = [c for c in [y1var, y2var, xvar] if c in df.columns]",
+            "                    rclean = df[rcols].dropna().sort_values(xvar)",
+            "                    rsrc = ColumnDataSource(rclean)",
+            "                    fig.line(x=xvar, y=y1var, source=rsrc,",
+            "                             line_color=color, line_width=1.5)",
+            "                    fig.scatter(x=xvar, y=y1var, source=rsrc,",
+            "                                fill_color=color, size=6)",
+            "                    fig.line(x=xvar, y=y2var, source=rsrc,",
+            "                             line_color=color, line_width=1.5, line_dash='dashed')",
+            "                    fig.scatter(x=xvar, y=y2var, source=rsrc,",
+            "                                fill_color=color, size=6)",
+            "                    graph_sources[gname] = rsrc",
             "",
             "        figures[gname] = fig",
             "",

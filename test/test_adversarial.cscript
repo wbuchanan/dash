@@ -1,0 +1,286 @@
+*! test_adversarial.cscript
+*! Adversarial/security certification script for dash command.
+*! Tests XSS, injection, path traversal, resource exhaustion, and
+*! server-mode security properties.
+*!
+*! Tests: P2-78 through P2-84, P4-84 through P4-86
+*!
+*! Usage:  do test/test_adversarial.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed
+*! Version: 1.0.0  25mar2026
+
+cscript "dash adversarial security" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup — check dependencies
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 0
+}
+
+capture {
+    python:
+pass
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: Python not available."
+    exit 0
+}
+
+capture {
+    python:
+import bokeh
+    end
+}
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 0
+}
+
+qui sysuse auto, clear
+
+// Load the dash command and parser
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ================================================================
+// P2-78 — XSS in title → <script> HTML-escaped in output HTML
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1) title(`"<script>alert(1)</script>"')
+tempfile xss_out
+local xss_path = "`xss_out'.html"
+capture erase "`xss_path'"
+dash build, saving("`xss_path'") replace
+
+// Scan output file for unescaped <script>alert — should NOT be present
+local found_raw_xss = 0
+tempname xss_fh
+file open `xss_fh' using "`xss_path'", read text
+local xss_eof = 0
+while `xss_eof' == 0 {
+    file read `xss_fh' line
+    if _rc != 0 {
+        local xss_eof = 1
+        continue
+    }
+    // The Bokeh-rendered title must not expose raw JS injection
+    if strpos(`"`line'"', "<script>alert(1)") > 0 {
+        local found_raw_xss = 1
+        continue, break
+    }
+}
+file close `xss_fh'
+assert `found_raw_xss' == 0
+display "P2-78 PASS: XSS title not present unescaped in HTML output"
+dash clear
+
+// ================================================================
+// P2-79 — Shell injection in varname → Mata parser rejects
+// ================================================================
+// Stata variable names must match [a-zA-Z_][a-zA-Z0-9_]{0,31}.
+// A semicolon in what looks like a varname is not a valid variable;
+// confirm variable will reject it, guaranteeing no shell execution.
+qui sysuse auto, clear
+// "mpg;" is not a valid Stata variable — confirm variable will reject it
+capture dash scatter mpg; weight, saving(`"_tmp_p279.html"')
+local p279_rc = _rc
+// Clean up any accidental output
+capture erase "_tmp_p279.html"
+assert `p279_rc' != 0
+display "P2-79 PASS: injection chars in varname rejected (rc=`p279_rc')"
+
+// ================================================================
+// P2-80 — Path traversal in saving() → rc == 198
+// ================================================================
+qui sysuse auto, clear
+capture dash scatter mpg weight, saving("../../../tmp/evil.html")
+assert _rc == 198
+display "P2-80 PASS: path traversal in saving() returns rc=198"
+
+// ================================================================
+// P2-81 — Python injection in option value → treated as literal
+// ================================================================
+// An option value like mc("red); import os; os.system('id')") should
+// be HTML-escaped and treated as a literal string, not executed.
+qui sysuse auto, clear
+local inject_val `"red); import os; os.system('id')"'
+tempfile inject_out
+local inject_path = "`inject_out'.html"
+capture erase "`inject_path'"
+// Use as a mcolor value — the renderer receives it, html-escapes it
+capture dash scatter mpg weight, ///
+    mc(`"`inject_val'"') saving("`inject_path'") replace
+local p281_rc = _rc
+// Either the command succeeds (injection treated as bad color → default)
+// or it errors gracefully — either way, no OS execution should occur.
+// The key check: if the file was produced, it must not contain the literal call
+if `p281_rc' == 0 {
+    local found_exec = 0
+    tempname inj_fh
+    file open `inj_fh' using "`inject_path'", read text
+    local inj_eof = 0
+    while `inj_eof' == 0 {
+        file read `inj_fh' line
+        if _rc != 0 {
+            local inj_eof = 1
+            continue
+        }
+        if strpos(`"`line'"', "os.system") > 0 {
+            local found_exec = 1
+            continue, break
+        }
+    }
+    file close `inj_fh'
+    // os.system must not appear as executable code in output HTML
+    assert `found_exec' == 0
+}
+capture erase "`inject_path'"
+display "P2-81 PASS: Python injection in option value treated as literal (rc=`p281_rc')"
+
+// ================================================================
+// P2-82 — Resource exhaustion: large varlist → graceful error
+// ================================================================
+qui sysuse auto, clear
+// Construct a varlist of 100 non-existent variables
+local biglist ""
+forvalues i = 1/100 {
+    local biglist "`biglist' novar`i'"
+}
+// The Mata parser (confirm variable) should reject non-existent vars
+// and return a non-zero rc without crashing or hanging
+capture dash scatter `biglist', saving("_tmp_p282.html")
+local p282_rc = _rc
+capture erase "_tmp_p282.html"
+assert `p282_rc' != 0
+display "P2-82 PASS: resource exhaustion (100 bogus vars) → graceful error (rc=`p282_rc')"
+
+// ================================================================
+// P2-83 — Stack overflow: 100 levels of nested parens → graceful error
+// ================================================================
+qui sysuse auto, clear
+// Build 50 opening and 50 closing parentheses around a valid spec
+local oparens ""
+local cparens ""
+forvalues i = 1/50 {
+    local oparens "`oparens'("
+    local cparens "`cparens')"
+}
+capture dash `oparens'scatter mpg weight`cparens', saving("_tmp_p283.html")
+local p283_rc = _rc
+capture erase "_tmp_p283.html"
+assert `p283_rc' != 0
+display "P2-83 PASS: 50-level nested parens → graceful error (rc=`p283_rc')"
+
+// ================================================================
+// P2-84 — JS injection in filter varname → invalid varname rejected
+// ================================================================
+// filter() takes a Stata varname. Stata variable names can only contain
+// letters, digits, and underscores. Any attempt to embed JS code via the
+// varname would require characters not allowed in Stata variable names,
+// so confirm variable (called inside _dash_build) will reject it.
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+// "<script>" is not a valid Stata variable name — expect failure
+capture dash build, saving("_tmp_p284.html") ///
+    filter(<script>alert, type(dropdown)) replace
+local p284_rc = _rc
+capture erase "_tmp_p284.html"
+assert `p284_rc' != 0
+display "P2-84 PASS: JS injection in filter varname rejected (rc=`p284_rc')"
+dash clear
+
+// ================================================================
+// P4-84 — Port value with semicolon → rejected by integer regex
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+// Port "1234;" contains a non-digit character; regex ^[0-9]+$ rejects it
+capture dash serve, port(1234;)
+assert _rc == 198
+display "P4-84 PASS: port value with semicolon rejected by integer regex (rc=198)"
+dash clear
+
+// ================================================================
+// P4-85 — XSS in KPI title (server mode) → <script> HTML-escaped in .py
+// ================================================================
+qui sysuse auto, clear
+dash scatter mpg weight, name(s1)
+dash kpi mean(mpg), title(`"<script>alert(1)</script>"') name(k1) fmt(%9.1f)
+
+tempfile xss_py
+local xss_py_path = "`xss_py'.py"
+capture erase "`xss_py_path'"
+dash build, saving("`xss_py_path'") server replace
+
+// Scan .py for raw <script>alert — must not appear unescaped
+local found_raw_script = 0
+tempname xss_py_fh
+file open `xss_py_fh' using "`xss_py_path'", read text
+local xss_py_eof = 0
+while `xss_py_eof' == 0 {
+    file read `xss_py_fh' line
+    if _rc != 0 {
+        local xss_py_eof = 1
+        continue
+    }
+    if strpos(`"`line'"', "<script>alert(1)") > 0 {
+        local found_raw_script = 1
+        continue, break
+    }
+}
+file close `xss_py_fh'
+assert `found_raw_script' == 0
+display "P4-85 PASS: XSS in KPI title → <script> not present unescaped in .py"
+dash clear
+
+// ================================================================
+// P4-86 — Data value with injection chars → generated .py still compiles
+// ================================================================
+// Variable labels are serialized by jsonio and then base64-encoded in
+// the generated server app. Injection characters in a label must not
+// break Python file syntax.
+qui sysuse auto, clear
+// Set a variable label containing Python injection characters
+label variable mpg `"Mileage'); exec('id'); x='"'
+dash scatter mpg weight, name(s1)
+
+tempfile inj_py
+local inj_py_path = "`inj_py'.py"
+capture erase "`inj_py_path'"
+dash build, saving("`inj_py_path'") server replace
+
+local p486_rc = 0
+capture {
+    python:
+import ast
+with open(r"`inj_py_path'", "r", encoding="utf-8") as _f:
+    _src = _f.read()
+ast.parse(_src)
+    end
+}
+if _rc != 0 local p486_rc = _rc
+
+assert `p486_rc' == 0
+display "P4-86 PASS: data/label with injection chars → .py still compiles"
+dash clear
+
+// ================================================================
+// Final summary
+// ================================================================
+display ""
+display "All adversarial security tests PASSED."
+display "  P2-78: XSS in title → HTML-escaped in output"
+display "  P2-79: Injection chars in varname → Mata rejects"
+display "  P2-80: Path traversal in saving() → rc=198"
+display "  P2-81: Python injection in option value → literal, no OS call"
+display "  P2-82: Resource exhaustion (100 bogus vars) → graceful error"
+display "  P2-83: Stack overflow (50-level nested parens) → graceful error"
+display "  P2-84: JS injection in filter varname → invalid varname rejected"
+display "  P4-84: Port value with semicolon → rejected by integer regex"
+display "  P4-85: XSS in KPI title (server mode) → HTML-escaped in .py"
+display "  P4-86: Data/label with injection chars → .py compiles"

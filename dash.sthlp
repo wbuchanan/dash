@@ -9,6 +9,7 @@
 {viewerjumpto "Linking and Brushing" "dash##linking"}{...}
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
+{viewerjumpto "Server Mode"       "dash##server_mode"}{...}
 {viewerjumpto "Examples"          "dash##examples"}{...}
 {viewerjumpto "Dependencies"      "dash##dependencies"}{...}
 {viewerjumpto "Author"            "dash##author"}{...}
@@ -62,7 +63,7 @@
 {cmd:bgcolor(}{it:color}{cmd:)}
 {cmdab:upd:ate}{cmd:(}{it:mode}{cmd:)}]
 
-{pstd}{ul:Build dashboard}{p_end}
+{pstd}{ul:Build dashboard (standalone HTML)}{p_end}
 
 {p 8 17 2}
 {cmd:dash build} {cmd:,}
@@ -74,6 +75,23 @@
 {cmd:filter(}{it:varname}{cmd:, type(}{it:filter_type}{cmd:)} [{cmd:exclude(}{it:namelist}{cmd:)}]{cmd:)}
 {cmd:theme(}{it:theme_name}{cmd:)}
 {cmd:replace}]
+
+{pstd}{ul:Build Bokeh Server app (write .py file, do not block)}{p_end}
+
+{p 8 17 2}
+{cmd:dash build} {cmd:,}
+{cmdab:sav:ing}{cmd:(}{it:filepath.py}{cmd:)}
+{cmd:server}
+[{it:other_build_options}]
+
+{pstd}{ul:Launch Bokeh Server (blocking — press Ctrl+C to stop)}{p_end}
+
+{p 8 17 2}
+{cmd:dash serve}
+[{cmd:,}
+{cmd:port(}{it:#}{cmd:)}
+{cmd:nobrowser}
+{cmd:timeout(}{it:#}{cmd:)}]
 
 {pstd}{ul:Clear registry}{p_end}
 
@@ -165,8 +183,34 @@ See {help dash##kpi:KPI Cards} for details.
 {dlgtab:dash build}
 
 {pstd}
-Assembles all registered graphs and KPI cards into a single HTML
-dashboard file.  See {help dash##dashboard_options:Dashboard Options}.
+Assembles all registered graphs and KPI cards into a dashboard.
+With no {cmd:server} option, writes a self-contained standalone HTML file.
+With {cmd:server}, writes a Bokeh Server {cmd:.py} application file instead
+(requires {cmd:.py} extension on {cmd:saving()}).
+See {help dash##dashboard_options:Dashboard Options}.
+
+{dlgtab:dash serve}
+
+{pstd}
+Launches a Bokeh Server serving the current registry as a live dashboard.
+The server runs in the foreground; Stata is blocked until you press
+Ctrl+C or the optional {cmd:timeout()} expires.  Unlike standalone HTML,
+the server recalculates aggregated layers (histograms, fitted lines,
+kernel density curves) and KPI values from the filtered dataset on every
+widget interaction.
+
+{pstd}
+{ul:Options:}
+
+{synoptset 20 tabbed}
+{synopthdr}
+{synoptline}
+{synopt:{cmd:port(}{it:#}{cmd:)}}TCP port for the Bokeh Server; must be
+    an integer in the range 1024–65535; default 5006{p_end}
+{synopt:{cmd:nobrowser}}do not open a browser window automatically{p_end}
+{synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} seconds;
+    0 means run until Ctrl+C (default){p_end}
+{synoptline}
 
 {dlgtab:dash clear}
 
@@ -197,6 +241,9 @@ The following options are available on {cmd:dash build}.
     see {help dash##filters:Filters}{p_end}
 {synopt:{cmd:theme(}{it:name}{cmd:)}}dashboard color theme
     ({cmd:default}, {cmd:clean}, {cmd:dark}){p_end}
+{synopt:{cmd:server}}write a self-contained Bokeh Server {cmd:.py} app
+    instead of a standalone HTML file; saving() path must end in
+    {cmd:.py}; does not block or open a browser{p_end}
 {synopt:{cmd:replace}}overwrite output file if it already exists{p_end}
 {synoptline}
 
@@ -351,6 +398,47 @@ brush selections change (depending on the {cmd:update()} option).
     or brush selections.
 
 
+{marker server_mode}
+{title:Server Mode}
+
+{pstd}
+{cmd:dash serve} (and {cmd:dash build, server}) produce a Bokeh Server
+application rather than a standalone HTML file.  The two modes differ as
+follows:
+
+{synoptset 28 tabbed}
+{synopthdr:Feature}
+{synoptline}
+{synopt:{it:}}                         {it:Standalone HTML}  {it:Bokeh Server}{p_end}
+{synopt:Requires internet / server}    No                  Yes (local){p_end}
+{synopt:Shareable as a single file}    Yes                 No (.py + bokeh serve){p_end}
+{synopt:Filter widgets}                CustomJS (in-browser) Python callbacks{p_end}
+{synopt:KPI recomputation on filter}   Yes (JS aggregation) Yes (Python/pandas){p_end}
+{synopt:Histogram recompute on filter} No                  Yes{p_end}
+{synopt:Fit-line recompute on filter}  No                  Yes{p_end}
+{synopt:Brush/lasso KPI update}        Yes                 Yes{p_end}
+{synopt:Deployment}                    Email / open file   {cmd:bokeh serve app.py}{p_end}
+{synoptline}
+
+{pstd}
+{ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
+is stopped.  Stop it by pressing Ctrl+C in the Stata console, or set
+{cmd:timeout()} to limit the run time automatically.
+
+{pstd}
+{ul:Running the generated .py file independently.}
+{cmd:dash build, saving(app.py) server} writes a self-contained server app
+that embeds all data as base64.  Run it outside Stata with:
+
+{phang2}{cmd:bokeh serve app.py --show}
+
+{pstd}
+{ul:Security.}  The Bokeh Server restricts WebSocket connections to
+{cmd:localhost} only.  All user-supplied strings (titles, KPI labels) are
+HTML-escaped in the generated file.  Data values are base64-encoded,
+preventing any data content from affecting the Python file syntax.
+
+
 {marker examples}
 {title:Examples}
 
@@ -387,6 +475,20 @@ brush selections change (depending on the {cmd:update()} option).
 {pstd}{ul:If qualifier}{p_end}
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight if foreign == 1, saving(foreign.html)}{p_end}
+
+{pstd}{ul:Live Bokeh Server (blocking — Ctrl+C to stop)}{p_end}
+{phang2}{cmd:. sysuse auto, clear}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, name(s1) title("MPG vs Weight")}{p_end}
+{phang2}{cmd:. dash kpi mean(mpg), title("Avg MPG") name(k1) fmt(%9.1f) update(filter)}{p_end}
+{phang2}{cmd:. dash build, saving(dashboard.html) filter(foreign, type(dropdown)) replace}{p_end}
+{phang2}{cmd:. * -- or launch live server (filter recomputes aggregates) --}{p_end}
+{phang2}{cmd:. dash serve, port(5006)}{p_end}
+
+{pstd}{ul:Write server app to file (non-blocking)}{p_end}
+{phang2}{cmd:. sysuse auto, clear}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, name(s1)}{p_end}
+{phang2}{cmd:. dash build, saving(app.py) server replace}{p_end}
+{phang2}{cmd:. * Run outside Stata:  bokeh serve app.py --show}{p_end}
 
 
 {marker dependencies}
