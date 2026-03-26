@@ -619,3 +619,96 @@ class TestMapScatteri:
         result = gm.map_scatteri(fig, [], {})
         assert result is not None
         assert len(result) == 1
+
+
+# ================================================================
+# fcolor / fintensity per-plot options for filled glyphs
+# ================================================================
+class TestFillOptions:
+    def test_map_area_fcolor(self, fig, std_cds):
+        """fcolor option sets fill_color on VArea glyph."""
+        gm = GlyphMapper()
+        r = gm.map_area(fig, std_cds, "y", "x", {"fcolor": "red"})
+        assert r.glyph.fill_color == "#ff0000"
+
+    def test_map_area_fintensity(self, fig, std_cds):
+        """fintensity option sets fill_alpha on VArea glyph."""
+        gm = GlyphMapper()
+        r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "50"})
+        assert abs(r.glyph.fill_alpha - 0.5) < 0.01
+
+    def test_map_area_fintensity_inten_keyword(self, fig, std_cds):
+        """fintensity 'inten75' keyword sets fill_alpha to 0.75."""
+        gm = GlyphMapper()
+        r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "inten75"})
+        assert abs(r.glyph.fill_alpha - 0.75) < 0.01
+
+    def test_map_bar_fcolor(self, fig, std_cds):
+        """fcolor option sets fill_color on VBar glyph."""
+        gm = GlyphMapper()
+        r = gm.map_bar(fig, std_cds, "y", "x", {"fcolor": "navy"})
+        assert r.glyph.fill_color == "#1a476f"
+
+    def test_map_bar_fintensity(self, fig, std_cds):
+        """fintensity option sets fill_alpha on VBar glyph."""
+        gm = GlyphMapper()
+        r = gm.map_bar(fig, std_cds, "y", "x", {"fintensity": "80"})
+        assert abs(r.glyph.fill_alpha - 0.8) < 0.01
+
+    def test_map_histogram_fcolor(self, fig, std_cds):
+        """fcolor option sets fill_color on histogram Quad glyph."""
+        gm = GlyphMapper()
+        r = gm.map_histogram(fig, std_cds, "y", {"fcolor": "red"})
+        assert r.glyph.fill_color == "#ff0000"
+
+    def test_map_histogram_fintensity(self, fig, std_cds):
+        """fintensity option sets fill_alpha on histogram Quad glyph."""
+        gm = GlyphMapper()
+        r = gm.map_histogram(fig, std_cds, "y", {"fintensity": "40"})
+        assert abs(r.glyph.fill_alpha - 0.4) < 0.01
+
+    def test_map_rarea_fcolor(self, fig, range_cds):
+        """fcolor option sets fill_color on rarea VArea glyph."""
+        gm = GlyphMapper()
+        result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "navy"})
+        r = result[0] if isinstance(result, list) else result
+        assert r.glyph.fill_color == "#1a476f"
+
+    def test_map_rarea_fintensity(self, fig, range_cds):
+        """fintensity option sets fill_alpha on rarea VArea glyph."""
+        gm = GlyphMapper()
+        result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fintensity": "30"})
+        r = result[0] if isinstance(result, list) else result
+        assert abs(r.glyph.fill_alpha - 0.3) < 0.01
+
+    def test_map_rbar_fcolor(self, fig, range_cds):
+        """fcolor option sets fill_color on rbar VBar glyph."""
+        gm = GlyphMapper()
+        result = gm.map_rbar(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "red"})
+        r = result[0] if isinstance(result, list) else result
+        assert r.glyph.fill_color == "#ff0000"
+
+    def test_map_rbar_fintensity(self, fig, range_cds):
+        """fintensity option sets fill_alpha on rbar VBar glyph."""
+        gm = GlyphMapper()
+        result = gm.map_rbar(fig, range_cds, "lo", "hi", "xvar", {"fintensity": "60"})
+        r = result[0] if isinstance(result, list) else result
+        assert abs(r.glyph.fill_alpha - 0.6) < 0.01
+
+    def test_fintensity_clamped_max(self, fig, std_cds):
+        """fintensity values > 100 are clamped to 1.0."""
+        gm = GlyphMapper()
+        r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "150"})
+        assert r.glyph.fill_alpha <= 1.0
+
+    def test_fintensity_clamped_min(self, fig, std_cds):
+        """fintensity values < 0 are clamped to 0.0."""
+        gm = GlyphMapper()
+        r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "-10"})
+        assert r.glyph.fill_alpha >= 0.0
+
+    def test_fcolor_invalid_ignored(self, fig, std_cds):
+        """Invalid fcolor value does not raise; fill_color unchanged."""
+        gm = GlyphMapper()
+        r = gm.map_area(fig, std_cds, "y", "x", {"fcolor": "not_a_real_color_xyz"})
+        assert r is not None

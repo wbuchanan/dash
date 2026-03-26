@@ -961,3 +961,34 @@ class TestServerGraphOptions:
         source = _build_app(dr_module, auto_df, spec)
         # The generated code must have note-handling logic
         assert "'note'" in source or "note" in source, "generated source should contain note-handling code"
+
+
+class TestServerGraphOptionsExtended:
+    """P6-19: subtitle, xlabel, ylabel applied in server-mode generated app."""
+
+    def test_subtitle_code_in_server_source(self, dr_module, auto_df):
+        """P6-19: subtitle logic present in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "subtitle": "My subtitle"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "subtitle" in source
+
+    def test_xlabel_code_in_server_source(self, dr_module, auto_df):
+        """P6-19: xlabel tick logic present in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xlabel": "0 10 20 30"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "xlabel" in source and "FixedTicker" in source
+
+    def test_ylabel_code_in_server_source(self, dr_module, auto_df):
+        """P6-19: ylabel tick logic present in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "ylabel": "10 20 30 40"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "ylabel" in source and "FixedTicker" in source

@@ -254,3 +254,81 @@ class TestXlineYline:
         fig = _get_figure({"xline_values": [3.0, 6.0]})
         spans = _get_spans(fig, "height")
         assert len(spans) >= 2
+
+
+# ================================================================
+# P6-08 — subtitle annotation added above figure
+# ================================================================
+class TestSubtitle:
+    def test_subtitle_creates_label_above(self):
+        """P6-08: subtitle option creates a Label annotation in fig.above."""
+        from bokeh.models import Label
+        fig = _get_figure({"subtitle": "My subtitle"})
+        labels = [r for r in fig.above if isinstance(r, Label)]
+        assert len(labels) >= 1
+        assert any("My subtitle" in lbl.text for lbl in labels)
+
+    def test_subtitle_xss_escaped(self):
+        """P6-08: XSS in subtitle is HTML-escaped."""
+        from bokeh.models import Label
+        fig = _get_figure({"subtitle": "<script>xss()</script>"})
+        labels = [r for r in fig.above if isinstance(r, Label)]
+        if labels:
+            for lbl in labels:
+                assert "<script>" not in lbl.text
+
+    def test_no_subtitle_no_label(self):
+        """P6-08: without subtitle option, no Label appears in fig.above."""
+        from bokeh.models import Label
+        fig = _get_figure({})
+        labels = [r for r in fig.above if isinstance(r, Label)]
+        assert len(labels) == 0
+
+
+# ================================================================
+# P6-13 — xlabel/ylabel custom axis tick values
+# ================================================================
+class TestXlabelYlabel:
+    def test_xlabel_sets_fixed_ticks(self):
+        """P6-13: xlabel option sets FixedTicker on x-axis."""
+        from bokeh.models.tickers import FixedTicker
+        fig = _get_figure({"xlabel": "0 2 4 6 8"})
+        assert isinstance(fig.xaxis.ticker, FixedTicker), (
+            f"Expected FixedTicker, got {type(fig.xaxis.ticker).__name__}"
+        )
+        assert sorted(fig.xaxis.ticker.ticks) == [0.0, 2.0, 4.0, 6.0, 8.0]
+
+    def test_ylabel_sets_fixed_ticks(self):
+        """P6-13: ylabel option sets FixedTicker on y-axis."""
+        from bokeh.models.tickers import FixedTicker
+        fig = _get_figure({"ylabel": "10 20 30"})
+        assert isinstance(fig.yaxis.ticker, FixedTicker)
+        assert sorted(fig.yaxis.ticker.ticks) == [10.0, 20.0, 30.0]
+
+    def test_xlabel_comma_separated(self):
+        """P6-13: xlabel with comma-separated values parses correctly."""
+        from bokeh.models.tickers import FixedTicker
+        fig = _get_figure({"xlabel": "1,3,5,7"})
+        assert isinstance(fig.xaxis.ticker, FixedTicker)
+        assert sorted(fig.xaxis.ticker.ticks) == [1.0, 3.0, 5.0, 7.0]
+
+    def test_xlabel_invalid_no_crash(self):
+        """P6-13: invalid xlabel value is silently ignored; no crash."""
+        fig = _get_figure({"xlabel": "not_a_number"})
+        assert fig is not None
+
+    def test_no_xlabel_default_ticker(self):
+        """P6-13: without xlabel, axis uses default (non-Fixed) ticker."""
+        from bokeh.models.tickers import FixedTicker
+        fig = _get_figure({})
+        assert not isinstance(fig.xaxis.ticker, FixedTicker)
+
+    def test_xlabel_with_labels(self):
+        """P6-13: xlabel with 'value label' pairs sets tick labels via CustomJSTickFormatter."""
+        from bokeh.models.tickers import FixedTicker
+        from bokeh.models.formatters import CustomJSTickFormatter
+        fig = _get_figure({"xlabel": '0 "Zero" 5 "Five" 10 "Ten"'})
+        assert isinstance(fig.xaxis.ticker, FixedTicker)
+        assert isinstance(fig.xaxis.formatter, CustomJSTickFormatter)
+        # The formatter code or args must reference the label strings
+        assert "Zero" in fig.xaxis.formatter.code or "Zero" in str(fig.xaxis.formatter.args)

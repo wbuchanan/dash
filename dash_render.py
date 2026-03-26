@@ -511,6 +511,34 @@ class GlyphMapper:
             except ValueError:
                 pass
 
+    def _apply_fill_opts(self, renderer: Any, options: dict[str, str]) -> None:
+        """Apply fcolor/fintensity options to a filled glyph renderer.
+
+        Args:
+            renderer: A Bokeh GlyphRenderer whose glyph has fill_color /
+                      fill_alpha attributes (VArea, VBar, Quad, etc.).
+            options:  Translated per-plot options dict.
+        """
+        glyph = renderer.glyph
+        if "fcolor" in options:
+            try:
+                glyph.fill_color = self.tr.translate_mcolor(options["fcolor"])
+            except (ValueError, AttributeError):
+                pass
+        if "fintensity" in options:
+            try:
+                val = options["fintensity"].strip()
+                # Stata fintensity: 0-100 (percentage) or keywords inten0-inten100
+                if val.startswith("inten"):
+                    pct = float(val[5:]) / 100.0
+                else:
+                    pct = float(val) / 100.0
+                pct = max(0.0, min(1.0, pct))
+                if hasattr(glyph, "fill_alpha"):
+                    glyph.fill_alpha = pct
+            except (ValueError, AttributeError):
+                pass
+
     # ------------------------------------------------------------------
     # Phase 1A plot types
     # ------------------------------------------------------------------
@@ -670,6 +698,7 @@ class GlyphMapper:
             except ValueError:
                 pass
 
+        self._apply_fill_opts(r, options)
         return r
 
     def map_bar(
@@ -721,6 +750,7 @@ class GlyphMapper:
                 r.glyph.line_color = c
             except ValueError:
                 pass
+        self._apply_fill_opts(r, options)
         return r
 
     def map_spike(
@@ -1077,6 +1107,7 @@ class GlyphMapper:
                 r.glyph.fill_color = c
             except ValueError:
                 pass
+        self._apply_fill_opts(r, options)
         return r
 
     def map_kdensity(
@@ -1151,6 +1182,7 @@ class GlyphMapper:
         """
         r = fig.varea(x=xvar, y1=y1var, y2=y2var, source=source,
                       fill_color="#aec7e8", fill_alpha=0.5)
+        self._apply_fill_opts(r, options)
         return [r]
 
     def map_rbar(
@@ -1183,6 +1215,7 @@ class GlyphMapper:
         )
         r = fig.vbar(x=xvar, bottom=y1var, top=y2var, source=source,
                      width=bar_width, fill_color="#1f77b4", line_color="white")
+        self._apply_fill_opts(r, options)
         return [r]
 
     def map_rspike(
@@ -2478,6 +2511,52 @@ class DashRenderer:
         """Return the axis label for *varname*, using variable labels if available."""
         return self.variable_labels.get(varname, varname)
 
+    @staticmethod
+    def _parse_axis_label_opt(raw: str) -> "tuple[list[float], dict[str, str]]":
+        """Parse a Stata xlabel()/ylabel() option string.
+
+        Supports two forms:
+          - Pure numeric list:  "0 2 4 6 8"  →  ticks=[0,2,4,6,8], labels={}
+          - Labeled list:       '0 "Zero" 5 "Five"'  →  ticks=[0,5], labels={0.0:"Zero",…}
+
+        Invalid tokens are silently dropped.
+
+        Returns:
+            (ticks, labels) where ticks is a sorted list of floats and labels
+            is a dict mapping str(float) → label string (empty when no labels given).
+        """
+        import re
+        ticks: list[float] = []
+        labels: dict[str, str] = {}
+        # Tokenise: quoted strings or whitespace/comma-delimited tokens
+        tokens = re.findall(r'"([^"]*)"'  # double-quoted label
+                            r"|'([^']*)'"  # single-quoted label
+                            r"|([^\s,\"']+)",  # bare token (number or keyword)
+                            raw)
+        i = 0
+        flat: list[str] = []
+        for dq, sq, bare in tokens:
+            flat.append(dq or sq or bare)
+
+        while i < len(flat):
+            tok = flat[i]
+            try:
+                val = float(tok)
+                ticks.append(val)
+                # Peek ahead: if next token is a quoted label, consume it
+                if i + 1 < len(flat):
+                    next_tok = flat[i + 1]
+                    try:
+                        float(next_tok)   # also a number → no label
+                    except ValueError:
+                        labels[str(val)] = next_tok
+                        i += 1
+                i += 1
+            except ValueError:
+                i += 1  # skip non-numeric bare token
+
+        return sorted(ticks), labels
+
     def _make_figure(
         self,
         graph_spec: dict,
@@ -2583,6 +2662,18 @@ class DashRenderer:
                 )
                 fig.add_layout(lbl, "below")
 
+        # Subtitle annotation (appears above the plot area)
+        subtitle_text = graph_opts.get("subtitle", "")
+        if subtitle_text:
+            subtitle_lbl = Label(
+                x=0, y=0,
+                x_units="screen", y_units="screen",
+                text=html.escape(subtitle_text),
+                text_font_size="13px",
+                text_color="#444444",
+            )
+            fig.add_layout(subtitle_lbl, "above")
+
         # Legend placement
         legend_opt = graph_opts.get("legend", "")
         if legend_opt and fig.legend:
@@ -2602,6 +2693,25 @@ class DashRenderer:
                     fig.legend.location = loc_map[legend_opt]
                 except Exception:
                     pass
+
+        # Custom axis tick values (xlabel / ylabel)
+        from bokeh.models.tickers import FixedTicker
+        from bokeh.models.formatters import CustomJSTickFormatter
+        for ax_key, axis_obj in (("xlabel", fig.xaxis), ("ylabel", fig.yaxis)):
+            raw_ax = graph_opts.get(ax_key, "")
+            if raw_ax:
+                ticks, labels = self._parse_axis_label_opt(raw_ax)
+                if ticks:
+                    axis_obj.ticker = FixedTicker(ticks=ticks)
+                    if labels:
+                        # Build a safe JS lookup dict; keys and values are HTML-escaped
+                        safe_labels = {
+                            str(k): html.escape(str(v)) for k, v in labels.items()
+                        }
+                        js_map = json.dumps(safe_labels)
+                        axis_obj.formatter = CustomJSTickFormatter(
+                            code=f"const m = {js_map}; return m[String(tick)] || String(tick);"
+                        )
 
         # Plot categories that use non-standard JSON variable keys
         _RANGE_TYPES = frozenset({
@@ -3621,6 +3731,11 @@ class ServerAppBuilder:
             "            if _ann_txt:",
             "                fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
             "                    text=html.escape(_ann_txt), text_font_size='11px', text_color='#555555'), 'below')",
+            "        # subtitle annotation",
+            "        _sub_txt = go.get('subtitle', '')",
+            "        if _sub_txt:",
+            "            fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
+            "                text=html.escape(_sub_txt), text_font_size='13px', text_color='#444444'), 'above')",
             "        # legend placement",
             "        _leg_opt = go.get('legend', '')",
             "        if _leg_opt and fig.legend:",
@@ -3629,6 +3744,32 @@ class ServerAppBuilder:
             "            elif _leg_opt in ('bottom',): fig.legend.location = 'bottom_center'",
             "            elif _leg_opt in ('left',): fig.legend.location = 'center_left'",
             "            elif _leg_opt in ('right',): fig.legend.location = 'center_right'",
+            "        # xlabel / ylabel custom tick values",
+            "        from bokeh.models.tickers import FixedTicker as _FT",
+            "        from bokeh.models.formatters import CustomJSTickFormatter as _CJSF",
+            "        import re as _re, json as _json",
+            "        def _parse_axlabel(raw):",
+            "            tks, labs = [], {}",
+            "            toks = _re.findall(r'\"([^\"]*)\"|\\'([^\\']*)\\'|([^\\s,\"\\']+)', raw)",
+            "            flat = [d or s or b for d,s,b in toks]",
+            "            i = 0",
+            "            while i < len(flat):",
+            "                try:",
+            "                    v = float(flat[i]); tks.append(v)",
+            "                    if i+1 < len(flat):",
+            "                        try: float(flat[i+1])",
+            "                        except ValueError: labs[str(v)] = flat[i+1]; i += 1",
+            "                except ValueError: pass",
+            "                i += 1",
+            "            return sorted(tks), labs",
+            "        for _axk, _axobj in (('xlabel', fig.xaxis), ('ylabel', fig.yaxis)):",
+            "            _raw_ax = go.get(_axk, '')",
+            "            if _raw_ax:",
+            "                _tks, _labs = _parse_axlabel(_raw_ax)",
+            "                if _tks:",
+            "                    _axobj.ticker = _FT(ticks=_tks)",
+            "                    if _labs:",
+            "                        _axobj.formatter = _CJSF(code=f'const m={_json.dumps(_labs)};return m[String(tick)]||String(tick);')",
             "",
             "        for pi, plot in enumerate(plots):",
             "            ptype = plot.get('type', '')",

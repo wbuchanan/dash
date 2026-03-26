@@ -650,7 +650,12 @@ Previously-parsed graph options (xtitle, ytitle, aspectratio, note, caption, leg
 - [x] P6-15  Server-mode (generated .py) application of xtitle/ytitle/aspectratio/note/caption — _generate_app_source() now reads these from graph_options and applies them; tests in test_server.py::TestServerGraphOptions
 - [x] P6-16  Bug fix: xline/yline string keys (from Mata parser) not matching xline_values/yline_values (legacy list keys) expected by renderer — fixed via _parse_refline() helper; tests in test_graph_options.py::TestXlineYline (5 tests)
 
+- [x] P6-17  subtitle option → Label annotation in fig.above (HTML-escaped; XSS-safe); tests in TestSubtitle (3 tests)
+- [x] P6-18  fcolor/fintensity per-plot options → GlyphMapper._apply_fill_opts(); wired to map_area, map_bar, map_histogram, map_rarea, map_rbar; tests in TestFillOptions (14 tests)
+- [x] P6-13  xlabel(numlist)/ylabel(numlist) → FixedTicker; labeled form ('val "Label"') → CustomJSTickFormatter; DashRenderer._parse_axis_label_opt() static helper; 6 tests in TestXlabelYlabel
+
 ### Remaining / Not Yet Implemented
 
-- [ ] P6-13  xlabel(numlist, ...) / ylabel(numlist, ...) — custom axis tick values and labels via FixedTicker + FixedTickFormatter (requires parsing Stata numlist syntax)
 - [ ] P6-14  legend label overrides from legend() string list — currently only position/off handled; per-renderer label strings not yet wired up
+- [x] P6-19  subtitle/xlabel/ylabel in server-mode generated app — _generate_app_source() now emits subtitle Label annotation and _parse_axlabel() helper + FixedTicker/CustomJSTickFormatter for xlabel/ylabel; 3 tests in TestServerGraphOptionsExtended
+- [ ] P6-20  by() faceting — complex; requires subplot grid generation; deferred
