@@ -56,7 +56,9 @@ class TestMapRarea:
     def test_rarea_produces_varea(self, fig, range_cds, gm):
         """P2-64: rarea produces a VArea renderer."""
         from bokeh.models.glyphs import VArea
-        renderer = gm.map_rarea(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        result = gm.map_rarea(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        assert isinstance(result, list), "map_rarea must return a list"
+        renderer = result[0]
         assert isinstance(renderer, GlyphRenderer)
         assert isinstance(renderer.glyph, VArea), (
             f"Expected VArea glyph, got {type(renderer.glyph).__name__}"
@@ -65,7 +67,8 @@ class TestMapRarea:
     def test_rarea_uses_correct_columns(self, fig, range_cds, gm):
         """P2-64: rarea VArea references y1 and y2 columns."""
         from bokeh.models.glyphs import VArea
-        renderer = gm.map_rarea(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        result = gm.map_rarea(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        renderer = result[0]
         glyph = renderer.glyph
         # y1 and y2 should map to the yvar1 and yvar2 columns (or renamed equivalents)
         y1_col = glyph.y1
@@ -81,7 +84,9 @@ class TestMapRbar:
     def test_rbar_produces_vbar(self, fig, range_cds, gm):
         """P2-65: rbar produces a VBar renderer."""
         from bokeh.models.glyphs import VBar
-        renderer = gm.map_rbar(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        result = gm.map_rbar(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        assert isinstance(result, list), "map_rbar must return a list"
+        renderer = result[0]
         assert isinstance(renderer, GlyphRenderer)
         assert isinstance(renderer.glyph, VBar), (
             f"Expected VBar glyph, got {type(renderer.glyph).__name__}"
@@ -90,7 +95,8 @@ class TestMapRbar:
     def test_rbar_bottom_top_columns(self, fig, range_cds, gm):
         """P2-65: rbar VBar uses bottom and top columns."""
         from bokeh.models.glyphs import VBar
-        renderer = gm.map_rbar(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        result = gm.map_rbar(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        renderer = result[0]
         glyph = renderer.glyph
         # bottom should reference yvar1 (lower bound) and top yvar2 (upper)
         assert glyph.bottom in renderer.data_source.data or glyph.bottom == "yvar1"
