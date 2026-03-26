@@ -248,6 +248,205 @@ class TestFunctionHtmlOutput:
 # XSS safety in HTML output
 # ================================================================
 
+class TestConnectedHtmlOutput:
+    def test_connected_html_contains_line_and_scatter(self):
+        """connected plot HTML references both Line and Scatter glyphs."""
+        spec, data = _single_graph_spec("connected", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert ("Line" in html or '"line"' in html.lower()), "connected must have Line glyph"
+        assert ("Scatter" in html or '"scatter"' in html.lower()), "connected must have Scatter glyph"
+
+
+class TestAreaHtmlOutput:
+    def test_area_html_contains_varea_glyph(self):
+        """area plot HTML contains VArea glyph."""
+        spec, data = _single_graph_spec("area", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert "VArea" in html or '"varea"' in html.lower()
+
+
+class TestQfitHtmlOutput:
+    def test_qfit_html_contains_line_glyph(self):
+        """qfit plot HTML contains Line glyph (quadratic fitted line)."""
+        spec, data = _single_graph_spec("qfit", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert "Line" in html or '"line"' in html.lower()
+
+
+class TestLfitciHtmlOutput:
+    def test_lfitci_html_contains_varea_and_line(self):
+        """lfitci plot HTML contains both VArea (CI band) and Line glyphs."""
+        spec, data = _single_graph_spec("lfitci", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert "VArea" in html or '"varea"' in html.lower(), "lfitci must have VArea CI band"
+        assert "Line" in html or '"line"' in html.lower(), "lfitci must have Line glyph"
+
+
+class TestQfitciHtmlOutput:
+    def test_qfitci_html_contains_varea_and_line(self):
+        """qfitci plot HTML contains both VArea (CI band) and Line glyphs."""
+        spec, data = _single_graph_spec("qfitci", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert "VArea" in html or '"varea"' in html.lower(), "qfitci must have VArea CI band"
+        assert "Line" in html or '"line"' in html.lower(), "qfitci must have Line glyph"
+
+
+class TestLowessHtmlOutput:
+    def test_lowess_html_contains_line_glyph(self):
+        """lowess plot HTML contains Line glyph (smoothed line)."""
+        spec, data = _single_graph_spec("lowess", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert "Line" in html or '"line"' in html.lower()
+
+
+class TestKdensityHtmlOutput:
+    def test_kdensity_html_contains_line_glyph(self):
+        """kdensity plot HTML contains Line glyph (density curve)."""
+        spec, data = _single_graph_spec("kdensity", {"var": "y"})
+        html = _render_to_html(spec, data)
+        assert "Line" in html or '"line"' in html.lower()
+
+
+class TestRbarHtmlOutput:
+    def test_rbar_html_contains_vbar_glyph(self):
+        """rbar plot HTML contains VBar glyph."""
+        spec, data = _single_graph_spec(
+            "rbar", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+        )
+        html = _render_to_html(spec, data)
+        assert "VBar" in html or '"vbar"' in html.lower()
+
+
+class TestRspikeHtmlOutput:
+    def test_rspike_html_contains_segment_glyph(self):
+        """rspike plot HTML contains Segment glyph."""
+        spec, data = _single_graph_spec(
+            "rspike", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+        )
+        html = _render_to_html(spec, data)
+        assert "Segment" in html or '"segment"' in html.lower()
+
+
+class TestRcapHtmlOutput:
+    def test_rcap_html_contains_segment_glyph(self):
+        """rcap plot HTML contains Segment glyph (spines and caps)."""
+        spec, data = _single_graph_spec(
+            "rcap", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+        )
+        html = _render_to_html(spec, data)
+        assert "Segment" in html or '"segment"' in html.lower()
+
+
+class TestRlineHtmlOutput:
+    def test_rline_html_contains_line_glyph(self):
+        """rline plot HTML contains Line glyph (two range boundary lines)."""
+        spec, data = _single_graph_spec(
+            "rline", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+        )
+        html = _render_to_html(spec, data)
+        assert "Line" in html or '"line"' in html.lower()
+
+
+class TestRconnectedHtmlOutput:
+    def test_rconnected_html_contains_line_and_scatter(self):
+        """rconnected plot HTML contains both Line and Scatter glyphs."""
+        spec, data = _single_graph_spec(
+            "rconnected", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+        )
+        html = _render_to_html(spec, data)
+        assert "Line" in html or '"line"' in html.lower(), "rconnected must have Line glyph"
+        assert "Scatter" in html or '"scatter"' in html.lower(), "rconnected must have Scatter glyph"
+
+
+class TestDotHtmlOutput:
+    def test_dot_html_contains_scatter_glyph(self):
+        """dot plot HTML contains Scatter glyph."""
+        spec, data = _single_graph_spec("dot", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert "Scatter" in html or '"scatter"' in html.lower()
+
+
+class TestRcapsymHtmlOutput:
+    def test_rcapsym_html_contains_segment_and_scatter(self):
+        """rcapsym plot HTML contains Segment and Scatter glyphs."""
+        spec, data = _single_graph_spec(
+            "rcapsym", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+        )
+        html = _render_to_html(spec, data)
+        assert "Segment" in html or '"segment"' in html.lower(), "rcapsym must have Segment glyph"
+        assert "Scatter" in html or '"scatter"' in html.lower(), "rcapsym must have Scatter glyph"
+
+
+class TestScatteriHtmlOutput:
+    def test_scatteri_html_contains_scatter_glyph(self):
+        """scatteri plot HTML contains Scatter glyph from inline coordinate pairs."""
+        spec, data = _single_graph_spec(
+            "scatteri",
+            {"values": [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]},
+        )
+        html = _render_to_html(spec, data)
+        assert "Scatter" in html or '"scatter"' in html.lower()
+
+
+class TestPcspikeHtmlOutput:
+    def test_pcspike_html_contains_segment_glyph(self):
+        """pcspike plot HTML contains Segment glyph."""
+        base_data = {
+            "y1": [float(i) for i in range(1, 11)],
+            "x1": [float(i) for i in range(1, 11)],
+            "y2": [float(i) * 1.5 for i in range(1, 11)],
+            "x2": [float(i) * 1.2 for i in range(1, 11)],
+        }
+        data_json = _make_data_json(base_data)
+        plot = {
+            "type": "pcspike",
+            "y1var": "y1",
+            "x1var": "x1",
+            "y2var": "y2",
+            "x2var": "x2",
+            "options": {},
+        }
+        graph = {
+            "plots": [plot],
+            "graph_options": {"name": "fig1"},
+            "if_expr": "",
+            "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto",
+                "link": "",
+                "filter": "",
+                "theme": "default",
+                "title": "",
+                "subtitle": "",
+                "registry": "fig1",
+            },
+        }
+        html = _render_to_html(spec, data_json)
+        assert "Segment" in html or '"segment"' in html.lower()
+
+
+class TestTslineHtmlOutput:
+    def test_tsline_html_contains_line_glyph(self):
+        """tsline plot HTML contains Line glyph."""
+        spec, data = _single_graph_spec("tsline", {"yvar": "y", "xvar": "x"})
+        html = _render_to_html(spec, data)
+        assert "Line" in html or '"line"' in html.lower()
+
+
+class TestTsrlineHtmlOutput:
+    def test_tsrline_html_contains_line_glyph(self):
+        """tsrline plot HTML contains Line glyph (two time-series boundary lines)."""
+        spec, data = _single_graph_spec(
+            "tsrline", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+        )
+        html = _render_to_html(spec, data)
+        assert "Line" in html or '"line"' in html.lower()
+
+
 class TestXssInHtmlOutput:
     def test_script_tag_in_title_is_escaped(self):
         """XSS: <script> in title must not appear unescaped in output HTML."""

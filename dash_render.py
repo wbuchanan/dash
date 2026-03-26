@@ -539,6 +539,81 @@ class GlyphMapper:
             except (ValueError, AttributeError):
                 pass
 
+    def _apply_mlabel_opts(
+        self,
+        fig: Any,
+        source: "ColumnDataSource",
+        options: dict[str, str],
+        xvar: str,
+        yvar: str,
+    ) -> None:
+        """Add a LabelSet annotation when the mlabel() option is set.
+
+        Reads ``mlabel``, ``mlabcolor``, ``mlabsize``, ``mlabposition``, and
+        ``mlabgap`` from *options* and adds a Bokeh ``LabelSet`` to *fig*.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  ColumnDataSource that contains the label column.
+            options: Translated plot-level options dict.
+            xvar:    Name of the x-axis variable column in *source*.
+            yvar:    Name of the y-axis variable column in *source*.
+        """
+        from bokeh.models import LabelSet
+
+        mlabel_var = options.get("mlabel", "")
+        if not mlabel_var or mlabel_var not in source.data:
+            return
+
+        kwargs: dict[str, Any] = dict(
+            x=xvar,
+            y=yvar,
+            text=mlabel_var,
+            source=source,
+            text_font_size="10px",
+            x_offset=4,
+            y_offset=4,
+        )
+
+        if "mlabcolor" in options:
+            try:
+                kwargs["text_color"] = self.tr.translate_mcolor(options["mlabcolor"])
+            except ValueError:
+                pass
+
+        if "mlabsize" in options:
+            try:
+                size_px = self.tr.translate_msize(options["mlabsize"])
+                kwargs["text_font_size"] = f"{size_px}px"
+            except ValueError:
+                pass
+
+        # mlabposition: Stata clock positions 0-12
+        pos = options.get("mlabposition", "3")
+        try:
+            p = int(pos)
+            # Clock positions: 3=right (default), 9=left, 12=above, 6=below
+            offset_map = {
+                0: (0, 0), 1: (3, 3), 2: (3, 2), 3: (4, 0),
+                4: (3, -2), 5: (3, -3), 6: (0, -4), 7: (-3, -3),
+                8: (-3, -2), 9: (-4, 0), 10: (-3, 2), 11: (-3, 3), 12: (0, 4),
+            }
+            if p in offset_map:
+                kwargs["x_offset"], kwargs["y_offset"] = offset_map[p]
+        except (ValueError, TypeError):
+            pass
+
+        if "mlabgap" in options:
+            try:
+                gap = int(float(options["mlabgap"]))
+                kwargs["x_offset"] = kwargs.get("x_offset", 4) + gap
+                kwargs["y_offset"] = kwargs.get("y_offset", 4) + gap
+            except (ValueError, TypeError):
+                pass
+
+        ls = LabelSet(**kwargs)
+        fig.add_layout(ls)
+
     # ------------------------------------------------------------------
     # Phase 1A plot types
     # ------------------------------------------------------------------
@@ -570,12 +645,14 @@ class GlyphMapper:
             except ValueError:
                 pass
 
-        # Drop NaN rows if present; otherwise reuse the original source
+        # Drop NaN rows if present; otherwise reuse the original source.
+        # Preserve all columns so that mlabel and other annotation columns
+        # remain available on clean_source.
         x_series = pd.Series(source.data[xvar])
         y_series = pd.Series(source.data[yvar])
         has_nan = x_series.isna().any() or y_series.isna().any()
         if has_nan:
-            df = pd.DataFrame({xvar: source.data[xvar], yvar: source.data[yvar]})
+            df = pd.DataFrame({col: source.data[col] for col in source.data})
             df = df.dropna(subset=[xvar, yvar])
             clean_source: ColumnDataSource = ColumnDataSource(df)
         else:
@@ -592,6 +669,7 @@ class GlyphMapper:
             alpha=0.7,
         )
         self._apply_marker_opts(r, options)
+        self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar)
         fig.add_tools(self._hover_tool(yvar, xvar))
         return r
 

@@ -332,3 +332,71 @@ class TestXlabelYlabel:
         assert isinstance(fig.xaxis.formatter, CustomJSTickFormatter)
         # The formatter code or args must reference the label strings
         assert "Zero" in fig.xaxis.formatter.code or "Zero" in str(fig.xaxis.formatter.args)
+
+
+# ================================================================
+# TestParseAxisLabelOpt — unit tests for _parse_axis_label_opt()
+# ================================================================
+
+class TestParseAxisLabelOpt:
+    """Unit tests for DashRenderer._parse_axis_label_opt() static method."""
+
+    def test_pure_numeric(self):
+        """Space-separated numbers parse to ticks with empty labels dict."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("0 2 4 6 8")
+        assert ticks == [0.0, 2.0, 4.0, 6.0, 8.0]
+        assert labels == {}
+
+    def test_comma_separated(self):
+        """Comma-separated values parse correctly."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("1,3,5")
+        assert ticks == [1.0, 3.0, 5.0]
+
+    def test_labeled_ticks(self):
+        """'value \"label\"' pairs parse to ticks with labels dict."""
+        ticks, labels = DashRenderer._parse_axis_label_opt('0 "Zero" 5 "Five"')
+        assert ticks == [0.0, 5.0]
+        assert labels["0.0"] == "Zero"
+        assert labels["5.0"] == "Five"
+
+    def test_empty_string(self):
+        """Empty string returns empty ticks and labels."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("")
+        assert ticks == []
+        assert labels == {}
+
+    def test_mixed_valid_invalid(self):
+        """Non-numeric bare tokens are silently skipped."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("0 foo 5")
+        assert 0.0 in ticks
+        assert 5.0 in ticks
+        # 'foo' should not appear as a tick
+        assert len(ticks) == 2
+
+    def test_negative_values(self):
+        """Negative tick values are parsed correctly."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("-5 0 5")
+        assert ticks == [-5.0, 0.0, 5.0]
+
+    def test_float_values(self):
+        """Floating-point tick values are parsed correctly."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("0.5 1.5 2.5")
+        assert ticks == pytest.approx([0.5, 1.5, 2.5])
+
+    def test_single_value(self):
+        """Single tick value is parsed into a list with one element."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("42")
+        assert ticks == [42.0]
+        assert labels == {}
+
+    def test_single_quoted_label(self):
+        """Single-quoted labels are also parsed."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("1 'One' 2 'Two'")
+        assert ticks == [1.0, 2.0]
+        assert labels["1.0"] == "One"
+        assert labels["2.0"] == "Two"
+
+    def test_output_ticks_sorted(self):
+        """Output ticks are always sorted ascending regardless of input order."""
+        ticks, labels = DashRenderer._parse_axis_label_opt("10 2 5")
+        assert ticks == [2.0, 5.0, 10.0]

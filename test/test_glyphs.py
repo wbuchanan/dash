@@ -712,3 +712,91 @@ class TestFillOptions:
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fcolor": "not_a_real_color_xyz"})
         assert r is not None
+
+
+# ================================================================
+# mlabel option tests
+# ================================================================
+
+def _get_labelsets(fig):
+    """Return all LabelSet objects from a figure (in fig.center)."""
+    from bokeh.models import LabelSet
+    return [r for r in fig.center if isinstance(r, LabelSet)]
+
+
+class TestMlabelOption:
+    """Tests for _apply_mlabel_opts() wired into map_scatter()."""
+
+    def test_mlabel_adds_labelset(self, fig, std_cds):
+        """mlabel option adds a LabelSet to the figure."""
+        gm = GlyphMapper()
+        std_cds.data["label"] = [f"pt{i}" for i in range(len(std_cds.data["y"]))]
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label"})
+        label_sets = _get_labelsets(fig)
+        assert len(label_sets) >= 1, "mlabel should add a LabelSet to fig.center"
+
+    def test_mlabel_missing_var_no_labelset(self, fig, std_cds):
+        """mlabel with non-existent column adds no LabelSet (silently ignored)."""
+        gm = GlyphMapper()
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "nonexistent_col"})
+        label_sets = _get_labelsets(fig)
+        assert len(label_sets) == 0
+
+    def test_mlabcolor_applied(self, fig, std_cds):
+        """mlabcolor sets LabelSet text_color."""
+        gm = GlyphMapper()
+        std_cds.data["label"] = ["a"] * len(std_cds.data["y"])
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabcolor": "red"})
+        label_sets = _get_labelsets(fig)
+        assert label_sets, "mlabcolor test: no LabelSet found in fig.center"
+        ls = label_sets[0]
+        assert ls.text_color == "#ff0000"
+
+    def test_mlabposition_clock(self, fig, std_cds):
+        """mlabposition 9 (left) sets negative x_offset."""
+        gm = GlyphMapper()
+        std_cds.data["label"] = ["x"] * len(std_cds.data["y"])
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabposition": "9"})
+        label_sets = _get_labelsets(fig)
+        assert label_sets, "mlabposition test: no LabelSet found in fig.center"
+        ls = label_sets[0]
+        assert ls.x_offset < 0, "clock position 9 should give negative x offset"
+
+    def test_mlabposition_12_positive_y_offset(self, fig, std_cds):
+        """mlabposition 12 (above) sets positive y_offset."""
+        gm = GlyphMapper()
+        std_cds.data["label"] = ["z"] * len(std_cds.data["y"])
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabposition": "12"})
+        label_sets = _get_labelsets(fig)
+        assert label_sets, "mlabposition 12 test: no LabelSet found in fig.center"
+        ls = label_sets[0]
+        assert ls.y_offset > 0, "clock position 12 should give positive y offset"
+
+    def test_mlabsize_applied(self, fig, std_cds):
+        """mlabsize changes text_font_size on the LabelSet."""
+        gm = GlyphMapper()
+        std_cds.data["label"] = ["s"] * len(std_cds.data["y"])
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabsize": "large"})
+        label_sets = _get_labelsets(fig)
+        assert label_sets, "mlabsize test: no LabelSet found in fig.center"
+        ls = label_sets[0]
+        # Size must be a px string, e.g. "14px"
+        assert ls.text_font_size.endswith("px"), f"Expected px size, got {ls.text_font_size}"
+
+    def test_mlabgap_increases_offset(self, fig, std_cds):
+        """mlabgap increases x_offset beyond the default."""
+        gm = GlyphMapper()
+        std_cds.data["label"] = ["g"] * len(std_cds.data["y"])
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label", "mlabgap": "10"})
+        label_sets = _get_labelsets(fig)
+        assert label_sets, "mlabgap test: no LabelSet found in fig.center"
+        ls = label_sets[0]
+        # Default x_offset for position 3 is 4; with gap=10 it should be >4
+        assert ls.x_offset > 4, f"mlabgap=10 should give x_offset > 4, got {ls.x_offset}"
+
+    def test_mlabel_empty_string_no_labelset(self, fig, std_cds):
+        """mlabel empty string adds no LabelSet."""
+        gm = GlyphMapper()
+        gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": ""})
+        label_sets = _get_labelsets(fig)
+        assert len(label_sets) == 0
