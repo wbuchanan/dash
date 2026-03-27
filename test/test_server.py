@@ -3143,3 +3143,346 @@ class TestServerLpolyFpfit:
         doc = Document()
         app_mod.make_document(doc)
         assert len(doc.roots) > 0
+
+
+# ================================================================
+# P4-74 — server-mode xscale/yscale reverse
+# ================================================================
+class TestServerXscaleYscaleReverse:
+    """Server-mode xscale(reverse)/yscale(reverse) must emit flipped assignments."""
+
+    def test_xscale_reverse_in_server_source(self, dr_module, auto_df):
+        """P4-74: xscale(reverse) → generated source contains flipped = True for x_range."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xscale": "reverse"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "x_range.flipped" in source, "xscale(reverse) must produce x_range.flipped in source"
+
+    def test_yscale_reverse_in_server_source(self, dr_module, auto_df):
+        """P4-75: yscale(reverse) → generated source contains flipped = True for y_range."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "yscale": "reverse"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "y_range.flipped" in source, "yscale(reverse) must produce y_range.flipped in source"
+
+    def test_xscale_log_reverse_server_source(self, dr_module, auto_df):
+        """P4-76: xscale(log reverse) must produce both x_axis_type and flipped in source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xscale": "log reverse"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "x_axis_type" in source
+        assert "x_range.flipped" in source
+
+    def test_xscale_log_only_uses_runtime_conditional_for_flip(self, dr_module, auto_df):
+        """P4-74b: xscale(log) — generated source guards flipping with runtime token check.
+
+        The flip code is always emitted as a conditional; we verify x_axis_type is present
+        and that the reverse guard condition is in the source.
+        """
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xscale": "log"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "x_axis_type" in source
+        # Flip guarded by runtime token check — not unconditionally applied
+        assert "_xs_toks" in source, "Generated source must use token-based xscale parsing"
+
+
+# ================================================================
+# P4-77 — server-mode xlabel/ylabel angle()
+# ================================================================
+class TestServerAxisAngle:
+    """Server-mode xlabel/ylabel angle() must emit major_label_orientation assignments."""
+
+    def test_xlabel_angle_in_server_source(self, dr_module, auto_df):
+        """P4-77: xlabel with angle(45) produces major_label_orientation in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xlabel": "0 10 20, angle(45)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "major_label_orientation" in source
+
+    def test_ylabel_angle_vertical_in_server_source(self, dr_module, auto_df):
+        """P4-78: ylabel with angle(vertical) produces orientation assignment in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "ylabel": ", angle(vertical)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "major_label_orientation" in source
+
+    def test_angle_make_document_runs(self, dr_module, auto_df):
+        """P4-79: make_document() must run without error when xlabel has angle()."""
+        import tempfile, importlib.util
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "xlabel": "0 20 40, angle(45)"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm_axangle", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0
+        finally:
+            import os
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+
+# ================================================================
+# P4-80 — server-mode health check + rate limiting
+# ================================================================
+class TestServerHealthAndRateLimit:
+    """Generated server app must include health check endpoint and rate limiter."""
+
+    def test_health_handler_class_in_generated_source(self, dr_module, auto_df):
+        """P4-80: Generated source contains _HealthHandler class definition."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_HealthHandler" in source, "Generated source must define _HealthHandler"
+
+    def test_health_route_in_main_block(self, dr_module, auto_df):
+        """P4-81: Generated __main__ block contains /health extra_patterns entry."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "'/health'" in source or '"/health"' in source, \
+            "Generated source must register /health route"
+        assert "extra_patterns" in source
+
+    def test_rate_limiter_class_in_generated_source(self, dr_module, auto_df):
+        """P4-82: Generated source contains _RateLimiter class."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_RateLimiter" in source, "Generated source must define _RateLimiter"
+        assert "_LIMITER" in source, "Generated source must instantiate _LIMITER"
+
+    def test_rate_limiter_constant_configurable(self, dr_module, auto_df):
+        """P4-83: Generated source contains _RATE_LIMIT_RPM constant."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_RATE_LIMIT_RPM" in source
+
+    def test_rate_limiter_allows_under_limit(self, dr_module, auto_df):
+        """P4-85: _RateLimiter allows first N requests under the cap."""
+        import tempfile, importlib.util
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm_rl_allow", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            limiter = app_mod._RateLimiter(max_rpm=5)
+            for i in range(5):
+                assert limiter.is_allowed("127.0.0.1") is True, \
+                    f"Request {i+1} should be allowed under cap of 5"
+        finally:
+            import os
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_rate_limiter_blocks_over_limit(self, dr_module, auto_df):
+        """P4-86: _RateLimiter blocks the (N+1)th request within the window."""
+        import tempfile, importlib.util
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm_rl_block", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            limiter = app_mod._RateLimiter(max_rpm=5)
+            for _ in range(5):
+                limiter.is_allowed("10.0.0.1")
+            assert limiter.is_allowed("10.0.0.1") is False, \
+                "6th request within window must be blocked"
+        finally:
+            import os
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_rate_limiter_rapid_requests_trigger_limit(self, dr_module, auto_df):
+        """P4-87 (adversarial): 100 rapid requests to a low-limit limiter — at least one blocked."""
+        import tempfile, importlib.util
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm_rl_burst", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            limiter = app_mod._RateLimiter(max_rpm=10)
+            results = [limiter.is_allowed("192.168.1.1") for _ in range(100)]
+            assert not all(results), "At least one of 100 rapid requests must be blocked"
+        finally:
+            import os
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_generated_source_compiles_with_health(self, dr_module, auto_df):
+        """P4-88: Generated source with health/rate-limit code must compile without SyntaxError."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        try:
+            compile(source, "<generated>", "exec")
+        except SyntaxError as e:
+            raise AssertionError(f"Generated source has SyntaxError: {e}")
+
+
+# ================================================================
+# legend(cols(#)) / legend(rows(#)) — server mode
+# ================================================================
+class TestServerLegendColsRows:
+    """Server-mode legend(cols(#))/legend(rows(#)) must emit ncols/nrows assignments."""
+
+    def test_legend_cols_in_server_source(self, dr_module, auto_df):
+        """legend(cols(2)) must produce ncols assignment in generated server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "legend": "cols(2)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "ncols" in source, "legend(cols(2)) must produce ncols in server source"
+
+    def test_legend_rows_in_server_source(self, dr_module, auto_df):
+        """legend(rows(3)) must produce nrows assignment in generated server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "legend": "rows(3)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "nrows" in source, "legend(rows(3)) must produce nrows in server source"
+
+    def test_legend_cols_rows_combined_in_server_source(self, dr_module, auto_df):
+        """legend(cols(2) rows(4)) must produce both ncols and nrows in server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "legend": "cols(2) rows(4)"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "ncols" in source
+        assert "nrows" in source
+
+    def test_legend_cols_make_document_runs(self, dr_module, auto_df):
+        """make_document() must complete without error when legend has cols()."""
+        import tempfile, importlib.util
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "legend": "top cols(2)"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm_leg_cols", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0
+        finally:
+            import os
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+
+# ================================================================
+# msangle(#) — server mode
+# ================================================================
+class TestServerMsangle:
+    """Server-mode msangle(#) must emit angle= in fig.scatter() call."""
+
+    def test_msangle_in_server_source(self, dr_module, auto_df):
+        """msangle option must appear in generated server source as angle parameter."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"msangle": "45"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "msangle" in source or "angle" in source, \
+            "msangle option must produce angle-related code in server source"
+
+    def test_msangle_make_document_runs(self, dr_module, auto_df):
+        """make_document() must run without error when scatter has msangle."""
+        import tempfile, importlib.util
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"msangle": "30"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tm_msangle", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0
+        finally:
+            import os
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass

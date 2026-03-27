@@ -115,6 +115,49 @@ _CSP_META = (
 # Region option helpers — parse plotregion() / graphregion() sub-options
 # ===========================================================================
 
+def _parse_scale_opt(raw: str) -> "tuple[bool, bool]":
+    """Parse an xscale()/yscale() option string for 'log' and 'reverse' sub-options.
+
+    Args:
+        raw: The raw option value string, e.g. 'log', 'reverse', 'log reverse'.
+
+    Returns:
+        (is_log, is_reverse) as booleans.
+    """
+    tokens = raw.lower().split()
+    return ("log" in tokens), ("reverse" in tokens)
+
+
+def _parse_axis_angle(raw: str) -> "float | None":
+    """Extract angle sub-option from a Stata xlabel()/ylabel() option string.
+
+    Looks for ``angle(#)`` or ``angle(name)`` within the raw axis option string.
+
+    Named orientations:
+        horizontal → 0.0 radians
+        vertical   → π/2 radians (90°)
+
+    Args:
+        raw: Full xlabel()/ylabel() option value string.
+
+    Returns:
+        Angle in **radians** as float, or ``None`` if absent or unparseable.
+    """
+    import math as _math
+    m = re.search(r'\bangle\s*\(\s*([^)]+)\s*\)', raw, re.IGNORECASE)
+    if not m:
+        return None
+    val = m.group(1).strip().lower()
+    if val == "horizontal":
+        return 0.0
+    if val == "vertical":
+        return _math.pi / 2
+    try:
+        return _math.radians(float(val))
+    except ValueError:
+        return None
+
+
 def _extract_region_color(val: str) -> str:
     """Extract color name from region option value like 'color(ltblue) lwidth(thin)'.
 
@@ -1164,6 +1207,17 @@ class GlyphMapper:
                 la = float(options["lalpha"].strip())
                 if 0.0 <= la <= 100.0 and hasattr(glyph, "line_alpha"):
                     glyph.line_alpha = la / 100.0
+            except (ValueError, AttributeError):
+                pass
+        # msangle: rotate all markers by a fixed angle (degrees → radians).
+        # Bokeh scatter glyphs support a scalar angle property.
+        if "msangle" in options:
+            try:
+                angle_deg = float(options["msangle"].strip())
+                if hasattr(glyph, "angle"):
+                    glyph.angle = math.radians(angle_deg)
+                    if hasattr(glyph, "angle_units"):
+                        glyph.angle_units = "rad"
             except (ValueError, AttributeError):
                 pass
 
@@ -4503,13 +4557,14 @@ class DashRenderer:
                 except (ValueError, TypeError):
                     pass
 
-        # Log scale options
-        if graph_opts.get("xscale") == "log":
-            # Rebuild with log x-axis
+        # Log scale and reverse options
+        _xs_log, _xs_rev = _parse_scale_opt(graph_opts.get("xscale", ""))
+        _ys_log, _ys_rev = _parse_scale_opt(graph_opts.get("yscale", ""))
+        if _xs_log:
             kw = {**fig_kwargs, "x_axis_type": "log"}
             kw.pop("tools", None)
             fig = bokeh_figure(**kw)
-        if graph_opts.get("yscale") == "log":
+        if _ys_log:
             kw = {**fig_kwargs, "y_axis_type": "log"}
             kw.pop("tools", None)
             fig = bokeh_figure(**kw)
@@ -4531,12 +4586,18 @@ class DashRenderer:
                 self.df, plots, "yaxis", "yvar", 2
             )
             fig.extra_y_ranges["y2"] = _Range1d(_y2_lo, _y2_hi)
-            _y2_scale = graph_opts.get("yscale2", "")
-            _y2_ax = (LogAxis if _y2_scale == "log" else LinearAxis)(
+            _y2_scale_raw = graph_opts.get("yscale2", "")
+            _y2_log, _y2_rev = _parse_scale_opt(_y2_scale_raw)
+            _y2_ax = (LogAxis if _y2_log else LinearAxis)(
                 y_range_name="y2",
                 axis_label=html.escape(graph_opts.get("ytitle2", "")),
             )
             fig.add_layout(_y2_ax, "right")
+            if _y2_rev:
+                try:
+                    fig.extra_y_ranges["y2"].flipped = True
+                except AttributeError:
+                    pass
             # Custom ticks for secondary y-axis
             _raw_yla2 = graph_opts.get("ylabel2", "")
             if _raw_yla2:
@@ -4551,18 +4612,27 @@ class DashRenderer:
                             code=f"const m = {json.dumps(_safe2)}; "
                                  "return m[String(tick)] || String(tick);"
                         )
+                _ang2 = _parse_axis_angle(_raw_yla2)
+                if _ang2 is not None:
+                    _y2_ax.major_label_orientation = _ang2
         if _has_x2:
             from bokeh.models import Range1d as _Range1d
             _x2_lo, _x2_hi = _compute_secondary_range(
                 self.df, plots, "xaxis", "xvar", 2
             )
             fig.extra_x_ranges["x2"] = _Range1d(_x2_lo, _x2_hi)
-            _x2_scale = graph_opts.get("xscale2", "")
-            _x2_ax = (LogAxis if _x2_scale == "log" else LinearAxis)(
+            _x2_scale_raw = graph_opts.get("xscale2", "")
+            _x2_log, _x2_rev = _parse_scale_opt(_x2_scale_raw)
+            _x2_ax = (LogAxis if _x2_log else LinearAxis)(
                 x_range_name="x2",
                 axis_label=html.escape(graph_opts.get("xtitle2", "")),
             )
             fig.add_layout(_x2_ax, "above")
+            if _x2_rev:
+                try:
+                    fig.extra_x_ranges["x2"].flipped = True
+                except AttributeError:
+                    pass
             # Custom ticks for secondary x-axis
             _raw_xla2 = graph_opts.get("xlabel2", "")
             if _raw_xla2:
@@ -4577,6 +4647,9 @@ class DashRenderer:
                             code=f"const m = {json.dumps(_safe2)}; "
                                  "return m[String(tick)] || String(tick);"
                         )
+                _ang2 = _parse_axis_angle(_raw_xla2)
+                if _ang2 is not None:
+                    _x2_ax.major_label_orientation = _ang2
 
         # Axis range limits (xrange / yrange)
         raw_xrange = graph_opts.get("xrange", "")
@@ -4598,6 +4671,18 @@ class DashRenderer:
                     fig.y_range = Range1d(float(parts[0]), float(parts[1]))
                 except (ValueError, TypeError):
                     pass
+
+        # Apply axis reversal (after any Range1d replacement so flipped sticks)
+        if _xs_rev:
+            try:
+                fig.x_range.flipped = True
+            except AttributeError:
+                pass
+        if _ys_rev:
+            try:
+                fig.y_range.flipped = True
+            except AttributeError:
+                pass
 
         # Reference lines
         # Reference lines — support both string "xline"/"yline" (parser output)
@@ -4651,24 +4736,28 @@ class DashRenderer:
             )
             fig.add_layout(subtitle_lbl, "above")
 
-        # Custom axis tick values (xlabel / ylabel)
+        # Custom axis tick values (xlabel / ylabel) and label rotation
         from bokeh.models.tickers import FixedTicker
         from bokeh.models.formatters import CustomJSTickFormatter
         for ax_key, axis_obj in (("xlabel", fig.xaxis), ("ylabel", fig.yaxis)):
             raw_ax = graph_opts.get(ax_key, "")
-            if raw_ax:
-                ticks, labels = self._parse_axis_label_opt(raw_ax)
-                if ticks:
-                    axis_obj.ticker = FixedTicker(ticks=ticks)
-                    if labels:
-                        # Build a safe JS lookup dict; keys and values are HTML-escaped
-                        safe_labels = {
-                            str(k): html.escape(str(v)) for k, v in labels.items()
-                        }
-                        js_map = json.dumps(safe_labels)
-                        axis_obj.formatter = CustomJSTickFormatter(
-                            code=f"const m = {js_map}; return m[String(tick)] || String(tick);"
-                        )
+            if not raw_ax:
+                continue
+            ticks, labels = self._parse_axis_label_opt(raw_ax)
+            if ticks:
+                axis_obj.ticker = FixedTicker(ticks=ticks)
+                if labels:
+                    # Build a safe JS lookup dict; keys and values are HTML-escaped
+                    safe_labels = {
+                        str(k): html.escape(str(v)) for k, v in labels.items()
+                    }
+                    js_map = json.dumps(safe_labels)
+                    axis_obj.formatter = CustomJSTickFormatter(
+                        code=f"const m = {js_map}; return m[String(tick)] || String(tick);"
+                    )
+            angle_rad = _parse_axis_angle(raw_ax)
+            if angle_rad is not None:
+                axis_obj.major_label_orientation = angle_rad
 
         # Plot categories that use non-standard JSON variable keys
         _RANGE_TYPES = frozenset({
@@ -4782,6 +4871,24 @@ class DashRenderer:
                         item_idx = n - 1  # Stata uses 1-based indexing
                         if 0 <= item_idx < len(items):
                             items[item_idx].label = {"value": text}
+
+                # cols(#) / rows(#) — multi-column/row legend layout
+                m_cols = re.search(r'\bcols\s*\(\s*(\d+)\s*\)', legend_opt)
+                m_rows = re.search(r'\brows\s*\(\s*(\d+)\s*\)', legend_opt)
+                if m_cols:
+                    try:
+                        ncols = int(m_cols.group(1))
+                        for leg in fig.legend:
+                            leg.ncols = ncols
+                    except (ValueError, AttributeError):
+                        pass
+                if m_rows:
+                    try:
+                        nrows = int(m_rows.group(1))
+                        for leg in fig.legend:
+                            leg.nrows = nrows
+                    except (ValueError, AttributeError):
+                        pass
 
         return fig
 
@@ -5716,6 +5823,40 @@ class ServerAppBuilder:
             ")",
             "from bokeh.plotting import figure as bokeh_figure",
             "from bokeh.server.server import Server",
+            "import collections as _collections",
+            "import time as _time",
+            "from tornado.web import RequestHandler as _RequestHandler",
+            "",
+            "# ---- Rate limiter configuration ----",
+            "_RATE_LIMIT_RPM = 60  # max requests per IP per minute",
+            "",
+            "class _RateLimiter:",
+            "    '''Sliding-window per-IP rate limiter (thread-safe for single-process Bokeh servers).'''",
+            "    def __init__(self, max_rpm=60):",
+            "        self._max = max_rpm",
+            "        self._window = 60.0",
+            "        self._store = _collections.defaultdict(list)",
+            "    def is_allowed(self, ip):",
+            "        now = _time.monotonic()",
+            "        cutoff = now - self._window",
+            "        ts = self._store[ip]",
+            "        while ts and ts[0] < cutoff:",
+            "            ts.pop(0)",
+            "        if len(ts) >= self._max:",
+            "            return False",
+            "        ts.append(now)",
+            "        return True",
+            "",
+            "_LIMITER = _RateLimiter(_RATE_LIMIT_RPM)",
+            "",
+            "class _HealthHandler(_RequestHandler):",
+            "    '''Health check HTTP handler — always returns 200 OK with JSON status.'''",
+            "    def get(self):",
+            "        import datetime as _dt",
+            "        self.set_header('Content-Type', 'application/json')",
+            "        self.set_status(200)",
+            "        ts = _dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')",
+            "        self.write('{\"status\": \"ok\", \"timestamp\": \"' + ts + '\"}')",
             "",
         ]
 
@@ -6132,11 +6273,17 @@ class ServerAppBuilder:
             "        if _raw_ar:",
             "            try: _fig_kw['aspect_ratio'] = float(_raw_ar)",
             "            except (ValueError, TypeError): pass",
-            "        if go.get('xscale') == 'log':",
-            "            _fig_kw['x_axis_type'] = 'log'",
-            "        if go.get('yscale') == 'log':",
-            "            _fig_kw['y_axis_type'] = 'log'",
+            "        _xs_toks = go.get('xscale', '').lower().split()",
+            "        _ys_toks = go.get('yscale', '').lower().split()",
+            "        if 'log' in _xs_toks: _fig_kw['x_axis_type'] = 'log'",
+            "        if 'log' in _ys_toks: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
+            "        if 'reverse' in _xs_toks:",
+            "            try: fig.x_range.flipped = True",
+            "            except AttributeError: pass",
+            "        if 'reverse' in _ys_toks:",
+            "            try: fig.y_range.flipped = True",
+            "            except AttributeError: pass",
             "        # bgcolor / plotbgcolor — figure background colors",
             "        _raw_bgc = go.get('bgcolor', '')",
             "        if _raw_bgc:",
@@ -6229,6 +6376,17 @@ class ServerAppBuilder:
             "                    _lt = html.escape(_lm.group(2))",
             "                    if fig.legend and 0 <= _li < len(fig.legend[0].items):",
             "                        fig.legend[0].items[_li].label = {'value': _lt}",
+            "                # cols(#) / rows(#) — multi-column/row legend layout",
+            "                _mc = _re_leg.search(r'\\bcols\\s*\\(\\s*(\\d+)\\s*\\)', _leg_opt)",
+            "                _mr = _re_leg.search(r'\\brows\\s*\\(\\s*(\\d+)\\s*\\)', _leg_opt)",
+            "                if _mc:",
+            "                    try:",
+            "                        [setattr(_lg, 'ncols', int(_mc.group(1))) for _lg in fig.legend]",
+            "                    except (ValueError, AttributeError): pass",
+            "                if _mr:",
+            "                    try:",
+            "                        [setattr(_lg, 'nrows', int(_mr.group(1))) for _lg in fig.legend]",
+            "                    except (ValueError, AttributeError): pass",
             "        # xlabel / ylabel custom tick values",
             "        from bokeh.models.tickers import FixedTicker as _FT",
             "        from bokeh.models.formatters import CustomJSTickFormatter as _CJSF",
@@ -6247,14 +6405,25 @@ class ServerAppBuilder:
             "                except ValueError: pass",
             "                i += 1",
             "            return sorted(tks), labs",
+            "        def _parse_axangle(raw):",
+            "            import re as _re_ang, math as _math_ang",
+            "            _m = _re_ang.search(r'\\bangle\\s*\\(\\s*([^)]+)\\s*\\)', raw, _re_ang.IGNORECASE)",
+            "            if not _m: return None",
+            "            _v = _m.group(1).strip().lower()",
+            "            if _v == 'horizontal': return 0.0",
+            "            if _v == 'vertical': return _math_ang.pi / 2",
+            "            try: return _math_ang.radians(float(_v))",
+            "            except ValueError: return None",
             "        for _axk, _axobj in (('xlabel', fig.xaxis), ('ylabel', fig.yaxis)):",
             "            _raw_ax = go.get(_axk, '')",
-            "            if _raw_ax:",
-            "                _tks, _labs = _parse_axlabel(_raw_ax)",
-            "                if _tks:",
-            "                    _axobj.ticker = _FT(ticks=_tks)",
-            "                    if _labs:",
-            "                        _axobj.formatter = _CJSF(code=f'const m={_json.dumps(_labs)};return m[String(tick)]||String(tick);')",
+            "            if not _raw_ax: continue",
+            "            _tks, _labs = _parse_axlabel(_raw_ax)",
+            "            if _tks:",
+            "                _axobj.ticker = _FT(ticks=_tks)",
+            "                if _labs:",
+            "                    _axobj.formatter = _CJSF(code=f'const m={_json.dumps(_labs)};return m[String(tick)]||String(tick);')",
+            "            _ang = _parse_axangle(_raw_ax)",
+            "            if _ang is not None: _axobj.major_label_orientation = _ang",
             "",
             "        for pi, plot in enumerate(plots):",
             "            ptype = plot.get('type', '')",
@@ -6325,9 +6494,12 @@ class ServerAppBuilder:
             "                _sc_size = _sz_map.get(opts.get('msize',''), 8)",
             "                if opts.get('msize','').replace('.','',1).isdigit():",
             "                    _sc_size = float(opts.get('msize','8'))",
+            "                _sc_angle_deg = opts.get('msangle', '')",
+            "                _sc_angle = math.radians(float(_sc_angle_deg)) if _sc_angle_deg and _sc_angle_deg.strip().lstrip('-').replace('.','',1).isdigit() else 0.0",
             "                r = fig.scatter(x=_eff_x, y=_eff_y, source=csrc,",
             "                               fill_color=_sc_fill, line_color=color,",
             "                               size=_sc_size, marker=_sc_marker, alpha=0.7,",
+            "                               angle=_sc_angle, angle_units='rad',",
             "                               nonselection_alpha=0.15)",
             "                fig.add_tools(HoverTool(tooltips=[(yvar, f'@{yvar}'), (xvar, f'@{xvar}')]))",
             "                # mlabel — add LabelSet annotation if option is set",
@@ -7649,10 +7821,12 @@ class ServerAppBuilder:
             f"        port=_port,",
             f"        allow_websocket_origin=[f'localhost:{{_port}}'],",
             f"        num_procs=1,",
+            f"        extra_patterns=[('/health', _HealthHandler)],",
             f"    )",
             f"    _server.start()",
             f"    _server.io_loop.add_callback(_server.show, '/')",
             f"    print(f'Bokeh Server running at http://localhost:{{_port}}/')",
+            f"    print(f'Health check:  http://localhost:{{_port}}/health')",
             f"    print('Press Ctrl+C to stop.')",
             f"    try:",
             f"        _server.io_loop.start()",

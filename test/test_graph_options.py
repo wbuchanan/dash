@@ -1032,3 +1032,302 @@ class TestPerFacetKpis:
         r.render()
         # No stat/var → falls back to single div
         assert "k1" in r.kpi_divs
+
+
+# ================================================================
+# P6-25 — xscale(reverse) / yscale(reverse) axis flipping
+# ================================================================
+class TestXscaleYscaleReverse:
+    """xscale(reverse) and yscale(reverse) must flip the axis direction."""
+
+    def test_xscale_reverse_flips_x_range(self):
+        """P6-25a: xscale(reverse) must set fig.x_range.flipped = True."""
+        fig = _get_figure({"xscale": "reverse"})
+        assert getattr(fig.x_range, "flipped", False) is True
+
+    def test_yscale_reverse_flips_y_range(self):
+        """P6-25b: yscale(reverse) must set fig.y_range.flipped = True."""
+        fig = _get_figure({"yscale": "reverse"})
+        assert getattr(fig.y_range, "flipped", False) is True
+
+    def test_xscale_log_reverse_both_applied(self):
+        """P6-25c: xscale(log reverse) must produce log axis AND flipped = True."""
+        fig = _get_figure({"xscale": "log reverse"})
+        # Log axis is set via x_axis_type; verify the axis type name
+        assert fig.xaxis[0].__class__.__name__ == "LogAxis"
+        assert getattr(fig.x_range, "flipped", False) is True
+
+    def test_xscale_reverse_order_independent(self):
+        """P6-25d: xscale(reverse log) (reversed word order) must still flip the axis."""
+        fig = _get_figure({"xscale": "reverse log"})
+        assert getattr(fig.x_range, "flipped", False) is True
+
+    def test_xscale_log_only_does_not_flip(self):
+        """P6-25e: xscale(log) alone must NOT set flipped (regression guard)."""
+        fig = _get_figure({"xscale": "log"})
+        assert getattr(fig.x_range, "flipped", False) is False
+
+    def test_yscale_log_only_does_not_flip(self):
+        """P6-25e2: yscale(log) alone must NOT set flipped."""
+        fig = _get_figure({"yscale": "log"})
+        assert getattr(fig.y_range, "flipped", False) is False
+
+    def test_no_scale_opts_no_flip(self):
+        """P6-25f: No xscale/yscale options must leave flipped at default (False)."""
+        fig = _get_figure({})
+        assert getattr(fig.x_range, "flipped", False) is False
+        assert getattr(fig.y_range, "flipped", False) is False
+
+
+# ================================================================
+# P6-30 — xlabel/ylabel angle() sub-option for tick label rotation
+# ================================================================
+class TestParseAxisAngle:
+    """Unit tests for the _parse_axis_angle() module-level helper."""
+
+    def test_no_angle_returns_none(self):
+        from dash_render import _parse_axis_angle
+        assert _parse_axis_angle("0 10 20") is None
+
+    def test_empty_returns_none(self):
+        from dash_render import _parse_axis_angle
+        assert _parse_axis_angle("") is None
+
+    def test_numeric_angle(self):
+        import math
+        from dash_render import _parse_axis_angle
+        assert abs(_parse_axis_angle("0 10, angle(45)") - math.radians(45)) < 1e-9
+
+    def test_angle_horizontal(self):
+        from dash_render import _parse_axis_angle
+        assert _parse_axis_angle(", angle(horizontal)") == 0.0
+
+    def test_angle_vertical(self):
+        import math
+        from dash_render import _parse_axis_angle
+        assert abs(_parse_axis_angle(", angle(vertical)") - math.pi / 2) < 1e-9
+
+    def test_angle_negative(self):
+        import math
+        from dash_render import _parse_axis_angle
+        assert abs(_parse_axis_angle(", angle(-45)") - math.radians(-45)) < 1e-9
+
+    def test_invalid_angle_returns_none(self):
+        from dash_render import _parse_axis_angle
+        assert _parse_axis_angle(", angle(notanumber)") is None
+
+
+class TestAxisLabelAngle:
+    """xlabel/ylabel angle() sub-option must rotate tick labels on Bokeh figures."""
+
+    def test_xlabel_angle_numeric_applied(self):
+        """P6-30a: xlabel(angle(45)) sets fig.xaxis major_label_orientation."""
+        import math
+        fig = _get_figure({"xlabel": "0 10 20, angle(45)"})
+        ori = fig.xaxis[0].major_label_orientation
+        assert abs(ori - math.radians(45)) < 1e-9
+
+    def test_ylabel_angle_numeric_applied(self):
+        """P6-30b: ylabel(angle(30)) sets fig.yaxis major_label_orientation."""
+        import math
+        fig = _get_figure({"ylabel": "0 5 10 15 20, angle(30)"})
+        ori = fig.yaxis[0].major_label_orientation
+        assert abs(ori - math.radians(30)) < 1e-9
+
+    def test_xlabel_angle_vertical(self):
+        """P6-30c: angle(vertical) sets orientation to pi/2."""
+        import math
+        fig = _get_figure({"xlabel": ", angle(vertical)"})
+        assert abs(fig.xaxis[0].major_label_orientation - math.pi / 2) < 1e-9
+
+    def test_xlabel_angle_horizontal(self):
+        """P6-30d: angle(horizontal) sets orientation to 0.0."""
+        fig = _get_figure({"xlabel": ", angle(horizontal)"})
+        assert fig.xaxis[0].major_label_orientation == 0.0
+
+    def test_xlabel_no_angle_orientation_unchanged(self):
+        """P6-30e: xlabel without angle() must not set major_label_orientation to a float."""
+        fig = _get_figure({"xlabel": "0 10 20"})
+        # Bokeh default is "auto" (a string), not a float
+        ori = fig.xaxis[0].major_label_orientation
+        assert isinstance(ori, str), f"Expected string default, got {type(ori)}: {ori}"
+
+    def test_xlabel_angle_negative(self):
+        """P6-30f: angle(-45) must be accepted and produce negative radians."""
+        import math
+        fig = _get_figure({"xlabel": ", angle(-45)"})
+        assert abs(fig.xaxis[0].major_label_orientation - math.radians(-45)) < 1e-9
+
+    def test_angle_with_tick_values_combined(self):
+        """P6-30g: angle() combined with tick values applies both correctly."""
+        import math
+        fig = _get_figure({"xlabel": "0 5 10, angle(90)"})
+        from bokeh.models.tickers import FixedTicker
+        assert isinstance(fig.xaxis[0].ticker, FixedTicker)
+        assert abs(fig.xaxis[0].major_label_orientation - math.pi / 2) < 1e-9
+
+
+# ================================================================
+# legend(cols(#)) / legend(rows(#)) — multi-column/row legend layout
+# ================================================================
+class TestLegendColsRows:
+    """legend(cols(#)) and legend(rows(#)) must set ncols/nrows on the Bokeh Legend."""
+
+    def test_legend_cols_sets_ncols(self):
+        """legend(cols(2)) must set fig.legend[0].ncols = 2."""
+        fig = _get_figure({"legend": "cols(2)"})
+        if fig.legend:
+            assert fig.legend[0].ncols == 2
+
+    def test_legend_rows_sets_nrows(self):
+        """legend(rows(3)) must set fig.legend[0].nrows = 3."""
+        fig = _get_figure({"legend": "rows(3)"})
+        if fig.legend:
+            assert fig.legend[0].nrows == 3
+
+    def test_legend_cols_and_position_combined(self):
+        """legend(top cols(2)) must set both location and ncols."""
+        fig = _get_figure({"legend": "top cols(2)"})
+        if fig.legend:
+            assert fig.legend[0].ncols == 2
+            assert fig.legend[0].location == "top_center"
+
+    def test_legend_rows_and_cols_combined(self):
+        """legend(cols(2) rows(4)) must set both ncols and nrows."""
+        fig = _get_figure({"legend": "cols(2) rows(4)"})
+        if fig.legend:
+            assert fig.legend[0].ncols == 2
+            assert fig.legend[0].nrows == 4
+
+    def test_legend_cols_zero_ignored(self):
+        """legend(cols(0)) — zero column count must not raise."""
+        try:
+            fig = _get_figure({"legend": "cols(0)"})
+            assert fig is not None
+        except Exception as e:
+            raise AssertionError(f"legend(cols(0)) raised unexpectedly: {e}")
+
+    def test_legend_without_cols_rows_unchanged(self):
+        """Omitting cols()/rows() leaves ncols/nrows at Bokeh default ('auto')."""
+        fig = _get_figure({"legend": "top"})
+        if fig.legend:
+            assert fig.legend[0].ncols == "auto"
+            assert fig.legend[0].nrows == "auto"
+
+
+# ================================================================
+# msangle(#) — uniform marker rotation
+# ================================================================
+class TestMsangle:
+    """msangle(#) must rotate all markers in scatter-type plots by the given degrees."""
+
+    def test_msangle_sets_glyph_angle(self):
+        """msangle(45) must set glyph.angle ≈ pi/4 radians on scatter renderer."""
+        import math, json, os, tempfile
+        from dash_render import DashRenderer
+        graphs = [{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"msangle": "45"}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }]
+        master_spec = {
+            "graphs": graphs, "kpis": [],
+            "build_options": {"layout": "auto", "link": "", "filter": "",
+                              "theme": "default", "title": "", "subtitle": "", "registry": "g1"},
+        }
+        data_json = {"StataJSON": {
+            "variableNames": ["mpg", "weight"],
+            "variableLabels": {"mpg": "", "weight": ""},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False},
+            "values": [{"mpg": float(i), "weight": float(i * 50)} for i in range(1, 11)],
+        }}
+        sp, dp, op = [tempfile.mkstemp(suffix=s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(master_spec, f)
+            with open(dp, "w") as f: json.dump(data_json, f)
+            renderer = DashRenderer(sp, dp, op)
+            figs = renderer._build_figures()
+            fig = figs["g1"]
+            scatter_rs = [r for r in fig.renderers if hasattr(r, "glyph") and
+                          hasattr(r.glyph, "angle")]
+            assert scatter_rs, "scatter renderer with angle attribute expected"
+            assert abs(scatter_rs[0].glyph.angle - math.radians(45)) < 1e-9
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_msangle_zero_allowed(self):
+        """msangle(0) must set angle = 0.0 without error."""
+        import math, json, os, tempfile
+        from dash_render import DashRenderer
+        graphs = [{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {"msangle": "0"}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }]
+        master_spec = {
+            "graphs": graphs, "kpis": [],
+            "build_options": {"layout": "auto", "link": "", "filter": "",
+                              "theme": "default", "title": "", "subtitle": "", "registry": "g1"},
+        }
+        data_json = {"StataJSON": {
+            "variableNames": ["mpg", "weight"],
+            "variableLabels": {"mpg": "", "weight": ""},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False},
+            "values": [{"mpg": float(i), "weight": float(i * 50)} for i in range(1, 11)],
+        }}
+        sp, dp, op = [tempfile.mkstemp(suffix=s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(master_spec, f)
+            with open(dp, "w") as f: json.dump(data_json, f)
+            renderer = DashRenderer(sp, dp, op)
+            figs = renderer._build_figures()
+            assert "g1" in figs
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_msangle_in_apply_marker_opts(self):
+        """_apply_marker_opts with msangle sets glyph.angle in radians."""
+        import math
+        from bokeh.plotting import figure
+        from bokeh.models import ColumnDataSource
+        from dash_render import GlyphMapper
+        fig = figure()
+        src = ColumnDataSource({"x": [1.0, 2.0], "y": [3.0, 4.0]})
+        r = fig.scatter(x="x", y="y", source=src)
+        gm = GlyphMapper(None)
+        gm._apply_marker_opts(r, {"msangle": "90"})
+        assert abs(r.glyph.angle - math.pi / 2) < 1e-9
+
+    def test_msangle_invalid_value_ignored(self):
+        """msangle(notanumber) must not raise — silently ignored."""
+        from bokeh.plotting import figure
+        from bokeh.models import ColumnDataSource
+        from dash_render import GlyphMapper
+        fig = figure()
+        src = ColumnDataSource({"x": [1.0], "y": [2.0]})
+        r = fig.scatter(x="x", y="y", source=src)
+        original_angle = r.glyph.angle
+        gm = GlyphMapper(None)
+        gm._apply_marker_opts(r, {"msangle": "notanumber"})
+        assert r.glyph.angle == original_angle
+
+    def test_msangle_negative_angle(self):
+        """msangle(-45) must set negative radians without error."""
+        import math
+        from bokeh.plotting import figure
+        from bokeh.models import ColumnDataSource
+        from dash_render import GlyphMapper
+        fig = figure()
+        src = ColumnDataSource({"x": [1.0], "y": [2.0]})
+        r = fig.scatter(x="x", y="y", source=src)
+        gm = GlyphMapper(None)
+        gm._apply_marker_opts(r, {"msangle": "-45"})
+        assert abs(r.glyph.angle - math.radians(-45)) < 1e-9

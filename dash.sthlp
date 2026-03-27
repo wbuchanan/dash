@@ -645,6 +645,12 @@ the plot specification).
 {synopt:{cmdab:cap:tion(}{it:string}{cmd:)}}caption text below the figure{p_end}
 {synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}height-to-width ratio of the plot area
     (e.g. {cmd:aspectratio(1)} for a square plot){p_end}
+{synopt:{cmdab:leg:end(off)}}hide the legend{p_end}
+{synopt:{cmdab:leg:end(on)}}show the legend (default){p_end}
+{synopt:{cmdab:leg:end(}{it:position}{cmd:)}}place legend: {cmd:top}, {cmd:bottom}, {cmd:left}, {cmd:right}{p_end}
+{synopt:{cmdab:leg:end(cols(}{it:#}{cmd:))}}arrange legend entries in {it:#} columns{p_end}
+{synopt:{cmdab:leg:end(rows(}{it:#}{cmd:))}}arrange legend entries in {it:#} rows{p_end}
+{synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for entry {it:#}{p_end}
 {synoptline}
 
 {pstd}
@@ -683,9 +689,10 @@ options that have no Bokeh equivalent.
 {phang2}{opt jseed(#)} — random-number seed for {opt jitter()}.
     Pass any non-negative integer to make jitter reproducible across renders.
 
-{phang2}{opt msangle(#)} — angle of asymmetric marker symbols.
-    Bokeh's {cmd:scatter} glyph does not support per-marker rotation.
-    Silently ignored when encountered.
+{phang2}{opt msangle(#)} — rotate all markers in a scatter layer by {it:#} degrees.
+    Applies a uniform clockwise rotation to every marker symbol in the layer.
+    Abbreviation: {cmd:msa()}.  Valid for {cmd:scatter}, {cmd:dot},
+    {cmd:dropline}, {cmd:connected}, and {cmd:scatteri} plot types.
 
 {phang2}{opt recast(plottype)} — recast one plot type to another at render time.
     Not supported; specify the desired plot type directly.

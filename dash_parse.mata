@@ -302,6 +302,7 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "mc")    return("mcolor")
     if (name == "ms")    return("msymbol")
     if (name == "msi")   return("msize")
+    if (name == "msa")   return("msangle")
     if (name == "mla")   return("mlabel")
     if (name == "mlc")   return("mlabcolor")
     if (name == "mls")   return("mlabsize")
