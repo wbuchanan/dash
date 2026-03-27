@@ -412,3 +412,124 @@ class TestOptionsJsonFormat:
         assert len(figs["g1"].renderers) >= 1, (
             "scatter with options must produce at least one renderer"
         )
+
+
+# ================================================================
+# T7 — theme key in build_options must be honoured
+# ================================================================
+class TestThemeKey:
+    """Regression tests: dash.ado writes 'theme' (not 'scheme') into build_options.
+
+    DashRenderer.__init__ previously read only 'scheme', so theme() was silently
+    ignored and the renderer always fell back to s2color.  Bug 6.
+    """
+
+    def _build_renderer_with_theme(self, theme_name: str):
+        """Build a minimal renderer with a specific theme in build_options."""
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto",
+                "link": "",
+                "filter": "",
+                "theme": theme_name,
+                "title": "",
+                "subtitle": "",
+                "registry": "g1",
+            },
+        }
+        data = _make_data_json({
+            "x": [float(i) for i in range(1, 11)],
+            "y": [float(i * 2) for i in range(1, 11)],
+        })
+        return _build_renderer(spec, data)
+
+    # s2color has a bluish-grey background; s1color has a white background.
+    # These constants let tests assert the CORRECT scheme was loaded.
+    S2COLOR_BG = "#d9e8f0"   # ltbluishgray translated by OptionTranslator
+    S1COLOR_BG = "#ffffff"   # white
+
+    def test_theme_default_resolves_to_s2color(self):
+        """theme('default') in build_options → s2color scheme background color."""
+        r = self._build_renderer_with_theme("default")
+        assert hasattr(r, "scheme")
+        assert r.scheme.background_color.lower() == self.S2COLOR_BG, (
+            f"theme('default') should load s2color (bg {self.S2COLOR_BG}), "
+            f"got {r.scheme.background_color!r}"
+        )
+
+    def test_theme_clean_is_honoured(self):
+        """theme('clean') in build_options → s1color scheme is applied (white bg).
+
+        Previously, 'clean' was silently ignored because DashRenderer read
+        build_options['scheme'] (key not present) and fell back to s2color.
+        After the fix, build_options['theme'] is read and 'clean' is mapped to
+        s1color — which has a white background, not the bluish-grey of s2color.
+        """
+        r = self._build_renderer_with_theme("clean")
+        assert hasattr(r, "scheme")
+        assert r.scheme.background_color.lower() == self.S1COLOR_BG, (
+            f"theme('clean') should load s1color (white bg), "
+            f"got {r.scheme.background_color!r} — "
+            "theme key in build_options was not being read (Bug 6)"
+        )
+
+    def test_theme_mono_is_honoured(self):
+        """theme('mono') in build_options → s1mono scheme is applied without error."""
+        r = self._build_renderer_with_theme("mono")
+        assert hasattr(r, "scheme")
+        # s1mono also has white background
+        assert r.scheme.background_color.lower() == self.S1COLOR_BG, (
+            f"theme('mono') should load s1mono (white bg), "
+            f"got {r.scheme.background_color!r}"
+        )
+
+    def test_theme_economist_is_honoured(self):
+        """theme('economist') → economist scheme file is loaded (not s2color bg)."""
+        r = self._build_renderer_with_theme("economist")
+        assert hasattr(r, "scheme")
+        # economist has white background too, just check it doesn't crash
+        assert r.scheme.background_color is not None
+
+    def test_unknown_theme_falls_back_to_s2color(self):
+        """An unrecognised theme name must not crash — fallback to s2color."""
+        r = self._build_renderer_with_theme("does_not_exist_theme")
+        assert hasattr(r, "scheme")
+        # Falls back to s2color
+        assert r.scheme.background_color.lower() == self.S2COLOR_BG
+
+    def test_theme_and_scheme_key_both_work(self):
+        """If someone passes 'scheme' key directly, it must also be honoured."""
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto",
+                "link": "",
+                "filter": "",
+                "scheme": "s1color",   # note: using 'scheme' key directly
+                "title": "",
+                "subtitle": "",
+                "registry": "g1",
+            },
+        }
+        data = _make_data_json({
+            "x": [float(i) for i in range(1, 11)],
+            "y": [float(i * 2) for i in range(1, 11)],
+        })
+        r = _build_renderer(spec, data)
+        assert hasattr(r, "scheme")
+        assert r.scheme.background_color.lower() == self.S1COLOR_BG, (
+            "'scheme' key in build_options must also be read"
+        )

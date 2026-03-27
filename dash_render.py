@@ -4126,9 +4126,28 @@ class DashRenderer:
 
         self.translator = OptionTranslator()
 
-        # Load scheme — falls back to s2color if unrecognised
-        _scheme_name = (
-            self.master_spec.get("build_options", {}).get("scheme", "") or "s2color"
+        # Load scheme — falls back to s2color if unrecognised.
+        # dash.ado writes build_options["theme"] using Stata theme names; the
+        # Python side uses build_options["scheme"] for direct scheme names.
+        # Both are honoured here via a theme→scheme mapping.
+        _THEME_SCHEME_MAP: dict = {
+            "default":    "s2color",
+            "clean":      "s1color",
+            "mono":       "s1mono",
+            "economist":  "economist",
+            "sj":         "sj",
+        }
+        _build_opts: dict = self.master_spec.get("build_options", {})
+        # Prefer explicit 'scheme' key; fall back to 'theme' key.
+        _raw_name: str = (
+            _build_opts.get("scheme", "").strip()
+            or _build_opts.get("theme", "").strip()
+            or ""
+        )
+        # Map theme alias to scheme name; if already a valid scheme name pass
+        # through unchanged; empty string resolves to s2color.
+        _scheme_name: str = (
+            _THEME_SCHEME_MAP.get(_raw_name.lower(), _raw_name) or "s2color"
         )
         try:
             self.scheme: SchemeParser = SchemeParser(_scheme_name)
