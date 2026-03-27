@@ -2448,6 +2448,169 @@ class TestServerFitCIFilterRecompute:
         assert "_compute_qfitci" in src and "atype == 'qfitci'" in src, \
             "Filter callback must have 'elif atype == qfitci' recompute branch"
 
+    # ------------------------------------------------------------------
+    # A-90 through A-94 — mspline / mband / rscatter / pci / pcscatter
+    # must register sources so the filter callback can update them.
+    # ------------------------------------------------------------------
+
+    def test_mspline_registered_in_agg_sources(self, dr_module, auto_df):
+        """A-90: mspline must register its source in agg_sources for filter updates."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tmsp_reg")
+        assert "agg_sources" in src and "'mspline'" in src, \
+            "mspline must register agg_sources entry with type='mspline'"
+
+    def test_mspline_filter_callback_recomputes(self, dr_module, auto_df):
+        """A-90: Filter callback must handle atype=='mspline' for recompute."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tmsp_cb")
+        assert "_compute_mspline" in src and "atype == 'mspline'" in src, \
+            "Filter callback must have 'elif atype == mspline' recompute branch"
+
+    def test_mband_registered_in_agg_sources(self, dr_module, auto_df):
+        """A-91: mband must register its source in agg_sources for filter updates."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tmb_reg")
+        assert "agg_sources" in src and "'mband'" in src, \
+            "mband must register agg_sources entry with type='mband'"
+
+    def test_mband_filter_callback_recomputes(self, dr_module, auto_df):
+        """A-91: Filter callback must handle atype=='mband' for recompute."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tmb_cb")
+        assert "_compute_mband" in src and "atype == 'mband'" in src, \
+            "Filter callback must have 'elif atype == mband' recompute branch"
+
+    def test_rscatter_registered_in_agg_sources(self, dr_module, auto_df):
+        """A-92: rscatter must register its source in agg_sources for filter updates."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rscatter", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_trs_reg")
+        assert "agg_sources" in src and "'rscatter'" in src, \
+            "rscatter must register agg_sources entry with type='rscatter'"
+
+    def test_rscatter_filter_callback_recomputes(self, dr_module, auto_df):
+        """A-92: Filter callback must handle atype=='rscatter' for recompute."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "rscatter", "yvar1": "mpg", "yvar2": "price",
+                       "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_trs_cb")
+        assert "_compute_rscatter" in src and "atype == 'rscatter'" in src, \
+            "Filter callback must have 'elif atype == rscatter' recompute branch"
+
+    def test_pci_registered_in_graph_sources(self, dr_module, auto_df):
+        """A-93: pci must register its source in graph_sources so the filter callback updates it."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pci", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "length", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tpci_reg")
+        # pci must register in graph_sources so the standard replacement loop updates it
+        assert "graph_sources[gname] = " in src or "graph_sources[gname]=" in src, \
+            "pci must set graph_sources[gname] so filter callback updates raw data"
+
+    def test_pcscatter_registered_in_agg_sources(self, dr_module, auto_df):
+        """A-94: pcscatter must register its source in agg_sources for filter updates."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcscatter", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "length", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tpcs_reg")
+        assert "agg_sources" in src and "'pcscatter'" in src, \
+            "pcscatter must register agg_sources entry with type='pcscatter'"
+
+    def test_pcscatter_filter_callback_recomputes(self, dr_module, auto_df):
+        """A-94: Filter callback must handle atype=='pcscatter' for recompute."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "pcscatter", "y1var": "mpg", "x1var": "weight",
+                       "y2var": "price", "x2var": "length", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        src = self._get_source(dr_module, auto_df, spec, "_tpcs_cb")
+        assert "_compute_pcscatter" in src and "atype == 'pcscatter'" in src, \
+            "Filter callback must have 'elif atype == pcscatter' recompute branch"
+
+    def test_mspline_compute_fn_changes_with_filter(self, dr_module, auto_df):
+        """A-90: _compute_mspline must return different y values for filtered vs full data."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec_obj = importlib.util.spec_from_file_location("_tmsp_fn", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            full_result = app_mod._compute_mspline(auto_df, "mpg", "weight")
+            half_df = auto_df[auto_df["foreign"] == 0]
+            half_result = app_mod._compute_mspline(half_df, "mpg", "weight")
+            assert len(full_result["y_sp"]) > 0, "_compute_mspline must return non-empty y_sp"
+            assert not np.allclose(full_result["y_sp"], half_result["y_sp"], atol=1.0), \
+                "_compute_mspline must return different y values for filtered vs full data"
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_mband_compute_fn_changes_with_filter(self, dr_module, auto_df):
+        """A-91: _compute_mband must return different y values for filtered vs full data."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec_obj = importlib.util.spec_from_file_location("_tmb_fn", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            full_result = app_mod._compute_mband(auto_df, "mpg", "weight")
+            half_df = auto_df[auto_df["foreign"] == 0]
+            half_result = app_mod._compute_mband(half_df, "mpg", "weight")
+            assert len(full_result["y_mb"]) > 0, "_compute_mband must return non-empty y_mb"
+            assert len(half_result["y_mb"]) > 0, "_compute_mband must return non-empty y_mb for subset"
+            # Either the lengths differ (different # of bands) or the y values differ
+            assert (
+                len(full_result["y_mb"]) != len(half_result["y_mb"])
+                or not np.allclose(full_result["y_mb"], half_result["y_mb"], atol=1.0)
+            ), "_compute_mband must return different results for filtered vs full data"
+        finally:
+            for p in (spec_path, data_path, out_f.name):
+                try: os.unlink(p)
+                except OSError: pass
+
 
 # ---------------------------------------------------------------------------
 # GAP 4.2 / 4.3 / 4.4 / 4.5 — Server-mode options parity
