@@ -144,28 +144,28 @@ assert len(_FOREIGN) == _N
 #       ytitle("Mileage (mpg)")             ///
 #       saving("scatter.html")
 #
-# JSON produced by dash.ado:
-#   master_spec.graphs[0].plots[0] = {
-#     "type": "scatter",
-#     "yvar": "mpg",
-#     "xvar": "weight",
-#     "options": {"mcolor": "navy", "msymbol": "circle", "msize": "medium"},
-#     "if_expr": "", "in_expr": ""
-#   }
-#   master_spec.graphs[0].graph_options = {
-#     "name": "scatter",
-#     "title": "Fuel Efficiency vs. Weight",
-#     "xtitle": "Weight (lbs.)",
-#     "ytitle": "Mileage (mpg)"
-#   }
-#   build_options = {
-#     "layout": "auto", "link": "", "filter": "",
-#     "theme": "default", "title": "", "subtitle": "", "registry": "scatter"
-#   }
+# Because no name() is given, dash.ado routes through _dash_render_immediate
+# which creates a graph JSON WITHOUT a "name" key in graph_options.
+# The master_spec emitted to Python is:
+#   {"graphs": [<json_spec>], "build_options": {"layout": "1 1", "theme": "default"}}
+# where json_spec.graph_options = {
+#   "title": "Fuel Efficiency vs. Weight",
+#   "xtitle": "Weight (lbs.)",
+#   "ytitle": "Mileage (mpg)",
+#   "saving": "scatter.html"
+# }
+# Note: no "name" key, no "kpis" array, and build_options only has layout+theme.
 # ============================================================================
 
 def _basic_scatter_spec() -> tuple[dict, dict]:
-    """Return (master_spec, data_json) for basic_scatter.do simulation."""
+    """Return (master_spec, data_json) for basic_scatter.do simulation.
+
+    Faithfully reproduces what _dash_render_immediate emits:
+    - No "name" in graph_options (immediate mode has no name())
+    - "saving" IS in graph_options (but Python uses --output arg, not this)
+    - build_options has only "layout" and "theme" (no kpis, link, filter, etc.)
+    - No "kpis" key at the top level
+    """
     graph = {
         "plots": [{
             "type": "scatter",
@@ -180,26 +180,25 @@ def _basic_scatter_spec() -> tuple[dict, dict]:
             "in_expr": "",
         }],
         "graph_options": {
-            "name": "scatter",
+            # No "name" key — this is exactly what _dash_render_immediate produces
             "title": "Fuel Efficiency vs. Weight",
             "xtitle": "Weight (lbs.)",
             "ytitle": "Mileage (mpg)",
+            "saving": "scatter.html",   # included by Stata parser, ignored by Python
         },
         "if_expr": "",
         "in_expr": "",
     }
 
+    # _dash_render_immediate builds exactly this master spec:
+    # {"graphs": [<json_spec>], "build_options": {"layout": "1 1", "theme": "default"}}
     master_spec = {
         "graphs": [graph],
-        "kpis": [],
+        # No "kpis" key — _dash_render_immediate does not include it
         "build_options": {
-            "layout": "auto",
-            "link": "",
-            "filter": "",
-            "theme": "default",
-            "title": "",
-            "subtitle": "",
-            "registry": "scatter",
+            "layout": "1 1",      # _dash_render_immediate always uses "1 1"
+            "theme": "default",   # _dash_render_immediate always uses "default"
+            # No link, filter, title, subtitle, registry
         },
     }
 
@@ -222,23 +221,30 @@ class TestBasicScatterSimulation:
         return html, renderer
 
     def test_basic_scatter_run_1(self, tmp_path):
-        """First consecutive run of basic_scatter simulation — must not error."""
+        """First consecutive run of basic_scatter simulation — must not error.
+
+        basic_scatter.do uses saving() without name(), so _dash_render_immediate
+        is called. The graph JSON has no "name" key — graph is keyed by "" in
+        renderer.figures (empty-string name is valid).
+        """
         html, renderer = self._run_once(tmp_path)
 
         # HTML must be a non-empty string
         assert isinstance(html, str), "render() must return a string"
         assert len(html) > 500, f"HTML too short ({len(html)} chars) — render probably failed"
 
-        # Exactly one figure must be built
-        assert "scatter" in renderer.figures, (
-            "Figure named 'scatter' not found in renderer.figures"
-        )
+        # Exactly one figure must be built (keyed by "" since there's no name())
         assert len(renderer.figures) == 1, (
             f"Expected 1 figure for basic_scatter, got {len(renderer.figures)}"
         )
+        # The figure key is "" (empty string) when no name() is given
+        fig_key = list(renderer.figures.keys())[0]
+        assert fig_key == "", (
+            f"Expected empty-string figure key for immediate-mode graph, got {fig_key!r}"
+        )
 
         # Figure must have at least one renderer (scatter glyph)
-        fig = renderer.figures["scatter"]
+        fig = renderer.figures[""]
         assert len(fig.renderers) >= 1, (
             "scatter figure has no renderers — glyph was not added"
         )
@@ -261,14 +267,19 @@ class TestBasicScatterSimulation:
         )
 
     def test_basic_scatter_run_2(self, tmp_path):
-        """Second consecutive run of basic_scatter simulation — must not error."""
-        # Identical to run_1: both must pass to satisfy the loop condition
+        """Second consecutive run of basic_scatter simulation — must not error.
+
+        Verifies identical results on a fresh render cycle (no state leakage).
+        """
         html, renderer = self._run_once(tmp_path)
 
         assert isinstance(html, str)
         assert len(html) > 500
-        assert "scatter" in renderer.figures
         assert len(renderer.figures) == 1
+        # Empty-string key for unnamed immediate-mode graph
+        assert "" in renderer.figures
+        fig = renderer.figures[""]
+        assert len(fig.renderers) >= 1
         assert len(renderer.kpi_divs) == 0
         assert len(renderer.filter_widgets) == 0
         assert "Fuel Efficiency vs. Weight" in html
