@@ -663,4 +663,92 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     st_local(out_macro, strtrim(varlist))
 }
 
+
+// ============================================================
+// 6.  FILTER EXTRACTION
+//     _dash_extract_filters(filter_out, cmd_out)
+//
+// Scans Stata's `0' local for ALL occurrences of filter(...)
+// (case-insensitive, supports abbreviated forms filt/filte/filter).
+// Returns:
+//   filter_out — specs joined with " || "
+//                e.g. "foreign, type(dropdown) || weight, type(range)"
+//   cmd_out    — `0' with every filter() group removed so that
+//                the caller can pass it back to -syntax- without
+//                triggering the "option may not be repeated" error.
+//
+// Called from _dash_build BEFORE syntax runs.
+// ============================================================
+void _dash_extract_filters(string scalar filter_out,
+                            string scalar cmd_out) {
+    string scalar raw, lraw, result, remaining, ch, inner
+    real scalar   i, n, depth, jj, k, klen, matched, before_ok
+
+    raw       = st_local("0")   // raw command string
+    lraw      = strlower(raw)
+    n         = strlen(raw)
+    result    = ""
+    remaining = ""
+    i         = 1
+
+    while (i <= n) {
+        // Attempt to match a filter keyword at position i.
+        // Accepted abbreviated forms: filt(4), filte(5), filter(6).
+        matched = 0
+        klen    = 0
+
+        if (i + 5 <= n & substr(lraw, i, 6) == "filter") {
+            matched = 1; klen = 6
+        }
+        else if (i + 4 <= n & substr(lraw, i, 5) == "filte") {
+            matched = 1; klen = 5
+        }
+        else if (i + 3 <= n & substr(lraw, i, 4) == "filt") {
+            matched = 1; klen = 4
+        }
+
+        if (matched) {
+            // Word-boundary check: preceding char must be space or start.
+            before_ok = (i == 1 | substr(raw, i-1, 1) == " ")
+            if (!before_ok) {
+                remaining = remaining + substr(raw, i, 1)
+                i++
+                continue
+            }
+
+            // Skip optional whitespace between keyword and "("
+            jj = i + klen
+            while (jj <= n & substr(raw, jj, 1) == " ") jj++
+
+            // Must be followed by "(" to be a filter option.
+            if (jj <= n & substr(raw, jj, 1) == "(") {
+                depth = 1
+                k     = jj + 1
+                while (k <= n & depth > 0) {
+                    ch = substr(raw, k, 1)
+                    if      (ch == "(") depth++
+                    else if (ch == ")") depth--
+                    k++
+                }
+                // k now points one past the closing ")".
+                if (depth == 0) {
+                    inner = strtrim(substr(raw, jj+1, k-2-jj))
+                    if (result != "") result = result + " || "
+                    result = result + inner
+                    // Skip trailing spaces so remaining stays clean.
+                    i = k
+                    while (i <= n & substr(raw, i, 1) == " ") i++
+                    continue
+                }
+            }
+        }
+
+        remaining = remaining + substr(raw, i, 1)
+        i++
+    }
+
+    st_local(filter_out, result)
+    st_local(cmd_out,    strtrim(remaining))
+}
+
 end

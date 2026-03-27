@@ -288,3 +288,145 @@ class TestSliderEdgeCases:
         assert isinstance(widget, RangeSlider)
         # end must be strictly greater than start for Bokeh
         assert widget.end > widget.start
+
+
+# ================================================================
+# Regression tests: Bug 3 & 4 — filter raw-string parsing
+# ================================================================
+
+class TestParseFilterRaw:
+    """Regression tests for DashRenderer._parse_filter_raw().
+
+    Bug 3: render() read build["filters"] (plural) but dash.ado writes
+           build["filter"] (singular, raw string).  The renderer now falls
+           back to parsing the raw "filter" string.
+
+    Bug 4: full_dashboard.do passes two separate filter() options to
+           dash build.  Stata's syntax can only accept one; the Mata
+           pre-processor _dash_extract_filters() joins them with " || "
+           before syntax runs.  The Python parser handles "||"-separated
+           specs to produce two filter widgets.
+    """
+
+    def test_empty_string_returns_empty_list(self):
+        result = DashRenderer._parse_filter_raw("")
+        assert result == []
+
+    def test_none_like_returns_empty_list(self):
+        result = DashRenderer._parse_filter_raw('"')
+        assert result == []
+
+    def test_single_dropdown_filter(self):
+        """Basic single-filter: 'foreign, type(dropdown)'."""
+        result = DashRenderer._parse_filter_raw("foreign, type(dropdown)")
+        assert len(result) == 1
+        assert result[0]["varname"] == "foreign"
+        assert result[0]["type"] == "dropdown"
+        assert result[0]["exclude"] == []
+
+    def test_single_range_filter_with_excludes(self):
+        """Single range filter with exclude list."""
+        result = DashRenderer._parse_filter_raw(
+            "weight, type(range) exclude(h1 d1 k1 k2)"
+        )
+        assert len(result) == 1
+        r = result[0]
+        assert r["varname"] == "weight"
+        assert r["type"] == "range"
+        assert sorted(r["exclude"]) == ["d1", "h1", "k1", "k2"]
+
+    def test_two_filters_joined_with_pipe(self):
+        """Bug 4 regression: two filter specs joined with '||' produce two entries.
+
+        This is what dash.ado now emits when the user writes two separate
+        filter() options:
+            filter(foreign, type(dropdown)) filter(weight, type(range) exclude(...))
+        The Mata pre-processor joins their contents with ' || '.
+        """
+        raw = "foreign, type(dropdown) || weight, type(range) exclude(h1 d1 k1 k2)"
+        result = DashRenderer._parse_filter_raw(raw)
+        assert len(result) == 2, f"Expected 2 filter specs, got {len(result)}: {result}"
+        assert result[0]["varname"] == "foreign"
+        assert result[0]["type"] == "dropdown"
+        assert result[1]["varname"] == "weight"
+        assert result[1]["type"] == "range"
+        assert sorted(result[1]["exclude"]) == ["d1", "h1", "k1", "k2"]
+
+    def test_semicolon_separator_for_legacy_compat(self):
+        """Legacy: ';' separator (server mode) also produces two entries."""
+        raw = "foreign, type(dropdown); weight, type(range)"
+        result = DashRenderer._parse_filter_raw(raw)
+        assert len(result) == 2
+        assert result[0]["varname"] == "foreign"
+        assert result[1]["varname"] == "weight"
+
+    def test_injection_in_varname_rejected(self):
+        """Security: filter spec with injection characters is skipped."""
+        # Semicolon and backtick are blocked
+        assert DashRenderer._parse_filter_raw("`rm -rf`, type(dropdown)") == []
+        # Double-underscore (Python dunder) is blocked
+        assert DashRenderer._parse_filter_raw("__import__('os'), type(dropdown)") == []
+
+    def test_invalid_varname_characters_rejected(self):
+        """Security: variable names must match [A-Za-z_][A-Za-z0-9_]*."""
+        result = DashRenderer._parse_filter_raw("123bad, type(dropdown)")
+        assert result == []
+
+    def test_filter_raw_used_in_render_when_filters_key_absent(self):
+        """Bug 3 regression: render() must produce filter widgets when the spec
+        only has build_options['filter'] (raw string) and no 'filters' list.
+
+        Before the fix, render() read build.get('filters', []) → got [] →
+        no filter widgets were ever created from Stata-generated specs.
+        """
+        import json, os, tempfile
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}, "if_expr": "", "in_expr": ""}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto",
+                "link": "g1",  # linked so foreign is in shared source
+                "filter": "foreign, type(dropdown)",   # raw string, no "filters" key
+                "theme": "default",
+                "title": "",
+                "subtitle": "",
+                "registry": "g1",
+            },
+        }
+        vals = [{"mpg": float(i*2), "weight": float(i*300), "foreign": float(i % 2)}
+                for i in range(1, 11)]
+        data_json = {"StataJSON": {
+            "variableNames": ["mpg", "weight", "foreign"],
+            "variableLabels": {"mpg": "mpg", "weight": "weight", "foreign": "foreign"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False, "foreign": False},
+            "values": vals,
+        }}
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data_json, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+        html_str = r.render()
+        # Must contain a Select widget (dropdown) because filter was parsed
+        assert len(r.filter_widgets) >= 1, (
+            "render() must create filter widgets from build_options['filter'] "
+            "raw string; previously got 0 because it only looked at 'filters' (plural)"
+        )
+        assert "Select" in str(type(r.filter_widgets[0])) or \
+               "select" in html_str.lower(), \
+            "Expected a dropdown (Select) widget for foreign filter"

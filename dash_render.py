@@ -4460,6 +4460,69 @@ class DashRenderer:
 
         return varlist, by_cols, by_total, by_missing
 
+    @staticmethod
+    def _parse_filter_raw(raw: str) -> "list[dict]":
+        """Parse a raw filter spec string from build_options[\"filter\"] into a
+        structured list suitable for the filter-widget loop in ``render()`` and
+        ``_setup_sources()``.
+
+        ``dash.ado`` emits ``build_options.filter`` as a plain Stata option
+        string, not a JSON array.  Multiple filter specs are joined with ``||``
+        (or ``;`` for legacy server-mode compatibility).
+
+        Format::
+
+            "foreign, type(dropdown)"
+            "foreign, type(dropdown) || weight, type(range) exclude(h1 d1)"
+
+        Each spec is parsed into::
+
+            {"varname": str, "type": str, "exclude": [str, ...]}
+
+        Security: variable names are validated against the same ``_UNSAFE``
+        pattern used elsewhere in the renderer.
+
+        Args:
+            raw: Raw filter option string from ``build_options["filter"]``.
+
+        Returns:
+            List of filter spec dicts, one per filter widget.  Empty list if
+            the input is empty or contains only unsafe characters.
+        """
+        import re as _re
+        _UNSAFE_F = _re.compile(
+            r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
+            r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
+        )
+
+        if not raw or raw in ('"', ""):
+            return []
+
+        # Normalise separator: treat ";" as "||" for legacy compatibility
+        normalized = raw.replace(";", "||")
+
+        result: list[dict] = []
+        for part in normalized.split("||"):
+            part = part.strip()
+            if not part:
+                continue
+            # Security: reject injection patterns in filter spec
+            if _UNSAFE_F.search(part):
+                continue
+            # Extract variable name: first token before comma or whitespace
+            fvar = _re.split(r"[,\s]", part)[0].strip()
+            if not fvar:
+                continue
+            # Validate variable name characters (alphanumeric + underscore only)
+            if not _re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', fvar):
+                continue
+            m_type = _re.search(r"\btype\(([^)]+)\)", part, _re.IGNORECASE)
+            m_excl = _re.search(r"\bexclude\(([^)]+)\)", part, _re.IGNORECASE)
+            ftype = m_type.group(1).strip().lower() if m_type else "dropdown"
+            excl = m_excl.group(1).split() if m_excl else []
+            result.append({"varname": fvar, "type": ftype, "exclude": excl})
+        return result
+
     def _expand_by_groups(
         self,
         graph_spec: dict,
@@ -5294,7 +5357,13 @@ class DashRenderer:
         """
         graphs = self.master_spec.get("graphs", [])
         build = self.master_spec.get("build_options", {})
+        # Accept either structured "filters" list (from tests / server mode) or
+        # the raw "filter" string emitted by dash.ado build_options.
         filters_cfg = build.get("filters", [])
+        if not filters_cfg:
+            _raw_f = build.get("filter", "")
+            if _raw_f:
+                filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
         link_raw = build.get("link", "")
 
         # Parse link names — strip semicolons, treat as whitespace-delimited
@@ -5512,7 +5581,13 @@ class DashRenderer:
         else:
             link_names = _link_raw_render.replace(";", " ").split()
         layout_opt  = build.get("layout", "auto")
+        # Accept either structured "filters" list (from tests / server mode) or
+        # the raw "filter" string emitted by dash.ado build_options.
         filters_cfg = build.get("filters", [])
+        if not filters_cfg:
+            _raw_f = build.get("filter", "")
+            if _raw_f:
+                filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
         title_text  = html.escape(build.get("title", ""))
         saving_path = build.get("saving", "")
 

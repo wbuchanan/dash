@@ -1031,13 +1031,23 @@ end
 program define _dash_build
     version 16.0
 
+    // Pre-extract ALL filter() options from `0' before -syntax- runs.
+    // Stata's -syntax- only accepts one option of a given name; using two
+    // filter() options (as in full_dashboard.do) would trigger an error.
+    // _dash_extract_filters() scans `0', removes every filter(...) group,
+    // joins their contents with " || ", and stores them in `_filter_parts'.
+    // The cleaned command is stored in `_cmd_nofilter' and assigned back to
+    // `0' so that -syntax- sees only the remaining options.
+    mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
+    local filter `"`_filter_parts'"'
+    local 0      `"`_cmd_nofilter'"'
+
     syntax [, ///
         SAVing(string)          ///
         TItle(string)           ///
         SUBtitle(string)        ///
         LAYout(string)          ///
         LINK(string)            ///
-        FILTER(string)          ///
         THEME(string)           ///
         REPLACE                 ///
         SERVER                  ///
