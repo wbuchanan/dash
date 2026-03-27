@@ -1,0 +1,133 @@
+* s1mono.scheme
+* dash bundled approximation of Stata's s1mono scheme.
+* White background, grayscale foreground.
+
+#include s1color
+
+label "s1 monochrome"
+
+color background      white
+color foreground      black
+color plotregion      white
+color legend          white
+color legend_line     black
+color grid            gs14
+color major_grid      gs14
+color minor_grid      gs5
+color heading         black
+color axisline        black
+
+* Grayscale color cycle
+color p1      gs6
+color p2      gs10
+color p3      gs8
+color p4      gs4
+color p5      black
+color p6      gs12
+color p7      gs2
+color p8      gs7
+color p9      gs9
+color p10     gs11
+color p11     gs13
+color p12     gs5
+color p13     gs3
+color p14     gs12
+color p15     gs5
+
+color p1line   black
+color p2line   black
+color p3line   black
+color p4line   black
+color p5line   black
+color p6line   black
+color p7line   black
+color p8line   black
+color p9line   black
+color p10line  black
+color p11line  black
+color p12line  black
+color p13line  black
+color p14line  black
+color p15line  black
+
+color p1bar    gs6
+color p2bar    gs10
+color p3bar    gs8
+color p4bar    gs4
+color p5bar    black
+color p6bar    gs12
+color p7bar    gs2
+color p8bar    gs7
+color p9bar    gs9
+color p10bar   gs11
+color p11bar   gs13
+color p12bar   gs5
+color p13bar   gs3
+color p14bar   gs12
+color p15bar   gs5
+
+color p1mark   gs6
+color p2mark   gs10
+color p3mark   gs8
+color p4mark   gs4
+color p5mark   black
+color p6mark   gs12
+color p7mark   gs2
+color p8mark   gs7
+color p9mark   gs9
+color p10mark  gs11
+color p11mark  gs13
+color p12mark  gs5
+color p13mark  gs3
+color p14mark  gs12
+color p15mark  gs5
+
+* Different symbols to distinguish monochrome plots
+symbol p1     circle
+symbol p2     diamond
+symbol p3     square
+symbol p4     triangle
+symbol p5     x
+symbol p6     plus
+symbol p7     circle_hollow
+symbol p8     diamond_hollow
+symbol p9     square_hollow
+symbol p10    triangle_hollow
+symbol p11    smcircle
+symbol p12    smdiamond
+symbol p13    smsquare
+symbol p14    smtriangle
+symbol p15    smx
+
+* Different line patterns for monochrome plots
+linepattern p1line   solid
+linepattern p2line   dash
+linepattern p3line   longdash
+linepattern p4line   dot
+linepattern p5line   longdash_dot
+linepattern p6line   dash_dot
+linepattern p7line   shortdash
+linepattern p8line   shortdash_dot
+linepattern p9line   solid
+linepattern p10line  dash
+linepattern p11line  longdash
+linepattern p12line  dot
+linepattern p13line  longdash_dot
+linepattern p14line  dash_dot
+linepattern p15line  shortdash
+
+linewidth p           medium
+linewidth major_grid  thin
+linewidth minor_grid  thin
+
+intensity p        inten80
+intensity bar      inten80
+intensity area     inten80
+
+gsize text          medsmall
+gsize heading       large
+gsize subheading    medium
+gsize axis_title    medsmall
+gsize tick_label    medsmall
+gsize note          small
+gsize body          medsmall

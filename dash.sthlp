@@ -25,6 +25,8 @@
 {vieweralsosee "lfitci"              "help lfitci"}{...}
 {vieweralsosee "qfitci"              "help qfitci"}{...}
 {vieweralsosee "lowess"              "help lowess"}{...}
+{vieweralsosee "lpoly"               "help lpoly"}{...}
+{vieweralsosee "fpfit"               "help fpfit"}{...}
 {vieweralsosee "histogram"           "help histogram"}{...}
 {vieweralsosee "kdensity"            "help kdensity"}{...}
 {vieweralsosee "dash_setup"          "help dash_setup"}{...}
@@ -74,6 +76,7 @@
 {cmd:link(}{it:namelist} | {cmd:_all}{cmd:)}
 {cmd:filter(}{it:varname}{cmd:, type(}{it:filter_type}{cmd:)} [{cmd:exclude(}{it:namelist}{cmd:)}]{cmd:)}
 {cmd:theme(}{it:theme_name}{cmd:)}
+{cmdab:sch:eme}{cmd:(}{it:schemename}{cmd:)}
 {cmd:replace}]
 
 {pstd}{ul:Build Bokeh Server app (write .py file, do not block)}{p_end}
@@ -153,8 +156,10 @@ This help file documents only the features that differ from or extend
 
 {phang2}5.  {ul:Unsupported twoway options.}
     The following {cmd:twoway} options are not yet supported by {cmd:dash}:
-    {cmd:scheme()}, {cmd:play()}, {cmd:nodraw}.
+    {cmd:play()}, {cmd:nodraw}.
     Specifying them will produce a warning and the option will be ignored.
+    Note: {cmd:scheme()} is fully supported — see
+    {help dash##scheme:Stata scheme support} below.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (for axis titles) and value labels
@@ -489,6 +494,224 @@ preventing any data content from affecting the Python file syntax.
 {phang2}{cmd:. dash scatter mpg weight, name(s1)}{p_end}
 {phang2}{cmd:. dash build, saving(app.py) server replace}{p_end}
 {phang2}{cmd:. * Run outside Stata:  bokeh serve app.py --show}{p_end}
+
+
+{marker faceting}
+{title:Faceting with by()}
+
+{pstd}
+{cmd:dash} supports Stata's {opt by(varlist)} option for faceted graphs.
+Each unique value of {it:varlist} produces a separate panel, filtered to
+that group.
+
+{synoptset 30}{...}
+{synopt:{opt by(varlist)}}facet graph by unique values of {it:varlist}{p_end}
+{synopt:{opt by(varlist, cols(#))}}arrange facet panels in {it:#} columns{p_end}
+{synopt:{opt by(varlist, total)}}add a "Total" panel showing all data{p_end}
+{synopt:{opt by(varlist, missing)}}include a panel for missing values{p_end}
+{synoptline}
+
+{pstd}
+Value labels are used for facet panel titles when available.
+Multiple by-variables produce composite labels (e.g. "Domestic / 3").
+{cmd:by()} cannot be combined with {cmd:link()}.
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash scatter mpg weight, by(foreign)}{p_end}
+
+
+{marker marker_labels}
+{title:Marker Label Options}
+
+{pstd}
+Any plot layer that renders individual data points supports marker label
+annotations.  These options apply to the per-plot specification (not to
+{cmd:dash build} options).
+
+{synoptset 28}{...}
+{synopt:{cmdab:mla:bel(}{it:varname}{cmd:)}}annotate each observation with
+    the value of {it:varname}; applies to scatter, line, connected, bar,
+    spike, dot, dropline, and all range plot types (rspike, rcap, rline,
+    rarea, rbar, rcapsym){p_end}
+{synopt:{cmdab:mlac:olor(}{it:color}{cmd:)}}color of the label text{p_end}
+{synopt:{cmdab:mlas:ize(}{it:size}{cmd:)}}size keyword or number; e.g.
+    {cmd:small}, {cmd:medium}, {cmd:large}{p_end}
+{synopt:{cmdab:mlap:osition(}{it:#}{cmd:)}}clock position (0–12) for label
+    placement relative to the data point; 3 = right (default), 12 = above,
+    6 = below, 9 = left{p_end}
+{synopt:{cmdab:mlag:ap(}{it:#}{cmd:)}}additional offset in pixels added to
+    the clock-position offset{p_end}
+{synoptline}
+
+{pstd}
+For range plot types, labels are placed at the upper boundary (y2 variable).
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash scatter mpg weight, mlabel(make) mlabcolor(navy) mlabsize(small)}{p_end}
+
+
+{marker smoother_options}
+{title:Smoother Plot-Type Options}
+
+{pstd}
+The following plot-level options apply specifically to {cmd:lpoly},
+{cmd:lpolyci}, {cmd:fpfit}, and {cmd:fpfitci} plot types.
+
+{synoptset 20}{...}
+{synopt:{opt bwidth(#)}}bandwidth for local polynomial smoother ({cmd:lpoly}/
+    {cmd:lpolyci}) as a fraction of the x-range; default is 0.5; valid range
+    0.01–1.0{p_end}
+{synopt:{opt degree(#)}}polynomial degree for local polynomial smoother;
+    0 = Nadaraya–Watson kernel estimator (default), 1 = local linear,
+    2 = local quadratic{p_end}
+{synoptline}
+
+{pstd}
+{cmd:lpoly} and {cmd:lpolyci} implement Gaussian kernel-weighted local
+polynomial regression — the same smoother underlying Stata's
+{helpb twoway lpoly}.  {cmd:lpolyci} adds a bootstrap 95% confidence band.
+
+{pstd}
+{cmd:fpfit} and {cmd:fpfitci} implement degree-2 fractional polynomial
+fitting (Royston & Altman, 1994), selecting the pair of powers from
+{c -(}{cmd:–2}, {cmd:–1}, {cmd:–0.5}, {cmd:0}, {cmd:0.5}, {cmd:1},
+{cmd:2}, {cmd:3}{c )-} that minimises the residual sum of squares.
+{cmd:fpfitci} adds a bootstrap 95% confidence band.  Both require
+positive x values.
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash (scatter mpg weight) (lpoly mpg weight, bwidth(0.4)), saving(lp.html)}{p_end}
+{phang2}{cmd:. dash (scatter mpg weight) (fpfit mpg weight), saving(fp.html)}{p_end}
+
+
+{marker region_options}
+{title:Region Styling Options}
+
+{pstd}
+{cmd:dash} supports the standard Stata {helpb twoway} region-styling options
+for controlling the background colors of the inner plot area and the outer
+graph border.
+
+{synoptset 35}{...}
+{synopt:{opt plotregion(color(}{it:color}{opt ))}}background color of the
+    inner plot canvas; Bokeh {cmd:background_fill_color}{p_end}
+{synopt:{opt plotregion(lcolor(}{it:color}{opt ))}}border line color
+    of the inner plot area; Bokeh {cmd:outline_line_color}{p_end}
+{synopt:{opt plotregion(lwidth(}{it:#}{opt ))}}border line width
+    of the inner plot area{p_end}
+{synopt:{opt graphregion(color(}{it:color}{opt ))}}background color of the
+    outer margin area; Bokeh {cmd:border_fill_color}{p_end}
+{synopt:{opt graphregion(fcolor(}{it:color}{opt ))}}fill color alias for
+    {cmd:graphregion(color())}{p_end}
+{synoptline}
+
+{pstd}
+Colors may be any Stata named color ({cmd:navy}, {cmd:maroon},
+{cmd:forest_green}, etc.), an RGB triplet ({cmd:"255 0 0"}),
+or a hex string ({cmd:#1a476f}).
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash scatter mpg weight, plotregion(color(ltblue)) graphregion(color(white))}{p_end}
+
+{pstd}
+Abbreviations: {cmd:plotr()} for {cmd:plotregion()},
+{cmd:graphr()} for {cmd:graphregion()}.
+
+
+{marker axis_options}
+{title:Axis and Display Options}
+
+{pstd}
+The following graph-level options control axis titles, custom tick labels,
+annotations, reference lines, axis scaling, and figure proportions.
+All are specified in the per-graph option list (after the comma following
+the plot specification).
+
+{synoptset 38}{...}
+{synopt:{cmdab:xti:tle(}{it:string}{cmd:)}}label for the x axis{p_end}
+{synopt:{cmdab:yti:tle(}{it:string}{cmd:)}}label for the y axis{p_end}
+{synopt:{cmdab:xla:bel(}{it:#}[{it:#} ...]{cmd:)}}custom x-axis tick positions{p_end}
+{synopt:{cmdab:yla:bel(}{it:#}[{it:#} ...]{cmd:)}}custom y-axis tick positions{p_end}
+{synopt:{cmdab:xlab:el(}{it:#}[{it:#} ...]{cmd:, format(}{it:fmt}{cmd:))}}custom ticks with format string{p_end}
+{synopt:{cmdab:xsc:ale(log)}}display the x axis on a log scale{p_end}
+{synopt:{cmdab:ysc:ale(log)}}display the y axis on a log scale{p_end}
+{synopt:{cmdab:xli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw vertical reference lines at x = {it:#}{p_end}
+{synopt:{cmdab:yli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw horizontal reference lines at y = {it:#}{p_end}
+{synopt:{cmdab:no:te(}{it:string}{cmd:)}}footnote text below the figure{p_end}
+{synopt:{cmdab:cap:tion(}{it:string}{cmd:)}}caption text below the figure{p_end}
+{synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}height-to-width ratio of the plot area
+    (e.g. {cmd:aspectratio(1)} for a square plot){p_end}
+{synoptline}
+
+{pstd}
+{it:Examples:}
+{phang2}{cmd:. dash scatter mpg weight, xtitle(Weight (lbs)) ytitle(Mileage)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, xscale(log) yscale(log)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, xline(3000) yline(20 30)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, xlabel(1000 2000 3000 4000) ylabel(10 20 30 40)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, note(Source: 1978 Automobile Data)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, aspectratio(0.75)}{p_end}
+
+
+{marker unsupported}
+{title:Unsupported Stata twoway options}
+
+{pstd}
+The following Stata {helpb twoway} options are either silently ignored or not
+supported.  No error is produced for unknown options, so existing Stata graph
+commands copy-pasted into {cmd:dash} will still run even when they contain
+options that have no Bokeh equivalent.
+
+{phang2}{opt connect(list)} — control how missing values join points.
+    Not applicable to Bokeh renderers; use {cmd:connected} plot type instead.
+    Silently ignored when encountered.
+
+{phang2}{opt cmissing(y|n ...)} — treatment of missing values in lines.
+    Bokeh always drops missing observations before rendering.
+    Silently ignored when encountered.
+
+{phang2}{opt jitter(#)} — add random noise to marker positions.
+    Uniformly distributed noise scaled to #% of the axis range is added to
+    both x and y coordinates.  Combine with {opt jseed(#)} for reproducible
+    results.  Supported on {cmd:scatter}, {cmd:dot}, {cmd:dropline}, and
+    {cmd:scatteri} plot types; silently ignored on line and fit plots.
+
+{phang2}{opt jseed(#)} — random-number seed for {opt jitter()}.
+    Pass any non-negative integer to make jitter reproducible across renders.
+
+{phang2}{opt msangle(#)} — angle of asymmetric marker symbols.
+    Bokeh's {cmd:scatter} glyph does not support per-marker rotation.
+    Silently ignored when encountered.
+
+{phang2}{opt recast(plottype)} — recast one plot type to another at render time.
+    Not supported; specify the desired plot type directly.
+    Silently ignored when encountered.
+
+{phang2}{opt xaxis(#)} / {opt yaxis(#)} — assign a plot layer to a secondary axis.
+    Use {cmd:yaxis(2)} on any plot layer to add a right-hand y-axis scaled to
+    that layer's data.  Use {cmd:xaxis(2)} to add a top x-axis.  The secondary
+    axis range is computed automatically from the data.  Pair with
+    {cmd:ytitle2()}, {cmd:ylabel2()}, {cmd:yscale2(log)} for the right-hand
+    axis (or {cmd:xtitle2()}, {cmd:xlabel2()}, {cmd:xscale2(log)} for the
+    top axis).
+
+{phang2}{opt scheme(schemename)} — apply a named Stata graph scheme to the dashboard.
+    {cmd:dash} ships with bundled approximations of five built-in Stata schemes:
+    {cmd:s2color} (default), {cmd:s1color}, {cmd:s1mono}, {cmd:economist}, and
+    {cmd:sj}.  To use a custom scheme, place a Stata-format {cmd:.scheme} file
+    in the current working directory and specify its base name without the
+    extension.  The scheme controls background colors, marker color cycles,
+    line patterns, font sizes, and grid appearance.  Explicit graph options
+    ({cmd:bgcolor()}, {cmd:plotbgcolor()}, etc.) take precedence over scheme
+    defaults.
+
+{phang2}{opt nodraw} — suppress graph display.
+    Not applicable; {cmd:dash} always writes to a file or starts a server.
+    Use the {opt saving()} option without immediately opening the output.
 
 
 {marker dependencies}

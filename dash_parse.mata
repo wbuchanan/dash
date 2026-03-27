@@ -273,6 +273,12 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "lfitci")      return("lfitci")    // no short form needed, exact
     if (name == "qfitci")      return("qfitci")
     if (name == "low")         return("lowess")
+    if (name == "lpo")         return("lpoly")
+    if (name == "lpol")        return("lpoly")
+    if (name == "lpolyci")     return("lpolyci")    // exact match, keep
+    if (name == "fp")          return("fpfit")
+    if (name == "fpf")         return("fpfit")
+    if (name == "fpfitci")     return("fpfitci")    // exact match, keep
     if (name == "hist")        return("histogram")
     if (name == "kde")         return("kdensity")
     if (name == "rarea")       return("rarea")
@@ -282,6 +288,15 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "rline")       return("rline")
     if (name == "rconnected")  return("rconnected")
     if (name == "dot")         return("dot")
+    if (name == "dr")          return("dropline")
+    if (name == "rcapsym")     return("rcapsym")
+    if (name == "pcspike")     return("pcspike")
+    if (name == "pcarrow")     return("pcarrow")
+    if (name == "pcbarrow")    return("pcbarrow")
+    if (name == "tsl")         return("tsline")
+    if (name == "tsrl")        return("tsrline")
+    if (name == "msp")         return("mspline")
+    if (name == "func")        return("function")
 
     // ---- marker options  (P1A-10) ----
     if (name == "mc")    return("mcolor")
@@ -290,7 +305,20 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "mla")   return("mlabel")
     if (name == "mlc")   return("mlabcolor")
     if (name == "mls")   return("mlabsize")
+    if (name == "mlp")   return("mlabposition")
+    if (name == "mlg")   return("mlabgap")
+    if (name == "mlw")   return("mlabwidth")
     if (name == "m")     return("marker")
+
+    // ---- fill options ----
+    if (name == "fc")    return("fcolor")
+    if (name == "fi")    return("fintensity")
+
+    // ---- marker fill / bar color options ----
+    if (name == "mfc")   return("mfcolor")
+    if (name == "blc")   return("blcolor")
+    if (name == "bfc")   return("bfcolor")
+    if (name == "bw")    return("barwidth")
 
     // ---- line options  (P1A-11) ----
     if (name == "lc")    return("lcolor")
@@ -314,6 +342,40 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "ysc")   return("yscale")
     if (name == "xl")    return("xline")
     if (name == "yl")    return("yline")
+    if (name == "asp")   return("aspectratio")
+    if (name == "bgc")   return("bgcolor")
+    if (name == "pbgc")  return("plotbgcolor")
+    if (name == "plotr") return("plotregion")
+    if (name == "graphr") return("graphregion")
+
+    // jitter options (plot-level)
+    if (name == "jit")   return("jitter")
+    if (name == "jse")   return("jseed")
+
+    // dual-axis options (plot-level)
+    if (name == "yax")   return("yaxis")
+    if (name == "xax")   return("xaxis")
+
+    // secondary-axis graph-level options
+    if (name == "yti2")  return("ytitle2")
+    if (name == "xti2")  return("xtitle2")
+    if (name == "yla2")  return("ylabel2")
+    if (name == "xla2")  return("xlabel2")
+    if (name == "ysc2")  return("yscale2")
+    if (name == "xsc2")  return("xscale2")
+
+    // scheme option (build-level, but also parsed at graph level for pass-through)
+    if (name == "sch")   return("scheme")
+
+    // alpha / transparency options
+    if (name == "mal")   return("malpha")
+    if (name == "lal")   return("lalpha")
+    if (name == "fal")   return("falpha")
+
+    // variable color mapping
+    if (name == "cv")    return("colorvar")
+    if (name == "colv")  return("colorvar")
+    if (name == "colpal")  return("colpalette")
 
     // no match — return original (handles full names and unknown abbrevs)
     return(name)
@@ -327,9 +389,15 @@ real scalar _is_supported_plot(string scalar ptype) {
     string rowvector supported
     supported = ("scatter", "line", "connected", "area", "bar", "spike",
                  "lfit", "qfit", "lfitci", "qfitci", "lowess",
+                 "lpoly", "lpolyci", "fpfit", "fpfitci",
                  "histogram", "kdensity",
                  "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
-                 "dot")
+                 "dot", "dropline", "rcapsym", "scatteri",
+                 "pcspike", "pcarrow", "pcbarrow", "pci", "pcscatter",
+                 "tsline", "tsrline",
+                 "mspline", "mband",
+                 "rscatter",
+                 "function")
     return(anyof(supported, ptype))
 }
 
@@ -602,52 +670,118 @@ string scalar _parse_structure(string matrix tokens,
         // validate plot type  (P1A-14)
         if (!_is_supported_plot(ptype)) {
             errprintf("dash: unsupported plot type '%s'. ", ptype)
-            errprintf("Supported types: scatter line connected area bar spike lfit qfit lfitci qfitci lowess histogram kdensity rarea rbar rspike rcap rline rconnected dot\n")
+            errprintf("Supported types: scatter line connected area bar spike lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci histogram kdensity rarea rbar rspike rcap rline rconnected dot dropline rcapsym scatteri pcspike pcarrow pcbarrow pci pcscatter tsline tsrline mspline mband rscatter function\n")
             exit(198)
         }
 
         // extract variable list words  (P1A-08)
+        // function: collect ALL tokens as expression string; other types: WORD tokens only
         varlist_words = J(1, 0, "")
-        for (i = varlist_start; i <= varlist_end; i++) {
-            if (tokens[i, 1] == strofreal(WORD())) {
-                varlist_words = varlist_words, tokens[i, 2]
+        if (ptype == "function") {
+            string scalar expr_raw
+            expr_raw = ""
+            for (i = varlist_start; i <= varlist_end; i++) {
+                expr_raw = expr_raw + tokens[i, 2]
+            }
+            expr_raw = strtrim(expr_raw)
+            // Remove optional "y=" prefix (twoway function y=sin(x) style)
+            if (regexm(expr_raw, "^[a-zA-Z][a-zA-Z0-9_]*[ ]*=")) {
+                expr_raw = strtrim(regexr(expr_raw, "^[a-zA-Z][a-zA-Z0-9_]*[ ]*=", ""))
+            }
+            varlist_words = J(1, 1, expr_raw)
+        }
+        else {
+            for (i = varlist_start; i <= varlist_end; i++) {
+                if (tokens[i, 1] == strofreal(WORD())) {
+                    varlist_words = varlist_words, tokens[i, 2]
+                }
             }
         }
 
         // variable name validation  (P1A-15)
-        // We call back into Stata using stata() which returns the rc
-        for (i = 1; i <= cols(varlist_words); i++) {
-            string scalar vname_check
-            vname_check = varlist_words[i]
-            // Reject obvious injection patterns in variable names
-            if (regexm(vname_check, "[;`'\$]")) {
-                errprintf("dash: invalid character in variable name '%s'.\n", vname_check)
+        // function type: validate expression characters only (not variable names)
+        if (ptype == "function") {
+            // Expression already extracted into varlist_words[1]
+            if (cols(varlist_words) >= 1) {
+                // Reject shell injection characters and null bytes
+                if (regexm(varlist_words[1], "[;`\$\\\\]") | strpos(varlist_words[1], char(0)) > 0) {
+                    errprintf("dash: unsafe characters in function expression.\n")
+                    exit(198)
+                }
+            }
+        }
+        // scatteri takes literal numeric pairs, not variable names — validate as numbers
+        else if (ptype == "scatteri") {
+            for (i = 1; i <= cols(varlist_words); i++) {
+                string scalar snum
+                snum = varlist_words[i]
+                if (!regexm(snum, "^-?[0-9]*\\.?[0-9]+$")) {
+                    errprintf("dash: scatteri argument '%s' is not a valid number.\n", snum)
+                    exit(198)
+                }
+            }
+            if (mod(cols(varlist_words), 2) != 0) {
+                errprintf("dash: scatteri requires an even number of arguments (y x pairs).\n")
                 exit(198)
             }
-            stata("confirm variable " + vname_check)
-            // stata() exits with error automatically if variable not found
+        }
+        else {
+            // We call back into Stata using stata() which returns the rc
+            for (i = 1; i <= cols(varlist_words); i++) {
+                string scalar vname_check
+                vname_check = varlist_words[i]
+                // Reject obvious injection patterns in variable names
+                if (regexm(vname_check, "[;`'\$]")) {
+                    errprintf("dash: invalid character in variable name '%s'.\n", vname_check)
+                    exit(198)
+                }
+                stata("confirm variable " + vname_check)
+                // stata() exits with error automatically if variable not found
+            }
         }
 
         // build variable assignment based on plot type
         // Most types: yvar xvar; histogram/kdensity: var only; range types: yvar1 yvar2 xvar
-        string scalar yvar1, yvar2
-        yvar  = ""
-        xvar  = ""
-        yvar1 = ""
-        yvar2 = ""
+        // PC types: y1var x1var y2var x2var; function: expr; scatteri: values
+        string scalar yvar1, yvar2, y1var, x1var, y2var, x2var, expr_val
+        yvar   = ""
+        xvar   = ""
+        yvar1  = ""
+        yvar2  = ""
+        y1var  = ""
+        x1var  = ""
+        y2var  = ""
+        x2var  = ""
+        expr_val = ""
 
         if (anyof(("histogram", "kdensity"), ptype)) {
             // univariate: just one variable
             if (cols(varlist_words) >= 1) yvar = varlist_words[1]
         }
-        else if (anyof(("rarea", "rbar", "rspike", "rcap", "rline", "rconnected"), ptype)) {
-            // range plots: yvar1 yvar2 xvar
+        else if (anyof(("rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym",
+                        "tsrline"), ptype)) {
+            // range plots: yvar1 yvar2 [xvar]
             if (cols(varlist_words) >= 1) yvar1 = varlist_words[1]
             if (cols(varlist_words) >= 2) yvar2 = varlist_words[2]
             if (cols(varlist_words) >= 3) xvar  = varlist_words[3]
         }
+        else if (anyof(("pcspike", "pcarrow", "pcbarrow"), ptype)) {
+            // paired-coordinate: y1var x1var y2var x2var
+            if (cols(varlist_words) >= 1) y1var = varlist_words[1]
+            if (cols(varlist_words) >= 2) x1var = varlist_words[2]
+            if (cols(varlist_words) >= 3) y2var = varlist_words[3]
+            if (cols(varlist_words) >= 4) x2var = varlist_words[4]
+        }
+        else if (ptype == "scatteri") {
+            // literal numeric pairs — no variable names; values stored separately
+            // varlist_words already validated as numeric pairs above
+        }
+        else if (ptype == "function") {
+            // expression string stored in varlist_words[1]
+            if (cols(varlist_words) >= 1) expr_val = varlist_words[1]
+        }
         else {
-            // standard: yvar xvar
+            // standard: yvar xvar (includes dropline, tsline, mspline, line, scatter, etc.)
             if (cols(varlist_words) >= 1) yvar = varlist_words[1]
             if (cols(varlist_words) >= 2) xvar = varlist_words[2]
         }
@@ -673,12 +807,44 @@ string scalar _parse_structure(string matrix tokens,
         if (anyof(("histogram", "kdensity"), ptype)) {
             plot_json = plot_json + `", "var": ""' + _json_escape(yvar) + `"""'
         }
-        else if (anyof(("rarea", "rbar", "rspike", "rcap", "rline", "rconnected"), ptype)) {
+        else if (anyof(("rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym",
+                        "tsrline"), ptype)) {
             plot_json = plot_json + `", "yvar1": ""' + _json_escape(yvar1) + `"""'
             plot_json = plot_json + `", "yvar2": ""' + _json_escape(yvar2) + `"""'
             plot_json = plot_json + `", "xvar": ""' + _json_escape(xvar) + `"""'
         }
+        else if (anyof(("pcspike", "pcarrow", "pcbarrow"), ptype)) {
+            string scalar dq2
+            dq2 = char(34)
+            plot_json = plot_json + ", " + dq2 + "y1var" + dq2 + ": " + dq2 + _json_escape(y1var) + dq2
+            plot_json = plot_json + ", " + dq2 + "x1var" + dq2 + ": " + dq2 + _json_escape(x1var) + dq2
+            plot_json = plot_json + ", " + dq2 + "y2var" + dq2 + ": " + dq2 + _json_escape(y2var) + dq2
+            plot_json = plot_json + ", " + dq2 + "x2var" + dq2 + ": " + dq2 + _json_escape(x2var) + dq2
+        }
+        else if (ptype == "scatteri") {
+            // encode literal coordinate pairs as raw JSON array of [y,x] arrays
+            // Each element: [y, x] — varlist is y1 x1 y2 x2 ...
+            string scalar vals_json
+            real scalar np, pi
+            string scalar dq
+            dq = char(34)
+            vals_json = "["
+            np = cols(varlist_words) / 2
+            for (pi = 1; pi <= np; pi++) {
+                if (pi > 1) vals_json = vals_json + ", "
+                vals_json = vals_json + "[" + varlist_words[2*pi-1] + ", " + varlist_words[2*pi] + "]"
+            }
+            vals_json = vals_json + "]"
+            // Embed as raw JSON array (not a quoted string)
+            plot_json = plot_json + ", " + dq + "values" + dq + ": " + vals_json
+        }
+        else if (ptype == "function") {
+            string scalar dq3
+            dq3 = char(34)
+            plot_json = plot_json + ", " + dq3 + "expr" + dq3 + ": " + dq3 + _json_escape(expr_val) + dq3
+        }
         else {
+            // standard: yvar xvar (scatter, line, tsline, mspline, dropline, etc.)
             plot_json = plot_json + `", "yvar": ""' + _json_escape(yvar) + `"""'
             plot_json = plot_json + `", "xvar": ""' + _json_escape(xvar) + `"""'
         }
