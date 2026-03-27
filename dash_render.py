@@ -5607,8 +5607,9 @@ class DashRenderer:
             _raw_f = build.get("filter", "")
             if _raw_f:
                 filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
-        title_text  = html.escape(build.get("title", ""))
-        saving_path = build.get("saving", "")
+        title_text    = html.escape(build.get("title", ""))
+        subtitle_text = html.escape(build.get("subtitle", "") or "")
+        saving_path   = build.get("saving", "")
 
         # ---- 1. Determine all variable names needed ----
         _VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
@@ -5981,12 +5982,19 @@ class DashRenderer:
         else:
             layout_root = grid
 
-        if title_text:
-            title_div = Div(
-                text=f'<h2 style="font-family:sans-serif;">{title_text}</h2>',
-                sizing_mode="stretch_width",
-            )
-            layout_root = column(title_div, layout_root,
+        if title_text or subtitle_text:
+            header_items = []
+            if title_text:
+                header_items.append(Div(
+                    text=f'<h2 style="font-family:sans-serif;margin-bottom:2px;">{title_text}</h2>',
+                    sizing_mode="stretch_width",
+                ))
+            if subtitle_text:
+                header_items.append(Div(
+                    text=f'<p style="font-family:sans-serif;color:#555;margin-top:0;margin-bottom:8px;">{subtitle_text}</p>',
+                    sizing_mode="stretch_width",
+                ))
+            layout_root = column(*header_items, layout_root,
                                  sizing_mode="stretch_width")
 
         # ---- 7. Render to HTML ----

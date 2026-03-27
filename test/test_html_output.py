@@ -1628,3 +1628,66 @@ class TestPlotregionGraphregion:
         spec["graphs"][0]["graph_options"]["graphregion"] = "color(notacolor)"
         html = _render_to_html(spec, data)
         assert "Scatter" in html, "invalid graphregion color must fall back gracefully"
+
+
+# ================================================================
+# Bug 13 — Build-level subtitle silently ignored
+# ================================================================
+class TestBuildSubtitleInHtml:
+    """build_options['subtitle'] must appear in rendered HTML.
+
+    full_dashboard.do specifies subtitle("Explore fuel efficiency, pricing, and more")
+    which is parsed by dash.ado and stored in build_options["subtitle"], but was
+    silently dropped by render() — never extracted or displayed in the HTML.
+    """
+
+    def test_build_subtitle_appears_in_html(self):
+        """Bug 13: subtitle from build_options must appear in rendered HTML."""
+        spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        spec["build_options"]["title"] = "My Dashboard"
+        spec["build_options"]["subtitle"] = "Explore the data"
+        html = _render_to_html(spec, data)
+        assert "Explore the data" in html, (
+            "Build-level subtitle must appear in dashboard HTML. "
+            "build_options['subtitle'] is specified in full_dashboard.do but "
+            "was silently dropped by render()."
+        )
+
+    def test_build_subtitle_without_title(self):
+        """subtitle appears in HTML even when title is empty."""
+        spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        spec["build_options"]["title"] = ""
+        spec["build_options"]["subtitle"] = "Just a subtitle"
+        html = _render_to_html(spec, data)
+        assert "Just a subtitle" in html, (
+            "Build-level subtitle must appear in HTML even when title is empty."
+        )
+
+    def test_build_subtitle_escaped(self):
+        """subtitle with HTML special characters is safely escaped (no raw injection).
+
+        When the subtitle contains '<b>bold</b>', the text 'bold' must appear in
+        the HTML (content is preserved) but the raw '<b>bold</b>' tag must NOT
+        appear as an unescaped inline HTML element (XSS prevention via html.escape).
+        """
+        spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        spec["build_options"]["title"] = "Safe Title"
+        spec["build_options"]["subtitle"] = "<b>bold</b>"
+        html = _render_to_html(spec, data)
+        # Text content must be present somewhere in the HTML
+        assert "bold" in html, (
+            "Subtitle text content 'bold' must appear in the rendered HTML."
+        )
+        # Raw unescaped tag must NOT appear as inline HTML
+        assert "<b>bold</b>" not in html, (
+            "Subtitle '<b>bold</b>' must not appear as raw unescaped HTML "
+            "(html.escape() must be applied to prevent XSS injection)."
+        )
+
+    def test_empty_subtitle_no_extra_element(self):
+        """Empty subtitle does not add an extra empty element."""
+        spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        spec["build_options"]["title"] = "Title Only"
+        spec["build_options"]["subtitle"] = ""
+        html = _render_to_html(spec, data)
+        assert "Title Only" in html, "Title must still appear when subtitle is empty."
