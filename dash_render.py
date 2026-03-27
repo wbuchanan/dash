@@ -5704,6 +5704,11 @@ class DashRenderer:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 g_vars = _collect_plot_vars_render(g.get("plots", []))
+                # Include filter variables so filter widgets can query the CDS
+                for fc in filters_cfg:
+                    fv = fc.get("varname", "")
+                    if fv and fv not in g_vars:
+                        g_vars.append(fv)
                 filtered_df = self._apply_graph_filter(g)
                 self.sources[name] = self._make_source(g_vars, df=filtered_df)
 

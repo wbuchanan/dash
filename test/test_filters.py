@@ -430,3 +430,61 @@ class TestParseFilterRaw:
         assert "Select" in str(type(r.filter_widgets[0])) or \
                "select" in html_str.lower(), \
             "Expected a dropdown (Select) widget for foreign filter"
+
+
+    def test_filter_widget_created_for_non_linked_graph(self):
+        """Bug 7 regression: filter widgets must be created for NON-linked graphs.
+
+        Previously, render() only included filter variables in the shared
+        ColumnDataSource when link() was specified.  For unlinked graphs, the
+        CDS only contained plot variables (yvar/xvar), so
+        ``fvar not in fsource.data`` was True and the widget was silently skipped.
+        """
+        import json, os, tempfile
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}, "if_expr": "", "in_expr": ""}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto",
+                "link": "",           # NO link — non-linked graph
+                "filter": "foreign, type(dropdown)",
+                "theme": "default",
+                "title": "",
+                "subtitle": "",
+                "registry": "g1",
+            },
+        }
+        vals = [{"mpg": float(i * 2), "weight": float(i * 300), "foreign": float(i % 2)}
+                for i in range(1, 11)]
+        data_json = {"StataJSON": {
+            "variableNames": ["mpg", "weight", "foreign"],
+            "variableLabels": {"mpg": "mpg", "weight": "weight", "foreign": "foreign"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False, "foreign": False},
+            "values": vals,
+        }}
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data_json, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+        r.render()
+        assert len(r.filter_widgets) >= 1, (
+            "render() must create filter widgets for non-linked graphs; "
+            "filter variable 'foreign' must be included in the CDS data "
+            "even when link() is not specified (Bug 7)"
+        )
