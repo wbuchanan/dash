@@ -5291,8 +5291,8 @@ class DashRenderer:
         title    = html.escape(kpi_def.get("title", ""))
         value    = html.escape(str(kpi_def.get("value", "")))
         subtitle = html.escape(kpi_def.get("subtitle", ""))
-        color    = html.escape(kpi_def.get("color", "#212529"))
-        bgcolor  = html.escape(kpi_def.get("bgcolor", "#f8f9fa"))
+        color    = html.escape(kpi_def.get("color", "") or "#212529")
+        bgcolor  = html.escape(kpi_def.get("bgcolor", "") or "#f8f9fa")
 
         html_content = f"""
 <div style="background:{bgcolor}; border-radius:8px; padding:20px;

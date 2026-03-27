@@ -518,3 +518,92 @@ class TestKpiMultiWordTitle:
             f"bgcolor '#ecf0f1' must be in div style — got: {div_html!r} "
             "(Bug 8: bgcolor was shifted by multi-word title tokens)"
         )
+
+
+# ================================================================
+# Bug 12 — Empty color/bgcolor in KPI JSON produces invalid CSS
+# ================================================================
+class TestKpiEmptyColorFallback:
+    """When color or bgcolor is an empty string (not absent), _make_kpi_div
+    must fall back to default colors instead of emitting 'color:;' or
+    'background:;' which are invalid CSS properties.
+
+    full_dashboard.do's k2/k3/k4 KPI cards have no color/bgcolor specified,
+    so Stata writes empty strings in the JSON:  "color":"","bgcolor":"".
+    Before the fix, _make_kpi_div emitted style="...background:;...color:;"
+    which browsers silently ignore, producing unstyled cards.
+    """
+
+    def _make_renderer_with_kpi(self, kpi_def: dict, tmp_path):
+        import json, os, tempfile
+        from dash_render import DashRenderer
+
+        graphs = [{"plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
+                               "options": {}, "if_expr": "", "in_expr": ""}],
+                   "graph_options": {"name": "g1"}, "if_expr": "", "in_expr": ""}]
+        spec = {"graphs": graphs, "kpis": [kpi_def],
+                "build_options": {"layout": "auto", "link": "", "filter": "",
+                                  "theme": "default", "title": "", "subtitle": "",
+                                  "registry": "g1 " + kpi_def.get("name", "k1")}}
+        data_dict = {"StataJSON": {"variableNames": ["y", "x"],
+                                   "variableLabels": {"y": "y", "x": "x"},
+                                   "valueLabels": {}, "valueLabelNames": {},
+                                   "variableTypeIsString": {"y": False, "x": False},
+                                   "values": [{"y": float(i), "x": float(i)} for i in range(1, 11)]}}
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data_dict, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        return r
+
+    def test_empty_bgcolor_uses_default_not_invalid_css(self, tmp_path):
+        """Bug 12: empty bgcolor='' must fall back to default, not emit 'background:;'."""
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from dash_render import DashRenderer
+
+        kpi_def = {"name": "k2", "stat": "mean", "var": "y",
+                   "value": "5.5", "display": "5.5",
+                   "fmt": "%9.1f", "title": "Avg Y", "subtitle": "units",
+                   "color": "", "bgcolor": "", "update": "filter"}
+        r = self._make_renderer_with_kpi(kpi_def, tmp_path)
+        r.render()
+        div_html = r.kpi_divs["k2"].text
+        assert "background:;" not in div_html, (
+            "Bug 12: empty bgcolor produced invalid CSS 'background:;'. "
+            "_make_kpi_div must fall back to default color '#f8f9fa' when bgcolor is empty."
+        )
+        # Should contain a valid background color (the default)
+        assert "background:#f8f9fa" in div_html or "background: #f8f9fa" in div_html, (
+            f"Default bgcolor '#f8f9fa' not found in div HTML: {div_html[:400]}"
+        )
+
+    def test_empty_color_uses_default_not_invalid_css(self, tmp_path):
+        """Bug 12: empty color='' must fall back to default, not emit 'color:;'."""
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from dash_render import DashRenderer
+
+        kpi_def = {"name": "k3", "stat": "count", "var": "y",
+                   "value": "10", "display": "10",
+                   "fmt": "%9.0f", "title": "Count", "subtitle": "",
+                   "color": "", "bgcolor": "", "update": "filter"}
+        r = self._make_renderer_with_kpi(kpi_def, tmp_path)
+        r.render()
+        div_html = r.kpi_divs["k3"].text
+        assert "color:;" not in div_html, (
+            "Bug 12: empty color produced invalid CSS 'color:;'. "
+            "_make_kpi_div must fall back to default '#212529' when color is empty."
+        )
+        # The default color should appear
+        assert "#212529" in div_html, (
+            f"Default color '#212529' not found in div HTML: {div_html[:400]}"
+        )
