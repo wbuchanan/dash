@@ -928,6 +928,16 @@ program define _dash_clear
             capture macro drop dash_json_`gname'
             capture macro drop dash_opts_`gname'
             capture macro drop dash_kpi_`gname'
+            capture macro drop dash_kpi_`gname'_stat
+            capture macro drop dash_kpi_`gname'_var
+            capture macro drop dash_kpi_`gname'_val
+            capture macro drop dash_kpi_`gname'_disp
+            capture macro drop dash_kpi_`gname'_fmt
+            capture macro drop dash_kpi_`gname'_tit
+            capture macro drop dash_kpi_`gname'_sub
+            capture macro drop dash_kpi_`gname'_col
+            capture macro drop dash_kpi_`gname'_bg
+            capture macro drop dash_kpi_`gname'_upd
         }
     }
 
@@ -1008,7 +1018,20 @@ program define _dash_kpi
         local kpi_display = strtrim("`kpi_display'")
     }
 
-    global dash_kpi_`name' = "`stat';`kpi_var';`kpi_value';`kpi_display';`fmt';`title';`subtitle';`color';`bgcolor';`update'"
+    // Store each KPI field in its own global so multi-word titles/subtitles
+    // are preserved.  A marker global (value "1") allows the registry to
+    // detect that this name is a KPI rather than a graph.
+    global dash_kpi_`name'       "1"
+    global dash_kpi_`name'_stat  "`stat'"
+    global dash_kpi_`name'_var   "`kpi_var'"
+    global dash_kpi_`name'_val   "`kpi_value'"
+    global dash_kpi_`name'_disp  "`kpi_display'"
+    global dash_kpi_`name'_fmt   "`fmt'"
+    global dash_kpi_`name'_tit   "`title'"
+    global dash_kpi_`name'_sub   "`subtitle'"
+    global dash_kpi_`name'_col   "`color'"
+    global dash_kpi_`name'_bg    "`bgcolor'"
+    global dash_kpi_`name'_upd   "`update'"
 
     local registry = "${dash_graph_registry}"
     local already  = 0
@@ -1138,8 +1161,7 @@ program define _dash_build
         local gname : word `k' of `registry'
 
         if "${dash_kpi_`gname'}" != "" {
-            local kpi_def = "${dash_kpi_`gname'}"
-            local kpi_var = word(subinstr("`kpi_def'", ";", " ", .), 2)
+            local kpi_var = "${dash_kpi_`gname'_var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
             continue
         }
@@ -1197,17 +1219,17 @@ program define _dash_build
         local gname : word `k' of `registry'
         if "${dash_kpi_`gname'}" == "" continue
 
-        local kpi_def = "${dash_kpi_`gname'}"
-        local kstat   = word(subinstr("`kpi_def'", ";", " ", .), 1)
-        local kvar    = word(subinstr("`kpi_def'", ";", " ", .), 2)
-        local kval    = word(subinstr("`kpi_def'", ";", " ", .), 3)
-        local kdisp   = word(subinstr("`kpi_def'", ";", " ", .), 4)
-        local kfmt    = word(subinstr("`kpi_def'", ";", " ", .), 5)
-        local ktitle  = word(subinstr("`kpi_def'", ";", " ", .), 6)
-        local ksub    = word(subinstr("`kpi_def'", ";", " ", .), 7)
-        local kcolor  = word(subinstr("`kpi_def'", ";", " ", .), 8)
-        local kbg     = word(subinstr("`kpi_def'", ";", " ", .), 9)
-        local kupdate = word(subinstr("`kpi_def'", ";", " ", .), 10)
+        // Read each KPI field from its dedicated global (preserves multi-word values)
+        local kstat   = "${dash_kpi_`gname'_stat}"
+        local kvar    = "${dash_kpi_`gname'_var}"
+        local kval    = "${dash_kpi_`gname'_val}"
+        local kdisp   = "${dash_kpi_`gname'_disp}"
+        local kfmt    = "${dash_kpi_`gname'_fmt}"
+        local ktitle  = "${dash_kpi_`gname'_tit}"
+        local ksub    = "${dash_kpi_`gname'_sub}"
+        local kcolor  = "${dash_kpi_`gname'_col}"
+        local kbg     = "${dash_kpi_`gname'_bg}"
+        local kupdate = "${dash_kpi_`gname'_upd}"
 
         if `n_kpis' > 0 local kpis_json = `"`kpis_json', "'
         local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`kdisp'","fmt":"`kfmt'","title":"`ktitle'","subtitle":"`ksub'","color":"`kcolor'","bgcolor":"`kbg'","update":"`kupdate'"}"'
@@ -1300,8 +1322,7 @@ program define _dash_serve
         local gname : word `k' of `registry'
 
         if "${dash_kpi_`gname'}" != "" {
-            local kpi_def = "${dash_kpi_`gname'}"
-            local kpi_var = word(subinstr("`kpi_def'", ";", " ", .), 2)
+            local kpi_var = "${dash_kpi_`gname'_var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
             continue
         }
@@ -1354,17 +1375,17 @@ program define _dash_serve
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
         if "${dash_kpi_`gname'}" == "" continue
-        local kpi_def = "${dash_kpi_`gname'}"
-        local kstat   = word(subinstr("`kpi_def'", ";", " ", .), 1)
-        local kvar    = word(subinstr("`kpi_def'", ";", " ", .), 2)
-        local kval    = word(subinstr("`kpi_def'", ";", " ", .), 3)
-        local kdisp   = word(subinstr("`kpi_def'", ";", " ", .), 4)
-        local kfmt    = word(subinstr("`kpi_def'", ";", " ", .), 5)
-        local ktitle  = word(subinstr("`kpi_def'", ";", " ", .), 6)
-        local ksub    = word(subinstr("`kpi_def'", ";", " ", .), 7)
-        local kcolor  = word(subinstr("`kpi_def'", ";", " ", .), 8)
-        local kbg     = word(subinstr("`kpi_def'", ";", " ", .), 9)
-        local kupdate = word(subinstr("`kpi_def'", ";", " ", .), 10)
+        // Read each KPI field from its dedicated global (preserves multi-word values)
+        local kstat   = "${dash_kpi_`gname'_stat}"
+        local kvar    = "${dash_kpi_`gname'_var}"
+        local kval    = "${dash_kpi_`gname'_val}"
+        local kdisp   = "${dash_kpi_`gname'_disp}"
+        local kfmt    = "${dash_kpi_`gname'_fmt}"
+        local ktitle  = "${dash_kpi_`gname'_tit}"
+        local ksub    = "${dash_kpi_`gname'_sub}"
+        local kcolor  = "${dash_kpi_`gname'_col}"
+        local kbg     = "${dash_kpi_`gname'_bg}"
+        local kupdate = "${dash_kpi_`gname'_upd}"
         if `n_kpis' > 0 local kpis_json = `"`kpis_json', "'
         local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`kdisp'","fmt":"`kfmt'","title":"`ktitle'","subtitle":"`ksub'","color":"`kcolor'","bgcolor":"`kbg'","update":"`kupdate'"}"'
         local n_kpis = `n_kpis' + 1

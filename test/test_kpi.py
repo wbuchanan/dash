@@ -411,3 +411,110 @@ class TestKpiInitialValueComputed:
         div_html = r.kpi_divs["k1"].text
         # 8 observations — should appear as "8" (no comma needed for small N)
         assert "8" in div_html, f"Count KPI must show '8', got: {div_html!r}"
+
+
+# ================================================================
+# Bug 8: Multi-word KPI title/subtitle truncated by Stata word()
+# ================================================================
+class TestKpiMultiWordTitle:
+    """Regression: KPI title/subtitle with spaces must appear in full in the div.
+
+    dash.ado stored all KPI fields in a semicolon-delimited global then
+    extracted them with word(subinstr(...,';',' ',.),N).  That method splits
+    on any whitespace, so 'Avg MPG' (two tokens) was extracted as just 'Avg'
+    at position 6 and 'MPG' was picked up as the subtitle at position 7.
+
+    After the fix (separate per-field globals), the full title string must
+    appear intact in the rendered KPI div HTML (Bug 8).
+    """
+
+    def _build_renderer_with_kpi(self, kpi_spec: dict, tmp_path) -> DashRenderer:
+        """Build a minimal DashRenderer with one KPI card."""
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
+                       "options": {}, "if_expr": "", "in_expr": ""}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [kpi_spec],
+            "build_options": {
+                "layout": "auto", "link": "", "filter": "",
+                "theme": "default", "title": "", "subtitle": "", "registry": "g1",
+            },
+        }
+        data_json = {
+            "StataJSON": {
+                "variableNames": ["x", "y"],
+                "variableLabels": {"x": "x", "y": "y"},
+                "valueLabels": {}, "valueLabelNames": {},
+                "variableTypeIsString": {"x": False, "y": False},
+                "values": [{"x": float(i), "y": float(i * 2)} for i in range(1, 11)],
+            }
+        }
+        sp = str(tmp_path / "spec.json")
+        dp = str(tmp_path / "data.json")
+        op = str(tmp_path / "out.html")
+        with open(sp, "w") as f: json.dump(spec, f)
+        with open(dp, "w") as f: json.dump(data_json, f)
+        open(op, "w").close()
+        return DashRenderer(sp, dp, op)
+
+    def test_multiword_title_appears_in_full(self, tmp_path):
+        """KPI title 'Avg MPG' must appear in full in div text, not truncated to 'Avg'."""
+        kpi = {"name": "k1", "stat": "mean", "var": "y",
+               "value": "", "display": "",
+               "fmt": "%9.1f", "title": "Avg MPG", "subtitle": "Miles per gallon",
+               "color": "#2c3e50", "bgcolor": "#ecf0f1", "update": "filter"}
+        r = self._build_renderer_with_kpi(kpi, tmp_path)
+        r.render()
+        div_html = r.kpi_divs["k1"].text
+        assert "Avg MPG" in div_html, (
+            f"KPI title 'Avg MPG' must appear in full — got: {div_html!r} "
+            "(Bug 8: Stata word() extraction truncates multi-word titles)"
+        )
+        assert "Miles per gallon" in div_html, (
+            f"KPI subtitle 'Miles per gallon' must appear in full — got: {div_html!r}"
+        )
+
+    def test_multiword_subtitle_appears_in_full(self, tmp_path):
+        """KPI subtitle 'Sample Size' must appear in full, not as first token only."""
+        kpi = {"name": "k1", "stat": "count", "var": "y",
+               "value": "", "display": "",
+               "fmt": "%9.0fc", "title": "Sample Size", "subtitle": "Total observations",
+               "color": "", "bgcolor": "", "update": "both"}
+        r = self._build_renderer_with_kpi(kpi, tmp_path)
+        r.render()
+        div_html = r.kpi_divs["k1"].text
+        assert "Sample Size" in div_html, (
+            f"KPI title 'Sample Size' must appear in full — got: {div_html!r}"
+        )
+        assert "Total observations" in div_html, (
+            f"KPI subtitle 'Total observations' must appear in full — got: {div_html!r}"
+        )
+
+    def test_multiword_title_with_color_and_bgcolor(self, tmp_path):
+        """Color/bgcolor must be correct even when title/subtitle have spaces.
+
+        The Stata word() bug shifted color to position of last title word;
+        this test ensures the hex color actually appears in the rendered div.
+        """
+        kpi = {"name": "k1", "stat": "mean", "var": "y",
+               "value": "", "display": "",
+               "fmt": "%9.1f", "title": "Median Price", "subtitle": "1978 USD",
+               "color": "#2c3e50", "bgcolor": "#ecf0f1", "update": "filter"}
+        r = self._build_renderer_with_kpi(kpi, tmp_path)
+        r.render()
+        div_html = r.kpi_divs["k1"].text
+        assert "Median Price" in div_html, (
+            f"Title 'Median Price' must appear in full — got: {div_html!r}"
+        )
+        assert "1978 USD" in div_html, (
+            f"Subtitle '1978 USD' must appear in full — got: {div_html!r}"
+        )
+        # bgcolor should appear in the div styling
+        assert "#ecf0f1" in div_html, (
+            f"bgcolor '#ecf0f1' must be in div style — got: {div_html!r} "
+            "(Bug 8: bgcolor was shifted by multi-word title tokens)"
+        )
