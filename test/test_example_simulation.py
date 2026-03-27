@@ -589,11 +589,38 @@ class TestFullDashboardSimulation:
         )
 
     def test_full_dashboard_run_1_filter_widgets(self, tmp_path):
-        """Run 1: two filter widgets created (foreign dropdown + weight range)."""
+        """Run 1: two filter widgets created (foreign dropdown + weight range).
+
+        Bug 10 verification: 'foreign' is a filter-only variable (not in any
+        graph plot spec).  dash.ado must include it in the jsonio all_vars
+        list so that it appears in the data JSON and the Python renderer can
+        build the dropdown filter widget.  Without the fix, 0 widgets for
+        foreign are created.
+        """
         _, renderer = self._run_once(tmp_path)
         assert len(renderer.filter_widgets) >= 2, (
             f"Expected >=2 filter widgets, got {len(renderer.filter_widgets)}: "
-            f"{[type(w).__name__ for w in renderer.filter_widgets]}"
+            f"{[type(w).__name__ for w in renderer.filter_widgets]}\n"
+            "If foreign filter is missing: dash.ado _dash_build must add "
+            "filter variables to all_vars before the jsonio call (Bug 10)"
+        )
+
+    def test_full_dashboard_run_1_foreign_in_linked_source(self, tmp_path):
+        """Run 1: 'foreign' (filter-only var) is present in the linked CDS.
+
+        Bug 10: _dash_build used to skip filter-only variables when collecting
+        all_vars for jsonio.  'foreign' would be absent from the data JSON,
+        and render() would skip the filter widget.  The fix adds filter
+        variables to all_vars so jsonio serializes them.
+        """
+        _, renderer = self._run_once(tmp_path)
+        s1_src = renderer.sources.get("s1")
+        assert s1_src is not None, "Linked source for 's1' not found"
+        assert "foreign" in s1_src.data, (
+            "'foreign' must be present in the linked ColumnDataSource data "
+            "so the dropdown filter widget can be built.  This fails when "
+            "dash.ado _dash_build does not include filter-only variables in "
+            "the jsonio all_vars list (Bug 10)."
         )
 
     def test_full_dashboard_run_1_linked_source_shared(self, tmp_path):

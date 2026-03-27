@@ -1174,6 +1174,43 @@ program define _dash_build
             }
         }
     }
+
+    // ---- also include filter variables in the serialization ----
+    // Filter variables (e.g. foreign from filter(foreign, type(dropdown)))
+    // may not appear in any graph or KPI spec.  Without explicit inclusion,
+    // jsonio would never serialize them, so the Python filter widgets would
+    // be silently skipped.  Parse the || -delimited filter spec and add each
+    // variable name (first token before the comma in each segment).
+    if `"`filter'"' != "" {
+        local _filt_work `"`filter'"'
+        local _filt_done = 0
+        while !`_filt_done' {
+            local _pipe_pos = strpos(`"`_filt_work'"', "||")
+            if `_pipe_pos' > 0 {
+                local _this_seg = strtrim(substr(`"`_filt_work'"', 1, `_pipe_pos' - 1))
+                local _filt_work = strtrim(substr(`"`_filt_work'"', `_pipe_pos' + 2, .))
+            }
+            else {
+                local _this_seg = strtrim(`"`_filt_work'"')
+                local _filt_done = 1
+            }
+            // Extract variable name: first word before the comma
+            local _comma_pos = strpos(`"`_this_seg'"', ",")
+            if `_comma_pos' > 0 {
+                local _fvar = strtrim(substr(`"`_this_seg'"', 1, `_comma_pos' - 1))
+            }
+            else {
+                local _fvar = word(`"`_this_seg'"', 1)
+            }
+            // Only add if looks like a valid Stata variable name
+            if regexm("`_fvar'", "^[a-zA-Z_][a-zA-Z0-9_]*$") {
+                if !`: list _fvar in all_vars' {
+                    local all_vars "`all_vars' `_fvar'"
+                }
+            }
+        }
+    }
+
     local all_vars = strtrim("`all_vars'")
 
     if "`all_vars'" == "" {

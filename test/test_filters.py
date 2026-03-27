@@ -488,3 +488,117 @@ class TestParseFilterRaw:
             "filter variable 'foreign' must be included in the CDS data "
             "even when link() is not specified (Bug 7)"
         )
+
+
+class TestFilterVarMissingFromData:
+    """Bug 10 regression: filter variable absent from data JSON.
+
+    dash.ado's _dash_build collects all_vars from graph plots and KPI vars
+    before the jsonio call.  If the filter variable (e.g. 'foreign') is not
+    used in any plot or KPI, it is never added to all_vars, so jsonio never
+    serializes it.  The data JSON therefore lacks 'foreign', causing
+    render() to silently skip the filter widget.
+
+    The fix adds filter variable names to all_vars in _dash_build so they
+    are always included in the jsonio serialization.  On the Python side,
+    render() already handles missing filter vars gracefully (skip widget),
+    so the Python renderer is correct — the bug is in dash.ado.
+
+    This test verifies that render() DOES create filter widgets when the
+    filter variable is present in the data JSON (the expected post-fix
+    state after _dash_build is corrected).  A companion assertion checks
+    that the filter widget count is 0 when the variable is absent from the
+    data (the pre-fix broken state), documenting the failure mode.
+    """
+
+    def _build_renderer_with_data(self, include_foreign: bool):
+        """Build a DashRenderer with or without 'foreign' in the data JSON.
+
+        The spec uses a linked dashboard (s1 linked) with a foreign dropdown
+        filter — foreign is NOT a plot variable (not in yvar/xvar), so it
+        would only be present in data if _dash_build explicitly serializes it.
+        """
+        import json, os, tempfile
+
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}, "if_expr": "", "in_expr": ""}],
+            "graph_options": {"name": "s1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto",
+                "link": "s1",
+                "filter": "foreign, type(dropdown)",
+                "theme": "default",
+                "title": "",
+                "subtitle": "",
+                "registry": "s1",
+            },
+        }
+
+        # Build data: mpg and weight are plot vars; foreign is filter-only
+        cols = {"mpg": [float(i * 2) for i in range(1, 11)],
+                "weight": [float(i * 300) for i in range(1, 11)]}
+        if include_foreign:
+            cols["foreign"] = [float(i % 2) for i in range(1, 11)]
+
+        var_names = list(cols.keys())
+        vals = [{v: cols[v][i] for v in var_names} for i in range(10)]
+        data_json = {"StataJSON": {
+            "variableNames": var_names,
+            "variableLabels": {v: v for v in var_names},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {v: False for v in var_names},
+            "values": vals,
+        }}
+
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data_json, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        return r
+
+    def test_filter_widget_created_when_var_in_data(self):
+        """Filter widget IS created when filter variable appears in data JSON.
+
+        This is the expected post-fix state: _dash_build includes 'foreign'
+        in all_vars so jsonio serializes it, the data JSON has 'foreign',
+        and render() creates the dropdown filter widget.
+        """
+        r = self._build_renderer_with_data(include_foreign=True)
+        r.render()
+        assert len(r.filter_widgets) >= 1, (
+            "Filter widget must be created when filter variable 'foreign' "
+            "is present in the data JSON.  Got 0 widgets — the filter "
+            "variable must be included in the jsonio serialization."
+        )
+
+    def test_filter_widget_absent_when_var_missing_from_data(self):
+        """Filter widget is silently skipped when filter var missing from data.
+
+        This test documents the symptom of Bug 10: when _dash_build fails to
+        add the filter variable to all_vars, it is absent from the data JSON,
+        and render() skips the widget.  After the _dash_build fix, this test
+        is no longer reachable in production (because _dash_build ensures the
+        variable is serialized), but it documents the pre-fix failure mode.
+        """
+        r = self._build_renderer_with_data(include_foreign=False)
+        r.render()
+        # When 'foreign' is absent from data, Python correctly skips it
+        assert len(r.filter_widgets) == 0, (
+            "Filter widget must NOT be created when filter variable 'foreign' "
+            "is absent from the data JSON (Python side handles gracefully by "
+            "skipping; the root fix is in dash.ado _dash_build)"
+        )
