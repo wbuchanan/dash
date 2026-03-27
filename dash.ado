@@ -630,7 +630,7 @@ program define _dash_process_segment, rclass
     _dash_json_str "`in_expr'" _jin
 
     // Assemble
-    local seg_json `"{"type":"`ptype'",`vfields',"options":{`_opts_json'},"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+    local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
 
     c_local `plottype_out' "`ptype'"
     c_local `json_out'     `"`seg_json'"'

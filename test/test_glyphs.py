@@ -2203,13 +2203,22 @@ class TestNewPlotTypes:
         assert "g1" in figs
 
     def test_rscatter_in_dispatch(self):
-        """rscatter dispatches via _add_glyph range_dispatch."""
+        """rscatter dispatches via _add_glyph range_dispatch.
+
+        Regression: rscatter must use 'yvar1'/'yvar2' JSON keys (matching
+        dash.ado output) and must actually add at least one renderer to the
+        figure.  Previously rscatter was missing from _RANGE_TYPES, which
+        caused _build_figures to fall through to the else-branch where it
+        looked up the non-existent 'yvar' key, resulting in a silent no-op
+        (zero renderers despite a valid rscatter spec).
+        """
         import json, tempfile, os
         from dash_render import DashRenderer
         vals = [{"y1": float(i), "y2": float(i+5), "x": float(i)} for i in range(1, 11)]
         spec = {
             "graphs": [{
-                "plots": [{"type": "rscatter", "yvar": "y1", "y2var": "y2",
+                # dash.ado uses "yvar1"/"yvar2" keys for range-type plots
+                "plots": [{"type": "rscatter", "yvar1": "y1", "yvar2": "y2",
                            "xvar": "x", "options": {}}],
                 "graph_options": {"name": "g1"},
                 "if_expr": "", "in_expr": "",
@@ -2243,6 +2252,11 @@ class TestNewPlotTypes:
                 except OSError: pass
         figs = r._build_figures()
         assert "g1" in figs
+        # Must have at least one renderer — previously zero due to missing _RANGE_TYPES entry
+        assert len(figs["g1"].renderers) >= 1, (
+            "rscatter must add at least one renderer; check that 'rscatter' "
+            "is in _RANGE_TYPES in _build_figures"
+        )
 
     def test_mband_in_dispatch(self):
         """mband dispatches via _add_glyph standard dispatch."""

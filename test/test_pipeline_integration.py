@@ -344,3 +344,71 @@ class TestPipelineScatteri:
         assert "si1" in figs
         fig = figs["si1"]
         assert len(fig.renderers) >= 1
+
+
+# ================================================================
+# T1-12 — Regression: "options" JSON must not be double-nested
+# ================================================================
+class TestOptionsJsonFormat:
+    """Regression tests for Bug 1: dash.ado was wrapping _opts_json (which
+    already contained outer braces) in another set of braces, producing
+    "options":{{"key":"val"}} — invalid JSON that caused json.loads() to fail
+    in the Python renderer for every plot command with options.
+    """
+
+    def test_double_nested_options_is_invalid_json(self):
+        """Simulate the bug: double-braces in 'options' value produces invalid JSON.
+
+        If this string were produced by dash.ado (the buggy version), Python's
+        json.loads() must reject it.  This confirms that the bug would have
+        caused a hard failure in the renderer.
+        """
+        # This is what the buggy dash.ado would produce when options = {"mcolor":"navy"}
+        buggy_segment = (
+            '{"type":"scatter","yvar":"mpg","xvar":"weight",'
+            '"options":{{"mcolor":"navy","msymbol":"circle"}},'
+            '"if_expr":"","in_expr":""}'
+        )
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(buggy_segment)
+
+    def test_single_nested_options_is_valid_json(self):
+        """The fixed dash.ado emits 'options':{...} — valid JSON that parses cleanly."""
+        fixed_segment = (
+            '{"type":"scatter","yvar":"mpg","xvar":"weight",'
+            '"options":{"mcolor":"navy","msymbol":"circle"},'
+            '"if_expr":"","in_expr":""}'
+        )
+        parsed = json.loads(fixed_segment)
+        assert isinstance(parsed["options"], dict)
+        assert parsed["options"]["mcolor"] == "navy"
+        assert parsed["options"]["msymbol"] == "circle"
+
+    def test_options_dict_renders_correctly(self):
+        """Full pipeline: scatter spec with options dict renders a figure with renderers.
+
+        This verifies that when options arrive as a proper dict (not a double-nested
+        string), the renderer correctly passes them through to _add_glyph and
+        a renderer is actually created.
+        """
+        graph = {
+            "plots": [{
+                "type": "scatter",
+                "yvar": "y",
+                "xvar": "x",
+                "options": {"mcolor": "navy", "msymbol": "circle", "msize": "medium"},
+            }],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = _make_master_spec([graph])
+        data = _make_data_json({
+            "x": [float(i) for i in range(1, 11)],
+            "y": [float(i * 2) for i in range(1, 11)],
+        })
+        renderer = _build_renderer(spec, data)
+        figs = renderer._build_figures()
+        assert "g1" in figs
+        assert len(figs["g1"].renderers) >= 1, (
+            "scatter with options must produce at least one renderer"
+        )

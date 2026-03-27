@@ -4939,7 +4939,7 @@ class DashRenderer:
         # Plot categories that use non-standard JSON variable keys
         _RANGE_TYPES = frozenset({
             "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
-            "rcapsym", "tsrline",
+            "rcapsym", "tsrline", "rscatter",
         })
         _UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
         _PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow"})
