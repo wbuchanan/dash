@@ -192,3 +192,118 @@ class TestSizingMode:
         figs = renderer._build_figures()
         for fig in figs.values():
             assert fig.sizing_mode == "stretch_width"
+
+
+# ================================================================
+# Bug 11 — layout overflow: items beyond grid size silently dropped
+# ================================================================
+class TestLayoutOverflow:
+    """Bug 11 regression: when items > rows*cols, excess are silently dropped.
+
+    full_dashboard.do specifies layout(3 2) = 6 cells but has 8 items
+    (4 graphs + 4 KPI cards).  Before the fix, render() built grid rows
+    by slicing cells[0:6], silently discarding items 7 and 8 (k3, k4).
+
+    The fix: when len(all_names) > rows_n * cols_n, auto-expand rows_n to
+    ceil(len(all_names) / cols_n) so that all items appear in the HTML.
+    """
+
+    def _build_full_dashboard_renderer(self):
+        """Create a renderer matching the full_dashboard.do spec structure:
+        4 graphs + 4 KPI divs, layout(3 2).
+        """
+        import json, os, tempfile
+        import numpy as np
+
+        graphs = [
+            {"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                        "options": {}, "if_expr": "", "in_expr": ""}],
+             "graph_options": {"name": name},
+             "if_expr": "", "in_expr": ""}
+            for name in ("s1", "h1", "s2", "d1")
+        ]
+        kpis = [
+            {"name": kn, "stat": "mean", "var": "mpg",
+             "value": "21.0", "display": "21.0", "fmt": "%9.1f",
+             "title": f"KPI {kn}", "subtitle": "", "color": "",
+             "bgcolor": "", "update": "filter"}
+            for kn in ("k1", "k2", "k3", "k4")
+        ]
+        spec = {
+            "graphs": graphs,
+            "kpis": kpis,
+            "build_options": {
+                "layout": "3 2",   # 6 cells but 8 items → overflow
+                "link": "",
+                "filter": "",
+                "theme": "default",
+                "title": "Test Dashboard",
+                "subtitle": "",
+                "registry": "s1 h1 s2 d1 k1 k2 k3 k4",
+            },
+        }
+        vals = [{"mpg": float(i), "weight": float(i * 100)}
+                for i in range(1, 21)]
+        data = {"StataJSON": {
+            "variableNames": ["mpg", "weight"],
+            "variableLabels": {"mpg": "mpg", "weight": "weight"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False},
+            "values": vals,
+        }}
+
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        return r
+
+    def test_all_items_appear_in_html(self):
+        """Bug 11: all 8 items (4 graphs + 4 KPIs) must appear in rendered HTML.
+
+        Before fix: layout(3 2) = 6 cells; items 7 and 8 (k3, k4) were
+        silently dropped because grid row slicing stopped at cell 6.
+        After fix: rows auto-expand to ceil(8/2)=4 rows so all items render.
+        """
+        r = self._build_full_dashboard_renderer()
+        html = r.render()
+        for kname in ("k1", "k2", "k3", "k4"):
+            kpi_title = f"KPI {kname}"
+            assert kpi_title in html, (
+                f"KPI card '{kname}' (title='{kpi_title}') is missing from "
+                f"the rendered HTML.  This indicates layout overflow: items "
+                f"beyond the specified grid size are being silently dropped "
+                f"(Bug 11).  layout(3 2) has 6 cells but there are 8 items."
+            )
+
+    def test_kpi_divs_all_created(self):
+        """Verify all 4 KPI divs are created before checking HTML output."""
+        r = self._build_full_dashboard_renderer()
+        r.render()
+        for kname in ("k1", "k2", "k3", "k4"):
+            assert kname in r.kpi_divs, f"KPI div '{kname}' not created"
+
+    def test_layout_with_exact_fit_unchanged(self):
+        """layout(2 2) with exactly 4 items still produces 2×2 grid (no change)."""
+        renderer = _make_renderer(4, layout="2 2")
+        html = renderer.render()
+        # All 4 figures should be in the HTML
+        for i in range(1, 5):
+            assert f"g{i}" in html or len(renderer.figures) == 4, (
+                f"Figure g{i} missing from HTML with layout(2 2)"
+            )
+
+    def test_layout_with_fewer_items_pads(self):
+        """layout(3 2) with 4 items pads remaining 2 cells with None (no overflow)."""
+        renderer = _make_renderer(4, layout="3 2")
+        html = renderer.render()
+        # All 4 figures should be present
+        assert len(renderer.figures) == 4

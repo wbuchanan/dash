@@ -5913,6 +5913,12 @@ class DashRenderer:
 
         rows_n, cols_n = self._compute_grid(all_names, layout_opt)
 
+        # If the number of items exceeds the specified grid size, auto-expand
+        # rows so that no items are silently dropped (Bug 11).
+        n_items = len(all_names)
+        if n_items > rows_n * cols_n:
+            rows_n = math.ceil(n_items / cols_n)
+
         # Build grid cells: figures then KPI divs, in registration order
         cells: list[Any] = []
         for name in all_names:
