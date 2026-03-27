@@ -1011,9 +1011,18 @@ class GlyphMapper:
     drop NaN rows from their input arrays explicitly.
     """
 
-    def __init__(self, translator: OptionTranslator | None = None) -> None:
-        """Initialise the mapper with an optional OptionTranslator instance."""
+    def __init__(
+        self,
+        translator: OptionTranslator | None = None,
+        scheme: "SchemeParser | None" = None,
+    ) -> None:
+        """Initialise the mapper with an optional OptionTranslator and scheme."""
         self.tr = translator or OptionTranslator()
+        # Defer scheme import to avoid circular dependency; default to s2color
+        if scheme is None:
+            self.scheme: "SchemeParser" = SchemeParser("s2color")
+        else:
+            self.scheme = scheme
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -1477,6 +1486,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add a scatter glyph to *fig*.
 
@@ -1519,14 +1529,15 @@ class GlyphMapper:
             clean_source, xvar, yvar, options
         )
 
+        _default_color = self.scheme.default_color(color_idx, "scatter")
         _scatter_kwargs: dict = dict(
             x=eff_x,
             y=eff_y,
             source=plot_source,
             marker=marker,
             size=8,
-            fill_color="#1f77b4",
-            line_color="#1f77b4",
+            fill_color=_default_color,
+            line_color=_default_color,
             alpha=0.7,
             legend_label=yvar,
         )
@@ -1549,6 +1560,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
 
@@ -1574,7 +1586,7 @@ class GlyphMapper:
             x=xvar,
             y=yvar,
             source=sorted_source,
-            line_color="#ff7f0e",
+            line_color=self.scheme.default_color(color_idx, "line"),
             line_width=1.5,
             legend_label=yvar,
         )
@@ -1594,6 +1606,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add connected (line + scatter) glyphs to *fig*.
 
@@ -1610,8 +1623,8 @@ class GlyphMapper:
         # Pass options without mlabel to sub-calls; apply mlabel once below
         opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
         renderers = [
-            self.map_line(fig, source, yvar, xvar, opts_no_label, view=view),
-            self.map_scatter(fig, source, yvar, xvar, opts_no_label, view=view),
+            self.map_line(fig, source, yvar, xvar, opts_no_label, view=view, color_idx=color_idx),
+            self.map_scatter(fig, source, yvar, xvar, opts_no_label, view=view, color_idx=color_idx),
         ]
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return renderers
@@ -1624,6 +1637,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add an area glyph (filled between y=0 and y=yvar) to *fig*.
 
@@ -1654,7 +1668,8 @@ class GlyphMapper:
         # y1 = baseline, y2 = upper boundary (yvar values)
         area_source = ColumnDataSource({"x": x_arr, "y1": y1_base, "y2": y_arr})
         r = fig.varea(x="x", y1="y1", y2="y2", source=area_source,
-                      fill_color="#aec7e8", fill_alpha=0.5, legend_label=yvar)
+                      fill_color=self.scheme.default_color(color_idx, "area"),
+                      fill_alpha=0.5, legend_label=yvar)
 
         # Honour fill color option
         if "color" in options:
@@ -1687,6 +1702,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add vertical bar glyphs to *fig*.
 
@@ -1732,11 +1748,12 @@ class GlyphMapper:
             except (ValueError, TypeError):
                 pass
 
+        _bar_default_color = self.scheme.default_color(color_idx, "bar")
         _vbar_kwargs: dict = dict(
             x=xvar, top=yvar, bottom=base_val, source=clean_source,
             width=bar_width,
-            fill_color="#1f77b4",
-            line_color="#1f77b4",
+            fill_color=_bar_default_color,
+            line_color=_bar_default_color,
             legend_label=yvar,
             fill_alpha=0.8,
         )
@@ -1776,6 +1793,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add vertical spike glyphs (segments from y=0 to y=yvar) to *fig*.
 
@@ -1809,7 +1827,8 @@ class GlyphMapper:
         })
         _seg_kwargs: dict = dict(x0="x0", y0="y0", x1="x1", y1="y1",
                                   source=seg_source,
-                                  line_color="#1f77b4", line_width=1.5,
+                                  line_color=self.scheme.default_color(color_idx, "scatter"),
+                                  line_width=1.5,
                                   legend_label=yvar)
         if view is not None:
             _seg_kwargs["view"] = view
@@ -1830,6 +1849,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add an OLS linear fit line to *fig*.
 
@@ -1862,7 +1882,8 @@ class GlyphMapper:
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
-                     line_color="#d62728", line_width=2.0, line_dash="solid",
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0, line_dash="solid",
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -1875,6 +1896,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a quadratic fit line to *fig*.
 
@@ -1904,7 +1926,8 @@ class GlyphMapper:
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
-                     line_color="#d62728", line_width=2.0,
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -1917,6 +1940,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a linear fit line with a 95% confidence interval band to *fig*.
 
@@ -1943,13 +1967,14 @@ class GlyphMapper:
         empty_ci_src = ColumnDataSource({
             "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
         })
+        _lfitci_color = self.scheme.default_color(color_idx, "line")
         if n < 3 or np.std(x) == 0.0:
             band_r = fig.varea(
                 x="x_fit", y1="y_lower", y2="y_upper",
-                source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
+                source=empty_ci_src, fill_alpha=0.2, fill_color=_lfitci_color
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color="#d62728", line_width=2.0,
+                              line_color=_lfitci_color, line_width=2.0,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -1975,10 +2000,10 @@ class GlyphMapper:
 
         band_r = fig.varea(
             x="x_fit", y1="y_lower", y2="y_upper",
-            source=ci_source, fill_alpha=0.2, fill_color="#d62728"
+            source=ci_source, fill_alpha=0.2, fill_color=_lfitci_color
         )
         line_r = fig.line(x="x_fit", y="y_fit", source=ci_source,
-                          line_color="#d62728", line_width=2.0,
+                          line_color=_lfitci_color, line_width=2.0,
                           legend_label=yvar)
         self._apply_line_opts(line_r, options)
         self._apply_fill_opts(band_r, options)
@@ -1992,6 +2017,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a quadratic fit line with a 95% CI band to *fig*.
 
@@ -2014,16 +2040,17 @@ class GlyphMapper:
         x, y = x[mask], y[mask]
 
         # Need at least 3 points for a degree-2 polyfit
+        _qfitci_color = self.scheme.default_color(color_idx, "line")
         if len(x) < 3:
             empty_ci_src = ColumnDataSource({
                 "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
             })
             band_r = fig.varea(
                 x="x_fit", y1="y_lower", y2="y_upper",
-                source=empty_ci_src, fill_alpha=0.2, fill_color="#d62728"
+                source=empty_ci_src, fill_alpha=0.2, fill_color=_qfitci_color
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color="#d62728", line_width=2.0,
+                              line_color=_qfitci_color, line_width=2.0,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -2048,10 +2075,10 @@ class GlyphMapper:
         })
         band_r = fig.varea(
             x="x_fit", y1="y_lower", y2="y_upper",
-            source=ci_source, fill_alpha=0.2, fill_color="#d62728"
+            source=ci_source, fill_alpha=0.2, fill_color=_qfitci_color
         )
         line_r = fig.line(x="x_fit", y="y_fit", source=ci_source,
-                          line_color="#d62728", line_width=2.0,
+                          line_color=_qfitci_color, line_width=2.0,
                           legend_label=yvar)
         self._apply_line_opts(line_r, options)
         self._apply_fill_opts(band_r, options)
@@ -2065,6 +2092,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a LOWESS smoothed line to *fig*.
 
@@ -2099,7 +2127,8 @@ class GlyphMapper:
             "y_lw": smoothed[:, 1],
         })
         r = fig.line(x="x_lw", y="y_lw", source=lw_source,
-                     line_color="#2ca02c", line_width=2.0,
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -2166,6 +2195,7 @@ class GlyphMapper:
         xvar: str,
         options: "dict[str, str]",
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add a local polynomial regression smoother to *fig*.
 
@@ -2214,7 +2244,8 @@ class GlyphMapper:
             "y_lp": y_fit[valid].tolist(),
         })
         r = fig.line(x="x_lp", y="y_lp", source=lp_src,
-                     line_color="#9467bd", line_width=2.0,
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -2227,6 +2258,7 @@ class GlyphMapper:
         xvar: str,
         options: "dict[str, str]",
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a local polynomial smoother with a bootstrap 95% CI band to *fig*.
 
@@ -2245,16 +2277,17 @@ class GlyphMapper:
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
 
+        _lpolyci_color = self.scheme.default_color(color_idx, "line")
         empty_src = ColumnDataSource({
             "x_lp": [], "y_lp": [], "y_lower": [], "y_upper": []
         })
         if len(x) < 3:
             band_r = fig.varea(
                 x="x_lp", y1="y_lower", y2="y_upper",
-                source=empty_src, fill_alpha=0.2, fill_color="#9467bd",
+                source=empty_src, fill_alpha=0.2, fill_color=_lpolyci_color,
             )
             line_r = fig.line(x="x_lp", y="y_lp", source=empty_src,
-                              line_color="#9467bd", line_width=2.0,
+                              line_color=_lpolyci_color, line_width=2.0,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -2296,10 +2329,10 @@ class GlyphMapper:
         })
         band_r = fig.varea(
             x="x_lp", y1="y_lower", y2="y_upper",
-            source=ci_src, fill_alpha=0.2, fill_color="#9467bd",
+            source=ci_src, fill_alpha=0.2, fill_color=_lpolyci_color,
         )
         line_r = fig.line(x="x_lp", y="y_lp", source=ci_src,
-                          line_color="#9467bd", line_width=2.0,
+                          line_color=_lpolyci_color, line_width=2.0,
                           legend_label=yvar)
         self._apply_line_opts(line_r, options)
         self._apply_fill_opts(band_r, options)
@@ -2386,6 +2419,7 @@ class GlyphMapper:
         xvar: str,
         options: "dict[str, str]",
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add a fractional polynomial fit line to *fig*.
 
@@ -2426,7 +2460,8 @@ class GlyphMapper:
             "y_fp": y_fit[valid].tolist(),
         })
         r = fig.line(x="x_fp", y="y_fp", source=fp_src,
-                     line_color="#e377c2", line_width=2.0,
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -2439,6 +2474,7 @@ class GlyphMapper:
         xvar: str,
         options: "dict[str, str]",
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a fractional polynomial fit with a bootstrap 95% CI band to *fig*.
 
@@ -2457,16 +2493,17 @@ class GlyphMapper:
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
 
+        _fpfitci_color = self.scheme.default_color(color_idx, "line")
         empty_src = ColumnDataSource({
             "x_fp": [], "y_fp": [], "y_lower": [], "y_upper": []
         })
         if len(x) < 4:
             band_r = fig.varea(
                 x="x_fp", y1="y_lower", y2="y_upper",
-                source=empty_src, fill_alpha=0.2, fill_color="#e377c2",
+                source=empty_src, fill_alpha=0.2, fill_color=_fpfitci_color,
             )
             line_r = fig.line(x="x_fp", y="y_fp", source=empty_src,
-                              line_color="#e377c2", line_width=2.0,
+                              line_color=_fpfitci_color, line_width=2.0,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -2502,10 +2539,10 @@ class GlyphMapper:
         })
         band_r = fig.varea(
             x="x_fp", y1="y_lower", y2="y_upper",
-            source=ci_src, fill_alpha=0.2, fill_color="#e377c2",
+            source=ci_src, fill_alpha=0.2, fill_color=_fpfitci_color,
         )
         line_r = fig.line(x="x_fp", y="y_fp", source=ci_src,
-                          line_color="#e377c2", line_width=2.0,
+                          line_color=_fpfitci_color, line_width=2.0,
                           legend_label=yvar)
         self._apply_line_opts(line_r, options)
         self._apply_fill_opts(band_r, options)
@@ -2519,6 +2556,7 @@ class GlyphMapper:
         options: "dict[str, str] | None" = None,
         xvar: "str | None" = None,
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add histogram quad glyphs to *fig*.
 
@@ -2552,7 +2590,8 @@ class GlyphMapper:
         })
         r = fig.quad(top="top", bottom=0, left="left", right="right",
                      source=hist_source,
-                     fill_color="#1f77b4", line_color="white",
+                     fill_color=self.scheme.default_color(color_idx, "histogram"),
+                     line_color="white",
                      fill_alpha=0.8, legend_label=yvar)
         if "color" in options:
             try:
@@ -2573,6 +2612,7 @@ class GlyphMapper:
         options: "dict[str, str] | None" = None,
         xvar: "str | None" = None,
         view=None,
+        color_idx: int = 0,
     ) -> "GlyphRenderer":
         """Add a kernel density estimate line to *fig*.
 
@@ -2606,7 +2646,8 @@ class GlyphMapper:
 
         kd_source = ColumnDataSource({"x": x_range, "y": density})
         r = fig.line(x="x", y="y", source=kd_source,
-                     line_color="#9467bd", line_width=2.0,
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -2624,6 +2665,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a range area glyph (filled between y1 and y2) to *fig*.
 
@@ -2639,7 +2681,8 @@ class GlyphMapper:
             List with the single VArea GlyphRenderer.
         """
         _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
-                                    fill_color="#aec7e8", fill_alpha=0.5,
+                                    fill_color=self.scheme.default_color(color_idx, "area"),
+                                    fill_alpha=0.5,
                                     legend_label=y1var)
         if view is not None:
             _varea_kwargs["view"] = view
@@ -2657,6 +2700,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add range bar glyphs (bars from y1 to y2) to *fig*.
 
@@ -2678,7 +2722,9 @@ class GlyphMapper:
             default=0.8,
         )
         _rbar_kwargs: dict = dict(x=xvar, bottom=y1var, top=y2var, source=source,
-                                   width=bar_width, fill_color="#1f77b4", line_color="white",
+                                   width=bar_width,
+                                   fill_color=self.scheme.default_color(color_idx, "bar"),
+                                   line_color="white",
                                    legend_label=y1var)
         if view is not None:
             _rbar_kwargs["view"] = view
@@ -2696,6 +2742,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add range spike glyphs (segments from y1 to y2) to *fig*.
 
@@ -2711,7 +2758,8 @@ class GlyphMapper:
             List with the single Segment GlyphRenderer.
         """
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
-                                   line_color="#1f77b4", line_width=1.5,
+                                   line_color=self.scheme.default_color(color_idx, "scatter"),
+                                   line_width=1.5,
                                    legend_label=y1var)
         if view is not None:
             _rseg_kwargs["view"] = view
@@ -2729,6 +2777,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add range cap glyphs (segments + horizontal caps) to *fig*.
 
@@ -2759,16 +2808,17 @@ class GlyphMapper:
             "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
         })
 
+        _rcap_color = self.scheme.default_color(color_idx, "scatter")
         _spine_kwargs: dict = dict(x0="x", y0="y1", x1="x", y1="y2",
                                     source=cap_source,
-                                    line_color="#1f77b4", line_width=1.5,
+                                    line_color=_rcap_color, line_width=1.5,
                                     legend_label=y1var)
         _bot_kwargs: dict = dict(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
                                   source=cap_source,
-                                  line_color="#1f77b4", line_width=1.5)
+                                  line_color=_rcap_color, line_width=1.5)
         _top_kwargs: dict = dict(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
                                   source=cap_source,
-                                  line_color="#1f77b4", line_width=1.5)
+                                  line_color=_rcap_color, line_width=1.5)
         if view is not None:
             _spine_kwargs["view"] = view
             _bot_kwargs["view"] = view
@@ -2790,6 +2840,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add two connected range lines (lower and upper boundaries) to *fig*.
 
@@ -2805,10 +2856,12 @@ class GlyphMapper:
             List with [lower_line_renderer, upper_line_renderer].
         """
         _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=source,
-                                  line_color="#1f77b4", line_width=1.5,
+                                  line_color=self.scheme.default_color(color_idx, "line"),
+                                  line_width=1.5,
                                   legend_label=y1var)
         _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=source,
-                                  line_color="#ff7f0e", line_width=1.5)
+                                  line_color=self.scheme.default_color(color_idx + 1, "line"),
+                                  line_width=1.5)
         if view is not None:
             _rl1_kwargs["view"] = view
             _rl2_kwargs["view"] = view
@@ -2828,6 +2881,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add range connected (lines + scatter) glyphs for two boundaries.
 
@@ -2843,10 +2897,10 @@ class GlyphMapper:
             List of four renderers [lower_line, lower_scatter, upper_line, upper_scatter].
         """
         return [
-            self.map_line(fig, source, y1var, xvar, options, view=view),
-            self.map_scatter(fig, source, y1var, xvar, options, view=view),
-            self.map_line(fig, source, y2var, xvar, options, view=view),
-            self.map_scatter(fig, source, y2var, xvar, options, view=view),
+            self.map_line(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
+            self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
+            self.map_line(fig, source, y2var, xvar, options, view=view, color_idx=color_idx + 1),
+            self.map_scatter(fig, source, y2var, xvar, options, view=view, color_idx=color_idx + 1),
         ]
 
     def map_dot(
@@ -2857,6 +2911,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add dot plot glyphs to *fig*.
 
@@ -2875,7 +2930,7 @@ class GlyphMapper:
         Returns:
             List containing the single scatter GlyphRenderer.
         """
-        return self.map_scatter(fig, source, yvar, xvar, options, view=view)
+        return self.map_scatter(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
 
     # ------------------------------------------------------------------
     # Phase 3 additional plot types
@@ -2889,6 +2944,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add dropline glyphs to *fig*: vertical segments from y=0 to y=yvar plus dots.
 
@@ -2923,7 +2979,7 @@ class GlyphMapper:
             "x": x_plot, "y": y_plot, "y0": zeros,
             xvar: x_arr, yvar: y_arr,
         })
-        color = "#1f77b4"
+        color = self.scheme.default_color(color_idx, "scatter")
         try:
             if "mcolor" in options:
                 color = self.tr.translate_mcolor(options["mcolor"])
@@ -2955,6 +3011,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add range cap-with-symbol glyphs to *fig*.
 
@@ -2989,7 +3046,7 @@ class GlyphMapper:
             "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
         })
 
-        color = "#1f77b4"
+        color = self.scheme.default_color(color_idx, "scatter")
         try:
             if "mcolor" in options:
                 color = self.tr.translate_mcolor(options["mcolor"])
@@ -3029,6 +3086,7 @@ class GlyphMapper:
         fig: Any,
         values: list,
         options: dict[str, str],
+        color_idx: int = 0,
     ) -> list:
         """Add scatter glyphs from inline literal coordinate pairs to *fig*.
 
@@ -3070,7 +3128,7 @@ class GlyphMapper:
 
         si_source = ColumnDataSource({"x": x_vals.tolist(), "y": y_vals.tolist()})
 
-        color = "#1f77b4"
+        color = self.scheme.default_color(color_idx, "scatter")
         try:
             if "mcolor" in options:
                 color = self.tr.translate_mcolor(options["mcolor"])
@@ -3101,6 +3159,7 @@ class GlyphMapper:
         x2var: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add paired-coordinate spike glyphs (segments from (x1,y1) to (x2,y2)) to *fig*.
 
@@ -3125,7 +3184,8 @@ class GlyphMapper:
         source_clean = ColumnDataSource(clean)
         _pcseg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                     source=source_clean,
-                                    line_color="#1f77b4", line_width=1.5,
+                                    line_color=self.scheme.default_color(color_idx, "scatter"),
+                                    line_width=1.5,
                                     legend_label=y1var)
         if view is not None:
             _pcseg_kwargs["view"] = view
@@ -3143,6 +3203,7 @@ class GlyphMapper:
         x2var: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add paired-coordinate line segments to *fig*.
 
@@ -3162,7 +3223,7 @@ class GlyphMapper:
         Returns:
             List with the single Segment GlyphRenderer.
         """
-        return self.map_pcspike(fig, source, y1var, x1var, y2var, x2var, options, view=view)
+        return self.map_pcspike(fig, source, y1var, x1var, y2var, x2var, options, view=view, color_idx=color_idx)
 
     def map_pcscatter(
         self,
@@ -3174,6 +3235,7 @@ class GlyphMapper:
         x2var: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add paired-coordinate scatter glyphs to *fig*.
 
@@ -3205,7 +3267,7 @@ class GlyphMapper:
         pc_source = ColumnDataSource({"x": x_all.tolist(), "y": y_all.tolist()})
 
         _pcsc_kwargs: dict = dict(source=pc_source,
-                                   size=8, color="#1f77b4",
+                                   size=8, color=self.scheme.default_color(color_idx, "scatter"),
                                    legend_label=y1var)
         if view is not None:
             _pcsc_kwargs["view"] = view
@@ -3223,6 +3285,7 @@ class GlyphMapper:
         x2var: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add paired-coordinate arrow glyphs (segments + arrowheads) to *fig*.
 
@@ -3249,7 +3312,7 @@ class GlyphMapper:
         }).dropna()
         pc_source = ColumnDataSource(clean)
 
-        color = "#1f77b4"
+        color = self.scheme.default_color(color_idx, "scatter")
         try:
             if "lcolor" in options:
                 color = self.tr.translate_lcolor(options["lcolor"])
@@ -3294,6 +3357,7 @@ class GlyphMapper:
         x2var: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add paired-coordinate bidirectional arrow glyphs to *fig*.
 
@@ -3320,7 +3384,7 @@ class GlyphMapper:
         }).dropna()
         pc_source = ColumnDataSource(clean)
 
-        color = "#1f77b4"
+        color = self.scheme.default_color(color_idx, "scatter")
         try:
             if "lcolor" in options:
                 color = self.tr.translate_lcolor(options["lcolor"])
@@ -3364,6 +3428,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a time-series line glyph to *fig*.
 
@@ -3380,7 +3445,7 @@ class GlyphMapper:
         Returns:
             The result of ``map_line``.
         """
-        return self.map_line(fig, source, yvar, xvar, options, view=view)
+        return self.map_line(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
 
     def map_tsrline(
         self,
@@ -3391,6 +3456,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add time-series range lines to *fig*.
 
@@ -3408,7 +3474,7 @@ class GlyphMapper:
         Returns:
             The result of ``map_rline``.
         """
-        return self.map_rline(fig, source, y1var, y2var, xvar, options, view=view)
+        return self.map_rline(fig, source, y1var, y2var, xvar, options, view=view, color_idx=color_idx)
 
     def map_rscatter(
         self,
@@ -3419,6 +3485,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add range scatter glyphs to *fig*.
 
@@ -3451,7 +3518,7 @@ class GlyphMapper:
             "y": y_all[mask].tolist(),
         })
         _rs_kwargs: dict = dict(source=rs_source,
-                                 size=8, color="#1f77b4",
+                                 size=8, color=self.scheme.default_color(color_idx, "scatter"),
                                  legend_label=y1var)
         if view is not None:
             _rs_kwargs["view"] = view
@@ -3467,6 +3534,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a monotone cubic spline (PCHIP) line to *fig*.
 
@@ -3521,7 +3589,8 @@ class GlyphMapper:
 
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
         r = fig.line(x="x_sp", y="y_sp", source=ms_source,
-                     line_color="#2ca02c", line_width=2.0,
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
@@ -3534,6 +3603,7 @@ class GlyphMapper:
         xvar: str,
         options: dict[str, str],
         view=None,
+        color_idx: int = 0,
     ) -> list:
         """Add a median band smoother to *fig*.
 
@@ -3592,7 +3662,8 @@ class GlyphMapper:
 
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
         r = fig.line(x="x_mb", y="y_mb", source=mb_source,
-                     line_color="#2ca02c", line_width=2.0,
+                     line_color=self.scheme.default_color(color_idx, "line"),
+                     line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
@@ -4053,7 +4124,6 @@ class DashRenderer:
         with open(data_json_path, encoding="utf-8") as f:
             self.data_json: dict = json.loads(f.read())
 
-        self.mapper = GlyphMapper()
         self.translator = OptionTranslator()
 
         # Load scheme — falls back to s2color if unrecognised
@@ -4064,6 +4134,8 @@ class DashRenderer:
             self.scheme: SchemeParser = SchemeParser(_scheme_name)
         except (ValueError, OSError):
             self.scheme = SchemeParser("s2color")
+
+        self.mapper = GlyphMapper(scheme=self.scheme)
 
         # Populated during _load_data()
         self.df: pd.DataFrame = pd.DataFrame()
@@ -4873,7 +4945,7 @@ class DashRenderer:
         _PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow"})
 
         # Add glyphs for each plot layer
-        for plot in plots:
+        for pi, plot in enumerate(plots):
             ptype = plot.get("type", "scatter")
             pxvar = plot.get("xvar", xvar)
             popts = plot.get("options", {})
@@ -4889,24 +4961,24 @@ class DashRenderer:
 
             if ptype.lower() == "scatteri":
                 # Inline coordinate list — no shared source variable needed
-                self.mapper.map_scatteri(fig, plot.get("values", []), popts)
+                self.mapper.map_scatteri(fig, plot.get("values", []), popts, color_idx=pi)
             elif ptype.lower() in _PC_TYPES:
                 py1var = plot.get("y1var", "")
                 px1var = plot.get("x1var", "")
                 py2var = plot.get("y2var", "")
                 px2var = plot.get("x2var", "")
                 self._add_pc_glyph(fig, source, ptype, py1var, px1var, py2var, px2var, popts,
-                                   view=facet_view)
+                                   view=facet_view, color_idx=pi)
             elif ptype.lower() in _RANGE_TYPES:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
                 self._add_glyph(fig, source, ptype, py1var, pxvar, popts,
-                                y2var=py2var, view=facet_view)
+                                y2var=py2var, view=facet_view, color_idx=pi)
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
                 self._add_glyph(fig, source, ptype, pyvar, pxvar, popts,
-                                view=facet_view)
+                                view=facet_view, color_idx=pi)
             elif ptype.lower() == "function":
                 pexpr = plot.get("expr", "")
                 x_lo, x_hi = 0.0, 1.0
@@ -4929,7 +5001,7 @@ class DashRenderer:
             else:
                 pyvar = plot.get("yvar", yvar)
                 self._add_glyph(fig, source, ptype, pyvar, pxvar, popts,
-                                view=facet_view)
+                                view=facet_view, color_idx=pi)
 
             # Assign secondary axis range names to newly added renderers
             if _use_y2 or _use_x2:
@@ -5010,6 +5082,7 @@ class DashRenderer:
         options: dict,
         y2var: str = "",
         view=None,
+        color_idx: int = 0,
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -5022,6 +5095,7 @@ class DashRenderer:
             options:    Plot-level options dict.
             y2var:      Second y variable for range plot types (empty for
                         non-range plots).
+            color_idx:  Zero-based plot index for scheme color cycling.
         """
         # Standard (yvar, xvar) dispatch
         dispatch = {
@@ -5069,16 +5143,16 @@ class DashRenderer:
         # Range plots: (fig, source, y1var, y2var, xvar, options)
         rfn = range_dispatch.get(pt)
         if rfn is not None and y2var:
-            rfn(fig, source, yvar, y2var, xvar, options, view=view)
+            rfn(fig, source, yvar, y2var, xvar, options, view=view, color_idx=color_idx)
             return
 
         fn = dispatch.get(pt)
         if fn is not None:
             # histogram and kdensity are univariate — no xvar positional arg
             if pt in ("histogram", "hist", "kdensity"):
-                fn(fig, source, yvar, options, view=view)
+                fn(fig, source, yvar, options, view=view, color_idx=color_idx)
             else:
-                fn(fig, source, yvar, xvar, options, view=view)
+                fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
 
     def _add_pc_glyph(
         self,
@@ -5091,6 +5165,7 @@ class DashRenderer:
         x2var: str,
         options: dict,
         view=None,
+        color_idx: int = 0,
     ) -> None:
         """Dispatch a paired-coordinate plot layer to the correct GlyphMapper method.
 
@@ -5104,6 +5179,7 @@ class DashRenderer:
             y2var:      End y variable name.
             x2var:      End x variable name.
             options:    Plot-level options dict.
+            color_idx:  Zero-based plot index for scheme color cycling.
         """
         pc_dispatch = {
             "pcspike":   self.mapper.map_pcspike,
@@ -5114,7 +5190,7 @@ class DashRenderer:
         }
         fn = pc_dispatch.get(plot_type.lower())
         if fn is not None:
-            fn(fig, source, y1var, x1var, y2var, x2var, options, view=view)
+            fn(fig, source, y1var, x1var, y2var, x2var, options, view=view, color_idx=color_idx)
 
     # ------------------------------------------------------------------
     # KPI card construction
@@ -5967,7 +6043,9 @@ class ServerAppBuilder:
             "from bokeh.layouts import column, gridplot, row",
             "from bokeh.models import (",
             "    Arrow,",
+            "    BooleanFilter,",
             "    BoxSelectTool,",
+            "    CDSView,",
             "    ColumnDataSource,",
             "    Div,",
             "    HoverTool,",
@@ -7496,7 +7574,11 @@ class ServerAppBuilder:
             "        facet_entries = []",
             "        # Remove the unfaceted figure",
             "        orig_fig = figures.pop(gname, None)",
-            "        orig_src = graph_sources.pop(gname, None)",
+            "        # For linked graphs keep shared source intact; for others pop it",
+            "        if gname in linked_names:",
+            "            orig_src = graph_sources.get(gname)",
+            "        else:",
+            "            orig_src = graph_sources.pop(gname, None)",
             "        for _fac_idx, (_fac_key, _fac_gdf) in enumerate(",
             "            work_df.groupby(groupby_key, sort=True, dropna=False)",
             "        ):",
@@ -7516,16 +7598,22 @@ class ServerAppBuilder:
             "                _fac_parts.append(html.escape(_vl.get(_sv) or _vl.get(_iv) or _sv))",
             "            _fac_label = ' / '.join(_fac_parts)",
             "            _fac_name = f'{gname}__by__{_fac_idx}'",
-            "            # Build CDS for this facet",
+            "            # Build CDS for this facet (linked graphs use shared source + CDSView)",
             "            _fac_gvars = []",
             "            for p in g.get('plots', []):",
             "                for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
             "                    v = p.get(k, '')",
             "                    if v and v in _fac_gdf.columns and v not in _fac_gvars:",
             "                        _fac_gvars.append(v)",
-            "            graph_sources[_fac_name] = ColumnDataSource(",
-            "                {v: _fac_gdf[v].tolist() for v in _fac_gvars}",
-            "            ) if _fac_gvars else ColumnDataSource({})",
+            "            if gname in linked_names:",
+            "                graph_sources[_fac_name] = shared_source",
+            "                _fac_mask = [i in _fac_gdf.index for i in df.index]",
+            "                _fac_view = CDSView(filter=BooleanFilter(booleans=_fac_mask))",
+            "            else:",
+            "                graph_sources[_fac_name] = ColumnDataSource(",
+            "                    {v: _fac_gdf[v].tolist() for v in _fac_gvars}",
+            "                ) if _fac_gvars else ColumnDataSource({})",
+            "                _fac_view = None",
             "            # Clone the figure for this facet (rebuild from spec)",
             "            _fac_title = html.escape(go.get('title', '') or '')",
             "            if _fac_title:",
@@ -7551,14 +7639,15 @@ class ServerAppBuilder:
             "                yvar_f = plot.get('yvar', '') or plot.get('var', '')",
             "                xvar_f = plot.get('xvar', '')",
             "                color = _resolve_color(opts.get('lcolor') or opts.get('mcolor', '')) or '#1f77b4'",
+            "                _glyph_kw = {'view': _fac_view} if _fac_view is not None else {}",
             "                if ptype == 'scatter':",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f)",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype == 'line':",
-            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f)",
+            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('bar',):",
-            "                    _fac_fig.vbar(x=xvar_f, top=yvar_f, source=_fac_src, width=0.8, color=color, legend_label=yvar_f)",
+            "                    _fac_fig.vbar(x=xvar_f, top=yvar_f, source=_fac_src, width=0.8, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype == 'area':",
-            "                    _fac_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_fac_src, fill_color=color, fill_alpha=0.4, legend_label=yvar_f)",
+            "                    _fac_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_fac_src, fill_color=color, fill_alpha=0.4, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('histogram', 'hist'):",
             "                    _hvar = plot.get('var', '') or yvar_f",
             "                    _hdata = _compute_histogram(_fac_gdf, _hvar)",
@@ -7599,15 +7688,15 @@ class ServerAppBuilder:
             "                    agg_sources[(_fac_name, pi)] = {'source': _fpsrc, 'type': 'fpfit', 'yvar': yvar_f, 'xvar': xvar_f}",
             "                    _fac_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=1.5, color=color, legend_label=f'fpfit {yvar_f}')",
             "                elif ptype in ('connected',):",
-            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color)",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f)",
+            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color, **_glyph_kw)",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('dot',):",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=8, color=color, marker='circle', legend_label=yvar_f)",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=8, color=color, marker='circle', legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('spike',):",
-            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f)",
+            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('dropline',):",
-            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.0, color=color)",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f)",
+            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.0, color=color, **_glyph_kw)",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype == 'mband':",
             "                    if xvar_f and yvar_f:",
             "                        _mb_d = _fac_gdf[[xvar_f, yvar_f]].dropna() if xvar_f in _fac_gdf.columns and yvar_f in _fac_gdf.columns else None",

@@ -393,9 +393,10 @@ class TestMapMspline:
         assert len(result[0].data_source.data["x_sp"]) == 0
 
     def test_mspline_default_line_color(self, fig, ts_cds, gm):
-        """P4-37: mspline uses the expected default green color."""
+        """P4-37: mspline uses the scheme's default line color (index 0)."""
         result = gm.map_mspline(fig, ts_cds, "yval", "t", {})
-        assert result[0].glyph.line_color == "#2ca02c"
+        expected_color = gm.scheme.default_color(0, "line")
+        assert result[0].glyph.line_color == expected_color
 
     def test_mspline_lcolor_option_applied(self, fig, ts_cds, gm):
         """P4-38: lcolor option overrides the default spline color."""
