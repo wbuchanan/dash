@@ -25,6 +25,8 @@
 {vieweralsosee "lfitci"              "help lfitci"}{...}
 {vieweralsosee "qfitci"              "help qfitci"}{...}
 {vieweralsosee "lowess"              "help lowess"}{...}
+{vieweralsosee "lpoly"               "help lpoly"}{...}
+{vieweralsosee "fpfit"               "help fpfit"}{...}
 {vieweralsosee "histogram"           "help histogram"}{...}
 {vieweralsosee "kdensity"            "help kdensity"}{...}
 {vieweralsosee "dash_setup"          "help dash_setup"}{...}
@@ -154,8 +156,10 @@ This help file documents only the features that differ from or extend
 
 {phang2}5.  {ul:Unsupported twoway options.}
     The following {cmd:twoway} options are not yet supported by {cmd:dash}:
-    {cmd:scheme()}, {cmd:play()}, {cmd:nodraw}.
+    {cmd:play()}, {cmd:nodraw}.
     Specifying them will produce a warning and the option will be ignored.
+    Note: {cmd:scheme()} is fully supported — see
+    {help dash##scheme:Stata scheme support} below.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (for axis titles) and value labels
@@ -548,6 +552,41 @@ For range plot types, labels are placed at the upper boundary (y2 variable).
 {phang2}{cmd:. dash scatter mpg weight, mlabel(make) mlabcolor(navy) mlabsize(small)}{p_end}
 
 
+{marker smoother_options}
+{title:Smoother Plot-Type Options}
+
+{pstd}
+The following plot-level options apply specifically to {cmd:lpoly},
+{cmd:lpolyci}, {cmd:fpfit}, and {cmd:fpfitci} plot types.
+
+{synoptset 20}{...}
+{synopt:{opt bwidth(#)}}bandwidth for local polynomial smoother ({cmd:lpoly}/
+    {cmd:lpolyci}) as a fraction of the x-range; default is 0.5; valid range
+    0.01–1.0{p_end}
+{synopt:{opt degree(#)}}polynomial degree for local polynomial smoother;
+    0 = Nadaraya–Watson kernel estimator (default), 1 = local linear,
+    2 = local quadratic{p_end}
+{synoptline}
+
+{pstd}
+{cmd:lpoly} and {cmd:lpolyci} implement Gaussian kernel-weighted local
+polynomial regression — the same smoother underlying Stata's
+{helpb twoway lpoly}.  {cmd:lpolyci} adds a bootstrap 95% confidence band.
+
+{pstd}
+{cmd:fpfit} and {cmd:fpfitci} implement degree-2 fractional polynomial
+fitting (Royston & Altman, 1994), selecting the pair of powers from
+{c -(}{cmd:–2}, {cmd:–1}, {cmd:–0.5}, {cmd:0}, {cmd:0.5}, {cmd:1},
+{cmd:2}, {cmd:3}{c )-} that minimises the residual sum of squares.
+{cmd:fpfitci} adds a bootstrap 95% confidence band.  Both require
+positive x values.
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash (scatter mpg weight) (lpoly mpg weight, bwidth(0.4)), saving(lp.html)}{p_end}
+{phang2}{cmd:. dash (scatter mpg weight) (fpfit mpg weight), saving(fp.html)}{p_end}
+
+
 {marker region_options}
 {title:Region Styling Options}
 
@@ -622,15 +661,18 @@ the plot specification).
 {title:Unsupported Stata twoway options}
 
 {pstd}
-The following Stata {helpb twoway} options are recognized by the parser but
-are silently ignored.  No error is produced, so existing Stata graph commands
-copy-pasted into {cmd:dash} will still run.
+The following Stata {helpb twoway} options are either silently ignored or not
+supported.  No error is produced for unknown options, so existing Stata graph
+commands copy-pasted into {cmd:dash} will still run even when they contain
+options that have no Bokeh equivalent.
 
 {phang2}{opt connect(list)} — control how missing values join points.
     Not applicable to Bokeh renderers; use {cmd:connected} plot type instead.
+    Silently ignored when encountered.
 
 {phang2}{opt cmissing(y|n ...)} — treatment of missing values in lines.
     Bokeh always drops missing observations before rendering.
+    Silently ignored when encountered.
 
 {phang2}{opt jitter(#)} — add random noise to marker positions.
     Uniformly distributed noise scaled to #% of the axis range is added to
@@ -642,10 +684,12 @@ copy-pasted into {cmd:dash} will still run.
     Pass any non-negative integer to make jitter reproducible across renders.
 
 {phang2}{opt msangle(#)} — angle of asymmetric marker symbols.
-    Bokeh's {cmd:scatter} glyph does not support per-marker rotation; ignored.
+    Bokeh's {cmd:scatter} glyph does not support per-marker rotation.
+    Silently ignored when encountered.
 
 {phang2}{opt recast(plottype)} — recast one plot type to another at render time.
     Not supported; specify the desired plot type directly.
+    Silently ignored when encountered.
 
 {phang2}{opt xaxis(#)} / {opt yaxis(#)} — assign a plot layer to a secondary axis.
     Use {cmd:yaxis(2)} on any plot layer to add a right-hand y-axis scaled to

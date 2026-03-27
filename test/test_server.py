@@ -2946,3 +2946,200 @@ class TestServerRconnectedMlabel:
         for root in doc.roots: collect(root)
         assert any(isinstance(o, LabelSet) for o in all_objs), \
             "server-mode rconnected with mlabel() must produce a LabelSet"
+
+
+class TestServerLpolyFpfit:
+    """Server-mode tests for lpoly, lpolyci, fpfit, fpfitci plot types."""
+
+    # ------------------------------------------------------------------
+    # Source-code generation tests
+    # ------------------------------------------------------------------
+
+    def test_lpoly_generates_valid_app(self, dr_module, auto_df):
+        """lpoly must produce compilable server app source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated>", "exec")
+        assert "_compute_lpoly" in source
+
+    def test_lpolyci_generates_valid_app(self, dr_module, auto_df):
+        """lpolyci must produce compilable server app source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpolyci", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated>", "exec")
+        assert "_compute_lpoly" in source
+
+    def test_fpfit_generates_valid_app(self, dr_module, auto_df):
+        """fpfit must produce compilable server app source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "fpfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated>", "exec")
+        assert "_compute_fpfit" in source
+
+    def test_fpfitci_generates_valid_app(self, dr_module, auto_df):
+        """fpfitci must produce compilable server app source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "fpfitci", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated>", "exec")
+        assert "_compute_fpfit" in source
+
+    def test_lpoly_bwidth_in_generated_source(self, dr_module, auto_df):
+        """bwidth() option must be encoded in generated lpoly server source."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                       "options": {"bwidth": "0.8"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "0.8" in source, "bwidth value must appear in generated source"
+
+    def test_lpoly_degree_in_generated_source(self, dr_module, auto_df):
+        """degree() option must be encoded in generated lpoly server source (via _SPEC_B64)."""
+        import re, base64 as _b64
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                       "options": {"degree": "2"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # Spec is stored base64-encoded in _SPEC_B64; decode and verify option is present
+        m = re.search(r'_SPEC_B64\s*=\s*"([^"]+)"', source)
+        assert m, "_SPEC_B64 must be present in generated source"
+        decoded = _b64.b64decode(m.group(1)).decode("utf-8")
+        assert '"degree": "2"' in decoded or "'degree': '2'" in decoded or '"degree":"2"' in decoded, \
+            "degree=2 must be preserved in _SPEC_B64 encoded spec"
+
+    # ------------------------------------------------------------------
+    # make_document execution tests
+    # ------------------------------------------------------------------
+
+    def test_lpoly_make_document_runs(self, dr_module, auto_df):
+        """lpoly make_document() must produce a document with figures."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_tm_lpoly", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        assert len(doc.roots) > 0
+
+    def test_fpfit_make_document_runs(self, dr_module, auto_df):
+        """fpfit make_document() must produce a document with figures."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "fpfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_tm_fpfit", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        assert len(doc.roots) > 0
+
+    # ------------------------------------------------------------------
+    # Regression: faceted lpoly must use bwidth/degree from options
+    # ------------------------------------------------------------------
+
+    def test_lpoly_faceted_bwidth_respected(self, dr_module, auto_df):
+        """Regression: faceted lpoly must read bwidth from opts (not hardcode 0.5)."""
+        import re, base64 as _b64
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                       "options": {"bwidth": "0.3"}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated>", "exec")
+        # The fix: generated faceted code must read bwidth from opts not hardcode it.
+        # Verify: _SPEC_B64 roundtrip preserves the bwidth value
+        m = re.search(r'_SPEC_B64\s*=\s*"([^"]+)"', source)
+        assert m, "_SPEC_B64 must be present in generated source"
+        decoded = _b64.b64decode(m.group(1)).decode("utf-8")
+        assert "0.3" in decoded, "bwidth=0.3 must be preserved in embedded spec"
+        # Also verify generated code reads from opts (not hardcoded default)
+        assert "opts.get('bwidth'" in source or 'opts.get("bwidth"' in source, \
+            "faceted lpoly code must read bwidth from opts dict"
+
+    def test_lpoly_faceted_degree_respected(self, dr_module, auto_df):
+        """Regression: faceted lpoly must read degree from opts (not hardcode 0)."""
+        import re, base64 as _b64
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                       "options": {"degree": "2"}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        compile(source, "<generated>", "exec")
+        m = re.search(r'_SPEC_B64\s*=\s*"([^"]+)"', source)
+        assert m, "_SPEC_B64 must be present in generated source"
+        decoded = _b64.b64decode(m.group(1)).decode("utf-8")
+        assert '"degree": "2"' in decoded or '"degree":"2"' in decoded, \
+            "degree=2 must be preserved in embedded spec"
+        assert "opts.get('degree'" in source or 'opts.get("degree"' in source, \
+            "faceted lpoly code must read degree from opts dict"
+
+    def test_lpoly_faceted_make_document_runs(self, dr_module, auto_df):
+        """lpoly with by() must produce a valid document with custom bwidth/degree."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                       "options": {"bwidth": "0.4", "degree": "1"}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_tm_lpoly_fac", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        assert len(doc.roots) > 0
+
+    def test_fpfit_faceted_make_document_runs(self, dr_module, auto_df):
+        """fpfit with by() must produce a valid document."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "fpfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_tm_fpfit_fac", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        assert len(doc.roots) > 0

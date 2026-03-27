@@ -273,6 +273,12 @@ string scalar _expand_abbrev(string scalar name) {
     if (name == "lfitci")      return("lfitci")    // no short form needed, exact
     if (name == "qfitci")      return("qfitci")
     if (name == "low")         return("lowess")
+    if (name == "lpo")         return("lpoly")
+    if (name == "lpol")        return("lpoly")
+    if (name == "lpolyci")     return("lpolyci")    // exact match, keep
+    if (name == "fp")          return("fpfit")
+    if (name == "fpf")         return("fpfit")
+    if (name == "fpfitci")     return("fpfitci")    // exact match, keep
     if (name == "hist")        return("histogram")
     if (name == "kde")         return("kdensity")
     if (name == "rarea")       return("rarea")
@@ -383,6 +389,7 @@ real scalar _is_supported_plot(string scalar ptype) {
     string rowvector supported
     supported = ("scatter", "line", "connected", "area", "bar", "spike",
                  "lfit", "qfit", "lfitci", "qfitci", "lowess",
+                 "lpoly", "lpolyci", "fpfit", "fpfitci",
                  "histogram", "kdensity",
                  "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
                  "dot", "dropline", "rcapsym", "scatteri",
@@ -663,7 +670,7 @@ string scalar _parse_structure(string matrix tokens,
         // validate plot type  (P1A-14)
         if (!_is_supported_plot(ptype)) {
             errprintf("dash: unsupported plot type '%s'. ", ptype)
-            errprintf("Supported types: scatter line connected area bar spike lfit qfit lfitci qfitci lowess histogram kdensity rarea rbar rspike rcap rline rconnected dot dropline rcapsym scatteri pcspike pcarrow pcbarrow tsline tsrline mspline function\n")
+            errprintf("Supported types: scatter line connected area bar spike lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci histogram kdensity rarea rbar rspike rcap rline rconnected dot dropline rcapsym scatteri pcspike pcarrow pcbarrow pci pcscatter tsline tsrline mspline mband rscatter function\n")
             exit(198)
         }
 

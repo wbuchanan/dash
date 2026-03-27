@@ -2023,6 +2023,409 @@ class GlyphMapper:
         self._apply_line_opts(r, options)
         return r
 
+    # ------------------------------------------------------------------
+    # Local polynomial smoother (lpoly / lpolyci)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _compute_lpoly_fit(
+        x: "np.ndarray",
+        y: "np.ndarray",
+        bwidth: float = 0.5,
+        degree: int = 0,
+        n_grid: int = 200,
+    ) -> "tuple[np.ndarray, np.ndarray]":
+        """Kernel-weighted local polynomial regression.
+
+        Implements Nadaraya–Watson (degree=0) or local-linear (degree=1)
+        regression using a Gaussian kernel.  For higher degrees the weights
+        are passed to a least-squares polynomial fit at each grid point.
+
+        Args:
+            x, y:    Cleaned (no NaN) paired arrays.
+            bwidth:  Bandwidth as a fraction of ``x``'s range (0 < bwidth ≤ 1).
+            degree:  Polynomial degree (0 = kernel smoother, 1 = local linear,
+                     2 = local quadratic).
+            n_grid:  Number of evaluation points on the x-grid.
+
+        Returns:
+            ``(x_grid, y_fit)`` — 1-D arrays of length *n_grid*.
+        """
+        x_min, x_max = x.min(), x.max()
+        x_range = x_max - x_min or 1.0
+        h = bwidth * x_range  # bandwidth in data units
+
+        x_grid = np.linspace(x_min, x_max, n_grid)
+        y_fit = np.empty(n_grid)
+
+        for i, x0 in enumerate(x_grid):
+            # Gaussian kernel weights
+            w = np.exp(-0.5 * ((x - x0) / h) ** 2)
+            w_sum = w.sum()
+            if w_sum < 1e-12:
+                y_fit[i] = np.nan
+                continue
+            if degree == 0:
+                y_fit[i] = np.dot(w, y) / w_sum
+            else:
+                # Weighted polynomial fit of given degree
+                try:
+                    coeffs = np.polyfit(x, y, deg=degree, w=w)
+                    y_fit[i] = np.polyval(coeffs, x0)
+                except (np.linalg.LinAlgError, ValueError):
+                    y_fit[i] = np.dot(w, y) / w_sum
+
+        return x_grid, y_fit
+
+    def map_lpoly(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: "dict[str, str]",
+    ) -> "GlyphRenderer":
+        """Add a local polynomial regression smoother to *fig*.
+
+        Implements Nadaraya–Watson kernel regression (``degree(0)``) or
+        local-linear / local-polynomial smoothing (``degree(1)``, ``degree(2)``).
+        Mirrors Stata's ``twoway lpoly`` with ``bwidth()`` and ``degree()``
+        sub-options.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable.
+            xvar:    Name of the x variable.
+            options: Plot-level options; supports ``bwidth`` (default 0.5) and
+                     ``degree`` (default 0).
+
+        Returns:
+            GlyphRenderer for the smoother line.
+        """
+        x = np.array(source.data[xvar], dtype=float)
+        y = np.array(source.data[yvar], dtype=float)
+        mask = ~(np.isnan(x) | np.isnan(y))
+        x, y = x[mask], y[mask]
+
+        if len(x) < 2:
+            empty = ColumnDataSource({"x_lp": [], "y_lp": []})
+            return fig.line(x="x_lp", y="y_lp", source=empty)
+
+        bwidth = 0.5
+        try:
+            bwidth = max(0.01, min(1.0, float(options.get("bwidth", "0.5"))))
+        except (ValueError, TypeError):
+            pass
+
+        degree = 0
+        try:
+            degree = max(0, min(3, int(options.get("degree", "0"))))
+        except (ValueError, TypeError):
+            pass
+
+        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bwidth,
+                                                 degree=degree)
+        valid = ~np.isnan(y_fit)
+        lp_src = ColumnDataSource({
+            "x_lp": x_grid[valid].tolist(),
+            "y_lp": y_fit[valid].tolist(),
+        })
+        r = fig.line(x="x_lp", y="y_lp", source=lp_src,
+                     line_color="#9467bd", line_width=2.0,
+                     legend_label=yvar)
+        self._apply_line_opts(r, options)
+        return r
+
+    def map_lpolyci(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: "dict[str, str]",
+    ) -> list:
+        """Add a local polynomial smoother with a bootstrap 95% CI band to *fig*.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable.
+            xvar:    Name of the x variable.
+            options: Plot-level options; supports ``bwidth`` and ``degree``.
+
+        Returns:
+            List with [line_renderer, band_renderer].
+        """
+        x = np.array(source.data[xvar], dtype=float)
+        y = np.array(source.data[yvar], dtype=float)
+        mask = ~(np.isnan(x) | np.isnan(y))
+        x, y = x[mask], y[mask]
+
+        empty_src = ColumnDataSource({
+            "x_lp": [], "y_lp": [], "y_lower": [], "y_upper": []
+        })
+        if len(x) < 3:
+            band_r = fig.varea(
+                x="x_lp", y1="y_lower", y2="y_upper",
+                source=empty_src, fill_alpha=0.2, fill_color="#9467bd",
+            )
+            line_r = fig.line(x="x_lp", y="y_lp", source=empty_src,
+                              line_color="#9467bd", line_width=2.0,
+                              legend_label=yvar)
+            return [line_r, band_r]
+
+        bwidth = 0.5
+        try:
+            bwidth = max(0.01, min(1.0, float(options.get("bwidth", "0.5"))))
+        except (ValueError, TypeError):
+            pass
+
+        degree = 0
+        try:
+            degree = max(0, min(3, int(options.get("degree", "0"))))
+        except (ValueError, TypeError):
+            pass
+
+        n_grid = 100  # coarser grid for speed
+        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bwidth,
+                                                 degree=degree, n_grid=n_grid)
+
+        # Bootstrap CI (200 resamples for speed)
+        rng = np.random.default_rng(seed=42)
+        n_boot = 200
+        boot_preds = np.zeros((n_boot, n_grid))
+        for i in range(n_boot):
+            idx = rng.integers(0, len(x), size=len(x))
+            _, yb = self._compute_lpoly_fit(x[idx], y[idx], bwidth=bwidth,
+                                             degree=degree, n_grid=n_grid)
+            boot_preds[i] = np.where(np.isnan(yb), y_fit, yb)
+
+        y_lower = np.percentile(boot_preds, 2.5, axis=0)
+        y_upper = np.percentile(boot_preds, 97.5, axis=0)
+
+        valid = ~np.isnan(y_fit)
+        ci_src = ColumnDataSource({
+            "x_lp":    x_grid[valid].tolist(),
+            "y_lp":    y_fit[valid].tolist(),
+            "y_lower": y_lower[valid].tolist(),
+            "y_upper": y_upper[valid].tolist(),
+        })
+        band_r = fig.varea(
+            x="x_lp", y1="y_lower", y2="y_upper",
+            source=ci_src, fill_alpha=0.2, fill_color="#9467bd",
+        )
+        line_r = fig.line(x="x_lp", y="y_lp", source=ci_src,
+                          line_color="#9467bd", line_width=2.0,
+                          legend_label=yvar)
+        self._apply_line_opts(line_r, options)
+        self._apply_fill_opts(band_r, options)
+        return [line_r, band_r]
+
+    # ------------------------------------------------------------------
+    # Fractional polynomial fit (fpfit / fpfitci)
+    # ------------------------------------------------------------------
+
+    # Standard FP powers used by Stata (Royston & Altman, 1994)
+    _FP_POWERS = (-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0)
+
+    @staticmethod
+    def _fp_transform(x: "np.ndarray", p: float) -> "np.ndarray":
+        """Apply a single FP transformation: x^p (p==0 → ln x)."""
+        with np.errstate(divide="ignore", invalid="ignore"):
+            if p == 0.0:
+                result = np.where(x > 0, np.log(x), np.nan)
+            else:
+                result = np.where(x > 0, np.power(x.astype(float), p), np.nan)
+        return result
+
+    @classmethod
+    def _fit_fp2(
+        cls,
+        x: "np.ndarray",
+        y: "np.ndarray",
+    ) -> "tuple[float, float, np.ndarray]":
+        """Fit a degree-2 fractional polynomial to (x, y).
+
+        Tries all unique pairs of powers from ``_FP_POWERS`` and returns the
+        pair (p1, p2) that minimises the residual sum of squares, together
+        with the fitted OLS coefficient vector.
+
+        Returns:
+            ``(p1, p2, coeffs)`` where *coeffs* is [beta0, beta1, beta2] for
+            the model ``y = beta0 + beta1*f(x,p1) + beta2*f(x,p2)``.
+        """
+        from itertools import combinations_with_replacement
+
+        best_rss = np.inf
+        best_p1, best_p2 = 1.0, 2.0
+        best_coeffs = np.array([y.mean(), 0.0, 0.0])
+
+        pairs = list(combinations_with_replacement(cls._FP_POWERS, 2))
+        for p1, p2 in pairs:
+            z1 = cls._fp_transform(x, p1)
+            z2 = cls._fp_transform(x, p2)
+            valid = ~(np.isnan(z1) | np.isnan(z2) | np.isnan(y))
+            if valid.sum() < 4:
+                continue
+            X = np.column_stack([np.ones(valid.sum()), z1[valid], z2[valid]])
+            try:
+                coeffs, _, _, _ = np.linalg.lstsq(X, y[valid], rcond=None)
+                y_pred = X @ coeffs
+                rss = float(np.sum((y[valid] - y_pred) ** 2))
+                if rss < best_rss:
+                    best_rss = rss
+                    best_p1, best_p2 = p1, p2
+                    best_coeffs = coeffs
+            except np.linalg.LinAlgError:
+                continue
+
+        return best_p1, best_p2, best_coeffs
+
+    @classmethod
+    def _predict_fp2(
+        cls,
+        x_grid: "np.ndarray",
+        p1: float,
+        p2: float,
+        coeffs: "np.ndarray",
+    ) -> "np.ndarray":
+        """Evaluate the degree-2 FP model on *x_grid*."""
+        z1 = cls._fp_transform(x_grid, p1)
+        z2 = cls._fp_transform(x_grid, p2)
+        return coeffs[0] + coeffs[1] * z1 + coeffs[2] * z2
+
+    def map_fpfit(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: "dict[str, str]",
+    ) -> "GlyphRenderer":
+        """Add a fractional polynomial fit line to *fig*.
+
+        Fits a degree-2 FP model (Royston & Altman, 1994) by selecting the
+        pair of powers from {−2, −1, −0.5, 0, 0.5, 1, 2, 3} that minimises
+        the residual sum of squares.  Mirrors Stata's ``twoway fpfit``.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable.
+            xvar:    Name of the x variable.
+            options: Plot-level options dict.
+
+        Returns:
+            GlyphRenderer for the FP fit line.
+        """
+        x = np.array(source.data[xvar], dtype=float)
+        y = np.array(source.data[yvar], dtype=float)
+        mask = ~(np.isnan(x) | np.isnan(y))
+        x, y = x[mask], y[mask]
+
+        if len(x) < 4:
+            empty = ColumnDataSource({"x_fp": [], "y_fp": []})
+            return fig.line(x="x_fp", y="y_fp", source=empty)
+
+        p1, p2, coeffs = self._fit_fp2(x, y)
+        # Restrict grid to positive x (FP requires x > 0)
+        x_min = max(x[x > 0].min() if (x > 0).any() else 1e-6,
+                    float(np.percentile(x, 1)))
+        x_max = float(np.percentile(x, 99))
+        x_grid = np.linspace(x_min, x_max, 200)
+        y_fit = self._predict_fp2(x_grid, p1, p2, coeffs)
+
+        valid = ~np.isnan(y_fit)
+        fp_src = ColumnDataSource({
+            "x_fp": x_grid[valid].tolist(),
+            "y_fp": y_fit[valid].tolist(),
+        })
+        r = fig.line(x="x_fp", y="y_fp", source=fp_src,
+                     line_color="#e377c2", line_width=2.0,
+                     legend_label=yvar)
+        self._apply_line_opts(r, options)
+        return r
+
+    def map_fpfitci(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: "dict[str, str]",
+    ) -> list:
+        """Add a fractional polynomial fit with a bootstrap 95% CI band to *fig*.
+
+        Args:
+            fig:     Bokeh Figure object.
+            source:  Shared ColumnDataSource.
+            yvar:    Name of the y variable.
+            xvar:    Name of the x variable.
+            options: Plot-level options dict.
+
+        Returns:
+            List with [line_renderer, band_renderer].
+        """
+        x = np.array(source.data[xvar], dtype=float)
+        y = np.array(source.data[yvar], dtype=float)
+        mask = ~(np.isnan(x) | np.isnan(y))
+        x, y = x[mask], y[mask]
+
+        empty_src = ColumnDataSource({
+            "x_fp": [], "y_fp": [], "y_lower": [], "y_upper": []
+        })
+        if len(x) < 4:
+            band_r = fig.varea(
+                x="x_fp", y1="y_lower", y2="y_upper",
+                source=empty_src, fill_alpha=0.2, fill_color="#e377c2",
+            )
+            line_r = fig.line(x="x_fp", y="y_fp", source=empty_src,
+                              line_color="#e377c2", line_width=2.0,
+                              legend_label=yvar)
+            return [line_r, band_r]
+
+        p1, p2, coeffs = self._fit_fp2(x, y)
+        x_pos = x[x > 0]
+        x_min = float(max(x_pos.min() if len(x_pos) else 1e-6,
+                          np.percentile(x, 1)))
+        x_max = float(np.percentile(x, 99))
+        x_grid = np.linspace(x_min, x_max, 150)
+        y_fit = self._predict_fp2(x_grid, p1, p2, coeffs)
+
+        # Bootstrap CI (200 resamples)
+        rng = np.random.default_rng(seed=42)
+        n_boot = 200
+        boot_preds = np.zeros((n_boot, len(x_grid)))
+        for i in range(n_boot):
+            idx = rng.integers(0, len(x), size=len(x))
+            try:
+                bp1, bp2, bc = self._fit_fp2(x[idx], y[idx])
+                boot_preds[i] = self._predict_fp2(x_grid, bp1, bp2, bc)
+            except Exception:
+                boot_preds[i] = y_fit
+
+        valid = ~np.isnan(y_fit)
+        y_lower = np.percentile(boot_preds, 2.5, axis=0)
+        y_upper = np.percentile(boot_preds, 97.5, axis=0)
+
+        ci_src = ColumnDataSource({
+            "x_fp":    x_grid[valid].tolist(),
+            "y_fp":    y_fit[valid].tolist(),
+            "y_lower": y_lower[valid].tolist(),
+            "y_upper": y_upper[valid].tolist(),
+        })
+        band_r = fig.varea(
+            x="x_fp", y1="y_lower", y2="y_upper",
+            source=ci_src, fill_alpha=0.2, fill_color="#e377c2",
+        )
+        line_r = fig.line(x="x_fp", y="y_fp", source=ci_src,
+                          line_color="#e377c2", line_width=2.0,
+                          legend_label=yvar)
+        self._apply_line_opts(line_r, options)
+        self._apply_fill_opts(band_r, options)
+        return [line_r, band_r]
+
     def map_histogram(
         self,
         fig: Any,
@@ -4419,6 +4822,10 @@ class DashRenderer:
             "lfitci":     self.mapper.map_lfitci,
             "qfitci":     self.mapper.map_qfitci,
             "lowess":     self.mapper.map_lowess,
+            "lpoly":      self.mapper.map_lpoly,
+            "lpolyci":    self.mapper.map_lpolyci,
+            "fpfit":      self.mapper.map_fpfit,
+            "fpfitci":    self.mapper.map_fpfitci,
             "histogram":  self.mapper.map_histogram,
             "hist":       self.mapper.map_histogram,
             "kdensity":   self.mapper.map_kdensity,
@@ -5459,6 +5866,95 @@ class ServerAppBuilder:
             "        return dict(x=clean[xvar].tolist(), y=clean[yvar].tolist())",
             "",
             "",
+            "def _lpoly_kernel_fit(x, y, bwidth=0.5, degree=0, n_grid=200):",
+            '    """Gaussian kernel-weighted local polynomial regression."""',
+            "    x_min, x_max = x.min(), x.max()",
+            "    x_range = x_max - x_min or 1.0",
+            "    h = bwidth * x_range",
+            "    x_grid = np.linspace(x_min, x_max, n_grid)",
+            "    y_fit = np.empty(n_grid)",
+            "    for i, x0 in enumerate(x_grid):",
+            "        w = np.exp(-0.5 * ((x - x0) / h) ** 2)",
+            "        w_sum = w.sum()",
+            "        if w_sum < 1e-12:",
+            "            y_fit[i] = np.nan",
+            "            continue",
+            "        if degree == 0:",
+            "            y_fit[i] = np.dot(w, y) / w_sum",
+            "        else:",
+            "            try:",
+            "                c = np.polyfit(x, y, deg=degree, w=w)",
+            "                y_fit[i] = np.polyval(c, x0)",
+            "            except Exception:",
+            "                y_fit[i] = np.dot(w, y) / w_sum",
+            "    return x_grid, y_fit",
+            "",
+            "",
+            "def _compute_lpoly(df, yvar, xvar, bwidth=0.5, degree=0):",
+            '    """Return line source dict for local polynomial smoother."""',
+            "    clean = df[[xvar, yvar]].dropna()",
+            "    if len(clean) < 2:",
+            "        return dict(x_lp=[], y_lp=[])",
+            "    x = clean[xvar].values.astype(float)",
+            "    y = clean[yvar].values.astype(float)",
+            "    x_grid, y_fit = _lpoly_kernel_fit(x, y, bwidth=bwidth, degree=degree)",
+            "    valid = ~np.isnan(y_fit)",
+            "    return dict(x_lp=x_grid[valid].tolist(), y_lp=y_fit[valid].tolist())",
+            "",
+            "",
+            "_FP_POWERS = (-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0)",
+            "",
+            "",
+            "def _fp_transform(x, p):",
+            '    """FP power transform: x^p (p==0 -> ln x)."""',
+            "    with np.errstate(divide='ignore', invalid='ignore'):",
+            "        if p == 0.0:",
+            "            return np.where(x > 0, np.log(x.astype(float)), np.nan)",
+            "        return np.where(x > 0, np.power(x.astype(float), p), np.nan)",
+            "",
+            "",
+            "def _fit_fp2(x, y):",
+            '    """Fit degree-2 FP: return (p1, p2, coeffs)."""',
+            "    from itertools import combinations_with_replacement",
+            "    best_rss = np.inf",
+            "    best_p1, best_p2, best_c = 1.0, 2.0, np.array([y.mean(), 0.0, 0.0])",
+            "    for p1, p2 in combinations_with_replacement(_FP_POWERS, 2):",
+            "        z1 = _fp_transform(x, p1)",
+            "        z2 = _fp_transform(x, p2)",
+            "        ok = ~(np.isnan(z1) | np.isnan(z2) | np.isnan(y))",
+            "        if ok.sum() < 4: continue",
+            "        X = np.column_stack([np.ones(ok.sum()), z1[ok], z2[ok]])",
+            "        try:",
+            "            c, _, _, _ = np.linalg.lstsq(X, y[ok], rcond=None)",
+            "            rss = float(np.sum((y[ok] - X @ c) ** 2))",
+            "            if rss < best_rss:",
+            "                best_rss, best_p1, best_p2, best_c = rss, p1, p2, c",
+            "        except Exception: pass",
+            "    return best_p1, best_p2, best_c",
+            "",
+            "",
+            "def _predict_fp2(x_grid, p1, p2, coeffs):",
+            '    """Evaluate FP-2 model on x_grid."""',
+            "    return coeffs[0] + coeffs[1]*_fp_transform(x_grid, p1) + coeffs[2]*_fp_transform(x_grid, p2)",
+            "",
+            "",
+            "def _compute_fpfit(df, yvar, xvar):",
+            '    """Return line source dict for fractional polynomial fit."""',
+            "    clean = df[[xvar, yvar]].dropna()",
+            "    if len(clean) < 4:",
+            "        return dict(x_fp=[], y_fp=[])",
+            "    x = clean[xvar].values.astype(float)",
+            "    y = clean[yvar].values.astype(float)",
+            "    p1, p2, coeffs = _fit_fp2(x, y)",
+            "    xp = x[x > 0]",
+            "    if len(xp) == 0: return dict(x_fp=[], y_fp=[])",
+            "    x_grid = np.linspace(float(np.percentile(x, 1)), float(np.percentile(x, 99)), 200)",
+            "    x_grid = x_grid[x_grid > 0]",
+            "    y_fit = _predict_fp2(x_grid, p1, p2, coeffs)",
+            "    valid = ~np.isnan(y_fit)",
+            "    return dict(x_fp=x_grid[valid].tolist(), y_fp=y_fit[valid].tolist())",
+            "",
+            "",
             "def _compute_kpi(df, stat, varname):",
             '    """Compute a KPI statistic from df[varname]. Returns float."""',
             "    series = df[varname].dropna() if varname in df.columns else pd.Series([], dtype=float)",
@@ -5952,6 +6448,64 @@ class ServerAppBuilder:
             "                _lowess_kw = dict(line_color=color, line_width=_line_width)",
             "                if _line_dash: _lowess_kw['line_dash'] = _line_dash",
             "                fig.line(x='x', y='y', source=lw_src, **_lowess_kw)",
+            "",
+            "            elif ptype == 'lpoly':",
+            "                _lp_bw = 0.5",
+            "                try: _lp_bw = max(0.01, min(1.0, float(opts.get('bwidth', '0.5') or '0.5')))",
+            "                except (ValueError, TypeError): pass",
+            "                _lp_deg = 0",
+            "                try: _lp_deg = max(0, min(3, int(opts.get('degree', '0') or '0')))",
+            "                except (ValueError, TypeError): pass",
+            "                lp_data = _compute_lpoly(g_df, yvar, xvar, bwidth=_lp_bw, degree=_lp_deg)",
+            "                lp_src = ColumnDataSource(lp_data)",
+            "                agg_sources[(gname, pi)] = {",
+            "                    'source': lp_src, 'type': 'lpoly',",
+            "                    'yvar': yvar, 'xvar': xvar,",
+            "                    'bwidth': _lp_bw, 'degree': _lp_deg,",
+            "                }",
+            "                _lp_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _lp_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x_lp', y='y_lp', source=lp_src, **_lp_kw)",
+            "",
+            "            elif ptype == 'lpolyci':",
+            "                _lp_bw = 0.5",
+            "                try: _lp_bw = max(0.01, min(1.0, float(opts.get('bwidth', '0.5') or '0.5')))",
+            "                except (ValueError, TypeError): pass",
+            "                _lp_deg = 0",
+            "                try: _lp_deg = max(0, min(3, int(opts.get('degree', '0') or '0')))",
+            "                except (ValueError, TypeError): pass",
+            "                lp_data = _compute_lpoly(g_df, yvar, xvar, bwidth=_lp_bw, degree=_lp_deg)",
+            "                lp_src = ColumnDataSource(lp_data)",
+            "                agg_sources[(gname, pi)] = {",
+            "                    'source': lp_src, 'type': 'lpoly',",
+            "                    'yvar': yvar, 'xvar': xvar,",
+            "                    'bwidth': _lp_bw, 'degree': _lp_deg,",
+            "                }",
+            "                _lp_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _lp_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x_lp', y='y_lp', source=lp_src, **_lp_kw)",
+            "",
+            "            elif ptype == 'fpfit':",
+            "                fp_data = _compute_fpfit(g_df, yvar, xvar)",
+            "                fp_src = ColumnDataSource(fp_data)",
+            "                agg_sources[(gname, pi)] = {",
+            "                    'source': fp_src, 'type': 'fpfit',",
+            "                    'yvar': yvar, 'xvar': xvar,",
+            "                }",
+            "                _fp_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _fp_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x_fp', y='y_fp', source=fp_src, **_fp_kw)",
+            "",
+            "            elif ptype == 'fpfitci':",
+            "                fp_data = _compute_fpfit(g_df, yvar, xvar)",
+            "                fp_src = ColumnDataSource(fp_data)",
+            "                agg_sources[(gname, pi)] = {",
+            "                    'source': fp_src, 'type': 'fpfit',",
+            "                    'yvar': yvar, 'xvar': xvar,",
+            "                }",
+            "                _fp_kw = dict(line_color=color, line_width=_line_width)",
+            "                if _line_dash: _fp_kw['line_dash'] = _line_dash",
+            "                fig.line(x='x_fp', y='y_fp', source=fp_src, **_fp_kw)",
             "",
             "            elif ptype in ('area',):",
             "                clean = g_df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else g_df",
@@ -6697,6 +7251,18 @@ class ServerAppBuilder:
             "                    _lwsrc = ColumnDataSource(_lwdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _lwsrc, 'type': 'lowess', 'yvar': yvar_f, 'xvar': xvar_f}",
             "                    _fac_fig.line('x', 'y', source=_lwsrc, line_width=1.5, color=color, legend_label=f'lowess {yvar_f}')",
+            "                elif ptype in ('lpoly', 'lpolyci'):",
+            "                    _lp_bw_f = float(opts.get('bwidth', 0.5))",
+            "                    _lp_deg_f = int(opts.get('degree', 0))",
+            "                    _lpdata = _compute_lpoly(_fac_gdf, yvar_f, xvar_f, bwidth=_lp_bw_f, degree=_lp_deg_f)",
+            "                    _lpsrc = ColumnDataSource(_lpdata)",
+            "                    agg_sources[(_fac_name, pi)] = {'source': _lpsrc, 'type': 'lpoly', 'yvar': yvar_f, 'xvar': xvar_f, 'bwidth': _lp_bw_f, 'degree': _lp_deg_f}",
+            "                    _fac_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=1.5, color=color, legend_label=f'lpoly {yvar_f}')",
+            "                elif ptype in ('fpfit', 'fpfitci'):",
+            "                    _fpdata = _compute_fpfit(_fac_gdf, yvar_f, xvar_f)",
+            "                    _fpsrc = ColumnDataSource(_fpdata)",
+            "                    agg_sources[(_fac_name, pi)] = {'source': _fpsrc, 'type': 'fpfit', 'yvar': yvar_f, 'xvar': xvar_f}",
+            "                    _fac_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=1.5, color=color, legend_label=f'fpfit {yvar_f}')",
             "                elif ptype in ('connected',):",
             "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color)",
             "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f)",
@@ -6926,6 +7492,12 @@ class ServerAppBuilder:
             "                    agg['source'].data = _compute_kdensity(fdf, agg['var'])",
             "                elif atype == 'lowess':",
             "                    agg['source'].data = _compute_lowess(fdf, agg['yvar'], agg['xvar'])",
+            "                elif atype == 'lpoly':",
+            "                    agg['source'].data = _compute_lpoly(fdf, agg['yvar'], agg['xvar'],",
+            "                                                        bwidth=agg.get('bwidth', 0.5),",
+            "                                                        degree=agg.get('degree', 0))",
+            "                elif atype == 'fpfit':",
+            "                    agg['source'].data = _compute_fpfit(fdf, agg['yvar'], agg['xvar'])",
             "                elif atype == 'lfitci':",
             "                    agg['source'].data = _compute_lfitci(fdf, agg['yvar'], agg['xvar'])",
             "                elif atype == 'qfitci':",

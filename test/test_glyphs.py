@@ -2284,3 +2284,197 @@ class TestNewPlotTypes:
                 except OSError: pass
         figs = r._build_figures()
         assert "g1" in figs
+
+
+# ================================================================
+# TestLpolyFpfit — new smoother plot types (lpoly, lpolyci, fpfit, fpfitci)
+# ================================================================
+
+class TestLpolyFpfit:
+    """Tests for lpoly, lpolyci, fpfit, and fpfitci GlyphMapper methods."""
+
+    @pytest.fixture
+    def xy_src(self, fig):
+        np.random.seed(17)
+        n = 30
+        x = np.linspace(1, 10, n)
+        y = 2.0 * x + np.random.randn(n)
+        return ColumnDataSource({"x": x.tolist(), "y": y.tolist()})
+
+    def test_map_lpoly_returns_renderer(self, fig, xy_src):
+        gm = GlyphMapper()
+        r = gm.map_lpoly(fig, xy_src, "y", "x", {})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_map_lpoly_adds_one_renderer(self, fig, xy_src):
+        gm = GlyphMapper()
+        before = len(fig.renderers)
+        gm.map_lpoly(fig, xy_src, "y", "x", {})
+        assert len(fig.renderers) == before + 1
+
+    def test_map_lpoly_bwidth_option(self, fig, xy_src):
+        gm = GlyphMapper()
+        r = gm.map_lpoly(fig, xy_src, "y", "x", {"bwidth": "0.3"})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_map_lpoly_degree_1(self, fig, xy_src):
+        gm = GlyphMapper()
+        r = gm.map_lpoly(fig, xy_src, "y", "x", {"degree": "1"})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_map_lpoly_empty_data(self, fig):
+        gm = GlyphMapper()
+        tiny = ColumnDataSource({"x": [1.0], "y": [2.0]})
+        r = gm.map_lpoly(fig, tiny, "y", "x", {})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_map_lpoly_line_color(self, fig, xy_src):
+        gm = GlyphMapper()
+        r = gm.map_lpoly(fig, xy_src, "y", "x", {"lcolor": "red"})
+        assert r.glyph.line_color == "#ff0000"
+
+    def test_map_lpolyci_returns_list(self, fig, xy_src):
+        gm = GlyphMapper()
+        result = gm.map_lpolyci(fig, xy_src, "y", "x", {})
+        assert isinstance(result, list) and len(result) == 2
+
+    def test_map_lpolyci_adds_two_renderers(self, fig, xy_src):
+        gm = GlyphMapper()
+        before = len(fig.renderers)
+        gm.map_lpolyci(fig, xy_src, "y", "x", {})
+        assert len(fig.renderers) == before + 2
+
+    def test_map_lpolyci_empty_data(self, fig):
+        gm = GlyphMapper()
+        tiny = ColumnDataSource({"x": [1.0, 2.0], "y": [1.0, 2.0]})
+        result = gm.map_lpolyci(fig, tiny, "y", "x", {})
+        assert len(result) == 2
+
+    def test_map_fpfit_returns_renderer(self, fig, xy_src):
+        gm = GlyphMapper()
+        r = gm.map_fpfit(fig, xy_src, "y", "x", {})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_map_fpfit_adds_one_renderer(self, fig, xy_src):
+        gm = GlyphMapper()
+        before = len(fig.renderers)
+        gm.map_fpfit(fig, xy_src, "y", "x", {})
+        assert len(fig.renderers) == before + 1
+
+    def test_map_fpfit_empty_data(self, fig):
+        gm = GlyphMapper()
+        tiny = ColumnDataSource({"x": [1.0, 2.0, 3.0], "y": [1.0, 2.0, 3.0]})
+        r = gm.map_fpfit(fig, tiny, "y", "x", {})
+        assert isinstance(r, GlyphRenderer)
+
+    def test_map_fpfit_line_color(self, fig, xy_src):
+        gm = GlyphMapper()
+        r = gm.map_fpfit(fig, xy_src, "y", "x", {"lcolor": "navy"})
+        assert r.glyph.line_color == "#1a476f"
+
+    def test_map_fpfitci_returns_list(self, fig, xy_src):
+        gm = GlyphMapper()
+        result = gm.map_fpfitci(fig, xy_src, "y", "x", {})
+        assert isinstance(result, list) and len(result) == 2
+
+    def test_map_fpfitci_adds_two_renderers(self, fig, xy_src):
+        gm = GlyphMapper()
+        before = len(fig.renderers)
+        gm.map_fpfitci(fig, xy_src, "y", "x", {})
+        assert len(fig.renderers) == before + 2
+
+    def test_map_fpfitci_empty_data(self, fig):
+        gm = GlyphMapper()
+        tiny = ColumnDataSource({"x": [1.0, 2.0], "y": [1.0, 2.0]})
+        result = gm.map_fpfitci(fig, tiny, "y", "x", {})
+        assert len(result) == 2
+
+    def test_compute_lpoly_fit_shape(self):
+        gm = GlyphMapper()
+        x = np.linspace(1, 10, 30)
+        y = 2 * x
+        xg, yf = gm._compute_lpoly_fit(x, y, n_grid=50)
+        assert len(xg) == 50 and len(yf) == 50
+
+    def test_fit_fp2_returns_valid_powers(self):
+        gm = GlyphMapper()
+        x = np.linspace(1, 10, 20)
+        y = 3 * x ** 0.5
+        p1, p2, c = gm._fit_fp2(x, y)
+        assert p1 in GlyphMapper._FP_POWERS
+        assert p2 in GlyphMapper._FP_POWERS
+        assert len(c) == 3
+
+    def test_fp_transform_sqrt(self):
+        x = np.array([1.0, 4.0, 9.0])
+        r = GlyphMapper._fp_transform(x, 0.5)
+        np.testing.assert_allclose(r, [1.0, 2.0, 3.0])
+
+    def test_fp_transform_log(self):
+        x = np.array([1.0, np.e])
+        r = GlyphMapper._fp_transform(x, 0.0)
+        np.testing.assert_allclose(r, [0.0, 1.0])
+
+    def test_fp_transform_nonpositive_nan(self):
+        x = np.array([-1.0, 0.0, 1.0])
+        r = GlyphMapper._fp_transform(x, 0.5)
+        assert np.isnan(r[0]) and np.isnan(r[1])
+        assert r[2] == pytest.approx(1.0)
+
+    def test_lpoly_end_to_end(self):
+        import json, os, tempfile
+        from dash_render import DashRenderer
+        data = {"StataJSON": {
+            "variableNames": ["x", "y"],
+            "variableLabels": {"x": "x", "y": "y"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"x": False, "y": False},
+            "values": [{"x": float(i), "y": float(i * 2)} for i in range(1, 16)],
+        }}
+        spec = {"graphs": [{"plots": [{"type": "lpoly", "yvar": "y", "xvar": "x",
+                                        "options": {"bwidth": "0.4"}}],
+                             "graph_options": {"name": "g1"},
+                             "if_expr": "", "in_expr": ""}],
+                "kpis": [],
+                "build_options": {"layout": "auto", "link": "", "filter": "",
+                                  "theme": "default", "title": "", "subtitle": "",
+                                  "registry": "g1"}}
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            figs = DashRenderer(sp, dp, op)._build_figures()
+            assert "g1" in figs
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_fpfit_end_to_end(self):
+        import json, os, tempfile
+        from dash_render import DashRenderer
+        data = {"StataJSON": {
+            "variableNames": ["x", "y"],
+            "variableLabels": {"x": "x", "y": "y"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"x": False, "y": False},
+            "values": [{"x": float(i), "y": float(i ** 0.5 + i)} for i in range(1, 16)],
+        }}
+        spec = {"graphs": [{"plots": [{"type": "fpfit", "yvar": "y", "xvar": "x",
+                                        "options": {}}],
+                             "graph_options": {"name": "g1"},
+                             "if_expr": "", "in_expr": ""}],
+                "kpis": [],
+                "build_options": {"layout": "auto", "link": "", "filter": "",
+                                  "theme": "default", "title": "", "subtitle": "",
+                                  "registry": "g1"}}
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            figs = DashRenderer(sp, dp, op)._build_figures()
+            assert "g1" in figs
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
