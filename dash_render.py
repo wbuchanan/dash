@@ -5795,7 +5795,28 @@ class DashRenderer:
                         facet_kpi["value"] = "—"
                     self.kpi_divs[fkpi_name] = self._make_kpi_div(facet_kpi)
             else:
-                self.kpi_divs[name] = self._make_kpi_div(kpi)
+                # Non-faceted KPI: always compute the initial display value
+                # from the loaded DataFrame so it is formatted correctly.
+                # Stata stores the raw numeric in kpi["value"] and the
+                # formatted string in kpi["display"]; we recompute from data
+                # to ensure the format string (kpi["fmt"]) is applied by
+                # Python's formatter rather than displaying the full-precision
+                # float that Stata writes.
+                kpi_copy = dict(kpi)
+                if stat and varname and varname in self.df.columns:
+                    try:
+                        raw_val = self._compute_kpi_stat(stat, varname)
+                        kpi_copy["value"] = self._format_kpi_value(
+                            raw_val, kpi.get("fmt", "")
+                        )
+                    except (ValueError, KeyError, TypeError):
+                        # Fallback: use Stata's pre-formatted display value
+                        if not kpi_copy.get("value"):
+                            kpi_copy["value"] = kpi.get("display", "")
+                elif not kpi_copy.get("value"):
+                    # No variable to compute — use Stata's pre-formatted display
+                    kpi_copy["value"] = kpi.get("display", "")
+                self.kpi_divs[name] = self._make_kpi_div(kpi_copy)
 
         # ---- 5. Build filter widgets ----
         # Determine a CDSView per (figure × filter) for non-excluded graphs.

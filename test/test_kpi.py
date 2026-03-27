@@ -312,3 +312,102 @@ class TestJsHelpers:
         result = renderer_with_data._compute_kpi_stat("median", "x")
         renderer_with_data._df = orig
         assert abs(result - 3.0) < 0.001
+
+
+# ================================================================
+# Regression tests — KPI initial value computed from Python data
+# ================================================================
+
+class TestKpiInitialValueComputed:
+    """Regression: non-faceted KPIs in render() must compute and format their
+    initial display value from the loaded DataFrame, not just pass through the
+    raw (unformatted) value from the Stata-generated spec.
+
+    Bug: render() called _make_kpi_div(kpi) without computing stat/var first.
+    For specs from Stata, kpi["value"] is the raw unformatted numeric
+    (e.g. "21.2972972972973") — so the card showed 14+ significant figures
+    instead of the formatted "21.3".  For test specs, kpi["value"] was ""
+    so the card showed nothing at all.
+    """
+
+    def _build_renderer_with_kpis(self, kpis, tmp_path):
+        """Helper: build a DashRenderer with the given KPI list."""
+        vals = [{"mpg": float(v), "price": float(v * 200)}
+                for v in [15, 18, 21, 22, 24, 26, 28, 30]]
+        data_json = {"StataJSON": {
+            "variableNames": ["mpg", "price"],
+            "variableLabels": {"mpg": "mpg", "price": "price"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "price": False},
+            "values": vals,
+        }}
+        spec = {
+            "graphs": [],
+            "kpis": kpis,
+            "build_options": {"layout": "auto", "link": "", "filter": "",
+                              "theme": "default", "title": "", "subtitle": "",
+                              "registry": " ".join(k["name"] for k in kpis)},
+        }
+        sp = str(tmp_path / "spec.json")
+        dp = str(tmp_path / "data.json")
+        op = str(tmp_path / "out.html")
+        with open(sp, "w") as f: json.dump(spec, f)
+        with open(dp, "w") as f: json.dump(data_json, f)
+        return DashRenderer(sp, dp, op)
+
+    def test_kpi_value_computed_and_formatted_on_render(self, tmp_path):
+        """render() must compute mean(mpg) from data and format with %9.1f.
+
+        Expected: mean([15,18,21,22,24,26,28,30]) = 23.0 → formatted "23.0".
+        The raw 'value' field in the spec is intentionally left empty to
+        confirm the renderer computes it from data.
+        """
+        kpis = [{"name": "k1", "stat": "mean", "var": "mpg",
+                 "value": "", "display": "",  # intentionally empty
+                 "fmt": "%9.1f", "title": "Avg MPG", "subtitle": "",
+                 "color": "", "bgcolor": "", "update": "filter"}]
+        r = self._build_renderer_with_kpis(kpis, tmp_path)
+        r.render()
+        assert "k1" in r.kpi_divs
+        div_html = r.kpi_divs["k1"].text
+        expected_mean = sum([15,18,21,22,24,26,28,30]) / 8  # = 23.0
+        assert "23.0" in div_html, (
+            f"KPI div must show formatted mean '23.0', got HTML: {div_html!r}"
+        )
+
+    def test_kpi_raw_numeric_spec_value_is_formatted(self, tmp_path):
+        """When spec has a raw numeric 'value' (from Stata), render() must
+        format it — not show the full-precision float string.
+
+        Stata stores e.g. 'value': '21.2972972972973' but the formatted
+        display per fmt(%9.1f) should be '21.3'.
+        """
+        kpis = [{"name": "k1", "stat": "mean", "var": "mpg",
+                 # Simulate what Stata stores: raw unformatted value
+                 "value": "21.2972972972973", "display": "21.3",
+                 "fmt": "%9.1f", "title": "Avg MPG", "subtitle": "",
+                 "color": "", "bgcolor": "", "update": "filter"}]
+        r = self._build_renderer_with_kpis(kpis, tmp_path)
+        r.render()
+        div_html = r.kpi_divs["k1"].text
+        # The full-precision raw value must NOT appear in the rendered card
+        assert "21.2972972972973" not in div_html, (
+            "KPI div must not show raw unformatted Stata value '21.2972972972973'; "
+            "it should be computed from Python data and formatted with fmt"
+        )
+        # Expected: mean([15,18,21,22,24,26,28,30]) = 23.0, formatted "23.0"
+        assert "23.0" in div_html, (
+            f"KPI should show Python-computed formatted value '23.0', got: {div_html!r}"
+        )
+
+    def test_kpi_count_formatted_with_comma(self, tmp_path):
+        """count KPI with %9.0fc format should use comma-separated integer."""
+        kpis = [{"name": "k1", "stat": "count", "var": "mpg",
+                 "value": "", "display": "",
+                 "fmt": "%9.0fc", "title": "N", "subtitle": "",
+                 "color": "", "bgcolor": "", "update": "filter"}]
+        r = self._build_renderer_with_kpis(kpis, tmp_path)
+        r.render()
+        div_html = r.kpi_divs["k1"].text
+        # 8 observations — should appear as "8" (no comma needed for small N)
+        assert "8" in div_html, f"Count KPI must show '8', got: {div_html!r}"
