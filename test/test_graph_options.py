@@ -741,9 +741,10 @@ class TestByFaceting:
         # 2 non-NaN groups + 1 NaN group = 3
         assert len(facet_keys) == 3, f"Expected 3 facets (incl NaN), got {len(facet_keys)}"
 
-    def test_by_link_raises_error(self):
-        """by() + link() → raises ValueError."""
+    def test_by_link_uses_shared_cds(self):
+        """by() + link() now works: facet panels share a single CDS via CDSView."""
         import tempfile
+        from bokeh.models import CDSView, BooleanFilter
         vals = [{"mpg": float(i), "weight": float(i * 50), "foreign": float(i % 2)}
                 for i in range(1, 11)]
         gopts = {"name": "g1", "by": "foreign"}
@@ -777,14 +778,31 @@ class TestByFaceting:
                 json.dump(data_json, f)
             os.close(out_fd)
             r = DashRenderer(spec_path, data_path, out_path)
+            figs = r._build_figures()
         finally:
             for p in (spec_path, data_path, out_path):
                 try:
                     os.unlink(p)
                 except OSError:
                     pass
-        with pytest.raises(ValueError, match="by.*link"):
-            r._build_figures()
+        # Should produce two facet figures (one per foreign value)
+        facet_keys = [k for k in figs if "__by__" in k]
+        assert len(facet_keys) == 2, f"Expected 2 facet panels, got {facet_keys}"
+        # All panels must share the same ColumnDataSource
+        sources = [figs[k].renderers[0].data_source for k in facet_keys
+                   if figs[k].renderers]
+        assert len(sources) == 2
+        assert sources[0] is sources[1], "Facet panels must share a single CDS when linked"
+        # Each panel's renderers should have a CDSView with BooleanFilter
+        for fkey in facet_keys:
+            fig = figs[fkey]
+            for renderer in fig.renderers:
+                assert hasattr(renderer, "view"), "Renderer must have a view"
+                view = renderer.view
+                assert isinstance(view, CDSView), f"Expected CDSView, got {type(view)}"
+                assert isinstance(view.filter, BooleanFilter), (
+                    f"Expected BooleanFilter on CDSView, got {type(view.filter)}"
+                )
 
     def test_by_multi_var_faceting(self):
         """by(foreign rep78) with multi-variable → composite facet labels."""
@@ -1331,3 +1349,200 @@ class TestMsangle:
         gm = GlyphMapper(None)
         gm._apply_marker_opts(r, {"msangle": "-45"})
         assert abs(r.glyph.angle - math.radians(-45)) < 1e-9
+
+
+# ================================================================
+# TestByLinkIntegration — by() + link() shared CDS via CDSView
+# ================================================================
+
+def _make_by_link_renderer(by_var="foreign", link_graph="g1", second_graph=True):
+    """Create a DashRenderer with a by()-faceted linked graph."""
+    vals = [
+        {"mpg": float(i), "weight": float(i * 50), "price": float(i * 200),
+         "foreign": float(i % 2)}
+        for i in range(1, 21)
+    ]
+    graphs = [
+        {
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": by_var},
+            "if_expr": "", "in_expr": "",
+        },
+    ]
+    if second_graph:
+        graphs.append({
+            "plots": [{"type": "scatter", "yvar": "price", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g2"},
+            "if_expr": "", "in_expr": "",
+        })
+    master_spec = {
+        "graphs": graphs, "kpis": [],
+        "build_options": {
+            "layout": "auto",
+            "link": [link_graph, "g2"] if second_graph else link_graph,
+            "filter": "", "theme": "default", "title": "", "subtitle": "",
+            "registry": "g1 g2" if second_graph else "g1",
+        },
+    }
+    data_json = {
+        "StataJSON": {
+            "variableNames": ["mpg", "weight", "price", "foreign"],
+            "variableLabels": {"mpg": "mpg", "weight": "weight",
+                               "price": "price", "foreign": "foreign"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {
+                "mpg": False, "weight": False, "price": False, "foreign": False
+            },
+            "values": vals,
+        }
+    }
+    spec_fd, spec_path = tempfile.mkstemp(suffix=".json")
+    data_fd, data_path = tempfile.mkstemp(suffix=".json")
+    out_fd, out_path   = tempfile.mkstemp(suffix=".html")
+    try:
+        with os.fdopen(spec_fd, "w") as f:
+            json.dump(master_spec, f)
+        with os.fdopen(data_fd, "w") as f:
+            json.dump(data_json, f)
+        os.close(out_fd)
+        r = DashRenderer(spec_path, data_path, out_path)
+    finally:
+        for p in (spec_path, data_path, out_path):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+    return r
+
+
+class TestByLinkIntegration:
+    """BL-01 through BL-10: by() + link() uses shared CDS with CDSView."""
+
+    def test_bl_01_no_error_raised(self):
+        """BL-01: by()+link() must not raise any exception."""
+        r = _make_by_link_renderer()
+        figs = r._build_figures()  # must not raise
+        assert figs is not None
+
+    def test_bl_02_facet_panels_created(self):
+        """BL-02: by(foreign)+link() must produce 2 facet panels for g1."""
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = [k for k in figs if k.startswith("g1__by__")]
+        assert len(facet_keys) == 2, f"Expected 2 panels, got {facet_keys}"
+
+    def test_bl_03_panels_share_same_cds(self):
+        """BL-03: All facet panels must share the same ColumnDataSource object."""
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
+        srcs = []
+        for fkey in facet_keys:
+            for renderer in figs[fkey].renderers:
+                if hasattr(renderer, "data_source"):
+                    srcs.append(renderer.data_source)
+                    break
+        assert len(srcs) == 2
+        assert srcs[0] is srcs[1], "Facet panels must share the same CDS object"
+
+    def test_bl_04_panels_share_cds_with_linked_graph(self):
+        """BL-04: Facet panels and the linked non-by graph share the same CDS."""
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
+        g2_src = None
+        for renderer in figs["g2"].renderers:
+            if hasattr(renderer, "data_source"):
+                g2_src = renderer.data_source
+                break
+        facet_src = None
+        for renderer in figs[facet_keys[0]].renderers:
+            if hasattr(renderer, "data_source"):
+                facet_src = renderer.data_source
+                break
+        assert g2_src is not None
+        assert facet_src is not None
+        assert g2_src is facet_src, "Facet panel and linked graph must share the same CDS"
+
+    def test_bl_05_each_panel_has_cdsview(self):
+        """BL-05: Each facet renderer must have a CDSView with BooleanFilter."""
+        from bokeh.models import CDSView, BooleanFilter
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
+        for fkey in facet_keys:
+            for renderer in figs[fkey].renderers:
+                assert isinstance(renderer.view, CDSView), (
+                    f"{fkey}: renderer.view must be CDSView"
+                )
+                assert isinstance(renderer.view.filter, BooleanFilter), (
+                    f"{fkey}: renderer.view.filter must be BooleanFilter"
+                )
+
+    def test_bl_06_masks_are_disjoint(self):
+        """BL-06: The BooleanFilter masks across panels must be disjoint (no row in both)."""
+        from bokeh.models import BooleanFilter
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
+        masks = []
+        for fkey in facet_keys:
+            for renderer in figs[fkey].renderers:
+                if hasattr(renderer, "view") and isinstance(
+                        renderer.view.filter, BooleanFilter):
+                    masks.append(renderer.view.filter.booleans)
+                    break
+        assert len(masks) == 2
+        for i, (a, b) in enumerate(zip(masks[0], masks[1])):
+            assert not (a and b), f"Row {i} is in both facet masks — masks must be disjoint"
+
+    def test_bl_07_masks_are_exhaustive(self):
+        """BL-07: Every row is covered by exactly one facet mask."""
+        from bokeh.models import BooleanFilter
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
+        masks = []
+        for fkey in facet_keys:
+            for renderer in figs[fkey].renderers:
+                if hasattr(renderer, "view") and isinstance(
+                        renderer.view.filter, BooleanFilter):
+                    masks.append(list(renderer.view.filter.booleans))
+                    break
+        assert len(masks) == 2
+        n = len(masks[0])
+        for i in range(n):
+            assert masks[0][i] or masks[1][i], (
+                f"Row {i} is in neither facet mask — coverage is not exhaustive"
+            )
+
+    def test_bl_08_shared_cds_contains_all_rows(self):
+        """BL-08: Shared CDS must contain all N rows (not a filtered subset)."""
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
+        shared_src = None
+        for renderer in figs[facet_keys[0]].renderers:
+            if hasattr(renderer, "data_source"):
+                shared_src = renderer.data_source
+                break
+        assert shared_src is not None
+        n_rows = len(next(iter(shared_src.data.values())))
+        assert n_rows == 20, f"Shared CDS must have 20 rows, got {n_rows}"
+
+    def test_bl_09_facet_titles_contain_group_label(self):
+        """BL-09: Each facet figure title must contain the group value."""
+        r = _make_by_link_renderer()
+        figs = r._build_figures()
+        facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
+        for fkey in facet_keys:
+            fig = figs[fkey]
+            title = fig.title.text if fig.title else ""
+            assert len(title) > 0, f"{fkey}: facet figure must have a non-empty title"
+
+    def test_bl_10_render_produces_valid_html(self):
+        """BL-10: render() with by()+link() must produce valid non-trivial HTML."""
+        r = _make_by_link_renderer()
+        html = r.render()
+        assert len(html) > 2000, "by()+link() render() must produce non-trivial HTML"
+        assert "bokeh" in html.lower(), "HTML must contain Bokeh references"

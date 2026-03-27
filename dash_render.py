@@ -1476,6 +1476,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> "GlyphRenderer":
         """Add a scatter glyph to *fig*.
 
@@ -1496,25 +1497,29 @@ class GlyphMapper:
             except ValueError:
                 pass
 
-        # Drop NaN rows if present; otherwise reuse the original source.
-        # Preserve all columns so that mlabel and other annotation columns
-        # remain available on clean_source.
-        x_series = pd.Series(source.data[xvar])
-        y_series = pd.Series(source.data[yvar])
-        has_nan = x_series.isna().any() or y_series.isna().any()
-        if has_nan:
-            df = pd.DataFrame({col: source.data[col] for col in source.data})
-            df = df.dropna(subset=[xvar, yvar])
-            clean_source: ColumnDataSource = ColumnDataSource(df)
-        else:
+        if view is not None:
+            # Shared source (by+link): skip NaN-drop, use source directly
             clean_source = source
+        else:
+            # Drop NaN rows if present; otherwise reuse the original source.
+            # Preserve all columns so that mlabel and other annotation columns
+            # remain available on clean_source.
+            x_series = pd.Series(source.data[xvar])
+            y_series = pd.Series(source.data[yvar])
+            has_nan = x_series.isna().any() or y_series.isna().any()
+            if has_nan:
+                df = pd.DataFrame({col: source.data[col] for col in source.data})
+                df = df.dropna(subset=[xvar, yvar])
+                clean_source: ColumnDataSource = ColumnDataSource(df)
+            else:
+                clean_source = source
 
         # Apply jitter if requested
         plot_source, eff_x, eff_y = self._build_jitter_source(
             clean_source, xvar, yvar, options
         )
 
-        r = fig.scatter(
+        _scatter_kwargs: dict = dict(
             x=eff_x,
             y=eff_y,
             source=plot_source,
@@ -1525,6 +1530,9 @@ class GlyphMapper:
             alpha=0.7,
             legend_label=yvar,
         )
+        if view is not None:
+            _scatter_kwargs["view"] = view
+        r = fig.scatter(**_scatter_kwargs)
         self._apply_marker_opts(r, options)
         # colorvar: map a variable's values to fill/line color via a color mapper
         self._apply_colorvar(fig, r, plot_source, options)
@@ -1540,6 +1548,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
 
@@ -1561,7 +1570,7 @@ class GlyphMapper:
         df = df.dropna(subset=[xvar, yvar]).sort_values(xvar)
         sorted_source = ColumnDataSource(df)
 
-        r = fig.line(
+        _line_kwargs: dict = dict(
             x=xvar,
             y=yvar,
             source=sorted_source,
@@ -1569,6 +1578,9 @@ class GlyphMapper:
             line_width=1.5,
             legend_label=yvar,
         )
+        if view is not None:
+            _line_kwargs["view"] = view
+        r = fig.line(**_line_kwargs)
         self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         fig.add_tools(self._hover_tool(yvar, xvar))
@@ -1581,6 +1593,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add connected (line + scatter) glyphs to *fig*.
 
@@ -1597,8 +1610,8 @@ class GlyphMapper:
         # Pass options without mlabel to sub-calls; apply mlabel once below
         opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
         renderers = [
-            self.map_line(fig, source, yvar, xvar, opts_no_label),
-            self.map_scatter(fig, source, yvar, xvar, opts_no_label),
+            self.map_line(fig, source, yvar, xvar, opts_no_label, view=view),
+            self.map_scatter(fig, source, yvar, xvar, opts_no_label, view=view),
         ]
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return renderers
@@ -1610,6 +1623,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> "GlyphRenderer":
         """Add an area glyph (filled between y=0 and y=yvar) to *fig*.
 
@@ -1672,6 +1686,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> "GlyphRenderer":
         """Add vertical bar glyphs to *fig*.
 
@@ -1717,7 +1732,7 @@ class GlyphMapper:
             except (ValueError, TypeError):
                 pass
 
-        r = fig.vbar(
+        _vbar_kwargs: dict = dict(
             x=xvar, top=yvar, bottom=base_val, source=clean_source,
             width=bar_width,
             fill_color="#1f77b4",
@@ -1725,6 +1740,9 @@ class GlyphMapper:
             legend_label=yvar,
             fill_alpha=0.8,
         )
+        if view is not None:
+            _vbar_kwargs["view"] = view
+        r = fig.vbar(**_vbar_kwargs)
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -1757,6 +1775,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> "GlyphRenderer":
         """Add vertical spike glyphs (segments from y=0 to y=yvar) to *fig*.
 
@@ -1788,10 +1807,13 @@ class GlyphMapper:
             "x0": x_arr, "y0": y0_base,
             "x1": x_arr, "y1": y_arr,
         })
-        r = fig.segment(x0="x0", y0="y0", x1="x1", y1="y1",
-                        source=seg_source,
-                        line_color="#1f77b4", line_width=1.5,
-                        legend_label=yvar)
+        _seg_kwargs: dict = dict(x0="x0", y0="y0", x1="x1", y1="y1",
+                                  source=seg_source,
+                                  line_color="#1f77b4", line_width=1.5,
+                                  legend_label=yvar)
+        if view is not None:
+            _seg_kwargs["view"] = view
+        r = fig.segment(**_seg_kwargs)
         self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
         return r
@@ -1807,6 +1829,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add an OLS linear fit line to *fig*.
 
@@ -1851,6 +1874,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a quadratic fit line to *fig*.
 
@@ -1892,6 +1916,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a linear fit line with a 95% confidence interval band to *fig*.
 
@@ -1966,6 +1991,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a quadratic fit line with a 95% CI band to *fig*.
 
@@ -2038,6 +2064,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a LOWESS smoothed line to *fig*.
 
@@ -2138,6 +2165,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: "dict[str, str]",
+        view=None,
     ) -> "GlyphRenderer":
         """Add a local polynomial regression smoother to *fig*.
 
@@ -2198,6 +2226,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: "dict[str, str]",
+        view=None,
     ) -> list:
         """Add a local polynomial smoother with a bootstrap 95% CI band to *fig*.
 
@@ -2356,6 +2385,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: "dict[str, str]",
+        view=None,
     ) -> "GlyphRenderer":
         """Add a fractional polynomial fit line to *fig*.
 
@@ -2408,6 +2438,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: "dict[str, str]",
+        view=None,
     ) -> list:
         """Add a fractional polynomial fit with a bootstrap 95% CI band to *fig*.
 
@@ -2487,6 +2518,7 @@ class GlyphMapper:
         yvar: str,
         options: "dict[str, str] | None" = None,
         xvar: "str | None" = None,
+        view=None,
     ) -> "GlyphRenderer":
         """Add histogram quad glyphs to *fig*.
 
@@ -2540,6 +2572,7 @@ class GlyphMapper:
         yvar: str,
         options: "dict[str, str] | None" = None,
         xvar: "str | None" = None,
+        view=None,
     ) -> "GlyphRenderer":
         """Add a kernel density estimate line to *fig*.
 
@@ -2590,6 +2623,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a range area glyph (filled between y1 and y2) to *fig*.
 
@@ -2604,9 +2638,12 @@ class GlyphMapper:
         Returns:
             List with the single VArea GlyphRenderer.
         """
-        r = fig.varea(x=xvar, y1=y1var, y2=y2var, source=source,
-                      fill_color="#aec7e8", fill_alpha=0.5,
-                      legend_label=y1var)
+        _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
+                                    fill_color="#aec7e8", fill_alpha=0.5,
+                                    legend_label=y1var)
+        if view is not None:
+            _varea_kwargs["view"] = view
+        r = fig.varea(**_varea_kwargs)
         self._apply_fill_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [r]
@@ -2619,6 +2656,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add range bar glyphs (bars from y1 to y2) to *fig*.
 
@@ -2639,9 +2677,12 @@ class GlyphMapper:
             (x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)),
             default=0.8,
         )
-        r = fig.vbar(x=xvar, bottom=y1var, top=y2var, source=source,
-                     width=bar_width, fill_color="#1f77b4", line_color="white",
-                     legend_label=y1var)
+        _rbar_kwargs: dict = dict(x=xvar, bottom=y1var, top=y2var, source=source,
+                                   width=bar_width, fill_color="#1f77b4", line_color="white",
+                                   legend_label=y1var)
+        if view is not None:
+            _rbar_kwargs["view"] = view
+        r = fig.vbar(**_rbar_kwargs)
         self._apply_fill_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [r]
@@ -2654,6 +2695,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add range spike glyphs (segments from y1 to y2) to *fig*.
 
@@ -2668,9 +2710,12 @@ class GlyphMapper:
         Returns:
             List with the single Segment GlyphRenderer.
         """
-        r = fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
-                        line_color="#1f77b4", line_width=1.5,
-                        legend_label=y1var)
+        _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
+                                   line_color="#1f77b4", line_width=1.5,
+                                   legend_label=y1var)
+        if view is not None:
+            _rseg_kwargs["view"] = view
+        r = fig.segment(**_rseg_kwargs)
         self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [r]
@@ -2683,6 +2728,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add range cap glyphs (segments + horizontal caps) to *fig*.
 
@@ -2713,16 +2759,23 @@ class GlyphMapper:
             "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
         })
 
-        spine = fig.segment(x0="x", y0="y1", x1="x", y1="y2",
-                            source=cap_source,
-                            line_color="#1f77b4", line_width=1.5,
-                            legend_label=y1var)
-        bot_cap = fig.segment(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
-                              source=cap_source,
-                              line_color="#1f77b4", line_width=1.5)
-        top_cap = fig.segment(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
-                              source=cap_source,
-                              line_color="#1f77b4", line_width=1.5)
+        _spine_kwargs: dict = dict(x0="x", y0="y1", x1="x", y1="y2",
+                                    source=cap_source,
+                                    line_color="#1f77b4", line_width=1.5,
+                                    legend_label=y1var)
+        _bot_kwargs: dict = dict(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
+                                  source=cap_source,
+                                  line_color="#1f77b4", line_width=1.5)
+        _top_kwargs: dict = dict(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
+                                  source=cap_source,
+                                  line_color="#1f77b4", line_width=1.5)
+        if view is not None:
+            _spine_kwargs["view"] = view
+            _bot_kwargs["view"] = view
+            _top_kwargs["view"] = view
+        spine = fig.segment(**_spine_kwargs)
+        bot_cap = fig.segment(**_bot_kwargs)
+        top_cap = fig.segment(**_top_kwargs)
         for seg in (spine, bot_cap, top_cap):
             self._apply_line_opts(seg, options)
         self._apply_mlabel_opts(fig, source, options, xvar, y2var)
@@ -2736,6 +2789,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add two connected range lines (lower and upper boundaries) to *fig*.
 
@@ -2750,11 +2804,16 @@ class GlyphMapper:
         Returns:
             List with [lower_line_renderer, upper_line_renderer].
         """
-        r1 = fig.line(x=xvar, y=y1var, source=source,
-                      line_color="#1f77b4", line_width=1.5,
-                      legend_label=y1var)
-        r2 = fig.line(x=xvar, y=y2var, source=source,
-                      line_color="#ff7f0e", line_width=1.5)
+        _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=source,
+                                  line_color="#1f77b4", line_width=1.5,
+                                  legend_label=y1var)
+        _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=source,
+                                  line_color="#ff7f0e", line_width=1.5)
+        if view is not None:
+            _rl1_kwargs["view"] = view
+            _rl2_kwargs["view"] = view
+        r1 = fig.line(**_rl1_kwargs)
+        r2 = fig.line(**_rl2_kwargs)
         self._apply_line_opts(r1, options)
         self._apply_line_opts(r2, options)
         self._apply_mlabel_opts(fig, source, options, xvar, y2var)
@@ -2768,6 +2827,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add range connected (lines + scatter) glyphs for two boundaries.
 
@@ -2783,10 +2843,10 @@ class GlyphMapper:
             List of four renderers [lower_line, lower_scatter, upper_line, upper_scatter].
         """
         return [
-            self.map_line(fig, source, y1var, xvar, options),
-            self.map_scatter(fig, source, y1var, xvar, options),
-            self.map_line(fig, source, y2var, xvar, options),
-            self.map_scatter(fig, source, y2var, xvar, options),
+            self.map_line(fig, source, y1var, xvar, options, view=view),
+            self.map_scatter(fig, source, y1var, xvar, options, view=view),
+            self.map_line(fig, source, y2var, xvar, options, view=view),
+            self.map_scatter(fig, source, y2var, xvar, options, view=view),
         ]
 
     def map_dot(
@@ -2796,6 +2856,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add dot plot glyphs to *fig*.
 
@@ -2814,7 +2875,7 @@ class GlyphMapper:
         Returns:
             List containing the single scatter GlyphRenderer.
         """
-        return self.map_scatter(fig, source, yvar, xvar, options)
+        return self.map_scatter(fig, source, yvar, xvar, options, view=view)
 
     # ------------------------------------------------------------------
     # Phase 3 additional plot types
@@ -2827,6 +2888,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add dropline glyphs to *fig*: vertical segments from y=0 to y=yvar plus dots.
 
@@ -2870,11 +2932,16 @@ class GlyphMapper:
         except ValueError:
             pass
 
-        seg = fig.segment(x0="x", y0="y0", x1="x", y1="y",
-                          source=dl_source, line_color=color, line_width=1.5)
-        dot = fig.scatter(x="x", y="y", source=dl_source,
-                          fill_color=color, line_color=color, size=8,
-                          legend_label=yvar)
+        _dl_seg_kwargs: dict = dict(x0="x", y0="y0", x1="x", y1="y",
+                                     source=dl_source, line_color=color, line_width=1.5)
+        _dl_dot_kwargs: dict = dict(x="x", y="y", source=dl_source,
+                                     fill_color=color, line_color=color, size=8,
+                                     legend_label=yvar)
+        if view is not None:
+            _dl_seg_kwargs["view"] = view
+            _dl_dot_kwargs["view"] = view
+        seg = fig.segment(**_dl_seg_kwargs)
+        dot = fig.scatter(**_dl_dot_kwargs)
         self._apply_line_opts(seg, options)
         self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar)
         return [seg, dot]
@@ -2887,6 +2954,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add range cap-with-symbol glyphs to *fig*.
 
@@ -2930,17 +2998,25 @@ class GlyphMapper:
         except ValueError:
             pass
 
-        spine   = fig.segment(x0="x",     y0="y1",  x1="x",     y1="y2",
-                              source=cap_source, line_color=color, line_width=1.5,
-                              legend_label=y1var)
-        bot_cap = fig.segment(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
-                              source=cap_source, line_color=color, line_width=1.5)
-        top_cap = fig.segment(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
-                              source=cap_source, line_color=color, line_width=1.5)
-        bot_dot = fig.scatter(x="x", y="y1", source=cap_source,
-                              fill_color=color, line_color=color, size=7)
-        top_dot = fig.scatter(x="x", y="y2", source=cap_source,
-                              fill_color=color, line_color=color, size=7)
+        _rcs_spine_kw: dict = dict(x0="x",     y0="y1",  x1="x",     y1="y2",
+                                    source=cap_source, line_color=color, line_width=1.5,
+                                    legend_label=y1var)
+        _rcs_bcap_kw: dict  = dict(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
+                                    source=cap_source, line_color=color, line_width=1.5)
+        _rcs_tcap_kw: dict  = dict(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
+                                    source=cap_source, line_color=color, line_width=1.5)
+        _rcs_bdot_kw: dict  = dict(x="x", y="y1", source=cap_source,
+                                    fill_color=color, line_color=color, size=7)
+        _rcs_tdot_kw: dict  = dict(x="x", y="y2", source=cap_source,
+                                    fill_color=color, line_color=color, size=7)
+        if view is not None:
+            for _kw in (_rcs_spine_kw, _rcs_bcap_kw, _rcs_tcap_kw, _rcs_bdot_kw, _rcs_tdot_kw):
+                _kw["view"] = view
+        spine   = fig.segment(**_rcs_spine_kw)
+        bot_cap = fig.segment(**_rcs_bcap_kw)
+        top_cap = fig.segment(**_rcs_tcap_kw)
+        bot_dot = fig.scatter(**_rcs_bdot_kw)
+        top_dot = fig.scatter(**_rcs_tdot_kw)
         for seg in (spine, bot_cap, top_cap):
             self._apply_line_opts(seg, options)
         for dot in (bot_dot, top_dot):
@@ -3024,6 +3100,7 @@ class GlyphMapper:
         y2var: str,
         x2var: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add paired-coordinate spike glyphs (segments from (x1,y1) to (x2,y2)) to *fig*.
 
@@ -3046,10 +3123,13 @@ class GlyphMapper:
             x2var: source.data[x2var],
         }).dropna()
         source_clean = ColumnDataSource(clean)
-        r = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                        source=source_clean,
-                        line_color="#1f77b4", line_width=1.5,
-                        legend_label=y1var)
+        _pcseg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
+                                    source=source_clean,
+                                    line_color="#1f77b4", line_width=1.5,
+                                    legend_label=y1var)
+        if view is not None:
+            _pcseg_kwargs["view"] = view
+        r = fig.segment(**_pcseg_kwargs)
         self._apply_line_opts(r, options)
         return [r]
 
@@ -3062,6 +3142,7 @@ class GlyphMapper:
         y2var: str,
         x2var: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add paired-coordinate line segments to *fig*.
 
@@ -3081,7 +3162,7 @@ class GlyphMapper:
         Returns:
             List with the single Segment GlyphRenderer.
         """
-        return self.map_pcspike(fig, source, y1var, x1var, y2var, x2var, options)
+        return self.map_pcspike(fig, source, y1var, x1var, y2var, x2var, options, view=view)
 
     def map_pcscatter(
         self,
@@ -3092,6 +3173,7 @@ class GlyphMapper:
         y2var: str,
         x2var: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add paired-coordinate scatter glyphs to *fig*.
 
@@ -3122,9 +3204,12 @@ class GlyphMapper:
         y_all = np.concatenate([clean[y1var].values, clean[y2var].values])
         pc_source = ColumnDataSource({"x": x_all.tolist(), "y": y_all.tolist()})
 
-        r = fig.scatter("x", "y", source=pc_source,
-                        size=8, color="#1f77b4",
-                        legend_label=y1var)
+        _pcsc_kwargs: dict = dict(source=pc_source,
+                                   size=8, color="#1f77b4",
+                                   legend_label=y1var)
+        if view is not None:
+            _pcsc_kwargs["view"] = view
+        r = fig.scatter("x", "y", **_pcsc_kwargs)
         self._apply_marker_opts(r, options)
         return [r]
 
@@ -3137,6 +3222,7 @@ class GlyphMapper:
         y2var: str,
         x2var: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add paired-coordinate arrow glyphs (segments + arrowheads) to *fig*.
 
@@ -3172,9 +3258,12 @@ class GlyphMapper:
         except ValueError:
             pass
 
-        seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                          source=pc_source, line_color=color, line_width=1.5,
-                          legend_label=y1var)
+        _pca_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
+                                      source=pc_source, line_color=color, line_width=1.5,
+                                      legend_label=y1var)
+        if view is not None:
+            _pca_seg_kwargs["view"] = view
+        seg = fig.segment(**_pca_seg_kwargs)
         self._apply_line_opts(seg, options)
 
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
@@ -3204,6 +3293,7 @@ class GlyphMapper:
         y2var: str,
         x2var: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add paired-coordinate bidirectional arrow glyphs to *fig*.
 
@@ -3239,9 +3329,12 @@ class GlyphMapper:
         except ValueError:
             pass
 
-        seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
-                          source=pc_source, line_color=color, line_width=1.5,
-                          legend_label=y1var)
+        _pcb_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
+                                      source=pc_source, line_color=color, line_width=1.5,
+                                      legend_label=y1var)
+        if view is not None:
+            _pcb_seg_kwargs["view"] = view
+        seg = fig.segment(**_pcb_seg_kwargs)
         self._apply_line_opts(seg, options)
 
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
@@ -3270,6 +3363,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a time-series line glyph to *fig*.
 
@@ -3286,7 +3380,7 @@ class GlyphMapper:
         Returns:
             The result of ``map_line``.
         """
-        return self.map_line(fig, source, yvar, xvar, options)
+        return self.map_line(fig, source, yvar, xvar, options, view=view)
 
     def map_tsrline(
         self,
@@ -3296,6 +3390,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add time-series range lines to *fig*.
 
@@ -3313,7 +3408,7 @@ class GlyphMapper:
         Returns:
             The result of ``map_rline``.
         """
-        return self.map_rline(fig, source, y1var, y2var, xvar, options)
+        return self.map_rline(fig, source, y1var, y2var, xvar, options, view=view)
 
     def map_rscatter(
         self,
@@ -3323,6 +3418,7 @@ class GlyphMapper:
         y2var: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add range scatter glyphs to *fig*.
 
@@ -3354,9 +3450,12 @@ class GlyphMapper:
             "x": x_all[mask].tolist(),
             "y": y_all[mask].tolist(),
         })
-        r = fig.scatter("x", "y", source=rs_source,
-                        size=8, color="#1f77b4",
-                        legend_label=y1var)
+        _rs_kwargs: dict = dict(source=rs_source,
+                                 size=8, color="#1f77b4",
+                                 legend_label=y1var)
+        if view is not None:
+            _rs_kwargs["view"] = view
+        r = fig.scatter("x", "y", **_rs_kwargs)
         self._apply_marker_opts(r, options)
         return [r]
 
@@ -3367,6 +3466,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a monotone cubic spline (PCHIP) line to *fig*.
 
@@ -3433,6 +3533,7 @@ class GlyphMapper:
         yvar: str,
         xvar: str,
         options: dict[str, str],
+        view=None,
     ) -> list:
         """Add a median band smoother to *fig*.
 
@@ -3984,6 +4085,9 @@ class DashRenderer:
         # Facet map: graph_name → [(facet_key, facet_label), ...]
         self._facet_map: dict[str, list[tuple[str, str]]] = {}
 
+        # Facet masks for by()+link() graphs: graph_name → [(label, bool_mask), ...]
+        self._facet_masks: dict = {}
+
         self._load_data()
 
     # ------------------------------------------------------------------
@@ -4451,6 +4555,7 @@ class DashRenderer:
         self,
         graph_spec: dict,
         source: ColumnDataSource,
+        facet_view: "Optional[Any]" = None,
     ) -> Any:
         """Build and return a fully-configured Bokeh Figure for one graph spec.
 
@@ -4790,16 +4895,18 @@ class DashRenderer:
                 px1var = plot.get("x1var", "")
                 py2var = plot.get("y2var", "")
                 px2var = plot.get("x2var", "")
-                self._add_pc_glyph(fig, source, ptype, py1var, px1var, py2var, px2var, popts)
+                self._add_pc_glyph(fig, source, ptype, py1var, px1var, py2var, px2var, popts,
+                                   view=facet_view)
             elif ptype.lower() in _RANGE_TYPES:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
                 self._add_glyph(fig, source, ptype, py1var, pxvar, popts,
-                                y2var=py2var)
+                                y2var=py2var, view=facet_view)
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
-                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
+                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts,
+                                view=facet_view)
             elif ptype.lower() == "function":
                 pexpr = plot.get("expr", "")
                 x_lo, x_hi = 0.0, 1.0
@@ -4821,7 +4928,8 @@ class DashRenderer:
                 self.mapper.map_function(fig, pexpr, (x_lo, x_hi), n_pts, popts)
             else:
                 pyvar = plot.get("yvar", yvar)
-                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts)
+                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts,
+                                view=facet_view)
 
             # Assign secondary axis range names to newly added renderers
             if _use_y2 or _use_x2:
@@ -4901,6 +5009,7 @@ class DashRenderer:
         xvar: str,
         options: dict,
         y2var: str = "",
+        view=None,
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -4960,16 +5069,16 @@ class DashRenderer:
         # Range plots: (fig, source, y1var, y2var, xvar, options)
         rfn = range_dispatch.get(pt)
         if rfn is not None and y2var:
-            rfn(fig, source, yvar, y2var, xvar, options)
+            rfn(fig, source, yvar, y2var, xvar, options, view=view)
             return
 
         fn = dispatch.get(pt)
         if fn is not None:
             # histogram and kdensity are univariate — no xvar positional arg
             if pt in ("histogram", "hist", "kdensity"):
-                fn(fig, source, yvar, options)
+                fn(fig, source, yvar, options, view=view)
             else:
-                fn(fig, source, yvar, xvar, options)
+                fn(fig, source, yvar, xvar, options, view=view)
 
     def _add_pc_glyph(
         self,
@@ -4981,6 +5090,7 @@ class DashRenderer:
         y2var: str,
         x2var: str,
         options: dict,
+        view=None,
     ) -> None:
         """Dispatch a paired-coordinate plot layer to the correct GlyphMapper method.
 
@@ -5004,7 +5114,7 @@ class DashRenderer:
         }
         fn = pc_dispatch.get(plot_type.lower())
         if fn is not None:
-            fn(fig, source, y1var, x1var, y2var, x2var, options)
+            fn(fig, source, y1var, x1var, y2var, x2var, options, view=view)
 
     # ------------------------------------------------------------------
     # KPI card construction
@@ -5145,7 +5255,8 @@ class DashRenderer:
             return seen
 
         if link_names:
-            # Collect all variable names needed by linked graphs
+            # First pass: collect all variable names needed by linked graphs,
+            # including by-variables for linked graphs that also use by().
             linked_vars: list[str] = []
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
@@ -5153,6 +5264,13 @@ class DashRenderer:
                     for vname in _collect_plot_vars(g.get("plots", [])):
                         if vname not in linked_vars:
                             linked_vars.append(vname)
+                    # Also include by-variables so CDSView masks align to the shared source
+                    by_raw = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw:
+                        varlist, _, _, _ = DashRenderer._parse_by_raw(by_raw)
+                        for bv in varlist.split():
+                            if bv and bv not in linked_vars:
+                                linked_vars.append(bv)
             # Add filter variables so filter callbacks work on the shared source
             for fc in filters_cfg:
                 v = fc.get("varname")
@@ -5166,6 +5284,19 @@ class DashRenderer:
                 if name in link_names:
                     # Linked graphs share a source; per-graph if/in not applied
                     sources[name] = linked_source
+                    # For by()+link() graphs, compute CDSView boolean masks
+                    by_raw = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw:
+                        by_groups = self._expand_by_groups(g, base_df=self.df)
+                        facet_entries = []
+                        facet_masks = []
+                        for idx, (label, group_df) in enumerate(by_groups):
+                            fkey = f"{name}__by__{idx}"
+                            mask = [i in group_df.index for i in self.df.index]
+                            facet_entries.append((fkey, label))
+                            facet_masks.append((label, mask))
+                        self._facet_map[name] = facet_entries
+                        self._facet_masks[name] = facet_masks
                 else:
                     g_vars = _collect_plot_vars(g.get("plots", []))
                     filtered_df = self._apply_graph_filter(g)
@@ -5221,28 +5352,32 @@ class DashRenderer:
         if "_all" in link_names:
             link_names = list(all_graph_names)
 
-        # Validate by() + link() incompatibility
-        for g in graphs:
-            gname = g.get("graph_options", {}).get("name", "")
-            by_raw = (g.get("graph_options", {}).get("by") or "").strip()
-            if by_raw and gname in link_names:
-                raise ValueError(
-                    f"by() and link() cannot be combined in the current "
-                    f"version (graph '{gname}')"
-                )
-
         figs: dict[str, Any] = {}
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
 
             # Check if this graph is faceted
             if name in self._facet_map:
-                for fkey, label in self._facet_map[name]:
-                    src = sources.get(fkey)
+                shared_src = sources.get(name)
+                masks = self._facet_masks.get(name, [])
+                for panel_idx, (fkey, label) in enumerate(self._facet_map[name]):
+                    # Determine source and optional CDSView for this panel
+                    if shared_src is not None and name in link_names:
+                        # by()+link() graph: shared source with per-panel CDSView
+                        src = shared_src
+                        if panel_idx < len(masks):
+                            _, mask = masks[panel_idx]
+                            panel_view = CDSView(filter=BooleanFilter(booleans=mask))
+                        else:
+                            panel_view = None
+                    else:
+                        # Standalone by() graph: per-group source, no view needed
+                        src = sources.get(fkey)
+                        panel_view = None
                     if src is None:
                         continue
                     try:
-                        fig = self._make_figure(g, src)
+                        fig = self._make_figure(g, src, facet_view=panel_view)
                         # Override title to include facet label
                         orig_title = fig.title.text if fig.title else ""
                         if orig_title:
@@ -5295,7 +5430,11 @@ class DashRenderer:
         kpis   = self.master_spec.get("kpis", [])
         build  = self.master_spec.get("build_options", {})
 
-        link_names  = build.get("link", [])
+        _link_raw_render = build.get("link", [])
+        if isinstance(_link_raw_render, list):
+            link_names: list[str] = [str(x) for x in _link_raw_render]
+        else:
+            link_names = _link_raw_render.replace(";", " ").split()
         layout_opt  = build.get("layout", "auto")
         filters_cfg = build.get("filters", [])
         title_text  = html.escape(build.get("title", ""))
@@ -5345,26 +5484,23 @@ class DashRenderer:
         # ---- 2. Build ColumnDataSources ----
         # Linked graphs share one source; unlinked get their own.
 
-        # Validate by() + link() incompatibility before building sources
         if link_names:
+            # First pass: collect all variable names needed by linked graphs,
+            # including by-variables for linked graphs that also use by().
+            linked_vars: list[str] = []
             for g in graphs:
                 gname = g.get("graph_options", {}).get("name", "")
                 if gname in link_names:
-                    by_raw_check = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw_check:
-                        raise ValueError(
-                            f"by() and link() cannot be combined in the current "
-                            f"version (graph '{gname}')"
-                        )
-
-        if link_names:
-            # All link_names share a single source with the union of their vars
-            linked_vars: list[str] = []
-            for g in graphs:
-                if g.get("graph_options", {}).get("name") in link_names:
                     for vname in _collect_plot_vars_render(g.get("plots", [])):
                         if vname not in linked_vars:
                             linked_vars.append(vname)
+                    # Also include by-variables so CDSView masks align to the shared source
+                    by_raw_lnk = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw_lnk:
+                        varlist_lnk, _, _, _ = DashRenderer._parse_by_raw(by_raw_lnk)
+                        for bv in varlist_lnk.split():
+                            if bv and bv not in linked_vars:
+                                linked_vars.append(bv)
             # Also include filter vars in linked source
             for fc in filters_cfg:
                 v = fc.get("varname")
@@ -5377,6 +5513,19 @@ class DashRenderer:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
                     self.sources[name] = linked_source
+                    # For by()+link() graphs, compute CDSView boolean masks
+                    by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw_lnk2:
+                        by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
+                        facet_entries_lnk = []
+                        facet_masks_lnk = []
+                        for idx, (label, group_df) in enumerate(by_groups_lnk):
+                            fkey = f"{name}__by__{idx}"
+                            mask = [i in group_df.index for i in self.df.index]
+                            facet_entries_lnk.append((fkey, label))
+                            facet_masks_lnk.append((label, mask))
+                        self._facet_map[name] = facet_entries_lnk
+                        self._facet_masks[name] = facet_masks_lnk
                 else:
                     g_vars = _collect_plot_vars_render(g.get("plots", []))
                     filtered_df = self._apply_graph_filter(g)
@@ -5392,7 +5541,7 @@ class DashRenderer:
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
             by_raw = (g.get("graph_options", {}).get("by") or "").strip()
-            if by_raw and name not in (link_names if isinstance(link_names, list) else []):
+            if by_raw and name not in link_names:
                 # Faceted graph: use self.df for grouping (has all columns)
                 base_src = self.sources.pop(name, None)
                 if base_src is None:
@@ -5416,12 +5565,26 @@ class DashRenderer:
             name = g.get("graph_options", {}).get("name", "")
             if name in self._facet_map:
                 # Faceted: build one figure per facet group
-                for fkey, label in self._facet_map[name]:
-                    src = self.sources.get(fkey)
+                shared_src_render = self.sources.get(name)
+                masks_render = self._facet_masks.get(name, [])
+                for panel_idx_r, (fkey, label) in enumerate(self._facet_map[name]):
+                    # Determine source and optional CDSView for this panel
+                    if shared_src_render is not None and name in link_names:
+                        # by()+link() graph: shared source with per-panel CDSView
+                        src = shared_src_render
+                        if panel_idx_r < len(masks_render):
+                            _, mask_r = masks_render[panel_idx_r]
+                            panel_view_r = CDSView(filter=BooleanFilter(booleans=mask_r))
+                        else:
+                            panel_view_r = None
+                    else:
+                        # Standalone by() graph: per-group source, no view needed
+                        src = self.sources.get(fkey)
+                        panel_view_r = None
                     if src is None:
                         continue
                     try:
-                        fig = self._make_figure(g, src)
+                        fig = self._make_figure(g, src, facet_view=panel_view_r)
                         orig_title = fig.title.text if fig.title else ""
                         if orig_title:
                             fig.title.text = f"{orig_title} — {label}"

@@ -1560,12 +1560,12 @@ class TestByFacetingHtmlOutput:
         html = _render_to_html(spec, data)
         assert len(html) > 500, "HTML should still render without faceting"
 
-    def test_by_link_raises_error_in_render(self):
-        """by() + link() in render() → ValueError raised."""
+    def test_by_link_renders_valid_html(self):
+        """by() + link() in render() → produces valid HTML (no longer raises)."""
         spec, data = _by_facet_spec("grp")
         spec["build_options"]["link"] = "fig1"  # match the graph name
-        with pytest.raises(ValueError, match="by.*link"):
-            _render_to_html(spec, data)
+        html = _render_to_html(spec, data)
+        assert len(html) > 1000, "by()+link() must produce non-trivial HTML"
 
     def test_by_cols_suboption_produces_html(self):
         """by('grp, cols(1)') → renders valid HTML (suboption parsing works)."""
