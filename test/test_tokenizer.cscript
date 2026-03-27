@@ -1,232 +1,149 @@
-*! test_tokenizer.cscript
-*! Certification script for the dash_parse.mata tokenizer (Pass 1).
+*! test_tokenizer.cscript  v2.0
+*! Certification script for dash_parse.mata segment-splitting utilities.
 *!
-*! Tests: P1A-20 through P1A-30
+*! In v2.0 the character-level tokeniser was removed; segment splitting
+*! and option-key abbreviation expansion are now the Mata-level primitives.
+*!
+*! Tests: P1A-20 through P1A-30  (rewritten for new architecture)
 *!
 *! Usage:  do test/test_tokenizer.cscript
-*!         (or cscript test_tokenizer using test/test_tokenizer.cscript)
-*!
-*! All assertions use -assert- so failures abort with a non-zero return code.
-*! Version: 1.0.0  25mar2026
+*! Version: 2.0  27mar2026
 
-cscript "dash_parse.mata tokenizer" adodir ".."
+cscript "dash_parse.mata splitter and option expander" adodir ".."
 
 // ----------------------------------------------------------------
-// Setup: compile the Mata source and load a small dataset so that
-// `confirm variable' calls inside the parser have something to work with.
+// Setup
 // ----------------------------------------------------------------
 qui sysuse auto, clear
 do "../dash_parse.mata"
 
 // ================================================================
-// Helper: call the tokenizer via dash_parse and retrieve the JSON.
-// We use a minimal spec with known variables to isolate tokenizer
-// behaviour rather than full parser logic.
-// We expose the tokenizer indirectly by parsing a valid spec and
-// checking round-trip fidelity at the JSON output level.
-// For direct tokenizer unit tests we call the Mata functions directly.
+// P1A-20 — _dash_split_segs: single flat segment set correctly
 // ================================================================
-
-// ----------------------------------------------------------------
-// P1A-20 — single word tokenises to single WORD token
-// ----------------------------------------------------------------
 mata:
 {
-    tokens = _tokenize("scatter")
-    assert(rows(tokens) == 1)
-    assert(tokens[1,1] == strofreal(WORD()))
-    assert(tokens[1,2] == "scatter")
+    _dash_split_segs("scatter mpg weight")
 }
 end
+assert "`_n_segs'" == "1"
+assert `"`_seg_1'"' == "scatter mpg weight"
+assert `"`_graph_opts_raw'"' == ""
+display "P1A-20 PASS: single segment stored in _seg_1"
 
-display "P1A-20 PASS: single word → single WORD token"
-
-// ----------------------------------------------------------------
-// P1A-21 — double-quoted string preserved as QUOTED_STRING
-// ----------------------------------------------------------------
+// ================================================================
+// P1A-21 — _dash_split_segs: two segments split on ||
+// ================================================================
 mata:
 {
-    tokens = _tokenize(`""hello world""')
-    assert(rows(tokens) == 1)
-    assert(tokens[1,1] == strofreal(QUOTED_STRING()))
-    assert(tokens[1,2] == "hello world")
+    _dash_split_segs("scatter mpg weight || lfit mpg weight")
 }
 end
+assert "`_n_segs'" == "2"
+assert `"`_seg_1'"' == "scatter mpg weight"
+assert `"`_seg_2'"' == "lfit mpg weight"
+display "P1A-21 PASS: || splits into two segments"
 
-display "P1A-21 PASS: double-quoted string → QUOTED_STRING token"
-
-// ----------------------------------------------------------------
-// P1A-22 — compound-quoted string `"..."' tokenises correctly
-// ----------------------------------------------------------------
+// ================================================================
+// P1A-22 — _dash_split_segs: three segments
+// ================================================================
 mata:
 {
-    // simulate `"compound string"'
-    tokens = _tokenize(`"`"compound string"'"')
-    assert(rows(tokens) == 1)
-    assert(tokens[1,1] == strofreal(QUOTED_STRING()))
-    assert(tokens[1,2] == "compound string")
+    _dash_split_segs("scatter mpg weight || lfit mpg weight || qfit mpg weight")
 }
 end
+assert "`_n_segs'" == "3"
+assert `"`_seg_1'"' == "scatter mpg weight"
+assert `"`_seg_2'"' == "lfit mpg weight"
+assert `"`_seg_3'"' == "qfit mpg weight"
+display "P1A-22 PASS: three || segments stored correctly"
 
-display "P1A-22 PASS: compound-quoted string → QUOTED_STRING token"
-
-// ----------------------------------------------------------------
-// P1A-23 — parenthesis depth tracking: nested option parens
-//           do not split incorrectly
-//           e.g. "scatter mpg weight, mc(rgb(255 0 0))"
-//           The inner ( and ) belong to the option value.
-// ----------------------------------------------------------------
+// ================================================================
+// P1A-23 — _dash_split_segs: || inside parens NOT treated as separator
+// ================================================================
+// A plot-level option value containing '||' inside parens should be preserved.
+// We use a hypothetical option with || inside its value.
 mata:
 {
-    tokens = _tokenize("foo bar, opt(rgb(255 0 0))")
-    // Expected tokens: WORD(foo) WORD(bar) COMMA WORD(opt)
-    //                  OPEN_PAREN WORD(rgb) OPEN_PAREN WORD(255) WORD(0) WORD(0)
-    //                  CLOSE_PAREN CLOSE_PAREN
-    // Verify total OPEN_PAREN count == 2, CLOSE_PAREN count == 2
-    nopen = 0; nclose = 0
-    for (r = 1; r <= rows(tokens); r++) {
-        if (tokens[r,1] == strofreal(OPEN_PAREN()))  nopen  = nopen  + 1
-        if (tokens[r,1] == strofreal(CLOSE_PAREN())) nclose = nclose + 1
-    }
-    assert(nopen  == 2)
-    assert(nclose == 2)
+    _dash_split_segs("scatter mpg weight, note(a||b)")
 }
 end
+// Should be ONE segment — the || inside parens is not a separator
+assert "`_n_segs'" == "1"
+assert strpos(`"`_seg_1'"', "note(a||b)") > 0
+display "P1A-23 PASS: || inside parens not treated as segment separator"
 
-display "P1A-23 PASS: nested option parens produce correct OPEN/CLOSE_PAREN counts"
-
-// ----------------------------------------------------------------
-// P1A-24 — comma at depth 0 produces COMMA token
-// ----------------------------------------------------------------
+// ================================================================
+// P1A-24 — _dash_split_segs: paren syntax () extracts two segments
+// ================================================================
 mata:
 {
-    tokens = _tokenize("scatter mpg weight, mcolor(red)")
-    commas = 0
-    for (r = 1; r <= rows(tokens); r++) {
-        if (tokens[r,1] == strofreal(COMMA())) commas = commas + 1
-    }
-    assert(commas == 1)
+    _dash_split_segs("(scatter mpg weight) (lfit mpg weight)")
 }
 end
+assert "`_n_segs'" == "2"
+assert `"`_seg_1'"' == "scatter mpg weight"
+assert `"`_seg_2'"' == "lfit mpg weight"
+display "P1A-24 PASS: paren syntax () splits into two segments"
 
-display "P1A-24 PASS: comma at depth 0 → COMMA token"
-
-// ----------------------------------------------------------------
-// P1A-25 — comma inside option parens does NOT produce a COMMA token
-//           e.g. "mcolor(red,blue)" — the comma is inside parens
-// ----------------------------------------------------------------
+// ================================================================
+// P1A-25 — _dash_split_segs: paren syntax with trailing graph opts
+// ================================================================
 mata:
 {
-    // commas inside parens are still emitted as COMMA tokens by the
-    // tokenizer (which is depth-agnostic at token level), but the
-    // structural parser interprets depth.  The tokenizer itself does
-    // emit COMMA for all commas.  This test verifies total comma count:
-    // one inside parens, one at depth 0.
-    tokens = _tokenize("a b, opt(x,y)")
-    commas = 0
-    for (r = 1; r <= rows(tokens); r++) {
-        if (tokens[r,1] == strofreal(COMMA())) commas = commas + 1
-    }
-    // Should be 2: one top-level, one inside parens
-    assert(commas == 2)
+    _dash_split_segs(`"(scatter mpg weight) (lfit mpg weight), title(My Graph)"')
 }
 end
+assert "`_n_segs'" == "2"
+assert `"`_graph_opts_raw'"' != ""
+assert strpos(`"`_graph_opts_raw'"', "title") > 0
+display "P1A-25 PASS: paren syntax trailing graph opts stored in _graph_opts_raw"
 
-display "P1A-25 PASS: comma count correct (top-level + inside parens)"
+// ================================================================
+// P1A-26 — _dash_first_comma_pos: finds first top-level comma
+// ================================================================
+local cpos = 0
+mata: _dash_comma_pos("scatter mpg weight, mc(red)", "cpos")
+// "scatter mpg weight" is 19 chars, comma is at position 20
+assert `cpos' == 20
+display "P1A-26 PASS: _dash_first_comma_pos finds position 20"
 
-// ----------------------------------------------------------------
-// P1A-26 — || produces PIPE_PIPE token
-// ----------------------------------------------------------------
-mata:
-{
-    tokens = _tokenize("scatter mpg weight || lfit mpg weight")
-    pipes = 0
-    for (r = 1; r <= rows(tokens); r++) {
-        if (tokens[r,1] == strofreal(PIPE_PIPE())) pipes = pipes + 1
-    }
-    assert(pipes == 1)
-    // verify token text
-    for (r = 1; r <= rows(tokens); r++) {
-        if (tokens[r,1] == strofreal(PIPE_PIPE())) {
-            assert(tokens[r,2] == "||")
-        }
-    }
-}
-end
+// ================================================================
+// P1A-27 — _dash_first_comma_pos: comma inside parens NOT top-level
+// ================================================================
+local cpos2 = 0
+mata: _dash_comma_pos("scatter mpg weight, mc(red,blue)", "cpos2")
+// First top-level comma is at position 20 (before mc), not inside mc()
+assert `cpos2' == 20
+display "P1A-27 PASS: comma inside parens not returned by _dash_first_comma_pos"
 
-display "P1A-26 PASS: || → PIPE_PIPE token"
+// ================================================================
+// P1A-28 — _dash_first_comma_pos: no comma returns 0
+// ================================================================
+local cpos3 = 0
+mata: _dash_comma_pos("scatter mpg weight", "cpos3")
+assert `cpos3' == 0
+display "P1A-28 PASS: no comma → returns 0"
 
-// ----------------------------------------------------------------
-// P1A-27 — empty input returns empty token array without error
-// ----------------------------------------------------------------
-mata:
-{
-    tokens = _tokenize("")
-    assert(rows(tokens) == 0)
-}
-end
+// ================================================================
+// P1A-29 — _dash_expand_opts_str: mc→mcolor, ms→msymbol
+// ================================================================
+local expanded ""
+mata: _dash_expand_opts_str("mc(red) ms(oh)", "expanded")
+assert strpos("`expanded'", "mcolor(red)") > 0
+assert strpos("`expanded'", "msymbol(oh)") > 0
+assert strpos("`expanded'", "mc(") == 0
+assert strpos("`expanded'", "ms(") == 0
+display "P1A-29 PASS: mc→mcolor, ms→msymbol expanded in opts string"
 
-display "P1A-27 PASS: empty input → 0 tokens, no error"
-
-// ----------------------------------------------------------------
-// P1A-28 — 1000-character input (resource exhaustion boundary)
-// ----------------------------------------------------------------
-mata:
-{
-    // build a 1000-char word string
-    big = ""
-    for (k = 1; k <= 125; k++) {
-        big = big + "abcdefgh"
-    }
-    // tokenizer should handle without crash
-    tokens = _tokenize(big)
-    assert(rows(tokens) == 1)
-    assert(strlen(tokens[1,2]) == 1000)
-}
-end
-
-display "P1A-28 PASS: 1000-character input handled without error"
-
-// ----------------------------------------------------------------
-// P1A-29 — unicode characters in quoted strings pass through correctly
-// ----------------------------------------------------------------
-mata:
-{
-    // ü (U+00FC) encoded as UTF-8: 0xC3 0xBC
-    unicode_val = `""Müller""'
-    tokens = _tokenize(unicode_val)
-    assert(rows(tokens) == 1)
-    assert(tokens[1,1] == strofreal(QUOTED_STRING()))
-    assert(tokens[1,2] == "Müller")
-}
-end
-
-display "P1A-29 PASS: unicode characters in quoted strings preserved"
-
-// ----------------------------------------------------------------
-// P1A-30 — unbalanced parentheses produces appropriate error
-// ----------------------------------------------------------------
-// The tokenizer itself does not error on unbalanced parens — it emits
-// tokens faithfully.  The structural parser catches unbalanced state.
-// We verify the tokenizer at least produces OPEN_PAREN without crashing,
-// and that the depth mismatch is detectable from the token counts.
-mata:
-{
-    tokens = _tokenize("scatter mpg weight, mc(red")
-    // One OPEN_PAREN, zero CLOSE_PAREN
-    nopen = 0; nclose = 0
-    for (r = 1; r <= rows(tokens); r++) {
-        if (tokens[r,1] == strofreal(OPEN_PAREN()))  nopen  = nopen  + 1
-        if (tokens[r,1] == strofreal(CLOSE_PAREN())) nclose = nclose + 1
-    }
-    assert(nopen == 1)
-    assert(nclose == 0)
-    // Imbalance is detectable (nopen != nclose)
-    assert(nopen != nclose)
-}
-end
-
-display "P1A-30 PASS: unbalanced parens detectable from token counts"
+// ================================================================
+// P1A-30 — _dash_expand_opts_str: values inside () preserved verbatim
+// ================================================================
+local expanded2 ""
+mata: _dash_expand_opts_str(`"title(My Graph mc(red))"', "expanded2")
+// The entire value "My Graph mc(red)" should be preserved — the mc inside
+// the value should NOT be expanded
+assert strpos(`"`expanded2'"', "title(My Graph mc(red))") > 0
+display "P1A-30 PASS: values inside parens preserved without expansion"
 
 display ""
-display "All tokenizer tests PASSED."
+display "All splitter and option-expander tests PASSED."
