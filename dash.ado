@@ -1220,26 +1220,32 @@ program define _dash_build
         if "${dash_kpi_`gname'}" == "" continue
 
         // Read each KPI field from its dedicated global (preserves multi-word values)
+        // then JSON-escape the string fields before insertion.
         local kstat   = "${dash_kpi_`gname'_stat}"
         local kvar    = "${dash_kpi_`gname'_var}"
         local kval    = "${dash_kpi_`gname'_val}"
         local kdisp   = "${dash_kpi_`gname'_disp}"
         local kfmt    = "${dash_kpi_`gname'_fmt}"
-        local ktitle  = "${dash_kpi_`gname'_tit}"
-        local ksub    = "${dash_kpi_`gname'_sub}"
-        local kcolor  = "${dash_kpi_`gname'_col}"
-        local kbg     = "${dash_kpi_`gname'_bg}"
+        _dash_json_str `"${dash_kpi_`gname'_tit}"' _ktitle_esc
+        _dash_json_str `"${dash_kpi_`gname'_sub}"' _ksub_esc
+        _dash_json_str `"${dash_kpi_`gname'_col}"' _kcol_esc
+        _dash_json_str `"${dash_kpi_`gname'_bg}"'  _kbg_esc
         local kupdate = "${dash_kpi_`gname'_upd}"
+        _dash_json_str `"`kdisp'"' _kdisp_esc
+        _dash_json_str `"`kfmt'"'  _kfmt_esc
 
         if `n_kpis' > 0 local kpis_json = `"`kpis_json', "'
-        local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`kdisp'","fmt":"`kfmt'","title":"`ktitle'","subtitle":"`ksub'","color":"`kcolor'","bgcolor":"`kbg'","update":"`kupdate'"}"'
+        local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
         local n_kpis = `n_kpis' + 1
     }
 
     local filter_json = ""
     if "`filter'" != "" local filter_json = `"`filter'"'
 
-    local master_json = `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`title'","subtitle":"`subtitle'","registry":"`registry'"}}"'
+    // Escape build-level title and subtitle for JSON safety
+    _dash_json_str `"`title'"'    _title_esc
+    _dash_json_str `"`subtitle'"' _subtitle_esc
+    local master_json = `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'"}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text
@@ -1376,18 +1382,21 @@ program define _dash_serve
         local gname : word `k' of `registry'
         if "${dash_kpi_`gname'}" == "" continue
         // Read each KPI field from its dedicated global (preserves multi-word values)
+        // then JSON-escape the string fields before insertion.
         local kstat   = "${dash_kpi_`gname'_stat}"
         local kvar    = "${dash_kpi_`gname'_var}"
         local kval    = "${dash_kpi_`gname'_val}"
         local kdisp   = "${dash_kpi_`gname'_disp}"
         local kfmt    = "${dash_kpi_`gname'_fmt}"
-        local ktitle  = "${dash_kpi_`gname'_tit}"
-        local ksub    = "${dash_kpi_`gname'_sub}"
-        local kcolor  = "${dash_kpi_`gname'_col}"
-        local kbg     = "${dash_kpi_`gname'_bg}"
+        _dash_json_str `"${dash_kpi_`gname'_tit}"' _ktitle_esc
+        _dash_json_str `"${dash_kpi_`gname'_sub}"' _ksub_esc
+        _dash_json_str `"${dash_kpi_`gname'_col}"' _kcol_esc
+        _dash_json_str `"${dash_kpi_`gname'_bg}"'  _kbg_esc
         local kupdate = "${dash_kpi_`gname'_upd}"
+        _dash_json_str `"`kdisp'"' _kdisp_esc
+        _dash_json_str `"`kfmt'"'  _kfmt_esc
         if `n_kpis' > 0 local kpis_json = `"`kpis_json', "'
-        local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`kdisp'","fmt":"`kfmt'","title":"`ktitle'","subtitle":"`ksub'","color":"`kcolor'","bgcolor":"`kbg'","update":"`kupdate'"}"'
+        local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
         local n_kpis = `n_kpis' + 1
     }
 
