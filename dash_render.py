@@ -79,6 +79,7 @@ from bokeh.models import (
     CustomJS,
     Div,
     HoverTool,
+    IndexFilter,
     LassoSelectTool,
     NormalHead,
     OpenHead,
@@ -3892,6 +3893,10 @@ class FilterBuilder:
 
         # CustomJS — parameterised: the variable name is passed as a data
         # attribute, not interpolated into the function body.
+        # IndexFilter instances (not the class) are passed as args so that
+        # Bokeh can serialize them as proper model references.  Each filter's
+        # .indices array is updated in-place; no new objects are constructed
+        # in JavaScript.
         js_code = """
 const val = cb_obj.value;
 const data = source.data;
@@ -3901,17 +3906,17 @@ const indices = [];
 if (val === '__all__') {
     // Remove filter: show all rows
     for (let i = 0; i < data[varname].length; i++) {
-        indices.push(true);
+        indices.push(i);
     }
 } else {
     for (let i = 0; i < data[varname].length; i++) {
-        indices.push(String(data[varname][i]) === val);
+        if (String(data[varname][i]) === val) { indices.push(i); }
     }
 }
 
-// Apply to each non-excluded view
-for (let i = 0; i < views.length; i++) {
-    views[i].filter = new BooleanFilter({booleans: indices});
+// Update each per-view IndexFilter in-place
+for (let i = 0; i < view_filters.length; i++) {
+    view_filters[i].indices = indices;
 }
 
 source.change.emit();
@@ -3919,9 +3924,8 @@ source.change.emit();
         callback = CustomJS(
             args={
                 "source": source,
-                "views": [],        # populated by DashRenderer after build
+                "view_filters": [],     # IndexFilter instances; populated by DashRenderer
                 "filter_var": varname,
-                "BooleanFilter": BooleanFilter,
             },
             code=js_code,
         )
@@ -3977,19 +3981,18 @@ const data = source.data;
 const varname = filter_var;
 const indices = [];
 for (let i = 0; i < data[varname].length; i++) {
-    indices.push(data[varname][i] >= val);
+    if (data[varname][i] >= val) { indices.push(i); }
 }
-for (let i = 0; i < views.length; i++) {
-    views[i].filter = new BooleanFilter({booleans: indices});
+for (let i = 0; i < view_filters.length; i++) {
+    view_filters[i].indices = indices;
 }
 source.change.emit();
 """
         callback = CustomJS(
             args={
                 "source": source,
-                "views": [],
+                "view_filters": [],
                 "filter_var": varname,
-                "BooleanFilter": BooleanFilter,
             },
             code=js_code,
         )
@@ -4046,19 +4049,18 @@ const data = source.data;
 const varname = filter_var;
 const indices = [];
 for (let i = 0; i < data[varname].length; i++) {
-    indices.push(data[varname][i] >= lo && data[varname][i] <= hi);
+    if (data[varname][i] >= lo && data[varname][i] <= hi) { indices.push(i); }
 }
-for (let i = 0; i < views.length; i++) {
-    views[i].filter = new BooleanFilter({booleans: indices});
+for (let i = 0; i < view_filters.length; i++) {
+    view_filters[i].indices = indices;
 }
 source.change.emit();
 """
         callback = CustomJS(
             args={
                 "source": source,
-                "views": [],
+                "view_filters": [],
                 "filter_var": varname,
-                "BooleanFilter": BooleanFilter,
             },
             code=js_code,
         )
@@ -5882,8 +5884,13 @@ class DashRenderer:
             else:
                 continue
 
-            # Wire CDSViews: each non-excluded figure that uses fsource
-            views = []
+            # Wire CDSViews: each non-excluded figure that uses fsource.
+            # Create one IndexFilter per renderer view (proper model instances
+            # that Bokeh can serialize as CustomJS args; avoids passing the
+            # BooleanFilter class which breaks Bokeh 3.x JS deserialization).
+            n_rows = len(next(iter(fsource.data.values()))) if fsource.data else 0
+            all_row_indices = list(range(n_rows))
+            view_filters: list = []
             for gname, fig in self.figures.items():
                 if gname in excludes:
                     continue
@@ -5891,11 +5898,12 @@ class DashRenderer:
                     continue
                 for renderer in fig.renderers:
                     if hasattr(renderer, "data_source"):
-                        view = CDSView()
+                        vf = IndexFilter(indices=all_row_indices.copy())
+                        view = CDSView(filter=vf)
                         renderer.view = view
-                        views.append(view)
+                        view_filters.append(vf)
 
-            cb.args["views"] = views
+            cb.args["view_filters"] = view_filters
             filter_row_widgets.append(widget)
             self.filter_widgets.append(widget)
             self.filter_callbacks.append(cb)
@@ -6183,6 +6191,7 @@ class ServerAppBuilder:
             "    ColumnDataSource,",
             "    Div,",
             "    HoverTool,",
+            "    IndexFilter,",
             "    LabelSet,",
             "    LassoSelectTool,",
             "    NormalHead,",

@@ -602,3 +602,135 @@ class TestFilterVarMissingFromData:
             "is absent from the data JSON (Python side handles gracefully by "
             "skipping; the root fix is in dash.ado _dash_build)"
         )
+
+
+# ================================================================
+# Regression: filter CustomJS callback must NOT pass BooleanFilter
+# class as an arg (broke Bokeh 3.x JS deserialization with error
+# "reference BooleanFilter isn't known").
+# ================================================================
+class TestFilterCallbackNoBooleanFilterClass:
+    """Regression tests for Bug: BooleanFilter class passed as CustomJS arg.
+
+    Root cause: FilterBuilder passed the Python BooleanFilter CLASS (not an
+    instance) as a CustomJS arg.  Bokeh 3.x serializes it with
+    {"id": "BooleanFilter"} — a model reference with no matching instance —
+    causing the JS deserializer to throw "reference BooleanFilter isn't known".
+
+    Fix: use IndexFilter instances (proper model objects) and update their
+    .indices array in-place from JS instead of constructing new BooleanFilter
+    objects each time.
+    """
+
+    def _make_cds(self):
+        return ColumnDataSource(pd.DataFrame({
+            "foreign": [0.0, 0.0, 1.0, 1.0, 0.0, 1.0],
+            "mpg":     [18.0, 21.0, 24.0, 30.0, 16.0, 28.0],
+        }))
+
+    def test_dropdown_callback_no_boolean_filter_class_arg(self):
+        """Dropdown callback args must NOT contain BooleanFilter class (BF-01)."""
+        from bokeh.models import BooleanFilter
+        cds = self._make_cds()
+        _, cb = FilterBuilder.build_dropdown("foreign", cds, None, {})
+        arg_vals = list(cb.args.values())
+        for v in arg_vals:
+            assert not (isinstance(v, type) and v is BooleanFilter), (
+                "BooleanFilter CLASS must not be passed as a CustomJS arg "
+                "(causes Bokeh 3.x 'reference BooleanFilter isn't known')"
+            )
+
+    def test_slider_callback_no_boolean_filter_class_arg(self):
+        """Slider callback args must NOT contain BooleanFilter class (BF-02)."""
+        from bokeh.models import BooleanFilter
+        cds = self._make_cds()
+        _, cb = FilterBuilder.build_slider("mpg", cds, None)
+        arg_vals = list(cb.args.values())
+        for v in arg_vals:
+            assert not (isinstance(v, type) and v is BooleanFilter), (
+                "BooleanFilter CLASS must not be passed as a CustomJS arg"
+            )
+
+    def test_range_callback_no_boolean_filter_class_arg(self):
+        """Range callback args must NOT contain BooleanFilter class (BF-03)."""
+        from bokeh.models import BooleanFilter
+        cds = self._make_cds()
+        _, cb = FilterBuilder.build_range("mpg", cds, None)
+        arg_vals = list(cb.args.values())
+        for v in arg_vals:
+            assert not (isinstance(v, type) and v is BooleanFilter), (
+                "BooleanFilter CLASS must not be passed as a CustomJS arg"
+            )
+
+    def test_dropdown_callback_uses_index_filter_arg(self):
+        """Dropdown callback must include 'view_filters' with IndexFilter instances (BF-04)."""
+        from bokeh.models import IndexFilter
+        cds = self._make_cds()
+        _, cb = FilterBuilder.build_dropdown("foreign", cds, None, {})
+        assert "view_filters" in cb.args, (
+            "Dropdown callback must have 'view_filters' key in args"
+        )
+
+    def test_dropdown_js_uses_index_notation(self):
+        """Dropdown JS code must update view_filters[i].indices (not BooleanFilter) (BF-05)."""
+        cds = self._make_cds()
+        _, cb = FilterBuilder.build_dropdown("foreign", cds, None, {})
+        code = cb.code
+        assert "view_filters" in code, "JS code must reference view_filters"
+        assert "indices" in code, "JS code must update .indices"
+        assert "BooleanFilter" not in code, (
+            "JS code must NOT reference BooleanFilter constructor"
+        )
+
+    def test_full_render_with_filter_uses_index_filter(self):
+        """End-to-end: rendered dashboard with filter uses IndexFilter in CDSViews (BF-06)."""
+        import tempfile, json, os
+        from bokeh.models import IndexFilter
+        n = 6
+        var_names = ["mpg", "weight", "foreign"]
+        vals = [{"mpg": 18.0 + i, "weight": 3000.0 - i * 100, "foreign": float(i % 2)}
+                for i in range(n)]
+        spec = {
+            "graphs": [{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}, "if_expr": "", "in_expr": ""}],
+                "graph_options": {"name": "s1"},
+                "if_expr": "", "in_expr": ""
+            }],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "theme": "default",
+                "title": "", "subtitle": "", "registry": "s1",
+                "filter": "foreign, type(dropdown)",
+            }
+        }
+        data_json = {"StataJSON": {
+            "variableNames": var_names,
+            "variableLabels": {v: v for v in var_names},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {v: False for v in var_names},
+            "values": vals,
+        }}
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data_json, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+            r.render()
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+        # Every renderer view (if set) should use IndexFilter
+        for fig in r.figures.values():
+            for renderer in fig.renderers:
+                if hasattr(renderer, "view") and renderer.view is not None:
+                    vf = renderer.view.filter
+                    if vf is not None:
+                        assert isinstance(vf, IndexFilter), (
+                            f"CDSView filter must be IndexFilter, got {type(vf)}"
+                        )
