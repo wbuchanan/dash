@@ -607,3 +607,105 @@ class TestKpiEmptyColorFallback:
         assert "#212529" in div_html, (
             f"Default color '#212529' not found in div HTML: {div_html[:400]}"
         )
+
+
+# ================================================================
+# Bug 14 — KPI "var" key not collected in all_vars
+# ================================================================
+class TestKpiVarKeyInAllVars:
+    """Bug 14 regression: render() collected KPI variables via kpi.get('varname')
+    but dash.ado emits 'var' not 'varname'.  When a KPI references a variable
+    that appears nowhere in any graph plot, the variable would be absent from
+    self.df, causing _compute_kpi_stat() to fail silently and fall back to the
+    Stata-precomputed display value rather than Python-recomputed value.
+
+    The fix: in the all_vars collection loop, use
+        kpi.get("var") or kpi.get("varname", "")
+    so that both key spellings are handled.
+    """
+
+    def _make_renderer_kpi_only_var(self, tmp_path):
+        """Create a renderer where the KPI variable ('z') does NOT appear in any graph.
+
+        Graph plots use only 'y' and 'x'.  The KPI references 'z' exclusively.
+        Before the fix, 'z' would be absent from all_vars and therefore absent
+        from self.df, causing _compute_kpi_stat to return None / fall back.
+        """
+        import json, os, tempfile
+        from dash_render import DashRenderer
+
+        graphs = [{"plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
+                               "options": {}, "if_expr": "", "in_expr": ""}],
+                   "graph_options": {"name": "g1"}, "if_expr": "", "in_expr": ""}]
+        kpi_def = {"name": "k1", "stat": "mean", "var": "z",
+                   "value": "999.0", "display": "999.0",
+                   "fmt": "%9.1f", "title": "Mean Z", "subtitle": "",
+                   "color": "", "bgcolor": "", "update": "filter"}
+        spec = {"graphs": graphs, "kpis": [kpi_def],
+                "build_options": {"layout": "auto", "link": "", "filter": "",
+                                  "theme": "default", "title": "", "subtitle": "",
+                                  "registry": "g1 k1"}}
+        # Data includes 'z' column with known mean (5.5 for 1..10)
+        data_dict = {"StataJSON": {
+            "variableNames": ["y", "x", "z"],
+            "variableLabels": {"y": "y", "x": "x", "z": "z"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"y": False, "x": False, "z": False},
+            "values": [{"y": float(i), "x": float(i), "z": float(i)}
+                       for i in range(1, 11)],
+        }}
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data_dict, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        return r
+
+    def test_kpi_var_key_loaded_into_dataframe(self):
+        """Bug 14: KPI 'var' variable must be present in self.df after load.
+
+        Before fix: kpi.get('varname') returned None when key is 'var',
+        so 'z' was absent from all_vars and never loaded into self.df.
+        After fix: 'z' is in all_vars and loaded into self.df.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp_path:
+            r = self._make_renderer_kpi_only_var(tmp_path)
+            r.render()
+            assert "z" in r.df.columns, (
+                "Bug 14: KPI variable 'z' (stored under key 'var') must be "
+                "loaded into self.df. Before the fix, kpi.get('varname') silently "
+                "returned None and 'z' was excluded from all_vars."
+            )
+
+    def test_kpi_var_python_recomputed_not_stata_fallback(self):
+        """Bug 14: KPI stat must be Python-recomputed from data, not Stata fallback.
+
+        The KPI is initialized with value='999.0' (wrong Stata value).
+        After Python recomputation: mean(z for z in 1..10) = 5.5.
+        Before fix: 'z' absent from df → stat falls back to '999.0'.
+        After fix: stat is correctly computed as '5.5'.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp_path:
+            r = self._make_renderer_kpi_only_var(tmp_path)
+            r.render()
+            k1_div = r.kpi_divs.get("k1")
+            assert k1_div is not None, "KPI div 'k1' must be created"
+            div_html = k1_div.text
+            # The Python-recomputed mean of 1..10 is 5.5
+            assert "5.5" in div_html, (
+                f"Bug 14: KPI div must show Python-recomputed value '5.5', "
+                f"not Stata fallback '999.0'. Got: {div_html[:300]}"
+            )
+            assert "999" not in div_html, (
+                f"Bug 14: Stata fallback value '999' must not appear in KPI div. "
+                f"Python recomputation from 'z' column must be used. Got: {div_html[:300]}"
+            )

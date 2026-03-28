@@ -41,6 +41,27 @@ def _make_data_json(columns: dict) -> dict:
     }
 
 
+def _extract_model_json(html: str) -> str:
+    """Extract the Bokeh model JSON block from rendered HTML.
+
+    With INLINE resources, the full Bokeh JS bundle is embedded in the HTML
+    alongside the model JSON.  This helper extracts only the
+    ``<script type="application/json">`` block that contains the serialized
+    Bokeh document, so tests can search the model data without matching
+    strings that appear inside the JS library itself.
+
+    Returns an empty string if no JSON block is found.
+    """
+    m = re.search(r'<script[^>]+type=["\']application/json["\'][^>]*>', html)
+    if not m:
+        return ""
+    start = m.end()
+    end = html.find("</script>", start)
+    if end == -1:
+        return html[start:]
+    return html[start:end]
+
+
 def _render_to_html(master_spec: dict, data_json: dict) -> str:
     """Run DashRenderer.render() and return the HTML string."""
     spec_fd, spec_path = tempfile.mkstemp(suffix=".json")
@@ -1092,12 +1113,15 @@ class TestLogScaleHtml:
         assert has_log, "yscale(log) must produce log axis marker in HTML model JSON"
 
     def test_no_log_scale_by_default(self):
-        """Without xscale/yscale, HTML must NOT contain LogScale marker."""
+        """Without xscale/yscale, HTML must NOT contain LogScale in model JSON."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # A normal scatter should not have LogScale in model JSON
-        assert "LogScale" not in html, \
-            "default figure must not have LogScale in HTML model"
+        # With INLINE resources the Bokeh JS bundle is embedded in the HTML and
+        # contains "LogScale" as a class definition.  Search only within the
+        # Bokeh model JSON block (the <script type="application/json"> tag).
+        model_json = _extract_model_json(html)
+        assert "LogScale" not in model_json, \
+            "default figure must not have LogScale in Bokeh model JSON"
 
 
 # ================================================================
@@ -1114,9 +1138,11 @@ class TestOutputBackendAndVisualMarkers:
         of output_backend key and presence of renderers in model JSON."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # Canvas (default) backend: Bokeh omits output_backend from model JSON
-        assert "output_backend" not in html, \
-            "Default canvas backend must not appear as output_backend in HTML"
+        # With INLINE resources the Bokeh JS bundle may contain "output_backend"
+        # as a property schema string.  Check only the Bokeh model JSON block.
+        model_json = _extract_model_json(html)
+        assert "output_backend" not in model_json, \
+            "Default canvas backend must not appear as output_backend in model JSON"
         # Plot model must still be fully present with renderers
         assert '"renderers"' in html, "Model JSON must contain renderers on canvas"
 
@@ -1202,8 +1228,11 @@ class TestWebglBackendLargeData:
         """Datasets <= 10 000 rows must NOT embed output_backend='webgl'."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "webgl" not in html, \
-            "Small dataset must not use webgl backend (canvas is default)"
+        # With INLINE resources the Bokeh JS bundle contains "webgl" as an enum
+        # value in its type definitions.  Search only the model JSON block.
+        model_json = _extract_model_json(html)
+        assert "webgl" not in model_json, \
+            "Small dataset must not use webgl backend in Bokeh model JSON"
 
     def test_webgl_model_still_has_renderers(self):
         """webgl-backend model must still contain renderers in the JSON."""

@@ -169,6 +169,45 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 8. test_ado_loads.cscript (Bug 15 + 16 regression)
+// Run from testdir — uses explicit do "../dash_parse.mata" + do "../dash.ado"
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_ado_loads.cscript"
+cd "`testdir'"
+capture {
+    do "test_ado_loads.cscript"
+}
+local rc = _rc
+cd "`dashdir'"
+if `rc' == 0 {
+    display as text "[ PASS] test_ado_loads.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_ado_loads.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 9. test_mata_autoload.cscript (Bug 16 regression — auto-load)
+// MUST run from dashdir so findfile finds dash_parse.mata via "." in adopath.
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_mata_autoload.cscript"
+cd "`dashdir'"
+capture {
+    do "test/test_mata_autoload.cscript"
+}
+local rc = _rc
+if `rc' == 0 {
+    display as text "[ PASS] test_mata_autoload.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_mata_autoload.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

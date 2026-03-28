@@ -20,39 +20,116 @@
 *! Author:  (see dash.sthlp)
 *! Version: 2.0  27mar2026
 
+// ================================================================
+// Load Mata library (dash_parse.mata)
+// ================================================================
+// dash_parse.mata must be on the ado-path alongside dash.ado.
+// findfile locates it; capture run compiles its Mata functions.
+// capture is used because run of a .mata file returns rc=3000
+// (Mata compilation marker) — that is normal and not an error.
+// r(fn) is saved to a local immediately to survive any r() clearing.
+// This top-level code executes once when dash.ado is first loaded.
+// ================================================================
+// Load Mata library (dash_parse.mata)
+// ================================================================
+// Strategy 1: use findfile to search the ado-path (works when the
+//   current directory or the package's PLUS/d/ directory is on the path).
+// Strategy 2: locate dash.ado via findfile to derive the package directory.
+// capture run handles the Mata compilation rc=3000 without aborting.
+capture findfile dash_parse.mata
+if _rc == 0 {
+    local _dash_matalib "`r(fn)'"
+}
+else {
+    // Derive path from dash.ado's own location
+    capture findfile dash.ado
+    if _rc == 0 {
+        local _dash_ado_fn "`r(fn)'"
+        local _dash_matalib = substr("`_dash_ado_fn'", 1, ///
+            strlen("`_dash_ado_fn'") - strlen("dash.ado")) + "dash_parse.mata"
+        capture confirm file "`_dash_matalib'"
+        if _rc != 0 local _dash_matalib ""
+    }
+}
+if `"`_dash_matalib'"' != "" {
+    capture run "`_dash_matalib'"
+}
+
 program define dash
     version 16.0
 
     // ----------------------------------------------------------------
     // Subcommand routing
     // ----------------------------------------------------------------
-    local raw_input `0'
-    local first_token : word 1 of `raw_input'
+    // Extract the subcommand name: everything up to the first space or
+    // comma.  This handles both "dash kpi ..." and "dash build, ..."
+    // (where the comma immediately follows the subcommand name).
+    // Compound quotes are used with regexm/substr so that double-quoted
+    // option values like title("My Title") are handled safely.
+    local _subcmd ""
+    if regexm(`"`0'"', "^([a-zA-Z][a-zA-Z0-9_]*)") {
+        local _subcmd = regexs(1)
+    }
+    // Remaining text after the subcommand word (may start with , or space)
+    local _subcmd_len = strlen("`_subcmd'")
+    local _args = substr(`"`0'"', `_subcmd_len' + 1, .)
 
-    if "`first_token'" == "kpi" {
-        local kpi_rest = substr("`raw_input'", 4, .)
-        _dash_kpi `kpi_rest'
+    if "`_subcmd'" == "kpi" {
+        _dash_kpi `_args'
         exit
     }
-    if "`first_token'" == "build" {
-        local build_rest = substr("`raw_input'", 6, .)
-        _dash_build `build_rest'
+    if "`_subcmd'" == "build" {
+        _dash_build `_args'
         exit
     }
-    if "`first_token'" == "clear" {
+    if "`_subcmd'" == "clear" {
         _dash_clear
         exit
     }
-    if "`first_token'" == "serve" {
-        local serve_rest = substr("`raw_input'", 6, .)
-        _dash_serve `serve_rest'
+    if "`_subcmd'" == "serve" {
+        _dash_serve `_args'
         exit
     }
 
     // ----------------------------------------------------------------
-    // Plot definition
+    // Plot definition  (pass full args including plot-type word)
     // ----------------------------------------------------------------
-    _dash_plot `raw_input'
+    _dash_plot `0'
+end
+
+
+// ================================================================
+// _dash_do_render  — invoke the Python renderer (private helper)
+//
+// In Stata, python:...end ALWAYS terminates the enclosing program
+// define block.  Any Stata code written after a python:...end inside
+// a program define is executed at file-load time rather than as part
+// of the program, and the subsequent end token is then unrecognised
+// (r(199)).
+//
+// The fix: isolate the python: block in this dedicated helper so that
+// post-render Stata code (browser open, display messages) can live
+// in the CALLER program after calling _dash_do_render.
+//
+// Syntax:
+//   _dash_do_render, SPEC(path) DATA(path) OUTPUT(path)           ///
+//                    RENDERPY(path) [MODE(string)]
+//
+// mode defaults to "standalone" if omitted.
+// ================================================================
+program define _dash_do_render
+    version 16.0
+    syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
+            [MODE(string)]
+    if `"`mode'"' == "" local mode "standalone"
+    // Single-line python: calls are used here instead of a python:...end block.
+    // Reason: python:...end blocks inside program defines trigger an
+    // IndentationError when the ado file is loaded from the adopath (Stata
+    // prepends indentation to the stored block on ado-path loads).
+    // Single-line python: statements do not have this issue.
+    python: import sys, runpy
+    python: sys.argv = ["dash_render.py", "--spec", r"`spec'", "--data", r"`data'", "--output", r"`output'", "--mode", r"`mode'"]
+    python: runpy.run_path(r"`renderpy'", run_name="__main__")
 end
 
 
@@ -124,10 +201,10 @@ program define _dash_parse_graph_opts, sclass
     // Full lowercase names are required here because we pre-expand abbreviations
     // in Mata before this call.
     syntax [, ///
-        title(string asis)        subtitle(string asis)     ///
+        title(string)             subtitle(string)          ///
         note(string asis)         caption(string asis)      ///
         name(string)              saving(string)            ///
-        xtitle(string asis)       ytitle(string asis)       ///
+        xtitle(string)            ytitle(string)            ///
         xlabel(string asis)       ylabel(string asis)       ///
         xline(string asis)        yline(string asis)        ///
         legend(string asis)       by(string asis)           ///
@@ -136,7 +213,7 @@ program define _dash_parse_graph_opts, sclass
         plotregion(string asis)   graphregion(string asis)  ///
         bgcolor(string)           plotbgcolor(string)       ///
         link(string)              filter(string asis)       ///
-        ytitle2(string asis)      xtitle2(string asis)      ///
+        ytitle2(string)           xtitle2(string)           ///
         ylabel2(string asis)      xlabel2(string asis)      ///
         yscale2(string asis)      xscale2(string asis)      ///
     ]
@@ -187,34 +264,25 @@ end
 program define _dash_parse_plot_opts, sclass
     version 16.0
     syntax [, ///
-        /* ---- marker options ---- */
         mcolor(string)          msymbol(string)         msize(string)         ///
         msangle(string)         mfcolor(string)         mlcolor(string)       ///
         mlabel(string)          mlabcolor(string)       mlabsize(string)      ///
         mlabposition(string)    mlabgap(string)         mlabwidth(string)     ///
         malpha(string)          marker(string)                                ///
-        /* ---- line/area options ---- */
         lcolor(string)          lwidth(string)          lpattern(string)      ///
         lalpha(string)          fcolor(string)          fintensity(string)    ///
         falpha(string)                                                         ///
-        /* ---- bar/range options ---- */
         barwidth(string)        base(string)            blcolor(string)       ///
         bfcolor(string)                                                        ///
-        /* ---- scatter/jitter ---- */
         jitter(string)          jseed(string)                                 ///
-        /* ---- dual-axis ---- */
         yaxis(string)           xaxis(string)                                 ///
-        /* ---- color mapping ---- */
         colorvar(string)        colpalette(string)                            ///
-        /* ---- smoother options ---- */
         bwidth(string)          degree(string)                                ///
-        /* ---- misc plot options ---- */
         pstyle(string)          cmissing(string)        recast(string)        ///
         connect(string)                                                        ///
-        /* ---- graph-level options (may appear in last segment) ---- */
-        title(string asis)      subtitle(string asis)   note(string asis)     ///
+        title(string)           subtitle(string)        note(string asis)     ///
         caption(string asis)    name(string)            saving(string)        ///
-        xtitle(string asis)     ytitle(string asis)                           ///
+        xtitle(string)          ytitle(string)                                ///
         xlabel(string asis)     ylabel(string asis)                           ///
         xline(string asis)      yline(string asis)                            ///
         legend(string asis)     by(string asis)                               ///
@@ -223,7 +291,7 @@ program define _dash_parse_plot_opts, sclass
         plotregion(string asis) graphregion(string asis)                      ///
         bgcolor(string)         plotbgcolor(string)                           ///
         link(string)            filter(string asis)                           ///
-        ytitle2(string asis)    xtitle2(string asis)                          ///
+        ytitle2(string)         xtitle2(string)                               ///
         ylabel2(string asis)    xlabel2(string asis)                          ///
         yscale2(string asis)    xscale2(string asis)                          ///
     ]
@@ -368,6 +436,7 @@ program define _dash_plot_opts_to_json, rclass
     args out_macro
 
     local parts ""
+    local nparts = 0
 
     // Helper: append a k:v JSON pair if value non-empty
     foreach key in mcolor msymbol msize msangle mfcolor mlcolor mlabel ///
@@ -379,12 +448,13 @@ program define _dash_plot_opts_to_json, rclass
         local val `"`s(`key')'"'
         if `"`val'"' != "" {
             _dash_json_str `"`val'"' _jv
-            if "`parts'" != "" local parts `"`parts',"'
+            if `nparts' > 0 local parts `"`parts',"'
             local parts `"`parts'"`key'":"`_jv'""'
+            local nparts = `nparts' + 1
         }
     }
 
-    c_local `out_macro' `"{\`parts'}"'
+    c_local `out_macro' `"{`parts'}"'
 end
 
 
@@ -400,6 +470,7 @@ program define _dash_graph_opts_to_json, rclass
     args out_macro
 
     local parts ""
+    local nparts = 0
 
     foreach key in name saving title subtitle note caption               ///
                    xtitle ytitle xlabel ylabel xline yline legend by     ///
@@ -409,12 +480,13 @@ program define _dash_graph_opts_to_json, rclass
         local val `"`g_`key''"'
         if `"`val'"' != "" {
             _dash_json_str `"`val'"' _jv
-            if "`parts'" != "" local parts `"`parts',"'
+            if `nparts' > 0 local parts `"`parts',"'
             local parts `"`parts'"`key'":"`_jv'""'
+            local nparts = `nparts' + 1
         }
     }
 
-    c_local `out_macro' `"{\`parts'}"'
+    c_local `out_macro' `"{`parts'}"'
 end
 
 
@@ -543,14 +615,16 @@ program define _dash_process_segment, rclass
     }
 
     // Strip the "if"/"in" keyword prefix that syntax leaves in the macros.
-    // syntax stores `if' as " if <expr>" (4 chars: space+i+f+space before expr).
+    // Stata may store `if' as either " if <expr>" (with leading space) or
+    // "if <expr>" (without leading space) depending on the context.
+    // Using regexr() to strip the prefix robustly handles both cases.
     local if_expr ""
     local in_expr ""
     if `"`if_cl'"' != "" {
-        local if_expr = strtrim(substr(`"`if_cl'"', 5, .))  // skip " if "
+        local if_expr = strtrim(regexr(`"`if_cl'"', "^[ ]*if[ ]+", ""))
     }
     if `"`in_cl'"' != "" {
-        local in_expr = strtrim(substr(`"`in_cl'"', 5, .))  // skip " in "
+        local in_expr = strtrim(regexr(`"`in_cl'"', "^[ ]*in[ ]+", ""))
     }
 
     // ---- parse options (clear stale sreturn values first) ----
@@ -861,10 +935,14 @@ program define _dash_render_immediate
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
 
+    // jsonio returns non-zero _rc as part of normal operation (internal Stata
+    // commands like restore set _rc).  Check for actual failure by verifying
+    // the output file was created, not by checking _rc.
+    capture confirm file "`data_json_path'"
     if _rc != 0 {
         display as error "dash: jsonio failed to serialize data. " ///
             "Check that all variables exist and the data is loaded."
-        exit(_rc)
+        exit(198)
     }
 
     // ---- Write spec JSON to temp file ----
@@ -876,25 +954,30 @@ program define _dash_render_immediate
     file close `fh'
 
     // ---- Locate dash_render.py ----
-    local render_py "`c(sysdir_plus)'d/dash_render.py"
+    // Strategy: use findfile to locate dash_render.py on the adopath.
+    // This works for both development installs (dash/ on adopath) and
+    // package installs (PLUS/d/ on adopath).
+    capture findfile dash_render.py
+    if _rc == 0 {
+        local render_py "`r(fn)'"
+    }
+    else {
+        // Fallback: derive path from dash.ado location
+        capture findfile dash.ado
+        if _rc == 0 {
+            local _ado_fn "`r(fn)'"
+            local render_py = substr("`_ado_fn'", 1, ///
+                strlen("`_ado_fn'") - strlen("dash.ado")) + "dash_render.py"
+        }
+        else {
+            local render_py "`c(sysdir_plus)'d/dash_render.py"
+        }
+    }
 
-    python:
-import sys, runpy
-
-sys.argv = [
-    "dash_render.py",
-    "--spec",  r"`spec_json_path'",
-    "--data",  r"`data_json_path'",
-    "--output", r"`saving_path'"
-]
-
-try:
-    runpy.run_path(r"`render_py'", run_name="__main__")
-except SystemExit as e:
-    if e.code not in (None, 0):
-        from sfi import SFIToolkit
-        SFIToolkit.error(int(e.code) if isinstance(e.code, int) else 198)
-end
+    // ---- Invoke Python renderer via helper ----
+    // (python:...end must be in a dedicated program; see _dash_do_render)
+    _dash_do_render, spec("`spec_json_path'") data("`data_json_path'") ///
+        output("`saving_path'") renderpy("`render_py'")
 
     // ---- Open in browser if no explicit saving() ----
     if "`open_browser'" == "1" {
@@ -1166,7 +1249,10 @@ program define _dash_build
             continue
         }
 
-        if "${dash_json_`gname'}" != "" {
+        // Use strlen to check if JSON global is set WITHOUT embedding JSON in a
+        // double-quoted expression (which would break when JSON contains " chars)
+        local _chk : strlen global dash_json_`gname'
+        if `_chk' > 0 {
             local gvars ""
             mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
             foreach v of local gvars {
@@ -1231,9 +1317,10 @@ program define _dash_build
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
 
+    capture confirm file "`data_json_path'"
     if _rc != 0 {
         display as error "dash build: jsonio failed to serialize data."
-        exit(_rc)
+        exit(198)
     }
 
     // ---- assemble master JSON ----
@@ -1244,8 +1331,8 @@ program define _dash_build
         local gname : word `k' of `registry'
         if "${dash_kpi_`gname'}" != "" continue
 
-        if `n_graphs' > 0 local graphs_json = `"`graphs_json', "'
-        local graphs_json = `"`graphs_json'${dash_json_`gname'}"'
+        if `n_graphs' > 0 local graphs_json `"`graphs_json', "'
+        local graphs_json `"`graphs_json'${dash_json_`gname'}"'
         local n_graphs = `n_graphs' + 1
     }
 
@@ -1271,18 +1358,18 @@ program define _dash_build
         _dash_json_str `"`kdisp'"' _kdisp_esc
         _dash_json_str `"`kfmt'"'  _kfmt_esc
 
-        if `n_kpis' > 0 local kpis_json = `"`kpis_json', "'
-        local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
+        if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
+        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
         local n_kpis = `n_kpis' + 1
     }
 
-    local filter_json = ""
-    if "`filter'" != "" local filter_json = `"`filter'"'
+    local filter_json ""
+    if "`filter'" != "" local filter_json `"`filter'"'
 
     // Escape build-level title and subtitle for JSON safety
     _dash_json_str `"`title'"'    _title_esc
     _dash_json_str `"`subtitle'"' _subtitle_esc
-    local master_json = `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'"}}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'"}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text
@@ -1290,29 +1377,33 @@ program define _dash_build
     file close `fh'
 
     // ---- Locate dash_render.py ----
-    local render_py "`c(sysdir_plus)'d/dash_render.py"
+    // Strategy: use findfile to locate dash_render.py on the adopath.
+    // This works for both development installs (dash/ on adopath) and
+    // package installs (PLUS/d/ on adopath).
+    capture findfile dash_render.py
+    if _rc == 0 {
+        local render_py "`r(fn)'"
+    }
+    else {
+        // Fallback: derive path from dash.ado location
+        capture findfile dash.ado
+        if _rc == 0 {
+            local _ado_fn "`r(fn)'"
+            local render_py = substr("`_ado_fn'", 1, ///
+                strlen("`_ado_fn'") - strlen("dash.ado")) + "dash_render.py"
+        }
+        else {
+            local render_py "`c(sysdir_plus)'d/dash_render.py"
+        }
+    }
 
     local render_mode "standalone"
     if "`server'" != "" local render_mode "server"
 
-    python:
-import sys, runpy
-
-sys.argv = [
-    "dash_render.py",
-    "--spec",   r"`master_json_path'",
-    "--data",   r"`data_json_path'",
-    "--output", r"`saving'",
-    "--mode",   "`render_mode'"
-]
-
-try:
-    runpy.run_path(r"`render_py'", run_name="__main__")
-except SystemExit as e:
-    if e.code not in (None, 0):
-        from sfi import SFIToolkit
-        SFIToolkit.error(int(e.code) if isinstance(e.code, int) else 198)
-end
+    // ---- Invoke Python renderer via helper ----
+    // (python:...end must be in a dedicated program; see _dash_do_render)
+    _dash_do_render, spec("`master_json_path'") data("`data_json_path'") ///
+        output("`saving'") renderpy("`render_py'") mode("`render_mode'")
 
     if "`server'" != "" {
         display as text `"dash build: server app written to `saving'"'
@@ -1370,7 +1461,8 @@ program define _dash_serve
             continue
         }
 
-        if "${dash_json_`gname'}" != "" {
+        local _chk : strlen global dash_json_`gname'
+        if `_chk' > 0 {
             local gvars ""
             mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
             foreach v of local gvars {
@@ -1397,9 +1489,10 @@ program define _dash_serve
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
 
+    capture confirm file "`data_json_path'"
     if _rc != 0 {
         display as error "dash serve: jsonio failed to serialize data."
-        exit(_rc)
+        exit(198)
     }
 
     // ---- assemble master JSON ----
@@ -1408,8 +1501,8 @@ program define _dash_serve
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
         if "${dash_kpi_`gname'}" != "" continue
-        if `n_graphs' > 0 local graphs_json = `"`graphs_json', "'
-        local graphs_json = `"`graphs_json'${dash_json_`gname'}"'
+        if `n_graphs' > 0 local graphs_json `"`graphs_json', "'
+        local graphs_json `"`graphs_json'${dash_json_`gname'}"'
         local n_graphs = `n_graphs' + 1
     }
 
@@ -1432,42 +1525,43 @@ program define _dash_serve
         local kupdate = "${dash_kpi_`gname'_upd}"
         _dash_json_str `"`kdisp'"' _kdisp_esc
         _dash_json_str `"`kfmt'"'  _kfmt_esc
-        if `n_kpis' > 0 local kpis_json = `"`kpis_json', "'
-        local kpis_json = `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
+        if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
+        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
         local n_kpis = `n_kpis' + 1
     }
 
-    local master_json = `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"default","title":"","subtitle":"","registry":"`registry'"}}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"default","title":"","subtitle":"","registry":"`registry'"}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text
     file write `fh' `"`master_json'"'
     file close `fh'
 
-    local render_py "`c(sysdir_plus)'d/dash_render.py"
+    // ---- Locate dash_render.py ----
+    capture findfile dash_render.py
+    if _rc == 0 {
+        local render_py "`r(fn)'"
+    }
+    else {
+        capture findfile dash.ado
+        if _rc == 0 {
+            local _ado_fn "`r(fn)'"
+            local render_py = substr("`_ado_fn'", 1, ///
+                strlen("`_ado_fn'") - strlen("dash.ado")) + "dash_render.py"
+        }
+        else {
+            local render_py "`c(sysdir_plus)'d/dash_render.py"
+        }
+    }
+
     local no_browser_flag ""
     if "`nobrowser'" == "nobrowser" local no_browser_flag "--no-browser"
 
-    python:
-import sys, runpy
-
-sys.argv = [
-    "dash_render.py",
-    "--spec",    r"`master_json_path'",
-    "--data",    r"`data_json_path'",
-    "--output",  "serve",
-    "--mode",    "serve",
-    "--port",    "`port_int'",
-    "--timeout", "`timeout'",
-]
-if "`no_browser_flag'" != "":
-    sys.argv.append("`no_browser_flag'")
-
-try:
-    runpy.run_path(r"`render_py'", run_name="__main__")
-except SystemExit as e:
-    if e.code not in (None, 0):
-        from sfi import SFIToolkit
-        SFIToolkit.error(int(e.code) if isinstance(e.code, int) else 198)
-end
+    // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
+    python: import sys, runpy
+    python: sys.argv = ["dash_render.py", "--spec", r"`master_json_path'", "--data", r"`data_json_path'", "--output", "serve", "--mode", "serve", "--port", "`port_int'", "--timeout", "`timeout'"]
+    if "`no_browser_flag'" != "" {
+        python: sys.argv.append("`no_browser_flag'")
+    }
+    python: runpy.run_path(r"`render_py'", run_name="__main__")
 end

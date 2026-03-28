@@ -109,6 +109,49 @@ assert `found_grid' == 1
 display "P1B-69 PASS: HTML contains Bokeh gridplot structure"
 
 // ================================================================
+// P1B-70 — graphs with if() conditions do not cause r(198) in dash build
+//
+// Regression test for bug: `if "${dash_json_name}" != ""` broke when
+// the JSON contained embedded double-quotes (e.g. "if_expr":"rep78==1").
+// The fix: use `local _chk : strlen global dash_json_name` to check
+// whether the global is set without embedding its content in a
+// double-quoted expression context.
+// ================================================================
+dash clear
+
+qui sysuse auto, clear
+
+// Register a multi-plot graph with if() conditions (categorical encoding)
+dash (scatter mpg weight if rep78==1, mc(navy)         ms(circle)  msi(small)) ///
+     (scatter mpg weight if rep78==2, mc(maroon)       ms(square)  msi(small)) ///
+     (scatter mpg weight if rep78==3, mc(forest_green) ms(triangle) msi(small)) ///
+     (scatter mpg weight if rep78==4, mc(orange)       ms(diamond) msi(small)) ///
+     (scatter mpg weight if rep78==5, mc(purple)       ms(inverted_triangle) msi(small)), ///
+     name(cat1) title("Rep78 Categorical")
+
+// Register a plain graph alongside
+dash scatter mpg weight, name(plain1) title("MPG vs Weight")
+
+tempfile outfile_if
+local outpath_if = "`outfile_if'.html"
+capture erase "`outpath_if'"
+
+// This call must NOT produce r(198) (the regression)
+dash build, saving("`outpath_if'") layout(auto) replace
+
+// Verify file exists and is non-empty
+capture confirm file "`outpath_if'"
+assert _rc == 0
+display "P1B-70a PASS: dash build with if() conditions completed without r(198)"
+
+tempname fh_if
+file open `fh_if' using "`outpath_if'", read text
+file read `fh_if' line_if
+file close `fh_if'
+assert length("`line_if'") > 0
+display "P1B-70b PASS: HTML output from if() graphs is non-empty"
+
+// ================================================================
 // Cleanup
 // ================================================================
 dash clear

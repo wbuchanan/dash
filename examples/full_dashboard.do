@@ -80,7 +80,7 @@ dash histogram price,             ///
 
 // --- Graph 3: MPG vs Length (scatter) ---
 dash scatter mpg length,           ///
-     mc(forest_green) msi(small),  ///
+     mc(forest_green) msi(small)   ///
      name(s2)                      ///
      title("MPG vs Car Length")    ///
      xtitle("Length (in.)")        ///

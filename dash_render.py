@@ -91,7 +91,7 @@ from bokeh.models import (
     WheelZoomTool,
 )
 from bokeh.plotting import figure as bokeh_figure
-from bokeh.resources import CDN
+from bokeh.resources import CDN, INLINE  # noqa: F401 — CDN kept for server mode
 
 
 # ---------------------------------------------------------------------------
@@ -5998,7 +5998,7 @@ class DashRenderer:
                                  sizing_mode="stretch_width")
 
         # ---- 7. Render to HTML ----
-        html_str = file_html(layout_root, CDN, title=title_text or "dash")
+        html_str = file_html(layout_root, INLINE, title=title_text or "dash")
 
         # Inject CSP meta tag and scheme CSS into <head>
         _scheme_css = self.scheme.css_block()

@@ -417,13 +417,25 @@ real scalar _first_comma_pos(string scalar input) {
             else i++
             continue
         }
-        if (c_code == 34 & depth == 0) { in_dq = 1; i++; continue }
+        if (c_code == 34 & depth == 0) {
+            in_dq = 1
+            i++
+            continue
+        }
         if (c_code == 96 & depth == 0 &
             i+1 <= len & ascii(substr(input, i+1, 1)) == 34) {
             in_cq = 1; i = i + 2; continue
         }
-        if (c_code == 40) { depth++; i++; continue }
-        if (c_code == 41 & depth > 0) { depth--; i++; continue }
+        if (c_code == 40) {
+            depth++
+            i++
+            continue
+        }
+        if (c_code == 41 & depth > 0) {
+            depth--
+            i++
+            continue
+        }
         if (c_code == 44 & depth == 0) return(i)
         i++
     }
@@ -512,7 +524,11 @@ void _dash_split_segs(string scalar input) {
                 else i++
                 continue
             }
-            if (c_code == 34) { in_dq = 1; i++; continue }
+            if (c_code == 34) {
+                in_dq = 1
+                i++
+                continue
+            }
             if (c_code == 96 & i+1 <= len & ascii(substr(trimmed, i+1, 1)) == 34) {
                 in_cq = 1; i = i + 2; continue
             }
@@ -566,13 +582,25 @@ void _dash_split_segs(string scalar input) {
                 else i++
                 continue
             }
-            if (c_code == 34 & depth == 0) { in_dq = 1; i++; continue }
+            if (c_code == 34 & depth == 0) {
+                in_dq = 1
+                i++
+                continue
+            }
             if (c_code == 96 & depth == 0 &
                 i+1 <= len & ascii(substr(trimmed, i+1, 1)) == 34) {
                 in_cq = 1; i = i + 2; continue
             }
-            if (c_code == 40) { depth++; i++; continue }
-            if (c_code == 41 & depth > 0) { depth--; i++; continue }
+            if (c_code == 40) {
+                depth++
+                i++
+                continue
+            }
+            if (c_code == 41 & depth > 0) {
+                depth--
+                i++
+                continue
+            }
 
             // Check for "||" at depth 0
             if (c_code == 124 & depth == 0 &
@@ -628,10 +656,10 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     string scalar    found, varlist, val
     real scalar      pos, endpos, orig_pos, local_pos, k
 
-    keys    = ("\"yvar\":",  "\"xvar\":",  "\"var\":",
-               "\"yvar1\":", "\"yvar2\":",
-               "\"y1var\":", "\"x1var\":", "\"y2var\":", "\"x2var\":",
-               "\"mlabel\":")
+    keys    = (char(34)+"yvar"+char(34)+":",   char(34)+"xvar"+char(34)+":",  char(34)+"var"+char(34)+":",
+               char(34)+"yvar1"+char(34)+":", char(34)+"yvar2"+char(34)+":",
+               char(34)+"y1var"+char(34)+":", char(34)+"x1var"+char(34)+":", char(34)+"y2var"+char(34)+":", char(34)+"x2var"+char(34)+":",
+               char(34)+"mlabel"+char(34)+":")
     varlist = ""
 
     for (k = 1; k <= cols(keys); k++) {

@@ -4,9 +4,9 @@
 *! Usage:  do examples/multi_graph_dashboard.do
 *!         (run from the dash/ directory)
 *!
-*! Produces: dashboard.html — interactive dashboard with 3 graphs,
+*! Produces: dashboard.html — interactive dashboard with 4 graphs,
 *!           2 KPI cards, a dropdown filter, and linked brushing.
-*! Version: 1.0.0  25mar2026
+*! Version: 1.1.0  28mar2026
 
 // ----------------------------------------------------------------
 // Setup
@@ -34,13 +34,24 @@ dash (scatter mpg weight, mc(navy) msi(small))     ///
      name(s1) title("MPG vs Weight")               ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
-// Graph 2: MPG vs Length (scatter only)
+// Graph 2: MPG vs Length (scatter only) — note: only ONE comma, separating
+// the varlist+plot options from the graph-level options
 dash scatter mpg length, ///
-    mc(forest_green) msi(small), ///
+    mc(forest_green) msi(small) ///
     name(s2) title("MPG vs Length") ///
     xtitle("Length (in.)") ytitle("Mileage (mpg)")
 
-// Graph 3: MPG Distribution (histogram)
+// Graph 3: MPG vs Weight by repair record (categorical encoding)
+// Each rep78 value (1-5) gets a distinct color and marker shape.
+dash (scatter mpg weight if rep78==1, mc(navy)         ms(circle)            msi(small)) ///
+     (scatter mpg weight if rep78==2, mc(maroon)       ms(square)            msi(small)) ///
+     (scatter mpg weight if rep78==3, mc(forest_green) ms(triangle)          msi(small)) ///
+     (scatter mpg weight if rep78==4, mc(orange)       ms(diamond)           msi(small)) ///
+     (scatter mpg weight if rep78==5, mc(purple)       ms(inverted_triangle) msi(small)), ///
+     name(s3) title("MPG vs Weight by Repair Record") ///
+     xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
+
+// Graph 4: MPG Distribution (histogram)
 dash histogram mpg, name(h1) title("MPG Distribution") ///
     xtitle("Mileage (mpg)")
 
@@ -64,7 +75,7 @@ dash build,                             ///
     title("Auto Dataset Dashboard")     ///
     subtitle("1978 Automobile Data")    ///
     layout(3 2)                         ///
-    link(s1 s2)                         ///
+    link(s1 s2 s3)                      ///
     filter(foreign, type(dropdown))     ///
     theme(clean)                        ///
     replace
@@ -75,7 +86,13 @@ dash build,                             ///
 // Interactive features:
 //   - Use the dropdown filter to switch between Domestic and Foreign cars.
 //   - Use box-select or lasso-select in graph s1 to highlight the same
-//     observations in graph s2 (linked brushing).
+//     observations in graphs s2 and s3 (linked brushing across all three).
+//   - Graph s3 shows repair record categories encoded by color and shape:
+//       navy circle    = Rep 1
+//       maroon square  = Rep 2
+//       green triangle = Rep 3
+//       orange diamond = Rep 4
+//       purple inverted_triangle = Rep 5
 //   - Hover over any data point to see the variable values.
 //   - Pan and zoom with the toolbar icons.
 // ----------------------------------------------------------------
