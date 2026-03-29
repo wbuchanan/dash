@@ -406,6 +406,44 @@ class TestMapLfit:
         renderer = gm.map_lfit(fig, cds, "mpg", "weight", {})
         assert isinstance(renderer.glyph, Line)
 
+    def test_lfit_x_range_extends_beyond_data_bounds_lf01(self, fig, cds, gm):
+        """LF-01: lfit x_fit must extend at least 8% beyond data min/max.
+
+        The fit line should span the full visible plot area, not just the data
+        range.  Bokeh's DataRange1d adds 10% padding; lfit x_fit is extended by
+        the same 10% so it reaches the visible axis boundaries.
+        """
+        x_data = np.array(cds.data["weight"])
+        x_min, x_max = x_data.min(), x_data.max()
+        renderer = gm.map_lfit(fig, cds, "mpg", "weight", {})
+        x_fit = np.array(renderer.data_source.data["x"])
+        assert x_fit.min() < x_min, (
+            f"lfit x_fit min ({x_fit.min():.1f}) should extend below data min "
+            f"({x_min:.1f}) to reach the visible axis boundary"
+        )
+        assert x_fit.max() > x_max, (
+            f"lfit x_fit max ({x_fit.max():.1f}) should extend above data max "
+            f"({x_max:.1f}) to reach the visible axis boundary"
+        )
+        # Verify the extension is approximately 10% on each side
+        dx = x_max - x_min
+        assert x_fit.min() <= x_min - 0.08 * dx, "Extension should be ~10% below data min"
+        assert x_fit.max() >= x_max + 0.08 * dx, "Extension should be ~10% above data max"
+
+    def test_qfit_x_range_extends_beyond_data_bounds_lf02(self, fig, cds, gm):
+        """LF-02: qfit x_fit must extend at least 8% beyond data min/max."""
+        x_data = np.array(cds.data["weight"])
+        x_min, x_max = x_data.min(), x_data.max()
+        renderer = gm.map_qfit(fig, cds, "mpg", "weight", {})
+        x_fit = np.array(renderer.data_source.data["x"])
+        dx = x_max - x_min
+        assert x_fit.min() <= x_min - 0.08 * dx, (
+            "qfit x_fit must extend below data min to reach visible axis boundary"
+        )
+        assert x_fit.max() >= x_max + 0.08 * dx, (
+            "qfit x_fit must extend above data max to reach visible axis boundary"
+        )
+
 
 # ----------------------------------------------------------------
 # P1B-50 — qfit line has 3 coefficients

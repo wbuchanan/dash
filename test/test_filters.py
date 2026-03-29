@@ -662,28 +662,44 @@ class TestFilterCallbackNoBooleanFilterClass:
                 "BooleanFilter CLASS must not be passed as a CustomJS arg"
             )
 
-    def test_dropdown_callback_uses_index_filter_arg(self):
-        """Dropdown callback must include 'view_filters' with IndexFilter instances (BF-04)."""
-        from bokeh.models import IndexFilter
+    def test_dropdown_callback_uses_orig_data_arg(self):
+        """Dropdown callback must include 'orig_data_json' key in args (BF-04).
+
+        The new source.data replacement approach stores original data as a
+        JSON string in orig_data_json to avoid Bokeh 3.x Map serialisation.
+        """
         cds = self._make_cds()
         _, cb = FilterBuilder.build_dropdown("foreign", cds, None, {})
-        assert "view_filters" in cb.args, (
-            "Dropdown callback must have 'view_filters' key in args"
+        assert "orig_data_json" in cb.args, (
+            "Dropdown callback must have 'orig_data_json' key in args"
         )
 
-    def test_dropdown_js_uses_index_notation(self):
-        """Dropdown JS code must update view_filters[i].indices (not BooleanFilter) (BF-05)."""
+    def test_dropdown_js_replaces_source_data(self):
+        """Dropdown JS code must replace source.data (not update IndexFilter) (BF-05).
+
+        The new approach replaces source.data with filtered rows, which is the
+        canonical way to trigger Bokeh 3.x re-renders in standalone mode.
+        """
         cds = self._make_cds()
         _, cb = FilterBuilder.build_dropdown("foreign", cds, None, {})
         code = cb.code
-        assert "view_filters" in code, "JS code must reference view_filters"
-        assert "indices" in code, "JS code must update .indices"
+        assert "source.data = new_data" in code, (
+            "JS code must replace source.data with filtered data"
+        )
+        assert "source.change.emit()" in code, (
+            "JS code must call source.change.emit() after replacing data"
+        )
         assert "BooleanFilter" not in code, (
             "JS code must NOT reference BooleanFilter constructor"
         )
 
-    def test_full_render_with_filter_uses_index_filter(self):
-        """End-to-end: rendered dashboard with filter uses IndexFilter in CDSViews (BF-06)."""
+    def test_full_render_with_filter_no_index_filter_in_callbacks(self):
+        """End-to-end: render succeeds and filter callbacks use orig_data, not IndexFilter (BF-06).
+
+        The new source.data replacement approach stores original data in
+        orig_data on each callback.  No IndexFilter instances should appear in
+        filter callback args (they are no longer needed for Bokeh 3.x renders).
+        """
         import tempfile, json, os
         from bokeh.models import IndexFilter
         n = 6
@@ -725,12 +741,174 @@ class TestFilterCallbackNoBooleanFilterClass:
                 try: os.unlink(p)
                 except OSError: pass
 
-        # Every renderer view (if set) should use IndexFilter
-        for fig in r.figures.values():
-            for renderer in fig.renderers:
-                if hasattr(renderer, "view") and renderer.view is not None:
-                    vf = renderer.view.filter
-                    if vf is not None:
-                        assert isinstance(vf, IndexFilter), (
-                            f"CDSView filter must be IndexFilter, got {type(vf)}"
+        # Render must produce at least one filter callback
+        assert len(r.filter_callbacks) > 0, "Expected at least one filter callback after render"
+
+        # Every callback must have orig_data_json populated (non-empty JSON string)
+        import json as _json
+        for cb in r.filter_callbacks:
+            assert hasattr(cb, "args"), "Filter callback must have args"
+            assert "orig_data_json" in cb.args, (
+                "Filter callback must have 'orig_data_json' key after render wiring"
+            )
+            assert isinstance(cb.args["orig_data_json"], str), (
+                "orig_data_json must be a JSON string"
+            )
+            orig = _json.loads(cb.args["orig_data_json"])
+            assert isinstance(orig, dict) and len(orig) > 0, (
+                "orig_data_json must deserialise to a non-empty dict"
+            )
+            # No IndexFilter instances should be in callback args
+            for arg_val in cb.args.values():
+                assert not isinstance(arg_val, IndexFilter), (
+                    "Filter callback args must NOT contain IndexFilter instances "
+                    "(new approach uses source.data replacement)"
+                )
+                if isinstance(arg_val, list):
+                    for item in arg_val:
+                        assert not isinstance(item, IndexFilter), (
+                            "Filter callback args list must NOT contain IndexFilter instances"
                         )
+
+
+class TestFilterWiringPrimarySourceOnly:
+    """Regression tests for Bug: filter IndexFilter wired to computed-glyph renderers.
+
+    Root cause: the filter wiring loop attached IndexFilter CDSViews to ALL
+    renderers in a figure, including lfit, histogram, and other computed-glyph
+    renderers that use their own separate ColumnDataSources.  Applying fsource
+    row-indices to a 200-point lfit source caused incorrect clipping (the fit
+    line would be cut short after N_data rows instead of 200).
+
+    Fix: only attach IndexFilter to renderers whose data_source IS the shared
+    fsource; skip renderers that use separate computed sources.
+    """
+
+    def _make_scatter_lfit_spec(self):
+        """Spec with one graph containing scatter + lfit layers."""
+        var_names = ["mpg", "weight", "foreign"]
+        vals = [{"mpg": 18.0 + i, "weight": 3000.0 - i * 50,
+                 "foreign": float(i % 2)} for i in range(10)]
+        spec = {
+            "graphs": [{
+                "plots": [
+                    {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                     "options": {}, "if_expr": "", "in_expr": ""},
+                    {"type": "lfit", "yvar": "mpg", "xvar": "weight",
+                     "options": {}, "if_expr": "", "in_expr": ""},
+                ],
+                "graph_options": {"name": "s1"},
+                "if_expr": "", "in_expr": ""
+            }],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "theme": "default",
+                "title": "", "subtitle": "", "registry": "s1",
+                "filter": "foreign, type(dropdown)",
+            }
+        }
+        data_json = {"StataJSON": {
+            "variableNames": var_names,
+            "variableLabels": {v: v for v in var_names},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {v: False for v in var_names},
+            "values": vals,
+        }}
+        return spec, data_json
+
+    def test_orig_data_populated_in_callbacks_bf07(self):
+        """BF-07: After render, filter callbacks must have orig_data populated with source data.
+
+        The new source.data replacement approach stores the full original data
+        in orig_data on each callback.  No IndexFilter instances should be
+        wired to computed-glyph renderers (lfit, histogram, etc.) because
+        the new approach does not use CDSView/IndexFilter at all.
+        """
+        import tempfile, json, os
+        from bokeh.models import IndexFilter
+        spec, data_json = self._make_scatter_lfit_spec()
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data_json, f)
+            r = DashRenderer(sp, dp, op)
+            r.render()
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+        fsource = r.sources.get("s1")
+        assert fsource is not None, "Expected source 's1' to exist"
+
+        # Every filter callback must have orig_data_json populated from fsource
+        import json as _json
+        assert len(r.filter_callbacks) > 0, "Expected at least one filter callback"
+        for cb in r.filter_callbacks:
+            assert hasattr(cb, "args"), "Callback must have args"
+            assert "orig_data_json" in cb.args, (
+                "Callback must have 'orig_data_json' key populated by render wiring"
+            )
+            orig = _json.loads(cb.args["orig_data_json"])
+            assert isinstance(orig, dict) and len(orig) > 0, (
+                "orig_data_json must deserialise to a non-empty dict"
+            )
+            # orig_data must contain the same columns as the source
+            for col in fsource.data:
+                assert col in orig, (
+                    f"orig_data_json must contain column '{col}' from fsource"
+                )
+
+        # No IndexFilter instances should appear in callback args
+        # (the new approach does not wire IndexFilter to any renderers)
+        for cb in r.filter_callbacks:
+            for arg_val in cb.args.values():
+                assert not isinstance(arg_val, IndexFilter), (
+                    "Filter callback args must NOT contain IndexFilter instances "
+                    "(new source.data replacement approach does not use IndexFilter)"
+                )
+                if isinstance(arg_val, list):
+                    for item in arg_val:
+                        assert not isinstance(item, IndexFilter), (
+                            "Filter callback args list must NOT contain IndexFilter instances"
+                        )
+
+    def test_dropdown_float_values_normalized_bf08(self):
+        """BF-08: dropdown option values must normalize '0.0' → '0' for JS match."""
+        cds = ColumnDataSource(pd.DataFrame({
+            "foreign": [0.0, 0.0, 1.0, 1.0, 0.0, 1.0],
+            "mpg":     [18.0, 21.0, 24.0, 30.0, 16.0, 28.0],
+        }))
+        widget, _ = FilterBuilder.build_dropdown("foreign", cds, None, {})
+        option_values = [
+            o[0] if isinstance(o, (list, tuple)) else str(o)
+            for o in widget.options
+        ]
+        # "0.0" and "1.0" must NOT appear — must be normalized to "0" and "1"
+        assert "0.0" not in option_values, (
+            "Float '0.0' must be normalized to '0' for JS String() comparison"
+        )
+        assert "1.0" not in option_values, (
+            "Float '1.0' must be normalized to '1' for JS String() comparison"
+        )
+        assert "0" in option_values, "Normalized '0' must be present"
+        assert "1" in option_values, "Normalized '1' must be present"
+
+    def test_dropdown_float_with_labels_normalized_bf09(self):
+        """BF-09: dropdown with value labels uses normalized key for label lookup."""
+        cds = ColumnDataSource(pd.DataFrame({
+            "foreign": [0.0, 0.0, 1.0, 1.0],
+        }))
+        vlabels = {"0": "Domestic", "1": "Foreign"}
+        widget, _ = FilterBuilder.build_dropdown("foreign", cds, None, vlabels)
+        option_labels = [
+            o[1] if isinstance(o, (list, tuple)) else str(o)
+            for o in widget.options
+        ]
+        combined = " ".join(option_labels)
+        assert "Domestic" in combined, (
+            "Value label 'Domestic' must appear when key '0' is in vlabels"
+        )
+        assert "Foreign" in combined, (
+            "Value label 'Foreign' must appear when key '1' is in vlabels"
+        )

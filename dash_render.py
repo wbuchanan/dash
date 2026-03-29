@@ -68,7 +68,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # Bokeh imports — grouped by sub-module for clarity
 # ---------------------------------------------------------------------------
-from bokeh.embed import file_html
+from bokeh.embed import components, file_html
 from bokeh.layouts import column, gridplot, row
 from bokeh.models import (
     Arrow,
@@ -77,6 +77,7 @@ from bokeh.models import (
     CDSView,
     ColumnDataSource,
     CustomJS,
+    DataRange1d,
     Div,
     HoverTool,
     IndexFilter,
@@ -106,10 +107,84 @@ _WEBGL_THRESHOLD = 10_000
 _NONSELECTION_ALPHA = 0.15
 
 # CSP meta tag injected into every output HTML file.
+# 'unsafe-eval' is required because Bokeh's CustomJS compiles callback
+# code via `new Function(...)` at runtime.  Without it the browser raises
+# an EvalError and no filter or interactive callback fires.
 _CSP_META = (
     '<meta http-equiv="Content-Security-Policy" '
-    'content="script-src \'unsafe-inline\';">'
+    "content=\"script-src 'unsafe-inline' 'unsafe-eval';\">"
 )
+
+# Bootstrap-compatible 12-column responsive grid CSS (db- prefix avoids
+# conflicts if users have Bootstrap already loaded in their browser).
+_DASH_GRID_CSS = """\
+*,*::before,*::after{box-sizing:border-box}
+.db-container{width:100%;padding-right:12px;padding-left:12px;margin:0 auto}
+.db-row{display:flex;flex-wrap:wrap;margin-right:-8px;margin-left:-8px}
+.db-row>[class*="db-col"]{padding-right:8px;padding-left:8px;min-width:0}
+.db-col-1{flex:0 0 8.3333%;max-width:8.3333%}
+.db-col-2{flex:0 0 16.6667%;max-width:16.6667%}
+.db-col-3{flex:0 0 25%;max-width:25%}
+.db-col-4{flex:0 0 33.3333%;max-width:33.3333%}
+.db-col-5{flex:0 0 41.6667%;max-width:41.6667%}
+.db-col-6{flex:0 0 50%;max-width:50%}
+.db-col-7{flex:0 0 58.3333%;max-width:58.3333%}
+.db-col-8{flex:0 0 66.6667%;max-width:66.6667%}
+.db-col-9{flex:0 0 75%;max-width:75%}
+.db-col-10{flex:0 0 83.3333%;max-width:83.3333%}
+.db-col-11{flex:0 0 91.6667%;max-width:91.6667%}
+.db-col-12{flex:0 0 100%;max-width:100%}
+@media(min-width:576px){
+.db-col-sm-1{flex:0 0 8.3333%;max-width:8.3333%}
+.db-col-sm-2{flex:0 0 16.6667%;max-width:16.6667%}
+.db-col-sm-3{flex:0 0 25%;max-width:25%}
+.db-col-sm-4{flex:0 0 33.3333%;max-width:33.3333%}
+.db-col-sm-5{flex:0 0 41.6667%;max-width:41.6667%}
+.db-col-sm-6{flex:0 0 50%;max-width:50%}
+.db-col-sm-7{flex:0 0 58.3333%;max-width:58.3333%}
+.db-col-sm-8{flex:0 0 66.6667%;max-width:66.6667%}
+.db-col-sm-9{flex:0 0 75%;max-width:75%}
+.db-col-sm-10{flex:0 0 83.3333%;max-width:83.3333%}
+.db-col-sm-11{flex:0 0 91.6667%;max-width:91.6667%}
+.db-col-sm-12{flex:0 0 100%;max-width:100%}
+}
+@media(min-width:768px){
+.db-col-md-1{flex:0 0 8.3333%;max-width:8.3333%}
+.db-col-md-2{flex:0 0 16.6667%;max-width:16.6667%}
+.db-col-md-3{flex:0 0 25%;max-width:25%}
+.db-col-md-4{flex:0 0 33.3333%;max-width:33.3333%}
+.db-col-md-5{flex:0 0 41.6667%;max-width:41.6667%}
+.db-col-md-6{flex:0 0 50%;max-width:50%}
+.db-col-md-7{flex:0 0 58.3333%;max-width:58.3333%}
+.db-col-md-8{flex:0 0 66.6667%;max-width:66.6667%}
+.db-col-md-9{flex:0 0 75%;max-width:75%}
+.db-col-md-10{flex:0 0 83.3333%;max-width:83.3333%}
+.db-col-md-11{flex:0 0 91.6667%;max-width:91.6667%}
+.db-col-md-12{flex:0 0 100%;max-width:100%}
+}
+@media(min-width:992px){
+.db-col-lg-1{flex:0 0 8.3333%;max-width:8.3333%}
+.db-col-lg-2{flex:0 0 16.6667%;max-width:16.6667%}
+.db-col-lg-3{flex:0 0 25%;max-width:25%}
+.db-col-lg-4{flex:0 0 33.3333%;max-width:33.3333%}
+.db-col-lg-5{flex:0 0 41.6667%;max-width:41.6667%}
+.db-col-lg-6{flex:0 0 50%;max-width:50%}
+.db-col-lg-7{flex:0 0 58.3333%;max-width:58.3333%}
+.db-col-lg-8{flex:0 0 66.6667%;max-width:66.6667%}
+.db-col-lg-9{flex:0 0 75%;max-width:75%}
+.db-col-lg-10{flex:0 0 83.3333%;max-width:83.3333%}
+.db-col-lg-11{flex:0 0 91.6667%;max-width:91.6667%}
+.db-col-lg-12{flex:0 0 100%;max-width:100%}
+}
+.db-section{margin-bottom:16px}
+.db-filter-bar{align-items:center;margin-bottom:12px;padding:8px 0;\
+border-bottom:1px solid #dee2e6}
+.db-filter-bar .bk-input-group{margin-right:16px}
+.db-title{font-family:sans-serif;font-size:1.5rem;font-weight:600;\
+margin-bottom:4px;margin-top:0}
+.db-subtitle{font-family:sans-serif;font-size:.9rem;color:#6c757d;\
+margin-top:0;margin-bottom:12px}
+"""
 
 
 # ===========================================================================
@@ -1878,7 +1953,10 @@ class GlyphMapper:
             return fig.line(x="x", y="y", source=empty)
 
         coeffs = np.polyfit(x, y, 1)  # [slope, intercept]
-        x_fit = np.linspace(x.min(), x.max(), 200)
+        # Extend x range by Bokeh's default 10% padding on each side so the
+        # fit line spans the full visible plot area, not just the data range.
+        _dx_lfit = x.max() - x.min() if x.max() > x.min() else 1.0
+        x_fit = np.linspace(x.min() - 0.1 * _dx_lfit, x.max() + 0.1 * _dx_lfit, 200)
         y_fit = np.polyval(coeffs, x_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
@@ -1922,7 +2000,10 @@ class GlyphMapper:
             return fig.line(x="x", y="y", source=empty)
 
         coeffs = np.polyfit(x, y, 2)
-        x_fit = np.linspace(x.min(), x.max(), 200)
+        # Extend x range by Bokeh's default 10% padding on each side so the
+        # fit line spans the full visible plot area, not just the data range.
+        _dx_qfit = x.max() - x.min() if x.max() > x.min() else 1.0
+        x_fit = np.linspace(x.min() - 0.1 * _dx_qfit, x.max() + 0.1 * _dx_qfit, 200)
         y_fit = np.polyval(coeffs, x_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
@@ -1980,7 +2061,10 @@ class GlyphMapper:
             return [line_r, band_r]
 
         slope, intercept, _, _, se = scipy_stats.linregress(x, y)
-        x_fit = np.linspace(x.min(), x.max(), 200)
+        # Extend x range by Bokeh's default 10% padding on each side so the
+        # fit line spans the full visible plot area, not just the data range.
+        _dx_lfitci = x.max() - x.min() if x.max() > x.min() else 1.0
+        x_fit = np.linspace(x.min() - 0.1 * _dx_lfitci, x.max() + 0.1 * _dx_lfitci, 200)
         y_fit = intercept + slope * x_fit
 
         # SE of the fit line at each x_fit point
@@ -2056,7 +2140,10 @@ class GlyphMapper:
             return [line_r, band_r]
 
         coeffs = np.polyfit(x, y, 2)
-        x_fit = np.linspace(x.min(), x.max(), 200)
+        # Extend x range by Bokeh's default 10% padding on each side so the
+        # fit line spans the full visible plot area, not just the data range.
+        _dx_qfitci = x.max() - x.min() if x.max() > x.min() else 1.0
+        x_fit = np.linspace(x.min() - 0.1 * _dx_qfitci, x.max() + 0.1 * _dx_qfitci, 200)
         y_fit = np.polyval(coeffs, x_fit)
 
         # Bootstrap CI
@@ -2603,6 +2690,13 @@ class GlyphMapper:
         self._apply_fill_opts(r, options)
         # Quad supports line_width/line_dash/line_color for bin border styling
         self._apply_line_opts(r, options)
+        # Tag renderer so DashRenderer can wire filter-callback recomputation.
+        r._dash_agg_source = hist_source
+        r._dash_agg_config = {
+            "type":      "histogram",
+            "varname":   yvar,
+            "bin_edges": edges.tolist(),
+        }
         return r
 
     def map_kdensity(
@@ -2651,6 +2745,16 @@ class GlyphMapper:
                      line_width=2.0,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
+        # Tag renderer so DashRenderer can wire filter-callback recomputation.
+        # Store the x grid so JS recomputes density at the same points, keeping
+        # the axis range stable.  Bandwidth stored for reference; JS uses
+        # Silverman's rule on the filtered subset (consistent approximation).
+        r._dash_agg_source = kd_source
+        r._dash_agg_config = {
+            "type":    "kdensity",
+            "varname": yvar,
+            "x_grid":  x_range.tolist(),
+        }
         return r
 
     # ------------------------------------------------------------------
@@ -3811,6 +3915,204 @@ class GlyphMapper:
 # FilterBuilder
 # ===========================================================================
 
+# ---------------------------------------------------------------------------
+# Shared JavaScript for filter callbacks (all filter widget types)
+# ---------------------------------------------------------------------------
+# The callback re-applies ALL active filter conditions on the original data
+# then replaces source.data (which reliably triggers Bokeh 3.x re-renders),
+# clears any lingering selection, and updates KPI Div text via the DOM.
+_FILTER_JS = """
+// Bokeh 3.x serialises Python dicts as JavaScript Map objects, not plain {}.
+// All structured args (orig_data, filter_specs, kpi_config) are therefore
+// passed as JSON strings and parsed here to avoid Map-vs-object mismatches.
+const orig        = JSON.parse(orig_data_json);
+const filter_specs = JSON.parse(filter_specs_json);
+const kpi_config  = JSON.parse(kpi_config_json);
+
+const n_rows = orig[Object.keys(orig)[0]].length;
+const active = new Array(n_rows).fill(true);
+
+// Re-apply every filter widget's current value
+for (let fi = 0; fi < filter_specs.length; fi++) {
+    const spec = filter_specs[fi];
+    const w    = all_widgets[fi];
+    const fvar = spec.varname;
+    const ftype = spec.type;
+
+    if (ftype === 'dropdown') {
+        const val = w.value;
+        if (val === '__all__') continue;
+        for (let i = 0; i < n_rows; i++) {
+            if (active[i] && String(orig[fvar][i]) !== val) active[i] = false;
+        }
+    } else if (ftype === 'slider') {
+        const val = w.value;
+        for (let i = 0; i < n_rows; i++) {
+            if (active[i] && orig[fvar][i] < val) active[i] = false;
+        }
+    } else if (ftype === 'range') {
+        const lo = w.value[0];
+        const hi = w.value[1];
+        for (let i = 0; i < n_rows; i++) {
+            if (active[i] && (orig[fvar][i] < lo || orig[fvar][i] > hi))
+                active[i] = false;
+        }
+    }
+}
+
+// Build new data arrays containing only active rows
+const new_data = {};
+const cols = Object.keys(orig);
+for (const col of cols) { new_data[col] = []; }
+for (let i = 0; i < n_rows; i++) {
+    if (active[i]) {
+        for (const col of cols) { new_data[col].push(orig[col][i]); }
+    }
+}
+
+// Replace source data — the canonical way to trigger Bokeh 3.x re-renders
+source.data = new_data;
+source.selected.indices = [];   // clear stale brush selection
+source.change.emit();
+
+// Update KPI card values by setting the Bokeh Div model's text property.
+//
+// WHY NOT document.getElementById:
+//   Bokeh 3.x stores the document JSON inside <script type="application/json">.
+//   HTML entities (&lt; &gt;) in that block are NOT decoded by the browser
+//   before JavaScript reads them, so the Div HTML is stored with literal
+//   "&lt;div id=..." strings.  When Bokeh renders innerHTML those become
+//   visible text, not DOM nodes — document.getElementById always returns null.
+//
+// WHY kpi_div.text works:
+//   Assigning to a Bokeh model property from CustomJS triggers Bokeh's own
+//   change-detection and re-renders the widget with fresh innerHTML, bypassing
+//   the serialisation issue entirely.
+for (let ki = 0; ki < kpi_config.length; ki++) {
+    const k      = kpi_config[ki];
+    const kpi_div = kpi_divs[ki];
+    if (!kpi_div) continue;
+
+    const col = new_data[k.varname];
+    if (!col) continue;
+    const vals = col.filter(v => v !== null && v !== undefined && !isNaN(v));
+
+    let result = 0;
+    const stat = k.stat;
+    if (stat === 'count') {
+        result = vals.length;
+    } else if (vals.length > 0) {
+        if (stat === 'mean') {
+            result = vals.reduce((a, b) => a + b, 0) / vals.length;
+        } else if (stat === 'sum') {
+            result = vals.reduce((a, b) => a + b, 0);
+        } else if (stat === 'min') {
+            result = Math.min(...vals);
+        } else if (stat === 'max') {
+            result = Math.max(...vals);
+        } else if (stat === 'median' || stat === 'p50') {
+            const s = vals.slice().sort((a, b) => a - b);
+            const m = Math.floor(s.length / 2);
+            result = s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+        } else if (stat === 'dcount') {
+            result = new Set(vals.map(String)).size;
+        } else if (stat === 'sd' && vals.length > 1) {
+            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+            result = Math.sqrt(
+                vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
+            );
+        }
+    }
+
+    let fmt = result.toFixed(k.decimals);
+    if (k.commas) {
+        const parts = fmt.split('.');
+        parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+        fmt = parts.join('.');
+    }
+
+    // Rebuild the complete Div HTML and assign to the Bokeh model property.
+    // Using template literals here is fine — the JS is embedded via CustomJS
+    // args (never interpolated from user input).
+    kpi_div.text = (
+        '<div style="background:' + k.bgcolor + '; border-radius:8px; padding:20px; ' +
+        'text-align:center; border:1px solid #dee2e6; min-width:160px; min-height:110px;">' +
+        '<div style="font-size:13px; color:#6c757d; margin-bottom:6px;">' + k.title + '</div>' +
+        '<div style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
+        '<div style="font-size:11px; color:#6c757d; margin-top:4px;">' + k.subtitle + '</div>' +
+        '</div>'
+    );
+}
+
+// --- Recompute aggregate plots (histogram, kdensity) ---
+// agg_sources is a Bokeh model list (plain JS object references).
+// agg_configs is parsed from the JSON string arg.
+const agg_configs = JSON.parse(agg_configs_json);
+for (let ai = 0; ai < agg_configs.length; ai++) {
+    const ac  = agg_configs[ai];
+    const src = agg_sources[ai];
+    if (!src) continue;
+
+    // Pull filtered values for this aggregate variable.
+    // new_data already contains only the rows that passed every active filter.
+    const raw_col = new_data[ac.varname];
+    if (!raw_col) continue;
+    const vals = raw_col.filter(v => v !== null && v !== undefined && !isNaN(v));
+    if (vals.length === 0) continue;
+
+    if (ac.type === 'histogram') {
+        const edges = ac.bin_edges;
+        const n_bins = edges.length - 1;
+        const counts = new Array(n_bins).fill(0);
+        for (const v of vals) {
+            if (v < edges[0] || v > edges[edges.length - 1]) continue;
+            if (v === edges[edges.length - 1]) {
+                // last bin is closed on the right
+                counts[n_bins - 1]++;
+            } else {
+                for (let b = 0; b < n_bins; b++) {
+                    if (v >= edges[b] && v < edges[b + 1]) { counts[b]++; break; }
+                }
+            }
+        }
+        src.data = {
+            top:   counts,
+            left:  edges.slice(0, n_bins),
+            right: edges.slice(1),
+        };
+        src.change.emit();
+
+    } else if (ac.type === 'kdensity') {
+        const n = vals.length;
+        if (n < 2) continue;
+        // Silverman's rule for bandwidth on the filtered subset
+        const mu = vals.reduce((a, b) => a + b, 0) / n;
+        const variance = vals.reduce((a, b) => a + (b - mu) * (b - mu), 0) / (n - 1);
+        const sd = Math.sqrt(variance);
+        const sorted = vals.slice().sort((a, b) => a - b);
+        const q1 = sorted[Math.max(0, Math.floor(0.25 * (n - 1)))];
+        const q3 = sorted[Math.min(n - 1, Math.floor(0.75 * (n - 1)))];
+        const iqr = q3 - q1;
+        const bw_scale = Math.min(sd, iqr > 0 ? iqr / 1.34 : sd);
+        const h = 0.9 * bw_scale * Math.pow(n, -0.2);
+        if (h <= 0) continue;
+        const INV_SQRT_2PI = 0.3989422804014327;
+        const xs = ac.x_grid;
+        const ys = xs.map(x => {
+            let s = 0;
+            for (const xi of vals) {
+                const z = (x - xi) / h;
+                s += Math.exp(-0.5 * z * z);
+            }
+            return s * INV_SQRT_2PI / (n * h);
+        });
+        src.data = { x: xs, y: ys };
+        src.change.emit();
+    }
+}
+"""
+
+
 class FilterBuilder:
     """Builds Bokeh filter widgets with secure, parameterized CustomJS callbacks.
 
@@ -3837,21 +4139,24 @@ class FilterBuilder:
     ) -> "tuple[Select, CustomJS]":
         """Build a categorical dropdown filter widget with CustomJS callback.
 
+        The callback replaces ``source.data`` with only the rows matching the
+        selected value, which reliably triggers Bokeh 3.x re-renders for all
+        linked renderers.  ``orig_data``, ``all_widgets``, ``filter_specs``,
+        and ``kpi_config`` are placeholder args populated by
+        :meth:`DashRenderer.render` after all filter widgets are built.
+
         Args:
-            varname:           Stata variable name to filter on.
-            source:            The shared ColumnDataSource holding the data.
-            df_or_data:        Optional DataFrame/data; accepted for API
-                               compatibility but values are read from *source*.
-            value_labels:      Dict mapping raw values to display labels.  May
-                               be a nested ``{varname: {code: label}}`` dict or
-                               a flat ``{code: label}`` dict.
-            exclude_names:     Names of graphs/KPIs to exclude from the filter.
-            all_figure_names:  All registered graph names (for callback wiring).
-            figure_renderer_map: Legacy param; ignored.
-            kpi_divs:            Legacy param; ignored.
+            varname:      Stata variable name to filter on.
+            source:       The shared ColumnDataSource.
+            df_or_data:   Ignored; kept for API compatibility.
+            value_labels: Flat or nested ``{code: label}`` mapping.
+            exclude_names: Ignored at build time; used in render wiring.
+            all_figure_names: Ignored; kept for API compatibility.
+            figure_renderer_map: Ignored; kept for API compatibility.
+            kpi_divs: Ignored; kept for API compatibility.
 
         Returns:
-            A (Select widget, CustomJS callback) tuple.
+            A ``(Select widget, CustomJS callback)`` tuple.
         """
         if value_labels is None:
             value_labels = {}
@@ -3860,21 +4165,39 @@ class FilterBuilder:
 
         safe_var = FilterBuilder._safe(varname)
 
-        # Resolve label set: accept nested {varname: {code: label}} or flat
+        # Resolve nested {varname: {code: label}} or flat {code: label}
         if varname in value_labels and isinstance(value_labels[varname], dict):
             vlabels: dict = value_labels[varname]
         else:
             vlabels = value_labels
 
-        # Build option list: "All" first, then sorted unique values
-        raw_values = list(set(str(v) for v in source.data[varname]
-                              if v is not None and str(v) != "nan"))
-        raw_values.sort()
+        # Normalize float-integer option values ("0.0" → "0") for JS match
+        def _int_normalized(v) -> str:
+            s = str(v)
+            try:
+                f = float(s)
+                i = int(f)
+                if f == i:
+                    return str(i)
+            except (ValueError, TypeError, OverflowError):
+                pass
+            return s
+
+        raw_values = list(set(
+            _int_normalized(v) for v in source.data[varname]
+            if v is not None and str(v) not in ("nan", "None")
+        ))
+
+        def _sort_key(v: str):
+            try:
+                return (0, float(v))
+            except (ValueError, TypeError):
+                return (1, v)
+        raw_values.sort(key=_sort_key)
 
         def _resolve_label(rv: str) -> str:
             if rv in vlabels:
                 return vlabels[rv]
-            # Try integer key (e.g. "0.0" → look up "0")
             try:
                 int_key = str(int(float(rv)))
                 if int_key in vlabels:
@@ -3885,49 +4208,28 @@ class FilterBuilder:
 
         options = [("__all__", "All")]
         for rv in raw_values:
-            label = _resolve_label(rv)
-            options.append((rv, FilterBuilder._safe(label)))
+            options.append((rv, FilterBuilder._safe(_resolve_label(rv))))
 
         widget = Select(title=safe_var, value="__all__",
                         options=[(v, l) for v, l in options])
 
-        # CustomJS — parameterised: the variable name is passed as a data
-        # attribute, not interpolated into the function body.
-        # IndexFilter instances (not the class) are passed as args so that
-        # Bokeh can serialize them as proper model references.  Each filter's
-        # .indices array is updated in-place; no new objects are constructed
-        # in JavaScript.
-        js_code = """
-const val = cb_obj.value;
-const data = source.data;
-const varname = filter_var;
-const indices = [];
-
-if (val === '__all__') {
-    // Remove filter: show all rows
-    for (let i = 0; i < data[varname].length; i++) {
-        indices.push(i);
-    }
-} else {
-    for (let i = 0; i < data[varname].length; i++) {
-        if (String(data[varname][i]) === val) { indices.push(i); }
-    }
-}
-
-// Update each per-view IndexFilter in-place
-for (let i = 0; i < view_filters.length; i++) {
-    view_filters[i].indices = indices;
-}
-
-source.change.emit();
-"""
         callback = CustomJS(
             args={
-                "source": source,
-                "view_filters": [],     # IndexFilter instances; populated by DashRenderer
-                "filter_var": varname,
+                "source":            source,
+                # JSON strings (not dicts/lists) so Bokeh 3.x serialises
+                # them as plain JS strings, not Map objects.  Parsed via
+                # JSON.parse() inside _FILTER_JS.
+                "orig_data_json":    "{}",  # populated by DashRenderer.render()
+                "all_widgets":       [],    # populated by DashRenderer.render()
+                "filter_specs_json": "[]",  # populated by DashRenderer.render()
+                "kpi_config_json":   "[]",  # populated by DashRenderer.render()
+                # KPI Div model objects — updated via model property, not DOM
+                "kpi_divs":          [],    # populated by DashRenderer.render()
+                # Aggregate sources (histogram, kdensity) to recompute on filter
+                "agg_sources":       [],    # populated by DashRenderer.render()
+                "agg_configs_json":  "[]",  # populated by DashRenderer.render()
             },
-            code=js_code,
+            code=_FILTER_JS,
         )
         widget.js_on_change("value", callback)
         return widget, callback
@@ -3942,17 +4244,11 @@ source.change.emit();
     ) -> "tuple[Slider, CustomJS]":
         """Build a numeric threshold slider filter widget.
 
-        Shows rows where ``varname >= slider.value``.
-
-        Args:
-            varname:          Stata variable name to filter on.
-            source:           The shared ColumnDataSource.
-            df_or_data:       Optional DataFrame; accepted for API compat.
-            exclude_names:    Names of graphs/KPIs excluded from this filter.
-            all_figure_names: All registered graph names.
+        Shows rows where ``varname >= slider.value``.  Callback args are
+        populated by :meth:`DashRenderer.render`.
 
         Returns:
-            A (Slider widget, CustomJS callback) tuple.
+            A ``(Slider widget, CustomJS callback)`` tuple.
         """
         if exclude_names is None:
             exclude_names = []
@@ -3961,13 +4257,11 @@ source.change.emit();
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
         if len(arr) == 0:
-            # No valid data for this variable; return a disabled dummy slider
             widget = Slider(title=safe_var, start=0, end=1, value=0, step=1,
                             disabled=True)
             callback = CustomJS(args={}, code="")
             return widget, callback
         vmin, vmax = float(arr.min()), float(arr.max())
-        # Ensure end > start for Bokeh Slider (required constraint)
         if vmin == vmax:
             vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
@@ -3975,26 +4269,18 @@ source.change.emit();
         widget = Slider(title=safe_var, start=vmin, end=vmax,
                         value=vmin, step=vstep)
 
-        js_code = """
-const val = cb_obj.value;
-const data = source.data;
-const varname = filter_var;
-const indices = [];
-for (let i = 0; i < data[varname].length; i++) {
-    if (data[varname][i] >= val) { indices.push(i); }
-}
-for (let i = 0; i < view_filters.length; i++) {
-    view_filters[i].indices = indices;
-}
-source.change.emit();
-"""
         callback = CustomJS(
             args={
-                "source": source,
-                "view_filters": [],
-                "filter_var": varname,
+                "source":           source,
+                "orig_data_json":    "{}",
+                "all_widgets":       [],
+                "filter_specs_json": "[]",
+                "kpi_config_json":   "[]",
+                "kpi_divs":          [],
+                "agg_sources":       [],
+                "agg_configs_json":  "[]",
             },
-            code=js_code,
+            code=_FILTER_JS,
         )
         widget.js_on_change("value", callback)
         return widget, callback
@@ -4009,17 +4295,11 @@ source.change.emit();
     ) -> "tuple[RangeSlider, CustomJS]":
         """Build a numeric range filter widget.
 
-        Shows rows where ``varname >= start AND varname <= end``.
-
-        Args:
-            varname:          Stata variable name to filter on.
-            source:           The shared ColumnDataSource.
-            df_or_data:       Optional DataFrame; accepted for API compat.
-            exclude_names:    Names of graphs/KPIs excluded from this filter.
-            all_figure_names: All registered graph names.
+        Shows rows where ``varname >= start AND varname <= end``.  Callback
+        args are populated by :meth:`DashRenderer.render`.
 
         Returns:
-            A (RangeSlider widget, CustomJS callback) tuple.
+            A ``(RangeSlider widget, CustomJS callback)`` tuple.
         """
         if exclude_names is None:
             exclude_names = []
@@ -4028,13 +4308,11 @@ source.change.emit();
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
         if len(arr) == 0:
-            # No valid data for this variable; return a disabled dummy range slider
             widget = RangeSlider(title=safe_var, start=0, end=1,
                                  value=(0, 1), step=1, disabled=True)
             callback = CustomJS(args={}, code="")
             return widget, callback
         vmin, vmax = float(arr.min()), float(arr.max())
-        # Ensure end > start for Bokeh RangeSlider (required constraint)
         if vmin == vmax:
             vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
@@ -4043,26 +4321,18 @@ source.change.emit();
                              start=vmin, end=vmax,
                              value=(vmin, vmax), step=vstep)
 
-        js_code = """
-const [lo, hi] = cb_obj.value;
-const data = source.data;
-const varname = filter_var;
-const indices = [];
-for (let i = 0; i < data[varname].length; i++) {
-    if (data[varname][i] >= lo && data[varname][i] <= hi) { indices.push(i); }
-}
-for (let i = 0; i < view_filters.length; i++) {
-    view_filters[i].indices = indices;
-}
-source.change.emit();
-"""
         callback = CustomJS(
             args={
-                "source": source,
-                "view_filters": [],
-                "filter_var": varname,
+                "source":           source,
+                "orig_data_json":    "{}",
+                "all_widgets":       [],
+                "filter_specs_json": "[]",
+                "kpi_config_json":   "[]",
+                "kpi_divs":          [],
+                "agg_sources":       [],
+                "agg_configs_json":  "[]",
             },
-            code=js_code,
+            code=_FILTER_JS,
         )
         widget.js_on_change("value", callback)
         return widget, callback
@@ -4171,6 +4441,12 @@ class DashRenderer:
         self.kpi_divs: dict[str, Div] = {}               # name → Div
         self.filter_widgets: list = []
         self.filter_callbacks: list = []
+
+        # Registry of aggregate sources (histogram bins, KDE curve) that must
+        # be recomputed by the JS filter callback.
+        # graph_name → [(agg_cds, config_dict), ...]
+        # config_dict keys: type, varname, bin_edges (histogram) or x_grid (kdensity)
+        self.agg_source_registry: dict = {}
 
         # Tracks KPI update mode ("filter" | "brush" | "both") by KPI name.
         self._kpi_update_modes: dict[str, str] = {}
@@ -5098,6 +5374,24 @@ class DashRenderer:
                     except AttributeError:
                         pass
 
+        # Restrict DataRange1d to primary-source renderers only.
+        # Computed-glyph renderers (lfit, histogram, qfit, etc.) use separate
+        # ColumnDataSources with different row counts/ranges.  Without this
+        # restriction those sources expand the axis range, making the plot
+        # wider or taller than the scatter data warrants.  With this fix the
+        # axes auto-range based only on the actual data points, while the fit
+        # lines (whose x_fit was extended by 10% to match Bokeh's padding) span
+        # exactly to the visible edge of the plot area.
+        _primary_renderers = [
+            r for r in fig.renderers
+            if hasattr(r, "data_source") and r.data_source is source
+        ]
+        if _primary_renderers:
+            if isinstance(fig.x_range, DataRange1d):
+                fig.x_range.renderers = _primary_renderers
+            if isinstance(fig.y_range, DataRange1d):
+                fig.y_range.renderers = _primary_renderers
+
         # Legend placement and label overrides — must run after glyphs are added
         # so that legend items exist and can be manipulated.
         legend_opt = graph_opts.get("legend", "")
@@ -5308,6 +5602,299 @@ class DashRenderer:
         return Div(text=html_content, sizing_mode="stretch_width")
 
     # ------------------------------------------------------------------
+    # Bootstrap layout helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_bootstrap_layout(layout_opt: str) -> bool:
+        """Return True when *layout_opt* requests a Bootstrap grid layout.
+
+        Bootstrap layouts start with the literal token ``bs`` (case-insensitive),
+        optionally followed by a colon and an explicit column-span specification::
+
+            layout(bs)                              # auto layout
+            layout(bs: k1=3 k2=3 / s1=8 h1=4)     # explicit layout
+        """
+        return bool(layout_opt) and layout_opt.strip().lower().startswith("bs")
+
+    @staticmethod
+    def _auto_bs_layout(
+        all_names: "list[str]",
+        kpi_names: "list[str]",
+    ) -> "list[list[tuple[str, int]]]":
+        """Generate an automatic Bootstrap layout.
+
+        KPI cards are placed in a first row with equal column spans (up to 4 per
+        row).  Graphs fill subsequent rows at two per row (``col-6`` each), or
+        three per row when there are six or more graphs (``col-4`` each).
+
+        Args:
+            all_names:  All dashboard element names in display order.
+            kpi_names:  Subset of *all_names* that are KPI card names.
+
+        Returns:
+            A list of rows, each row being a list of ``(name, col_span)`` tuples.
+        """
+        graph_names = [n for n in all_names if n not in kpi_names]
+        rows: list[list[tuple[str, int]]] = []
+
+        # ---- KPI row(s) ----
+        if kpi_names:
+            n_kpis = len(kpi_names)
+            # Up to 4 KPIs per row; span = 12 // per_row
+            per_row = min(n_kpis, 4)
+            span = max(1, 12 // per_row)
+            for i in range(0, n_kpis, per_row):
+                chunk = kpi_names[i : i + per_row]
+                rows.append([(name, span) for name in chunk])
+
+        # ---- Graph row(s) ----
+        if graph_names:
+            n_graphs = len(graph_names)
+            if n_graphs == 1:
+                per_row = 1
+            elif n_graphs <= 4:
+                per_row = 2
+            else:
+                per_row = 3
+            span = max(1, 12 // per_row)
+            for i in range(0, n_graphs, per_row):
+                chunk = graph_names[i : i + per_row]
+                rows.append([(name, span) for name in chunk])
+
+        return rows if rows else [[(n, 12 // max(1, len(all_names))) for n in all_names]]
+
+    @staticmethod
+    def _parse_bs_layout(
+        layout_opt: str,
+        all_names: "list[str]",
+        kpi_names: "list[str]",
+    ) -> "list[list[tuple[str, int]]]":
+        """Parse a Bootstrap layout string into rows of ``(name, col_span)`` pairs.
+
+        Syntax::
+
+            bs                              # automatic layout
+            bs: name=N ...                  # explicit; / separates rows
+            bs: k1=3 k2=3 / s1=8 h1=4
+
+        Column spans are integers in ``[1, 12]``.  Items missing from the spec
+        that are present in *all_names* are appended as full-width (``col-12``)
+        entries after the last explicit row.
+
+        Security:
+            Name tokens are validated against *all_names*; unknown tokens are
+            silently dropped.  Span values are clamped to ``[1, 12]``.
+
+        Args:
+            layout_opt:  The raw ``layout()`` option string, must start with ``bs``.
+            all_names:   All dashboard element names (KPIs first, then graphs).
+            kpi_names:   Subset of *all_names* that are KPI card names.
+
+        Returns:
+            List of rows, each a list of ``(name, col_span)`` tuples.
+        """
+        stripped = layout_opt.strip()
+        # Pure "bs" or "bs " — auto layout
+        if re.match(r"^bs\s*$", stripped, re.IGNORECASE):
+            return DashRenderer._auto_bs_layout(all_names, kpi_names)
+
+        # Explicit: "bs: <spec>"
+        m = re.match(r"^bs\s*:\s*(.+)$", stripped, re.IGNORECASE | re.DOTALL)
+        if not m:
+            return DashRenderer._auto_bs_layout(all_names, kpi_names)
+
+        spec_str = m.group(1)
+        valid_names = set(all_names)
+        placed: set[str] = set()
+        rows: list[list[tuple[str, int]]] = []
+
+        for row_str in spec_str.split("/"):
+            row: list[tuple[str, int]] = []
+            for token in row_str.split():
+                token = token.strip()
+                if not token:
+                    continue
+                if "=" in token:
+                    parts = token.split("=", 1)
+                    name = parts[0].strip()
+                    try:
+                        span = max(1, min(12, int(parts[1].strip())))
+                    except (ValueError, TypeError):
+                        span = 6
+                else:
+                    name = token
+                    span = 6  # default span when not specified
+                # Security: only accept names present in the registry
+                if name in valid_names:
+                    row.append((name, span))
+                    placed.add(name)
+            if row:
+                rows.append(row)
+
+        # Append any names not mentioned in the spec as full-width rows
+        unplaced = [n for n in all_names if n not in placed]
+        for name in unplaced:
+            rows.append([(name, 12)])
+
+        return rows if rows else DashRenderer._auto_bs_layout(all_names, kpi_names)
+
+    def _render_bootstrap_html(
+        self,
+        layout_opt: str,
+        all_names: "list[str]",
+        kpi_names: "list[str]",
+        filter_row_widgets: list,
+        title_text: str,
+        subtitle_text: str,
+    ) -> str:
+        """Build the final HTML document using a Bootstrap-compatible grid.
+
+        Uses ``bokeh.embed.components()`` to obtain individual ``<div>`` elements
+        for each Bokeh model (figures, KPI divs, filter widgets), then arranges
+        them in a flexbox 12-column grid defined by :data:`_DASH_GRID_CSS`.
+
+        Linked brushing and ``CustomJS`` filter callbacks continue to work
+        because ``components()`` serialises the entire Bokeh model graph — all
+        shared ``ColumnDataSource`` and ``CustomJS`` references — into one
+        ``<script>`` block.
+
+        Args:
+            layout_opt:          The raw ``layout()`` option string (starts with ``bs``).
+            all_names:           All dashboard element names in display order.
+            kpi_names:           Subset that are KPI card names.
+            filter_row_widgets:  Bokeh widget models for the filter bar.
+            title_text:          Dashboard title (may be empty).
+            subtitle_text:       Dashboard subtitle (may be empty).
+
+        Returns:
+            Complete HTML string.
+        """
+        import html as _html
+
+        # ---- Parse layout spec ----
+        bs_rows = DashRenderer._parse_bs_layout(layout_opt, all_names, kpi_names)
+
+        # ---- Collect all Bokeh models in layout order ----
+        # We pass everything to components() in a single call so that shared
+        # ColumnDataSource and CustomJS references are serialised together.
+        all_models: list[Any] = []
+        model_keys: list[str] = []  # parallel list; filter widgets use __fw_N__
+
+        for row_spec in bs_rows:
+            for name, _ in row_spec:
+                if name in self.figures:
+                    all_models.append(self.figures[name])
+                    model_keys.append(name)
+                elif name in self.kpi_divs:
+                    all_models.append(self.kpi_divs[name])
+                    model_keys.append(name)
+
+        for fw_idx, widget in enumerate(filter_row_widgets):
+            all_models.append(widget)
+            model_keys.append(f"__fw_{fw_idx}__")
+
+        if not all_models:
+            return (
+                "<!DOCTYPE html><html><body>"
+                "<p style='font-family:sans-serif'>No dashboard content.</p>"
+                "</body></html>"
+            )
+
+        # ---- Extract minimal Bokeh JS/CSS bundle via file_html() ----
+        # file_html() with INLINE selects only the resource bundles needed by
+        # the given model tree (omits bokeh-gl, bokeh-mathjax, etc. when
+        # unused), producing ~1.5 MB vs ~3.5 MB from INLINE.render_js().
+        # We call file_html() FIRST before components() because Bokeh models
+        # may only belong to one document; file_html() attaches models, then
+        # components() can reuse the same document (always_new=False default).
+        _dummy_col = column(*all_models, sizing_mode="stretch_width")
+        _dummy_html = file_html(_dummy_col, INLINE, title=title_text or "dash")
+        _head_m = re.search(r"(?s)<head>(.*?)</head>", _dummy_html)
+        _extracted_head = _head_m.group(1) if _head_m else ""
+
+        # ---- Get individual Bokeh component divs ----
+        # components() reuses the existing document so there is no ownership
+        # conflict after file_html() above.
+        script_tag, div_list = components(all_models)
+        name_to_div: dict[str, str] = dict(zip(model_keys, div_list))
+
+        # ---- Build filter bar HTML ----
+        filter_bar_html = ""
+        fw_divs = [
+            name_to_div.get(f"__fw_{i}__", "")
+            for i in range(len(filter_row_widgets))
+        ]
+        if any(fw_divs):
+            items_html = "\n".join(
+                f'<div class="db-col-auto">{d}</div>' for d in fw_divs if d
+            )
+            filter_bar_html = (
+                '<div class="db-row db-filter-bar">\n'
+                + items_html
+                + "\n</div>"
+            )
+
+        # ---- Build header HTML ----
+        header_html = ""
+        if title_text:
+            header_html += (
+                f'<h2 class="db-title">{_html.escape(title_text)}</h2>\n'
+            )
+        if subtitle_text:
+            header_html += (
+                f'<p class="db-subtitle">{_html.escape(subtitle_text)}</p>\n'
+            )
+
+        # ---- Build Bootstrap grid HTML ----
+        grid_parts: list[str] = []
+        for row_spec in bs_rows:
+            # Skip rows where all items are missing (unknown names)
+            row_divs = [
+                (span, name_to_div.get(name, ""))
+                for name, span in row_spec
+                if name_to_div.get(name)
+            ]
+            if not row_divs:
+                continue
+            grid_parts.append('<div class="db-row db-section">')
+            for span, div_html in row_divs:
+                grid_parts.append(
+                    f'<div class="db-col-12 db-col-sm-12 db-col-md-{span}">'
+                    f"{div_html}"
+                    f"</div>"
+                )
+            grid_parts.append("</div>")
+
+        grid_html = "\n".join(grid_parts)
+
+        scheme_css_block = self.scheme.css_block()
+        safe_title = _html.escape(title_text or "dash")
+
+        html_str = (
+            "<!DOCTYPE html>\n"
+            '<html lang="en">\n'
+            "<head>\n"
+            f"{_extracted_head}\n"
+            f"  {_CSP_META}\n"
+            "  <style>\n"
+            f"{_DASH_GRID_CSS}\n"
+            f"{scheme_css_block}\n"
+            "  </style>\n"
+            "</head>\n"
+            "<body>\n"
+            f"{script_tag}\n"
+            '<div class="db-container">\n'
+            f"{header_html}"
+            f"{filter_bar_html}\n"
+            f"{grid_html}\n"
+            "</div>\n"
+            "</body>\n"
+            "</html>"
+        )
+        return html_str
+
+    # ------------------------------------------------------------------
     # Layout assembly helpers
     # ------------------------------------------------------------------
 
@@ -5440,8 +6027,32 @@ class DashRenderer:
             # Add filter variables so filter callbacks work on the shared source
             for fc in filters_cfg:
                 v = fc.get("varname")
-                if v and v not in linked_vars:
+                if v and v not in linked_vars and v in self.df.columns:
                     linked_vars.append(v)
+
+            # Add KPI variables so JS can recompute KPI card values on filter
+            # changes.  Only KPIs that respond to filter events need this.
+            kpis_spec = self.master_spec.get("kpis", [])
+            for kpi in kpis_spec:
+                kupdate = kpi.get("update", "filter")
+                if kupdate in ("filter", "both"):
+                    kvar = kpi.get("var") or kpi.get("varname", "")
+                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
+                        linked_vars.append(kvar)
+
+            # Add raw variables for aggregate (histogram/kdensity) non-linked
+            # graphs so the JS filter callback can recompute bin counts and
+            # density curves from the filtered subset.
+            _AGG_TYPES = frozenset({"histogram", "hist", "kdensity"})
+            for g in graphs:
+                gname = g.get("graph_options", {}).get("name", "")
+                if gname in link_names:
+                    continue  # already covered by linked plots
+                for plot in g.get("plots", []):
+                    if plot.get("type", "") in _AGG_TYPES:
+                        vname = plot.get("var") or plot.get("yvar", "")
+                        if vname and vname not in linked_vars and vname in self.df.columns:
+                            linked_vars.append(vname)
 
             linked_source = self._make_source(linked_vars)
 
@@ -5677,8 +6288,30 @@ class DashRenderer:
             # Also include filter vars in linked source
             for fc in filters_cfg:
                 v = fc.get("varname")
-                if v and v not in linked_vars:
+                if v and v not in linked_vars and v in self.df.columns:
                     linked_vars.append(v)
+
+            # Add KPI variables so JS can update KPI cards after filtering
+            for kpi in kpis:
+                kupdate = kpi.get("update", "filter")
+                if kupdate in ("filter", "both"):
+                    kvar = kpi.get("var") or kpi.get("varname", "")
+                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
+                        linked_vars.append(kvar)
+
+            # Add raw variables for aggregate (histogram/kdensity) non-linked
+            # graphs so JS can recompute bin counts and density curves after
+            # filtering.
+            _AGG_TYPES_RENDER = frozenset({"histogram", "hist", "kdensity"})
+            for g in graphs:
+                gname = g.get("graph_options", {}).get("name", "")
+                if gname in link_names:
+                    continue
+                for plot in g.get("plots", []):
+                    if plot.get("type", "") in _AGG_TYPES_RENDER:
+                        vname = plot.get("var") or plot.get("yvar", "")
+                        if vname and vname not in linked_vars and vname in self.df.columns:
+                            linked_vars.append(vname)
 
             linked_source = self._make_source(linked_vars)
 
@@ -5785,6 +6418,19 @@ class DashRenderer:
                         f"dash_render: failed to build figure '{name}': {exc}"
                     ) from exc
 
+        # ---- 3b. Collect aggregate sources for filter recomputation ----
+        # Scan every built figure for renderers tagged by map_histogram /
+        # map_kdensity.  These need to be updated by the JS filter callback
+        # because their ColumnDataSources are pre-computed aggregates, not raw
+        # rows, so replacing fsource.data alone leaves them stale.
+        for _gname, _fig in self.figures.items():
+            _agg_list = []
+            for _r in _fig.renderers:
+                if hasattr(_r, "_dash_agg_source") and hasattr(_r, "_dash_agg_config"):
+                    _agg_list.append((_r._dash_agg_source, dict(_r._dash_agg_config)))
+            if _agg_list:
+                self.agg_source_registry[_gname] = _agg_list
+
         # ---- 4. Build KPI Divs ----
         for kpi in kpis:
             name = kpi.get("name", "kpi")
@@ -5849,6 +6495,7 @@ class DashRenderer:
         # Determine a CDSView per (figure × filter) for non-excluded graphs.
         # For now we wire up views after all figures are built.
         filter_row_widgets = []
+        fsource = None  # shared source used by filter widgets; set in loop below
 
         for fc in filters_cfg:
             fvar    = fc.get("varname", "")
@@ -5884,41 +6531,141 @@ class DashRenderer:
             else:
                 continue
 
-            # Wire CDSViews: each non-excluded figure that uses fsource.
-            # Create one IndexFilter per renderer view (proper model instances
-            # that Bokeh can serialize as CustomJS args; avoids passing the
-            # BooleanFilter class which breaks Bokeh 3.x JS deserialization).
-            n_rows = len(next(iter(fsource.data.values()))) if fsource.data else 0
-            all_row_indices = list(range(n_rows))
-            view_filters: list = []
-            for gname, fig in self.figures.items():
-                if gname in excludes:
-                    continue
-                if self.sources.get(gname) is not fsource:
-                    continue
-                for renderer in fig.renderers:
-                    if hasattr(renderer, "data_source"):
-                        vf = IndexFilter(indices=all_row_indices.copy())
-                        view = CDSView(filter=vf)
-                        renderer.view = view
-                        view_filters.append(vf)
-
-            cb.args["view_filters"] = view_filters
+            cb.args["view_filters"] = []  # no longer used; kept for compat
             filter_row_widgets.append(widget)
             self.filter_widgets.append(widget)
             self.filter_callbacks.append(cb)
 
+        # ---- 5b. Wire multi-filter state into every callback ----
+        # Each callback gets:
+        #   orig_data   — plain Python dict of the original (unfiltered) source data
+        #   all_widgets — every filter widget in registration order
+        #   filter_specs — [{varname, type}] parallel to all_widgets
+        #   kpi_config  — KPI definitions this callback should update
+        #
+        # This design re-applies ALL active filter conditions on every widget
+        # change, producing a correct intersection of all filters.
+
+        import math as _math
+
+        def _to_serialisable(v: "Any") -> "Any":
+            """Convert a single value to a JSON-safe Python scalar."""
+            if v is None:
+                return None
+            try:
+                f = float(v)
+                if _math.isnan(f) or _math.isinf(f):
+                    return None
+                return f
+            except (TypeError, ValueError):
+                return str(v) if v is not None else None
+
+        # Build orig_data from the shared source — used by all filter callbacks
+        _orig_data: dict = {}
+        if fsource is not None:
+            for _col, _arr in fsource.data.items():
+                _orig_data[_col] = [_to_serialisable(v) for v in _arr]
+
+        # filter_specs — one entry per widget, in widget order
+        _filter_specs: list = []
+        for _fc in filters_cfg:
+            _filter_specs.append({
+                "varname": _fc.get("varname", ""),
+                "type":    _fc.get("type", "dropdown"),
+            })
+
+        # Parse Stata format string → (decimals, commas)
+        def _parse_fmt(fmt: str) -> "tuple[int, bool]":
+            import re as _re
+            m = _re.match(r'%[\d]*\.(\d+)f(c)?', (fmt or "").strip())
+            if m:
+                return int(m.group(1)), m.group(2) == 'c'
+            return 0, False
+
+        # Build per-callback kpi_config: only KPIs *not* excluded by this filter
+        # and that respond to filter changes (update in {"filter","both"}).
+        # Also collect the KPI definitions registered in self.master_spec.
+        _kpi_defs_by_name: dict = {
+            k.get("name", ""): k
+            for k in kpis
+        }
+
+        for _cb_idx, (_fc, _cb) in enumerate(
+            zip(filters_cfg, self.filter_callbacks)
+        ):
+            _fc_excludes = [str(x) for x in _fc.get("exclude", [])]
+            _kpi_config_for_cb: list = []
+            _kpi_divs_for_cb:   list = []   # parallel list of Div model objects
+            for _kname, _kdiv in self.kpi_divs.items():
+                # Skip KPIs excluded by this filter
+                if _kname in _fc_excludes:
+                    continue
+                _kdef = _kpi_defs_by_name.get(_kname, {})
+                _kupdate = _kdef.get("update", "filter")
+                if _kupdate not in ("filter", "both"):
+                    continue
+                _kstat   = _kdef.get("stat", "mean")
+                _kvar    = _kdef.get("var") or _kdef.get("varname", "")
+                _kfmt    = _kdef.get("fmt", "%9.0f")
+                _dec, _comma = _parse_fmt(_kfmt)
+                # Include all styling fields so JS can rebuild the full Div HTML.
+                # The JS sets kpi_div.text (Bokeh model property) — not DOM.
+                _kpi_config_for_cb.append({
+                    "name":     _kname,
+                    "stat":     _kstat,
+                    "varname":  _kvar,
+                    "decimals": _dec,
+                    "commas":   _comma,
+                    "title":    _kdef.get("title", ""),
+                    "subtitle": _kdef.get("subtitle", ""),
+                    "color":    _kdef.get("color", "") or "#212529",
+                    "bgcolor":  _kdef.get("bgcolor", "") or "#f8f9fa",
+                })
+                _kpi_divs_for_cb.append(_kdiv)
+
+            # Pass structured data as JSON strings so Bokeh 3.x serialises
+            # them as plain JS strings (not Map objects).  _FILTER_JS
+            # parses them with JSON.parse() before use.
+            _cb.args["orig_data_json"]    = json.dumps(_orig_data)
+            _cb.args["all_widgets"]       = list(self.filter_widgets)
+            _cb.args["filter_specs_json"] = json.dumps(_filter_specs)
+            _cb.args["kpi_config_json"]   = json.dumps(_kpi_config_for_cb)
+            # Div model objects — Bokeh serialises these as proper model refs
+            _cb.args["kpi_divs"]          = _kpi_divs_for_cb
+
+            # Aggregate sources: histogram and kdensity plots whose pre-computed
+            # sources must be recomputed whenever the filter changes.
+            # Graphs listed in this filter's exclude list are skipped.
+            _agg_srcs: list = []
+            _agg_cfgs: list = []
+            for _gname, _agg_list in self.agg_source_registry.items():
+                if _gname in _fc_excludes:
+                    continue
+                for _agg_cds, _agg_cfg in _agg_list:
+                    _agg_srcs.append(_agg_cds)
+                    _agg_cfgs.append(_agg_cfg)
+            _cb.args["agg_sources"]      = _agg_srcs
+            _cb.args["agg_configs_json"] = json.dumps(_agg_cfgs)
+
         # ---- 6. Assemble layout ----
-        # Build the list of names, expanding faceted graphs into sub-grids
-        all_names: list[str] = []
+        # KPI cards come first, then graphs — so cards appear at the top of the
+        # dashboard and graphs fill the remaining cells below.
+        all_names: list[str] = list(self.kpi_divs.keys())
+        kpi_names: list[str] = list(self.kpi_divs.keys())
         for g in graphs:
             name = g.get("graph_options", {}).get("name", "")
-            if name in self._facet_map:
-                # Add a placeholder name for the faceted group
-                all_names.append(name)
-            else:
-                all_names.append(name)
-        all_names += list(self.kpi_divs.keys())
+            all_names.append(name)
+
+        # ---- Bootstrap grid layout ----
+        if DashRenderer._is_bootstrap_layout(layout_opt):
+            return self._render_bootstrap_html(
+                layout_opt=layout_opt,
+                all_names=all_names,
+                kpi_names=kpi_names,
+                filter_row_widgets=filter_row_widgets,
+                title_text=title_text,
+                subtitle_text=subtitle_text,
+            )
 
         rows_n, cols_n = self._compute_grid(all_names, layout_opt)
 

@@ -307,3 +307,177 @@ class TestLayoutOverflow:
         html = renderer.render()
         # All 4 figures should be present
         assert len(renderer.figures) == 4
+
+
+# ================================================================
+# Bootstrap Layout Tests (BS-01 through BS-12)
+# ================================================================
+
+class TestBootstrapLayout:
+    """Tests for Bootstrap grid layout (layout(bs ...) option)."""
+
+    # ---- BS-01: _is_bootstrap_layout detects bs prefix ----
+    def test_is_bootstrap_layout_bs(self):
+        assert DashRenderer._is_bootstrap_layout("bs") is True
+
+    def test_is_bootstrap_layout_bs_colon(self):
+        assert DashRenderer._is_bootstrap_layout("bs: k1=3 k2=3") is True
+
+    def test_is_bootstrap_layout_BS_upper(self):
+        assert DashRenderer._is_bootstrap_layout("BS") is True
+
+    def test_is_bootstrap_layout_auto_is_false(self):
+        assert DashRenderer._is_bootstrap_layout("auto") is False
+
+    def test_is_bootstrap_layout_grid_is_false(self):
+        assert DashRenderer._is_bootstrap_layout("2 2") is False
+
+    def test_is_bootstrap_layout_empty_is_false(self):
+        assert DashRenderer._is_bootstrap_layout("") is False
+
+    # ---- BS-02: _auto_bs_layout generates rows ----
+    def test_auto_bs_layout_single_item(self):
+        rows = DashRenderer._auto_bs_layout(["g1"], [])
+        assert len(rows) >= 1
+        assert rows[0][0][0] == "g1"
+
+    def test_auto_bs_layout_kpis_first_row(self):
+        rows = DashRenderer._auto_bs_layout(["k1", "k2", "g1", "g2"], ["k1", "k2"])
+        # First row should contain KPIs
+        first_row_names = [name for name, _ in rows[0]]
+        assert "k1" in first_row_names
+        assert "k2" in first_row_names
+
+    def test_auto_bs_layout_spans_sum_le_12_per_row(self):
+        rows = DashRenderer._auto_bs_layout(
+            ["k1", "k2", "k3", "k4", "g1", "g2", "g3", "g4"],
+            ["k1", "k2", "k3", "k4"],
+        )
+        for row in rows:
+            total_span = sum(span for _, span in row)
+            assert total_span <= 12, f"Row spans {total_span} exceed 12: {row}"
+
+    def test_auto_bs_layout_spans_are_valid(self):
+        rows = DashRenderer._auto_bs_layout(["g1", "g2", "g3"], [])
+        for row in rows:
+            for name, span in row:
+                assert 1 <= span <= 12, f"Invalid span {span} for {name}"
+
+    # ---- BS-03: _parse_bs_layout explicit spec ----
+    def test_parse_bs_layout_explicit(self):
+        all_names = ["k1", "k2", "s1", "s2"]
+        rows = DashRenderer._parse_bs_layout(
+            "bs: k1=3 k2=3 / s1=6 s2=6",
+            all_names,
+            ["k1", "k2"],
+        )
+        assert len(rows) == 2
+        assert rows[0] == [("k1", 3), ("k2", 3)]
+        assert rows[1] == [("s1", 6), ("s2", 6)]
+
+    def test_parse_bs_layout_auto_fallback(self):
+        all_names = ["k1", "s1"]
+        rows = DashRenderer._parse_bs_layout("bs", all_names, ["k1"])
+        assert len(rows) >= 1
+        assert all(isinstance(r, list) for r in rows)
+
+    def test_parse_bs_layout_unknown_names_dropped(self):
+        all_names = ["s1", "s2"]
+        rows = DashRenderer._parse_bs_layout(
+            "bs: s1=6 __evil__=6 / s2=12",
+            all_names,
+            [],
+        )
+        flat_names = [name for row in rows for name, _ in row]
+        assert "__evil__" not in flat_names
+
+    def test_parse_bs_layout_spans_clamped(self):
+        all_names = ["s1", "s2"]
+        rows = DashRenderer._parse_bs_layout(
+            "bs: s1=99 / s2=0",
+            all_names,
+            [],
+        )
+        flat = {name: span for row in rows for name, span in row}
+        assert flat.get("s1", 6) <= 12
+        assert flat.get("s2", 6) >= 1
+
+    def test_parse_bs_layout_unplaced_names_appended(self):
+        all_names = ["k1", "s1", "s2"]
+        rows = DashRenderer._parse_bs_layout(
+            "bs: k1=6",
+            all_names,
+            ["k1"],
+        )
+        flat_names = [name for row in rows for name, _ in row]
+        assert "s1" in flat_names
+        assert "s2" in flat_names
+
+    # ---- BS-04: render() with layout(bs) returns HTML ----
+    def test_render_bs_auto_returns_html(self):
+        r = _make_renderer(2, layout="bs")
+        html = r.render()
+        assert "<!DOCTYPE html>" in html
+        assert "db-container" in html
+        assert "db-row" in html
+
+    def test_render_bs_explicit_returns_html(self):
+        r = _make_renderer(2, layout="bs: g1=6 g2=6")
+        html = r.render()
+        assert "<!DOCTYPE html>" in html
+        assert "db-col-md-6" in html
+
+    def test_render_bs_contains_bokeh_script(self):
+        r = _make_renderer(2, layout="bs")
+        html = r.render()
+        # Bokeh inlines its JS; script tag should be present
+        assert "<script" in html
+
+    def test_render_bs_contains_grid_css(self):
+        r = _make_renderer(2, layout="bs")
+        html = r.render()
+        assert "db-col-md-" in html or "db-col-12" in html
+
+    def test_render_bs_csp_meta_present(self):
+        r = _make_renderer(2, layout="bs")
+        html = r.render()
+        assert "Content-Security-Policy" in html
+        assert "unsafe-eval" in html
+
+    # ---- BS-05: _render_bootstrap_html with title / subtitle ----
+    def test_render_bs_title_in_html(self):
+        import tempfile, os, json
+        graphs = [_make_graph_spec("g1"), _make_graph_spec("g2")]
+        spec = {
+            "graphs": graphs,
+            "kpis": [],
+            "build_options": {
+                "layout": "bs",
+                "link": "",
+                "filter": "",
+                "theme": "default",
+                "title": "Test Dashboard",
+                "subtitle": "Subtitle here",
+                "registry": "g1 g2",
+            },
+        }
+        data = _make_data_json()
+        spec_fd, spec_path = tempfile.mkstemp(suffix=".json")
+        data_fd, data_path = tempfile.mkstemp(suffix=".json")
+        out_fd, out_path   = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(spec_fd, "w") as f:
+                json.dump(spec, f)
+            with os.fdopen(data_fd, "w") as f:
+                json.dump(data, f)
+            os.close(out_fd)
+            renderer = DashRenderer(spec_path, data_path, out_path)
+            html = renderer.render()
+            assert "Test Dashboard" in html
+            assert "Subtitle here" in html
+        finally:
+            for p in (spec_path, data_path, out_path):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass

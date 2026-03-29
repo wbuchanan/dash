@@ -1196,8 +1196,9 @@ program define _dash_build
     if "`layout'" == "" local layout "auto"
     if "`layout'" != "auto" {
         if !regexm("`layout'", "^[0-9]+ [0-9]+$") & ///
-           !regexm("`layout'", "^[a-zA-Z_][a-zA-Z0-9_]*:[0-9]+,[0-9]+") {
-            display as error "dash build: layout() must be 'auto', 'rows cols' integers, or 'name:row,col ...' placement syntax."
+           !regexm("`layout'", "^[a-zA-Z_][a-zA-Z0-9_]*:[0-9]+,[0-9]+") & ///
+           !regexm(lower("`layout'"), "^bs") {
+            display as error "dash build: layout() must be 'auto', 'N M' grid, 'name:row,col' placement, or 'bs[: spec]' Bootstrap layout."
             exit(198)
         }
     }
