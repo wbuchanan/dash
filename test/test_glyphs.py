@@ -9,6 +9,8 @@ Run with:  pytest test/test_glyphs.py -v
 import sys
 import os
 import math
+import json
+import tempfile
 import numpy as np
 import pandas as pd
 import pytest
@@ -18,7 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dash_render import GlyphMapper, OptionTranslator, DashRenderer
 
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, GlyphRenderer
+from bokeh.models import ColumnDataSource, GlyphRenderer, HoverTool
 
 
 # ================================================================
@@ -2532,3 +2534,191 @@ class TestLpolyFpfit:
             for p in (sp, dp, op):
                 try: os.unlink(p)
                 except OSError: pass
+
+
+# ================================================================
+# Regression: HoverTool must not fire "???" on independent-CDS renderers
+#
+# Bug: HoverTools added by map_scatter/map_line and the comprehensive
+# HoverTool built by _make_figure applied to ALL renderers in a figure.
+# Derived-curve renderers (lfit, lowess, kdensity, histogram, …) use
+# independent CDS objects whose column names are generic ("x"/"y",
+# "top"/"left"/"right").  Hovering over those renderers returned "???"
+# for every field referencing the original variable names.
+#
+# Fix: every HoverTool is restricted to renderers whose CDS contains
+# all referenced columns.
+# ================================================================
+
+def _make_dr_for_hover(plots, hover="", link="g1"):
+    """Return a rendered DashRenderer for hover-tool tests."""
+    vals = [
+        {"mpg": float(22 - i), "weight": float(2000 + i * 50),
+         "price": float(4000 + i * 200), "foreign": float(i % 2)}
+        for i in range(20)
+    ]
+    data_json = {"StataJSON": {
+        "variableNames": ["mpg", "weight", "price", "foreign"],
+        "variableLabels": {"mpg": "mpg", "weight": "weight",
+                           "price": "price", "foreign": "foreign"},
+        "valueLabels": {}, "valueLabelNames": {},
+        "variableTypeIsString": {c: False for c in
+                                 ["mpg", "weight", "price", "foreign"]},
+        "values": vals,
+    }}
+    graph_opts: dict = {"name": "g1"}
+    if hover:
+        graph_opts["hover"] = hover
+    spec = {
+        "graphs": [{"plots": plots, "graph_options": graph_opts,
+                    "if_expr": "", "in_expr": ""}],
+        "kpis": [],
+        "build_options": {"layout": "auto", "link": link, "filter": "",
+                          "theme": "default", "title": "", "subtitle": "",
+                          "registry": "g1"},
+    }
+    sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+    try:
+        with open(sp, "w") as f: json.dump(spec, f)
+        with open(dp, "w") as f: json.dump(data_json, f)
+        dr = DashRenderer(sp, dp, op)
+    finally:
+        for p in (sp, dp, op):
+            try: os.unlink(p)
+            except OSError: pass
+    dr.render()
+    return dr
+
+
+def _all_hover_cols(fig) -> set:
+    """Return the set of column names referenced by all HoverTools in *fig*."""
+    cols: set = set()
+    for tool in fig.tools:
+        if isinstance(tool, HoverTool):
+            for tip in tool.tooltips:
+                if isinstance(tip, (list, tuple)) and len(tip) == 2:
+                    spec = tip[1]          # e.g. "@{weight}"
+                    # strip @{ }
+                    if spec.startswith("@{") and spec.endswith("}"):
+                        cols.add(spec[2:-1])
+                    elif spec.startswith("@"):
+                        cols.add(spec[1:])
+    return cols
+
+
+def _renderer_has_col(renderer, col: str) -> bool:
+    return (hasattr(renderer, "data_source") and
+            col in renderer.data_source.data)
+
+
+class TestHoverToolRendererScope:
+    """BF-11: HoverTool must be scoped to renderers that carry the columns."""
+
+    def test_scatter_hover_scoped_to_scatter_renderer(self):
+        """BF-11a: map_scatter hover references columns in scatter's CDS only."""
+        plots = [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                  "options": {}}]
+        dr = _make_dr_for_hover(plots)
+        fig = list(dr.figures.values())[0]
+        for tool in fig.tools:
+            if not isinstance(tool, HoverTool):
+                continue
+            if not tool.renderers or tool.renderers == "auto":
+                # unrestricted hover — check all renderers have needed cols
+                for col in _all_hover_cols(fig):
+                    for rend in fig.renderers:
+                        assert _renderer_has_col(rend, col), (
+                            f"Unrestricted HoverTool references col '{col}' "
+                            f"not in renderer {rend}"
+                        )
+            else:
+                # restricted — each renderer must have all referenced cols
+                for col in _all_hover_cols(fig):
+                    for rend in tool.renderers:
+                        assert _renderer_has_col(rend, col), (
+                            f"HoverTool renderer {rend} missing col '{col}'"
+                        )
+
+    def test_scatter_lfit_no_question_marks(self):
+        """BF-11b: scatter+lfit figure hover must not reference lfit's CDS.
+
+        lfit uses fit_source{"x","y"} — original var columns don't exist there.
+        Any HoverTool must be scoped to only the scatter renderer.
+        """
+        plots = [
+            {"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}},
+            {"type": "lfit",    "yvar": "mpg", "xvar": "weight", "options": {}},
+        ]
+        dr = _make_dr_for_hover(plots, hover="mpg weight price")
+        fig = list(dr.figures.values())[0]
+
+        # Collect referenced hover columns
+        hover_cols = _all_hover_cols(fig)
+        assert hover_cols, "Expected at least one HoverTool with tooltip fields"
+
+        # Every HoverTool must only include renderers that carry ALL hover cols
+        for tool in fig.tools:
+            if not isinstance(tool, HoverTool):
+                continue
+            if not tool.renderers or tool.renderers == "auto":
+                continue  # unrestricted — validate no missing cols
+            for rend in tool.renderers:
+                for col in {f[1][2:-1] for f in tool.tooltips
+                            if isinstance(f, (list, tuple))
+                            and f[1].startswith("@{") and f[1].endswith("}")}:
+                    assert _renderer_has_col(rend, col), (
+                        f"HoverTool renderer {rend} missing col '{col}'. "
+                        "lfit renderer must not be included in hover renderers."
+                    )
+
+    def test_lfit_renderer_not_in_hover_renderers(self):
+        """BF-11c: the lfit line renderer must not appear in any HoverTool."""
+        plots = [
+            {"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}},
+            {"type": "lfit",    "yvar": "mpg", "xvar": "weight", "options": {}},
+        ]
+        dr = _make_dr_for_hover(plots, hover="mpg weight")
+        fig = list(dr.figures.values())[0]
+
+        # Identify lfit renderer: it uses fit_source with "x"/"y" not "mpg"/"weight"
+        lfit_renderers = [
+            r for r in fig.renderers
+            if hasattr(r, "data_source") and
+            "x" in r.data_source.data and
+            "mpg" not in r.data_source.data
+        ]
+        assert lfit_renderers, "Expected to find an lfit renderer in the figure"
+
+        for tool in fig.tools:
+            if not isinstance(tool, HoverTool):
+                continue
+            if not tool.renderers or tool.renderers == "auto":
+                continue
+            for lfit_r in lfit_renderers:
+                assert lfit_r not in tool.renderers, (
+                    "lfit renderer must NOT be in any HoverTool's renderer list"
+                )
+
+    def test_histogram_hover_uses_fallback_tooltip(self):
+        """BF-11d: histogram figure must get a fallback bin/count tooltip."""
+        plots = [{"type": "histogram", "yvar": "mpg", "options": {}}]
+        dr = _make_dr_for_hover(plots, hover="mpg")
+        fig = list(dr.figures.values())[0]
+
+        # Should have at least one HoverTool (even if fallback)
+        hover_tools = [t for t in fig.tools if isinstance(t, HoverTool)]
+        assert hover_tools, "Histogram figure should have a HoverTool"
+
+        # The HoverTool must not reference 'mpg' in a form that would cause ???
+        # (because hist_source only has "top", "left", "right")
+        for tool in hover_tools:
+            if not tool.renderers or tool.renderers == "auto":
+                continue
+            for rend in tool.renderers:
+                for _, val_spec in tool.tooltips:
+                    if val_spec.startswith("@{") and val_spec.endswith("}"):
+                        col = val_spec[2:-1]
+                        assert col in rend.data_source.data, (
+                            f"Histogram HoverTool references '{col}' not in "
+                            f"renderer CDS (cols: {list(rend.data_source.data)})"
+                        )

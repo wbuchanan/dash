@@ -1167,12 +1167,16 @@ class GlyphMapper:
         new_data["_y_jit"] = y_jit.tolist()
         return ColumnDataSource(new_data), "_x_jit", "_y_jit"
 
-    def _hover_tool(self, yvar: str, xvar: str) -> HoverTool:
-        """Return a HoverTool that shows variable names and values."""
-        return HoverTool(tooltips=[
+    def _hover_tool(self, yvar: str, xvar: str,
+                   renderers: "list | None" = None) -> HoverTool:
+        """Return a HoverTool scoped to *renderers* (or all if None)."""
+        ht = HoverTool(tooltips=[
             (xvar, f"@{{{xvar}}}"),
             (yvar, f"@{{{yvar}}}"),
         ])
+        if renderers is not None:
+            ht.renderers = renderers
+        return ht
 
     def _apply_line_opts(
         self,
@@ -1634,7 +1638,7 @@ class GlyphMapper:
         self._apply_colorvar(fig, r, plot_source, options)
         # mlabel uses original column names (not jittered) for readable labels
         self._apply_mlabel_opts(fig, plot_source, options, xvar, yvar)
-        fig.add_tools(self._hover_tool(yvar, xvar))
+        fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         return r
 
     def map_line(
@@ -1680,7 +1684,7 @@ class GlyphMapper:
         r = fig.line(**_line_kwargs)
         self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
-        fig.add_tools(self._hover_tool(yvar, xvar))
+        fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         return r
 
     def map_connected(
@@ -5503,7 +5507,49 @@ class DashRenderer:
                     # Replace any existing hover tools with comprehensive one
                     fig.tools = [t for t in fig.tools
                                  if not isinstance(t, HoverTool)]
-                fig.add_tools(HoverTool(tooltips=_hover_fields))
+
+                # Restrict hover to renderers whose CDS contains every
+                # referenced column.  Fit-line, density, and histogram
+                # renderers use independent CDS objects with generic column
+                # names ("x"/"y", "top"/"left"/"right") — hovering over them
+                # with field specs that reference original variable names
+                # (e.g. "@{mpg}") would return "???" in the tooltip.
+                _hover_col_set = {f[0] for f in _hover_fields}
+                _data_renderers = [
+                    _rend for _rend in fig.renderers
+                    if hasattr(_rend, "data_source") and
+                    all(c in _rend.data_source.data for c in _hover_col_set)
+                ]
+
+                if _data_renderers:
+                    fig.add_tools(HoverTool(tooltips=_hover_fields,
+                                            renderers=_data_renderers))
+                else:
+                    # No renderer carries these exact columns (e.g. a
+                    # histogram-only figure).  Fall back to a generic tooltip
+                    # built from the first renderer's actual CDS columns so
+                    # something meaningful is shown rather than "???".
+                    _fb_rends = [_r for _r in fig.renderers
+                                 if hasattr(_r, "data_source")]
+                    if _fb_rends:
+                        _fb_src = _fb_rends[0].data_source
+                        _fb_fields: list = []
+                        # Histogram: "left"/"right" are bin edges, "top" = count
+                        if "top" in _fb_src.data and "left" in _fb_src.data:
+                            _bin_var = _yvar_eff or "value"
+                            _fb_fields = [
+                                (_bin_var,  "@left – @right"),
+                                ("Count",   "@top"),
+                            ]
+                        # KDE / fit line: "x" and "y" columns
+                        elif "x" in _fb_src.data and "y" in _fb_src.data:
+                            _fb_fields = [
+                                (xvar or "x",     "@x"),
+                                (_yvar_eff or "y", "@y"),
+                            ]
+                        if _fb_fields:
+                            fig.add_tools(HoverTool(tooltips=_fb_fields,
+                                                    renderers=_fb_rends[:1]))
 
         return fig
 
