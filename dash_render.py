@@ -5457,6 +5457,30 @@ class DashRenderer:
                     except (ValueError, AttributeError):
                         pass
 
+        # ---- Comprehensive HoverTool ----
+        # Build or replace the hover tool to show primary vars + any extras
+        # listed in graph_options["hover"].  Applies to all figure types that
+        # have data in the shared source; skips figures that already carry
+        # a hover tool added by a glyph mapper unless extra vars are requested.
+        _hover_extra_str = graph_opts.get("hover", "").strip()
+        _hover_extra = _hover_extra_str.split() if _hover_extra_str else []
+        _has_hover = any(isinstance(t, HoverTool) for t in fig.tools)
+        if _hover_extra or not _has_hover:
+            _hover_fields: list = []
+            if xvar and xvar in source.data:
+                _hover_fields.append((xvar, f"@{{{xvar}}}"))
+            if yvar and yvar not in {xvar} and yvar in source.data:
+                _hover_fields.append((yvar, f"@{{{yvar}}}"))
+            for _hv in _hover_extra:
+                if _hv not in {xvar, yvar} and _hv in source.data:
+                    _hover_fields.append((_hv, f"@{{{_hv}}}"))
+            if _hover_fields:
+                if _hover_extra:
+                    # Replace any existing hover tools with comprehensive one
+                    fig.tools = [t for t in fig.tools
+                                 if not isinstance(t, HoverTool)]
+                fig.add_tools(HoverTool(tooltips=_hover_fields))
+
         return fig
 
     def _add_glyph(
@@ -6183,6 +6207,16 @@ class DashRenderer:
                         seen.append(v)
             return seen
 
+        def _collect_graph_vars(g_spec: dict) -> list:
+            """Return deduplicated list of variable columns for a graph,
+            including hover tooltip variables from graph_options.hover."""
+            seen = _collect_plot_vars(g_spec.get("plots", []))
+            hover_str = g_spec.get("graph_options", {}).get("hover", "").strip()
+            for hv in hover_str.split():
+                if hv and hv not in seen and hv in self.df.columns:
+                    seen.append(hv)
+            return seen
+
         if link_names:
             # First pass: collect all variable names needed by linked graphs,
             # including by-variables for linked graphs that also use by().
@@ -6190,7 +6224,7 @@ class DashRenderer:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
-                    for vname in _collect_plot_vars(g.get("plots", [])):
+                    for vname in _collect_graph_vars(g):
                         if vname not in linked_vars:
                             linked_vars.append(vname)
                     # Also include by-variables so CDSView masks align to the shared source
@@ -6251,13 +6285,13 @@ class DashRenderer:
                         self._facet_map[name] = facet_entries
                         self._facet_masks[name] = facet_masks
                 else:
-                    g_vars = _collect_plot_vars(g.get("plots", []))
+                    g_vars = _collect_graph_vars(g)
                     filtered_df = self._apply_graph_filter(g)
                     sources[name] = self._make_source(g_vars, df=filtered_df)
         else:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
-                g_vars = _collect_plot_vars(g.get("plots", []))
+                g_vars = _collect_graph_vars(g)
                 filtered_df = self._apply_graph_filter(g)
                 by_groups = self._expand_by_groups(g, base_df=filtered_df)
                 if len(by_groups) == 1 and by_groups[0][0] == "":
