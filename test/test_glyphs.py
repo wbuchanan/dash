@@ -1912,16 +1912,18 @@ class TestAreaBase:
     def test_base_changes_area_lower_boundary(self, fig, cds, gm):
         """base(5) must set the lower boundary of the area glyph to 5."""
         r = gm.map_area(fig, cds, "mpg", "weight", {"base": "5"})
-        # VArea uses y1 column for lower boundary — check CDS values
+        # VArea uses yvar_base column for lower boundary — check CDS values
         src = r.data_source
-        y1_vals = src.data["y1"]
+        # Column is named "{yvar}_base" since renaming for hover tool support
+        y1_col = "mpg_base"
+        y1_vals = src.data[y1_col]
         assert all(v == 5.0 for v in y1_vals), \
             "base option must set lower area boundary to specified value"
 
     def test_base_default_is_zero(self, fig, cds, gm):
-        """Absent base must default to 0 (all y1 == 0)."""
+        """Absent base must default to 0 (all yvar_base == 0)."""
         r = gm.map_area(fig, cds, "mpg", "weight", {})
-        assert all(v == 0 for v in r.data_source.data["y1"])
+        assert all(v == 0 for v in r.data_source.data["mpg_base"])
 
 
 class TestSpikeBase:

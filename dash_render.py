@@ -1749,10 +1749,11 @@ class GlyphMapper:
             except (ValueError, TypeError):
                 pass
         y1_base = np.full_like(y_arr, base_val)
+        _y1_col = f"{yvar}_base"
 
-        # y1 = baseline, y2 = upper boundary (yvar values)
-        area_source = ColumnDataSource({"x": x_arr, "y1": y1_base, "y2": y_arr})
-        r = fig.varea(x="x", y1="y1", y2="y2", source=area_source,
+        # _y1_col = baseline, yvar = upper boundary
+        area_source = ColumnDataSource({xvar: x_arr, _y1_col: y1_base, yvar: y_arr})
+        r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
                       fill_color=self.scheme.default_color(color_idx, "area"),
                       fill_alpha=0.5, legend_label=yvar)
 
@@ -1771,8 +1772,8 @@ class GlyphMapper:
         if any(k in options for k in _LINE_KEYS):
             # Default border color = same as fill color
             border_color = r.glyph.fill_color or "#aec7e8"
-            border_source = ColumnDataSource({"x": x_arr, "y": y_arr})
-            line_r = fig.line(x="x", y="y", source=border_source,
+            border_source = ColumnDataSource({xvar: x_arr, yvar: y_arr})
+            line_r = fig.line(x=xvar, y=yvar, source=border_source,
                                line_color=border_color, line_width=1.5)
             self._apply_line_opts(line_r, options)
 
@@ -2838,7 +2839,7 @@ class GlyphMapper:
         _rbar_kwargs: dict = dict(x=xvar, bottom=y1var, top=y2var, source=source,
                                    width=bar_width,
                                    fill_color=self.scheme.default_color(color_idx, "bar"),
-                                   line_color="white",
+                                   line_alpha=0,
                                    legend_label=y1var)
         if view is not None:
             _rbar_kwargs["view"] = view
@@ -2917,20 +2918,22 @@ class GlyphMapper:
         else:
             cap_hw = 0.2
 
+        _x0_col = f"{xvar}_x0_cap"
+        _x1_col = f"{xvar}_x1_cap"
         cap_source = ColumnDataSource({
-            "x": x_arr, "y1": y1_arr, "y2": y2_arr,
-            "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
+            xvar: x_arr, y1var: y1_arr, y2var: y2_arr,
+            _x0_col: x_arr - cap_hw, _x1_col: x_arr + cap_hw,
         })
 
         _rcap_color = self.scheme.default_color(color_idx, "scatter")
-        _spine_kwargs: dict = dict(x0="x", y0="y1", x1="x", y1="y2",
+        _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
                                     source=cap_source,
                                     line_color=_rcap_color, line_width=1.5,
                                     legend_label=y1var)
-        _bot_kwargs: dict = dict(x0="x0_cap", y0="y1", x1="x1_cap", y1="y1",
+        _bot_kwargs: dict = dict(x0=_x0_col, y0=y1var, x1=_x1_col, y1=y1var,
                                   source=cap_source,
                                   line_color=_rcap_color, line_width=1.5)
-        _top_kwargs: dict = dict(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
+        _top_kwargs: dict = dict(x0=_x0_col, y0=y2var, x1=_x1_col, y1=y2var,
                                   source=cap_source,
                                   line_color=_rcap_color, line_width=1.5)
         if view is not None:
@@ -4145,6 +4148,7 @@ class FilterBuilder:
         all_figure_names: "list[str] | None" = None,
         figure_renderer_map: "dict | None" = None,
         kpi_divs: "dict | None" = None,
+        label: str = "",
     ) -> "tuple[Select, CustomJS]":
         """Build a categorical dropdown filter widget with CustomJS callback.
 
@@ -4219,7 +4223,8 @@ class FilterBuilder:
         for rv in raw_values:
             options.append((rv, FilterBuilder._safe(_resolve_label(rv))))
 
-        widget = Select(title=safe_var, value="__all__",
+        _widget_title = html.escape(label.strip()) if label.strip() else safe_var
+        widget = Select(title=_widget_title, value="__all__",
                         options=[(v, l) for v, l in options])
 
         callback = CustomJS(
@@ -4250,6 +4255,7 @@ class FilterBuilder:
         df_or_data: "Any | None" = None,
         exclude_names: "list[str] | None" = None,
         all_figure_names: "list[str] | None" = None,
+        label: str = "",
     ) -> "tuple[Slider, CustomJS]":
         """Build a numeric threshold slider filter widget.
 
@@ -4262,11 +4268,15 @@ class FilterBuilder:
         if exclude_names is None:
             exclude_names = []
         safe_var = FilterBuilder._safe(varname)
+        # Build a title that makes the ≥ inequality explicit to end users.
+        _raw_lbl = label.strip() if label.strip() else safe_var
+        _slider_title = _raw_lbl if _raw_lbl.endswith(("\u2265", ">=", "≥")) \
+            else _raw_lbl + " \u2265"
         arr = np.array([v for v in source.data[varname]
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
         if len(arr) == 0:
-            widget = Slider(title=safe_var, start=0, end=1, value=0, step=1,
+            widget = Slider(title=_slider_title, start=0, end=1, value=0, step=1,
                             disabled=True)
             callback = CustomJS(args={}, code="")
             return widget, callback
@@ -4275,7 +4285,7 @@ class FilterBuilder:
             vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
-        widget = Slider(title=safe_var, start=vmin, end=vmax,
+        widget = Slider(title=_slider_title, start=vmin, end=vmax,
                         value=vmin, step=vstep)
 
         callback = CustomJS(
@@ -4301,6 +4311,7 @@ class FilterBuilder:
         df_or_data: "Any | None" = None,
         exclude_names: "list[str] | None" = None,
         all_figure_names: "list[str] | None" = None,
+        label: str = "",
     ) -> "tuple[RangeSlider, CustomJS]":
         """Build a numeric range filter widget.
 
@@ -4316,8 +4327,9 @@ class FilterBuilder:
         arr = np.array([v for v in source.data[varname]
                         if v is not None], dtype=float)
         arr = arr[~np.isnan(arr)]
+        _raw_range_lbl = label.strip() if label.strip() else safe_var
         if len(arr) == 0:
-            widget = RangeSlider(title=safe_var, start=0, end=1,
+            widget = RangeSlider(title=_raw_range_lbl, start=0, end=1,
                                  value=(0, 1), step=1, disabled=True)
             callback = CustomJS(args={}, code="")
             return widget, callback
@@ -4326,7 +4338,7 @@ class FilterBuilder:
             vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
-        widget = RangeSlider(title=safe_var,
+        widget = RangeSlider(title=_raw_range_lbl,
                              start=vmin, end=vmax,
                              value=(vmin, vmax), step=vstep)
 
@@ -5466,14 +5478,26 @@ class DashRenderer:
         _hover_extra = _hover_extra_str.split() if _hover_extra_str else []
         _has_hover = any(isinstance(t, HoverTool) for t in fig.tools)
         if _hover_extra or not _has_hover:
+            # For range plots (rbar, rcap, rspike, rline, rarea, rconnected),
+            # plots[0] uses yvar1/yvar2 keys rather than yvar.
+            _p0 = plots[0] if plots else {}
+            _yvar_eff = yvar or _p0.get("yvar1", "")
+            _y2var_eff = _p0.get("yvar2", "")
+            _hover_seen: set = set()
             _hover_fields: list = []
             if xvar and xvar in source.data:
                 _hover_fields.append((xvar, f"@{{{xvar}}}"))
-            if yvar and yvar not in {xvar} and yvar in source.data:
-                _hover_fields.append((yvar, f"@{{{yvar}}}"))
+                _hover_seen.add(xvar)
+            if _yvar_eff and _yvar_eff not in _hover_seen and _yvar_eff in source.data:
+                _hover_fields.append((_yvar_eff, f"@{{{_yvar_eff}}}"))
+                _hover_seen.add(_yvar_eff)
+            if _y2var_eff and _y2var_eff not in _hover_seen and _y2var_eff in source.data:
+                _hover_fields.append((_y2var_eff, f"@{{{_y2var_eff}}}"))
+                _hover_seen.add(_y2var_eff)
             for _hv in _hover_extra:
-                if _hv not in {xvar, yvar} and _hv in source.data:
+                if _hv not in _hover_seen and _hv in source.data:
                     _hover_fields.append((_hv, f"@{{{_hv}}}"))
+                    _hover_seen.add(_hv)
             if _hover_fields:
                 if _hover_extra:
                     # Replace any existing hover tools with comprehensive one
@@ -6725,18 +6749,22 @@ class DashRenderer:
             labelset = self.value_label_names.get(fvar, "")
             vlabels  = self.value_labels.get(labelset, {})
 
+            flabel = fc.get("label", fvar)
             if ftype == "dropdown":
                 widget, cb = FilterBuilder.build_dropdown(
                     fvar, fsource, None, vlabels,
                     exclude_names=excludes,
+                    label=flabel,
                 )
             elif ftype == "slider":
                 widget, cb = FilterBuilder.build_slider(
-                    fvar, fsource, None, exclude_names=excludes
+                    fvar, fsource, None, exclude_names=excludes,
+                    label=flabel,
                 )
             elif ftype == "range":
                 widget, cb = FilterBuilder.build_range(
-                    fvar, fsource, None, exclude_names=excludes
+                    fvar, fsource, None, exclude_names=excludes,
+                    label=flabel,
                 )
             else:
                 continue
