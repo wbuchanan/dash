@@ -6745,9 +6745,19 @@ class DashRenderer:
             if fsource is None or fvar not in fsource.data:
                 continue
 
-            # Resolve value labels for this variable
+            # Resolve value labels for this variable.
+            # Standard Stata format: valueLabels keyed by label-set name
+            #   e.g. {"origin": {"0": "Domestic", "1": "Foreign"}}
+            #        valueLabelNames = {"foreign": "origin"}
+            # Fallback format: valueLabels keyed by variable name directly
+            #   e.g. {"foreign": {"0": "Domestic", "1": "Foreign"}}
             labelset = self.value_label_names.get(fvar, "")
-            vlabels  = self.value_labels.get(labelset, {})
+            vlabels  = self.value_labels.get(labelset, {}) if labelset else {}
+            if not vlabels:
+                # Fall back to looking up by variable name
+                candidate = self.value_labels.get(fvar, {})
+                if isinstance(candidate, dict):
+                    vlabels = candidate
 
             flabel = fc.get("label", fvar)
             if ftype == "dropdown":

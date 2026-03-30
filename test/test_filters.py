@@ -912,3 +912,118 @@ class TestFilterWiringPrimarySourceOnly:
         assert "Foreign" in combined, (
             "Value label 'Foreign' must appear when key '1' is in vlabels"
         )
+
+
+class TestValueLabelPipelineRegression:
+    """Regression tests: value labels must appear in dropdown options produced
+    by the full render() pipeline, not just in build_dropdown() directly.
+
+    Bug: render() built vlabels via self.value_labels.get(labelset, {}) where
+    labelset = value_label_names["foreign"] = "origin".  When valueLabels was
+    keyed by variable name ("foreign") rather than label-set name ("origin"),
+    the lookup returned {} and options showed raw numeric codes instead of
+    human-readable labels.
+    """
+
+    def _make_render(self, value_labels_key: str) -> "DashRenderer":
+        """Return a rendered DashRenderer with foreign dropdown filter.
+
+        Args:
+            value_labels_key: the key used in valueLabels dict —
+                              "origin"  = standard Stata format (label set name)
+                              "foreign" = variable-name-keyed format (demo scripts)
+        """
+        import tempfile
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                        "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }
+        spec = {
+            "graphs": [graph],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto",
+                "link": "g1",
+                "filters": [{"varname": "foreign", "type": "dropdown",
+                              "label": "Car Origin", "exclude": []}],
+                "theme": "default",
+                "title": "", "subtitle": "", "registry": "",
+            },
+        }
+        vals = [{"mpg": float(i * 2), "weight": float(i * 300),
+                 "foreign": float(i % 2)}
+                for i in range(1, 11)]
+        data_json = {"StataJSON": {
+            "variableNames": ["mpg", "weight", "foreign"],
+            "variableLabels": {"mpg": "mpg", "weight": "weight",
+                               "foreign": "Car type"},
+            "valueLabels":    {value_labels_key: {"0": "Domestic", "1": "Foreign"}},
+            "valueLabelNames": {"foreign": "origin"},
+            "variableTypeIsString": {"mpg": False, "weight": False,
+                                     "foreign": False},
+            "values": vals,
+        }}
+        sp_fd, sp = tempfile.mkstemp(suffix=".json")
+        dp_fd, dp = tempfile.mkstemp(suffix=".json")
+        op_fd, op = tempfile.mkstemp(suffix=".html")
+        try:
+            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
+            with os.fdopen(dp_fd, "w") as f: json.dump(data_json, f)
+            os.close(op_fd)
+            r = DashRenderer(sp, dp, op)
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        r.render()
+        return r
+
+    def _option_labels(self, r: "DashRenderer") -> list:
+        assert r.filter_widgets, "No filter widgets built"
+        widget = r.filter_widgets[0]
+        return [
+            o[1] if isinstance(o, (list, tuple)) else str(o)
+            for o in widget.options
+        ]
+
+    def test_value_labels_shown_when_keyed_by_labelset_name(self):
+        """BF-10a: value labels appear when valueLabels keyed by label-set name
+        (standard Stata format: {"origin": {"0": "Domestic", ...}})."""
+        r = self._make_render("origin")
+        labels = self._option_labels(r)
+        combined = " ".join(labels)
+        assert "Domestic" in combined, (
+            f"Expected 'Domestic' in dropdown labels (keyed by labelset). Got: {labels}"
+        )
+        assert "Foreign" in combined, (
+            f"Expected 'Foreign' in dropdown labels (keyed by labelset). Got: {labels}"
+        )
+
+    def test_value_labels_shown_when_keyed_by_varname(self):
+        """BF-10b: value labels appear when valueLabels keyed by variable name
+        ({"foreign": {"0": "Domestic", ...}}) — regression for demo scripts."""
+        r = self._make_render("foreign")
+        labels = self._option_labels(r)
+        combined = " ".join(labels)
+        assert "Domestic" in combined, (
+            f"Expected 'Domestic' in dropdown labels (keyed by varname). Got: {labels}"
+        )
+        assert "Foreign" in combined, (
+            f"Expected 'Foreign' in dropdown labels (keyed by varname). Got: {labels}"
+        )
+
+    def test_no_raw_numeric_values_in_labels(self):
+        """BF-10c: raw numeric codes ('0', '1') must not appear as displayed
+        labels when value labels are defined for the variable."""
+        for key in ("origin", "foreign"):
+            r = self._make_render(key)
+            labels = self._option_labels(r)
+            # Exclude the hidden value portion — only check display labels
+            non_all = [l for l in labels if l != "All"]
+            for lbl in non_all:
+                assert lbl not in ("0", "1", "0.0", "1.0"), (
+                    f"Raw numeric code '{lbl}' must not appear as a display label "
+                    f"when value labels are defined (key='{key}'). All labels: {labels}"
+                )
