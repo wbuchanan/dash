@@ -90,6 +90,8 @@ from bokeh.models import (
     Select,
     Slider,
     Span,
+    TabPanel,
+    Tabs,
     WheelZoomTool,
 )
 from bokeh.plotting import figure as bokeh_figure
@@ -184,6 +186,13 @@ border-bottom:1px solid #dee2e6}
 margin-bottom:4px;margin-top:0}
 .db-subtitle{font-family:sans-serif;font-size:.9rem;color:#6c757d;\
 margin-top:0;margin-bottom:12px}
+.db-sidebar-col{border-right:1px solid #dee2e6;padding-right:16px}
+.db-sidebar-label{font-family:sans-serif;font-size:.8rem;font-weight:600;\
+color:#6c757d;text-transform:uppercase;letter-spacing:.05em;\
+margin-bottom:12px;margin-top:8px;padding-bottom:4px;\
+border-bottom:1px solid #dee2e6}
+.db-sidebar-item{margin-bottom:16px}
+.db-col-auto{flex:0 0 auto;max-width:100%}
 """
 
 
@@ -5747,12 +5756,15 @@ class DashRenderer:
         filter_row_widgets: list,
         title_text: str,
         subtitle_text: str,
+        tabs_widget: "Any | None" = None,
+        tabbed_names: "set[str] | None" = None,
+        filter_position: str = "top",
     ) -> str:
         """Build the final HTML document using a Bootstrap-compatible grid.
 
-        Uses ``bokeh.embed.components()`` to obtain individual ``<div>`` elements
-        for each Bokeh model (figures, KPI divs, filter widgets), then arranges
-        them in a flexbox 12-column grid defined by :data:`_DASH_GRID_CSS`.
+        Uses ``bokeh.embed.components()`` to obtain individual ``<div>``
+        elements for each Bokeh model and arranges them in the
+        :data:`_DASH_GRID_CSS` flexbox 12-column grid.
 
         Linked brushing and ``CustomJS`` filter callbacks continue to work
         because ``components()`` serialises the entire Bokeh model graph — all
@@ -5760,36 +5772,64 @@ class DashRenderer:
         ``<script>`` block.
 
         Args:
-            layout_opt:          The raw ``layout()`` option string (starts with ``bs``).
+            layout_opt:          Raw ``layout()`` option string (starts with
+                                 ``bs``).
             all_names:           All dashboard element names in display order.
             kpi_names:           Subset that are KPI card names.
-            filter_row_widgets:  Bokeh widget models for the filter bar.
+            filter_row_widgets:  Bokeh widget models for the filter area.
             title_text:          Dashboard title (may be empty).
             subtitle_text:       Dashboard subtitle (may be empty).
+            tabs_widget:         Optional Bokeh ``Tabs`` model containing all
+                                 tabbed figures.  When present, tabbed figures
+                                 are not added individually to the grid.
+            tabbed_names:        Set of element names already placed inside
+                                 *tabs_widget*.  These are excluded from the
+                                 Bootstrap grid.
+            filter_position:     ``"top"`` (horizontal filter bar above the
+                                 content) or ``"left"`` (vertical sidebar).
 
         Returns:
             Complete HTML string.
         """
         import html as _html
 
-        # ---- Parse layout spec ----
-        bs_rows = DashRenderer._parse_bs_layout(layout_opt, all_names, kpi_names)
+        if tabbed_names is None:
+            tabbed_names = set()
 
-        # ---- Collect all Bokeh models in layout order ----
-        # We pass everything to components() in a single call so that shared
-        # ColumnDataSource and CustomJS references are serialised together.
+        # Only names NOT assigned to a tab appear in the Bootstrap grid.
+        grid_names = [n for n in all_names if n not in tabbed_names]
+
+        # Parse Bootstrap layout for grid items (KPIs + non-tabbed graphs).
+        bs_rows = DashRenderer._parse_bs_layout(layout_opt, grid_names, kpi_names)
+
+        # ---- Collect all Bokeh models ----
+        # file_html() + components() must share the same document; both calls
+        # discover all transitively-referenced models, so we only pass each
+        # root model once.
         all_models: list[Any] = []
-        model_keys: list[str] = []  # parallel list; filter widgets use __fw_N__
+        model_keys: list[str] = []
 
+        # 1. Bokeh Tabs widget (contains all tabbed figures recursively)
+        if tabs_widget is not None:
+            all_models.append(tabs_widget)
+            model_keys.append("__tabs__")
+
+        # 2. Grid items — KPIs and non-tabbed graphs
+        _added: set[str] = set()
         for row_spec in bs_rows:
             for name, _ in row_spec:
-                if name in self.figures:
-                    all_models.append(self.figures[name])
-                    model_keys.append(name)
-                elif name in self.kpi_divs:
+                if name in _added:
+                    continue
+                if name in self.kpi_divs:
                     all_models.append(self.kpi_divs[name])
                     model_keys.append(name)
+                    _added.add(name)
+                elif name in self.figures and name not in tabbed_names:
+                    all_models.append(self.figures[name])
+                    model_keys.append(name)
+                    _added.add(name)
 
+        # 3. Filter widgets
         for fw_idx, widget in enumerate(filter_row_widgets):
             all_models.append(widget)
             model_keys.append(f"__fw_{fw_idx}__")
@@ -5801,41 +5841,20 @@ class DashRenderer:
                 "</body></html>"
             )
 
-        # ---- Extract minimal Bokeh JS/CSS bundle via file_html() ----
+        # ---- Extract minimal Bokeh JS/CSS via file_html() ----
         # file_html() with INLINE selects only the resource bundles needed by
-        # the given model tree (omits bokeh-gl, bokeh-mathjax, etc. when
-        # unused), producing ~1.5 MB vs ~3.5 MB from INLINE.render_js().
-        # We call file_html() FIRST before components() because Bokeh models
-        # may only belong to one document; file_html() attaches models, then
-        # components() can reuse the same document (always_new=False default).
+        # this specific model tree (~1.5 MB vs ~3.5 MB from render_js()).
+        # Must be called BEFORE components() to avoid document-ownership errors.
         _dummy_col = column(*all_models, sizing_mode="stretch_width")
         _dummy_html = file_html(_dummy_col, INLINE, title=title_text or "dash")
         _head_m = re.search(r"(?s)<head>(.*?)</head>", _dummy_html)
         _extracted_head = _head_m.group(1) if _head_m else ""
 
         # ---- Get individual Bokeh component divs ----
-        # components() reuses the existing document so there is no ownership
-        # conflict after file_html() above.
         script_tag, div_list = components(all_models)
         name_to_div: dict[str, str] = dict(zip(model_keys, div_list))
 
-        # ---- Build filter bar HTML ----
-        filter_bar_html = ""
-        fw_divs = [
-            name_to_div.get(f"__fw_{i}__", "")
-            for i in range(len(filter_row_widgets))
-        ]
-        if any(fw_divs):
-            items_html = "\n".join(
-                f'<div class="db-col-auto">{d}</div>' for d in fw_divs if d
-            )
-            filter_bar_html = (
-                '<div class="db-row db-filter-bar">\n'
-                + items_html
-                + "\n</div>"
-            )
-
-        # ---- Build header HTML ----
+        # ---- Build common HTML sections ----
         header_html = ""
         if title_text:
             header_html += (
@@ -5846,30 +5865,86 @@ class DashRenderer:
                 f'<p class="db-subtitle">{_html.escape(subtitle_text)}</p>\n'
             )
 
-        # ---- Build Bootstrap grid HTML ----
+        # Bootstrap grid for KPI cards and non-tabbed graphs
         grid_parts: list[str] = []
         for row_spec in bs_rows:
-            # Skip rows where all items are missing (unknown names)
-            row_divs = [
-                (span, name_to_div.get(name, ""))
+            row_items = [
+                (span, name_to_div[name])
                 for name, span in row_spec
                 if name_to_div.get(name)
             ]
-            if not row_divs:
+            if not row_items:
                 continue
             grid_parts.append('<div class="db-row db-section">')
-            for span, div_html in row_divs:
+            for span, div_html in row_items:
                 grid_parts.append(
                     f'<div class="db-col-12 db-col-sm-12 db-col-md-{span}">'
                     f"{div_html}"
-                    f"</div>"
+                    "</div>"
                 )
             grid_parts.append("</div>")
+        grid_section_html = "\n".join(grid_parts)
 
-        grid_html = "\n".join(grid_parts)
+        # Tabs widget section
+        tabs_section_html = ""
+        if "__tabs__" in name_to_div:
+            tabs_section_html = (
+                '<div class="db-row db-section">'
+                '<div class="db-col-md-12">'
+                + name_to_div["__tabs__"]
+                + "</div></div>"
+            )
 
+        # Filter widget divs (order matches filter_row_widgets)
+        fw_divs = [
+            name_to_div.get(f"__fw_{i}__", "")
+            for i in range(len(filter_row_widgets))
+        ]
+
+        # ---- Assemble page layout ----
         scheme_css_block = self.scheme.css_block()
         safe_title = _html.escape(title_text or "dash")
+
+        if filter_position == "left" and filter_row_widgets:
+            # Vertical sidebar: filters in a narrow left column, content on right
+            sidebar_items_html = "\n".join(
+                f'<div class="db-sidebar-item">{d}</div>'
+                for d in fw_divs
+                if d
+            )
+            page_body_html = (
+                '<div class="db-row">\n'
+                '  <div class="db-col-12 db-col-sm-12 db-col-md-2 db-sidebar-col">\n'
+                '    <div class="db-sidebar-label">Filters</div>\n'
+                f"    {sidebar_items_html}\n"
+                "  </div>\n"
+                '  <div class="db-col-12 db-col-sm-12 db-col-md-10">\n'
+                f"    {header_html}"
+                f"    {grid_section_html}\n"
+                f"    {tabs_section_html}\n"
+                "  </div>\n"
+                "</div>\n"
+            )
+        else:
+            # Horizontal filter bar above main content
+            filter_bar_html = ""
+            if any(fw_divs):
+                items_html = "\n".join(
+                    f'<div class="db-col-auto">{d}</div>'
+                    for d in fw_divs
+                    if d
+                )
+                filter_bar_html = (
+                    '<div class="db-row db-filter-bar">\n'
+                    + items_html
+                    + "\n</div>\n"
+                )
+            page_body_html = (
+                f"{filter_bar_html}"
+                f"{header_html}"
+                f"{grid_section_html}\n"
+                f"{tabs_section_html}\n"
+            )
 
         html_str = (
             "<!DOCTYPE html>\n"
@@ -5885,14 +5960,115 @@ class DashRenderer:
             "<body>\n"
             f"{script_tag}\n"
             '<div class="db-container">\n'
-            f"{header_html}"
-            f"{filter_bar_html}\n"
-            f"{grid_html}\n"
+            f"{page_body_html}"
             "</div>\n"
             "</body>\n"
             "</html>"
         )
         return html_str
+
+    @staticmethod
+    def _parse_tabs_option(
+        tabs_str: str,
+        all_names: "list[str]",
+    ) -> "list[tuple[str, list[str]]] | None":
+        """Parse a ``tabs()`` option string into ``(tab_title, [names])`` pairs.
+
+        Syntax::
+
+            tabname: name1 name2 ... / tabname2: name3 name4 ...
+
+        Tab names are title-cased.  Names absent from *all_names* are silently
+        dropped (security: only registered dashboard element names are accepted).
+
+        Args:
+            tabs_str:   Raw ``tabs()`` option string from ``build_options``.
+            all_names:  All registered dashboard element names.
+
+        Returns:
+            List of ``(title, [names])`` tuples, or ``None`` when *tabs_str*
+            is empty or produces no valid entries.
+        """
+        if not tabs_str or not tabs_str.strip():
+            return None
+        valid = set(all_names)
+        result: list[tuple[str, list[str]]] = []
+        for i, segment in enumerate(tabs_str.split("/")):
+            segment = segment.strip()
+            if not segment:
+                continue
+            if ":" in segment:
+                tab_name_raw, items_str = segment.split(":", 1)
+                tab_name = tab_name_raw.strip().title()
+                items = [n.strip() for n in items_str.split() if n.strip()]
+            else:
+                items = [n.strip() for n in segment.split() if n.strip()]
+                tab_name = f"Tab {i + 1}"
+            # Security: only accept names present in the registry
+            safe_items = [n for n in items if n in valid]
+            if safe_items:
+                result.append((tab_name, safe_items))
+        return result if result else None
+
+    def _build_tabs_widget(
+        self,
+        tabs_spec: "list[tuple[str, list[str]]]",
+    ) -> "tuple[Any, set[str]]":
+        """Build a Bokeh ``Tabs`` widget from a parsed tab specification.
+
+        Each tab's content is laid out as a ``gridplot`` (``ceil(sqrt(N))``
+        columns, ``sizing_mode="stretch_width"``) so figures scale to fill the
+        available width when the tab is selected.
+
+        Args:
+            tabs_spec: List of ``(tab_title, [name, ...])`` from
+                       :meth:`_parse_tabs_option`.
+
+        Returns:
+            A ``(Tabs, placed_names)`` tuple.  *placed_names* is the set of
+            dashboard element names included in the widget so that the caller
+            can omit them from the Bootstrap grid.
+        """
+        placed: set[str] = set()
+        tab_panels: list[Any] = []
+
+        for tab_title, names in tabs_spec:
+            items: list[Any] = []
+            for name in names:
+                if name in self._facet_map:
+                    for fkey, _label in self._facet_map[name]:
+                        fig = self.figures.get(fkey)
+                        if fig is not None:
+                            items.append(fig)
+                    placed.add(name)
+                elif name in self.figures:
+                    items.append(self.figures[name])
+                    placed.add(name)
+                elif name in self.kpi_divs:
+                    items.append(self.kpi_divs[name])
+                    placed.add(name)
+
+            if not items:
+                continue
+
+            n = len(items)
+            cols_per_row = max(1, math.ceil(math.sqrt(n)))
+            rows = [
+                items[i : i + cols_per_row]
+                for i in range(0, n, cols_per_row)
+            ]
+            # Pad the last row so gridplot doesn't error on ragged rows
+            while len(rows[-1]) < cols_per_row:
+                rows[-1].append(None)
+
+            tab_content = gridplot(rows, sizing_mode="stretch_width")
+            tab_panels.append(TabPanel(child=tab_content, title=tab_title))
+
+        if not tab_panels:
+            return None, placed
+
+        tabs_widget = Tabs(tabs=tab_panels, sizing_mode="stretch_width")
+        return tabs_widget, placed
 
     # ------------------------------------------------------------------
     # Layout assembly helpers
@@ -6656,6 +6832,20 @@ class DashRenderer:
             name = g.get("graph_options", {}).get("name", "")
             all_names.append(name)
 
+        # ---- Read tabs and filter_position build options ----
+        tabs_str = build.get("tabs", "").strip()
+        filter_position = build.get("filter_position", "top").strip().lower()
+        if filter_position not in ("top", "left"):
+            filter_position = "top"
+
+        # Build Bokeh Tabs widget (Bootstrap mode only)
+        tabs_widget: Any = None
+        tabbed_names: set[str] = set()
+        if tabs_str and DashRenderer._is_bootstrap_layout(layout_opt):
+            _tabs_spec = DashRenderer._parse_tabs_option(tabs_str, all_names)
+            if _tabs_spec:
+                tabs_widget, tabbed_names = self._build_tabs_widget(_tabs_spec)
+
         # ---- Bootstrap grid layout ----
         if DashRenderer._is_bootstrap_layout(layout_opt):
             return self._render_bootstrap_html(
@@ -6665,6 +6855,9 @@ class DashRenderer:
                 filter_row_widgets=filter_row_widgets,
                 title_text=title_text,
                 subtitle_text=subtitle_text,
+                tabs_widget=tabs_widget,
+                tabbed_names=tabbed_names,
+                filter_position=filter_position,
             )
 
         rows_n, cols_n = self._compute_grid(all_names, layout_opt)

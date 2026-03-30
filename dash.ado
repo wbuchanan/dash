@@ -1157,6 +1157,8 @@ program define _dash_build
         THEME(string)           ///
         REPLACE                 ///
         SERVER                  ///
+        TABS(string asis)       ///
+        FILTERPOSition(string)  ///
     ]
 
     // ---- check registry is not empty ----
@@ -1201,6 +1203,13 @@ program define _dash_build
             display as error "dash build: layout() must be 'auto', 'N M' grid, 'name:row,col' placement, or 'bs[: spec]' Bootstrap layout."
             exit(198)
         }
+    }
+
+    // ---- validate filter_position ----
+    if "`filterposition'" == "" local filterposition "top"
+    if "`filterposition'" != "top" & "`filterposition'" != "left" {
+        display as error "dash build: filter_position() must be 'top' (default) or 'left' (sidebar)."
+        exit(198)
     }
 
     // ---- validate link() names ----
@@ -1370,7 +1379,9 @@ program define _dash_build
     // Escape build-level title and subtitle for JSON safety
     _dash_json_str `"`title'"'    _title_esc
     _dash_json_str `"`subtitle'"' _subtitle_esc
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'"}}"'
+    // Escape tabs string for JSON embedding
+    _dash_json_str `"`tabs'"' _tabs_esc
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'"}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text
