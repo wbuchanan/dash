@@ -151,3 +151,37 @@ class TestRangePlotsSmoke:
     def test_dot_no_error(self, fig, range_cds, gm):
         result = gm.map_dot(fig, range_cds, "yvar1", "xvar", {})
         assert result is not None
+
+
+# ================================================================
+# Regression: BUG-3 — rbar legend color must match fill, not show white
+# ================================================================
+
+class TestRbarLegendColor:
+    """BUG-3 regression: map_rbar must not use line_color='white' which causes
+    the legend swatch to appear white rather than the fill color."""
+
+    def test_rbar_no_white_line_color(self, fig, range_cds, gm):
+        """BUG-3: vbar glyph must not have line_color='white'."""
+        renderers = gm.map_rbar(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        r = renderers[0] if isinstance(renderers, list) else renderers
+        glyph = r.glyph
+        # line_color should not be white — it should be transparent (line_alpha=0)
+        lc = getattr(glyph, "line_color", None)
+        assert lc != "white", (
+            "map_rbar must not set line_color='white'; use line_alpha=0 instead "
+            "so the legend swatch shows the fill color, not a white border"
+        )
+
+    def test_rbar_line_alpha_zero_or_no_border(self, fig, range_cds, gm):
+        """BUG-3b: vbar glyph must have line_alpha=0 (transparent border)."""
+        renderers = gm.map_rbar(fig, range_cds, "yvar1", "yvar2", "xvar", {})
+        r = renderers[0] if isinstance(renderers, list) else renderers
+        glyph = r.glyph
+        la = getattr(glyph, "line_alpha", None)
+        # Accept either line_alpha==0 or a value spec object (Bokeh field/value spec)
+        if la is not None:
+            la_val = la.value if hasattr(la, "value") else la
+            assert la_val == 0, (
+                f"map_rbar glyph should have line_alpha=0, got {la_val!r}"
+            )

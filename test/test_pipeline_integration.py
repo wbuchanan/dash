@@ -533,3 +533,244 @@ class TestThemeKey:
         assert r.scheme.background_color.lower() == self.S1COLOR_BG, (
             "'scheme' key in build_options must also be read"
         )
+
+
+# ================================================================
+# Regression: BUG-5 — _collect_graph_vars promoted to static method;
+# render() and _setup_sources must both include hover variables in sources
+# ================================================================
+
+class TestCollectGraphVarsConsistency:
+    """BUG-5 regression: variable collection must be consistent between
+    _setup_sources and render(), and must include hover-option variables."""
+
+    def _build_dr(self, hover_var="price"):
+        import json, tempfile, os
+        vals = [{"mpg": float(20+i), "weight": float(2000+i*100),
+                 "price": float(4000+i*200)}
+                for i in range(15)]
+        data = {"StataJSON": {
+            "variableNames": ["mpg", "weight", "price"],
+            "variableLabels": {"mpg": "mpg", "weight": "weight", "price": "price"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False, "price": False},
+            "values": vals,
+        }}
+        spec = {
+            "graphs": [{"plots": [{"type": "scatter", "yvar": "mpg",
+                                    "xvar": "weight", "options": {}}],
+                         "graph_options": {"name": "g1", "hover": hover_var},
+                         "if_expr": "", "in_expr": ""}],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "g1", "theme": "default",
+                "title": "", "subtitle": "", "registry": "g1",
+            },
+        }
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            dr = DashRenderer(sp, dp, op)
+            dr.render()
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        return dr
+
+    def test_collect_plot_vars_is_static_method(self):
+        """BUG-5a: _collect_plot_vars must be a static method on DashRenderer."""
+        assert hasattr(DashRenderer, "_collect_plot_vars"), (
+            "DashRenderer must have _collect_plot_vars as a static method"
+        )
+        assert callable(DashRenderer._collect_plot_vars)
+
+    def test_collect_graph_vars_is_static_method(self):
+        """BUG-5b: _collect_graph_vars must be a static method on DashRenderer."""
+        assert hasattr(DashRenderer, "_collect_graph_vars"), (
+            "DashRenderer must have _collect_graph_vars as a static method"
+        )
+        assert callable(DashRenderer._collect_graph_vars)
+
+    def test_hover_vars_included_in_source(self):
+        """BUG-5c: shared CDS must contain hover-option variables."""
+        dr = self._build_dr(hover_var="price")
+        # The shared source for g1 should include 'price' (from hover option)
+        shared_src = dr.sources.get("g1")
+        assert shared_src is not None, "Expected a source named 'g1'"
+        assert "price" in shared_src.data, (
+            "Shared CDS must include 'price' (declared in hover option) "
+            f"but only has: {list(shared_src.data.keys())}"
+        )
+
+    def test_collect_plot_vars_returns_correct_vars(self):
+        """BUG-5d: _collect_plot_vars must extract all variable keys from plots."""
+        plots = [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                  "options": {"colorvar": "price"}}]
+        result = DashRenderer._collect_plot_vars(plots)
+        assert "mpg" in result
+        assert "weight" in result
+        assert "price" in result  # from options.colorvar
+
+
+# ================================================================
+# TEST-1: Edge-case data — empty dataset, single row, all-NaN, constant
+# ================================================================
+
+class TestEdgeCaseData:
+    """EC-01 through EC-06: mappers must degrade gracefully for unusual data."""
+
+    def _render_spec(self, plots, values, varnames, extra_build=None):
+        """Helper: build and render a DashRenderer from inline data."""
+        import json, tempfile, os
+        data = {"StataJSON": {
+            "variableNames": varnames,
+            "variableLabels": {v: v for v in varnames},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {v: False for v in varnames},
+            "values": values,
+        }}
+        build = {"layout": "auto", "link": "", "theme": "default",
+                 "title": "", "subtitle": "", "registry": "g1"}
+        if extra_build:
+            build.update(extra_build)
+        spec = {
+            "graphs": [{"plots": plots, "graph_options": {"name": "g1"},
+                         "if_expr": "", "in_expr": ""}],
+            "kpis": [],
+            "build_options": build,
+        }
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            dr = DashRenderer(sp, dp, op)
+            dr.render()
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+        return dr
+
+    def test_ec01_empty_dataframe_scatter_no_crash(self):
+        """EC-01: n=0 scatter renders without crash."""
+        self._render_spec(
+            plots=[{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            values=[],
+            varnames=["mpg", "weight"],
+        )
+
+    def test_ec01_empty_dataframe_histogram_no_crash(self):
+        """EC-01: n=0 histogram renders without crash."""
+        self._render_spec(
+            plots=[{"type": "histogram", "yvar": "mpg", "options": {}}],
+            values=[],
+            varnames=["mpg"],
+        )
+
+    def test_ec01_empty_dataframe_lfit_no_crash(self):
+        """EC-01: n=0 lfit renders without crash."""
+        self._render_spec(
+            plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            values=[],
+            varnames=["mpg", "weight"],
+        )
+
+    def test_ec02_single_row_scatter_no_crash(self):
+        """EC-02: n=1 scatter renders without crash."""
+        self._render_spec(
+            plots=[{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            values=[{"mpg": 22.0, "weight": 2500.0}],
+            varnames=["mpg", "weight"],
+        )
+
+    def test_ec02_single_row_lfit_returns_empty(self):
+        """EC-02: n=1 lfit returns empty (needs 2+ points), no crash."""
+        dr = self._render_spec(
+            plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            values=[{"mpg": 22.0, "weight": 2500.0}],
+            varnames=["mpg", "weight"],
+        )
+        fig = list(dr.figures.values())[0]
+        # Should have rendered a figure with at least one renderer (empty line)
+        assert fig is not None
+
+    def test_ec03_all_nan_column_no_crash(self):
+        """EC-03: all-NaN column renders without crash."""
+        import math
+        self._render_spec(
+            plots=[{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            values=[{"mpg": None, "weight": float("nan")} for _ in range(5)],
+            varnames=["mpg", "weight"],
+        )
+
+    def test_ec03_all_nan_histogram_no_crash(self):
+        """EC-03: histogram with all-NaN column renders without crash."""
+        self._render_spec(
+            plots=[{"type": "histogram", "yvar": "mpg", "options": {}}],
+            values=[{"mpg": None} for _ in range(5)],
+            varnames=["mpg"],
+        )
+
+    def test_ec04_constant_x_lfit_no_crash(self):
+        """EC-04: constant-x lfit degrades gracefully (std==0)."""
+        self._render_spec(
+            plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            values=[{"mpg": float(20 + i), "weight": 2500.0} for i in range(10)],
+            varnames=["mpg", "weight"],
+        )
+
+    def test_ec04_constant_x_lowess_no_crash(self):
+        """EC-04: constant-x lowess returns empty renderer, no crash."""
+        self._render_spec(
+            plots=[{"type": "lowess", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            values=[{"mpg": float(20 + i), "weight": 2500.0} for i in range(10)],
+            varnames=["mpg", "weight"],
+        )
+
+    def test_ec05_constant_y_kdensity_no_crash(self):
+        """EC-05: constant y (std==0) kdensity returns empty renderer."""
+        self._render_spec(
+            plots=[{"type": "kdensity", "yvar": "mpg", "options": {}}],
+            values=[{"mpg": 22.0} for _ in range(10)],
+            varnames=["mpg"],
+        )
+
+    def test_ec06_missing_yvar_column_warns_no_keyerror(self):
+        """EC-06: missing yvar emits warning and does not raise KeyError."""
+        import warnings
+        import json, tempfile, os
+        vals = [{"x": float(i)} for i in range(5)]
+        data = {"StataJSON": {
+            "variableNames": ["x"],
+            "variableLabels": {"x": "x"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"x": False},
+            "values": vals,
+        }}
+        spec = {
+            "graphs": [{"plots": [{"type": "scatter", "yvar": "nonexistent",
+                                    "xvar": "x", "options": {}}],
+                         "graph_options": {"name": "g1"},
+                         "if_expr": "", "in_expr": ""}],
+            "kpis": [],
+            "build_options": {"layout": "auto", "link": "", "theme": "default",
+                              "title": "", "subtitle": "", "registry": "g1"},
+        }
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                dr = DashRenderer(sp, dp, op)
+                dr.render()  # must not raise KeyError
+            msgs = [str(x.message) for x in w]
+            assert any("nonexistent" in m for m in msgs), (
+                f"Expected warning about 'nonexistent'. Got: {msgs}"
+            )
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass

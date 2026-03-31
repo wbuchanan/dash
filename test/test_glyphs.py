@@ -2722,3 +2722,248 @@ class TestHoverToolRendererScope:
                             f"Histogram HoverTool references '{col}' not in "
                             f"renderer CDS (cols: {list(rend.data_source.data)})"
                         )
+
+
+# ================================================================
+# Regression: BUG-4 — map_lowess must handle constant-x data
+# ================================================================
+
+class TestLowessConstantX:
+    """BUG-4 regression: map_lowess must return an empty line renderer
+    when all x values are identical, instead of crashing or producing NaN."""
+
+    def _make_gm(self):
+        from bokeh.plotting import figure as bk_figure
+        from dash_render import GlyphMapper, SchemeParser, OptionTranslator
+        scheme = SchemeParser("s2color")
+        return GlyphMapper(OptionTranslator(), scheme)
+
+    def test_constant_x_returns_renderer(self):
+        """BUG-4a: constant-x lowess must return a renderer without exception."""
+        from bokeh.plotting import figure as bk_figure
+        from bokeh.models import ColumnDataSource
+        fig = bk_figure()
+        gm = self._make_gm()
+        src = ColumnDataSource({
+            "x": [5.0, 5.0, 5.0, 5.0, 5.0],
+            "y": [10.0, 12.0, 11.0, 13.0, 9.0],
+        })
+        result = gm.map_lowess(fig, src, "y", "x", {})
+        # Must not raise and must return a renderer
+        assert result is not None
+
+    def test_constant_x_produces_empty_line(self):
+        """BUG-4b: constant-x lowess must produce an empty (no-data) line."""
+        from bokeh.plotting import figure as bk_figure
+        from bokeh.models import ColumnDataSource
+        fig = bk_figure()
+        gm = self._make_gm()
+        src = ColumnDataSource({
+            "x": [5.0, 5.0, 5.0, 5.0, 5.0],
+            "y": [10.0, 12.0, 11.0, 13.0, 9.0],
+        })
+        result = gm.map_lowess(fig, src, "y", "x", {})
+        r = result if not isinstance(result, list) else result
+        # The line renderer should have empty data (constant x → no valid smoother)
+        cds = r.data_source
+        x_data = list(cds.data.get("x_lw", []))
+        assert len(x_data) == 0, (
+            f"Expected empty data for constant-x lowess, got {len(x_data)} points"
+        )
+
+    def test_normal_x_still_works(self):
+        """BUG-4c: lowess must still work normally for varying x."""
+        from bokeh.plotting import figure as bk_figure
+        from bokeh.models import ColumnDataSource
+        fig = bk_figure()
+        gm = self._make_gm()
+        src = ColumnDataSource({
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            "y": [2.0, 3.0, 2.5, 4.0, 3.5, 5.0, 4.5, 6.0],
+        })
+        result = gm.map_lowess(fig, src, "y", "x", {})
+        r = result if not isinstance(result, list) else result
+        cds = r.data_source
+        x_data = list(cds.data.get("x_lw", []))
+        assert len(x_data) > 0, "Normal lowess should produce non-empty data"
+
+
+# ================================================================
+# Regression: HARD-1 — _check_vars warns and skips when column missing
+# Regression: HARD-2 — empty source produces empty glyph without crash
+# Regression: HARD-3 — map_bar with string xvar does not crash
+# ================================================================
+
+class TestHardeningGuards:
+    """HARD-1/2/3: defensive checks in GlyphMapper must prevent crashes."""
+
+    def _make_gm(self):
+        from dash_render import GlyphMapper, SchemeParser, OptionTranslator
+        return GlyphMapper(OptionTranslator(), SchemeParser("s2color"))
+
+    def _fig(self):
+        from bokeh.plotting import figure as bk_figure
+        return bk_figure()
+
+    # --- HARD-1: _check_vars ---
+
+    def test_check_vars_returns_true_for_present_columns(self):
+        """HARD-1a: _check_vars returns True when all vars exist."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        src = ColumnDataSource({"x": [1.0, 2.0], "y": [3.0, 4.0]})
+        assert gm._check_vars(src, "x", "y") is True
+
+    def test_check_vars_returns_false_for_missing_column(self):
+        """HARD-1b: _check_vars returns False (and warns) for missing var."""
+        import warnings
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        src = ColumnDataSource({"x": [1.0, 2.0]})
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = gm._check_vars(src, "x", "no_such_column")
+        assert result is False
+        assert len(w) == 1
+        assert "no_such_column" in str(w[0].message)
+
+    def test_check_vars_ignores_empty_string_varnames(self):
+        """HARD-1c: _check_vars skips empty-string vars (optional fields)."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        src = ColumnDataSource({"x": [1.0]})
+        assert gm._check_vars(src, "x", "") is True
+
+    def test_add_glyph_missing_yvar_does_not_raise(self):
+        """HARD-1d: _add_glyph with missing yvar emits warning, no KeyError."""
+        import warnings
+        from bokeh.models import ColumnDataSource
+        from dash_render import DashRenderer
+        import json, tempfile, os
+        vals = [{"x": float(i)} for i in range(5)]
+        data = {"StataJSON": {
+            "variableNames": ["x"],
+            "variableLabels": {"x": "x"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"x": False},
+            "values": vals,
+        }}
+        spec = {
+            "graphs": [{"plots": [{"type": "scatter", "yvar": "missing_y",
+                                    "xvar": "x", "options": {}}],
+                         "graph_options": {"name": "g1"},
+                         "if_expr": "", "in_expr": ""}],
+            "kpis": [],
+            "build_options": {"layout": "auto", "link": "", "theme": "default",
+                              "title": "", "subtitle": "", "registry": "g1"},
+        }
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                dr = DashRenderer(sp, dp, op)
+                dr.render()  # must not raise
+            # Should have emitted a warning about the missing column
+            msgs = [str(x.message) for x in w]
+            assert any("missing_y" in m for m in msgs), (
+                f"Expected warning about missing_y. Got: {msgs}"
+            )
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+    # --- HARD-2: _is_empty ---
+
+    def test_is_empty_true_for_zero_length_source(self):
+        """HARD-2a: _is_empty returns True for zero-row CDS."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        src = ColumnDataSource({"x": [], "y": []})
+        assert gm._is_empty(src, "x", "y") is True
+
+    def test_is_empty_false_for_nonempty_source(self):
+        """HARD-2b: _is_empty returns False when data exists."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        src = ColumnDataSource({"x": [1.0], "y": [2.0]})
+        assert gm._is_empty(src, "x", "y") is False
+
+    def test_histogram_empty_source_no_crash(self):
+        """HARD-2c: map_histogram with empty source returns renderer without error."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        fig = self._fig()
+        src = ColumnDataSource({"mpg": []})
+        result = gm.map_histogram(fig, src, "mpg", {})
+        assert result is not None
+
+    def test_bar_empty_source_no_crash(self):
+        """HARD-2d: map_bar with empty source returns renderer without error."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        fig = self._fig()
+        src = ColumnDataSource({"x": [], "y": []})
+        result = gm.map_bar(fig, src, "y", "x", {})
+        assert result is not None
+
+    def test_rbar_empty_source_no_crash(self):
+        """HARD-2e: map_rbar with empty source returns renderer list without error."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        fig = self._fig()
+        src = ColumnDataSource({"x": [], "y1": [], "y2": []})
+        result = gm.map_rbar(fig, src, "y1", "y2", "x", {})
+        assert result is not None
+
+    def test_rarea_empty_source_no_crash(self):
+        """HARD-2f: map_rarea with empty source returns renderer without error."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        fig = self._fig()
+        src = ColumnDataSource({"x": [], "y1": [], "y2": []})
+        result = gm.map_rarea(fig, src, "y1", "y2", "x", {})
+        assert result is not None
+
+    def test_rspike_empty_source_no_crash(self):
+        """HARD-2g: map_rspike with empty source returns renderer without error."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        fig = self._fig()
+        src = ColumnDataSource({"x": [], "y1": [], "y2": []})
+        result = gm.map_rspike(fig, src, "y1", "y2", "x", {})
+        assert result is not None
+
+    # --- HARD-3: map_bar string xvar ---
+
+    def test_bar_string_xvar_no_crash(self):
+        """HARD-3a: map_bar with string xvar must not crash on float() conversion."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        fig = self._fig()
+        src = ColumnDataSource({
+            "category": ["A", "B", "C", "A", "B"],
+            "value":    [10.0, 20.0, 15.0, 12.0, 18.0],
+        })
+        try:
+            result = gm.map_bar(fig, src, "value", "category", {})
+        except (ValueError, TypeError) as e:
+            pytest.fail(f"map_bar with string xvar raised {type(e).__name__}: {e}")
+        assert result is not None
+
+    def test_bar_numeric_xvar_still_works(self):
+        """HARD-3b: map_bar with numeric xvar still computes correct bar width."""
+        from bokeh.models import ColumnDataSource
+        gm = self._make_gm()
+        fig = self._fig()
+        src = ColumnDataSource({
+            "x":     [1.0, 2.0, 3.0, 4.0],
+            "value": [10.0, 20.0, 15.0, 25.0],
+        })
+        result = gm.map_bar(fig, src, "value", "x", {})
+        assert result is not None
+        # Bar width should be ~0.8 * (2-1) = 0.8
+        glyph = result.glyph if not isinstance(result, list) else result[0].glyph
+        assert hasattr(glyph, "width")

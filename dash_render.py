@@ -273,6 +273,24 @@ def _extract_region_lwidth(val: str) -> float | None:
         return OptionTranslator.translate_lwidth(raw) if raw else None
 
 
+def _extract_finite(source: "ColumnDataSource", varname: str) -> "np.ndarray":
+    """Return a float array of non-None, non-NaN values from a CDS column.
+
+    Used by filter builders and distribution mappers to get clean numeric
+    arrays from a ColumnDataSource column before computing min/max/std.
+
+    Args:
+        source:  ColumnDataSource containing the data.
+        varname: Column name to extract.
+
+    Returns:
+        1-D numpy float array with None and NaN values removed.
+    """
+    col = source.data.get(varname, [])
+    arr = np.array([v for v in col if v is not None], dtype=float)
+    return arr[~np.isnan(arr)]
+
+
 # ===========================================================================
 # OptionTranslator
 # ===========================================================================
@@ -1178,6 +1196,132 @@ class GlyphMapper:
             ht.renderers = renderers
         return ht
 
+    def _check_vars(
+        self,
+        source: ColumnDataSource,
+        *varnames: str,
+    ) -> bool:
+        """Return True if all non-empty varnames exist in source.data.
+
+        Emits a warning and returns False when any variable is missing so
+        callers can skip the glyph rather than raising a KeyError.
+        """
+        import warnings
+        missing = [v for v in varnames if v and v not in source.data]
+        if missing:
+            warnings.warn(
+                f"dash: variable(s) {missing!r} not found in data source; "
+                "skipping glyph. Check that all plot variables exist in the dataset.",
+                stacklevel=3,
+            )
+            return False
+        return True
+
+    @staticmethod
+    def _is_empty(source: ColumnDataSource, *varnames: str) -> bool:
+        """Return True if source has no rows (all requested columns are empty).
+
+        Used to short-circuit mapper methods when data is empty so they return
+        a lightweight empty glyph instead of potentially emitting NumPy warnings.
+        """
+        for v in varnames:
+            col = source.data.get(v)
+            if col is not None and len(col) > 0:
+                return False
+        return True
+
+    def _render_ci_band(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        x_col: str,
+        y_col: str,
+        color: str,
+        yvar: str,
+        options: "dict[str, str]",
+        lo_col: str = "y_lower",
+        hi_col: str = "y_upper",
+    ) -> "tuple[Any, Any]":
+        """Render a confidence-interval band (varea + line) onto *fig*.
+
+        Applies ``_apply_line_opts`` and ``_apply_fill_opts`` from *options*.
+
+        Args:
+            fig:     Bokeh Figure.
+            source:  ColumnDataSource with the CI columns.
+            x_col:   Name of the x column in *source*.
+            y_col:   Name of the central-fit y column in *source*.
+            color:   Line and fill colour hex string.
+            yvar:    Variable name used for the legend label.
+            options: Plot-level options dict (lcolor, lwidth, fcolor, …).
+            lo_col:  Name of the lower-CI column (default ``"y_lower"``).
+            hi_col:  Name of the upper-CI column (default ``"y_upper"``).
+
+        Returns:
+            A ``(line_renderer, band_renderer)`` tuple.
+        """
+        band_r = fig.varea(
+            x=x_col, y1=lo_col, y2=hi_col,
+            source=source, fill_alpha=0.2, fill_color=color,
+        )
+        line_r = fig.line(
+            x=x_col, y=y_col, source=source,
+            line_color=color, line_width=2.0, legend_label=yvar,
+        )
+        self._apply_line_opts(line_r, options)
+        self._apply_fill_opts(band_r, options)
+        return line_r, band_r
+
+    @staticmethod
+    def _bootstrap_ci(
+        x: "np.ndarray",
+        y: "np.ndarray",
+        x_grid: "np.ndarray",
+        fit_fn: "Any",
+        n_boot: int = 200,
+        seed: int = 42,
+        fallback: "np.ndarray | None" = None,
+    ) -> "tuple[np.ndarray, np.ndarray]":
+        """Compute a bootstrap 95% confidence interval for a smooth fit.
+
+        Args:
+            x:        Observed x values (NaN-free).
+            y:        Observed y values (NaN-free, same length as x).
+            x_grid:   Grid of x values at which predictions are made.
+            fit_fn:   Callable ``(xi, yi, xg) -> np.ndarray`` that returns
+                      predicted y values on *xg* for a bootstrap sample
+                      ``(xi, yi)``.  May raise ``ValueError``,
+                      ``LinAlgError``, or ``FloatingPointError`` for
+                      degenerate samples — those are caught and replaced
+                      with *fallback*.
+            n_boot:   Number of bootstrap resamples (default 200).
+            seed:     Random-number-generator seed for reproducibility.
+            fallback: Array of length ``len(x_grid)`` used when *fit_fn*
+                      fails or returns NaN predictions for a resample.
+                      Defaults to zeros when ``None``.
+
+        Returns:
+            ``(y_lower, y_upper)`` arrays of length ``len(x_grid)``
+            representing the 2.5th and 97.5th percentiles of the
+            bootstrap distribution.
+        """
+        n_grid = len(x_grid)
+        _fb = fallback if fallback is not None else np.zeros(n_grid)
+        rng = np.random.default_rng(seed=seed)
+        boot_preds = np.zeros((n_boot, n_grid))
+        for i in range(n_boot):
+            idx = rng.integers(0, len(x), size=len(x))
+            try:
+                preds = fit_fn(x[idx], y[idx], x_grid)
+                # Replace NaN predictions with the fallback (e.g. the main fit)
+                boot_preds[i] = np.where(np.isnan(preds), _fb, preds)
+            except (ValueError, np.linalg.LinAlgError, FloatingPointError):
+                boot_preds[i] = _fb
+        return (
+            np.percentile(boot_preds, 2.5, axis=0),
+            np.percentile(boot_preds, 97.5, axis=0),
+        )
+
     def _apply_line_opts(
         self,
         renderer: Any,
@@ -1479,8 +1623,9 @@ class GlyphMapper:
                 title=html.escape(varname),
             )
             fig.add_layout(color_bar, "right")
-        except Exception:   # noqa: BLE001 — never crash the render
-            pass
+        except (ValueError, TypeError, KeyError) as _exc:   # noqa: BLE001 — never crash the render
+            import warnings
+            warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
 
     def _apply_mlabel_opts(
         self,
@@ -1809,12 +1954,19 @@ class GlyphMapper:
         Returns:
             The single VBar GlyphRenderer created.
         """
+        if self._is_empty(source, xvar, yvar):
+            empty_src = ColumnDataSource({xvar: [], yvar: []})
+            return fig.vbar(x=xvar, top=yvar, bottom=0, width=0.8, source=empty_src)
         # Drop NaN rows
         df = pd.DataFrame({xvar: source.data[xvar], yvar: source.data[yvar]})
         df = df.dropna(subset=[xvar, yvar])
         clean_source = ColumnDataSource(df)
 
-        x_vals = sorted(set(float(v) for v in df[xvar]))
+        try:
+            x_vals = sorted(set(float(v) for v in df[xvar]))
+        except (ValueError, TypeError):
+            # String xvar: use uniform spacing (bar width = 0.8)
+            x_vals = list(range(len(df[xvar].unique())))
         if len(x_vals) >= 2:
             gaps = [x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)]
             bar_width = 0.8 * min(gaps)
@@ -2097,15 +2249,9 @@ class GlyphMapper:
             "y_lower": y_lower, "y_upper": y_upper,
         })
 
-        band_r = fig.varea(
-            x="x_fit", y1="y_lower", y2="y_upper",
-            source=ci_source, fill_alpha=0.2, fill_color=_lfitci_color
+        line_r, band_r = self._render_ci_band(
+            fig, ci_source, "x_fit", "y_fit", _lfitci_color, yvar, options
         )
-        line_r = fig.line(x="x_fit", y="y_fit", source=ci_source,
-                          line_color=_lfitci_color, line_width=2.0,
-                          legend_label=yvar)
-        self._apply_line_opts(line_r, options)
-        self._apply_fill_opts(band_r, options)
         return [line_r, band_r]
 
     def map_qfitci(
@@ -2161,29 +2307,20 @@ class GlyphMapper:
         y_fit = np.polyval(coeffs, x_fit)
 
         # Bootstrap CI
-        rng = np.random.default_rng(seed=42)
-        boot_preds = np.zeros((500, len(x_fit)))
-        for i in range(500):
-            idx = rng.integers(0, len(x), size=len(x))
-            c = np.polyfit(x[idx], y[idx], 2)
-            boot_preds[i] = np.polyval(c, x_fit)
+        def _qfit_fn(xi: "np.ndarray", yi: "np.ndarray", xg: "np.ndarray") -> "np.ndarray":
+            return np.polyval(np.polyfit(xi, yi, 2), xg)
 
-        y_lower = np.percentile(boot_preds, 2.5, axis=0)
-        y_upper = np.percentile(boot_preds, 97.5, axis=0)
+        y_lower, y_upper = GlyphMapper._bootstrap_ci(
+            x, y, x_fit, _qfit_fn, n_boot=500, fallback=y_fit
+        )
 
         ci_source = ColumnDataSource({
             "x_fit": x_fit, "y_fit": y_fit,
             "y_lower": y_lower, "y_upper": y_upper,
         })
-        band_r = fig.varea(
-            x="x_fit", y1="y_lower", y2="y_upper",
-            source=ci_source, fill_alpha=0.2, fill_color=_qfitci_color
+        line_r, band_r = self._render_ci_band(
+            fig, ci_source, "x_fit", "y_fit", _qfitci_color, yvar, options
         )
-        line_r = fig.line(x="x_fit", y="y_fit", source=ci_source,
-                          line_color=_qfitci_color, line_width=2.0,
-                          legend_label=yvar)
-        self._apply_line_opts(line_r, options)
-        self._apply_fill_opts(band_r, options)
         return [line_r, band_r]
 
     def map_lowess(
@@ -2215,8 +2352,8 @@ class GlyphMapper:
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
 
-        # Need at least 2 points for lowess
-        if len(x) < 2:
+        # Need at least 2 points for lowess, and x must vary
+        if len(x) < 2 or np.std(x) == 0.0:
             empty = ColumnDataSource({"x_lw": [], "y_lw": []})
             return fig.line(x="x_lw", y="y_lw", source=empty)
 
@@ -2410,17 +2547,14 @@ class GlyphMapper:
                                                  degree=degree, n_grid=n_grid)
 
         # Bootstrap CI (200 resamples for speed)
-        rng = np.random.default_rng(seed=42)
-        n_boot = 200
-        boot_preds = np.zeros((n_boot, n_grid))
-        for i in range(n_boot):
-            idx = rng.integers(0, len(x), size=len(x))
-            _, yb = self._compute_lpoly_fit(x[idx], y[idx], bwidth=bwidth,
-                                             degree=degree, n_grid=n_grid)
-            boot_preds[i] = np.where(np.isnan(yb), y_fit, yb)
+        def _lpoly_fn(xi: "np.ndarray", yi: "np.ndarray", _xg: "np.ndarray") -> "np.ndarray":
+            _, yb = self._compute_lpoly_fit(xi, yi, bwidth=bwidth,
+                                            degree=degree, n_grid=n_grid)
+            return yb  # NaN entries are replaced by fallback in _bootstrap_ci
 
-        y_lower = np.percentile(boot_preds, 2.5, axis=0)
-        y_upper = np.percentile(boot_preds, 97.5, axis=0)
+        y_lower, y_upper = GlyphMapper._bootstrap_ci(
+            x, y, x_grid, _lpoly_fn, n_boot=200, fallback=y_fit
+        )
 
         valid = ~np.isnan(y_fit)
         ci_src = ColumnDataSource({
@@ -2429,15 +2563,9 @@ class GlyphMapper:
             "y_lower": y_lower[valid].tolist(),
             "y_upper": y_upper[valid].tolist(),
         })
-        band_r = fig.varea(
-            x="x_lp", y1="y_lower", y2="y_upper",
-            source=ci_src, fill_alpha=0.2, fill_color=_lpolyci_color,
+        line_r, band_r = self._render_ci_band(
+            fig, ci_src, "x_lp", "y_lp", _lpolyci_color, yvar, options
         )
-        line_r = fig.line(x="x_lp", y="y_lp", source=ci_src,
-                          line_color=_lpolyci_color, line_width=2.0,
-                          legend_label=yvar)
-        self._apply_line_opts(line_r, options)
-        self._apply_fill_opts(band_r, options)
         return [line_r, band_r]
 
     # ------------------------------------------------------------------
@@ -2617,21 +2745,14 @@ class GlyphMapper:
         x_grid = np.linspace(x_min, x_max, 150)
         y_fit = self._predict_fp2(x_grid, p1, p2, coeffs)
 
-        # Bootstrap CI (200 resamples)
-        rng = np.random.default_rng(seed=42)
-        n_boot = 200
-        boot_preds = np.zeros((n_boot, len(x_grid)))
-        for i in range(n_boot):
-            idx = rng.integers(0, len(x), size=len(x))
-            try:
-                bp1, bp2, bc = self._fit_fp2(x[idx], y[idx])
-                boot_preds[i] = self._predict_fp2(x_grid, bp1, bp2, bc)
-            except Exception:
-                boot_preds[i] = y_fit
+        def _fp_fn(xi: "np.ndarray", yi: "np.ndarray", xg: "np.ndarray") -> "np.ndarray":
+            bp1, bp2, bc = self._fit_fp2(xi, yi)
+            return self._predict_fp2(xg, bp1, bp2, bc)
 
         valid = ~np.isnan(y_fit)
-        y_lower = np.percentile(boot_preds, 2.5, axis=0)
-        y_upper = np.percentile(boot_preds, 97.5, axis=0)
+        y_lower, y_upper = GlyphMapper._bootstrap_ci(
+            x, y, x_grid, _fp_fn, n_boot=200, fallback=y_fit
+        )
 
         ci_src = ColumnDataSource({
             "x_fp":    x_grid[valid].tolist(),
@@ -2639,15 +2760,9 @@ class GlyphMapper:
             "y_lower": y_lower[valid].tolist(),
             "y_upper": y_upper[valid].tolist(),
         })
-        band_r = fig.varea(
-            x="x_fp", y1="y_lower", y2="y_upper",
-            source=ci_src, fill_alpha=0.2, fill_color=_fpfitci_color,
+        line_r, band_r = self._render_ci_band(
+            fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options
         )
-        line_r = fig.line(x="x_fp", y="y_fp", source=ci_src,
-                          line_color=_fpfitci_color, line_width=2.0,
-                          legend_label=yvar)
-        self._apply_line_opts(line_r, options)
-        self._apply_fill_opts(band_r, options)
         return [line_r, band_r]
 
     def map_histogram(
@@ -2676,8 +2791,11 @@ class GlyphMapper:
         """
         if options is None:
             options = {}
-        arr = np.array(source.data[yvar], dtype=float)
-        arr = arr[~np.isnan(arr)]
+        if self._is_empty(source, yvar):
+            empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
+            return fig.quad(top="top", bottom=0, left="left", right="right",
+                            source=empty_src)
+        arr = _extract_finite(source, yvar)
 
         # Cap bin count to prevent resource exhaustion from huge values
         _MAX_BINS = 1000
@@ -2739,8 +2857,7 @@ class GlyphMapper:
 
         if options is None:
             options = {}
-        arr = np.array(source.data[yvar], dtype=float)
-        arr = arr[~np.isnan(arr)]
+        arr = _extract_finite(source, yvar)
 
         # gaussian_kde requires at least 2 points and non-constant data
         if len(arr) < 2 or np.std(arr) == 0.0:
@@ -2799,6 +2916,9 @@ class GlyphMapper:
         Returns:
             List with the single VArea GlyphRenderer.
         """
+        if self._is_empty(source, xvar, y1var, y2var):
+            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            return [fig.varea(x=xvar, y1=y1var, y2=y2var, source=empty_src)]
         _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
                                     fill_color=self.scheme.default_color(color_idx, "area"),
                                     fill_alpha=0.5,
@@ -2834,6 +2954,9 @@ class GlyphMapper:
         Returns:
             List with the single VBar GlyphRenderer.
         """
+        if self._is_empty(source, xvar, y1var, y2var):
+            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            return [fig.vbar(x=xvar, top=y2var, bottom=y1var, width=0.8, source=empty_src)]
         x_vals = sorted(set(float(v) for v in source.data[xvar]
                             if not math.isnan(float(v))))
         bar_width = 0.8 * min(
@@ -2876,6 +2999,9 @@ class GlyphMapper:
         Returns:
             List with the single Segment GlyphRenderer.
         """
+        if self._is_empty(source, xvar, y1var, y2var):
+            empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
+            return [fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=empty_src)]
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
                                    line_color=self.scheme.default_color(color_idx, "scatter"),
                                    line_width=1.5,
@@ -4276,9 +4402,7 @@ class FilterBuilder:
         _raw_lbl = label.strip() if label.strip() else safe_var
         _slider_title = _raw_lbl if _raw_lbl.endswith(("\u2265", ">=", "≥")) \
             else _raw_lbl + " \u2265"
-        arr = np.array([v for v in source.data[varname]
-                        if v is not None], dtype=float)
-        arr = arr[~np.isnan(arr)]
+        arr = _extract_finite(source, varname)
         if len(arr) == 0:
             widget = Slider(title=_slider_title, start=0, end=1, value=0, step=1,
                             disabled=True)
@@ -4328,9 +4452,7 @@ class FilterBuilder:
         if exclude_names is None:
             exclude_names = []
         safe_var = FilterBuilder._safe(varname)
-        arr = np.array([v for v in source.data[varname]
-                        if v is not None], dtype=float)
-        arr = arr[~np.isnan(arr)]
+        arr = _extract_finite(source, varname)
         _raw_range_lbl = label.strip() if label.strip() else safe_var
         if len(arr) == 0:
             widget = RangeSlider(title=_raw_range_lbl, start=0, end=1,
@@ -4389,6 +4511,38 @@ class DashRenderer:
         data_json_path:   Path to the jsonio output JSON file containing the
                           full dataset with Stata metadata.
     """
+
+    # Variable key names used in plot specs — shared by _collect_plot_vars and render()
+    _VAR_KEYS: "tuple[str, ...]" = (
+        "yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var"
+    )
+    _OPT_VAR_KEYS: "tuple[str, ...]" = ("colorvar", "mlabel")
+
+    @staticmethod
+    def _collect_plot_vars(plots_list: list) -> list:
+        """Return deduplicated list of all variable columns needed by plots."""
+        seen: list[str] = []
+        for plot in plots_list:
+            for key in DashRenderer._VAR_KEYS:
+                v = plot.get(key)
+                if v and v not in seen:
+                    seen.append(v)
+            for key in DashRenderer._OPT_VAR_KEYS:
+                v = plot.get("options", {}).get(key, "").strip()
+                if v and v not in seen:
+                    seen.append(v)
+        return seen
+
+    @staticmethod
+    def _collect_graph_vars(df: "pd.DataFrame", g_spec: dict) -> list:
+        """Return deduplicated list of variable columns for a graph,
+        including hover tooltip variables from graph_options.hover."""
+        seen = DashRenderer._collect_plot_vars(g_spec.get("plots", []))
+        hover_str = g_spec.get("graph_options", {}).get("hover", "").strip()
+        for hv in hover_str.split():
+            if hv and hv not in seen and hv in df.columns:
+                seen.append(hv)
+        return seen
 
     def __init__(
         self,
@@ -4742,8 +4896,12 @@ class DashRenderer:
                     # Validate column names referenced in expression
                     # Use a restricted pandas query with the 'python' engine
                     df = df.query(pandas_expr, engine="python")
-                except Exception:
-                    pass  # malformed if_expr → no filtering; don't crash
+                except (ValueError, SyntaxError, KeyError, TypeError) as _qexc:
+                    import warnings
+                    warnings.warn(
+                        f"dash: if_expr filter skipped — {_qexc}",
+                        stacklevel=2,
+                    )
 
         return df
 
@@ -5621,6 +5779,13 @@ class DashRenderer:
 
         pt = plot_type.lower()
 
+        # Guard: skip glyph if required variables are missing from the CDS
+        _pc_types = frozenset({"pcspike", "pcarrow", "pcbarrow", "pci", "pcscatter"})
+        if pt not in _pc_types:
+            _vars_needed = [v for v in [yvar, xvar, y2var] if v]
+            if _vars_needed and not self.mapper._check_vars(source, *_vars_needed):
+                return
+
         # Range plots: (fig, source, y1var, y2var, xvar, options)
         rfn = range_dispatch.get(pt)
         if rfn is not None and y2var:
@@ -5671,6 +5836,9 @@ class DashRenderer:
         }
         fn = pc_dispatch.get(plot_type.lower())
         if fn is not None:
+            _pc_needed = [v for v in [y1var, x1var, y2var, x2var] if v]
+            if _pc_needed and not self.mapper._check_vars(source, *_pc_needed):
+                return
             fn(fig, source, y1var, x1var, y2var, x2var, options, view=view, color_idx=color_idx)
 
     # ------------------------------------------------------------------
@@ -6258,34 +6426,8 @@ class DashRenderer:
             link_names = list(all_graph_names)
 
         sources: dict[str, ColumnDataSource] = {}
-        # Keys that can hold variable names in plot specs
-        _VK = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
-        # Option keys whose values are also variable names (not plot-level keys)
-        _OPT_VAR_KEYS = ("colorvar", "mlabel")
-
-        def _collect_plot_vars(plots_list: list) -> list:
-            """Return deduplicated list of all variable columns needed by plots."""
-            seen: list[str] = []
-            for plot in plots_list:
-                for key in _VK:
-                    v = plot.get(key)
-                    if v and v not in seen:
-                        seen.append(v)
-                for key in _OPT_VAR_KEYS:
-                    v = plot.get("options", {}).get(key, "").strip()
-                    if v and v not in seen:
-                        seen.append(v)
-            return seen
-
-        def _collect_graph_vars(g_spec: dict) -> list:
-            """Return deduplicated list of variable columns for a graph,
-            including hover tooltip variables from graph_options.hover."""
-            seen = _collect_plot_vars(g_spec.get("plots", []))
-            hover_str = g_spec.get("graph_options", {}).get("hover", "").strip()
-            for hv in hover_str.split():
-                if hv and hv not in seen and hv in self.df.columns:
-                    seen.append(hv)
-            return seen
+        _VK = DashRenderer._VAR_KEYS
+        _OPT_VAR_KEYS = DashRenderer._OPT_VAR_KEYS
 
         if link_names:
             # First pass: collect all variable names needed by linked graphs,
@@ -6294,7 +6436,7 @@ class DashRenderer:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
-                    for vname in _collect_graph_vars(g):
+                    for vname in DashRenderer._collect_graph_vars(self.df, g):
                         if vname not in linked_vars:
                             linked_vars.append(vname)
                     # Also include by-variables so CDSView masks align to the shared source
@@ -6355,13 +6497,13 @@ class DashRenderer:
                         self._facet_map[name] = facet_entries
                         self._facet_masks[name] = facet_masks
                 else:
-                    g_vars = _collect_graph_vars(g)
+                    g_vars = DashRenderer._collect_graph_vars(self.df, g)
                     filtered_df = self._apply_graph_filter(g)
                     sources[name] = self._make_source(g_vars, df=filtered_df)
         else:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
-                g_vars = _collect_graph_vars(g)
+                g_vars = DashRenderer._collect_graph_vars(self.df, g)
                 filtered_df = self._apply_graph_filter(g)
                 by_groups = self._expand_by_groups(g, base_df=filtered_df)
                 if len(by_groups) == 1 and by_groups[0][0] == "":
@@ -6505,27 +6647,11 @@ class DashRenderer:
         saving_path   = build.get("saving", "")
 
         # ---- 1. Determine all variable names needed ----
-        _VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
-        # Option keys whose values are also variable names
-        _OPT_VAR_KEYS = ("colorvar", "mlabel")
-
-        def _collect_plot_vars_render(plots_list: list) -> list:
-            """Return deduplicated list of variable columns needed by a graph's plots."""
-            seen: list[str] = []
-            for plot in plots_list:
-                for key in _VAR_KEYS:
-                    v = plot.get(key)
-                    if v and v not in seen:
-                        seen.append(v)
-                for key in _OPT_VAR_KEYS:
-                    v = plot.get("options", {}).get(key, "").strip()
-                    if v and v not in seen:
-                        seen.append(v)
-            return seen
+        # Use the promoted static helpers so hover-var collection stays consistent
 
         all_vars: list[str] = []
         for g in graphs:
-            for vname in _collect_plot_vars_render(g.get("plots", [])):
+            for vname in DashRenderer._collect_plot_vars(g.get("plots", [])):
                 if vname not in all_vars:
                     all_vars.append(vname)
         for kpi in kpis:
@@ -6555,7 +6681,7 @@ class DashRenderer:
             for g in graphs:
                 gname = g.get("graph_options", {}).get("name", "")
                 if gname in link_names:
-                    for vname in _collect_plot_vars_render(g.get("plots", [])):
+                    for vname in DashRenderer._collect_graph_vars(self.df, g):
                         if vname not in linked_vars:
                             linked_vars.append(vname)
                     # Also include by-variables so CDSView masks align to the shared source
@@ -6613,13 +6739,13 @@ class DashRenderer:
                         self._facet_map[name] = facet_entries_lnk
                         self._facet_masks[name] = facet_masks_lnk
                 else:
-                    g_vars = _collect_plot_vars_render(g.get("plots", []))
+                    g_vars = DashRenderer._collect_graph_vars(self.df, g)
                     filtered_df = self._apply_graph_filter(g)
                     self.sources[name] = self._make_source(g_vars, df=filtered_df)
         else:
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
-                g_vars = _collect_plot_vars_render(g.get("plots", []))
+                g_vars = DashRenderer._collect_graph_vars(self.df, g)
                 # Include filter variables so filter widgets can query the CDS
                 for fc in filters_cfg:
                     fv = fc.get("varname", "")

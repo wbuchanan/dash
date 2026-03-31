@@ -1027,3 +1027,156 @@ class TestValueLabelPipelineRegression:
                     f"Raw numeric code '{lbl}' must not appear as a display label "
                     f"when value labels are defined (key='{key}'). All labels: {labels}"
                 )
+
+
+# ================================================================
+# Regression tests: BUG-1, BUG-2 — filter widget label forwarding
+# ================================================================
+
+class TestFilterWidgetLabels:
+    """BUG-1/BUG-2 regression: filter widget titles must use the human-readable
+    label from the filter spec, not the raw variable name."""
+
+    def _make_source(self, data_dict):
+        from bokeh.models import ColumnDataSource
+        return ColumnDataSource(data_dict)
+
+    def test_build_range_uses_label_not_varname(self):
+        """BUG-1: build_range title must come from label= parameter."""
+        src = self._make_source({"weight": [2000.0, 2500.0, 3000.0, 3500.0]})
+        widget, _ = FilterBuilder.build_range(
+            "weight", src, label="Vehicle Weight"
+        )
+        assert "Vehicle Weight" in widget.title, (
+            f"RangeSlider title should contain label text 'Vehicle Weight', got: {widget.title!r}"
+        )
+        assert widget.title != "weight", (
+            "RangeSlider title must not be the raw variable name when label is provided"
+        )
+
+    def test_build_range_falls_back_to_varname_when_no_label(self):
+        """BUG-1b: build_range without label= falls back to safe variable name."""
+        src = self._make_source({"weight": [2000.0, 2500.0, 3000.0]})
+        widget, _ = FilterBuilder.build_range("weight", src)
+        assert "weight" in widget.title
+
+    def test_build_slider_uses_label_not_varname(self):
+        """BUG-2a: build_slider title must come from label= parameter."""
+        src = self._make_source({"mpg": [15.0, 20.0, 25.0, 30.0]})
+        widget, _ = FilterBuilder.build_slider("mpg", src, label="Miles per Gallon")
+        assert "Miles per Gallon" in widget.title, (
+            f"Slider title should contain label 'Miles per Gallon', got: {widget.title!r}"
+        )
+
+    def test_build_dropdown_uses_label_not_varname(self):
+        """BUG-2b: build_dropdown title must come from label= parameter."""
+        src = self._make_source({"foreign": [0.0, 1.0, 0.0, 1.0]})
+        widget, _ = FilterBuilder.build_dropdown(
+            "foreign", src, label="Car Origin"
+        )
+        assert "Car Origin" in widget.title, (
+            f"Select title should contain label 'Car Origin', got: {widget.title!r}"
+        )
+
+    def test_render_passes_label_to_filter_widgets(self):
+        """BUG-2 integration: render() must forward fc['label'] to filter builders."""
+        import json, tempfile, os
+        vals = [{"mpg": float(20+i), "weight": float(2000+i*100)} for i in range(10)]
+        data = {"StataJSON": {
+            "variableNames": ["mpg", "weight"],
+            "variableLabels": {"mpg": "mpg", "weight": "weight"},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False},
+            "values": vals,
+        }}
+        spec = {
+            "graphs": [{"plots": [{"type": "scatter", "yvar": "mpg",
+                                    "xvar": "weight", "options": {}}],
+                         "graph_options": {"name": "g1"}, "if_expr": "", "in_expr": ""}],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "theme": "default",
+                "title": "", "subtitle": "", "registry": "g1",
+                "filters": [{"varname": "weight", "type": "slider",
+                              "label": "Vehicle Weight"}],
+            },
+        }
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            dr = DashRenderer(sp, dp, op)
+            dr.render()
+            titles = [w.title for w in dr.filter_widgets]
+            assert any("Vehicle Weight" in t for t in titles), (
+                f"Expected a widget with title containing 'Vehicle Weight'. Got: {titles}"
+            )
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+
+# ================================================================
+# TEST-2: Filter edge-case tests
+# FC-01 through FC-04
+# ================================================================
+
+class TestFilterEdgeCases:
+    """FC-01 through FC-04: filter builders must handle unusual data gracefully."""
+
+    def _src(self, data_dict):
+        return ColumnDataSource(data_dict)
+
+    def test_fc01_dropdown_all_nan_column(self):
+        """FC-01: build_dropdown with all-NaN column creates widget with only 'All'."""
+        src = self._src({"foreign": [float("nan"), float("nan"), float("nan")]})
+        widget, _ = FilterBuilder.build_dropdown("foreign", src)
+        options = widget.options
+        # Should have "All" (possibly the only entry)
+        labels = [o[1] if isinstance(o, (list, tuple)) else o for o in options]
+        assert "All" in labels, f"Expected 'All' option, got: {labels}"
+
+    def test_fc02_slider_all_identical_values(self):
+        """FC-02: build_slider with all-identical values creates widget without crash."""
+        src = self._src({"weight": [2500.0, 2500.0, 2500.0, 2500.0]})
+        widget, _ = FilterBuilder.build_slider("weight", src)
+        # Must not crash; slider end must be > start (expanded by 1.0)
+        assert widget.end > widget.start, (
+            f"Slider end ({widget.end}) must be > start ({widget.start}) for constant data"
+        )
+
+    def test_fc03_range_single_unique_value(self):
+        """FC-03: build_range with one unique value must not collapse to zero range."""
+        src = self._src({"price": [5000.0, 5000.0, 5000.0]})
+        widget, _ = FilterBuilder.build_range("price", src)
+        start, end = widget.start, widget.end
+        assert end > start, (
+            f"RangeSlider end ({end}) must be > start ({start}) for single-value data"
+        )
+
+    def test_fc04_dropdown_many_unique_categories(self):
+        """FC-04: build_dropdown with >100 unique string values creates widget without error."""
+        categories = [f"cat_{i}" for i in range(150)]
+        src = self._src({"category": categories})
+        try:
+            widget, _ = FilterBuilder.build_dropdown("category", src)
+        except Exception as e:
+            pytest.fail(f"build_dropdown with 150 categories raised {type(e).__name__}: {e}")
+        assert widget is not None
+        # Should have 151 options (All + 150 categories)
+        assert len(widget.options) == 151, (
+            f"Expected 151 options (All + 150 categories), got {len(widget.options)}"
+        )
+
+    def test_fc01_slider_all_nan_column_disabled(self):
+        """FC-01b: build_slider with all-NaN column creates disabled widget."""
+        src = self._src({"weight": [float("nan"), float("nan")]})
+        widget, _ = FilterBuilder.build_slider("weight", src)
+        assert widget.disabled is True, "Slider with all-NaN data must be disabled"
+
+    def test_fc01_range_all_nan_column_disabled(self):
+        """FC-01c: build_range with all-NaN column creates disabled widget."""
+        src = self._src({"weight": [float("nan"), float("nan")]})
+        widget, _ = FilterBuilder.build_range("weight", src)
+        assert widget.disabled is True, "RangeSlider with all-NaN data must be disabled"
