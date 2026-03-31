@@ -6616,228 +6616,42 @@ class DashRenderer:
         return figs
 
     # ------------------------------------------------------------------
-    # Main render method
+    # Phase-method helpers called by render()
     # ------------------------------------------------------------------
 
-    def render(self) -> str:
-        """Build the complete dashboard and return standalone HTML.
+    @staticmethod
+    def _to_serialisable(v: "Any") -> "Any":
+        """Convert a single value to a JSON-safe Python scalar."""
+        if v is None:
+            return None
+        try:
+            f = float(v)
+            if math.isnan(f) or math.isinf(f):
+                return None
+            return f
+        except (TypeError, ValueError):
+            return str(v) if v is not None else None
 
-        Returns:
-            A string containing the full standalone HTML page.
+    @staticmethod
+    def _parse_fmt(fmt: str) -> "tuple[int, bool]":
+        """Parse a Stata format string into (decimal_places, use_commas)."""
+        m = re.match(r'%[\d]*\.(\d+)f(c)?', (fmt or "").strip())
+        if m:
+            return int(m.group(1)), m.group(2) == 'c'
+        return 0, False
+
+    def _build_kpi_html(self, kpis: list) -> None:
+        """Phase 4 of render(): build KPI Div widgets and store in self.kpi_divs.
+
+        For faceted KPIs (``update`` references a faceted graph) one card is
+        created per facet group, computing the statistic on each group's
+        filtered DataFrame.  For all other KPIs a single card is created,
+        recomputing the display value from the loaded DataFrame so the ``fmt``
+        format string is applied correctly.
+
+        Reads:  self.df, self._facet_map, self.sources
+        Writes: self.kpi_divs
         """
-        graphs = self.master_spec.get("graphs", [])
-        kpis   = self.master_spec.get("kpis", [])
-        build  = self.master_spec.get("build_options", {})
-
-        _link_raw_render = build.get("link", [])
-        if isinstance(_link_raw_render, list):
-            link_names: list[str] = [str(x) for x in _link_raw_render]
-        else:
-            link_names = _link_raw_render.replace(";", " ").split()
-        layout_opt  = build.get("layout", "auto")
-        # Accept either structured "filters" list (from tests / server mode) or
-        # the raw "filter" string emitted by dash.ado build_options.
-        filters_cfg = build.get("filters", [])
-        if not filters_cfg:
-            _raw_f = build.get("filter", "")
-            if _raw_f:
-                filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
-        title_text    = html.escape(build.get("title", ""))
-        subtitle_text = html.escape(build.get("subtitle", "") or "")
-        saving_path   = build.get("saving", "")
-
-        # ---- 1. Determine all variable names needed ----
-        # Use the promoted static helpers so hover-var collection stays consistent
-
-        all_vars: list[str] = []
-        for g in graphs:
-            for vname in DashRenderer._collect_plot_vars(g.get("plots", [])):
-                if vname not in all_vars:
-                    all_vars.append(vname)
-        for kpi in kpis:
-            v = kpi.get("varname")
-            if v and v not in all_vars:
-                all_vars.append(v)
-        for fc in filters_cfg:
-            v = fc.get("varname")
-            if v and v not in all_vars:
-                all_vars.append(v)
-        # Include by-variables so faceting can group by them
-        for g in graphs:
-            by_raw = (g.get("graph_options", {}).get("by") or "").strip()
-            if by_raw:
-                varlist, _, _, _ = DashRenderer._parse_by_raw(by_raw)
-                for bv in varlist.split():
-                    if bv and bv not in all_vars:
-                        all_vars.append(bv)
-
-        # ---- 2. Build ColumnDataSources ----
-        # Linked graphs share one source; unlinked get their own.
-
-        if link_names:
-            # First pass: collect all variable names needed by linked graphs,
-            # including by-variables for linked graphs that also use by().
-            linked_vars: list[str] = []
-            for g in graphs:
-                gname = g.get("graph_options", {}).get("name", "")
-                if gname in link_names:
-                    for vname in DashRenderer._collect_graph_vars(self.df, g):
-                        if vname not in linked_vars:
-                            linked_vars.append(vname)
-                    # Also include by-variables so CDSView masks align to the shared source
-                    by_raw_lnk = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw_lnk:
-                        varlist_lnk, _, _, _ = DashRenderer._parse_by_raw(by_raw_lnk)
-                        for bv in varlist_lnk.split():
-                            if bv and bv not in linked_vars:
-                                linked_vars.append(bv)
-            # Also include filter vars in linked source
-            for fc in filters_cfg:
-                v = fc.get("varname")
-                if v and v not in linked_vars and v in self.df.columns:
-                    linked_vars.append(v)
-
-            # Add KPI variables so JS can update KPI cards after filtering
-            for kpi in kpis:
-                kupdate = kpi.get("update", "filter")
-                if kupdate in ("filter", "both"):
-                    kvar = kpi.get("var") or kpi.get("varname", "")
-                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
-                        linked_vars.append(kvar)
-
-            # Add raw variables for aggregate (histogram/kdensity) non-linked
-            # graphs so JS can recompute bin counts and density curves after
-            # filtering.
-            _AGG_TYPES_RENDER = frozenset({"histogram", "hist", "kdensity"})
-            for g in graphs:
-                gname = g.get("graph_options", {}).get("name", "")
-                if gname in link_names:
-                    continue
-                for plot in g.get("plots", []):
-                    if plot.get("type", "") in _AGG_TYPES_RENDER:
-                        vname = plot.get("var") or plot.get("yvar", "")
-                        if vname and vname not in linked_vars and vname in self.df.columns:
-                            linked_vars.append(vname)
-
-            linked_source = self._make_source(linked_vars)
-
-            for g in graphs:
-                name = g.get("graph_options", {}).get("name", "")
-                if name in link_names:
-                    self.sources[name] = linked_source
-                    # For by()+link() graphs, compute CDSView boolean masks
-                    by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw_lnk2:
-                        by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
-                        facet_entries_lnk = []
-                        facet_masks_lnk = []
-                        for idx, (label, group_df) in enumerate(by_groups_lnk):
-                            fkey = f"{name}__by__{idx}"
-                            mask = [i in group_df.index for i in self.df.index]
-                            facet_entries_lnk.append((fkey, label))
-                            facet_masks_lnk.append((label, mask))
-                        self._facet_map[name] = facet_entries_lnk
-                        self._facet_masks[name] = facet_masks_lnk
-                else:
-                    g_vars = DashRenderer._collect_graph_vars(self.df, g)
-                    filtered_df = self._apply_graph_filter(g)
-                    self.sources[name] = self._make_source(g_vars, df=filtered_df)
-        else:
-            for g in graphs:
-                name = g.get("graph_options", {}).get("name", "")
-                g_vars = DashRenderer._collect_graph_vars(self.df, g)
-                # Include filter variables so filter widgets can query the CDS
-                for fc in filters_cfg:
-                    fv = fc.get("varname", "")
-                    if fv and fv not in g_vars:
-                        g_vars.append(fv)
-                filtered_df = self._apply_graph_filter(g)
-                self.sources[name] = self._make_source(g_vars, df=filtered_df)
-
-        # ---- 2b. Handle by() faceting on unlinked sources ----
-        for g in graphs:
-            name = g.get("graph_options", {}).get("name", "")
-            by_raw = (g.get("graph_options", {}).get("by") or "").strip()
-            if by_raw and name not in link_names:
-                # Faceted graph: use self.df for grouping (has all columns)
-                base_src = self.sources.pop(name, None)
-                if base_src is None:
-                    continue
-                src_df = self.df
-                by_groups = self._expand_by_groups(g, base_df=src_df)
-                if len(by_groups) == 1 and by_groups[0][0] == "":
-                    # No valid faceting — restore original source
-                    self.sources[name] = base_src
-                else:
-                    g_vars = list(base_src.data.keys())
-                    facet_entries = []
-                    for idx, (label, group_df) in enumerate(by_groups):
-                        fkey = f"{name}__by__{idx}"
-                        self.sources[fkey] = self._make_source(g_vars, df=group_df)
-                        facet_entries.append((fkey, label))
-                    self._facet_map[name] = facet_entries
-
-        # ---- 3. Build figures ----
-        for g in graphs:
-            name = g.get("graph_options", {}).get("name", "")
-            if name in self._facet_map:
-                # Faceted: build one figure per facet group
-                shared_src_render = self.sources.get(name)
-                masks_render = self._facet_masks.get(name, [])
-                for panel_idx_r, (fkey, label) in enumerate(self._facet_map[name]):
-                    # Determine source and optional CDSView for this panel
-                    if shared_src_render is not None and name in link_names:
-                        # by()+link() graph: shared source with per-panel CDSView
-                        src = shared_src_render
-                        if panel_idx_r < len(masks_render):
-                            _, mask_r = masks_render[panel_idx_r]
-                            panel_view_r = CDSView(filter=BooleanFilter(booleans=mask_r))
-                        else:
-                            panel_view_r = None
-                    else:
-                        # Standalone by() graph: per-group source, no view needed
-                        src = self.sources.get(fkey)
-                        panel_view_r = None
-                    if src is None:
-                        continue
-                    try:
-                        fig = self._make_figure(g, src, facet_view=panel_view_r)
-                        orig_title = fig.title.text if fig.title else ""
-                        if orig_title:
-                            fig.title.text = f"{orig_title} — {label}"
-                        else:
-                            fig.title.text = label
-                        self.figures[fkey] = fig
-                    except Exception as exc:
-                        raise RuntimeError(
-                            f"dash_render: failed to build facet figure "
-                            f"'{fkey}': {exc}"
-                        ) from exc
-            else:
-                src = self.sources.get(name)
-                if src is None:
-                    continue
-                try:
-                    self.figures[name] = self._make_figure(g, src)
-                except Exception as exc:
-                    raise RuntimeError(
-                        f"dash_render: failed to build figure '{name}': {exc}"
-                    ) from exc
-
-        # ---- 3b. Collect aggregate sources for filter recomputation ----
-        # Scan every built figure for renderers tagged by map_histogram /
-        # map_kdensity.  These need to be updated by the JS filter callback
-        # because their ColumnDataSources are pre-computed aggregates, not raw
-        # rows, so replacing fsource.data alone leaves them stale.
-        for _gname, _fig in self.figures.items():
-            _agg_list = []
-            for _r in _fig.renderers:
-                if hasattr(_r, "_dash_agg_source") and hasattr(_r, "_dash_agg_config"):
-                    _agg_list.append((_r._dash_agg_source, dict(_r._dash_agg_config)))
-            if _agg_list:
-                self.agg_source_registry[_gname] = _agg_list
-
-        # ---- 4. Build KPI Divs ----
         for kpi in kpis:
             name = kpi.get("name", "kpi")
             kpi["name"] = name  # ensure name key present in def
@@ -6847,8 +6661,7 @@ class DashRenderer:
             varname = kpi.get("var") or kpi.get("varname", "")
 
             if update_graph and update_graph in self._facet_map and stat and varname:
-                # Per-facet KPIs: create one card per facet group, computing
-                # the statistic on each group's filtered DataFrame.
+                # Per-facet KPIs: one card per facet group
                 for idx, (fkey, facet_label) in enumerate(
                     self._facet_map[update_graph]
                 ):
@@ -6874,13 +6687,7 @@ class DashRenderer:
                         facet_kpi["value"] = "—"
                     self.kpi_divs[fkpi_name] = self._make_kpi_div(facet_kpi)
             else:
-                # Non-faceted KPI: always compute the initial display value
-                # from the loaded DataFrame so it is formatted correctly.
-                # Stata stores the raw numeric in kpi["value"] and the
-                # formatted string in kpi["display"]; we recompute from data
-                # to ensure the format string (kpi["fmt"]) is applied by
-                # Python's formatter rather than displaying the full-precision
-                # float that Stata writes.
+                # Non-faceted KPI: recompute from df so fmt is applied correctly
                 kpi_copy = dict(kpi)
                 if stat and varname and varname in self.df.columns:
                     try:
@@ -6889,26 +6696,38 @@ class DashRenderer:
                             raw_val, kpi.get("fmt", "")
                         )
                     except (ValueError, KeyError, TypeError):
-                        # Fallback: use Stata's pre-formatted display value
                         if not kpi_copy.get("value"):
                             kpi_copy["value"] = kpi.get("display", "")
                 elif not kpi_copy.get("value"):
-                    # No variable to compute — use Stata's pre-formatted display
                     kpi_copy["value"] = kpi.get("display", "")
                 self.kpi_divs[name] = self._make_kpi_div(kpi_copy)
 
-        # ---- 5. Build filter widgets ----
-        # Determine a CDSView per (figure × filter) for non-excluded graphs.
-        # For now we wire up views after all figures are built.
-        filter_row_widgets = []
-        fsource = None  # shared source used by filter widgets; set in loop below
+    def _build_filter_widgets(
+        self,
+        filters_cfg: list,
+        link_names: list,
+        kpis: list,
+    ) -> list:
+        """Phase 5 of render(): build filter widgets and wire multi-filter callbacks.
+
+        For each filter spec, creates the appropriate Bokeh widget (Select,
+        Slider, or RangeSlider) and a CustomJS callback that re-applies all
+        active filter conditions on every widget change.
+
+        Reads:  self.sources, self.kpi_divs, self.agg_source_registry
+        Writes: self.filter_widgets, self.filter_callbacks
+
+        Returns:
+            Ordered list of Bokeh widget objects to place in the filter row.
+        """
+        filter_row_widgets: list = []
+        fsource = None
 
         for fc in filters_cfg:
             fvar    = fc.get("varname", "")
             ftype   = fc.get("type", "dropdown")
             excludes = fc.get("exclude", [])
 
-            # Choose source: prefer linked source if available, else first available
             if link_names and link_names[0] in self.sources:
                 fsource = self.sources[link_names[0]]
             else:
@@ -6917,16 +6736,10 @@ class DashRenderer:
             if fsource is None or fvar not in fsource.data:
                 continue
 
-            # Resolve value labels for this variable.
-            # Standard Stata format: valueLabels keyed by label-set name
-            #   e.g. {"origin": {"0": "Domestic", "1": "Foreign"}}
-            #        valueLabelNames = {"foreign": "origin"}
-            # Fallback format: valueLabels keyed by variable name directly
-            #   e.g. {"foreign": {"0": "Domestic", "1": "Foreign"}}
+            # Resolve value labels (standard Stata format or direct-by-varname)
             labelset = self.value_label_names.get(fvar, "")
             vlabels  = self.value_labels.get(labelset, {}) if labelset else {}
             if not vlabels:
-                # Fall back to looking up by variable name
                 candidate = self.value_labels.get(fvar, {})
                 if isinstance(candidate, dict):
                     vlabels = candidate
@@ -6956,80 +6769,36 @@ class DashRenderer:
             self.filter_widgets.append(widget)
             self.filter_callbacks.append(cb)
 
-        # ---- 5b. Wire multi-filter state into every callback ----
-        # Each callback gets:
-        #   orig_data   — plain Python dict of the original (unfiltered) source data
-        #   all_widgets — every filter widget in registration order
-        #   filter_specs — [{varname, type}] parallel to all_widgets
-        #   kpi_config  — KPI definitions this callback should update
-        #
-        # This design re-applies ALL active filter conditions on every widget
-        # change, producing a correct intersection of all filters.
-
-        import math as _math
-
-        def _to_serialisable(v: "Any") -> "Any":
-            """Convert a single value to a JSON-safe Python scalar."""
-            if v is None:
-                return None
-            try:
-                f = float(v)
-                if _math.isnan(f) or _math.isinf(f):
-                    return None
-                return f
-            except (TypeError, ValueError):
-                return str(v) if v is not None else None
-
-        # Build orig_data from the shared source — used by all filter callbacks
+        # Wire multi-filter state into every callback.
+        # Each callback gets orig_data_json, all_widgets, filter_specs_json,
+        # kpi_config_json, kpi_divs, agg_sources, agg_configs_json so it can
+        # re-apply all active filter conditions on every widget change.
         _orig_data: dict = {}
         if fsource is not None:
             for _col, _arr in fsource.data.items():
-                _orig_data[_col] = [_to_serialisable(v) for v in _arr]
+                _orig_data[_col] = [DashRenderer._to_serialisable(v) for v in _arr]
 
-        # filter_specs — one entry per widget, in widget order
-        _filter_specs: list = []
-        for _fc in filters_cfg:
-            _filter_specs.append({
-                "varname": _fc.get("varname", ""),
-                "type":    _fc.get("type", "dropdown"),
-            })
+        _filter_specs: list = [
+            {"varname": _fc.get("varname", ""), "type": _fc.get("type", "dropdown")}
+            for _fc in filters_cfg
+        ]
 
-        # Parse Stata format string → (decimals, commas)
-        def _parse_fmt(fmt: str) -> "tuple[int, bool]":
-            import re as _re
-            m = _re.match(r'%[\d]*\.(\d+)f(c)?', (fmt or "").strip())
-            if m:
-                return int(m.group(1)), m.group(2) == 'c'
-            return 0, False
+        _kpi_defs_by_name: dict = {k.get("name", ""): k for k in kpis}
 
-        # Build per-callback kpi_config: only KPIs *not* excluded by this filter
-        # and that respond to filter changes (update in {"filter","both"}).
-        # Also collect the KPI definitions registered in self.master_spec.
-        _kpi_defs_by_name: dict = {
-            k.get("name", ""): k
-            for k in kpis
-        }
-
-        for _cb_idx, (_fc, _cb) in enumerate(
-            zip(filters_cfg, self.filter_callbacks)
-        ):
+        for _fc, _cb in zip(filters_cfg, self.filter_callbacks):
             _fc_excludes = [str(x) for x in _fc.get("exclude", [])]
             _kpi_config_for_cb: list = []
-            _kpi_divs_for_cb:   list = []   # parallel list of Div model objects
+            _kpi_divs_for_cb:   list = []
             for _kname, _kdiv in self.kpi_divs.items():
-                # Skip KPIs excluded by this filter
                 if _kname in _fc_excludes:
                     continue
                 _kdef = _kpi_defs_by_name.get(_kname, {})
-                _kupdate = _kdef.get("update", "filter")
-                if _kupdate not in ("filter", "both"):
+                if _kdef.get("update", "filter") not in ("filter", "both"):
                     continue
-                _kstat   = _kdef.get("stat", "mean")
-                _kvar    = _kdef.get("var") or _kdef.get("varname", "")
-                _kfmt    = _kdef.get("fmt", "%9.0f")
-                _dec, _comma = _parse_fmt(_kfmt)
-                # Include all styling fields so JS can rebuild the full Div HTML.
-                # The JS sets kpi_div.text (Bokeh model property) — not DOM.
+                _kstat  = _kdef.get("stat", "mean")
+                _kvar   = _kdef.get("var") or _kdef.get("varname", "")
+                _kfmt   = _kdef.get("fmt", "%9.0f")
+                _dec, _comma = DashRenderer._parse_fmt(_kfmt)
                 _kpi_config_for_cb.append({
                     "name":     _kname,
                     "stat":     _kstat,
@@ -7043,19 +6812,12 @@ class DashRenderer:
                 })
                 _kpi_divs_for_cb.append(_kdiv)
 
-            # Pass structured data as JSON strings so Bokeh 3.x serialises
-            # them as plain JS strings (not Map objects).  _FILTER_JS
-            # parses them with JSON.parse() before use.
             _cb.args["orig_data_json"]    = json.dumps(_orig_data)
             _cb.args["all_widgets"]       = list(self.filter_widgets)
             _cb.args["filter_specs_json"] = json.dumps(_filter_specs)
             _cb.args["kpi_config_json"]   = json.dumps(_kpi_config_for_cb)
-            # Div model objects — Bokeh serialises these as proper model refs
             _cb.args["kpi_divs"]          = _kpi_divs_for_cb
 
-            # Aggregate sources: histogram and kdensity plots whose pre-computed
-            # sources must be recomputed whenever the filter changes.
-            # Graphs listed in this filter's exclude list are skipped.
             _agg_srcs: list = []
             _agg_cfgs: list = []
             for _gname, _agg_list in self.agg_source_registry.items():
@@ -7067,30 +6829,40 @@ class DashRenderer:
             _cb.args["agg_sources"]      = _agg_srcs
             _cb.args["agg_configs_json"] = json.dumps(_agg_cfgs)
 
-        # ---- 6. Assemble layout ----
-        # KPI cards come first, then graphs — so cards appear at the top of the
-        # dashboard and graphs fill the remaining cells below.
-        all_names: list[str] = list(self.kpi_divs.keys())
-        kpi_names: list[str] = list(self.kpi_divs.keys())
-        for g in graphs:
-            name = g.get("graph_options", {}).get("name", "")
-            all_names.append(name)
+        return filter_row_widgets
 
-        # ---- Read tabs and filter_position build options ----
-        tabs_str = build.get("tabs", "").strip()
+    def _assemble_layout(
+        self,
+        graphs: list,
+        all_names: list,
+        kpi_names: list,
+        filter_row_widgets: list,
+        build: dict,
+        title_text: str,
+        subtitle_text: str,
+    ) -> str:
+        """Phase 6 of render(): assemble the Bokeh layout and return standalone HTML.
+
+        Handles both Bootstrap-grid and standard Bokeh-gridplot layouts, with
+        optional title/subtitle header and tab groups (Bootstrap mode only).
+
+        Reads:  self.figures, self.kpi_divs, self._facet_map, self.scheme
+        Returns:
+            Complete standalone HTML string for the dashboard.
+        """
+        layout_opt      = build.get("layout", "auto")
+        tabs_str        = build.get("tabs", "").strip()
         filter_position = build.get("filter_position", "top").strip().lower()
         if filter_position not in ("top", "left"):
             filter_position = "top"
 
-        # Build Bokeh Tabs widget (Bootstrap mode only)
-        tabs_widget: Any = None
-        tabbed_names: set[str] = set()
+        tabs_widget:  Any       = None
+        tabbed_names: set[str]  = set()
         if tabs_str and DashRenderer._is_bootstrap_layout(layout_opt):
             _tabs_spec = DashRenderer._parse_tabs_option(tabs_str, all_names)
             if _tabs_spec:
                 tabs_widget, tabbed_names = self._build_tabs_widget(_tabs_spec)
 
-        # ---- Bootstrap grid layout ----
         if DashRenderer._is_bootstrap_layout(layout_opt):
             return self._render_bootstrap_html(
                 layout_opt=layout_opt,
@@ -7104,31 +6876,27 @@ class DashRenderer:
                 filter_position=filter_position,
             )
 
+        # ---- Standard Bokeh gridplot layout ----
         rows_n, cols_n = self._compute_grid(all_names, layout_opt)
-
-        # If the number of items exceeds the specified grid size, auto-expand
-        # rows so that no items are silently dropped (Bug 11).
         n_items = len(all_names)
         if n_items > rows_n * cols_n:
             rows_n = math.ceil(n_items / cols_n)
 
-        # Build grid cells: figures then KPI divs, in registration order
         cells: list[Any] = []
         for name in all_names:
             if name in self._facet_map:
-                # Build a sub-grid of facet figures
-                facet_figs = []
-                for fkey, _label in self._facet_map[name]:
-                    fig = self.figures.get(fkey)
-                    if fig is not None:
-                        facet_figs.append(fig)
+                facet_figs = [
+                    self.figures[fkey]
+                    for fkey, _ in self._facet_map[name]
+                    if fkey in self.figures
+                ]
                 if facet_figs:
-                    gopts = {}
-                    for g in graphs:
-                        if g.get("graph_options", {}).get("name") == name:
-                            gopts = g.get("graph_options", {})
-                            break
-                    # by_cols can come from the parsed raw string or a separate key
+                    gopts = next(
+                        (g.get("graph_options", {})
+                         for g in graphs
+                         if g.get("graph_options", {}).get("name") == name),
+                        {},
+                    )
                     _, by_cols_from_raw, _, _ = DashRenderer._parse_by_raw(
                         (gopts.get("by") or "")
                     )
@@ -7139,12 +6907,14 @@ class DashRenderer:
                         by_cols_key = 0
                     by_cols_n = by_cols_from_raw or by_cols_key
                     if by_cols_n <= 0:
-                        by_cols_n = min(len(facet_figs), max(1, math.ceil(math.sqrt(len(facet_figs)))))
+                        by_cols_n = min(
+                            len(facet_figs),
+                            max(1, math.ceil(math.sqrt(len(facet_figs)))),
+                        )
                     sub_rows = [
-                        facet_figs[i:i + by_cols_n]
+                        facet_figs[i : i + by_cols_n]
                         for i in range(0, len(facet_figs), by_cols_n)
                     ]
-                    # Pad last row
                     while len(sub_rows[-1]) < by_cols_n:
                         sub_rows[-1].append(None)
                     cells.append(gridplot(sub_rows, sizing_mode="stretch_width"))
@@ -7155,21 +6925,16 @@ class DashRenderer:
             elif name in self.kpi_divs:
                 cells.append(self.kpi_divs[name])
 
-        # Pad to fill the grid
         while len(cells) < rows_n * cols_n:
             cells.append(None)
 
-        # Build gridplot rows
-        grid_rows = []
-        for r_idx in range(rows_n):
-            row_cells = cells[r_idx * cols_n : (r_idx + 1) * cols_n]
-            grid_rows.append(row_cells)
-
+        grid_rows = [
+            cells[r * cols_n : (r + 1) * cols_n] for r in range(rows_n)
+        ]
         grid = gridplot(grid_rows, sizing_mode="stretch_width")
 
-        # Compose full layout: optional filter bar on top, then grid
         if filter_row_widgets:
-            filter_bar = row(filter_row_widgets, sizing_mode="stretch_width")
+            filter_bar  = row(filter_row_widgets, sizing_mode="stretch_width")
             layout_root = column(filter_bar, grid, sizing_mode="stretch_width")
         else:
             layout_root = grid
@@ -7178,29 +6943,249 @@ class DashRenderer:
             header_items = []
             if title_text:
                 header_items.append(Div(
-                    text=f'<h2 style="font-family:sans-serif;margin-bottom:2px;">{title_text}</h2>',
+                    text=(
+                        f'<h2 style="font-family:sans-serif;margin-bottom:2px;">'
+                        f'{title_text}</h2>'
+                    ),
                     sizing_mode="stretch_width",
                 ))
             if subtitle_text:
                 header_items.append(Div(
-                    text=f'<p style="font-family:sans-serif;color:#555;margin-top:0;margin-bottom:8px;">{subtitle_text}</p>',
+                    text=(
+                        f'<p style="font-family:sans-serif;color:#555;'
+                        f'margin-top:0;margin-bottom:8px;">{subtitle_text}</p>'
+                    ),
                     sizing_mode="stretch_width",
                 ))
             layout_root = column(*header_items, layout_root,
                                  sizing_mode="stretch_width")
 
-        # ---- 7. Render to HTML ----
         html_str = file_html(layout_root, INLINE, title=title_text or "dash")
 
-        # Inject CSP meta tag and scheme CSS into <head>
         _scheme_css = self.scheme.css_block()
         html_str = html_str.replace(
             "<head>",
             f"<head>\n    {_CSP_META}\n{_scheme_css}",
             1,
         )
-
         return html_str
+
+    # ------------------------------------------------------------------
+    # Main render method
+    # ------------------------------------------------------------------
+
+    def render(self) -> str:
+        """Build the complete dashboard and return standalone HTML.
+
+        Orchestrates six phases in order:
+          1. Collect all variable names referenced across graphs, KPIs, and filters.
+          2. Build ColumnDataSources (shared linked source or per-graph sources).
+          2b. Handle by() faceting on unlinked sources.
+          3. Build Bokeh figures (and collect aggregate sources).
+          4. Build KPI Div widgets  → ``_build_kpi_html``
+          5. Build filter widgets and wire callbacks  → ``_build_filter_widgets``
+          6. Assemble layout and render HTML  → ``_assemble_layout``
+
+        Returns:
+            A string containing the full standalone HTML page.
+        """
+        graphs = self.master_spec.get("graphs", [])
+        kpis   = self.master_spec.get("kpis", [])
+        build  = self.master_spec.get("build_options", {})
+
+        # ---- Parse build options ----
+        _link_raw_render = build.get("link", [])
+        if isinstance(_link_raw_render, list):
+            link_names: list[str] = [str(x) for x in _link_raw_render]
+        else:
+            link_names = _link_raw_render.replace(";", " ").split()
+        filters_cfg = build.get("filters", [])
+        if not filters_cfg:
+            _raw_f = build.get("filter", "")
+            if _raw_f:
+                filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
+        title_text    = html.escape(build.get("title", ""))
+        subtitle_text = html.escape(build.get("subtitle", "") or "")
+
+        # ---- 1. Collect all variable names (reference / future use) ----
+        all_vars: list[str] = []
+        for g in graphs:
+            for vname in DashRenderer._collect_plot_vars(g.get("plots", [])):
+                if vname not in all_vars:
+                    all_vars.append(vname)
+        for kpi in kpis:
+            v = kpi.get("varname")
+            if v and v not in all_vars:
+                all_vars.append(v)
+        for fc in filters_cfg:
+            v = fc.get("varname")
+            if v and v not in all_vars:
+                all_vars.append(v)
+        for g in graphs:
+            by_raw = (g.get("graph_options", {}).get("by") or "").strip()
+            if by_raw:
+                varlist, _, _, _ = DashRenderer._parse_by_raw(by_raw)
+                for bv in varlist.split():
+                    if bv and bv not in all_vars:
+                        all_vars.append(bv)
+
+        # ---- 2. Build ColumnDataSources ----
+        if link_names:
+            linked_vars: list[str] = []
+            for g in graphs:
+                gname = g.get("graph_options", {}).get("name", "")
+                if gname in link_names:
+                    for vname in DashRenderer._collect_graph_vars(self.df, g):
+                        if vname not in linked_vars:
+                            linked_vars.append(vname)
+                    by_raw_lnk = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw_lnk:
+                        varlist_lnk, _, _, _ = DashRenderer._parse_by_raw(by_raw_lnk)
+                        for bv in varlist_lnk.split():
+                            if bv and bv not in linked_vars:
+                                linked_vars.append(bv)
+            for fc in filters_cfg:
+                v = fc.get("varname")
+                if v and v not in linked_vars and v in self.df.columns:
+                    linked_vars.append(v)
+            for kpi in kpis:
+                kupdate = kpi.get("update", "filter")
+                if kupdate in ("filter", "both"):
+                    kvar = kpi.get("var") or kpi.get("varname", "")
+                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
+                        linked_vars.append(kvar)
+            _AGG_TYPES_RENDER = frozenset({"histogram", "hist", "kdensity"})
+            for g in graphs:
+                gname = g.get("graph_options", {}).get("name", "")
+                if gname in link_names:
+                    continue
+                for plot in g.get("plots", []):
+                    if plot.get("type", "") in _AGG_TYPES_RENDER:
+                        vname = plot.get("var") or plot.get("yvar", "")
+                        if vname and vname not in linked_vars and vname in self.df.columns:
+                            linked_vars.append(vname)
+            linked_source = self._make_source(linked_vars)
+            for g in graphs:
+                name = g.get("graph_options", {}).get("name", "")
+                if name in link_names:
+                    self.sources[name] = linked_source
+                    by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw_lnk2:
+                        by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
+                        facet_entries_lnk = []
+                        facet_masks_lnk   = []
+                        for idx, (label, group_df) in enumerate(by_groups_lnk):
+                            fkey = f"{name}__by__{idx}"
+                            mask = [i in group_df.index for i in self.df.index]
+                            facet_entries_lnk.append((fkey, label))
+                            facet_masks_lnk.append((label, mask))
+                        self._facet_map[name]   = facet_entries_lnk
+                        self._facet_masks[name] = facet_masks_lnk
+                else:
+                    g_vars      = DashRenderer._collect_graph_vars(self.df, g)
+                    filtered_df = self._apply_graph_filter(g)
+                    self.sources[name] = self._make_source(g_vars, df=filtered_df)
+        else:
+            for g in graphs:
+                name   = g.get("graph_options", {}).get("name", "")
+                g_vars = DashRenderer._collect_graph_vars(self.df, g)
+                for fc in filters_cfg:
+                    fv = fc.get("varname", "")
+                    if fv and fv not in g_vars:
+                        g_vars.append(fv)
+                filtered_df = self._apply_graph_filter(g)
+                self.sources[name] = self._make_source(g_vars, df=filtered_df)
+
+        # ---- 2b. Handle by() faceting on unlinked sources ----
+        for g in graphs:
+            name    = g.get("graph_options", {}).get("name", "")
+            by_raw  = (g.get("graph_options", {}).get("by") or "").strip()
+            if by_raw and name not in link_names:
+                base_src = self.sources.pop(name, None)
+                if base_src is None:
+                    continue
+                by_groups = self._expand_by_groups(g, base_df=self.df)
+                if len(by_groups) == 1 and by_groups[0][0] == "":
+                    self.sources[name] = base_src
+                else:
+                    g_vars        = list(base_src.data.keys())
+                    facet_entries = []
+                    for idx, (label, group_df) in enumerate(by_groups):
+                        fkey = f"{name}__by__{idx}"
+                        self.sources[fkey] = self._make_source(g_vars, df=group_df)
+                        facet_entries.append((fkey, label))
+                    self._facet_map[name] = facet_entries
+
+        # ---- 3. Build figures ----
+        for g in graphs:
+            name = g.get("graph_options", {}).get("name", "")
+            if name in self._facet_map:
+                shared_src_render = self.sources.get(name)
+                masks_render      = self._facet_masks.get(name, [])
+                for panel_idx_r, (fkey, label) in enumerate(self._facet_map[name]):
+                    if shared_src_render is not None and name in link_names:
+                        src = shared_src_render
+                        if panel_idx_r < len(masks_render):
+                            _, mask_r   = masks_render[panel_idx_r]
+                            panel_view_r = CDSView(filter=BooleanFilter(booleans=mask_r))
+                        else:
+                            panel_view_r = None
+                    else:
+                        src          = self.sources.get(fkey)
+                        panel_view_r = None
+                    if src is None:
+                        continue
+                    try:
+                        fig = self._make_figure(g, src, facet_view=panel_view_r)
+                        orig_title = fig.title.text if fig.title else ""
+                        fig.title.text = f"{orig_title} — {label}" if orig_title else label
+                        self.figures[fkey] = fig
+                    except Exception as exc:
+                        raise RuntimeError(
+                            f"dash_render: failed to build facet figure '{fkey}': {exc}"
+                        ) from exc
+            else:
+                src = self.sources.get(name)
+                if src is None:
+                    continue
+                try:
+                    self.figures[name] = self._make_figure(g, src)
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"dash_render: failed to build figure '{name}': {exc}"
+                    ) from exc
+
+        # ---- 3b. Collect aggregate sources for filter recomputation ----
+        for _gname, _fig in self.figures.items():
+            _agg_list = [
+                (_r._dash_agg_source, dict(_r._dash_agg_config))
+                for _r in _fig.renderers
+                if hasattr(_r, "_dash_agg_source") and hasattr(_r, "_dash_agg_config")
+            ]
+            if _agg_list:
+                self.agg_source_registry[_gname] = _agg_list
+
+        # ---- 4. Build KPI Divs ----
+        self._build_kpi_html(kpis)
+
+        # ---- 5. Build filter widgets and wire callbacks ----
+        filter_row_widgets = self._build_filter_widgets(filters_cfg, link_names, kpis)
+
+        # ---- 6. Assemble layout and render to HTML ----
+        all_names:  list[str] = list(self.kpi_divs.keys())
+        kpi_names:  list[str] = list(self.kpi_divs.keys())
+        for g in graphs:
+            all_names.append(g.get("graph_options", {}).get("name", ""))
+
+        return self._assemble_layout(
+            graphs=graphs,
+            all_names=all_names,
+            kpi_names=kpi_names,
+            filter_row_widgets=filter_row_widgets,
+            build=build,
+            title_text=title_text,
+            subtitle_text=subtitle_text,
+        )
 
 
 # ===========================================================================
