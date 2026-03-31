@@ -190,6 +190,7 @@ string scalar _expand_optkey(string scalar name) {
     // fill options
     if (name == "fc")    return("fcolor")
     if (name == "fi")    return("fintensity")
+    if (name == "fa")    return("falpha")
     if (name == "blc")   return("blcolor")
     if (name == "bfc")   return("bfcolor")
     if (name == "bw")    return("barwidth")

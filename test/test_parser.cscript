@@ -1,7 +1,7 @@
 *! test_parser.cscript  v2.0
 *! Certification script for the dash command parsing (syntax-based, v2.0 architecture).
 *!
-*! Tests: P1A-31 through P1A-43  (rewritten for syntax-based parsing)
+*! Tests: P1A-31 through P1A-45  (rewritten for syntax-based parsing)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -156,6 +156,30 @@ assert _rc != 0
 _dash_parse_varpart_1v mpg
 assert "`s(varlist)'" == "mpg"
 display "P1A-43 PASS: varpart_1v enforces single variable"
+
+// ================================================================
+// P1A-44 — _dash_expand_opts_str: fa() expands to falpha()
+// (regression for bug: fa was not listed in _expand_optkey)
+// ================================================================
+local exp44 ""
+mata: _dash_expand_opts_str("fc(ltblue) fa(0.4)", "exp44")
+_dash_parse_plot_opts , `exp44'
+assert "`s(fcolor)'"  == "ltblue"
+assert "`s(falpha)'"  == "0.4"
+display "P1A-44 PASS: fa→falpha(0.4) and fc→fcolor(ltblue) expanded correctly"
+
+// ================================================================
+// P1A-45 — fa() works on histogram in a compound spec (end-to-end)
+// (regression: histogram, fc(ltblue) fa(0.4) previously error-ed)
+// ================================================================
+sysuse auto, clear
+dash clear
+capture {
+    dash (histogram mpg, fc(ltblue) fa(0.4)) (kdensity mpg), name(u3)
+}
+assert _rc == 0
+display "P1A-45 PASS: fa() accepted on histogram in compound spec"
+dash clear
 
 display ""
 display "All syntax-based parser tests PASSED."
