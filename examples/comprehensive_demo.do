@@ -244,7 +244,7 @@ dash scatteri 35 1800 28 2100 22 2800 18 3500 15 4200, ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m13: function  (mathematical formula over a range)
-dash function y = 50 - 0.009 * x if x in [1500, 5000], ///
+dash function "y = 50 - 0.009 * x if x in [1500, 5000]", ///
      lc(red) lw(medthick) ///
      name(m13) title("Function Plot: MPG ≈ 50 - 0.009 × Weight") ///
      xtitle("Weight (lbs.)") ytitle("Predicted MPG")
@@ -278,5 +278,5 @@ dash build,                                                         ///
     tabs(univariate:   u1 u2 u3 u4 u5                             ///
        / bivariate:    b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 ///
        / multivariate: m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13) ///
-    filter_position(left)                                          ///
+    filterposition(left)                                           ///
     replace
