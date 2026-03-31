@@ -1,0 +1,108 @@
+*! test_ado_loads.cscript
+*! Regression tests — Bug 15 and Bug 16: dash.ado load-time failures.
+*!
+*! Bug 15: dash.ado failed to load due to python:...end closing program define
+*! blocks prematurely (rc=199: "command end is unrecognized").
+*! Fix: extract all python: blocks into a dedicated _dash_do_render helper
+*! program so that post-render Stata code remains inside the caller program.
+*!
+*! Bug 16: Mata library (dash_parse.mata) not auto-loaded when dash.ado
+*! is used from a user script that doesn't explicitly run dash_parse.mata.
+*! Calling any dash subcommand produced: _dash_check_utf8() not found (rc=3499).
+*! Fix: add a top-level findfile/run block in dash.ado to load the Mata library
+*! automatically on first use.
+*!
+*! Tests: P15-01 through P15-04, P16-01 through P16-02
+*!
+*! Usage:  do test/test_ado_loads.cscript  (run from the dash/ directory)
+*! Or via: cd test && do test_ado_loads.cscript
+*!
+*! Version: 1.1.0  28mar2026
+
+cscript "dash.ado loads without error (Bug 15+16 regression)" adodir ".."
+
+// ================================================================
+// P15-01 — dash_parse.mata loads (Mata rc is non-fatal, not checked)
+// ================================================================
+// do returns rc=3000 for Mata compilation — this is non-fatal.
+// Match pattern used by test_parser.cscript and test_e2e_single.cscript:
+// run the file, don't assert _rc==0, just let fatal errors propagate.
+do "../dash_parse.mata"
+display "P15-01 PASS: dash_parse.mata loaded (non-fatal Mata rc is expected)"
+
+// ================================================================
+// P15-02 — dash.ado loads without error
+//
+// Before the Bug 15 fix, loading dash.ado produced:
+//   command end is unrecognized  (rc=199)
+//   (error occurred while loading dash.ado)
+// because python:...end inside _dash_render_immediate closed the
+// program define prematurely, leaving post-python browser-open Stata
+// code at the top level, followed by a stray end token.
+//
+// The same bug existed in _dash_build (stray end at end of program)
+// and _dash_serve (duplicate end).
+// ================================================================
+do "../dash.ado"
+display "P15-02 PASS: dash.ado loaded without error"
+
+// ================================================================
+// P15-03 — dash clear runs successfully (exercises _dash_clear)
+//
+// Before the fix, _dash_clear was defined AFTER the broken
+// _dash_render_immediate in the file. Because loading aborted at
+// the stray end in _dash_render_immediate, _dash_clear was never
+// defined and calling dash clear would fail with:
+//   unrecognized command: _dash_clear
+// ================================================================
+dash clear
+display "P15-03 PASS: dash clear executed without error"
+
+// ================================================================
+// P15-04 — all expected programs are defined after loading dash.ado
+//
+// Before the fix, only programs defined BEFORE the broken
+// _dash_render_immediate were available. Programs defined after it
+// (_dash_do_render, _dash_render_immediate, _dash_clear, _dash_kpi,
+//  _dash_build, _dash_serve) were missing.
+// ================================================================
+foreach prog in dash _dash_validate_path _dash_json_str _dash_kv_json  ///
+    _dash_parse_graph_opts _dash_parse_plot_opts                        ///
+    _dash_parse_varpart_std _dash_parse_varpart_1v                      ///
+    _dash_parse_varpart_3v  _dash_parse_varpart_4v                      ///
+    _dash_parse_varpart_any _dash_plot_opts_to_json                     ///
+    _dash_graph_opts_to_json _dash_process_segment                      ///
+    _dash_plot _dash_register_graph _dash_do_render                     ///
+    _dash_render_immediate _dash_clear _dash_kpi _dash_build            ///
+    _dash_serve {
+    capture program list `prog'
+    if _rc != 0 {
+        display as error "P15-04 FAIL: program `prog' not defined after loading"
+        exit 9
+    }
+}
+display "P15-04 PASS: all expected programs defined after loading dash.ado"
+
+// ================================================================
+// P16-01 — Mata library functions are available after loading
+//
+// Verify that _dash_check_utf8 (and other Mata functions defined in
+// dash_parse.mata) are callable. Either they were loaded by P15-01's
+// explicit do, or by dash.ado's auto-load mechanism — either way they
+// must be present and functional.
+// ================================================================
+capture mata: _dash_check_utf8("")
+if _rc != 0 {
+    display as error "P16-01 FAIL: _dash_check_utf8() not callable (rc=`_rc')"
+    exit 9
+}
+display "P16-01 PASS: _dash_check_utf8() callable in Mata"
+
+// ================================================================
+// P16-02 — dash clear works (exercises Mata-dependent routing path)
+// ================================================================
+dash clear
+display "P16-02 PASS: dash clear works (Mata routing functional)"
+
+display ""
+display "All Bug 15 + Bug 16 regression tests PASSED."

@@ -1,0 +1,76 @@
+*! test_mata_autoload.cscript
+*! Regression test — Bug 16: dash.ado did not auto-load dash_parse.mata,
+*! causing "_dash_check_utf8() not found" (rc=3499) when any dash subcommand
+*! was called without the user having first run dash_parse.mata manually.
+*!
+*! Fix: top-level findfile/run block in dash.ado locates and runs
+*! dash_parse.mata automatically when dash.ado is first loaded by Stata.
+*!
+*! This test deliberately does NOT pre-load dash_parse.mata.  It invokes
+*! the dash command via Stata's normal command dispatch, relying on the
+*! current directory (".") being the dash/ package directory.  This matches
+*! both the development use-case (running from dash/) and the installed
+*! use-case (PLUS/d/ is on the ado-path).
+*!
+*! Tests: P16A-01 through P16A-03
+*!
+*! Usage:  cd dash && do test/test_mata_autoload.cscript
+*!   (current directory must be dash/ so findfile finds dash_parse.mata)
+*!
+*! Version: 1.2.0  28mar2026
+
+cscript "dash.ado auto-loads Mata library (Bug 16 regression)" adodir "."
+
+// NOTE: do NOT run dash_parse.mata here — that is the point of this test.
+//       dash.ado must load it automatically via its findfile/run mechanism.
+//
+// adodir "." adds the current directory (dash/) to the ado-path for command
+// dispatch AND findfile uses c(adopath) which already includes ".".  So:
+//   - "dash clear" triggers command dispatch, finds dash.ado in dash/
+//   - inside dash.ado, findfile dash_parse.mata finds dash/dash_parse.mata
+//   - capture run compiles the Mata library
+//
+// Run this test from the dash/ directory (NOT from test/).
+
+// ================================================================
+// P16A-01 — dash clear works without prior do dash_parse.mata
+//
+// Before the Bug 16 fix, this would produce:
+//   <istmt>:  3499  _dash_check_utf8() not found
+// because _dash_plot called mata: _dash_check_utf8() before dash.ado
+// had loaded the Mata library.
+// ================================================================
+dash clear
+display "P16A-01 PASS: dash clear executed without error (auto-load triggered)"
+
+// ================================================================
+// P16A-02 — Mata function _dash_check_utf8 is now available
+//
+// Verify that the auto-load compiled the Mata library:
+// _dash_check_utf8 must be callable after the first dash command.
+// ================================================================
+capture mata: _dash_check_utf8("")
+if _rc != 0 {
+    display as error "P16A-02 FAIL: _dash_check_utf8() not callable after auto-load"
+    display as error "  dash.ado findfile/run block did not compile the Mata library."
+    exit 9
+}
+display "P16A-02 PASS: _dash_check_utf8() callable after auto-load"
+
+// ================================================================
+// P16A-03 — All required Mata functions are available after auto-load
+// ================================================================
+foreach _fn in _dash_check_utf8 _dash_split_segs _dash_expand_opts_str ///
+               _dash_extract_vars {
+    capture mata: `_fn'("")
+    // rc=3498 (wrong arg count) or rc=0 = function exists
+    // rc=3499 (not found) = function missing (FAIL)
+    if `=_rc' == 3499 {
+        display as error "P16A-03 FAIL: Mata function `_fn'() not found after auto-load"
+        exit 9
+    }
+}
+display "P16A-03 PASS: all Mata functions available after auto-load"
+
+display ""
+display "All Bug 16 regression tests PASSED."
