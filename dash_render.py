@@ -5632,14 +5632,17 @@ class DashRenderer:
                         pass
 
         # ---- Comprehensive HoverTool ----
-        # Build or replace the hover tool to show primary vars + any extras
-        # listed in graph_options["hover"].  Applies to all figure types that
-        # have data in the shared source; skips figures that already carry
-        # a hover tool added by a glyph mapper unless extra vars are requested.
+        # Build a comprehensive hover tool to show primary vars + any extras
+        # listed in graph_options["hover"].  Always add this to ensure consistent
+        # tooltips across all renderers and layouts (especially Bootstrap tabs).
+        # If extra hover vars are requested, remove any existing hover tools first.
         _hover_extra_str = graph_opts.get("hover", "").strip()
         _hover_extra = _hover_extra_str.split() if _hover_extra_str else []
         _has_hover = any(isinstance(t, HoverTool) for t in fig.tools)
-        if _hover_extra or not _has_hover:
+        if _has_hover and _hover_extra:
+            # Remove existing hover tools before adding comprehensive one with extras
+            fig.tools = [t for t in fig.tools if not isinstance(t, HoverTool)]
+        if True:  # Always build and add comprehensive hover
             # For range plots (rbar, rcap, rspike, rline, rarea, rconnected),
             # plots[0] uses yvar1/yvar2 keys rather than yvar.
             _p0 = plots[0] if plots else {}
@@ -5661,11 +5664,6 @@ class DashRenderer:
                     _hover_fields.append((_hv, f"@{{{_hv}}}"))
                     _hover_seen.add(_hv)
             if _hover_fields:
-                if _hover_extra:
-                    # Replace any existing hover tools with comprehensive one
-                    fig.tools = [t for t in fig.tools
-                                 if not isinstance(t, HoverTool)]
-
                 # Restrict hover to renderers whose CDS contains every
                 # referenced column.  Fit-line, density, and histogram
                 # renderers use independent CDS objects with generic column
