@@ -130,44 +130,39 @@ dash area mpg weight, fc(ltblue) fa(0.5) ///
      name(b9) title("MPG vs Weight: Area") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
-// b10: bar chart (mean MPG per repair category)
-dash bar mpg rep78, ///
-     name(b10) title("Mean MPG by Repair Record: Bar") ///
-     xtitle("Repair Record") ytitle("Mileage (mpg)")
-
-// b11: spike
+// b10: spike
 dash spike mpg weight, lc(navy) ///
-     name(b11) title("MPG vs Weight: Spike") ///
+     name(b10) title("MPG vs Weight: Spike") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // b12: dropline
 dash dropline mpg weight, mc(maroon) lc(maroon) ///
-     name(b12) title("MPG vs Weight: Dropline") ///
+     name(b11) title("MPG vs Weight: Dropline") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // b13: dot plot (dotplot of MPG by repair record)
 dash dot mpg rep78, mc(navy) ///
-     name(b13) title("MPG by Repair Record: Dot") ///
+     name(b12) title("MPG by Repair Record: Dot") ///
      xtitle("Repair Record") ytitle("Mileage (mpg)")
 
 // b14: rarea  (range area — mpg ± 2 vs weight)
 dash rarea mpg_lo mpg_hi weight, fc(ltblue) fa(0.4) lw(0) ///
-     name(b14) title("MPG Range vs Weight: rarea") ///
+     name(b13) title("MPG Range vs Weight: rarea") ///
      xtitle("Weight (lbs.)") ytitle("MPG ± 2")
 
 // b15: rbar  (range bar)
 dash rbar mpg_lo mpg_hi weight, fc(maroon) ///
-     name(b15) title("MPG Range vs Weight: rbar") ///
+     name(b14) title("MPG Range vs Weight: rbar") ///
      xtitle("Weight (lbs.)") ytitle("MPG ± 2")
 
 // b16: rcap  (range cap — confidence-interval caps)
 dash rcap mpg_lo mpg_hi weight, lc(navy) ///
-     name(b16) title("MPG Range vs Weight: rcap") ///
+     name(b15) title("MPG Range vs Weight: rcap") ///
      xtitle("Weight (lbs.)") ytitle("MPG ± 2")
 
 // b17: rspike  (range spike)
 dash rspike mpg_lo mpg_hi weight, lc(forest_green) ///
-     name(b17) title("MPG Range vs Weight: rspike") ///
+     name(b16) title("MPG Range vs Weight: rspike") ///
      xtitle("Weight (lbs.)") ytitle("MPG ± 2")
 
 // ================================================================
@@ -203,13 +198,12 @@ dash (scatter mpg weight, mc(orange) msi(small))  ///
      name(m5) title("Fractional Poly Fit + CI (fpfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
-// m6: 5-group categorical overlay  (5 rep78 groups, distinct color + marker)
-dash (scatter mpg weight if rep78==1, mc(navy)         ms(circle)            msi(small)) ///
-     (scatter mpg weight if rep78==2, mc(maroon)       ms(square)            msi(small)) ///
-     (scatter mpg weight if rep78==3, mc(forest_green) ms(triangle)          msi(small)) ///
-     (scatter mpg weight if rep78==4, mc(orange)       ms(diamond)           msi(small)) ///
-     (scatter mpg weight if rep78==5, mc(purple)       ms(inverted_triangle) msi(small)), ///
-     name(m6) title("MPG vs Weight: 5 Repair Record Categories") ///
+// m6: scatter with color encoding by repair record
+// Uses colorvar() to encode rep78 values as distinct colors
+// Note: To use different marker shapes per group, use multiple scatter commands with if conditions
+//       (as shown in commented code below). Future versions may support marker shape encoding.
+dash scatter mpg weight, colorvar(rep78), ///
+     name(m6) title("MPG vs Weight: Color-Coded by Repair Record") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m7: rconnected  (range connected — mpg ± 2 vs weight)
@@ -236,18 +230,6 @@ dash rscatter mpg_lo mpg_hi weight, mc(navy) ///
 dash pcarrow pc_y1 pc_x1 pc_y2 pc_x2, ///
      name(m11) title("Paired-Coordinate Arrows (pcarrow)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
-
-// m12: scatteri  (immediate scatter — reference points, no dataset)
-dash scatteri 35 1800 28 2100 22 2800 18 3500 15 4200, ///
-     ms(diamond) mc(red) msi(large) ///
-     name(m12) title("Scatter Immediate: Reference Points (scatteri)") ///
-     xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
-
-// m13: function  (mathematical formula over a range)
-dash function "y = 50 - 0.009 * x if x in [1500, 5000]", ///
-     lc(red) lw(medthick) ///
-     name(m13) title("Function Plot: MPG ≈ 50 - 0.009 × Weight") ///
-     xtitle("Weight (lbs.)") ytitle("Predicted MPG")
 
 // ================================================================
 // BUILD THE DASHBOARD
@@ -276,7 +258,7 @@ dash build,                                                         ///
     filter(weight,  type(slider))                                  ///
     link(b1 b2 b3 m6)                                              ///
     tabs(univariate:   u1 u2 u3 u4 u5                             ///
-       / bivariate:    b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 ///
-       / multivariate: m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13) ///
+       / bivariate:    b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 ///
+       / multivariate: m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11) ///
     filterposition(left)                                           ///
     replace
