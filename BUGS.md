@@ -64,10 +64,11 @@
   - Suggested fix: Reuse `DashRenderer._parse_filter_raw(...)` (already supports `||` and `;`) or, at minimum, split on both delimiters in `ServerAppBuilder`.
   - Resolution: Fixed. Replaced the hand-rolled semicolon-only split loop in `ServerAppBuilder._generate_app_source` (dash_render.py ~7322-7338) with a single call to `DashRenderer._parse_filter_raw(filter_raw)`, which already normalises `;` to `||` and splits on `||`. The only adaptation was mapping the `"varname"` key from `_parse_filter_raw` to the `"var"` key expected by the server builder. 5 regression tests added in `test/test_server.py` class `TestServerFilterOrClauses` (BUG-FILT-OR-1a through BUG-FILT-OR-1e). All 1259 tests pass.
 
-- [ ] Title: saving() path is shell-invoked without shell-metacharacter hardening
+- [x] Title: saving() path is shell-invoked without shell-metacharacter hardening
   - File Names and Line Numbers: dash.ado (137-150, 1426-1428)
   - Description: `_dash_validate_path` only checks for `..` and `.html`, then `_dash_build` executes `shell open|start|xdg-open "`saving'"` with the raw path. Because this is direct shell invocation with interpolated user-controlled text, shell metacharacters are not explicitly blocked. This is a security bug surface, not a feature: path validation claims safety but does not harden against shell-special input before command execution.
   - Suggested fix: Avoid shell command construction from raw `saving()` text (prefer a non-shell launch path where available), or reject shell metacharacters (`$`, backticks, `;`, `&`, `|`, `<`, `>`, parentheses/newlines`) before invoking `shell`.
+  - Resolution: Fixed. Added a shell-metacharacter rejection loop in `_dash_validate_path` (dash.ado lines ~162-175) that builds a string of disallowed characters (`;`, `&`, `|`, `<`, `>`, `(`, `)`, backtick chr(96), dollar chr(36), newline chr(10), carriage-return chr(13), tab chr(9)) using `char()` to avoid Stata macro-expansion of `$`/backtick inside string literals, then iterates character-by-character with `strpos` and exits 198 on any match. 12 regression tests added in `test/test_server.py` class `TestSavingPathHardening` (BUG-SHELL-1a through BUG-SHELL-1l). All 1271 tests pass.
 
 - [ ] Title: Generated server unsafe-token regex is corrupted by backspace escapes
   - File Names and Line Numbers: dash_render.py (7873, 8924-8926)

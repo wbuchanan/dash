@@ -159,6 +159,19 @@ program define _dash_validate_path
         display as error "dash: saving() path must end in .html (got: `fpath')"
         exit(198)
     }
+    // Reject shell metacharacters to prevent command injection via shell open/start/xdg-open.
+    // Blocked characters: ; & | < > ( ) backtick(96) dollar(36) newline(10) carriage-return(13) tab(9)
+    // Use char() for chars that Stata would expand/misinterpret inside double-quoted strings.
+    local _shell_bad = ";&|<>()" + char(96) + char(36) + char(10) + char(13) + char(9)
+    local _pi = 1
+    while `_pi' <= length("`_shell_bad'") {
+        local _bc = substr("`_shell_bad'", `_pi', 1)
+        if strpos(`"`fpath'"', `"`_bc'"') > 0 {
+            display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
+            exit(198)
+        }
+        local _pi = `_pi' + 1
+    }
 end
 
 

@@ -4854,3 +4854,88 @@ class TestServerFilterOrClauses:
         assert "foreign" in src, "first filter var must appear"
         assert "weight" in src, "second filter var must appear"
         assert "'mpg'" in src, "third filter var must appear"
+
+
+# ---------------------------------------------------------------------------
+# BUG-SHELL: saving() path shell-metacharacter hardening
+# ---------------------------------------------------------------------------
+
+def _validate_saving_path(fpath: str) -> None:
+    """Python re-implementation of Stata's _dash_validate_path logic.
+
+    Raises ValueError if fpath contains '..' (path traversal), does not end
+    in '.html', or contains any shell metacharacter that could be exploited
+    in ``shell open/start/xdg-open "<path>"``.
+    """
+    import re
+    if ".." in fpath:
+        raise ValueError("path traversal not allowed")
+    if not fpath.lower().endswith(".html"):
+        raise ValueError("path must end in .html")
+    # Shell metacharacters: ; & | < > ( ) backtick dollar newline CR tab
+    _SHELL_BAD = set(";&|<>()\x60\x24\n\r\t")
+    for ch in fpath:
+        if ch in _SHELL_BAD:
+            raise ValueError(f"disallowed character in path: {ch!r}")
+
+
+class TestSavingPathHardening:
+    """Regression tests for BUG-SHELL: saving() path must not allow shell metacharacters."""
+
+    def test_normal_path_accepted(self):
+        """BUG-SHELL-1a: a normal absolute path ending in .html must be accepted."""
+        _validate_saving_path("/tmp/my_dashboard.html")  # must not raise
+
+    def test_path_with_spaces_accepted(self):
+        """BUG-SHELL-1b: spaces in paths are permitted (valid on all OSes)."""
+        _validate_saving_path("/tmp/my dashboard.html")  # must not raise
+
+    def test_path_traversal_rejected(self):
+        """BUG-SHELL-1c: path containing '..' must be rejected."""
+        with pytest.raises(ValueError, match="path traversal"):
+            _validate_saving_path("/tmp/../etc/passwd.html")
+
+    def test_non_html_rejected(self):
+        """BUG-SHELL-1d: path not ending in .html must be rejected."""
+        with pytest.raises(ValueError, match=".html"):
+            _validate_saving_path("/tmp/dashboard.py")
+
+    def test_semicolon_in_path_rejected(self):
+        """BUG-SHELL-1e: semicolon must be rejected (command chaining)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo;rm -rf /.html")
+
+    def test_ampersand_in_path_rejected(self):
+        """BUG-SHELL-1f: ampersand must be rejected (background execution)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo&id.html")
+
+    def test_pipe_in_path_rejected(self):
+        """BUG-SHELL-1g: pipe must be rejected (output piping)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo|cat /etc/passwd.html")
+
+    def test_backtick_in_path_rejected(self):
+        """BUG-SHELL-1h: backtick must be rejected (command substitution)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo`id`.html")
+
+    def test_dollar_in_path_rejected(self):
+        """BUG-SHELL-1i: dollar sign must be rejected (variable expansion)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo$(touch /tmp/pwned).html")
+
+    def test_angle_bracket_in_path_rejected(self):
+        """BUG-SHELL-1j: < and > must be rejected (redirection)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo</dev/urandom.html")
+
+    def test_newline_in_path_rejected(self):
+        """BUG-SHELL-1k: newline in path must be rejected (command injection)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo\nrm -rf /.html")
+
+    def test_paren_in_path_rejected(self):
+        """BUG-SHELL-1l: parenthesis must be rejected (subshell invocation)."""
+        with pytest.raises(ValueError, match="disallowed character"):
+            _validate_saving_path("/tmp/foo(bar).html")
