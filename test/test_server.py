@@ -5038,3 +5038,101 @@ class TestUnsafeTokenRegexWordBoundaries:
             "_UNSAFE_BY pattern must not contain backspace (\\x08); use \\b word boundary"
         assert r"\b" in unsafe_by_block, \
             "_UNSAFE_BY pattern must contain \\b word-boundary markers"
+
+
+# ---------------------------------------------------------------------------
+# BUG-IQUAL: Immediate render jsonio qualifier wrongly pre-filters multi-plot data
+# ---------------------------------------------------------------------------
+
+class TestImmediateRenderQualifierHandling:
+    """Regression tests for BUG-IQUAL: immediate render must not pre-filter
+    jsonio with the first plot's qualifier when multiple plots have different
+    if/in expressions.  The renderer must receive all rows and apply per-graph
+    filtering itself via _apply_graph_filter."""
+
+    def _make_multi_qualifier_spec(self, if1: str, if2: str) -> dict:
+        """Build a graph spec where two scatter plots have different if_expr."""
+        return {
+            "graphs": [{
+                "plots": [
+                    {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                     "options": {}, "if_expr": if1, "in_expr": ""},
+                    {"type": "scatter", "yvar": "price", "xvar": "weight",
+                     "options": {}, "if_expr": if2, "in_expr": ""},
+                ],
+                "graph_options": {"name": "g1"},
+                # No top-level if_expr: renderer must not filter by either per-plot qualifier
+                "if_expr": "",
+                "in_expr": "",
+            }],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "filter": "",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "",
+                "mode": "standalone", "port": "5006",
+            },
+        }
+
+    def test_renderer_with_no_toplevel_filter_uses_all_rows(self, dr_module, auto_df):
+        """BUG-IQUAL-1a: renderer with empty top-level if_expr must use all rows."""
+        spec = self._make_multi_qualifier_spec("foreign==1", "foreign==0")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False)
+        out_f.close()
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            # _apply_graph_filter with empty if_expr must return full df
+            g = spec["graphs"][0]
+            filtered = renderer._apply_graph_filter(g)
+            assert len(filtered) == len(auto_df), \
+                "with empty top-level if_expr, _apply_graph_filter must return all rows"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_renderer_applies_toplevel_filter_not_perplot(self, dr_module, auto_df):
+        """BUG-IQUAL-1b: renderer must use graph-level if_expr, not per-plot qualifiers."""
+        # Set top-level if_expr to a specific condition (as _dash_plot promotes it)
+        spec = self._make_multi_qualifier_spec("foreign==1", "foreign==0")
+        spec["graphs"][0]["if_expr"] = "foreign==1"  # promoted from first plot
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            g = spec["graphs"][0]
+            filtered = renderer._apply_graph_filter(g)
+            # With graph-level "foreign==1", only foreign==1 rows should be returned
+            expected = auto_df[auto_df["foreign"] == 1]
+            assert len(filtered) == len(expected), \
+                "renderer must apply graph-level if_expr not per-plot qualifiers"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_renderer_multi_qualifier_spec_renders_without_crash(self, dr_module, auto_df):
+        """BUG-IQUAL-1c: multi-plot spec with different per-plot qualifiers must render."""
+        spec = self._make_multi_qualifier_spec("foreign==1", "foreign==0")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html = renderer.render()
+            assert len(html) > 100, "rendered HTML must be non-trivial"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_full_data_available_when_no_toplevel_filter(self, dr_module, auto_df):
+        """BUG-IQUAL-1d: when top-level if_expr is empty, renderer df must have all rows."""
+        spec = self._make_multi_qualifier_spec("foreign==1", "foreign==0")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            # self.df should contain all rows since jsonio exported without qualifier
+            assert len(renderer.df) == len(auto_df), \
+                "DashRenderer.df must contain all rows when no pre-filtering was applied"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass

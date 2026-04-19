@@ -931,18 +931,12 @@ program define _dash_render_immediate
     // ---- Serialize data via jsonio ----
     tempfile data_json_path spec_json_path
 
-    // Extract if/in qualifiers from first plot spec for jsonio
-    local if_expr ""
-    local in_expr ""
-    // Extract if/in qualifier values using the JSON-aware Mata extractor
-    // (handles \" escape sequences inside the value, unlike naive strpos/substr).
-    mata: _dash_json_get_str(`"`json_spec'"', "if_expr", "if_expr")
-    mata: _dash_json_get_str(`"`json_spec'"', "in_expr", "in_expr")
-
-    local if_clause ""
-    local in_clause ""
-    if `"`if_expr'"' != "" local if_clause "if `if_expr'"
-    if `"`in_expr'"' != "" local in_clause "in `in_expr'"
+    // Always export ALL rows for the needed variables.  Do NOT pre-filter with
+    // if/in qualifiers here: multiple plots in the same graph can have different
+    // qualifiers, and applying only the first plot's qualifier would silently
+    // discard rows needed by other plots.  The Python renderer applies per-graph
+    // filtering via _apply_graph_filter() using the graph-level "if_expr" /
+    // "in_expr" fields that were promoted to the graph JSON by _dash_plot.
 
     // Check jsonio
     capture which jsonio
@@ -951,7 +945,7 @@ program define _dash_render_immediate
         exit(198)
     }
 
-    quietly jsonio out `needed_vars' `if_clause' `in_clause', ///
+    quietly jsonio out `needed_vars', ///
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
 
