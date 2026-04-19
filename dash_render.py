@@ -6829,8 +6829,10 @@ class DashRenderer:
                     "varname":  _kvar,
                     "decimals": _dec,
                     "commas":   _comma,
-                    "title":    _kdef.get("title", ""),
-                    "subtitle": _kdef.get("subtitle", ""),
+                    # HTML-escape title/subtitle to prevent DOM XSS when the filter
+                    # callback reconstructs kpi_div.text via string concatenation.
+                    "title":    html.escape(_kdef.get("title", "") or ""),
+                    "subtitle": html.escape(_kdef.get("subtitle", "") or ""),
                     "color":    _kdef.get("color", "") or "#212529",
                     "bgcolor":  _kdef.get("bgcolor", "") or "#f8f9fa",
                 })

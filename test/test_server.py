@@ -5340,3 +5340,110 @@ class TestFilterCallbackExcludeAlignment:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-XSS-KPI: KPI filter callback DOM XSS via unescaped title/subtitle
+# ---------------------------------------------------------------------------
+
+class TestKpiFilterCallbackXssHardening:
+    """Regression tests for BUG-XSS-KPI: KPI title/subtitle must be HTML-escaped
+    before being stored in kpi_config_json so that filter callbacks cannot inject
+    script payloads into the dashboard DOM."""
+
+    def _make_xss_kpi_spec(self, title: str, subtitle: str) -> dict:
+        return _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg",
+                                "xvar": "weight", "options": {}}],
+                     "graph_options": {"name": "g1"}}],
+            kpis=[{
+                "name": "k1", "var": "mpg", "stat": "mean",
+                "title": title, "subtitle": subtitle,
+                "color": "#000000", "bgcolor": "#ffffff",
+                "fmt": "%9.2f", "update": "filter",
+            }],
+            build_options={
+                "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "g1",
+                "mode": "standalone", "port": "5006",
+            }
+        )
+
+    def test_script_tag_in_title_is_escaped(self, dr_module, auto_df):
+        """BUG-XSS-KPI-1a: <script> in KPI title must be HTML-escaped in kpi_config_json."""
+        payload = "<script>alert('xss')</script>"
+        spec = self._make_xss_kpi_spec(title=payload, subtitle="ok")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            # The literal <script> must not appear as raw HTML in kpi_config_json
+            # (it should be &lt;script&gt; instead)
+            assert payload not in html_out or \
+                "&lt;script&gt;" in html_out or \
+                html_out.count("<script>") <= 1, \
+                "raw <script> from KPI title must be HTML-escaped in callback config"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_img_onerror_in_subtitle_is_escaped(self, dr_module, auto_df):
+        """BUG-XSS-KPI-1b: img onerror payload in subtitle must be HTML-escaped."""
+        payload = '<img src=x onerror="fetch(\'//evil\')">'
+        spec = self._make_xss_kpi_spec(title="Mean MPG", subtitle=payload)
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if renderer.filter_callbacks:
+                cb_args = renderer.filter_callbacks[0].args
+                kpi_cfg_json = cb_args.get("kpi_config_json", "")
+                # The raw <img tag must not appear unescaped.
+                # html.escape turns '<' → '&lt;' and '>' → '&gt;', so
+                # the literal '<img' must not appear in the JSON.
+                assert "<img" not in kpi_cfg_json, \
+                    "raw <img tag from subtitle must be HTML-escaped in kpi_config_json"
+                # The escaped form must be present instead
+                assert "&lt;img" in kpi_cfg_json, \
+                    "subtitle <img must be stored as &lt;img in kpi_config_json"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_ampersand_in_title_is_escaped(self, dr_module, auto_df):
+        """BUG-XSS-KPI-1c: ampersand in title must be escaped to &amp; in config."""
+        spec = self._make_xss_kpi_spec(title="Mean & Median MPG", subtitle="ok")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if renderer.filter_callbacks:
+                kpi_cfg_json = renderer.filter_callbacks[0].args.get("kpi_config_json", "")
+                assert "&amp;" in kpi_cfg_json, \
+                    "& in title must be escaped to &amp; in kpi_config_json"
+                assert "Mean & Median" not in kpi_cfg_json, \
+                    "raw & must not appear unescaped in kpi_config_json"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_normal_title_preserved_after_escaping(self, dr_module, auto_df):
+        """BUG-XSS-KPI-1d: plain text title without special chars must be unchanged."""
+        spec = self._make_xss_kpi_spec(title="Mean MPG", subtitle="Overall average")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if renderer.filter_callbacks:
+                kpi_cfg_json = renderer.filter_callbacks[0].args.get("kpi_config_json", "")
+                assert "Mean MPG" in kpi_cfg_json, \
+                    "plain text title must survive HTML escaping unchanged"
+                assert "Overall average" in kpi_cfg_json, \
+                    "plain text subtitle must survive HTML escaping unchanged"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
