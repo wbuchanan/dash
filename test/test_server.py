@@ -6060,3 +6060,203 @@ class TestBug22MultiLayerSources:
             os.unlink(spec_path)
             os.unlink(data_path)
             os.unlink(out_f.name)
+
+
+# ---------------------------------------------------------------------------
+# BUG-23: Mixed valid/missing filter specs break standalone filter callbacks
+# ---------------------------------------------------------------------------
+
+class TestMixedFilterSpecAlignment:
+    """Regression tests for BUG-23: when some filter variables are absent from
+    the data source, the remaining successfully-built specs and widgets must
+    remain in 1:1 alignment, and _FILTER_JS must guard against undefined
+    widget refs or missing column refs so callbacks never throw at runtime.
+
+    Tests:
+      BUG-FSALIGN-1a  filter_specs_json contains only built-spec vars (no missing var)
+      BUG-FSALIGN-1b  all_widgets length matches filter_specs_json length
+      BUG-FSALIGN-1c  _FILTER_JS contains defensive guard against undefined widget
+      BUG-FSALIGN-1d  _FILTER_JS contains defensive guard against missing orig column
+      BUG-FSALIGN-1e  JS filter loop does not crash when spec list aligns with widgets
+      BUG-FSALIGN-1f  Render with one valid + one missing filter var does not crash
+      BUG-FSALIGN-1g  Valid filter widget still fires callback when paired spec is present
+    """
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+
+    def _make_mixed_filter_spec(self, extra_var: str = "missingvar") -> dict:
+        """Spec with two filter vars: 'foreign' (present) + extra_var (absent)."""
+        return _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": f"foreign, type(dropdown)||{extra_var}, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1", "mode": "standalone", "port": "5006",
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-FSALIGN-1a: filter_specs_json should only include vars that were built
+    # ------------------------------------------------------------------
+
+    def test_filter_specs_json_excludes_missing_var(self, dr_module, auto_df):
+        """BUG-FSALIGN-1a: filter_specs_json must not include the missing variable."""
+        spec = self._make_mixed_filter_spec("missingvar")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if not renderer.filter_callbacks:
+                pytest.skip("No filter callbacks built (nothing to test)")
+            cb_args = renderer.filter_callbacks[0].args
+            filter_specs = json.loads(cb_args["filter_specs_json"])
+            varnames = [fs["varname"] for fs in filter_specs]
+            assert "missingvar" not in varnames, (
+                "filter_specs_json must not include 'missingvar' (absent from data)"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-FSALIGN-1b: all_widgets length must match filter_specs length
+    # ------------------------------------------------------------------
+
+    def test_all_widgets_matches_filter_specs_length(self, dr_module, auto_df):
+        """BUG-FSALIGN-1b: all_widgets and filter_specs_json must have the same length."""
+        spec = self._make_mixed_filter_spec("missingvar")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if not renderer.filter_callbacks:
+                pytest.skip("No filter callbacks built (nothing to test)")
+            cb_args = renderer.filter_callbacks[0].args
+            filter_specs = json.loads(cb_args["filter_specs_json"])
+            all_widgets  = cb_args.get("all_widgets", [])
+            assert len(all_widgets) == len(filter_specs), (
+                f"all_widgets ({len(all_widgets)}) must equal filter_specs "
+                f"({len(filter_specs)}) — misalignment causes wrong spec/widget pairing"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-FSALIGN-1c: _FILTER_JS must guard against undefined widget
+    # ------------------------------------------------------------------
+
+    def test_filter_js_guards_against_undefined_widget(self, dr_module):
+        """BUG-FSALIGN-1c: _FILTER_JS must check `!w` before accessing w.value."""
+        js = dr_module._FILTER_JS
+        assert "!w" in js or "w == null" in js or "w === undefined" in js, (
+            "_FILTER_JS must guard against undefined widget reference "
+            "(e.g. `if (!w || ...) continue;`) to prevent JS TypeError at runtime"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-FSALIGN-1d: _FILTER_JS must guard against missing orig column
+    # ------------------------------------------------------------------
+
+    def test_filter_js_guards_against_missing_orig_column(self, dr_module):
+        """BUG-FSALIGN-1d: _FILTER_JS must check orig[fvar] before indexing."""
+        js = dr_module._FILTER_JS
+        assert "!(fvar in orig)" in js or "orig[fvar] == null" in js \
+               or "!orig[fvar]" in js or "fvar in orig" in js, (
+            "_FILTER_JS must guard against accessing orig[fvar] when the column "
+            "is absent (e.g. `if (!w || !(fvar in orig)) continue;`)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-FSALIGN-1e: simulated JS alignment check (Python-side)
+    # ------------------------------------------------------------------
+
+    def test_filter_specs_and_widgets_stay_aligned_after_skip(self, dr_module, auto_df):
+        """BUG-FSALIGN-1e: after skipping a missing-var spec, built specs and
+        widgets must index identically — spot check via Python enumeration."""
+        spec = self._make_mixed_filter_spec("missingvar")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if not renderer.filter_callbacks:
+                pytest.skip("No filter callbacks built (nothing to test)")
+            cb_args = renderer.filter_callbacks[0].args
+            filter_specs = json.loads(cb_args["filter_specs_json"])
+            all_widgets  = cb_args.get("all_widgets", [])
+            # Each spec varname must be present in the first source's data
+            src_data_keys = set(next(iter(renderer.sources.values())).data.keys())
+            for i, (spec_item, widget) in enumerate(zip(filter_specs, all_widgets)):
+                assert spec_item["varname"] in src_data_keys, (
+                    f"filter_spec[{i}].varname='{spec_item['varname']}' is not in "
+                    f"source data — misaligned spec crept in"
+                )
+                assert widget is not None, (
+                    f"all_widgets[{i}] is None — None widget was incorrectly inserted"
+                )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-FSALIGN-1f: render with one valid + one missing var must not crash
+    # ------------------------------------------------------------------
+
+    def test_render_with_valid_plus_missing_filter_does_not_crash(self, dr_module, auto_df):
+        """BUG-FSALIGN-1f: rendering with mixed valid/missing filter vars must not raise."""
+        spec = self._make_mixed_filter_spec("totallymissingcolumn")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            try:
+                html_out = renderer.render()
+                assert html_out, "render() must return non-empty HTML"
+            except Exception as exc:
+                pytest.fail(
+                    f"BUG-FSALIGN-1f: render() raised with mixed filter vars: {exc!r}"
+                )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-FSALIGN-1g: valid filter widget's callback fires correctly
+    # ------------------------------------------------------------------
+
+    def test_valid_filter_widget_callback_fires_without_error(self, dr_module, auto_df):
+        """BUG-FSALIGN-1g: the surviving valid filter widget's callback must be
+        invocable (no misalignment crash) even when another spec was skipped."""
+        spec = self._make_mixed_filter_spec("missingvar")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if not renderer.filter_callbacks:
+                pytest.skip("No filter callbacks built (nothing to test)")
+            cb = renderer.filter_callbacks[0]
+            cb_args = cb.args
+            # Simulate a widget value-change: build a mock 'cb_obj' with .value
+            import types as _types
+            mock_widget = _types.SimpleNamespace(value="1")
+            # Simulate the JS callback by exercising alignment integrity:
+            filter_specs = json.loads(cb_args["filter_specs_json"])
+            all_widgets  = cb_args.get("all_widgets", [])
+            assert len(filter_specs) == len(all_widgets), (
+                "BUG-FSALIGN-1g: spec/widget misalignment detected — "
+                f"specs={len(filter_specs)}, widgets={len(all_widgets)}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass

@@ -4081,6 +4081,12 @@ for (let fi = 0; fi < filter_specs.length; fi++) {
     const fvar = spec.varname;
     const ftype = spec.type;
 
+    // Defensive guard: skip if widget ref is missing or column absent from data.
+    // In practice filter_specs_json is built only from successfully-built specs
+    // so this should never fire, but it prevents a runtime TypeError if the
+    // callback is ever invoked with stale or partially-constructed args.
+    if (!w || !(fvar in orig)) continue;
+
     if (ftype === 'dropdown') {
         const val = w.value;
         if (val === '__all__') continue;

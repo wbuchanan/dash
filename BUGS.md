@@ -130,10 +130,11 @@
   - Suggested fix: Track all raw-layer sources per graph (for example `graph_sources[gname]` as a list) and update every source in the callback, or enforce one shared per-graph source for all raw layers.
   - Resolution: Fixed. Changed `graph_sources[gname]` from a single `ColumnDataSource` to a list. All raw layer assignments changed to `graph_sources[gname].append(src)`. The filter callback was updated to iterate lists: `for gname, srcs in _all_sources.items(): for src in (srcs if isinstance(srcs, list) else [srcs]):`. 5 regression tests added in `test/test_server.py` class `TestBug22MultiLayerSources`. All 1319 tests pass.
 
-- [ ] Title: Mixed valid/missing filter specs break standalone filter callbacks
+- [x] Title: Mixed valid/missing filter specs break standalone filter callbacks
   - File Names and Line Numbers: dash_render.py (4078-4096, 6737-6748, 6792-6795)
   - Description: `_build_filter_widgets()` skips any filter whose variable is missing in `fsource`, but `_filter_specs` still includes every original `filters_cfg` entry. `_FILTER_JS` then iterates `filter_specs` and dereferences `all_widgets[fi]` plus `orig[fvar][i]` unconditionally. In mixed cases (some skipped, some built), callback metadata becomes misaligned and the JS callback can throw at runtime (`w` or `orig[fvar]` undefined), so filtering stops working. Local reproduction in this repo confirmed the mismatch (`filter_specs_len=2` while `all_widgets_len=1`) using a spec with `missingvar` + `foreign` filters.
   - Suggested fix: Build `filter_specs_json` from the same successfully-built filter list as `all_widgets`, and add defensive guards in `_FILTER_JS` (`if (!w || !orig[fvar]) continue;`) so skipped specs cannot crash callbacks.
+  - Resolution: Fixed. (1) `filter_specs_json` already built exclusively from `built_filter_specs` (aligned with `all_widgets`) as of Bug #16. (2) Added defensive guard `if (!w || !(fvar in orig)) continue;` in `_FILTER_JS` after extracting `fvar`/`ftype` — prevents any stale/misaligned invocation from throwing a TypeError. 7 regression tests added in `test/test_server.py` class `TestMixedFilterSpecAlignment` (BUG-FSALIGN-1a through 1g). All 1326 tests pass.
 
 - [ ] Title: Standalone aggregate plots remain stale when filters return zero rows
   - File Names and Line Numbers: dash_render.py (4198-4204, 4227-4229)
