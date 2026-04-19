@@ -142,10 +142,11 @@
   - Suggested fix: When `vals.length === 0` (or `< 2` for kdensity), explicitly assign empty arrays to the aggregate source schema and emit a change so aggregate plots clear instead of staying stale.
   - Resolution: Fixed. Replaced bare `continue` paths in `_FILTER_JS` with explicit source-clear blocks: (1) Histogram zero-row path now sets `top: new Array(n_bins).fill(0)` with preserved bin edges and emits change before continuing. (2) Kdensity n<2 path now sets `src.data = { x: [], y: [] }` and emits change before continuing. Both changes ensure aggregate plots immediately show empty/zero data rather than stale previous rows. 4 regression tests added in `test/test_server.py` class `TestAggregateStaleOnZeroRows` (BUG-AGGSTALE-1a through 1d). All 1330 tests pass.
 
-- [ ] Title: Server dropdown filters use display labels as keys and lose distinct values
+- [x] Title: Server dropdown filters use display labels as keys and lose distinct values
   - File Names and Line Numbers: dash_render.py (9187-9199, 9235-9238)
   - Description: Generated server code populates `Select.options` with labels only (`['All', ...]`) and stores a reverse map keyed by label text (`widget._dash_opts_map = {o[1]: o[0] ...}`). When two raw values share the same display label, the later entry overwrites the earlier one, so one category becomes unreachable. The same mechanism also collides with the reserved `'All'` sentinel used for “no filter”, making real labels equal to `'All'` unfilterable. Reproduced locally by generating a server app where value labels `1 -> Same` and `2 -> Same` produced `map={'All':'All','Same':'2'}`.
   - Suggested fix: Keep stable raw values as widget option values (for example `(raw, label)` tuples) and use a dedicated sentinel value such as `__all__` instead of human-readable `'All'`.
+  - Resolution: Fixed. Generated `Select.options` now uses `(raw_value, display_label)` tuples (Bokeh native format) so widget `.value` is the raw value directly — no opts_map indirection needed. Sentinel changed from `'All'` to `'__all__'` (dedicated non-colliding value). Callback updated to check `w.value != '__all__'` and use `w.value` directly for masking (removed `_dash_opts_map` and `raw_map.get()` lookup). 5 regression tests added in `test/test_server.py` class `TestServerDropdownDistinctValues` (BUG-DROPDOWN-1a through 1e). All 1335 tests pass.
 
 - [x] Title: Server app crashes when `slider`/`range` filter targets a string variable
   - File Names and Line Numbers: dash_render.py (9180-9181, 9200-9207, 9211-9217)
