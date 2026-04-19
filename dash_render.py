@@ -4112,10 +4112,23 @@ for (let i = 0; i < n_rows; i++) {
     }
 }
 
-// Replace source data — the canonical way to trigger Bokeh 3.x re-renders
-source.data = new_data;
-source.selected.indices = [];   // clear stale brush selection
-source.change.emit();
+// Replace source data in ALL non-excluded graph sources.
+// For linked dashboards all graphs share `source` (already in all_graph_sources).
+// For unlinked dashboards each graph has its own ColumnDataSource; without this
+// loop, only the first source would ever be updated and other graphs would stay
+// stale after filter changes.
+const _srcs = all_graph_sources;
+for (let _si = 0; _si < _srcs.length; _si++) {
+    _srcs[_si].data = new_data;
+    _srcs[_si].selected.indices = [];
+    _srcs[_si].change.emit();
+}
+// Also update the primary `source` (may overlap with all_graph_sources when linked)
+if (!_srcs.includes(source)) {
+    source.data = new_data;
+    source.selected.indices = [];
+    source.change.emit();
+}
 
 // Update KPI card values by setting the Bokeh Div model's text property.
 //
@@ -4372,6 +4385,9 @@ class FilterBuilder:
                 # Aggregate sources (histogram, kdensity) to recompute on filter
                 "agg_sources":       [],    # populated by DashRenderer.render()
                 "agg_configs_json":  "[]",  # populated by DashRenderer.render()
+                # All non-excluded graph sources — populated by DashRenderer.render()
+                # so _FILTER_JS can update every graph in an unlinked dashboard
+                "all_graph_sources": [],    # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -4418,7 +4434,7 @@ class FilterBuilder:
 
         callback = CustomJS(
             args={
-                "source":           source,
+                "source":            source,
                 "orig_data_json":    "{}",
                 "all_widgets":       [],
                 "filter_specs_json": "[]",
@@ -4426,6 +4442,7 @@ class FilterBuilder:
                 "kpi_divs":          [],
                 "agg_sources":       [],
                 "agg_configs_json":  "[]",
+                "all_graph_sources": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -4470,7 +4487,7 @@ class FilterBuilder:
 
         callback = CustomJS(
             args={
-                "source":           source,
+                "source":            source,
                 "orig_data_json":    "{}",
                 "all_widgets":       [],
                 "filter_specs_json": "[]",
@@ -4478,6 +4495,7 @@ class FilterBuilder:
                 "kpi_divs":          [],
                 "agg_sources":       [],
                 "agg_configs_json":  "[]",
+                "all_graph_sources": [],  # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -6839,6 +6857,16 @@ class DashRenderer:
             _cb.args["filter_specs_json"] = json.dumps(_filter_specs)
             _cb.args["kpi_config_json"]   = json.dumps(_kpi_config_for_cb)
             _cb.args["kpi_divs"]          = _kpi_divs_for_cb
+
+            # Pass ALL non-excluded graph sources so _FILTER_JS can update every
+            # graph in an unlinked dashboard (not just the primary fsource).
+            _graph_srcs_for_cb: list = []
+            for _gsrc_name, _gsrc in self.sources.items():
+                if _gsrc_name in _fc_excludes:
+                    continue
+                if _gsrc not in _graph_srcs_for_cb:
+                    _graph_srcs_for_cb.append(_gsrc)
+            _cb.args["all_graph_sources"] = _graph_srcs_for_cb
 
             _agg_srcs: list = []
             _agg_cfgs: list = []

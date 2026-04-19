@@ -5660,3 +5660,105 @@ class TestFilterExtractionCommaPrefix:
         )
         src = _build_app(dr_module, auto_df, spec)
         assert "foreign" in src, "filter var must appear in generated server source"
+
+
+# ---------------------------------------------------------------------------
+# BUG-MTSRC: Standalone filter callbacks only update single source
+# ---------------------------------------------------------------------------
+
+class TestFilterUpdatesAllSources:
+    """Regression tests for BUG-MTSRC: filter callbacks in unlinked standalone
+    dashboards must update ALL non-excluded graph sources, not just the first."""
+
+    def _make_two_graph_spec(self) -> dict:
+        return _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1"}},
+                {"plots": [{"type": "scatter", "yvar": "price",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g2"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "",  # unlinked
+                "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "g1 g2",
+                "mode": "standalone", "port": "5006",
+            }
+        )
+
+    def test_callback_receives_all_graph_sources(self, dr_module, auto_df):
+        """BUG-MTSRC-1a: filter callback args must include all_graph_sources with both sources."""
+        spec = self._make_two_graph_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            assert renderer.filter_callbacks, "filter callback must be built"
+            cb_args = renderer.filter_callbacks[0].args
+            assert "all_graph_sources" in cb_args, \
+                "callback args must contain 'all_graph_sources'"
+            # Should contain sources for both g1 and g2 (unlinked → separate CDSes)
+            assert len(cb_args["all_graph_sources"]) >= 2, \
+                "all_graph_sources must contain sources for both graphs in unlinked dashboard"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_filter_js_contains_all_sources_loop(self, dr_module, auto_df):
+        """BUG-MTSRC-1b: _FILTER_JS must iterate all_graph_sources to update all CDSes."""
+        html_out = dr_module._FILTER_JS
+        assert "all_graph_sources" in html_out, \
+            "_FILTER_JS must reference all_graph_sources for multi-source updates"
+        # Must loop over all_graph_sources and assign .data
+        assert "all_graph_sources" in html_out and ".data = new_data" in html_out, \
+            "_FILTER_JS must assign new_data to sources in all_graph_sources loop"
+
+    def test_excluded_graph_source_not_in_cb_all_graph_sources(self, dr_module, auto_df):
+        """BUG-MTSRC-1c: excluded graph source must not appear in all_graph_sources."""
+        spec = _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1"}},
+                {"plots": [{"type": "scatter", "yvar": "price",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g2"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown), exclude(g2)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "g1 g2",
+                "mode": "standalone", "port": "5006",
+            }
+        )
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if renderer.filter_callbacks:
+                cb_args = renderer.filter_callbacks[0].args
+                # g2 source is excluded — only g1 source should be in all_graph_sources
+                g2_src = renderer.sources.get("g2")
+                if g2_src is not None:
+                    assert g2_src not in cb_args.get("all_graph_sources", []), \
+                        "excluded g2 source must not appear in all_graph_sources"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_two_graph_unlinked_render_does_not_crash(self, dr_module, auto_df):
+        """BUG-MTSRC-1d: two-graph unlinked dashboard with filter must render without crash."""
+        spec = self._make_two_graph_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            assert len(html_out) > 100, "rendered HTML must be non-trivial"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass

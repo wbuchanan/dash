@@ -112,10 +112,11 @@
   - Suggested fix: Treat commas and other whitespace as valid boundaries (for example allow preceding `,`, space, or tab), or replace manual boundary logic with a delimiter-aware tokenizer that accepts standard Stata option formatting.
   - Resolution: Fixed. In `_dash_extract_filters` in `dash_parse.mata` (line ~745), changed the word-boundary check from `(i == 1 | preceding_char == " ")` to also accept `,` and `char(9)` (tab) as valid preceding characters. 7 regression tests added in `test/test_server.py` class `TestFilterExtractionCommaPrefix` (BUG-FILT-COMMA-1a through BUG-FILT-COMMA-1g). All 1305 tests pass.
 
-- [ ] Title: Standalone `filter()` callbacks only update a single graph source in unlinked dashboards
+- [x] Title: Standalone `filter()` callbacks only update a single graph source in unlinked dashboards
   - File Names and Line Numbers: dash_render.py (7100-7108, 6742-6745, 4115-4118, 4362, 4421, 4473)
   - Description: In standalone mode without `link()`, `render()` creates independent `ColumnDataSource` objects per graph (one per name), but `_build_filter_widgets()` picks only one `fsource` and every filter callback is wired to that single `source`. `_FILTER_JS` then mutates only `source.data`, so the other unlinked graph sources never receive filtered rows. This contradicts the documented behavior that `filter()` applies across all graphs unless excluded, so this is a core functionality bug, not intended behavior.
   - Suggested fix: Pass all graph sources into callback args (not just one `source`) and update each non-excluded source inside `_FILTER_JS`, mirroring the server-mode per-source update loop.
+  - Resolution: Fixed. (1) Modified `_FILTER_JS` (dash_render.py ~4115-4128) to iterate a new `all_graph_sources` JS arg and assign `new_data` to every source in the list, replacing the single `source.data = new_data` line. (2) Added `"all_graph_sources": []` to all three `FilterBuilder` callback-args dicts (build_dropdown, build_slider, build_range). (3) In `_build_filter_widgets`, after building each callback, populate `_cb.args["all_graph_sources"]` with all non-excluded sources from `self.sources`. 4 regression tests added in `test/test_server.py` class `TestFilterUpdatesAllSources` (BUG-MTSRC-1a through BUG-MTSRC-1d). All 1309 tests pass.
 
 - [ ] Title: Server-mode `exclude()` handling incorrectly unions exclusions across all filter widgets
   - File Names and Line Numbers: dash_render.py (9226-9231, 9250-9254, 9282-9286, 9324-9328)
