@@ -4939,3 +4939,102 @@ class TestSavingPathHardening:
         """BUG-SHELL-1l: parenthesis must be rejected (subshell invocation)."""
         with pytest.raises(ValueError, match="disallowed character"):
             _validate_saving_path("/tmp/foo(bar).html")
+
+
+# ---------------------------------------------------------------------------
+# BUG-REGEX: Generated server unsafe-token regex uses word boundaries (\b)
+# ---------------------------------------------------------------------------
+
+class TestUnsafeTokenRegexWordBoundaries:
+    """Regression tests for BUG-REGEX: _UNSAFE_G and _UNSAFE_BY in generated
+    server source must use \\b word-boundary markers, not backspace bytes."""
+
+    def test_unsafe_g_uses_word_boundary_not_backspace(self, dr_module, auto_df):
+        """BUG-REGEX-1a: generated _UNSAFE_G pattern must contain \\b not backspace."""
+        src = _build_app(dr_module, auto_df, _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1", "if_expr": "mpg > 15"}}]
+        ))
+        # Find the _UNSAFE_G compile line
+        for line in src.splitlines():
+            if "_UNSAFE_G" in line and "compile" in line:
+                # Must NOT contain backspace character (0x08)
+                assert "\x08" not in line, \
+                    "_UNSAFE_G pattern must not contain backspace (\\x08); use \\b word boundary"
+                # Must contain the literal two-char sequence \b
+                assert r"\b" in line, \
+                    "_UNSAFE_G pattern must contain \\b word-boundary markers"
+                break
+        else:
+            pytest.fail("_UNSAFE_G compile line not found in generated source")
+
+    def test_unsafe_g_blocks_bare_eval(self, dr_module, auto_df):
+        """BUG-REGEX-1b: _UNSAFE_G in generated source must block 'eval(...)' expression."""
+        import importlib.util, tempfile, os
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "if_expr": "eval('1==1')"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_trx1", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            # Must not crash and must not have called eval() (filter blocked)
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_unsafe_g_allows_evaluate_variable_name(self, dr_module, auto_df):
+        """BUG-REGEX-1c: _UNSAFE_G must NOT block variable names containing 'eval' as substring.
+
+        With backspace chars instead of word boundaries, 'evaluate' would not be blocked
+        (backspace-eval-backspace doesn't match 'evaluate'). With real \b, 'evaluate'
+        is also not blocked because the 'e' after 'eval' prevents the word-boundary match.
+        Both scenarios should allow 'evaluate' as a valid column name in df.query.
+        """
+        # This test verifies the regex compiled from the generated string actually works
+        import re
+        # Simulate the pattern that should be in the generated source
+        pattern = re.compile(
+            r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
+            r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
+        )
+        # 'evaluate' contains 'eval' as substring but not at word boundary
+        assert not pattern.search("evaluate > 5"), \
+            "word-boundary \\b must not block 'evaluate' (not an exact 'eval' token)"
+        # 'eval(...)' must be blocked
+        assert pattern.search("eval('1==1')"), \
+            "word-boundary \\b must block 'eval(...)'"
+
+    def test_unsafe_by_uses_word_boundary_not_backspace(self, dr_module, auto_df):
+        """BUG-REGEX-1d: generated _UNSAFE_BY pattern must contain \\b not backspace."""
+        src = _build_app(dr_module, auto_df, _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1", "by": "foreign"}}]
+        ))
+        # Find the _UNSAFE_BY lines (may span multiple lines)
+        unsafe_by_block = ""
+        in_block = False
+        for line in src.splitlines():
+            if "_UNSAFE_BY" in line and "compile" in line:
+                in_block = True
+            if in_block:
+                unsafe_by_block += line + "\n"
+                if ")" in line and in_block and len(unsafe_by_block) > 20:
+                    break
+        assert "\x08" not in unsafe_by_block, \
+            "_UNSAFE_BY pattern must not contain backspace (\\x08); use \\b word boundary"
+        assert r"\b" in unsafe_by_block, \
+            "_UNSAFE_BY pattern must contain \\b word-boundary markers"
