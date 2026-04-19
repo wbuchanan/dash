@@ -10,10 +10,11 @@
   - Suggested fix: Mirror the standalone validator logic by explicitly allowing/skipping operator AST node classes before recursing into child expressions.
   - Resolution: Fixed. Added  before the else-raise clause in the generated  function (dash_render.py ~8888). This mirrors the standalone validator which already used  to skip operator nodes. 11 regression tests added in  class  (BUG-FE-1a through BUG-FE-1 safety). All 1219 tests pass.
 
-- [ ] Title: Server-mode function `n` option allows unbounded point counts
+- [x] Title: Server-mode function `n` option allows unbounded point counts
   - File Names and Line Numbers: dash_render.py (8851-8853, 8872)
   - Description: Generated server code parses `opts['n']` directly into `n_pts` and uses it in `np.linspace(x_lo, x_hi, n_pts)` with no upper bound. A large `n` can allocate very large arrays and drive CPU/memory exhaustion, creating a straightforward resource-exhaustion vector.
   - Suggested fix: Clamp `n_pts` to a safe range (for example `2..10000`) exactly like the standalone path does (`min/max` guard) before calling `np.linspace`.
+  - Resolution: Fixed. Changed the `n_pts` parse in the generated server function handler from `n_pts = int(opts['n'])` to `n_pts = max(2, min(int(opts['n']), 10000))` (dash_render.py ~8879), mirroring the standalone path which already had this clamp. 3 regression tests added in `test/test_server.py` class `TestServerFunctionNClamp` (BUG-FE-2a through BUG-FE-2c). All 1222 tests pass.
 
 - [ ] Title: `dash serve` invokes unsupported renderer CLI mode/flags and cannot start
   - File Names and Line Numbers: dash.ado (1574-1577), dash_render.py (9525-9530)

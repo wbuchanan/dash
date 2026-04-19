@@ -8876,7 +8876,7 @@ class ServerAppBuilder:
             "                        try: x_lo, x_hi = float(_parts[0]), float(_parts[1])",
             "                        except ValueError: pass",
             "                if 'n' in opts:",
-            "                    try: n_pts = int(opts['n'])",
+            "                    try: n_pts = max(2, min(int(opts['n']), 10000))  # clamp: prevent resource exhaustion",
             "                    except ValueError: pass",
             "                _SAFE_NAMES = frozenset({'x', 'pi', 'e'})",
             "                _SAFE_FUNCS = frozenset({'sin','cos','tan','exp','log','log10','sqrt','abs','floor','ceil'})",

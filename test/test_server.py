@@ -4010,3 +4010,94 @@ class TestServerFunctionExpressionOperators:
         doc = _exec_function_app(dr_module, "os.system('id')")
         # Document must have loaded (other roots may still be present)
         assert doc is not None, "make_document must not crash for an unsafe expression"
+
+
+# ================================================================
+# BUG-FE-2: Server-mode function `n` option allows unbounded point counts
+# Regression for: "Generated server code parses opts['n'] directly into
+# n_pts and uses it in np.linspace(x_lo, x_hi, n_pts) with no upper bound.
+# A large `n` can allocate very large arrays and drive CPU/memory
+# exhaustion."
+# Fix: clamp n_pts to max(2, min(int(opts['n']), 10000)) matching the
+# standalone path.
+# ================================================================
+
+class TestServerFunctionNClamp:
+    """Regression suite for BUG-FE-2: function n option must be clamped 2..10000."""
+
+    # BUG-FE-2a: generated source must contain the clamp expression
+    def test_function_n_clamp_in_source(self, dr_module, auto_df):
+        """BUG-FE-2a: generated server source must clamp n_pts to prevent resource exhaustion."""
+        import pandas as pd, numpy as np
+        df = pd.DataFrame({"x": np.linspace(0, 10, 20), "y": np.linspace(0, 10, 20)})
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "function", "expr": "x",
+                       "range": [0, 10], "options": {"n": "200"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, df, spec)
+        # Generated code must clamp n_pts — check for any of the clamp patterns
+        has_clamp = (
+            "max(2, min(" in source
+            or "min(int(opts['n']), 10000)" in source
+            or "clamp" in source.lower()
+        )
+        assert has_clamp, (
+            "generated server code must clamp n_pts (e.g. max(2, min(int(opts['n']), 10000))) "
+            "to prevent resource exhaustion; fix: mirror standalone path"
+        )
+
+    # BUG-FE-2b: large n must be clamped — document loads without OOM
+    def test_function_large_n_does_not_exhaust(self, dr_module, auto_df):
+        """BUG-FE-2b: n=1000000 must not produce 1M-element arrays (clamped to 10000)."""
+        import pandas as pd, numpy as np, importlib.util, tempfile, os, inspect
+        from bokeh.document import Document
+
+        df = pd.DataFrame({"x": np.linspace(0, 10, 20), "y": np.linspace(0, 10, 20)})
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "function", "expr": "x",
+                       "range": [0, 10], "options": {"n": "1000000"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            with open(out_f.name) as fh:
+                generated = fh.read()
+            # Generated source must have the clamp so n never reaches 1 000 000
+            assert "10000" in generated, (
+                "generated source must reference 10000 as the max clamp for n"
+            )
+            # Run make_document to confirm it completes in reasonable time
+            app_spec = importlib.util.spec_from_file_location("_tfc2", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert doc is not None, "make_document must complete without crashing for n=1000000"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    # BUG-FE-2c: n below minimum (0, 1) must be clamped up to 2
+    def test_function_n_below_minimum_clamped_to_2(self, dr_module, auto_df):
+        """BUG-FE-2c: n=0 or n=1 must be clamped to 2 (minimum safe for linspace)."""
+        import pandas as pd, numpy as np
+        df = pd.DataFrame({"x": np.linspace(0, 10, 20), "y": np.linspace(0, 10, 20)})
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "function", "expr": "x",
+                       "range": [0, 10], "options": {"n": "1"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, df, spec)
+        # Clamp must ensure n >= 2
+        assert "max(2," in source, (
+            "generated server code must clamp n_pts to minimum 2 (max(2, ...)) "
+            "so np.linspace never receives n < 2"
+        )
