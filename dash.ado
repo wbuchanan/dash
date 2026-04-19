@@ -796,16 +796,19 @@ program define _dash_plot
     local gopts_json `"`gopts_json'}"'
 
     // ---- Assemble full single-graph JSON ----
-    // Use if_expr / in_expr from the first segment's parsed values
-    // (top-level qualifiers apply to all plots)
+    // Promote if_expr / in_expr from the first plot segment to the graph level.
+    // The renderer looks for graph-level "if_expr"/"in_expr" in graph_options or
+    // at the top level; per-plot qualifiers are not read in build/server flows.
+    // We use _dash_json_get_str to extract the first occurrence from plots_json —
+    // this correctly handles \" escape sequences inside the value.
     local if_expr ""
     local in_expr ""
-    // These are already embedded per-plot in the segment JSON;
-    // for jsonio we also need them at the graph level for data filtering.
-    // Extract from first segment's JSON (simplistic but correct for common case).
-    // For now, pass empty string and let the renderer use per-plot if/in.
+    mata: _dash_json_get_str(`"`plots_json'"', "if_expr", "if_expr")
+    mata: _dash_json_get_str(`"`plots_json'"', "in_expr", "in_expr")
+    _dash_json_str `"`if_expr'"' _jif_top
+    _dash_json_str `"`in_expr'"' _jin_top
 
-    local graph_json `"{"plots":[`plots_json'],"graph_options":`gopts_json',"if_expr":"","in_expr":""}"'
+    local graph_json `"{"plots":[`plots_json'],"graph_options":`gopts_json',"if_expr":"`_jif_top'","in_expr":"`_jin_top'"}"'
 
     // ---- Route: named or immediate ----
     local graph_name `"`g_name'"'

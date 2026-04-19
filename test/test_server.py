@@ -4428,3 +4428,109 @@ class TestIfExprQuoteHandling:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ================================================================
+# BUG-QUAL-1: Graph-level if/in qualifiers dropped for named graphs
+# Regression for: "_dash_plot hard-codes graph-level qualifiers to empty
+# strings when creating graph_json. The renderer's filter logic expects
+# graph-level qualifiers and does not read per-plot qualifiers, so
+# named-graph dashboards in dash build / server mode silently ignore
+# if/in conditions."
+# Fix:
+#   (1) dash.ado: extract if_expr/in_expr from first segment's JSON
+#       using _dash_json_get_str and set them at the graph top level
+#   (2) dash_render.py server code: fall back to g.get('if_expr') when
+#       go.get('if_expr') is empty
+# ================================================================
+
+class TestGraphQualifierPropagation:
+    """Regression suite for BUG-QUAL-1: graph-level if/in qualifiers must be propagated.
+
+    We test the Python-side half:
+      (a) DashRenderer._apply_graph_filter reads top-level if_expr from graph spec
+      (b) DashRenderer filters data when graph spec has if_expr
+      (c) Generated server code falls back to g.get('if_expr')
+      (d) dash.ado source calls _dash_json_get_str for if_expr promotion
+    """
+
+    def _source_ado(self):
+        import os
+        p = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "dash.ado"
+        )
+        with open(p) as fh:
+            return fh.read()
+
+    def test_renderer_apply_graph_filter_uses_top_level_if_expr(self, dr_module, auto_df):
+        """BUG-QUAL-1a: _apply_graph_filter must read if_expr from top-level graph spec."""
+        import numpy as np
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        renderer.df = auto_df.copy()
+        # Spec with top-level if_expr filtering to only foreign==1 rows
+        graph_spec = {"if_expr": "foreign == 1", "in_expr": "", "plots": []}
+        filtered = renderer._apply_graph_filter(graph_spec)
+        assert len(filtered) < len(auto_df), \
+            "_apply_graph_filter must reduce rows when if_expr is set"
+        assert (filtered["foreign"] == 1.0).all(), \
+            "_apply_graph_filter must keep only rows matching if_expr"
+
+    def test_renderer_apply_graph_filter_empty_if_expr(self, dr_module, auto_df):
+        """BUG-QUAL-1b: _apply_graph_filter with empty if_expr must return all rows."""
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        renderer.df = auto_df.copy()
+        graph_spec = {"if_expr": "", "in_expr": "", "plots": []}
+        filtered = renderer._apply_graph_filter(graph_spec)
+        assert len(filtered) == len(auto_df), \
+            "_apply_graph_filter with empty if_expr must return full dataset"
+
+    def test_server_code_falls_back_to_top_level_if_expr(self, dr_module, auto_df):
+        """BUG-QUAL-1c: generated server code must fall back to g.get('if_expr')."""
+        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "foreign == 1",
+        }]))
+        # The generated code must read if_expr from g (top level) as fallback
+        assert "g.get('if_expr')" in source or 'g.get("if_expr")' in source, (
+            "generated server code must fall back to g.get('if_expr') "
+            "when graph_options.if_expr is empty (BUG-QUAL-1 fix)"
+        )
+
+    def test_ado_promotes_if_expr_to_graph_level(self, dr_module, auto_df):
+        """BUG-QUAL-1d: dash.ado must use _dash_json_get_str to promote if_expr to graph level."""
+        src = self._source_ado()
+        # After the fix, _dash_plot calls _dash_json_get_str to extract if_expr
+        # from plots_json and then sets it at graph level
+        assert "_dash_json_get_str" in src, \
+            "dash.ado must call _dash_json_get_str for if_expr promotion"
+        # The old hard-coded empty string for if_expr must be gone
+        assert '"if_expr":"","in_expr":""' not in src, (
+            "dash.ado must not hard-code empty strings for if_expr/in_expr in graph_json"
+        )
+
+    def test_renderer_graph_with_if_expr_filters_data(self, dr_module, auto_df):
+        """BUG-QUAL-1e: standalone render with top-level if_expr must filter output."""
+        import tempfile, os, json
+        spec_dict = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "foreign == 1",
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec_dict)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False)
+        out_f.close()
+        try:
+            dr_module.main(spec_path, data_path, out_f.name, "standalone")
+            assert os.path.exists(out_f.name), \
+                "main() must produce output when graph has top-level if_expr"
+            with open(out_f.name) as fh:
+                html = fh.read()
+            assert len(html) > 100, "output HTML must be non-trivial"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
