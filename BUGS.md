@@ -147,10 +147,11 @@
   - Description: Generated server code populates `Select.options` with labels only (`['All', ...]`) and stores a reverse map keyed by label text (`widget._dash_opts_map = {o[1]: o[0] ...}`). When two raw values share the same display label, the later entry overwrites the earlier one, so one category becomes unreachable. The same mechanism also collides with the reserved `'All'` sentinel used for “no filter”, making real labels equal to `'All'` unfilterable. Reproduced locally by generating a server app where value labels `1 -> Same` and `2 -> Same` produced `map={'All':'All','Same':'2'}`.
   - Suggested fix: Keep stable raw values as widget option values (for example `(raw, label)` tuples) and use a dedicated sentinel value such as `__all__` instead of human-readable `'All'`.
 
-- [ ] Title: Server app crashes when `slider`/`range` filter targets a string variable
+- [x] Title: Server app crashes when `slider`/`range` filter targets a string variable
   - File Names and Line Numbers: dash_render.py (9180-9181, 9200-9207, 9211-9217)
   - Description: The generated server builder only checks that the filter variable exists in `df`, then unconditionally computes `float(df[fvar].min())`/`float(df[fvar].max())` for `range` and `slider`. For string columns this raises `ValueError` at document build time and prevents the dashboard from loading. Local reproduction in this repo with `filter("group, type(slider)")` on a string column raised `ValueError: could not convert string to float: 'A'`.
   - Suggested fix: Gate `slider`/`range` to numeric dtypes (skip with warning or coerce safely), and fall back to `dropdown` behavior when the target variable is non-numeric.
+  - Resolution: Fixed. Added `pd.api.types.is_numeric_dtype(df[fvar])` guard before `float(df[fvar].min()/.max())` in both `range` and `slider` branches of the generated filter-widget construction loop. Non-numeric columns now emit a `UserWarning` and `continue` (skip the widget) rather than raising `ValueError`. 4 regression tests added in `test/test_server.py` class `TestServerSliderStringFallback` (BUG-SLIDER-STR-1a through 1d). All 1339 tests pass.
 
 - [ ] Title: KPI filter callback allows style-attribute injection through unescaped colors
   - File Names and Line Numbers: dash_render.py (4180-4184, 6813-6823)

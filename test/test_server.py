@@ -6472,3 +6472,186 @@ class TestServerDropdownDistinctValues:
             "Generated server code must not set _dash_opts_map — "
             "with tuple-valued Select options the opts_map reverse lookup is unnecessary."
         )
+
+
+# ---------------------------------------------------------------------------
+# BUG-26: Server app crashes when slider/range filter targets a string variable
+# ---------------------------------------------------------------------------
+
+def _make_string_col_data_json(df: pd.DataFrame, string_cols: list) -> str:
+    """Like _make_data_json but marks specified columns as string type."""
+    values = []
+    for _, row in df.iterrows():
+        values.append({col: (None if pd.isna(row[col]) else row[col])
+                       for col in df.columns})
+    return json.dumps({
+        "variableNames": list(df.columns),
+        "variableLabels": {c: c for c in df.columns},
+        "valueLabelNames": {},
+        "valueLabels": {},
+        "variableTypeIsString": {c: (c in string_cols) for c in df.columns},
+        "values": values,
+    })
+
+
+def _write_temp_files_with_strings(df: pd.DataFrame, spec_dict: dict, string_cols: list):
+    """Write spec and data JSON (with string-col flags) to temp files."""
+    spec_f = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+    json.dump(spec_dict, spec_f)
+    spec_f.close()
+    data_f = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+    data_f.write(_make_string_col_data_json(df, string_cols))
+    data_f.close()
+    return spec_f.name, data_f.name
+
+
+class TestServerSliderStringFallback:
+    """Regression tests for BUG-26: generated server code must not raise
+    ValueError when slider/range filter is applied to a string column.
+    The numeric dtype check must happen at document-build time before any
+    float() conversion attempt.
+
+    Tests:
+      BUG-SLIDER-STR-1a  Generated code contains numeric dtype guard for range type
+      BUG-SLIDER-STR-1b  Generated code contains numeric dtype guard for slider type
+      BUG-SLIDER-STR-1c  Generated server app with slider on string var compiles
+      BUG-SLIDER-STR-1d  make_document with slider on string var does not raise ValueError
+    """
+
+    def _string_df(self) -> pd.DataFrame:
+        """DataFrame with numeric columns + a genuine string column 'group'."""
+        rng = np.random.default_rng(0)
+        n = 20
+        return pd.DataFrame({
+            "mpg":    rng.integers(12, 40, n).astype(float),
+            "weight": rng.integers(1800, 4800, n).astype(float),
+            "group":  ["A", "B", "C"] * 6 + ["A", "B"],
+        })
+
+    def _make_slider_string_spec(self, ftype: str = "slider") -> dict:
+        """Spec with a slider/range filter on 'group' (string column)."""
+        return _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": f"group, type({ftype})",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1", "mode": "server", "port": "5006",
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-SLIDER-STR-1a: generated code guards range against string var
+    # ------------------------------------------------------------------
+
+    def test_generated_code_has_numeric_guard_for_range(self, dr_module):
+        """BUG-SLIDER-STR-1a: generated code must check numeric dtype before range build."""
+        df = self._string_df()
+        spec = self._make_slider_string_spec("range")
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["group"])
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            assert (
+                "is_numeric_dtype" in src or
+                "api.types" in src or
+                "pd.to_numeric" in src or
+                "dtype" in src
+            ), (
+                "Generated code must guard range filter with a numeric dtype check "
+                "to prevent float(df[fvar].min()) from raising ValueError on strings."
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-SLIDER-STR-1b: generated code guards slider against string var
+    # ------------------------------------------------------------------
+
+    def test_generated_code_has_numeric_guard_for_slider(self, dr_module):
+        """BUG-SLIDER-STR-1b: generated code must check numeric dtype before slider build."""
+        df = self._string_df()
+        spec = self._make_slider_string_spec("slider")
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["group"])
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            assert (
+                "is_numeric_dtype" in src or
+                "api.types" in src or
+                "pd.to_numeric" in src or
+                "dtype" in src
+            ), (
+                "Generated code must guard slider filter with a numeric dtype check."
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-SLIDER-STR-1c: generated server file with slider on string var compiles
+    # ------------------------------------------------------------------
+
+    def test_generated_server_file_compiles_with_slider_on_string(self, dr_module):
+        """BUG-SLIDER-STR-1c: server file with slider on string column must compile."""
+        df = self._string_df()
+        spec = self._make_slider_string_spec("slider")
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["group"])
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as out_f:
+            out_path = out_f.name
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_path)
+            import ast
+            with open(out_path) as f:
+                src = f.read()
+            try:
+                ast.parse(src)
+            except SyntaxError as exc:
+                pytest.fail(
+                    f"BUG-SLIDER-STR-1c: generated server file has syntax error: {exc}"
+                )
+        finally:
+            for _p in (spec_path, data_path, out_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-SLIDER-STR-1d: make_document with slider on string var does not raise
+    # ------------------------------------------------------------------
+
+    def test_make_document_with_slider_on_string_does_not_raise(self, dr_module):
+        """BUG-SLIDER-STR-1d: make_document must not raise ValueError when slider
+        targets a string column (must skip/warn rather than crash)."""
+        df = self._string_df()
+        spec = self._make_slider_string_spec("slider")
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["group"])
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as out_f:
+            out_path = out_f.name
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_path)
+            import importlib.util as _ilu
+            _app_spec = _ilu.spec_from_file_location("_test_slider_app", out_path)
+            mod = _ilu.module_from_spec(_app_spec)
+            _app_spec.loader.exec_module(mod)
+            from bokeh.document import Document
+            doc = Document()
+            try:
+                mod.make_document(doc)
+            except ValueError as exc:
+                pytest.fail(
+                    f"BUG-SLIDER-STR-1d: make_document raised ValueError for "
+                    f"slider on string column: {exc!r}"
+                )
+        finally:
+            for _p in (spec_path, data_path, out_path):
+                try: os.unlink(_p)
+                except OSError: pass
