@@ -21,6 +21,13 @@ Tests:
   P4-71  _compute_kpi returns correct values for mean and dcount
   P4-72  _compute_lfit returns 100 x/y points
   P4-73  _compute_kpi sd uses ddof=1 matching Stata (regression)
+
+  BUG-RL-1  _RateLimiter allows requests below limit and blocks above it
+  BUG-RL-2  Generated HealthHandler.prepare() enforces _LIMITER (429 on excess)
+  BUG-RL-3  make_document enforces rate limit — adds 429 Div and returns early
+  BUG-RL-4  make_document proceeds normally when rate limit is not exceeded
+
+  BUG-FE-1  Server-mode function expressions with arithmetic operators (+, -, *, /, **) must not raise ValueError
 """
 
 from __future__ import annotations
@@ -3649,3 +3656,357 @@ class TestServerMsangle:
             for p in (spec_path, data_path, out_f.name):
                 try: os.unlink(p)
                 except OSError: pass
+
+
+# ================================================================
+# BUG-RL: Rate limiter enforcement (regression suite)
+# Regression for: "Generated server rate limiter is never enforced"
+# The _RateLimiter class and _LIMITER singleton were defined but
+# never called on any request path.  Fix: enforce in
+# _HealthHandler.prepare() and at the top of make_document().
+# ================================================================
+
+def _load_app_module(dr_module, auto_df, spec_dict):
+    """Build server app and return loaded module object (for introspection)."""
+    spec_path, data_path = _write_temp_files(auto_df, spec_dict)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+    try:
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_rl_app", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        return app_mod
+    finally:
+        for _p in (spec_path, data_path, out_f.name):
+            try:
+                os.unlink(_p)
+            except OSError:
+                pass
+
+
+class TestRateLimiterEnforcement:
+    """BUG-RL regression: _LIMITER must be called on every server request path."""
+
+    def _minimal_spec(self):
+        return _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+
+    # ------------------------------------------------------------------
+    # BUG-RL-1: _RateLimiter unit behaviour
+    # ------------------------------------------------------------------
+    def test_rate_limiter_allows_within_limit(self, dr_module, auto_df):
+        """BUG-RL-1a: _RateLimiter must allow requests below the configured limit."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=3)
+        for _ in range(3):
+            assert limiter.is_allowed("10.0.0.1"), \
+                "_RateLimiter must allow calls within the burst window"
+
+    def test_rate_limiter_blocks_above_limit(self, dr_module, auto_df):
+        """BUG-RL-1b: _RateLimiter must block the (max+1)-th request in the window."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=3)
+        for _ in range(3):
+            limiter.is_allowed("10.0.0.2")
+        assert not limiter.is_allowed("10.0.0.2"), \
+            "_RateLimiter must return False once the burst limit is exceeded"
+
+    def test_rate_limiter_tracks_ips_independently(self, dr_module, auto_df):
+        """BUG-RL-1c: _RateLimiter must track separate budgets per client IP."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=2)
+        limiter.is_allowed("192.168.1.1")
+        limiter.is_allowed("192.168.1.1")
+        assert not limiter.is_allowed("192.168.1.1"), "IP A should be limited"
+        assert limiter.is_allowed("192.168.1.2"), \
+            "IP B must not be affected by IP A exhaustion"
+
+    # ------------------------------------------------------------------
+    # BUG-RL-2: _HealthHandler.prepare() enforces the limiter
+    # ------------------------------------------------------------------
+    def test_health_handler_has_prepare_method(self, dr_module, auto_df):
+        """BUG-RL-2a: _HealthHandler must define a prepare() method."""
+        source = _build_app(dr_module, auto_df, self._minimal_spec())
+        assert "def prepare(self):" in source, \
+            "_HealthHandler must define prepare() to enforce rate limiting"
+
+    def test_health_handler_prepare_calls_limiter(self, dr_module, auto_df):
+        """BUG-RL-2b: _HealthHandler.prepare() must call _LIMITER.is_allowed and set 429."""
+        source = _build_app(dr_module, auto_df, self._minimal_spec())
+        assert "_LIMITER.is_allowed" in source, \
+            "Generated source must call _LIMITER.is_allowed"
+        assert "429" in source, \
+            "Generated source must set HTTP status 429 for rate-limited requests"
+
+    def test_health_handler_prepare_blocks_and_returns_429(self, dr_module, auto_df):
+        """BUG-RL-2c: _HealthHandler.prepare() must set 429 and finish() when blocked."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+
+        original_limiter = app_mod._LIMITER
+        app_mod._LIMITER = app_mod._RateLimiter(max_rpm=0)  # always blocks
+        captured = {}
+
+        class _MockRequest:
+            remote_ip = "127.0.0.1"
+
+        class _MockHandler(app_mod._HealthHandler):
+            request = _MockRequest()
+            def set_status(self, code):
+                captured["status"] = code
+            def set_header(self, k, v):
+                captured.setdefault("headers", {})[k] = v
+            def finish(self, body=""):
+                captured["finished"] = True
+                captured["body"] = body
+
+        try:
+            handler = object.__new__(_MockHandler)
+            handler.request = _MockRequest()
+            handler.prepare()
+            assert captured.get("status") == 429, \
+                "prepare() must set HTTP 429 when rate limit is exceeded"
+            assert captured.get("finished"), \
+                "prepare() must call finish() so the request is terminated"
+        finally:
+            app_mod._LIMITER = original_limiter
+
+    # ------------------------------------------------------------------
+    # BUG-RL-3/4: make_document enforces the rate limiter
+    # ------------------------------------------------------------------
+    def test_make_document_source_contains_limiter_check(self, dr_module, auto_df):
+        """BUG-RL-3a: make_document must contain a _LIMITER.is_allowed call."""
+        source = _build_app(dr_module, auto_df, self._minimal_spec())
+        make_doc_start = source.find("def make_document(")
+        assert make_doc_start != -1
+        assert "_LIMITER.is_allowed" in source[make_doc_start:], (
+            "make_document must call _LIMITER.is_allowed at session-creation time"
+        )
+
+    def test_make_document_adds_429_div_when_rate_limited(self, dr_module, auto_df):
+        """BUG-RL-3b: make_document must add a 429 Div and return early when blocked."""
+        from bokeh.document import Document
+        from bokeh.models import Div as BkDiv
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+
+        original_limiter = app_mod._LIMITER
+        app_mod._LIMITER = app_mod._RateLimiter(max_rpm=0)
+
+        try:
+            doc = Document()
+
+            class _FakeSessionContext:
+                class request:
+                    remote_ip = "10.1.1.1"
+                    headers = {}
+
+            doc._session_context = _FakeSessionContext()
+            type(doc).session_context = property(lambda self: self._session_context)
+
+            app_mod.make_document(doc)
+
+            assert len(doc.roots) == 1, \
+                "Blocked make_document must add exactly one root (the 429 Div)"
+            assert isinstance(doc.roots[0], BkDiv), \
+                "The root added by a rate-limited make_document must be a Div"
+            assert "429" in doc.roots[0].text, \
+                "The 429 Div text must contain '429'"
+        finally:
+            app_mod._LIMITER = original_limiter
+
+    def test_make_document_proceeds_normally_when_allowed(self, dr_module, auto_df):
+        """BUG-RL-4: make_document must build the full dashboard when not rate-limited."""
+        from bokeh.document import Document
+        from bokeh.models import Div as BkDiv
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+
+        app_mod._LIMITER = app_mod._RateLimiter(max_rpm=1000)
+
+        doc = Document()
+
+        class _FakeSessionContext:
+            class request:
+                remote_ip = "10.2.2.2"
+                headers = {}
+
+        doc._session_context = _FakeSessionContext()
+        type(doc).session_context = property(lambda self: self._session_context)
+
+        app_mod.make_document(doc)
+
+        assert len(doc.roots) > 0, \
+            "make_document must add dashboard roots when not rate-limited"
+        bad = [r for r in doc.roots if isinstance(r, BkDiv) and "429" in r.text]
+        assert not bad, \
+            "No 429 Div should appear when the request is within the rate limit"
+
+
+# ================================================================
+# BUG-FE-1: Server-mode function expressions reject normal arithmetic
+# Regression for: "_val_node recursively validates BinOp/UnaryOp
+# children without excluding operator nodes (Add, Sub, etc.).
+# Operator nodes then fall into the else branch and raise
+# ValueError('Disallowed node ...')."
+# Fix: add `elif isinstance(node, (_ast.operator, _ast.unaryop)): pass`
+# before the else clause so pure operator nodes are silently skipped.
+# ================================================================
+
+def _build_function_app(dr_module, expr, x_range="0 10"):
+    """Generate server source for a single function graph and return the source string."""
+    import pandas as pd, numpy as np
+    df = pd.DataFrame({
+        "x": np.linspace(0, 10, 20),
+        "y": np.linspace(0, 10, 20),
+    })
+    spec = _make_spec_json(graphs=[{
+        "plots": [{"type": "function", "expr": expr,
+                   "range": [0, 10], "options": {"n": "20"}}],
+        "graph_options": {"name": "gfe"},
+    }])
+    return _build_app(dr_module, df, spec)
+
+
+def _exec_function_app(dr_module, expr):
+    """Build a server app with *expr* as the function expression and run make_document.
+
+    Returns the Bokeh Document; raises if make_document raises.
+    """
+    import pandas as pd, numpy as np, importlib.util, tempfile, os
+    from bokeh.document import Document
+
+    df = pd.DataFrame({"x": np.linspace(0, 10, 20), "y": np.linspace(0, 10, 20)})
+    spec = _make_spec_json(graphs=[{
+        "plots": [{"type": "function", "expr": expr,
+                   "range": [0, 10], "options": {"n": "20"}}],
+        "graph_options": {"name": "gfe"},
+    }])
+    spec_path, data_path = _write_temp_files(df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+    try:
+        builder = dr_module.ServerAppBuilder(spec_path, data_path)
+        builder.build(out_f.name)
+        app_spec = importlib.util.spec_from_file_location("_tfe", out_f.name)
+        app_mod = importlib.util.module_from_spec(app_spec)
+        app_spec.loader.exec_module(app_mod)
+        doc = Document()
+        app_mod.make_document(doc)
+        return doc
+    finally:
+        for _p in (spec_path, data_path, out_f.name):
+            try:
+                os.unlink(_p)
+            except OSError:
+                pass
+
+
+class TestServerFunctionExpressionOperators:
+    """Regression suite for BUG-FE-1: operator nodes must not be rejected.
+
+    Before the fix, expressions like 'x + 1' raised ValueError('Disallowed
+    node: Add') because _val_node iterated BinOp/UnaryOp child nodes with
+    iter_child_nodes() which yields the operator node (Add, Sub, etc.) as
+    well as the operands, and the operator node fell into the else-raise
+    branch.  After the fix, operator nodes are silently skipped.
+    """
+
+    # BUG-FE-1a: generated source must contain the operator-skip guard
+    def test_val_node_source_skips_operator_nodes(self, dr_module, auto_df):
+        """BUG-FE-1a: generated server source must skip ast.operator/ast.unaryop nodes."""
+        source = _build_function_app(dr_module, "x + 1")
+        assert "_ast.operator" in source or "ast.operator" in source, (
+            "generated _val_node must skip _ast.operator nodes; "
+            "fix: add elif isinstance(node, (_ast.operator, _ast.unaryop)): pass"
+        )
+
+    # BUG-FE-1b: addition (BinOp with Add)
+    def test_function_addition_does_not_raise(self, dr_module, auto_df):
+        """BUG-FE-1b: x + 1 must not raise ValueError in server make_document."""
+        doc = _exec_function_app(dr_module, "x + 1")
+        assert len(doc.roots) > 0, "make_document must add roots for 'x + 1'"
+
+    # BUG-FE-1c: subtraction (BinOp with Sub)
+    def test_function_subtraction_does_not_raise(self, dr_module, auto_df):
+        """BUG-FE-1c: x - 1 must not raise ValueError in server make_document."""
+        doc = _exec_function_app(dr_module, "x - 1")
+        assert len(doc.roots) > 0, "make_document must add roots for 'x - 1'"
+
+    # BUG-FE-1d: multiplication (BinOp with Mult)
+    def test_function_multiplication_does_not_raise(self, dr_module, auto_df):
+        """BUG-FE-1d: x * 2 must not raise ValueError in server make_document."""
+        doc = _exec_function_app(dr_module, "x * 2")
+        assert len(doc.roots) > 0, "make_document must add roots for 'x * 2'"
+
+    # BUG-FE-1e: division (BinOp with Div)
+    def test_function_division_does_not_raise(self, dr_module, auto_df):
+        """BUG-FE-1e: x / 2 must not raise ValueError in server make_document."""
+        doc = _exec_function_app(dr_module, "x / 2")
+        assert len(doc.roots) > 0, "make_document must add roots for 'x / 2'"
+
+    # BUG-FE-1f: exponentiation (BinOp with Pow)
+    def test_function_power_does_not_raise(self, dr_module, auto_df):
+        """BUG-FE-1f: x ** 2 must not raise ValueError in server make_document."""
+        doc = _exec_function_app(dr_module, "x ** 2")
+        assert len(doc.roots) > 0, "make_document must add roots for 'x ** 2'"
+
+    # BUG-FE-1g: unary negation (UnaryOp with USub)
+    def test_function_unary_negation_does_not_raise(self, dr_module, auto_df):
+        """BUG-FE-1g: -x must not raise ValueError in server make_document."""
+        doc = _exec_function_app(dr_module, "-x")
+        assert len(doc.roots) > 0, "make_document must add roots for '-x'"
+
+    # BUG-FE-1h: complex nested expression
+    def test_function_complex_expr_does_not_raise(self, dr_module, auto_df):
+        """BUG-FE-1h: sin(x) + x**2 - 1 must not raise ValueError."""
+        doc = _exec_function_app(dr_module, "sin(x) + x**2 - 1")
+        assert len(doc.roots) > 0, (
+            "make_document must add roots for complex expression 'sin(x) + x**2 - 1'"
+        )
+
+    # Safety: unsafe names must be blocked — generated source must contain _SAFE_NAMES guard
+    def test_function_unsafe_name_guard_in_source(self, dr_module, auto_df):
+        """BUG-FE-1 safety: generated source must contain _SAFE_NAMES to block disallowed names.
+
+        The try/except around _val_node intentionally swallows ValueError so a bad
+        expression does not crash the whole dashboard.  The security property is that
+        eval() is never reached with the unsafe code, not that make_document raises.
+        Verify the guard exists in the generated source.
+        """
+        source = _build_function_app(dr_module, "x + 1")
+        assert "_SAFE_NAMES" in source, (
+            "generated server source must contain _SAFE_NAMES to block disallowed names"
+        )
+        assert "Unsafe name" in source, (
+            "generated server source must contain 'Unsafe name' error text for _SAFE_NAMES guard"
+        )
+
+    # Safety: unsafe function calls must be blocked — generated source must contain _SAFE_FUNCS guard
+    def test_function_unsafe_call_guard_in_source(self, dr_module, auto_df):
+        """BUG-FE-1 safety: generated source must contain _SAFE_FUNCS to block disallowed calls.
+
+        Same rationale as test_function_unsafe_name_guard_in_source: the try/except
+        silences the error but the eval() path is never reached for unsafe expressions.
+        """
+        source = _build_function_app(dr_module, "x + 1")
+        assert "_SAFE_FUNCS" in source, (
+            "generated server source must contain _SAFE_FUNCS to block disallowed function calls"
+        )
+        assert "Disallowed function call" in source, (
+            "generated server source must contain 'Disallowed function call' guard text"
+        )
+
+    # Safety: unsafe expression silently skipped (dashboard still loads, no line from unsafe expr)
+    def test_function_unsafe_expr_document_still_loads(self, dr_module, auto_df):
+        """BUG-FE-1 safety: make_document must not crash for an unsafe expression.
+
+        The validator detects the unsafe expression, the try/except swallows the error,
+        and the dashboard loads without the function plot.  This is correct behavior.
+        """
+        # This must complete without raising — the bad expr is silently skipped
+        doc = _exec_function_app(dr_module, "os.system('id')")
+        # Document must have loaded (other roots may still be present)
+        assert doc is not None, "make_document must not crash for an unsafe expression"

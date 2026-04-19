@@ -5104,7 +5104,14 @@ class DashRenderer:
                 parts.append("Missing")
                 continue
             labelset = self.value_label_names.get(var, "")
-            vlabels = self.value_labels.get(labelset, {})
+            vlabels = self.value_labels.get(labelset, {}) if labelset else {}
+            # Fallback: some callers key valueLabels by variable name rather
+            # than label-set name (e.g. regen scripts that pre-date the
+            # standard Stata jsonio format).
+            if not vlabels:
+                candidate = self.value_labels.get(var, {})
+                if isinstance(candidate, dict):
+                    vlabels = candidate
             # Try raw string and int-string lookups for value labels
             str_val = str(val)
             int_str = str(int(val)) if isinstance(val, float) and val == int(val) else str_val
@@ -5690,22 +5697,28 @@ class DashRenderer:
                     if _fb_rends:
                         _fb_src = _fb_rends[0].data_source
                         _fb_fields: list = []
+                        _fb_mode = "mouse"
                         # Histogram: "left"/"right" are bin edges, "top" = count
+                        # Use mode="vline" so the hover fires anywhere within a
+                        # bin's x-range — quad hit-testing requires the cursor
+                        # to land exactly on the bar, which is unreliable.
                         if "top" in _fb_src.data and "left" in _fb_src.data:
                             _bin_var = _yvar_eff or "value"
                             _fb_fields = [
-                                (_bin_var,  "@left – @right"),
-                                ("Count",   "@top"),
+                                (_bin_var,  "@{left}{0.2f} to @{right}{0.2f}"),
+                                ("Count",   "@{top}"),
                             ]
+                            _fb_mode = "vline"
                         # KDE / fit line: "x" and "y" columns
                         elif "x" in _fb_src.data and "y" in _fb_src.data:
                             _fb_fields = [
-                                (xvar or "x",     "@x"),
-                                (_yvar_eff or "y", "@y"),
+                                (xvar or "x",     "@{x}{0.3f}"),
+                                (_yvar_eff or "y", "@{y}{0.4f}"),
                             ]
                         if _fb_fields:
                             fig.add_tools(HoverTool(tooltips=_fb_fields,
-                                                    renderers=_fb_rends[:1]))
+                                                    renderers=_fb_rends[:1],
+                                                    mode=_fb_mode))
 
         return fig
 
@@ -7401,7 +7414,13 @@ class ServerAppBuilder:
             "_LIMITER = _RateLimiter(_RATE_LIMIT_RPM)",
             "",
             "class _HealthHandler(_RequestHandler):",
-            "    '''Health check HTTP handler — always returns 200 OK with JSON status.'''",
+            "    '''Health check HTTP handler — returns 200 OK or 429 when rate-limited.'''",
+            "    def prepare(self):",
+            "        _ip = self.request.remote_ip or '0.0.0.0'",
+            "        if not _LIMITER.is_allowed(_ip):",
+            "            self.set_status(429)",
+            "            self.set_header('Content-Type', 'application/json')",
+            "            self.finish('{\"status\": \"rate_limited\", \"message\": \"Too Many Requests\"}')",
             "    def get(self):",
             "        import datetime as _dt",
             "        self.set_header('Content-Type', 'application/json')",
@@ -7760,6 +7779,27 @@ class ServerAppBuilder:
             "    Builds the full dashboard layout including figures, KPI cards,",
             "    filter widgets, and wires all Python callbacks.",
             '    """',
+            "    # ---- Rate-limit enforcement at session creation ----",
+            "    # Extract client IP from the Bokeh session-context request object.",
+            "    # Falls back through X-Forwarded-For (reverse-proxy), remote_ip,",
+            "    # and finally '0.0.0.0' so a missing context never crashes the handler.",
+            "    try:",
+            "        _req = doc.session_context.request",
+            "        _client_ip = (",
+            "            getattr(_req, 'remote_ip', None)",
+            "            or (getattr(_req, 'headers', {}).get('X-Forwarded-For', '').split(',')[0].strip())",
+            "            or '0.0.0.0'",
+            "        )",
+            "    except Exception:",
+            "        _client_ip = '0.0.0.0'",
+            "    if not _LIMITER.is_allowed(_client_ip):",
+            "        doc.add_root(Div(text=(",
+            "            '<h2 style=\"font-family:sans-serif;color:#c00\">429 Too Many Requests</h2>'",
+            "            '<p style=\"font-family:sans-serif\">Rate limit exceeded. '",
+            "            'Please wait a moment before reconnecting.</p>'",
+            "        )))",
+            "        return",
+            "",
             "    spec, df, meta = _load_spec_and_data()",
             "    graphs = spec.get('graphs', [])",
             "    kpi_defs = spec.get('kpis', [])",
@@ -8845,6 +8885,8 @@ class ServerAppBuilder:
             "                    elif isinstance(node, _ast.Constant): pass",
             "                    elif isinstance(node, _ast.Name):",
             "                        if node.id not in _SAFE_NAMES: raise ValueError(f'Unsafe name: {node.id!r}')",
+            "                    elif isinstance(node, (_ast.operator, _ast.unaryop)):",
+            "                        pass  # operator nodes (Add, Sub, USub, …) carry no dangerous state",
             "                    elif isinstance(node, (_ast.BinOp, _ast.UnaryOp)):",
             "                        for c in _ast.iter_child_nodes(node): _val_node(c)",
             "                    elif isinstance(node, _ast.Call):",
