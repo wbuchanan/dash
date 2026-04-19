@@ -1569,11 +1569,14 @@ program define _dash_serve
     local no_browser_flag ""
     if "`nobrowser'" == "nobrowser" local no_browser_flag "--no-browser"
 
+    // Temp path for the generated Bokeh Server .py app (must have .py extension)
+    local serve_app_path "`c(tmpdir)'dash_serve_app.py"
+
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
     python: import sys, runpy
-    python: sys.argv = ["dash_render.py", "--spec", r"`master_json_path'", "--data", r"`data_json_path'", "--output", "serve", "--mode", "serve", "--port", "`port_int'", "--timeout", "`timeout'"]
+    python: sys.argv = ["dash_render.py", "--spec", r"`master_json_path'", "--data", r"`data_json_path'", "--output", r"`serve_app_path'", "--mode", "server", "--port", "`port_int'", "--timeout", "`timeout'"]
     if "`no_browser_flag'" != "" {
-        python: sys.argv.append("`no_browser_flag'")
+        python: sys.argv.append("--no-browser")
     }
     python: runpy.run_path(r"`render_py'", run_name="__main__")
 end

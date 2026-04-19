@@ -4101,3 +4101,131 @@ class TestServerFunctionNClamp:
             "generated server code must clamp n_pts to minimum 2 (max(2, ...)) "
             "so np.linspace never receives n < 2"
         )
+
+
+# ================================================================
+# BUG-CLI-1: dash serve invokes unsupported renderer CLI mode/flags
+# Regression for: "_dash_serve sets sys.argv with --mode 'serve' plus
+# --port/--timeout flags, but dash_render.py only accepts
+# --mode {standalone,server} and does not define --port, --timeout, or
+# --no-browser."
+# Fix:
+#   (1) dash.ado: changed --mode serve → --mode server and
+#       --output serve → a real .py temp-file path
+#   (2) dash_render.py: added --port, --timeout, --no-browser to argparse
+# ================================================================
+
+class TestCLIServeFlagsAccepted:
+    """Regression suite for BUG-CLI-1: dash_render.py must accept serve-mode flags.
+
+    Before the fix, passing --mode serve, --port, --timeout or --no-browser
+    caused argparse to abort with an error ('invalid choice: serve', or
+    'unrecognized arguments: --port ...').  After the fix all four flags are
+    accepted and the choices list includes 'server'.
+
+    We test the CLI flags via two methods:
+      1. Subprocess --help output (covers the full argparse definition)
+      2. Source-code inspection (fast, no subprocess overhead)
+    """
+
+    def _get_help_output(self):
+        """Run 'python dash_render.py --help' and return stdout."""
+        import subprocess, sys, os
+        src_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "dash_render.py"
+        )
+        result = subprocess.run(
+            [sys.executable, src_path, "--help"],
+            capture_output=True, text=True, timeout=30
+        )
+        # --help exits with code 0
+        return result.stdout + result.stderr
+
+    def _get_source(self):
+        """Return the dash_render.py source text."""
+        import os
+        src_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "dash_render.py"
+        )
+        with open(src_path) as fh:
+            return fh.read()
+
+    def test_mode_server_in_choices(self, dr_module, auto_df):
+        """BUG-CLI-1a: --mode choices must include 'server' (not just 'serve')."""
+        help_txt = self._get_help_output()
+        assert "server" in help_txt, \
+            "--mode choices must include 'server' (visible in --help output)"
+        assert "serve" not in help_txt.replace("server", ""), \
+            "--mode choices must NOT include invalid choice 'serve'"
+
+    def test_port_argument_defined(self, dr_module, auto_df):
+        """BUG-CLI-1b: --port must be defined in argparse with integer type."""
+        help_txt = self._get_help_output()
+        assert "--port" in help_txt, \
+            "--port argument must appear in --help output (was missing before fix)"
+        # Source must use type=int for --port
+        src = self._get_source()
+        assert '"--port"' in src or "'--port'" in src, \
+            "--port must be defined in the argparse block"
+
+    def test_timeout_argument_defined(self, dr_module, auto_df):
+        """BUG-CLI-1c: --timeout must be defined in argparse with integer type."""
+        help_txt = self._get_help_output()
+        assert "--timeout" in help_txt, \
+            "--timeout argument must appear in --help output (was missing before fix)"
+
+    def test_no_browser_argument_defined(self, dr_module, auto_df):
+        """BUG-CLI-1d: --no-browser must be defined in argparse as a store_true flag."""
+        help_txt = self._get_help_output()
+        assert "--no-browser" in help_txt, \
+            "--no-browser argument must appear in --help output (was missing before fix)"
+
+    def test_server_mode_generates_app_file(self, dr_module, auto_df):
+        """BUG-CLI-1e: --mode server must generate a .py app file without launching server."""
+        import tempfile, os
+        spec_path, data_path = _write_temp_files(auto_df, _make_spec_json())
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            # main() is the programmatic API (no CLI flag parsing); use it directly
+            dr_module.main(spec_path, data_path, out_f.name, "server")
+            assert os.path.exists(out_f.name), \
+                "main(..., mode='server') must write a .py file"
+            with open(out_f.name) as fh:
+                src = fh.read()
+            assert "make_document" in src, \
+                "generated server app must contain make_document function"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_main_accepts_server_mode(self, dr_module, auto_df):
+        """BUG-CLI-1f: main() must accept mode='server' without raising ValueError."""
+        import tempfile, os
+        spec_path, data_path = _write_temp_files(auto_df, _make_spec_json())
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            # Must not raise
+            dr_module.main(spec_path, data_path, out_f.name, "server")
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_main_raises_on_serve_mode(self, dr_module, auto_df):
+        """BUG-CLI-1g: main() must raise ValueError for the old invalid mode 'serve'."""
+        import tempfile, os
+        spec_path, data_path = _write_temp_files(auto_df, _make_spec_json())
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            with pytest.raises(ValueError, match="unknown mode"):
+                dr_module.main(spec_path, data_path, out_f.name, "serve")
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass

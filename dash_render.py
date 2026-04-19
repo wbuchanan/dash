@@ -9557,5 +9557,79 @@ if __name__ == "__main__":
         choices=["standalone", "server"],
         help="Output mode: 'standalone' (HTML) or 'server' (Bokeh Server app .py)",
     )
+    # Server-launch options (used with --mode server)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5006,
+        help="TCP port for the Bokeh Server (default: 5006). Only used with --mode server.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=0,
+        help=(
+            "Auto-shutdown timeout in minutes (0 = run until interrupted). "
+            "Only used with --mode server."
+        ),
+    )
+    parser.add_argument(
+        "--no-browser",
+        dest="no_browser",
+        action="store_true",
+        default=False,
+        help="Do not open a browser tab after starting the Bokeh Server.",
+    )
     args = parser.parse_args()
+
+    # Build the output file (HTML or server app .py)
     main(args.spec, args.data, args.output, args.mode)
+
+    # When mode is 'server', launch the generated Bokeh Server app.
+    # This call blocks until the server is stopped (SIGINT / timeout).
+    if args.mode == "server":
+        import subprocess as _sp
+        import sys as _sys
+        import time as _time
+        import threading as _threading
+        import webbrowser as _wb
+
+        _port = max(1024, min(args.port, 65535))
+        _cmd = [
+            _sys.executable, "-m", "bokeh", "serve",
+            args.output,
+            "--port", str(_port),
+            "--allow-websocket-origin", f"localhost:{_port}",
+        ]
+        try:
+            _proc = _sp.Popen(_cmd)
+        except FileNotFoundError:
+            import sys as _sys2
+            print(
+                "dash_render: error — could not launch 'bokeh serve'. "
+                "Ensure Bokeh is installed and accessible in the current Python environment.",
+                file=_sys2.stderr,
+            )
+            raise SystemExit(1)
+
+        # Open browser after a short delay unless suppressed
+        if not args.no_browser:
+            def _open_browser():
+                _time.sleep(1.5)
+                _wb.open(f"http://localhost:{_port}")
+            _bt = _threading.Thread(target=_open_browser, daemon=True)
+            _bt.start()
+
+        # Auto-shutdown after timeout minutes (0 = run until interrupted)
+        if args.timeout > 0:
+            def _auto_stop():
+                _time.sleep(args.timeout * 60)
+                _proc.terminate()
+            _tt = _threading.Thread(target=_auto_stop, daemon=True)
+            _tt.start()
+
+        try:
+            _proc.wait()
+        except KeyboardInterrupt:
+            _proc.terminate()
+            _proc.wait()
