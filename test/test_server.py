@@ -4676,21 +4676,31 @@ class TestDualLogScale:
         )
 
     def test_make_figure_single_recreation_for_both_log(self, dr_module, auto_df):
-        """BUG-SCALE-1d: _make_figure source must build axis kwargs once (not two separate ifs)."""
-        import os
-        src_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "dash_render.py"
-        )
-        with open(src_path) as fh:
-            src = fh.read()
-        # The old bug pattern: two separate fig = bokeh_figure(...) calls in the
-        # log-scale block.  After fix, they are merged into one.
-        # Check that x_axis_type and y_axis_type are both set in one block.
-        assert 'kw["x_axis_type"] = "log"' in src or "x_axis_type.*log" in src, \
-            "_make_figure must set x_axis_type in the combined log-scale block"
-        assert 'kw["y_axis_type"] = "log"' in src or "y_axis_type.*log" in src, \
-            "_make_figure must set y_axis_type in the combined log-scale block"
+        """BUG-SCALE-1d: _make_figure must set both axis types before creating the figure.
+
+        After the BUG-STYLE-LOG fix (Bug #18), axis types are injected into fig_kwargs
+        before the single bokeh_figure() call, replacing the earlier two-pass approach.
+        Verify that both x_axis_type and y_axis_type are wired and produce log scales.
+        """
+        from bokeh.models import LogScale
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1", "xscale": "log", "yscale": "log"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            fig = list(renderer.figures.values())[0]
+            assert isinstance(fig.x_scale, LogScale), \
+                "x-axis must be LogScale when xscale(log) and yscale(log) are both set"
+            assert isinstance(fig.y_scale, LogScale), \
+                "y-axis must be LogScale when xscale(log) and yscale(log) are both set"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
 
 
 # ================================================================
@@ -5443,6 +5453,94 @@ class TestKpiFilterCallbackXssHardening:
                     "plain text title must survive HTML escaping unchanged"
                 assert "Overall average" in kpi_cfg_json, \
                     "plain text subtitle must survive HTML escaping unchanged"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-STYLE-LOG: xscale(log)/yscale(log) drops prior figure styling
+# ---------------------------------------------------------------------------
+
+class TestLogScalePreservesStyle:
+    """Regression tests for BUG-STYLE-LOG: enabling log scale must not discard
+    figure styling (bgcolor, plotbgcolor, plotregion, graphregion) that was
+    applied before the log-scale axis type was set."""
+
+    def _make_styled_log_spec(self, bgcolor="#aabbcc", plotbgcolor="#112233",
+                               xscale="log", yscale=""):
+        return _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {
+                "name": "g1",
+                "bgcolor": bgcolor,
+                "plotbgcolor": plotbgcolor,
+                "xscale": xscale,
+                "yscale": yscale,
+            },
+        }])
+
+    def test_bgcolor_preserved_with_xscale_log(self, dr_module, auto_df):
+        """BUG-STYLE-LOG-1a: bgcolor must be applied when xscale(log) is set."""
+        spec = self._make_styled_log_spec(bgcolor="#aabbcc", xscale="log")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            # The hex color must appear somewhere in the output (border_fill_color)
+            assert "#aabbcc" in html_out.lower() or "aabbcc" in html_out.lower(), \
+                "bgcolor #aabbcc must appear in rendered HTML when xscale(log) is set"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_plotbgcolor_preserved_with_xscale_log(self, dr_module, auto_df):
+        """BUG-STYLE-LOG-1b: plotbgcolor must be applied when xscale(log) is set."""
+        spec = self._make_styled_log_spec(plotbgcolor="#998877", xscale="log")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            assert "998877" in html_out.lower(), \
+                "plotbgcolor #998877 must appear in rendered HTML when xscale(log) is set"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_styling_preserved_with_dual_log(self, dr_module, auto_df):
+        """BUG-STYLE-LOG-1c: styling must survive when both xscale(log) and yscale(log) are set."""
+        spec = self._make_styled_log_spec(bgcolor="#ccddee", xscale="log", yscale="log")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            assert "ccddee" in html_out.lower(), \
+                "bgcolor must be preserved when both axes use log scale"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_figure_created_only_once(self, dr_module, auto_df):
+        """BUG-STYLE-LOG-1d: _make_figure must produce log-scale figure in one pass."""
+        from bokeh.models import LogScale
+        spec = self._make_styled_log_spec(xscale="log", yscale="log")
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            # Verify figures were built (not empty)
+            assert renderer.figures, "figures must be built"
+            fig = list(renderer.figures.values())[0]
+            # Both axes should be log scale
+            assert isinstance(fig.x_scale, LogScale), \
+                "x-axis must be LogScale when xscale(log) is requested"
+            assert isinstance(fig.y_scale, LogScale), \
+                "y-axis must be LogScale when yscale(log) is requested"
         finally:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)

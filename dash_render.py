@@ -5215,6 +5215,14 @@ class DashRenderer:
             except (ValueError, TypeError):
                 pass
 
+        # Log scale and reverse options.
+        # Determine axis types BEFORE creating the figure so that we only ever
+        # call bokeh_figure() once.  Previously, log scale caused a second
+        # bokeh_figure() call that discarded all styling applied after the first
+        # call (scheme, bgcolor, plotbgcolor, plotregion, graphregion).
+        _xs_log, _xs_rev = _parse_scale_opt(graph_opts.get("xscale", ""))
+        _ys_log, _ys_rev = _parse_scale_opt(graph_opts.get("yscale", ""))
+
         fig_kwargs = dict(
             title=html.escape(graph_opts.get("title", "")),
             x_axis_label=x_label,
@@ -5225,6 +5233,10 @@ class DashRenderer:
         )
         if aspect_ratio is not None:
             fig_kwargs["aspect_ratio"] = aspect_ratio
+        if _xs_log:
+            fig_kwargs["x_axis_type"] = "log"
+        if _ys_log:
+            fig_kwargs["y_axis_type"] = "log"
 
         fig = bokeh_figure(**fig_kwargs)
 
@@ -5283,22 +5295,6 @@ class DashRenderer:
                     fig.border_fill_color = OptionTranslator.translate_mcolor(_gr_bg)
                 except (ValueError, TypeError):
                     pass
-
-        # Log scale and reverse options.
-        # Build both axis-type overrides at once and re-create the figure exactly
-        # once (or not at all) so that setting xscale(log) yscale(log) together
-        # keeps both axes in log scale instead of the second creation overwriting
-        # the first with only y-log and linear x.
-        _xs_log, _xs_rev = _parse_scale_opt(graph_opts.get("xscale", ""))
-        _ys_log, _ys_rev = _parse_scale_opt(graph_opts.get("yscale", ""))
-        if _xs_log or _ys_log:
-            kw = dict(fig_kwargs)
-            kw.pop("tools", None)
-            if _xs_log:
-                kw["x_axis_type"] = "log"
-            if _ys_log:
-                kw["y_axis_type"] = "log"
-            fig = bokeh_figure(**kw)
 
         # Secondary axes (yaxis(2) / xaxis(2))
         # Detect whether any plot layers request a secondary axis
