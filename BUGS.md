@@ -45,10 +45,11 @@
   - Description: Facet-specific aggregate sources are registered with facet keys (for example `(_fac_name, pi)`), and raw source updates correctly compute per-facet `_gdf`. However, aggregate recomputation in `_make_filter_cb` always uses global `fdf` for every aggregate type. This causes faceted histograms/fits/smoothers to drift from the facet’s subgroup after filter changes, which is a core correctness bug.
   - Suggested fix: In the aggregate recompute loop, derive a facet-aware frame (analogous to `_gdf` logic used for raw sources via `_fgvals`) and pass that frame to `_compute_*` calls instead of always using `fdf`.
 
-- [ ] Title: Server-mode histogram `bin()` accepts unbounded values and can exhaust memory/CPU
+- [x] Title: Server-mode histogram `bin()` accepts unbounded values and can exhaust memory/CPU
   - File Names and Line Numbers: dash_render.py (7480-7486, 8193-8202, 9288-9290)
   - Description: Generated server code parses `nbins = int(opts.get('bin', 20))` with no bounds and feeds it to `np.histogram(..., bins=nbins)` both initially and during callbacks. Large `bin()` values can force very large array allocations and expensive recomputation, creating a resource-exhaustion vector. This path is also inconsistent with standalone rendering, which clamps histogram bins to a safe maximum.
   - Suggested fix: Clamp server-mode `nbins` to a safe range (for example `1..1000`) and guard the parse with `try/except` to fall back to a default on invalid values before calling `_compute_histogram`.
+  - Resolution: Fixed. (1) At the call site in the server histogram handler (dash_render.py ~8224), changed `int(opts.get('bin', 20))` to `max(1, min(int(opts.get('bin', 20)), 1000))` with `try/except` fallback to 20. (2) Added defensive clamp inside `_compute_histogram`: `bins = max(1, min(int(bins), 1000))` as the first statement. Both match the standalone path which clamps to `_MAX_BINS = 1000`. 4 regression tests added in `test/test_server.py` class `TestServerHistogramBinClamp` (BUG-HIST-1a through BUG-HIST-1d). All 1247 tests pass.
 
 - [ ] Title: Dual log-scale graphs drop x-axis log mode due figure re-creation
   - File Names and Line Numbers: dash_render.py (5288-5297)

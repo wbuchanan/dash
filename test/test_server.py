@@ -4534,3 +4534,80 @@ class TestGraphQualifierPropagation:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ================================================================
+# BUG-HIST-1: Server-mode histogram bin() accepts unbounded values
+# Regression for: "Generated server code parses nbins = int(opts.get
+# ('bin', 20)) with no bounds and feeds it to np.histogram(..., bins=nbins).
+# Large bin() values can force very large array allocations."
+# Fix: clamp nbins to max(1, min(int(...), 1000)) at the call site and
+# inside _compute_histogram.
+# ================================================================
+
+class TestServerHistogramBinClamp:
+    """Regression suite for BUG-HIST-1: server histogram bin() must be clamped 1..1000."""
+
+    def test_histogram_bin_clamp_in_source(self, dr_module, auto_df):
+        """BUG-HIST-1a: generated server source must clamp nbins to 1..1000."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
+                       "options": {"bin": "20"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "max(1, min(" in source or "min(int(" in source, (
+            "generated server source must clamp nbins with max(1, min(..., 1000)) "
+            "to prevent resource exhaustion"
+        )
+
+    def test_histogram_large_bin_does_not_exhaust(self, dr_module, auto_df):
+        """BUG-HIST-1b: bin=100000 must be clamped and document loads without OOM."""
+        import importlib.util, tempfile, os
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
+                       "options": {"bin": "100000"}}],
+            "graph_options": {"name": "g1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            with open(out_f.name) as fh:
+                generated = fh.read()
+            assert "1000" in generated, "generated source must reference 1000 as max bin clamp"
+            app_spec = importlib.util.spec_from_file_location("_th2", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert doc is not None, "make_document must complete with bin=100000"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_compute_histogram_clamps_bins(self, dr_module, auto_df):
+        """BUG-HIST-1c: generated _compute_histogram must clamp bins internally."""
+        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }]))
+        # _compute_histogram body must clamp bins
+        assert "max(1, min(int(bins), 1000))" in source or "clamp" in source.lower(), (
+            "_compute_histogram in generated source must clamp bins parameter"
+        )
+
+    def test_histogram_bin_minimum_is_1(self, dr_module, auto_df):
+        """BUG-HIST-1d: bin=0 must be clamped to minimum 1."""
+        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
+                       "options": {"bin": "0"}}],
+            "graph_options": {"name": "g1"},
+        }]))
+        assert "max(1," in source, (
+            "generated server code must ensure bins >= 1 via max(1, ...)"
+        )
