@@ -918,17 +918,10 @@ program define _dash_render_immediate
     // Extract if/in qualifiers from first plot spec for jsonio
     local if_expr ""
     local in_expr ""
-    // Scan JSON for the first if_expr value
-    local ipos = strpos(`"`json_spec'"', `""if_expr":"')
-    if `ipos' > 0 {
-        local after_if = substr(`"`json_spec'"', `ipos' + 11, .)
-        local if_expr = substr(`"`after_if'"', 1, strpos(`"`after_if'"', `"""') - 1)
-    }
-    local inpos = strpos(`"`json_spec'"', `""in_expr":"')
-    if `inpos' > 0 {
-        local after_in = substr(`"`json_spec'"', `inpos' + 11, .)
-        local in_expr = substr(`"`after_in'"', 1, strpos(`"`after_in'"', `"""') - 1)
-    }
+    // Extract if/in qualifier values using the JSON-aware Mata extractor
+    // (handles \" escape sequences inside the value, unlike naive strpos/substr).
+    mata: _dash_json_get_str(`"`json_spec'"', "if_expr", "if_expr")
+    mata: _dash_json_get_str(`"`json_spec'"', "in_expr", "in_expr")
 
     local if_clause ""
     local in_clause ""

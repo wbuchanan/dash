@@ -37,6 +37,10 @@
 *!   _dash_json_esc(s, out_macro)   — JSON-escape s, store in out_macro
 *!   _dash_html_esc(s, out_macro)   — HTML-escape s, store in out_macro
 *!
+*!   _dash_json_get_str(json_str, key, out_macro)
+*!       Extract a JSON string field value by key, correctly handling \"
+*!       escape sequences inside the value.  Used by _dash_render_immediate.
+*!
 *! Version: 2.0  27mar2026
 
 // ============================================================
@@ -778,6 +782,88 @@ void _dash_extract_filters(string scalar filter_out,
 
     st_local(filter_out, result)
     st_local(cmd_out,    strtrim(remaining))
+}
+
+
+// ============================================================
+// 7.  JSON STRING VALUE EXTRACTOR
+//     _dash_json_get_str(json_str, key, out_macro)
+//
+// Extracts the value of a JSON string field named `key` from
+// `json_str`, correctly handling JSON escape sequences inside
+// the value (most importantly \" for embedded double-quotes and
+// \\ for literal backslashes).
+//
+// The naive substr(…, 1, strpos(…, '"') - 1) approach stops at the
+// first '"' character even when it is part of a \" escape sequence,
+// truncating values that contain quoted strings such as
+//     "if_expr": "make == \"AMC Concord\""
+//
+// This function walks the JSON string value char-by-char, consuming
+// escape sequences properly.
+//
+// Parameters:
+//   json_str   : the full JSON text to search
+//   key        : the field name WITHOUT surrounding quotes,
+//                e.g. "if_expr"
+//   out_macro  : Stata local into which the decoded value is stored
+//                (empty string if the key is not found)
+//
+// Called from _dash_render_immediate in dash.ado.
+// ============================================================
+void _dash_json_get_str(string scalar json_str,
+                        string scalar key,
+                        string scalar out_macro) {
+    string scalar needle, sub, ch, value
+    real scalar   pos, local_pos, n
+
+    // Build search pattern:  "key":"
+    needle    = char(34) + key + char(34) + ":" + char(34)
+    local_pos = strpos(json_str, needle)
+    if (local_pos == 0) {
+        st_local(out_macro, "")
+        return
+    }
+
+    // Start reading value characters just after the opening "
+    pos   = local_pos + strlen(needle)
+    n     = strlen(json_str)
+    value = ""
+
+    while (pos <= n) {
+        ch = substr(json_str, pos, 1)
+        if (ch == char(34)) {
+            // Unescaped closing double-quote — end of string value
+            break
+        }
+        else if (ch == "\") {
+            // Escape sequence — peek at next character
+            if (pos + 1 <= n) {
+                ch = substr(json_str, pos + 1, 1)
+                if      (ch == char(34)) { value = value + char(34); pos = pos + 2 }
+                else if (ch == "\")      { value = value + "\";       pos = pos + 2 }
+                else if (ch == "n")      { value = value + char(10);  pos = pos + 2 }
+                else if (ch == "r")      { value = value + char(13);  pos = pos + 2 }
+                else if (ch == "t")      { value = value + char(9);   pos = pos + 2 }
+                else {
+                    // Unknown escape — keep both chars verbatim
+                    value = value + "\" + ch
+                    pos   = pos + 2
+                }
+            }
+            else {
+                // Trailing backslash with no next char — keep it
+                value = value + "\"
+                pos++
+            }
+        }
+        else {
+            value = value + ch
+            pos++
+        }
+    }
+
+    st_local(out_macro, value)
 }
 
 end
