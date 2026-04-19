@@ -88,10 +88,11 @@
   - Suggested fix: Iterate over all `exclude(...)` occurrences in the combined filter string (or parse each filter segment first, then validate each segment’s exclude list).
   - Resolution: Fixed. Replaced the single-pass `strpos`/`substr` block in `_dash_build` (dash.ado lines ~1242-1270) with a while-loop that advances through the combined filter string, extracts and validates every `exclude(...)` group in turn, and uses `continue, break` to exit cleanly on malformed input. 7 regression tests added in `test/test_server.py` class `TestFilterExcludeValidationAllGroups` (BUG-EXCL-1a through BUG-EXCL-1g). All 1286 tests pass.
 
-- [ ] Title: Filter callback exclusion metadata can bind to the wrong widget spec
+- [x] Title: Filter callback exclusion metadata can bind to the wrong widget spec
   - File Names and Line Numbers: dash_render.py (6737-6748, 6799-6805)
   - Description: Filter widgets are conditionally skipped when a filter var is missing/invalid, but callback configuration later zips `filters_cfg` with `self.filter_callbacks`. If earlier specs were skipped, callbacks pair with the wrong filter spec, so `exclude()` lists can be applied to the wrong callback. This causes incorrect KPI/graph exclusion behavior after filter changes.
   - Suggested fix: Track and zip only the subset of filter specs that actually produced callbacks (for example, build a `built_filter_specs` list alongside `self.filter_callbacks`).
+  - Resolution: Fixed. Added a `built_filter_specs` list in `_build_filter_widgets` (dash_render.py ~6741) that is populated only when a widget+callback is successfully built (i.e. after the `continue` guard at line ~6751). Changed `_filter_specs` list-comprehension (line ~6797) and `zip(filters_cfg, ...)` (line ~6803) to use `built_filter_specs` instead of `filters_cfg`. This ensures that `filter_specs_json` and the exclude-list assignment loop are both indexed 1:1 with `self.filter_callbacks`. 4 regression tests added in `test/test_server.py` class `TestFilterCallbackExcludeAlignment` (BUG-CBEXCL-1a through BUG-CBEXCL-1d). All 1290 tests pass.
 
 - [ ] Title: KPI filter callback reintroduces DOM XSS via unescaped title/subtitle
   - File Names and Line Numbers: dash_render.py (4182-4184, 6819-6823)

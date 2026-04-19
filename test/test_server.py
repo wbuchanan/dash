@@ -5246,3 +5246,97 @@ class TestFilterExcludeValidationAllGroups:
         # Both filter specs should be present in the generated source
         assert "'foreign'" in src, "first filter var must appear in generated source"
         assert "'weight'" in src, "second filter var must appear in generated source"
+
+
+# ---------------------------------------------------------------------------
+# BUG-CBEXCL: Filter callback exclude() binds to wrong widget when var is missing
+# ---------------------------------------------------------------------------
+
+class TestFilterCallbackExcludeAlignment:
+    """Regression tests for BUG-CBEXCL: when a filter spec is skipped because
+    its variable is missing in the data source, the remaining callbacks must
+    still receive the correct exclude() lists and filter_specs alignment."""
+
+    def _make_mixed_filter_spec(self, dr_module, auto_df, graphs=None):
+        """Build a spec with two filters: first has a missing var (skipped), second is valid."""
+        spec = _make_spec_json(
+            graphs=graphs or [{"plots": [{"type": "scatter", "yvar": "mpg",
+                                          "xvar": "weight", "options": {}}],
+                               "graph_options": {"name": "g1"}}],
+            build_options={
+                "layout": "auto", "link": "",
+                # 'missing_var' is not in auto_df — it will be skipped
+                "filter": "missing_var, type(dropdown) || foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "g1",
+                "mode": "standalone", "port": "5006",
+            }
+        )
+        return spec
+
+    def test_filter_specs_count_matches_built_widgets(self, dr_module, auto_df):
+        """BUG-CBEXCL-1a: filter_specs_json length must equal the number of built widgets."""
+        spec = self._make_mixed_filter_spec(dr_module, auto_df)
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html = renderer.render()
+            # foreign is the only built filter — filter_specs_json must have 1 entry
+            import re as _re
+            # The filter_specs_json in the rendered HTML is an array like [{"varname":...}]
+            m = _re.search(r'"filter_specs_json"\s*:\s*"(\[.*?\])"', html)
+            if m:
+                fs = json.loads(m.group(1).replace('\\"', '"').replace('\\\\', '\\'))
+                assert len(fs) == 1, \
+                    f"filter_specs must have 1 entry (not {len(fs)}); missing_var must be excluded"
+                assert fs[0]["varname"] == "foreign", \
+                    "only the successfully-built filter spec must appear in filter_specs"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_render_with_missing_filter_var_does_not_crash(self, dr_module, auto_df):
+        """BUG-CBEXCL-1b: render must not crash when first filter var is missing."""
+        spec = self._make_mixed_filter_spec(dr_module, auto_df)
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html = renderer.render()
+            assert len(html) > 100, "rendered HTML must be non-trivial"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_built_filter_callback_count_equals_valid_filter_specs(self, dr_module, auto_df):
+        """BUG-CBEXCL-1c: number of filter callbacks must equal number of built widgets."""
+        spec = self._make_mixed_filter_spec(dr_module, auto_df)
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            # After render(), filter_widgets and filter_callbacks must have same length
+            assert len(renderer.filter_widgets) == len(renderer.filter_callbacks), \
+                "filter_widgets and filter_callbacks must always have equal length"
+            # Only 1 valid filter (foreign); missing_var was skipped
+            assert len(renderer.filter_callbacks) == 1, \
+                "only 1 filter callback must be built (for foreign); missing_var skipped"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_all_valid_filters_built_when_first_is_missing(self, dr_module, auto_df):
+        """BUG-CBEXCL-1d: valid filters after a skipped one must still be built."""
+        spec = self._make_mixed_filter_spec(dr_module, auto_df)
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            # There should be exactly 1 widget (for 'foreign')
+            assert len(renderer.filter_widgets) == 1, \
+                "foreign filter widget must be built even though missing_var was skipped"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass

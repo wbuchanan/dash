@@ -6737,6 +6737,12 @@ class DashRenderer:
         """
         filter_row_widgets: list = []
         fsource = None
+        # Track filter specs that actually produced a widget+callback, in the
+        # same order as self.filter_callbacks.  Specs whose variable is missing
+        # in the data source are skipped and must NOT appear here, otherwise
+        # zip(built_filter_specs, filter_callbacks) would pair the wrong spec
+        # with the wrong callback and apply incorrect exclude() lists.
+        built_filter_specs: list = []
 
         for fc in filters_cfg:
             fvar    = fc.get("varname", "")
@@ -6783,6 +6789,7 @@ class DashRenderer:
             filter_row_widgets.append(widget)
             self.filter_widgets.append(widget)
             self.filter_callbacks.append(cb)
+            built_filter_specs.append(fc)  # record only successfully-built specs
 
         # Wire multi-filter state into every callback.
         # Each callback gets orig_data_json, all_widgets, filter_specs_json,
@@ -6793,14 +6800,16 @@ class DashRenderer:
             for _col, _arr in fsource.data.items():
                 _orig_data[_col] = [DashRenderer._to_serialisable(v) for v in _arr]
 
+        # Build filter_specs from only the successfully-built specs so that
+        # JS callbacks index all_widgets correctly (1:1 correspondence).
         _filter_specs: list = [
             {"varname": _fc.get("varname", ""), "type": _fc.get("type", "dropdown")}
-            for _fc in filters_cfg
+            for _fc in built_filter_specs
         ]
 
         _kpi_defs_by_name: dict = {k.get("name", ""): k for k in kpis}
 
-        for _fc, _cb in zip(filters_cfg, self.filter_callbacks):
+        for _fc, _cb in zip(built_filter_specs, self.filter_callbacks):
             _fc_excludes = [str(x) for x in _fc.get("exclude", [])]
             _kpi_config_for_cb: list = []
             _kpi_divs_for_cb:   list = []
