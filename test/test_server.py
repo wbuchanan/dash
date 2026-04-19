@@ -5136,3 +5136,113 @@ class TestImmediateRenderQualifierHandling:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-EXCL: dash build validates only first exclude() group
+# ---------------------------------------------------------------------------
+
+def _validate_filter_exclude_names(filter_str: str, registry: set) -> list:
+    """Python re-implementation of the Stata filter exclude() validation loop.
+
+    Returns a list of unrecognised exclude names, or raises nothing if all
+    names are in the registry.  Mirrors the updated Stata code that iterates
+    over ALL exclude() groups in the (||/;-joined) filter string.
+    """
+    import re as _re
+    unknown = []
+    remaining = filter_str
+    while True:
+        pos = remaining.find("exclude(")
+        if pos < 0:
+            break
+        inner = remaining[pos + 8:]
+        end = inner.find(")")
+        if end < 0:
+            break  # malformed
+        names = inner[:end].split()
+        for name in names:
+            if name not in registry:
+                unknown.append(name)
+        remaining = inner[end + 1:]
+    return unknown
+
+
+class TestFilterExcludeValidationAllGroups:
+    """Regression tests for BUG-EXCL: build must validate ALL exclude() groups
+    in a multi-filter spec, not just the first one."""
+
+    def test_no_exclude_passes(self):
+        """BUG-EXCL-1a: filter string with no exclude() must validate cleanly."""
+        unknown = _validate_filter_exclude_names(
+            "foreign, type(dropdown)", {"g1", "g2"}
+        )
+        assert unknown == [], "no exclude() should produce no unknown names"
+
+    def test_single_valid_exclude_passes(self):
+        """BUG-EXCL-1b: single exclude() with known names must validate cleanly."""
+        unknown = _validate_filter_exclude_names(
+            "foreign, type(dropdown) exclude(g1)", {"g1", "g2"}
+        )
+        assert unknown == [], "valid single exclude() must pass"
+
+    def test_single_invalid_exclude_fails(self):
+        """BUG-EXCL-1c: single exclude() with unknown name must be flagged."""
+        unknown = _validate_filter_exclude_names(
+            "foreign, type(dropdown) exclude(g99)", {"g1", "g2"}
+        )
+        assert "g99" in unknown, "unknown exclude name must be detected"
+
+    def test_second_exclude_group_validated(self):
+        """BUG-EXCL-1d: second exclude() group after || must also be validated."""
+        # Only first group has known names; second has unknown
+        unknown = _validate_filter_exclude_names(
+            "foreign, type(dropdown) exclude(g1) || weight, type(range) exclude(g99)",
+            {"g1", "g2"}
+        )
+        assert "g99" in unknown, \
+            "second exclude() group must be validated (not just first)"
+
+    def test_both_groups_validated_when_both_invalid(self):
+        """BUG-EXCL-1e: all exclude() groups must be validated — both unknown names reported."""
+        unknown = _validate_filter_exclude_names(
+            "foreign, type(dropdown) exclude(badA) || weight, type(range) exclude(badB)",
+            {"g1", "g2"}
+        )
+        assert "badA" in unknown, "first exclude() group's unknown name must appear"
+        assert "badB" in unknown, "second exclude() group's unknown name must appear"
+
+    def test_three_exclude_groups_all_checked(self):
+        """BUG-EXCL-1f: three || -joined filters with exclude() are all checked."""
+        unknown = _validate_filter_exclude_names(
+            "a, type(dropdown) exclude(g1) || b, type(range) exclude(g2) || c, type(range) exclude(zz)",
+            {"g1", "g2"}
+        )
+        assert "zz" in unknown, "third exclude() group must be validated"
+        assert "g1" not in unknown, "known name in first group must not be flagged"
+        assert "g2" not in unknown, "known name in second group must not be flagged"
+
+    def test_server_builder_generates_exclude_metadata_for_all_filters(
+            self, dr_module, auto_df):
+        """BUG-EXCL-1g: generated server source must carry exclude metadata for every filter."""
+        spec = _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                            "options": {}}], "graph_options": {"name": "g1"}},
+                {"plots": [{"type": "scatter", "yvar": "price", "xvar": "weight",
+                            "options": {}}], "graph_options": {"name": "g2"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": (
+                    "foreign, type(dropdown), exclude(g2) || "
+                    "weight, type(range), exclude(g1)"
+                ),
+                "theme": "default", "title": "T", "subtitle": "", "registry": "g1 g2",
+                "mode": "server", "port": "5006",
+            }
+        )
+        src = _build_app(dr_module, auto_df, spec)
+        # Both filter specs should be present in the generated source
+        assert "'foreign'" in src, "first filter var must appear in generated source"
+        assert "'weight'" in src, "second filter var must appear in generated source"

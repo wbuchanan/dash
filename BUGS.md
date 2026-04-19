@@ -82,10 +82,11 @@
   - Suggested fix: Stop deriving `jsonio` qualifiers by first-match text scanning. Either extract and merge qualifiers explicitly before building JSON, or avoid pre-filtering `jsonio` data and let renderer-level filtering handle each plot qualifier consistently.
   - Resolution: Fixed. Removed the `if/in` pre-filtering from the `jsonio out` call in `_dash_render_immediate` (dash.ado lines ~934-955). Previously the code extracted `if_expr`/`in_expr` from the first plot spec and passed them as qualifiers to `jsonio`, silently discarding rows needed by other plots. Now `jsonio` always exports all rows for the needed variables; the Python renderer applies per-graph filtering via `_apply_graph_filter()` using the graph-level qualifiers that `_dash_plot` already promotes to the top-level graph JSON. 4 regression tests added in `test/test_server.py` class `TestImmediateRenderQualifierHandling` (BUG-IQUAL-1a through BUG-IQUAL-1d). All 1279 tests pass.
 
-- [ ] Title: `dash build` validates only the first `filter(..., exclude(...))` group
+- [x] Title: `dash build` validates only the first `filter(..., exclude(...))` group
   - File Names and Line Numbers: dash.ado (1228-1246)
   - Description: Build-time validation finds `exclude(` once via `strpos` and checks only that first parenthesized list. With multiple filter specs, later `exclude()` entries are never validated against the graph registry. This is a bug (not desired behavior) because the code claims to validate filter exclusions but silently skips additional groups.
   - Suggested fix: Iterate over all `exclude(...)` occurrences in the combined filter string (or parse each filter segment first, then validate each segment’s exclude list).
+  - Resolution: Fixed. Replaced the single-pass `strpos`/`substr` block in `_dash_build` (dash.ado lines ~1242-1270) with a while-loop that advances through the combined filter string, extracts and validates every `exclude(...)` group in turn, and uses `continue, break` to exit cleanly on malformed input. 7 regression tests added in `test/test_server.py` class `TestFilterExcludeValidationAllGroups` (BUG-EXCL-1a through BUG-EXCL-1g). All 1286 tests pass.
 
 - [ ] Title: Filter callback exclusion metadata can bind to the wrong widget spec
   - File Names and Line Numbers: dash_render.py (6737-6748, 6799-6805)

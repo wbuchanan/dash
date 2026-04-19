@@ -1240,22 +1240,31 @@ program define _dash_build
     }
 
     // ---- validate filter() exclude() names ----
+    // Iterate over ALL exclude(...) groups in the (possibly ||/;-joined) filter string.
     if "`filter'" != "" {
-        local excl_start = strpos("`filter'", "exclude(")
-        if `excl_start' > 0 {
-            local excl_inner = substr("`filter'", `excl_start' + 8, .)
-            local excl_end   = strpos("`excl_inner'", ")")
-            if `excl_end' > 0 {
-                local excl_names = strtrim(substr("`excl_inner'", 1, `excl_end' - 1))
-                local n_excl : word count `excl_names'
+        local _excl_rem "`filter'"
+        local _excl_pos = strpos("`_excl_rem'", "exclude(")
+        while `_excl_pos' > 0 {
+            local _excl_inner = substr("`_excl_rem'", `_excl_pos' + 8, .)
+            local _excl_end   = strpos("`_excl_inner'", ")")
+            if `_excl_end' > 0 {
+                local _excl_names = strtrim(substr("`_excl_inner'", 1, `_excl_end' - 1))
+                local n_excl : word count `_excl_names'
                 forvalues ke = 1/`n_excl' {
-                    local ename : word `ke' of `excl_names'
+                    local ename : word `ke' of `_excl_names'
                     if !`: list ename in registry' {
                         display as error "dash build: filter exclude() name '`ename'' not found in registry."
                         exit(198)
                     }
                 }
+                // Advance past the closing ) of this exclude() group
+                local _excl_rem = substr("`_excl_inner'", `_excl_end' + 1, .)
             }
+            else {
+                // Malformed exclude() — no closing paren; stop scanning
+                continue, break
+            }
+            local _excl_pos = strpos("`_excl_rem'", "exclude(")
         }
     }
 
