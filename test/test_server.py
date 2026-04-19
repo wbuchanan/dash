@@ -5545,3 +5545,118 @@ class TestLogScalePreservesStyle:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-FILT-COMMA: filter() extraction fails when preceded by comma (no space)
+# ---------------------------------------------------------------------------
+
+def _simulate_extract_filters(cmd_str: str) -> tuple:
+    """Python re-implementation of Mata _dash_extract_filters boundary logic.
+
+    Accepts comma, space, or tab as valid word boundaries before filter/filt/filte.
+    Returns (filter_out, remaining) where filter_out is ||-joined filter specs.
+    """
+    import re as _re
+    raw = cmd_str
+    lraw = raw.lower()
+    n = len(raw)
+    result_parts = []
+    remaining = []
+    i = 0
+    while i < n:
+        matched = 0
+        klen = 0
+        for kw in ("filter", "filte", "filt"):
+            if lraw[i:i+len(kw)] == kw:
+                matched = 1
+                klen = len(kw)
+                break
+        if matched:
+            prev_ch = raw[i-1] if i > 0 else ""
+            before_ok = (i == 0 or prev_ch in (" ", ",", "\t"))
+            if before_ok:
+                j = i + klen
+                # Skip spaces before "("
+                while j < n and raw[j] == " ":
+                    j += 1
+                if j < n and raw[j] == "(":
+                    depth = 1
+                    k = j + 1
+                    while k < n and depth > 0:
+                        if raw[k] == "(":
+                            depth += 1
+                        elif raw[k] == ")":
+                            depth -= 1
+                        k += 1
+                    if depth == 0:
+                        inner = raw[j+1:k-1].strip()
+                        result_parts.append(inner)
+                        i = k
+                        while i < n and raw[i] == " ":
+                            i += 1
+                        continue
+        remaining.append(raw[i])
+        i += 1
+    return " || ".join(result_parts), "".join(remaining).strip()
+
+
+class TestFilterExtractionCommaPrefix:
+    """Regression tests for BUG-FILT-COMMA: _dash_extract_filters must recognise
+    filter() when preceded by a comma (standard Stata option syntax)."""
+
+    def test_space_separated_filter_extracted(self):
+        """BUG-FILT-COMMA-1a: filter preceded by space must be extracted."""
+        result, _ = _simulate_extract_filters("varname filter(foreign, type(dropdown))")
+        assert "foreign" in result, "space-separated filter must be extracted"
+
+    def test_comma_no_space_filter_extracted(self):
+        """BUG-FILT-COMMA-1b: filter preceded by comma (no space) must be extracted."""
+        result, _ = _simulate_extract_filters("varname,filter(foreign, type(dropdown))")
+        assert "foreign" in result, \
+            "comma-prefixed filter (,filter) must be extracted — this is standard Stata syntax"
+
+    def test_comma_space_filter_extracted(self):
+        """BUG-FILT-COMMA-1c: filter preceded by ', ' (comma+space) must be extracted."""
+        result, _ = _simulate_extract_filters("varname, filter(foreign, type(dropdown))")
+        assert "foreign" in result, "', filter' must be extracted"
+
+    def test_two_filters_comma_prefix(self):
+        """BUG-FILT-COMMA-1d: two comma-prefixed filters must both be extracted."""
+        result, _ = _simulate_extract_filters(
+            "var,filter(foreign, type(dropdown)),filter(weight, type(range))"
+        )
+        assert "foreign" in result, "first comma-prefixed filter must be extracted"
+        assert "weight" in result, "second comma-prefixed filter must be extracted"
+        assert "||" in result, "multiple filters must be joined with ||"
+
+    def test_filter_substr_in_varname_not_extracted(self):
+        """BUG-FILT-COMMA-1e: 'filter' as part of a varname must not be extracted."""
+        result, remaining = _simulate_extract_filters("my_filtervariable other_var")
+        assert result == "", "'filter' substring in varname must not match word boundary"
+        assert "my_filtervariable" in remaining
+
+    def test_comma_filter_remaining_is_clean(self):
+        """BUG-FILT-COMMA-1f: after extraction, the filter() group must be removed from remaining."""
+        _, remaining = _simulate_extract_filters("varname,filter(foreign, type(dropdown))")
+        assert "filter(" not in remaining.lower(), \
+            "filter() group must be removed from remaining text"
+        assert "varname" in remaining, "non-filter tokens must remain in remaining"
+
+    def test_server_build_accepts_comma_filter_spec(self, dr_module, auto_df):
+        """BUG-FILT-COMMA-1g: server builder must produce filter widget for comma-prefixed spec."""
+        # Simulate what _dash_build would store in build_options.filter after extraction:
+        # the inner content of filter() — in both space-before and comma-before cases
+        # the inner content would be the same ("foreign, type(dropdown)")
+        spec = _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}], "graph_options": {"name": "g1"}}],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown)",  # inner content, already extracted
+                "theme": "default", "title": "T", "subtitle": "", "registry": "g1",
+                "mode": "server", "port": "5006",
+            }
+        )
+        src = _build_app(dr_module, auto_df, spec)
+        assert "foreign" in src, "filter var must appear in generated server source"

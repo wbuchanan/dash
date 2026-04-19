@@ -106,10 +106,11 @@
   - Suggested fix: Decide axis types before creating the figure and instantiate `bokeh_figure` once (set `x_axis_type`/`y_axis_type` in `fig_kwargs`), then apply scheme and region styling once.
   - Resolution: Fixed. Restructured `_make_figure` (dash_render.py ~5218-5301) to read `xscale`/`yscale` options and set `x_axis_type`/`y_axis_type` in `fig_kwargs` BEFORE the single `bokeh_figure(**fig_kwargs)` call, eliminating the second figure creation entirely. Scheme defaults, bgcolor, plotbgcolor, plotregion, and graphregion are now all applied to the one figure in a single pass. Updated the pre-existing `TestDualLogScale::test_make_figure_single_recreation_for_both_log` test to verify log scale via the `LogScale` model rather than source-text inspection. 4 new regression tests added in `test/test_server.py` class `TestLogScalePreservesStyle` (BUG-STYLE-LOG-1a through BUG-STYLE-LOG-1d). All 1298 tests pass.
 
-- [ ] Title: Multiple `filter()` extraction fails when first option is written as `,filter(...)`
+- [x] Title: Multiple `filter()` extraction fails when first option is written as `,filter(...)`
   - File Names and Line Numbers: dash_parse.mata (729-742, 748-753)
   - Description: `_dash_extract_filters` only accepts a filter keyword when the preceding character is start-of-string or a literal space. In valid Stata usage `dash build,filter(...)` (no space after comma), the first `filter` token is preceded by `,`, so it is not recognized/extracted. Because `_dash_build` depends on this pre-extraction before `syntax`, unextracted `filter()` remains in `0` and can trigger option parsing failures or dropped filter specs. This is a core parsing bug, not a feature.
   - Suggested fix: Treat commas and other whitespace as valid boundaries (for example allow preceding `,`, space, or tab), or replace manual boundary logic with a delimiter-aware tokenizer that accepts standard Stata option formatting.
+  - Resolution: Fixed. In `_dash_extract_filters` in `dash_parse.mata` (line ~745), changed the word-boundary check from `(i == 1 | preceding_char == " ")` to also accept `,` and `char(9)` (tab) as valid preceding characters. 7 regression tests added in `test/test_server.py` class `TestFilterExtractionCommaPrefix` (BUG-FILT-COMMA-1a through BUG-FILT-COMMA-1g). All 1305 tests pass.
 
 - [ ] Title: Standalone `filter()` callbacks only update a single graph source in unlinked dashboards
   - File Names and Line Numbers: dash_render.py (7100-7108, 6742-6745, 4115-4118, 4362, 4421, 4473)

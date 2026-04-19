@@ -741,8 +741,14 @@ void _dash_extract_filters(string scalar filter_out,
         }
 
         if (matched) {
-            // Word-boundary check: preceding char must be space or start.
-            before_ok = (i == 1 | substr(raw, i-1, 1) == " ")
+            // Word-boundary check: preceding char must be space, comma, tab, or start.
+            // In standard Stata syntax, options may be written as ",filter(...)" (no space
+            // after the comma), so comma is a valid word boundary here.
+            real scalar _prev_ch_ok
+            string scalar _prev_ch
+            _prev_ch = (i > 1 ? substr(raw, i-1, 1) : "")
+            _prev_ch_ok = (i == 1 | _prev_ch == " " | _prev_ch == "," | _prev_ch == char(9))
+            before_ok = _prev_ch_ok
             if (!before_ok) {
                 remaining = remaining + substr(raw, i, 1)
                 i++
