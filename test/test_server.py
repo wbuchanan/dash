@@ -4691,3 +4691,69 @@ class TestDualLogScale:
             "_make_figure must set x_axis_type in the combined log-scale block"
         assert 'kw["y_axis_type"] = "log"' in src or "y_axis_type.*log" in src, \
             "_make_figure must set y_axis_type in the combined log-scale block"
+
+
+# ================================================================
+# BUG-FAC-1: Faceted aggregate layers recompute from global filtered data
+# Regression for: "aggregate recomputation in _make_filter_cb always uses
+# global fdf for every aggregate type. This causes faceted histograms/fits/
+# smoothers to drift from the facet's subgroup after filter changes."
+# Fix: Derive per-facet data frame (using same _fgvals logic as raw sources)
+# and pass that to _compute_* calls instead of global fdf.
+# ================================================================
+
+class TestFacetedAggregatePerFacetData:
+    """Regression suite for BUG-FAC-1: faceted aggregates must use per-facet data."""
+
+    def test_server_source_uses_agg_fdf_not_fdf(self, dr_module, auto_df):
+        """BUG-FAC-1a: generated server source must use agg_fdf (not fdf) for aggregates."""
+        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
+                       "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }]))
+        # The aggregate recompute loop must use agg_fdf, not global fdf
+        assert "agg_fdf" in source, (
+            "generated server source must use agg_fdf (per-facet data frame) "
+            "in aggregate recompute loop, not global fdf"
+        )
+
+    def test_server_source_derives_facet_mask_for_agg(self, dr_module, auto_df):
+        """BUG-FAC-1b: generated server source must derive facet mask for aggregates."""
+        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
+            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }]))
+        # The facet-aware derive pattern for aggregates
+        assert "_fgvals" in source, \
+            "generated server source must use _fgvals for facet-aware aggregate recompute"
+        assert "agg_fdf" in source, \
+            "generated server source must assign agg_fdf per aggregate entry"
+
+    def test_server_faceted_histogram_generates_without_crash(self, dr_module, auto_df):
+        """BUG-FAC-1c: server app with by() and histogram must build and run without crash."""
+        import importlib.util, tempfile, os
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
+                       "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_tfac1", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0, \
+                "faceted histogram server app must build a document with roots"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
