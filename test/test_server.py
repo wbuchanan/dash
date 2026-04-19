@@ -6356,3 +6356,119 @@ class TestAggregateStaleOnZeroRows:
             "_FILTER_JS kdensity n<2 path must explicitly assign empty x/y arrays "
             "to src.data so the chart clears instead of showing stale data."
         )
+
+
+# ---------------------------------------------------------------------------
+# BUG-25: Server dropdown filters use display labels as keys, losing distinct values
+# ---------------------------------------------------------------------------
+
+class TestServerDropdownDistinctValues:
+    """Regression tests for BUG-25: generated server Select widgets must use
+    raw values as option keys (not display labels), so categories sharing the
+    same display label remain independently selectable, and the 'All' sentinel
+    cannot collide with a real data value.
+
+    Tests:
+      BUG-DROPDOWN-1a  Generated code uses ('__all__', 'All') sentinel, not ('All', 'All')
+      BUG-DROPDOWN-1b  Generated code sets options as (value, label) tuples, not labels only
+      BUG-DROPDOWN-1c  Generated code uses '__all__' sentinel in callback guard
+      BUG-DROPDOWN-1d  Generated code uses w.value directly (no opts_map indirection)
+      BUG-DROPDOWN-1e  Generated code does not contain opts_map lookup in callback
+    """
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+
+    def _make_dropdown_spec(self) -> dict:
+        return _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1", "mode": "server", "port": "5006",
+            }
+        )
+
+    def _get_generated_source(self, dr_module, auto_df) -> str:
+        """Build server app source code and return as string."""
+        spec = self._make_dropdown_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            return builder._generate_app_source(5006)
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-DROPDOWN-1a: sentinel must be '__all__', not 'All'
+    # ------------------------------------------------------------------
+
+    def test_generated_code_uses_dunder_all_sentinel(self, dr_module, auto_df):
+        """BUG-DROPDOWN-1a: generated opts sentinel must be '__all__' not 'All'."""
+        src = self._get_generated_source(dr_module, auto_df)
+        assert "'__all__'" in src or '"__all__"' in src, (
+            "Generated server code must use '__all__' as the sentinel value "
+            "for the 'All' dropdown option to avoid colliding with real data values"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-DROPDOWN-1b: Select options must be (value, label) tuples
+    # ------------------------------------------------------------------
+
+    def test_generated_code_uses_tuple_options(self, dr_module, auto_df):
+        """BUG-DROPDOWN-1b: generated Select options must be (raw, label) tuples."""
+        src = self._get_generated_source(dr_module, auto_df)
+        # Old broken pattern: options=[o[1] for o in opts]  (labels only)
+        assert "options=[o[1] for o in opts]" not in src, (
+            "Generated server code must NOT use labels-only options list; "
+            "use (value, label) tuples so raw values are widget option keys."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-DROPDOWN-1c: callback must check __all__ sentinel
+    # ------------------------------------------------------------------
+
+    def test_generated_callback_checks_dunder_all_sentinel(self, dr_module, auto_df):
+        """BUG-DROPDOWN-1c: generated callback must compare w.value against '__all__'."""
+        src = self._get_generated_source(dr_module, auto_df)
+        assert ("__all__" in src), (
+            "Generated callback must guard on w.value != '__all__' not != 'All'"
+        )
+        # The old broken pattern
+        assert "w.value != 'All'" not in src, (
+            "Generated callback must not guard on 'All' — use '__all__' sentinel."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-DROPDOWN-1d: callback must use w.value directly as raw value
+    # ------------------------------------------------------------------
+
+    def test_generated_callback_uses_widget_value_directly(self, dr_module, auto_df):
+        """BUG-DROPDOWN-1d: callback must use w.value directly, not opts_map lookup."""
+        src = self._get_generated_source(dr_module, auto_df)
+        # With tuple options, w.value IS the raw value; no opts_map needed.
+        # Old broken pattern: raw_val = raw_map.get(w.value, w.value)
+        assert "raw_map.get(w.value" not in src, (
+            "Generated callback must not use opts_map to translate label -> raw value; "
+            "with tuple options, w.value is already the raw value."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-DROPDOWN-1e: _dash_opts_map should not be set in generated code
+    # ------------------------------------------------------------------
+
+    def test_generated_code_does_not_set_opts_map(self, dr_module, auto_df):
+        """BUG-DROPDOWN-1e: generated code must not build _dash_opts_map (redundant)."""
+        src = self._get_generated_source(dr_module, auto_df)
+        assert "_dash_opts_map" not in src, (
+            "Generated server code must not set _dash_opts_map — "
+            "with tuple-valued Select options the opts_map reverse lookup is unnecessary."
+        )
