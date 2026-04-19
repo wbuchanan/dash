@@ -4219,11 +4219,21 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     const raw_col = new_data[ac.varname];
     if (!raw_col) continue;
     const vals = raw_col.filter(v => v !== null && v !== undefined && !isNaN(v));
-    if (vals.length === 0) continue;
 
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
         const n_bins = edges.length - 1;
+        if (vals.length === 0) {
+            // No rows pass the filter — clear histogram to zero rather than
+            // leaving stale bars from the previous data visible.
+            src.data = {
+                top:   new Array(n_bins).fill(0),
+                left:  edges.slice(0, n_bins),
+                right: edges.slice(1),
+            };
+            src.change.emit();
+            continue;
+        }
         const counts = new Array(n_bins).fill(0);
         for (const v of vals) {
             if (v < edges[0] || v > edges[edges.length - 1]) continue;
@@ -4245,7 +4255,13 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
 
     } else if (ac.type === 'kdensity') {
         const n = vals.length;
-        if (n < 2) continue;
+        if (n < 2) {
+            // Fewer than 2 data points — clear kdensity curve rather than
+            // leaving the previous curve visible as stale data.
+            src.data = { x: [], y: [] };
+            src.change.emit();
+            continue;
+        }
         // Silverman's rule for bandwidth on the filtered subset
         const mu = vals.reduce((a, b) => a + b, 0) / n;
         const variance = vals.reduce((a, b) => a + (b - mu) * (b - mu), 0) / (n - 1);

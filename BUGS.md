@@ -136,10 +136,11 @@
   - Suggested fix: Build `filter_specs_json` from the same successfully-built filter list as `all_widgets`, and add defensive guards in `_FILTER_JS` (`if (!w || !orig[fvar]) continue;`) so skipped specs cannot crash callbacks.
   - Resolution: Fixed. (1) `filter_specs_json` already built exclusively from `built_filter_specs` (aligned with `all_widgets`) as of Bug #16. (2) Added defensive guard `if (!w || !(fvar in orig)) continue;` in `_FILTER_JS` after extracting `fvar`/`ftype` — prevents any stale/misaligned invocation from throwing a TypeError. 7 regression tests added in `test/test_server.py` class `TestMixedFilterSpecAlignment` (BUG-FSALIGN-1a through 1g). All 1326 tests pass.
 
-- [ ] Title: Standalone aggregate plots remain stale when filters return zero rows
+- [x] Title: Standalone aggregate plots remain stale when filters return zero rows
   - File Names and Line Numbers: dash_render.py (4198-4204, 4227-4229)
   - Description: In `_FILTER_JS`, aggregate recomputation exits early when filtered numeric values are empty (`if (vals.length === 0) continue;`). That path leaves the previous `src.data` untouched, so histogram/kdensity layers continue showing old values even though the active filter selects no rows. This is a core correctness bug because visual aggregates no longer represent the filtered dataset.
   - Suggested fix: When `vals.length === 0` (or `< 2` for kdensity), explicitly assign empty arrays to the aggregate source schema and emit a change so aggregate plots clear instead of staying stale.
+  - Resolution: Fixed. Replaced bare `continue` paths in `_FILTER_JS` with explicit source-clear blocks: (1) Histogram zero-row path now sets `top: new Array(n_bins).fill(0)` with preserved bin edges and emits change before continuing. (2) Kdensity n<2 path now sets `src.data = { x: [], y: [] }` and emits change before continuing. Both changes ensure aggregate plots immediately show empty/zero data rather than stale previous rows. 4 regression tests added in `test/test_server.py` class `TestAggregateStaleOnZeroRows` (BUG-AGGSTALE-1a through 1d). All 1330 tests pass.
 
 - [ ] Title: Server dropdown filters use display labels as keys and lose distinct values
   - File Names and Line Numbers: dash_render.py (9187-9199, 9235-9238)

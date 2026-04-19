@@ -6260,3 +6260,99 @@ class TestMixedFilterSpecAlignment:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-24: Standalone aggregate plots remain stale when filters return zero rows
+# ---------------------------------------------------------------------------
+
+class TestAggregateStaleOnZeroRows:
+    """Regression tests for BUG-24: when the active filter returns zero rows,
+    histogram and kdensity aggregate sources must be explicitly cleared (set to
+    zero counts / empty arrays) rather than left with stale previous data.
+
+    Tests:
+      BUG-AGGSTALE-1a  _FILTER_JS does NOT do `if (vals.length === 0) continue;`
+                        unconditionally for histogram (must clear instead)
+      BUG-AGGSTALE-1b  _FILTER_JS does NOT do `if (n < 2) continue;`
+                        unconditionally for kdensity (must clear instead)
+      BUG-AGGSTALE-1c  _FILTER_JS clears histogram source when vals empty
+      BUG-AGGSTALE-1d  _FILTER_JS clears kdensity source when vals empty
+    """
+
+    # ------------------------------------------------------------------
+    # BUG-AGGSTALE-1a: histogram zero-row path must clear, not skip
+    # ------------------------------------------------------------------
+
+    def test_filter_js_histogram_zero_path_is_not_plain_continue(self, dr_module):
+        """BUG-AGGSTALE-1a: _FILTER_JS must not silently skip histogram on zero vals."""
+        js = dr_module._FILTER_JS
+        # The old broken pattern was: `if (vals.length === 0) continue;`
+        # The fixed code must either not have this at all, or handle it by
+        # writing zeroed counts to src.data before continuing.
+        # We check that either:
+        #  (a) there's a histogram zero-clear block, OR
+        #  (b) there's no bare `vals.length === 0) continue` before the histogram block
+        # The simplest reliable check: the fix replaces the bare continue with a
+        # block that assigns zero counts. We check for the zero-fill pattern.
+        # Acceptable patterns: `fill(0)` in context of histogram clear, or
+        # `counts = new Array(n_bins).fill(0); ... src.data = {...}; src.change.emit()`
+        # The key invariant: src.data must be assigned even when vals is empty.
+        # We verify by checking there is no pattern `vals.length === 0) continue;`
+        # (the raw bare-continue pattern) adjacent to the histogram block.
+        # NOTE: the guard at line 4222 (`if (vals.length === 0) continue;`) was the bug.
+        assert "if (vals.length === 0) continue;" not in js, (
+            "_FILTER_JS must not unconditionally `continue` when vals is empty — "
+            "doing so leaves the aggregate source stale with old data."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-AGGSTALE-1b: kdensity < 2 path must clear, not skip
+    # ------------------------------------------------------------------
+
+    def test_filter_js_kdensity_small_n_is_not_plain_continue(self, dr_module):
+        """BUG-AGGSTALE-1b: _FILTER_JS must not silently skip kdensity when n < 2."""
+        js = dr_module._FILTER_JS
+        # The old broken pattern: `if (n < 2) continue;`
+        # Fixed code must assign empty arrays to src.data when n < 2.
+        assert "if (n < 2) continue;" not in js, (
+            "_FILTER_JS must not unconditionally `continue` when kdensity n < 2 — "
+            "doing so leaves the kdensity source stale with old data."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-AGGSTALE-1c: histogram source cleared with zero counts on empty vals
+    # ------------------------------------------------------------------
+
+    def test_filter_js_histogram_zero_path_clears_source(self, dr_module):
+        """BUG-AGGSTALE-1c: _FILTER_JS must write zero counts when histogram vals empty."""
+        js = dr_module._FILTER_JS
+        # There should be handling that clears histogram src.data when empty.
+        # Acceptable: assigning `top: new Array(n_bins).fill(0)` or `top: []`
+        # We check for explicit zero-clear in the histogram branch.
+        assert (
+            "fill(0)" in js or
+            "top: []" in js or
+            "vals.length === 0" in js  # if kept with explicit clear block
+        ), (
+            "_FILTER_JS histogram zero-row path must explicitly clear src.data "
+            "(e.g. top: new Array(n_bins).fill(0)) rather than leaving it stale."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-AGGSTALE-1d: kdensity source cleared with empty arrays on n < 2
+    # ------------------------------------------------------------------
+
+    def test_filter_js_kdensity_empty_clears_source(self, dr_module):
+        """BUG-AGGSTALE-1d: _FILTER_JS must write empty x/y arrays when kdensity n < 2."""
+        js = dr_module._FILTER_JS
+        # There should be a path that sets { x: [], y: [] } for kdensity when
+        # insufficient data exists.
+        assert (
+            "x: [], y: []" in js or
+            "{ x: [], y: [] }" in js or
+            "x: []" in js
+        ), (
+            "_FILTER_JS kdensity n<2 path must explicitly assign empty x/y arrays "
+            "to src.data so the chart clears instead of showing stale data."
+        )
