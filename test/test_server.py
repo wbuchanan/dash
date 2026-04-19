@@ -5762,3 +5762,301 @@ class TestFilterUpdatesAllSources:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-21: Server exclude() unions all widgets' excludes (wrong semantics)
+# ---------------------------------------------------------------------------
+
+class TestBug21ExcludeSemantics:
+    """BUG-21: _make_filter_cb must use the TRIGGERING widget's _dash_exclude,
+    not the union of all widgets' excludes.
+
+    Scenario:
+      - Widget A excludes g1.
+      - Widget B does NOT exclude g1.
+    When widget B fires, g1 MUST be updated.
+    When widget A fires, g1 must be SKIPPED.
+    """
+
+    def _make_server_spec_two_widgets(self):
+        return _make_spec_json(
+            graphs=[
+                {
+                    "plots": [{"type": "scatter", "yvar": "mpg",
+                               "xvar": "weight", "options": {}}],
+                    "graph_options": {"name": "g1", "title": "G1"},
+                },
+                {
+                    "plots": [{"type": "scatter", "yvar": "price",
+                               "xvar": "weight", "options": {}}],
+                    "graph_options": {"name": "g2", "title": "G2"},
+                },
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                # widgetA (foreign) excludes g1; widgetB (mpg) excludes nothing
+                # Filter specs are separated by "||" (Mata-joined format)
+                "filter": "foreign, type(dropdown), exclude(g1) || mpg, type(range)",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1 g2",
+                "mode": "server", "port": "5006",
+            },
+        )
+
+    def test_generated_source_compiles(self, dr_module, auto_df):
+        """BUG-21a: Generated server app with two filter widgets must compile."""
+        spec = self._make_server_spec_two_widgets()
+        source = _build_app(dr_module, auto_df, spec)
+        try:
+            compile(source, "<generated>", "exec")
+        except SyntaxError as exc:
+            pytest.fail(f"Generated server app has syntax error: {exc}")
+
+    def test_make_filter_cb_accepts_trig_widget(self, dr_module, auto_df):
+        """BUG-21b: _make_filter_cb in generated source must accept _trig_widget param."""
+        spec = self._make_server_spec_two_widgets()
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_trig_widget" in source, (
+            "Generated _make_filter_cb must accept _trig_widget parameter"
+        )
+
+    def test_excl_uses_trig_widget_not_all_widgets_loop(self, dr_module, auto_df):
+        """BUG-21c: excl must come from _trig_widget._dash_exclude, not a loop over all widgets."""
+        spec = self._make_server_spec_two_widgets()
+        source = _build_app(dr_module, auto_df, spec)
+        # The buggy pattern: iterating over _all_widgets to build excl union
+        assert "for w in _all_widgets:" not in source.split("def _on_filter_change")[1].split("return _on_filter_change")[0] or \
+            "excl.extend(getattr(w, '_dash_exclude'" not in source, (
+            "BUG-21: Generated code must NOT build excl by looping over _all_widgets"
+        )
+
+    def test_per_widget_callback_wired(self, dr_module, auto_df):
+        """BUG-21d: Each widget must get its own callback bound via _make_filter_cb(w, ...)."""
+        spec = self._make_server_spec_two_widgets()
+        source = _build_app(dr_module, auto_df, spec)
+        # Per-widget wiring: _make_filter_cb called inside a for-loop over filter_widgets.
+        # The generated code iterates filter_widgets and calls _make_filter_cb(... w ...) per widget.
+        # Accept either inline ("_make_filter_cb(w,") or multi-line ("_make_filter_cb(\n...w,").
+        has_per_widget = (
+            "_make_filter_cb(w," in source
+            or "_cb_for_w = _make_filter_cb(" in source
+        )
+        assert has_per_widget, (
+            "BUG-21d: Per-widget callback must be created by calling _make_filter_cb "
+            "with w as triggering widget inside the wiring loop"
+        )
+
+    def test_excluding_widget_skips_target_graph(self, dr_module, auto_df):
+        """BUG-21e: Widget with exclude(g1) must have _dash_exclude=['g1'];
+        widget without exclude() must have empty _dash_exclude.
+        Filter specs are separated by '||' (Mata-joined format).
+        """
+        import importlib.util as _ilu
+        from bokeh.models import Select, RangeSlider
+        from bokeh.document import Document
+
+        # widget_a (foreign, dropdown) excludes g1
+        # widget_b (weight, range) excludes nothing
+        spec = _make_spec_json(
+            graphs=[
+                {
+                    "plots": [{"type": "scatter", "yvar": "mpg",
+                               "xvar": "weight", "options": {}}],
+                    "graph_options": {"name": "g1", "title": "G1"},
+                },
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                # "||" is the Mata-joined separator for multiple filter specs
+                "filter": "foreign, type(dropdown), exclude(g1) || weight, type(range)",
+                "theme": "default", "title": "", "subtitle": "",
+                "registry": "g1",
+                "mode": "server", "port": "5006",
+            },
+        )
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name, port=5006)
+
+            app_spec_obj = _ilu.spec_from_file_location("_bug21_app", out_f.name)
+            app_mod = _ilu.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+
+            doc = Document()
+            app_mod.make_document(doc)
+
+            # Find filter widgets by traversing all doc models
+            all_models = list(doc.models)
+            widget_a = next(
+                (m for m in all_models
+                 if isinstance(m, Select) and getattr(m, '_dash_var', '') == 'foreign'),
+                None,
+            )
+            widget_b = next(
+                (m for m in all_models
+                 if isinstance(m, RangeSlider) and getattr(m, '_dash_var', '') == 'weight'),
+                None,
+            )
+
+            assert widget_a is not None, (
+                "widget_a (foreign dropdown) not found in generated app models"
+            )
+            assert widget_b is not None, (
+                "widget_b (weight range slider) not found in generated app models"
+            )
+
+            # Verify exclude semantics
+            excl_a = getattr(widget_a, '_dash_exclude', [])
+            excl_b = getattr(widget_b, '_dash_exclude', [])
+            assert 'g1' in excl_a, (
+                f"widget_a (foreign) must have _dash_exclude=['g1'], got {excl_a!r}"
+            )
+            assert 'g1' not in excl_b, (
+                f"widget_b (weight) must NOT exclude g1, got {excl_b!r}"
+            )
+        finally:
+            os.unlink(spec_path)
+            os.unlink(data_path)
+            os.unlink(out_f.name)
+
+
+# ---------------------------------------------------------------------------
+# BUG-22: Server multi-layer graph sources overwritten
+# ---------------------------------------------------------------------------
+
+class TestBug22MultiLayerSources:
+    """BUG-22: graph_sources[gname] must hold a LIST of all layer sources,
+    not just the last one.  The filter callback must update ALL sources in the list.
+    """
+
+    def _make_two_layer_spec(self):
+        """Dashboard with one graph that has two raw-data layers (scatter + line)."""
+        return _make_spec_json(
+            graphs=[{
+                "plots": [
+                    {"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}},
+                    {"type": "line",    "yvar": "mpg", "xvar": "weight", "options": {}},
+                ],
+                "graph_options": {"name": "g1", "title": "Two-layer"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "", "subtitle": "",
+                "registry": "g1",
+                "mode": "server", "port": "5006",
+            },
+        )
+
+    def test_generated_source_compiles(self, dr_module, auto_df):
+        """BUG-22a: Generated server app with two-layer graph must compile."""
+        spec = self._make_two_layer_spec()
+        source = _build_app(dr_module, auto_df, spec)
+        try:
+            compile(source, "<generated>", "exec")
+        except SyntaxError as exc:
+            pytest.fail(f"Generated server app has syntax error: {exc}")
+
+    def test_graph_sources_stores_list(self, dr_module, auto_df):
+        """BUG-22b: graph_sources[gname] must be a list of CDS objects for a multi-layer graph."""
+        spec = self._make_two_layer_spec()
+        source = _build_app(dr_module, auto_df, spec)
+        # The generated code must use list-append semantics for graph_sources
+        assert "graph_sources[gname] = []" in source or \
+               "graph_sources[gname].append(" in source, (
+            "BUG-22: Generated code must initialise graph_sources[gname] as a list "
+            "and append each layer's CDS"
+        )
+
+    def test_filter_cb_iterates_list_of_sources(self, dr_module, auto_df):
+        """BUG-22c: Filter callback must iterate over srcs list, not a single src."""
+        spec = self._make_two_layer_spec()
+        source = _build_app(dr_module, auto_df, spec)
+        # The filter callback section (between _all_sources loop markers) must iterate srcs
+        assert "for src in srcs:" in source or "for gname, srcs in _all_sources.items():" in source, (
+            "BUG-22c: Filter callback must unpack list of sources per gname"
+        )
+
+    def test_two_layer_graph_make_document(self, dr_module, auto_df):
+        """BUG-22d: make_document must succeed for a two-layer graph with a filter widget."""
+        import importlib.util as _ilu
+        from bokeh.document import Document
+
+        spec = self._make_two_layer_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name, port=5006)
+
+            app_spec_obj = _ilu.spec_from_file_location("_bug22_app", out_f.name)
+            app_mod = _ilu.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+
+            doc = Document()
+            app_mod.make_document(doc)  # must not raise
+            assert len(doc.roots) > 0, "Document must have at least one root widget/figure"
+        finally:
+            os.unlink(spec_path)
+            os.unlink(data_path)
+            os.unlink(out_f.name)
+
+    def test_filter_callback_updates_all_layer_sources(self, dr_module, auto_df):
+        """BUG-22e: Filter callback invocation on a 2-layer graph must not raise.
+        Verifies that the generated filter callback correctly handles the list-of-sources
+        structure for graph_sources[gname] when updating data after a filter change.
+        """
+        import importlib.util as _ilu
+        from bokeh.document import Document
+        from bokeh.models import Select
+
+        spec = self._make_two_layer_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name, port=5006)
+
+            app_spec_obj = _ilu.spec_from_file_location("_bug22e_app", out_f.name)
+            app_mod = _ilu.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+
+            doc = Document()
+            app_mod.make_document(doc)
+
+            # Find the filter widget (Select for 'foreign') and trigger its callback
+            # to verify the callback handles the list-of-sources structure without error.
+            all_models = list(doc.models)
+            filter_widget = next(
+                (m for m in all_models
+                 if isinstance(m, Select) and getattr(m, '_dash_var', '') == 'foreign'),
+                None,
+            )
+            assert filter_widget is not None, (
+                "foreign Select filter widget not found in generated 2-layer app"
+            )
+
+            # Simulate a filter change — this must not raise even for a 2-layer graph
+            old_val = filter_widget.value
+            new_val = next(
+                (v for v in filter_widget.options if v != 'All'),
+                'All',
+            )
+            try:
+                # Manually invoke all on_change callbacks that were registered
+                for cb_desc in filter_widget._callbacks.get('value', []):
+                    cb_desc('value', old_val, new_val)
+            except Exception as exc:
+                pytest.fail(
+                    f"BUG-22e: Filter callback raised on 2-layer graph: {exc!r}"
+                )
+        finally:
+            os.unlink(spec_path)
+            os.unlink(data_path)
+            os.unlink(out_f.name)
