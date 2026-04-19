@@ -51,10 +51,11 @@
   - Suggested fix: Clamp server-mode `nbins` to a safe range (for example `1..1000`) and guard the parse with `try/except` to fall back to a default on invalid values before calling `_compute_histogram`.
   - Resolution: Fixed. (1) At the call site in the server histogram handler (dash_render.py ~8224), changed `int(opts.get('bin', 20))` to `max(1, min(int(opts.get('bin', 20)), 1000))` with `try/except` fallback to 20. (2) Added defensive clamp inside `_compute_histogram`: `bins = max(1, min(int(bins), 1000))` as the first statement. Both match the standalone path which clamps to `_MAX_BINS = 1000`. 4 regression tests added in `test/test_server.py` class `TestServerHistogramBinClamp` (BUG-HIST-1a through BUG-HIST-1d). All 1247 tests pass.
 
-- [ ] Title: Dual log-scale graphs drop x-axis log mode due figure re-creation
+- [x] Title: Dual log-scale graphs drop x-axis log mode due figure re-creation
   - File Names and Line Numbers: dash_render.py (5288-5297)
   - Description: `_make_figure` re-creates the Bokeh figure once for `xscale(log)` and then re-creates it again for `yscale(log)` from the original `fig_kwargs`. When both options are set, the second re-creation overwrites the first, so the final figure keeps only y-log scaling. Reproduced from this repo with a minimal `DashRenderer` spec: resulting scales are `LinearScale` (x) and `LogScale` (y), not dual-log. This is a core functionality bug because valid `xscale(log) yscale(log)` input does not render as requested.
   - Suggested fix: Build axis-type kwargs once and create the figure a single time (for example, set both `x_axis_type` and `y_axis_type` in one `fig_kwargs` dict before calling `bokeh_figure`).
+  - Resolution: Fixed. In `_make_figure` (dash_render.py ~5290-5297), replaced the two separate conditional figure re-creations (`if _xs_log: fig = bokeh_figure(x_axis_type=log)` then `if _ys_log: fig = bokeh_figure(y_axis_type=log)`) with a single combined block that sets both `x_axis_type` and `y_axis_type` in one `kw` dict and calls `bokeh_figure(**kw)` exactly once when either axis is log-scale. 4 regression tests added in `test/test_server.py` class `TestDualLogScale` (BUG-SCALE-1a through BUG-SCALE-1d). All 1251 tests pass.
 
 - [ ] Title: Server build drops additional filter() clauses joined with `||`
   - File Names and Line Numbers: dash_parse.mata (700-705, 748), dash.ado (1140-1149), dash_render.py (7323-7324)

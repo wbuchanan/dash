@@ -5284,16 +5284,20 @@ class DashRenderer:
                 except (ValueError, TypeError):
                     pass
 
-        # Log scale and reverse options
+        # Log scale and reverse options.
+        # Build both axis-type overrides at once and re-create the figure exactly
+        # once (or not at all) so that setting xscale(log) yscale(log) together
+        # keeps both axes in log scale instead of the second creation overwriting
+        # the first with only y-log and linear x.
         _xs_log, _xs_rev = _parse_scale_opt(graph_opts.get("xscale", ""))
         _ys_log, _ys_rev = _parse_scale_opt(graph_opts.get("yscale", ""))
-        if _xs_log:
-            kw = {**fig_kwargs, "x_axis_type": "log"}
+        if _xs_log or _ys_log:
+            kw = dict(fig_kwargs)
             kw.pop("tools", None)
-            fig = bokeh_figure(**kw)
-        if _ys_log:
-            kw = {**fig_kwargs, "y_axis_type": "log"}
-            kw.pop("tools", None)
+            if _xs_log:
+                kw["x_axis_type"] = "log"
+            if _ys_log:
+                kw["y_axis_type"] = "log"
             fig = bokeh_figure(**kw)
 
         # Secondary axes (yaxis(2) / xaxis(2))

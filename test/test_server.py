@@ -4611,3 +4611,83 @@ class TestServerHistogramBinClamp:
         assert "max(1," in source, (
             "generated server code must ensure bins >= 1 via max(1, ...)"
         )
+
+
+# ================================================================
+# BUG-SCALE-1: Dual log-scale graphs drop x-axis log mode
+# Regression for: "_make_figure re-creates the Bokeh figure once for
+# xscale(log) and then re-creates it again for yscale(log) from the
+# original fig_kwargs. When both options are set, the second re-creation
+# overwrites the first, so the final figure keeps only y-log scaling."
+# Fix: Build axis-type kwargs once and create the figure once so both
+# x_axis_type and y_axis_type are set together.
+# ================================================================
+
+class TestDualLogScale:
+    """Regression suite for BUG-SCALE-1: xscale(log) yscale(log) must produce dual-log axes."""
+
+    def _make_renderer(self, dr_module, df, graph_opts):
+        """Build a DashRenderer with a scatter spec and return it with graph opts."""
+        import json, tempfile, os
+        spec_dict = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1", **graph_opts},
+        }])
+        spec_path, data_path = _write_temp_files(df, spec_dict)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            return renderer
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    def test_xscale_log_only(self, dr_module, auto_df):
+        """BUG-SCALE-1a: xscale(log) alone must produce log x-axis."""
+        from bokeh.models import LogScale
+        renderer = self._make_renderer(dr_module, auto_df, {"xscale": "log"})
+        html = renderer.render()
+        # If xscale(log) works, the generated JSON should contain "LogScale"
+        assert "LogScale" in html or "log" in html.lower(), \
+            "xscale(log) must produce a LogScale x-axis in the rendered HTML"
+
+    def test_yscale_log_only(self, dr_module, auto_df):
+        """BUG-SCALE-1b: yscale(log) alone must produce log y-axis."""
+        renderer = self._make_renderer(dr_module, auto_df, {"yscale": "log"})
+        html = renderer.render()
+        assert "LogScale" in html or "log" in html.lower(), \
+            "yscale(log) must produce a LogScale y-axis in the rendered HTML"
+
+    def test_dual_log_scale_both_axes(self, dr_module, auto_df):
+        """BUG-SCALE-1c: xscale(log) yscale(log) must produce log scale on BOTH axes.
+
+        Before the fix, the second bokeh_figure() call overrode the first so the
+        x-axis reverted to linear.  After the fix, both axes are set in one call.
+        """
+        renderer = self._make_renderer(dr_module, auto_df, {"xscale": "log", "yscale": "log"})
+        html = renderer.render()
+        # Count LogScale occurrences — dual-log needs at least 2
+        log_count = html.count("LogScale")
+        assert log_count >= 2, (
+            f"xscale(log) yscale(log) must produce 2 LogScale instances in the HTML "
+            f"(one per axis), got {log_count}. "
+            "This is BUG-SCALE-1: second figure re-creation must not overwrite x-axis type."
+        )
+
+    def test_make_figure_single_recreation_for_both_log(self, dr_module, auto_df):
+        """BUG-SCALE-1d: _make_figure source must build axis kwargs once (not two separate ifs)."""
+        import os
+        src_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "dash_render.py"
+        )
+        with open(src_path) as fh:
+            src = fh.read()
+        # The old bug pattern: two separate fig = bokeh_figure(...) calls in the
+        # log-scale block.  After fix, they are merged into one.
+        # Check that x_axis_type and y_axis_type are both set in one block.
+        assert 'kw["x_axis_type"] = "log"' in src or "x_axis_type.*log" in src, \
+            "_make_figure must set x_axis_type in the combined log-scale block"
+        assert 'kw["y_axis_type"] = "log"' in src or "y_axis_type.*log" in src, \
+            "_make_figure must set y_axis_type in the combined log-scale block"
