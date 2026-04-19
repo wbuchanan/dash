@@ -6655,3 +6655,148 @@ class TestServerSliderStringFallback:
             for _p in (spec_path, data_path, out_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-27: KPI filter callback allows style-attribute injection via unescaped colors
+# ---------------------------------------------------------------------------
+
+class TestKpiColorCssInjectionHardening:
+    """Regression tests for BUG-27: KPI color and bgcolor fields must be
+    validated against a safe CSS color whitelist before being stored in the
+    filter callback config.  Unvalidated values can break out of the
+    inline `style="..."` attribute and inject event handlers or markup.
+
+    Tests:
+      BUG-CSS-KPI-1a  A crafted color value containing a quote is rejected
+      BUG-CSS-KPI-1b  A crafted bgcolor value containing a semicolon is rejected
+      BUG-CSS-KPI-1c  Valid hex color is kept unchanged
+      BUG-CSS-KPI-1d  Valid named color is kept unchanged
+      BUG-CSS-KPI-1e  Valid rgb() color is kept unchanged
+      BUG-CSS-KPI-1f  Injected color falls back to safe default in callback config
+      BUG-CSS-KPI-1g  _sanitize_css_color helper exists and is callable
+    """
+
+    # ------------------------------------------------------------------
+    # BUG-CSS-KPI-1g: helper function exists
+    # ------------------------------------------------------------------
+
+    def test_sanitize_css_color_helper_exists(self, dr_module):
+        """BUG-CSS-KPI-1g: _sanitize_css_color must exist as a callable in dash_render."""
+        assert hasattr(dr_module, "_sanitize_css_color"), (
+            "dash_render must export _sanitize_css_color(val, default) helper "
+            "so that caller sites can sanitize color fields uniformly."
+        )
+        assert callable(dr_module._sanitize_css_color), (
+            "_sanitize_css_color must be callable."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-CSS-KPI-1a: crafted color with quote is rejected
+    # ------------------------------------------------------------------
+
+    def test_crafted_color_with_quote_is_rejected(self, dr_module):
+        """BUG-CSS-KPI-1a: color value containing a quote must not pass validation."""
+        fn = dr_module._sanitize_css_color
+        bad = 'red"; onmouseover="alert(1)'
+        result = fn(bad, "#212529")
+        assert result == "#212529", (
+            f"_sanitize_css_color must reject injected color value; got: {result!r}"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-CSS-KPI-1b: crafted bgcolor with semicolon is rejected
+    # ------------------------------------------------------------------
+
+    def test_crafted_bgcolor_with_semicolon_is_rejected(self, dr_module):
+        """BUG-CSS-KPI-1b: bgcolor value containing a semicolon must not pass."""
+        fn = dr_module._sanitize_css_color
+        bad = "red; display:none"
+        result = fn(bad, "#f8f9fa")
+        assert result == "#f8f9fa", (
+            f"_sanitize_css_color must reject CSS-injection bgcolor; got: {result!r}"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-CSS-KPI-1c: valid hex color passes through
+    # ------------------------------------------------------------------
+
+    def test_valid_hex_color_is_kept(self, dr_module):
+        """BUG-CSS-KPI-1c: valid hex colors (#RGB, #RRGGBB) must pass through."""
+        fn = dr_module._sanitize_css_color
+        for val in ("#f00", "#ff0000", "#FF0000", "#abc123"):
+            result = fn(val, "#000000")
+            assert result == val, (
+                f"_sanitize_css_color must accept hex color {val!r}; got {result!r}"
+            )
+
+    # ------------------------------------------------------------------
+    # BUG-CSS-KPI-1d: valid named color passes through
+    # ------------------------------------------------------------------
+
+    def test_valid_named_color_is_kept(self, dr_module):
+        """BUG-CSS-KPI-1d: CSS named colors (letters only) must pass through."""
+        fn = dr_module._sanitize_css_color
+        for val in ("red", "blue", "cornsilk", "steelblue"):
+            result = fn(val, "#000000")
+            assert result == val, (
+                f"_sanitize_css_color must accept named color {val!r}; got {result!r}"
+            )
+
+    # ------------------------------------------------------------------
+    # BUG-CSS-KPI-1e: valid rgb() color passes through
+    # ------------------------------------------------------------------
+
+    def test_valid_rgb_color_is_kept(self, dr_module):
+        """BUG-CSS-KPI-1e: rgb() and rgba() colors must pass through."""
+        fn = dr_module._sanitize_css_color
+        for val in ("rgb(255,0,0)", "rgb(0, 128, 255)", "rgba(255,0,0,0.5)"):
+            result = fn(val, "#000000")
+            assert result == val, (
+                f"_sanitize_css_color must accept {val!r}; got {result!r}"
+            )
+
+    # ------------------------------------------------------------------
+    # BUG-CSS-KPI-1f: injected color falls back to safe default in callback config
+    # ------------------------------------------------------------------
+
+    def test_injected_color_falls_back_in_callback_config(self, dr_module, auto_df):
+        """BUG-CSS-KPI-1f: callback config must use safe default when color is injected."""
+        bad_color = 'red"; onmouseover="alert(1)'
+        spec = _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1"}},
+            ],
+            kpis=[{
+                "name": "kpi1", "stat": "mean", "var": "mpg",
+                "title": "MPG", "subtitle": "", "update": "filter",
+                "color": bad_color, "bgcolor": "#f8f9fa",
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1", "mode": "standalone", "port": "5006",
+            }
+        )
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if not renderer.filter_callbacks:
+                pytest.skip("No filter callbacks built (nothing to test)")
+            cb_args = renderer.filter_callbacks[0].args
+            kpi_config = json.loads(cb_args["kpi_config_json"])
+            if not kpi_config:
+                pytest.skip("No KPI config in callback (nothing to test)")
+            kpi_color = kpi_config[0].get("color", "")
+            assert '"' not in kpi_color and "onmouseover" not in kpi_color, (
+                f"kpi_config color must not contain injected content; "
+                f"got: {kpi_color!r}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass

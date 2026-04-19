@@ -4053,6 +4053,46 @@ class GlyphMapper:
         return [r]
 
 
+# ---------------------------------------------------------------------------
+# CSS color sanitizer — used to harden KPI color/bgcolor before they are
+# embedded in inline style attributes within the filter callback HTML.
+# ---------------------------------------------------------------------------
+
+_CSS_COLOR_RE = re.compile(
+    r"^\s*(?:"
+    r"#[0-9a-fA-F]{3,8}"                                   # hex: #RGB, #RRGGBB, #RRGGBBAA
+    r"|rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)"  # rgb(r,g,b)
+    r"|rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*[\d.]+\s*\)"  # rgba(r,g,b,a)
+    r"|hsl\(\s*\d+\s*,\s*\d+%?\s*,\s*\d+%?\s*\)"           # hsl(h,s%,l%)
+    r"|hsla\(\s*\d+\s*,\s*\d+%?\s*,\s*\d+%?\s*,\s*[\d.]+\s*\)"  # hsla(h,s%,l%,a)
+    r"|[a-zA-Z]{2,30}"                                      # named color (letters only)
+    r")\s*$"
+)
+
+
+def _sanitize_css_color(val: str, default: str) -> str:
+    """Return *val* if it matches a safe CSS color pattern, else return *default*.
+
+    Prevents CSS style-attribute injection when KPI color/bgcolor values are
+    embedded directly into inline-style HTML by the JS filter callback.  Only
+    hex, rgb/rgba, hsl/hsla, and letter-only named colors are accepted; any
+    value containing quotes, semicolons, parentheses that don't match the
+    expected patterns, or other shell/HTML special characters is rejected.
+
+    Args:
+        val:     The raw color string from the spec.
+        default: A trusted fallback color to use when val is unsafe/empty.
+
+    Returns:
+        A CSS-safe color string.
+    """
+    if not isinstance(val, str) or not val.strip():
+        return default
+    if _CSS_COLOR_RE.match(val):
+        return val.strip()
+    return default
+
+
 # ===========================================================================
 # FilterBuilder
 # ===========================================================================
@@ -6869,8 +6909,15 @@ class DashRenderer:
                     # callback reconstructs kpi_div.text via string concatenation.
                     "title":    html.escape(_kdef.get("title", "") or ""),
                     "subtitle": html.escape(_kdef.get("subtitle", "") or ""),
-                    "color":    _kdef.get("color", "") or "#212529",
-                    "bgcolor":  _kdef.get("bgcolor", "") or "#f8f9fa",
+                    # Sanitize color fields against CSS injection: the JS
+                    # callback embeds these directly into style="...color:<val>..."
+                    # so an unsanitized value can break out of the attribute.
+                    "color":    _sanitize_css_color(
+                        _kdef.get("color", "") or "", "#212529"
+                    ),
+                    "bgcolor":  _sanitize_css_color(
+                        _kdef.get("bgcolor", "") or "", "#f8f9fa"
+                    ),
                 })
                 _kpi_divs_for_cb.append(_kdiv)
 
