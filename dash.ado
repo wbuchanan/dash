@@ -122,14 +122,25 @@ program define _dash_do_render
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
             [MODE(string)]
     if `"`mode'"' == "" local mode "standalone"
+
+    // Escape each path so double-quotes and backslashes in user-supplied paths
+    // cannot break the Python string literal or inject code.  _dash_json_str
+    // replaces \ with \\ and " with \", which makes the values safe for
+    // regular double-quoted Python string literals.
+    _dash_json_str `"`spec'"'     _py_spec
+    _dash_json_str `"`data'"'     _py_data
+    _dash_json_str `"`output'"'   _py_output
+    _dash_json_str `"`mode'"'     _py_mode
+    _dash_json_str `"`renderpy'"' _py_renderpy
+
     // Single-line python: calls are used here instead of a python:...end block.
     // Reason: python:...end blocks inside program defines trigger an
     // IndentationError when the ado file is loaded from the adopath (Stata
     // prepends indentation to the stored block on ado-path loads).
     // Single-line python: statements do not have this issue.
     python: import sys, runpy
-    python: sys.argv = ["dash_render.py", "--spec", r"`spec'", "--data", r"`data'", "--output", r"`output'", "--mode", r"`mode'"]
-    python: runpy.run_path(r"`renderpy'", run_name="__main__")
+    python: sys.argv = ["dash_render.py", "--spec", "`_py_spec'", "--data", "`_py_data'", "--output", "`_py_output'", "--mode", "`_py_mode'"]
+    python: runpy.run_path("`_py_renderpy'", run_name="__main__")
 end
 
 
@@ -1572,11 +1583,17 @@ program define _dash_serve
     // Temp path for the generated Bokeh Server .py app (must have .py extension)
     local serve_app_path "`c(tmpdir)'dash_serve_app.py"
 
+    // Escape paths for safe Python string literal interpolation (see _dash_do_render).
+    _dash_json_str `"`master_json_path'"' _py_master
+    _dash_json_str `"`data_json_path'"'   _py_data
+    _dash_json_str `"`serve_app_path'"'   _py_serve
+    _dash_json_str `"`render_py'"'        _py_render
+
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
     python: import sys, runpy
-    python: sys.argv = ["dash_render.py", "--spec", r"`master_json_path'", "--data", r"`data_json_path'", "--output", r"`serve_app_path'", "--mode", "server", "--port", "`port_int'", "--timeout", "`timeout'"]
+    python: sys.argv = ["dash_render.py", "--spec", "`_py_master'", "--data", "`_py_data'", "--output", "`_py_serve'", "--mode", "server", "--port", "`port_int'", "--timeout", "`timeout'"]
     if "`no_browser_flag'" != "" {
         python: sys.argv.append("--no-browser")
     }
-    python: runpy.run_path(r"`render_py'", run_name="__main__")
+    python: runpy.run_path("`_py_render'", run_name="__main__")
 end
