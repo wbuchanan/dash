@@ -58,10 +58,11 @@
   - Suggested fix: Build axis-type kwargs once and create the figure a single time (for example, set both `x_axis_type` and `y_axis_type` in one `fig_kwargs` dict before calling `bokeh_figure`).
   - Resolution: Fixed. In `_make_figure` (dash_render.py ~5290-5297), replaced the two separate conditional figure re-creations (`if _xs_log: fig = bokeh_figure(x_axis_type=log)` then `if _ys_log: fig = bokeh_figure(y_axis_type=log)`) with a single combined block that sets both `x_axis_type` and `y_axis_type` in one `kw` dict and calls `bokeh_figure(**kw)` exactly once when either axis is log-scale. 4 regression tests added in `test/test_server.py` class `TestDualLogScale` (BUG-SCALE-1a through BUG-SCALE-1d). All 1251 tests pass.
 
-- [ ] Title: Server build drops additional filter() clauses joined with `||`
+- [x] Title: Server build drops additional filter() clauses joined with `||`
   - File Names and Line Numbers: dash_parse.mata (700-705, 748), dash.ado (1140-1149), dash_render.py (7323-7324)
   - Description: `_dash_extract_filters` intentionally joins multiple `filter()` options with `" || "`, and `_dash_build` stores that raw string in `build_options.filter`. But `ServerAppBuilder._generate_app_source` only splits `filter_raw` on semicolons, so a `||`-joined spec is parsed as one filter and later filters are ignored. Reproduced by building server source with `filter` set to `foreign, type(dropdown) || weight, type(range)`: generated `_filter_specs` contains only the first filter. This is a core functionality bug because multi-filter server dashboards silently lose filters.
   - Suggested fix: Reuse `DashRenderer._parse_filter_raw(...)` (already supports `||` and `;`) or, at minimum, split on both delimiters in `ServerAppBuilder`.
+  - Resolution: Fixed. Replaced the hand-rolled semicolon-only split loop in `ServerAppBuilder._generate_app_source` (dash_render.py ~7322-7338) with a single call to `DashRenderer._parse_filter_raw(filter_raw)`, which already normalises `;` to `||` and splits on `||`. The only adaptation was mapping the `"varname"` key from `_parse_filter_raw` to the `"var"` key expected by the server builder. 5 regression tests added in `test/test_server.py` class `TestServerFilterOrClauses` (BUG-FILT-OR-1a through BUG-FILT-OR-1e). All 1259 tests pass.
 
 - [ ] Title: saving() path is shell-invoked without shell-metacharacter hardening
   - File Names and Line Numbers: dash.ado (137-150, 1426-1428)

@@ -7319,23 +7319,17 @@ class ServerAppBuilder:
         elif link_opt:
             linked_names = set(link_opt.split())
 
-        # Parse filter spec
+        # Parse filter spec — reuse DashRenderer._parse_filter_raw which handles
+        # both "||" (Mata-joined) and ";" (legacy) separators correctly.
         filter_specs: list[dict] = []
         if filter_raw and filter_raw != '"':
-            # filter_raw format: "varname, type(dropdown) exclude(n1 n2)"
-            # Can be multiple filter() calls; each is a separate dict
-            # Simple parse: split on ';' if multiple
-            for fpart in filter_raw.split(";"):
-                fpart = fpart.strip()
-                if not fpart:
-                    continue
-                m_type = re.search(r"type\(([^)]+)\)", fpart)
-                m_excl = re.search(r"exclude\(([^)]+)\)", fpart)
-                fvar = re.split(r"[,\s]", fpart.strip())[0]
-                ftype = m_type.group(1).strip() if m_type else "dropdown"
-                excl = m_excl.group(1).split() if m_excl else []
-                if fvar:
-                    filter_specs.append({"var": fvar, "type": ftype, "exclude": excl})
+            for _fs in DashRenderer._parse_filter_raw(filter_raw):
+                # DashRenderer uses "varname" key; ServerAppBuilder uses "var"
+                filter_specs.append({
+                    "var": _fs["varname"],
+                    "type": _fs["type"],
+                    "exclude": _fs["exclude"],
+                })
 
         lines: list[str] = []
 

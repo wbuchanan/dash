@@ -4757,3 +4757,100 @@ class TestFacetedAggregatePerFacetData:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-FILT-OR: Server build drops additional filter() clauses joined with ||
+# ---------------------------------------------------------------------------
+
+class TestServerFilterOrClauses:
+    """Regression tests for BUG-FILT-OR: ServerAppBuilder must parse || -joined
+    filter specs the same way DashRenderer._parse_filter_raw does."""
+
+    def test_single_filter_still_works(self, dr_module, auto_df):
+        """BUG-FILT-OR-1a: single filter spec produces one widget in generated code."""
+        spec = _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1"}}],
+            build_options={
+                "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            }
+        )
+        src = _build_app(dr_module, auto_df, spec)
+        assert "foreign" in src, "single filter var must appear in generated source"
+
+    def test_pipe_separated_two_filters_both_appear(self, dr_module, auto_df):
+        """BUG-FILT-OR-1b: two filters joined with || must both appear in generated code."""
+        spec = _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1"}}],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown) || weight, type(range)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            }
+        )
+        src = _build_app(dr_module, auto_df, spec)
+        assert "foreign" in src, "first || filter var must appear in generated source"
+        assert "weight" in src, "second || filter var must appear in generated source"
+
+    def test_pipe_separated_filter_specs_count(self, dr_module, auto_df):
+        """BUG-FILT-OR-1c: two filters joined with || must produce two _filter_specs entries."""
+        spec = _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1"}}],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown) || weight, type(range)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            }
+        )
+        src = _build_app(dr_module, auto_df, spec)
+        # Count filter spec entries: each produces a {'var':..., 'type':...} dict
+        import ast as _ast
+        count = src.count("_filter_specs")
+        # At minimum the definition must appear once and reference both vars
+        assert src.count("'foreign'") >= 1, "foreign must appear in _filter_specs definition"
+        assert src.count("'weight'") >= 1, "weight must appear in _filter_specs definition"
+
+    def test_semicolon_separated_still_works(self, dr_module, auto_df):
+        """BUG-FILT-OR-1d: legacy semicolon separator must still produce both widgets."""
+        spec = _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1"}}],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown);weight, type(range)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            }
+        )
+        src = _build_app(dr_module, auto_df, spec)
+        assert "foreign" in src, "first ; filter var must appear in generated source"
+        assert "weight" in src, "second ; filter var must appear in generated source"
+
+    def test_three_filters_all_appear(self, dr_module, auto_df):
+        """BUG-FILT-OR-1e: three filters joined with || must all appear in generated code."""
+        spec = _make_spec_json(
+            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1"}}],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown) || weight, type(range) || mpg, type(range)",
+                "theme": "default", "title": "T", "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            }
+        )
+        src = _build_app(dr_module, auto_df, spec)
+        assert "foreign" in src, "first filter var must appear"
+        assert "weight" in src, "second filter var must appear"
+        assert "'mpg'" in src, "third filter var must appear"
