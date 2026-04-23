@@ -760,7 +760,7 @@ class SchemeParser:
             ]
 
         for candidate in candidates:
-            # Security: must be within allowed dirs
+            # Security: must be within allowed dirs (abspath string check).
             allowed = [
                 os.path.abspath(self._SCHEMES_DIR),
                 os.path.abspath(os.getcwd()),
@@ -773,6 +773,22 @@ class SchemeParser:
                 raise ValueError(
                     f"dash scheme: path '{name}' resolves outside allowed "
                     "directories (CWD or the dash schemes/ folder)."
+                )
+            # Security: also validate the *realpath* so that symlinks pointing
+            # outside allowed directories are rejected.  Without this check a
+            # symlink placed in the CWD (e.g. evil.scheme -> /etc/passwd) would
+            # pass the abspath boundary check above and silently read the target.
+            real_candidate = os.path.realpath(candidate)
+            real_allowed = [os.path.realpath(d) for d in allowed]
+            real_in_allowed = any(
+                real_candidate.startswith(rd + os.sep) or real_candidate == rd
+                for rd in real_allowed
+            )
+            if not real_in_allowed:
+                raise ValueError(
+                    f"dash scheme: path '{name}' resolves via symlink outside "
+                    "allowed directories (CWD or the dash schemes/ folder). "
+                    "Symlinks pointing to external paths are not permitted."
                 )
             if os.path.isfile(candidate):
                 return candidate

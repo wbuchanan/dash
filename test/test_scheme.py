@@ -415,6 +415,94 @@ class TestSecurity:
         finally:
             os.unlink(cwd_copy)
 
+    # ------------------------------------------------------------------
+    # BUG-51: symlink path traversal bypass
+    # ------------------------------------------------------------------
+
+    def test_BUG_51_1a_symlink_to_external_file_raises(self):
+        """BUG-51-1a: symlink in CWD pointing outside allowed dirs must raise ValueError.
+
+        A symlink placed in the CWD (evil.scheme -> /etc/hosts) passes the
+        abspath boundary check but must be caught by the realpath check.
+        """
+        # Use /etc/hosts on Unix; skip on systems where it doesn't exist
+        target = "/etc/hosts"
+        if not os.path.exists(target):
+            pytest.skip("/etc/hosts not available on this system")
+        link_name = os.path.join(os.getcwd(), "_bug51_test_symlink.scheme")
+        try:
+            os.symlink(target, link_name)
+            with pytest.raises(ValueError, match="symlink"):
+                SchemeParser("_bug51_test_symlink.scheme")
+        finally:
+            if os.path.lexists(link_name):
+                os.unlink(link_name)
+
+    def test_BUG_51_1b_symlink_to_system_dir_raises(self):
+        """BUG-51-1b: symlink pointing to /tmp raises ValueError."""
+        link_name = os.path.join(os.getcwd(), "_bug51b_test_symlink.scheme")
+        # Create a symlink to an arbitrary file outside CWD/schemes dir
+        import shutil
+        # Use a real external file for the target
+        targets = ["/etc/hosts", "/usr/share/dict/words", "/var/log/system.log"]
+        target = next((t for t in targets if os.path.exists(t)), None)
+        if target is None:
+            pytest.skip("No suitable external target file found")
+        try:
+            os.symlink(target, link_name)
+            with pytest.raises(ValueError, match="symlink"):
+                SchemeParser("_bug51b_test_symlink.scheme")
+        finally:
+            if os.path.lexists(link_name):
+                os.unlink(link_name)
+
+    def test_BUG_51_1c_normal_cwd_file_still_loads(self):
+        """BUG-51-1c: a normal (non-symlink) .scheme in CWD must still load correctly."""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".scheme",
+            dir=os.getcwd(), delete=False
+        ) as f:
+            f.write("label bug51_normal\n")
+            f.write("color p1  navy\n")
+            name = os.path.basename(f.name)
+        try:
+            sp = SchemeParser(name)
+            assert sp.p_colors[0] == "#1a476f"
+        finally:
+            os.unlink(os.path.join(os.getcwd(), name))
+
+    def test_BUG_51_1d_symlink_within_cwd_is_allowed(self):
+        """BUG-51-1d: symlink whose target is ALSO within CWD must be accepted."""
+        # Create a real scheme file in CWD, then symlink it within CWD
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".scheme",
+            dir=os.getcwd(), delete=False
+        ) as f:
+            f.write("label bug51_real\n")
+            f.write("color p1  navy\n")
+            real_name = f.name
+        link_name = os.path.join(os.getcwd(), "_bug51d_link.scheme")
+        try:
+            os.symlink(real_name, link_name)
+            # Both real file and symlink are within CWD — must succeed
+            sp = SchemeParser("_bug51d_link.scheme")
+            assert sp.p_colors[0] == "#1a476f"
+        finally:
+            if os.path.lexists(link_name):
+                os.unlink(link_name)
+            if os.path.exists(real_name):
+                os.unlink(real_name)
+
+    def test_BUG_51_1e_realpath_check_covers_abspath_bypass(self):
+        """BUG-51-1e: _resolve_path must perform realpath validation, not just abspath."""
+        # Verify the security fix is present in the source code
+        import inspect
+        source = inspect.getsource(SchemeParser._resolve_path)
+        assert "realpath" in source, (
+            "SchemeParser._resolve_path must call os.path.realpath for symlink "
+            "traversal protection (BUG-51 regression)"
+        )
+
 
 # ============================================================
 # _apply_jitter tests
