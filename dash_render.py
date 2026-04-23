@@ -5269,7 +5269,10 @@ class DashRenderer:
             work_df = work_df.dropna(subset=valid_vars)
 
         if work_df.empty:
-            return [("", df)]
+            # All facet-key values are missing (by_missing=False) — return an
+            # empty-DataFrame group so callers create a zero-row source rather
+            # than falling back to the full original dataset.
+            return [("", work_df.copy())]
 
         groups: list[tuple[str, pd.DataFrame]] = []
         # Use a scalar (not list) for single by-var so groupby returns scalar keys
@@ -5284,7 +5287,10 @@ class DashRenderer:
         if by_total:
             groups.append(("Total", work_df.copy()))
 
-        return groups if groups else [("", df)]
+        # Defensive fallback: if the groupby loop produced no groups (should
+        # not happen given the dropna / by_missing logic above), return an
+        # empty-row group rather than the original full dataset.
+        return groups if groups else [("", work_df.copy())]
 
     def _facet_label(self, by_vars: list[str], key) -> str:
         """Build a human-readable label for one facet group key.
@@ -6723,8 +6729,10 @@ class DashRenderer:
                 filtered_df = self._apply_graph_filter(g)
                 by_groups = self._expand_by_groups(g, base_df=filtered_df)
                 if len(by_groups) == 1 and by_groups[0][0] == "":
-                    # No faceting — standard path
-                    sources[name] = self._make_source(g_vars, df=filtered_df)
+                    # No faceting (or all facet values missing — empty df group).
+                    # Use by_groups[0][1] so that an all-missing by() produces a
+                    # zero-row source instead of falling back to filtered_df.
+                    sources[name] = self._make_source(g_vars, df=by_groups[0][1])
                 else:
                     # Faceted: one CDS per group
                     facet_entries = []
@@ -7388,7 +7396,17 @@ class DashRenderer:
                     continue
                 by_groups = self._expand_by_groups(g, base_df=self.df)
                 if len(by_groups) == 1 and by_groups[0][0] == "":
-                    self.sources[name] = base_src
+                    # No faceting (by() vars missing from df) OR all facet
+                    # values are NaN (work_df became empty after dropna).
+                    # In the all-missing case by_groups[0][1] is an empty
+                    # DataFrame — build a zero-row source so the graph renders
+                    # empty instead of falling back to the full original source.
+                    if len(by_groups[0][1]) == 0:
+                        self.sources[name] = self._make_source(
+                            list(base_src.data.keys()), df=by_groups[0][1]
+                        )
+                    else:
+                        self.sources[name] = base_src
                 else:
                     g_vars        = list(base_src.data.keys())
                     facet_entries = []
@@ -9333,6 +9351,14 @@ class ServerAppBuilder:
             "        if not by_missing:",
             "            work_df = work_df.dropna(subset=by_vars)",
             "        if work_df.empty:",
+            "            # All facet-key values are missing (by_missing=False).",
+            "            # Zero out the original unfaceted source so the graph",
+            "            # renders with no data rows instead of falling back to",
+            "            # the full un-faceted dataset.",
+            "            _empty_srcs = graph_sources.get(gname, [])",
+            "            for _es in (_empty_srcs if isinstance(_empty_srcs, list) else [_empty_srcs]):",
+            "                if _es is not None:",
+            "                    _es.data = {_col: [] for _col in _es.data}",
             "            continue",
             "        groupby_key = by_vars[0] if len(by_vars) == 1 else by_vars",
             "        facet_entries = []",

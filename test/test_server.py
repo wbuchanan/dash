@@ -8571,3 +8571,169 @@ class TestProxiedRateLimiterBucket:
         assert "getattr(_req, 'remote_ip'" not in src, (
             "make_document should not inline IP extraction; use _client_ip_from_request"
         )
+
+
+# ===========================================================================
+# BUG-42 — `by()` silently falls back to ungrouped data when all facet
+#          values are missing.
+#
+# Standalone: _expand_by_groups returned [("", df)] (full original data)
+# when work_df was empty after dropna.
+# Server: when work_df was empty after dropna, `continue` skipped faceting
+# but left the original unfaceted graph source untouched.
+#
+# The fix returns [("", work_df.copy())] (empty DataFrame group) from
+# _expand_by_groups so callers create a zero-row source, and clears the
+# server-side source before continuing.
+#
+# BUG-42-1a  _expand_by_groups returns empty-df group when all keys missing
+# BUG-42-1b  _expand_by_groups normal faceting still works (regression)
+# BUG-42-1c  Standalone source has zero rows when all facet keys missing
+# BUG-42-1d  Server make_document produces zero-row source for all-missing by()
+# BUG-42-1e  Server make_document produces non-zero source for partial missing
+# ===========================================================================
+
+class TestByFallbackOnAllMissingFacets:
+    """BUG-42: by() with all-missing facet keys must not render full ungrouped data."""
+
+    # ------------------------------------------------------------------
+    # BUG-42-1a: _expand_by_groups returns empty-df group when all keys missing
+    # ------------------------------------------------------------------
+
+    def test_expand_by_groups_all_missing_returns_empty_df(self, dr_module, auto_df):
+        """BUG-42-1a: _expand_by_groups returns empty-row group, not full dataset."""
+        # Create df where ALL grp values are NaN
+        df_all_na = auto_df.copy()
+        df_all_na["grp"] = float("nan")
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        renderer.df = df_all_na
+        renderer._meta = {}
+        graph_spec = {"graph_options": {"name": "g1", "by": "grp"}}
+        groups = renderer._expand_by_groups(graph_spec, base_df=df_all_na)
+        assert len(groups) == 1, f"Expected 1 fallback group, got {len(groups)}"
+        label, gdf = groups[0]
+        assert label == "", f"Fallback label should be '', got {label!r}"
+        assert len(gdf) == 0, (
+            f"Fallback group df should have 0 rows (not {len(gdf)}) "
+            f"when all facet values are missing"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-42-1b: normal faceting still works
+    # ------------------------------------------------------------------
+
+    def test_expand_by_groups_normal_faceting_regression(self, dr_module, auto_df):
+        """BUG-42-1b: _expand_by_groups still produces correct groups when some present."""
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        renderer.df = auto_df
+        renderer._meta = {}
+        # _facet_label uses value_label_names / value_labels for display names
+        renderer.value_label_names = {}
+        renderer.value_labels = {}
+        n_unique = auto_df["foreign"].nunique()
+        graph_spec = {"graph_options": {"name": "g1", "by": "foreign"}}
+        groups = renderer._expand_by_groups(graph_spec, base_df=auto_df)
+        # Each unique value of foreign gets its own group
+        assert len(groups) == n_unique, (
+            f"Expected {n_unique} facet groups, got {len(groups)}"
+        )
+        for lbl, gdf in groups:
+            assert len(gdf) > 0, f"Non-missing facet group '{lbl}' must be non-empty"
+
+    # ------------------------------------------------------------------
+    # BUG-42-1c: standalone source has zero rows when all facet keys missing
+    # ------------------------------------------------------------------
+
+    def test_standalone_source_zero_rows_all_missing(self, dr_module, auto_df):
+        """BUG-42-1c: standalone render source has 0 rows when all by() keys missing."""
+        # DataFrame where ALL foreign values are NaN
+        df_na = auto_df.copy()
+        df_na["foreign"] = float("nan")
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        spec_path, data_path = _write_temp_files(df_na, spec)
+        try:
+            dr = dr_module.DashRenderer(spec_path, data_path)
+            dr.render()
+            # The single source for 'g1' should have zero rows
+            src = dr.sources.get("g1")
+            assert src is not None, "Source 'g1' not found"
+            n_rows = len(next(iter(src.data.values()), []))
+            assert n_rows == 0, (
+                f"Expected 0-row source when all by() keys are missing, got {n_rows}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-42-1d: server make_document has zero-row source for all-missing by()
+    # ------------------------------------------------------------------
+
+    def test_server_source_zero_rows_all_missing(self, dr_module, auto_df):
+        """BUG-42-1d: server make_document source has 0 rows when all by() keys missing."""
+        from bokeh.document import Document
+        df_na = auto_df.copy()
+        df_na["foreign"] = float("nan")
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        spec_path, data_path = _write_temp_files(df_na, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b42d", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            # All glyph renderers should have empty (zero-length) data sources
+            renderers_list = []
+            for root in doc.roots:
+                if hasattr(root, "renderers"):
+                    renderers_list.extend(root.renderers)
+                elif hasattr(root, "children"):
+                    for child in root.children:
+                        if hasattr(child, "renderers"):
+                            renderers_list.extend(child.renderers)
+            glyph_renderers = [
+                r for r in renderers_list
+                if hasattr(r, "data_source") and hasattr(r, "glyph")
+            ]
+            for gr in glyph_renderers:
+                row_count = len(next(iter(gr.data_source.data.values()), []))
+                assert row_count == 0, (
+                    f"Expected 0-row source when all by() keys are missing, "
+                    f"got {row_count} rows"
+                )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-42-1e: partial missing still produces groups for present values
+    # ------------------------------------------------------------------
+
+    def test_partial_missing_produces_correct_groups(self, dr_module, auto_df):
+        """BUG-42-1e: partial-missing by() still creates facets for non-missing values."""
+        # Set half the foreign values to NaN; remaining half should still facet
+        df_partial = auto_df.copy()
+        df_partial.loc[df_partial.index[:10], "foreign"] = float("nan")
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        renderer.df = df_partial
+        renderer._meta = {}
+        renderer.value_label_names = {}
+        renderer.value_labels = {}
+        n_unique = df_partial["foreign"].dropna().nunique()
+        graph_spec = {"graph_options": {"name": "g1", "by": "foreign"}}
+        groups = renderer._expand_by_groups(graph_spec, base_df=df_partial)
+        assert len(groups) == n_unique, (
+            f"Expected {n_unique} groups for non-missing values, got {len(groups)}"
+        )
