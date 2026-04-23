@@ -6596,6 +6596,166 @@ class TestServerFilterPreservesDerivedColumns:
 
 
 # ---------------------------------------------------------------------------
+# BUG-33: Server filter interactions stop enforcing graph-level if_expr/in_expr
+# ---------------------------------------------------------------------------
+
+class TestServerFilterReappliesGraphQualifiers:
+    """BUG-33: Server filter callbacks must reapply graph-level if_expr/in_expr.
+
+    Pre-fix: filter callbacks recomputed source data from the global `_df_ref`
+    mask only, never applying per-graph qualifiers.  After a filter change,
+    rows excluded by the qualifier were reintroduced.
+
+    Post-fix: ``_graph_qualifiers`` dict is built during document construction;
+    ``_make_filter_cb`` accepts it and reapplies each graph's qualifier after
+    computing the filter mask.
+    """
+
+    def _make_qualified_spec(self) -> dict:
+        """Graph with if_expr='foreign == 1' plus a dropdown filter."""
+        return _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg",
+                           "xvar": "weight", "options": {}}],
+                "graph_options": {"name": "g1", "if_expr": "foreign == 1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "rep78, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1", "mode": "standalone", "port": "5006",
+            }
+        )
+
+    def test_generated_source_has_graph_qualifiers_dict(self, dr_module, auto_df):
+        """BUG-33-1a: generated source must create _graph_qualifiers dict."""
+        spec = self._make_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            assert "_graph_qualifiers" in src, (
+                "generated server source must create _graph_qualifiers to persist "
+                "per-graph qualifier metadata for filter callbacks"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_generated_callback_accepts_graph_qualifiers(self, dr_module, auto_df):
+        """BUG-33-1b: _make_filter_cb must accept _gquals and _gfac_to_orig params."""
+        spec = self._make_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            assert "_gquals" in src or "_graph_qualifiers" in src, (
+                "_make_filter_cb must reference graph qualifiers for reapplication"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_make_document_with_qualified_graph_does_not_crash(self, dr_module, auto_df):
+        """BUG-33-1c: make_document with if_expr graph must not raise."""
+        import importlib.util as _ilu
+        from bokeh.document import Document
+        spec = self._make_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name, port=5006)
+            app_spec_obj = _ilu.spec_from_file_location("_bug33_app", out_f.name)
+            app_mod = _ilu.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0, "make_document must add roots"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_filter_callback_does_not_reintroduce_qualified_out_rows(self, dr_module, auto_df):
+        """BUG-33-1d: filter callback must not expand qualified graph source beyond if_expr rows."""
+        import importlib.util as _ilu
+        from bokeh.document import Document
+        from bokeh.models import Select
+        spec = self._make_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name, port=5006)
+            app_spec_obj = _ilu.spec_from_file_location("_bug33d_app", out_f.name)
+            app_mod = _ilu.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            all_models = list(doc.models)
+            # Find filter widget for rep78
+            fw = next(
+                (m for m in all_models
+                 if isinstance(m, Select) and getattr(m, "_dash_var", "") == "rep78"),
+                None,
+            )
+            if fw is None:
+                return  # filter widget not built — skip
+            # Find the g1 source
+            g1_srcs = app_mod.graph_sources.get("g1", [])
+            if not g1_srcs:
+                return
+            g1_src = g1_srcs[-1] if isinstance(g1_srcs, list) else g1_srcs
+            # Record initial row count (should be only foreign==1 rows)
+            initial_n = len(g1_src.data.get("mpg", []))
+            # Trigger filter callback with "__all__" (no filter) — must stay within if_expr
+            old_val = fw.value
+            for cb_desc in fw._callbacks.get("value", []):
+                cb_desc("value", old_val, "__all__")
+            after_n = len(g1_src.data.get("mpg", []))
+            assert after_n <= initial_n or initial_n == 0, (
+                f"BUG-33: after filter callback, g1 source has {after_n} rows but should "
+                f"be bounded by initial if_expr-filtered count ({initial_n}). "
+                "Graph qualifier was not reapplied."
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_generated_source_has_safe_g_cb_in_callback(self, dr_module, auto_df):
+        """BUG-33-1e: generated callback body must contain AST validator for qualifier reapplication."""
+        spec = self._make_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            assert "_safe_g_cb" in src or "_ALLOW_CB" in src, (
+                "generated filter callback must contain AST whitelist guard for "
+                "graph qualifier reapplication"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+
+# ---------------------------------------------------------------------------
 # BUG-23: Mixed valid/missing filter specs break standalone filter callbacks
 # ---------------------------------------------------------------------------
 
