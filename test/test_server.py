@@ -4122,6 +4122,93 @@ class TestServerFunctionExpressionOperators:
 
 
 # ================================================================
+# BUG-31: Server-mode function plots silently drop valid constant expressions
+# np.asarray(scalar, dtype=float).tolist() returns a float, not a list;
+# ColumnDataSource raises because 'y_fn' is not a sequence, so the broad
+# except silently drops the entire function line.
+# Fix: mirror standalone map_function by broadcasting scalar results to
+# len(_x) before creating ColumnDataSource.
+# ================================================================
+
+def _count_glyph_renderers(doc) -> int:
+    """Count all glyph renderers in a Bokeh document, traversing layouts."""
+    from bokeh.models import GridPlot, Plot
+    count = 0
+    def _walk(obj, visited=None):
+        nonlocal count
+        if visited is None:
+            visited = set()
+        if id(obj) in visited:
+            return
+        visited.add(id(obj))
+        if isinstance(obj, Plot):
+            count += sum(1 for r in obj.renderers if hasattr(r, "glyph"))
+            return  # don't recurse into figure renderers
+        if isinstance(obj, GridPlot):
+            for item in obj.children:
+                child = item[0] if isinstance(item, tuple) else item
+                _walk(child, visited)
+            return
+        for attr in ("children",):
+            val = getattr(obj, attr, None)
+            if isinstance(val, list):
+                for c in val:
+                    _walk(c, visited)
+    for root in doc.roots:
+        _walk(root)
+    return count
+
+
+class TestServerFunctionConstantExpressions:
+    """BUG-31: Server-mode function plots must render constant expressions.
+
+    Pre-fix: ``np.asarray(pi, dtype=float).tolist()`` returned a scalar
+    float instead of a list, causing ``ColumnDataSource({'y_fn': <float>})``
+    to raise, which was silently swallowed, resulting in zero glyph renderers.
+
+    Post-fix: scalar results are broadcast to ``np.full(len(_x), float(_y_arr))``
+    before the ColumnDataSource is created, mirroring ``map_function`` in the
+    standalone path.
+    """
+
+    def test_constant_pi_renders_glyph(self, dr_module, auto_df):
+        """BUG-31-1a: function expression 'pi' must produce a glyph renderer."""
+        doc = _exec_function_app(dr_module, "pi")
+        assert _count_glyph_renderers(doc) > 0, (
+            "function expression 'pi' must produce at least one glyph renderer"
+        )
+
+    def test_constant_integer_renders_glyph(self, dr_module, auto_df):
+        """BUG-31-1b: function expression '3' must produce a glyph renderer."""
+        doc = _exec_function_app(dr_module, "3")
+        assert _count_glyph_renderers(doc) > 0, (
+            "function expression '3' must produce at least one glyph renderer"
+        )
+
+    def test_constant_float_renders_glyph(self, dr_module, auto_df):
+        """BUG-31-1c: function expression '2.718' must produce a glyph renderer."""
+        doc = _exec_function_app(dr_module, "2.718")
+        assert _count_glyph_renderers(doc) > 0, (
+            "function expression '2.718' must produce at least one glyph renderer"
+        )
+
+    def test_generated_source_has_scalar_broadcast(self, dr_module, auto_df):
+        """BUG-31-1d: generated source must contain scalar-broadcast guard (ndim == 0)."""
+        source = _build_function_app(dr_module, "pi")
+        assert "_y_arr.ndim == 0" in source or "ndim == 0" in source, (
+            "generated server source must broadcast scalar function results to a vector "
+            "(add 'if _y_arr.ndim == 0: _y_arr = np.full(len(_x), float(_y_arr))')"
+        )
+
+    def test_variable_expression_still_renders(self, dr_module, auto_df):
+        """BUG-31-1e: variable expression 'x' must still produce a glyph renderer after fix."""
+        doc = _exec_function_app(dr_module, "x")
+        assert _count_glyph_renderers(doc) > 0, (
+            "function expression 'x' must still work correctly after scalar-broadcast fix"
+        )
+
+
+# ================================================================
 # BUG-FE-2: Server-mode function `n` option allows unbounded point counts
 # Regression for: "Generated server code parses opts['n'] directly into
 # n_pts and uses it in np.linspace(x_lo, x_hi, n_pts) with no upper bound.
