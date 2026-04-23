@@ -1313,6 +1313,10 @@ program define _dash_build
     // variable name (first token before the comma in each segment).
     if `"`filter'"' != "" {
         local _filt_work `"`filter'"'
+        // Normalize semicolons to "||" so that semicolon-delimited multi-filter
+        // strings (e.g. "foreign, type(dropdown); weight, type(range)") are split
+        // the same way as the Python renderer's _parse_filter_raw does.
+        local _filt_work = subinstr(`"`_filt_work'"', ";", "||", .)
         local _filt_done = 0
         while !`_filt_done' {
             local _pipe_pos = strpos(`"`_filt_work'"', "||")

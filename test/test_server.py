@@ -8995,3 +8995,132 @@ class TestStandaloneSliderStringColumn:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ===========================================================================
+# BUG-45 — Semicolon-delimited multi-filter specs only serialize the first
+#          filter variable in _dash_build.
+#
+# The filter-variable extraction loop in dash.ado only split on "||", so
+# "foreign; weight" contributed only "foreign" to all_vars.  The Python
+# renderer's _parse_filter_raw already normalizes ";" -> "||".  The Stata
+# side now does the same before iterating.
+#
+# BUG-45-1a  dash.ado filter extraction loop normalizes semicolons to "||"
+# BUG-45-1b  Standalone render with semicolon filter builds both widgets
+# BUG-45-1c  "||"-separated filter still works (regression)
+# BUG-45-1d  Single filter (no separator) still works (regression)
+# ===========================================================================
+
+class TestSemicolonFilterSerialization:
+    """BUG-45: semicolon-separated filter specs must all reach the Python renderer."""
+
+    # ------------------------------------------------------------------
+    # BUG-45-1a: dash.ado contains semicolon normalization
+    # ------------------------------------------------------------------
+
+    def test_ado_contains_semicolon_normalization(self):
+        """BUG-45-1a: dash.ado filter loop must normalize semicolons to '||'."""
+        with open(os.path.join(_DASH_DIR, "dash.ado"), encoding="utf-8") as f:
+            ado_text = f.read()
+        assert 'subinstr' in ado_text and '";"' in ado_text and '"||"' in ado_text, (
+            "dash.ado should convert semicolons to '||' via subinstr before iterating"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-45-1b: standalone render with semicolon filter builds both widgets
+    # ------------------------------------------------------------------
+
+    def test_standalone_semicolon_filter_builds_both_widgets(self, dr_module, auto_df):
+        """BUG-45-1b: semicolon-separated filter must produce a widget for each var."""
+        spec = _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                # Semicolon-separated — both foreign and mpg should get widgets
+                "filter": "foreign, type(dropdown); mpg, type(range)",
+                "theme": "default", "title": "T",
+                "subtitle": "", "registry": "",
+                "mode": "standalone", "port": "5006",
+            },
+        )
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            dr = dr_module.DashRenderer(spec_path, data_path)
+            dr.render()
+            assert len(dr.filter_widgets) == 2, (
+                f"Expected 2 filter widgets (one per semicolon-separated spec), "
+                f"got {len(dr.filter_widgets)}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-45-1c: pipe-separated filter still works
+    # ------------------------------------------------------------------
+
+    def test_standalone_pipe_filter_regression(self, dr_module, auto_df):
+        """BUG-45-1c: '||'-separated filter still builds both widgets after fix."""
+        spec = _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown) || mpg, type(range)",
+                "theme": "default", "title": "T",
+                "subtitle": "", "registry": "",
+                "mode": "standalone", "port": "5006",
+            },
+        )
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            dr = dr_module.DashRenderer(spec_path, data_path)
+            dr.render()
+            assert len(dr.filter_widgets) == 2, (
+                f"Expected 2 filter widgets from '||' spec, got {len(dr.filter_widgets)}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-45-1d: single filter still works
+    # ------------------------------------------------------------------
+
+    def test_standalone_single_filter_regression(self, dr_module, auto_df):
+        """BUG-45-1d: single filter (no separator) still builds one widget."""
+        spec = _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T",
+                "subtitle": "", "registry": "",
+                "mode": "standalone", "port": "5006",
+            },
+        )
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            dr = dr_module.DashRenderer(spec_path, data_path)
+            dr.render()
+            assert len(dr.filter_widgets) == 1, (
+                f"Expected 1 filter widget, got {len(dr.filter_widgets)}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
