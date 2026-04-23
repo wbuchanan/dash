@@ -1616,8 +1616,11 @@ program define _dash_serve
     local no_browser_flag ""
     if "`nobrowser'" == "nobrowser" local no_browser_flag "--no-browser"
 
-    // Temp path for the generated Bokeh Server .py app (must have .py extension)
-    local serve_app_path "`c(tmpdir)'dash_serve_app.py"
+    // Temp path for the generated Bokeh Server .py app (must have .py extension).
+    // Use tempfile to generate a unique base path so concurrent dash serve
+    // invocations do not overwrite each other's app file.
+    tempfile _serve_app_base
+    local serve_app_path "`_serve_app_base'.py"
 
     // Escape paths for safe Python string literal interpolation (see _dash_do_render).
     _dash_json_str `"`master_json_path'"' _py_master

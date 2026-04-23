@@ -9285,3 +9285,161 @@ class TestServerNaNBoundsSlider:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-47 Regression tests — dash serve fixed temp app filename
+# ---------------------------------------------------------------------------
+class TestServeUniqueAppPath:
+    """BUG-47: dash serve used 'dash_serve_app.py' (fixed name) for every run,
+    causing cross-run file overwrites and race conditions when two dash serve
+    invocations ran concurrently.  Fix: use Stata tempfile to generate a unique
+    base path per invocation.
+
+    Regression tests verify (a) the fixed constant is gone from dash.ado, and
+    (b) the ServerAppBuilder itself can write to distinct caller-supplied paths
+    without interference — i.e. the Python layer does not impose any fixed name.
+    """
+
+    def _simple_spec(self):
+        """Return a minimal server spec dict."""
+        return _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "",
+                "theme": "default", "title": "T",
+                "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-47-1a: dash.ado no longer contains the fixed constant filename
+    # ------------------------------------------------------------------
+    def test_BUG_47_1a_fixed_constant_removed_from_ado(self):
+        """dash.ado must not contain the hard-coded string 'dash_serve_app.py'."""
+        ado_path = os.path.join(os.path.dirname(__file__), "..", "dash.ado")
+        with open(ado_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        assert "dash_serve_app.py" not in content, (
+            "dash.ado still references the fixed filename 'dash_serve_app.py'; "
+            "the tempfile-based unique path was not applied (BUG-47 regression)."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-47-1b: ServerAppBuilder.build() accepts any caller-provided path
+    # ------------------------------------------------------------------
+    def test_BUG_47_1b_builder_writes_to_arbitrary_path(self, dr_module, auto_df):
+        """ServerAppBuilder.build() should honour any output path supplied."""
+        spec = self._simple_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out = tempfile.NamedTemporaryFile(suffix=".py", delete=False)
+        out.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out.name)
+            assert os.path.exists(out.name), "Output .py file was not created"
+            with open(out.name) as fh:
+                assert "make_document" in fh.read()
+        finally:
+            for p in (spec_path, data_path, out.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+
+    # ------------------------------------------------------------------
+    # BUG-47-1c: Two concurrent builds use different paths without conflict
+    # ------------------------------------------------------------------
+    def test_BUG_47_1c_two_builds_independent_files(self, dr_module, auto_df):
+        """Two separate ServerAppBuilder.build() calls to distinct paths produce
+        independent files — writing path B does not overwrite path A."""
+        import time as _time
+        spec = self._simple_spec()
+        sp1, dp1 = _write_temp_files(auto_df, spec)
+        sp2, dp2 = _write_temp_files(auto_df, spec)
+        out_a = tempfile.NamedTemporaryFile(suffix=".py", delete=False)
+        out_a.close()
+        out_b = tempfile.NamedTemporaryFile(suffix=".py", delete=False)
+        out_b.close()
+        # Confirm the two output paths are distinct (tempfile uniqueness)
+        assert out_a.name != out_b.name
+        try:
+            dr_module.ServerAppBuilder(sp1, dp1).build(out_a.name)
+            dr_module.ServerAppBuilder(sp2, dp2).build(out_b.name)
+            # Both files should exist and be non-empty
+            assert os.path.getsize(out_a.name) > 0, "File A is empty"
+            assert os.path.getsize(out_b.name) > 0, "File B is empty"
+            # Overwriting B must not affect A
+            mtime_a_before = os.path.getmtime(out_a.name)
+            _time.sleep(0.05)
+            dr_module.ServerAppBuilder(sp2, dp2).build(out_b.name)
+            mtime_a_after = os.path.getmtime(out_a.name)
+            assert abs(mtime_a_before - mtime_a_after) < 0.02, (
+                "Rebuilding path B changed path A's mtime — files are not independent"
+            )
+        finally:
+            for p in (sp1, dp1, sp2, dp2, out_a.name, out_b.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+
+    # ------------------------------------------------------------------
+    # BUG-47-1d: Output path does NOT contain hard-coded "dash_serve_app"
+    # ------------------------------------------------------------------
+    def test_BUG_47_1d_no_fixed_serve_app_name_in_generated_source(self, dr_module, auto_df):
+        """The generated server .py should not reference 'dash_serve_app' as a
+        module name — that constant should no longer exist anywhere."""
+        spec = self._simple_spec()
+        sp, dp = _write_temp_files(auto_df, spec)
+        out = tempfile.NamedTemporaryFile(suffix=".py", delete=False)
+        out.close()
+        try:
+            dr_module.ServerAppBuilder(sp, dp).build(out.name)
+            with open(out.name) as fh:
+                src = fh.read()
+            assert "dash_serve_app" not in src, (
+                "Generated server source still references 'dash_serve_app' (BUG-47 regression)"
+            )
+        finally:
+            for p in (sp, dp, out.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+
+    # ------------------------------------------------------------------
+    # BUG-47-1e: Generated app is importable from a uniquely-named path
+    # ------------------------------------------------------------------
+    def test_BUG_47_1e_generated_app_importable_from_unique_path(self, dr_module, auto_df):
+        """make_document must work correctly when the .py file has an
+        unusual (unique / tempfile-style) name rather than 'dash_serve_app'."""
+        import importlib.util as _ilu
+        from bokeh.document import Document as _Doc
+        spec = self._simple_spec()
+        # Use a decidedly non-standard filename (mirrors Stata tempfile style)
+        out = tempfile.NamedTemporaryFile(
+            prefix="ST_99999.", suffix=".py", delete=False
+        )
+        out.close()
+        sp, dp = _write_temp_files(auto_df, spec)
+        try:
+            dr_module.ServerAppBuilder(sp, dp).build(out.name)
+            ispec = _ilu.spec_from_file_location("_dash_bug47_test", out.name)
+            mod = _ilu.module_from_spec(ispec)
+            ispec.loader.exec_module(mod)
+            doc = _Doc()
+            mod.make_document(doc)
+            assert len(doc.roots) > 0, "make_document produced no roots"
+        finally:
+            for p in (sp, dp, out.name):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
