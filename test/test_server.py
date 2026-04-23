@@ -9124,3 +9124,164 @@ class TestSemicolonFilterSerialization:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ===========================================================================
+# BUG-46 — Server range/slider widgets initialized with NaN bounds on
+#          all-missing numeric columns.
+#
+# Generated code computed vmin/vmax with df[fvar].min()/.max() directly.
+# For all-NaN numeric columns both return NaN, producing an invalid widget
+# (RangeSlider(start=nan, end=nan, ...)).  The fix adds math.isfinite checks
+# and skips with a warning when bounds are not finite.
+#
+# BUG-46-1a  Generated source contains math.isfinite guard for range
+# BUG-46-1b  Generated source contains math.isfinite guard for slider
+# BUG-46-1c  make_document with all-NaN range column does not crash
+# BUG-46-1d  make_document with all-NaN slider column does not crash
+# BUG-46-1e  Normal range/slider on finite data still builds widget
+# ===========================================================================
+
+class TestServerNaNBoundsSlider:
+    """BUG-46: server range/slider on all-missing column must skip gracefully."""
+
+    def _all_nan_spec(self, ftype, auto_df):
+        # Add an all-NaN column 'flt' to test data
+        df = auto_df.copy()
+        df["flt"] = float("nan")
+        spec = _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": f"flt, type({ftype})",
+                "theme": "default", "title": "T",
+                "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            },
+        )
+        return df, spec
+
+    # ------------------------------------------------------------------
+    # BUG-46-1a: generated source has math.isfinite guard for range
+    # ------------------------------------------------------------------
+
+    def test_generated_source_has_finite_guard_range(self, dr_module, auto_df):
+        """BUG-46-1a: generated source must contain math.isfinite guard for range."""
+        df, spec = self._all_nan_spec("range", auto_df)
+        src = _build_app(dr_module, df, spec)
+        assert "math.isfinite" in src, (
+            "Generated source missing math.isfinite guard for range widget"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-46-1b: generated source has math.isfinite guard for slider
+    # ------------------------------------------------------------------
+
+    def test_generated_source_has_finite_guard_slider(self, dr_module, auto_df):
+        """BUG-46-1b: generated source must contain math.isfinite guard for slider."""
+        df, spec = self._all_nan_spec("slider", auto_df)
+        src = _build_app(dr_module, df, spec)
+        assert "math.isfinite" in src, (
+            "Generated source missing math.isfinite guard for slider widget"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-46-1c: make_document with all-NaN range does not crash
+    # ------------------------------------------------------------------
+
+    def test_make_document_all_nan_range_no_crash(self, dr_module, auto_df):
+        """BUG-46-1c: make_document must not crash when range filter column is all-NaN."""
+        import warnings
+        from bokeh.document import Document
+        df, spec = self._all_nan_spec("range", auto_df)
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b46c", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            with warnings.catch_warnings(record=True):
+                warnings.simplefilter("always")
+                app_mod.make_document(doc)  # must not raise
+            n_renderers = _count_glyph_renderers(doc)
+            assert n_renderers >= 1
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-46-1d: make_document with all-NaN slider does not crash
+    # ------------------------------------------------------------------
+
+    def test_make_document_all_nan_slider_no_crash(self, dr_module, auto_df):
+        """BUG-46-1d: make_document must not crash when slider filter column is all-NaN."""
+        import warnings
+        from bokeh.document import Document
+        df, spec = self._all_nan_spec("slider", auto_df)
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b46d", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            with warnings.catch_warnings(record=True):
+                warnings.simplefilter("always")
+                app_mod.make_document(doc)  # must not raise
+            assert _count_glyph_renderers(doc) >= 1
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-46-1e: normal finite data still builds the widget
+    # ------------------------------------------------------------------
+
+    def test_make_document_finite_range_builds_widget(self, dr_module, auto_df):
+        """BUG-46-1e: range filter on finite numeric column still builds widget."""
+        from bokeh.document import Document
+        spec = _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "mpg, type(range)",
+                "theme": "default", "title": "T",
+                "subtitle": "", "registry": "",
+                "mode": "server", "port": "5006",
+            },
+        )
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b46e", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            # Should have a RangeSlider widget in the layout
+            src_text = open(out_f.name).read()
+            assert "RangeSlider" in src_text, "Generated source should create RangeSlider"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
