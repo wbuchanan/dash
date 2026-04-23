@@ -6582,7 +6582,9 @@ class DashRenderer:
         parts = layout_opt.strip().split()
         if len(parts) == 2:
             try:
-                return int(parts[0]), int(parts[1])
+                # Clamp to minimum 1 so a zero-column layout can never cause
+                # ZeroDivisionError in _assemble_layout (math.ceil(n / cols_n)).
+                return max(1, int(parts[0])), max(1, int(parts[1]))
             except ValueError:
                 pass
 

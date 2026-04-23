@@ -8737,3 +8737,79 @@ class TestByFallbackOnAllMissingFacets:
         assert len(groups) == n_unique, (
             f"Expected {n_unique} groups for non-missing values, got {len(groups)}"
         )
+
+
+# ===========================================================================
+# BUG-43 — layout() accepts zero columns and crashes render with ZeroDivision
+#
+# Validation accepted "0 0" / "2 0" because regex only checked for digits.
+# The renderer then computed rows_n = math.ceil(n_items / cols_n) with
+# cols_n=0 → ZeroDivisionError.
+#
+# Fix: Stata-side regex now requires [1-9][0-9]* for both grid integers;
+# Python _compute_grid clamps values to minimum 1.
+#
+# BUG-43-1a  _compute_grid with "0 0" returns at least (1, 1)
+# BUG-43-1b  _compute_grid with "2 0" returns at least (2, 1)
+# BUG-43-1c  _compute_grid with "0 3" returns at least (1, 3)
+# BUG-43-1d  _compute_grid with valid "2 3" returns (2, 3) unchanged
+# BUG-43-1e  dash.ado validation regex rejects zero-column layout
+# ===========================================================================
+
+class TestLayoutZeroColumnsCrash:
+    """BUG-43: layout() with zero dimensions must not crash with ZeroDivisionError."""
+
+    # ------------------------------------------------------------------
+    # BUG-43-1a: "0 0" → at least (1, 1)
+    # ------------------------------------------------------------------
+
+    def test_compute_grid_zero_zero(self, dr_module, auto_df):
+        """BUG-43-1a: _compute_grid('0 0') must return >= (1,1), not (0,0)."""
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        rows, cols = renderer._compute_grid(4, "0 0")
+        assert rows >= 1, f"rows must be >= 1, got {rows}"
+        assert cols >= 1, f"cols must be >= 1, got {cols}"
+
+    # ------------------------------------------------------------------
+    # BUG-43-1b: "2 0" → at least (2, 1)
+    # ------------------------------------------------------------------
+
+    def test_compute_grid_two_zero(self, dr_module, auto_df):
+        """BUG-43-1b: _compute_grid('2 0') must not produce zero cols."""
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        rows, cols = renderer._compute_grid(4, "2 0")
+        assert cols >= 1, f"cols must be >= 1, got {cols}"
+
+    # ------------------------------------------------------------------
+    # BUG-43-1c: "0 3" → at least (1, 3)
+    # ------------------------------------------------------------------
+
+    def test_compute_grid_zero_three(self, dr_module, auto_df):
+        """BUG-43-1c: _compute_grid('0 3') must not produce zero rows."""
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        rows, cols = renderer._compute_grid(4, "0 3")
+        assert rows >= 1, f"rows must be >= 1, got {rows}"
+        assert cols == 3, f"cols should be 3, got {cols}"
+
+    # ------------------------------------------------------------------
+    # BUG-43-1d: valid "2 3" unchanged
+    # ------------------------------------------------------------------
+
+    def test_compute_grid_valid_unchanged(self, dr_module, auto_df):
+        """BUG-43-1d: _compute_grid('2 3') must return exactly (2, 3)."""
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        rows, cols = renderer._compute_grid(4, "2 3")
+        assert (rows, cols) == (2, 3), f"Expected (2,3), got ({rows},{cols})"
+
+    # ------------------------------------------------------------------
+    # BUG-43-1e: Stata validation regex rejects zero columns
+    # ------------------------------------------------------------------
+
+    def test_ado_validation_regex_rejects_zero_column(self):
+        """BUG-43-1e: dash.ado must use [1-9][0-9]* pattern for N M grid layout."""
+        with open(os.path.join(_DASH_DIR, "dash.ado"), encoding="utf-8") as f:
+            ado_text = f.read()
+        # The old regex [0-9]+ [0-9]+ accepted zeros; confirm new pattern present
+        assert "[1-9][0-9]* [1-9][0-9]*" in ado_text, (
+            "dash.ado should use [1-9][0-9]* pattern to reject zero-dimension layouts"
+        )
