@@ -1291,6 +1291,17 @@ program define _dash_build
             foreach v of local gvars {
                 if !`: list v in all_vars' local all_vars "`all_vars' `v'"
             }
+            // Also extract variables referenced only in qualifiers (if_expr)
+            // and faceting (by) — these may not appear in any plot-variable key
+            // but must be serialised so the renderer can apply them correctly.
+            local qvars ""
+            mata: _dash_extract_qual_vars(`"${dash_json_`gname'}"', "qvars")
+            foreach v of local qvars {
+                capture confirm variable `v'
+                if _rc == 0 {
+                    if !`: list v in all_vars' local all_vars "`all_vars' `v'"
+                }
+            }
         }
     }
 
@@ -1502,6 +1513,15 @@ program define _dash_serve
             mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
             foreach v of local gvars {
                 if !`: list v in all_vars' local all_vars "`all_vars' `v'"
+            }
+            // Also extract qualifier (if_expr) and facet (by) variables.
+            local qvars ""
+            mata: _dash_extract_qual_vars(`"${dash_json_`gname'}"', "qvars")
+            foreach v of local qvars {
+                capture confirm variable `v'
+                if _rc == 0 {
+                    if !`: list v in all_vars' local all_vars "`all_vars' `v'"
+                }
             }
         }
     }

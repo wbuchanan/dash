@@ -8192,3 +8192,172 @@ class TestServerByTotalFullDispatch:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ===========================================================================
+# BUG-39 — Stata build/serve omit qualifier and by() variables from
+#          serialized data; _apply_graph_filter crashes with NameError
+#          when the qualifier column is absent from the DataFrame.
+#
+# Python-side regression: _apply_graph_filter must warn and return the
+# unfiltered DataFrame rather than raising NameError /
+# pandas.errors.UndefinedVariableError when a column referenced in if_expr
+# was not serialized by Stata (because _dash_extract_qual_vars did not yet
+# exist, or the variable was only referenced in the qualifier).
+#
+# BUG-39-1a  _apply_graph_filter warns + returns full df when col absent
+# BUG-39-1b  _apply_graph_filter filters correctly when col IS present
+# BUG-39-1c  Warning message mentions that the filter was skipped
+# BUG-39-1d  Server make_document doesn't crash when if_expr col absent
+# BUG-39-1e  Server make_document applies filter when if_expr col present
+# ===========================================================================
+
+class TestQualifierMissingColumnGraceful:
+    """BUG-39: _apply_graph_filter degrades gracefully on missing columns."""
+
+    # ------------------------------------------------------------------
+    # BUG-39-1a: warns and returns full df when col absent
+    # ------------------------------------------------------------------
+
+    def test_missing_col_returns_full_df(self, dr_module, auto_df):
+        """BUG-39-1a: if_expr referencing absent column -> returns unfiltered df."""
+        import warnings
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        # Give the renderer a df that does NOT contain 'foreign'
+        renderer.df = auto_df[["mpg", "weight", "price"]].copy()
+        graph_spec = {"if_expr": "foreign == 1"}
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            result = renderer._apply_graph_filter(graph_spec)
+        # Must return full df (30 rows), not raise
+        assert len(result) == len(renderer.df), (
+            f"Expected {len(renderer.df)} rows (full df), got {len(result)}"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-39-1b: filters correctly when col IS present
+    # ------------------------------------------------------------------
+
+    def test_present_col_filters_correctly(self, dr_module, auto_df):
+        """BUG-39-1b: if_expr referencing a present column filters correctly."""
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        renderer.df = auto_df.copy()
+        n_foreign = int((auto_df["foreign"] == 1).sum())
+        graph_spec = {"if_expr": "foreign == 1"}
+        result = renderer._apply_graph_filter(graph_spec)
+        assert len(result) == n_foreign, (
+            f"Expected {n_foreign} rows (foreign==1), got {len(result)}"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-39-1c: warning message mentions that the filter was skipped
+    # ------------------------------------------------------------------
+
+    def test_missing_col_warning_mentions_filter_skipped(self, dr_module, auto_df):
+        """BUG-39-1c: warning text mentions that the filter was skipped."""
+        import warnings
+        renderer = dr_module.DashRenderer.__new__(dr_module.DashRenderer)
+        renderer.df = auto_df[["mpg", "weight"]].copy()
+        graph_spec = {"if_expr": "foreign == 1"}
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            renderer._apply_graph_filter(graph_spec)
+        assert len(caught) >= 1, "Expected at least one warning, got none"
+        warning_text = str(caught[0].message)
+        assert "filter skipped" in warning_text, (
+            f"Warning text did not contain 'filter skipped': {warning_text}"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-39-1d: server make_document doesn't crash when if_expr col absent
+    # ------------------------------------------------------------------
+
+    def test_server_make_document_missing_if_expr_col(self, dr_module, auto_df):
+        """BUG-39-1d: server make_document renders when if_expr col is absent from data."""
+        import warnings
+        from bokeh.document import Document
+        # Build a spec with if_expr referencing 'foreign', but omit 'foreign'
+        # from the serialized data (simulating missing _dash_extract_qual_vars).
+        df_no_foreign = auto_df[["mpg", "weight", "price"]].copy()
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "if_expr": "foreign == 1"},
+        }])
+        spec_path, data_path = _write_temp_files(df_no_foreign, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b39d", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            # Must not raise — should render with unfiltered data
+            with warnings.catch_warnings(record=True):
+                warnings.simplefilter("always")
+                app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            assert n_renderers >= 1, (
+                f"make_document should render at least 1 glyph even when "
+                f"if_expr column is absent; got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-39-1e: server make_document applies filter when if_expr col present
+    # ------------------------------------------------------------------
+
+    def test_server_make_document_if_expr_filters_when_col_present(
+            self, dr_module, auto_df):
+        """BUG-39-1e: server make_document applies if_expr filter when col is in data."""
+        from bokeh.document import Document
+        # Include 'foreign' in data — the filter should limit glyph source rows.
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "if_expr": "foreign == 1"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b39e", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            # The rendered graph should have fewer rows than the full dataset
+            # because the if_expr filter (foreign==1) is applied.
+            n_foreign = int((auto_df["foreign"] == 1).sum())
+            n_total = len(auto_df)
+            n_renderers = _count_glyph_renderers(doc)
+            assert n_renderers >= 1, "Expected at least one renderer"
+            # Verify source row count is limited by filter (not full 30 rows)
+            # Inspect the first ColumnDataSource reachable from the document.
+            renderers_list = []
+            for root in doc.roots:
+                if hasattr(root, "renderers"):
+                    renderers_list.extend(root.renderers)
+                elif hasattr(root, "children"):
+                    for child in root.children:
+                        if hasattr(child, "renderers"):
+                            renderers_list.extend(child.renderers)
+            glyph_renderers = [
+                r for r in renderers_list
+                if hasattr(r, "data_source") and hasattr(r, "glyph")
+            ]
+            if glyph_renderers:
+                src_len = len(glyph_renderers[0].data_source.data.get("mpg", []))
+                assert src_len == n_foreign, (
+                    f"Expected {n_foreign} rows in source (foreign==1 filter), "
+                    f"got {src_len} (total={n_total})"
+                )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass

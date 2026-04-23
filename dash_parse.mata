@@ -698,6 +698,161 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
 
 
 // ============================================================
+// 6b. QUALIFIER / FACET VARIABLE EXTRACTOR
+//     _dash_extract_qual_vars(json_str, out_macro)
+//
+// Scans a plot-spec JSON string and collects Stata variable names
+// referenced only in graph-level qualifier or faceting fields
+// (which _dash_extract_vars never looks at):
+//
+//   "by"      — each token in the varlist (before the first comma)
+//   "if_expr" — identifier tokens extracted from the Python expression
+//
+// Only tokens that pass ^[a-zA-Z_][a-zA-Z0-9_]*$ and are not
+// Python keywords/constants are returned.  Callers in dash.ado
+// should use `capture confirm variable' to discard any tokens
+// that are not real dataset variables (e.g. string literals that
+// happened to look like identifiers in the expression).
+//
+// Appends discovered names (without duplicates) to the
+// space-separated varlist stored in out_macro.
+// ============================================================
+void _dash_extract_qual_vars(string scalar json_str,
+                              string scalar out_macro) {
+    string rowvector by_keys, expr_keys, reserved, toks
+    string scalar    varlist, val, tok, ch
+    real scalar      pos, local_pos, orig_pos, n, k, t, comma_pos
+
+    // Python expression keywords/constants that are not Stata variable names.
+    reserved = ("True", "False", "None", "nan", "NaN", "inf",
+                "and",  "or",    "not",  "in",  "is")
+
+    by_keys   = (char(34) + "by"      + char(34) + ":",)
+    expr_keys = (char(34) + "if_expr" + char(34) + ":",)
+
+    varlist = ""
+    n       = strlen(json_str)
+
+    // ----------------------------------------------------------
+    // Helper: decode the next JSON string value starting just
+    // after the key's colon.  On entry pos points to the char
+    // immediately following the key+colon (before optional
+    // whitespace).  On return pos is set to one char past the
+    // closing quote (or at n+1 if the string was unterminated).
+    // The decoded value is returned in val.
+    //
+    // Escape sequences handled: \" → skip (no char added),
+    // \\ → skip, all other \x → skip.  This strips inner quotes
+    // from expressions like  make == \"AMC\"  so that "AMC"
+    // does not yield false tokens; variable names remain intact.
+    // ----------------------------------------------------------
+
+    // ---- Extract "by" values ----
+    for (k = 1; k <= cols(by_keys); k++) {
+        pos = 1
+        while (pos <= n) {
+            orig_pos  = pos
+            local_pos = strpos(substr(json_str, orig_pos, .), by_keys[k])
+            if (local_pos == 0) break
+            pos = orig_pos + local_pos - 1 + strlen(by_keys[k])
+            // Skip optional whitespace before opening quote
+            while (pos <= n &
+                   (substr(json_str, pos, 1) == " " |
+                    substr(json_str, pos, 1) == char(9))) pos++
+            if (pos > n | substr(json_str, pos, 1) != char(34)) continue
+            pos++   // skip opening quote
+            val = ""
+            while (pos <= n) {
+                ch = substr(json_str, pos, 1)
+                if (ch == char(34)) break           // unescaped closing quote
+                if (ch == "\" & pos + 1 <= n) {
+                    pos = pos + 2; continue         // skip escape sequence
+                }
+                val = val + ch
+                pos++
+            }
+            pos++   // skip closing quote
+            // Only tokenize before the first comma to avoid option keywords
+            // such as "cols", "total", "missing" in by(varlist, opts).
+            comma_pos = strpos(val, ",")
+            if (comma_pos > 0) val = substr(val, 1, comma_pos - 1)
+            toks = tokens(val)
+            for (t = 1; t <= cols(toks); t++) {
+                tok = toks[t]
+                if (regexm(tok, "^[a-zA-Z_][a-zA-Z0-9_]*$") &
+                    !anyof(tokens(varlist), tok)) {
+                    if (varlist != "") varlist = varlist + " "
+                    varlist = varlist + tok
+                }
+            }
+        }
+    }
+
+    // ---- Extract "if_expr" values ----
+    for (k = 1; k <= cols(expr_keys); k++) {
+        pos = 1
+        while (pos <= n) {
+            orig_pos  = pos
+            local_pos = strpos(substr(json_str, orig_pos, .), expr_keys[k])
+            if (local_pos == 0) break
+            pos = orig_pos + local_pos - 1 + strlen(expr_keys[k])
+            while (pos <= n &
+                   (substr(json_str, pos, 1) == " " |
+                    substr(json_str, pos, 1) == char(9))) pos++
+            if (pos > n | substr(json_str, pos, 1) != char(34)) continue
+            pos++   // skip opening quote
+            val = ""
+            while (pos <= n) {
+                ch = substr(json_str, pos, 1)
+                if (ch == char(34)) break
+                if (ch == "\" & pos + 1 <= n) {
+                    pos = pos + 2; continue     // skip \" and other escapes
+                }
+                val = val + ch
+                pos++
+            }
+            pos++   // skip closing quote
+            // Replace operator and punctuation characters with spaces so
+            // that tokens() returns only identifier-like strings.
+            val = subinstr(val, "==", " ", .)
+            val = subinstr(val, "!=", " ", .)
+            val = subinstr(val, "~=", " ", .)
+            val = subinstr(val, "<=", " ", .)
+            val = subinstr(val, ">=", " ", .)
+            val = subinstr(val, "<",  " ", .)
+            val = subinstr(val, ">",  " ", .)
+            val = subinstr(val, "&",  " ", .)
+            val = subinstr(val, "|",  " ", .)
+            val = subinstr(val, "!",  " ", .)
+            val = subinstr(val, "(",  " ", .)
+            val = subinstr(val, ")",  " ", .)
+            val = subinstr(val, "+",  " ", .)
+            val = subinstr(val, "-",  " ", .)
+            val = subinstr(val, "*",  " ", .)
+            val = subinstr(val, "/",  " ", .)
+            val = subinstr(val, "%",  " ", .)
+            val = subinstr(val, ",",  " ", .)
+            val = subinstr(val, char(34), " ", .)
+            toks = tokens(val)
+            for (t = 1; t <= cols(toks); t++) {
+                tok = toks[t]
+                // Keep only Stata-identifier-like tokens; skip Python
+                // reserved words and numeric literals.
+                if (regexm(tok, "^[a-zA-Z_][a-zA-Z0-9_]*$") &
+                    !anyof(reserved, tok) &
+                    !anyof(tokens(varlist), tok)) {
+                    if (varlist != "") varlist = varlist + " "
+                    varlist = varlist + tok
+                }
+            }
+        }
+    }
+
+    st_local(out_macro, strtrim(varlist))
+}
+
+
+// ============================================================
 // 6.  FILTER EXTRACTION
 //     _dash_extract_filters(filter_out, cmd_out)
 //

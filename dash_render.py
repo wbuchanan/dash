@@ -5096,7 +5096,12 @@ class DashRenderer:
             else:
                 try:
                     df = df.query(pandas_expr, engine="python")
-                except (ValueError, SyntaxError, KeyError, TypeError) as _qexc:
+                except (ValueError, SyntaxError, KeyError, TypeError,
+                        NameError) as _qexc:
+                    # NameError / pandas.errors.UndefinedVariableError is raised
+                    # when a column referenced in if_expr was not serialised by
+                    # Stata (e.g. a qualifier-only variable not in the data file).
+                    # Degrade gracefully: warn and return the unfiltered DataFrame.
                     import warnings
                     warnings.warn(
                         f"dash: if_expr filter skipped — {_qexc}",
