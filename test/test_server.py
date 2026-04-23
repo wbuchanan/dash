@@ -8361,3 +8361,79 @@ class TestQualifierMissingColumnGraceful:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ===========================================================================
+# BUG-40 — Windows browser auto-open command uses `start` with incorrect
+#          quoting; the first quoted token is treated as the window title.
+#
+# The fix adds an empty title ("") so the second quoted argument is used
+# as the target file path.
+#
+# BUG-40-1a  dash.ado immediate-render: shell start "" present
+# BUG-40-1b  dash.ado immediate-render: shell start "<path>" (no title) absent
+# BUG-40-1c  dash.ado dash build: shell start "" present
+# BUG-40-1d  dash.ado dash build: shell start "<path>" (no title) absent
+# ===========================================================================
+
+class TestWindowsBrowserStartQuoting:
+    """BUG-40: Windows shell start must include empty title to avoid path-as-title."""
+
+    _ADO_PATH = os.path.join(_DASH_DIR, "dash.ado")
+
+    @classmethod
+    def _ado_text(cls):
+        with open(cls._ADO_PATH, "r", encoding="utf-8") as fh:
+            return fh.read()
+
+    # ------------------------------------------------------------------
+    # BUG-40-1a: immediate-render path has shell start ""
+    # ------------------------------------------------------------------
+
+    def test_immediate_render_has_empty_title(self):
+        """BUG-40-1a: immediate-render Windows open uses 'shell start \"\"'."""
+        text = self._ado_text()
+        assert 'shell start ""' in text, (
+            'dash.ado should contain \'shell start ""\' for Windows browser open'
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-40-1b: no bare shell start "<path>" (missing empty title)
+    # ------------------------------------------------------------------
+
+    def test_no_bare_start_command(self):
+        """BUG-40-1b: 'shell start \"`' (no empty title) must not appear in dash.ado."""
+        text = self._ado_text()
+        # Match the old incorrect pattern: shell start immediately followed
+        # by a quote+backtick (the path macro).  An empty title would put
+        # the empty-string token between 'start' and the path.
+        import re
+        bad_pattern = re.compile(r'\bshell\s+start\s+"[^"]*`')
+        assert bad_pattern.search(text) is None, (
+            "dash.ado still contains 'shell start \"<path>' pattern "
+            "(missing empty title); Windows open will fail"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-40-1c: dash-build path contains shell start ""
+    # ------------------------------------------------------------------
+
+    def test_dash_build_has_empty_title(self):
+        """BUG-40-1c: dash build Windows open also uses 'shell start \"\"'."""
+        text = self._ado_text()
+        # Count occurrences — both immediate-render and dash-build must use it
+        count = text.count('shell start ""')
+        assert count >= 2, (
+            f"Expected at least 2 occurrences of 'shell start \"\"' "
+            f"(one per Windows open site), found {count}"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-40-1d: regression — macOS and Unix open commands unchanged
+    # ------------------------------------------------------------------
+
+    def test_mac_unix_open_commands_unchanged(self):
+        """BUG-40-1d: macOS 'shell open' and Unix 'shell xdg-open' still present."""
+        text = self._ado_text()
+        assert "shell open" in text, "macOS 'shell open' missing from dash.ado"
+        assert "shell xdg-open" in text, "Unix 'shell xdg-open' missing from dash.ado"

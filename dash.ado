@@ -995,14 +995,12 @@ program define _dash_render_immediate
 
     // ---- Open in browser if no explicit saving() ----
     if "`open_browser'" == "1" {
-        local open_cmd ""
-        if "`c(os)'" == "MacOSX"  local open_cmd "shell open"
-        if "`c(os)'" == "Windows" local open_cmd "shell start"
-        if "`c(os)'" == "Unix"    local open_cmd "shell xdg-open"
-
-        if "`open_cmd'" != "" {
-            `open_cmd' "`saving_path'"
-        }
+        // On Windows, `start` treats its first quoted argument as the window
+        // title, not the file path.  Supply an empty title ("") so the second
+        // quoted argument is interpreted as the target file.
+        if "`c(os)'" == "MacOSX"  shell open        "`saving_path'"
+        if "`c(os)'" == "Windows" shell start "" "`saving_path'"
+        if "`c(os)'" == "Unix"    shell xdg-open "`saving_path'"
     }
     else {
         display as text `"dash: dashboard saved to `saving_path'"'
@@ -1457,8 +1455,8 @@ program define _dash_build
     }
     else {
         display as text `"dash: dashboard saved to `saving'"'
-        if "`c(os)'" == "MacOSX"  shell open "`saving'"
-        if "`c(os)'" == "Windows" shell start "`saving'"
+        if "`c(os)'" == "MacOSX"  shell open        "`saving'"
+        if "`c(os)'" == "Windows" shell start "" "`saving'"
         if "`c(os)'" == "Unix"    shell xdg-open "`saving'"
     }
 end
