@@ -5713,9 +5713,13 @@ class TestFilterUpdatesAllSources:
         html_out = dr_module._FILTER_JS
         assert "all_graph_sources" in html_out, \
             "_FILTER_JS must reference all_graph_sources for multi-source updates"
-        # Must loop over all_graph_sources and assign .data
-        assert "all_graph_sources" in html_out and ".data = new_data" in html_out, \
-            "_FILTER_JS must assign new_data to sources in all_graph_sources loop"
+        # Must loop over all_graph_sources and assign per-source filtered data.
+        # After Bug-29 fix the loop assigns _nd_i (per-source) rather than new_data;
+        # verify the loop iterates _srcs and emits a change.
+        assert "_srcs[_si].data" in html_out, \
+            "_FILTER_JS must assign filtered data to each source in all_graph_sources loop"
+        assert "_srcs[_si].change.emit()" in html_out, \
+            "_FILTER_JS must emit change on each source in the loop"
 
     def test_excluded_graph_source_not_in_cb_all_graph_sources(self, dr_module, auto_df):
         """BUG-MTSRC-1c: excluded graph source must not appear in all_graph_sources."""
@@ -5763,6 +5767,175 @@ class TestFilterUpdatesAllSources:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-29: Standalone filter callbacks corrupt unlinked graphs with different schemas
+# ---------------------------------------------------------------------------
+
+class TestFilterPerSourceOrigData:
+    """Regression tests for BUG-29: standalone filter callbacks must carry
+    per-source original snapshots so each source is filtered using its own
+    column schema, not the primary source's column schema.
+
+    Without the fix, assigning one ``new_data`` (built from the primary
+    ColumnDataSource) to every source in ``all_graph_sources`` drops any
+    column that does not exist in the primary source, corrupting unlinked
+    graphs whose schemas differ.
+    """
+
+    def _make_different_schema_spec(self) -> dict:
+        """Two unlinked graphs: g1 has (mpg, weight), g2 has (price, weight)."""
+        return _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1"}},
+                {"plots": [{"type": "scatter", "yvar": "price",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g2"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1 g2",
+                "mode": "standalone", "port": "5006",
+            }
+        )
+
+    def test_callback_has_per_source_orig_json_arg(self, dr_module, auto_df):
+        """BUG-29-1a: filter callback must include all_graph_sources_orig_json."""
+        spec = self._make_different_schema_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            assert renderer.filter_callbacks, "filter callback must be built"
+            cb_args = renderer.filter_callbacks[0].args
+            assert "all_graph_sources_orig_json" in cb_args, (
+                "callback args must contain 'all_graph_sources_orig_json' for per-source snapshots"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_per_source_orig_json_length_matches_sources(self, dr_module, auto_df):
+        """BUG-29-1b: all_graph_sources_orig_json must have same length as all_graph_sources."""
+        spec = self._make_different_schema_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            assert renderer.filter_callbacks, "filter callback must be built"
+            cb_args = renderer.filter_callbacks[0].args
+            srcs = cb_args.get("all_graph_sources", [])
+            orig_jsons = cb_args.get("all_graph_sources_orig_json", [])
+            assert len(srcs) == len(orig_jsons), (
+                f"all_graph_sources_orig_json length ({len(orig_jsons)}) must match "
+                f"all_graph_sources length ({len(srcs)})"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_per_source_orig_preserves_source_columns(self, dr_module, auto_df):
+        """BUG-29-1c: each orig_json entry must contain the columns of its own source."""
+        import json as _json
+        spec = self._make_different_schema_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            assert renderer.filter_callbacks, "filter callback must be built"
+            cb_args = renderer.filter_callbacks[0].args
+            srcs = cb_args.get("all_graph_sources", [])
+            orig_jsons = cb_args.get("all_graph_sources_orig_json", [])
+            assert len(srcs) == len(orig_jsons) >= 2, (
+                "need at least 2 source snapshots to verify per-source column preservation"
+            )
+            for i, (src, orig_json_str) in enumerate(zip(srcs, orig_jsons)):
+                orig = _json.loads(orig_json_str)
+                src_cols = set(src.data.keys())
+                orig_cols = set(orig.keys())
+                assert src_cols == orig_cols, (
+                    f"source[{i}] orig_json columns {sorted(orig_cols)} must match "
+                    f"actual source columns {sorted(src_cols)}"
+                )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_g2_orig_json_has_g2_columns_not_g1_columns(self, dr_module, auto_df):
+        """BUG-29-1d: g2's orig_json must contain price (g2 col) and not mpg (g1-only col)."""
+        import json as _json
+        spec = self._make_different_schema_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            if not renderer.filter_callbacks:
+                return
+            cb_args = renderer.filter_callbacks[0].args
+            srcs = cb_args.get("all_graph_sources", [])
+            orig_jsons = cb_args.get("all_graph_sources_orig_json", [])
+            if len(srcs) < 2:
+                return
+            g2_src = renderer.sources.get("g2")
+            if g2_src is None:
+                return
+            for src, orig_json_str in zip(srcs, orig_jsons):
+                if src is g2_src:
+                    orig = _json.loads(orig_json_str)
+                    assert "price" in orig, (
+                        "g2 source orig_json must contain 'price' (g2's y-column)"
+                    )
+                    assert "mpg" not in orig, (
+                        "g2 source orig_json must NOT contain 'mpg' (g1-only column) — "
+                        "this was the pre-fix corruption vector"
+                    )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_filter_js_uses_per_source_orig_json(self, dr_module, auto_df):
+        """BUG-29-1e: _FILTER_JS must reference all_graph_sources_orig_json."""
+        js = dr_module._FILTER_JS
+        assert "all_graph_sources_orig_json" in js, (
+            "_FILTER_JS must reference all_graph_sources_orig_json so each source "
+            "is filtered with its own column snapshot, not the primary source's snapshot"
+        )
+
+    def test_render_with_different_schema_does_not_crash(self, dr_module, auto_df):
+        """BUG-29-1f: two-graph unlinked dashboard with different schemas must render without crash."""
+        spec = self._make_different_schema_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            assert len(html_out) > 100, "rendered HTML must be non-trivial"
+            # Verify per-source orig data is embedded in the HTML
+            assert "all_graph_sources_orig_json" in html_out, (
+                "rendered HTML must embed all_graph_sources_orig_json callback arg"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
 
 
 # ---------------------------------------------------------------------------

@@ -4232,7 +4232,9 @@ for (let fi = 0; fi < filter_specs.length; fi++) {
     }
 }
 
-// Build new data arrays containing only active rows
+// Build new data arrays containing only active rows from the primary source.
+// This snapshot is used for KPI value updates and for the primary `source`
+// fallback path (when source is not already in all_graph_sources).
 const new_data = {};
 const cols = Object.keys(orig);
 for (const col of cols) { new_data[col] = []; }
@@ -4242,14 +4244,27 @@ for (let i = 0; i < n_rows; i++) {
     }
 }
 
-// Replace source data in ALL non-excluded graph sources.
-// For linked dashboards all graphs share `source` (already in all_graph_sources).
-// For unlinked dashboards each graph has its own ColumnDataSource; without this
-// loop, only the first source would ever be updated and other graphs would stay
-// stale after filter changes.
+// Replace source data in ALL non-excluded graph sources, using each source's
+// own per-source original snapshot so that unlinked graphs with different
+// column schemas are not corrupted when a single new_data payload is broadcast
+// to all sources.  The active[] row-mask is computed from the primary source
+// above; since all sources share the same underlying row universe this mask
+// applies correctly to every source regardless of column differences.
 const _srcs = all_graph_sources;
+const _srcs_orig_json = all_graph_sources_orig_json;
 for (let _si = 0; _si < _srcs.length; _si++) {
-    _srcs[_si].data = new_data;
+    // Parse this source's own snapshot — preserves its unique column set.
+    const _orig_i = JSON.parse(_srcs_orig_json[_si]);
+    const _cols_i = Object.keys(_orig_i);
+    const _n_i    = _cols_i.length > 0 ? _orig_i[_cols_i[0]].length : 0;
+    const _nd_i   = {};
+    for (const col of _cols_i) { _nd_i[col] = []; }
+    for (let i = 0; i < _n_i; i++) {
+        if (i < active.length && active[i]) {
+            for (const col of _cols_i) { _nd_i[col].push(_orig_i[col][i]); }
+        }
+    }
+    _srcs[_si].data = _nd_i;
     _srcs[_si].selected.indices = [];
     _srcs[_si].change.emit();
 }
@@ -4533,7 +4548,13 @@ class FilterBuilder:
                 "agg_configs_json":  "[]",  # populated by DashRenderer.render()
                 # All non-excluded graph sources — populated by DashRenderer.render()
                 # so _FILTER_JS can update every graph in an unlinked dashboard
-                "all_graph_sources": [],    # populated by DashRenderer.render()
+                "all_graph_sources": [],              # populated by DashRenderer.render()
+                # Per-source original data snapshots (indexed parallel to
+                # all_graph_sources) so _FILTER_JS can rebuild filtered data
+                # for each source using its own column schema.  Prevents
+                # unlinked graphs with different columns from being corrupted
+                # when a single new_data payload is broadcast to all sources.
+                "all_graph_sources_orig_json": [],   # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -4588,7 +4609,8 @@ class FilterBuilder:
                 "kpi_divs":          [],
                 "agg_sources":       [],
                 "agg_configs_json":  "[]",
-                "all_graph_sources": [],  # populated by DashRenderer.render()
+                "all_graph_sources": [],              # populated by DashRenderer.render()
+                "all_graph_sources_orig_json": [],   # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -4641,7 +4663,8 @@ class FilterBuilder:
                 "kpi_divs":          [],
                 "agg_sources":       [],
                 "agg_configs_json":  "[]",
-                "all_graph_sources": [],  # populated by DashRenderer.render()
+                "all_graph_sources": [],              # populated by DashRenderer.render()
+                "all_graph_sources_orig_json": [],   # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -7020,6 +7043,21 @@ class DashRenderer:
                 if _gsrc not in _graph_srcs_for_cb:
                     _graph_srcs_for_cb.append(_gsrc)
             _cb.args["all_graph_sources"] = _graph_srcs_for_cb
+
+            # Build per-source original snapshots (indexed parallel to
+            # all_graph_sources) so _FILTER_JS can rebuild filtered data for
+            # each source using its own column schema.  Without this, assigning
+            # a single new_data (built from the primary source) to all sources
+            # drops columns that belong to secondary sources only — corrupting
+            # unlinked graphs whose schemas differ from the primary source.
+            _per_src_orig_json: list = []
+            for _gsrc in _graph_srcs_for_cb:
+                _src_snap: dict = {
+                    _col: [DashRenderer._to_serialisable(v) for v in _arr]
+                    for _col, _arr in _gsrc.data.items()
+                }
+                _per_src_orig_json.append(json.dumps(_src_snap))
+            _cb.args["all_graph_sources_orig_json"] = _per_src_orig_json
 
             _agg_srcs: list = []
             _agg_cfgs: list = []
