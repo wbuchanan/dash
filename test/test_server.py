@@ -6433,6 +6433,169 @@ class TestBug22MultiLayerSources:
 
 
 # ---------------------------------------------------------------------------
+# BUG-32: Server filter callback clears synthetic columns (e.g. _x_jit/_y_jit)
+# ---------------------------------------------------------------------------
+
+class TestServerFilterPreservesDerivedColumns:
+    """BUG-32: Server-mode filter callbacks must not blank derived columns.
+
+    Pre-fix: for any column in ``src.data`` not present in ``_gdf.columns``
+    (e.g. ``_x_jit``/``_y_jit`` from ``jitter()``, or Bokeh's implicit
+    ``index`` column), the callback set it to ``[]``, causing a length
+    mismatch warning and making glyphs disappear after filter interactions.
+
+    Post-fix: a per-source original-data snapshot is captured before any
+    filter fires; derived columns are populated by selecting rows at the
+    correct positional indices from the snapshot.
+    """
+
+    def _make_jitter_spec(self) -> dict:
+        """Scatter with jitter option so _x_jit/_y_jit exist in src.data."""
+        return _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {"jitter": "5"}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": "foreign, type(dropdown)",
+                "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1", "mode": "standalone", "port": "5006",
+            }
+        )
+
+    def test_generated_source_has_orig_src_data_snapshot(self, dr_module, auto_df):
+        """BUG-32-1a: generated server source must create _orig_src_data snapshot."""
+        spec = self._make_jitter_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            assert "_orig_src_data" in src, (
+                "generated server source must create _orig_src_data snapshot "
+                "to preserve derived columns during filter callbacks"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_generated_callback_uses_snapshot_for_derived_cols(self, dr_module, auto_df):
+        """BUG-32-1b: generated _make_filter_cb must reference _orig_src_data for non-df columns."""
+        spec = self._make_jitter_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            assert "_orig_src_data" in src, "_orig_src_data must be in generated source"
+            # The callback must use _orig_src_data in the filter loop
+            assert "_snap" in src or "_orig_src_data.get" in src, (
+                "_make_filter_cb must use _orig_src_data snapshot for derived column selection"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_generated_callback_handles_index_column(self, dr_module, auto_df):
+        """BUG-32-1c: generated callback must repopulate 'index' from _gdf.index, not blank it."""
+        spec = self._make_jitter_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            src = builder._generate_app_source(5006)
+            # Must have special handling for 'index' column
+            assert "col == 'index'" in src or "_src_idx" in src, (
+                "generated callback must handle 'index' column specially "
+                "(repopulate from _gdf.index, not blank it)"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_make_document_with_filter_does_not_raise(self, dr_module, auto_df):
+        """BUG-32-1d: make_document with jitter+filter must not raise."""
+        import importlib.util as _ilu
+        from bokeh.document import Document
+        spec = self._make_jitter_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name, port=5006)
+            app_spec_obj = _ilu.spec_from_file_location("_bug32_app", out_f.name)
+            app_mod = _ilu.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            assert len(doc.roots) > 0, "make_document must add roots"
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_filter_callback_preserves_derived_column_length(self, dr_module, auto_df):
+        """BUG-32-1e: after filter callback fires, derived columns must match data column lengths."""
+        import importlib.util as _ilu
+        import warnings
+        from bokeh.document import Document
+        from bokeh.models import Select
+        spec = self._make_jitter_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name, port=5006)
+            app_spec_obj = _ilu.spec_from_file_location("_bug32e_app", out_f.name)
+            app_mod = _ilu.module_from_spec(app_spec_obj)
+            app_spec_obj.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            # Find filter widget and trigger it
+            all_models = list(doc.models)
+            fw = next(
+                (m for m in all_models
+                 if isinstance(m, Select) and getattr(m, "_dash_var", "") == "foreign"),
+                None,
+            )
+            if fw is None:
+                return  # no filter widget built — nothing to check
+            # Pick a non-"All" option if available
+            non_all = [v for v, _l in fw.options if v != "__all__"]
+            new_val = non_all[0] if non_all else "__all__"
+            old_val = fw.value
+            # Fire the callback without warnings about column length mismatch
+            with warnings.catch_warnings(record=True) as w_list:
+                warnings.simplefilter("always")
+                for cb_desc in fw._callbacks.get("value", []):
+                    cb_desc("value", old_val, new_val)
+            length_warnings = [w for w in w_list
+                                if "same length" in str(w.message).lower()]
+            assert not length_warnings, (
+                "BUG-32: filter callback must not produce 'columns must be of the same "
+                f"length' warnings after fix; got: {length_warnings}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+
+# ---------------------------------------------------------------------------
 # BUG-23: Mixed valid/missing filter specs break standalone filter callbacks
 # ---------------------------------------------------------------------------
 
