@@ -9582,3 +9582,113 @@ class TestSeparateRateLimitBuckets:
             "After exhausting _SESSION_LIMITER, _HEALTH_LIMITER should still allow "
             "health checks for the same IP (BUG-48 regression: shared bucket)"
         )
+
+
+# ---------------------------------------------------------------------------
+# BUG-49 Regression tests — timeout() unit mismatch (help said seconds, code uses minutes)
+# ---------------------------------------------------------------------------
+class TestTimeoutUnitConsistency:
+    """BUG-49: dash.sthlp documented timeout(#) as seconds while all code paths
+    (dash.ado error messages, argparse help, runtime sleep) used minutes.
+    Fix: update dash.sthlp to say 'minutes' to match the implementation.
+
+    Regression tests verify all surfaces use the same unit (minutes).
+    """
+
+    # ------------------------------------------------------------------
+    # BUG-49-1a: dash.sthlp contains 'minutes' for timeout, not 'seconds'
+    # ------------------------------------------------------------------
+    def test_BUG_49_1a_sthlp_says_minutes(self):
+        """dash.sthlp must document timeout(#) in minutes (not seconds)."""
+        sthlp_path = os.path.join(os.path.dirname(__file__), "..", "dash.sthlp")
+        with open(sthlp_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        # The synopt entry for timeout uses SMCL:
+        #   {synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes;
+        # Search for the synopt definition block (synopt ... p_end) that contains timeout
+        import re
+        m = re.search(
+            r"\{synopt:[^}]*timeout[^}]*\}[^\n]*\n?[^\n]*\{p_end\}",
+            content, re.DOTALL
+        )
+        assert m, (
+            "timeout() synopt entry not found in dash.sthlp — "
+            "expected a line matching '{synopt:...timeout...} ... {p_end}'"
+        )
+        blurb = m.group(0)
+        assert "minutes" in blurb, (
+            "dash.sthlp timeout() description must say 'minutes' (BUG-49 regression: was 'seconds'). "
+            f"Matched text: {blurb!r}"
+        )
+        assert "seconds" not in blurb, (
+            "dash.sthlp timeout() description must not say 'seconds' (BUG-49 regression). "
+            f"Matched text: {blurb!r}"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-49-1b: dash.ado error message says 'minutes'
+    # ------------------------------------------------------------------
+    def test_BUG_49_1b_ado_error_message_says_minutes(self):
+        """dash.ado timeout validation error must reference 'minutes'."""
+        ado_path = os.path.join(os.path.dirname(__file__), "..", "dash.ado")
+        with open(ado_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        # Find the timeout validation error message
+        import re
+        m = re.search(r"timeout\(\) must be.*?\"", content, re.DOTALL)
+        assert m, "timeout() validation error not found in dash.ado"
+        blurb = m.group(0)
+        assert "minutes" in blurb or "minute" in blurb, (
+            "dash.ado timeout() error message must mention 'minutes' (BUG-49 regression)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-49-1c: dash_render.py argparse help says 'minutes'
+    # ------------------------------------------------------------------
+    def test_BUG_49_1c_argparse_help_says_minutes(self):
+        """CLI --timeout argument help text must say 'minutes'."""
+        render_path = os.path.join(os.path.dirname(__file__), "..", "dash_render.py")
+        with open(render_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        import re
+        # Find the --timeout argparse block
+        m = re.search(r"\"--timeout\".*?add_argument", content, re.DOTALL)
+        # Find the help string near '--timeout'
+        idx = content.find('"--timeout"')
+        assert idx != -1, "--timeout argument not found in dash_render.py"
+        snippet = content[idx: idx + 400]
+        assert "minutes" in snippet, (
+            "dash_render.py --timeout help text must say 'minutes' (BUG-49 regression)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-49-1d: runtime multiplies timeout by 60 (minutes → seconds)
+    # ------------------------------------------------------------------
+    def test_BUG_49_1d_runtime_uses_minutes_multiplier(self):
+        """The auto-shutdown thread must sleep for timeout*60 seconds (i.e., minutes)."""
+        render_path = os.path.join(os.path.dirname(__file__), "..", "dash_render.py")
+        with open(render_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        # The auto-shutdown sleep must be in the form args.timeout * 60
+        import re
+        m = re.search(r"_time\.sleep\(args\.timeout\s*\*\s*60\)", content)
+        assert m, (
+            "dash_render.py must multiply timeout by 60 for the auto-shutdown sleep "
+            "(BUG-49 regression: confirms runtime treats timeout as minutes)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-49-1e: no 'seconds' reference near timeout in any primary file
+    # ------------------------------------------------------------------
+    def test_BUG_49_1e_no_seconds_claim_near_timeout_in_sthlp(self):
+        """Verify the sthlp timeout synopt block no longer contains 'seconds'."""
+        sthlp_path = os.path.join(os.path.dirname(__file__), "..", "dash.sthlp")
+        with open(sthlp_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        import re
+        m = re.search(r"(timeout\(.*?{p_end})", content, re.DOTALL)
+        if m:
+            blurb = m.group(1)
+            assert "seconds" not in blurb, (
+                "timeout() synopt in dash.sthlp must not say 'seconds' (BUG-49 regression)"
+            )

@@ -213,7 +213,7 @@ widget interaction.
 {synopt:{cmd:port(}{it:#}{cmd:)}}TCP port for the Bokeh Server; must be
     an integer in the range 1024–65535; default 5006{p_end}
 {synopt:{cmd:nobrowser}}do not open a browser window automatically{p_end}
-{synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} seconds;
+{synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes;
     0 means run until Ctrl+C (default){p_end}
 {synoptline}
 

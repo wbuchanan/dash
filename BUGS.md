@@ -286,10 +286,11 @@
   - Suggested fix: Separate limiter budgets by endpoint (for example `_HEALTH_LIMITER` and `_SESSION_LIMITER`) or exempt `/health` from the shared limiter while keeping stricter limits on session creation paths.
   - Resolution: Fixed. Introduced `_SESSION_LIMITER = _RateLimiter(_RATE_LIMIT_RPM)` (60 RPM) and `_HEALTH_LIMITER = _RateLimiter(_HEALTH_LIMIT_RPM)` (600 RPM) as independent buckets in the generated server template (dash_render.py). `_HealthHandler.prepare()` now calls `_HEALTH_LIMITER.is_allowed()`; `make_document()` calls `_SESSION_LIMITER.is_allowed()`. The `_LIMITER` name is kept as a backwards-compatible alias for `_SESSION_LIMITER`. Existing `TestRateLimiterEnforcement` tests updated to replace the correct limiter per endpoint. 5 new regression tests added in `TestSeparateRateLimitBuckets` (BUG-48-1a through 1e) confirming independent bucket behavior. All 438 tests pass.
 
-- [ ] Title: `timeout()` unit mismatch: help documents seconds, implementation enforces minutes
+- [x] Title: `timeout()` unit mismatch: help documents seconds, implementation enforces minutes
   - File Names and Line Numbers: dash.sthlp (216-217), dash.ado (1476-1478), dash_render.py (9763-9767)
   - Description: The help file states `timeout(#)` stops the server after `#` seconds, but runtime logic treats timeout as minutes (`sleep(args.timeout * 60)`), and validation/error text in `dash.ado` also says minutes. This is a core functionality bug because user-configured stop times are off by 60x versus documented behavior.
   - Suggested fix: Align all surfaces to one unit. Smallest-change fix is to keep minutes in code and update `dash.sthlp` to say minutes; alternatively, switch runtime to seconds and update validation/help text consistently.
+  - Resolution: Fixed. Updated `dash.sthlp` line 216 to say "minutes" instead of "seconds" to match the implementation (`sleep(args.timeout * 60)` in dash_render.py, and the error message in dash.ado). All three surfaces (help file, .ado error message, argparse help, runtime) now consistently document and enforce minutes. 5 regression tests added in `TestTimeoutUnitConsistency` (BUG-49-1a through 1e) confirming unit consistency across all surfaces. All 443 tests pass.
 
 - [ ] Title: `dash_setup` can abort before dependency checks when `packaging` is not installed
   - File Names and Line Numbers: dash_setup.ado (81-85, 100-106)
