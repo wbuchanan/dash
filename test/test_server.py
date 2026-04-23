@@ -8437,3 +8437,137 @@ class TestWindowsBrowserStartQuoting:
         text = self._ado_text()
         assert "shell open" in text, "macOS 'shell open' missing from dash.ado"
         assert "shell xdg-open" in text, "Unix 'shell xdg-open' missing from dash.ado"
+
+
+# ===========================================================================
+# BUG-41 — Server rate limiter collapses proxied users into a single IP
+#          bucket because make_document and _HealthHandler both used
+#          remote_ip exclusively (or preferred it over X-Forwarded-For).
+#
+# The fix adds a shared _client_ip_from_request() helper that prefers the
+# X-Forwarded-For header (first token) over remote_ip so each end-user
+# behind a reverse proxy gets an isolated rate-limit budget.
+#
+# BUG-41-1a  Generated source defines _client_ip_from_request helper
+# BUG-41-1b  Helper prefers X-Forwarded-For over remote_ip
+# BUG-41-1c  Helper falls back to remote_ip when X-Forwarded-For absent
+# BUG-41-1d  Helper returns '0.0.0.0' when both are absent
+# BUG-41-1e  HealthHandler.prepare uses _client_ip_from_request
+# BUG-41-1f  make_document uses _client_ip_from_request (not inline expr)
+# ===========================================================================
+
+class TestProxiedRateLimiterBucket:
+    """BUG-41: rate limiter must use X-Forwarded-For first for per-client isolation."""
+
+    def _build_source(self, dr_module, auto_df):
+        """Return generated server source as a string."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        return _build_app(dr_module, auto_df, spec)
+
+    # ------------------------------------------------------------------
+    # BUG-41-1a: source defines _client_ip_from_request
+    # ------------------------------------------------------------------
+
+    def test_source_defines_helper(self, dr_module, auto_df):
+        """BUG-41-1a: generated source must define _client_ip_from_request."""
+        src = self._build_source(dr_module, auto_df)
+        assert "def _client_ip_from_request(" in src, (
+            "Generated source missing _client_ip_from_request helper"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-41-1b: helper prefers X-Forwarded-For over remote_ip
+    # ------------------------------------------------------------------
+
+    def test_helper_prefers_xff(self, dr_module, auto_df):
+        """BUG-41-1b: _client_ip_from_request returns XFF first token, not remote_ip."""
+        src = self._build_source(dr_module, auto_df)
+        mod = types.ModuleType("_b41_mod")
+        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        helper = getattr(mod, "_client_ip_from_request")
+
+        class _FakeReq:
+            remote_ip = "10.0.0.1"  # proxy IP
+            headers = {"X-Forwarded-For": "203.0.113.55, 10.0.0.1"}
+
+        assert helper(_FakeReq()) == "203.0.113.55", (
+            "Helper should return first XFF token (end-user IP), not remote_ip"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-41-1c: falls back to remote_ip when XFF absent
+    # ------------------------------------------------------------------
+
+    def test_helper_falls_back_to_remote_ip(self, dr_module, auto_df):
+        """BUG-41-1c: _client_ip_from_request returns remote_ip when XFF absent."""
+        src = self._build_source(dr_module, auto_df)
+        mod = types.ModuleType("_b41c_mod")
+        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        helper = getattr(mod, "_client_ip_from_request")
+
+        class _FakeReq:
+            remote_ip = "192.168.1.1"
+            headers = {}
+
+        assert helper(_FakeReq()) == "192.168.1.1", (
+            "Helper should return remote_ip when X-Forwarded-For is absent"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-41-1d: returns '0.0.0.0' when both absent
+    # ------------------------------------------------------------------
+
+    def test_helper_returns_zero_ip_when_both_absent(self, dr_module, auto_df):
+        """BUG-41-1d: helper returns '0.0.0.0' when remote_ip and XFF both absent."""
+        src = self._build_source(dr_module, auto_df)
+        mod = types.ModuleType("_b41d_mod")
+        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        helper = getattr(mod, "_client_ip_from_request")
+
+        class _FakeReq:
+            remote_ip = None
+            headers = {}
+
+        assert helper(_FakeReq()) == "0.0.0.0", (
+            "Helper should return '0.0.0.0' when both remote_ip and XFF are absent"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-41-1e: HealthHandler.prepare uses _client_ip_from_request
+    # ------------------------------------------------------------------
+
+    def test_health_handler_uses_helper(self, dr_module, auto_df):
+        """BUG-41-1e: _HealthHandler.prepare must call _client_ip_from_request."""
+        src = self._build_source(dr_module, auto_df)
+        # Verify source text — _HealthHandler.prepare must call the helper
+        assert "_client_ip_from_request(self.request)" in src, (
+            "_HealthHandler.prepare should use _client_ip_from_request(self.request)"
+        )
+        # Ensure the old bare remote_ip pattern is gone from HealthHandler
+        import re
+        health_section = re.search(
+            r"class _HealthHandler.*?def get\(", src, re.DOTALL
+        )
+        if health_section:
+            section_text = health_section.group(0)
+            assert "self.request.remote_ip" not in section_text, (
+                "_HealthHandler.prepare should not use self.request.remote_ip directly"
+            )
+
+    # ------------------------------------------------------------------
+    # BUG-41-1f: make_document uses _client_ip_from_request (not inline)
+    # ------------------------------------------------------------------
+
+    def test_make_document_uses_helper(self, dr_module, auto_df):
+        """BUG-41-1f: make_document must call _client_ip_from_request, not inline IP."""
+        src = self._build_source(dr_module, auto_df)
+        assert "_client_ip_from_request(_req)" in src, (
+            "make_document should use _client_ip_from_request(_req) helper"
+        )
+        # The old inline 'getattr(_req, 'remote_ip', None) or ...' must not appear
+        assert "getattr(_req, 'remote_ip'" not in src, (
+            "make_document should not inline IP extraction; use _client_ip_from_request"
+        )
