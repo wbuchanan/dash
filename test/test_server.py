@@ -4960,24 +4960,25 @@ class TestUnsafeTokenRegexWordBoundaries:
     server source must use \\b word-boundary markers, not backspace bytes."""
 
     def test_unsafe_g_uses_word_boundary_not_backspace(self, dr_module, auto_df):
-        """BUG-REGEX-1a: generated _UNSAFE_G pattern must contain \\b not backspace."""
+        """BUG-REGEX-1a: generated server if_expr guard must use AST whitelist
+        (not the old regex-backspace approach); _UNSAFE_G must not appear."""
         src = _build_app(dr_module, auto_df, _make_spec_json(
             graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
                                 "options": {}}],
                      "graph_options": {"name": "g1", "if_expr": "mpg > 15"}}]
         ))
-        # Find the _UNSAFE_G compile line
+        # The old broken pattern used a regex with backspace bytes.
+        # The fixed code uses an AST whitelist (_safe_g function).
+        # Verify the generated code no longer uses the old _UNSAFE_G regex
+        # approach AND that the AST whitelist is present.
         for line in src.splitlines():
             if "_UNSAFE_G" in line and "compile" in line:
-                # Must NOT contain backspace character (0x08)
                 assert "\x08" not in line, \
-                    "_UNSAFE_G pattern must not contain backspace (\\x08); use \\b word boundary"
-                # Must contain the literal two-char sequence \b
-                assert r"\b" in line, \
-                    "_UNSAFE_G pattern must contain \\b word-boundary markers"
+                    "_UNSAFE_G pattern must not contain backspace (\x08)"
                 break
-        else:
-            pytest.fail("_UNSAFE_G compile line not found in generated source")
+        # The AST guard must be present in the generated code
+        assert "_safe_g" in src or "_ALLOWED_G" in src, \
+            "Generated server code must use AST whitelist for if_expr validation"
 
     def test_unsafe_g_blocks_bare_eval(self, dr_module, auto_df):
         """BUG-REGEX-1b: _UNSAFE_G in generated source must block 'eval(...)' expression."""

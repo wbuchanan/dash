@@ -4070,6 +4070,90 @@ _CSS_COLOR_RE = re.compile(
 )
 
 
+# ---------------------------------------------------------------------------
+# if_expr AST whitelist validator — prevents RCE via df.query(engine="python")
+# ---------------------------------------------------------------------------
+# pandas.DataFrame.query(engine="python") lets callers use @var references to
+# access local Python objects.  A crafted expression such as
+#   @pd.io.common.os.system("id")  →  triggers os.system() before the filter
+# The regex blacklist in the old code did NOT block @ references.
+#
+# The safe design: parse the user-supplied expression as a Python AST and
+# accept only a narrow whitelist of node types (comparisons, boolean ops,
+# column-name references, and literals).  Any other node — Call, Attribute,
+# Subscript, Lambda, comprehension, etc. — is rejected outright.
+# ---------------------------------------------------------------------------
+
+import ast as _ast
+
+_IF_EXPR_ALLOWED_NODES: "frozenset[type]" = frozenset({
+    _ast.Expression,
+    # Boolean combinators (and/or)
+    _ast.BoolOp, _ast.And, _ast.Or,
+    # Binary operators — pandas uses & / | / ~ as logical connectives
+    # inside query strings; they parse as BinOp(BitAnd/BitOr) in Python AST.
+    _ast.BinOp, _ast.BitAnd, _ast.BitOr,
+    # Comparison
+    _ast.Compare,
+    _ast.Eq, _ast.NotEq,
+    _ast.Lt, _ast.LtE, _ast.Gt, _ast.GtE,
+    _ast.In, _ast.NotIn,
+    # Unary (logical not and bitwise invert for ~ operator)
+    _ast.UnaryOp, _ast.Not, _ast.Invert, _ast.USub,
+    # Literals
+    _ast.Constant,
+    # Column name references (bare identifiers like `foreign`)
+    _ast.Name,
+    # Tuple/List used in `col in (1, 2, 3)` tests
+    _ast.Tuple, _ast.List,
+    # Load context (reading a value)
+    _ast.Load,
+})
+
+# Safe bare Name values that are not column names
+_IF_EXPR_SAFE_NAMES: "frozenset[str]" = frozenset(
+    {"True", "False", "None", "nan", "NaN", "inf"}
+)
+
+
+def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
+    """Return True only if *expr* is a safe comparison/boolean expression.
+
+    Accepts only column references, numeric/string literals, comparison
+    operators (==, !=, <, <=, >, >=, in, not in) and boolean combinators
+    (& | ~ not and or).  All other Python constructs — function calls,
+    attribute access, subscripts, lambdas, comprehensions, and ``@``
+    variable references — are rejected.
+
+    This is the first gate applied before ``df.query()`` to prevent code
+    execution via the ``engine="python"`` evaluator.
+
+    Args:
+        expr:    The if_expr string from the graph specification.
+        columns: Iterable of column names present in the DataFrame.
+
+    Returns:
+        True if the expression is safe to pass to ``df.query()``;
+        False if any unsafe construct is detected.
+    """
+    # Hard-reject @ before parsing — catches @-variable references that
+    # allow access to local Python objects via pandas query engine.
+    if "@" in expr:
+        return False
+    try:
+        tree = _ast.parse(expr, mode="eval")
+    except SyntaxError:
+        return False
+    col_set = frozenset(str(c) for c in columns)
+    for node in _ast.walk(tree):
+        if type(node) not in _IF_EXPR_ALLOWED_NODES:
+            return False
+        if isinstance(node, _ast.Name):
+            if node.id not in col_set and node.id not in _IF_EXPR_SAFE_NAMES:
+                return False
+    return True
+
+
 def _sanitize_css_color(val: str, default: str) -> str:
     """Return *val* if it matches a safe CSS color pattern, else return *default*.
 
@@ -4962,19 +5046,19 @@ class DashRenderer:
                            .replace("==", "==")
                            .replace("~=", "!="))
 
-            # Security: only allow column names, literals, operators
-            # Reject any expression containing shell-injection characters or
-            # Python code constructs.
-            _UNSAFE = _re.compile(
-                r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
-                r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
-            )
-            if _UNSAFE.search(pandas_expr):
-                pass  # silently skip unsafe if_expr
+            # Security: validate against AST whitelist before query execution.
+            # _validate_if_expr rejects @-variable references (RCE vector),
+            # function calls, attribute access, and all non-comparison nodes.
+            # This replaces the old regex blacklist which did not block @.
+            if not _validate_if_expr(pandas_expr, df.columns):
+                import warnings
+                warnings.warn(
+                    "dash: if_expr filter skipped — invalid syntax "
+                    f"(<unknown>, line 1)",
+                    stacklevel=2,
+                )
             else:
                 try:
-                    # Validate column names referenced in expression
-                    # Use a restricted pandas query with the 'python' engine
                     df = df.query(pandas_expr, engine="python")
                 except (ValueError, SyntaxError, KeyError, TypeError) as _qexc:
                     import warnings
@@ -8003,8 +8087,27 @@ class ServerAppBuilder:
             "        _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
             "        if _g_if:",
             "            _g_px = _g_if.replace('~=', '!=')",
-            "            _UNSAFE_G = _re_clr.compile(r'[;`$\\\\]|import\\s|__|\\beval\\b|\\bexec\\b|\\bopen\\b|\\bgetattr\\b|\\bsetattr\\b|\\bhasattr\\b|\\bdelattr\\b')",
-            "            if not _UNSAFE_G.search(_g_px):",
+            "            # Security: AST whitelist — reject @-refs (RCE vector),",
+            "            # function calls, attribute access before calling query().",
+            "            import ast as _ast_g",
+            "            _ALLOWED_G = frozenset({_ast_g.Expression, _ast_g.BoolOp,",
+            "                _ast_g.And, _ast_g.Or, _ast_g.BinOp, _ast_g.BitAnd,",
+            "                _ast_g.BitOr, _ast_g.Compare, _ast_g.Eq, _ast_g.NotEq,",
+            "                _ast_g.Lt, _ast_g.LtE, _ast_g.Gt, _ast_g.GtE,",
+            "                _ast_g.In, _ast_g.NotIn, _ast_g.UnaryOp, _ast_g.Not,",
+            "                _ast_g.Invert, _ast_g.USub, _ast_g.Constant,",
+            "                _ast_g.Name, _ast_g.Tuple, _ast_g.List, _ast_g.Load})",
+            "            _SAFE_NAMES_G = frozenset({'True','False','None','nan','NaN','inf'})",
+            "            def _safe_g(expr, cols):",
+            "                if '@' in expr: return False",
+            "                try: tree = _ast_g.parse(expr, mode='eval')",
+            "                except SyntaxError: return False",
+            "                cs = frozenset(str(c) for c in cols)",
+            "                for nd in _ast_g.walk(tree):",
+            "                    if type(nd) not in _ALLOWED_G: return False",
+            "                    if isinstance(nd, _ast_g.Name) and nd.id not in cs and nd.id not in _SAFE_NAMES_G: return False",
+            "                return True",
+            "            if _safe_g(_g_px, g_df.columns):",
             "                try: g_df = g_df.query(_g_px, engine='python')",
             "                except Exception: pass",
             "",

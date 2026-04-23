@@ -389,3 +389,138 @@ class TestByFacetingSecurity:
         # Ensure XSS payload is escaped
         for t in titles:
             assert "<script>" not in t, f"Unescaped XSS in facet title: {t}"
+
+
+# ================================================================
+# BUG-28: if_expr RCE via pandas.query() @-variable references
+# ================================================================
+
+class TestIfExprRceHardening:
+    """Regression tests for BUG-28: if_expr must not allow arbitrary code
+    execution via @ variable references in df.query(engine='python').
+
+    Tests:
+      BUG-RCE-1a  @ reference blocked by _validate_if_expr
+      BUG-RCE-1b  attribute access (col.attr) blocked
+      BUG-RCE-1c  function call (func()) blocked
+      BUG-RCE-1d  @ PoC payload blocked end-to-end (no file created)
+      BUG-RCE-1e  valid comparison expression allowed
+      BUG-RCE-1f  _validate_if_expr helper exists and is callable
+      BUG-RCE-1g  __dunder__ access blocked
+      BUG-RCE-1h  import statement blocked
+    """
+
+    def _renderer_with_if(self, if_expr: str):
+        graph = {
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": if_expr,
+            "in_expr": "",
+        }
+        return _build_renderer(_make_master_spec([graph]), DATA_20)
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1f: helper exists
+    # ------------------------------------------------------------------
+
+    def test_validate_if_expr_helper_exists(self):
+        """BUG-RCE-1f: _validate_if_expr must be importable from dash_render."""
+        from dash_render import _validate_if_expr
+        assert callable(_validate_if_expr), "_validate_if_expr must be callable"
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1a: @ reference rejected
+    # ------------------------------------------------------------------
+
+    def test_at_reference_rejected(self):
+        """BUG-RCE-1a: @ variable reference must be rejected by _validate_if_expr."""
+        from dash_render import _validate_if_expr
+        cols = ["x", "y"]
+        assert not _validate_if_expr("@pd.io.common.os.system('id')", cols), \
+            "_validate_if_expr must reject @ references"
+        assert not _validate_if_expr("@local_var == 1", cols), \
+            "_validate_if_expr must reject any @ reference"
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1b: attribute access rejected
+    # ------------------------------------------------------------------
+
+    def test_attribute_access_rejected(self):
+        """BUG-RCE-1b: attribute chains must be rejected."""
+        from dash_render import _validate_if_expr
+        cols = ["x", "y"]
+        assert not _validate_if_expr("x.__class__.__name__ == 'int'", cols), \
+            "_validate_if_expr must reject attribute access"
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1c: function call rejected
+    # ------------------------------------------------------------------
+
+    def test_function_call_rejected(self):
+        """BUG-RCE-1c: function calls must be rejected."""
+        from dash_render import _validate_if_expr
+        cols = ["x", "y"]
+        assert not _validate_if_expr("len(x) > 0", cols), \
+            "_validate_if_expr must reject function calls"
+        assert not _validate_if_expr("x.apply(lambda v: v) > 0", cols), \
+            "_validate_if_expr must reject method calls"
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1d: @ PoC end-to-end blocked (no side effect)
+    # ------------------------------------------------------------------
+
+    def test_at_poc_payload_blocked_end_to_end(self):
+        """BUG-RCE-1d: reported PoC @pd.io.common.os.system must not execute."""
+        import os
+        import tempfile
+        poc_file = os.path.join(tempfile.gettempdir(), "dash_bug28_rce_poc.txt")
+        # Clean up in case a prior run left it
+        try:
+            os.unlink(poc_file)
+        except FileNotFoundError:
+            pass
+
+        renderer = self._renderer_with_if(
+            f"@pd.io.common.os.system('touch {poc_file}') == 0"
+        )
+        renderer._setup_sources()  # trigger filter evaluation
+
+        assert not os.path.exists(poc_file), (
+            "BUG-28: RCE payload executed — poc file was created. "
+            "if_expr must block @ references before calling df.query()."
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1e: valid comparison still works
+    # ------------------------------------------------------------------
+
+    def test_valid_comparison_expression_allowed(self):
+        """BUG-RCE-1e: simple column comparisons must still be accepted."""
+        from dash_render import _validate_if_expr
+        cols = ["x", "y"]
+        assert _validate_if_expr("y > 10", cols), \
+            "_validate_if_expr must allow simple numeric comparisons"
+        assert _validate_if_expr("(x == 5) & (y < 20)", cols), \
+            "_validate_if_expr must allow combined comparisons"
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1g: __dunder__ blocked
+    # ------------------------------------------------------------------
+
+    def test_dunder_access_blocked(self):
+        """BUG-RCE-1g: __dunder__ expressions must be rejected."""
+        from dash_render import _validate_if_expr
+        cols = ["x", "y"]
+        assert not _validate_if_expr("x.__class__ == int", cols), \
+            "_validate_if_expr must reject __dunder__ references"
+
+    # ------------------------------------------------------------------
+    # BUG-RCE-1h: import blocked
+    # ------------------------------------------------------------------
+
+    def test_import_keyword_blocked(self):
+        """BUG-RCE-1h: expressions containing 'import' must be rejected."""
+        from dash_render import _validate_if_expr
+        cols = ["x", "y"]
+        assert not _validate_if_expr("__import__('os').system('id') == 0", cols), \
+            "_validate_if_expr must block __import__ calls"
