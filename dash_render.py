@@ -4307,9 +4307,11 @@ for (let ki = 0; ki < kpi_config.length; ki++) {
         } else if (stat === 'sum') {
             result = vals.reduce((a, b) => a + b, 0);
         } else if (stat === 'min') {
-            result = Math.min(...vals);
+            // Iterative reduction avoids RangeError: Maximum call stack
+            // size exceeded that spread-based Math.min would hit on large arrays.
+            result = vals.reduce((a, b) => a < b ? a : b, vals[0]);
         } else if (stat === 'max') {
-            result = Math.max(...vals);
+            result = vals.reduce((a, b) => a > b ? a : b, vals[0]);
         } else if (stat === 'median' || stat === 'p50') {
             const s = vals.slice().sort((a, b) => a - b);
             const m = Math.floor(s.length / 2);

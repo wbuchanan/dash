@@ -7098,6 +7098,55 @@ class TestMixedFilterSpecAlignment:
 
 
 # ---------------------------------------------------------------------------
+# BUG-35: KPI min/max filter callback can fail on large arrays (spread overflow)
+# ---------------------------------------------------------------------------
+
+class TestKpiMinMaxSpreadOverflow:
+    """BUG-35: _FILTER_JS min/max must use reduce, not spread, to avoid RangeError.
+
+    Pre-fix: ``Math.min(...vals)`` and ``Math.max(...vals)`` pass every element
+    as a function argument; on arrays with >~100k elements this throws
+    ``RangeError: Maximum call stack size exceeded``.
+
+    Post-fix: use ``vals.reduce((a,b) => a < b ? a : b, vals[0])`` which is
+    O(n) and never hits the argument limit.
+    """
+
+    def test_filter_js_min_uses_reduce(self, dr_module, auto_df):
+        """BUG-35-1a: _FILTER_JS must use reduce for 'min', not Math.min(...vals)."""
+        js = dr_module._FILTER_JS
+        assert "Math.min(...vals)" not in js, (
+            "_FILTER_JS must NOT use Math.min(...vals) — replace with reduce "
+            "to avoid RangeError on large arrays"
+        )
+        assert "reduce" in js, (
+            "_FILTER_JS must use reduce() for min to handle large arrays safely"
+        )
+
+    def test_filter_js_max_uses_reduce(self, dr_module, auto_df):
+        """BUG-35-1b: _FILTER_JS must use reduce for 'max', not Math.max(...vals)."""
+        js = dr_module._FILTER_JS
+        assert "Math.max(...vals)" not in js, (
+            "_FILTER_JS must NOT use Math.max(...vals) — replace with reduce "
+            "to avoid RangeError on large arrays"
+        )
+
+    def test_min_reduce_expression_correct(self, dr_module, auto_df):
+        """BUG-35-1c: reduce expression for min must use a < b comparison."""
+        js = dr_module._FILTER_JS
+        assert "a < b" in js or "a<b" in js, (
+            "_FILTER_JS min reduce must compare a < b to select the minimum"
+        )
+
+    def test_max_reduce_expression_correct(self, dr_module, auto_df):
+        """BUG-35-1d: reduce expression for max must use a > b comparison."""
+        js = dr_module._FILTER_JS
+        assert "a > b" in js or "a>b" in js, (
+            "_FILTER_JS max reduce must compare a > b to select the maximum"
+        )
+
+
+# ---------------------------------------------------------------------------
 # BUG-24: Standalone aggregate plots remain stale when filters return zero rows
 # ---------------------------------------------------------------------------
 

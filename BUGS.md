@@ -202,10 +202,11 @@
   - Suggested fix: For linked graphs, keep the shared source for brushing but apply per-graph masks via `CDSView` (or equivalent per-graph filtered views) derived from each graph’s `if_expr`/`in_expr`.
   - Resolution: Fixed. In phase 2 of `render()`, added `_linked_graph_views` dict. For each linked graph, `_apply_graph_filter(g)` is called; if it returns fewer rows than `self.df`, a boolean mask is built over the shared source’s row set and stored as `CDSView(filter=BooleanFilter(...))` in `_linked_graph_views[name]`. In phase 3 figure building, the view is passed as `facet_view` to `_make_figure()` — the shared source (for brush selection) remains unmodified while each graph only renders its qualified rows. 5 regression tests added in `test/test_server.py::TestLinkedGraphQualifierView` (BUG-34-1a through 1e). All 1385 tests pass.
 
-- [ ] Title: KPI min/max filter callback can fail on large datasets due spread-argument overflow
+- [x] Title: KPI min/max filter callback can fail on large datasets due spread-argument overflow
   - File Names and Line Numbers: dash_render.py (4211-4213)
   - Description: `_FILTER_JS` computes KPI min/max using `Math.min(...vals)` and `Math.max(...vals)`. For large filtered arrays this can throw `RangeError: Maximum call stack size exceeded` in JavaScript engines, which aborts callback execution and leaves filters/KPIs stale. Reproduced with Node using an array of 300,000 values, which raised `RangeError` on `Math.min(...vals)`.
   - Suggested fix: Replace spread-based min/max with iterative reduction (loop or `reduce`) to avoid argument explosion regardless of row count.
+  - Resolution: Fixed. Replaced `Math.min(...vals)` and `Math.max(...vals)` in `_FILTER_JS` (dash_render.py ~4309-4314) with `vals.reduce((a, b) => a < b ? a : b, vals[0])` and `vals.reduce((a, b) => a > b ? a : b, vals[0])` respectively. These iterative reductions process arrays element-by-element and cannot cause stack overflow regardless of array size, unlike the spread-argument form which explodes call stack on large inputs. 4 regression tests added in `test/test_server.py::TestKpiMinMaxSpreadOverflow` (BUG-35-1a through 1d). All 374 tests pass.
 
 - [ ] Title: Server `by()` faceting ignores graph-level `if_expr`/`in_expr` during initial render
   - File Names and Line Numbers: dash_render.py (9084-9087, 9099-9100, 9233-9243)
