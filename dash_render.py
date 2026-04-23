@@ -4213,7 +4213,10 @@ for (let fi = 0; fi < filter_specs.length; fi++) {
 
     if (ftype === 'dropdown') {
         const val = w.value;
-        if (val === '__all__') continue;
+        // Use per-widget sentinel (may differ from '__all__' when data contains
+        // the literal '__all__' value — sentinel is then '__all__' + extra '_').
+        const sentinel = spec.sentinel || '__all__';
+        if (val === sentinel) continue;
         for (let i = 0; i < n_rows; i++) {
             if (active[i] && String(orig[fvar][i]) !== val) active[i] = false;
         }
@@ -4525,13 +4528,21 @@ class FilterBuilder:
                 pass
             return rv
 
-        options = [("__all__", "All")]
+        # Compute a per-widget sentinel that is guaranteed absent from the
+        # observed raw values to prevent collision when real data contains
+        # the literal string "__all__".
+        _sentinel = "__all__"
+        while _sentinel in raw_values:
+            _sentinel += "_"
+
+        options = [(_sentinel, "All")]
         for rv in raw_values:
             options.append((rv, FilterBuilder._safe(_resolve_label(rv))))
 
         _widget_title = html.escape(label.strip()) if label.strip() else safe_var
-        widget = Select(title=_widget_title, value="__all__",
+        widget = Select(title=_widget_title, value=_sentinel,
                         options=[(v, l) for v, l in options])
+        widget._dash_sentinel = _sentinel  # store for filter_specs_json inclusion
 
         callback = CustomJS(
             args={
@@ -6987,9 +6998,16 @@ class DashRenderer:
 
         # Build filter_specs from only the successfully-built specs so that
         # JS callbacks index all_widgets correctly (1:1 correspondence).
+        # Include per-widget sentinel so _FILTER_JS can check the right
+        # "no filter" value — the sentinel may differ from '__all__' when
+        # real data contains that literal string.
         _filter_specs: list = [
-            {"varname": _fc.get("varname", ""), "type": _fc.get("type", "dropdown")}
-            for _fc in built_filter_specs
+            {
+                "varname":  _fc.get("varname", ""),
+                "type":     _fc.get("type", "dropdown"),
+                "sentinel": getattr(_w, "_dash_sentinel", "__all__"),
+            }
+            for _fc, _w in zip(built_filter_specs, self.filter_widgets)
         ]
 
         _kpi_defs_by_name: dict = {k.get("name", ""): k for k in kpis}
@@ -9544,19 +9562,23 @@ class ServerAppBuilder:
             "            # Build (raw_value, display_label) tuples for Select options.",
             "            # Using raw values as option keys avoids label-collision bugs where",
             "            # two categories share the same display label and one becomes",
-            "            # unreachable.  '__all__' is a dedicated sentinel that cannot",
-            "            # collide with real data values (unlike human-readable 'All').",
-            "            opts = [('__all__', 'All')] + [",
+            "            # Compute a per-widget sentinel absent from actual data values",
+            "            # so that real categories equal to '__all__' remain selectable.",
+            "            _uniq_strs = set(str(v) for v in uniq)",
+            "            _sent = '__all__'",
+            "            while _sent in _uniq_strs: _sent += '_'",
+            "            opts = [(_sent, 'All')] + [",
             "                (str(v), html.escape(str(vlabels.get(str(int(v)) if isinstance(v, float) and v == int(v) else str(v), v))))",
             "                for v in uniq",
             "            ]",
             "            widget = Select(",
             "                title=var_labels.get(fvar, fvar),",
-            "                value='__all__',",
+            "                value=_sent,",
             "                options=opts,",
             "            )",
             "            widget._dash_var = fvar",
             "            widget._dash_exclude = fexcl",
+            "            widget._dash_sentinel = _sent",
             "        elif ftype == 'range':",
             "            # Guard: slider/range require a numeric column; fall back gracefully.",
             "            if not pd.api.types.is_numeric_dtype(df[fvar]):",
@@ -9620,7 +9642,10 @@ class ServerAppBuilder:
             "                if wvar is None or wvar not in _df_ref.columns:",
             "                    continue",
             "                if isinstance(w, Select):",
-            "                    if w.value != '__all__':",
+            "                    # Use per-widget sentinel (may differ from '__all__' when data",
+            "                    # contains the literal string '__all__').",
+            "                    _w_sentinel = getattr(w, '_dash_sentinel', '__all__')",
+            "                    if w.value != _w_sentinel:",
             "                        # w.value is the raw value (Select uses (value, label) tuples)",
             "                        try:",
             "                            mask &= (_df_ref[wvar].astype(str) == str(w.value))",

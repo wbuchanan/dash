@@ -7846,3 +7846,188 @@ class TestServerByFacetingRespectsQualifiers:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ===========================================================================
+# BUG-37: Dropdown filter sentinel __all__ collides with legitimate data values
+# ===========================================================================
+# Before fix: both standalone and server dropdown filters hard-coded '__all__'
+# as the "no filter" sentinel.  When real data contained '__all__', the option
+# list had a duplicate value and the real category was treated as "no filter",
+# making it unselectable.
+# Fix: compute a per-widget sentinel starting with '__all__', appending '_'
+# until the sentinel is absent from observed raw values.
+
+class TestDropdownSentinelCollision:
+    """Regression suite for BUG-37: per-widget sentinel avoids __all__ collision."""
+
+    # ------------------------------------------------------------------
+    # BUG-37-1a: standalone sentinel is unique when data contains __all__
+    # ------------------------------------------------------------------
+
+    def test_standalone_sentinel_unique_when_data_has_all_value(self, dr_module):
+        """BUG-37-1a: standalone widget sentinel must not equal any raw data value."""
+        import pandas as pd, numpy as np
+        # Build a DataFrame whose filter column contains the literal '__all__'.
+        # Must mark 'cat' as a string column so DashRenderer preserves string values.
+        df = pd.DataFrame({
+            "mpg":    np.linspace(15, 35, 6),
+            "weight": np.linspace(2000, 4000, 6),
+            "cat":    ["__all__", "A", "B", "__all__", "A", "B"],
+        })
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "cat, type(dropdown)",
+            "theme": "default", "title": "T", "subtitle": "",
+            "registry": "g1", "mode": "standalone", "port": "5006",
+        })
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            assert renderer.filter_widgets, "Expected at least one filter widget"
+            w = renderer.filter_widgets[0]
+            sentinel = getattr(w, "_dash_sentinel", "__all__")
+            raw_data_values = set(str(v) for v in df["cat"].unique())
+            assert sentinel not in raw_data_values, (
+                f"Sentinel {sentinel!r} must not be in raw data values {raw_data_values}"
+            )
+            assert sentinel == w.value, (
+                f"Widget value must equal sentinel; got value={w.value!r}, sentinel={sentinel!r}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-37-1b: standalone __all__ category appears in options as a real value
+    # ------------------------------------------------------------------
+
+    def test_standalone_all_value_selectable_as_category(self, dr_module):
+        """BUG-37-1b: '__all__' category must appear as a regular option, not just sentinel."""
+        import pandas as pd, numpy as np
+        df = pd.DataFrame({
+            "mpg":    np.linspace(15, 35, 4),
+            "weight": np.linspace(2000, 4000, 4),
+            "cat":    ["__all__", "A", "__all__", "B"],
+        })
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "cat, type(dropdown)",
+            "theme": "default", "title": "T", "subtitle": "",
+            "registry": "g1", "mode": "standalone", "port": "5006",
+        })
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            assert renderer.filter_widgets
+            w = renderer.filter_widgets[0]
+            option_values = [v for v, _ in w.options]
+            # '__all__' should appear as a real data option (not just as sentinel)
+            assert "__all__" in option_values, (
+                f"'__all__' category must appear as a real option; got options: {option_values}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-37-1c: standalone filter_specs_json contains per-widget sentinel
+    # ------------------------------------------------------------------
+
+    def test_standalone_filter_specs_json_contains_sentinel(self, dr_module):
+        """BUG-37-1c: filter_specs_json must include 'sentinel' for each dropdown."""
+        import pandas as pd, numpy as np
+        df = pd.DataFrame({
+            "mpg":    np.linspace(15, 35, 4),
+            "weight": np.linspace(2000, 4000, 4),
+            "cat":    ["__all__", "A", "__all__", "B"],
+        })
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "cat, type(dropdown)",
+            "theme": "default", "title": "T", "subtitle": "",
+            "registry": "g1", "mode": "standalone", "port": "5006",
+        })
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            assert renderer.filter_callbacks, "Need at least one callback"
+            cb_args = renderer.filter_callbacks[0].args
+            fspecs = json.loads(cb_args["filter_specs_json"])
+            assert fspecs, "filter_specs_json must not be empty"
+            for fs in fspecs:
+                if fs.get("type") == "dropdown":
+                    assert "sentinel" in fs, (
+                        f"dropdown filter_spec must have 'sentinel' key; got {fs}"
+                    )
+                    # sentinel must differ from '__all__' when __all__ is in data
+                    assert fs["sentinel"] != "__all__", (
+                        f"sentinel must not be '__all__' when data contains that literal; "
+                        f"got {fs['sentinel']!r}"
+                    )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-37-1d: generated source uses computed sentinel in Select
+    # ------------------------------------------------------------------
+
+    def test_server_dropdown_uses_computed_sentinel(self, dr_module, auto_df):
+        """BUG-37-1d: generated server source must compute _sent before Select creation."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
+            "theme": "default", "title": "T", "subtitle": "",
+            "registry": "g1", "mode": "server", "port": "5006",
+        })
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_sent" in source, (
+            "Generated server code must compute '_sent' sentinel variable"
+        )
+        assert "_uniq_strs" in source, (
+            "Generated server code must build '_uniq_strs' to check for collision"
+        )
+        assert "while _sent in _uniq_strs" in source, (
+            "Generated server code must loop until sentinel is unique"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-37-1e: generated server uses per-widget sentinel in callback
+    # ------------------------------------------------------------------
+
+    def test_server_callback_uses_widget_sentinel_attribute(self, dr_module, auto_df):
+        """BUG-37-1e: generated server filter callback must read _dash_sentinel from widget."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
+            "theme": "default", "title": "T", "subtitle": "",
+            "registry": "g1", "mode": "server", "port": "5006",
+        })
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_dash_sentinel" in source, (
+            "Generated server callback must read '_dash_sentinel' attribute from widget"
+        )
+        assert "_w_sentinel" in source, (
+            "Generated server callback must use per-widget '_w_sentinel' variable"
+        )
+        # Hard-coded '__all__' check must not appear in the callback comparison
+        assert "w.value != '__all__'" not in source, (
+            "Generated server callback must not hard-code '__all__' in value check"
+        )
