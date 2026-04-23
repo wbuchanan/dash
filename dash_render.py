@@ -6984,11 +6984,34 @@ class DashRenderer:
                     label=flabel,
                 )
             elif ftype == "slider":
+                # Guard: slider requires numeric data.  Mirror the server-side
+                # is_numeric_dtype check so string columns skip gracefully.
+                _sl_col = fsource.data.get(fvar, [])
+                if not pd.api.types.is_numeric_dtype(pd.Series(_sl_col)):
+                    import warnings
+                    warnings.warn(
+                        f"dash: filter '{fvar}' type 'slider' requires numeric "
+                        f"data; skipping widget (use type(dropdown) for string "
+                        f"columns).",
+                        stacklevel=2,
+                    )
+                    continue
                 widget, cb = FilterBuilder.build_slider(
                     fvar, fsource, None, exclude_names=excludes,
                     label=flabel,
                 )
             elif ftype == "range":
+                # Same guard for range slider.
+                _rng_col = fsource.data.get(fvar, [])
+                if not pd.api.types.is_numeric_dtype(pd.Series(_rng_col)):
+                    import warnings
+                    warnings.warn(
+                        f"dash: filter '{fvar}' type 'range' requires numeric "
+                        f"data; skipping widget (use type(dropdown) for string "
+                        f"columns).",
+                        stacklevel=2,
+                    )
+                    continue
                 widget, cb = FilterBuilder.build_range(
                     fvar, fsource, None, exclude_names=excludes,
                     label=flabel,

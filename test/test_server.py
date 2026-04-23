@@ -8813,3 +8813,185 @@ class TestLayoutZeroColumnsCrash:
         assert "[1-9][0-9]* [1-9][0-9]*" in ado_text, (
             "dash.ado should use [1-9][0-9]* pattern to reject zero-dimension layouts"
         )
+
+
+# ===========================================================================
+# BUG-44 — Standalone slider/range filters crash on string variables.
+#
+# _extract_finite calls np.array([...], dtype=float) which raises ValueError
+# for string columns.  The fix adds an is_numeric_dtype guard in
+# _build_filter_widgets before calling build_slider/build_range.
+#
+# BUG-44-1a  Standalone slider on string column emits warning, does not raise
+# BUG-44-1b  Standalone range on string column emits warning, does not raise
+# BUG-44-1c  Standalone slider on numeric column still works
+# BUG-44-1d  Standalone range on numeric column still works
+# BUG-44-1e  Warning text mentions the filter variable name
+# ===========================================================================
+
+class TestStandaloneSliderStringColumn:
+    """BUG-44: standalone slider/range on string column must skip gracefully."""
+
+    def _string_col_spec(self, filter_type="slider"):
+        return _make_spec_json(
+            graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1"},
+            }],
+            build_options={
+                "layout": "auto", "link": "",
+                "filter": f"group, type({filter_type})",
+                "theme": "default", "title": "Test",
+                "subtitle": "", "registry": "",
+                "mode": "standalone", "port": "5006",
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-44-1a: standalone slider on string col → warning, no crash
+    # ------------------------------------------------------------------
+
+    def test_standalone_slider_string_no_crash(self, dr_module):
+        """BUG-44-1a: slider filter on string column must emit warning, not crash."""
+        import warnings
+        rng = np.random.default_rng(42)
+        df = pd.DataFrame({
+            "mpg":    rng.integers(12, 40, 10).astype(float),
+            "weight": rng.integers(1800, 4800, 10).astype(float),
+            "group":  ["A", "B", "A", "B", "A", "B", "A", "B", "A", "B"],
+        })
+        spec = self._string_col_spec("slider")
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["group"])
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                dr = dr_module.DashRenderer(spec_path, data_path)
+                dr.render()
+            # Must not raise; warning should be present
+            warning_texts = [str(w.message) for w in caught]
+            assert any("slider" in t.lower() or "numeric" in t.lower()
+                       for t in warning_texts), (
+                f"Expected slider/numeric warning, got: {warning_texts}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-44-1b: standalone range on string col → warning, no crash
+    # ------------------------------------------------------------------
+
+    def test_standalone_range_string_no_crash(self, dr_module):
+        """BUG-44-1b: range filter on string column must emit warning, not crash."""
+        import warnings
+        rng = np.random.default_rng(43)
+        df = pd.DataFrame({
+            "mpg":    rng.integers(12, 40, 10).astype(float),
+            "weight": rng.integers(1800, 4800, 10).astype(float),
+            "group":  ["X", "Y", "X", "Y", "X", "Y", "X", "Y", "X", "Y"],
+        })
+        spec = self._string_col_spec("range")
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["group"])
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                dr = dr_module.DashRenderer(spec_path, data_path)
+                dr.render()
+            warning_texts = [str(w.message) for w in caught]
+            assert any("range" in t.lower() or "numeric" in t.lower()
+                       for t in warning_texts), (
+                f"Expected range/numeric warning, got: {warning_texts}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-44-1c: numeric slider still works
+    # ------------------------------------------------------------------
+
+    def test_standalone_slider_numeric_still_works(self, dr_module, auto_df):
+        """BUG-44-1c: slider filter on numeric column must still build widget."""
+        import warnings
+        spec = self._string_col_spec("slider")
+        # Use 'foreign' (numeric) as the filter variable
+        spec["build_options"]["filter"] = "foreign, type(slider)"
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                dr = dr_module.DashRenderer(spec_path, data_path)
+                dr.render()
+            # No slider/numeric warning expected for numeric column
+            warning_texts = [str(w.message) for w in caught]
+            slider_warns = [t for t in warning_texts
+                            if "slider" in t.lower() and "numeric" in t.lower()]
+            assert not slider_warns, (
+                f"Unexpected slider/numeric warning for numeric column: {slider_warns}"
+            )
+            # Widget should have been built
+            assert len(dr.filter_widgets) >= 1, "Expected at least one slider widget"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-44-1d: numeric range still works
+    # ------------------------------------------------------------------
+
+    def test_standalone_range_numeric_still_works(self, dr_module, auto_df):
+        """BUG-44-1d: range filter on numeric column must still build widget."""
+        import warnings
+        spec = self._string_col_spec("range")
+        spec["build_options"]["filter"] = "mpg, type(range)"
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                dr = dr_module.DashRenderer(spec_path, data_path)
+                dr.render()
+            warning_texts = [str(w.message) for w in caught]
+            range_warns = [t for t in warning_texts
+                           if "range" in t.lower() and "numeric" in t.lower()]
+            assert not range_warns, (
+                f"Unexpected range/numeric warning for numeric column: {range_warns}"
+            )
+            assert len(dr.filter_widgets) >= 1, "Expected at least one range widget"
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-44-1e: warning mentions the variable name
+    # ------------------------------------------------------------------
+
+    def test_warning_mentions_variable_name(self, dr_module):
+        """BUG-44-1e: warning for string slider must mention the filter variable name."""
+        import warnings
+        rng = np.random.default_rng(44)
+        df = pd.DataFrame({
+            "mpg":    rng.integers(12, 40, 8).astype(float),
+            "weight": rng.integers(1800, 4800, 8).astype(float),
+            "myvar":  ["cat", "dog"] * 4,
+        })
+        spec = self._string_col_spec("slider")
+        spec["build_options"]["filter"] = "myvar, type(slider)"
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["myvar"])
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                dr = dr_module.DashRenderer(spec_path, data_path)
+                dr.render()
+            warning_texts = [str(w.message) for w in caught]
+            assert any("myvar" in t for t in warning_texts), (
+                f"Warning should mention variable 'myvar', got: {warning_texts}"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try: os.unlink(_p)
+                except OSError: pass
