@@ -33,7 +33,34 @@ program define dash_setup
     display as text "  Python ............. {res}OK{txt} (version `pyver')"
 
     // ----------------------------------------------------------------
-    // 2. Check and install required Python packages
+    // 2. Ensure `packaging` is available before version comparisons
+    // ----------------------------------------------------------------
+    // packaging is used inside the per-package version-gate loop; install
+    // it FIRST so the loop never hits ModuleNotFoundError mid-run.
+    capture python: import packaging
+    if _rc != 0 {
+        display as text "  packaging .......... {res}missing{txt} — installing via pip..."
+        python: ///
+            import subprocess, sys; ///
+            subprocess.run([sys.executable, "-m", "pip", "install", "packaging"], ///
+                capture_output=True)
+        // Mark whether packaging is now available
+        capture python: import packaging
+        if _rc != 0 {
+            display as text "  packaging .......... {err}could not install{txt} — " ///
+                "version comparison will be skipped"
+            local pkg_has_packaging 0
+        }
+        else {
+            local pkg_has_packaging 1
+        }
+    }
+    else {
+        local pkg_has_packaging 1
+    }
+
+    // ----------------------------------------------------------------
+    // 3. Check and install required Python packages
     // ----------------------------------------------------------------
     // Minimum version requirements stored as locals
     local pkg_list   "bokeh numpy scipy statsmodels pandas"
@@ -76,8 +103,10 @@ program define dash_setup
                 sfi.Macro.setLocal("pkgver", "unknown")
 
         // Version gate: warn if below minimum (non-fatal — user may have
-        // patched versions that still work)
-        if "`pkgver'" != "unknown" {
+        // patched versions that still work).  Only run when packaging is
+        // available (guaranteed by the guard above, but check the flag as
+        // a defence-in-depth measure).
+        if "`pkgver'" != "unknown" & `pkg_has_packaging' {
             python: ///
                 from packaging.version import Version; ///
                 import sfi; ///
@@ -95,15 +124,6 @@ program define dash_setup
         else {
             display as text "  `pkg' ............. {res}OK{txt} (version unknown)"
         }
-    }
-
-    // packaging module needed for version comparisons above — install if absent
-    capture python: import packaging
-    if _rc != 0 {
-        python: ///
-            import subprocess, sys; ///
-            subprocess.run([sys.executable, "-m", "pip", "install", "packaging"], ///
-                capture_output=True)
     }
 
     // ----------------------------------------------------------------

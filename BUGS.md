@@ -292,10 +292,11 @@
   - Suggested fix: Align all surfaces to one unit. Smallest-change fix is to keep minutes in code and update `dash.sthlp` to say minutes; alternatively, switch runtime to seconds and update validation/help text consistently.
   - Resolution: Fixed. Updated `dash.sthlp` line 216 to say "minutes" instead of "seconds" to match the implementation (`sleep(args.timeout * 60)` in dash_render.py, and the error message in dash.ado). All three surfaces (help file, .ado error message, argparse help, runtime) now consistently document and enforce minutes. 5 regression tests added in `TestTimeoutUnitConsistency` (BUG-49-1a through 1e) confirming unit consistency across all surfaces. All 443 tests pass.
 
-- [ ] Title: `dash_setup` can abort before dependency checks when `packaging` is not installed
+- [x] Title: `dash_setup` can abort before dependency checks when `packaging` is not installed
   - File Names and Line Numbers: dash_setup.ado (81-85, 100-106)
   - Description: The version-gate code imports `Version` from `packaging` inside the per-package loop (lines 81-85), but `packaging` is only conditionally installed afterwards (lines 100-106). On environments where `packaging` is absent, the first version check raises `ModuleNotFoundError` and exits `dash_setup` early, so dependency setup does not complete. This is a core functionality bug rather than intended behavior because the file explicitly treats `packaging` as a dependency that may need installation, yet uses it before ensuring it exists.
   - Suggested fix: Ensure `packaging` is installed before the loop that performs version checks (move/install guard to run before line 46), or wrap the version-check import in `capture` logic and skip version comparison when `packaging` is unavailable.
+  - Resolution: Fixed. Moved the `packaging` install guard to run BEFORE the `foreach pkg` loop (new section 2 in dash_setup.ado). The guard sets a `pkg_has_packaging` flag; the version-comparison block inside the loop is now also gated on this flag as defence-in-depth. If `packaging` cannot be installed, version comparisons are gracefully skipped rather than aborting. The old post-loop packaging install block is removed. 5 regression tests added in `TestDashSetupPackagingOrder` (BUG-50-1a through 1e) verifying static code ordering. All 448 tests pass.
 
 - [ ] Title: Scheme path traversal guard is bypassable via symlinked `.scheme` files
   - File Names and Line Numbers: dash_render.py (762-778, 798, 805)

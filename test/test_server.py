@@ -9692,3 +9692,109 @@ class TestTimeoutUnitConsistency:
             assert "seconds" not in blurb, (
                 "timeout() synopt in dash.sthlp must not say 'seconds' (BUG-49 regression)"
             )
+
+
+# ---------------------------------------------------------------------------
+# BUG-50 Regression tests — dash_setup aborts before dep checks when packaging absent
+# ---------------------------------------------------------------------------
+class TestDashSetupPackagingOrder:
+    """BUG-50: dash_setup.ado imported `packaging.version.Version` inside the
+    per-package loop (line ~82) but only installed `packaging` AFTER the loop
+    (line ~100-106).  On fresh environments, the first loop iteration raised
+    ModuleNotFoundError and exited dash_setup early.
+
+    Fix: moved the `packaging` install guard BEFORE the foreach loop so the
+    module is always available when version comparisons run.
+
+    Regression tests verify the static code structure ensures packaging is
+    installed before it is used.
+    """
+
+    # ------------------------------------------------------------------
+    # BUG-50-1a: packaging install guard appears before foreach loop
+    # ------------------------------------------------------------------
+    def test_BUG_50_1a_packaging_guard_before_foreach(self):
+        """packaging install guard must appear before the foreach loop in dash_setup.ado."""
+        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
+        with open(setup_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        pkg_guard_idx = content.find("import packaging")
+        foreach_idx = content.find("foreach pkg of local pkg_list")
+        assert pkg_guard_idx != -1, "packaging import not found in dash_setup.ado"
+        assert foreach_idx != -1, "foreach pkg loop not found in dash_setup.ado"
+        assert pkg_guard_idx < foreach_idx, (
+            "packaging install guard must come BEFORE the foreach loop "
+            "(BUG-50 regression: packaging was installed after it was used)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-50-1b: from packaging.version import appears after packaging guard
+    # ------------------------------------------------------------------
+    def test_BUG_50_1b_version_import_after_packaging_guard(self):
+        """from packaging.version import Version must appear AFTER the packaging guard."""
+        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
+        with open(setup_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        guard_idx = content.find("import packaging")
+        version_import_idx = content.find("from packaging.version import Version")
+        assert guard_idx != -1, "packaging guard not found in dash_setup.ado"
+        assert version_import_idx != -1, "from packaging.version import not found in dash_setup.ado"
+        assert guard_idx < version_import_idx, (
+            "'from packaging.version import Version' must come AFTER the packaging "
+            "install guard (BUG-50 regression)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-50-1c: pkg_has_packaging flag guards the version comparison block
+    # ------------------------------------------------------------------
+    def test_BUG_50_1c_version_gate_guarded_by_flag(self):
+        """The version-comparison block must be gated on pkg_has_packaging flag."""
+        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
+        with open(setup_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        assert "pkg_has_packaging" in content, (
+            "dash_setup.ado must use a pkg_has_packaging flag to guard version "
+            "comparisons when packaging installation fails (BUG-50 regression)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-50-1d: packaging is NOT installed after the foreach loop (old location gone)
+    # ------------------------------------------------------------------
+    def test_BUG_50_1d_old_post_loop_packaging_install_removed(self):
+        """The old post-loop packaging install block must no longer exist after the loop."""
+        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
+        with open(setup_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        foreach_idx = content.find("foreach pkg of local pkg_list")
+        # Find end of the foreach block (the closing "}")
+        # We look for the packaging install AFTER the foreach loop ends
+        loop_end = content.find("\n    }", foreach_idx)
+        if loop_end == -1:
+            loop_end = len(content)
+        after_loop = content[loop_end:]
+        # The old location was a comment "packaging module needed for version
+        # comparisons above" followed by capture python: import packaging
+        # Verify this comment/pattern no longer exists after the loop
+        assert "packaging module needed for version comparisons above" not in after_loop, (
+            "Old post-loop packaging install comment found after the foreach loop — "
+            "the guard should now be BEFORE the loop (BUG-50 regression)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-50-1e: packaging install guard is present and well-formed
+    # ------------------------------------------------------------------
+    def test_BUG_50_1e_packaging_guard_is_well_formed(self):
+        """The packaging guard must have both capture check and install fallback."""
+        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
+        with open(setup_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        foreach_idx = content.find("foreach pkg of local pkg_list")
+        pre_loop = content[:foreach_idx]
+        assert "capture python: import packaging" in pre_loop, (
+            "packaging guard must include 'capture python: import packaging' before the loop"
+        )
+        assert 'pip", "install", "packaging"' in pre_loop or \
+               'pip install packaging' in pre_loop or \
+               '"packaging"' in pre_loop, (
+            "packaging guard must include a pip install step before the loop"
+        )
