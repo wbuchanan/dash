@@ -7306,10 +7306,26 @@ class DashRenderer:
                         if vname and vname not in linked_vars and vname in self.df.columns:
                             linked_vars.append(vname)
             linked_source = self._make_source(linked_vars)
+            # Per-graph qualifier views for linked graphs.  The shared source
+            # supports brush selection across all linked graphs and cannot be
+            # filtered per-graph.  CDSView with BooleanFilter applies each
+            # graph's if_expr/in_expr mask without modifying the source data.
+            _linked_graph_views: dict = {}
+
             for g in graphs:
                 name = g.get("graph_options", {}).get("name", "")
                 if name in link_names:
                     self.sources[name] = linked_source
+                    # Build a CDSView for linked graphs that have qualifiers.
+                    _g_fdf = self._apply_graph_filter(g)
+                    if len(_g_fdf) < len(self.df):
+                        _df_idx_set = frozenset(_g_fdf.index)
+                        _bool_mask = [
+                            bool(i in _df_idx_set) for i in self.df.index
+                        ]
+                        _linked_graph_views[name] = CDSView(
+                            filter=BooleanFilter(booleans=_bool_mask)
+                        )
                     by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
                     if by_raw_lnk2:
                         by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
@@ -7389,8 +7405,14 @@ class DashRenderer:
                 src = self.sources.get(name)
                 if src is None:
                     continue
+                # For linked graphs with if_expr/in_expr, apply a CDSView so
+                # the qualifier mask is honoured without filtering the shared source.
+                _qual_view = _linked_graph_views.get(name) \
+                    if "_linked_graph_views" in dir() else None
                 try:
-                    self.figures[name] = self._make_figure(g, src)
+                    self.figures[name] = self._make_figure(
+                        g, src, facet_view=_qual_view
+                    )
                 except Exception as exc:
                     raise RuntimeError(
                         f"dash_render: failed to build figure '{name}': {exc}"

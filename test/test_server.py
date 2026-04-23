@@ -6759,6 +6759,148 @@ class TestServerFilterReappliesGraphQualifiers:
 # BUG-23: Mixed valid/missing filter specs break standalone filter callbacks
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# BUG-34: Standalone linked graphs ignore graph-level qualifiers
+# ---------------------------------------------------------------------------
+
+class TestLinkedGraphQualifierView:
+    """BUG-34: Linked graphs with if_expr/in_expr must apply per-graph CDSView.
+
+    Pre-fix: all linked graphs received the same shared ColumnDataSource built
+    from full self.df, so per-graph if_expr/in_expr qualifiers were silently
+    ignored.
+
+    Post-fix: a CDSView(BooleanFilter) is computed from _apply_graph_filter()
+    for each linked graph that has qualifiers, and passed as facet_view to
+    _make_figure() so only qualified rows are rendered.
+    """
+
+    def _make_linked_qualified_spec(self) -> dict:
+        """Two linked graphs: g1 has if_expr='foreign == 1', g2 has no qualifier."""
+        return _make_spec_json(
+            graphs=[
+                {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1", "if_expr": "foreign == 1"}},
+                {"plots": [{"type": "scatter", "yvar": "price",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g2"}},
+            ],
+            build_options={
+                "layout": "auto", "link": "g1 g2",
+                "filter": "", "theme": "default", "title": "T", "subtitle": "",
+                "registry": "g1 g2", "mode": "standalone", "port": "5006",
+            }
+        )
+
+    def test_render_linked_qualified_does_not_crash(self, dr_module, auto_df):
+        """BUG-34-1a: rendering linked graphs with if_expr must not raise."""
+        spec = self._make_linked_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            assert len(html_out) > 100, "rendered HTML must be non-trivial"
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_linked_qualified_graph_has_cdsview(self, dr_module, auto_df):
+        """BUG-34-1b: g1 figure must have CDSView with BooleanFilter when if_expr is set."""
+        from bokeh.models import CDSView
+        spec = self._make_linked_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            g1_fig = renderer.figures.get("g1")
+            assert g1_fig is not None, "g1 figure must be built"
+            # Find renderers that have a view (CDSView)
+            views = [r.view for r in g1_fig.renderers
+                     if hasattr(r, "view") and r.view is not None
+                     and isinstance(r.view, CDSView)]
+            assert len(views) > 0, (
+                "g1 (if_expr='foreign == 1') must have a CDSView on its renderers "
+                "to mask qualified-out rows when using shared linked source"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_unqualified_linked_graph_has_no_qualifier_view(self, dr_module, auto_df):
+        """BUG-34-1c: g2 (no if_expr) must not have a CDSView forced by qualifier."""
+        from bokeh.models import CDSView, BooleanFilter
+        spec = self._make_linked_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            g2_fig = renderer.figures.get("g2")
+            assert g2_fig is not None, "g2 figure must be built"
+            # g2 has no qualifier so must not have a boolean-filter view
+            bool_views = [r.view for r in g2_fig.renderers
+                          if hasattr(r, "view") and r.view is not None
+                          and isinstance(r.view, CDSView)
+                          and isinstance(getattr(r.view, "filter", None), BooleanFilter)]
+            assert not bool_views, (
+                "g2 (no if_expr) must not have a BooleanFilter CDSView "
+                "— only graphs with qualifiers should get one"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_linked_qualified_html_contains_both_graphs(self, dr_module, auto_df):
+        """BUG-34-1d: rendered HTML must contain glyphs for both g1 and g2."""
+        spec = self._make_linked_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            html_out = renderer.render()
+            assert "mpg" in html_out and "price" in html_out, (
+                "rendered HTML must reference both g1 (mpg) and g2 (price) variables"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+    def test_shared_source_covers_all_rows(self, dr_module, auto_df):
+        """BUG-34-1e: the shared linked source must contain all rows (not filtered)."""
+        spec = self._make_linked_qualified_spec()
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        try:
+            renderer = dr_module.DashRenderer(spec_path, data_path)
+            renderer.render()
+            # g1 and g2 share one source
+            g1_src = renderer.sources.get("g1")
+            g2_src = renderer.sources.get("g2")
+            assert g1_src is g2_src, "linked graphs must share the same ColumnDataSource"
+            n = len(list(g1_src.data.values())[0]) if g1_src.data else 0
+            n_df = len(auto_df)
+            assert n == n_df, (
+                f"shared linked source must contain all {n_df} rows (got {n}); "
+                "per-graph qualifier must be applied via CDSView, not by filtering the source"
+            )
+        finally:
+            for _p in (spec_path, data_path):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
+
+
 class TestMixedFilterSpecAlignment:
     """Regression tests for BUG-23: when some filter variables are absent from
     the data source, the remaining successfully-built specs and widgets must
