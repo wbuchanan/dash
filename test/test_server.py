@@ -7684,3 +7684,165 @@ class TestKpiColorCssInjectionHardening:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+# ===========================================================================
+# BUG-36: Server by() faceting ignores graph-level if_expr/in_expr
+# ===========================================================================
+# Before fix: the faceting section used `work_df = df.copy()` (global frame),
+# so graph-level qualifiers were silently ignored during initial facet creation.
+# A graph with `if_expr: "foreign == 1"` and `by: "foreign"` would produce
+# two facets (for both foreign=0 and foreign=1) instead of one.
+# Fix: compute `_by_q_df` by applying the graph's if_expr/in_expr first, then
+# use that as the base for `work_df` so groupby() groups only qualified rows.
+
+class TestServerByFacetingRespectsQualifiers:
+    """Regression suite for BUG-36: server by() faceting must honour if_expr/in_expr."""
+
+    # ------------------------------------------------------------------
+    # BUG-36-1a: generated source contains qualifier-base frame variable
+    # ------------------------------------------------------------------
+
+    def test_generated_source_contains_by_q_df(self, dr_module, auto_df):
+        """BUG-36-1a: generated source must contain '_by_q_df' qualifier frame."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign", "if_expr": "foreign == 1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        assert "_by_q_df" in source, (
+            "Generated source must define '_by_q_df' to apply qualifier before faceting"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-36-1b: generated source applies if_expr before faceting
+    # ------------------------------------------------------------------
+
+    def test_generated_source_applies_if_expr_before_faceting(self, dr_module, auto_df):
+        """BUG-36-1b: generated source must apply if_expr qualifier before work_df groupby."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign", "if_expr": "foreign == 1"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # _by_if must appear before work_df assignment in the faceting block
+        assert "_by_if" in source, "Generated source must check _by_if in faceting block"
+        assert "_by_px" in source, "Generated source must build _by_px predicate for query"
+
+    # ------------------------------------------------------------------
+    # BUG-36-1c: runtime — if_expr limits facets to qualified groups only
+    # ------------------------------------------------------------------
+
+    def test_if_expr_limits_facets_to_qualified_groups(self, dr_module, auto_df):
+        """BUG-36-1c: if_expr == foreign==1 with by(foreign) must produce only 1 facet."""
+        from bokeh.document import Document
+        # Build a DataFrame where foreign has values 0 and 1
+        df = auto_df.copy()
+        assert df["foreign"].nunique() == 2, "Need both foreign=0 and foreign=1 in test data"
+
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign", "if_expr": "foreign == 1"},
+        }])
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b36c", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            # With fix: 1 facet (foreign==1 only) → 1 scatter renderer
+            # Without fix: 2 facets (foreign=0 + foreign=1) → 2 renderers
+            assert n_renderers == 1, (
+                f"With if_expr='foreign==1' and by(foreign), expected 1 facet renderer "
+                f"(only qualified group), got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-36-1d: runtime — in_expr limits faceting row universe
+    # ------------------------------------------------------------------
+
+    def test_in_expr_limits_faceting_row_universe(self, dr_module):
+        """BUG-36-1d: in_expr '1/N' must restrict which rows feed the by() groupby."""
+        from bokeh.document import Document
+        import pandas as pd, numpy as np
+
+        # Construct data where only the first 5 rows have foreign=1;
+        # rows 6+ have foreign=0.  With in_expr="1/5" only foreign=1 rows
+        # are selected, so by(foreign) should produce exactly 1 facet.
+        n = 20
+        df = pd.DataFrame({
+            "mpg":    np.linspace(15, 35, n),
+            "weight": np.linspace(2000, 4000, n),
+            "foreign": [1.0] * 5 + [0.0] * 15,
+        })
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign", "in_expr": "1/5"},
+        }])
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b36d", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            # Only rows 1-5 are selected by in_expr; all have foreign=1 → 1 facet
+            assert n_renderers == 1, (
+                f"With in_expr='1/5' (all rows have foreign=1), expected 1 facet "
+                f"renderer, got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-36-1e: regression — no qualifier still produces all groups
+    # ------------------------------------------------------------------
+
+    def test_no_qualifier_produces_all_groups(self, dr_module, auto_df):
+        """BUG-36-1e: without qualifier, by(foreign) must still create 2 facets."""
+        from bokeh.document import Document
+        df = auto_df.copy()
+        assert df["foreign"].nunique() == 2, "Need both foreign values for regression guard"
+
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }])
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b36e", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            # No qualifier → all rows → 2 foreign groups → 2 scatter renderers
+            assert n_renderers == 2, (
+                f"Without qualifier, by(foreign) should produce 2 facet renderers, "
+                f"got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
