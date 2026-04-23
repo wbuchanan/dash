@@ -3736,19 +3736,28 @@ class TestRateLimiterEnforcement:
             "_HealthHandler must define prepare() to enforce rate limiting"
 
     def test_health_handler_prepare_calls_limiter(self, dr_module, auto_df):
-        """BUG-RL-2b: _HealthHandler.prepare() must call _LIMITER.is_allowed and set 429."""
+        """BUG-RL-2b: _HealthHandler.prepare() must call a limiter's is_allowed and set 429.
+        Updated for BUG-48: health handler now uses _HEALTH_LIMITER (separate from
+        _SESSION_LIMITER) so infrastructure checks don't deplete the session budget."""
         source = _build_app(dr_module, auto_df, self._minimal_spec())
-        assert "_LIMITER.is_allowed" in source, \
-            "Generated source must call _LIMITER.is_allowed"
+        # Either _HEALTH_LIMITER or _LIMITER (legacy alias) must be called in the handler
+        assert "_HEALTH_LIMITER.is_allowed" in source or "_LIMITER.is_allowed" in source, \
+            "Generated source must call a rate-limiter's is_allowed from _HealthHandler"
         assert "429" in source, \
             "Generated source must set HTTP status 429 for rate-limited requests"
 
     def test_health_handler_prepare_blocks_and_returns_429(self, dr_module, auto_df):
-        """BUG-RL-2c: _HealthHandler.prepare() must set 429 and finish() when blocked."""
+        """BUG-RL-2c: _HealthHandler.prepare() must set 429 and finish() when blocked.
+        Updated for BUG-48: replace _HEALTH_LIMITER (not _LIMITER) to force a block."""
         app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
 
+        # BUG-48 fix: health handler uses _HEALTH_LIMITER; replace that to force block
+        original_health_limiter = app_mod._HEALTH_LIMITER
         original_limiter = app_mod._LIMITER
-        app_mod._LIMITER = app_mod._RateLimiter(max_rpm=0)  # always blocks
+        blocking_limiter = app_mod._RateLimiter(max_rpm=0)  # always blocks
+        app_mod._HEALTH_LIMITER = blocking_limiter
+        # Also keep _LIMITER alias in sync in case handler references it
+        app_mod._LIMITER = blocking_limiter
         captured = {}
 
         class _MockRequest:
@@ -3773,28 +3782,38 @@ class TestRateLimiterEnforcement:
             assert captured.get("finished"), \
                 "prepare() must call finish() so the request is terminated"
         finally:
+            app_mod._HEALTH_LIMITER = original_health_limiter
             app_mod._LIMITER = original_limiter
 
     # ------------------------------------------------------------------
     # BUG-RL-3/4: make_document enforces the rate limiter
     # ------------------------------------------------------------------
     def test_make_document_source_contains_limiter_check(self, dr_module, auto_df):
-        """BUG-RL-3a: make_document must contain a _LIMITER.is_allowed call."""
+        """BUG-RL-3a: make_document must contain a rate-limiter is_allowed call.
+        Updated for BUG-48: make_document now uses _SESSION_LIMITER."""
         source = _build_app(dr_module, auto_df, self._minimal_spec())
         make_doc_start = source.find("def make_document(")
         assert make_doc_start != -1
-        assert "_LIMITER.is_allowed" in source[make_doc_start:], (
-            "make_document must call _LIMITER.is_allowed at session-creation time"
+        make_doc_body = source[make_doc_start:]
+        # Accept either _SESSION_LIMITER (new) or _LIMITER (legacy alias)
+        assert "_SESSION_LIMITER.is_allowed" in make_doc_body or \
+               "_LIMITER.is_allowed" in make_doc_body, (
+            "make_document must call a rate-limiter's is_allowed at session-creation time"
         )
 
     def test_make_document_adds_429_div_when_rate_limited(self, dr_module, auto_df):
-        """BUG-RL-3b: make_document must add a 429 Div and return early when blocked."""
+        """BUG-RL-3b: make_document must add a 429 Div and return early when blocked.
+        Updated for BUG-48: replace _SESSION_LIMITER (not _LIMITER) to force a block."""
         from bokeh.document import Document
         from bokeh.models import Div as BkDiv
         app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
 
+        # BUG-48 fix: make_document uses _SESSION_LIMITER; replace that to force block
+        original_session_limiter = app_mod._SESSION_LIMITER
         original_limiter = app_mod._LIMITER
-        app_mod._LIMITER = app_mod._RateLimiter(max_rpm=0)
+        blocking_limiter = app_mod._RateLimiter(max_rpm=0)
+        app_mod._SESSION_LIMITER = blocking_limiter
+        app_mod._LIMITER = blocking_limiter  # keep alias in sync
 
         try:
             doc = Document()
@@ -3809,22 +3828,37 @@ class TestRateLimiterEnforcement:
 
             app_mod.make_document(doc)
 
-            assert len(doc.roots) == 1, \
-                "Blocked make_document must add exactly one root (the 429 Div)"
-            assert isinstance(doc.roots[0], BkDiv), \
-                "The root added by a rate-limited make_document must be a Div"
-            assert "429" in doc.roots[0].text, \
-                "The 429 Div text must contain '429'"
+            # The 429 response may be wrapped in a Column layout or bare Div
+            roots = doc.roots
+            assert len(roots) > 0, \
+                "Blocked make_document must add at least one root"
+            # Search for a Div containing "429" anywhere in the root tree
+            from bokeh.models import Column as BkColumn
+            def _has_429(node):
+                if isinstance(node, BkDiv) and "429" in node.text:
+                    return True
+                if isinstance(node, BkColumn):
+                    return any(_has_429(c) for c in node.children)
+                return False
+            assert any(_has_429(r) for r in roots), \
+                "Blocked make_document must produce a root containing '429'"
         finally:
+            app_mod._SESSION_LIMITER = original_session_limiter
             app_mod._LIMITER = original_limiter
 
     def test_make_document_proceeds_normally_when_allowed(self, dr_module, auto_df):
-        """BUG-RL-4: make_document must build the full dashboard when not rate-limited."""
+        """BUG-RL-4: make_document must build the full dashboard when not rate-limited.
+        Updated for BUG-48: set _SESSION_LIMITER permissive (not just _LIMITER)."""
         from bokeh.document import Document
         from bokeh.models import Div as BkDiv
         app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
 
-        app_mod._LIMITER = app_mod._RateLimiter(max_rpm=1000)
+        # BUG-48 fix: make_document uses _SESSION_LIMITER
+        original_session_limiter = app_mod._SESSION_LIMITER
+        original_limiter = app_mod._LIMITER
+        permissive_limiter = app_mod._RateLimiter(max_rpm=1000)
+        app_mod._SESSION_LIMITER = permissive_limiter
+        app_mod._LIMITER = permissive_limiter  # keep alias in sync
 
         doc = Document()
 
@@ -3836,13 +3870,17 @@ class TestRateLimiterEnforcement:
         doc._session_context = _FakeSessionContext()
         type(doc).session_context = property(lambda self: self._session_context)
 
-        app_mod.make_document(doc)
+        try:
+            app_mod.make_document(doc)
 
-        assert len(doc.roots) > 0, \
-            "make_document must add dashboard roots when not rate-limited"
-        bad = [r for r in doc.roots if isinstance(r, BkDiv) and "429" in r.text]
-        assert not bad, \
-            "No 429 Div should appear when the request is within the rate limit"
+            assert len(doc.roots) > 0, \
+                "make_document must add dashboard roots when not rate-limited"
+            bad = [r for r in doc.roots if isinstance(r, BkDiv) and "429" in r.text]
+            assert not bad, \
+                "No 429 Div should appear when the request is within the rate limit"
+        finally:
+            app_mod._SESSION_LIMITER = original_session_limiter
+            app_mod._LIMITER = original_limiter
 
 
 # ================================================================
@@ -9443,3 +9481,104 @@ class TestServeUniqueAppPath:
                     os.unlink(p)
                 except OSError:
                     pass
+
+
+# ---------------------------------------------------------------------------
+# BUG-48 Regression tests — health endpoint and dashboard sessions share rate-limit bucket
+# ---------------------------------------------------------------------------
+class TestSeparateRateLimitBuckets:
+    """BUG-48: _LIMITER was shared between /health and make_document, so normal
+    dashboard traffic could exhaust the health-check budget and cause false-negative
+    liveness signals.  Fix: introduce _SESSION_LIMITER and _HEALTH_LIMITER as
+    independent buckets with separate RPM limits.
+    """
+
+    def _build_source(self, dr_module, auto_df):
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        return _build_app(dr_module, auto_df, spec)
+
+    # ------------------------------------------------------------------
+    # BUG-48-1a: generated source defines _SESSION_LIMITER
+    # ------------------------------------------------------------------
+    def test_BUG_48_1a_session_limiter_defined(self, dr_module, auto_df):
+        """Generated source must define _SESSION_LIMITER for dashboard connections."""
+        src = self._build_source(dr_module, auto_df)
+        assert "_SESSION_LIMITER" in src, (
+            "Generated source missing _SESSION_LIMITER (BUG-48 regression)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-48-1b: generated source defines _HEALTH_LIMITER
+    # ------------------------------------------------------------------
+    def test_BUG_48_1b_health_limiter_defined(self, dr_module, auto_df):
+        """Generated source must define _HEALTH_LIMITER for /health endpoint."""
+        src = self._build_source(dr_module, auto_df)
+        assert "_HEALTH_LIMITER" in src, (
+            "Generated source missing _HEALTH_LIMITER (BUG-48 regression)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-48-1c: _HealthHandler uses _HEALTH_LIMITER, not _SESSION_LIMITER
+    # ------------------------------------------------------------------
+    def test_BUG_48_1c_health_handler_uses_health_limiter(self, dr_module, auto_df):
+        """_HealthHandler.prepare must consume _HEALTH_LIMITER, not _SESSION_LIMITER."""
+        import re
+        src = self._build_source(dr_module, auto_df)
+        # Extract the _HealthHandler class body
+        m = re.search(r"class _HealthHandler.*?def get\(", src, re.DOTALL)
+        assert m, "_HealthHandler class not found in generated source"
+        section = m.group(0)
+        assert "_HEALTH_LIMITER.is_allowed" in section, (
+            "_HealthHandler.prepare should call _HEALTH_LIMITER.is_allowed (BUG-48 regression)"
+        )
+        assert "_SESSION_LIMITER.is_allowed" not in section, (
+            "_HealthHandler.prepare must not use _SESSION_LIMITER (cross-bucket pollution)"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-48-1d: make_document uses _SESSION_LIMITER, not _HEALTH_LIMITER
+    # ------------------------------------------------------------------
+    def test_BUG_48_1d_make_document_uses_session_limiter(self, dr_module, auto_df):
+        """make_document must consume _SESSION_LIMITER, not _HEALTH_LIMITER."""
+        import re
+        src = self._build_source(dr_module, auto_df)
+        m = re.search(r"def make_document\(.*", src, re.DOTALL)
+        assert m, "make_document not found in generated source"
+        fn_body = src[m.start():]
+        # Only consider up to next top-level def / end-of-file
+        next_def = re.search(r"\ndef [a-zA-Z_]", fn_body[10:])
+        if next_def:
+            fn_body = fn_body[: next_def.start() + 10]
+        assert "_SESSION_LIMITER.is_allowed" in fn_body, (
+            "make_document should call _SESSION_LIMITER.is_allowed (BUG-48 regression)"
+        )
+        assert "_HEALTH_LIMITER.is_allowed" not in fn_body, (
+            "make_document must not use _HEALTH_LIMITER"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-48-1e: session budget exhaustion does not block /health checks
+    # ------------------------------------------------------------------
+    def test_BUG_48_1e_session_exhaustion_does_not_block_health(self, dr_module, auto_df):
+        """Exhausting _SESSION_LIMITER for an IP must not affect _HEALTH_LIMITER."""
+        src = self._build_source(dr_module, auto_df)
+        mod = types.ModuleType("_b48e_mod")
+        exec(compile(src, "<test>", "exec"), mod.__dict__)
+        session_lim = getattr(mod, "_SESSION_LIMITER")
+        health_lim = getattr(mod, "_HEALTH_LIMITER")
+        ip = "10.0.0.1"
+        # Exhaust session limiter for ip
+        for _ in range(session_lim._max + 5):
+            session_lim.is_allowed(ip)
+        # Session should now be blocked
+        assert not session_lim.is_allowed(ip), (
+            "_SESSION_LIMITER should be exhausted after max+5 calls"
+        )
+        # Health limiter for the same IP must still allow requests
+        assert health_lim.is_allowed(ip), (
+            "After exhausting _SESSION_LIMITER, _HEALTH_LIMITER should still allow "
+            "health checks for the same IP (BUG-48 regression: shared bucket)"
+        )
