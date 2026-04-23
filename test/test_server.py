@@ -8031,3 +8031,164 @@ class TestDropdownSentinelCollision:
         assert "w.value != '__all__'" not in source, (
             "Generated server callback must not hard-code '__all__' in value check"
         )
+
+
+# ===========================================================================
+# BUG-38: Generated server by(total) panel drops non-scatter/line/hist plot types
+# ===========================================================================
+# Before fix: the Total panel only dispatched scatter, line, and histogram/hist.
+# All other supported types (bar, area, kdensity, lfit, qfit, lowess, lpoly,
+# fpfit, connected, dot, spike, dropline, mband) were silently ignored so the
+# Total panel had zero renderers for those plot types.
+# Fix: replace the limited dispatch with the full per-group facet dispatch,
+# substituting work_df/_tot_src/_tot_fig for _fac_gdf/_fac_src/_fac_fig.
+
+class TestServerByTotalFullDispatch:
+    """Regression suite for BUG-38: by(total) panel must render all plot types."""
+
+    # ------------------------------------------------------------------
+    # BUG-38-1a: by(total) with bar renders Total panel
+    # ------------------------------------------------------------------
+
+    def test_by_total_bar_produces_renderer(self, dr_module, auto_df):
+        """BUG-38-1a: by(foreign, total) bar → Total panel has a vbar renderer."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "bar", "yvar": "mpg", "xvar": "foreign", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign, total"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b38a", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            # 2 foreign groups + 1 total panel = 3 bar renderers minimum
+            assert n_renderers >= 3, (
+                f"by(foreign, total) bar should produce at least 3 renderers "
+                f"(2 groups + 1 total), got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-38-1b: by(total) with connected renders Total panel
+    # ------------------------------------------------------------------
+
+    def test_by_total_connected_produces_renderer(self, dr_module, auto_df):
+        """BUG-38-1b: by(foreign, total) connected → Total panel has renderers."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign, total"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b38b", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            # connected = line + scatter per panel → 2 groups + total → >= 6 renderers
+            assert n_renderers >= 6, (
+                f"by(foreign, total) connected should produce >= 6 renderers "
+                f"(line+scatter per group, + total), got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-38-1c: by(total) source for Total contains full work_df data
+    # ------------------------------------------------------------------
+
+    def test_by_total_source_in_generated_source(self, dr_module, auto_df):
+        """BUG-38-1c: generated source must use work_df for Total agg computations."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign, total"},
+        }])
+        source = _build_app(dr_module, auto_df, spec)
+        # Total lfit must call _compute_lfit(work_df, ...) not _compute_lfit(_fac_gdf, ...)
+        assert "work_df" in source, "Generated source must reference work_df for Total panel"
+        assert "_compute_lfit(work_df" in source, (
+            "Total lfit must use work_df, not a facet-specific _fac_gdf frame"
+        )
+
+    # ------------------------------------------------------------------
+    # BUG-38-1d: by(total) with dot renders Total panel
+    # ------------------------------------------------------------------
+
+    def test_by_total_dot_produces_renderer(self, dr_module, auto_df):
+        """BUG-38-1d: by(foreign, total) dot → Total panel has a scatter renderer."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "dot", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign, total"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b38d", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            assert n_renderers >= 3, (
+                f"by(foreign, total) dot should produce >= 3 renderers "
+                f"(2 groups + 1 total), got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
+
+    # ------------------------------------------------------------------
+    # BUG-38-1e: regression — scatter by(total) still works
+    # ------------------------------------------------------------------
+
+    def test_by_total_scatter_regression(self, dr_module, auto_df):
+        """BUG-38-1e: scatter by(total) must still produce Total renderer after fix."""
+        from bokeh.document import Document
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign, total"},
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            builder = dr_module.ServerAppBuilder(spec_path, data_path)
+            builder.build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location("_b38e", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            n_renderers = _count_glyph_renderers(doc)
+            assert n_renderers >= 3, (
+                f"by(foreign, total) scatter should produce >= 3 renderers "
+                f"(2 groups + 1 total), got {n_renderers}"
+            )
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
