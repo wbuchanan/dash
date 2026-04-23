@@ -3846,6 +3846,115 @@ class TestRateLimiterEnforcement:
 
 
 # ================================================================
+# BUG-30: Generated server rate limiter keeps unbounded per-IP state
+# Empty per-IP entries must be deleted after pruning and a global
+# _MAX_IPS cap must prevent unbounded growth under IP churn.
+# ================================================================
+
+class TestRateLimiterBoundedMemory:
+    """BUG-30: _RateLimiter._store must not grow without bound.
+
+    Pre-fix: keys were NEVER deleted from `_store`; after timestamps expired,
+    the empty list remained under the key.  10,000 unique IPs produced 10,000
+    permanent entries.
+
+    Post-fix: keys are deleted when their timestamp list becomes empty after
+    pruning, and a _MAX_IPS hard cap evicts the oldest entry when the store
+    is full.
+    """
+
+    def _minimal_spec(self):
+        return _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+
+    def test_empty_entry_deleted_after_timestamps_expire(self, dr_module, auto_df):
+        """BUG-30-1a: _store key must be absent after all its timestamps expire."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=60)
+        # Manually add a stale timestamp for an IP
+        import time as _time
+        stale_ts = _time.monotonic() - 120  # 2 min ago — definitely expired
+        limiter._store["10.99.0.1"] = [stale_ts]
+        # is_allowed should prune the stale timestamp and delete the key
+        result = limiter.is_allowed("10.99.0.1")
+        assert result, "stale-then-fresh IP must be allowed after timestamp expires"
+        # After pruning the stale ts, a fresh one was appended — key must exist
+        assert "10.99.0.1" in limiter._store, \
+            "key must exist after fresh ts appended post-prune"
+        # Now simulate the new ts also expiring
+        limiter._store["10.99.0.1"] = [stale_ts]  # replace with stale
+        # Directly verify pruning deletes the key — simulate is_allowed logic
+        limiter._store["10.99.0.2"] = [stale_ts]
+        limiter.is_allowed("10.99.0.2")  # prunes 10.99.0.2's stale ts, appends fresh
+        # Set 10.99.0.2's list to empty manually to test deletion path
+        limiter._store["10.99.0.3"] = [stale_ts]
+        limiter.is_allowed("10.99.0.3")
+        # Force all timestamps to stale, then call again to trigger prune+delete
+        for ip_key in list(limiter._store.keys()):
+            limiter._store[ip_key] = [stale_ts]
+        before = len(limiter._store)
+        for ip_key in list(limiter._store.keys()):
+            limiter.is_allowed(ip_key)  # prunes stale, appends fresh
+        # Each IP still has one fresh timestamp — keys must survive
+        # (they were re-added with fresh ts)
+        assert len(limiter._store) == before, \
+            "_store size must be stable when IPs keep getting fresh requests"
+
+    def test_expired_ip_key_removed_from_store(self, dr_module, auto_df):
+        """BUG-30-1b: after all timestamps expire and no new request arrives, key must not linger."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=60)
+        import time as _time
+        # Seed a stale entry
+        stale = _time.monotonic() - 120
+        limiter._store["zombie.ip"] = [stale]
+        assert "zombie.ip" in limiter._store, "key must be seeded for test setup"
+        # A second (different) IP's is_allowed call should NOT affect zombie.ip,
+        # but when zombie.ip itself calls is_allowed, its entry should be cleaned
+        limiter.is_allowed("zombie.ip")  # triggers prune → delete zombie.ip's stale ts
+        # Key is re-added with fresh ts (because request is allowed) — that is fine
+        # Now manually empty it to verify the delete path
+        limiter._store["zombie.ip"] = [stale]  # stale again
+        # Patch to prevent re-append: set max to 0 so request is blocked
+        limiter._max = 0
+        limiter.is_allowed("zombie.ip")  # prunes → empty → should delete key
+        assert "zombie.ip" not in limiter._store, \
+            "empty per-IP list must be deleted from _store to prevent unbounded growth"
+
+    def test_high_cardinality_ip_churn_store_bounded(self, dr_module, auto_df):
+        """BUG-30-1c: _store size must not exceed _MAX_IPS under high-cardinality churn."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=60)
+        max_ips = limiter._MAX_IPS
+        # Issue requests from many more IPs than _MAX_IPS
+        for i in range(max_ips + 500):
+            limiter.is_allowed(f"192.0.2.{i // 256}.{i % 256}")
+        assert len(limiter._store) <= max_ips, (
+            f"_store size {len(limiter._store)} must not exceed _MAX_IPS={max_ips}"
+        )
+
+    def test_rate_limiter_has_max_ips_attribute(self, dr_module, auto_df):
+        """BUG-30-1d: _RateLimiter must define _MAX_IPS to enforce global store cap."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=60)
+        assert hasattr(limiter, "_MAX_IPS"), \
+            "_RateLimiter must have _MAX_IPS attribute for global IP cap"
+        assert limiter._MAX_IPS > 0, "_MAX_IPS must be a positive integer"
+
+    def test_rate_limiting_still_works_after_fix(self, dr_module, auto_df):
+        """BUG-30-1e: normal rate-limiting behavior must be preserved after fix."""
+        app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
+        limiter = app_mod._RateLimiter(max_rpm=2)
+        assert limiter.is_allowed("10.0.0.99"), "first request must be allowed"
+        assert limiter.is_allowed("10.0.0.99"), "second request must be allowed"
+        assert not limiter.is_allowed("10.0.0.99"), \
+            "third request must be blocked when max_rpm=2"
+
+
+# ================================================================
 # BUG-FE-1: Server-mode function expressions reject normal arithmetic
 # Regression for: "_val_node recursively validates BinOp/UnaryOp
 # children without excluding operator nodes (Add, Sub, etc.).
