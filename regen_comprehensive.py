@@ -284,9 +284,9 @@ FILTERS = [
 # ---------------------------------------------------------------------------
 
 TABS_STR = (
-    "univariate: u1 u2 u3 u4 u5 u6 u7 u8"
+    "univariate: u1 u2 u4 u5 u6 u7 u8"
     " / bivariate: b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17"
-    " / multivariate: m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14"
+    " / multivariate: m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13"
 )
 
 # ---------------------------------------------------------------------------
@@ -306,13 +306,6 @@ U_GRAPHS = [
     _g("u2", [_kd("mpg", lcolor="maroon", lwidth="2")],
        title="MPG Kernel Density",
        xtitle="Mileage (mpg)", ytitle="Density",
-       hover="mpg"),
-
-    # u3 — MPG histogram + KDE overlay
-    _g("u3", [_hi("mpg", fcolor="ltblue", falpha="0.5"),
-              _kd("mpg", lcolor="maroon",  lwidth="2")],
-       title="MPG: Histogram + Density Overlay",
-       xtitle="Mileage (mpg)", ytitle="Frequency / Density",
        hover="mpg"),
 
     # u4 — Price histogram
@@ -624,25 +617,17 @@ M_GRAPHS = [
        xtitle="Weight (lbs.)", ytitle="Mileage (mpg)",
        hover="pc_y1 pc_x1 pc_y2 pc_x2"),
 
-    # m14 — scatteri: reference landmarks on the mpg/weight plane
-    #       Fixed coordinate pairs for visual reference
-    _g("m14",
-       [{"type": "scatteri",
-         "values": [[35, 1800], [28, 2200], [22, 2800], [18, 3500], [15, 4200]],
-         "options": {"msymbol": "diamond", "mcolor": "red", "msize": "10"}}],
-       title="Reference Landmarks on MPG vs Weight Plane (scatteri)",
-       xtitle="Weight (lbs.)", ytitle="Mileage (mpg)"),
 ]
 
 # ---------------------------------------------------------------------------
 # Link list: all graphs that share raw columnar data and should respond
 # consistently to the dropdown / slider / range filters.
-# Excluded from link: by() graphs (u8, m1), pcarrow (m13), scatteri (m14),
+# Excluded from link: by() graphs (u8, m1), pcarrow (m13),
 # and range-only plots without a scatter overlay (b14-b17, m11, m12).
 # ---------------------------------------------------------------------------
 
 _LINK = (
-    "u1 u2 u3 u4 u5 u6 u7 "        # univariate histograms + kdensity
+    "u1 u2 u4 u5 u6 u7 "           # univariate histograms + kdensity
     "b1 b2 b3 b4 b5 b6 b7 b8 b9 "  # bivariate scatter / line / area
     "b10 b11 b12 b13 "              # dot / spike / dropline
     "m2 m3 m4 m5 m6 m7 "           # multivariate scatter groups

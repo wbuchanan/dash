@@ -442,15 +442,22 @@ class TestColorvar:
         assert len(right_bars) == 1
 
     def test_colorvar_categorical_mapper(self):
-        """CV-03: colorvar(cat) on string variable creates CategoricalColorMapper."""
-        from bokeh.models import CategoricalColorMapper, ColorBar
+        """CV-03: colorvar(cat) on string variable creates CategoricalColorMapper.
+
+        Discrete colorvar mappings now render a Bokeh Legend (not a ColorBar)
+        by default — matches Stata 18 colordiscrete behavior and the user
+        expectation of one labeled legend entry per category.
+        """
+        from bokeh.models import CategoricalColorMapper, Legend
         fig = figure()
         src = self._src()
         gm = GlyphMapper()
-        gm.map_scatter(fig, src, "y", "x", {"colorvar": "cat"})
-        right_bars = [r for r in fig.right if isinstance(r, ColorBar)]
-        assert len(right_bars) == 1
-        assert isinstance(right_bars[0].color_mapper, CategoricalColorMapper)
+        r = gm.map_scatter(fig, src, "y", "x", {"colorvar": "cat"})
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, CategoricalColorMapper)
+        # Discrete data → Legend on the right (no ColorBar)
+        legends = [lay for lay in fig.right if isinstance(lay, Legend)]
+        assert len(legends) == 1
 
     def test_colorvar_categorical_has_both_factors(self):
         """CV-04: CategoricalColorMapper for 'cat' has factors ['A', 'B']."""
@@ -458,9 +465,8 @@ class TestColorvar:
         fig = figure()
         src = self._src()
         gm = GlyphMapper()
-        gm.map_scatter(fig, src, "y", "x", {"colorvar": "cat"})
-        bar = [r for r in fig.right][0]
-        mapper = bar.color_mapper
+        r = gm.map_scatter(fig, src, "y", "x", {"colorvar": "cat"})
+        mapper = r.glyph.fill_color["transform"]
         assert isinstance(mapper, CategoricalColorMapper)
         assert set(mapper.factors) == {"A", "B"}
 

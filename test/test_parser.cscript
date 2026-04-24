@@ -181,5 +181,46 @@ assert _rc == 0
 display "P1A-45 PASS: fa() accepted on histogram in compound spec"
 dash clear
 
+// ================================================================
+// P1A-46 — _dash_parse_plot_opts accepts all Stata 18 colorvar_options
+//           (regression: colordiscrete etc. previously caused r(198))
+// ================================================================
+local exp46 ""
+mata: _dash_expand_opts_str( ///
+    "colorvar(foreign) colordiscrete coloruseplegend colornlevels(4) colorcuts(2000 3000 4000) colormissing(gray)", ///
+    "exp46")
+_dash_parse_plot_opts , `exp46'
+assert `"`s(colorvar)'"'      == "foreign"
+assert `"`s(colordiscrete)'"' != ""
+assert `"`s(coloruseplegend)'"' != ""
+assert `"`s(colornlevels)'"'  == "4"
+assert strpos(`"`s(colorcuts)'"', "2000") > 0
+assert `"`s(colormissing)'"'  == "gray"
+display "P1A-46 PASS: colorvar_options (colordiscrete, coloruseplegend, colornlevels, colorcuts, colormissing) accepted"
+
+// ================================================================
+// P1A-47 — _dash_process_segment: colordiscrete propagates into JSON
+// ================================================================
+_dash_process_segment "scatter mpg weight, colorvar(foreign) colordiscrete" _pt46 _json46
+assert "`_pt46'" == "scatter"
+local opts46 = substr(`"`_json46'"', strpos(`"`_json46'"', `""options""'), .)
+assert strpos(`"`opts46'"', "colorvar") > 0
+assert strpos(`"`opts46'"', "foreign") > 0
+assert strpos(`"`opts46'"', "colordiscrete") > 0
+display "P1A-47 PASS: colordiscrete propagates through segment JSON"
+
+// ================================================================
+// P1A-48 — _dash_extract_vars must include the colorvar() variable
+// REGRESSION: previously colorvar was omitted from the jsonio varlist,
+// so value labels for the colorvar variable never reached the renderer
+// and the legend showed numeric codes instead of "Domestic"/"Foreign".
+// ================================================================
+local _seg_json `"{"type":"scatter","yvar":"mpg","xvar":"weight","options":{"colorvar":"foreign","colordiscrete":"colordiscrete"}}"'
+mata: _dash_extract_vars(`"`_seg_json'"', "_p1a48_vars")
+assert `: list posof "mpg"     in _p1a48_vars' > 0
+assert `: list posof "weight"  in _p1a48_vars' > 0
+assert `: list posof "foreign" in _p1a48_vars' > 0
+display "P1A-48 PASS: _dash_extract_vars includes colorvar variable"
+
 display ""
 display "All syntax-based parser tests PASSED."

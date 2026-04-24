@@ -270,6 +270,31 @@ display "P4-86 PASS: data/label with injection chars → .py still compiles"
 dash clear
 
 // ================================================================
+// P2-85 — Backtick in saving() path → rc=198, not "too few quotes" crash
+//         Regression: _dash_validate_path iterated _shell_bad char-by-char;
+//         when _bc == char(96) (backtick), compound-quote expansion of
+//         `"`_bc'"' produced `"`"' causing r(132) instead of a clean r(198).
+// ================================================================
+qui sysuse auto, clear
+do "../dash.ado"
+// Build a path that contains a backtick (char 96)
+local bad_path = "evil" + char(96) + "cmd.html"
+capture _dash_validate_path "`bad_path'"
+assert _rc == 198
+display "P2-85 PASS: backtick in saving() path → rc=198 (not too-few-quotes crash)"
+
+// Also verify dollar sign (char 36) and other control chars are rejected
+local bad_dollar = "evil" + char(36) + "HOME.html"
+capture _dash_validate_path "`bad_dollar'"
+assert _rc == 198
+display "P2-85b PASS: dollar sign in saving() path → rc=198"
+
+local bad_pipe = "evil|cmd.html"
+capture _dash_validate_path "`bad_pipe'"
+assert _rc == 198
+display "P2-85c PASS: pipe in saving() path → rc=198"
+
+// ================================================================
 // Final summary
 // ================================================================
 display ""

@@ -2701,6 +2701,7 @@ class TestHoverToolRendererScope:
 
     def test_histogram_hover_uses_fallback_tooltip(self):
         """BF-11d: histogram figure must get a fallback bin/count tooltip."""
+        import re as _re
         plots = [{"type": "histogram", "yvar": "mpg", "options": {}}]
         dr = _make_dr_for_hover(plots, hover="mpg")
         fig = list(dr.figures.values())[0]
@@ -2709,15 +2710,24 @@ class TestHoverToolRendererScope:
         hover_tools = [t for t in fig.tools if isinstance(t, HoverTool)]
         assert hover_tools, "Histogram figure should have a HoverTool"
 
+        # Histogram fallback should use mode='vline' for reliable bar hover
+        hist_tools = [t for t in hover_tools
+                      if t.renderers and t.renderers != "auto"]
+        assert hist_tools, "Histogram should have a scoped HoverTool"
+        assert hist_tools[0].mode == "vline", (
+            "Histogram HoverTool must use mode='vline' for reliable bar hover"
+        )
+
         # The HoverTool must not reference 'mpg' in a form that would cause ???
         # (because hist_source only has "top", "left", "right")
+        # Extract column names from Bokeh field refs: @{colname} or @{col}{fmt}
+        _field_pat = _re.compile(r"@\{([^}]+)\}")
         for tool in hover_tools:
             if not tool.renderers or tool.renderers == "auto":
                 continue
             for rend in tool.renderers:
                 for _, val_spec in tool.tooltips:
-                    if val_spec.startswith("@{") and val_spec.endswith("}"):
-                        col = val_spec[2:-1]
+                    for col in _field_pat.findall(val_spec):
                         assert col in rend.data_source.data, (
                             f"Histogram HoverTool references '{col}' not in "
                             f"renderer CDS (cols: {list(rend.data_source.data)})"
@@ -2967,3 +2977,461 @@ class TestHardeningGuards:
         # Bar width should be ~0.8 * (2-1) = 0.8
         glyph = result.glyph if not isinstance(result, list) else result[0].glyph
         assert hasattr(glyph, "width")
+
+
+# ================================================================
+# Stata 18 colorvar_options — _apply_colorvar
+# Regression tests: colordiscrete, coloruseplegend, colornlevels,
+# colorcuts, colormissing (P1A-46 Python-side coverage)
+# ================================================================
+def _legend_label_text(item) -> str:
+    """Extract the plain string label from a Bokeh LegendItem.
+
+    Bokeh wraps the ``label`` field in a ``Value`` descriptor; depending on
+    version it may also appear as a plain str or a dict ``{"value": ...}``.
+    This helper normalises all three shapes to a bare string.
+    """
+    lbl = item.label
+    # Bokeh Value descriptor (has .value attr)
+    if hasattr(lbl, "value"):
+        return lbl.value
+    if isinstance(lbl, dict) and "value" in lbl:
+        return lbl["value"]
+    return str(lbl)
+
+
+class TestApplyColorvarOptions:
+    """Tests for _apply_colorvar with all Stata 18 colorvar_options."""
+
+    def _fig(self):
+        return figure()
+
+    def _gm(self):
+        return GlyphMapper()
+
+    def _scatter(self, fig, cds, yvar="mpg", xvar="weight"):
+        return fig.scatter(x=xvar, y=yvar, source=cds)
+
+    def _cds_auto(self):
+        np.random.seed(0)
+        n = 74
+        return ColumnDataSource(pd.DataFrame({
+            "mpg":     np.random.randint(12, 40, n).astype(float),
+            "weight":  np.random.randint(1760, 4840, n).astype(float),
+            "foreign": np.random.choice([0.0, 1.0], n),
+            "rep78":   np.random.choice([1.0, 2.0, 3.0, np.nan], n),
+            "make":    np.random.choice(["Ford", "VW", "Toyota"], n),
+        }))
+
+    # ------------------------------------------------------------------
+    # Baseline: numeric column → LinearColorMapper (unchanged behaviour)
+    # ------------------------------------------------------------------
+    def test_numeric_column_uses_linear_mapper(self):
+        """P1A-46a: numeric colorvar without colordiscrete → LinearColorMapper."""
+        from bokeh.models import LinearColorMapper
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds, {"colorvar": "weight"})
+        assert isinstance(r.glyph.fill_color["transform"], LinearColorMapper)
+
+    # ------------------------------------------------------------------
+    # Baseline: string column → CategoricalColorMapper (unchanged behaviour)
+    # ------------------------------------------------------------------
+    def test_string_column_uses_categorical_mapper(self):
+        """P1A-46b: string colorvar → CategoricalColorMapper."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds, {"colorvar": "make"})
+        assert isinstance(r.glyph.fill_color["transform"], CategoricalColorMapper)
+
+    # ------------------------------------------------------------------
+    # REGRESSION: colordiscrete forces numeric → CategoricalColorMapper
+    # (this is the bug that caused r(198) before this fix)
+    # ------------------------------------------------------------------
+    def test_colordiscrete_numeric_uses_categorical_mapper(self):
+        """P1A-46c: colordiscrete on numeric column → CategoricalColorMapper."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "foreign", "colordiscrete": "colordiscrete"})
+        assert isinstance(r.glyph.fill_color["transform"], CategoricalColorMapper)
+
+    def test_colordiscrete_factors_match_unique_values(self):
+        """P1A-46d: colordiscrete factors are the unique numeric values as strings."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = ColumnDataSource({"x": [1.0, 2.0, 1.0, 3.0],
+                                 "y": [1.0, 2.0, 3.0, 4.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="x")
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "x", "colordiscrete": "colordiscrete"})
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, CategoricalColorMapper)
+        assert set(mapper.factors) >= {"1", "2", "3"}
+
+    def test_colordiscrete_derived_bin_column_created(self):
+        """P1A-46e: colordiscrete stores bin labels in a derived CDS column."""
+        fig = self._fig()
+        cds = ColumnDataSource({"x": [0.0, 1.0, 0.0], "y": [1.0, 2.0, 3.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="x")
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "x", "colordiscrete": "colordiscrete"})
+        assert "_cvar_x_bin" in cds.data
+        assert set(cds.data["_cvar_x_bin"]) == {"0", "1"}
+
+    # ------------------------------------------------------------------
+    # colornlevels
+    # ------------------------------------------------------------------
+    def test_colornlevels_produces_correct_bin_count(self):
+        """P1A-46f: colornlevels(4) → exactly 4 factors."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "weight", "colornlevels": "4"})
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, CategoricalColorMapper)
+        non_missing = [f for f in mapper.factors if f != "__missing__"]
+        assert len(non_missing) == 4
+
+    def test_colornlevels_uses_categorical_mapper(self):
+        """P1A-46g: colornlevels forces CategoricalColorMapper for numeric data."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "weight", "colornlevels": "3"})
+        assert isinstance(r.glyph.fill_color["transform"], CategoricalColorMapper)
+
+    # ------------------------------------------------------------------
+    # colorcuts
+    # ------------------------------------------------------------------
+    def test_colorcuts_produces_correct_bin_count(self):
+        """P1A-46h: colorcuts(2000 3000) → 3 factors (one per interval)."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "weight", "colorcuts": "2000 3000"})
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, CategoricalColorMapper)
+        non_missing = [f for f in mapper.factors if f != "__missing__"]
+        assert len(non_missing) == 3  # ≤2000 / 2000–3000 / >3000
+
+    def test_colorcuts_bin_labels_correct(self):
+        """P1A-46i: colorcuts bin labels follow ≤lo / lo–hi / >hi pattern."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = ColumnDataSource({"x": [1000.0, 2500.0, 4000.0],
+                                 "y": [1.0, 2.0, 3.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="x")
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "x", "colorcuts": "2000 3000"})
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, CategoricalColorMapper)
+        factors_set = set(mapper.factors)
+        assert any("\u2264" in f for f in factors_set)   # ≤2000
+        assert any(">" in f for f in factors_set)        # >3000
+
+    # ------------------------------------------------------------------
+    # colormissing
+    # ------------------------------------------------------------------
+    def test_colormissing_sets_nan_color_for_continuous(self):
+        """P1A-46j: colormissing sets nan_color on LinearColorMapper."""
+        from bokeh.models import LinearColorMapper
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "weight", "colormissing": "red"})
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, LinearColorMapper)
+        assert mapper.nan_color == "red"
+
+    def test_colormissing_included_in_palette_for_discrete(self):
+        """P1A-46k: colormissing color appears at end of palette for NaN rows."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = ColumnDataSource({"x": [1.0, float("nan"), 2.0],
+                                 "y": [1.0, 2.0, 3.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="x")
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "x", "colordiscrete": "colordiscrete",
+                            "colormissing": "red"})
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, CategoricalColorMapper)
+        assert "__missing__" in mapper.factors
+        missing_idx = list(mapper.factors).index("__missing__")
+        assert mapper.palette[missing_idx] == "red"
+
+    # ------------------------------------------------------------------
+    # coloruseplegend
+    # ------------------------------------------------------------------
+    def test_coloruseplegend_adds_legend_not_colorbar(self):
+        """P1A-46l: coloruseplegend adds a Legend instead of a ColorBar."""
+        from bokeh.models import Legend, ColorBar
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "foreign",
+                            "colordiscrete": "colordiscrete",
+                            "coloruseplegend": "coloruseplegend"})
+        right_layouts = fig.right
+        assert any(isinstance(lay, Legend) for lay in right_layouts), \
+            "Expected a Legend on fig.right with coloruseplegend"
+        assert not any(isinstance(lay, ColorBar) for lay in right_layouts), \
+            "ColorBar should not be present when coloruseplegend is set"
+
+    def test_coloruseplegend_legend_items_match_factors(self):
+        """P1A-46m: coloruseplegend Legend has one item per unique factor."""
+        from bokeh.models import Legend
+        fig = self._fig()
+        cds = ColumnDataSource({"x": [0.0, 1.0, 0.0, 1.0],
+                                 "y": [1.0, 2.0, 3.0, 4.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="x")
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds,
+                           {"colorvar": "x",
+                            "colordiscrete": "colordiscrete",
+                            "coloruseplegend": "coloruseplegend"})
+        legend = next(lay for lay in fig.right if isinstance(lay, Legend))
+        assert len(legend.items) == 2  # factors "0" and "1"
+
+    # ------------------------------------------------------------------
+    # Edge cases
+    # ------------------------------------------------------------------
+    def test_missing_varname_is_noop(self):
+        """P1A-46n: missing colorvar key leaves glyph colors unchanged."""
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        original_fill = r.glyph.fill_color
+        gm._apply_colorvar(fig, r, cds, {})
+        assert r.glyph.fill_color == original_fill
+
+    def test_unknown_varname_is_noop(self):
+        """P1A-46o: colorvar pointing to nonexistent column leaves glyph unchanged."""
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        original_fill = r.glyph.fill_color
+        gm._apply_colorvar(fig, r, cds, {"colorvar": "nonexistent_column"})
+        assert r.glyph.fill_color == original_fill
+
+    # ==================================================================
+    # Regression tests — value labels & default Legend for discrete
+    # (added after the user reported that colordiscrete produced no
+    # visible legend and that "0"/"1" appeared instead of value labels.)
+    # ==================================================================
+
+    def test_colordiscrete_default_renders_legend_not_colorbar(self):
+        """REGRESSION: colordiscrete (no coloruseplegend) → Legend, not ColorBar.
+
+        The user expects a visible legend with one entry per category.
+        Before the fix, only a (visually weak) ColorBar was added when
+        coloruseplegend was not explicitly specified.
+        """
+        from bokeh.models import Legend, ColorBar
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(
+            fig, r, cds,
+            {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+        )
+        right = list(fig.right)
+        assert any(isinstance(lay, Legend) for lay in right), (
+            "colordiscrete should render a Bokeh Legend by default"
+        )
+        assert not any(isinstance(lay, ColorBar) for lay in right), (
+            "ColorBar should not be added for discrete mappings"
+        )
+
+    def test_colordiscrete_legend_uses_value_labels(self):
+        """REGRESSION: legend entries display Stata value labels, not raw codes.
+
+        With value labels {"0": "Domestic", "1": "Foreign"} on `foreign`,
+        the legend items must read "Domestic"/"Foreign" — not "0"/"1".
+        """
+        from bokeh.models import Legend
+        fig = self._fig()
+        cds = ColumnDataSource({"foreign": [0.0, 1.0, 0.0, 1.0],
+                                 "y": [1.0, 2.0, 3.0, 4.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="foreign")
+        gm  = self._gm()
+        gm.value_label_names = {"foreign": "origin"}
+        gm.value_labels      = {"origin": {"0": "Domestic", "1": "Foreign"}}
+        gm._apply_colorvar(
+            fig, r, cds,
+            {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+        )
+        legend = next(lay for lay in fig.right if isinstance(lay, Legend))
+        labels = [_legend_label_text(it) for it in legend.items]
+        assert "Domestic" in labels and "Foreign" in labels, (
+            f"Expected value labels in legend; got {labels}"
+        )
+
+    def test_colordiscrete_legend_title_uses_variable_label(self):
+        """REGRESSION: legend title uses Stata variable label when present."""
+        from bokeh.models import Legend
+        fig = self._fig()
+        cds = ColumnDataSource({"foreign": [0.0, 1.0],
+                                 "y": [1.0, 2.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="foreign")
+        gm  = self._gm()
+        gm.variable_labels   = {"foreign": "Car origin"}
+        gm.value_label_names = {"foreign": "origin"}
+        gm.value_labels      = {"origin": {"0": "Domestic", "1": "Foreign"}}
+        gm._apply_colorvar(
+            fig, r, cds,
+            {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+        )
+        legend = next(lay for lay in fig.right if isinstance(lay, Legend))
+        assert legend.title == "Car origin", (
+            f"Legend title should be the variable label; got {legend.title!r}"
+        )
+
+    def test_colordiscrete_value_label_fallback_to_numeric(self):
+        """When no value labels exist, the legend still shows numeric codes."""
+        from bokeh.models import Legend
+        fig = self._fig()
+        cds = ColumnDataSource({"x": [0.0, 1.0, 2.0],
+                                 "y": [1.0, 2.0, 3.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="x")
+        gm  = self._gm()  # no value labels configured
+        gm._apply_colorvar(
+            fig, r, cds,
+            {"colorvar": "x", "colordiscrete": "colordiscrete"},
+        )
+        legend = next(lay for lay in fig.right if isinstance(lay, Legend))
+        labels = [_legend_label_text(it) for it in legend.items]
+        assert set(labels) >= {"0", "1", "2"}
+
+    def test_colordiscrete_two_distinct_colors_for_two_values(self):
+        """REGRESSION: two distinct values → two distinct palette colors."""
+        from bokeh.models import CategoricalColorMapper
+        fig = self._fig()
+        cds = ColumnDataSource({"foreign": [0.0, 1.0, 0.0, 1.0],
+                                 "y": [1.0, 2.0, 3.0, 4.0]})
+        r   = self._scatter(fig, cds, yvar="y", xvar="foreign")
+        gm  = self._gm()
+        gm._apply_colorvar(
+            fig, r, cds,
+            {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+        )
+        mapper = r.glyph.fill_color["transform"]
+        assert isinstance(mapper, CategoricalColorMapper)
+        # Bokeh palette colors for the two factors must differ
+        assert mapper.palette[0] != mapper.palette[1]
+
+    def test_no_colorvar_leaves_glyph_default_color(self):
+        """REGRESSION: a plot with no colorvar must not get a Legend or ColorBar.
+
+        Validates the user's expectation that `dash scatter mpg weight,
+        name(basic)` (no colorvar) produces a single-color scatter with no
+        color legend.
+        """
+        from bokeh.models import Legend, ColorBar
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter(fig, cds)
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds, {})  # no colorvar option
+        right = list(fig.right)
+        assert not any(isinstance(lay, (Legend, ColorBar)) for lay in right), (
+            "No legend/colorbar should be added when colorvar is absent"
+        )
+
+    # ==================================================================
+    # Auto-legend strip — when colorvar is applied, the in-plot legend
+    # item generated by fig.scatter(..., legend_label=yvar) becomes
+    # redundant and must be removed in favor of the colorvar Legend.
+    # ==================================================================
+
+    def _scatter_with_legend(self, fig, cds, yvar="y", xvar="x"):
+        """Mirror map_scatter's call shape: scatter(..., legend_label=yvar)."""
+        return fig.scatter(x=xvar, y=yvar, source=cds, legend_label=yvar)
+
+    def test_colorvar_strips_auto_legend_for_renderer(self):
+        """REGRESSION: colorvar removes the auto legend_label item for the glyph.
+
+        Without this, the figure shows BOTH a "mpg" item in the plot area
+        (auto-legend from legend_label=yvar) AND the colorvar Legend on the
+        right — visually noisy and confusing.
+        """
+        from bokeh.models import Legend
+        fig = self._fig()
+        cds = ColumnDataSource({"foreign": [0.0, 1.0, 0.0],
+                                 "y": [1.0, 2.0, 3.0]})
+        r   = self._scatter_with_legend(fig, cds, yvar="y", xvar="foreign")
+        # Sanity: an auto-legend item exists before _apply_colorvar
+        auto_items_pre = [
+            it for L in fig.legend for it in L.items
+            if r in list(it.renderers or [])
+        ]
+        assert len(auto_items_pre) == 1, (
+            "Pre-condition: scatter(legend_label=yvar) should create one item"
+        )
+
+        gm = self._gm()
+        gm._apply_colorvar(
+            fig, r, cds,
+            {"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+        )
+
+        # After: no Legend item references the original glyph
+        auto_items_post = [
+            it for L in fig.legend for it in L.items
+            if r in list(it.renderers or [])
+        ]
+        assert auto_items_post == [], (
+            "Auto legend_label item must be removed once colorvar is applied"
+        )
+        # And the colorvar Legend is still present on the right
+        assert any(isinstance(lay, Legend) for lay in fig.right), (
+            "Colorvar Legend should still be on fig.right"
+        )
+
+    def test_no_colorvar_keeps_auto_legend(self):
+        """REGRESSION: scatter without colorvar keeps its auto-legend item.
+
+        Validates the user's expectation that `dash scatter mpg weight,
+        name(basic)` (no colorvar) preserves the in-plot "mpg" legend.
+        """
+        fig = self._fig()
+        cds = self._cds_auto()
+        r   = self._scatter_with_legend(fig, cds, yvar="mpg", xvar="weight")
+        gm  = self._gm()
+        gm._apply_colorvar(fig, r, cds, {})  # no colorvar option
+
+        auto_items = [
+            it for L in fig.legend for it in L.items
+            if r in list(it.renderers or [])
+        ]
+        assert len(auto_items) == 1, (
+            "Without colorvar, the auto legend_label item must be preserved"
+        )

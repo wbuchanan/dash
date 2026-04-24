@@ -1116,6 +1116,88 @@ class TestFilterWidgetLabels:
                 try: os.unlink(p)
                 except OSError: pass
 
+    # ==================================================================
+    # Regression tests — Stata variable-label fallback for filter titles
+    # (added after the user reported `filter(rep78, type(dropdown))`
+    # showing "rep78" instead of the variable label "Repair record 1978".)
+    # ==================================================================
+
+    def _build_renderer_with_filter(self, var_label, explicit_label=""):
+        """Helper: build a DashRenderer with one dropdown filter on rep78.
+
+        var_label      — variableLabels["rep78"] in the data JSON
+        explicit_label — if non-empty, becomes the filter's label() option
+        """
+        import json, tempfile, os
+        vals = [{"mpg": float(20 + i),
+                 "weight": float(2000 + i * 100),
+                 "rep78":  float((i % 5) + 1)} for i in range(10)]
+        data = {"StataJSON": {
+            "variableNames": ["mpg", "weight", "rep78"],
+            "variableLabels": {"mpg": "Mileage (mpg)",
+                                "weight": "Weight (lbs.)",
+                                "rep78": var_label},
+            "valueLabels": {}, "valueLabelNames": {},
+            "variableTypeIsString": {"mpg": False, "weight": False, "rep78": False},
+            "values": vals,
+        }}
+        fc = {"varname": "rep78", "type": "dropdown"}
+        if explicit_label:
+            fc["label"] = explicit_label
+        spec = {
+            "graphs": [{"plots": [{"type": "scatter", "yvar": "mpg",
+                                    "xvar": "weight", "options": {}}],
+                         "graph_options": {"name": "g1"}, "if_expr": "", "in_expr": ""}],
+            "kpis": [],
+            "build_options": {
+                "layout": "auto", "link": "", "theme": "default",
+                "title": "", "subtitle": "", "registry": "g1",
+                "filters": [fc],
+            },
+        }
+        sp, dp, op = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(sp, "w") as f: json.dump(spec, f)
+            with open(dp, "w") as f: json.dump(data, f)
+            dr = DashRenderer(sp, dp, op)
+            dr.render()
+            return [w.title for w in dr.filter_widgets]
+        finally:
+            for p in (sp, dp, op):
+                try: os.unlink(p)
+                except OSError: pass
+
+    def test_filter_falls_back_to_variable_label(self):
+        """REGRESSION: filter dropdown uses the Stata variable label as title."""
+        titles = self._build_renderer_with_filter(var_label="Repair record 1978")
+        assert any("Repair record 1978" in t for t in titles), (
+            f"Expected widget title to use Stata variable label; got {titles}"
+        )
+        assert not any(t == "rep78" for t in titles), (
+            "Filter widget title must not be the bare variable name when a "
+            "variable label exists"
+        )
+
+    def test_filter_falls_back_to_varname_when_no_label(self):
+        """REGRESSION: missing variable label → falls back to variable name."""
+        titles = self._build_renderer_with_filter(var_label="")
+        assert any("rep78" in t for t in titles), (
+            f"Expected widget title to fall back to variable name; got {titles}"
+        )
+
+    def test_explicit_filter_label_overrides_variable_label(self):
+        """REGRESSION: explicit label() option wins over Stata variable label."""
+        titles = self._build_renderer_with_filter(
+            var_label="Repair record 1978",
+            explicit_label="Repairs",
+        )
+        assert any("Repairs" in t for t in titles), (
+            f"Explicit label should override variable label; got {titles}"
+        )
+        assert not any("Repair record 1978" in t for t in titles), (
+            "Variable label should not appear when explicit label is provided"
+        )
+
 
 # ================================================================
 # TEST-2: Filter edge-case tests

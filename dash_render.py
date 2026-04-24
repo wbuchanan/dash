@@ -1142,6 +1142,12 @@ class GlyphMapper:
             self.scheme: "SchemeParser" = SchemeParser("s2color")
         else:
             self.scheme = scheme
+        # Stata label metadata, populated by DashRenderer after _load_data().
+        # Used by _apply_colorvar to render value labels in legends and by
+        # other consumers that need human-readable variable display names.
+        self.variable_labels: dict[str, str]              = {}
+        self.value_labels:    dict[str, dict[str, str]]   = {}
+        self.value_label_names: dict[str, str]            = {}
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -1548,100 +1554,277 @@ class GlyphMapper:
     ) -> None:
         """Map a CDS variable's values to glyph fill/line color.
 
-        When ``colorvar(varname)`` is present and *varname* is a column in
-        *source*, a ``LinearColorMapper`` (numeric data) or
-        ``CategoricalColorMapper`` (string/boolean data) is applied and a
-        ``ColorBar`` is added on the right side of *fig*.
+        Supports Stata 18 colorvar_options:
+            colorvar(varname)   — variable whose values drive the color mapping
+            colordiscrete       — treat a numeric variable as discrete categories
+            coloruseplegend     — add a plot legend instead of a ColorBar
+            colornlevels(#)     — quantize continuous data into # equal-width levels
+            colorcuts(numlist)  — custom cut-point boundaries for continuous data
+            colormissing(color) — Bokeh color for missing/NaN values (default: grey)
+            colpalette(name)    — palette name; see _PALETTE_MAP for supported keys
 
-        An optional ``colpalette(name)`` option selects the palette.  Supported
-        names are the keys of ``_PALETTE_MAP`` (e.g. ``viridis``, ``magma``,
-        ``category10``).  Defaults to ``viridis`` for continuous data and
-        ``category10`` for categorical data.
-
-        Args:
-            fig:      Bokeh Figure object.
-            renderer: GlyphRenderer whose fill/line color will be driven by the
-                      mapper.
-            source:   ColumnDataSource containing *varname* as a column.
-            options:  Per-plot options dict (may contain ``colorvar`` and
-                      ``colpalette``).
+        Numeric columns default to a LinearColorMapper (viridis palette).
+        String columns, or numeric columns with colordiscrete / colornlevels /
+        colorcuts, use a CategoricalColorMapper (category10 palette).
         """
         varname = options.get("colorvar", "").strip()
         if not varname or varname not in source.data:
             return
 
-        # Security: validate varname is a safe identifier
+        # Security: validate varname is a safe Stata identifier
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", varname):
             return
 
         from bokeh.models import (
             LinearColorMapper, CategoricalColorMapper, ColorBar,
+            Legend, LegendItem,
         )
         from bokeh import palettes as _bk_palettes
 
-        raw_col = source.data[varname]
-        palette_key = options.get("colpalette", "").strip().lower()
+        raw_col       = source.data[varname]
+        palette_key   = options.get("colpalette", "").strip().lower()
+        force_discrete = bool(options.get("colordiscrete"))
+        # coloruseplegend is accepted for Stata 18 compatibility but is now
+        # redundant for discrete mappings — discrete always renders a Legend.
+        # The variable kept here for clarity / future use.
+        _use_plegend  = bool(options.get("coloruseplegend"))  # noqa: F841
+        missing_color = options.get("colormissing", "").strip() or "grey"
 
-        # Determine if the column is numeric or categorical
+        # Stata label metadata, populated by DashRenderer after _load_data().
+        # Used to render value labels on legend entries and to display the
+        # variable label as the legend/colorbar title.
+        var_display = self.variable_labels.get(varname, "") or varname
+        labelset    = self.value_label_names.get(varname, "")
+        vlabels     = self.value_labels.get(labelset, {}) if labelset else {}
+        if not vlabels:
+            _candidate = self.value_labels.get(varname, {})
+            if isinstance(_candidate, dict):
+                vlabels = _candidate
+
+        def _vlookup(v: float) -> str:
+            """Return the Stata value label for v if defined, else numeric str.
+
+            Stata value labels are keyed on the integer code as a string
+            (e.g. "0" → "Domestic"); fall back to a generic numeric repr.
+            """
+            try:
+                if float(v).is_integer():
+                    key = str(int(v))
+                else:
+                    key = f"{v:g}"
+            except (TypeError, ValueError):
+                key = str(v)
+            return vlabels.get(key, f"{v:g}")
+
+        # Parse colornlevels (must be an integer >= 2)
+        nlevels = None
+        try:
+            nlevels = int((options.get("colornlevels") or "").strip())
+            nlevels = max(2, nlevels)
+        except (ValueError, TypeError):
+            nlevels = None
+
+        # Parse colorcuts (space-separated numlist → sorted float list)
+        cuts = None
+        cuts_str = (options.get("colorcuts") or "").strip()
+        if cuts_str:
+            try:
+                cuts = sorted(float(x) for x in cuts_str.split())
+            except ValueError:
+                cuts = None
+
+        # Determine whether the column is numeric
         try:
             col_vals = np.array(raw_col, dtype=float)
             is_numeric = not np.all(np.isnan(col_vals))
         except (ValueError, TypeError):
             is_numeric = False
+            col_vals = None
 
-        if is_numeric:
+        needs_binning = cuts is not None or nlevels is not None
+        use_discrete  = force_discrete or not is_numeric or needs_binning
+
+        # ------------------------------------------------------------------
+        # DISCRETE path — CategoricalColorMapper
+        # ------------------------------------------------------------------
+        if use_discrete:
+            color_field = varname  # overridden for derived bin columns
+
+            if is_numeric and (force_discrete or needs_binning):
+                color_field = f"_cvar_{varname}_bin"
+
+                if cuts is not None:
+                    # User-supplied boundaries: bins are (-∞, c0], (c0, c1], …, (cN, +∞)
+                    n_bins = len(cuts) + 1
+                    labels = []
+                    for i in range(n_bins):
+                        lo_b = cuts[i - 1] if i > 0 else None
+                        hi_b = cuts[i]     if i < len(cuts) else None
+                        if lo_b is None:
+                            labels.append(f"\u2264{hi_b:g}")
+                        elif hi_b is None:
+                            labels.append(f">{lo_b:g}")
+                        else:
+                            labels.append(f"{lo_b:g}\u2013{hi_b:g}")
+
+                    def _assign_cut(v: float) -> str:
+                        if np.isnan(v):
+                            return "__missing__"
+                        idx = int(np.searchsorted(cuts, v, side="left"))
+                        return labels[min(idx, n_bins - 1)]
+
+                    binned = [_assign_cut(v) for v in col_vals]
+
+                elif nlevels is not None:
+                    # Equal-width quantization into nlevels bins
+                    lo_v = float(np.nanmin(col_vals))
+                    hi_v = float(np.nanmax(col_vals))
+                    if lo_v == hi_v:
+                        hi_v = lo_v + 1.0
+                    edges  = np.linspace(lo_v, hi_v, nlevels + 1)
+                    labels = [f"{edges[i]:g}\u2013{edges[i + 1]:g}"
+                              for i in range(nlevels)]
+                    inner  = edges[1:-1]  # interior boundaries for searchsorted
+
+                    def _assign_nlev(v: float) -> str:
+                        if np.isnan(v):
+                            return "__missing__"
+                        idx = int(np.searchsorted(inner, v, side="left"))
+                        return labels[min(idx, nlevels - 1)]
+
+                    binned = [_assign_nlev(v) for v in col_vals]
+
+                else:
+                    # colordiscrete: each distinct numeric value → its own category.
+                    # Resolve the Stata value label for each level so the legend
+                    # shows e.g. "Domestic"/"Foreign" instead of "0"/"1".
+                    non_nan = [v for v in col_vals if not np.isnan(v)]
+                    unique_sorted = sorted(set(non_nan))
+                    val_label = {v: _vlookup(v) for v in unique_sorted}
+                    labels = [val_label[v] for v in unique_sorted]
+                    binned = [
+                        "__missing__" if np.isnan(v) else val_label[v]
+                        for v in col_vals
+                    ]
+
+                has_missing = any(b == "__missing__" for b in binned)
+                source.data[color_field] = binned
+                factors = labels + (["__missing__"] if has_missing else [])
+
+            else:
+                # Already categorical (string / object column)
+                factors = sorted(
+                    str(v) for v in raw_col
+                    if v is not None and str(v) != "nan"
+                )
+                source.data[varname] = [str(v) for v in raw_col]
+                has_missing = False
+
+            if not factors:
+                return
+
+            non_missing_factors = [f for f in factors if f != "__missing__"]
+            pal_name = self._PALETTE_MAP.get(palette_key or "category10",
+                                             "Category10_10")
+            pal_list = list(getattr(_bk_palettes, pal_name,
+                                    _bk_palettes.Category10_10))
+            while len(pal_list) < len(non_missing_factors):
+                pal_list += pal_list
+            pal_colors = pal_list[:len(non_missing_factors)]
+            if "__missing__" in factors:
+                pal_colors = pal_colors + [missing_color]
+
+            mapper     = CategoricalColorMapper(factors=factors, palette=pal_colors)
+            color_spec = {"field": color_field, "transform": mapper}
+            glyph      = renderer.glyph
+            try:
+                glyph.fill_color = color_spec
+                glyph.line_color = color_spec
+            except (AttributeError, ValueError):
+                pass
+
+            # Discrete mappings always render as a Bokeh Legend with one entry
+            # per category — matches Stata 18's default colordiscrete behavior
+            # ("color legend" with discrete swatches) and ensures users can
+            # identify the colored categories by name. Dummy invisible
+            # renderers carry the per-factor color into the legend item.
+            legend_items = []
+            for factor, color in zip(non_missing_factors,
+                                     pal_colors[:len(non_missing_factors)]):
+                _r = fig.scatter(
+                    x=[float("nan")], y=[float("nan")],
+                    color=color, size=0,
+                    visible=False, name=f"_clegend_{factor}",
+                )
+                legend_items.append(LegendItem(label=factor, renderers=[_r]))
+            if "__missing__" in factors:
+                _rm = fig.scatter(
+                    x=[float("nan")], y=[float("nan")],
+                    color=missing_color, size=0,
+                    visible=False, name="_clegend___missing__",
+                )
+                legend_items.append(LegendItem(label="(missing)", renderers=[_rm]))
+            fig.add_layout(
+                Legend(items=legend_items, title=html.escape(var_display)),
+                "right",
+            )
+
+        # ------------------------------------------------------------------
+        # CONTINUOUS path — LinearColorMapper
+        # ------------------------------------------------------------------
+        else:
             lo = float(np.nanmin(col_vals))
             hi = float(np.nanmax(col_vals))
             if lo == hi:
                 hi = lo + 1.0
             pal_name = self._PALETTE_MAP.get(palette_key or "viridis", "Viridis256")
-            palette = getattr(_bk_palettes, pal_name, None)
-            if palette is None:
-                palette = _bk_palettes.Viridis256
-            mapper = LinearColorMapper(palette=palette, low=lo, high=hi,
-                                       nan_color="grey")
-        else:
-            # Categorical: convert all values to strings, get unique sorted factors
-            factors = sorted({str(v) for v in raw_col
-                               if v is not None and str(v) != "nan"})
-            if not factors:
-                return
-            pal_name = self._PALETTE_MAP.get(palette_key or "category10",
-                                             "Category10_10")
-            palette = getattr(_bk_palettes, pal_name, None)
-            if palette is None:
-                palette = _bk_palettes.Category10_10
-            # Extend palette if more factors than palette entries
-            pal_list = list(palette)
-            while len(pal_list) < len(factors):
-                pal_list += pal_list
-            palette = pal_list[:len(factors)]
-            # Re-encode source column as strings for CategoricalColorMapper
-            source.data[varname] = [str(v) for v in raw_col]
-            mapper = CategoricalColorMapper(factors=factors, palette=palette)
+            palette  = getattr(_bk_palettes, pal_name, _bk_palettes.Viridis256)
+            mapper   = LinearColorMapper(palette=palette, low=lo, high=hi,
+                                         nan_color=missing_color)
+            color_spec = {"field": varname, "transform": mapper}
+            glyph      = renderer.glyph
+            try:
+                glyph.fill_color = color_spec
+                glyph.line_color = color_spec
+            except (AttributeError, ValueError):
+                pass
 
-        # Apply mapper to the glyph fill and line color
-        glyph = renderer.glyph
-        color_spec = {"field": varname, "transform": mapper}
-        try:
-            glyph.fill_color = color_spec
-            glyph.line_color = color_spec
-        except (AttributeError, ValueError):
-            pass
+            try:
+                fig.add_layout(
+                    ColorBar(color_mapper=mapper, label_standoff=8,
+                             width=12, location=(0, 0),
+                             title=html.escape(var_display)),
+                    "right",
+                )
+            except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
+                import warnings
+                warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
 
-        # Add a ColorBar to the right of the figure
-        try:
-            color_bar = ColorBar(
-                color_mapper=mapper,
-                label_standoff=8,
-                width=12,
-                location=(0, 0),
-                title=html.escape(varname),
-            )
-            fig.add_layout(color_bar, "right")
-        except (ValueError, TypeError, KeyError) as _exc:   # noqa: BLE001 — never crash the render
-            import warnings
-            warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
+        # ------------------------------------------------------------------
+        # Strip the auto-generated `legend_label=yvar` item for *renderer*
+        # from any pre-existing Legend on the figure.
+        #
+        # When colorvar is applied, the colorvar Legend (or ColorBar) on the
+        # right is the canonical color identifier; the in-plot "mpg" item
+        # added by `fig.scatter(..., legend_label=yvar)` becomes redundant
+        # and visually clutters the plot area.
+        #
+        # The colorvar Legend we just added uses dummy invisible scatter
+        # renderers, so filtering on `renderer` (the original glyph) does
+        # not touch the colorvar Legend's own items.
+        # ------------------------------------------------------------------
+        for _slot in (fig.right, fig.left, fig.above, fig.below, fig.center):
+            for _lay in list(_slot):
+                if isinstance(_lay, Legend):
+                    _lay.items = [
+                        it for it in _lay.items
+                        if renderer not in list(it.renderers or [])
+                    ]
+                    if not _lay.items:
+                        try:
+                            _slot.remove(_lay)
+                        except ValueError:
+                            pass
 
     def _apply_mlabel_opts(
         self,
@@ -4854,6 +5037,13 @@ class DashRenderer:
 
         self._load_data()
 
+        # Propagate Stata label metadata to the GlyphMapper so that
+        # _apply_colorvar (and any future consumer) can render value labels
+        # and human-readable display names in legends/labels.
+        self.mapper.variable_labels   = self.variable_labels
+        self.mapper.value_labels      = self.value_labels
+        self.mapper.value_label_names = self.value_label_names
+
     # ------------------------------------------------------------------
     # Data loading
     # ------------------------------------------------------------------
@@ -6992,7 +7182,13 @@ class DashRenderer:
                 if isinstance(candidate, dict):
                     vlabels = candidate
 
-            flabel = fc.get("label", fvar)
+            # Resolve filter widget title:
+            #   1. explicit label() option from the filter spec
+            #   2. Stata variable label (e.g. "Repair record 1978")
+            #   3. variable name (final fallback)
+            flabel = (fc.get("label") or "").strip() \
+                     or self.variable_labels.get(fvar, "").strip() \
+                     or fvar
             if ftype == "dropdown":
                 widget, cb = FilterBuilder.build_dropdown(
                     fvar, fsource, None, vlabels,

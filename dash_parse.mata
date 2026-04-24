@@ -661,10 +661,14 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     string scalar    found, varlist, val
     real scalar      pos, endpos, orig_pos, local_pos, k
 
+    // Include "colorvar" so the variable referenced by colorvar() is added to
+    // the jsonio varlist; without this, foreign/etc. is missing from the data
+    // JSON and value labels never reach the Python renderer.
     keys    = (char(34)+"yvar"+char(34)+":",   char(34)+"xvar"+char(34)+":",  char(34)+"var"+char(34)+":",
                char(34)+"yvar1"+char(34)+":", char(34)+"yvar2"+char(34)+":",
                char(34)+"y1var"+char(34)+":", char(34)+"x1var"+char(34)+":", char(34)+"y2var"+char(34)+":", char(34)+"x2var"+char(34)+":",
-               char(34)+"mlabel"+char(34)+":")
+               char(34)+"mlabel"+char(34)+":",
+               char(34)+"colorvar"+char(34)+":")
     varlist = ""
 
     for (k = 1; k <= cols(keys); k++) {
@@ -727,8 +731,8 @@ void _dash_extract_qual_vars(string scalar json_str,
     reserved = ("True", "False", "None", "nan", "NaN", "inf",
                 "and",  "or",    "not",  "in",  "is")
 
-    by_keys   = (char(34) + "by"      + char(34) + ":",)
-    expr_keys = (char(34) + "if_expr" + char(34) + ":",)
+    by_keys   = (char(34) + "by"      + char(34) + ":")
+    expr_keys = (char(34) + "if_expr" + char(34) + ":")
 
     varlist = ""
     n       = strlen(json_str)
@@ -765,7 +769,7 @@ void _dash_extract_qual_vars(string scalar json_str,
             while (pos <= n) {
                 ch = substr(json_str, pos, 1)
                 if (ch == char(34)) break           // unescaped closing quote
-                if (ch == "\" & pos + 1 <= n) {
+                if (ch == "\\" & pos + 1 <= n) {
                     pos = pos + 2; continue         // skip escape sequence
                 }
                 val = val + ch
@@ -805,7 +809,7 @@ void _dash_extract_qual_vars(string scalar json_str,
             while (pos <= n) {
                 ch = substr(json_str, pos, 1)
                 if (ch == char(34)) break
-                if (ch == "\" & pos + 1 <= n) {
+                if (ch == "\\" & pos + 1 <= n) {
                     pos = pos + 2; continue     // skip \" and other escapes
                 }
                 val = val + ch
@@ -997,24 +1001,21 @@ void _dash_json_get_str(string scalar json_str,
             // Unescaped closing double-quote — end of string value
             break
         }
-        else if (ch == "\") {
+        else if (ch == "\\") {
             // Escape sequence — peek at next character
             if (pos + 1 <= n) {
                 ch = substr(json_str, pos + 1, 1)
-                if      (ch == char(34)) { value = value + char(34); pos = pos + 2 }
-                else if (ch == "\")      { value = value + "\";       pos = pos + 2 }
-                else if (ch == "n")      { value = value + char(10);  pos = pos + 2 }
-                else if (ch == "r")      { value = value + char(13);  pos = pos + 2 }
-                else if (ch == "t")      { value = value + char(9);   pos = pos + 2 }
-                else {
-                    // Unknown escape — keep both chars verbatim
-                    value = value + "\" + ch
-                    pos   = pos + 2
-                }
+                if      (ch == char(34)) value = value + char(34)
+                else if (ch == "\\")     value = value + "\\"
+                else if (ch == "n")      value = value + char(10)
+                else if (ch == "r")      value = value + char(13)
+                else if (ch == "t")      value = value + char(9)
+                else                     value = value + "\\" + ch
+                pos = pos + 2
             }
             else {
                 // Trailing backslash with no next char — keep it
-                value = value + "\"
+                value = value + "\\"
                 pos++
             }
         }
@@ -1028,3 +1029,5 @@ void _dash_json_get_str(string scalar json_str,
 }
 
 end
+
+

@@ -160,17 +160,20 @@ program define _dash_validate_path
         exit(198)
     }
     // Reject shell metacharacters to prevent command injection via shell open/start/xdg-open.
-    // Blocked characters: ; & | < > ( ) backtick(96) dollar(36) newline(10) carriage-return(13) tab(9)
-    // Use char() for chars that Stata would expand/misinterpret inside double-quoted strings.
-    local _shell_bad = ";&|<>()" + char(96) + char(36) + char(10) + char(13) + char(9)
-    local _pi = 1
-    while `_pi' <= length("`_shell_bad'") {
-        local _bc = substr("`_shell_bad'", `_pi', 1)
-        if strpos(`"`fpath'"', `"`_bc'"') > 0 {
+    // Printable metacharacters checked via regexm character class.
+    // Chars that Stata would misinterpret during macro expansion (backtick=96, dollar=36)
+    // and control characters (tab=9, newline=10, CR=13) checked via strpos+char() to
+    // avoid the "too few quotes" crash that occurs when a compound-quoted macro value
+    // contains a backtick.
+    if regexm("`fpath'", "[;&|<>()]") {
+        display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
+        exit(198)
+    }
+    foreach _cnum of numlist 96 36 9 10 13 {
+        if strpos("`fpath'", char(`_cnum')) > 0 {
             display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
             exit(198)
         }
-        local _pi = `_pi' + 1
     }
 end
 
@@ -301,6 +304,8 @@ program define _dash_parse_plot_opts, sclass
         jitter(string)          jseed(string)                                 ///
         yaxis(string)           xaxis(string)                                 ///
         colorvar(string)        colpalette(string)                            ///
+        colordiscrete           coloruseplegend                               ///
+        colornlevels(string)    colorcuts(string asis)   colormissing(string) ///
         bwidth(string)          degree(string)                                ///
         pstyle(string)          cmissing(string)        recast(string)        ///
         connect(string)                                                        ///
@@ -349,8 +354,13 @@ program define _dash_parse_plot_opts, sclass
     sreturn local jseed        "`jseed'"
     sreturn local yaxis        "`yaxis'"
     sreturn local xaxis        "`xaxis'"
-    sreturn local colorvar     "`colorvar'"
-    sreturn local colpalette   "`colpalette'"
+    sreturn local colorvar        "`colorvar'"
+    sreturn local colpalette      "`colpalette'"
+    sreturn local colordiscrete   "`colordiscrete'"
+    sreturn local coloruseplegend "`coloruseplegend'"
+    sreturn local colornlevels    "`colornlevels'"
+    sreturn local colorcuts       `"`colorcuts'"'
+    sreturn local colormissing    "`colormissing'"
     sreturn local bwidth       "`bwidth'"
     sreturn local degree       "`degree'"
     sreturn local pstyle       "`pstyle'"
@@ -468,6 +478,7 @@ program define _dash_plot_opts_to_json, rclass
                    malpha marker lcolor lwidth lpattern lalpha          ///
                    fcolor fintensity falpha barwidth base blcolor bfcolor ///
                    jitter jseed yaxis xaxis colorvar colpalette         ///
+                   colordiscrete coloruseplegend colornlevels colorcuts colormissing ///
                    bwidth degree pstyle cmissing recast connect {
         local val `"`s(`key')'"'
         if `"`val'"' != "" {
