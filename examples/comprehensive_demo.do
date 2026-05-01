@@ -169,31 +169,31 @@ dash rspike mpg_lo mpg_hi weight, lc(forest_green) ///
 // MULTIVARIATE GRAPHS  (3+ variables, overlaid categories, by(), etc.)
 // ================================================================
 
-// m1: scatter with by() faceting by car origin  ★ primary by() example
-dash scatter mpg weight, by(foreign) ///
-     name(m1) title("MPG vs Weight by Car Origin (by)") ///
+// m1: scatter color-coded by car origin  (colorvar)
+dash scatter mpg weight, colorvar(foreign) colordiscrete ///
+     name(m1) title("MPG vs Weight: Color-Coded by Car Origin") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m2: OLS fit with 95% CI band  (scatter + lfitci)
-dash (scatter mpg weight, mc(navy) msi(small))     ///
+dash (scatter mpg weight, colorvar(foreign) colordiscrete)     ///
      (lfitci  mpg weight, fc(ltblue) fa(0.3)),     ///
      name(m2) title("OLS Fit with 95% CI (lfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m3: quadratic fit with 95% CI  (scatter + qfitci)
-dash (scatter mpg weight, mc(purple) msi(small))   ///
+dash (scatter mpg weight, colorvar(foreign) colordiscrete)   ///
      (qfitci  mpg weight, fc(lavender) fa(0.3)),   ///
      name(m3) title("Quadratic Fit with 95% CI (qfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m4: local polynomial with 95% CI  (scatter + lpolyci)
-dash (scatter mpg weight, mc(forest_green) msi(small)) ///
+dash (scatter mpg weight, colorvar(foreign) colordiscrete) ///
      (lpolyci mpg weight, fc(lime) fa(0.3)),            ///
      name(m4) title("Local Poly with 95% CI (lpolyci)")  ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
 // m5: fractional polynomial fit + CI  (scatter + fpfitci)
-dash (scatter mpg weight, mc(orange) msi(small))  ///
+dash (scatter mpg weight, colorvar(foreign) colordiscrete)  ///
      (fpfitci mpg weight, fc(gold) fa(0.3)),       ///
      name(m5) title("Fractional Poly Fit + CI (fpfitci)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
@@ -202,31 +202,35 @@ dash (scatter mpg weight, mc(orange) msi(small))  ///
 // Uses colorvar() to encode rep78 values as distinct colors
 // Note: To use different marker shapes per group, use multiple scatter commands with if conditions
 //       (as shown in commented code below). Future versions may support marker shape encoding.
-dash scatter mpg weight, colorvar(rep78), ///
+dash scatter mpg weight, colorvar(rep78) colordiscrete ///
      name(m6) title("MPG vs Weight: Color-Coded by Repair Record") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
 
-// m7: rconnected  (range connected — mpg ± 2 vs weight)
+// m7: rconnected  (range connected — mpg ± 2 vs weight)  ★ primary by() example
 dash rconnected mpg_lo mpg_hi weight, mc(maroon) lc(maroon) ///
-     name(m7) title("MPG Range vs Weight: rconnected") ///
-     xtitle("Weight (lbs.)") ytitle("MPG ± 2")
+     name(m7) title("MPG Range vs Weight: rconnected (by)") ///
+     xtitle("Weight (lbs.)") ytitle("MPG ± 2") by(foreign)
 
 // m8: rline  (range line)
 dash rline mpg_lo mpg_hi weight, lc(navy) ///
      name(m8) title("MPG Range vs Weight: rline") ///
-     xtitle("Weight (lbs.)") ytitle("MPG ± 2")
+     xtitle("Weight (lbs.)") ytitle("MPG ± 2") by(foreign)
 
 // m9: rcapsym  (range cap with symmetric decorations)
 dash rcapsym mpg_lo mpg_hi weight, mc(maroon) lc(maroon) ///
      name(m9) title("MPG Range vs Weight: rcapsym") ///
-     xtitle("Weight (lbs.)") ytitle("MPG ± 2")
+     xtitle("Weight (lbs.)") ytitle("MPG ± 2") by(foreign)
 
 // m10: rscatter  (range scatter plot)
 dash rscatter mpg_lo mpg_hi weight, mc(navy) ///
      name(m10) title("MPG Range vs Weight: rscatter") ///
-     xtitle("Weight (lbs.)") ytitle("MPG ± 2")
+     xtitle("Weight (lbs.)") ytitle("MPG ± 2") by(foreign)
 
 // m11: pcarrow  (paired-coordinate arrows)
+// Note: pc_y2/pc_x2 (lines 31-32) encode the domestic-vs-foreign contrast
+// directly in the offsets, so this is overlaid (no by()) — faceting would
+// degenerate every arrow within a panel into the same parallel offset and
+// erase the visual contrast that the offsets were constructed to demonstrate.
 dash pcarrow pc_y1 pc_x1 pc_y2 pc_x2, ///
      name(m11) title("Paired-Coordinate Arrows (pcarrow)") ///
      xtitle("Weight (lbs.)") ytitle("Mileage (mpg)")
