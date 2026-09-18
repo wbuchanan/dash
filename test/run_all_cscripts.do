@@ -35,17 +35,25 @@ local n_pass = 0
 local n_fail = 0
 local n_skip = 0
 
+// Scripts run under -capture noisily-, not bare -capture-.  Quiet capture
+// suppresses everything the scripts display, which hid the SKIP: messages
+// and broke any check that verifies dash's own output -- a test of the
+// unsupported-option note cannot see the note if the note is suppressed.
 // ----------------------------------------------------------------
 // 1. test_tokenizer.cscript
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_tokenizer.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_tokenizer.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_tokenizer.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -63,12 +71,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_parser.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_parser.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_parser.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -86,12 +98,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_jsonio.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_jsonio.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_jsonio.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -109,12 +125,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_single.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_e2e_single.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_e2e_single.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -132,12 +152,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_multi.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_e2e_multi.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_e2e_multi.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -155,12 +179,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_filters.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_e2e_filters.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_e2e_filters.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -178,12 +206,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_kpi.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_e2e_kpi.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_e2e_kpi.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -202,12 +234,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_ado_loads.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_ado_loads.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_ado_loads.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -226,11 +262,11 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_mata_autoload.cscript"
 cd "`dashdir'"
-capture {
+capture noisily {
     do "test/test_mata_autoload.cscript"
 }
 local rc = _rc
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_mata_autoload.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -250,12 +286,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_adversarial.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_adversarial.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_adversarial.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -276,12 +316,16 @@ else {
 // ----------------------------------------------------------------
 display as text "[ RUN ] test_e2e_serve.cscript"
 cd "`testdir'"
-capture {
+capture noisily {
     do "test_e2e_serve.cscript"
 }
 local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
 cd "`dashdir'"
-if `rc' == 111 {
+if `rc' == 222 {
     display as text "[ SKIP] test_e2e_serve.cscript  (dependency unavailable)"
     local n_skip = `n_skip' + 1
 }
@@ -291,6 +335,90 @@ else if `rc' == 0 {
 }
 else {
     display as error "[ FAIL] test_e2e_serve.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 12. test_abbreviations.cscript
+// Stata-derived abbreviation conformance (section 04)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_abbreviations.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_abbreviations.cscript"
+}
+local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_abbreviations.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_abbreviations.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_abbreviations.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 13. test_option_surface.cscript
+// every twoway command in the corpus must run (section 05)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_option_surface.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_option_surface.cscript"
+}
+local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_option_surface.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_option_surface.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_option_surface.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 14. test_varlist_expansion.cscript
+// varlist and plot-spec correctness (section 06)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_varlist_expansion.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_varlist_expansion.cscript"
+}
+local rc = _rc
+// A script that dies mid-scan leaves its `file open' handle open; clear all
+// does not close file handles, and the next script's file open then fails for
+// a reason that has nothing to do with what it is testing.
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_varlist_expansion.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_varlist_expansion.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_varlist_expansion.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
 

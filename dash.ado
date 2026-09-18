@@ -165,11 +165,19 @@ program define _dash_validate_path
     // and control characters (tab=9, newline=10, CR=13) checked via strpos+char() to
     // avoid the "too few quotes" crash that occurs when a compound-quoted macro value
     // contains a backtick.
-    if regexm("`fpath'", "[;&|<>()]") {
+    // Parentheses are NOT rejected: every shell call site quotes the path
+    // ("shell open \"`saving_path'\""), inside which ( and ) are literal, and
+    // rejecting them broke every Windows path under "Program Files (x86)".
+    // The characters that genuinely matter inside double quotes are handled
+    // below; the rest are kept as defence in depth since paths rarely contain
+    // them.
+    if regexm("`fpath'", `"[;&|<>]"') {
         display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
         exit(198)
     }
-    foreach _cnum of numlist 96 36 9 10 13 {
+    // 34 = double quote, which would terminate the quoted argument at the
+    // shell call site; it was previously not checked at all.
+    foreach _cnum of numlist 96 36 34 9 10 13 {
         if strpos("`fpath'", char(`_cnum')) > 0 {
             display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
             exit(198)
@@ -261,6 +269,9 @@ program define _dash_parse_graph_opts, sclass
         SUBTITLE2(string)         NODRAW                    PLAY(string) ///
         T(string)                 B(string)                 L(string) ///
         R(string) ///
+        PBGC(string)              XLA2(string asis)         XSC2(string asis) ///
+        XTI2(string)              YLA2(string asis)         YSC2(string asis) ///
+        YTI2(string) ///
         * ///
     ]
 
@@ -275,6 +286,18 @@ program define _dash_parse_graph_opts, sclass
     if `"`b'"' != "" & `"`b1title'"' == "" local b1title `"`b'"'
     if `"`l'"' != "" & `"`l1title'"' == "" local l1title `"`l'"'
     if `"`r'"' != "" & `"`r1title'"' == "" local r1title `"`r'"'
+    // Fold alias forms onto their real option locals.  These are
+    // ALIASES, not prefixes, so Stata's truncation-based abbreviation
+    // cannot express them; they are declared above and merged here.
+    // twoway accepts none of them, so this is a superset and cannot
+    // break drop-in parity, but it keeps existing dash do-files working.
+    if `"`pbgc'"' != "" & `"`plotbgcolor'"' == "" local plotbgcolor `"`pbgc'"'
+    if `"`xla2'"' != "" & `"`xlabel2'"' == "" local xlabel2 `"`xla2'"'
+    if `"`xsc2'"' != "" & `"`xscale2'"' == "" local xscale2 `"`xsc2'"'
+    if `"`xti2'"' != "" & `"`xtitle2'"' == "" local xtitle2 `"`xti2'"'
+    if `"`yla2'"' != "" & `"`ylabel2'"' == "" local ylabel2 `"`yla2'"'
+    if `"`ysc2'"' != "" & `"`yscale2'"' == "" local yscale2 `"`ysc2'"'
+    if `"`yti2'"' != "" & `"`ytitle2'"' == "" local ytitle2 `"`yti2'"'
 
 
     // twoway accepts t(), b(), l() and r() as abbreviations of t1title(),
@@ -449,6 +472,10 @@ program define _dash_parse_plot_opts, sclass
         L2title(string)           R1title(string)           R2title(string) ///
         TITLE2(string)            SUBTITLE2(string)         NODRAW ///
         PLAY(string) ///
+        BW(string)                MLG(string)               CV(string) ///
+        COLV(string)              PBGC(string)              XLA2(string asis) ///
+        XSC2(string asis)         XTI2(string)              YLA2(string asis) ///
+        YSC2(string asis)         YTI2(string) ///
         * ///
     ]
     /* ---- plot-level ---- */
@@ -463,6 +490,22 @@ program define _dash_parse_plot_opts, sclass
     if `"`b'"' != "" & `"`b1title'"' == "" local b1title `"`b'"'
     if `"`l'"' != "" & `"`l1title'"' == "" local l1title `"`l'"'
     if `"`r'"' != "" & `"`r1title'"' == "" local r1title `"`r'"'
+    // Fold alias forms onto their real option locals.  These are
+    // ALIASES, not prefixes, so Stata's truncation-based abbreviation
+    // cannot express them; they are declared above and merged here.
+    // twoway accepts none of them, so this is a superset and cannot
+    // break drop-in parity, but it keeps existing dash do-files working.
+    if `"`bw'"' != "" & `"`barwidth'"' == "" local barwidth `"`bw'"'
+    if `"`mlg'"' != "" & `"`mlabgap'"' == "" local mlabgap `"`mlg'"'
+    if `"`cv'"' != "" & `"`colorvar'"' == "" local colorvar `"`cv'"'
+    if `"`colv'"' != "" & `"`colorvar'"' == "" local colorvar `"`colv'"'
+    if `"`pbgc'"' != "" & `"`plotbgcolor'"' == "" local plotbgcolor `"`pbgc'"'
+    if `"`xla2'"' != "" & `"`xlabel2'"' == "" local xlabel2 `"`xla2'"'
+    if `"`xsc2'"' != "" & `"`xscale2'"' == "" local xscale2 `"`xsc2'"'
+    if `"`xti2'"' != "" & `"`xtitle2'"' == "" local xtitle2 `"`xti2'"'
+    if `"`yla2'"' != "" & `"`ylabel2'"' == "" local ylabel2 `"`yla2'"'
+    if `"`ysc2'"' != "" & `"`yscale2'"' == "" local yscale2 `"`ysc2'"'
+    if `"`yti2'"' != "" & `"`ytitle2'"' == "" local ytitle2 `"`yti2'"'
 
     // Options dash accepts but does not yet honour.  Each supplied one
     // is recorded by name so it is reported rather than silently
@@ -668,7 +711,10 @@ end
 // ================================================================
 program define _dash_parse_varpart_std, sclass
     version 16.0
-    syntax varlist [if] [in]
+    syntax varlist [if] [in] [aweight fweight pweight iweight]
+    // dash does not weight its glyphs, but a pasted twoway command may carry
+    // a weight expression and must not abort; it is reported as ignored.
+    if `"`weight'"' != "" sreturn local _weight `"`weight'"'
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -679,7 +725,10 @@ end
 // ================================================================
 program define _dash_parse_varpart_1v, sclass
     version 16.0
-    syntax varlist(min=1 max=1) [if] [in]
+    syntax varlist(min=1 max=1) [if] [in] [aweight fweight pweight iweight]
+    // dash does not weight its glyphs, but a pasted twoway command may carry
+    // a weight expression and must not abort; it is reported as ignored.
+    if `"`weight'"' != "" sreturn local _weight `"`weight'"'
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -690,7 +739,10 @@ end
 // ================================================================
 program define _dash_parse_varpart_3v, sclass
     version 16.0
-    syntax varlist(min=2 max=3) [if] [in]
+    syntax varlist(min=2 max=3) [if] [in] [aweight fweight pweight iweight]
+    // dash does not weight its glyphs, but a pasted twoway command may carry
+    // a weight expression and must not abort; it is reported as ignored.
+    if `"`weight'"' != "" sreturn local _weight `"`weight'"'
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -701,7 +753,10 @@ end
 // ================================================================
 program define _dash_parse_varpart_4v, sclass
     version 16.0
-    syntax varlist(min=4 max=4) [if] [in]
+    syntax varlist(min=4 max=4) [if] [in] [aweight fweight pweight iweight]
+    // dash does not weight its glyphs, but a pasted twoway command may carry
+    // a weight expression and must not abort; it is reported as ignored.
+    if `"`weight'"' != "" sreturn local _weight `"`weight'"'
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -713,7 +768,10 @@ end
 // ================================================================
 program define _dash_parse_varpart_any, sclass
     version 16.0
-    syntax anything(name=vals) [if] [in]
+    // equalok: twoway function's documented form is `function y = exp`.  Without
+    // it Stata rejects the "=" with r(101) "=exp not allowed", which made the
+    // `y=` stripper further down unreachable and the canonical form unusable.
+    syntax anything(name=vals equalok) [if] [in]
     sreturn local vals       `"`vals'"'
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -903,13 +961,45 @@ program define _dash_process_segment, rclass
         local in_cl `"`s(in_clause)'"'
     }
     else {
-        // Standard: 1 or 2 variables; last var is xvar
+        // Standard: the LAST variable is x; every variable before it is a
+        // y-variable and becomes its own plot, exactly as twoway does.
+        //   twoway scatter mpg price weight  ->  two series
+        // dash used to keep word 1 and the last word and silently discard
+        // everything between, so that command drew ONE series and half the
+        // user's data vanished with no error and no warning.
         if `"`varpart'"' != "" {
             _dash_parse_varpart_std `varpart'
             local vl = "`s(varlist)'"
             local nv : word count `vl'
             local yvar = word("`vl'", 1)
-            if `nv' >= 2 local xvar = word("`vl'", `nv')
+            if `nv' >= 2 {
+                local xvar = word("`vl'", `nv')
+                local nyv = `nv' - 1
+                local yvarlist ""
+                forvalues vi = 1/`nyv' {
+                    local _thisy = word("`vl'", `vi')
+                    local yvarlist `"`yvarlist' `_thisy'"'
+                }
+                local yvarlist = strtrim(`"`yvarlist'"')
+            }
+            else {
+                local yvarlist "`yvar'"
+                // tsline/tsrline with no x take the time variable from tsset,
+                // as twoway does.  Without this xvar stayed empty, the renderer
+                // hit a KeyError on "" and the user saw r(7102).
+                if inlist("`ptype'", "tsline", "tsrline") {
+                    local xvar `"`_dta[_TStvar]'"'
+                    if `"`xvar'"' == "" {
+                        // r(111) is what twoway itself returns here, verified
+                        // by probe: `twoway tsline mpg' on un-tsset data gives
+                        // r(111), and rc=0 once the data are tsset.
+                        display as error "dash: `ptype' needs a time variable. " ///
+                            "Either tsset your data first, or give the x " ///
+                            "variable explicitly, as in: dash `ptype' `yvar' timevar"
+                        exit(111)
+                    }
+                }
+            }
             local if_cl `"`s(if_clause)'"'
             local in_cl `"`s(in_clause)'"'
         }
@@ -982,19 +1072,51 @@ program define _dash_process_segment, rclass
         local vfields `""expr":"`_jex'""'
     }
     else if inlist("`ptype'", "scatteri", "pci", "pcscatter") {
-        // Encode as JSON array of [y, x] pairs
+        // Encode as a JSON array of [y, x] pairs, each optionally followed by a
+        // quoted marker label:   scatteri 20 3000 "A" 30 4000 "B"
+        // This used to pair tokens blindly, checking only that the count was
+        // even, so a labelled list came out sheared -- [[20,3000],["A",30],
+        // [4000,"B"]] -- which is not even the right shape.
         local words_raw `"`vals'"'
         local np : word count `words_raw'
-        if mod(`np', 2) != 0 {
-            display as error "dash: `ptype' requires even number of values (y x pairs), got `np'."
-            exit(198)
-        }
+        // A point's label rides on its own pair as an optional third element,
+        // [y, x, "label"], which is the shape map_scatteri reads.
         local arr "["
-        forvalues pi = 1(2)`np' {
-            local yv = word(`"`words_raw'"', `pi')
-            local xv = word(`"`words_raw'"', `=`pi'+1')
-            if `pi' > 1 local arr "`arr',"
-            local arr "`arr'[`yv',`xv']"
+        local nfirst = 1
+        local pi = 1
+        while `pi' <= `np' {
+            local yv `"`=word(`"`words_raw'"', `pi')'"'
+            local xv `"`=word(`"`words_raw'"', `=`pi'+1')'"'
+            if `"`xv'"' == "" {
+                display as error "dash: `ptype' needs coordinates in y x pairs;" ///
+                    " '`yv'' has no matching x value."
+                exit(198)
+            }
+            local pi = `pi' + 2
+
+            // A following NON-NUMERIC token is this point's marker label --
+            // but ONLY for scatteri.  pci and pcscatter take four values per
+            // record (pcscatter's are variable NAMES, which are non-numeric by
+            // definition), so applying the heuristic there would swallow a
+            // coordinate and shear the whole list.
+            local lab ""
+            if `pi' <= `np' & "`ptype'" == "scatteri" {
+                local nxt `"`=word(`"`words_raw'"', `pi')'"'
+                if missing(real(`"`nxt'"')) & `"`nxt'"' != "" {
+                    local lab = subinstr(`"`nxt'"', `"""', "", .)
+                    local pi = `pi' + 1
+                }
+            }
+
+            if !`nfirst' local arr "`arr',"
+            if `"`lab'"' == "" {
+                local arr "`arr'[`yv',`xv']"
+            }
+            else {
+                _dash_json_str `"`lab'"' _jlab
+                local arr `"`arr'[`yv',`xv',"`_jlab'"]"'
+            }
+            local nfirst = 0
         }
         local arr "`arr']"
         local vfields `""values":`arr'"'
@@ -1012,8 +1134,25 @@ program define _dash_process_segment, rclass
     _dash_json_str "`if_expr'" _jif
     _dash_json_str "`in_expr'" _jin
 
-    // Assemble
-    local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+    // Assemble.  A standard varlist with several y-variables produces ONE plot
+    // object per y-variable; they are comma-joined here and the caller splices
+    // them into the plots array exactly as it does separate segments, so each
+    // gets its own scheme style index downstream.
+    if `"`yvarlist'"' != "" {
+        local seg_json ""
+        local _nyv : word count `yvarlist'
+        forvalues _yi = 1/`_nyv' {
+            local _thisy = word(`"`yvarlist'"', `_yi')
+            _dash_json_str "`_thisy'" _jyv
+            _dash_json_str "`xvar'"   _jxv
+            local vfields `""yvar":"`_jyv'","xvar":"`_jxv'""'
+            if `_yi' > 1 local seg_json `"`seg_json',"'
+            local seg_json `"`seg_json'{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+        }
+    }
+    else {
+        local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
+    }
 
     c_local `plottype_out' "`ptype'"
     c_local `json_out'     `"`seg_json'"'
@@ -1157,8 +1296,16 @@ program define _dash_plot
     // this correctly handles \" escape sequences inside the value.
     local if_expr ""
     local in_expr ""
-    mata: _dash_json_get_str(`"`plots_json'"', "if_expr", "if_expr")
-    mata: _dash_json_get_str(`"`plots_json'"', "in_expr", "in_expr")
+    // Only promote when there is ONE segment, in which case the qualifier was
+    // written on the command as a whole.  With several segments each layer
+    // carries its own if_expr and the renderer applies it per layer; promoting
+    // the FIRST layer's qualifier here used to apply it to every layer, so
+    //   dash (scatter y x) (scatter y x if foreign)
+    // filtered both layers or neither.
+    if `n_segs' == 1 {
+        mata: _dash_json_get_str(`"`plots_json'"', "if_expr", "if_expr")
+        mata: _dash_json_get_str(`"`plots_json'"', "in_expr", "in_expr")
+    }
     _dash_json_str `"`if_expr'"' _jif_top
     _dash_json_str `"`in_expr'"' _jin_top
 
@@ -1183,6 +1330,19 @@ program define _dash_register_graph
     version 16.0
     args name raw_spec json_spec
 
+    // Split off a ", replace" sub-option BEFORE validating the name.  Stata's
+    // name(string) captures the whole of "g1, replace", which then failed the
+    // name regex below -- so name(g1, replace) was impossible, and the error
+    // message further down told the user to type the very syntax that could
+    // not work.
+    local replace_flag = 0
+    local _nm = strtrim(`"`name'"')
+    if regexm(`"`_nm'"', "^([^,]+)[ \t]*,[ \t]*replace[ \t]*$") {
+        local _nm = strtrim(regexs(1))
+        local replace_flag = 1
+    }
+    local name `"`_nm'"'
+
     // Validate name format
     if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]{0,31}$") {
         display as error "dash: invalid graph name '`name''. " ///
@@ -1191,11 +1351,13 @@ program define _dash_register_graph
         exit(198)
     }
 
-    // Check for replace sub-option
-    local replace_flag = 0
-    local raw_lower = lower(`"`raw_spec'"')
-    if regexm(`"`raw_lower'"', "name\([^)]*,[ \t]*replace") {
-        local replace_flag = 1
+    // Paren-mode fallback: the sub-option may have been written on the graph
+    // suffix rather than captured in name().
+    if `replace_flag' == 0 {
+        local raw_lower = lower(`"`raw_spec'"')
+        if regexm(`"`raw_lower'"', "name\([^)]*,[ \t]*replace") {
+            local replace_flag = 1
+        }
     }
 
     // Check if name already in registry
@@ -1248,6 +1410,23 @@ program define _dash_render_immediate
     }
 
     if `"`saving_path'"' != "" {
+        // twoway accepts saving(name), saving(name.gph) and
+        // saving(name, replace).  Normalise all three to a .html path BEFORE
+        // validating: validation demands a .html suffix, and it used to run
+        // before the suffix was appended, so every twoway-shaped saving()
+        // aborted with r(198).
+        local _sv = strtrim(`"`saving_path'"')
+        if regexm(`"`_sv'"', "^(.+)[ \t]*,[ \t]*replace[ \t]*$") {
+            local _sv = strtrim(regexs(1))
+            local replace = "replace"
+        }
+        if regexm(lower(`"`_sv'"'), "\.gph$") {
+            local _sv = substr(`"`_sv'"', 1, strlen(`"`_sv'"') - 4)
+            display as text "dash: saving() writes HTML, not a Stata .gph;" ///
+                " using `_sv'.html"
+        }
+        if !regexm(lower(`"`_sv'"'), "\.html$") local _sv `"`_sv'.html"'
+        local saving_path `"`_sv'"'
         _dash_validate_path "`saving_path'"
     }
     else {
@@ -1264,6 +1443,19 @@ program define _dash_render_immediate
     local needed_vars ""
     mata: _dash_extract_vars(`"`json_spec'"', "needed_vars")
 
+    // scatteri, pci, pcscatter and function take literal coordinates or an
+    // expression rather than variables, so having no varlist is correct for
+    // them -- this guard used to reject those plot types outright.
+    local _varfree = 0
+    foreach _vf in scatteri pci pcscatter function {
+        if strpos(`"`json_spec'"', `""type":"`_vf'""') > 0 local _varfree = 1
+    }
+    if "`needed_vars'" == "" & `_varfree' {
+        // Nothing to serialise, but jsonio still needs a non-empty varlist, so
+        // send a single variable the renderer will simply not read.
+        capture unab _allv : _all
+        if _rc == 0 local needed_vars : word 1 of `_allv'
+    }
     if "`needed_vars'" == "" {
         display as error "dash: no variables identified in plot specification."
         exit(198)

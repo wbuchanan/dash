@@ -72,19 +72,24 @@
 
 cscript "dash option and plot-type abbreviations" adodir ".."
 
+// Certification scripts share one Stata session, so start from a clean
+// state: leftover data, globals, tsset settings or loaded programs from an
+// earlier script otherwise leak in and change what this one measures.
+clear all
+
 // ----------------------------------------------------------------
 // Dependency guards
 // ----------------------------------------------------------------
 capture which jsonio
 if _rc != 0 {
     display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 111
+    exit 222
 }
 
 capture python: pass
 if _rc != 0 {
     display as error "SKIP: Python not available."
-    exit 111
+    exit 222
 }
 
 // ----------------------------------------------------------------
@@ -103,7 +108,7 @@ foreach cand in "fixtures/abbrev_truth.json" "test/fixtures/abbrev_truth.json" {
 if "${ZQA_FIXTURE}" == "" {
     display as error "SKIP: test/fixtures/abbrev_truth.json not found " ///
         "(run scripts/extract_abbrev_truth.do to build it)."
-    exit 111
+    exit 222
 }
 
 foreach cand in "../dash.sthlp" "dash.sthlp" {
@@ -114,7 +119,7 @@ foreach cand in "../dash.sthlp" "dash.sthlp" {
 }
 if "${ZQA_HELP}" == "" {
     display as error "SKIP: dash.sthlp not found."
-    exit 111
+    exit 222
 }
 
 do "../dash_parse.mata"
@@ -281,11 +286,17 @@ PT_VARS = {
     "rline": "turn mpg weight", "rscatter": "turn mpg weight",
     "function": "y=x", "scatteri": "20 3000", "qfit": "mpg weight",
     "qfitci": "mpg weight", "fpfit": "mpg weight", "fpfitci": "mpg weight",
-    "tsline": "mpg", "mband": "mpg weight", "mspline": "mpg weight",
+    # tsline with NO x needs tsset; twoway itself returns r(111) there, so a
+    # bare "mpg" would probe tsset behaviour instead of the abbreviation.
+    "tsline": "mpg turn", "mband": "mpg weight", "mspline": "mpg weight",
     "lowess": "mpg weight", "dot": "mpg weight",
 }
 for _n, _m in PTS.items():
     PT_VARS[_n] = _m["varlist"]
+# tsline/tsrline with NO x variable need the data tsset, and twoway ITSELF
+# returns r(111) there (verified by probe).  Probe with an explicit x so these
+# checks test the ABBREVIATION rather than tsset behaviour.
+PT_VARS["tsline"] = "mpg turn"
 
 # a usable value for every option dash declares but the fixture cannot probe
 EXTRA_VALUES = {

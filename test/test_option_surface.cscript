@@ -126,19 +126,24 @@
 
 cscript "dash twoway option surface conformance" adodir ".."
 
+// Certification scripts share one Stata session, so start from a clean
+// state: leftover data, globals, tsset settings or loaded programs from an
+// earlier script otherwise leak in and change what this one measures.
+clear all
+
 // ----------------------------------------------------------------
 // Dependency guards
 // ----------------------------------------------------------------
 capture which jsonio
 if _rc != 0 {
     display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 111
+    exit 222
 }
 
 capture python: pass
 if _rc != 0 {
     display as error "SKIP: Python not available."
-    exit 111
+    exit 222
 }
 
 // ----------------------------------------------------------------
@@ -155,7 +160,7 @@ if _rc != 0 {
     capture confirm file "`root'/dash.ado"
     if _rc != 0 {
         display as error "SKIP: cannot locate dash.ado from `c(pwd)'."
-        exit 111
+        exit 222
     }
 }
 
@@ -169,12 +174,12 @@ if _rc != 0 {
 capture confirm file "`corpus'"
 if _rc != 0 {
     display as error "SKIP: corpus fixture twoway_corpus.do not found."
-    exit 111
+    exit 222
 }
 capture confirm file "`rejjson'"
 if _rc != 0 {
     display as error "SKIP: fixture rejected_options.json not found."
-    exit 111
+    exit 222
 }
 
 do "`root'/dash_parse.mata"

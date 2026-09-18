@@ -3830,8 +3830,26 @@ class GlyphMapper:
             empty = ColumnDataSource({"x": [], "y": []})
             return [fig.scatter(x="x", y="y", source=empty)]
 
-        y_vals = np.array([float(pair[0]) for pair in values])
-        x_vals = np.array([float(pair[1]) for pair in values])
+        # A malformed values array used to surface as a bare
+        # "could not convert string to float: 'A'", which says nothing about
+        # where it came from.  Name the plot type and the offending pair.
+        try:
+            y_vals = np.array([float(pair[0]) for pair in values])
+            x_vals = np.array([float(pair[1]) for pair in values])
+        except (TypeError, ValueError, IndexError) as exc:
+            raise ValueError(
+                "dash: scatteri coordinates must be numeric y x pairs; got "
+                f"{values!r} ({exc}). Marker labels go after each pair, as in: "
+                'scatteri 20 3000 "A" 30 4000 "B"'
+            ) from exc
+
+        # An optional third element on a pair is that point's marker label:
+        #   scatteri 20 3000 "A" 30 4000 "B"  ->  [[20,3000,"A"],[30,4000,"B"]]
+        _labels = [
+            (str(pair[2]) if len(pair) > 2 and pair[2] is not None else "")
+            for pair in values
+        ]
+        _has_labels = any(_labels)
 
         # Apply jitter if requested
         jitter_raw = options.get("jitter", "")
@@ -3867,6 +3885,18 @@ class GlyphMapper:
         r = fig.scatter(x="x", y="y", source=si_source,
                         marker=marker, size=size,
                         fill_color=color, line_color=color)
+        # Marker labels, one per point, from the optional third element.
+        if _has_labels:
+            from bokeh.models import LabelSet
+            _lsrc = ColumnDataSource({
+                "x": list(x_vals), "y": list(y_vals), "lab": _labels,
+            })
+            fig.add_layout(LabelSet(
+                x="x", y="y", text="lab", source=_lsrc,
+                x_offset=4, y_offset=4,
+                text_font_size=self.scheme.text_font_size,
+            ))
+
         return [r]
 
     # ------------------------------------------------------------------
@@ -5526,6 +5556,15 @@ class DashRenderer:
         data_dict = {v: frame[v].tolist() for v in available}
         return ColumnDataSource(data=data_dict)
 
+    @staticmethod
+    def _df_for_source(source: ColumnDataSource) -> pd.DataFrame:
+        """Return a DataFrame view of a ColumnDataSource's columns.
+
+        Used to re-filter a shared source for a single plot layer that carries
+        its own if/in qualifier, without disturbing the other layers.
+        """
+        return pd.DataFrame({k: list(v) for k, v in source.data.items()})
+
     def _apply_graph_filter(
         self,
         graph_spec: dict,
@@ -6196,6 +6235,49 @@ class DashRenderer:
             pxvar = plot.get("xvar", xvar)
             popts = plot.get("options", {})
 
+            # A qualifier written on THIS layer applies to THIS layer only.
+            #   dash (scatter y x) (scatter y x if foreign)
+            # Previously only the first layer's if_expr was read, and it was
+            # promoted to the graph and applied to every layer -- so the
+            # qualifier above either filtered both layers or neither.
+            # tsline/tsrline need a time variable.  Without one the x column
+            # name is "", which surfaced deep inside Bokeh as a bare KeyError
+            # reported to the user as r(7102) with an empty message.
+            if ptype.lower() in ("tsline", "tsrline") and not str(pxvar).strip():
+                raise ValueError(
+                    "dash: %s needs a time variable but none was given and the "
+                    "data are not tsset. Either tsset the data first, or give "
+                    "the x variable explicitly, as in: dash %s <yvar> <timevar>"
+                    % (ptype, ptype)
+                )
+
+            _p_if = (plot.get("if_expr") or "").strip()
+            _p_in = (plot.get("in_expr") or "").strip()
+            _g_if = (graph_spec.get("if_expr") or "").strip()
+            _g_in = (graph_spec.get("in_expr") or "").strip()
+            source_for_plot = source
+            if (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in):
+                try:
+                    # _apply_graph_filter filters self.df, so restrict to the
+                    # rows this source actually carries afterwards -- a faceted
+                    # or already-qualified source is a subset of self.df.
+                    _pdf = self._apply_graph_filter(
+                        {"if_expr": _p_if, "in_expr": _p_in}
+                    )
+                    _sdf = self._df_for_source(source)
+                    _keep = [c for c in _sdf.columns if c in _pdf.columns]
+                    if _keep and len(_sdf) != len(self.df):
+                        _pdf = _pdf.merge(_sdf[_keep].drop_duplicates(),
+                                          on=_keep, how="inner")
+                    source_for_plot = ColumnDataSource(_pdf)
+                except Exception as _pexc:          # never lose the layer
+                    import warnings
+                    warnings.warn(
+                        f"dash: per-plot qualifier on layer {pi + 1} could not "
+                        f"be applied ({_pexc}); the layer is drawn unfiltered.",
+                        stacklevel=2,
+                    )
+
             # Determine secondary axis assignments for this plot layer
             _plot_yaxis = str(popts.get("yaxis", "1")).strip()
             _plot_xaxis = str(popts.get("xaxis", "1")).strip()
@@ -6213,17 +6295,17 @@ class DashRenderer:
                 px1var = plot.get("x1var", "")
                 py2var = plot.get("y2var", "")
                 px2var = plot.get("x2var", "")
-                self._add_pc_glyph(fig, source, ptype, py1var, px1var, py2var, px2var, popts,
+                self._add_pc_glyph(fig, source_for_plot, ptype, py1var, px1var, py2var, px2var, popts,
                                    view=facet_view, color_idx=pi)
             elif ptype.lower() in _RANGE_TYPES:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
-                self._add_glyph(fig, source, ptype, py1var, pxvar, popts,
+                self._add_glyph(fig, source_for_plot, ptype, py1var, pxvar, popts,
                                 y2var=py2var, view=facet_view, color_idx=pi)
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
-                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts,
+                self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=facet_view, color_idx=pi)
             elif ptype.lower() == "function":
                 pexpr = plot.get("expr", "")
@@ -6246,7 +6328,7 @@ class DashRenderer:
                 self.mapper.map_function(fig, pexpr, (x_lo, x_hi), n_pts, popts)
             else:
                 pyvar = plot.get("yvar", yvar)
-                self._add_glyph(fig, source, ptype, pyvar, pxvar, popts,
+                self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=facet_view, color_idx=pi)
 
             # Assign secondary axis range names to newly added renderers

@@ -17,20 +17,20 @@ cscript "dash serve E2E" adodir ".."
 capture which jsonio
 if _rc != 0 {
     display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 111
+    exit 222
 }
 
 capture python: pass
 if _rc != 0 {
     display as error "SKIP: Python not available."
-    exit 111
+    exit 222
 }
 
 // Check Bokeh available
 capture python: import bokeh
 if _rc != 0 {
     display as error "SKIP: bokeh not installed. Run dash_setup first."
-    exit 111
+    exit 222
 }
 
 qui sysuse auto, clear

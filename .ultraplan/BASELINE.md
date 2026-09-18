@@ -697,3 +697,86 @@ rather than degrading:
 - **`_lpattern()` raised where `_color()` swallowed.** Both now degrade *with a warning*.
   `_color()` warns only when a key is present-but-unresolvable; an absent key is ordinary
   scheme inheritance and stays silent.
+
+---
+
+# Addendum — batch 2 (2026-09-18)
+
+## F10. The abbreviation table mis-routed EIGHT options, not five [RESOLVED]
+
+Return codes alone are not enough to measure this: twoway *accepts* `xl()`, `t()` and `l()`
+but resolves them to `xlabel()`, `t1title()` and `l1title()`. `scripts/extract_abbrev_truth.do`
+therefore confirms each accepted prefix with a **resolution oracle** — it saves the probe to a
+live-format `.gph`, normalises the per-run ids, and compares byte-for-byte against the full
+option name.
+
+| abbreviation | dash bound it to | twoway binds it to |
+|---|---|---|
+| `xl` | xline | **xlabel** |
+| `yl` | yline | **ylabel** |
+| `m` | marker (not a twoway option at all) | **msymbol** |
+| `mlc` | mlabcolor | **mlcolor** |
+| `mls` | mlabsize | **mlstyle** |
+| `mlp` | mlabposition | **mlpattern** |
+| `mlw` | mlabwidth | **mlwidth** |
+
+`mlg` was *not* a mis-map: dash sent it to mlabgap, and twoway rejects `mlg` outright
+(mlabgap's real minimum is `mlabg`). Twenty further abbreviations in dash's table are
+rejected by twoway entirely.
+
+## F11. Stata cannot express every abbreviation through capitalisation [WORKED AROUND]
+
+`syntax` derives the minimum from the **leading run of capitals**, and a digit ends that run —
+so `T1title` yields a minimum of `t1`, and no capitalisation of `t1title` yields `t`. twoway
+nevertheless accepts `t()`, `b()`, `l()` and `r()`. Eleven further dash short forms
+(`xla2`, `xsc2`, `xti2`, `yla2`, `ysc2`, `yti2`, `pbgc`, `bw`, `mlg`, `cv`, `colv`) are
+**aliases rather than prefixes** and are equally inexpressible. All fifteen are declared as
+their own options and folded onto the real local after `syntax`.
+
+## F12. The saving() path validator rejected every Windows Program Files path [RESOLVED]
+
+`_dash_validate_path` rejected `(` and `)` as shell metacharacters. Every `shell` call site
+quotes the path (`shell open "``saving_path'"`), and inside double quotes those characters
+are literal — so the rejection bought nothing and broke every path under
+`C:\Program Files (x86)\`.
+
+**A real hole was found next to it:** the double quote itself was **not** rejected, and that
+character *would* terminate the quoted argument. Parentheses are now allowed and `"` is
+rejected.
+
+## F13. The skip sentinel collided with a real Stata return code [RESOLVED]
+
+Batch 1 used `exit 111` to mark a skipped certification script. `r(111)` is Stata's own code
+for the un-`tsset` case — which batch 2 then adopted for `dash tsline` to match twoway
+exactly (verified: `twoway tsline mpg` on un-tsset data returns r(111), and rc=0 once tsset).
+A genuine tsline failure would have been scored as a SKIP. The sentinel moved to **222**,
+which is not a Stata return code.
+
+## F14. The certification runner's quiet capture broke output-dependent checks [RESOLVED]
+
+Scripts ran under bare `capture {...}`, which suppresses everything they display. Batch 1
+already found this hid the `SKIP:` messages. It also breaks any check that verifies **dash's
+own output** — the new unsupported-option note cannot be asserted if the note is suppressed,
+which made `test_option_surface.cscript` pass standalone and fail inside the runner. The
+runner now uses `capture noisily`.
+
+Separately, a script that dies mid-scan leaks its `file open` handle, and `clear all` does not
+close file handles; the runner now issues `capture file close _all` between scripts.
+
+## F15. e2e_single joins the known e2e failures [OWNER: S16-03]
+
+It previously reported SKIP. With the sentinel moved off 111 its guards no longer mask the
+run, and it fails with `r(111) "Security not found"` — a line of generated HTML being parsed
+as a Stata command. That is the **same** line-by-line HTML scan defect as F2, so the
+certification suite now shows **6** e2e failures rather than 5. Nothing regressed; one more
+instance of a known defect became visible.
+
+## Batch 2 result
+
+| suite | before | after |
+|---|---|---|
+| `test_abbreviations.cscript` | 371 checks failing | **all pass** |
+| `test_option_surface.cscript` | 143 of 299 corpus commands abort | **all 299 run** |
+| `test_varlist_expansion.cscript` | 13 checks failing | **all pass** |
+| pytest | 1,610 passed / 5 failed | **1,615 passed / 0 failed** |
+| certification runner | 5 passed / 5 failed / 1 skipped (of 11) | **8 passed / 6 failed / 0 skipped (of 14)** |
