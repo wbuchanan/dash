@@ -1,0 +1,216 @@
+* stcolor_alt.scheme
+* dash translation of Stata's stcolor_alt scheme.
+*
+* PROVENANCE
+*   Source Stata scheme : /Applications/StataNow/ado/base/s/scheme-stcolor_alt.scheme
+*                         (#include chain, base first: s2color -> stcolor -> stcolor_alt)
+*   Stata version       : StataNow 19.5 (MP), born 12 Aug 2026
+*   Style files         : /Applications/StataNow/ado/base/style
+*   Extracted           : 2026-09-18 (fixture generated_utc 2026-09-18T18:58:04Z)
+*   Derived from        : test/fixtures/scheme_truth.json ["stcolor_alt"],
+*                         produced by scripts/extract_scheme_truth.py
+*   Last verified true  : 2026-09-18.  Re-run the extractor and re-check this
+*                         file after any Stata upgrade; the values below are a
+*                         snapshot of the Stata version named above, not a
+*                         live read of Stata's style files.
+*
+* WHY EVERY COLOUR IS WRITTEN AS RESOLVED #rrggbb HEX
+*   stcolor_alt names its palette with Stata style tokens (stc1..stc15 and
+*   friends) that dash's OptionTranslator._COLOR_MAP does not know.
+*   SchemeParser._color() swallows an unresolvable token and returns its
+*   "#000000" default, which would render every series black.  Hex is
+*   self-contained and cannot be swallowed.  The hex below is the value Stata's
+*   own style files resolve to, per scheme_truth.json.
+*
+* VOCABULARY
+*   Only property keys that SchemeParser._init_properties() actually reads are
+*   written here (color, symbol, linepattern, linewidth, intensity, gsize,
+*   graphsize, symbolsize, clockdir, numstyle).  Nothing is invented in either
+*   direction: no dash-only key, and no Stata directive dash cannot consume.
+*
+* KNOWN OMISSIONS (honest gaps, not oversights)
+*   - "yesno draw_major_hgrid" (Stata: yes) and "yesno draw_major_grid"
+*     (Stata: no) are present in the fixture but SchemeParser._init_properties()
+*     reads no yesno directive, so they are deliberately not written here.
+*     They belong with the parser change that learns to consume them.
+*   - No property in the fixture entry for stcolor_alt is null, and the
+*     extractor's "unresolvable" list for this scheme is empty, so nothing was
+*     dropped for want of a value.
+
+label "Stata color (alternate)"
+
+* ---------------------------------------------------------------------------
+* Background and region colors
+* ---------------------------------------------------------------------------
+color background      #ffffff
+color plotregion      #ffffff
+color legend          #ffffff
+color legend_line     #ffffff
+color major_grid      #f0f0f0
+color minor_grid      #505050
+color heading         #000000
+color axisline        #000000
+
+* ---------------------------------------------------------------------------
+* Per-plot color cycle (p1-p15)
+* Source directives: color p1 .. color p15
+* ---------------------------------------------------------------------------
+color p1      #1a85ff
+color p2      #d41159
+color p3      #00bf7f
+color p4      #ffd400
+color p5      #4f2c99
+color p6      #ff6333
+color p7      #4db7ff
+color p8      #7c0015
+color p9      #0fefaf
+color p10     #faa307
+color p11     #758bfd
+color p12     #fed9b7
+color p13     #08234c
+color p14     #f88dad
+color p15     #0f5156
+
+* Per-plot line color.  Stata sets no p#line override in this scheme; each
+* entry resolves through the p#stub -> pstub -> p# -> p chain to "color p#",
+* so these repeat the cycle above.  dash's parser has no stub fallback, so the
+* resolved value must be spelled out per plot.
+color p1line   #1a85ff
+color p2line   #d41159
+color p3line   #00bf7f
+color p4line   #ffd400
+color p5line   #4f2c99
+color p6line   #ff6333
+color p7line   #4db7ff
+color p8line   #7c0015
+color p9line   #0fefaf
+color p10line  #faa307
+color p11line  #758bfd
+color p12line  #fed9b7
+color p13line  #08234c
+color p14line  #f88dad
+color p15line  #0f5156
+
+* Per-plot bar/area fill color (resolves to "color p#", as above)
+color p1bar    #1a85ff
+color p2bar    #d41159
+color p3bar    #00bf7f
+color p4bar    #ffd400
+color p5bar    #4f2c99
+color p6bar    #ff6333
+color p7bar    #4db7ff
+color p8bar    #7c0015
+color p9bar    #0fefaf
+color p10bar   #faa307
+color p11bar   #758bfd
+color p12bar   #fed9b7
+color p13bar   #08234c
+color p14bar   #f88dad
+color p15bar   #0f5156
+
+* Per-plot marker fill color (resolves to "color p#", as above)
+color p1mark   #1a85ff
+color p2mark   #d41159
+color p3mark   #00bf7f
+color p4mark   #ffd400
+color p5mark   #4f2c99
+color p6mark   #ff6333
+color p7mark   #4db7ff
+color p8mark   #7c0015
+color p9mark   #0fefaf
+color p10mark  #faa307
+color p11mark  #758bfd
+color p12mark  #fed9b7
+color p13mark  #08234c
+color p14mark  #f88dad
+color p15mark  #0f5156
+
+* ---------------------------------------------------------------------------
+* Marker symbol cycle
+* Stata declares only the class default "symbol p circle"; every plot resolves
+* to circle.  Spelled out p1-p15 because dash reads "symbol p{i}" exactly.
+* ---------------------------------------------------------------------------
+symbol p1     circle
+symbol p2     circle
+symbol p3     circle
+symbol p4     circle
+symbol p5     circle
+symbol p6     circle
+symbol p7     circle
+symbol p8     circle
+symbol p9     circle
+symbol p10    circle
+symbol p11    circle
+symbol p12    circle
+symbol p13    circle
+symbol p14    circle
+symbol p15    circle
+
+* ---------------------------------------------------------------------------
+* Line patterns for line/connected plots
+* Stata declares only the class default "linepattern p solid"; every plot
+* resolves to solid.  Spelled out because dash reads "linepattern p{i}line".
+* ---------------------------------------------------------------------------
+linepattern p1line   solid
+linepattern p2line   solid
+linepattern p3line   solid
+linepattern p4line   solid
+linepattern p5line   solid
+linepattern p6line   solid
+linepattern p7line   solid
+linepattern p8line   solid
+linepattern p9line   solid
+linepattern p10line  solid
+linepattern p11line  solid
+linepattern p12line  solid
+linepattern p13line  solid
+linepattern p14line  solid
+linepattern p15line  solid
+
+* ---------------------------------------------------------------------------
+* Line widths (Stata style names; Stata's own values are .30 in undocumented
+* linewidth units, so the declared name is what carries the fidelity)
+* ---------------------------------------------------------------------------
+linewidth p           medium
+linewidth major_grid  medium
+
+* ---------------------------------------------------------------------------
+* Fill intensities
+* "intensity area" is written explicitly: Stata supplies it from the bare
+* intensity class default (full), and dash's parser looks up the exact key.
+* ---------------------------------------------------------------------------
+intensity p        inten80
+intensity bar      full
+intensity area     full
+
+* ---------------------------------------------------------------------------
+* Font sizes (Stata gsize keywords)
+* ---------------------------------------------------------------------------
+gsize text          medium
+gsize heading       large
+gsize axis_title    medsmall
+gsize tick_label    medsmall
+gsize note          small
+
+* ---------------------------------------------------------------------------
+* Graph dimensions, in inches (consumed by section 10 for figure proportions)
+* ---------------------------------------------------------------------------
+graphsize x  6
+graphsize y  4
+
+* ---------------------------------------------------------------------------
+* Default marker size for the p cycle
+* ---------------------------------------------------------------------------
+symbolsize p  small
+
+* ---------------------------------------------------------------------------
+* Legend placement (clock direction 0-12) and column count
+* ---------------------------------------------------------------------------
+clockdir legend_position  6
+numstyle legend_cols      2
+
+* ---------------------------------------------------------------------------
+* Grid visibility (Stata `yesno` directives)
+* ---------------------------------------------------------------------------
+yesno draw_major_hgrid      yes
+yesno draw_major_grid       no

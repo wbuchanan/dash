@@ -456,7 +456,12 @@ class TestThemeKey:
 
     # s2color has a bluish-grey background; s1color has a white background.
     # These constants let tests assert the CORRECT scheme was loaded.
-    S2COLOR_BG = "#d9e8f0"   # ltbluishgray translated by OptionTranslator
+    # s2color's `color background ltbluishgray`, resolved from Stata's own
+    # color-ltbluishgray.style ("234 242 243").  The former value #d9e8f0 came
+    # from OptionTranslator._COLOR_MAP, which disagrees with Stata for 52 of
+    # the 68 colour names they share -- see BASELINE.md finding F7.  The
+    # translated schemes carry resolved hex and so are unaffected by that bug.
+    S2COLOR_BG = "#eaf2f3"
     S1COLOR_BG = "#ffffff"   # white
 
     def test_theme_default_resolves_to_s2color(self):

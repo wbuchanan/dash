@@ -434,6 +434,35 @@ class OptionTranslator:
         # Transparent / none — map to white (6-char hex; full RGBA not supported here)
         "none":          "#ffffff",
         "":              "#000000",
+        # Stata colour names dash did not know, resolved from Stata's own
+        # color-<name>.style files.  The stc1-stc15 cycle is what the Stata
+        # 18+ default scheme (stcolor) uses; its absence here is why an
+        # unresolvable "stc1" made _color() fall back to black.
+        # Purely additive: no existing entry is changed.
+        "bluishgray8":     "#d2d7e4",
+        "ltbluishgray8":   "#e1e6f0",
+        "navy8":           "#273f6f",
+        "orange_red":      "#ff4500",
+        "sand":            "#d9c263",
+        "stblue":          "#1a85ff",
+        "stc1":            "#1a85ff",
+        "stc10":           "#faa307",
+        "stc11":           "#758bfd",
+        "stc12":           "#fed9b7",
+        "stc13":           "#08234c",
+        "stc14":           "#f88dad",
+        "stc15":           "#0f5156",
+        "stc2":            "#d41159",
+        "stc3":            "#00bf7f",
+        "stc4":            "#ffd400",
+        "stc5":            "#4f2c99",
+        "stc6":            "#ff6333",
+        "stc7":            "#4db7ff",
+        "stc8":            "#7c0015",
+        "stc9":            "#0fefaf",
+        "stgreen":         "#00bf7f",
+        "stred":           "#d41159",
+        "styellow":        "#ffd400",
     }
 
     # ------------------------------------------------------------------
@@ -473,6 +502,19 @@ class OptionTranslator:
         "hexagon_hollow":  "hex_dot",
         "point":           "circle",
         "dot":             "dot",
+        # Remaining symbol-<name>.style entries from Stata's style library.
+        # The mono schemes (s1mono, s2mono, sj, stmono1/2, stsj) cycle through
+        # smdiamond and smtriangle, which previously raised out of SchemeParser
+        # and made a faithful translation of those schemes unparseable.
+        "smdiamond":          "diamond",
+        "smdiamond_hollow":   "diamond_dot",
+        "smtriangle":         "triangle",
+        "smtriangle_hollow":  "inverted_triangle",
+        "smsquare_hollow":    "square_dot",
+        "smplus":             "plus",
+        "v":                  "inverted_triangle",
+        "smv":                "inverted_triangle",
+        "lgx":                "x",
     }
 
     # ------------------------------------------------------------------
@@ -525,6 +567,18 @@ class OptionTranslator:
         "longdash_dot":   [16, 4, 2, 4],
         "blank":      [0, 100],
         "b":          [0, 100],
+        # The remainder of Stata's line-pattern set.  Every name here has a
+        # corresponding linepattern-<name>.style in Stata's style library, and
+        # real schemes use them — s1rcolor and the st* family declare
+        # vshortdash, which previously raised straight out of SchemeParser.
+        "vshortdash":          [3, 3],
+        "tight_dot":           [1, 2],
+        "dash_3dot":           [8, 4, 2, 4, 2, 4, 2, 4],
+        "dash_dot_dot":        [8, 4, 2, 4, 2, 4],
+        "longdash_3dot":       [16, 4, 2, 4, 2, 4, 2, 4],
+        "longdash_dot_dot":    [16, 4, 2, 4, 2, 4],
+        "longdash_shortdash":  [16, 4, 4, 4],
+        "shortdash_dot_dot":   [4, 2, 2, 2, 2, 2],
     }
 
     @staticmethod
@@ -758,9 +812,18 @@ class SchemeParser:
         os.path.dirname(os.path.abspath(__file__)),
     )
 
-    _BUILTIN_NAMES: frozenset[str] = frozenset(
-        {"s2color", "s1color", "s1mono", "economist", "sj"}
-    )
+    # The translated StataCorp schemes dash ships.  Each is a faithful
+    # translation of the same-named Stata scheme, generated from
+    # test/fixtures/scheme_truth.json by scripts/extract_scheme_truth.py.
+    # Section 11 restricts scheme()/theme() to exactly this set.
+    _BUILTIN_NAMES: frozenset[str] = frozenset({
+        # Stata 18+ family (stcolor is Stata's default since v18)
+        "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
+        # legacy defaults (s2color was the default from v10 to v17)
+        "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
+        # journal styles
+        "economist", "sj",
+    })
 
     # Last-resort properties for when NO scheme file can be resolved at all —
     # e.g. an install whose scheme files did not ship.  Mirrors s2color so the
@@ -982,13 +1045,29 @@ class SchemeParser:
     # ------------------------------------------------------------------
 
     def _color(self, key: str, default: str = "#000000") -> str:
-        """Translate a raw scheme color value to hex, falling back to default."""
+        """Translate a raw scheme colour to hex, degrading loudly if it cannot.
+
+        An ABSENT key falls back silently — that is ordinary inheritance, and
+        every scheme leaves most keys unset.  But a key that is PRESENT and
+        unresolvable is a defect in the scheme or in the colour table, and must
+        say so: silently returning the default here is what made the whole
+        stcolor scheme render every series black, because `color p1 stc1` could
+        not be resolved and nothing reported it.
+        """
         raw = self._props.get(key, "").strip()
         if not raw:
             return default
         try:
             return OptionTranslator.translate_mcolor(raw)
         except ValueError:
+            import warnings
+            warnings.warn(
+                f"dash scheme: colour '{raw}' (from '{key}') is not a colour "
+                f"dash recognises; falling back to {default}. The rendered "
+                "colour will not match Stata's.",
+                UserWarning,
+                stacklevel=3,
+            )
             return default
 
     def _gsize(self, key: str, default: str = "10pt") -> str:
@@ -1012,8 +1091,24 @@ class SchemeParser:
             return default
 
     def _lpattern(self, key: str) -> list:
+        """Translate a scheme line pattern, degrading loudly rather than raising.
+
+        A scheme declaring a pattern dash cannot express must not abort the
+        whole render — but it must not vanish silently either, which is the
+        failure mode that let an unresolvable colour turn every series black.
+        """
         raw = self._props.get(key, "solid").strip().lower()
-        return OptionTranslator.translate_lpattern(raw)
+        try:
+            return OptionTranslator.translate_lpattern(raw)
+        except ValueError:
+            import warnings
+            warnings.warn(
+                f"dash scheme: line pattern '{raw}' (from '{key}') is not "
+                "recognised; falling back to solid.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return []
 
     def _lwidth(self, key: str, default: float = 1.5) -> float:
         raw = self._props.get(key, "").strip().lower()
@@ -1036,6 +1131,15 @@ class SchemeParser:
             return float(raw)
         except ValueError:
             return default
+
+    def _yesno(self, key: str, default: bool) -> bool:
+        """Return a Stata `yesno` scheme directive as a bool."""
+        raw = self._props.get(key, "").strip().lower()
+        if raw in ("yes", "y", "1", "true", "on"):
+            return True
+        if raw in ("no", "n", "0", "false", "off"):
+            return False
+        return default
 
     def _int(self, key: str, default: "int | None") -> "int | None":
         """Return a scheme value as an int, or *default* if absent/unparseable."""
@@ -1122,11 +1226,20 @@ class SchemeParser:
         self.graphsize_x: "float | None" = self._float("graphsize x", _gs_both)
         self.graphsize_y: "float | None" = self._float("graphsize y", _gs_both)
 
+        # Grid visibility.  Stata spells the vertical one `draw_major_grid`
+        # and the horizontal one `draw_major_hgrid`; both are `yesno`
+        # directives.  Parsed only -- section 12 consumes them when it wires
+        # grid rendering.
+        self.draw_major_hgrid: bool = self._yesno("yesno draw_major_hgrid", False)
+        self.draw_major_vgrid: bool = self._yesno("yesno draw_major_grid", False)
+
         # Default marker size for the p cycle, and legend placement.
         # Parsed only; consumers land in sections 10 and 11.
         self.symbolsize: str = self._props.get("symbolsize p", "").strip()
-        self.legend_position: str = self._props.get(
-            "clockdir legend_position", "").strip()
+        # Stata's clockdir is a numeric clock position (1-12), so expose it as
+        # a number rather than the raw string — consumers compare it as one.
+        self.legend_position: "int | None" = self._int(
+            "clockdir legend_position", None)
         self.legend_cols: "int | None" = self._int("numstyle legend_cols", None)
 
     # ------------------------------------------------------------------

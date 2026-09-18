@@ -219,9 +219,12 @@ class TestIntensitiesAndFonts:
         sp = SchemeParser("s2color")
         assert abs(sp.fill_alpha - 0.8) < 0.01
 
-    def test_economist_fill_alpha_is_0_9(self):
+    def test_economist_fill_alpha_matches_s2color(self):
+        # scheme-economist.scheme declares no `intensity` directive at all, so
+        # it inherits s2color's `intensity p inten80` -> 0.8.  The old
+        # assertion of 0.9 came from dash's approximation, not from Stata.
         sp = SchemeParser("economist")
-        assert abs(sp.fill_alpha - 0.9) < 0.01
+        assert abs(sp.fill_alpha - 0.8) < 0.01
 
     def test_heading_font_size_is_css_pt(self):
         sp = SchemeParser("s2color")
@@ -324,8 +327,12 @@ class TestCssBlock:
 class TestIncludeInheritance:
     def test_economist_inherits_from_s2color(self):
         eco = SchemeParser("economist")
-        # Economist's p1 should still be navy (inherited from s2color)
-        assert eco.p_colors[0] == "#1a476f"
+        # economist DOES `#include s2color`, but it then OVERRIDES p1 with
+        # `color p1 edkblue`, which color-edkblue.style resolves ("62 100 125")
+        # to #3e647d.  The old assertion of navy (#1a476f) described dash's
+        # thin approximation, which omitted the override, not Stata.
+        # Verified against /Applications/Stata/ado/base/s/scheme-economist.scheme.
+        assert eco.p_colors[0] == "#3e647d"
 
     def test_economist_background_differs_from_parent(self):
         eco = SchemeParser("economist")

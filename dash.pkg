@@ -29,5 +29,14 @@ f dash_render.py
 f schemes/economist.scheme
 f schemes/s1color.scheme
 f schemes/s1mono.scheme
+f schemes/s1rcolor.scheme
 f schemes/s2color.scheme
+f schemes/s2gcolor.scheme
+f schemes/s2mono.scheme
 f schemes/sj.scheme
+f schemes/stcolor.scheme
+f schemes/stcolor_alt.scheme
+f schemes/stgcolor.scheme
+f schemes/stmono1.scheme
+f schemes/stmono2.scheme
+f schemes/stsj.scheme

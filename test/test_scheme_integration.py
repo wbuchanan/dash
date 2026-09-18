@@ -126,9 +126,15 @@ class TestSchemeLoadedInInit:
     def test_explicit_scheme_loaded(self):
         """SI-02: DashRenderer with scheme='sj' loads sj scheme."""
         dr = _make_renderer(scheme="sj")
-        # sj p1 is black
+        # sj p1 is grey, NOT black.  Stata's scheme-sj.scheme declares no
+        # `color p1` of its own; it `#include`s s2mono, whose `color p1 gs6`
+        # resolves via color-gs6.style ("96 96 96") to #606060.
+        # This previously asserted #000000, which was the old approximate
+        # schemes/sj.scheme failing to resolve its colour rather than Stata's
+        # real value -- the same silent-black failure that made stcolor
+        # unusable.  Verified against /Applications/Stata/ado/base/.
         p1 = dr.scheme.default_color(0, "scatter")
-        assert p1 == "#000000"
+        assert p1 == "#606060"
 
     def test_invalid_scheme_falls_back_to_s2color(self):
         """SI-03: Unknown scheme name falls back to s2color without crash."""
