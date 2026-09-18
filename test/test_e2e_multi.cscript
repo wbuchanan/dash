@@ -16,17 +16,13 @@ cscript "dash multi-graph E2E" adodir ".."
 capture which jsonio
 if _rc != 0 {
     display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 0
+    exit 111
 }
 
-capture {
-    python:
-pass
-    end
-}
+capture python: pass
 if _rc != 0 {
     display as error "SKIP: Python not available."
-    exit 0
+    exit 111
 }
 
 qui sysuse auto, clear

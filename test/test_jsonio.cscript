@@ -16,7 +16,7 @@ cscript "jsonio integration" adodir ".."
 capture which jsonio
 if _rc != 0 {
     display as error "SKIP: jsonio not installed. Run dash_setup first."
-    exit 0
+    exit 111
 }
 
 qui sysuse auto, clear
