@@ -10,8 +10,11 @@ d
 d All output is a self-contained HTML file that runs offline in
 d any modern browser without a server or internet connection.
 d
-d Requires: Python 3.8+, bokeh>=3.0, numpy>=1.23, scipy>=1.9,
-d           statsmodels>=0.13, pandas>=1.5, jsonio (SSC).
+d Requires: Python 3.8+, bokeh>=3.0, numpy>=1.23, pandas>=1.5,
+d           jsonio (SSC).
+d Optional: scipy>=1.9 (lfitci, qfitci, kdensity, mspline) and
+d           statsmodels>=0.13 (lowess).  Without them those layers
+d           render empty with a warning; everything else works.
 d
 d Run -dash_setup- once after installation to install all dependencies.
 d
@@ -23,3 +26,8 @@ f dash_setup.ado
 f dash_setup.sthlp
 f dash_parse.mata
 f dash_render.py
+f schemes/economist.scheme
+f schemes/s1color.scheme
+f schemes/s1mono.scheme
+f schemes/s2color.scheme
+f schemes/sj.scheme

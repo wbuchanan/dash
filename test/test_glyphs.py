@@ -1261,6 +1261,10 @@ class TestMapLowess:
 
     def test_lowess_lcolor_applied(self, fig, cds, gm):
         """lcolor option applied to lowess line."""
+        pytest.importorskip(
+            "statsmodels.nonparametric.smoothers_lowess",
+            reason="lowess needs statsmodels to produce a curve; see dash_setup",
+        )
         r = gm.map_lowess(fig, cds, "mpg", "weight", {"lcolor": "red"})
         assert r.glyph.line_color == "#ff0000"
 
@@ -1710,6 +1714,10 @@ class TestLegendLabelCoverage:
 
     def test_lowess_legend(self, fig, cds, gm):
         """map_lowess must create a legend entry for yvar."""
+        pytest.importorskip(
+            "statsmodels.nonparametric.smoothers_lowess",
+            reason="lowess needs statsmodels to produce a curve; see dash_setup",
+        )
         gm.map_lowess(fig, cds, "mpg", "weight", {})
         assert "mpg" in _legend_items(fig)
 
@@ -2783,6 +2791,10 @@ class TestLowessConstantX:
 
     def test_normal_x_still_works(self):
         """BUG-4c: lowess must still work normally for varying x."""
+        pytest.importorskip(
+            "statsmodels.nonparametric.smoothers_lowess",
+            reason="lowess needs statsmodels to produce a curve; see dash_setup",
+        )
         from bokeh.plotting import figure as bk_figure
         from bokeh.models import ColumnDataSource
         fig = bk_figure()

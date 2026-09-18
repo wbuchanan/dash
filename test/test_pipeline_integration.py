@@ -240,6 +240,10 @@ class TestReturnTypeConsistency:
 class TestLowessBasicFunctionality:
     def test_lowess_produces_smooth_line(self):
         """map_lowess with valid data produces a renderer with data points."""
+        pytest.importorskip(
+            "statsmodels.nonparametric.smoothers_lowess",
+            reason="lowess needs statsmodels to produce a curve; see dash_setup",
+        )
         gm = GlyphMapper()
         fig_obj = figure()
         x = np.linspace(0, 10, 50)

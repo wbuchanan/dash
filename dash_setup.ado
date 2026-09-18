@@ -3,7 +3,8 @@
 *!
 *! Dependencies checked:
 *!   - Python (via Stata's python query)
-*!   - Python packages: bokeh, numpy, scipy, statsmodels, pandas
+*!   - Python packages: bokeh, numpy, pandas (required);
+*!                      scipy, statsmodels (optional, per-plot-type)
 *!   - Stata package: jsonio (auto-installed from SSC if missing)
 *!
 *! Usage: dash_setup
@@ -62,15 +63,30 @@ program define dash_setup
     // ----------------------------------------------------------------
     // 3. Check and install required Python packages
     // ----------------------------------------------------------------
-    // Minimum version requirements stored as locals
-    local pkg_list   "bokeh numpy scipy statsmodels pandas"
+    // Minimum version requirements stored as locals.
+    //
+    // Only bokeh, numpy and pandas are genuinely required — dash_render.py
+    // imports them at module scope, so without them nothing renders at all.
+    // scipy and statsmodels are OPTIONAL: they are imported lazily, inside the
+    // mapping method for one plot type each, and a missing one degrades that
+    // layer to an empty glyph with a warning rather than aborting the render.
+    //   scipy       -> lfitci, qfitci, kdensity, mspline
+    //   statsmodels -> lowess only
+    // Declaring them mandatory (and exiting 198 when pip fails) previously
+    // blocked setup entirely for users who need none of those plot types.
+    local pkg_required "bokeh numpy pandas"
+    local pkg_optional "scipy statsmodels"
+    local pkg_list   "`pkg_required' `pkg_optional'"
     local min_bokeh       "3.0"
     local min_numpy       "1.23"
     local min_scipy       "1.9"
     local min_statsmodels "0.13"
     local min_pandas      "1.5"
+    local feat_scipy       "lfitci, qfitci, kdensity and mspline"
+    local feat_statsmodels "lowess"
 
     foreach pkg of local pkg_list {
+        local pkg_is_optional : list pkg in pkg_optional
         // Try importing the package; if it fails, pip-install it
         capture python: import `pkg'
         if _rc != 0 {
@@ -86,6 +102,14 @@ program define dash_setup
             // Re-check after install
             capture python: import `pkg'
             if _rc != 0 {
+                if `pkg_is_optional' {
+                    // Optional: report the lost plot types and carry on.
+                    display as text "  `pkg' ............. {err}unavailable{txt}" ///
+                        " — `feat_`pkg'' will render empty."
+                    display as text "      To enable them later:" ///
+                        " python -m pip install `pkg'"
+                    continue
+                }
                 display as error "  Failed to install `pkg'. Please install manually:"
                 display as error "    python -m pip install `pkg'"
                 exit 198

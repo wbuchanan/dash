@@ -99,6 +99,55 @@ from bokeh.resources import CDN, INLINE  # noqa: F401 — CDN kept for server mo
 
 
 # ---------------------------------------------------------------------------
+# Optional scientific dependencies
+# ---------------------------------------------------------------------------
+def _optional_import(module: str, attr: "str | None", package: str, feature: str):
+    """Import an optional dependency, warning instead of raising.
+
+    ``dash`` needs ``scipy`` only for CI bands, ``kdensity`` and ``mspline``,
+    and ``statsmodels`` only for ``lowess``.  Neither is required to render a
+    scatter, a line, a histogram, a fit, or anything else.  A missing or broken
+    package must therefore degrade that one plot type to an empty glyph — the
+    same shape already used by the minimum-N guards throughout this module —
+    rather than abort the entire dashboard.
+
+    ``Exception`` is caught rather than ``ImportError`` deliberately: a package
+    can be present but unimportable because one of *its* dependencies is
+    missing, which surfaces as an unrelated error type.
+
+    ``__import__`` is used rather than ``importlib.import_module`` so that this
+    keeps the semantics of the plain ``from x import y`` statements it
+    replaced — the IMPORT_NAME opcode always routes through ``__import__``,
+    which is both what the interpreter does and what makes the behaviour
+    observable to tests that patch it.
+
+    Args:
+        module:  Dotted module path to import.
+        attr:    Attribute to pull off the module, or None for the module.
+        package: Distribution name to name in the warning (for dash_setup).
+        feature: The dash plot type this enables, named in the warning.
+
+    Returns:
+        The imported object, or None if the import failed.
+    """
+    import warnings
+
+    try:
+        mod = __import__(module, fromlist=[attr] if attr else ["__name__"])
+        return getattr(mod, attr) if attr else mod
+    except Exception as exc:
+        warnings.warn(
+            f"dash: {feature} requires the '{package}' package, which could "
+            f"not be imported ({type(exc).__name__}: {exc}). The {feature} "
+            f"layer will be drawn empty. Run dash_setup to install or repair "
+            f"'{package}'.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
 
@@ -701,9 +750,80 @@ class SchemeParser:
 
     _SCHEMES_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schemes")
 
+    # A `net install` may flatten a `f schemes/x.scheme` manifest line to
+    # `<install dir>/x.scheme` instead of preserving the subdirectory.  Search
+    # both layouts so the package works however Stata chose to place the files.
+    _SCHEME_SEARCH_DIRS: "tuple[str, ...]" = (
+        _SCHEMES_DIR,
+        os.path.dirname(os.path.abspath(__file__)),
+    )
+
     _BUILTIN_NAMES: frozenset[str] = frozenset(
         {"s2color", "s1color", "s1mono", "economist", "sj"}
     )
+
+    # Last-resort properties for when NO scheme file can be resolved at all —
+    # e.g. an install whose scheme files did not ship.  Mirrors s2color so the
+    # output stays recognisable.  Without this, the fallback path re-ran the
+    # same failing lookup and raised, so every render on such an install ended
+    # in a traceback.  Names here must exist in OptionTranslator._COLOR_MAP.
+    _FALLBACK_PROPS: "dict[str, str]" = {
+        "color background": "ltbluishgray",
+        "color plotregion": "white",
+        "color legend":     "white",
+        "color legend_line": "black",
+        "color major_grid": "ltbluishgray",
+        "color minor_grid": "gs5",
+        "color heading":    "dknavy",
+        "color axisline":   "black",
+        "color p1":  "navy",         "color p2":  "maroon",
+        "color p3":  "forest_green", "color p4":  "dkorange",
+        "color p5":  "teal",         "color p6":  "cranberry",
+        "color p7":  "lavender",     "color p8":  "khaki",
+        "color p9":  "sienna",       "color p10": "emidblue",
+        "color p11": "emerald",      "color p12": "brown",
+        "color p13": "erose",        "color p14": "gold",
+        "color p15": "bluishgray",
+    }
+
+    @classmethod
+    def fallback(cls) -> "SchemeParser":
+        """Return a usable scheme without reading any file.
+
+        Used only when scheme resolution has already failed — this must never
+        raise, because it is the last line of defence before a render aborts.
+        """
+        inst = cls.__new__(cls)
+        inst._props = dict(cls._FALLBACK_PROPS)
+        inst._init_properties()
+        return inst
+
+    @classmethod
+    def resolve_or_fallback(cls, name: str, context: str) -> "SchemeParser":
+        """Build a SchemeParser for *name*, degrading instead of raising.
+
+        Tries *name*, then the package default, then an in-memory fallback.
+        Emits a UserWarning naming the directories searched when it has to
+        fall all the way back, since that means the install is incomplete.
+        """
+        import warnings
+
+        for candidate in (name, "s2color"):
+            if not candidate:
+                continue
+            try:
+                return cls(candidate)
+            except (ValueError, OSError):
+                continue
+        warnings.warn(
+            f"dash: no scheme file could be resolved for {context} (searched "
+            f"{', '.join(cls._SCHEME_SEARCH_DIRS)}). Falling back to built-in "
+            "defaults. The package's schemes/ directory appears to be missing "
+            "— reinstall dash or run dash_setup.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return cls.fallback()
 
     # Stata gsize keyword → CSS pt string
     _GSIZE_PT: dict[str, str] = {
@@ -746,25 +866,26 @@ class SchemeParser:
         """Return absolute path for a scheme name, blocking path traversal."""
         is_file_ref = name.endswith(".scheme") or os.sep in name or "/" in name
 
+        search_dirs = list(self._SCHEME_SEARCH_DIRS)
+
         if is_file_ref:
-            # Try CWD first, then schemes/
-            candidates = [
-                os.path.abspath(os.path.join(os.getcwd(), name)),
-                os.path.abspath(os.path.join(self._SCHEMES_DIR, name)),
+            # Try CWD first, then each scheme search dir
+            candidates = [os.path.abspath(os.path.join(os.getcwd(), name))]
+            candidates += [
+                os.path.abspath(os.path.join(d, name)) for d in search_dirs
             ]
         else:
             candidates = [
-                os.path.abspath(
-                    os.path.join(self._SCHEMES_DIR, name + ".scheme")
-                )
+                os.path.abspath(os.path.join(d, name + ".scheme"))
+                for d in search_dirs
             ]
 
+        # Security: a resolved path must lie within an allowed directory.
+        # Loop-invariant, so computed once.
+        allowed = [os.path.abspath(d) for d in search_dirs]
+        allowed.append(os.path.abspath(os.getcwd()))
+
         for candidate in candidates:
-            # Security: must be within allowed dirs (abspath string check).
-            allowed = [
-                os.path.abspath(self._SCHEMES_DIR),
-                os.path.abspath(os.getcwd()),
-            ]
             in_allowed = any(
                 candidate.startswith(d + os.sep) or candidate == d
                 for d in allowed
@@ -1137,9 +1258,13 @@ class GlyphMapper:
     ) -> None:
         """Initialise the mapper with an optional OptionTranslator and scheme."""
         self.tr = translator or OptionTranslator()
-        # Defer scheme import to avoid circular dependency; default to s2color
+        # Defer scheme import to avoid circular dependency; default to s2color.
+        # Must not raise: on an install missing schemes/ this is reached before
+        # any user-facing error handling exists.
         if scheme is None:
-            self.scheme: "SchemeParser" = SchemeParser("s2color")
+            self.scheme: "SchemeParser" = SchemeParser.resolve_or_fallback(
+                "s2color", "the glyph mapper",
+            )
         else:
             self.scheme = scheme
         # Stata label metadata, populated by DashRenderer after _load_data().
@@ -2401,7 +2526,7 @@ class GlyphMapper:
         Returns:
             List with [line_renderer, band_renderer].
         """
-        from scipy import stats as scipy_stats
+        scipy_stats = _optional_import("scipy", "stats", "scipy", "lfitci")
 
         x = np.array(source.data[xvar], dtype=float)
         y = np.array(source.data[yvar], dtype=float)
@@ -2415,7 +2540,7 @@ class GlyphMapper:
             "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
         })
         _lfitci_color = self.scheme.default_color(color_idx, "line")
-        if n < 3 or np.std(x) == 0.0:
+        if scipy_stats is None or n < 3 or np.std(x) == 0.0:
             band_r = fig.varea(
                 x="x_fit", y1="y_lower", y2="y_upper",
                 source=empty_ci_src, fill_alpha=0.2, fill_color=_lfitci_color
@@ -2544,15 +2669,18 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer for the LOWESS line.
         """
-        from statsmodels.nonparametric.smoothers_lowess import lowess
+        lowess = _optional_import(
+            "statsmodels.nonparametric.smoothers_lowess", "lowess",
+            "statsmodels", "lowess",
+        )
 
         x = np.array(source.data[xvar], dtype=float)
         y = np.array(source.data[yvar], dtype=float)
         mask = ~(np.isnan(x) | np.isnan(y))
         x, y = x[mask], y[mask]
 
-        # Need at least 2 points for lowess, and x must vary
-        if len(x) < 2 or np.std(x) == 0.0:
+        # Need statsmodels, at least 2 points, and x must vary
+        if lowess is None or len(x) < 2 or np.std(x) == 0.0:
             empty = ColumnDataSource({"x_lw": [], "y_lw": []})
             return fig.line(x="x_lw", y="y_lw", source=empty)
 
@@ -3052,14 +3180,16 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer for the density line.
         """
-        from scipy.stats import gaussian_kde
+        gaussian_kde = _optional_import(
+            "scipy.stats", "gaussian_kde", "scipy", "kdensity",
+        )
 
         if options is None:
             options = {}
         arr = _extract_finite(source, yvar)
 
-        # gaussian_kde requires at least 2 points and non-constant data
-        if len(arr) < 2 or np.std(arr) == 0.0:
+        # Needs scipy; gaussian_kde also requires >=2 points and non-constant data
+        if gaussian_kde is None or len(arr) < 2 or np.std(arr) == 0.0:
             empty = ColumnDataSource({"x": [], "y": []})
             return fig.line(x="x", y="y", source=empty)
 
@@ -3998,7 +4128,9 @@ class GlyphMapper:
         Returns:
             List with the single GlyphRenderer for the spline line.
         """
-        from scipy.interpolate import PchipInterpolator
+        PchipInterpolator = _optional_import(
+            "scipy.interpolate", "PchipInterpolator", "scipy", "mspline",
+        )
 
         x_arr = np.array(source.data[xvar], dtype=float)
         y_arr = np.array(source.data[yvar], dtype=float)
@@ -4023,8 +4155,8 @@ class GlyphMapper:
             x_clean = unique_x
             y_clean = y_agg / counts
 
-        # Need at least 2 valid (distinct) points for interpolation
-        if len(x_clean) < 2:
+        # Needs scipy, and at least 2 valid (distinct) points for interpolation
+        if PchipInterpolator is None or len(x_clean) < 2:
             empty = ColumnDataSource({"x_sp": [], "y_sp": []})
             r = fig.line(x="x_sp", y="y_sp", source=empty)
             return [r]
@@ -4999,10 +5131,9 @@ class DashRenderer:
         _scheme_name: str = (
             _THEME_SCHEME_MAP.get(_raw_name.lower(), _raw_name) or "s2color"
         )
-        try:
-            self.scheme: SchemeParser = SchemeParser(_scheme_name)
-        except (ValueError, OSError):
-            self.scheme = SchemeParser("s2color")
+        self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
+            _scheme_name, "the dashboard",
+        )
 
         self.mapper = GlyphMapper(scheme=self.scheme)
 
