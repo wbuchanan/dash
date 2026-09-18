@@ -60,7 +60,7 @@ display "P16A-02 PASS: _dash_check_utf8() callable after auto-load"
 // ================================================================
 // P16A-03 — All required Mata functions are available after auto-load
 // ================================================================
-foreach _fn in _dash_check_utf8 _dash_split_segs _dash_expand_opts_str ///
+foreach _fn in _dash_check_utf8 _dash_split_segs ///
                _dash_extract_vars {
     capture mata: `_fn'("")
     // rc=3498 (wrong arg count) or rc=0 = function exists

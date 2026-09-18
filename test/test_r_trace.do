@@ -44,7 +44,7 @@ display `"_jif after _dash_json_str: `_jif'"'
 
 // Full seg_json
 local opts_exp ""
-mata: _dash_expand_opts_str(`"`opts_raw'"', "opts_exp")
+local opts_exp `"`opts_raw'"'
 sreturn clear
 _dash_parse_plot_opts , `opts_exp'
 _dash_plot_opts_to_json _opts_json

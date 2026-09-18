@@ -54,19 +54,15 @@ display "P1A-33 PASS: non-existent variable causes error"
 // P1A-34 — _dash_parse_plot_opts expands abbreviations via pre-expansion
 // ================================================================
 // Pre-expand then call
-local expanded ""
-mata: _dash_expand_opts_str("mc(red) ms(circle)", "expanded")
-_dash_parse_plot_opts , `expanded'
+_dash_parse_plot_opts , mc(red) ms(circle)
 assert "`s(mcolor)'" == "red"
 assert "`s(msymbol)'" == "circle"
-display "P1A-34 PASS: mc→mcolor(red), ms→msymbol(circle) parsed correctly"
+display "P1A-34 PASS: mc and ms resolved by syntax to mcolor/msymbol"
 
 // ================================================================
 // P1A-35 — _dash_parse_plot_opts: graph-level option separated
 // ================================================================
-local exp2 ""
-mata: _dash_expand_opts_str("mc(red) title(My Title)", "exp2")
-_dash_parse_plot_opts , `exp2'
+_dash_parse_plot_opts , mc(red) title(My Title)
 assert "`s(mcolor)'" == "red"
 assert `"`s(g_title)'"' == "My Title"
 display "P1A-35 PASS: plot opt mc and graph opt title correctly separated"
@@ -74,9 +70,7 @@ display "P1A-35 PASS: plot opt mc and graph opt title correctly separated"
 // ================================================================
 // P1A-36 — _dash_parse_graph_opts: name() and saving() parsed
 // ================================================================
-local gexp ""
-mata: _dash_expand_opts_str("name(g1) saving(out.html)", "gexp")
-_dash_parse_graph_opts , `gexp'
+_dash_parse_graph_opts , name(g1) saving(out.html)
 assert `"`s(name)'"'   == "g1"
 assert `"`s(saving)'"' == "out.html"
 display "P1A-36 PASS: name() and saving() parsed by _dash_parse_graph_opts"
@@ -158,15 +152,14 @@ assert "`s(varlist)'" == "mpg"
 display "P1A-43 PASS: varpart_1v enforces single variable"
 
 // ================================================================
-// P1A-44 — _dash_expand_opts_str: fa() expands to falpha()
-// (regression for bug: fa was not listed in _expand_optkey)
+// P1A-44 — fa() still resolves to falpha() through Stata's syntax
+// (regression: fa was historically a dash-only alias; it is kept as
+//  falpha's minimum abbreviation now that the Mata table is gone)
 // ================================================================
-local exp44 ""
-mata: _dash_expand_opts_str("fc(ltblue) fa(0.4)", "exp44")
-_dash_parse_plot_opts , `exp44'
+_dash_parse_plot_opts , fc(ltblue) fa(0.4)
 assert "`s(fcolor)'"  == "ltblue"
 assert "`s(falpha)'"  == "0.4"
-display "P1A-44 PASS: fa→falpha(0.4) and fc→fcolor(ltblue) expanded correctly"
+display "P1A-44 PASS: fa and fc resolved by syntax to falpha/fcolor"
 
 // ================================================================
 // P1A-45 — fa() works on histogram in a compound spec (end-to-end)
@@ -185,11 +178,7 @@ dash clear
 // P1A-46 — _dash_parse_plot_opts accepts all Stata 18 colorvar_options
 //           (regression: colordiscrete etc. previously caused r(198))
 // ================================================================
-local exp46 ""
-mata: _dash_expand_opts_str( ///
-    "colorvar(foreign) colordiscrete coloruseplegend colornlevels(4) colorcuts(2000 3000 4000) colormissing(gray)", ///
-    "exp46")
-_dash_parse_plot_opts , `exp46'
+_dash_parse_plot_opts , colorvar(foreign) colordiscrete coloruseplegend colornlevels(4) colorcuts(2000 3000 4000) colormissing(gray)
 assert `"`s(colorvar)'"'      == "foreign"
 assert `"`s(colordiscrete)'"' != ""
 assert `"`s(coloruseplegend)'"' != ""
