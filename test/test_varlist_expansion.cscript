@@ -1,0 +1,737 @@
+*! test_varlist_expansion.cscript
+*! Certification script for varlist expansion and plot-spec correctness.
+*!
+*! Plan task 06-01 (batch 2).  Every check in this file is a FAILING test
+*! written before the fix, per project rule 8.  Each documents a defect that
+*! was measured end to end against the pre-fix code base.
+*!
+*! Tests: V2-01 through V2-12
+*!
+*!   V2-01  HEADLINE  `dash scatter mpg price weight` must draw TWO series
+*!                    (colour census of the generated HTML).
+*!   V2-02            ... and its internal spec must hold two plot specs.
+*!   V2-03            `dash line a b c d x` must draw FOUR series.
+*!   V2-04            ... and its internal spec must hold four plot specs.
+*!   V2-05  GUARD     a single-y command's spec/HTML is unchanged.
+*!   V2-06            `dash function y=x^2` must parse (today r(101)).
+*!   V2-07            variable-free plot types must render (today r(198)).
+*!   V2-08            name(g, replace) must replace (today r(198)).
+*!   V2-09            saving() must accept twoway's normal forms (today r(198)).
+*!   V2-10            scatteri marker labels must pair with their own point.
+*!   V2-11            a per-plot if qualifier must bind to that plot only.
+*!   V2-12            tsline must use the tsset time variable, or say "tsset".
+*!
+*! Unlike most cscripts this one does NOT stop at the first failure: every
+*! check is wrapped in -capture- and the failures are tallied, so a single run
+*! reports the state of all twelve.  The script exits non-zero if any failed.
+*!
+*! Usage:  do test/test_varlist_expansion.cscript
+*! Version: 1.0
+
+cscript "dash varlist expansion and plot-spec correctness" adodir ".."
+
+// ----------------------------------------------------------------
+// Dependency guards
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 111
+}
+
+capture python: pass
+if _rc != 0 {
+    display as error "SKIP: Python not available."
+    exit 111
+}
+
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ----------------------------------------------------------------
+// Colour-census helpers
+//
+// A dashboard's series colours come from the active scheme, and batch 1
+// replaced the scheme files, so no hex value is hardcoded anywhere here.
+// Instead the expected palette is DERIVED empirically:
+//
+//   * render a one-series control command;
+//   * render the same plot explicitly overlaid into N series;
+//   * the colours present in the N-series HTML but absent from the control
+//     are exactly the series colours for plots 2..N.
+//
+// The census reads only the Bokeh document JSON (the single line after
+// <script type="application/json">), not the bundled BokehJS library, so
+// the library's own CSS colours cannot contaminate the count.  The scan is
+// done in Mata: the HTML contains backticks and dollar signs, which cannot
+// be carried safely in a Stata local macro.
+// ----------------------------------------------------------------
+mata:
+
+string rowvector _dvx_hexes(string scalar fn)
+{
+    real scalar        fh, i, n, found
+    string scalar      line, tok
+    string rowvector   out
+
+    out   = J(1, 0, "")
+    found = 0
+    fh    = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (found) {
+            n = strlen(line)
+            for (i = 1; i <= n - 6; i++) {
+                if (substr(line, i, 1) == "#") {
+                    tok = substr(line, i + 1, 6)
+                    if (regexm(tok, "^[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$")) {
+                        out = out, ("#" + strlower(tok))
+                    }
+                }
+            }
+            break
+        }
+        if (strpos(line, "<script type=") > 0 &
+            strpos(line, "application/json") > 0) found = 1
+    }
+    fclose(fh)
+    if (cols(out) == 0) return(out)
+    return(uniqrows(out')')
+}
+
+// Colours present in test_fn but not in control_fn -> st_local(macname)
+void _dvx_extra(string scalar control_fn, string scalar test_fn,
+                string scalar macname)
+{
+    string rowvector a, b, keep
+    real scalar      i
+
+    a    = _dvx_hexes(control_fn)
+    b    = _dvx_hexes(test_fn)
+    keep = J(1, 0, "")
+    for (i = 1; i <= cols(b); i++) {
+        if (cols(a) == 0 | !anyof(a, b[i])) keep = keep, b[i]
+    }
+    st_local(macname, invtokens(keep, " "))
+}
+
+// Normalise Bokeh's per-run identifiers so two runs of the same command can
+// be compared.  Bokeh mints fresh "pNNNN" model ids and a fresh document
+// UUID on every render; nothing else about the page is random.
+string scalar _dvx_norm(string scalar s0)
+{
+    string scalar s
+    s = ustrregexra(s0, "\bp[0-9][0-9][0-9][0-9]?[0-9]?[0-9]?[0-9]?\b", "ID")
+    s = ustrregexra(s,  "\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", "UUID")
+    return(s)
+}
+
+// 1 when two HTML files are identical after that normalisation.
+// Lines are compared raw first and normalised only when they differ, so the
+// bundled BokehJS blob is never run through the regex engine.
+real scalar _dvx_norm_same(string scalar fa, string scalar fb)
+{
+    real scalar   ha, hb, same
+    string scalar la, lb
+
+    ha   = fopen(fa, "r")
+    hb   = fopen(fb, "r")
+    same = 1
+    while (1) {
+        la = fget(ha)
+        lb = fget(hb)
+        if (la == J(0, 0, "") & lb == J(0, 0, "")) break
+        if (la == J(0, 0, "") | lb == J(0, 0, "")) {
+            same = 0
+            break
+        }
+        if (la != lb) {
+            if (_dvx_norm(la) != _dvx_norm(lb)) {
+                same = 0
+                break
+            }
+        }
+    }
+    fclose(ha)
+    fclose(hb)
+    return(same)
+}
+
+end
+
+// ----------------------------------------------------------------
+// Failure tally
+// ----------------------------------------------------------------
+local nfail = 0
+local faillist ""
+
+// ----------------------------------------------------------------
+// Fixtures
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+qui replace displacement = displacement + 1   // keep it strictly positive
+
+tempfile f_ctl_s f_two_s f_three_s f_ctl_l f_four_l f_five_l
+local ctl_s   "`f_ctl_s'.html"
+local two_s   "`f_two_s'.html"
+local three_s "`f_three_s'.html"
+local ctl_l   "`f_ctl_l'.html"
+local four_l  "`f_four_l'.html"
+local five_l  "`f_five_l'.html"
+
+// ================================================================
+// Render the scatter family
+// ================================================================
+dash clear
+dash scatter mpg weight, saving("`ctl_s'")
+dash clear
+dash (scatter mpg weight) (scatter price weight), saving("`two_s'")
+dash clear
+capture noisily dash scatter mpg price weight, saving("`three_s'")
+local rc_three = _rc
+
+// ================================================================
+// V2-01 — HEADLINE: `dash scatter mpg price weight` draws TWO series
+//
+// twoway draws mpg-vs-weight and price-vs-weight.  dash draws one, because
+// _dash_parse_varpart_std keeps word 1 as yvar and the LAST word as xvar and
+// silently discards everything between.
+//
+// Primary assertion: what the user SEES — the count of distinct series
+// colours in the generated HTML.
+// ================================================================
+local extra_two   ""
+local extra_three ""
+mata: _dvx_extra("`ctl_s'", "`two_s'",   "extra_two")
+mata: _dvx_extra("`ctl_s'", "`three_s'", "extra_three")
+
+display as text "V2-01 census: 2-series overlay adds colours: `extra_two'"
+display as text "V2-01 census: 3-variable form adds colours: `extra_three'"
+
+// Sanity check on the measurement method itself, not on the defect: the
+// explicitly-overlaid form must introduce exactly one new series colour.
+capture assert `: word count `extra_two'' == 1
+if _rc {
+    display as error "V2-01 SETUP BROKEN: the 2-series control added " ///
+        "`: word count `extra_two'' new colours, expected 1. " ///
+        "The colour census cannot be trusted; fix the fixture first."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-01(setup)"'
+}
+
+capture {
+    assert `rc_three' == 0
+    assert "`extra_three'" == "`extra_two'"
+}
+if _rc {
+    display as error "V2-01 FAIL: -dash scatter mpg price weight- rendered " ///
+        "`: word count `extra_three'' series colour(s) beyond the one-series " ///
+        "control; expected `: word count `extra_two'' (`extra_two'). " ///
+        "The middle y-variable is being discarded."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-01"'
+}
+else display as text "V2-01 PASS: 3-variable scatter draws two series"
+
+// ================================================================
+// V2-02 — ... and the internal spec holds two plot specs
+// ================================================================
+dash clear
+capture noisily dash scatter mpg price weight, name(v2spec3)
+local rc = _rc
+local spec3 `"${dash_json_v2spec3}"'
+display as text `"V2-02 spec: `spec3'"'
+
+capture {
+    assert `rc' == 0
+    // two "type":"scatter" entries, one per y-variable
+    assert strlen(`"`spec3'"') - ///
+           strlen(subinstr(`"`spec3'"', `""type":"scatter""', "", .)) == ///
+           2 * strlen(`""type":"scatter""')
+    assert strpos(`"`spec3'"', `""yvar":"mpg""')   > 0
+    assert strpos(`"`spec3'"', `""yvar":"price""') > 0
+}
+if _rc {
+    display as error "V2-02 FAIL: spec for -scatter mpg price weight- does " ///
+        "not contain two scatter plots with yvar mpg and yvar price."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-02"'
+}
+else display as text "V2-02 PASS: 3-variable scatter yields two plot specs"
+
+// ================================================================
+// Render the line family
+// ================================================================
+dash clear
+dash line mpg weight, saving("`ctl_l'")
+dash clear
+dash (line mpg weight) (line price weight) (line length weight) ///
+     (line displacement weight), saving("`four_l'")
+dash clear
+capture noisily dash line mpg price length displacement weight, saving("`five_l'")
+local rc_five = _rc
+
+// ================================================================
+// V2-03 — `dash line a b c d x` draws FOUR series
+// ================================================================
+local extra_four ""
+local extra_five ""
+mata: _dvx_extra("`ctl_l'", "`four_l'", "extra_four")
+mata: _dvx_extra("`ctl_l'", "`five_l'", "extra_five")
+
+display as text "V2-03 census: 4-series overlay adds colours: `extra_four'"
+display as text "V2-03 census: 5-variable form adds colours: `extra_five'"
+
+capture assert `: word count `extra_four'' == 3
+if _rc {
+    display as error "V2-03 SETUP BROKEN: the 4-series control added " ///
+        "`: word count `extra_four'' new colours, expected 3."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-03(setup)"'
+}
+
+capture {
+    assert `rc_five' == 0
+    assert "`extra_five'" == "`extra_four'"
+}
+if _rc {
+    display as error "V2-03 FAIL: -dash line mpg price length displacement " ///
+        "weight- rendered `: word count `extra_five'' extra series colour(s); " ///
+        "expected `: word count `extra_four'' (`extra_four')."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-03"'
+}
+else display as text "V2-03 PASS: 5-variable line draws four series"
+
+// ================================================================
+// V2-04 — ... and the internal spec holds four plot specs
+// ================================================================
+dash clear
+capture noisily dash line mpg price length displacement weight, name(v2spec5)
+local rc = _rc
+local spec5 `"${dash_json_v2spec5}"'
+display as text `"V2-04 spec: `spec5'"'
+
+capture {
+    assert `rc' == 0
+    assert strlen(`"`spec5'"') - ///
+           strlen(subinstr(`"`spec5'"', `""type":"line""', "", .)) == ///
+           4 * strlen(`""type":"line""')
+    foreach v in mpg price length displacement {
+        assert strpos(`"`spec5'"', `""yvar":"`v'""') > 0
+    }
+    assert strpos(`"`spec5'"', `""yvar":"weight""') == 0
+}
+if _rc {
+    display as error "V2-04 FAIL: spec for 5-variable line does not contain " ///
+        "four line plots (mpg price length displacement) against x=weight."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-04"'
+}
+else display as text "V2-04 PASS: 5-variable line yields four plot specs"
+
+// ================================================================
+// V2-05 — REGRESSION GUARD: single-y output is unchanged
+//
+// This is a guard, not a defect report: it passes today and must keep
+// passing after the varlist fix.  Two things are pinned.
+//
+// (a) The exact graph JSON for a one-y-variable command.  This string was
+//     captured from the pre-fix code base and is the artefact the varlist
+//     work is most likely to disturb.
+// (b) The rendered HTML, compared apart from Bokeh's per-run model ids.
+//     Bokeh mints fresh "pNNNN" ids and a fresh document UUID on every run,
+//     so a byte-for-byte comparison of two runs of the SAME command always
+//     differs; after those two token families are normalised away the two
+//     runs are byte-identical.  That is the comparison method, and it is
+//     verified here rather than assumed.
+// ================================================================
+dash clear
+capture noisily dash scatter mpg weight, name(v2single)
+local rc = _rc
+local spec1 `"${dash_json_v2single}"'
+
+local baseline1 `"{"plots":[{"type":"scatter","yvar":"mpg","xvar":"weight","options":{},"if_expr":"","in_expr":""}],"graph_options":{"name":"v2single"},"if_expr":"","in_expr":""}"'
+
+capture {
+    assert `rc' == 0
+    assert `"`spec1'"' == `"`baseline1'"'
+}
+if _rc {
+    display as error "V2-05 FAIL: single-y spec changed."
+    display as error `"  expected: `baseline1'"'
+    display as error `"  actual  : `spec1'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-05(spec)"'
+}
+else display as text "V2-05a PASS: single-y spec matches the pre-fix baseline"
+
+// (b) rendered HTML, normalised
+tempfile f_rg_a f_rg_b
+local rg_a "`f_rg_a'.html"
+local rg_b "`f_rg_b'.html"
+dash clear
+dash scatter mpg weight, saving("`rg_a'")
+dash clear
+dash scatter mpg weight, saving("`rg_b'")
+
+local rg_same = 0
+mata: st_local("rg_same", strofreal(_dvx_norm_same("`rg_a'", "`rg_b'")))
+
+capture assert `rg_same' == 1
+if _rc {
+    display as error "V2-05 FAIL: two runs of the same single-y command " ///
+        "differ after normalising Bokeh's per-run ids and document UUID."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-05(html)"'
+}
+else display as text "V2-05b PASS: single-y HTML is stable modulo Bokeh ids"
+
+// The single-y dashboard must also still be exactly one series.
+local extra_ctl ""
+mata: _dvx_extra("`ctl_s'", "`rg_a'", "extra_ctl")
+capture assert "`extra_ctl'" == ""
+if _rc {
+    display as error "V2-05 FAIL: single-y dashboard gained series colours " ///
+        "(`extra_ctl')."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-05(colours)"'
+}
+else display as text "V2-05c PASS: single-y dashboard is still one series"
+
+// ================================================================
+// V2-06 — `dash function y=x^2` parses
+//
+// dash.ado's _dash_parse_varpart_any uses -syntax anything(name=vals)-
+// without -equalok-, so Stata rejects the token before it is ever seen.
+// That makes the "y=" stripper further down unreachable dead code.
+// Measured today: r(101) "=exp not allowed".
+// ================================================================
+dash clear
+capture noisily dash function y=x^2, name(v2fn)
+local rc = _rc
+local specfn `"${dash_json_v2fn}"'
+display as text `"V2-06 rc=`rc' spec: `specfn'"'
+
+capture {
+    assert `rc' == 0
+    assert strpos(`"`specfn'"', `""expr":"x^2""') > 0
+}
+if _rc {
+    display as error "V2-06 FAIL: -dash function y=x^2- exited with rc=`rc' " ///
+        "(expected 0 and an expr of x^2).  r(101) means anything() still " ///
+        "lacks equalok."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-06"'
+}
+else display as text "V2-06 PASS: function y=<expr> parses"
+
+// ================================================================
+// V2-07 — variable-free plot types render
+//
+// _dash_render_immediate aborts when the spec names no dataset variables,
+// but scatteri / pci / pcscatter / function legitimately name none.
+// Measured today: r(198) "no variables identified in plot specification."
+// ================================================================
+tempfile f_si f_fn
+local si_out "`f_si'.html"
+local fn_out "`f_fn'.html"
+
+dash clear
+capture noisily dash scatteri 20 3000 30 4000, saving("`si_out'")
+local rc_si = _rc
+capture confirm file "`si_out'"
+local si_exists = (_rc == 0)
+
+dash clear
+capture noisily dash function x^2, saving("`fn_out'")
+local rc_fn = _rc
+capture confirm file "`fn_out'"
+local fn_exists = (_rc == 0)
+
+capture {
+    assert `rc_si' == 0
+    assert `si_exists' == 1
+    assert `rc_fn' == 0
+    assert `fn_exists' == 1
+}
+if _rc {
+    display as error "V2-07 FAIL: variable-free plots rejected — " ///
+        "scatteri rc=`rc_si' (file exists=`si_exists'), " ///
+        "function rc=`rc_fn' (file exists=`fn_exists')."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-07"'
+}
+else display as text "V2-07 PASS: scatteri and function render without variables"
+
+// ================================================================
+// V2-08 — name(g1, replace) replaces an existing registration
+//
+// _dash_register_graph validates the RAW option text against the name
+// pattern before the ", replace" suffix has been split off, so the replace
+// form can never reach the registry.  Worse, the duplicate-name error tells
+// the user to type exactly the syntax that cannot work.
+// Measured today: r(198) "invalid graph name 'g1, replace'".
+// ================================================================
+dash clear
+capture noisily dash scatter mpg weight, name(v2g1)
+local rc_first = _rc
+
+// The error the user is shown when the name collides must name a working
+// remedy; register the same name again to capture it.
+capture noisily dash scatter price weight, name(v2g1)
+local rc_dup = _rc
+
+capture noisily dash scatter price weight, name(v2g1, replace)
+local rc_rep = _rc
+local spec_rep `"${dash_json_v2g1}"'
+display as text "V2-08 rc first=`rc_first' dup=`rc_dup' replace=`rc_rep'"
+display as text `"V2-08 spec after replace: `spec_rep'"'
+
+capture {
+    assert `rc_first' == 0
+    assert `rc_dup'   != 0                       // a bare re-use is still an error
+    assert `rc_rep'   == 0                       // but the documented remedy works
+    assert strpos(`"`spec_rep'"', `""yvar":"price""') > 0
+    assert strpos(`"`spec_rep'"', `""yvar":"mpg""')   == 0
+    // and the registry must still hold exactly one entry for that name
+    assert `: word count ${dash_graph_registry}' == 1
+}
+if _rc {
+    display as error "V2-08 FAIL: name(v2g1, replace) rc=`rc_rep' — the " ///
+        "remedy the duplicate-name error recommends does not work, or it " ///
+        "did not overwrite the stored spec."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-08"'
+}
+else display as text "V2-08 PASS: name(g, replace) replaces the registration"
+
+// ================================================================
+// V2-09 — saving() accepts twoway's normal forms
+//
+// _dash_render_immediate validates the path BEFORE appending ".html", so
+// twoway's ordinary saving(myfig) and saving(myfig.gph) are rejected, and
+// the sub-option form saving(f.html, replace) never has its suffix split
+// off.  Separately _dash_validate_path rejects "(" and ")" outright, which
+// makes any path under e.g. "Program Files (x86)" unusable.
+// Measured today: r(198) for all four.
+// ================================================================
+tempfile f_noext f_gph f_repl
+local p_noext "`f_noext'"
+local p_gph   "`f_gph'.gph"
+local p_repl  "`f_repl'.html"
+
+dash clear
+capture noisily dash scatter mpg weight, saving("`p_noext'")
+local rc_noext = _rc
+capture confirm file "`p_noext'.html"
+local ok_noext = (_rc == 0)
+
+dash clear
+capture noisily dash scatter mpg weight, saving("`p_gph'")
+local rc_gph = _rc
+
+dash clear
+capture noisily dash scatter mpg weight, saving("`p_repl'", replace)
+local rc_repl = _rc
+capture confirm file "`p_repl'"
+local ok_repl = (_rc == 0)
+
+// A directory whose name contains parentheses is ordinary on Windows
+// ("Program Files (x86)") and legal everywhere.
+local parendir "`c(tmpdir)'/dash_v2 (x86)"
+capture mkdir "`parendir'"
+local p_paren "`parendir'/out.html"
+dash clear
+capture noisily dash scatter mpg weight, saving("`p_paren'")
+local rc_paren = _rc
+capture confirm file "`p_paren'"
+local ok_paren = (_rc == 0)
+
+display as text "V2-09 rc noext=`rc_noext' gph=`rc_gph' repl=`rc_repl' paren=`rc_paren'"
+
+capture {
+    assert `rc_noext' == 0 & `ok_noext' == 1
+    assert `rc_gph'   == 0
+    assert `rc_repl'  == 0 & `ok_repl' == 1
+    assert `rc_paren' == 0 & `ok_paren' == 1
+}
+if _rc {
+    display as error "V2-09 FAIL: saving() forms rejected — " ///
+        "saving(myfig) rc=`rc_noext' (file=`ok_noext'), " ///
+        "saving(myfig.gph) rc=`rc_gph', " ///
+        "saving(f.html, replace) rc=`rc_repl' (file=`ok_repl'), " ///
+        "parenthesised directory rc=`rc_paren' (file=`ok_paren')."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-09"'
+}
+else display as text "V2-09 PASS: all four saving() forms accepted"
+
+capture erase "`p_paren'"
+capture rmdir "`parendir'"
+
+// ================================================================
+// V2-10 — scatteri marker labels pair with their own point
+//
+// dash.ado walks the scatteri token list two at a time, checking only that
+// the token count is even.  With marker labels present that shears the
+// pairing: measured today the spec reads
+//     "values":[[20,3000],["A",30],[4000,"B"]]
+// so the label "A" becomes a y-coordinate and 3000/4000 stop being x's.
+// ================================================================
+dash clear
+capture noisily dash scatteri 20 3000 "A" 30 4000 "B", name(v2si)
+local rc = _rc
+local spec_si `"${dash_json_v2si}"'
+display as text `"V2-10 rc=`rc' spec: `spec_si'"'
+
+capture {
+    assert `rc' == 0
+    // The two coordinate pairs must survive intact ...
+    assert strpos(`"`spec_si'"', "[20,3000]") > 0
+    assert strpos(`"`spec_si'"', "[30,4000]") > 0
+    // ... and the sheared pairing must be gone.
+    assert strpos(`"`spec_si'"', `"["A",30]"')   == 0
+    assert strpos(`"`spec_si'"', `"[4000,"B"]"') == 0
+    // Both labels must still be carried somewhere in the spec.
+    assert strpos(`"`spec_si'"', `""A""') > 0
+    assert strpos(`"`spec_si'"', `""B""') > 0
+}
+if _rc {
+    display as error "V2-10 FAIL: scatteri marker labels mis-paired. " ///
+        "Expected coordinate pairs [20,3000] and [30,4000] with labels A,B " ///
+        "carried alongside."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-10"'
+}
+else display as text "V2-10 PASS: scatteri labels pair with their own point"
+
+// ================================================================
+// V2-11 — a per-plot if qualifier binds to that plot only
+//
+// _dash_plot promotes the FIRST layer's if_expr to graph level and the
+// renderer applies that one qualifier to every layer; no code path reads a
+// per-plot if_expr.  So in
+//     (scatter mpg weight) (scatter mpg weight if foreign)
+// the second layer's qualifier is silently dropped, and in the mirrored
+// command it is silently applied to both layers.
+// ================================================================
+dash clear
+capture noisily dash (scatter mpg weight) (scatter mpg weight if foreign), name(v2if1)
+local rc1 = _rc
+local spec_if1 `"${dash_json_v2if1}"'
+
+dash clear
+capture noisily dash (scatter mpg weight if foreign) (scatter mpg weight), name(v2if2)
+local rc2 = _rc
+local spec_if2 `"${dash_json_v2if2}"'
+
+display as text `"V2-11 spec A: `spec_if1'"'
+display as text `"V2-11 spec B: `spec_if2'"'
+
+capture {
+    assert `rc1' == 0
+    assert `rc2' == 0
+    // A qualifier that belongs to one layer must NOT be promoted to the
+    // graph level, where it would be applied to every layer.
+    assert strpos(`"`spec_if1'"', `""graph_options""') > 0
+    local tail1 = substr(`"`spec_if1'"', strpos(`"`spec_if1'"', `""graph_options""'), .)
+    assert strpos(`"`tail1'"', `""if_expr":"foreign""') == 0
+    local tail2 = substr(`"`spec_if2'"', strpos(`"`spec_if2'"', `""graph_options""'), .)
+    assert strpos(`"`tail2'"', `""if_expr":"foreign""') == 0
+    // The qualifier must survive on the layer that carried it.
+    assert strpos(`"`spec_if1'"', `""if_expr":"foreign""') > 0
+    assert strpos(`"`spec_if2'"', `""if_expr":"foreign""') > 0
+}
+if _rc {
+    display as error "V2-11 FAIL: a per-layer if qualifier is promoted to " ///
+        "the graph level (and so applied to every layer) instead of staying " ///
+        "on its own plot."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-11"'
+}
+else display as text "V2-11 PASS: per-plot if qualifier stays on its own plot"
+
+// ================================================================
+// V2-12 — tsline uses the tsset time variable, or names tsset
+//
+// dash has no notion of tsset at all: `dash tsline close' leaves xvar empty
+// and the renderer dies inside pandas.  Measured today: r(7102), whose text
+// is a bare KeyError with an empty key, on BOTH a tsset and an un-tsset
+// dataset.
+// ================================================================
+tempfile f_ts
+local ts_out "`f_ts'.html"
+
+qui sysuse auto, clear
+qui gen int tvar = _n
+qui tsset tvar
+
+dash clear
+capture noisily dash tsline mpg, name(v2ts)
+local rc_ts = _rc
+local spec_ts `"${dash_json_v2ts}"'
+display as text `"V2-12 tsset rc=`rc_ts' spec: `spec_ts'"'
+
+capture {
+    assert `rc_ts' == 0
+    assert strpos(`"`spec_ts'"', `""xvar":"tvar""') > 0
+}
+if _rc {
+    display as error "V2-12 FAIL (tsset): -dash tsline mpg- on a tsset " ///
+        "dataset rc=`rc_ts'; the spec does not use tvar as x."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-12(tsset)"'
+}
+else display as text "V2-12a PASS: tsline picks up the tsset time variable"
+
+dash clear
+capture noisily dash tsline mpg, saving("`ts_out'")
+local rc_ts_render = _rc
+capture {
+    assert `rc_ts_render' == 0
+}
+if _rc {
+    display as error "V2-12 FAIL (render): tsline on a tsset dataset did " ///
+        "not render, rc=`rc_ts_render'."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-12(render)"'
+}
+else display as text "V2-12b PASS: tsline renders on a tsset dataset"
+
+// Un-tsset: the user must get a clear error that names tsset, not a Python
+// traceback.  r(7102) is the Python-exception return code.
+qui sysuse auto, clear
+dash clear
+capture noisily dash tsline mpg, saving("`ts_out'")
+local rc_nots = _rc
+display as text "V2-12 un-tsset rc=`rc_nots'"
+
+capture {
+    assert `rc_nots' != 0        // it must still be an error ...
+    assert `rc_nots' != 7102     // ... but not a Python traceback
+    assert `rc_nots' == 198      // a plain syntax/usage error
+}
+if _rc {
+    display as error "V2-12 FAIL (un-tsset): expected a clear r(198) error " ///
+        "naming tsset; got rc=`rc_nots' (7102 is the raw Python exception)."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' V2-12(untsset)"'
+}
+else display as text "V2-12c PASS: un-tsset tsline gives a clear error"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+dash clear
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_varlist_expansion: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_varlist_expansion: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

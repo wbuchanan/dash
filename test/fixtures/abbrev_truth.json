@@ -1,0 +1,2490 @@
+{
+  "_meta": {
+    "context_reproducibility": {
+      "area": true,
+      "bar": true,
+      "connected": true,
+      "dot": true,
+      "dropline": true,
+      "function": true,
+      "histogram": true,
+      "kdensity": true,
+      "lfit": true,
+      "lfitci": true,
+      "line": true,
+      "lowess": false,
+      "lpoly": true,
+      "lpolyci": true,
+      "mband": true,
+      "mspline": true,
+      "rarea": true,
+      "rbar": true,
+      "rcap": true,
+      "scatter": true,
+      "spike": true
+    },
+    "counts": {
+      "dash_abbrev_unresolved": 2,
+      "dash_mismaps": 7,
+      "dash_rejects_min_abbrev": 56,
+      "dash_rejects_min_abbrev_option_declared_by_dash": 18,
+      "dash_rejects_min_abbrev_option_not_in_dash": 38,
+      "options": 93,
+      "plottypes": 33,
+      "stata_rejects_dash_abbrev": 20,
+      "unprobeable": 28
+    },
+    "dash_probe": "Every prefix is also fed to dash as `dash scatter mpg weight, <prefix>(<value>) name(zqdash)`; the entry for the measured minimum abbreviation is reported under \"dash\", with the landing key read back out of .",
+    "dataset": "sysuse auto, clear",
+    "generated_by": "scripts/extract_abbrev_truth.do",
+    "method": "For each option/plottype the shortest prefix P is sought such that twoway accepts P AND P resolves to the intended option.  The second half is enforced with a resolution oracle: each probe is saved to a live-format .gph (a plain-text graph-object script), the echoed command line and the per-run object ids are normalised away, and the text is compared with the .gph produced by the full option name.  Return code alone is NOT sufficient: twoway accepts xl(3000) and t(ZQSENTINEL), but they resolve to xlabel() and t1title().",
+    "oracle_caveat": "Options whose .gph output is identical to the no-option baseline cannot use the identity oracle.  Those entries carry oracle=\"return-code-only ...\" or a dedicated side-effect oracle (graph-created-under-name, file-written) and are flagged as such.",
+    "oracle_selfcheck": "the same twoway command run twice, more than a second apart, normalises to identical text: PASS",
+    "record_file": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_abbrev_probe/probe_records.txt",
+    "run_date": "18 Sep 2026",
+    "stata_born_date": "12 Aug 2026",
+    "stata_edition": "MP",
+    "stata_flavor": "IC",
+    "stata_version": "19.5"
+  },
+  "abbrev_resolution": {
+    "asp": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "aspectratio",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "bfc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "bfcolor",
+      "stata_accepted_prefix_in_context_of": [
+        "bfcolor"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "bfcolor",
+      "status": "agrees"
+    },
+    "bgc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "bgcolor",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "blc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "blcolor",
+      "stata_accepted_prefix_in_context_of": [
+        "blcolor"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "blcolor",
+      "status": "agrees"
+    },
+    "bw": {
+      "candidates_in_non_reproducible_context": [
+        "bwidth"
+      ],
+      "dash_maps_to": "barwidth",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "not determined: the only candidate option(s) (bwidth) live in a twoway context whose .gph is not reproducible, so the oracle could not be applied"
+    },
+    "bwid": {
+      "candidates_in_non_reproducible_context": [
+        "bwidth"
+      ],
+      "dash_maps_to": "bwidth",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "not determined: the only candidate option(s) (bwidth) live in a twoway context whose .gph is not reproducible, so the oracle could not be applied"
+    },
+    "by": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "by",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": "by",
+      "status": "agrees"
+    },
+    "cap": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "caption",
+      "stata_accepted_prefix_in_context_of": [
+        "caption"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "caption",
+      "status": "agrees"
+    },
+    "colpal": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "colpalette",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "colv": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "colorvar",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "cv": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "colorvar",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "deg": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "degree",
+      "stata_accepted_prefix_in_context_of": [
+        "degree"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "degree",
+      "status": "agrees"
+    },
+    "fa": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "falpha",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "fal": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "falpha",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "fc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "fcolor",
+      "stata_accepted_prefix_in_context_of": [
+        "fcolor"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "fcolor",
+      "status": "agrees"
+    },
+    "fi": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "fintensity",
+      "stata_accepted_prefix_in_context_of": [
+        "fintensity"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "fintensity",
+      "status": "agrees"
+    },
+    "graphr": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "graphregion",
+      "stata_accepted_prefix_in_context_of": [
+        "graphregion"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "graphregion",
+      "status": "agrees"
+    },
+    "jit": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "jitter",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "jse": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "jseed",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "lal": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "lalpha",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "lc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "lcolor",
+      "stata_accepted_prefix_in_context_of": [
+        "lcolor"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "lcolor",
+      "status": "agrees"
+    },
+    "leg": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "legend",
+      "stata_accepted_prefix_in_context_of": [
+        "legend"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "legend",
+      "status": "agrees"
+    },
+    "lp": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "lpattern",
+      "stata_accepted_prefix_in_context_of": [
+        "lpattern"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "lpattern",
+      "status": "agrees"
+    },
+    "lw": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "lwidth",
+      "stata_accepted_prefix_in_context_of": [
+        "lwidth"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "lwidth",
+      "status": "agrees"
+    },
+    "m": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "marker",
+      "stata_accepted_prefix_in_context_of": [
+        "mcolor",
+        "mfcolor",
+        "mlabcolor",
+        "mlabel",
+        "mlabgap",
+        "mlabposition",
+        "mlabsize",
+        "mlcolor",
+        "mlpattern",
+        "mlstyle",
+        "mlwidth",
+        "msangle",
+        "msize",
+        "mstyle",
+        "msymbol"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "msymbol",
+      "status": "MIS-MAP"
+    },
+    "mal": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "malpha",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "mc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mcolor",
+      "stata_accepted_prefix_in_context_of": [
+        "mcolor"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "mcolor",
+      "status": "agrees"
+    },
+    "mfc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mfcolor",
+      "stata_accepted_prefix_in_context_of": [
+        "mfcolor"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "mfcolor",
+      "status": "agrees"
+    },
+    "mla": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mlabel",
+      "stata_accepted_prefix_in_context_of": [
+        "mlabel"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "mlabel",
+      "status": "agrees"
+    },
+    "mlc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mlabcolor",
+      "stata_accepted_prefix_in_context_of": [
+        "mlcolor"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "mlcolor",
+      "status": "MIS-MAP"
+    },
+    "mlg": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mlabgap",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "mlp": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mlabposition",
+      "stata_accepted_prefix_in_context_of": [
+        "mlpattern"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "mlpattern",
+      "status": "MIS-MAP"
+    },
+    "mls": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mlabsize",
+      "stata_accepted_prefix_in_context_of": [
+        "mlstyle"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "mlstyle",
+      "status": "MIS-MAP"
+    },
+    "mlw": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "mlabwidth",
+      "stata_accepted_prefix_in_context_of": [
+        "mlwidth"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "mlwidth",
+      "status": "MIS-MAP"
+    },
+    "ms": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "msymbol",
+      "stata_accepted_prefix_in_context_of": [
+        "msangle",
+        "msize",
+        "mstyle",
+        "msymbol"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "msymbol",
+      "status": "agrees"
+    },
+    "msa": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "msangle",
+      "stata_accepted_prefix_in_context_of": [
+        "msangle"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "msangle",
+      "status": "agrees"
+    },
+    "msi": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "msize",
+      "stata_accepted_prefix_in_context_of": [
+        "msize"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "msize",
+      "status": "agrees"
+    },
+    "nam": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "name",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "note": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "note",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": "note",
+      "status": "agrees"
+    },
+    "pbgc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "plotbgcolor",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "plotr": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "plotregion",
+      "stata_accepted_prefix_in_context_of": [
+        "plotregion"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "plotregion",
+      "status": "agrees"
+    },
+    "sav": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "saving",
+      "stata_accepted_prefix_in_context_of": [
+        "saving"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "saving",
+      "status": "agrees"
+    },
+    "sch": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "scheme",
+      "stata_accepted_prefix_in_context_of": [
+        "scheme"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "scheme",
+      "status": "agrees"
+    },
+    "sub": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "subtitle",
+      "stata_accepted_prefix_in_context_of": [
+        "subtitle"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "subtitle",
+      "status": "agrees"
+    },
+    "ti": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "title",
+      "stata_accepted_prefix_in_context_of": [
+        "title"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "title",
+      "status": "agrees"
+    },
+    "xax": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xaxis",
+      "stata_accepted_prefix_in_context_of": [
+        "xaxis"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "xaxis",
+      "status": "agrees"
+    },
+    "xl": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xline",
+      "stata_accepted_prefix_in_context_of": [
+        "xlabel",
+        "xline"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "xlabel",
+      "status": "MIS-MAP"
+    },
+    "xla": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xlabel",
+      "stata_accepted_prefix_in_context_of": [
+        "xlabel"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "xlabel",
+      "status": "agrees"
+    },
+    "xla2": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xlabel2",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "xsc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xscale",
+      "stata_accepted_prefix_in_context_of": [
+        "xscale"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "xscale",
+      "status": "agrees"
+    },
+    "xsc2": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xscale2",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "xti": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xtitle",
+      "stata_accepted_prefix_in_context_of": [
+        "xtick",
+        "xtitle"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "xtitle",
+      "status": "agrees"
+    },
+    "xti2": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "xtitle2",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "yax": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "yaxis",
+      "stata_accepted_prefix_in_context_of": [
+        "yaxis"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "yaxis",
+      "status": "agrees"
+    },
+    "yl": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "yline",
+      "stata_accepted_prefix_in_context_of": [
+        "ylabel",
+        "yline"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "ylabel",
+      "status": "MIS-MAP"
+    },
+    "yla": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "ylabel",
+      "stata_accepted_prefix_in_context_of": [
+        "ylabel"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "ylabel",
+      "status": "agrees"
+    },
+    "yla2": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "ylabel2",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "ysc": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "yscale",
+      "stata_accepted_prefix_in_context_of": [
+        "yscale"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "yscale",
+      "status": "agrees"
+    },
+    "ysc2": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "yscale2",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    },
+    "yti": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "ytitle",
+      "stata_accepted_prefix_in_context_of": [
+        "ytick",
+        "ytitle"
+      ],
+      "stata_identity_matches": null,
+      "stata_resolves_to": "ytitle",
+      "status": "agrees"
+    },
+    "yti2": {
+      "candidates_in_non_reproducible_context": null,
+      "dash_maps_to": "ytitle2",
+      "stata_accepted_prefix_in_context_of": null,
+      "stata_identity_matches": [],
+      "stata_resolves_to": null,
+      "status": "twoway rejects this abbreviation"
+    }
+  },
+  "dash_abbrev_stata_rejects": [
+    "asp: dash->aspectratio, stata rejects the abbreviation",
+    "bgc: dash->bgcolor, stata rejects the abbreviation",
+    "colpal: dash->colpalette, stata rejects the abbreviation",
+    "colv: dash->colorvar, stata rejects the abbreviation",
+    "cv: dash->colorvar, stata rejects the abbreviation",
+    "fa: dash->falpha, stata rejects the abbreviation",
+    "fal: dash->falpha, stata rejects the abbreviation",
+    "jit: dash->jitter, stata rejects the abbreviation",
+    "jse: dash->jseed, stata rejects the abbreviation",
+    "lal: dash->lalpha, stata rejects the abbreviation",
+    "mal: dash->malpha, stata rejects the abbreviation",
+    "mlg: dash->mlabgap, stata rejects the abbreviation",
+    "nam: dash->name, stata rejects the abbreviation",
+    "pbgc: dash->plotbgcolor, stata rejects the abbreviation",
+    "xla2: dash->xlabel2, stata rejects the abbreviation",
+    "xsc2: dash->xscale2, stata rejects the abbreviation",
+    "xti2: dash->xtitle2, stata rejects the abbreviation",
+    "yla2: dash->ylabel2, stata rejects the abbreviation",
+    "ysc2: dash->yscale2, stata rejects the abbreviation",
+    "yti2: dash->ytitle2, stata rejects the abbreviation"
+  ],
+  "dash_abbrev_unresolved": [
+    "bw",
+    "bwid"
+  ],
+  "dash_mismaps": [
+    "m: dash->marker, stata->msymbol",
+    "mlc: dash->mlabcolor, stata->mlcolor",
+    "mlp: dash->mlabposition, stata->mlpattern",
+    "mls: dash->mlabsize, stata->mlstyle",
+    "mlw: dash->mlabwidth, stata->mlwidth",
+    "xl: dash->xline, stata->xlabel",
+    "yl: dash->yline, stata->ylabel"
+  ],
+  "dash_rejects_min_abbrev": [
+    "aspectratio",
+    "b1title",
+    "b2title",
+    "bands",
+    "barwidth",
+    "bin",
+    "cmissing",
+    "color",
+    "colorcuts",
+    "colordiscrete",
+    "colorlist",
+    "coloruseplegend",
+    "colorvar",
+    "connect",
+    "density",
+    "fraction",
+    "frequency",
+    "horizontal",
+    "jitterseed",
+    "kernel",
+    "l1title",
+    "l2title",
+    "level",
+    "lstyle",
+    "mlabcolor",
+    "mlabel",
+    "mlabgap",
+    "mlabposition",
+    "mlabsize",
+    "mstyle",
+    "n",
+    "nodraw",
+    "percent",
+    "pstyle",
+    "r1title",
+    "r2title",
+    "range",
+    "sort",
+    "start",
+    "t1title",
+    "t2title",
+    "text",
+    "vertical",
+    "width",
+    "xline",
+    "xmlabel",
+    "xmtick",
+    "xsize",
+    "xtick",
+    "xtitle",
+    "yline",
+    "ymlabel",
+    "ymtick",
+    "ysize",
+    "ytick",
+    "ytitle"
+  ],
+  "dash_rejects_min_abbrev_option_declared_by_dash": [
+    "aspectratio",
+    "barwidth",
+    "cmissing",
+    "colorcuts",
+    "colordiscrete",
+    "coloruseplegend",
+    "colorvar",
+    "connect",
+    "mlabcolor",
+    "mlabel",
+    "mlabgap",
+    "mlabposition",
+    "mlabsize",
+    "pstyle",
+    "xline",
+    "xtitle",
+    "yline",
+    "ytitle"
+  ],
+  "dash_rejects_min_abbrev_option_not_in_dash": [
+    "b1title",
+    "b2title",
+    "bands",
+    "bin",
+    "color",
+    "colorlist",
+    "density",
+    "fraction",
+    "frequency",
+    "horizontal",
+    "jitterseed",
+    "kernel",
+    "l1title",
+    "l2title",
+    "level",
+    "lstyle",
+    "mstyle",
+    "n",
+    "nodraw",
+    "percent",
+    "r1title",
+    "r2title",
+    "range",
+    "sort",
+    "start",
+    "t1title",
+    "t2title",
+    "text",
+    "vertical",
+    "width",
+    "xmlabel",
+    "xmtick",
+    "xsize",
+    "xtick",
+    "ymlabel",
+    "ymtick",
+    "ysize",
+    "ytick"
+  ],
+  "options": {
+    "aspectratio": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, aspect(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, aspectratio(1) nodraw",
+      "min_abbrev": "aspect",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, aspect(1) nodraw",
+      "probe_value": "1"
+    },
+    "b1title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, b(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, b1title(ZQSENTINEL) nodraw",
+      "min_abbrev": "b",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, b(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "b2title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, b2(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, b2title(ZQSENTINEL) nodraw",
+      "min_abbrev": "b2",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, b2(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "bands": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, ba(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway mband mpg weight, bands(20) nodraw",
+      "min_abbrev": "ba",
+      "oracle": "gph-identity",
+      "plottype_context": "mband",
+      "probe_cmd": "twoway mband mpg weight, ba(20) nodraw",
+      "probe_value": "20"
+    },
+    "barwidth": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, barw(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway bar mpg weight, barwidth(100) nodraw",
+      "min_abbrev": "barw",
+      "oracle": "gph-identity",
+      "plottype_context": "bar",
+      "probe_cmd": "twoway bar mpg weight, barw(100) nodraw",
+      "probe_value": "100"
+    },
+    "base": {
+      "dash": {
+        "accepts": true,
+        "key": "base",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway bar mpg weight, base(0) nodraw",
+      "min_abbrev": "base",
+      "oracle": "gph-identity",
+      "plottype_context": "bar",
+      "probe_cmd": "twoway bar mpg weight, base(0) nodraw",
+      "probe_value": "0"
+    },
+    "bfcolor": {
+      "dash": {
+        "accepts": true,
+        "key": "bfcolor",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, bfcolor(red) nodraw",
+      "min_abbrev": "bfc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, bfc(red) nodraw",
+      "probe_value": "red"
+    },
+    "bin": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, bin(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway histogram mpg, bin(10) nodraw",
+      "min_abbrev": "bin",
+      "oracle": "gph-identity",
+      "plottype_context": "histogram",
+      "probe_cmd": "twoway histogram mpg, bin(10) nodraw",
+      "probe_value": "10"
+    },
+    "blcolor": {
+      "dash": {
+        "accepts": true,
+        "key": "blcolor",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, blcolor(red) nodraw",
+      "min_abbrev": "blc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, blc(red) nodraw",
+      "probe_value": "red"
+    },
+    "by": {
+      "dash": {
+        "accepts": true,
+        "key": "by",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, by(foreign) nodraw",
+      "min_abbrev": "by",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, by(foreign) nodraw",
+      "probe_value": "foreign"
+    },
+    "caption": {
+      "dash": {
+        "accepts": true,
+        "key": "caption",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, caption(ZQSENTINEL) nodraw",
+      "min_abbrev": "cap",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, cap(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "cmissing": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, cmiss(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, cmissing(n) nodraw",
+      "min_abbrev": "cmiss",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, cmiss(n) nodraw",
+      "probe_value": "n"
+    },
+    "color": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, col(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, color(red) nodraw",
+      "min_abbrev": "col",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, col(red) nodraw",
+      "probe_value": "red"
+    },
+    "colorcuts": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, colorcut(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, colorcuts(20 30) nodraw",
+      "min_abbrev": "colorcut",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, colorcut(20 30) nodraw",
+      "probe_value": "20 30"
+    },
+    "colordiscrete": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, colordis(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, colordiscrete nodraw",
+      "min_abbrev": "colordis",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, colordis nodraw",
+      "probe_value": null
+    },
+    "colorlist": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, colorli(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, colorlist(red blue) nodraw",
+      "min_abbrev": "colorli",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, colorli(red blue) nodraw",
+      "probe_value": "red blue"
+    },
+    "coloruseplegend": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, colorusepleg(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, coloruseplegend nodraw",
+      "min_abbrev": "colorusepleg",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, colorusepleg nodraw",
+      "probe_value": null
+    },
+    "colorvar": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, colorv(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, colorvar(turn) nodraw",
+      "min_abbrev": "colorv",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, colorv(turn) nodraw",
+      "probe_value": "turn"
+    },
+    "connect": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, c(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, connect(l) nodraw",
+      "min_abbrev": "c",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, c(l) nodraw",
+      "probe_value": "l"
+    },
+    "degree": {
+      "dash": {
+        "accepts": true,
+        "key": "degree",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway lpoly mpg weight, degree(1) nodraw",
+      "min_abbrev": "deg",
+      "oracle": "gph-identity",
+      "plottype_context": "lpoly",
+      "probe_cmd": "twoway lpoly mpg weight, deg(1) nodraw",
+      "probe_value": "1"
+    },
+    "density": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, den(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway histogram mpg, density nodraw",
+      "min_abbrev": "den",
+      "oracle": "return-code-only (option leaves no trace in the .gph)",
+      "plottype_context": "histogram",
+      "probe_cmd": "twoway histogram mpg, den nodraw",
+      "probe_value": null
+    },
+    "fcolor": {
+      "dash": {
+        "accepts": true,
+        "key": "fcolor",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, fcolor(red) nodraw",
+      "min_abbrev": "fc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, fc(red) nodraw",
+      "probe_value": "red"
+    },
+    "fintensity": {
+      "dash": {
+        "accepts": true,
+        "key": "fintensity",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, fintensity(50) nodraw",
+      "min_abbrev": "fi",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, fi(50) nodraw",
+      "probe_value": "50"
+    },
+    "fraction": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, frac(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway histogram mpg, fraction nodraw",
+      "min_abbrev": "frac",
+      "oracle": "gph-identity",
+      "plottype_context": "histogram",
+      "probe_cmd": "twoway histogram mpg, frac nodraw",
+      "probe_value": null
+    },
+    "frequency": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, freq(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway histogram mpg, frequency nodraw",
+      "min_abbrev": "freq",
+      "oracle": "gph-identity",
+      "plottype_context": "histogram",
+      "probe_cmd": "twoway histogram mpg, freq nodraw",
+      "probe_value": null
+    },
+    "graphregion": {
+      "dash": {
+        "accepts": true,
+        "key": "graphregion",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, graphregion(margin(zero)) nodraw",
+      "min_abbrev": "graphr",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, graphr(margin(zero)) nodraw",
+      "probe_value": "margin(zero)"
+    },
+    "horizontal": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, hor(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway bar mpg weight, horizontal nodraw",
+      "min_abbrev": "hor",
+      "oracle": "gph-identity",
+      "plottype_context": "bar",
+      "probe_cmd": "twoway bar mpg weight, hor nodraw",
+      "probe_value": null
+    },
+    "jitter": {
+      "dash": {
+        "accepts": true,
+        "key": "jitter",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, jitter(5) nodraw",
+      "min_abbrev": "jitter",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, jitter(5) nodraw",
+      "probe_value": "5"
+    },
+    "jitterseed": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, jitterseed(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, jitterseed(123) nodraw",
+      "min_abbrev": "jitterseed",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, jitterseed(123) nodraw",
+      "probe_value": "123"
+    },
+    "kernel": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, k(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway kdensity mpg, kernel(epanechnikov) nodraw",
+      "min_abbrev": "k",
+      "oracle": "return-code-only (option leaves no trace in the .gph)",
+      "plottype_context": "kdensity",
+      "probe_cmd": "twoway kdensity mpg, k(epanechnikov) nodraw",
+      "probe_value": "epanechnikov"
+    },
+    "l1title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, l(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, l1title(ZQSENTINEL) nodraw",
+      "min_abbrev": "l",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, l(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "l2title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, l2(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, l2title(ZQSENTINEL) nodraw",
+      "min_abbrev": "l2",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, l2(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "lcolor": {
+      "dash": {
+        "accepts": true,
+        "key": "lcolor",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, lcolor(red) nodraw",
+      "min_abbrev": "lc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, lc(red) nodraw",
+      "probe_value": "red"
+    },
+    "legend": {
+      "dash": {
+        "accepts": true,
+        "key": "legend",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, legend(off) nodraw",
+      "min_abbrev": "leg",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, leg(off) nodraw",
+      "probe_value": "off"
+    },
+    "level": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, le(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway lfitci mpg weight, level(90) nodraw",
+      "min_abbrev": "le",
+      "oracle": "gph-identity",
+      "plottype_context": "lfitci",
+      "probe_cmd": "twoway lfitci mpg weight, le(90) nodraw",
+      "probe_value": "90"
+    },
+    "lpattern": {
+      "dash": {
+        "accepts": true,
+        "key": "lpattern",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, lpattern(dash) nodraw",
+      "min_abbrev": "lp",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, lp(dash) nodraw",
+      "probe_value": "dash"
+    },
+    "lstyle": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, ls(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, lstyle(p2) nodraw",
+      "min_abbrev": "ls",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, ls(p2) nodraw",
+      "probe_value": "p2"
+    },
+    "lwidth": {
+      "dash": {
+        "accepts": true,
+        "key": "lwidth",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, lwidth(thick) nodraw",
+      "min_abbrev": "lw",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, lw(thick) nodraw",
+      "probe_value": "thick"
+    },
+    "mcolor": {
+      "dash": {
+        "accepts": true,
+        "key": "mcolor",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mcolor(red) nodraw",
+      "min_abbrev": "mc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mc(red) nodraw",
+      "probe_value": "red"
+    },
+    "mfcolor": {
+      "dash": {
+        "accepts": true,
+        "key": "mfcolor",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mfcolor(red) nodraw",
+      "min_abbrev": "mfc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mfc(red) nodraw",
+      "probe_value": "red"
+    },
+    "mlabcolor": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, mlabc(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlabcolor(red) nodraw",
+      "min_abbrev": "mlabc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mlabc(red) nodraw",
+      "probe_value": "red"
+    },
+    "mlabel": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, ml(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlabel(make) nodraw",
+      "min_abbrev": "ml",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, ml(make) nodraw",
+      "probe_value": "make"
+    },
+    "mlabgap": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, mlabg(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlabgap(2) nodraw",
+      "min_abbrev": "mlabg",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mlabg(2) nodraw",
+      "probe_value": "2"
+    },
+    "mlabposition": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, mlabp(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlabposition(12) nodraw",
+      "min_abbrev": "mlabp",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mlabp(12) nodraw",
+      "probe_value": "12"
+    },
+    "mlabsize": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, mlabs(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlabsize(large) nodraw",
+      "min_abbrev": "mlabs",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mlabs(large) nodraw",
+      "probe_value": "large"
+    },
+    "mlcolor": {
+      "dash": {
+        "accepts": true,
+        "key": "mlabcolor",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlcolor(red) nodraw",
+      "min_abbrev": "mlc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mlc(red) nodraw",
+      "probe_value": "red"
+    },
+    "mlpattern": {
+      "dash": {
+        "accepts": true,
+        "key": "mlabposition",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlpattern(dash) nodraw",
+      "min_abbrev": "mlp",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mlp(dash) nodraw",
+      "probe_value": "dash"
+    },
+    "mlstyle": {
+      "dash": {
+        "accepts": true,
+        "key": "mlabsize",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlstyle(p2) nodraw",
+      "min_abbrev": "mls",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mls(p2) nodraw",
+      "probe_value": "p2"
+    },
+    "mlwidth": {
+      "dash": {
+        "accepts": true,
+        "key": "mlabwidth",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mlwidth(thick) nodraw",
+      "min_abbrev": "mlw",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mlw(thick) nodraw",
+      "probe_value": "thick"
+    },
+    "msangle": {
+      "dash": {
+        "accepts": true,
+        "key": "msangle",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, msangle(45) nodraw",
+      "min_abbrev": "msa",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, msa(45) nodraw",
+      "probe_value": "45"
+    },
+    "msize": {
+      "dash": {
+        "accepts": true,
+        "key": "msize",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, msize(large) nodraw",
+      "min_abbrev": "msi",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, msi(large) nodraw",
+      "probe_value": "large"
+    },
+    "mstyle": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, mst(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, mstyle(p2) nodraw",
+      "min_abbrev": "mst",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, mst(p2) nodraw",
+      "probe_value": "p2"
+    },
+    "msymbol": {
+      "dash": {
+        "accepts": true,
+        "key": "marker",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, msymbol(oh) nodraw",
+      "min_abbrev": "m",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, m(oh) nodraw",
+      "probe_value": "oh"
+    },
+    "n": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, n(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway kdensity mpg, n(50) nodraw",
+      "min_abbrev": "n",
+      "oracle": "gph-identity",
+      "plottype_context": "kdensity",
+      "probe_cmd": "twoway kdensity mpg, n(50) nodraw",
+      "probe_value": "50"
+    },
+    "name": {
+      "dash": {
+        "accepts": true,
+        "key": "name",
+        "rc": 0
+      },
+      "full_name_cmd": null,
+      "min_abbrev": "name",
+      "oracle": "graph-created-under-name",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, name(zqname) nodraw",
+      "probe_value": null
+    },
+    "nodraw": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, nodraw(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": null,
+      "min_abbrev": "nodraw",
+      "oracle": "return-code-only (bare flag leaves no trace in the .gph)",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, nodraw",
+      "probe_value": null
+    },
+    "note": {
+      "dash": {
+        "accepts": true,
+        "key": "note",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, note(ZQSENTINEL) nodraw",
+      "min_abbrev": "note",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, note(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "percent": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, percent(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway histogram mpg, percent nodraw",
+      "min_abbrev": "percent",
+      "oracle": "gph-identity",
+      "plottype_context": "histogram",
+      "probe_cmd": "twoway histogram mpg, percent nodraw",
+      "probe_value": null
+    },
+    "plotregion": {
+      "dash": {
+        "accepts": true,
+        "key": "plotregion",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, plotregion(margin(zero)) nodraw",
+      "min_abbrev": "plotr",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, plotr(margin(zero)) nodraw",
+      "probe_value": "margin(zero)"
+    },
+    "pstyle": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, psty(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, pstyle(p2) nodraw",
+      "min_abbrev": "psty",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, psty(p2) nodraw",
+      "probe_value": "p2"
+    },
+    "r1title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, r(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, r1title(ZQSENTINEL) nodraw",
+      "min_abbrev": "r",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, r(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "r2title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, r2(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, r2title(ZQSENTINEL) nodraw",
+      "min_abbrev": "r2",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, r2(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "range": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, ra(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway function y=x, range(1 10) nodraw",
+      "min_abbrev": "ra",
+      "oracle": "gph-identity",
+      "plottype_context": "function",
+      "probe_cmd": "twoway function y=x, ra(1 10) nodraw",
+      "probe_value": "1 10"
+    },
+    "recast": {
+      "dash": {
+        "accepts": true,
+        "key": "recast",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, recast(line) nodraw",
+      "min_abbrev": "recast",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, recast(line) nodraw",
+      "probe_value": "line"
+    },
+    "saving": {
+      "dash": {
+        "accepts": true,
+        "key": "saving",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": null,
+      "min_abbrev": "sav",
+      "oracle": "file-written",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, sav(<path>.gph, replace) nodraw",
+      "probe_value": null
+    },
+    "scheme": {
+      "dash": {
+        "accepts": true,
+        "key": "scheme",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, scheme(s2color) nodraw",
+      "min_abbrev": "sch",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, sch(s2color) nodraw",
+      "probe_value": "s2color"
+    },
+    "sort": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, sort(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, sort nodraw",
+      "min_abbrev": "sort",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, sort nodraw",
+      "probe_value": null
+    },
+    "start": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, start(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway histogram mpg, start(10) nodraw",
+      "min_abbrev": "start",
+      "oracle": "gph-identity",
+      "plottype_context": "histogram",
+      "probe_cmd": "twoway histogram mpg, start(10) nodraw",
+      "probe_value": "10"
+    },
+    "subtitle": {
+      "dash": {
+        "accepts": true,
+        "key": "subtitle",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, subtitle(ZQSENTINEL) nodraw",
+      "min_abbrev": "sub",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, sub(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "t1title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, t(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, t1title(ZQSENTINEL) nodraw",
+      "min_abbrev": "t",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, t(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "t2title": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, t2(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, t2title(ZQSENTINEL) nodraw",
+      "min_abbrev": "t2",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, t2(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "text": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, text(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, text(20 3000 \"ZQSENTINEL\") nodraw",
+      "min_abbrev": "text",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, text(20 3000 \"ZQSENTINEL\") nodraw",
+      "probe_value": "20 3000 \"ZQSENTINEL\""
+    },
+    "title": {
+      "dash": {
+        "accepts": true,
+        "key": "title",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, title(ZQSENTINEL) nodraw",
+      "min_abbrev": "ti",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, ti(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "vertical": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, vert(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway bar mpg weight, vertical nodraw",
+      "min_abbrev": "vert",
+      "oracle": "gph-identity",
+      "plottype_context": "bar",
+      "probe_cmd": "twoway bar mpg weight, vert nodraw",
+      "probe_value": null
+    },
+    "width": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, w(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway histogram mpg, width(2) nodraw",
+      "min_abbrev": "w",
+      "oracle": "gph-identity",
+      "plottype_context": "histogram",
+      "probe_cmd": "twoway histogram mpg, w(2) nodraw",
+      "probe_value": "2"
+    },
+    "xaxis": {
+      "dash": {
+        "accepts": true,
+        "key": "xaxis",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xaxis(1) nodraw",
+      "min_abbrev": "xax",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xax(1) nodraw",
+      "probe_value": "1"
+    },
+    "xlabel": {
+      "dash": {
+        "accepts": true,
+        "key": "xline",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xlabel(2000 3000) nodraw",
+      "min_abbrev": "xl",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xl(2000 3000) nodraw",
+      "probe_value": "2000 3000"
+    },
+    "xline": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, xli(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xline(3000) nodraw",
+      "min_abbrev": "xli",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xli(3000) nodraw",
+      "probe_value": "3000"
+    },
+    "xmlabel": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, xml(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xmlabel(2500) nodraw",
+      "min_abbrev": "xml",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xml(2500) nodraw",
+      "probe_value": "2500"
+    },
+    "xmtick": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, xmt(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xmtick(2500) nodraw",
+      "min_abbrev": "xmt",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xmt(2500) nodraw",
+      "probe_value": "2500"
+    },
+    "xscale": {
+      "dash": {
+        "accepts": true,
+        "key": "xscale",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xscale(log) nodraw",
+      "min_abbrev": "xsc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xsc(log) nodraw",
+      "probe_value": "log"
+    },
+    "xsize": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, xsiz(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xsize(4) nodraw",
+      "min_abbrev": "xsiz",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xsiz(4) nodraw",
+      "probe_value": "4"
+    },
+    "xtick": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, xtic(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xtick(2000 3000) nodraw",
+      "min_abbrev": "xtic",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xtic(2000 3000) nodraw",
+      "probe_value": "2000 3000"
+    },
+    "xtitle": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, xt(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, xtitle(ZQSENTINEL) nodraw",
+      "min_abbrev": "xt",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, xt(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    },
+    "yaxis": {
+      "dash": {
+        "accepts": true,
+        "key": "yaxis",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, yaxis(1) nodraw",
+      "min_abbrev": "yax",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, yax(1) nodraw",
+      "probe_value": "1"
+    },
+    "ylabel": {
+      "dash": {
+        "accepts": true,
+        "key": "yline",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, ylabel(20 30) nodraw",
+      "min_abbrev": "yl",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, yl(20 30) nodraw",
+      "probe_value": "20 30"
+    },
+    "yline": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, yli(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, yline(20) nodraw",
+      "min_abbrev": "yli",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, yli(20) nodraw",
+      "probe_value": "20"
+    },
+    "ymlabel": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, yml(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, ymlabel(25) nodraw",
+      "min_abbrev": "yml",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, yml(25) nodraw",
+      "probe_value": "25"
+    },
+    "ymtick": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, ymt(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, ymtick(25) nodraw",
+      "min_abbrev": "ymt",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, ymt(25) nodraw",
+      "probe_value": "25"
+    },
+    "yscale": {
+      "dash": {
+        "accepts": true,
+        "key": "yscale",
+        "keys": null,
+        "rc": 0
+      },
+      "full_name_cmd": "twoway scatter mpg weight, yscale(log) nodraw",
+      "min_abbrev": "ysc",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, ysc(log) nodraw",
+      "probe_value": "log"
+    },
+    "ysize": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, ysiz(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, ysize(4) nodraw",
+      "min_abbrev": "ysiz",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, ysiz(4) nodraw",
+      "probe_value": "4"
+    },
+    "ytick": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, ytic(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, ytick(20 30) nodraw",
+      "min_abbrev": "ytic",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, ytic(20 30) nodraw",
+      "probe_value": "20 30"
+    },
+    "ytitle": {
+      "dash": {
+        "accepts": false,
+        "key": null,
+        "probe_cmd": "dash scatter mpg weight, yt(...) name(zqdash)",
+        "rc": 198
+      },
+      "full_name_cmd": "twoway scatter mpg weight, ytitle(ZQSENTINEL) nodraw",
+      "min_abbrev": "yt",
+      "oracle": "gph-identity",
+      "plottype_context": "scatter",
+      "probe_cmd": "twoway scatter mpg weight, yt(ZQSENTINEL) nodraw",
+      "probe_value": "ZQSENTINEL"
+    }
+  },
+  "plottypes": {
+    "area": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "area"
+      },
+      "min_abbrev": "area",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway area mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "bar": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "bar"
+      },
+      "min_abbrev": "bar",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway bar mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "connected": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "connected"
+      },
+      "min_abbrev": "con",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway con mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "dot": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "dot"
+      },
+      "min_abbrev": "dot",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway dot mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "dropline": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "dropline"
+      },
+      "min_abbrev": "dropline",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway dropline mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "fpfit": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "fpfit"
+      },
+      "min_abbrev": "fpfit",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway fpfit mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "fpfitci": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "fpfitci"
+      },
+      "min_abbrev": "fpfitci",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway fpfitci mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "function": {
+      "dash": {
+        "accepts": false,
+        "rc": 198,
+        "type": null
+      },
+      "min_abbrev": "fun",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway fun y=x, nodraw",
+      "varlist": "y=x"
+    },
+    "histogram": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "histogram"
+      },
+      "min_abbrev": "hist",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway hist mpg, nodraw",
+      "varlist": "mpg"
+    },
+    "kdensity": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "kdensity"
+      },
+      "min_abbrev": "kdensity",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway kdensity mpg, nodraw",
+      "varlist": "mpg"
+    },
+    "lfit": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "lfit"
+      },
+      "min_abbrev": "lfit",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway lfit mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "lfitci": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "lfitci"
+      },
+      "min_abbrev": "lfitci",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway lfitci mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "line": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "line"
+      },
+      "min_abbrev": "li",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway li mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "lowess": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "lowess"
+      },
+      "min_abbrev": "lowess",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway lowess mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "lpoly": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "lpoly"
+      },
+      "min_abbrev": "lpoly",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway lpoly mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "lpolyci": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "lpolyci"
+      },
+      "min_abbrev": "lpolyci",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway lpolyci mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "mband": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "mband"
+      },
+      "min_abbrev": "mband",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway mband mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "mspline": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "mspline"
+      },
+      "min_abbrev": "mspline",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway mspline mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "pcarrow": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "pcarrow"
+      },
+      "min_abbrev": "pcarrow",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway pcarrow mpg weight turn length, nodraw",
+      "varlist": "mpg weight turn length"
+    },
+    "pcspike": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "pcspike"
+      },
+      "min_abbrev": "pcspike",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway pcspike mpg weight turn length, nodraw",
+      "varlist": "mpg weight turn length"
+    },
+    "qfit": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "qfit"
+      },
+      "min_abbrev": "qfit",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway qfit mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "qfitci": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "qfitci"
+      },
+      "min_abbrev": "qfitci",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway qfitci mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "rarea": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "rarea"
+      },
+      "min_abbrev": "rarea",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway rarea turn mpg weight, nodraw",
+      "varlist": "turn mpg weight"
+    },
+    "rbar": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "rbar"
+      },
+      "min_abbrev": "rbar",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway rbar turn mpg weight, nodraw",
+      "varlist": "turn mpg weight"
+    },
+    "rcap": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "rcap"
+      },
+      "min_abbrev": "rcap",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway rcap turn mpg weight, nodraw",
+      "varlist": "turn mpg weight"
+    },
+    "rconnected": {
+      "dash": {
+        "accepts": false,
+        "rc": 198,
+        "type": null
+      },
+      "min_abbrev": "rcon",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway rcon turn mpg weight, nodraw",
+      "varlist": "turn mpg weight"
+    },
+    "rline": {
+      "dash": {
+        "accepts": false,
+        "rc": 198,
+        "type": null
+      },
+      "min_abbrev": "rl",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway rl turn mpg weight, nodraw",
+      "varlist": "turn mpg weight"
+    },
+    "rscatter": {
+      "dash": {
+        "accepts": false,
+        "rc": 198,
+        "type": null
+      },
+      "min_abbrev": "rsc",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway rsc turn mpg weight, nodraw",
+      "varlist": "turn mpg weight"
+    },
+    "rspike": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "rspike"
+      },
+      "min_abbrev": "rspike",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway rspike turn mpg weight, nodraw",
+      "varlist": "turn mpg weight"
+    },
+    "scatter": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "scatter"
+      },
+      "min_abbrev": "sc",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway sc mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "scatteri": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "scatteri"
+      },
+      "min_abbrev": "scatteri",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway scatteri 20 3000, nodraw",
+      "varlist": "20 3000"
+    },
+    "spike": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "spike"
+      },
+      "min_abbrev": "spike",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway spike mpg weight, nodraw",
+      "varlist": "mpg weight"
+    },
+    "tsline": {
+      "dash": {
+        "accepts": true,
+        "rc": 0,
+        "type": "tsline"
+      },
+      "min_abbrev": "tsline",
+      "oracle": "gph-identity",
+      "probe_cmd": "twoway tsline mpg, nodraw",
+      "varlist": "mpg"
+    }
+  },
+  "unprobeable": {
+    "at": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'weight')",
+    "bgcolor": "dash-only option; twoway has no bgcolor() (background colour is graphregion(fcolor()))",
+    "blabel": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'total')",
+    "bwidth": "the only twoway context in which this option is legal (lowess) does not produce a reproducible .gph -- the same command run twice writes the same serset values in a different order -- so the resolution oracle cannot be applied and no minimum abbreviation is claimed.  twoway returned _rc==0 for these prefixes, but which option each one resolved to was NOT verified: b, bw, bwi, bwid, bwidt",
+    "ciopts": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'lcolor(red)')",
+    "colormissing": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'gray')",
+    "colornlevels": "twoway rejected the full option name in every context tried (last _rc=198; probe value '4')",
+    "colpalette": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'viridis')",
+    "falpha": "twoway rejected the full option name in every context tried (last _rc=198; probe value '50')",
+    "filter": "dash-only option (interactive filter widget); no twoway counterpart",
+    "fitopts": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'lcolor(red)')",
+    "jseed": "twoway rejected the full option name in every context tried (last _rc=198; probe value '123')",
+    "lalpha": "twoway rejected the full option name in every context tried (last _rc=198; probe value '50')",
+    "lineopts": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'lcolor(red)')",
+    "link": "dash-only option (cross-filter link target); no twoway counterpart",
+    "malpha": "twoway rejected the full option name in every context tried (last _rc=198; probe value '50')",
+    "marker": "twoway rejected the full option name in every context tried (last _rc=198; probe value '1')",
+    "mlabwidth": "twoway rejected the full option name in every context tried (last _rc=198; probe value 'thick')",
+    "play": "play() needs an existing .grec recording file; not probeable without fabricating one",
+    "plotbgcolor": "dash-only option; twoway has no plotbgcolor() (use plotregion(fcolor()))",
+    "subtitle2": "not a twoway option; Stata graphics has no subtitle2()",
+    "title2": "not a twoway option; Stata graphics has no title2()",
+    "xlabel2": "dash-only secondary-axis option; twoway spells this xlabel(..., axis(2))",
+    "xscale2": "dash-only secondary-axis option; twoway spells this xscale(..., axis(2))",
+    "xtitle2": "dash-only secondary-axis option; twoway spells this xtitle(..., axis(2))",
+    "ylabel2": "dash-only secondary-axis option; twoway spells this ylabel(..., axis(2))",
+    "yscale2": "dash-only secondary-axis option; twoway spells this yscale(..., axis(2))",
+    "ytitle2": "dash-only secondary-axis option; twoway spells this ytitle(..., axis(2))"
+  }
+}

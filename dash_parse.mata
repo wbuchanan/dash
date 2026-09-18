@@ -26,9 +26,6 @@
 *!   _dash_comma_pos(input, out_macro)
 *!       Position (1-based) of the first top-level comma, or "0".
 *!
-*!   _dash_expand_opts_str(opts_raw, out_macro)
-*!       Expand option-key abbreviations in an options string.
-*!       E.g. "mc(red) ms(oh)" → "mcolor(red) msymbol(oh)"
 *!
 *!   _dash_extract_vars(json_str, out_macro)
 *!       Extract variable-name tokens from a plot-spec JSON string.
@@ -124,45 +121,72 @@ void _dash_check_utf8(string scalar s) {
 // ============================================================
 
 string scalar _expand_plottype_str(string scalar name) {
-    if (name == "sc"  | name == "scatter")      return("scatter")
-    if (name == "li"  | name == "line")         return("line")
-    if (name == "con" | name == "connected")    return("connected")
-    if (name == "ar"  | name == "area")         return("area")
-    if (name == "ba"  | name == "bar")          return("bar")
-    if (name == "sp"  | name == "spike")        return("spike")
-    if (name == "lfi" | name == "lfit")         return("lfit")
-    if (name == "qfi" | name == "qfit")         return("qfit")
-    if (name == "lfitci")                        return("lfitci")
-    if (name == "qfitci")                        return("qfitci")
-    if (name == "low" | name == "lowess")        return("lowess")
-    if (name == "lpo" | name == "lpol" | name == "lpoly")  return("lpoly")
-    if (name == "lpolyci")                       return("lpolyci")
-    if (name == "fp"  | name == "fpf" | name == "fpfit")   return("fpfit")
-    if (name == "fpfitci")                       return("fpfitci")
-    if (name == "hist" | name == "histogram")    return("histogram")
-    if (name == "kde"  | name == "kdensity")     return("kdensity")
-    if (name == "rarea")                         return("rarea")
-    if (name == "rbar")                          return("rbar")
-    if (name == "rspike")                        return("rspike")
-    if (name == "rcap")                          return("rcap")
-    if (name == "rline")                         return("rline")
-    if (name == "rconnected")                    return("rconnected")
-    if (name == "dot")                           return("dot")
-    if (name == "dr" | name == "dropline")       return("dropline")
-    if (name == "rcapsym")                       return("rcapsym")
-    if (name == "pcspike")                       return("pcspike")
-    if (name == "pcarrow")                       return("pcarrow")
-    if (name == "pcbarrow")                      return("pcbarrow")
-    if (name == "pci")                           return("pci")
-    if (name == "pcscatter")                     return("pcscatter")
-    if (name == "tsl"  | name == "tsline")       return("tsline")
-    if (name == "tsrl" | name == "tsrline")      return("tsrline")
-    if (name == "msp"  | name == "mspline")      return("mspline")
-    if (name == "mband")                         return("mband")
-    if (name == "rscatter")                      return("rscatter")
-    if (name == "func" | name == "function")     return("function")
-    if (name == "scatteri")                      return("scatteri")
-    return("")   // unrecognised
+    string matrix tbl
+    string scalar full, minab, hit
+    real scalar   i, nhits
+
+    // (full name, minimum abbreviation).  Minimums are MEASURED against real
+    // twoway -- see scripts/extract_abbrev_truth.do and
+    // test/fixtures/abbrev_truth.json -- except where dash historically
+    // accepted something SHORTER, which is kept when it introduces no
+    // ambiguity.  Accepting more than twoway does cannot break drop-in parity
+    // and it keeps existing dash do-files working.
+    //
+    // Matching below accepts ANY prefix at least as long as the minimum, the
+    // way Stata does, replacing the fixed one-short-form-each table that
+    // rejected every other prefix.
+    tbl = ("scatter","sc") \
+        ("line","li") \
+        ("connected","con") \
+        ("area","ar") \
+        ("bar","ba") \
+        ("spike","sp") \
+        ("lfit","lfi") \
+        ("qfit","qfi") \
+        ("lfitci","lfitci") \
+        ("qfitci","qfitci") \
+        ("lowess","low") \
+        ("lpoly","lpo") \
+        ("lpolyci","lpolyci") \
+        ("fpfit","fp") \
+        ("fpfitci","fpfitci") \
+        ("histogram","hist") \
+        ("kdensity","kde") \
+        ("rarea","rarea") \
+        ("rbar","rbar") \
+        ("rspike","rspike") \
+        ("rcap","rcap") \
+        ("rline","rl") \
+        ("rconnected","rcon") \
+        ("dot","dot") \
+        ("dropline","dr") \
+        ("rcapsym","rcapsym") \
+        ("pcspike","pcspike") \
+        ("pcarrow","pcarrow") \
+        ("pcbarrow","pcbarrow") \
+        ("pci","pci") \
+        ("pcscatter","pcscatter") \
+        ("tsline","tsl") \
+        ("tsrline","tsrl") \
+        ("mspline","msp") \
+        ("mband","mband") \
+        ("rscatter","rsc") \
+        ("function","fun") \
+        ("scatteri","scatteri")
+
+    nhits = 0
+    hit   = ""
+    for (i = 1; i <= rows(tbl); i++) {
+        full  = tbl[i,1]
+        minab = tbl[i,2]
+        if (strlen(name) >= strlen(minab) &
+            substr(full, 1, strlen(name)) == name) {
+            nhits = nhits + 1
+            hit   = full
+        }
+    }
+    if (nhits == 1) return(hit)
+    return("")   // unrecognised, or an ambiguous prefix
 }
 
 void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
@@ -176,81 +200,16 @@ void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
 
 // Expand a single option-key abbreviation to its full name.
 // Returns the original key if no match (passes through unknown options).
-string scalar _expand_optkey(string scalar name) {
-    // marker options
-    if (name == "mc")    return("mcolor")
-    if (name == "ms")    return("msymbol")
-    if (name == "msi")   return("msize")
-    if (name == "msa")   return("msangle")
-    if (name == "mla")   return("mlabel")
-    if (name == "mlc")   return("mlabcolor")
-    if (name == "mls")   return("mlabsize")
-    if (name == "mlp")   return("mlabposition")
-    if (name == "mlg")   return("mlabgap")
-    if (name == "mlw")   return("mlabwidth")
-    if (name == "mfc")   return("mfcolor")
-    if (name == "mal")   return("malpha")
-    if (name == "m")     return("marker")
-    // fill options
-    if (name == "fc")    return("fcolor")
-    if (name == "fi")    return("fintensity")
-    if (name == "fa")    return("falpha")
-    if (name == "blc")   return("blcolor")
-    if (name == "bfc")   return("bfcolor")
-    if (name == "bw")    return("barwidth")
-    // line options
-    if (name == "lc")    return("lcolor")
-    if (name == "lw")    return("lwidth")
-    if (name == "lp")    return("lpattern")
-    if (name == "lal")   return("lalpha")
-    if (name == "fal")   return("falpha")
-    // graph-level options
-    if (name == "ti")    return("title")
-    if (name == "sub")   return("subtitle")
-    if (name == "xti")   return("xtitle")
-    if (name == "yti")   return("ytitle")
-    if (name == "xla")   return("xlabel")
-    if (name == "yla")   return("ylabel")
-    if (name == "note")  return("note")
-    if (name == "cap")   return("caption")
-    if (name == "leg")   return("legend")
-    if (name == "sav")   return("saving")
-    if (name == "nam")   return("name")
-    if (name == "by")    return("by")
-    if (name == "xsc")   return("xscale")
-    if (name == "ysc")   return("yscale")
-    if (name == "xl")    return("xline")
-    if (name == "yl")    return("yline")
-    if (name == "asp")   return("aspectratio")
-    if (name == "bgc")   return("bgcolor")
-    if (name == "pbgc")  return("plotbgcolor")
-    if (name == "plotr") return("plotregion")
-    if (name == "graphr") return("graphregion")
-    // jitter
-    if (name == "jit")   return("jitter")
-    if (name == "jse")   return("jseed")
-    // dual-axis
-    if (name == "yax")   return("yaxis")
-    if (name == "xax")   return("xaxis")
-    // secondary axis
-    if (name == "yti2")  return("ytitle2")
-    if (name == "xti2")  return("xtitle2")
-    if (name == "yla2")  return("ylabel2")
-    if (name == "xla2")  return("xlabel2")
-    if (name == "ysc2")  return("yscale2")
-    if (name == "xsc2")  return("xscale2")
-    // scheme
-    if (name == "sch")   return("scheme")
-    // colorvar
-    if (name == "cv")    return("colorvar")
-    if (name == "colv")  return("colorvar")
-    if (name == "colpal") return("colpalette")
-    // smoother options
-    if (name == "bwid")  return("bwidth")
-    if (name == "deg")   return("degree")
-    // passthrough: full names and unknown abbreviations
-    return(name)
-}
+// _expand_optkey was removed here.  dash used to declare every option in
+// lowercase -- which tells Stata's syntax to permit NO abbreviation -- and then
+// fake abbreviation with a fixed lookup table.  That table accepted exactly one
+// short form per option, rejected every other prefix Stata accepts, and mapped
+// eight abbreviations to the WRONG option: xl and yl went to xline/yline where
+// Stata sends them to xlabel/ylabel, and m, mlc, mls, mlp and mlw were likewise
+// mis-routed.  The syntax declarations in dash.ado now carry Stata's own
+// measured minimum abbreviations, so Stata resolves prefixes itself and option
+// words pass through this file untouched.
+
 
 // Expand all option-key abbreviations in an options string.
 // Input  example: "mc(red) ms(oh) title("My Graph")"
@@ -266,129 +225,12 @@ string scalar _expand_optkey(string scalar name) {
 //
 // Note: Values inside parentheses are copied without modification so that
 // variable names, expressions, and quoted strings are preserved exactly.
-void _dash_expand_opts_str(string scalar opts_raw, string scalar out_macro) {
-    real scalar i, len, depth, in_dq, in_cq, c_code
-    string scalar result, word_buf, ch
+// _dash_expand_opts_str was removed here together with _expand_optkey.
+// With option keys no longer rewritten, it was a verified identity function --
+// it returned its input unchanged for nested parentheses, quoted values
+// containing commas, repeated whitespace, bare flags and the empty string --
+// so every call site now passes the raw option text straight to -syntax-.
 
-    result   = ""
-    word_buf = ""
-    depth    = 0
-    in_dq    = 0
-    in_cq    = 0
-    len      = strlen(opts_raw)
-    i        = 1
-
-    while (i <= len) {
-        ch     = substr(opts_raw, i, 1)
-        c_code = ascii(ch)
-
-        // ---- inside double-quoted string ----
-        if (in_dq) {
-            result = result + ch
-            if (c_code == 34) in_dq = 0
-            i++
-            continue
-        }
-
-        // ---- inside compound-quoted string `"..."' ----
-        if (in_cq) {
-            result = result + ch
-            if (c_code == 34 & i + 1 <= len & ascii(substr(opts_raw, i+1, 1)) == 39) {
-                result = result + "'"
-                i      = i + 2
-                in_cq  = 0
-            }
-            else i++
-            continue
-        }
-
-        // ---- start double-quote ----
-        if (c_code == 34 & depth == 0) {
-            // flush any accumulated word as a bare flag
-            if (word_buf != "") {
-                result   = result + _expand_optkey(strlower(word_buf))
-                word_buf = ""
-            }
-            result = result + ch
-            in_dq  = 1
-            i++
-            continue
-        }
-
-        // ---- start compound-quote `" ----
-        if (c_code == 96 & depth == 0 &
-            i + 1 <= len & ascii(substr(opts_raw, i+1, 1)) == 34) {
-            if (word_buf != "") {
-                result   = result + _expand_optkey(strlower(word_buf))
-                word_buf = ""
-            }
-            result = result + ch
-            in_cq  = 1
-            i++
-            continue
-        }
-
-        if (depth == 0) {
-            // open paren: the accumulated word is an option key
-            if (c_code == 40) {
-                if (word_buf != "") {
-                    result   = result + _expand_optkey(strlower(word_buf)) + "("
-                    word_buf = ""
-                }
-                else {
-                    result = result + "("
-                }
-                depth++
-                i++
-                continue
-            }
-            // whitespace: flush word buffer as bare flag
-            if (c_code == 32 | c_code == 9) {
-                if (word_buf != "") {
-                    result   = result + _expand_optkey(strlower(word_buf))
-                    word_buf = ""
-                }
-                result = result + " "
-                i++
-                continue
-            }
-            // comma at depth 0: shouldn't normally appear here, but pass through
-            if (c_code == 44) {
-                if (word_buf != "") {
-                    result   = result + _expand_optkey(strlower(word_buf))
-                    word_buf = ""
-                }
-                result = result + ","
-                i++
-                continue
-            }
-            // any other character: accumulate into word buffer
-            word_buf = word_buf + ch
-            i++
-        }
-        else {
-            // inside parentheses: copy verbatim, track depth
-            if      (c_code == 40) depth++
-            else if (c_code == 41) {
-                depth--
-                if (depth == 0) {
-                    result = result + ")"
-                    i++
-                    continue
-                }
-            }
-            result = result + ch
-            i++
-        }
-    }
-
-    // flush any remaining word
-    if (word_buf != "") {
-        result = result + _expand_optkey(strlower(word_buf))
-    }
-
-    st_local(out_macro, strtrim(result))
-}
 
 
 // ============================================================

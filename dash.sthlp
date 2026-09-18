@@ -530,17 +530,17 @@ annotations.  These options apply to the per-plot specification (not to
 {cmd:dash build} options).
 
 {synoptset 28}{...}
-{synopt:{cmdab:mla:bel(}{it:varname}{cmd:)}}annotate each observation with
+{synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}annotate each observation with
     the value of {it:varname}; applies to scatter, line, connected, bar,
     spike, dot, dropline, and all range plot types (rspike, rcap, rline,
     rarea, rbar, rcapsym){p_end}
-{synopt:{cmdab:mlac:olor(}{it:color}{cmd:)}}color of the label text{p_end}
-{synopt:{cmdab:mlas:ize(}{it:size}{cmd:)}}size keyword or number; e.g.
+{synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text{p_end}
+{synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}size keyword or number; e.g.
     {cmd:small}, {cmd:medium}, {cmd:large}{p_end}
-{synopt:{cmdab:mlap:osition(}{it:#}{cmd:)}}clock position (0–12) for label
+{synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position (0–12) for label
     placement relative to the data point; 3 = right (default), 12 = above,
     6 = below, 9 = left{p_end}
-{synopt:{cmdab:mlag:ap(}{it:#}{cmd:)}}additional offset in pixels added to
+{synopt:{cmdab:mlabg:ap(}{it:#}{cmd:)}}additional offset in pixels added to
     the clock-position offset{p_end}
 {synoptline}
 
@@ -636,12 +636,12 @@ the plot specification).
 {synopt:{cmdab:yti:tle(}{it:string}{cmd:)}}label for the y axis{p_end}
 {synopt:{cmdab:xla:bel(}{it:#}[{it:#} ...]{cmd:)}}custom x-axis tick positions{p_end}
 {synopt:{cmdab:yla:bel(}{it:#}[{it:#} ...]{cmd:)}}custom y-axis tick positions{p_end}
-{synopt:{cmdab:xlab:el(}{it:#}[{it:#} ...]{cmd:, format(}{it:fmt}{cmd:))}}custom ticks with format string{p_end}
+{synopt:{cmdab:xl:abel(}{it:#}[{it:#} ...]{cmd:, format(}{it:fmt}{cmd:))}}custom ticks with format string{p_end}
 {synopt:{cmdab:xsc:ale(log)}}display the x axis on a log scale{p_end}
 {synopt:{cmdab:ysc:ale(log)}}display the y axis on a log scale{p_end}
 {synopt:{cmdab:xli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw vertical reference lines at x = {it:#}{p_end}
 {synopt:{cmdab:yli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw horizontal reference lines at y = {it:#}{p_end}
-{synopt:{cmdab:no:te(}{it:string}{cmd:)}}footnote text below the figure{p_end}
+{synopt:{cmd:note(}{it:string}{cmd:)}}footnote text below the figure{p_end}
 {synopt:{cmdab:cap:tion(}{it:string}{cmd:)}}caption text below the figure{p_end}
 {synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}height-to-width ratio of the plot area
     (e.g. {cmd:aspectratio(1)} for a square plot){p_end}

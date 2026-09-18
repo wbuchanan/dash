@@ -127,15 +127,23 @@ assert `cpos3' == 0
 display "P1A-28 PASS: no comma → returns 0"
 
 // ================================================================
-// P1A-29 — _dash_expand_opts_str: mc→mcolor, ms→msymbol
+// P1A-29 — _dash_expand_opts_str passes option KEYS through untouched
 // ================================================================
+// This used to assert mc->mcolor and ms->msymbol, i.e. that Mata rewrote
+// option keys before Stata's syntax saw them.  That mechanism is gone.  It
+// accepted exactly one short form per option, rejected every other prefix
+// Stata accepts, and mis-routed eight abbreviations (xl and yl went to
+// xline/yline where Stata sends them to xlabel/ylabel; m, mlc, mls, mlp and
+// mlw were likewise wrong).  dash.ado now declares Stata's own measured
+// minimum abbreviations, so Stata resolves prefixes and this function must
+// leave option words ALONE -- rewriting them here would re-break it.
 local expanded ""
 mata: _dash_expand_opts_str("mc(red) ms(oh)", "expanded")
-assert strpos("`expanded'", "mcolor(red)") > 0
-assert strpos("`expanded'", "msymbol(oh)") > 0
-assert strpos("`expanded'", "mc(") == 0
-assert strpos("`expanded'", "ms(") == 0
-display "P1A-29 PASS: mc→mcolor, ms→msymbol expanded in opts string"
+assert strpos("`expanded'", "mc(red)") > 0
+assert strpos("`expanded'", "ms(oh)") > 0
+assert strpos("`expanded'", "mcolor(") == 0
+assert strpos("`expanded'", "msymbol(") == 0
+display "P1A-29 PASS: option keys pass through unrewritten"
 
 // ================================================================
 // P1A-30 — _dash_expand_opts_str: values inside () preserved verbatim
