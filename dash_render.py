@@ -1027,6 +1027,26 @@ class SchemeParser:
             except ValueError:
                 return default
 
+    def _float(self, key: str, default: "float | None") -> "float | None":
+        """Return a scheme value as a float, or *default* if absent/unparseable."""
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default
+        try:
+            return float(raw)
+        except ValueError:
+            return default
+
+    def _int(self, key: str, default: "int | None") -> "int | None":
+        """Return a scheme value as an int, or *default* if absent/unparseable."""
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default
+        try:
+            return int(float(raw))
+        except ValueError:
+            return default
+
     def _symbol(self, key: str, default: str = "circle") -> str:
         raw = self._props.get(key, "").strip()
         if not raw:
@@ -1093,6 +1113,21 @@ class SchemeParser:
         self.axis_title_font_size: str = self._gsize("gsize axis_title", "10pt")
         self.tick_label_font_size: str = self._gsize("gsize tick_label", "10pt")
         self.note_font_size: str = self._gsize("gsize note", "9pt")
+
+        # Graph dimensions, in inches, as Stata schemes declare them.
+        # Parsed here only; section 10 consumes them for figure proportions.
+        # `graphsize x`/`graphsize y` override a bare `graphsize`, matching
+        # Stata, which treats the bare form as a square default.
+        _gs_both = self._float("graphsize", None)
+        self.graphsize_x: "float | None" = self._float("graphsize x", _gs_both)
+        self.graphsize_y: "float | None" = self._float("graphsize y", _gs_both)
+
+        # Default marker size for the p cycle, and legend placement.
+        # Parsed only; consumers land in sections 10 and 11.
+        self.symbolsize: str = self._props.get("symbolsize p", "").strip()
+        self.legend_position: str = self._props.get(
+            "clockdir legend_position", "").strip()
+        self.legend_cols: "int | None" = self._int("numstyle legend_cols", None)
 
     # ------------------------------------------------------------------
     # Public API

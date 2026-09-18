@@ -22,6 +22,68 @@ from dash_render import DashRenderer, GlyphMapper, OptionTranslator, SchemeParse
 
 
 # ============================================================
+# Environment pinning
+# ============================================================
+# The pytest suite and the Stata certification suite run under DIFFERENT
+# Python interpreters, with different library versions:
+#
+#   pytest        /opt/homebrew/bin/python3.14
+#   Stata's       /opt/anaconda3/bin/python3   (set python_exec)
+#
+# A green pytest run therefore does NOT prove the Stata path works, and a
+# library difference between them can make a defect reproduce in one and not
+# the other.  This fixture records what pytest actually ran under and warns
+# when it drifts from the values captured in .ultraplan/BASELINE.md.
+#
+# A warning, not a failure: a developer on another machine is legitimately on
+# a different build.  But it is never silent.
+
+_BASELINE_ENV = {
+    "python": "3.14",       # major.minor only — patch drift is not interesting
+    "bokeh": "3.9",
+    "pandas": "3.0",
+    "numpy": "2.4",
+    "scipy": "1.17",
+}
+
+
+def _mm(version: str) -> str:
+    """Return the major.minor prefix of a version string."""
+    parts = str(version).split(".")
+    return ".".join(parts[:2])
+
+
+@pytest.fixture(scope="session", autouse=True)
+def pinned_environment():
+    """Warn when the interpreter or its libraries drift from the baseline."""
+    import importlib
+    import warnings
+
+    actual = {"python": _mm("%d.%d" % sys.version_info[:2])}
+    for pkg in ("bokeh", "pandas", "numpy", "scipy"):
+        try:
+            actual[pkg] = _mm(importlib.import_module(pkg).__version__)
+        except Exception:
+            actual[pkg] = "missing"
+
+    drifted = {
+        k: (v, actual[k]) for k, v in _BASELINE_ENV.items() if actual[k] != v
+    }
+    if drifted:
+        detail = ", ".join(
+            f"{k}: baseline {want}, running {got}" for k, (want, got) in drifted.items()
+        )
+        warnings.warn(
+            "dash test suite: environment differs from the recorded baseline "
+            f"({detail}). See .ultraplan/BASELINE.md. Results may not be "
+            "comparable to it, and the Stata certification suite runs under a "
+            "different interpreter again (/opt/anaconda3/bin/python3).",
+            UserWarning,
+        )
+    return actual
+
+
+# ============================================================
 # Core dataset fixture
 # ============================================================
 
