@@ -21,6 +21,22 @@ from bokeh.plotting import figure
 from dash_render import DashRenderer, GlyphMapper, OptionTranslator, SchemeParser
 
 
+def pytest_configure(config):
+    """Register the markers this suite uses.
+
+    Declared here rather than in pytest.ini because the repository's
+    ``.git/info/exclude`` carries ``*.ini``, so a pytest.ini would not be
+    tracked and the marker would be unregistered for everyone else -- pytest
+    would then warn on every run and ``-m 'not serve'`` would silently select
+    nothing.
+    """
+    config.addinivalue_line(
+        "markers",
+        "serve: starts a real `bokeh serve` subprocess; slow. "
+        "Deselect with -m 'not serve'.",
+    )
+
+
 # ============================================================
 # Environment pinning
 # ============================================================

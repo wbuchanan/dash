@@ -11705,16 +11705,41 @@ class ServerAppBuilder:
         elif link_opt:
             linked_names = set(link_opt.split())
 
-        # Parse filter spec — reuse DashRenderer._parse_filter_raw which handles
-        # both "||" (Mata-joined) and ";" (legacy) separators correctly.
+        # Filters, taken the SAME way the standalone path takes them.
+        #
+        # This read only build_options["filter"], the raw option string, and
+        # never build_options["filters"], the already-parsed list that
+        # DashRenderer prefers.  A spec carrying the parsed form therefore
+        # produced a server app with no filter widgets at all -- measured on
+        # a served document: not one Select model, for the feature server
+        # mode is sold on.
+        #
+        # label() is carried through too; it was dropped here, so a filter
+        # would have fallen back to the variable name even once the parser
+        # learned to read it.
         filter_specs: list[dict] = []
-        if filter_raw and filter_raw != '"':
+        _pre = bo.get("filters", []) or []
+        if _pre:
+            for _fs in _pre:
+                _v = str(_fs.get("varname") or _fs.get("var") or "").strip()
+                if not _v:
+                    continue
+                filter_specs.append({
+                    "var": _v,
+                    "type": _fs.get("type", "dropdown"),
+                    "exclude": _fs.get("exclude", []) or [],
+                    "label": (_fs.get("label") or "").strip(),
+                })
+        elif filter_raw and filter_raw != '"':
+            # DashRenderer._parse_filter_raw handles both "||" (Mata-joined)
+            # and ";" (legacy) separators, and now label() too.
             for _fs in DashRenderer._parse_filter_raw(filter_raw):
-                # DashRenderer uses "varname" key; ServerAppBuilder uses "var"
+                # DashRenderer uses "varname"; ServerAppBuilder uses "var".
                 filter_specs.append({
                     "var": _fs["varname"],
                     "type": _fs["type"],
                     "exclude": _fs["exclude"],
+                    "label": (_fs.get("label") or "").strip(),
                 })
 
         lines: list[str] = []
@@ -11769,6 +11794,7 @@ class ServerAppBuilder:
             "    Span,",
             "    WheelZoomTool,",
             ")",
+            "from bokeh.io import curdoc",
             "from bokeh.plotting import figure as bokeh_figure",
             "from bokeh.server.server import Server",
             "import collections as _collections",
@@ -11853,7 +11879,11 @@ class ServerAppBuilder:
             "        import datetime as _dt",
             "        self.set_header('Content-Type', 'application/json')",
             "        self.set_status(200)",
-            "        ts = _dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')",
+            "        # datetime.utcnow() is deprecated and warns on 3.12+; the",
+            "        # timezone-aware form is the replacement and gives the",
+            "        # same Z-suffixed UTC string.",
+            "        ts = _dt.datetime.now(_dt.timezone.utc).strftime(",
+            "            '%Y-%m-%dT%H:%M:%SZ')",
             "        self.write('{\"status\": \"ok\", \"timestamp\": \"' + ts + '\"}')",
             "",
         ]
@@ -11877,13 +11907,28 @@ class ServerAppBuilder:
             '    """Decode embedded data and return (spec_dict, DataFrame, meta_dict)."""',
             "    spec = json.loads(base64.b64decode(_SPEC_B64).decode('utf-8'))",
             "    data_json = json.loads(base64.b64decode(_DATA_B64).decode('utf-8'))",
-            "    # Parse jsonio format",
+            "    # jsonio has emitted the payload both flat and wrapped in a",
+            "    # 'StataJSON' key over its life.  DashRenderer accepts both;",
+            "    # this read only the top level, so a wrapped payload gave the",
+            "    # app zero rows, an empty ColumnDataSource, and glyphs",
+            "    # referring to columns that do not exist (Bokeh logs",
+            "    # BAD_COLUMN_NAME and serves a blank plot).",
+            "    data_json = data_json.get('StataJSON', data_json)",
             "    values = data_json.get('values', [])",
             "    var_names = data_json.get('variableNames', [])",
             "    var_labels = data_json.get('variableLabels', {})",
             "    val_label_names = data_json.get('valueLabelNames', {})",
             "    val_labels = data_json.get('valueLabels', {})",
-            "    type_is_str = data_json.get('variableTypeIsString', {})",
+            "    # jsonio emits 'variableIsString'.  This asked for",
+            "    # 'variableTypeIsString', which real jsonio output does not",
+            "    # contain, so the lookup defaulted to False for every column",
+            "    # and pd.to_numeric(errors='coerce') turned EVERY STRING",
+            "    # VARIABLE INTO NaN -- measured: make became float64 nan where",
+            "    # the standalone renderer keeps 'car0'.  A dropdown filter on",
+            "    # a string variable therefore had no values, mlabel() labelled",
+            "    # nothing and by() on a string grouped nothing, silently.",
+            "    type_is_str = data_json.get('variableIsString') \\",
+            "                  or data_json.get('variableTypeIsString', {})",
             "    if values and var_names:",
             "        rows = []",
             "        for obs in values:",
@@ -14180,20 +14225,93 @@ class ServerAppBuilder:
         # 5. __main__ block
         # ----------------------------------------------------------------
         lines += [
-            f"if __name__ == '__main__':",
-            f"    _port = {port}",
-            f"    _server = Server(",
-            f"        {{'/': Application(FunctionHandler(make_document))}},",
-            f"        port=_port,",
-            f"        allow_websocket_origin=[f'localhost:{{_port}}'],",
-            f"        num_procs=1,",
-            f"        extra_patterns=[('/health', _HealthHandler)],",
-            f"    )",
-            f"    _server.start()",
-            f"    _server.io_loop.add_callback(_server.show, '/')",
-            f"    print(f'Bokeh Server running at http://localhost:{{_port}}/')",
-            f"    print(f'Health check:  http://localhost:{{_port}}/health')",
-            f"    print('Press Ctrl+C to stop.')",
+            "# ----------------------------------------------------------------",
+            "# Attach the document.",
+            "#",
+            "# This used to live ONLY inside `if __name__ == \"__main__\"`, and",
+            "# nothing here called curdoc().  Bokeh's CodeRunner executes an app",
+            "# script under a synthetic module name (bokeh_app_<uuid>), so that",
+            "# guard is never satisfied and nothing attached the document.",
+            "# Measured under `bokeh serve app.py`: docs_json was literally {},",
+            "# zero roots, the title absent and /health 404 -- an entirely blank",
+            "# page from the only workflow dash documents.  `python app.py`",
+            "# worked, and nothing tells a user to run it that way.",
+            "#",
+            "# curdoc() under `bokeh serve` is the per-session document Bokeh",
+            "# has already created.  Run as a plain script it is a throwaway",
+            "# document nothing serves, so the __main__ launcher below still",
+            "# builds its own Server and is unaffected.",
+            "_port = %d" % port,
+            "",
+            "if __name__ != '__main__':",
+            "    make_document(curdoc())",
+            "",
+            "",
+            "def _dash_server_app(port=None, address=None, origins=None):",
+            "    \"\"\"Build the Server used by the `python app.py` launcher.",
+            "",
+            "    allow_websocket_origin used to be the single literal",
+            "    localhost:<port>, so reaching the app as 127.0.0.1 or from",
+            "    another machine got a blank page with no way to widen it.",
+            "    Both spellings of loopback are accepted by default and",
+            "    --allow-websocket-origin adds more.",
+            "    \"\"\"",
+            "    _p = int(port or _port)",
+            "    _origins = [f'localhost:{_p}', f'127.0.0.1:{_p}']",
+            "    for _o in (origins or []):",
+            "        if _o and _o not in _origins:",
+            "            _origins.append(_o)",
+            "    _kw = {}",
+            "    if address:",
+            "        _kw['address'] = address",
+            "    return Server(",
+            "        {'/': Application(FunctionHandler(make_document))},",
+            "        port=_p,",
+            "        allow_websocket_origin=_origins,",
+            "        num_procs=1,",
+            "        extra_patterns=[('/health', _HealthHandler)],",
+            "        **_kw",
+            "    )",
+            "",
+            "",
+            "if __name__ == '__main__':",
+            "    # Run as a script, this app serves ITSELF, which is how",
+            "    # /health exists at all: `bokeh serve' owns its Tornado",
+            "    # application and gives an app script no supported way to add",
+            "    # a route, so an app served that way has a working dashboard",
+            "    # and no health endpoint.  Project rule 17 asks for one, so",
+            "    # this is the launcher dash points users at.",
+            "    import argparse as _ap",
+            "    _p = _ap.ArgumentParser(description='Serve this dash dashboard.')",
+            "    _p.add_argument('--port', type=int, default=_port,",
+            "                    help='TCP port to listen on.')",
+            "    _p.add_argument('--address', default=None,",
+            "                    help='Interface to bind (default: loopback).')",
+            "    _p.add_argument('--allow-websocket-origin', action='append',",
+            "                    default=None, dest='origins',",
+            "                    help='Extra Host values to accept; repeatable. '",
+            "                         'Needed to reach the app as 127.0.0.1 or "
+            "over a LAN.')",
+            "    _p.add_argument('--show', action='store_true',",
+            "                    help='Open a browser window once the server is up.')",
+            "    _p.add_argument('--timeout', type=int, default=0,",
+            "                    help='Shut down after N minutes (0 = never).')",
+            "    _a = _p.parse_args()",
+            "    _port = max(1024, min(int(_a.port), 65535))",
+            "    _server = _dash_server_app(port=_port, address=_a.address,",
+            "                               origins=_a.origins)",
+            "    _server.start()",
+            "    # A browser opens only when asked.  It used to open",
+            "    # unconditionally, so every scripted or batch run took over the",
+            "    # user's screen.",
+            "    if _a.show:",
+            "        _server.io_loop.add_callback(_server.show, '/')",
+            "    if _a.timeout > 0:",
+            "        _server.io_loop.call_later(_a.timeout * 60,",
+            "                                   _server.io_loop.stop)",
+            "    print(f'Bokeh Server running at http://localhost:{_port}/')",
+            "    print(f'Health check:  http://localhost:{_port}/health')",
+            "    print('Press Ctrl+C to stop.')",
             f"    try:",
             f"        _server.io_loop.start()",
             f"    except KeyboardInterrupt:",
@@ -14293,38 +14411,35 @@ if __name__ == "__main__":
         import webbrowser as _wb
 
         _port = max(1024, min(args.port, 65535))
+        # Run the generated app AS A SCRIPT, not through `bokeh serve'.
+        #
+        # `bokeh serve' owns its Tornado application and gives an app script
+        # no supported way to register a route, so /health could never exist
+        # on this path -- measured, it returned 404, while project rule 17
+        # asks for a health endpoint.  The generated app builds its own
+        # Server with extra_patterns, so running it directly is what makes
+        # /health real.  It also means --port and the websocket origins reach
+        # the server that is actually listening: the port argument used to be
+        # passed to `bokeh serve' but never to the builder, so every app
+        # embedded 5006 whatever was asked for.
         _cmd = [
-            _sys.executable, "-m", "bokeh", "serve",
-            args.output,
+            _sys.executable, args.output,
             "--port", str(_port),
-            "--allow-websocket-origin", f"localhost:{_port}",
         ]
+        if not args.no_browser:
+            _cmd.append("--show")
+        if args.timeout > 0:
+            _cmd += ["--timeout", str(args.timeout)]
         try:
             _proc = _sp.Popen(_cmd)
         except FileNotFoundError:
             import sys as _sys2
             print(
-                "dash_render: error — could not launch 'bokeh serve'. "
+                "dash_render: error — could not launch the dashboard app. "
                 "Ensure Bokeh is installed and accessible in the current Python environment.",
                 file=_sys2.stderr,
             )
             raise SystemExit(1)
-
-        # Open browser after a short delay unless suppressed
-        if not args.no_browser:
-            def _open_browser():
-                _time.sleep(1.5)
-                _wb.open(f"http://localhost:{_port}")
-            _bt = _threading.Thread(target=_open_browser, daemon=True)
-            _bt.start()
-
-        # Auto-shutdown after timeout minutes (0 = run until interrupted)
-        if args.timeout > 0:
-            def _auto_stop():
-                _time.sleep(args.timeout * 60)
-                _proc.terminate()
-            _tt = _threading.Thread(target=_auto_stop, daemon=True)
-            _tt.start()
 
         try:
             _proc.wait()

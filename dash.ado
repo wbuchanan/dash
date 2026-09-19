@@ -2286,7 +2286,14 @@ program define _dash_build
 
     if "`server'" != "" {
         display as text `"dash build: server app written to `saving'"'
-        display as text `"  To launch: bokeh serve `saving'"'
+        // Point at the app's OWN launcher, not `bokeh serve'.  Both work for
+        // the dashboard now, but `bokeh serve' owns its Tornado application
+        // and gives an app script no supported way to register a route, so
+        // the /health endpoint project rule 17 asks for exists only when the
+        // app serves itself.  Running it directly also honours --port and
+        // the websocket origins, and opens no browser unless asked.
+        display as text `"  To launch: python "`saving'""'
+        display as text `"  Options:   --port N  --show  --timeout MINUTES"'
     }
     else {
         display as text `"dash: dashboard saved to `saving'"'

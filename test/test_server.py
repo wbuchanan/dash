@@ -9717,16 +9717,53 @@ class TestTimeoutUnitConsistency:
     # BUG-49-1d: runtime multiplies timeout by 60 (minutes → seconds)
     # ------------------------------------------------------------------
     def test_BUG_49_1d_runtime_uses_minutes_multiplier(self):
-        """The auto-shutdown thread must sleep for timeout*60 seconds (i.e., minutes)."""
-        render_path = os.path.join(os.path.dirname(__file__), "..", "dash_render.py")
-        with open(render_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
-        # The auto-shutdown sleep must be in the form args.timeout * 60
+        """--timeout is in MINUTES, wherever the shutdown is scheduled.
+
+        This grepped dash_render.py for the literal
+        ``_time.sleep(args.timeout * 60)`` -- a thread that no longer exists.
+        The auto-shutdown moved into the generated app, which schedules it on
+        the Bokeh io loop instead of sleeping a thread, because dash's
+        launcher now runs the app directly rather than shelling out to
+        `bokeh serve' (that is what gives /health somewhere to live).
+
+        The BEHAVIOUR being guarded is unchanged and is what is asserted:
+        the number the user passes is minutes, so it is multiplied by 60
+        before it becomes seconds.
+        """
         import re
-        m = re.search(r"_time\.sleep\(args\.timeout\s*\*\s*60\)", content)
-        assert m, (
-            "dash_render.py must multiply timeout by 60 for the auto-shutdown sleep "
-            "(BUG-49 regression: confirms runtime treats timeout as minutes)"
+        import tempfile
+
+        import numpy as _np
+        import pandas as _pd
+        _here = os.path.dirname(os.path.abspath(__file__))
+        for _p in (os.path.join(_here, ".."), _here):
+            if _p not in sys.path:
+                sys.path.insert(0, _p)
+        from dash_render import ServerAppBuilder
+        from conftest import make_spec as _ms, make_data_json as _md
+
+        d = tempfile.mkdtemp()
+        df = _pd.DataFrame({"mpg": _np.linspace(12.0, 41.0, 8)})
+        spec = _ms([{"type": "scatter", "yvar": "mpg", "xvar": "mpg",
+                     "options": {}}])
+        sp = os.path.join(d, "s.json")
+        dp = os.path.join(d, "d.json")
+        op = os.path.join(d, "app.py")
+        with open(sp, "w") as f:
+            json.dump(spec, f)
+        with open(dp, "w") as f:
+            json.dump(_md(df), f)
+        ServerAppBuilder(sp, dp).build(op)
+        with open(op, encoding="utf-8") as fh:
+            app_src = fh.read()
+
+        assert re.search(r"timeout\s*\*\s*60", app_src), (
+            "the generated app schedules its auto-shutdown without "
+            "converting minutes to seconds"
+        )
+        # And the option still describes itself as minutes.
+        assert re.search(r"--timeout[\s\S]{0,200}minute", app_src), (
+            "--timeout no longer documents its unit"
         )
 
     # ------------------------------------------------------------------

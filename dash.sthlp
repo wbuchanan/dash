@@ -457,13 +457,14 @@ follows:
 {synoptline}
 {synopt:{it:}}                         {it:Standalone HTML}  {it:Bokeh Server}{p_end}
 {synopt:Requires internet / server}    No                  Yes (local){p_end}
-{synopt:Shareable as a single file}    Yes                 No (.py + bokeh serve){p_end}
+{synopt:Shareable as a single file}    Yes                 No (.py, run with python){p_end}
 {synopt:Filter widgets}                CustomJS (in-browser) Python callbacks{p_end}
 {synopt:KPI recomputation on filter}   Yes (JS aggregation) Yes (Python/pandas){p_end}
 {synopt:Histogram recompute on filter} No                  Yes{p_end}
 {synopt:Fit-line recompute on filter}  No                  Yes{p_end}
 {synopt:Brush/lasso KPI update}        Yes                 Yes{p_end}
-{synopt:Deployment}                    Email / open file   {cmd:bokeh serve app.py}{p_end}
+{synopt:Health endpoint}              n/a                 {cmd:/health}{p_end}
+{synopt:Deployment}                    Email / open file   {cmd:python app.py}{p_end}
 {synoptline}
 
 {pstd}
@@ -476,11 +477,25 @@ is stopped.  Stop it by pressing Ctrl+C in the Stata console, or set
 {cmd:dash build, saving(app.py) server} writes a self-contained server app
 that embeds all data as base64.  Run it outside Stata with:
 
-{phang2}{cmd:bokeh serve app.py --show}
+{phang2}{cmd:python app.py}{p_end}
 
 {pstd}
-{ul:Security.}  The Bokeh Server restricts WebSocket connections to
-{cmd:localhost} only.  All user-supplied strings (titles, KPI labels) are
+It accepts {cmd:--port} {it:N}, {cmd:--address} {it:iface},
+{cmd:--allow-websocket-origin} {it:host:port} (repeatable),
+{cmd:--timeout} {it:minutes} and {cmd:--show}.  No browser window opens
+unless {cmd:--show} is given, so the app is usable from a script or a
+batch job.
+
+{pstd}
+{cmd:bokeh serve app.py} also works and serves the same dashboard, with one
+difference: {cmd:bokeh serve} owns its web application and gives an app
+script no way to register an extra route, so {cmd:/health} exists only when
+the app serves itself with {cmd:python app.py}.
+
+{pstd}
+{ul:Security.}  The Bokeh Server restricts WebSocket connections to the
+loopback interface -- both {cmd:localhost} and {cmd:127.0.0.1} -- and
+{cmd:--allow-websocket-origin} adds any further host you choose to accept.  All user-supplied strings (titles, KPI labels) are
 HTML-escaped in the generated file.  Data values are base64-encoded,
 preventing any data content from affecting the Python file syntax.
 
@@ -534,7 +549,7 @@ preventing any data content from affecting the Python file syntax.
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight, name(s1)}{p_end}
 {phang2}{cmd:. dash build, saving(app.py) server replace}{p_end}
-{phang2}{cmd:. * Run outside Stata:  bokeh serve app.py --show}{p_end}
+{phang2}{cmd:. * Run outside Stata:  python app.py --show}{p_end}
 
 
 {marker faceting}
