@@ -6175,6 +6175,49 @@ def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
     return True
 
 
+def _resolve_kpi_color(val: str, default: str) -> str:
+    """Resolve a KPI colour to something safe to put in a style attribute.
+
+    Two bugs met here.
+
+    SECURITY: ``_make_kpi_div`` applied only ``html.escape`` before
+    interpolating the value into ``style="...color:{color};"``.  html.escape
+    neutralises the quote characters, so it does block an attribute breakout
+    -- but a CSS *property* injection needs none of them.  ``;``, ``(`` and
+    ``)`` pass straight through, so ``red; background:url(http://evil/x)``
+    became a second declaration and the browser honoured it.  The project
+    already had ``_sanitize_css_color`` and the JS filter-callback path called
+    it; only the initial render did not, so a KPI was unsafe until the first
+    time a filter moved.
+
+    CORRECTNESS: the value is a STATA colour name, not a CSS one.  ``navy``
+    reached the browser as CSS navy (#000080) where Stata's navy is #1a476f,
+    and ``gs10`` or ``red%50`` -- both legitimate in Stata -- are not CSS at
+    all, so sanitising without translating first turned them into the default
+    grey.  Worse, the two paths then disagreed and the card changed colour on
+    the first filter interaction.
+
+    Translate first, then sanitise: a Stata name becomes a hex value, which
+    the sanitiser accepts, and anything the translator cannot resolve still
+    faces the sanitiser.
+
+    Args:
+        val:     The raw ``color()``/``bgcolor()`` value.
+        default: A trusted fallback.
+
+    Returns:
+        A CSS colour that is safe to interpolate.
+    """
+    raw = (val or "").strip()
+    if not raw:
+        return default
+    try:
+        translated = OptionTranslator.translate_mcolor(raw)
+    except (ValueError, TypeError):
+        translated = raw
+    return _sanitize_css_color(translated, default)
+
+
 def _sanitize_css_color(val: str, default: str) -> str:
     """Return *val* if it matches a safe CSS color pattern, else return *default*.
 
@@ -8093,6 +8136,27 @@ class DashRenderer:
 
         return sorted(ticks), labels
 
+    def _apply_nonselection_dimming(self, fig) -> None:
+        """Dim a linked figure's non-selected points to dash's own alpha.
+
+        Bokeh attaches a nonselection glyph of its own at alpha 0.1, so
+        brushing does dim -- but dash's chosen ``_NONSELECTION_ALPHA`` was
+        applied only in ``_build_figures``, which ``render()`` never called,
+        so the constant the package documents had never reached a shipped
+        dashboard.
+
+        Args:
+            fig: A figure belonging to a link group.
+        """
+        for renderer in fig.renderers:
+            ns = getattr(renderer, "nonselection_glyph", None)
+            if ns is None:
+                continue
+            if hasattr(ns, "fill_alpha"):
+                ns.fill_alpha = _NONSELECTION_ALPHA
+            if hasattr(ns, "line_alpha"):
+                ns.line_alpha = _NONSELECTION_ALPHA
+
     def _make_figure(
         self,
         graph_spec: dict,
@@ -8679,25 +8743,34 @@ class DashRenderer:
         # so that legend items exist and can be manipulated.
         legend_opt = graph_opts.get("legend", "")
         if legend_opt:
+            # The bare direction keywords, as aliases for the clock
+            # positions.  "on" and "ring" are NOT placements and must not be
+            # in this map: `ring` matched the word inside `ring(0)`, so every
+            # inside placement _rebuild_legend had just computed was
+            # overwritten with top_right, and `on` would clobber a position
+            # given alongside it.  Visibility and clock positions are decided
+            # in _rebuild_legend; this block only handles the keyword aliases
+            # and the label() overrides.
             loc_map = {
-                "off": None,
-                "on": "top_right",
-                "ring": "top_right",
                 "top": "top_center",
                 "bottom": "bottom_center",
                 "left": "center_left",
                 "right": "center_right",
             }
-            if legend_opt == "off":
+            if legend_opt.strip() == "off":
                 for leg in fig.legend:
                     leg.visible = False
             else:
-                # Apply position keyword if present (check for keywords in string)
-                for kw, loc in loc_map.items():
-                    if kw != "off" and loc and re.search(r'\b' + re.escape(kw) + r'\b', legend_opt):
-                        for leg in fig.legend:
-                            leg.location = loc
-                        break
+                # A clock position or ring() has already been resolved, and
+                # is more specific than a bare keyword.
+                _has_explicit_placement = re.search(
+                    r"\b(?:position|pos|ring)\s*\(", legend_opt)
+                if not _has_explicit_placement:
+                    for kw, loc in loc_map.items():
+                        if re.search(r'\b' + re.escape(kw) + r'\b', legend_opt):
+                            for leg in fig.legend:
+                                leg.location = loc
+                            break
 
                 # Parse label(N "text") overrides — e.g. label(1 "First") label(2 "Second")
                 # Security: HTML-escape label text to prevent XSS
@@ -8990,8 +9063,11 @@ class DashRenderer:
         title    = html.escape(kpi_def.get("title", ""))
         value    = html.escape(str(kpi_def.get("value", "")))
         subtitle = html.escape(kpi_def.get("subtitle", ""))
-        color    = html.escape(kpi_def.get("color", "") or "#212529")
-        bgcolor  = html.escape(kpi_def.get("bgcolor", "") or "#f8f9fa")
+        # Sanitised, not merely escaped -- see _resolve_kpi_color.  These
+        # are interpolated into a style attribute, where html.escape does not
+        # stop a CSS property injection.
+        color    = _resolve_kpi_color(kpi_def.get("color", ""), "#212529")
+        bgcolor  = _resolve_kpi_color(kpi_def.get("bgcolor", ""), "#f8f9fa")
 
         html_content = f"""
 <div style="background:{bgcolor}; border-radius:8px; padding:20px;
@@ -9234,6 +9310,7 @@ class DashRenderer:
 
         # 2. Grid items — KPIs and non-tabbed graphs
         _added: set[str] = set()
+        _placed_figs: set[str] = set(tabbed_names)
         for row_spec in bs_rows:
             for name, _ in row_spec:
                 if name in _added:
@@ -9242,10 +9319,24 @@ class DashRenderer:
                     all_models.append(self.kpi_divs[name])
                     model_keys.append(name)
                     _added.add(name)
-                elif name in self.figures and name not in tabbed_names:
-                    all_models.append(self.figures[name])
-                    model_keys.append(name)
-                    _added.add(name)
+                    continue
+                # A faceted graph owns several figures; they go into one cell
+                # as a sub-grid so the user's span arithmetic still holds.
+                keys = [k for k in self._resolve_layout_names(name)
+                        if k not in tabbed_names]
+                if not keys:
+                    continue
+                if len(keys) == 1:
+                    all_models.append(self.figures[keys[0]])
+                else:
+                    all_models.append(gridplot(
+                        [[self.figures[k] for k in keys]],
+                        sizing_mode="stretch_width",
+                        toolbar_location="right",
+                    ))
+                model_keys.append(name)
+                _added.add(name)
+                _placed_figs.update(keys)
 
         # 3. Filter widgets
         for fw_idx, widget in enumerate(filter_row_widgets):
@@ -9271,6 +9362,9 @@ class DashRenderer:
         # ---- Get individual Bokeh component divs ----
         script_tag, div_list = components(all_models)
         name_to_div: dict[str, str] = dict(zip(model_keys, div_list))
+
+        # No graph may vanish from a dashboard without an error.
+        self._assert_every_graph_was_placed(_placed_figs)
 
         # ---- Build common HTML sections ----
         header_html = ""
@@ -9423,7 +9517,10 @@ class DashRenderer:
                 continue
             if ":" in segment:
                 tab_name_raw, items_str = segment.split(":", 1)
-                tab_name = tab_name_raw.strip().title()
+                # The user's text, verbatim.  This was .title()-cased, so
+                # tabs(MPG stuff: u1) rendered "Mpg Stuff" and an acronym
+                # could not survive.
+                tab_name = tab_name_raw.strip()
                 items = [n.strip() for n in items_str.split() if n.strip()]
             else:
                 items = [n.strip() for n in segment.split() if n.strip()]
@@ -9433,6 +9530,60 @@ class DashRenderer:
             if safe_items:
                 result.append((tab_name, safe_items))
         return result if result else None
+
+    def _resolve_layout_names(self, name: str) -> "list[str]":
+        """Return the figure keys a registered graph name owns.
+
+        A faceted graph is stored under generated keys ``name__by__0``,
+        ``name__by__1``, ... so a layout that looks the name up directly in
+        ``self.figures`` misses it and drops the graph from the dashboard
+        with no error.  ``_build_tabs_widget`` consulted ``_facet_map`` and
+        got this right; the Bootstrap grid did not.  Two implementations of
+        one lookup is how they diverged, so there is now one.
+
+        Args:
+            name: A registered graph or KPI name.
+
+        Returns:
+            The figure keys, in panel order; empty if the name is unknown.
+        """
+        if name in getattr(self, "_facet_map", {}):
+            return [fkey for fkey, _label in self._facet_map[name]
+                    if fkey in self.figures]
+        if name in self.figures:
+            return [name]
+        return []
+
+    def _assert_every_graph_was_placed(self, placed_keys: "set[str]") -> None:
+        """Raise if any built figure never reached the document.
+
+        The faceted-graph defect was one instance of a class: a layout path
+        that cannot resolve a name skips it silently.  This is the guard that
+        catches the rest of the class -- it is worth more than the specific
+        fix.
+
+        Args:
+            placed_keys: Figure keys the layout actually emitted.
+
+        Raises:
+            ValueError: naming every graph that was built and not placed.
+        """
+        missing = [k for k in self.figures if k not in placed_keys]
+        if not missing:
+            return
+        # Report the user-facing registered name, not the generated facet key.
+        facet_owner = {
+            fkey: owner
+            for owner, entries in getattr(self, "_facet_map", {}).items()
+            for fkey, _ in entries
+        }
+        names = sorted({facet_owner.get(k, k) for k in missing})
+        raise ValueError(
+            "dash: the following graph(s) were built but never placed in the "
+            "dashboard: " + ", ".join(names) + ". This is a layout defect in "
+            "dash, not an error in your command; please report it with the "
+            "layout() option you used."
+        )
 
     def _build_tabs_widget(
         self,
@@ -9498,6 +9649,45 @@ class DashRenderer:
     # Layout assembly helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _placement_map(layout_opt: str) -> "dict[str, tuple[int, int]]":
+        """Parse Stata's ``layout(name:row,col ...)`` placement form.
+
+        Validated in ``dash.ado`` and documented in ``dash.sthlp``, and never
+        implemented: ``_compute_grid`` split on whitespace and called
+        ``int(parts[0])`` on ``"s1:1,1"``, which raises, so every placement
+        spec silently became the automatic grid.
+
+        Both the 1-based form the help documents and the 0-based form
+        ``dash.ado``'s regex actually admits are accepted, and normalised to
+        0-based here.  A spec is treated as 1-based only when no index is 0,
+        since the two are otherwise indistinguishable.
+
+        Args:
+            layout_opt: The raw ``layout()`` string.
+
+        Returns:
+            ``{name: (row, col)}``, zero-based; empty when the string is not
+            a placement spec.
+        """
+        if not layout_opt:
+            return {}
+        pairs = re.findall(
+            r"([A-Za-z_]\w*)\s*:\s*(\d+)\s*,\s*(\d+)",
+            layout_opt.strip())
+        if not pairs:
+            return {}
+        # Anything else in the string means this is not a placement spec.
+        leftover = re.sub(r"[A-Za-z_]\w*\s*:\s*\d+\s*,\s*\d+", "",
+                          layout_opt).strip()
+        if leftover:
+            return {}
+        raw = {name: (int(r), int(c)) for name, r, c in pairs}
+        one_based = all(r > 0 and c > 0 for r, c in raw.values())
+        if one_based:
+            return {n: (r - 1, c - 1) for n, (r, c) in raw.items()}
+        return raw
+
     def _compute_grid(
         self,
         names_or_n: "int | list[str]",
@@ -9527,6 +9717,20 @@ class DashRenderer:
                 return max(1, int(parts[0])), max(1, int(parts[1]))
             except ValueError:
                 pass
+
+        placement = self._placement_map(layout_opt)
+        if placement:
+            rows = max(r for r, _ in placement.values()) + 1
+            cols = max(c for _, c in placement.values()) + 1
+            # A graph the spec omits is appended, as the Bootstrap path does,
+            # so it needs a row of its own.
+            named = set(placement)
+            extra = [nm for nm in (names_or_n
+                                   if isinstance(names_or_n, list) else [])
+                     if nm not in named]
+            if extra:
+                rows += math.ceil(len(extra) / max(1, cols))
+            return max(1, rows), max(1, cols)
 
         # Fallback: auto
         cols = self._default_grid_cols(n)
@@ -9583,236 +9787,37 @@ class DashRenderer:
         return padded
 
     def _setup_sources(self) -> "dict[str, ColumnDataSource]":
-        """Build and return a dict mapping graph name → ColumnDataSource.
+        """Build the dashboard's ColumnDataSources.
 
-        Graphs listed in the ``link()`` build option share a single
-        ``ColumnDataSource``.  All other graphs receive independent sources.
-        ``link('_all')`` links every registered graph.
+        A thin wrapper over :meth:`_build_sources_and_figures`, which is the
+        single implementation.  This used to be a second copy of render()'s
+        phases; the two drifted, and since nothing outside the tests called
+        this one, the behaviours it had and render() lacked never shipped.
 
         Returns:
-            Dict mapping each graph name to its ``ColumnDataSource``.
+            ``{graph name: ColumnDataSource}``.
         """
-        graphs = self.master_spec.get("graphs", [])
-        build = self.master_spec.get("build_options", {})
-        # Accept either structured "filters" list (from tests / server mode) or
-        # the raw "filter" string emitted by dash.ado build_options.
-        filters_cfg = build.get("filters", [])
-        if not filters_cfg:
-            _raw_f = build.get("filter", "")
-            if _raw_f:
-                filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
-        link_raw = build.get("link", "")
-
-        # Parse link names — strip semicolons, treat as whitespace-delimited
-        if isinstance(link_raw, list):
-            link_names: list[str] = [str(x) for x in link_raw]
-        else:
-            link_names = link_raw.replace(";", " ").split()
-
-        all_graph_names = [
-            g.get("graph_options", {}).get("name", "") for g in graphs
-        ]
-
-        if "_all" in link_names:
-            link_names = list(all_graph_names)
-
-        sources: dict[str, ColumnDataSource] = {}
-        _VK = DashRenderer._VAR_KEYS
-        _OPT_VAR_KEYS = DashRenderer._OPT_VAR_KEYS
-
-        if link_names:
-            # First pass: collect all variable names needed by linked graphs,
-            # including by-variables for linked graphs that also use by().
-            linked_vars: list[str] = []
-            for g in graphs:
-                name = g.get("graph_options", {}).get("name", "")
-                if name in link_names:
-                    for vname in DashRenderer._collect_graph_vars(self.df, g):
-                        if vname not in linked_vars:
-                            linked_vars.append(vname)
-                    # Also include by-variables so CDSView masks align to the shared source
-                    by_raw = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw:
-                        varlist, _, _, _ = DashRenderer._parse_by_raw(by_raw)
-                        for bv in varlist.split():
-                            if bv and bv not in linked_vars:
-                                linked_vars.append(bv)
-            # Add filter variables so filter callbacks work on the shared source
-            for fc in filters_cfg:
-                v = fc.get("varname")
-                if v and v not in linked_vars and v in self.df.columns:
-                    linked_vars.append(v)
-
-            # Add KPI variables so JS can recompute KPI card values on filter
-            # changes.  Only KPIs that respond to filter events need this.
-            kpis_spec = self.master_spec.get("kpis", [])
-            for kpi in kpis_spec:
-                kupdate = kpi.get("update", "filter")
-                if kupdate in ("filter", "both"):
-                    kvar = kpi.get("var") or kpi.get("varname", "")
-                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
-                        linked_vars.append(kvar)
-
-            # Add raw variables for aggregate (histogram/kdensity) non-linked
-            # graphs so the JS filter callback can recompute bin counts and
-            # density curves from the filtered subset.
-            _AGG_TYPES = frozenset({"histogram", "hist", "kdensity"})
-            for g in graphs:
-                gname = g.get("graph_options", {}).get("name", "")
-                if gname in link_names:
-                    continue  # already covered by linked plots
-                for plot in g.get("plots", []):
-                    if plot.get("type", "") in _AGG_TYPES:
-                        vname = plot.get("var") or plot.get("yvar", "")
-                        if vname and vname not in linked_vars and vname in self.df.columns:
-                            linked_vars.append(vname)
-
-            linked_source = self._make_source(linked_vars)
-
-            for g in graphs:
-                name = g.get("graph_options", {}).get("name", "")
-                if name in link_names:
-                    # Linked graphs share a source; per-graph if/in not applied
-                    sources[name] = linked_source
-                    # For by()+link() graphs, compute CDSView boolean masks
-                    by_raw = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw:
-                        by_groups = self._expand_by_groups(g, base_df=self.df)
-                        facet_entries = []
-                        facet_masks = []
-                        for idx, (label, group_df) in enumerate(by_groups):
-                            fkey = f"{name}__by__{idx}"
-                            mask = [i in group_df.index for i in self.df.index]
-                            facet_entries.append((fkey, label))
-                            facet_masks.append((label, mask))
-                        self._facet_map[name] = facet_entries
-                        self._facet_masks[name] = facet_masks
-                else:
-                    g_vars = DashRenderer._collect_graph_vars(self.df, g)
-                    filtered_df = self._apply_graph_filter(g)
-                    sources[name] = self._make_source(g_vars, df=filtered_df)
-        else:
-            for g in graphs:
-                name = g.get("graph_options", {}).get("name", "")
-                g_vars = DashRenderer._collect_graph_vars(self.df, g)
-                filtered_df = self._apply_graph_filter(g)
-                by_groups = self._expand_by_groups(g, base_df=filtered_df)
-                if len(by_groups) == 1 and by_groups[0][0] == "":
-                    # No faceting (or all facet values missing — empty df group).
-                    # Use by_groups[0][1] so that an all-missing by() produces a
-                    # zero-row source instead of falling back to filtered_df.
-                    sources[name] = self._make_source(g_vars, df=by_groups[0][1])
-                else:
-                    # Faceted: one CDS per group
-                    facet_entries = []
-                    for idx, (label, group_df) in enumerate(by_groups):
-                        fkey = f"{name}__by__{idx}"
-                        sources[fkey] = self._make_source(g_vars, df=group_df)
-                        facet_entries.append((fkey, label))
-                    self._facet_map[name] = facet_entries
-
-        return sources
+        spec = self.master_spec
+        build = spec.get("build_options", {})
+        graphs = spec.get("graphs", [])
+        kpis = spec.get("kpis", [])
+        link_names, filters_cfg = self._parse_link_and_filters(build)
+        self._build_sources_and_figures(graphs, kpis, link_names, filters_cfg)
+        return self.sources
 
     def _build_figures(self) -> "dict[str, Any]":
-        """Build and return a dict mapping graph name → Bokeh Figure.
+        """Build the dashboard's Bokeh figures.
 
-        Uses ``_setup_sources()`` to obtain ``ColumnDataSource`` objects and
-        applies ``nonselection_alpha`` to renderers in linked figures.
-        For graphs with ``by()`` faceting, creates one figure per facet
-        group, keyed as ``"graphname__by__N"``.
+        A thin wrapper over :meth:`_build_sources_and_figures`; see
+        :meth:`_setup_sources` for why the wrappers exist.
 
         Returns:
-            Dict mapping each graph name (or facet key) to its Figure.
-
-        Raises:
-            ValueError: If ``by()`` and ``link()`` are used together (not
-                        supported in the current version).
+            ``{figure key: Figure}``.  A faceted graph contributes one entry
+            per panel, keyed ``name__by__N``.
         """
-        sources = self._setup_sources()
-        build = self.master_spec.get("build_options", {})
-        link_raw = build.get("link", "")
+        self._setup_sources()
+        return self.figures
 
-        if isinstance(link_raw, list):
-            link_names: list[str] = [str(x) for x in link_raw]
-        else:
-            link_names = link_raw.replace(";", " ").split()
-
-        graphs = self.master_spec.get("graphs", [])
-        all_graph_names = [
-            g.get("graph_options", {}).get("name", "") for g in graphs
-        ]
-        if "_all" in link_names:
-            link_names = list(all_graph_names)
-
-        figs: dict[str, Any] = {}
-        for g in graphs:
-            name = g.get("graph_options", {}).get("name", "")
-
-            # Check if this graph is faceted
-            if name in self._facet_map:
-                shared_src = sources.get(name)
-                masks = self._facet_masks.get(name, [])
-                for panel_idx, (fkey, label) in enumerate(self._facet_map[name]):
-                    # Determine source and optional CDSView for this panel
-                    if shared_src is not None and name in link_names:
-                        # by()+link() graph: shared source with per-panel CDSView
-                        src = shared_src
-                        if panel_idx < len(masks):
-                            _, mask = masks[panel_idx]
-                            panel_view = CDSView(filter=BooleanFilter(booleans=mask))
-                        else:
-                            panel_view = None
-                    else:
-                        # Standalone by() graph: per-group source, no view needed
-                        src = sources.get(fkey)
-                        panel_view = None
-                    if src is None:
-                        continue
-                    try:
-                        fig = self._make_figure(g, src, facet_view=panel_view)
-                        # Override title to include facet label
-                        orig_title = fig.title.text if fig.title else ""
-                        if orig_title:
-                            fig.title.text = f"{orig_title} — {label}"
-                        else:
-                            fig.title.text = label
-                        figs[fkey] = fig
-                    except Exception as exc:
-                        raise RuntimeError(
-                            f"dash_render: failed to build facet figure "
-                            f"'{fkey}': {exc}"
-                        ) from exc
-            else:
-                src = sources.get(name)
-                if src is None:
-                    continue
-                try:
-                    fig = self._make_figure(g, src)
-                    # Apply nonselection dimming for linked figures
-                    if name in link_names:
-                        for renderer in fig.renderers:
-                            if (hasattr(renderer, "nonselection_glyph")
-                                    and renderer.nonselection_glyph is not None):
-                                ns = renderer.nonselection_glyph
-                                if hasattr(ns, "fill_alpha"):
-                                    ns.fill_alpha = _NONSELECTION_ALPHA
-                                if hasattr(ns, "line_alpha"):
-                                    ns.line_alpha = _NONSELECTION_ALPHA
-                    figs[name] = fig
-                except Exception as exc:
-                    raise RuntimeError(
-                        f"dash_render: failed to build figure '{name}': {exc}"
-                    ) from exc
-
-        # Store sources on self for test access
-        self.sources = sources
-        return figs
-
-    # ------------------------------------------------------------------
-    # Phase-method helpers called by render()
-    # ------------------------------------------------------------------
-
-    @staticmethod
     def _to_serialisable(v: "Any") -> "Any":
         """Convert a single value to a JSON-safe Python scalar.
 
@@ -9848,6 +9853,237 @@ class DashRenderer:
         if m:
             return int(m.group(1)), m.group(2) == 'c'
         return 0, False
+
+    @staticmethod
+    def _parse_link_and_filters(build: dict) -> "tuple[list, list]":
+        """Read link() and filter() out of build_options.
+
+        Shared so render() and the wrappers cannot disagree about what was
+        asked for -- which is how link(_all) came to work in one and not the
+        other.
+
+        Args:
+            build: The spec's build_options.
+
+        Returns:
+            ``(link_names, filters_cfg)``.
+        """
+        raw = build.get("link", [])
+        if isinstance(raw, list):
+            link_names = [str(x) for x in raw]
+        else:
+            link_names = raw.replace(";", " ").split()
+        filters_cfg = build.get("filters", [])
+        if not filters_cfg:
+            raw_f = build.get("filter", "")
+            if raw_f:
+                filters_cfg = DashRenderer._parse_filter_raw(raw_f)
+        return link_names, filters_cfg
+
+    def _build_sources_and_figures(
+        self,
+        graphs: list,
+        kpis: list,
+        link_names: list,
+        filters_cfg: list,
+    ) -> None:
+        """Build every ColumnDataSource and every Figure.
+
+        THE single implementation of what used to exist twice.
+        ``render()`` had its own copy of these phases and
+        ``_setup_sources``/``_build_figures`` had another, and the two had
+        already drifted: the helpers expanded ``link(_all)`` and applied
+        dash's own non-selection alpha, and ``render()`` -- the path every
+        user reaches -- did neither.  Nothing outside the tests called the
+        helpers, so both behaviours looked implemented and neither
+        shipped.
+
+        The helpers are kept as thin wrappers rather than deleted: they
+        are the only way a test can get at the Figure objects, ~90 call
+        sites across eleven test files use them, and ``render()`` returns
+        HTML.  What mattered was one implementation, not one entry point.
+
+        Args:
+            graphs:      The spec's graph list.
+            kpis:        The spec's KPI list.
+            link_names:  Graph names sharing one source; ``_all`` is
+                         expanded here, once, for every caller.
+            filters_cfg: Parsed filter specs.
+
+        Writes: self.sources, self.figures, self._facet_map,
+                self._facet_masks, self.agg_source_registry
+        """
+        all_graph_names = [
+            g.get("graph_options", {}).get("name", "") for g in graphs
+        ]
+        # link(_all) is documented and was expanded only in the two dead
+        # helpers, so the shipped path produced an unlinked dashboard and
+        # returned rc 0.
+        if "_all" in link_names:
+            link_names[:] = [n for n in all_graph_names if n]
+
+        # ---- 2. Build ColumnDataSources ----
+        if link_names:
+            linked_vars: list[str] = []
+            for g in graphs:
+                gname = g.get("graph_options", {}).get("name", "")
+                if gname in link_names:
+                    for vname in DashRenderer._collect_graph_vars(self.df, g):
+                        if vname not in linked_vars:
+                            linked_vars.append(vname)
+                    by_raw_lnk = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw_lnk:
+                        varlist_lnk, _, _, _ = DashRenderer._parse_by_raw(by_raw_lnk)
+                        for bv in varlist_lnk.split():
+                            if bv and bv not in linked_vars:
+                                linked_vars.append(bv)
+            for fc in filters_cfg:
+                v = fc.get("varname")
+                if v and v not in linked_vars and v in self.df.columns:
+                    linked_vars.append(v)
+            for kpi in kpis:
+                kupdate = kpi.get("update", "filter")
+                if kupdate in ("filter", "both"):
+                    kvar = kpi.get("var") or kpi.get("varname", "")
+                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
+                        linked_vars.append(kvar)
+            _AGG_TYPES_RENDER = frozenset({"histogram", "hist", "kdensity"})
+            for g in graphs:
+                gname = g.get("graph_options", {}).get("name", "")
+                if gname in link_names:
+                    continue
+                for plot in g.get("plots", []):
+                    if plot.get("type", "") in _AGG_TYPES_RENDER:
+                        vname = plot.get("var") or plot.get("yvar", "")
+                        if vname and vname not in linked_vars and vname in self.df.columns:
+                            linked_vars.append(vname)
+            linked_source = self._make_source(linked_vars)
+            # Per-graph qualifier views for linked graphs.  The shared source
+            # supports brush selection across all linked graphs and cannot be
+            # filtered per-graph.  CDSView with BooleanFilter applies each
+            # graph's if_expr/in_expr mask without modifying the source data.
+            _linked_graph_views: dict = {}
+
+            for g in graphs:
+                name = g.get("graph_options", {}).get("name", "")
+                if name in link_names:
+                    self.sources[name] = linked_source
+                    # Build a CDSView for linked graphs that have qualifiers.
+                    _g_fdf = self._apply_graph_filter(g)
+                    if len(_g_fdf) < len(self.df):
+                        _df_idx_set = frozenset(_g_fdf.index)
+                        _bool_mask = [
+                            bool(i in _df_idx_set) for i in self.df.index
+                        ]
+                        _linked_graph_views[name] = CDSView(
+                            filter=BooleanFilter(booleans=_bool_mask)
+                        )
+                    by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
+                    if by_raw_lnk2:
+                        by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
+                        facet_entries_lnk = []
+                        facet_masks_lnk   = []
+                        for idx, (label, group_df) in enumerate(by_groups_lnk):
+                            fkey = f"{name}__by__{idx}"
+                            mask = [i in group_df.index for i in self.df.index]
+                            facet_entries_lnk.append((fkey, label))
+                            facet_masks_lnk.append((label, mask))
+                        self._facet_map[name]   = facet_entries_lnk
+                        self._facet_masks[name] = facet_masks_lnk
+                else:
+                    g_vars      = DashRenderer._collect_graph_vars(self.df, g)
+                    filtered_df = self._apply_graph_filter(g)
+                    self.sources[name] = self._make_source(g_vars, df=filtered_df)
+        else:
+            for g in graphs:
+                name   = g.get("graph_options", {}).get("name", "")
+                g_vars = DashRenderer._collect_graph_vars(self.df, g)
+                for fc in filters_cfg:
+                    fv = fc.get("varname", "")
+                    if fv and fv not in g_vars:
+                        g_vars.append(fv)
+                filtered_df = self._apply_graph_filter(g)
+                self.sources[name] = self._make_source(g_vars, df=filtered_df)
+
+        # ---- 2b. Handle by() faceting on unlinked sources ----
+        for g in graphs:
+            name    = g.get("graph_options", {}).get("name", "")
+            by_raw  = (g.get("graph_options", {}).get("by") or "").strip()
+            if by_raw and name not in link_names:
+                base_src = self.sources.pop(name, None)
+                if base_src is None:
+                    continue
+                by_groups = self._expand_by_groups(g, base_df=self.df)
+                if len(by_groups) == 1 and by_groups[0][0] == "":
+                    # No faceting (by() vars missing from df) OR all facet
+                    # values are NaN (work_df became empty after dropna).
+                    # In the all-missing case by_groups[0][1] is an empty
+                    # DataFrame — build a zero-row source so the graph renders
+                    # empty instead of falling back to the full original source.
+                    if len(by_groups[0][1]) == 0:
+                        self.sources[name] = self._make_source(
+                            list(base_src.data.keys()), df=by_groups[0][1]
+                        )
+                    else:
+                        self.sources[name] = base_src
+                else:
+                    g_vars        = list(base_src.data.keys())
+                    facet_entries = []
+                    for idx, (label, group_df) in enumerate(by_groups):
+                        fkey = f"{name}__by__{idx}"
+                        self.sources[fkey] = self._make_source(g_vars, df=group_df)
+                        facet_entries.append((fkey, label))
+                    self._facet_map[name] = facet_entries
+
+        # ---- 3. Build figures ----
+        for g in graphs:
+            name = g.get("graph_options", {}).get("name", "")
+            if name in self._facet_map:
+                shared_src_render = self.sources.get(name)
+                masks_render      = self._facet_masks.get(name, [])
+                for panel_idx_r, (fkey, label) in enumerate(self._facet_map[name]):
+                    if shared_src_render is not None and name in link_names:
+                        src = shared_src_render
+                        if panel_idx_r < len(masks_render):
+                            _, mask_r   = masks_render[panel_idx_r]
+                            panel_view_r = CDSView(filter=BooleanFilter(booleans=mask_r))
+                        else:
+                            panel_view_r = None
+                    else:
+                        src          = self.sources.get(fkey)
+                        panel_view_r = None
+                    if src is None:
+                        continue
+                    try:
+                        fig = self._make_figure(g, src, facet_view=panel_view_r)
+                        orig_title = fig.title.text if fig.title else ""
+                        fig.title.text = f"{orig_title} — {label}" if orig_title else label
+                        if name in link_names:
+                            self._apply_nonselection_dimming(fig)
+                        self.figures[fkey] = fig
+                    except Exception as exc:
+                        raise RuntimeError(
+                            f"dash_render: failed to build facet figure '{fkey}': {exc}"
+                        ) from exc
+            else:
+                src = self.sources.get(name)
+                if src is None:
+                    continue
+                # For linked graphs with if_expr/in_expr, apply a CDSView so
+                # the qualifier mask is honoured without filtering the shared source.
+                _qual_view = _linked_graph_views.get(name) \
+                    if "_linked_graph_views" in dir() else None
+                try:
+                    _fig = self._make_figure(g, src, facet_view=_qual_view)
+                    if name in link_names:
+                        self._apply_nonselection_dimming(_fig)
+                    self.figures[name] = _fig
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"dash_render: failed to build figure '{name}': {exc}"
+                    ) from exc
+
+
 
     def _build_kpi_html(self, kpis: list) -> None:
         """Phase 4 of render(): build KPI Div widgets and store in self.kpi_divs.
@@ -10078,10 +10314,12 @@ class DashRenderer:
                     # Sanitize color fields against CSS injection: the JS
                     # callback embeds these directly into style="...color:<val>..."
                     # so an unsanitized value can break out of the attribute.
-                    "color":    _sanitize_css_color(
+                    # The SAME resolver as the initial render, or the card
+                    # changes colour the first time a filter moves.
+                    "color":    _resolve_kpi_color(
                         _kdef.get("color", "") or "", "#212529"
                     ),
-                    "bgcolor":  _sanitize_css_color(
+                    "bgcolor":  _resolve_kpi_color(
                         _kdef.get("bgcolor", "") or "", "#f8f9fa"
                     ),
                 })
@@ -10300,16 +10538,7 @@ class DashRenderer:
         build  = self.master_spec.get("build_options", {})
 
         # ---- Parse build options ----
-        _link_raw_render = build.get("link", [])
-        if isinstance(_link_raw_render, list):
-            link_names: list[str] = [str(x) for x in _link_raw_render]
-        else:
-            link_names = _link_raw_render.replace(";", " ").split()
-        filters_cfg = build.get("filters", [])
-        if not filters_cfg:
-            _raw_f = build.get("filter", "")
-            if _raw_f:
-                filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
+        link_names, filters_cfg = self._parse_link_and_filters(build)
         # Carried RAW; every site that puts these into HTML escapes them
         # itself.  Escaping here as well was a double escape in the
         # Bootstrap path.
@@ -10338,163 +10567,8 @@ class DashRenderer:
                     if bv and bv not in all_vars:
                         all_vars.append(bv)
 
-        # ---- 2. Build ColumnDataSources ----
-        if link_names:
-            linked_vars: list[str] = []
-            for g in graphs:
-                gname = g.get("graph_options", {}).get("name", "")
-                if gname in link_names:
-                    for vname in DashRenderer._collect_graph_vars(self.df, g):
-                        if vname not in linked_vars:
-                            linked_vars.append(vname)
-                    by_raw_lnk = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw_lnk:
-                        varlist_lnk, _, _, _ = DashRenderer._parse_by_raw(by_raw_lnk)
-                        for bv in varlist_lnk.split():
-                            if bv and bv not in linked_vars:
-                                linked_vars.append(bv)
-            for fc in filters_cfg:
-                v = fc.get("varname")
-                if v and v not in linked_vars and v in self.df.columns:
-                    linked_vars.append(v)
-            for kpi in kpis:
-                kupdate = kpi.get("update", "filter")
-                if kupdate in ("filter", "both"):
-                    kvar = kpi.get("var") or kpi.get("varname", "")
-                    if kvar and kvar not in linked_vars and kvar in self.df.columns:
-                        linked_vars.append(kvar)
-            _AGG_TYPES_RENDER = frozenset({"histogram", "hist", "kdensity"})
-            for g in graphs:
-                gname = g.get("graph_options", {}).get("name", "")
-                if gname in link_names:
-                    continue
-                for plot in g.get("plots", []):
-                    if plot.get("type", "") in _AGG_TYPES_RENDER:
-                        vname = plot.get("var") or plot.get("yvar", "")
-                        if vname and vname not in linked_vars and vname in self.df.columns:
-                            linked_vars.append(vname)
-            linked_source = self._make_source(linked_vars)
-            # Per-graph qualifier views for linked graphs.  The shared source
-            # supports brush selection across all linked graphs and cannot be
-            # filtered per-graph.  CDSView with BooleanFilter applies each
-            # graph's if_expr/in_expr mask without modifying the source data.
-            _linked_graph_views: dict = {}
-
-            for g in graphs:
-                name = g.get("graph_options", {}).get("name", "")
-                if name in link_names:
-                    self.sources[name] = linked_source
-                    # Build a CDSView for linked graphs that have qualifiers.
-                    _g_fdf = self._apply_graph_filter(g)
-                    if len(_g_fdf) < len(self.df):
-                        _df_idx_set = frozenset(_g_fdf.index)
-                        _bool_mask = [
-                            bool(i in _df_idx_set) for i in self.df.index
-                        ]
-                        _linked_graph_views[name] = CDSView(
-                            filter=BooleanFilter(booleans=_bool_mask)
-                        )
-                    by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
-                    if by_raw_lnk2:
-                        by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
-                        facet_entries_lnk = []
-                        facet_masks_lnk   = []
-                        for idx, (label, group_df) in enumerate(by_groups_lnk):
-                            fkey = f"{name}__by__{idx}"
-                            mask = [i in group_df.index for i in self.df.index]
-                            facet_entries_lnk.append((fkey, label))
-                            facet_masks_lnk.append((label, mask))
-                        self._facet_map[name]   = facet_entries_lnk
-                        self._facet_masks[name] = facet_masks_lnk
-                else:
-                    g_vars      = DashRenderer._collect_graph_vars(self.df, g)
-                    filtered_df = self._apply_graph_filter(g)
-                    self.sources[name] = self._make_source(g_vars, df=filtered_df)
-        else:
-            for g in graphs:
-                name   = g.get("graph_options", {}).get("name", "")
-                g_vars = DashRenderer._collect_graph_vars(self.df, g)
-                for fc in filters_cfg:
-                    fv = fc.get("varname", "")
-                    if fv and fv not in g_vars:
-                        g_vars.append(fv)
-                filtered_df = self._apply_graph_filter(g)
-                self.sources[name] = self._make_source(g_vars, df=filtered_df)
-
-        # ---- 2b. Handle by() faceting on unlinked sources ----
-        for g in graphs:
-            name    = g.get("graph_options", {}).get("name", "")
-            by_raw  = (g.get("graph_options", {}).get("by") or "").strip()
-            if by_raw and name not in link_names:
-                base_src = self.sources.pop(name, None)
-                if base_src is None:
-                    continue
-                by_groups = self._expand_by_groups(g, base_df=self.df)
-                if len(by_groups) == 1 and by_groups[0][0] == "":
-                    # No faceting (by() vars missing from df) OR all facet
-                    # values are NaN (work_df became empty after dropna).
-                    # In the all-missing case by_groups[0][1] is an empty
-                    # DataFrame — build a zero-row source so the graph renders
-                    # empty instead of falling back to the full original source.
-                    if len(by_groups[0][1]) == 0:
-                        self.sources[name] = self._make_source(
-                            list(base_src.data.keys()), df=by_groups[0][1]
-                        )
-                    else:
-                        self.sources[name] = base_src
-                else:
-                    g_vars        = list(base_src.data.keys())
-                    facet_entries = []
-                    for idx, (label, group_df) in enumerate(by_groups):
-                        fkey = f"{name}__by__{idx}"
-                        self.sources[fkey] = self._make_source(g_vars, df=group_df)
-                        facet_entries.append((fkey, label))
-                    self._facet_map[name] = facet_entries
-
-        # ---- 3. Build figures ----
-        for g in graphs:
-            name = g.get("graph_options", {}).get("name", "")
-            if name in self._facet_map:
-                shared_src_render = self.sources.get(name)
-                masks_render      = self._facet_masks.get(name, [])
-                for panel_idx_r, (fkey, label) in enumerate(self._facet_map[name]):
-                    if shared_src_render is not None and name in link_names:
-                        src = shared_src_render
-                        if panel_idx_r < len(masks_render):
-                            _, mask_r   = masks_render[panel_idx_r]
-                            panel_view_r = CDSView(filter=BooleanFilter(booleans=mask_r))
-                        else:
-                            panel_view_r = None
-                    else:
-                        src          = self.sources.get(fkey)
-                        panel_view_r = None
-                    if src is None:
-                        continue
-                    try:
-                        fig = self._make_figure(g, src, facet_view=panel_view_r)
-                        orig_title = fig.title.text if fig.title else ""
-                        fig.title.text = f"{orig_title} — {label}" if orig_title else label
-                        self.figures[fkey] = fig
-                    except Exception as exc:
-                        raise RuntimeError(
-                            f"dash_render: failed to build facet figure '{fkey}': {exc}"
-                        ) from exc
-            else:
-                src = self.sources.get(name)
-                if src is None:
-                    continue
-                # For linked graphs with if_expr/in_expr, apply a CDSView so
-                # the qualifier mask is honoured without filtering the shared source.
-                _qual_view = _linked_graph_views.get(name) \
-                    if "_linked_graph_views" in dir() else None
-                try:
-                    self.figures[name] = self._make_figure(
-                        g, src, facet_view=_qual_view
-                    )
-                except Exception as exc:
-                    raise RuntimeError(
-                        f"dash_render: failed to build figure '{name}': {exc}"
-                    ) from exc
+        self._build_sources_and_figures(
+            graphs, kpis, link_names, filters_cfg)
 
         # ---- 3b. Collect aggregate sources for filter recomputation ----
         for _gname, _fig in self.figures.items():

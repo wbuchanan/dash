@@ -331,18 +331,56 @@ class TestLegendOptions:
         fig, _ = _fig_with_gopts(_TWO, {"legend": "off pos(6)"})
         assert not _legend_shown(fig)
 
-    @pytest.mark.parametrize("pos,where", [
+    @pytest.mark.parametrize("pos,side", [
         (3, "right"), (9, "left"), (12, "above"), (6, "below"),
+        (2, "right"), (4, "right"), (8, "left"), (10, "left"),
+        (11, "above"), (1, "above"), (5, "below"), (7, "below"),
     ])
-    def test_clock_positions(self, pos, where):
+    def test_clock_positions_place_the_legend_on_the_right_side(self, pos,
+                                                                side):
+        """Assert the SIDE, not merely that a location exists.
+
+        The original version of this test asserted `leg.location is not None`
+        for the left/right cases, which is true of every legend Bokeh builds
+        and so could not detect a placement being ignored.
+        """
         fig, _ = _fig_with_gopts(_TWO, {"legend": f"position({pos})"})
         assert _legend_shown(fig)
         leg = fig.legend[0]
-        if where in ("above", "below"):
-            assert leg in fig.above or leg in fig.below or \
-                   leg.location in ("top_center", "bottom_center")
-        else:
-            assert leg.location is not None
+        panels = {"above": fig.above, "below": fig.below,
+                  "left": fig.left, "right": fig.right}
+        assert leg in panels[side], (
+            f"legend(position({pos})) should sit {side} of the plot; it is "
+            f"in {[k for k, v in panels.items() if leg in v] or 'center'}"
+        )
+
+    @pytest.mark.parametrize("pos,want", [
+        (11, "top_left"), (12, "top_center"), (1, "top_right"),
+        (3, "center_right"), (4, "bottom_right"), (6, "bottom_center"),
+        (7, "bottom_left"), (9, "center_left"),
+    ])
+    def test_ring_zero_places_the_legend_inside_the_plot(self, pos, want):
+        """ring(0) means inside the plot region, at the clock position.
+
+        Every ring(0) request collapsed to top_right, because a leftover
+        keyword map from the previous implementation ran afterwards and the
+        word "ring" in "ring(0)" matched its "ring" entry.
+        """
+        fig, _ = _fig_with_gopts(
+            _TWO, {"legend": f"position({pos}) ring(0)"})
+        assert _legend_shown(fig)
+        assert str(fig.legend[0].location) == want, (
+            f"legend(position({pos}) ring(0)) placed the legend at "
+            f"{fig.legend[0].location!r}, not {want!r}"
+        )
+
+    def test_ring_zero_keeps_the_legend_out_of_the_side_panels(self):
+        fig, _ = _fig_with_gopts(_TWO, {"legend": "position(4) ring(0)"})
+        leg = fig.legend[0]
+        for panel in (fig.above, fig.below, fig.left, fig.right):
+            assert leg not in panel, (
+                "ring(0) means inside the plot region, not in a side panel"
+            )
 
     def test_existing_keywords_still_work(self):
         for kw in ("top", "bottom", "left", "right"):
