@@ -44,6 +44,11 @@ local n_pass = 0
 local n_fail = 0
 local n_skip = 0
 
+// Do not open a browser for every dashboard the suite builds.  Without this
+// a full run opened one window per `dash build' -- dozens of them, in rapid
+// succession, on the machine running the tests.
+global dash_nobrowser 1
+
 // A machine without Python still runs the parser-only scripts; the
 // Python-dependent ones detect it for themselves through c(python_exec).
 // Do NOT probe here with `capture python: pass' -- measured, that reports a

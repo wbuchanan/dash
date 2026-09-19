@@ -351,3 +351,70 @@ def test_pkg_manifest_lists_every_runtime_file():
         "dash.pkg omits files the package needs at run time, so net install "
         "produces a broken package. Missing:\n  " + "\n  ".join(missing)
     )
+
+
+class TestNoUnsuppressableBrowserWindow:
+    """``dash build`` opened a browser window and there was no way to stop it.
+
+    Every ``shell open`` / ``start`` / ``xdg-open`` in ``dash.ado`` fired
+    unconditionally, so a do-file run in batch — or a certification run that
+    builds twenty dashboards — opened one window per build, in rapid
+    succession, on whatever machine was running it.
+
+    ``nobrowser`` is the user-facing option and ``$dash_nobrowser`` is the
+    session-wide switch the test runner sets once. This asserts mechanically
+    that no launcher call is left outside a guard, which is the part that
+    would silently come back.
+    """
+
+    _LAUNCHERS = ("shell open", "shell start", "shell xdg-open")
+
+    @staticmethod
+    def _ado_lines():
+        path = os.path.join(REPO_ROOT, "dash.ado")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read().splitlines()
+
+    def test_every_launcher_call_sits_inside_a_guard(self):
+        lines = self._ado_lines()
+        unguarded = []
+        for i, line in enumerate(lines):
+            code = line.split("//", 1)[0]
+            if not any(l in code for l in self._LAUNCHERS):
+                continue
+            # Look back for the guard that encloses it.
+            window = "\n".join(lines[max(0, i - 12):i])
+            if ("dash_nobrowser" not in window
+                    and "open_browser" not in window):
+                unguarded.append(f"dash.ado:{i + 1}: {line.strip()}")
+        assert not unguarded, (
+            "a browser launcher runs with nothing able to suppress it:\n"
+            + "\n".join(unguarded)
+        )
+
+    def test_the_build_command_accepts_nobrowser(self):
+        path = os.path.join(REPO_ROOT, "dash.ado")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "NOBRowser" in src, (
+            "dash build has no nobrowser option, so a batch do-file cannot "
+            "stop it opening a window"
+        )
+
+    def test_the_global_switch_is_honoured_on_both_paths(self):
+        path = os.path.join(REPO_ROOT, "dash.ado")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert src.count("${dash_nobrowser}") >= 2, (
+            "the session-wide switch reaches only one of the two paths that "
+            "open a browser"
+        )
+
+    def test_nodraw_suppresses_the_window(self):
+        """Stata's own nodraw means build it but do not display it."""
+        path = os.path.join(REPO_ROOT, "dash.ado")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert '"nodraw":"nodraw"' in src, (
+            "nodraw is parsed and does not stop the browser opening"
+        )

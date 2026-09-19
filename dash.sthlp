@@ -77,6 +77,7 @@
 {cmd:filter(}{it:varname}{cmd:, type(}{it:filter_type}{cmd:)} [{cmd:exclude(}{it:namelist}{cmd:)}]{cmd:)}
 {cmd:theme(}{it:theme_name}{cmd:)}
 {cmdab:sch:eme}{cmd:(}{it:schemename}{cmd:)}
+{cmdab:nobr:owser}
 {cmd:replace}]
 
 {pstd}{ul:Build Bokeh Server app (write .py file, do not block)}{p_end}
@@ -249,6 +250,11 @@ The following options are available on {cmd:dash build}.
 {synopt:{cmd:server}}write a self-contained Bokeh Server {cmd:.py} app
     instead of a standalone HTML file; saving() path must end in
     {cmd:.py}; does not block or open a browser{p_end}
+{synopt:{cmdab:nobr:owser}}write the dashboard but do not open it in a
+    browser.  Stata's own {cmd:nodraw} on the graph has the same effect, and
+    setting the global {cmd:$dash_nobrowser} to any non-empty value suppresses
+    the window for a whole session -- useful in batch, where one window per
+    {cmd:dash build} is rarely wanted{p_end}
 {synopt:{cmd:replace}}overwrite output file if it already exists{p_end}
 {synoptline}
 

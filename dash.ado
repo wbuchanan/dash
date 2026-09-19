@@ -1684,6 +1684,15 @@ program define _dash_render_immediate
         output("`saving_path'") renderpy("`render_py'")
 
     // ---- Open in browser if no explicit saving() ----
+    // The same suppression as `dash build'.  This path sets open_browser
+    // only when no saving() was given, but a do-file run in batch still does
+    // not want a browser window.
+    if "${dash_nobrowser}" != "" local open_browser = 0
+    // Stata's own nodraw, which this path already parses, means "build it but
+    // do not display it".  Opening a browser window is displaying it.
+    // nodraw is a flag, so its serialised value is the word itself; an
+    // unset flag serialises as an empty string, which must NOT suppress.
+    if strpos(`"`json_spec'"', `""nodraw":"nodraw""') > 0 local open_browser = 0
     if "`open_browser'" == "1" {
         // On Windows, `start` treats its first quoted argument as the window
         // title, not the file path.  Supply an empty title ("") so the second
@@ -1897,6 +1906,7 @@ program define _dash_build
         LINK(string)            ///
         THEME(string)           ///
         SCHeme(string)          ///
+        NOBRowser               ///
         REPLACE                 ///
         SERVER                  ///
         TABS(string asis)       ///
@@ -2255,9 +2265,15 @@ program define _dash_build
     }
     else {
         display as text `"dash: dashboard saved to `saving'"'
-        if "`c(os)'" == "MacOSX"  shell open        "`saving'"
-        if "`c(os)'" == "Windows" shell start "" "`saving'"
-        if "`c(os)'" == "Unix"    shell xdg-open "`saving'"
+        // nobrowser, or the global the certification runner sets once.
+        // There was no way to suppress this at all: a suite that builds
+        // twenty dashboards opened twenty browser tabs, and so did any
+        // do-file run in batch.
+        if "`nobrowser'" == "" & "${dash_nobrowser}" == "" {
+            if "`c(os)'" == "MacOSX"  shell open        "`saving'"
+            if "`c(os)'" == "Windows" shell start "" "`saving'"
+            if "`c(os)'" == "Unix"    shell xdg-open "`saving'"
+        }
     }
 end
 
