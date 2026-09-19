@@ -7148,7 +7148,14 @@ class FilterBuilder:
         for rv in raw_values:
             options.append((rv, FilterBuilder._safe(_resolve_label(rv))))
 
-        _widget_title = html.escape(label.strip()) if label.strip() else safe_var
+        # NOT html.escape'd.  Bokeh renders a widget title as text and
+        # escapes it itself, so escaping here escaped it twice:
+        # label(R&D spend) displayed as "R&amp;D spend" on a dropdown while
+        # the two slider paths, which do not escape, showed it correctly.
+        # Same shape as the figure-title double-escape this file already
+        # fixed.  Measured: the raw payload reaches the document in neither
+        # path.
+        _widget_title = label.strip() if label.strip() else safe_var
         widget = Select(title=_widget_title, value=_sentinel,
                         options=[(v, l) for v, l in options])
         widget._dash_sentinel = _sentinel  # store for filter_specs_json inclusion
@@ -8127,9 +8134,19 @@ class DashRenderer:
                 continue
             m_type = _re.search(r"\btype\(([^)]+)\)", part, _re.IGNORECASE)
             m_excl = _re.search(r"\bexclude\(([^)]+)\)", part, _re.IGNORECASE)
+            # label() had no regex here at all, so the key the widget-title
+            # resolver reads FIRST was simply absent and every filter fell
+            # back to the variable name.  dash.ado did not reject the
+            # suboption either, so the user got silence rather than an error.
+            # The optional quotes are Stata's: label("Curb weight") and
+            # label(Curb weight) both reach here verbatim.
+            m_label = _re.search(r'\blabel\(\s*"?([^)"]*)"?\s*\)',
+                                 part, _re.IGNORECASE)
             ftype = m_type.group(1).strip().lower() if m_type else "dropdown"
             excl = m_excl.group(1).split() if m_excl else []
-            result.append({"varname": fvar, "type": ftype, "exclude": excl})
+            flabel = m_label.group(1).strip() if m_label else ""
+            result.append({"varname": fvar, "type": ftype, "exclude": excl,
+                           "label": flabel})
         return result
 
     def _expand_by_groups(

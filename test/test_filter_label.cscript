@@ -1,0 +1,135 @@
+*! test_filter_label.cscript
+*! Certification script for filter(varname, label("...")).
+*!
+*! Usage:  do test/test_filter_label.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed.
+*! Version: 1.0.0  19sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! The renderer had always resolved a filter widget's title correctly --
+*! explicit label(), then the Stata variable label, then the bare name.  The
+*! option simply never arrived.  Two things stopped it, and both had to be
+*! fixed before label() could be used once:
+*!
+*!  1. dash.ado passes the whole filter() option to Python as one raw string,
+*!     and the renderer's _parse_filter_raw had a regex for type() and one for
+*!     exclude() and NONE for label().  The key the resolver reads first was
+*!     absent, so the widget fell back to the variable name, silently.
+*!
+*!  2. Quoting.  The exclude() scanner expanded the filter string inside plain
+*!     double quotes, so the quotes in label("Curb weight") ended the Stata
+*!     string and the command died with `type mismatch' r(109) -- an error
+*!     that names neither the option nor the cause.  And the string went into
+*!     master_json unescaped, which would have broken the JSON document even
+*!     if the command had survived.
+*!
+*! The quoted form is the one a user would write, so it is what is tested.
+
+cscript "dash filter label" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// See test_cscript_hygiene.py: do NOT probe Python by running it.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+global dash_nobrowser 1
+
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+do "cert_helpers.do"
+
+qui sysuse auto, clear
+
+// ----------------------------------------------------------------
+// FL-01 — a QUOTED label() does not abort the command
+// ----------------------------------------------------------------
+tempfile out1
+local p1 = "`out1'.html"
+dash clear
+dash scatter mpg weight, name(g1)
+capture dash build, saving("`p1'") replace ///
+    filter(weight, type(range) label("Curb weight"))
+assert _rc == 0
+display "FL-01 PASS: a quoted label() does not abort the command"
+
+// ----------------------------------------------------------------
+// FL-02 — and it reaches the widget
+// ----------------------------------------------------------------
+cert_file_has "`p1'", needle("Curb weight")
+assert r(found) == 1
+display "FL-02 PASS: the quoted label reaches the dashboard"
+
+// ----------------------------------------------------------------
+// FL-03 — an unquoted label() works too
+// ----------------------------------------------------------------
+tempfile out2
+local p2 = "`out2'.html"
+dash clear
+dash scatter mpg weight, name(g2)
+dash build, saving("`p2'") replace ///
+    filter(weight, type(range) label(Curb weight))
+cert_file_has "`p2'", needle("Curb weight")
+assert r(found) == 1
+display "FL-03 PASS: an unquoted label reaches the dashboard"
+
+// ----------------------------------------------------------------
+// FL-04 — with no label(), the VARIABLE LABEL is used
+// ----------------------------------------------------------------
+// sysuse auto labels weight "Weight (lbs.)".  A Stata user expects to see
+// that, not the bare variable name.
+tempfile out3
+local p3 = "`out3'.html"
+dash clear
+dash scatter mpg weight, name(g3)
+dash build, saving("`p3'") replace filter(weight, type(range))
+cert_file_has "`p3'", needle("Weight (lbs.)")
+assert r(found) == 1
+display "FL-04 PASS: the variable label is used when no label() is given"
+
+// ----------------------------------------------------------------
+// FL-05 — exclude() still works alongside label()
+// ----------------------------------------------------------------
+// The exclude() scanner is the code that used to die on the quotes, so the
+// two suboptions have to be exercised together.
+tempfile out4
+local p4 = "`out4'.html"
+dash clear
+dash scatter mpg weight, name(g4)
+dash scatter mpg length, name(g5)
+dash build, saving("`p4'") replace ///
+    filter(weight, type(range) label("Curb weight") exclude(g5))
+assert _rc == 0
+cert_file_has "`p4'", needle("Curb weight")
+assert r(found) == 1
+display "FL-05 PASS: exclude() and label() coexist"
+
+// ----------------------------------------------------------------
+// FL-06 — an exclude() name that is not registered is still rejected
+// ----------------------------------------------------------------
+dash clear
+dash scatter mpg weight, name(g6)
+capture dash build, saving("`p4'") replace ///
+    filter(weight, type(range) label("Curb weight") exclude(nosuchgraph))
+assert _rc == 198
+display "FL-06 PASS: a bad exclude() name is still rejected"
+
+dash clear
+display ""
+display "test_filter_label.cscript: ALL CHECKS PASSED"

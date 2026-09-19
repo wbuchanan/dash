@@ -1989,14 +1989,20 @@ program define _dash_build
 
     // ---- validate filter() exclude() names ----
     // Iterate over ALL exclude(...) groups in the (possibly ||/;-joined) filter string.
-    if "`filter'" != "" {
-        local _excl_rem "`filter'"
-        local _excl_pos = strpos("`_excl_rem'", "exclude(")
+    // Compound quotes throughout: the filter string carries the user's own
+    // label("...") text, and expanding it inside plain "..." ends the Stata
+    // string at the first quote.  Measured: filter(weight, type(range)
+    // label("Curb weight")) died here with `type mismatch' r(109), which
+    // names neither the option nor the cause.
+    local _flen0 : length local filter
+    if `_flen0' > 0 {
+        local _excl_rem `"`filter'"'
+        local _excl_pos = strpos(`"`_excl_rem'"', "exclude(")
         while `_excl_pos' > 0 {
-            local _excl_inner = substr("`_excl_rem'", `_excl_pos' + 8, .)
-            local _excl_end   = strpos("`_excl_inner'", ")")
+            local _excl_inner = substr(`"`_excl_rem'"', `_excl_pos' + 8, .)
+            local _excl_end   = strpos(`"`_excl_inner'"', ")")
             if `_excl_end' > 0 {
-                local _excl_names = strtrim(substr("`_excl_inner'", 1, `_excl_end' - 1))
+                local _excl_names = strtrim(substr(`"`_excl_inner'"', 1, `_excl_end' - 1))
                 local n_excl : word count `_excl_names'
                 forvalues ke = 1/`n_excl' {
                     local ename : word `ke' of `_excl_names'
@@ -2006,13 +2012,13 @@ program define _dash_build
                     }
                 }
                 // Advance past the closing ) of this exclude() group
-                local _excl_rem = substr("`_excl_inner'", `_excl_end' + 1, .)
+                local _excl_rem = substr(`"`_excl_inner'"', `_excl_end' + 1, .)
             }
             else {
                 // Malformed exclude() — no closing paren; stop scanning
                 continue, break
             }
-            local _excl_pos = strpos("`_excl_rem'", "exclude(")
+            local _excl_pos = strpos(`"`_excl_rem'"', "exclude(")
         }
     }
 
@@ -2213,8 +2219,17 @@ program define _dash_build
         local n_kpis = `n_kpis' + 1
     }
 
+    // JSON-escape it, like every other string that goes into master_json.
+    // It did not used to be: filter(weight, type(range) label("Curb weight"))
+    // put bare double quotes straight into the document and broke it, which
+    // is why label() could not be used even once the renderer learned to
+    // parse it.
     local filter_json ""
-    if "`filter'" != "" local filter_json `"`filter'"'
+    // `: length local' rather than a comparison: the value contains the
+    // user's label("...") text, and expanding it inside an expression is the
+    // hazard this file has already been bitten by twice.
+    local _flen : length local filter
+    if `_flen' > 0 _dash_json_str `"`filter'"' filter_json
 
     // Escape build-level title and subtitle for JSON safety
     _dash_json_str `"`title'"'    _title_esc
