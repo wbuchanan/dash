@@ -186,3 +186,128 @@ opened in a browser: calendar dates on the x-axis, dates in both KPI cards, a
 date range slider reading "02 Jan 2001 .. 31 Dec 2001", and KPIs that
 recompute to "22 Oct 2001" and a lower peak close when the slider is dragged.
 The graph itself does not move, for the S13 reason above.
+
+
+---
+
+## S09 — axes, legend, titles and reference lines
+
+The largest cluster of silent failures in the package: options Stata's
+`syntax` accepted, because they are declared `string asis`, arriving intact at
+Python and having their contents thrown away by parsers that recognised two or
+three keywords.
+
+### The behaviour change everyone will notice
+
+**A single-series plot no longer draws a legend.** Measured over 55 probes:
+`twoway` draws a legend **if and only if the graph has two or more keys**. One
+key, no legend, whatever else is passed — `legend(position(6))` on a one-key
+plot draws nothing at all, and only `legend(on)` forces one. dash passed
+`legend_label=<yvar>` from every glyph, so every single-series graph carried a
+legend `twoway` would not draw.
+
+Legend **keys** changed too. Stata labels a data series with the variable
+LABEL, and fit layers with fixed text: `twoway (scatter mpg weight) (lfit mpg
+weight)` keys read `["Mileage (mpg)", "Fitted values"]`, and `twoway lfitci`
+reads `["95% CI", "Fitted values"]`. dash labelled everything with the raw
+y-variable name, so a scatter and its own fit line merged into one key. The CI
+key now carries the actual level, so `level(90)` reads "90% CI".
+
+### Axis labelling: from three keywords to Stata's grammar
+
+| form | before | after |
+|---|---|---|
+| `xlabel(#10)` | **0 ticks** | an adaptive ticker asked for 10 — Stata's `#N` is a *suggestion*, which is why it measures 8 on `weight` |
+| `xlabel(minmax)` | **0 ticks** | 2, at the data bounds |
+| `xlabel(none)` | 0 ticks *by accident* | 0 ticks *by intent*, and no gridlines, as measured |
+| `xlabel(1990(5)2020)` | **0 ticks** | 7, at the right positions |
+| `ylabel(, format(%9.0fc))` | nothing | thousands separators on the ticks |
+| `xlabel(, labsize(large))` | nothing | a larger tick label |
+| `xlabel(, grid)` / `nogrid` | nothing | gridlines on/off |
+| `yscale(range(0 50))` | nothing | the axis range |
+| `yscale(noextend)` / `alt` | silently dropped | reported |
+
+The working range code that existed was keyed on `xrange`/`yrange` — keys
+`dash.ado` has never emitted. A dead read is exactly what makes an option look
+implemented, so they are gone and `range()` is wired instead.
+
+### Text that was being mangled
+
+- `title("My Title", size(large) color(red))` rendered the literal
+  `My Title , size(large) color(red)`. `note("n=74", span)` rendered
+  `"n=74", span`, quotes and all — the two differed because `title` is
+  declared `string` and `note` is `string asis`. One parser now handles both,
+  so they cannot diverge again, and `size()` and `color()` are applied.
+- `title("R&D spend")` displayed as `R&amp;D spend`. Bokeh draws a figure
+  title and axis labels as **canvas glyphs**, not HTML, so escaping them was
+  the bug rather than the protection — `_axis_label` never escaped the
+  variable labels it returns and was already correct. Verified with four XSS
+  payloads that none appears literally in the output: Bokeh escapes model text
+  again on its way into the embedded JSON.
+- Under `layout(bs)`, `title("Price & Weight")` rendered `Price &amp; Weight`
+  and an apostrophe rendered `&#x27;`. `render()` escaped the title and
+  `_render_bootstrap_html` escaped it again. The title is now carried raw and
+  escaped once, at each point of use.
+- `note()` and `caption()` were both a `Label` at screen (0, 0) added
+  `"below"` — drawn **on top of each other**. Measured: the note is ring(4)
+  and the caption ring(5), so the caption sits below the note.
+
+### Style options that reached nothing
+
+- `xline(3000, lcolor(red) lpattern(solid))` — the sub-options were
+  float-cast and discarded, forcing grey dashed. They are honoured, and the
+  default is now **black** dashed, which is what Stata measures.
+- `mlcolor()` did nothing while the marker border took its colour from
+  `lcolor()`, the *connecting line* colour — wrong in both directions.
+  `mlwidth()` is wired too.
+- `fcolor(none)` painted an **opaque white blob**; it is transparent.
+- `falpha()` — used nine times in `examples/comprehensive_demo.do` — was never
+  read.
+- `msymbol(Oh)`, `Sh`, `Dh` rendered **filled**: they mapped to Bokeh's
+  `*_dot` markers. A hollow Stata marker is the solid shape with no fill.
+- `msymbol(i)` and `msymbol(none)` drew a visible marker.
+- `mlabgap(small)` threw and was silently dropped.
+- **`colormissing(eltblue)` did not emit invalid CSS — it killed the whole
+  render.** The value went to Bokeh untranslated, so any Stata colour name
+  Bokeh does not happen to share raised out of the colour mapper and took the
+  figure down with it.
+
+### `if` qualifiers
+
+`if !missing(rep78)`, `if inlist(rep78,1,2)` and `if rep78 < .` — the three
+most common qualifier forms in real Stata code — all failed validation,
+warned, and rendered the graph **unfiltered**. They now work, along with
+`inrange()` and the `== .` / `>= .` missing idioms.
+
+The AST whitelist that replaced a regex blacklist in commit `700e770` to close
+an RCE is **unchanged**. The support is a translation applied *before*
+validation, producing only comparisons and boolean combinators — node types
+the validator already permitted. 18 adversarial expressions are rejected both
+raw and after translation, per project rule 18.
+
+### Two more
+
+- The secondary axis range was computed from the **unfiltered** frame, so a
+  qualified dual-axis graph's right-hand axis spanned data the graph does not
+  show. It now comes from the active view.
+- `hover()` was read by the renderer and **declared nowhere in `dash.ado`** —
+  a dead read. Rather than delete it, the option is now declared and
+  serialized, because the renderer's use of it (extra tooltip variables) is
+  worth having.
+
+### One place the plan's register was wrong
+
+It said `map_line` sorts by x and then calls `_apply_mlabel_opts` with the
+unsorted source, so "marker labels land on the wrong points". They do not:
+each row of that source carries its own x, y and label together, so the
+pairing was already correct. The real defect was narrower — the sorted source
+dropped the label column, and the unsorted one still holds the NaN rows
+`map_line` discarded, so labels appeared on points the line does not draw. The
+label column is now carried across and the sorted source is used.
+
+### Re-baselined
+
+`test_single_y_output_matches_prefix_baseline` guards a single-y dashboard
+against unintended change. Its digest moved because a single-series scatter no
+longer draws a legend. The new digest is recorded with the reason in the test
+file.

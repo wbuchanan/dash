@@ -99,7 +99,13 @@ class TestXtitle:
     def test_xtitle_xss_escaped(self):
         """P6-01: XSS in xtitle is HTML-escaped."""
         fig = _get_figure({"xtitle": "<script>alert(1)</script>"})
-        assert "<script>" not in fig.xaxis.axis_label
+        # Bokeh draws an axis label as a CANVAS GLYPH, not as HTML, and
+        # escapes it again on its way into the embedded JSON document.
+        # Escaping it here made xtitle("R&D spend") read "R&amp;D spend"
+        # on screen.  The model keeps the literal text; the guarantee
+        # that matters -- nothing executable reaches the document -- is
+        # asserted in test_axis_options.py.
+        assert fig.xaxis.axis_label == "<script>alert(1)</script>"
 
     def test_no_xtitle_uses_variable_label(self):
         """P6-01: when xtitle absent, axis label falls back to variable label."""
@@ -119,10 +125,10 @@ class TestYtitle:
             f"Expected 'Custom Y Axis', got '{fig.yaxis.axis_label}'"
         )
 
-    def test_ytitle_xss_escaped(self):
-        """P6-02: XSS in ytitle is HTML-escaped."""
+    def test_ytitle_is_canvas_text_not_html(self):
+        """P6-02: canvas glyph, not HTML -- see test_xtitle_xss_escaped."""
         fig = _get_figure({"ytitle": "<script>evil()</script>"})
-        assert "<script>" not in fig.yaxis.axis_label
+        assert fig.yaxis.axis_label == "<script>evil()</script>"
 
     def test_no_ytitle_uses_variable_label(self):
         """P6-02: when ytitle absent, axis label falls back to variable label."""
@@ -164,14 +170,18 @@ class TestNote:
         assert len(labels) >= 1, "Expected at least one Label in fig.below"
         assert any("This is a note" in lbl.text for lbl in labels)
 
-    def test_note_xss_escaped(self):
-        """P6-04: XSS in note is HTML-escaped."""
+    def test_note_is_canvas_text_not_html(self):
+        """P6-04: a Label is drawn on the canvas, so its text stays literal.
+
+        Escaping it turned note("R&D") into "R&amp;D" on screen.  Nothing
+        executable reaches the document -- Bokeh escapes the model text again
+        when it serialises it -- and that is asserted in test_axis_options.py.
+        """
         from bokeh.models import Label
         fig = _get_figure({"note": "<script>bad()</script>"})
         labels = [r for r in fig.below if isinstance(r, Label)]
-        if labels:
-            for lbl in labels:
-                assert "<script>" not in lbl.text
+        assert labels, "note() drew no label"
+        assert any(lbl.text == "<script>bad()</script>" for lbl in labels)
 
 
 # ================================================================
@@ -268,14 +278,13 @@ class TestSubtitle:
         assert len(labels) >= 1
         assert any("My subtitle" in lbl.text for lbl in labels)
 
-    def test_subtitle_xss_escaped(self):
-        """P6-08: XSS in subtitle is HTML-escaped."""
+    def test_subtitle_is_canvas_text_not_html(self):
+        """P6-08: canvas text stays literal -- see test_note_is_canvas_text."""
         from bokeh.models import Label
         fig = _get_figure({"subtitle": "<script>xss()</script>"})
         labels = [r for r in fig.above if isinstance(r, Label)]
-        if labels:
-            for lbl in labels:
-                assert "<script>" not in lbl.text
+        assert labels, "subtitle() drew no label"
+        assert any(lbl.text == "<script>xss()</script>" for lbl in labels)
 
     def test_no_subtitle_no_label(self):
         """P6-08: without subtitle option, no Label appears in fig.above."""

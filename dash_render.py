@@ -600,7 +600,7 @@ border-bottom:1px solid #dee2e6}
 # ===========================================================================
 
 def _parse_scale_opt(raw: str) -> "tuple[bool, bool]":
-    """Parse an xscale()/yscale() option string for 'log' and 'reverse' sub-options.
+    """Parse an xscale()/yscale() option string for 'log' and 'reverse'.
 
     Args:
         raw: The raw option value string, e.g. 'log', 'reverse', 'log reverse'.
@@ -610,6 +610,134 @@ def _parse_scale_opt(raw: str) -> "tuple[bool, bool]":
     """
     tokens = raw.lower().split()
     return ("log" in tokens), ("reverse" in tokens)
+
+
+def _parse_scale_range(raw: str) -> "tuple[float | None, float | None]":
+    """Extract ``range(# [#])`` from an xscale()/yscale() option string.
+
+    Working range code already existed but was keyed on ``xrange``/``yrange``,
+    which ``dash.ado`` never emits -- a dead read that made the option look
+    implemented.  ``range()`` is Stata's actual spelling, and it may give one
+    bound or two.
+
+    Args:
+        raw: The raw option value.
+
+    Returns:
+        ``(lo, hi)``, either of which may be None.
+    """
+    m = re.search(r"\brange\s*\(\s*([^)]*?)\s*\)", raw or "", re.I)
+    if not m:
+        return None, None
+    parts = m.group(1).replace(",", " ").split()
+    vals: list = []
+    for tok in parts[:2]:
+        try:
+            vals.append(float(tok))
+        except ValueError:
+            vals.append(None)
+    while len(vals) < 2:
+        vals.append(None)
+    return vals[0], vals[1]
+
+
+def _report_unhandled_scale_opts(raw: str, which: str) -> None:
+    """Report xscale()/yscale() sub-options dash does not implement."""
+    for tok in ("noextend", "extend", "alt", "fextend", "nofextend"):
+        if re.search(r"\b" + tok + r"\b", raw or "", re.I):
+            warnings.warn(
+                f"dash: {which}({tok}) is not implemented and is being "
+                f"ignored.", UserWarning, stacklevel=3,
+            )
+
+
+_TEXTBOX_SUBOPTS = (
+    "size", "color", "colour", "position", "pos", "span", "box", "nobox",
+    "justification", "just", "alignment", "margin", "linegap", "bexpand",
+    "bmargin", "fcolor", "lcolor", "lwidth", "lpattern", "orientation",
+    "ring", "placement", "width", "height", "tstyle", "style",
+)
+_TEXTBOX_SUBOPT_RE = re.compile(
+    r",\s*(?=(?:" + "|".join(_TEXTBOX_SUBOPTS) + r")\b)", re.I)
+
+
+def _textbox_size(opts: dict, default: float) -> float:
+    """Resolve a textbox size() sub-option to pixels.
+
+    NOTE: the defaults passed in are literals for now.  S11 wires the general
+    scheme mechanism; the scheme keys these should come from are already
+    parsed.
+    """
+    raw = opts.get("size", "")
+    if not raw:
+        return default
+    try:
+        return float(OptionTranslator.translate_msize(raw))
+    except (ValueError, TypeError):
+        warnings.warn(
+            f"dash: size({raw}) is not a recognised text size; ignoring it.",
+            UserWarning, stacklevel=3,
+        )
+        return default
+
+
+def _textbox_color(opts: dict, default: str) -> str:
+    """Resolve a textbox color() sub-option to CSS."""
+    raw = opts.get("color", "") or opts.get("colour", "")
+    if not raw:
+        return default
+    try:
+        return OptionTranslator.translate_mcolor(raw)
+    except (ValueError, TypeError):
+        warnings.warn(
+            f"dash: color({raw}) is not a recognised colour; ignoring it.",
+            UserWarning, stacklevel=3,
+        )
+        return default
+
+
+def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
+    """Split a title/subtitle/note/caption option into text and sub-options.
+
+    The leak this fixes was a parsing defect made inconsistent by Stata's
+    ``string`` vs ``string asis`` declarations: ``title()`` arrived without
+    its quotes but WITH its sub-option text, so
+    ``title("My Title", size(large) color(red))`` rendered the literal
+    ``My Title , size(large) color(red)``; ``note()`` arrived with both, so
+    ``note("n=74", span)`` rendered ``"n=74", span``, quotes and all.
+
+    One parser handles both shapes, so they cannot diverge again.
+
+    Args:
+        raw: The raw option value.
+
+    Returns:
+        ``(text, suboptions)``.
+    """
+    if not raw:
+        return "", {}
+    text = str(raw)
+    m = _TEXTBOX_SUBOPT_RE.search(text)
+    tail = ""
+    if m:
+        tail = text[m.end():]
+        text = text[:m.start()]
+    text = text.strip()
+    # Stata's `asis` declarations keep the quotes the user typed.  A title
+    # may also be several quoted strings, one per line.
+    quoted = re.findall(r'"([^"]*)"', text)
+    if quoted:
+        text = " ".join(quoted)
+    else:
+        text = text.strip('"').strip()
+
+    opts: dict = {}
+    for m2 in re.finditer(r"\b([A-Za-z_]+)\s*\(\s*([^)]*?)\s*\)", tail):
+        opts[m2.group(1).lower()] = m2.group(2).strip()
+    for flag in ("span", "box", "nobox"):
+        if re.search(r"\b" + flag + r"\b", tail, re.I):
+            opts[flag] = flag
+    return text, opts
 
 
 def _parse_axis_angle(raw: str) -> "float | None":
@@ -834,29 +962,49 @@ class OptionTranslator:
     # ------------------------------------------------------------------
     # Stata marker symbol → Bokeh marker string
     # ------------------------------------------------------------------
+    # Stata marker names that mean "draw the outline only".  The symbol
+    # itself is the solid shape; the fill is switched off when applied.
+    _HOLLOW_SYMBOLS: frozenset = frozenset({
+        "oh", "sh", "dh", "th", "circle_hollow", "square_hollow",
+        "diamond_hollow", "triangle_hollow", "hexagon_hollow",
+        "smcircle_hollow", "smsquare_hollow", "smdiamond_hollow",
+        "smtriangle_hollow",
+    })
+    # Stata marker names that mean "draw nothing".  msymbol(i) silently drew
+    # a visible marker.
+    _INVISIBLE_SYMBOLS: frozenset = frozenset({"i", "none", "invisible"})
+
     _MARKER_MAP: dict[str, str] = {
+        "i":               "circle",
+        "none":            "circle",
+        "invisible":       "circle",
         "circle":          "circle",
         "o":               "circle",
-        "circle_hollow":   "circle_dot",
-        "oh":              "circle_dot",
+        # A HOLLOW Stata marker is the solid shape with no fill, not a
+        # different glyph.  These mapped to Bokeh's *_dot markers, which draw
+        # a filled shape with a dot in it -- so Oh, Sh and Dh all rendered
+        # FILLED.  The shape is the solid one and _HOLLOW_SYMBOLS makes the
+        # fill transparent.
+        "circle_hollow":   "circle",
+        "oh":              "circle",
         "square":          "square",
         "s":               "square",
-        "square_hollow":   "square_dot",
-        "sh":              "square_dot",
+        "square_hollow":   "square",
+        "sh":              "square",
         "diamond":         "diamond",
         "d":               "diamond",
-        "diamond_hollow":  "diamond_dot",
-        "dh":              "diamond_dot",
+        "diamond_hollow":  "diamond",
+        "dh":              "diamond",
         "triangle":        "triangle",
         "t":               "triangle",
-        "triangle_hollow": "inverted_triangle",
-        "th":              "inverted_triangle",
+        "triangle_hollow": "triangle",
+        "th":              "triangle",
         "plus":            "plus",
         "+":               "plus",
         "x":               "x",
         "X":               "x",
         "smcircle":        "circle",
-        "smcircle_hollow": "circle_dot",
+        "smcircle_hollow": "circle",
         "smx":             "x",
         "smsquare":        "square",
         "p":               "circle",
@@ -865,7 +1013,7 @@ class OptionTranslator:
         "star":            "star",
         "asterisk":        "asterisk",
         "hexagon":         "hex",
-        "hexagon_hollow":  "hex_dot",
+        "hexagon_hollow":  "hex",
         "point":           "circle",
         "dot":             "dot",
         # Remaining symbol-<name>.style entries from Stata's style library.
@@ -873,10 +1021,10 @@ class OptionTranslator:
         # smdiamond and smtriangle, which previously raised out of SchemeParser
         # and made a faithful translation of those schemes unparseable.
         "smdiamond":          "diamond",
-        "smdiamond_hollow":   "diamond_dot",
+        "smdiamond_hollow":   "diamond",
         "smtriangle":         "triangle",
-        "smtriangle_hollow":  "inverted_triangle",
-        "smsquare_hollow":    "square_dot",
+        "smtriangle_hollow":  "triangle",
+        "smsquare_hollow":    "square",
         "smplus":             "plus",
         "v":                  "inverted_triangle",
         "smv":                "inverted_triangle",
@@ -1706,6 +1854,28 @@ def _apply_jitter(
     return x_arr + x_noise, y_arr + y_noise
 
 
+def _source_frame(source, fallback: "pd.DataFrame") -> "pd.DataFrame":
+    """Return the rows a figure is actually drawing, as a DataFrame.
+
+    Args:
+        source:   The figure's ColumnDataSource.
+        fallback: Used when the source has no usable data.
+
+    Returns:
+        A DataFrame view of the source.
+    """
+    try:
+        data = dict(source.data)
+    except (AttributeError, TypeError):
+        return fallback
+    if not data:
+        return fallback
+    try:
+        return pd.DataFrame(data)
+    except (ValueError, TypeError):
+        return fallback
+
+
 def _compute_secondary_range(
     df: "pd.DataFrame",
     plots: list[dict],
@@ -2091,6 +2261,53 @@ class GlyphMapper:
                 glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
             except (ValueError, AttributeError):
                 pass
+        # mlcolor()/mlwidth() are the marker's OWN border options.  The
+        # border used to be taken from lcolor(), the CONNECTING LINE colour,
+        # which is wrong in both directions: mlcolor() did nothing and
+        # lcolor() restyled the marker.  Applied after lcolor so they win.
+        if "mlcolor" in options:
+            raw_mlc = str(options["mlcolor"]).strip().lower()
+            if raw_mlc == "none":
+                if hasattr(glyph, "line_alpha"):
+                    glyph.line_alpha = 0.0
+            else:
+                try:
+                    color, alpha = self.tr.parse_color_alpha(options["mlcolor"])
+                    if color and hasattr(glyph, "line_color"):
+                        glyph.line_color = color
+                    if alpha is not None and hasattr(glyph, "line_alpha"):
+                        glyph.line_alpha = alpha
+                except (ValueError, AttributeError):
+                    warnings.warn(
+                        f"dash: mlcolor({options['mlcolor']}) is not a "
+                        f"recognised colour; ignoring it.", UserWarning,
+                    )
+        if "mlwidth" in options:
+            try:
+                glyph.line_width = self.tr.translate_lwidth(options["mlwidth"])
+            except (ValueError, AttributeError):
+                warnings.warn(
+                    f"dash: mlwidth({options['mlwidth']}) is not a recognised "
+                    f"line width; ignoring it.", UserWarning,
+                )
+        # fcolor(none)/mfcolor(none) mean TRANSPARENT.  "none" resolved to
+        # #ffffff, which paints an opaque white blob over whatever is behind.
+        for _fk in ("mfcolor", "fcolor"):
+            if str(options.get(_fk, "")).strip().lower() == "none":
+                if hasattr(glyph, "fill_alpha"):
+                    glyph.fill_alpha = 0.0
+        # Hollow and invisible symbols, applied last so an explicit alpha
+        # cannot resurrect them.
+        _sym_raw = str(options.get("msymbol", options.get("marker", ""))
+                       ).strip().lower()
+        if _sym_raw in OptionTranslator._HOLLOW_SYMBOLS:
+            if hasattr(glyph, "fill_alpha"):
+                glyph.fill_alpha = 0.0
+        elif _sym_raw in OptionTranslator._INVISIBLE_SYMBOLS:
+            if hasattr(glyph, "fill_alpha"):
+                glyph.fill_alpha = 0.0
+            if hasattr(glyph, "line_alpha"):
+                glyph.line_alpha = 0.0
         # malpha: standalone fill+line opacity override, 0-100%.
         # Applied last so it wins over any alpha embedded in mcolor/mfcolor/lcolor.
         if "malpha" in options:
@@ -2136,14 +2353,29 @@ class GlyphMapper:
         """
         glyph = renderer.glyph
         if "fcolor" in options:
-            try:
-                color, alpha = self.tr.parse_color_alpha(options["fcolor"])
-                if color:
-                    glyph.fill_color = color
-                if alpha is not None and hasattr(glyph, "fill_alpha"):
-                    glyph.fill_alpha = alpha
-            except (ValueError, AttributeError):
-                pass
+            if str(options["fcolor"]).strip().lower() == "none":
+                # Stata's fcolor(none) is TRANSPARENT.  It resolved to
+                # #ffffff, painting an opaque white blob.
+                if hasattr(glyph, "fill_alpha"):
+                    glyph.fill_alpha = 0.0
+            else:
+                try:
+                    color, alpha = self.tr.parse_color_alpha(options["fcolor"])
+                    if color:
+                        glyph.fill_color = color
+                    if alpha is not None and hasattr(glyph, "fill_alpha"):
+                        glyph.fill_alpha = alpha
+                except (ValueError, AttributeError):
+                    pass
+        # falpha()/fa() -- used nine times in examples/comprehensive_demo.do
+        # and never read.
+        for _ak in ("falpha", "fa"):
+            if _ak in options:
+                _fa = _stat_option_float(options, _ak, None, "fill",
+                                         lo=0.0, hi=100.0)
+                if _fa is not None and hasattr(glyph, "fill_alpha"):
+                    glyph.fill_alpha = _fa / 100.0
+                break
         if "fintensity" in options:
             try:
                 val = options["fintensity"].strip()
@@ -2226,7 +2458,20 @@ class GlyphMapper:
         # redundant for discrete mappings — discrete always renders a Legend.
         # The variable kept here for clarity / future use.
         _use_plegend  = bool(options.get("coloruseplegend"))  # noqa: F841
-        missing_color = options.get("colormissing", "").strip() or "grey"
+        # colormissing() went to Bokeh untranslated, so any Stata colour
+        # name Bokeh does not happen to share -- eltblue, ltbluishgray, the
+        # whole Stata palette -- raised out of the mapper and took the entire
+        # render down with it.
+        _raw_missing = options.get("colormissing", "").strip()
+        missing_color = "#808080"
+        if _raw_missing:
+            try:
+                missing_color = self.tr.translate_mcolor(_raw_missing)
+            except (ValueError, TypeError):
+                warnings.warn(
+                    f"dash: colormissing({_raw_missing}) is not a recognised "
+                    f"colour; using grey.", UserWarning,
+                )
 
         # Stata label metadata, populated by DashRenderer after _load_data().
         # Used to render value labels on legend entries and to display the
@@ -2547,7 +2792,10 @@ class GlyphMapper:
 
         if "mlabgap" in options:
             try:
-                gap = int(float(options["mlabgap"]))
+                # mlabgap(small) threw here and was silently dropped: Stata
+                # takes a text size OR a number, and int(float()) accepts
+                # only the number.
+                gap = int(float(self.tr.translate_msize(options["mlabgap"])))
                 kwargs["x_offset"] = kwargs.get("x_offset", 4) + gap
                 kwargs["y_offset"] = kwargs.get("y_offset", 4) + gap
             except (ValueError, TypeError):
@@ -2665,8 +2913,15 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer created.
         """
-        # Drop NaN and sort by x for correct line rendering
-        df = pd.DataFrame({xvar: source.data[xvar], yvar: source.data[yvar]})
+        # Drop NaN and sort by x for correct line rendering.
+        # The marker-label column is carried across too: it used to be left
+        # behind, so mlabel() on a line plot had to fall back to the
+        # unsorted source, which still holds the rows dropped here.
+        _cols = {xvar: source.data[xvar], yvar: source.data[yvar]}
+        _mlab = (options or {}).get("mlabel", "")
+        if _mlab and _mlab in source.data and _mlab not in _cols:
+            _cols[_mlab] = source.data[_mlab]
+        df = pd.DataFrame(_cols)
         df = df.dropna(subset=[xvar, yvar]).sort_values(xvar)
         sorted_source = ColumnDataSource(df)
 
@@ -2682,7 +2937,12 @@ class GlyphMapper:
             _line_kwargs["view"] = view
         r = fig.line(**_line_kwargs)
         self._apply_line_opts(r, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
+        # The SORTED source, so labels cover exactly the rows the
+        # line covers.  (The pairing was already correct with the original
+        # source -- each row carries its own x, y and label together -- but
+        # the unsorted source still holds the NaN rows map_line dropped,
+        # which would label points the line does not draw.)
+        self._apply_mlabel_opts(fig, sorted_source, options, xvar, yvar)
         fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         return r
 
@@ -5744,6 +6004,74 @@ def _stata_expr_to_python(expr: str) -> str:
     return "".join(out)
 
 
+def _stata_if_to_pandas(expr: str) -> str:
+    """Rewrite Stata's qualifier idioms into plain comparison expressions.
+
+    ``if !missing(rep78)``, ``if inlist(rep78,1,2)`` and ``if rep78 < .`` are
+    the three most common qualifier forms in real Stata code, and all three
+    failed validation, warned, and rendered the graph UNFILTERED.
+
+    This is a TRANSLATION performed BEFORE validation, not a loosening of the
+    whitelist.  Every rewrite produces only comparisons and boolean
+    combinators -- the node types the validator already permits -- so the
+    validator is unchanged and still sees the whole expression.  A hostile
+    argument inside one of these functions does not survive: it either
+    produces a Call node, which the whitelist rejects, or malformed output,
+    which fails to parse.  Covered by the adversarial tests in
+    test/test_axis_options.py.
+
+    Args:
+        expr: A Stata if-qualifier expression.
+
+    Returns:
+        An equivalent expression in pandas-query syntax.
+    """
+    if not expr:
+        return expr
+    out = str(expr)
+
+    # inlist(x, a, b, ...) -> ((x == a) | (x == b) | ...)
+    def _inlist(m):
+        parts = [p.strip() for p in m.group(1).split(",")]
+        if len(parts) < 2 or not parts[0]:
+            return m.group(0)
+        var, vals = parts[0], [p for p in parts[1:] if p]
+        if not vals:
+            return m.group(0)
+        return "(" + " | ".join(f"({var} == {v})" for v in vals) + ")"
+
+    out = re.sub(r"\binlist\s*\(([^()]*)\)", _inlist, out)
+
+    # inrange(x, a, b) -> ((x >= a) & (x <= b))
+    def _inrange(m):
+        parts = [p.strip() for p in m.group(1).split(",")]
+        if len(parts) != 3 or not all(parts):
+            return m.group(0)
+        v, lo, hi = parts
+        return f"(({v} >= {lo}) & ({v} <= {hi}))"
+
+    out = re.sub(r"\binrange\s*\(([^()]*)\)", _inrange, out)
+
+    # missing(x) -> (x != x).  NaN is the only value not equal to itself.
+    out = re.sub(r"\bmissing\s*\(([^()]*)\)",
+                 lambda m: f"({m.group(1).strip()} != {m.group(1).strip()})",
+                 out)
+
+    # Stata's missing idioms against the sort-last dot.
+    out = re.sub(r"([A-Za-z_]\w*)\s*<\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(r"([A-Za-z_]\w*)\s*<=\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(r"([A-Za-z_]\w*)\s*!=\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(r"([A-Za-z_]\w*)\s*~=\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(r"([A-Za-z_]\w*)\s*==\s*\.(?!\d)", r"(\1 != \1)", out)
+    out = re.sub(r"([A-Za-z_]\w*)\s*>=\s*\.(?!\d)", r"(\1 != \1)", out)
+    out = re.sub(r"([A-Za-z_]\w*)\s*>\s*\.(?!\d)", r"(\1 != \1)", out)
+
+    # Stata's ~= is !=, and its ! is a logical not; leave != alone.
+    out = out.replace("~=", "!=")
+    out = re.sub(r"!(?!=)", "~", out)
+    return out
+
+
 def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
     """Return True only if *expr* is a safe comparison/boolean expression.
 
@@ -6950,13 +7278,11 @@ class DashRenderer:
 
         if_expr = (graph_spec.get("if_expr") or "").strip()
         if if_expr:
-            # Replace Stata operators with pandas-compatible equivalents
-            pandas_expr = (if_expr
-                           .replace(" & ", " & ")
-                           .replace(" | ", " | ")
-                           .replace("!=", "!=")
-                           .replace("==", "==")
-                           .replace("~=", "!="))
+            # Translate Stata's qualifier idioms -- missing(), inlist(),
+            # inrange() and the "< ." missing test -- into plain comparisons
+            # BEFORE validation, so the whitelist is unchanged and still sees
+            # the whole expression.
+            pandas_expr = _stata_if_to_pandas(if_expr)
 
             # Security: validate against AST whitelist before query execution.
             # _validate_if_expr rejects @-variable references (RCE vector),
@@ -7230,6 +7556,250 @@ class DashRenderer:
     # Figure construction helpers
     # ------------------------------------------------------------------
 
+    # Plot types whose legend key Stata writes as "Fitted values" rather
+    # than as the y variable.  Measured: twoway (scatter mpg weight)
+    # (lfit mpg weight) has keys ["Mileage (mpg)", "Fitted values"].
+    _FIT_TYPES = frozenset({
+        "lfit", "qfit", "fpfit", "lpoly", "lowess", "mband", "mspline",
+        "function",
+    })
+    # Plot types that produce TWO keys from one plot: the band and the line.
+    # Measured: twoway lfitci mpg weight has keys ["95% CI", "Fitted values"].
+    _CI_TYPES = frozenset({"lfitci", "qfitci", "lpolyci", "fpfitci"})
+
+    def _legend_key(self, plot: dict) -> str:
+        """The legend key Stata would write for one plot layer.
+
+        Stata labels a data series with the variable LABEL, not the variable
+        name -- ``scatter mpg weight`` keys read "Mileage (mpg)".  dash
+        labelled every series with the raw y-variable name, so a scatter and
+        its fit line collided into a single merged key.
+
+        Args:
+            plot: One plot spec.
+
+        Returns:
+            The key text.
+        """
+        ptype = str(plot.get("type", "")).lower()
+        if ptype in self._FIT_TYPES or ptype in self._CI_TYPES:
+            return "Fitted values"
+        yvar = (plot.get("yvar", "") or plot.get("var", "")
+                or plot.get("yvar1", ""))
+        return self._axis_label(yvar) if yvar else ptype
+
+    def _rebuild_legend(self, fig, plot_renderers: list, graph_opts: dict
+                        ) -> None:
+        """Give the figure Stata's legend keys, and Stata's rule for drawing one.
+
+        ``twoway`` draws a legend **if and only if the graph has two or more
+        keys**.  One key, no legend, whatever else is passed:
+        ``legend(position(6))`` on a one-key plot draws nothing, and only
+        ``legend(on)`` forces one.  Measured over 55 probes; see
+        ``findings.legend_rule`` in test/fixtures/axis_truth.json.
+
+        dash passed ``legend_label=<yvar>`` from every glyph, so a
+        single-series plot always got a legend ``twoway`` would not draw --
+        and two layers of the same y variable merged into one key.
+
+        Args:
+            fig:             The figure, with every glyph already added.
+            plot_renderers:  ``[(plot_spec, [renderer, ...]), ...]``.
+            graph_opts:      Graph-level options.
+        """
+        from bokeh.models import Legend, LegendItem
+
+        legend_opt = str(graph_opts.get("legend", "") or "")
+        if not fig.legend:
+            return
+
+        legend = fig.legend[0]
+        if plot_renderers:
+            items: list = []
+            for plot, rends in plot_renderers:
+                rends = [r for r in rends if r in fig.renderers]
+                if not rends:
+                    continue
+                ptype = str(plot.get("type", "")).lower()
+                if ptype in self._CI_TYPES and len(rends) >= 2:
+                    # The band is added alongside the line; Stata keys them
+                    # separately, and the band's key carries the level.
+                    lvl = _resolve_level(plot.get("options", {}) or {},
+                                         getattr(self, "default_level",
+                                                 _DEFAULT_LEVEL))
+                    lvl_txt = (f"{lvl:g}")
+                    band = [r for r in rends
+                            if type(getattr(r, "glyph", None)).__name__
+                            in ("VArea", "Band", "Patch")]
+                    line = [r for r in rends if r not in band]
+                    if band:
+                        items.append(LegendItem(label={"value": f"{lvl_txt}% CI"},
+                                                renderers=band))
+                    if line:
+                        items.append(LegendItem(label={"value": "Fitted values"},
+                                                renderers=line))
+                    continue
+                items.append(LegendItem(
+                    label={"value": self._legend_key(plot)}, renderers=rends))
+            if items:
+                legend.items = items
+
+        # order() -- 1-based, and it may also DROP keys.
+        m_order = re.search(r"\border\s*\(([^)]*)\)", legend_opt)
+        if m_order:
+            wanted = [int(t) for t in re.findall(r"\d+", m_order.group(1))]
+            src = list(legend.items)
+            legend.items = [src[i - 1] for i in wanted
+                            if 1 <= i <= len(src)]
+
+        # ---- Stata's clock positions -------------------------------
+        # 12 o'clock is straight up, 3 is right, 6 is down, 9 is left.  The
+        # measured placements group into the four sides; ring(0) keeps the
+        # legend inside the plot region instead of in a side panel.
+        _CLOCK_SIDE = {
+            11: "above", 12: "above", 1: "above",
+            2: "right", 3: "right", 4: "right",
+            5: "below", 6: "below", 7: "below",
+            8: "left", 9: "left", 10: "left",
+        }
+        _CLOCK_INSIDE = {
+            11: "top_left", 12: "top_center", 1: "top_right",
+            2: "top_right", 3: "center_right", 4: "bottom_right",
+            5: "bottom_right", 6: "bottom_center", 7: "bottom_left",
+            8: "bottom_left", 9: "center_left", 10: "top_left",
+        }
+        m_pos = re.search(r"\b(?:position|pos)\s*\(\s*(\d+)\s*\)",
+                          legend_opt)
+        m_ring = re.search(r"\bring\s*\(\s*(\d+)\s*\)", legend_opt)
+        inside = bool(m_ring) and m_ring.group(1) == "0"
+        if m_pos:
+            clock = int(m_pos.group(1))
+            if inside:
+                legend.location = _CLOCK_INSIDE.get(clock, "top_right")
+            else:
+                side = _CLOCK_SIDE.get(clock, "right")
+                self._move_legend(fig, legend, side)
+                legend.orientation = ("horizontal"
+                                      if side in ("above", "below")
+                                      else "vertical")
+
+        m_size = re.search(r"\bsize\s*\(\s*([^)]+?)\s*\)", legend_opt)
+        if m_size:
+            try:
+                legend.label_text_font_size = (
+                    f"{OptionTranslator.translate_msize(m_size.group(1)):g}px")
+            except (ValueError, TypeError):
+                pass
+
+        forced_on = bool(re.search(r"\bon\b", legend_opt))
+        turned_off = bool(re.search(r"\boff\b", legend_opt))
+        n_keys = len(legend.items)
+
+        if turned_off or (n_keys < 2 and not forced_on):
+            for leg in fig.legend:
+                leg.visible = False
+        else:
+            for leg in fig.legend:
+                leg.visible = True
+
+    def _apply_axis_spec(self, fig, axis_obj, grid_obj, spec: dict,
+                         varname: str = "") -> None:
+        """Apply a parsed ``axis_label`` spec to one axis.
+
+        Args:
+            fig:       The figure (for its data ranges).
+            axis_obj:  ``fig.xaxis`` or ``fig.yaxis``.
+            grid_obj:  The matching grid, for ``grid``/``nogrid``.
+            spec:      The output of :meth:`_parse_axis_spec`.
+            varname:   The variable on this axis, so a tick format can fall
+                       back to its Stata display format.
+        """
+        from bokeh.models.tickers import FixedTicker, BasicTicker
+        from bokeh.models.formatters import (CustomJSTickFormatter,
+                                             NumeralTickFormatter)
+
+        mode = spec["mode"]
+        if mode == "none":
+            # Zero ticks BY INTENT.  It used to produce zero by accident,
+            # because every token was dropped.  Measured: Stata's
+            # xlabel(none) also removes the gridlines.
+            axis_obj.ticker = FixedTicker(ticks=[])
+            for g in grid_obj:
+                g.grid_line_color = None
+        elif mode == "minmax":
+            col = self.df[varname] if varname in getattr(
+                self.df, "columns", []) else None
+            if col is not None:
+                vals = pd.to_numeric(col, errors="coerce").dropna()
+                if len(vals):
+                    axis_obj.ticker = FixedTicker(
+                        ticks=[float(vals.min()), float(vals.max())])
+        elif mode == "count":
+            # Stata's #N is a SUGGESTION -- measured, xlabel(#10) on weight
+            # yields eight ticks.  Bokeh's desired_num_ticks means the same
+            # thing, so the option maps onto it rather than onto a fixed list.
+            axis_obj.ticker = BasicTicker(desired_num_ticks=spec["count"])
+        elif mode == "explicit" and spec["ticks"]:
+            axis_obj.ticker = FixedTicker(ticks=spec["ticks"])
+            if spec["labels"]:
+                safe = {str(k): html.escape(str(v))
+                        for k, v in spec["labels"].items()}
+                axis_obj.formatter = CustomJSTickFormatter(
+                    code=f"const m = {json.dumps(safe)}; "
+                         "return m[String(tick)] || String(tick);")
+                axis_obj.major_label_overrides = {
+                    float(k): v for k, v in spec["labels"].items()}
+
+        fmt = spec["format"] or getattr(self, "numeric_formats", {}).get(
+            varname, "")
+        if fmt:
+            pattern = _stata_numeric_pattern(fmt)
+            if pattern is not None:
+                axis_obj.formatter = NumeralTickFormatter(format=pattern)
+            elif spec["format"] and _stata_date_kind(fmt) is None:
+                warnings.warn(
+                    f"dash: axis format({spec['format']}) is not a numeric "
+                    f"display format dash reproduces; the ticks are "
+                    f"unformatted.", UserWarning,
+                )
+
+        if spec["labsize"]:
+            try:
+                axis_obj.major_label_text_font_size = (
+                    f"{OptionTranslator.translate_msize(spec['labsize']):g}px")
+            except (ValueError, TypeError):
+                warnings.warn(
+                    f"dash: labsize({spec['labsize']}) is not a recognised "
+                    f"text size; ignoring it.", UserWarning,
+                )
+        if spec["angle"] is not None:
+            axis_obj.major_label_orientation = spec["angle"]
+        if spec["grid"] is not None:
+            for g in grid_obj:
+                if spec["grid"]:
+                    if g.grid_line_color is None:
+                        g.grid_line_color = "#e5e5e5"
+                else:
+                    g.grid_line_color = None
+
+    @staticmethod
+    def _move_legend(fig, legend, side: str) -> None:
+        """Move an existing Legend into one of the figure's side panels.
+
+        Args:
+            fig:    The figure.
+            legend: The Legend model already attached to it.
+            side:   ``"above"``, ``"below"``, ``"left"`` or ``"right"``.
+        """
+        for container in (fig.center, fig.above, fig.below, fig.left,
+                          fig.right):
+            try:
+                if legend in container:
+                    container.remove(legend)
+            except (TypeError, ValueError):
+                pass
+        fig.add_layout(legend, side)
+
     def _figure_date_kind(
         self, plots: list, key: str, fallback: str,
     ) -> "str | None":
@@ -7265,6 +7835,94 @@ class DashRenderer:
     def _axis_label(self, varname: str) -> str:
         """Return the axis label for *varname*, using variable labels if available."""
         return self.variable_labels.get(varname, varname)
+
+    @staticmethod
+    def _parse_axis_spec(raw: str) -> dict:
+        """Parse Stata's full ``axis_label`` grammar.
+
+        Handles a numlist (including the ``a(b)c`` increment form), ``#N``,
+        ``minmax``, ``none``, explicit ``value "label"`` pairs, and the
+        sub-options ``format()``, ``labsize()``, ``angle()``, ``grid`` and
+        ``nogrid``.  Everything but the quoted-label handling and ``angle()``
+        used to be discarded: ``xlabel(#10)``, ``xlabel(minmax)``,
+        ``xlabel(1990(5)2020)`` and ``ylabel(, format(%9.0fc))`` were all
+        ACCEPTED and all produced zero ticks.
+
+        Args:
+            raw: The raw option value.
+
+        Returns:
+            A dict with keys ``mode`` (one of ``"default"``, ``"explicit"``,
+            ``"count"``, ``"minmax"``, ``"none"``), ``ticks``, ``count``,
+            ``labels``, ``format``, ``labsize``, ``angle`` and ``grid``.
+        """
+        out: dict = {"mode": "default", "ticks": [], "count": None,
+                     "labels": {}, "format": None, "labsize": None,
+                     "angle": None, "grid": None}
+        if not raw or not str(raw).strip():
+            return out
+        text = str(raw)
+
+        out["angle"] = _parse_axis_angle(text)
+        m = re.search(r"\bformat\s*\(\s*([^)]+?)\s*\)", text, re.I)
+        if m:
+            out["format"] = m.group(1).strip()
+        m = re.search(r"\blabsize\s*\(\s*([^)]+?)\s*\)", text, re.I)
+        if m:
+            out["labsize"] = m.group(1).strip()
+        if re.search(r"\bnogrid\b", text, re.I):
+            out["grid"] = False
+        elif re.search(r"\bgrid\b", text, re.I):
+            out["grid"] = True
+
+        # Strip every recognised sub-option so only the numlist remains.
+        head = re.sub(r"\b(?:format|labsize|angle|labcolor|labgap|tlength|"
+                      r"labstyle|tstyle|tposition)\s*\([^)]*\)", " ",
+                      text, flags=re.I)
+        head = re.sub(r"\b(?:no)?grid\b", " ", head, flags=re.I)
+        # Only a comma that INTRODUCES SUB-OPTIONS separates; Stata also
+        # accepts a comma-separated numlist, so xlabel(1,3,5) must survive.
+        m_sub = re.search(r",\s*(?=[A-Za-z_])", head)
+        if m_sub:
+            head = head[:m_sub.start()]
+        head = head.strip()
+
+        if re.fullmatch(r"none", head, re.I):
+            out["mode"] = "none"
+            return out
+        if re.fullmatch(r"minmax", head, re.I):
+            out["mode"] = "minmax"
+            return out
+        m = re.fullmatch(r"#\s*(\d+)", head)
+        if m:
+            out["mode"] = "count"
+            out["count"] = max(1, int(m.group(1)))
+            return out
+
+        # a(b)c increment form, possibly repeated and mixed with bare values.
+        ticks: list[float] = []
+        rest = head
+        for m in re.finditer(
+                r"(-?[\d.eE+]+)\s*\(\s*(-?[\d.eE+]+)\s*\)\s*(-?[\d.eE+]+)",
+                head):
+            try:
+                a, b, c = (float(m.group(1)), float(m.group(2)),
+                           float(m.group(3)))
+            except ValueError:
+                continue
+            if b == 0:
+                continue
+            n_steps = int(math.floor((c - a) / b + 1e-9))
+            ticks.extend(a + b * i for i in range(max(0, n_steps) + 1))
+            rest = rest.replace(m.group(0), " ")
+
+        bare_ticks, labels = DashRenderer._parse_axis_label_opt(rest)
+        ticks.extend(bare_ticks)
+        if ticks:
+            out["mode"] = "explicit"
+            out["ticks"] = sorted(set(ticks))
+            out["labels"] = labels
+        return out
 
     @staticmethod
     def _parse_axis_label_opt(raw: str) -> "tuple[list[float], dict[str, str]]":
@@ -7338,8 +7996,14 @@ class DashRenderer:
         # Resolve axis labels: user-specified xtitle/ytitle take priority
         raw_xtitle = graph_opts.get("xtitle", "")
         raw_ytitle = graph_opts.get("ytitle", "")
-        x_label = html.escape(raw_xtitle) if raw_xtitle else self._axis_label(xvar)
-        y_label = html.escape(raw_ytitle) if raw_ytitle else self._axis_label(yvar)
+        # Canvas text, NOT html: Bokeh draws a figure title and axis labels
+        # as glyphs, so escaping made title("R&D spend") display as
+        # "R&amp;D spend".  _axis_label() never escaped the variable labels it
+        # returns and was already correct -- that is the evidence that the
+        # escaping here was the bug rather than the protection.  Everything
+        # that genuinely reaches the DOM is still escaped.
+        x_label = raw_xtitle if raw_xtitle else self._axis_label(xvar)
+        y_label = raw_ytitle if raw_ytitle else self._axis_label(yvar)
 
         # Enable WebGL for large datasets
         n_rows = len(self.df)
@@ -7363,7 +8027,7 @@ class DashRenderer:
         _ys_log, _ys_rev = _parse_scale_opt(graph_opts.get("yscale", ""))
 
         fig_kwargs = dict(
-            title=html.escape(graph_opts.get("title", "")),
+            title=_parse_textbox_opt(graph_opts.get("title", ""))[0],
             x_axis_label=x_label,
             y_axis_label=y_label,
             output_backend=backend,
@@ -7403,6 +8067,16 @@ class DashRenderer:
             fig_kwargs["y_axis_type"] = "log"
 
         fig = bokeh_figure(**fig_kwargs)
+
+        # title() sub-options: applied to the Title model, since the text
+        # itself went in via fig_kwargs.
+        _t_text, _t_opts = _parse_textbox_opt(graph_opts.get("title", ""))
+        if _t_text and _t_opts and fig.title is not None:
+            if "size" in _t_opts:
+                fig.title.text_font_size = (
+                    f"{_textbox_size(_t_opts, 16.0):g}px")
+            if "color" in _t_opts or "colour" in _t_opts:
+                fig.title.text_color = _textbox_color(_t_opts, "#000000")
 
         # Tick formatting matched to the date kind: years for %ty, dates for
         # %td/%tw/%tm/%tq/%th, date and time for %tc/%tC.  An explicit
@@ -7480,15 +8154,19 @@ class DashRenderer:
         )
         if _has_y2:
             from bokeh.models import Range1d as _Range1d
+            # From the ACTIVE view, not self.df: a graph-level if/in
+            # qualifier already narrowed the source, so computing the
+            # right-hand axis from the full frame left it spanning data the
+            # graph does not show.
             _y2_lo, _y2_hi = _compute_secondary_range(
-                self.df, plots, "yaxis", "yvar", 2
+                _source_frame(source, self.df), plots, "yaxis", "yvar", 2
             )
             fig.extra_y_ranges["y2"] = _Range1d(_y2_lo, _y2_hi)
             _y2_scale_raw = graph_opts.get("yscale2", "")
             _y2_log, _y2_rev = _parse_scale_opt(_y2_scale_raw)
             _y2_ax = (LogAxis if _y2_log else LinearAxis)(
                 y_range_name="y2",
-                axis_label=html.escape(graph_opts.get("ytitle2", "")),
+                axis_label=graph_opts.get("ytitle2", ""),
             )
             fig.add_layout(_y2_ax, "right")
             if _y2_rev:
@@ -7516,14 +8194,14 @@ class DashRenderer:
         if _has_x2:
             from bokeh.models import Range1d as _Range1d
             _x2_lo, _x2_hi = _compute_secondary_range(
-                self.df, plots, "xaxis", "xvar", 2
+                _source_frame(source, self.df), plots, "xaxis", "xvar", 2
             )
             fig.extra_x_ranges["x2"] = _Range1d(_x2_lo, _x2_hi)
             _x2_scale_raw = graph_opts.get("xscale2", "")
             _x2_log, _x2_rev = _parse_scale_opt(_x2_scale_raw)
             _x2_ax = (LogAxis if _x2_log else LinearAxis)(
                 x_range_name="x2",
-                axis_label=html.escape(graph_opts.get("xtitle2", "")),
+                axis_label=graph_opts.get("xtitle2", ""),
             )
             fig.add_layout(_x2_ax, "above")
             if _x2_rev:
@@ -7549,26 +8227,34 @@ class DashRenderer:
                 if _ang2 is not None:
                     _x2_ax.major_label_orientation = _ang2
 
-        # Axis range limits (xrange / yrange)
-        raw_xrange = graph_opts.get("xrange", "")
-        if raw_xrange:
-            parts = raw_xrange.split()
-            if len(parts) >= 2:
-                try:
-                    from bokeh.models import Range1d
-                    fig.x_range = Range1d(float(parts[0]), float(parts[1]))
-                except (ValueError, TypeError):
-                    pass
-
-        raw_yrange = graph_opts.get("yrange", "")
-        if raw_yrange:
-            parts = raw_yrange.split()
-            if len(parts) >= 2:
-                try:
-                    from bokeh.models import Range1d
-                    fig.y_range = Range1d(float(parts[0]), float(parts[1]))
-                except (ValueError, TypeError):
-                    pass
+        # Axis range limits, from Stata's xscale(range())/yscale(range()).
+        # The previous implementation read graph_opts["xrange"]/["yrange"],
+        # keys dash.ado has never emitted -- it looked implemented and was
+        # dead.  Those keys are gone; range() is the option Stata documents.
+        from bokeh.models import Range1d as _Rng
+        for _raw_sc, _which, _axis_attr in (
+            (graph_opts.get("xscale", ""), "xscale", "x_range"),
+            (graph_opts.get("yscale", ""), "yscale", "y_range"),
+        ):
+            _report_unhandled_scale_opts(_raw_sc, _which)
+            _lo, _hi = _parse_scale_range(_raw_sc)
+            if _lo is None and _hi is None:
+                continue
+            _cur = getattr(fig, _axis_attr)
+            _cur_lo = getattr(_cur, "start", None)
+            _cur_hi = getattr(_cur, "end", None)
+            if _lo is None or _hi is None:
+                # One bound given: keep the data's own value for the other.
+                _col = xvar if _axis_attr == "x_range" else yvar
+                if _col in getattr(self.df, "columns", []):
+                    _v = pd.to_numeric(self.df[_col], errors="coerce").dropna()
+                    if len(_v):
+                        _cur_lo = float(_v.min())
+                        _cur_hi = float(_v.max())
+            _new_lo = _lo if _lo is not None else _cur_lo
+            _new_hi = _hi if _hi is not None else _cur_hi
+            if _new_lo is not None and _new_hi is not None:
+                setattr(fig, _axis_attr, _Rng(float(_new_lo), float(_new_hi)))
 
         # Apply axis reversal (after any Range1d replacement so flipped sticks)
         if _xs_rev:
@@ -7585,77 +8271,129 @@ class DashRenderer:
         # Reference lines
         # Reference lines — support both string "xline"/"yline" (parser output)
         # and legacy list "xline_values"/"yline_values" forms.
-        def _parse_refline(opt_key: str, list_key: str) -> list:
-            """Return a flat list of numeric strings/values for a reference line option."""
-            raw = graph_opts.get(opt_key, "")
-            if raw:
-                # String from Mata parser: space- or comma-separated numbers
-                return [v.strip() for v in raw.replace(",", " ").split() if v.strip()]
-            return graph_opts.get(list_key, [])
+        def _parse_refline(opt_key: str, list_key: str) -> "tuple[list, dict]":
+            """Return the reference-line positions AND their style sub-options.
 
-        for xline_val in _parse_refline("xline", "xline_values"):
+            dash.ado passes lcolor()/lpattern()/lwidth() through intact and
+            this parser used to float-cast every token and discard them,
+            forcing every reference line to grey dashed.  Measured in Stata,
+            the default is BLACK dashed -- not grey -- and the sub-options
+            take effect.
+            """
+            raw = graph_opts.get(opt_key, "")
+            if not raw:
+                return list(graph_opts.get(list_key, [])), {}
+            head, opts = _parse_textbox_opt(raw)
+            # _parse_textbox_opt strips quotes; a numlist has none, and it
+            # splits off exactly the sub-option tail we want.
+            values = [v.strip() for v in head.replace(",", " ").split()
+                      if v.strip()]
+            return values, opts
+
+        def _refline_kwargs(opts: dict) -> dict:
+            """Bokeh Span properties for a set of reference-line sub-options."""
+            kw: dict = {
+                # Stata's measured default: black, dashed, scheme gridline
+                # width.  dash forced grey.
+                "line_color": "#000000",
+                "line_dash":  "dashed",
+                "line_width": 1.0,
+            }
+            if opts.get("lcolor"):
+                try:
+                    kw["line_color"] = OptionTranslator.translate_mcolor(
+                        opts["lcolor"])
+                except (ValueError, TypeError):
+                    warnings.warn(
+                        f"dash: lcolor({opts['lcolor']}) on a reference line "
+                        f"is not a recognised colour; ignoring it.",
+                        UserWarning,
+                    )
+            if opts.get("lpattern"):
+                try:
+                    kw["line_dash"] = OptionTranslator.translate_lpattern(
+                        opts["lpattern"])
+                except (ValueError, TypeError):
+                    pass
+            if opts.get("lwidth"):
+                try:
+                    kw["line_width"] = OptionTranslator.translate_lwidth(
+                        opts["lwidth"])
+                except (ValueError, TypeError):
+                    pass
+            return kw
+
+        _xl_vals, _xl_opts = _parse_refline("xline", "xline_values")
+        _xl_kw = _refline_kwargs(_xl_opts)
+        for xline_val in _xl_vals:
             try:
                 fig.add_layout(Span(location=float(xline_val),
-                                    dimension="height",
-                                    line_color="gray", line_dash="dashed"))
+                                    dimension="height", **_xl_kw))
             except (ValueError, TypeError):
                 pass
-        for yline_val in _parse_refline("yline", "yline_values"):
+        _yl_vals, _yl_opts = _parse_refline("yline", "yline_values")
+        _yl_kw = _refline_kwargs(_yl_opts)
+        for yline_val in _yl_vals:
             try:
                 fig.add_layout(Span(location=float(yline_val),
-                                    dimension="width",
-                                    line_color="gray", line_dash="dashed"))
+                                    dimension="width", **_yl_kw))
             except (ValueError, TypeError):
                 pass
 
-        # Note / caption annotations
+        # ---- Note / caption ----
+        # Both used to be a Label at screen (0, 0) added "below", so they were
+        # drawn ON TOP OF EACH OTHER.  Measured in Stata: the note is ring(4)
+        # and the caption ring(5), i.e. the caption sits BELOW the note, and
+        # the note is the smaller of the two.
         from bokeh.models import Label
+        _TEXTBOX_DEFAULTS = {
+            "note":     {"size": 11.0, "color": "#555555", "y": 2.0},
+            "caption":  {"size": 12.0, "color": "#555555", "y": -12.0},
+        }
         for ann_key in ("note", "caption"):
-            ann_text = graph_opts.get(ann_key, "")
-            if ann_text:
-                lbl = Label(
-                    x=0, y=0,
-                    x_units="screen", y_units="screen",
-                    text=html.escape(ann_text),
-                    text_font_size="11px",
-                    text_color="#555555",
-                )
-                fig.add_layout(lbl, "below")
+            ann_raw = graph_opts.get(ann_key, "")
+            if not ann_raw:
+                continue
+            ann_text, ann_opts = _parse_textbox_opt(ann_raw)
+            if not ann_text:
+                continue
+            d = _TEXTBOX_DEFAULTS[ann_key]
+            lbl = Label(
+                x=0, y=d["y"],
+                x_units="screen", y_units="screen",
+                text=ann_text,
+                text_font_size=f"{_textbox_size(ann_opts, d['size']):g}px",
+                text_color=_textbox_color(ann_opts, d["color"]),
+            )
+            fig.add_layout(lbl, "below")
 
         # Subtitle annotation (appears above the plot area)
-        subtitle_text = graph_opts.get("subtitle", "")
+        subtitle_text, subtitle_opts = _parse_textbox_opt(
+            graph_opts.get("subtitle", ""))
         if subtitle_text:
             subtitle_lbl = Label(
                 x=0, y=0,
                 x_units="screen", y_units="screen",
-                text=html.escape(subtitle_text),
-                text_font_size="13px",
-                text_color="#444444",
+                text=subtitle_text,
+                text_font_size=f"{_textbox_size(subtitle_opts, 13.0):g}px",
+                text_color=_textbox_color(subtitle_opts, "#444444"),
             )
             fig.add_layout(subtitle_lbl, "above")
 
         # Custom axis tick values (xlabel / ylabel) and label rotation
         from bokeh.models.tickers import FixedTicker
         from bokeh.models.formatters import CustomJSTickFormatter
-        for ax_key, axis_obj in (("xlabel", fig.xaxis), ("ylabel", fig.yaxis)):
+        for ax_key, axis_obj, grid_obj, var in (
+            ("xlabel", fig.xaxis, fig.xgrid, xvar),
+            ("ylabel", fig.yaxis, fig.ygrid, yvar),
+        ):
             raw_ax = graph_opts.get(ax_key, "")
-            if not raw_ax:
+            tick_key = "xtick" if ax_key == "xlabel" else "ytick"
+            raw_tick = graph_opts.get(tick_key, "")
+            if not raw_ax and not raw_tick:
                 continue
-            ticks, labels = self._parse_axis_label_opt(raw_ax)
-            if ticks:
-                axis_obj.ticker = FixedTicker(ticks=ticks)
-                if labels:
-                    # Build a safe JS lookup dict; keys and values are HTML-escaped
-                    safe_labels = {
-                        str(k): html.escape(str(v)) for k, v in labels.items()
-                    }
-                    js_map = json.dumps(safe_labels)
-                    axis_obj.formatter = CustomJSTickFormatter(
-                        code=f"const m = {js_map}; return m[String(tick)] || String(tick);"
-                    )
-            angle_rad = _parse_axis_angle(raw_ax)
-            if angle_rad is not None:
-                axis_obj.major_label_orientation = angle_rad
+            spec = self._parse_axis_spec(raw_ax or raw_tick)
+            self._apply_axis_spec(fig, axis_obj, grid_obj, spec, var)
 
         # Plot categories that use non-standard JSON variable keys
         _RANGE_TYPES = frozenset({
@@ -7724,6 +8462,8 @@ class DashRenderer:
 
             # Snapshot renderer list so new glyphs can be identified
             _r_before = len(fig.renderers)
+            if pi == 0:
+                _plot_renderers: list = []
 
             if ptype.lower() == "scatteri":
                 # Inline coordinate list — no shared source variable needed
@@ -7773,6 +8513,8 @@ class DashRenderer:
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=facet_view, color_idx=pi)
 
+            _plot_renderers.append((plot, list(fig.renderers[_r_before:])))
+
             # Assign secondary axis range names to newly added renderers
             if _use_y2 or _use_x2:
                 for _r in fig.renderers[_r_before:]:
@@ -7783,6 +8525,10 @@ class DashRenderer:
                             _r.x_range_name = "x2"
                     except AttributeError:
                         pass
+
+        # ---- Legend: Stata's keys, and Stata's rule for showing one ----
+        self._rebuild_legend(fig, locals().get("_plot_renderers", []),
+                             graph_opts)
 
         # Restrict DataRange1d to primary-source renderers only.
         # Computed-glyph renderers (lfit, histogram, qfit, etc.) use separate
@@ -9315,7 +10061,7 @@ class DashRenderer:
                 header_items.append(Div(
                     text=(
                         f'<h2 style="font-family:sans-serif;margin-bottom:2px;">'
-                        f'{title_text}</h2>'
+                        f'{html.escape(title_text)}</h2>'
                     ),
                     sizing_mode="stretch_width",
                 ))
@@ -9323,13 +10069,19 @@ class DashRenderer:
                 header_items.append(Div(
                     text=(
                         f'<p style="font-family:sans-serif;color:#555;'
-                        f'margin-top:0;margin-bottom:8px;">{subtitle_text}</p>'
+                        f'margin-top:0;margin-bottom:8px;">'
+                        f'{html.escape(subtitle_text)}</p>'
                     ),
                     sizing_mode="stretch_width",
                 ))
             layout_root = column(*header_items, layout_root,
                                  sizing_mode="stretch_width")
 
+        # Kept so tests can inspect the models the browser will build,
+        # rather than the serialised document -- Bokeh escapes model text
+        # again on its way into the embedded JSON, which is correct and
+        # would otherwise read as a double escape.
+        self._last_layout_root = layout_root
         html_str = file_html(layout_root, INLINE, title=title_text or "dash")
 
         _scheme_css = self.scheme.css_block()
@@ -9374,8 +10126,11 @@ class DashRenderer:
             _raw_f = build.get("filter", "")
             if _raw_f:
                 filters_cfg = DashRenderer._parse_filter_raw(_raw_f)
-        title_text    = html.escape(build.get("title", ""))
-        subtitle_text = html.escape(build.get("subtitle", "") or "")
+        # Carried RAW; every site that puts these into HTML escapes them
+        # itself.  Escaping here as well was a double escape in the
+        # Bootstrap path.
+        title_text    = build.get("title", "")
+        subtitle_text = build.get("subtitle", "") or ""
 
         # ---- 1. Collect all variable names (reference / future use) ----
         all_vars: list[str] = []

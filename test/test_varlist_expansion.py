@@ -220,13 +220,22 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 # The baseline below was captured from the PRE-FIX code base.  If the varlist
 # change alters a one-y-variable dashboard in any way at all, this fails.
 
-# sha256 of normalise_bokeh_html(<single-y scatter render>), captured
-# 2026-09-18 against the pre-fix tree under the pinned environment recorded in
-# .ultraplan/BASELINE.md (python 3.14, bokeh 3.9).  Re-baseline ONLY on a
-# deliberate, reviewed change: run this test, read the reported digest, and
-# say in the commit message what changed and why.
+# sha256 of normalise_bokeh_html(<single-y scatter render>), under the pinned
+# environment recorded in .ultraplan/BASELINE.md (python 3.14, bokeh 3.9).
+# Re-baseline ONLY on a deliberate, reviewed change: run this test, read the
+# reported digest, and say in the commit message what changed and why.
+#
+# History:
+#   70d9475b... captured 2026-09-18 against the pre-varlist tree.
+#   264474fd... S09.  A single-series scatter no longer draws a legend.
+#               Measured over 55 probes: twoway draws a legend if and only if
+#               the graph has two or more keys, and only legend(on) forces
+#               one onto a one-key plot.  dash passed legend_label=<yvar>
+#               from every glyph, so every single-series graph carried a
+#               legend twoway would not draw.  This is the intended,
+#               documented behaviour change; see .ultraplan/CHANGELOG.md.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "70d9475b9711f0707afc2f967b2b542b558762460795e463f86b7e2fc3a30851"
+    "264474fdf89664237ae29c80bdbb54cb6b4d80e4d5df027f4a3e4f5c2b477074"
 )
 
 

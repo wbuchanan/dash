@@ -3176,7 +3176,11 @@ class TestApplyColorvarOptions:
                            {"colorvar": "weight", "colormissing": "red"})
         mapper = r.glyph.fill_color["transform"]
         assert isinstance(mapper, LinearColorMapper)
-        assert mapper.nan_color == "red"
+        # Translated, not passed through: colormissing() used to reach Bokeh
+        # verbatim, so any Stata colour name Bokeh does not share --
+        # eltblue and most of the Stata palette -- raised out of the mapper
+        # and took the whole render down.
+        assert mapper.nan_color == "#ff0000"
 
     def test_colormissing_included_in_palette_for_discrete(self):
         """P1A-46k: colormissing color appears at end of palette for NaN rows."""
@@ -3193,7 +3197,9 @@ class TestApplyColorvarOptions:
         assert isinstance(mapper, CategoricalColorMapper)
         assert "__missing__" in mapper.factors
         missing_idx = list(mapper.factors).index("__missing__")
-        assert mapper.palette[missing_idx] == "red"
+        # Translated through the Stata colour map -- see
+        # test_colormissing_sets_nan_color_for_continuous.
+        assert mapper.palette[missing_idx] == "#ff0000"
 
     # ------------------------------------------------------------------
     # coloruseplegend

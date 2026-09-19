@@ -261,6 +261,7 @@ program define _dash_parse_graph_opts, sclass
         XLABEL2(string asis)      YSCALE2(string asis)      XSCALE2(string asis) ///
         XSIZe(string)             YSIZe(string)             FXSIZE(string) ///
         FYSIZE(string)            SCALE(string)             TEXT(string asis) ///
+        HOVer(string)             ///
         XTICk(string asis)        YTICk(string asis)        XMTick(string asis) ///
         YMTick(string asis)       XMLabel(string asis)      YMLabel(string asis) ///
         T1title(string)           T2title(string)           B1title(string) ///
@@ -378,6 +379,7 @@ program define _dash_parse_graph_opts, sclass
     sreturn local fxsize       `"`fxsize'"'
     sreturn local fysize       `"`fysize'"'
     sreturn local scale        `"`scale'"'
+    sreturn local hover        `"`hover'"'
     sreturn local text         `"`text'"'
     sreturn local xtick        `"`xtick'"'
     sreturn local ytick        `"`ytick'"'
@@ -467,6 +469,7 @@ program define _dash_parse_plot_opts, sclass
         XSCALE2(string asis)      XSIZe(string)             YSIZe(string) ///
         FXSIZE(string)            FYSIZE(string)            SCALE(string) ///
         TEXT(string asis)         XTICk(string asis)        YTICk(string asis) ///
+        HOVer(string)             ///
         XMTick(string asis)       YMTick(string asis)       XMLabel(string asis) ///
         YMLabel(string asis)      T1title(string)           T2title(string) ///
         B1title(string)           B2title(string)           L1title(string) ///
@@ -701,6 +704,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_fxsize       `"`fxsize'"'
     sreturn local g_fysize       `"`fysize'"'
     sreturn local g_scale        `"`scale'"'
+    sreturn local g_hover        `"`hover'"'
     sreturn local g_text         `"`text'"'
     sreturn local g_xtick        `"`xtick'"'
     sreturn local g_ytick        `"`ytick'"'
@@ -1056,7 +1060,7 @@ program define _dash_process_segment, rclass
             ylabel xline yline legend by xscale yscale aspectratio scheme ///
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
-            scale text xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+            scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 nodraw play {
         local gval `"`s(g_`gkey')'"'
@@ -1316,7 +1320,7 @@ program define _dash_plot
           ylabel xline yline legend by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
-          scale text xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 nodraw play {
         local g_`gk' ""
@@ -1332,7 +1336,7 @@ program define _dash_plot
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
-              scale text xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 nodraw play {
             if `"`s(`gk')'"' != "" local g_`gk' `"`s(`gk')'"'
@@ -1376,7 +1380,7 @@ program define _dash_plot
           ylabel xline yline legend by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
-          scale text xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 nodraw play {
         local gv `"`g_`gk''"'

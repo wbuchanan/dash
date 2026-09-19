@@ -1063,7 +1063,10 @@ class TestXrangeYrange:
     def test_xrange_embeds_unique_start_value(self):
         """xrange(-37 99) must embed -37.0 in model JSON (unique sentinel not in data)."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
-        spec["graphs"][0]["graph_options"]["xrange"] = "-37 99"
+        # xscale(range()) is Stata's spelling.  The graph_options key
+        # "xrange" was a DEAD read -- dash.ado has never emitted it -- and a
+        # dead read is what made the axis range look implemented.
+        spec["graphs"][0]["graph_options"]["xscale"] = "range(-37 99)"
         html = _render_to_html(spec, data)
         # -37 is not in the data (1-20), so must come from the x_range
         assert "-37" in html, "xrange start=-37 must appear in Bokeh model JSON"
@@ -1071,7 +1074,7 @@ class TestXrangeYrange:
     def test_yrange_embeds_unique_end_value(self):
         """yrange(0 9999) must embed 9999 in model JSON (unique sentinel not in data)."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
-        spec["graphs"][0]["graph_options"]["yrange"] = "0 9999"
+        spec["graphs"][0]["graph_options"]["yscale"] = "range(0 9999)"
         html = _render_to_html(spec, data)
         # 9999 is not in the data (1-20), so must come from the y_range
         assert "9999" in html, "yrange end=9999 must appear in Bokeh model JSON"
