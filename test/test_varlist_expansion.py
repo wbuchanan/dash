@@ -244,8 +244,13 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               same commit adds the viewport meta tag (without it a phone
 #               laid the page out at 980px and zoomed out) and the
 #               min/max height band the ratio is honoured within.
+#   49647a0c  S12/S13.  Every ColumnDataSource now carries a row-identity
+#               column so the filter callback can mask by identity instead
+#               of by position, and single-series figures pick up the
+#               scheme-driven changes from the same batch.  Intended; see
+#               .ultraplan/CHANGELOG.md....
 _SINGLE_Y_BASELINE_SHA256 = (
-    "6f3eb5acbcf911ecceef87b0141a99f2b75f77c72e3fd7fc2e8e27234cd2b606"
+    "49647a0ce1bba1c41a54486f86463c2dbd60bf0bf039de5c5046687042d95240"
 )
 
 

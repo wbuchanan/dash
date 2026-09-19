@@ -1,0 +1,379 @@
+"""test_scheme_coercion.py — S11/TR-11.7: SchemeParser's coercion layer.
+
+Eight of ``SchemeParser``'s coercion helpers had no direct test, and that is
+exactly where the silent-black failure lived: ``_color`` swallowed an
+unresolvable colour token and returned its ``#000000`` default, so the whole
+``stcolor`` scheme rendered every series black and nothing said why.
+
+``_color`` and ``_lpattern`` were taught to warn in an earlier batch. These
+tests pin that behaviour so it cannot regress, and cover the rest of the layer
+for the first time.
+
+The distinction every one of these functions has to get right:
+
+  * an **absent** key falls back silently — that is ordinary scheme
+    inheritance, and every scheme leaves most keys unset;
+  * a key that is **present and unresolvable** is a defect in the scheme or in
+    dash's translation table, and must say so.
+
+Conflating the two is what made the failure invisible.
+"""
+import os
+import sys
+import warnings
+
+import pytest
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, ".."))
+sys.path.insert(0, _HERE)
+
+import dash_render
+from dash_render import SchemeParser
+
+
+@pytest.fixture
+def sp():
+    """A parser whose property dict the test controls directly."""
+    parser = SchemeParser("s2color")
+    parser._props = {}
+    return parser
+
+
+def _set(sp, **props):
+    sp._props = {k.replace("__", " "): v for k, v in props.items()}
+    return sp
+
+
+# ======================================================================
+# _color — where the silent-black failure lived
+# ======================================================================
+
+class TestColor:
+
+    def test_an_absent_key_falls_back_silently(self, sp):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            got = sp._color("color p1", default="#123456")
+        assert got == "#123456"
+        assert not caught, (
+            "an absent key is ordinary inheritance and must not warn — every "
+            "scheme leaves most keys unset"
+        )
+
+    def test_a_blank_value_also_falls_back_silently(self, sp):
+        _set(sp, **{"color p1": "   "})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert sp._color("color p1", default="#abcdef") == "#abcdef"
+        assert not caught
+
+    def test_a_resolvable_colour_is_translated(self, sp):
+        _set(sp, **{"color p1": "navy"})
+        assert sp._color("color p1").startswith("#")
+
+    def test_a_hex_value_passes_through(self, sp):
+        _set(sp, **{"color p1": "#1a2b3c"})
+        assert sp._color("color p1").lower() == "#1a2b3c"
+
+    def test_an_unresolvable_colour_WARNS_and_names_the_token(self, sp):
+        """The regression that turned stcolor black."""
+        _set(sp, **{"color p1": "stc99"})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            got = sp._color("color p1", default="#000000")
+        assert got == "#000000"
+        assert caught, "an unresolvable colour degraded silently"
+        msg = " ".join(str(w.message) for w in caught)
+        assert "stc99" in msg, f"the warning does not name the token: {msg}"
+        assert "color p1" in msg, f"the warning does not name the key: {msg}"
+
+    def test_the_warning_says_the_output_will_not_match_stata(self, sp):
+        _set(sp, **{"color p1": "notacolour"})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            sp._color("color p1")
+        assert any("match Stata" in str(w.message) for w in caught)
+
+
+# ======================================================================
+# _lpattern
+# ======================================================================
+
+class TestLinePattern:
+
+    def test_absent_defaults_to_solid(self, sp):
+        assert sp._lpattern("linepattern p1") in ([], "solid")
+
+    def test_a_known_pattern_translates(self, sp):
+        _set(sp, **{"linepattern p1": "dash"})
+        assert sp._lpattern("linepattern p1")
+
+    def test_an_unknown_pattern_WARNS_rather_than_raising(self, sp):
+        """A scheme must not be able to abort the whole render."""
+        _set(sp, **{"linepattern p1": "squiggle"})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            got = sp._lpattern("linepattern p1")
+        assert got == []
+        assert any("squiggle" in str(w.message) for w in caught), (
+            "an unknown line pattern vanished silently"
+        )
+
+
+# ======================================================================
+# _gsize
+# ======================================================================
+
+class TestGsize:
+
+    def test_absent_returns_the_default(self, sp):
+        assert sp._gsize("gsize axis_title", default="11pt") == "11pt"
+
+    @pytest.mark.parametrize("name", ["small", "medium", "large"])
+    def test_a_named_size_maps_to_points(self, sp, name):
+        _set(sp, **{"gsize axis_title": name})
+        got = sp._gsize("gsize axis_title")
+        assert got.endswith("pt")
+
+    def test_named_sizes_are_ordered(self, sp):
+        def pt(name):
+            _set(sp, **{"gsize k": name})
+            return float(sp._gsize("gsize k").rstrip("pt"))
+        assert pt("small") < pt("medium") < pt("large")
+
+    def test_a_numeric_value_is_converted(self, sp):
+        _set(sp, **{"gsize k": "5.0"})
+        assert sp._gsize("gsize k").endswith("pt")
+
+    def test_a_tiny_numeric_value_is_floored_to_remain_legible(self, sp):
+        _set(sp, **{"gsize k": "0.1"})
+        assert float(sp._gsize("gsize k").rstrip("pt")) >= 6
+
+    def test_an_unparseable_value_returns_the_default(self, sp):
+        _set(sp, **{"gsize k": "enormous"})
+        assert sp._gsize("gsize k", default="9pt") == "9pt"
+
+
+# ======================================================================
+# _intensity
+# ======================================================================
+
+class TestIntensity:
+
+    def test_absent_returns_the_default(self, sp):
+        assert sp._intensity("intensity k", default=0.4) == 0.4
+
+    def test_a_percentage_becomes_a_fraction(self, sp):
+        _set(sp, **{"intensity k": "50"})
+        assert sp._intensity("intensity k") == pytest.approx(0.5)
+
+    @pytest.mark.parametrize("raw,want", [("0", 0.0), ("100", 1.0)])
+    def test_the_endpoints(self, sp, raw, want):
+        _set(sp, **{"intensity k": raw})
+        assert sp._intensity("intensity k") == pytest.approx(want)
+
+    @pytest.mark.parametrize("raw", ["-20", "500"])
+    def test_out_of_range_values_are_clamped(self, sp, raw):
+        _set(sp, **{"intensity k": raw})
+        got = sp._intensity("intensity k")
+        assert 0.0 <= got <= 1.0
+
+    def test_an_unparseable_value_returns_the_default(self, sp):
+        _set(sp, **{"intensity k": "quite a lot"})
+        assert sp._intensity("intensity k", default=0.3) == 0.3
+
+
+# ======================================================================
+# _lwidth, _symbol
+# ======================================================================
+
+class TestLineWidth:
+
+    def test_absent_returns_the_default(self, sp):
+        assert sp._lwidth("linewidth p1", default=2.5) == 2.5
+
+    def test_a_numeric_value_is_used_directly(self, sp):
+        _set(sp, **{"linewidth p1": "3.5"})
+        assert sp._lwidth("linewidth p1") == pytest.approx(3.5)
+
+    def test_a_named_width_is_translated(self, sp):
+        _set(sp, **{"linewidth p1": "thick"})
+        assert sp._lwidth("linewidth p1") > 0
+
+    def test_named_widths_are_ordered(self, sp):
+        def w(name):
+            _set(sp, **{"linewidth p1": name})
+            return sp._lwidth("linewidth p1")
+        assert w("thin") < w("medium") < w("thick")
+
+    def test_an_unresolvable_width_returns_the_default(self, sp):
+        _set(sp, **{"linewidth p1": "chunky"})
+        assert sp._lwidth("linewidth p1", default=1.25) == 1.25
+
+
+class TestSymbol:
+
+    def test_absent_returns_the_default(self, sp):
+        assert sp._symbol("symbol p1", default="square") == "square"
+
+    def test_a_known_symbol_is_translated(self, sp):
+        _set(sp, **{"symbol p1": "diamond"})
+        assert sp._symbol("symbol p1") == "diamond"
+
+    def test_a_stata_abbreviation_is_translated(self, sp):
+        _set(sp, **{"symbol p1": "Dh"})
+        assert sp._symbol("symbol p1") == "diamond"
+
+    def test_an_unknown_symbol_returns_the_default(self, sp):
+        _set(sp, **{"symbol p1": "octagon"})
+        assert sp._symbol("symbol p1", default="circle") == "circle"
+
+
+# ======================================================================
+# _float, _int, _yesno
+# ======================================================================
+
+class TestScalarCoercions:
+
+    @pytest.mark.parametrize("raw,want", [("5.5", 5.5), ("0", 0.0),
+                                          ("-2.25", -2.25)])
+    def test_float_parses(self, sp, raw, want):
+        _set(sp, **{"k": raw})
+        assert sp._float("k", None) == pytest.approx(want)
+
+    def test_float_absent_and_unparseable_return_the_default(self, sp):
+        assert sp._float("k", 1.5) == 1.5
+        _set(sp, **{"k": "lots"})
+        assert sp._float("k", 1.5) == 1.5
+
+    @pytest.mark.parametrize("raw,want", [("7", 7), ("7.9", 7), ("-3", -3)])
+    def test_int_parses_and_truncates(self, sp, raw, want):
+        _set(sp, **{"k": raw})
+        assert sp._int("k", None) == want
+
+    def test_int_absent_and_unparseable_return_the_default(self, sp):
+        assert sp._int("k", 4) == 4
+        _set(sp, **{"k": "many"})
+        assert sp._int("k", 4) == 4
+
+    @pytest.mark.parametrize("raw", ["yes", "y", "1", "true", "on", "YES"])
+    def test_yesno_true_forms(self, sp, raw):
+        _set(sp, **{"k": raw})
+        assert sp._yesno("k", False) is True
+
+    @pytest.mark.parametrize("raw", ["no", "n", "0", "false", "off", "NO"])
+    def test_yesno_false_forms(self, sp, raw):
+        _set(sp, **{"k": raw})
+        assert sp._yesno("k", True) is False
+
+    @pytest.mark.parametrize("default", [True, False])
+    def test_yesno_absent_or_unrecognised_returns_the_default(self, sp,
+                                                              default):
+        assert sp._yesno("k", default) is default
+        _set(sp, **{"k": "maybe"})
+        assert sp._yesno("k", default) is default
+
+
+# ======================================================================
+# _parse_file
+# ======================================================================
+
+class TestParseFile:
+
+    def test_a_missing_file_raises_an_error_that_names_the_path(self, sp):
+        """The degradation S02 built lives in the CALLER, not here.
+
+        _parse_file is the low-level reader and is allowed to fail loudly;
+        resolve_or_fallback() is what turns a missing scheme directory into a
+        warned fallback. Keeping the two apart is deliberate: a missing
+        DIRECTORY is a degradation, and an unreadable file the caller asked
+        for by name is an error.
+        """
+        with pytest.raises(ValueError) as exc:
+            sp._parse_file("/nonexistent/nowhere.scheme", set())
+        assert "nowhere.scheme" in str(exc.value)
+
+    def test_the_caller_degrades_when_a_scheme_is_missing(self):
+        """The other half of that contract."""
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            got = SchemeParser.resolve_or_fallback(
+                "nosuchschemeanywhere", "test")
+        assert got is not None
+        assert isinstance(got, SchemeParser)
+
+    def test_an_include_cycle_terminates(self, tmp_path):
+        """A scheme that includes itself must not recurse forever."""
+        a = tmp_path / "a.scheme"
+        a.write_text("#include a\ncolor p1 navy\n")
+        parser = SchemeParser("s2color")
+        got = parser._parse_file(str(a), set())
+        assert isinstance(got, dict)
+
+    def test_directives_are_read(self, tmp_path):
+        f = tmp_path / "x.scheme"
+        f.write_text(
+            "* a comment line\n"
+            "color p1 navy\n"
+            "linewidth p1 thick\n"
+            "\n"
+            "symbol p2 diamond\n"
+        )
+        parser = SchemeParser("s2color")
+        props = parser._parse_file(str(f), set())
+        assert props.get("color p1") == "navy"
+        assert props.get("linewidth p1") == "thick"
+        assert props.get("symbol p2") == "diamond"
+
+    def test_comments_and_blank_lines_are_ignored(self, tmp_path):
+        f = tmp_path / "y.scheme"
+        f.write_text("* only a comment\n\n   \n")
+        parser = SchemeParser("s2color")
+        assert parser._parse_file(str(f), set()) == {}
+
+
+# ======================================================================
+# _init_properties
+# ======================================================================
+
+class TestInitProperties:
+
+    def test_a_real_scheme_populates_the_documented_attributes(self):
+        parser = SchemeParser("s2color")
+        for attr in ("p_colors", "background_color", "graphsize_x",
+                     "graphsize_y"):
+            assert hasattr(parser, attr), attr
+
+    def test_p_colors_is_a_non_trivial_cycle(self):
+        parser = SchemeParser("s2color")
+        assert len(parser.p_colors) >= 3
+        assert len(set(parser.p_colors)) >= 3, (
+            f"the colour cycle repeats itself: {parser.p_colors}"
+        )
+
+    @pytest.mark.parametrize("name", ["stcolor", "s2color", "economist",
+                                      "s1mono"])
+    def test_every_translated_scheme_parses_without_warnings(self, name):
+        """An unresolvable token in a SHIPPED scheme is our bug, not the user's."""
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            SchemeParser(name)
+        scheme_warnings = [str(w.message) for w in caught
+                           if "dash scheme" in str(w.message)]
+        assert not scheme_warnings, (
+            f"{name} contains tokens dash cannot resolve: {scheme_warnings}"
+        )
+
+    @pytest.mark.parametrize("name", ["stcolor", "s2color", "economist",
+                                      "s1mono"])
+    def test_no_translated_scheme_renders_everything_black(self, name):
+        """The stcolor symptom, as a standing check on all fourteen."""
+        parser = SchemeParser(name)
+        colours = [parser.default_color(i, "scatter") for i in range(5)]
+        assert len(set(colours)) > 1, (
+            f"{name} gives every series the same colour: {colours}"
+        )
+        if name != "s1mono":
+            assert not all(c.lower() in ("#000000", "black")
+                           for c in colours), colours

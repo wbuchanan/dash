@@ -518,6 +518,18 @@ _WEBGL_THRESHOLD = 10_000
 # Default nonselection alpha for linked-brushing dimming effect.
 _NONSELECTION_ALPHA = 0.15
 
+# Every ColumnDataSource carries this column: the row's position in the
+# primary frame.  The filter callback used to compute one boolean mask from
+# the primary source and apply it BY ROW INDEX to every source, on the
+# strength of an inline comment claiming they all shared a row universe.
+# They do not -- a by() graph gets one source per facet holding only that
+# facet's rows, and a qualified graph a pre-filtered one -- so the mask
+# landed on different observations entirely.  Masking on identity rather
+# than position is robust to a shorter or reordered source.  An integer is
+# enough; a string key would cost real bytes in a file already over a
+# megabyte.
+_ROW_ID_COLUMN = "__dash_row__"
+
 # CSP meta tag injected into every output HTML file.
 # 'unsafe-eval' is required because Bokeh's CustomJS compiles callback
 # code via `new Function(...)` at runtime.  Without it the browser raises
@@ -6315,25 +6327,67 @@ for (let i = 0; i < n_rows; i++) {
 // own per-source original snapshot so that unlinked graphs with different
 // column schemas are not corrupted when a single new_data payload is broadcast
 // to all sources.  The active[] row-mask is computed from the primary source
-// above; since all sources share the same underlying row universe this mask
+// above.  Sources do NOT share a row universe -- a by() graph has one
+// source per facet and a qualified graph a pre-filtered one -- so the mask
 // applies correctly to every source regardless of column differences.
 const _srcs = all_graph_sources;
 const _srcs_orig_json = all_graph_sources_orig_json;
+const ROW_ID = "__dash_row__";
+
+// The set of row identities that survived every active filter, taken from
+// the PRIMARY snapshot.  Masking on identity rather than on position is what
+// makes a shorter source -- a by() facet, or a qualified graph -- mask
+// correctly; `active[i]` for such a source used to mean the primary's row i,
+// a different observation entirely.
+const _primary_ids = orig[ROW_ID];
+const _active_ids = new Set();
+if (_primary_ids) {
+    for (let i = 0; i < _primary_ids.length; i++) {
+        if (active[i]) _active_ids.add(_primary_ids[i]);
+    }
+}
+
+// Row identities each source kept, so a CDSView over it can be rebuilt.
+const _kept_ids_by_src = [];
+
 for (let _si = 0; _si < _srcs.length; _si++) {
     // Parse this source's own snapshot — preserves its unique column set.
     const _orig_i = JSON.parse(_srcs_orig_json[_si]);
     const _cols_i = Object.keys(_orig_i);
     const _n_i    = _cols_i.length > 0 ? _orig_i[_cols_i[0]].length : 0;
+    const _ids_i  = _orig_i[ROW_ID];
     const _nd_i   = {};
+    const _kept_i = [];
     for (const col of _cols_i) { _nd_i[col] = []; }
     for (let i = 0; i < _n_i; i++) {
-        if (i < active.length && active[i]) {
+        // Fall back to the old positional test only when a source predates
+        // the row identity, so an older spec still filters as it used to.
+        const keep = _ids_i && _primary_ids
+            ? _active_ids.has(_ids_i[i])
+            : (i < active.length && active[i]);
+        if (keep) {
             for (const col of _cols_i) { _nd_i[col].push(_orig_i[col][i]); }
+            if (_ids_i) _kept_i.push(_ids_i[i]);
         }
     }
+    _kept_ids_by_src.push(_kept_i);
     _srcs[_si].data = _nd_i;
     _srcs[_si].selected.indices = [];
     _srcs[_si].change.emit();
+}
+
+// A linked by() graph draws its panels as CDSViews over ONE shared source,
+// with a BooleanFilter built at render time and sized to the unfiltered
+// frame.  Replacing the source's data above leaves those booleans the wrong
+// length, so every panel would mask the wrong rows.  Rebuild each one
+// against the rows its source actually kept.
+for (const vf of (view_filters || [])) {
+    const _si = vf.src_index;
+    if (_si === undefined || _si === null) continue;
+    const kept = _kept_ids_by_src[_si] || [];
+    const member = new Set(vf.member_ids || []);
+    vf.filter.booleans = kept.map(id => member.has(id));
+    vf.filter.change.emit();
 }
 // Also update the primary `source` (may overlap with all_graph_sources when linked)
 if (!_srcs.includes(source)) {
@@ -7342,7 +7396,70 @@ class DashRenderer:
         frame = df if df is not None else self.df
         available = [v for v in varnames if v in frame.columns]
         data_dict = {v: frame[v].tolist() for v in available}
+        # The row's position in the primary frame, so the filter callback can
+        # mask this source by identity however short or reordered it is.
+        data_dict[_ROW_ID_COLUMN] = self._row_ids_for(frame)
         return ColumnDataSource(data=data_dict)
+
+    def _register_view_filter(self, source, bool_filter, member_ids) -> None:
+        """Remember a CDSView's BooleanFilter and the rows it selects.
+
+        A linked by() graph draws its panels as views over ONE shared source,
+        with booleans sized to the unfiltered frame.  The filter callback
+        replaces that source's data with fewer rows and never touched the
+        booleans, so after any filter move each panel masked the wrong rows.
+
+        Args:
+            source:      The ColumnDataSource the view is over.
+            bool_filter: The view's BooleanFilter.
+            member_ids:  Row identities belonging to this view.
+        """
+        if not hasattr(self, "_view_filters"):
+            self._view_filters = []
+        self._view_filters.append((source, bool_filter, list(member_ids)))
+
+    def _view_filter_args(self, ordered_sources: list) -> list:
+        """Build the callback's ``view_filters`` argument.
+
+        Args:
+            ordered_sources: The sources passed as ``all_graph_sources``; a
+                view is indexed against this list so the JS can find the rows
+                its source kept.
+
+        Returns:
+            A list of ``{"filter": BooleanFilter, "src_index": int,
+            "member_ids": [...]}``.
+        """
+        out = []
+        for source, bool_filter, member_ids in getattr(self, "_view_filters",
+                                                        []):
+            try:
+                idx = ordered_sources.index(source)
+            except ValueError:
+                continue
+            out.append({"filter": bool_filter, "src_index": idx,
+                        "member_ids": member_ids})
+        return out
+
+    def _row_ids_for(self, frame: "pd.DataFrame") -> "list[int]":
+        """Return each row's position in the primary frame.
+
+        Derived sources are slices of ``self.df`` and keep its index, so the
+        index is the identity.  A frame that somehow does not align falls
+        back to its own positions, which is no worse than the positional
+        masking this replaces.
+
+        Args:
+            frame: The frame this source is being built from.
+
+        Returns:
+            One integer per row.
+        """
+        try:
+            pos = {idx: i for i, idx in enumerate(self.df.index)}
+            return [int(pos.get(idx, i)) for i, idx in enumerate(frame.index)]
+        except (AttributeError, TypeError):
+            return list(range(len(frame)))
 
     @staticmethod
     def _df_for_source(source: ColumnDataSource) -> pd.DataFrame:
@@ -9975,9 +10092,10 @@ class DashRenderer:
                         _bool_mask = [
                             bool(i in _df_idx_set) for i in self.df.index
                         ]
-                        _linked_graph_views[name] = CDSView(
-                            filter=BooleanFilter(booleans=_bool_mask)
-                        )
+                        _qf = BooleanFilter(booleans=_bool_mask)
+                        _linked_graph_views[name] = CDSView(filter=_qf)
+                        self._register_view_filter(
+                            linked_source, _qf, self._row_ids_for(_g_fdf))
                     by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
                     if by_raw_lnk2:
                         by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
@@ -10046,7 +10164,15 @@ class DashRenderer:
                         src = shared_src_render
                         if panel_idx_r < len(masks_render):
                             _, mask_r   = masks_render[panel_idx_r]
-                            panel_view_r = CDSView(filter=BooleanFilter(booleans=mask_r))
+                            _pf = BooleanFilter(booleans=mask_r)
+                            panel_view_r = CDSView(filter=_pf)
+                            # The booleans are sized to the UNFILTERED frame;
+                            # once the callback shortens the shared source
+                            # they must be rebuilt, so record which rows
+                            # belong to this panel.
+                            self._register_view_filter(
+                                shared_src_render, _pf,
+                                [i for i, keep in enumerate(mask_r) if keep])
                         else:
                             panel_view_r = None
                     else:
@@ -10248,7 +10374,6 @@ class DashRenderer:
             else:
                 continue
 
-            cb.args["view_filters"] = []  # no longer used; kept for compat
             filter_row_widgets.append(widget)
             self.filter_widgets.append(widget)
             self.filter_callbacks.append(cb)
@@ -10340,6 +10465,12 @@ class DashRenderer:
                 if _gsrc not in _graph_srcs_for_cb:
                     _graph_srcs_for_cb.append(_gsrc)
             _cb.args["all_graph_sources"] = _graph_srcs_for_cb
+
+            # Each facet/qualifier CDSView, with the row identities that
+            # belong to it, so the callback can rebuild its BooleanFilter
+            # after the source it is over has been shortened.
+            _cb.args["view_filters"] = self._view_filter_args(
+                _graph_srcs_for_cb)
 
             # Build per-source original snapshots (indexed parallel to
             # all_graph_sources) so _FILTER_JS can rebuild filtered data for

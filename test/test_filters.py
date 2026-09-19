@@ -689,7 +689,14 @@ class TestFilterCallbackNoBooleanFilterClass:
         assert "source.change.emit()" in code, (
             "JS code must call source.change.emit() after replacing data"
         )
-        assert "BooleanFilter" not in code, (
+        # Strip comments: the callback explains in prose WHY it rebuilds a
+        # CDSView's BooleanFilter after shortening a source, and that
+        # explanation must not be what makes this test pass or fail. The
+        # requirement is that the JS does not CONSTRUCT one.
+        code_only = "\n".join(
+            l.split("//", 1)[0] for l in code.splitlines()
+        )
+        assert "new BooleanFilter" not in code_only, (
             "JS code must NOT reference BooleanFilter constructor"
         )
 
