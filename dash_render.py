@@ -6698,139 +6698,154 @@ if (!_srcs.includes(source)) {
 //   Assigning to a Bokeh model property from CustomJS triggers Bokeh's own
 //   change-detection and re-renders the widget with fresh innerHTML, bypassing
 //   the serialisation issue entirely.
-for (let ki = 0; ki < kpi_config.length; ki++) {
-    const k      = kpi_config[ki];
-    const kpi_div = kpi_divs[ki];
-    if (!kpi_div) continue;
+// ---- KPI recompute, shared by the filter path and the brush path ----
+//
+// ONE function on purpose.  It carries Stata's percentile rule, the
+// date-valued-statistic branch and the %9.0g general format, all of which
+// have to agree with _stata_percentile() and _effective_kpi_fmt() in Python.
+// A second copy for the brush path would drift from this one, which is the
+// failure test_kpi_values.py exists to catch.
+//
+// `data_obj' is a column->array map already restricted to the rows that
+// should count: the filter path passes the rows that survived every widget,
+// the brush path passes the rows the user selected.
+function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
+    for (let ki = 0; ki < kpi_config.length; ki++) {
+        const k      = kpi_config[ki];
+        const kpi_div = kpi_divs[ki];
+        if (!kpi_div) continue;
 
-    const col = new_data[k.varname];
-    if (!col) continue;
-    // A KPI with its own if/in qualifier is restricted to the rows that
-    // qualifier selects, intersected with the rows the filters kept.  Without
-    // this the card opens on the conditional value and silently becomes the
-    // unconditional one the first time any widget moves.
-    let src_col = col;
-    if (k.has_qual) {
-        const qset = new Set(k.qual_ids || []);
-        const rids = new_data[ROW_ID];
-        src_col = [];
-        if (rids) {
-            for (let qi = 0; qi < col.length; qi++) {
-                if (qset.has(rids[qi])) src_col.push(col[qi]);
+        const col = data_obj[k.varname];
+        if (!col) continue;
+        // A KPI with its own if/in qualifier is restricted to the rows that
+        // qualifier selects, intersected with the rows the filters kept.  Without
+        // this the card opens on the conditional value and silently becomes the
+        // unconditional one the first time any widget moves.
+        let src_col = col;
+        if (k.has_qual) {
+            const qset = new Set(k.qual_ids || []);
+            const rids = data_obj[ROW_ID];
+            src_col = [];
+            if (rids) {
+                for (let qi = 0; qi < col.length; qi++) {
+                    if (qset.has(rids[qi])) src_col.push(col[qi]);
+                }
             }
         }
-    }
-    const vals = src_col.filter(v => v !== null && v !== undefined && !isNaN(v));
+        const vals = src_col.filter(v => v !== null && v !== undefined && !isNaN(v));
 
-    let result = 0;
-    const stat = k.stat;
-    if (stat === 'count') {
-        result = vals.length;
-    } else if (vals.length > 0) {
-        if (stat === 'mean') {
-            result = vals.reduce((a, b) => a + b, 0) / vals.length;
-        } else if (stat === 'sum') {
-            result = vals.reduce((a, b) => a + b, 0);
-        } else if (stat === 'min') {
-            // Iterative reduction avoids RangeError: Maximum call stack
-            // size exceeded that spread-based Math.min would hit on large arrays.
-            result = vals.reduce((a, b) => a < b ? a : b, vals[0]);
-        } else if (stat === 'max') {
-            result = vals.reduce((a, b) => a > b ? a : b, vals[0]);
-        } else if (stat === 'dcount') {
-            result = new Set(vals.map(String)).size;
-        } else if (stat === 'sd' && vals.length > 1) {
-            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-            result = Math.sqrt(
-                vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
-            );
-        } else if (stat === 'var' && vals.length > 1) {
-            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-            result = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0)
-                     / (vals.length - 1);
-        } else if (stat === 'cv' && vals.length > 1) {
-            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-            const sd = Math.sqrt(
-                vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
-            );
-            result = mu ? sd / mu : NaN;
-        } else if (stat === 'skewness' && vals.length > 1) {
-            // Stata's biased m3 / m2^1.5, matching the Python side.
-            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
-            const m2 = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / vals.length;
-            const m3 = vals.reduce((a, b) => a + Math.pow(b - mu, 3), 0) / vals.length;
-            result = m2 > 0 ? m3 / Math.pow(m2, 1.5) : NaN;
-        } else {
-            // median, p50, p25, p75 and any other pNN.  dash_pctl is
-            // STATA's percentile rule, the same one _stata_percentile
-            // implements in Python -- p25/p75 used to have no branch at all
-            // here and fell through to result = 0 on the first filter move,
-            // and a rule that merely looked reasonable would disagree with
-            // the initial render.
-            const s = vals.slice().sort((a, b) => a - b);
-            if (stat === 'median') {
-                result = dash_pctl(s, 50);
-            } else if (stat === 'iqr') {
-                result = dash_pctl(s, 75) - dash_pctl(s, 25);
+        let result = 0;
+        const stat = k.stat;
+        if (stat === 'count') {
+            result = vals.length;
+        } else if (vals.length > 0) {
+            if (stat === 'mean') {
+                result = vals.reduce((a, b) => a + b, 0) / vals.length;
+            } else if (stat === 'sum') {
+                result = vals.reduce((a, b) => a + b, 0);
+            } else if (stat === 'min') {
+                // Iterative reduction avoids RangeError: Maximum call stack
+                // size exceeded that spread-based Math.min would hit on large arrays.
+                result = vals.reduce((a, b) => a < b ? a : b, vals[0]);
+            } else if (stat === 'max') {
+                result = vals.reduce((a, b) => a > b ? a : b, vals[0]);
+            } else if (stat === 'dcount') {
+                result = new Set(vals.map(String)).size;
+            } else if (stat === 'sd' && vals.length > 1) {
+                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+                result = Math.sqrt(
+                    vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
+                );
+            } else if (stat === 'var' && vals.length > 1) {
+                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+                result = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0)
+                         / (vals.length - 1);
+            } else if (stat === 'cv' && vals.length > 1) {
+                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+                const sd = Math.sqrt(
+                    vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
+                );
+                result = mu ? sd / mu : NaN;
+            } else if (stat === 'skewness' && vals.length > 1) {
+                // Stata's biased m3 / m2^1.5, matching the Python side.
+                const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+                const m2 = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / vals.length;
+                const m3 = vals.reduce((a, b) => a + Math.pow(b - mu, 3), 0) / vals.length;
+                result = m2 > 0 ? m3 / Math.pow(m2, 1.5) : NaN;
             } else {
-                const mp = /^p(\\d{1,2}(?:\\.\\d+)?)$/.exec(stat);
-                if (mp) result = dash_pctl(s, parseFloat(mp[1]));
+                // median, p50, p25, p75 and any other pNN.  dash_pctl is
+                // STATA's percentile rule, the same one _stata_percentile
+                // implements in Python -- p25/p75 used to have no branch at all
+                // here and fell through to result = 0 on the first filter move,
+                // and a rule that merely looked reasonable would disagree with
+                // the initial render.
+                const s = vals.slice().sort((a, b) => a - b);
+                if (stat === 'median') {
+                    result = dash_pctl(s, 50);
+                } else if (stat === 'iqr') {
+                    result = dash_pctl(s, 75) - dash_pctl(s, 25);
+                } else {
+                    const mp = /^p(\\d{1,2}(?:\\.\\d+)?)$/.exec(stat);
+                    if (mp) result = dash_pctl(s, parseFloat(mp[1]));
+                }
             }
         }
-    }
 
-    let fmt;
-    if (k.datekind) {
-        // The value is epoch milliseconds; render it the way the first
-        // render did, or a filtered date KPI reads as a raw number.
-        const d = new Date(result);
-        const MON = ['Jan','Feb','Mar','Apr','May','Jun',
-                     'Jul','Aug','Sep','Oct','Nov','Dec'];
-        if (isNaN(d.getTime())) {
-            fmt = '—';
-        } else if (k.datekind === 'ty') {
-            fmt = String(d.getUTCFullYear());
-        } else if (k.datekind === 'tc' || k.datekind === 'tC') {
-            fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
-                  ' ' + d.getUTCFullYear() + ' ' +
-                  ('0' + d.getUTCHours()).slice(-2) + ':' +
-                  ('0' + d.getUTCMinutes()).slice(-2) + ':' +
-                  ('0' + d.getUTCSeconds()).slice(-2);
-        } else if (k.datekind === 'tm' || k.datekind === 'tq' ||
-                   k.datekind === 'th') {
-            fmt = MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+        let fmt;
+        if (k.datekind) {
+            // The value is epoch milliseconds; render it the way the first
+            // render did, or a filtered date KPI reads as a raw number.
+            const d = new Date(result);
+            const MON = ['Jan','Feb','Mar','Apr','May','Jun',
+                         'Jul','Aug','Sep','Oct','Nov','Dec'];
+            if (isNaN(d.getTime())) {
+                fmt = '—';
+            } else if (k.datekind === 'ty') {
+                fmt = String(d.getUTCFullYear());
+            } else if (k.datekind === 'tc' || k.datekind === 'tC') {
+                fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
+                      ' ' + d.getUTCFullYear() + ' ' +
+                      ('0' + d.getUTCHours()).slice(-2) + ':' +
+                      ('0' + d.getUTCMinutes()).slice(-2) + ':' +
+                      ('0' + d.getUTCSeconds()).slice(-2);
+            } else if (k.datekind === 'tm' || k.datekind === 'tq' ||
+                       k.datekind === 'th') {
+                fmt = MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+            } else {
+                fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
+                      ' ' + d.getUTCFullYear();
+            }
         } else {
-            fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
-                  ' ' + d.getUTCFullYear();
+            if (k.general) {
+                // Stata's %9.0g: six significant digits, the same as Python's
+                // f"{value:g}" on the initial render.
+                fmt = String(Number(result.toPrecision(6)));
+            } else {
+            fmt = result.toFixed(k.decimals);
+            if (k.commas) {
+                const parts = fmt.split('.');
+                parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+                fmt = parts.join('.');
+            }
+            }
         }
-    } else {
-        if (k.general) {
-            // Stata's %9.0g: six significant digits, the same as Python's
-            // f"{value:g}" on the initial render.
-            fmt = String(Number(result.toPrecision(6)));
-        } else {
-        fmt = result.toFixed(k.decimals);
-        if (k.commas) {
-            const parts = fmt.split('.');
-            parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
-            fmt = parts.join('.');
-        }
-        }
-    }
 
-    // Rebuild the complete Div HTML and assign to the Bokeh model property.
-    // Using template literals here is fine — the JS is embedded via CustomJS
-    // args (never interpolated from user input).
-    kpi_div.text = (
-        '<div class="db-kpi-card" style="background:' + k.bgcolor +
-        '; border-radius:8px; padding:20px; ' +
-        'text-align:center; border:1px solid #dee2e6; min-width:160px; min-height:110px;">' +
-        '<div style="font-size:13px; color:#6c757d; margin-bottom:6px;">' + k.title + '</div>' +
-        '<div style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
-        '<div style="font-size:11px; color:#6c757d; margin-top:4px;">' + k.subtitle + '</div>' +
-        '</div>'
-    );
+        // Rebuild the complete Div HTML and assign to the Bokeh model property.
+        // Using template literals here is fine — the JS is embedded via CustomJS
+        // args (never interpolated from user input).
+        kpi_div.text = (
+            '<div class="db-kpi-card" style="background:' + k.bgcolor +
+            '; border-radius:8px; padding:20px; ' +
+            'text-align:center; border:1px solid #dee2e6; min-width:160px; min-height:110px;">' +
+            '<div style="font-size:13px; color:#6c757d; margin-bottom:6px;">' + k.title + '</div>' +
+            '<div style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
+            '<div style="font-size:11px; color:#6c757d; margin-top:4px;">' + k.subtitle + '</div>' +
+            '</div>'
+        );
+    }
 }
+
+dash_apply_kpis(new_data, kpi_config, kpi_divs, ROW_ID);
 
 // --- Recompute aggregate plots (histogram, kdensity) ---
 // STATA's percentile ([R] summarize), not numpy's: with i = n*p/100 the
@@ -6984,6 +6999,47 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         src.change.emit();
     }
 }
+"""
+
+
+# ===========================================================================
+# Brush/lasso KPI recompute
+# ===========================================================================
+#
+# dash.sthlp documents update(brush) and update(both), and its
+# standalone-vs-server table says brush updating works in standalone HTML.
+# It did not: nothing was attached to any source's `selected' property, and
+# the mode ALSO removed the KPI from the filter callback, so an update(brush)
+# card was frozen at its initial value forever.  Server mode already
+# implemented the same three-valued rule, so the static renderer was the
+# outlier.
+#
+# The arithmetic is NOT repeated here.  dash_apply_kpis() is defined in
+# _FILTER_JS and carries Stata's percentile rule, the date-valued-statistic
+# branch and the %9.0g general format; a second copy would drift from
+# _stata_percentile() in Python.  The two constants are concatenated at
+# wiring time so the function is in scope.
+_BRUSH_JS = """
+// `brush_source' is the source the user brushed; cb_obj is its Selection.
+const idx = (cb_obj && cb_obj.indices) ? cb_obj.indices : [];
+const src_data = brush_source.data;
+const cols = Object.keys(src_data);
+
+// Nothing selected means every row, not no rows -- the same fallback the
+// server path uses (`sel_df = _df_ref.iloc[indices] if indices else _df_ref').
+// Without it, clearing a selection would blank every card instead of
+// restoring it.
+const sel = {};
+if (idx.length === 0) {
+    for (const c of cols) sel[c] = src_data[c];
+} else {
+    for (const c of cols) {
+        const col = src_data[c];
+        sel[c] = idx.map(i => col[i]);
+    }
+}
+
+dash_apply_kpis(sel, kpi_config, kpi_divs, ROW_ID);
 """
 
 
@@ -10597,7 +10653,9 @@ class DashRenderer:
                     linked_vars.append(v)
             for kpi in kpis:
                 kupdate = kpi.get("update", "filter")
-                if kupdate in ("filter", "both"):
+                # "brush" too: a brush KPI still needs its column on the
+                # source it is brushing, or the recompute finds nothing.
+                if kupdate in ("filter", "brush", "both"):
                     kvar = kpi.get("var") or kpi.get("varname", "")
                     if kvar and kvar not in linked_vars and kvar in self.df.columns:
                         linked_vars.append(kvar)
@@ -10820,6 +10878,122 @@ class DashRenderer:
                     kpi_copy["value"] = kpi.get("display", "")
                 self.kpi_divs[name] = self._make_kpi_div(kpi_copy)
 
+    def _kpi_callback_config(self, kname: str, kdef: dict) -> dict:
+        """One KPI's payload for a JS recompute callback.
+
+        Extracted so the filter path and the brush path cannot disagree.
+        Every field has to match what the initial render did -- the format,
+        the colour, the qualifier -- or the card changes the moment the user
+        touches anything.
+
+        Args:
+            kname: The KPI's registered name.
+            kdef:  Its specification dict.
+
+        Returns:
+            One entry of the JS side's ``kpi_config``.
+        """
+        kstat = kdef.get("stat", "mean")
+        kvar = kdef.get("var") or kdef.get("varname", "")
+        # The SAME resolution the initial render uses, or the card changes
+        # shape on the first interaction.
+        kfmt = self._effective_kpi_fmt(kdef, kvar)
+        dec, comma = DashRenderer._parse_fmt(kfmt)
+        # A KPI carrying its own if/in must keep carrying it.  The callback
+        # works on row identities, so the qualifier travels as the set of
+        # rows it selects rather than as an expression -- no evaluator in the
+        # browser, nothing to inject into.  Only a qualified KPI pays for it.
+        qual_ids = self._kpi_qualifier_row_ids(kdef)
+        return {
+            "name": kname,
+            "stat": kstat,
+            "varname": kvar,
+            "decimals": dec,
+            "commas": comma,
+            "has_qual": qual_ids is not None,
+            "qual_ids": qual_ids if qual_ids is not None else [],
+            # No fixed format anywhere: both sides fall back to Stata's
+            # general display rather than to two different defaults.
+            "general": kfmt.strip() in ("", "%9.0g"),
+            # A statistic of a date variable whose result is itself a date
+            # has to be re-rendered as a date, not as a number of ms.
+            "datekind": (
+                getattr(self, "date_vars", {}).get(kvar, "")
+                if str(kstat).lower().strip() in self._DATE_VALUED_STATS
+                else ""
+            ),
+            # HTML-escaped to prevent DOM XSS when the callback rebuilds
+            # kpi_div.text by string concatenation.
+            "title": html.escape(kdef.get("title", "") or ""),
+            "subtitle": html.escape(kdef.get("subtitle", "") or ""),
+            # Sanitised, not merely escaped: these are interpolated into a
+            # style attribute, where html.escape does not stop a CSS property
+            # injection.  The SAME resolver as the initial render.
+            "color": _resolve_kpi_color(kdef.get("color", "") or "",
+                                        "#212529"),
+            "bgcolor": _resolve_kpi_color(kdef.get("bgcolor", "") or "",
+                                          "#f8f9fa"),
+        }
+
+    def _wire_brush_callbacks(self, kpis: list) -> int:
+        """Attach a selection callback for every ``update(brush|both)`` KPI.
+
+        ``dash.sthlp`` documents the mode and its standalone-vs-server table
+        claims it works in standalone HTML.  Nothing was attached to any
+        source's ``selected`` property, and the mode also excluded the KPI
+        from the filter callback, so such a card recomputed on nothing at
+        all.  Server mode already implements the same rule.
+
+        Args:
+            kpis: The spec's KPI list.
+
+        Returns:
+            How many callbacks were attached.  Zero leaves the document
+            byte-identical to a dashboard with no brush KPI.
+        """
+        defs = {k.get("name", ""): k for k in kpis}
+        cfg: list = []
+        divs: list = []
+        for kname, kdiv in self.kpi_divs.items():
+            kdef = defs.get(kname, {})
+            if kdef.get("update", "filter") not in ("brush", "both"):
+                continue
+            cfg.append(self._kpi_callback_config(kname, kdef))
+            divs.append(kdiv)
+        if not cfg:
+            return 0
+
+        # The helper lives in _FILTER_JS; concatenating puts it in scope
+        # without giving the brush path its own copy of the arithmetic.
+        _helpers = _FILTER_JS[
+            _FILTER_JS.index("// ---- KPI recompute, shared by"):
+            _FILTER_JS.index("dash_apply_kpis(new_data,")
+        ]
+        code = (
+            'const ROW_ID = "%s";\n' % _ROW_ID_COLUMN
+            + _helpers + _BRUSH_JS
+        )
+
+        n = 0
+        seen: set = set()
+        for src in self.sources.values():
+            if id(src) in seen:
+                continue
+            seen.add(id(src))
+            try:
+                src.selected.js_on_change("indices", CustomJS(
+                    args={
+                        "brush_source": src,
+                        "kpi_config_json": json.dumps(cfg),
+                        "kpi_divs": divs,
+                    },
+                    code=code,
+                ))
+                n += 1
+            except (AttributeError, ValueError):
+                continue
+        return n
+
     def _build_filter_widgets(
         self,
         filters_cfg: list,
@@ -10961,54 +11135,8 @@ class DashRenderer:
                 _kdef = _kpi_defs_by_name.get(_kname, {})
                 if _kdef.get("update", "filter") not in ("filter", "both"):
                     continue
-                _kstat  = _kdef.get("stat", "mean")
-                _kvar   = _kdef.get("var") or _kdef.get("varname", "")
-                # The SAME resolution the initial render uses, or the
-                # card changes shape on the first filter move.
-                _kfmt   = self._effective_kpi_fmt(_kdef, _kvar)
-                _dec, _comma = DashRenderer._parse_fmt(_kfmt)
-                # A KPI carrying its own if/in must keep carrying it after a
-                # filter moves.  The callback works on row identities, so the
-                # qualifier travels as the set of rows it selects rather than
-                # as an expression -- no evaluator in the browser, nothing to
-                # inject into.  Only a qualified KPI pays for the list.
-                _kqual_ids = self._kpi_qualifier_row_ids(_kdef)
-                _kpi_config_for_cb.append({
-                    "name":     _kname,
-                    "stat":     _kstat,
-                    "varname":  _kvar,
-                    "decimals": _dec,
-                    "commas":   _comma,
-                    "has_qual": _kqual_ids is not None,
-                    "qual_ids": _kqual_ids if _kqual_ids is not None else [],
-                    # No fixed format anywhere: both sides fall back to
-                    # Stata's general display rather than to two different
-                    # defaults.
-                    "general":  _kfmt.strip() in ("", "%9.0g"),
-                    # A statistic of a date variable whose result is itself a
-                    # date has to be re-rendered as a date after filtering,
-                    # not as a number of milliseconds.
-                    "datekind": (
-                        getattr(self, "date_vars", {}).get(_kvar, "")
-                        if str(_kstat).lower().strip()
-                        in self._DATE_VALUED_STATS else ""
-                    ),
-                    # HTML-escape title/subtitle to prevent DOM XSS when the filter
-                    # callback reconstructs kpi_div.text via string concatenation.
-                    "title":    html.escape(_kdef.get("title", "") or ""),
-                    "subtitle": html.escape(_kdef.get("subtitle", "") or ""),
-                    # Sanitize color fields against CSS injection: the JS
-                    # callback embeds these directly into style="...color:<val>..."
-                    # so an unsanitized value can break out of the attribute.
-                    # The SAME resolver as the initial render, or the card
-                    # changes colour the first time a filter moves.
-                    "color":    _resolve_kpi_color(
-                        _kdef.get("color", "") or "", "#212529"
-                    ),
-                    "bgcolor":  _resolve_kpi_color(
-                        _kdef.get("bgcolor", "") or "", "#f8f9fa"
-                    ),
-                })
+                _kpi_config_for_cb.append(
+                    self._kpi_callback_config(_kname, _kdef))
                 _kpi_divs_for_cb.append(_kdiv)
 
             _cb.args["orig_data_json"]    = json.dumps(_orig_data)
@@ -11289,6 +11417,12 @@ class DashRenderer:
 
         # ---- 5. Build filter widgets and wire callbacks ----
         filter_row_widgets = self._build_filter_widgets(filters_cfg, link_names, kpis)
+
+        # A brush KPI recomputes on a SELECTION change, which is independent
+        # of the filter widgets -- a dashboard with no filters at all can
+        # still have one.  Returns 0 and attaches nothing when no KPI asks
+        # for it, so an ordinary dashboard is unchanged.
+        self._n_brush_callbacks = self._wire_brush_callbacks(kpis)
 
         # ---- 6. Assemble layout and render to HTML ----
         all_names:  list[str] = list(self.kpi_divs.keys())

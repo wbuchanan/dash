@@ -500,7 +500,9 @@ class TestQualifiedKpiUnderFiltering:
         js = dash_render._FILTER_JS
         helpers = js[js.index("function dash_pctl"):
                      js.index("// agg_sources is a Bokeh model list")]
-        lo = js.index("    const col = new_data[k.varname];")
+        # The KPI recompute now lives in dash_apply_kpis(), whose parameter
+        # is `data_obj' so the brush path can pass the selected rows.
+        lo = js.index("    const col = data_obj[k.varname];")
         hi = js.index("    let fmt;", lo)
         block = js[lo:hi]
         payload = {
@@ -510,7 +512,7 @@ class TestQualifiedKpiUnderFiltering:
         harness = (
             helpers
             + '\nconst ROW_ID = "__dash_row__";'
-            + "\nconst new_data = " + json.dumps(payload) + ";"
+            + "\nconst data_obj = " + json.dumps(payload) + ";"
             + "\nconst k = " + json.dumps(cfg_entry) + ";"
             # The shipped block declares `result` itself and uses `continue`
             # to skip a KPI, so it is run as one iteration of a loop rather
