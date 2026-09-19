@@ -529,6 +529,10 @@ _NONSELECTION_ALPHA = 0.15
 # enough; a string key would cost real bytes in a file already over a
 # megabyte.
 _ROW_ID_COLUMN = "__dash_row__"
+# Marks the Legend that a discrete colorvar() builds, so the plot-legend
+# rebuild can leave it alone.  A colour key is not a series key: Stata
+# suppresses it with clegend(), not legend().
+_COLORVAR_LEGEND_NAME = "_dash_clegend"
 
 # CSP meta tag injected into every output HTML file.
 # 'unsafe-eval' is required because Bokeh's CustomJS compiles callback
@@ -2977,8 +2981,13 @@ class GlyphMapper:
                     visible=False, name="_clegend___missing__",
                 )
                 legend_items.append(LegendItem(label="(missing)", renderers=[_rm]))
+            # Tagged, so _rebuild_legend can tell a colour key from a plot
+            # legend.  Inspecting the items instead does not survive the
+            # rewrite it has to survive, and gets the mixed case (a colorvar
+            # plot and a plain plot in one figure) wrong.
             fig.add_layout(
-                Legend(items=legend_items, title=html.escape(var_display)),
+                Legend(items=legend_items, title=html.escape(var_display),
+                       name=_COLORVAR_LEGEND_NAME),
                 "right",
             )
 
@@ -8272,11 +8281,32 @@ class DashRenderer:
         if not fig.legend:
             return
 
-        legend = fig.legend[0]
-        if plot_renderers:
+        # A discrete colorvar() builds its colour key as a Legend too, and on
+        # a single-plot figure it is fig.legend[0].  This method used to take
+        # that one, overwrite its per-category items with a single key
+        # labelled with the y variable, and then hide it under Stata's
+        # fewer-than-two-keys rule -- coloured points and no way to read
+        # them.  A colour key is not a series key, so it is kept out of the
+        # rebuild entirely.
+        #
+        # The chrome loop below still runs over EVERY legend: skipping it
+        # when the colour key is the only legend would silently reinstate a
+        # Bokeh-default legend on a themed plot region, which is a bug this
+        # file already fixed once.
+        _cv_legends = [l for l in fig.legend
+                       if str(getattr(l, "name", "") or "")
+                       == _COLORVAR_LEGEND_NAME]
+        _plot_legends = [l for l in fig.legend if l not in _cv_legends]
+
+        legend = _plot_legends[0] if _plot_legends else None
+        if legend is not None and plot_renderers:
             items: list = []
             for plot, rends in plot_renderers:
-                rends = [r for r in rends if r in fig.renderers]
+                # The dummy swatch renderers a colorvar() builds are not
+                # plot layers and must not become series keys.
+                rends = [r for r in rends if r in fig.renderers
+                         and not str(getattr(r, "name", "") or "")
+                         .startswith("_clegend_")]
                 if not rends:
                     continue
                 ptype = str(plot.get("type", "")).lower()
@@ -8344,7 +8374,7 @@ class DashRenderer:
                           legend_opt)
         m_ring = re.search(r"\bring\s*\(\s*(\d+)\s*\)", legend_opt)
         inside = bool(m_ring) and m_ring.group(1) == "0"
-        if m_pos:
+        if m_pos and legend is not None:
             clock = int(m_pos.group(1))
             if inside:
                 legend.location = _CLOCK_INSIDE.get(clock, "top_right")
@@ -8358,21 +8388,29 @@ class DashRenderer:
         m_size = re.search(r"\bsize\s*\(\s*([^)]+?)\s*\)", legend_opt)
         if m_size:
             try:
-                legend.label_text_font_size = (
-                    f"{OptionTranslator.translate_msize(m_size.group(1)):g}px")
+                _px = (f"{OptionTranslator.translate_msize(m_size.group(1)):g}"
+                       "px")
+                # Every legend on the figure, including a colour key: the
+                # user asked for a legend text size, not for a plot-legend
+                # text size.
+                for leg in fig.legend:
+                    leg.label_text_font_size = _px
             except (ValueError, TypeError):
                 pass
 
         forced_on = bool(re.search(r"\bon\b", legend_opt))
         turned_off = bool(re.search(r"\boff\b", legend_opt))
-        n_keys = len(legend.items)
+        n_keys = len(legend.items) if legend is not None else 0
 
-        if turned_off or (n_keys < 2 and not forced_on):
-            for leg in fig.legend:
-                leg.visible = False
-        else:
-            for leg in fig.legend:
-                leg.visible = True
+        # Stata's rule governs the SERIES key.  A colour key is separate --
+        # Stata suppresses it with clegend(), not legend() -- so it stays
+        # visible, and a one-series colorvar plot keeps the only legend that
+        # tells the reader what the colours mean.
+        _show = not (turned_off or (n_keys < 2 and not forced_on))
+        for leg in _plot_legends:
+            leg.visible = _show
+        for leg in _cv_legends:
+            leg.visible = True
 
     def _apply_axis_spec(self, fig, axis_obj, grid_obj, spec: dict,
                          varname: str = "") -> None:
