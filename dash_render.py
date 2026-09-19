@@ -14396,14 +14396,30 @@ if __name__ == "__main__":
         default=False,
         help="Do not open a browser tab after starting the Bokeh Server.",
     )
+    parser.add_argument(
+        "--launch",
+        action="store_true",
+        default=False,
+        help=(
+            "After writing a server app, start it and wait. Off by default: "
+            "writing a file must not start a server as a side effect. "
+            "`dash serve' passes this; `dash build, server' does not."
+        ),
+    )
     args = parser.parse_args()
 
     # Build the output file (HTML or server app .py)
     main(args.spec, args.data, args.output, args.mode)
 
-    # When mode is 'server', launch the generated Bokeh Server app.
-    # This call blocks until the server is stopped (SIGINT / timeout).
-    if args.mode == "server":
+    # When mode is 'server' AND the caller asked for it, launch the app.
+    #
+    # This used to happen unconditionally, so `dash build, saving(app.py)
+    # server' -- documented to write a file and return -- opened a browser
+    # and blocked the Stata session forever on _proc.wait().  The two
+    # `display' lines that follow it in dash.ado never printed, and killing
+    # Stata left the server orphaned.  Writing a file must not start a
+    # server as a side effect, so launching is opt-in.
+    if args.mode == "server" and args.launch:
         import subprocess as _sp
         import sys as _sys
         import time as _time

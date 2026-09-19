@@ -1,0 +1,121 @@
+*! test_server_build.cscript
+*! Certification script for `dash build, saving(app.py) server'.
+*!
+*! Usage:  do test/test_server_build.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed.
+*! Version: 1.0.0  19sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! `dash build, saving(app.py) server' is documented to write a file and
+*! return.  It did neither.  _dash_do_render set sys.argv with no
+*! --no-browser, then ran dash_render.py as __main__, whose server branch
+*! launched the generated app and waited on it.  So the command opened a
+*! browser window and blocked the Stata session forever -- the two `display'
+*! lines that follow it in dash.ado never printed -- and killing Stata left
+*! an orphaned server behind.  One was found still listening during this
+*! work, from a run hours earlier.
+*!
+*! Writing a file must not start a server as a side effect, so launching is
+*! opt-in now (--launch) and only `dash serve' asks for it.
+*!
+*! There is no assertion here that a server is NOT running, because that
+*! would read global machine state.  The assertion that matters is that this
+*! command returns at all: if it launched, this script would hang and the
+*! runner would never reach the summary.
+
+cscript "dash build server" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// See test_cscript_hygiene.py: do NOT probe Python by running it.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+global dash_nobrowser 1
+
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+do "cert_helpers.do"
+
+qui sysuse auto, clear
+
+// ----------------------------------------------------------------
+// SB-01 — the command returns
+// ----------------------------------------------------------------
+tempfile appbase
+local apppath "`appbase'.py"
+dash clear
+dash scatter mpg weight, name(g1)
+capture dash build, saving("`apppath'") server replace
+assert _rc == 0
+display "SB-01 PASS: dash build, server returns"
+
+// ----------------------------------------------------------------
+// SB-02 — it wrote a file
+// ----------------------------------------------------------------
+capture confirm file "`apppath'"
+assert _rc == 0
+display "SB-02 PASS: the server app was written"
+
+// ----------------------------------------------------------------
+// SB-03 — the app embeds the data and the graph
+// ----------------------------------------------------------------
+cert_file_has "`apppath'", needle("_DATA_B64")
+assert r(found) == 1
+cert_file_has "`apppath'", needle("make_document")
+assert r(found) == 1
+display "SB-03 PASS: the app embeds its data and builds a document"
+
+// ----------------------------------------------------------------
+// SB-04 — it attaches the document outside the __main__ guard
+// ----------------------------------------------------------------
+// `bokeh serve' runs an app script under a synthetic module name, so a
+// binding that lives only under `if __name__ == "__main__"' never runs and
+// the served page is blank.  Measured before the fix: docs_json {}, zero
+// roots, title absent.
+cert_file_has "`apppath'", needle("curdoc()")
+assert r(found) == 1
+display "SB-04 PASS: the app attaches its document with curdoc()"
+
+// ----------------------------------------------------------------
+// SB-05 — a filter reaches the generated app
+// ----------------------------------------------------------------
+tempfile appbase2
+local apppath2 = "`appbase2'.py"
+dash clear
+dash scatter mpg weight, name(g2)
+dash build, saving("`apppath2'") server replace ///
+    filter(foreign, type(dropdown) label("Car origin"))
+assert _rc == 0
+cert_file_has "`apppath2'", needle("Car origin")
+assert r(found) == 1
+display "SB-05 PASS: a filter and its label reach the server app"
+
+// ----------------------------------------------------------------
+// SB-06 — the instruction dash prints names a launcher that works
+// ----------------------------------------------------------------
+// /health exists only when the app serves itself: `bokeh serve' owns its
+// web application and an app script cannot register a route.
+cert_file_has "../dash.ado", needle("To launch: python")
+assert r(found) == 1
+display "SB-06 PASS: dash points at the launcher that provides /health"
+
+dash clear
+display ""
+display "test_server_build.cscript: ALL CHECKS PASSED"

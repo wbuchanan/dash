@@ -2507,7 +2507,11 @@ program define _dash_serve
 
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
     python: import sys, runpy
-    python: sys.argv = ["dash_render.py", "--spec", "`_py_master'", "--data", "`_py_data'", "--output", "`_py_serve'", "--mode", "server", "--port", "`port_int'", "--timeout", "`timeout'"]
+    // --launch: `dash serve' is the path whose job IS to run a server.  The
+    // renderer no longer starts one as a side effect of writing a file,
+    // because `dash build, server' used that same entry point and was left
+    // blocking forever with an orphaned server behind it.
+    python: sys.argv = ["dash_render.py", "--spec", "`_py_master'", "--data", "`_py_data'", "--output", "`_py_serve'", "--mode", "server", "--launch", "--port", "`port_int'", "--timeout", "`timeout'"]
     if "`no_browser_flag'" != "" {
         python: sys.argv.append("--no-browser")
     }
