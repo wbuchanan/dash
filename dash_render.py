@@ -534,6 +534,60 @@ _ROW_ID_COLUMN = "__dash_row__"
 # suppresses it with clegend(), not legend().
 _COLORVAR_LEGEND_NAME = "_dash_clegend"
 
+# Milliseconds in a day.  Bokeh transports datetimes as epoch milliseconds,
+# but DateSlider.step and DateRangeSlider.step are in units of DAYS.
+_MS_PER_DAY = 86_400_000.0
+# Stata date formats whose values are whole calendar days or coarser.  A
+# fraction of a day is not a value these can take, so their slider step is
+# floored at one day.  %tc and %tC are clock values and are not in this set.
+_CALENDAR_DATE_KINDS = frozenset({"td", "tw", "tm", "tq", "th", "ty"})
+
+
+def _is_clock_kind(kind: str) -> bool:
+    """True for Stata's clock formats, whose values are finer than a day."""
+    return str(kind or "").lstrip("%") in ("tc", "tC")
+
+
+def _date_slider_step_days(vmin: float, vmax: float) -> int:
+    """Whole-day step for a calendar-date slider over ``vmin``..``vmax`` ms.
+
+    Bokeh's ``DateSlider.step`` and ``DateRangeSlider.step`` are typed
+    ``Int`` and documented "in units of days", and default to 1.  dash
+    computed a step and never passed it, so a ten-year monthly series was
+    stepped one day at a time -- two orders of magnitude finer than any value
+    in the data, and a thousand drags to cross.
+
+    Targets the same hundred notches the numeric path gives, floored at one
+    whole day because these widgets cannot express less and because a
+    fraction of a day is not a value a %td variable can take.
+
+    Args:
+        vmin: Lowest value, in epoch milliseconds.
+        vmax: Highest value, in epoch milliseconds.
+
+    Returns:
+        A whole number of days, at least 1.
+    """
+    span_days = max(0.0, (float(vmax) - float(vmin)) / _MS_PER_DAY)
+    return max(1, int(round(span_days / 100.0)))
+
+
+def _clock_slider_step_ms(vmin: float, vmax: float) -> int:
+    """Millisecond step for a clock slider over ``vmin``..``vmax`` ms.
+
+    A ``%tc`` variable is why ``DateRangeSlider`` is the wrong widget: its
+    step is a whole number of DAYS, so a clock series spanning one day had a
+    single reachable notch.  ``DatetimeRangeSlider`` steps in milliseconds.
+
+    Args:
+        vmin: Lowest value, in epoch milliseconds.
+        vmax: Highest value, in epoch milliseconds.
+
+    Returns:
+        A whole number of milliseconds, at least 1.
+    """
+    return max(1, int(round(max(0.0, float(vmax) - float(vmin)) / 100.0)))
+
 # CSP meta tag injected into every output HTML file.
 # 'unsafe-eval' is required because Bokeh's CustomJS compiles callback
 # code via `new Function(...)` at runtime.  Without it the browser raises
@@ -7198,6 +7252,7 @@ class FilterBuilder:
         exclude_names: "list[str] | None" = None,
         all_figure_names: "list[str] | None" = None,
         label: str = "",
+        date_kind: str = "",
     ) -> "tuple[Slider, CustomJS]":
         """Build a numeric threshold slider filter widget.
 
@@ -7226,9 +7281,25 @@ class FilterBuilder:
         vstep = (vmax - vmin) / 100.0 or 1.0
 
         if _is_datetime_column(source, varname):
-            from bokeh.models import DateSlider
-            widget = DateSlider(title=_slider_title, start=vmin, end=vmax,
-                                value=vmin)
+            if _is_clock_kind(date_kind):
+                # Bokeh has no DatetimeSlider, and DateSlider's step is a
+                # whole number of DAYS, so a clock series spanning a day had
+                # one reachable notch.  A numeric Slider over epoch
+                # milliseconds can step finely; the formatter makes the
+                # handle read as a time rather than as a big integer.
+                from bokeh.models import DatetimeTickFormatter
+                widget = Slider(
+                    title=_slider_title, start=vmin, end=vmax, value=vmin,
+                    step=_clock_slider_step_ms(vmin, vmax),
+                    format=DatetimeTickFormatter(),
+                )
+            else:
+                from bokeh.models import DateSlider
+                # Bokeh's date step is in DAYS and defaults to 1; the step
+                # computed above was never passed.
+                widget = DateSlider(
+                    title=_slider_title, start=vmin, end=vmax, value=vmin,
+                    step=_date_slider_step_days(vmin, vmax))
         else:
             widget = Slider(title=_slider_title, start=vmin, end=vmax,
                             value=vmin, step=vstep)
@@ -7259,6 +7330,7 @@ class FilterBuilder:
         exclude_names: "list[str] | None" = None,
         all_figure_names: "list[str] | None" = None,
         label: str = "",
+        date_kind: str = "",
     ) -> "tuple[RangeSlider, CustomJS]":
         """Build a numeric range filter widget.
 
@@ -7288,10 +7360,24 @@ class FilterBuilder:
             # Bokeh transports datetimes as epoch milliseconds, which is the
             # same number the filter JS compares against, so the existing
             # comparison works unchanged -- verified by the round-trip test.
-            from bokeh.models import DateRangeSlider
-            widget = DateRangeSlider(title=_raw_range_lbl,
-                                     start=vmin, end=vmax,
-                                     value=(vmin, vmax))
+            if _is_clock_kind(date_kind):
+                # DateRangeSlider's step is a whole number of DAYS, so a
+                # clock series spanning one day had a single reachable
+                # notch.  DatetimeRangeSlider steps in milliseconds.
+                from bokeh.models import DatetimeRangeSlider
+                widget = DatetimeRangeSlider(
+                    title=_raw_range_lbl, start=vmin, end=vmax,
+                    value=(vmin, vmax),
+                    step=_clock_slider_step_ms(vmin, vmax))
+            else:
+                from bokeh.models import DateRangeSlider
+                # The step computed above is in the transported unit (epoch
+                # ms) and was never passed, so this kept Bokeh's default of
+                # one day whatever the span.
+                widget = DateRangeSlider(
+                    title=_raw_range_lbl, start=vmin, end=vmax,
+                    value=(vmin, vmax),
+                    step=_date_slider_step_days(vmin, vmax))
         else:
             widget = RangeSlider(title=_raw_range_lbl,
                                  start=vmin, end=vmax,
@@ -11090,6 +11176,7 @@ class DashRenderer:
                 widget, cb = FilterBuilder.build_slider(
                     fvar, fsource, None, exclude_names=excludes,
                     label=flabel,
+                    date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
                 )
             elif ftype == "range":
                 # Same guard for range slider.
@@ -11108,6 +11195,7 @@ class DashRenderer:
                 widget, cb = FilterBuilder.build_range(
                     fvar, fsource, None, exclude_names=excludes,
                     label=flabel,
+                    date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
                 )
             else:
                 continue
