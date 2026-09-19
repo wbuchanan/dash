@@ -249,8 +249,21 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               of by position, and single-series figures pick up the
 #               scheme-driven changes from the same batch.  Intended; see
 #               .ultraplan/CHANGELOG.md....
+#   f929e3d3  S11.  The renderer now CONSUMES the translated schemes instead
+#               of only parsing them.  A marker's symbol comes from the
+#               scheme's symbol cycle and its size from `symbolsize p'
+#               (previously a literal 8px for every scheme); a scatter's
+#               alpha from `intensity p', a bar's from `intensity bar' and
+#               an area's from `intensity area' (previously 0.7/0.8/0.5); a
+#               line's width from `linewidth p' and its dash from
+#               `linepattern p#lineplot'; the minor grid from `color
+#               minor_grid'; the legend's background, border and label size
+#               from the scheme.  _GSIZE_PT was also corrected against
+#               Stata's own style/gsize-*.style files, which disagreed with
+#               six of its fourteen entries.  Every dashboard changes.
+#               Intended; see .ultraplan/CHANGELOG.md.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "49647a0ce1bba1c41a54486f86463c2dbd60bf0bf039de5c5046687042d95240"
+    "f929e3d363017d0a247d847b5c2964f278386c139cdf4c6cd3659bcd439aa293"
 )
 
 

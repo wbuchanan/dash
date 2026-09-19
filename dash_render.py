@@ -1410,6 +1410,11 @@ class SchemeParser:
         """
         inst = cls.__new__(cls)
         inst._props = dict(cls._FALLBACK_PROPS)
+        # _FALLBACK_PROPS mirrors s2color, so that is what this renders as;
+        # is_fallback records that no file was read, which the name alone
+        # cannot express.
+        inst.name = "s2color"
+        inst.is_fallback = True
         inst._init_properties()
         return inst
 
@@ -1422,12 +1427,26 @@ class SchemeParser:
         fall all the way back, since that means the install is incomplete.
         """
 
-        for candidate in (name, "s2color"):
+        for idx, candidate in enumerate((name, "s2color")):
             if not candidate:
                 continue
             try:
                 return cls(candidate)
-            except (ValueError, OSError):
+            except (ValueError, OSError) as exc:
+                if idx == 0:
+                    # Stata returns rc 0 here and prints
+                    #   note: scheme X not found, using s2color
+                    # so dash does not abort either -- but it must not be
+                    # silent, or scheme(typo) renders s2color and looks
+                    # like the scheme was applied.
+                    warnings.warn(
+                        f"dash: scheme {candidate!r} was not found for "
+                        f"{context}; using s2color. Supported schemes: "
+                        f"{', '.join(sorted(cls._BUILTIN_NAMES))}. "
+                        f"({exc})",
+                        UserWarning,
+                        stacklevel=3,
+                    )
                 continue
         warnings.warn(
             f"dash: no scheme file could be resolved for {context} (searched "
@@ -1439,23 +1458,44 @@ class SchemeParser:
         )
         return cls.fallback()
 
-    # Stata gsize keyword → CSS pt string
+    # Stata gsize keyword -> CSS pt string.
+    #
+    # These are Stata's OWN numbers, read from /Applications/StataNow/ado/
+    # base/style/gsize-<name>.style, each of which states its point size in a
+    # comment ("* 8 pt based on a 4 inch high graph") beside the relative
+    # value it sets.  Six of the previous fourteen entries disagreed with
+    # them -- tiny was 7pt against Stata's 4, vsmall 8 against 6, small 9
+    # against 8, large 13 against 14, vlarge 15 against 16, huge 18 against
+    # 20 -- so a scheme asking for small text got a size Stata never
+    # specifies.
     _GSIZE_PT: dict[str, str] = {
-        "minuscule": "6pt",
-        "third_tiny": "6pt",
-        "half_tiny":  "6pt",
-        "tiny":     "7pt",
-        "vsmall":   "8pt",
-        "small":    "9pt",
-        "medsmall": "10pt",
-        "medium":   "11pt",
-        "medlarge": "12pt",
-        "large":    "13pt",
-        "vlarge":   "15pt",
-        "huge":     "18pt",
-        "vhuge":    "22pt",
-        "zero":     "0pt",
+        "zero":        "0pt",
+        "minuscule":   "2pt",    # relative 0.6944
+        "quarter_tiny": "1pt",   # relative 0.3472
+        "third_tiny":  "1pt",    # relative 0.4630
+        "half_tiny":   "2pt",    # relative 0.6944
+        "tiny":        "4pt",
+        "vsmall":      "6pt",
+        "small":       "8pt",
+        "medsmall":    "10pt",
+        "medium":      "11pt",
+        "medlarge":    "12pt",
+        "large":       "14pt",
+        "vlarge":      "16pt",
+        "huge":        "20pt",
+        "vhuge":       "24pt",
+        "ehuge":       "32pt",
     }
+
+    # Marker diameter in Bokeh screen pixels for each Stata markersize
+    # keyword.  The RATIOS are Stata's, from _GSIZE_PT above; the anchor is
+    # dash's own -- medium, which is what s2color asks for, keeps the size
+    # dash has always drawn, so the default dashboard is unchanged and a
+    # scheme that asks for something else now gets something else.  Stata
+    # sizes a marker relative to a 4-inch-high graph, which no browser has,
+    # so a claim of absolute pixel fidelity here would be a fabrication.
+    _MARKER_PX_ANCHOR: float = 8.0
+    _MARKER_PX_ANCHOR_PT: float = 11.0
 
     # Stata intensity keyword → float 0–1
     _INTENSITY: dict[str, float] = {
@@ -1470,6 +1510,11 @@ class SchemeParser:
         path = self._resolve_path(raw)
         raw_props = self._parse_file(path, _visited=set())
         self._props = raw_props
+        # Which scheme this actually is.  Callers had no way to ask, so
+        # nothing could check that scheme() had been honoured, and a silent
+        # fallback was indistinguishable from a successful resolution.
+        self.name: str = os.path.splitext(os.path.basename(path))[0]
+        self.is_fallback: bool = False
         self._init_properties()
 
     # ------------------------------------------------------------------
@@ -1659,6 +1704,26 @@ class SchemeParser:
             )
             return []
 
+    def _lpattern_chain(self, keys: "tuple[str, ...]") -> list:
+        """Resolve a line pattern through Stata's own fallback chain.
+
+        The first key that is actually PRESENT wins, even when its value is
+        ``solid``: a declared solid translates to an empty dash list, so a
+        truthiness test would treat it as absent and fall through to a
+        dashed entry further down the chain.
+
+        Args:
+            keys: Scheme keys in Stata's resolution order, most specific
+                  first.
+
+        Returns:
+            A Bokeh dash list; empty means solid.
+        """
+        for key in keys:
+            if self._props.get(key, "").strip():
+                return self._lpattern(key)
+        return []
+
     def _lwidth(self, key: str, default: float = 1.5) -> float:
         raw = self._props.get(key, "").strip().lower()
         if not raw:
@@ -1746,9 +1811,47 @@ class SchemeParser:
             self._symbol(f"symbol p{i}") for i in range(1, 16)
         ]
 
-        # Line pattern cycle
+        # Line pattern cycles.  These are two DIFFERENT stubs, not a
+        # preference order.
+        #
+        # Stata resolves a plain `twoway line' through
+        #   linepattern p#lineplot -> plineplot -> p# -> p
+        # (style/seriesstyle-p#line.style -> style/linestyle-p#line.style,
+        # and scheme_line_plots.sthlp), while `linepattern p#line' belongs to
+        # style/linestyle-p#.style, the CONNECTING line of twoway connected.
+        # Reading p#line for a line plot made three overlaid lines under
+        # s2mono all solid where Stata draws solid / dash / vshortdash.
+        #
+        # Falling back from p#lineplot to p#line would be just as wrong in
+        # the other direction: s1mono and stmono1 declare a varied p#line
+        # cycle and no lineplot key at all, and Stata draws their line plots
+        # solid.  So the fallback follows Stata's own chain and stops at the
+        # shared `linepattern p'.
+        #
+        # `declared' rather than truthiness, because a DECLARED solid is an
+        # empty dash list and is indistinguishable from an absent key by
+        # truth value -- scheme-s2gmanual declares `p#lineplot solid' over a
+        # dashed p#line, which a truthiness test would silently misrender.
+        self.p_lineplot_patterns: list = [
+            self._lpattern_chain(
+                (f"linepattern p{i}lineplot", "linepattern plineplot",
+                 f"linepattern p{i}", "linepattern p"))
+            for i in range(1, 16)
+        ]
+        # Kept under its historical name for the connected-plot path and for
+        # the scheme fixture, which still means p#line by it.
         self.p_line_patterns: list = [
             self._lpattern(f"linepattern p{i}line") for i in range(1, 16)
+        ]
+        # Colour of a plain line plot: `color p#lineplot' where the scheme
+        # declares it, `color p#' otherwise -- NOT `color p#line'.  s1mono
+        # declares `color p#line black'; Stata draws #606060 / #a0a0a0 /
+        # #808080 for three overlaid line charts, and dash drew three
+        # identical black lines.
+        self.p_lineplot_colors: list[str] = [
+            self._color(f"color p{i}lineplot",
+                        self._color("color plineplot", self.p_colors[i - 1]))
+            for i in range(1, 16)
         ]
 
         # Default line/grid widths
@@ -1785,6 +1888,10 @@ class SchemeParser:
         # Default marker size for the p cycle, and legend placement.
         # Parsed only; consumers land in sections 10 and 11.
         self.symbolsize: str = self._props.get("symbolsize p", "").strip()
+        # ...and the size the renderer actually draws.  Parsed but never
+        # consumed: every scheme drew an 8px marker, so stcolor's `small'
+        # and economist's `large' were indistinguishable.
+        self.marker_size: float = self._markersize_px(self.symbolsize)
         # Stata's clockdir is a numeric clock position (1-12), so expose it as
         # a number rather than the raw string — consumers compare it as one.
         self.legend_position: "int | None" = self._int(
@@ -1804,12 +1911,43 @@ class SchemeParser:
                        ``"bar"``, ``"area"``, ``"rbar"``, ``"rarea"``.
         """
         idx = index % 15
-        if plot_type in {"line", "connected", "tsline", "tsrline",
-                         "mspline", "mband", "rline", "rconnected"}:
+        # `color p#line' is the CONNECTING line of twoway connected.  A plain
+        # line plot reads `color p#lineplot', falling back to `color p#'.
+        if plot_type in {"line", "tsline", "tsrline", "mspline", "mband",
+                         "rline"}:
+            return self.p_lineplot_colors[idx]
+        if plot_type in {"connected", "rconnected"}:
             return self.p_line_colors[idx]
         if plot_type in {"bar", "rbar", "area", "rarea", "histogram"}:
             return self.p_bar_colors[idx]
         return self.p_colors[idx]
+
+    def _markersize_px(self, keyword: str) -> float:
+        """Convert a Stata markersize keyword to Bokeh screen pixels.
+
+        Args:
+            keyword: The scheme's ``symbolsize p`` value, e.g. ``"medium"``.
+                     A bare number is taken as points.
+
+        Returns:
+            A diameter in pixels; the anchor is dash's own 8px at Stata's
+            ``medium``, and everything else keeps Stata's ratio to it.
+        """
+        kw = (keyword or "").strip().lower()
+        if not kw:
+            return self._MARKER_PX_ANCHOR
+        pt_str = self._GSIZE_PT.get(kw, "")
+        if not pt_str:
+            try:
+                pt = float(kw.lstrip("*"))
+            except ValueError:
+                return self._MARKER_PX_ANCHOR
+        else:
+            pt = float(pt_str[:-2])
+        px = self._MARKER_PX_ANCHOR * pt / self._MARKER_PX_ANCHOR_PT
+        # A zero-size marker is invisible, which is a legitimate request; a
+        # negative one is not expressible.
+        return max(0.0, px)
 
     def default_symbol(self, index: int) -> str:
         """Return the Bokeh marker string for the plot at *index*."""
@@ -1817,7 +1955,15 @@ class SchemeParser:
 
     def default_line_pattern(self, index: int) -> list:
         """Return the Bokeh dash list for the line plot at *index*."""
+        return self.p_lineplot_patterns[index % 15]
+
+    def default_connect_pattern(self, index: int) -> list:
+        """Return the dash list for a connected plot's connecting line."""
         return self.p_line_patterns[index % 15]
+
+    def default_marker_size(self, index: int = 0) -> float:
+        """Return the marker diameter in pixels for the plot at *index*."""
+        return self.marker_size
 
     def apply_to_figure(self, fig: Any) -> None:
         """Apply scheme defaults to *fig*.
@@ -1832,6 +1978,9 @@ class SchemeParser:
         for grid in list(fig.xgrid) + list(fig.ygrid):
             grid.grid_line_color = self.grid_color
             grid.grid_line_width = self.grid_line_width
+            # `color minor_grid' was parsed and never read; Bokeh draws no
+            # minor grid by default, so the scheme's choice never appeared.
+            grid.minor_grid_line_color = self.minor_grid_color
 
         for axis in list(fig.xaxis) + list(fig.yaxis):
             axis.axis_line_color = self.axis_line_color
@@ -1839,20 +1988,38 @@ class SchemeParser:
             axis.major_label_text_font_size = self.tick_label_font_size
 
     def css_block(self) -> str:
-        """Return a ``<style>`` block for the dashboard outer chrome."""
+        """Return the scheme's CSS rules for the dashboard outer chrome.
+
+        Rules only -- no ``<style>`` wrapper.  It used to return its own,
+        and the Bootstrap head embeds the result inside another ``<style>``;
+        measured, the Bootstrap output carried six ``<style>`` tokens with
+        one nested open, and CSS error recovery discarded the rule that
+        followed it.  ``css_style_element()`` adds the wrapper for the one
+        caller that needs a complete element.
+
+        The selectors are the classes the dashboard actually emits.  They
+        used to be ``.dash-title``, ``.dash-subtitle`` and ``.kpi-card``
+        while the HTML emitted ``db-title``, ``db-subtitle`` and an
+        unclassed KPI div, so all three matched nothing and the block was
+        inert even where it was not nested.
+        """
         bg = html.escape(self.background_color)
         tc = html.escape(self.title_color)
         hs = html.escape(self.heading_font_size)
         ts = html.escape(self.text_font_size)
         lbg = html.escape(self.legend_bg_color)
+        lbc = html.escape(self.legend_border_color)
         return (
-            f"<style>\n"
-            f"  body, .bk-root {{ background-color: {bg}; }}\n"
-            f"  .dash-title {{ color: {tc}; font-size: {hs}; }}\n"
-            f"  .dash-subtitle {{ color: {tc}; font-size: {ts}; }}\n"
-            f"  .kpi-card {{ background-color: {lbg}; }}\n"
-            f"</style>\n"
+            f"  body {{ background-color: {bg}; }}\n"
+            f"  .db-title {{ color: {tc}; font-size: {hs}; }}\n"
+            f"  .db-subtitle {{ color: {tc}; font-size: {ts}; }}\n"
+            f"  .db-kpi-card {{ background-color: {lbg}; "
+            f"border-color: {lbc}; }}\n"
         )
+
+    def css_style_element(self) -> str:
+        """Return :meth:`css_block` wrapped in a complete ``<style>``."""
+        return f"<style>\n{self.css_block()}</style>\n"
 
 
 # ===========================================================================
@@ -2684,10 +2851,18 @@ class GlyphMapper:
                 return
 
             non_missing_factors = [f for f in factors if f != "__missing__"]
-            pal_name = self._PALETTE_MAP.get(palette_key or "category10",
-                                             "Category10_10")
-            pal_list = list(getattr(_bk_palettes, pal_name,
-                                    _bk_palettes.Category10_10))
+            # With no explicit palette(), the discrete colours are the
+            # scheme's own p1-p15 cycle -- the same colours the scheme gives
+            # overlaid series.  Bokeh's Category10 was used unconditionally,
+            # so `scatter mpg weight, colorvar(rep78) colordiscrete' drew
+            # Bokeh's blue/orange/green on an economist or mono dashboard.
+            if not palette_key and getattr(self.scheme, "p_colors", None):
+                pal_list = list(self.scheme.p_colors)
+            else:
+                pal_name = self._PALETTE_MAP.get(palette_key or "category10",
+                                                 "Category10_10")
+                pal_list = list(getattr(_bk_palettes, pal_name,
+                                        _bk_palettes.Category10_10))
             while len(pal_list) < len(non_missing_factors):
                 pal_list += pal_list
             pal_colors = pal_list[:len(non_missing_factors)]
@@ -2913,7 +3088,12 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer created.
         """
-        marker = "circle"
+        # The scheme's symbol cycle.  default_symbol() existed with no call
+        # site at all, so every series drew a circle and a mono scheme --
+        # whose whole point is that the symbol distinguishes the series,
+        # because the colour does not -- was unreadable.  Colour schemes
+        # declare circle for every p#, so they are unaffected.
+        marker = self.scheme.default_symbol(color_idx)
         if "msymbol" in options:
             try:
                 marker = self.tr.translate_msymbol(options["msymbol"])
@@ -2948,10 +3128,10 @@ class GlyphMapper:
             y=eff_y,
             source=plot_source,
             marker=marker,
-            size=8,
+            size=self.scheme.default_marker_size(color_idx),
             fill_color=_default_color,
             line_color=_default_color,
-            alpha=0.7,
+            alpha=self.scheme.fill_alpha,
             legend_label=yvar,
         )
         if view is not None:
@@ -2974,11 +3154,17 @@ class GlyphMapper:
         options: dict[str, str],
         view=None,
         color_idx: int = 0,
+        connected: bool = False,
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
 
         Data is sorted by the x variable before rendering to match Stata
         behaviour (Stata's twoway line auto-sorts by x).
+
+        Args:
+            connected: True when this line is the connecting line of a
+                       ``twoway connected``, which Stata styles from the
+                       ``p#line`` stub rather than from ``p#lineplot``.
 
         Args:
             fig:     Bokeh Figure object.
@@ -3006,10 +3192,20 @@ class GlyphMapper:
             x=xvar,
             y=yvar,
             source=sorted_source,
-            line_color=self.scheme.default_color(color_idx, "line"),
-            line_width=1.5,
+            line_color=self.scheme.default_color(
+                color_idx, "connected" if connected else "line"),
+            line_width=self.scheme.default_line_width,
             legend_label=yvar,
         )
+        # The scheme's dash cycle.  default_line_pattern() had no call site,
+        # so three overlaid lines were three solid lines of the same weight
+        # whatever the scheme said.  A solid pattern is an empty list, which
+        # Bokeh already means by "no dash", so it is passed only when the
+        # scheme asks for something else.
+        _dash = (self.scheme.default_connect_pattern(color_idx) if connected
+                 else self.scheme.default_line_pattern(color_idx))
+        if _dash:
+            _line_kwargs["line_dash"] = _dash
         if view is not None:
             _line_kwargs["view"] = view
         r = fig.line(**_line_kwargs)
@@ -3048,7 +3244,8 @@ class GlyphMapper:
         # Pass options without mlabel to sub-calls; apply mlabel once below
         opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
         renderers = [
-            self.map_line(fig, source, yvar, xvar, opts_no_label, view=view, color_idx=color_idx),
+            self.map_line(fig, source, yvar, xvar, opts_no_label, view=view,
+                          color_idx=color_idx, connected=True),
             self.map_scatter(fig, source, yvar, xvar, opts_no_label, view=view, color_idx=color_idx),
         ]
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
@@ -3095,7 +3292,9 @@ class GlyphMapper:
         area_source = ColumnDataSource({xvar: x_arr, _y1_col: y1_base, yvar: y_arr})
         r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
                       fill_color=self.scheme.default_color(color_idx, "area"),
-                      fill_alpha=0.5, legend_label=yvar)
+                      # `intensity area' was parsed and never read, so an
+                      # area was half-transparent whatever the scheme said.
+                      fill_alpha=self.scheme.area_alpha, legend_label=yvar)
 
         # Honour fill color option
         if "color" in options:
@@ -3188,7 +3387,8 @@ class GlyphMapper:
             fill_color=_bar_default_color,
             line_color=_bar_default_color,
             legend_label=yvar,
-            fill_alpha=0.8,
+            # `intensity bar' was parsed and never read.
+            fill_alpha=self.scheme.bar_alpha,
         )
         if view is not None:
             _vbar_kwargs["view"] = view
@@ -4114,7 +4314,9 @@ class GlyphMapper:
                      source=hist_source,
                      fill_color=self.scheme.default_color(color_idx, "histogram"),
                      line_color="white",
-                     fill_alpha=0.8, legend_label=yvar)
+                     # `intensity bar' -- a histogram is a bar plot in
+                     # Stata's own scheme vocabulary.
+                     fill_alpha=self.scheme.bar_alpha, legend_label=yvar)
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -6533,7 +6735,8 @@ for (let ki = 0; ki < kpi_config.length; ki++) {
     // Using template literals here is fine — the JS is embedded via CustomJS
     // args (never interpolated from user input).
     kpi_div.text = (
-        '<div style="background:' + k.bgcolor + '; border-radius:8px; padding:20px; ' +
+        '<div class="db-kpi-card" style="background:' + k.bgcolor +
+        '; border-radius:8px; padding:20px; ' +
         'text-align:center; border:1px solid #dee2e6; min-width:160px; min-height:110px;">' +
         '<div style="font-size:13px; color:#6c757d; margin-bottom:6px;">' + k.title + '</div>' +
         '<div style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
@@ -7089,16 +7292,35 @@ class DashRenderer:
                     f"using {_DEFAULT_LEVEL}.", UserWarning,
                 )
 
-        # Prefer explicit 'scheme' key; fall back to 'theme' key.
+        # Prefer explicit 'scheme' key, then 'theme', then the session's own
+        # c(scheme).  The session scheme is what a Stata user has already
+        # chosen for every graph they draw, so ignoring it made dash the one
+        # command in their session that did not look like the rest.
         _raw_name: str = (
             _build_opts.get("scheme", "").strip()
             or _build_opts.get("theme", "").strip()
+            or _build_opts.get("session_scheme", "").strip()
             or ""
         )
-        # Map theme alias to scheme name; if already a valid scheme name pass
-        # through unchanged; empty string resolves to s2color.
+        # theme() takes Stata theme names, which are aliases for schemes.  A
+        # name that is neither a known alias nor a known scheme is reported:
+        # theme(dark) is documented in dash.sthlp, is absent from the map, and
+        # used to fall through to s2color without a word.
+        _lower = _raw_name.lower()
+        if (_raw_name and _lower not in _THEME_SCHEME_MAP
+                and _lower not in SchemeParser._BUILTIN_NAMES
+                and not _raw_name.endswith(".scheme")):
+            warnings.warn(
+                f"dash: {_raw_name!r} is not a known theme or scheme; using "
+                f"s2color. Themes: "
+                f"{', '.join(sorted(_THEME_SCHEME_MAP))}. Schemes: "
+                f"{', '.join(sorted(SchemeParser._BUILTIN_NAMES))}.",
+                UserWarning,
+            )
+            _raw_name = ""
+            _lower = ""
         _scheme_name: str = (
-            _THEME_SCHEME_MAP.get(_raw_name.lower(), _raw_name) or "s2color"
+            _THEME_SCHEME_MAP.get(_lower, _raw_name) or "s2color"
         )
         self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
             _scheme_name, "the dashboard",
@@ -8027,6 +8249,19 @@ class DashRenderer:
             5: "bottom_right", 6: "bottom_center", 7: "bottom_left",
             8: "bottom_left", 9: "center_left", 10: "top_left",
         }
+        # The scheme's own legend chrome, applied BEFORE the user's
+        # legend() options so an explicit size() still wins.
+        # legend_bg_color and legend_border_color were parsed and had zero
+        # consumers, so an economist dashboard drew a Bokeh-default legend
+        # on top of an economist plot region.
+        for leg in fig.legend:
+            if self.scheme.legend_bg_color:
+                leg.background_fill_color = self.scheme.legend_bg_color
+            if self.scheme.legend_border_color:
+                leg.border_line_color = self.scheme.legend_border_color
+            if self.scheme.text_font_size:
+                leg.label_text_font_size = self.scheme.text_font_size
+
         m_pos = re.search(r"\b(?:position|pos)\s*\(\s*(\d+)\s*\)",
                           legend_opt)
         m_ring = re.search(r"\bring\s*\(\s*(\d+)\s*\)", legend_opt)
@@ -8424,6 +8659,33 @@ class DashRenderer:
         Returns:
             A Bokeh Figure with all glyphs and graph-level options applied.
         """
+        graph_opts = graph_spec.get("graph_options", {})
+        plots = graph_spec.get("plots", [])
+
+        # A graph-level scheme() was parsed, escaped into graph_options and
+        # then never read, so `dash scatter ..., scheme(economist)' drew the
+        # build's scheme and returned rc 0.  Swap it in for the duration of
+        # this figure -- both here and on the mapper, which is what colours
+        # the glyphs.
+        _gscheme = str(graph_opts.get("scheme", "") or "").strip()
+        if _gscheme:
+            _saved_scheme, _saved_mapper = self.scheme, self.mapper.scheme
+            self.scheme = SchemeParser.resolve_or_fallback(
+                _gscheme, f"graph {graph_opts.get('name', '') or '(unnamed)'}")
+            self.mapper.scheme = self.scheme
+            try:
+                return self._make_figure_body(graph_spec, source, facet_view)
+            finally:
+                self.scheme, self.mapper.scheme = _saved_scheme, _saved_mapper
+        return self._make_figure_body(graph_spec, source, facet_view)
+
+    def _make_figure_body(
+        self,
+        graph_spec: dict,
+        source: ColumnDataSource,
+        facet_view: "Optional[Any]" = None,
+    ) -> Any:
+        """The body of :meth:`_make_figure`, run under the graph's scheme."""
         graph_opts = graph_spec.get("graph_options", {})
         plots = graph_spec.get("plots", [])
 
@@ -9321,8 +9583,8 @@ class DashRenderer:
         bgcolor  = _resolve_kpi_color(kpi_def.get("bgcolor", ""), "#f8f9fa")
 
         html_content = f"""
-<div style="background:{bgcolor}; border-radius:8px; padding:20px;
-            text-align:center; border:1px solid #dee2e6;
+<div class="db-kpi-card" style="background:{bgcolor}; border-radius:8px;
+            padding:20px; text-align:center; border:1px solid #dee2e6;
             min-width:160px; min-height:110px;">
   <div style="font-size:13px; color:#6c757d; margin-bottom:6px;">{title}</div>
   <div id="kpi_val_{html.escape(kpi_def.get('name','kpi'))}"
@@ -10768,10 +11030,15 @@ class DashRenderer:
 
         if title_text or subtitle_text:
             header_items = []
+            # The same classes the Bootstrap layout uses, so the scheme's
+            # title colour and heading size reach both.  These carried a
+            # hardcoded colour and no class, so `dash build, scheme(economist)
+            # layout(auto)' drew an economist dashboard with a #555 subtitle
+            # under a default-coloured heading.
             if title_text:
                 header_items.append(Div(
                     text=(
-                        f'<h2 style="font-family:sans-serif;margin-bottom:2px;">'
+                        f'<h2 class="db-title" style="margin-bottom:2px;">'
                         f'{html.escape(title_text)}</h2>'
                     ),
                     sizing_mode="stretch_width",
@@ -10779,8 +11046,8 @@ class DashRenderer:
             if subtitle_text:
                 header_items.append(Div(
                     text=(
-                        f'<p style="font-family:sans-serif;color:#555;'
-                        f'margin-top:0;margin-bottom:8px;">'
+                        f'<p class="db-subtitle" '
+                        f'style="margin-top:0;margin-bottom:8px;">'
                         f'{html.escape(subtitle_text)}</p>'
                     ),
                     sizing_mode="stretch_width",
@@ -10795,7 +11062,11 @@ class DashRenderer:
         self._last_layout_root = layout_root
         html_str = file_html(layout_root, INLINE, title=title_text or "dash")
 
-        _scheme_css = self.scheme.css_block()
+        # A complete element here: this path splices into an existing <head>
+        # that has no <style> of its own.  The Bootstrap path below is
+        # already inside one, which is why css_block() no longer carries a
+        # wrapper.
+        _scheme_css = self.scheme.css_style_element()
         html_str = html_str.replace(
             "<head>",
             f"<head>\n    {_CSP_META}\n{_scheme_css}",
@@ -10993,7 +11264,6 @@ class ServerAppBuilder:
         layout_opt = bo.get("layout", "auto") or "auto"
         link_opt = bo.get("link", "") or ""
         filter_raw = bo.get("filter", "") or ""
-        theme_opt = bo.get("theme", "default") or "default"
 
         graphs = self.spec.get("graphs", [])
         kpis = self.spec.get("kpis", [])
@@ -13048,7 +13318,7 @@ class ServerAppBuilder:
             "        val = _compute_kpi(df, kstat, kvar)",
             "        disp = _format_kpi(val, kfmt)",
             "        div_html = (",
-            "            f'<div style=\"background:{html.escape(kbg)};border-radius:8px;'",
+            "            f'<div class=\"db-kpi-card\" style=\"background:{html.escape(kbg)};border-radius:8px;'",
             "            f'padding:16px;text-align:center;font-family:sans-serif;\">'",
             "            f'<div style=\"font-size:13px;color:#888;margin-bottom:4px;\">{ktitle}</div>'",
             "            f'<div id=\"kpi_val_{html.escape(kname)}\" style=\"font-size:28px;font-weight:bold;color:{html.escape(kcolor)};\">{html.escape(disp)}</div>'",
@@ -13362,7 +13632,7 @@ class ServerAppBuilder:
             "                kcolor = kpi.get('color', '#333333') or '#333333'",
             "                kbg = kpi.get('bgcolor', '#f8f9fa') or '#f8f9fa'",
             "                _kpi_divs[kname].text = (",
-            "                    f'<div style=\"background:{html.escape(kbg)};border-radius:8px;'",
+            "                    f'<div class=\"db-kpi-card\" style=\"background:{html.escape(kbg)};border-radius:8px;'",
             "                    f'padding:16px;text-align:center;font-family:sans-serif;\">'",
             "                    f'<div style=\"font-size:13px;color:#888;margin-bottom:4px;\">{ktitle}</div>'",
             "                    f'<div style=\"font-size:28px;font-weight:bold;color:{html.escape(kcolor)};\">{html.escape(disp)}</div>'",
@@ -13401,7 +13671,7 @@ class ServerAppBuilder:
             "                kcolor = kpi.get('color', '#333333') or '#333333'",
             "                kbg = kpi.get('bgcolor', '#f8f9fa') or '#f8f9fa'",
             "                _kpi_divs[kname].text = (",
-            "                    f'<div style=\"background:{html.escape(kbg)};border-radius:8px;'",
+            "                    f'<div class=\"db-kpi-card\" style=\"background:{html.escape(kbg)};border-radius:8px;'",
             "                    f'padding:16px;text-align:center;font-family:sans-serif;\">'",
             "                    f'<div style=\"font-size:13px;color:#888;margin-bottom:4px;\">{ktitle}</div>'",
             "                    f'<div style=\"font-size:28px;font-weight:bold;color:{html.escape(kcolor)};\">{html.escape(disp)}</div>'",

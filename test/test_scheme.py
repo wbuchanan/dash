@@ -289,11 +289,29 @@ class TestApplyToFigure:
 # ============================================================
 
 class TestCssBlock:
-    def test_returns_style_tags(self):
+    def test_the_rules_carry_no_style_wrapper(self):
+        """css_block() returns rules; css_style_element() returns an element.
+
+        It used to return its own <style>, and the Bootstrap head embeds the
+        result inside another one -- measured, six <style> tokens with one
+        nested open, and CSS error recovery discarded the rule that followed
+        it. The two callers want different things, so there are now two
+        methods.
+        """
         sp = SchemeParser("s2color")
         css = sp.css_block()
-        assert "<style>" in css
-        assert "</style>" in css
+        assert "<style>" not in css and "</style>" not in css, css[:200]
+        assert "{" in css and "}" in css, "no CSS rules at all"
+
+    def test_the_element_form_is_a_complete_style_element(self):
+        sp = SchemeParser("s2color")
+        el = sp.css_style_element()
+        assert el.startswith("<style>")
+        assert el.rstrip().endswith("</style>")
+        assert sp.css_block() in el, (
+            "the element form must wrap exactly the rules, or the two "
+            "callers style different things"
+        )
 
     def test_contains_background_color(self):
         sp = SchemeParser("s2color")

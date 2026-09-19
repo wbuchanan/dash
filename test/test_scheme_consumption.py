@@ -59,10 +59,15 @@ _THREE_SERIES = [
 ]
 
 
-def _render(plots=None, *, scheme="", theme="", layout="auto", kpis=None):
+def _render(plots=None, *, scheme="", theme="", layout="auto", kpis=None,
+            title="", subtitle=""):
     plots = plots or _THREE_SERIES
     spec = make_spec(plots)
     spec["build_options"]["layout"] = layout
+    if title:
+        spec["build_options"]["title"] = title
+    if subtitle:
+        spec["build_options"]["subtitle"] = subtitle
     if scheme:
         spec["build_options"]["scheme"] = scheme
     if theme:
@@ -258,14 +263,27 @@ class TestSchemeCssActuallyApplies:
 
     @pytest.mark.parametrize("layout", ["auto", "bs"])
     def test_every_selector_matches_a_class_the_html_emits(self, layout):
-        """The mechanical check that stops this recurring."""
+        """The mechanical check that stops this recurring.
+
+        The dashboard carries a title, a subtitle and a KPI so that every
+        selector css_block() emits has something it could match; a title
+        selector on a dashboard with no title proves nothing either way.
+        """
         out, dr = _render(scheme="economist", layout=layout,
+                          title="A title", subtitle="A subtitle",
                           kpis=[{"name": "k1", "stat": "mean", "var": "mpg",
                                  "title": "T", "fmt": "%9.1f"}])
         block = dr.scheme.css_block()
         selectors = set(re.findall(r"\.([A-Za-z][\w-]*)\s*\{", block))
         assert selectors, "css_block() emits no class selectors at all"
+        # Two spellings, because the dashboard has two kinds of markup.
+        # Page chrome is written into the document directly; a KPI card is
+        # the text of a Bokeh Div, which reaches the file inside Bokeh's
+        # JSON with its quotes escaped as \".  The browser applies the class
+        # either way, so a check that saw only the first spelling reported a
+        # live class as missing.
         emitted = set(re.findall(r'class="([^"]*)"', out))
+        emitted |= set(re.findall(r'class=\\+"([^"\\]+)\\+"', out))
         classes = {c for group in emitted for c in group.split()}
         missing = sorted(s for s in selectors if s not in classes)
         assert not missing, (
@@ -438,4 +456,111 @@ class TestNoParsedKeyIsDiscarded:
         code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
         assert code.count(f".{attr}") >= 2, (
             f"scheme.{attr} is parsed and never read"
+        )
+
+
+# ======================================================================
+# The lineplot / line distinction, and its fallback chain
+# ======================================================================
+
+class TestLinePatternFollowsStatasOwnChain:
+    """``p#lineplot`` and ``p#line`` are different stubs, not a preference.
+
+    Stata resolves a plain ``twoway line`` through
+    ``linepattern p#lineplot -> plineplot -> p# -> p``
+    (``style/seriesstyle-p#line.style`` then ``style/linestyle-p#line.style``,
+    documented in ``scheme_line_plots.sthlp``), while ``linepattern p#line``
+    belongs to ``style/linestyle-p#.style`` — the connecting line of
+    ``twoway connected``.
+
+    The first fix read ``p#line`` for a line plot, which made s2mono's three
+    overlaid lines all solid.  The obvious repair — try ``p#lineplot``, fall
+    back to ``p#line`` — is wrong in the other direction: s1mono and stmono1
+    declare a varied ``p#line`` cycle and no ``lineplot`` key at all, and
+    Stata draws their line plots solid.  Measured from Stata's own files:
+    only ``scheme-s2mono.scheme`` and ``scheme-s2gmanual.scheme`` declare a
+    ``lineplot`` directive; the three in ``scheme-s2color.scheme`` are
+    commented-out examples.
+    """
+
+    @pytest.mark.parametrize("name", ["s2mono", "sj", "stsj", "stmono2"])
+    def test_a_scheme_that_declares_lineplot_varies_the_pattern(self, name):
+        sp = SchemeParser(name)
+        got = [sp.default_line_pattern(i) for i in range(3)]
+        assert got[0] == [], f"{name} p1 should be solid; got {got[0]}"
+        assert got[1] and got[2], (
+            f"{name} declares linepattern p2lineplot/p3lineplot; got {got}"
+        )
+
+    @pytest.mark.parametrize("name", ["s1mono", "stmono1"])
+    def test_a_varied_p_hash_line_does_not_leak_into_a_line_plot(self, name):
+        """The regression this class exists for."""
+        sp = SchemeParser(name)
+        assert sp.p_line_patterns[1], (
+            f"{name} is expected to declare a varied p#line cycle; the test "
+            f"proves nothing otherwise"
+        )
+        got = [sp.default_line_pattern(i) for i in range(3)]
+        assert got == [[], [], []], (
+            f"{name} declares no lineplot key, so Stata draws all three "
+            f"lines solid; dash drew {got} by falling back to p#line"
+        )
+
+    @pytest.mark.parametrize("name", ["s2color", "stcolor", "economist"])
+    def test_a_colour_scheme_draws_solid_lines(self, name):
+        sp = SchemeParser(name)
+        assert [sp.default_line_pattern(i) for i in range(3)] == [[], [], []]
+
+    def test_a_declared_solid_is_not_mistaken_for_an_absent_key(self):
+        """A declared ``solid`` is an empty dash list.
+
+        Resolving the chain by truthiness therefore treats it as absent and
+        falls through to a dashed entry further down — which is exactly what
+        ``scheme-s2gmanual.scheme`` would trigger, declaring
+        ``p#lineplot solid`` over a dashed ``p#line``.
+        """
+        sp = SchemeParser("s2color")
+        sp._props = dict(sp._props)
+        sp._props["linepattern p2lineplot"] = "solid"
+        sp._props["linepattern p2"] = "dash"
+        sp._init_properties()
+        assert sp.default_line_pattern(1) == [], (
+            "a declared solid fell through to the next key in the chain"
+        )
+
+    def test_the_chain_continues_past_an_absent_key(self):
+        sp = SchemeParser("s2color")
+        sp._props = dict(sp._props)
+        sp._props.pop("linepattern p2lineplot", None)
+        sp._props["linepattern p2"] = "dash"
+        sp._init_properties()
+        assert sp.default_line_pattern(1), (
+            "an absent lineplot key must fall through to `linepattern p#'"
+        )
+
+    def test_a_connected_plot_keeps_reading_p_hash_line(self):
+        """p#line is not dead — it is the connecting line's stub."""
+        sp = SchemeParser("s1mono")
+        assert sp.default_connect_pattern(1) == sp.p_line_patterns[1]
+        assert sp.default_connect_pattern(1), (
+            "s1mono declares linepattern p2line; a connected plot must use it"
+        )
+
+    def test_the_rendered_connecting_line_uses_the_connect_pattern(self):
+        plots = [
+            {"type": "connected", "yvar": "mpg", "xvar": "weight",
+             "options": {}},
+            {"type": "connected", "yvar": "price", "xvar": "weight",
+             "options": {}},
+        ]
+        _, dr = _render(plots, scheme="s1mono")
+        dashes = []
+        for fig in dr.figures.values():
+            for r in fig.renderers:
+                g = getattr(r, "glyph", None)
+                if g is not None and type(g).__name__ == "Line":
+                    dashes.append(list(g.line_dash))
+        assert len(dashes) >= 2, dashes
+        assert dashes[1] == SchemeParser("s1mono").default_connect_pattern(1), (
+            f"the connecting line ignored p#line: {dashes}"
         )

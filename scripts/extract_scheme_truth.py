@@ -441,6 +441,36 @@ def extract(stata_base: str, scheme: str) -> dict:
                                lambda t: t)
     p_line_dash = [resolve_linepattern(r, t) for t in p_line_patterns]
 
+    # --- the "lineplot" stub ------------------------------------------------ #
+    # Stata distinguishes two per-plot line stubs, and conflating them is a real
+    # rendering error rather than a nuance:
+    #
+    #   p#line      the CONNECTING line of a connected/scatter-with-lines plot
+    #   p#lineplot  the line drawn by ``twoway line`` itself
+    #
+    # So a plain ``twoway line`` under s2mono takes its dash pattern from
+    # ``linepattern p#lineplot`` (solid / dash / vshortdash / ...), not from
+    # ``linepattern p#line`` (which s2mono leaves at the ``linepattern p solid``
+    # class value inherited from s2color).  Only the s2mono branch of the base
+    # schemes declares any ``lineplot`` key; everywhere else these resolve
+    # through the ordinary p#stub -> pstub -> p# -> p fallback, which is why
+    # ``lineplot_declared`` below is recorded separately: it says whether the
+    # value was WRITTEN by a scheme or merely INHERITED by fallback, and a
+    # translation must not present the second as though it were the first.
+    p_lineplot_colors = p_series("p_lineplot_colors", "color", "lineplot",
+                                 c.resolve)
+    p_lineplot_patterns = p_series("p_lineplot_patterns", "linepattern",
+                                   "lineplot", lambda t: t)
+    p_lineplot_dash = [resolve_linepattern(r, t) for t in p_lineplot_patterns]
+
+    def lineplot_declared(cls: str) -> bool:
+        """True if any ``<cls> p*lineplot`` key is set in the #include chain."""
+        return any(
+            k == "plineplot" or (k.startswith("p") and k.endswith("lineplot"))
+            for (c_, k) in r.settings
+            if c_ == cls
+        )
+
     def scalar(out_key, cls, keys, conv, class_default=True):
         tok, s = getsrc(cls, keys, class_default=class_default)
         sources[out_key] = s
@@ -471,6 +501,18 @@ def extract(stata_base: str, scheme: str) -> dict:
         "p_symbols": p_symbols,
         "p_line_patterns": p_line_patterns,
         "p_line_dash_patterns": [d["dash"] if d else None for d in p_line_dash],
+
+        "p_lineplot_colors": p_lineplot_colors,
+        "p_lineplot_patterns": p_lineplot_patterns,
+        "p_lineplot_dash_patterns": [
+            d["dash"] if d else None for d in p_lineplot_dash
+        ],
+        # Whether the chain actually WRITES a lineplot key, as opposed to
+        # inheriting one by fallback.  See the note above p_lineplot_colors.
+        "lineplot_declared": {
+            "color": lineplot_declared("color"),
+            "linepattern": lineplot_declared("linepattern"),
+        },
 
         "background_color": color_of("background_color", ["background"]),
         "plotregion_color": color_of("plotregion_color", ["plotregion"]),
@@ -579,6 +621,32 @@ def main(argv=None) -> int:
                                  "(byte-identical scheme-*.scheme and style files)",
             "n_plots": N_PLOTS,
             "fallback_chain": "p#stub -> pstub -> p# -> p",
+            "lineplot_vs_line": (
+                "Stata keeps two per-plot line stubs apart: 'p#line' is the "
+                "connecting line of twoway connected, while 'p#lineplot' is the "
+                "line twoway line itself draws. They are NOT interchangeable: "
+                "under s2mono, 'linepattern p#line' resolves to the inherited "
+                "'linepattern p solid' while 'linepattern p#lineplot' is "
+                "solid/dash/vshortdash/..., so three overlaid twoway line plots "
+                "are drawn with three different dashes. Only the s2mono branch "
+                "(s2mono, stmono2, stsj, sj) declares any lineplot key; for "
+                "every other scheme p_lineplot_* is the p#stub->pstub->p#->p "
+                "fallback result, not something the scheme wrote. "
+                "'lineplot_declared' records which case a scheme is in, per "
+                "class, so a translation can tell an inherited value from a "
+                "declared one instead of presenting the two alike. "
+                "The indirection is in Stata's own style files: "
+                "style/seriesstyle-p#line.style points a line plot's line at "
+                "linestyle p#line, and style/linestyle-p#line.style then sets "
+                "width/color/pattern from 'scheme p#lineplot' -- whereas "
+                "style/linestyle-p#.style (the connected-plot linestyle) sets "
+                "color/pattern from 'scheme p#line'. Stata documents the three "
+                "keys in scheme_line_plots.sthlp, and scheme_line_plots.sthlp "
+                "plus scheme_shared_plots.sthlp give the fallback: a scheme "
+                "without the line-plot-specific entries uses the entries shared "
+                "among all plottypes, namely 'color p#' and 'linepattern p' -- "
+                "NOT 'linepattern p#line', which is a different stub."
+            ),
             "intensity_multiplier_rule": (
                 "f<=1: c' = round(255-(255-c)*f); f>1: c' = round(c/f); "
                 "clamp [0,255]; round half away from zero. Verified empirically "
