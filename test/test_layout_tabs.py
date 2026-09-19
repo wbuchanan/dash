@@ -73,7 +73,7 @@ _LABEL_NAMES = {"foreign": "origin"}
 
 
 def _render(graphs, layout, *, tabs="", link="", value_labels=None,
-            value_label_names=None):
+            value_label_names=None, build_extra=None):
     spec = make_spec(graphs[0]["plots"])
     spec["graphs"] = graphs
     spec["build_options"]["layout"] = layout
@@ -82,6 +82,8 @@ def _render(graphs, layout, *, tabs="", link="", value_labels=None,
         g["graph_options"]["name"] for g in graphs)
     if tabs:
         spec["build_options"]["tabs"] = tabs
+    if build_extra:
+        spec["build_options"].update(build_extra)
     sp = tempfile.mkstemp(".json")[1]
     dp = tempfile.mkstemp(".json")[1]
     op = tempfile.mkstemp(".html")[1]
@@ -424,3 +426,107 @@ class TestTabsHoldFacetedGraphs:
         out, dr = self._tabbed("bs")
         for name, fig in dr.figures.items():
             assert out.count(fig.id) >= 1, name
+
+
+# ======================================================================
+# tabs() and filterposition() under the DEFAULT layout
+# ======================================================================
+
+def _normalise(html_text):
+    """Strip Bokeh's per-render ids so two documents can be compared."""
+    out = re.sub(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        "U", html_text)
+    return re.sub(r"\bp\d{3,6}\b", "P", out)
+
+
+class TestTabsWorkUnderEveryLayout:
+    """``tabs()`` was Bootstrap-only, and said nothing about it.
+
+    Measured: with ``layout(auto)`` — the **default** — the rendered document
+    is byte-identical with and without ``tabs()`` once Bokeh's per-render ids
+    are normalised. The option was parsed, validated against the registry,
+    carried all the way into Python and then dropped, with no warning and
+    rc 0.
+
+    ``_build_tabs_widget`` returns an ordinary Bokeh ``Tabs``; nothing about
+    it is Bootstrap-specific, so the plain path can hold it too.
+    """
+
+    @pytest.mark.parametrize("layout", ["auto", "bs", "2 1"])
+    def test_tabs_change_the_document(self, layout):
+        without, _ = _render(_THREE, layout)
+        with_tabs, _ = _render(_THREE, layout,
+                               tabs="One: s1 / Two: s2 s3")
+        assert _normalise(without) != _normalise(with_tabs), (
+            f"layout({layout}): tabs() changed nothing at all"
+        )
+
+    @pytest.mark.parametrize("layout", ["auto", "bs", "2 1"])
+    def test_a_tabs_model_is_emitted(self, layout):
+        out, _ = _render(_THREE, layout, tabs="One: s1 / Two: s2 s3")
+        assert '"type":"Tabs"' in out or '"name":"Tabs"' in out, (
+            f"layout({layout}): no Tabs model reached the document"
+        )
+
+    @pytest.mark.parametrize("layout", ["auto", "bs", "2 1"])
+    def test_the_tab_titles_reach_the_document(self, layout):
+        out, _ = _render(_THREE, layout, tabs="Alpha: s1 / Beta: s2 s3")
+        assert "Alpha" in out and "Beta" in out, layout
+
+    @pytest.mark.parametrize("layout", ["auto", "bs", "2 1"])
+    def test_every_graph_still_reaches_the_document(self, layout):
+        out, dr = _render(_THREE, layout, tabs="One: s1 / Two: s2 s3")
+        for name, fig in dr.figures.items():
+            assert fig.id in out, (
+                f"layout({layout}): figure {name!r} vanished once it was "
+                f"put in a tab"
+            )
+
+    def test_a_graph_left_out_of_every_tab_is_still_drawn(self):
+        """Naming two of three graphs must not lose the third."""
+        out, dr = _render(_THREE, "auto", tabs="Only: s1")
+        for name, fig in dr.figures.items():
+            assert fig.id in out, name
+
+    def test_no_tabs_option_leaves_the_document_unchanged(self):
+        """The fix must not alter an ordinary dashboard."""
+        a, _ = _render(_THREE, "auto")
+        b, _ = _render(_THREE, "auto")
+        assert _normalise(a) == _normalise(b)
+
+
+class TestFilterPositionWorksUnderEveryLayout:
+    """``filterposition(left)`` was Bootstrap-only, and said nothing.
+
+    Measured: with ``layout(auto)`` the document is identical for
+    ``filterposition(top)`` and ``filterposition(left)``.
+    """
+
+    _F = [{"varname": "foreign", "type": "dropdown", "exclude": [],
+           "label": ""}]
+
+    @staticmethod
+    def _go(layout, pos):
+        spec_extra = {"filters": TestFilterPositionWorksUnderEveryLayout._F,
+                      "filter_position": pos}
+        return _render(_THREE, layout, build_extra=spec_extra)
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    def test_left_differs_from_top(self, layout):
+        top, _ = self._go(layout, "top")
+        left, _ = self._go(layout, "left")
+        assert _normalise(top) != _normalise(left), (
+            f"layout({layout}): filterposition(left) changed nothing"
+        )
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    def test_the_filter_widget_is_still_built(self, layout):
+        _, dr = self._go(layout, "left")
+        assert dr.filter_widgets, layout
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    def test_every_graph_still_reaches_the_document(self, layout):
+        out, dr = self._go(layout, "left")
+        for name, fig in dr.figures.items():
+            assert fig.id in out, f"layout({layout}): {name}"

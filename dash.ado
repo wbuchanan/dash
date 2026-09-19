@@ -1970,7 +1970,9 @@ program define _dash_build
     // ---- validate filter_position ----
     if "`filterposition'" == "" local filterposition "top"
     if "`filterposition'" != "top" & "`filterposition'" != "left" {
-        display as error "dash build: filter_position() must be 'top' (default) or 'left' (sidebar)."
+        // The option is declared FILTERPOSition(); naming it filter_position()
+        // here sent the user to an option -syntax- does not accept.
+        display as error "dash build: filterposition() must be 'top' (default) or 'left' (sidebar)."
         exit(198)
     }
 

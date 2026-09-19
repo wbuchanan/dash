@@ -74,7 +74,9 @@
 {cmdab:sub:title}{cmd:(}{it:string}{cmd:)}
 {cmdab:lay:out}{cmd:(}{it:layout_spec}{cmd:)}
 {cmd:link(}{it:namelist} | {cmd:_all}{cmd:)}
-{cmd:filter(}{it:varname}{cmd:, type(}{it:filter_type}{cmd:)} [{cmd:exclude(}{it:namelist}{cmd:)}]{cmd:)}
+{cmd:filter(}{it:varname}{cmd:, type(}{it:filter_type}{cmd:)} [{cmd:exclude(}{it:namelist}{cmd:)} {cmd:label(}{it:string}{cmd:)}]{cmd:)}
+{cmd:tabs(}{it:tab_spec}{cmd:)}
+{cmdab:filterpos:ition}{cmd:(top}|{cmd:left)}
 {cmd:theme(}{it:theme_name}{cmd:)}
 {cmdab:sch:eme}{cmd:(}{it:schemename}{cmd:)}
 {cmdab:nobr:owser}
@@ -245,6 +247,11 @@ The following options are available on {cmd:dash build}.
     see {help dash##linking:Linking and Brushing}{p_end}
 {synopt:{cmd:filter(}{it:varname,...}{cmd:)}}add a filter widget;
     see {help dash##filters:Filters}{p_end}
+{synopt:{cmd:tabs(}{it:tab_spec}{cmd:)}}group graphs and KPI cards into
+    tabs; see {help dash##tabs:Tabs}{p_end}
+{synopt:{cmdab:filterpos:ition}{cmd:(}{it:where}{cmd:)}}where the filter
+    widgets are placed: {cmd:top} (the default) puts them in a row above the
+    dashboard, {cmd:left} puts them in a sidebar beside it{p_end}
 {synopt:{cmd:theme(}{it:name}{cmd:)}}dashboard color theme
     ({cmd:default}, {cmd:clean}, {cmd:dark}){p_end}
 {synopt:{cmd:server}}write a self-contained Bokeh Server {cmd:.py} app
@@ -279,6 +286,34 @@ in the dashboard grid.
     explicit placement.  Each registered item is placed at the specified
     {it:row},{it:col} position (1-indexed).  Example:
     {cmd:layout(s1:1,1 s2:1,2 k1:2,1)}.
+
+{phang2}{cmd:layout(bs}[{cmd::} {it:name}{cmd:=}{it:span} ...]{cmd:)} —
+    a responsive Bootstrap-style 12-column grid, which reflows as the
+    browser window narrows.  With no specification {cmd:dash} chooses the
+    spans; otherwise each named item takes the given number of columns out
+    of 12.  Example: {cmd:layout(bs: k1=3 k2=3 s1=6)}.
+
+
+{marker tabs}
+{title:Tabs}
+
+{pstd}
+{cmd:tabs()} groups registered graphs and KPI cards into named tabs.  The
+specification is one or more groups separated by {cmd:/}, each written as a
+title, a colon, and the names that belong to it:
+
+{phang2}{cmd:tabs(}{it:title}{cmd::} {it:name} [{it:name} ...]
+    [{cmd:/} {it:title}{cmd::} {it:name} ...]{cmd:)}{p_end}
+
+{pstd}
+For example:
+
+{phang2}{cmd:dash build, saving(d.html) tabs(Overview: k1 s1 / Detail: s2 s3)}{p_end}
+
+{pstd}
+Tab titles are used exactly as written.  A registered item named in no tab is
+still drawn, below the tabs.  Names that are not in the registry are ignored.
+{cmd:tabs()} works with every {cmd:layout()}.
 
 
 {marker linking}

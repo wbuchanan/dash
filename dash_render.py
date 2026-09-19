@@ -533,6 +533,11 @@ _ROW_ID_COLUMN = "__dash_row__"
 # rebuild can leave it alone.  A colour key is not a series key: Stata
 # suppresses it with clegend(), not legend().
 _COLORVAR_LEGEND_NAME = "_dash_clegend"
+# Width of the filterposition(left) sidebar on the plain layout path, in
+# pixels.  The Bootstrap path expresses the same thing as a grid span; this
+# path has no grid to span, so it needs a number.  Wide enough for a slider
+# plus its title at the default font.
+_SIDEBAR_WIDTH_PX = 240
 
 # Milliseconds in a day.  Bokeh transports datetimes as epoch milliseconds,
 # but DateSlider.step and DateRangeSlider.step are in units of DAYS.
@@ -11322,7 +11327,14 @@ class DashRenderer:
         tabs_widget:  Any       = None
         tabbed_names: set[str]  = set()
         tabbed_keys:  set[str]  = set()
-        if tabs_str and DashRenderer._is_bootstrap_layout(layout_opt):
+        # Every layout, not just Bootstrap.  tabs() used to be parsed,
+        # validated against the registry, carried into Python and then
+        # dropped unless layout(bs) -- with no warning and rc 0.  Measured:
+        # under layout(auto), the DEFAULT, the rendered document was
+        # byte-identical with and without the option.  The widget
+        # _build_tabs_widget returns is an ordinary Bokeh Tabs; nothing
+        # about it is Bootstrap-specific.
+        if tabs_str:
             _tabs_spec = DashRenderer._parse_tabs_option(tabs_str, all_names)
             if _tabs_spec:
                 (tabs_widget, tabbed_names,
@@ -11348,8 +11360,17 @@ class DashRenderer:
         if n_items > rows_n * cols_n:
             rows_n = math.ceil(n_items / cols_n)
 
+        # A tabbed element is drawn inside the Tabs widget, so it must not
+        # also take a grid cell.
+        _grid_names = [n for n in all_names if n not in tabbed_names]
+        if tabs_widget is not None:
+            rows_n, cols_n = self._compute_grid(_grid_names, layout_opt)
+            n_items = len(_grid_names)
+            if n_items and n_items > rows_n * cols_n:
+                rows_n = math.ceil(n_items / cols_n)
+
         cells: list[Any] = []
-        for name in all_names:
+        for name in _grid_names:
             if name in self._facet_map:
                 facet_figs = [
                     self.figures[fkey]
@@ -11399,11 +11420,34 @@ class DashRenderer:
         ]
         grid = gridplot(grid_rows, sizing_mode="stretch_width")
 
-        if filter_row_widgets:
-            filter_bar  = row(filter_row_widgets, sizing_mode="stretch_width")
-            layout_root = column(filter_bar, grid, sizing_mode="stretch_width")
+        # The tabs widget sits above the remaining grid.  An empty grid --
+        # every element tabbed -- would otherwise contribute a stray blank
+        # row.
+        if tabs_widget is not None:
+            _content = (column(tabs_widget, grid, sizing_mode="stretch_width")
+                        if cells and any(c is not None for c in cells)
+                        else tabs_widget)
         else:
-            layout_root = grid
+            _content = grid
+
+        if filter_row_widgets:
+            # filterposition(left) was honoured only by the Bootstrap path;
+            # under layout(auto) the document was identical for top and
+            # left.  A Bokeh column beside the content is the plain-path
+            # equivalent of the Bootstrap sidebar -- the db-sidebar-* markup
+            # and its CSS exist only inside the Bootstrap document.
+            if filter_position == "left":
+                _sidebar = column(*filter_row_widgets, sizing_mode="fixed",
+                                  width=_SIDEBAR_WIDTH_PX)
+                layout_root = row(_sidebar, _content,
+                                  sizing_mode="stretch_width")
+            else:
+                filter_bar = row(*filter_row_widgets,
+                                 sizing_mode="stretch_width")
+                layout_root = column(filter_bar, _content,
+                                     sizing_mode="stretch_width")
+        else:
+            layout_root = _content
 
         if title_text or subtitle_text:
             header_items = []
