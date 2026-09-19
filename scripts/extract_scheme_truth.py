@@ -527,8 +527,13 @@ def extract(stata_base: str, scheme: str) -> dict:
         "draw_major_hgrid": scalar("draw_major_hgrid", "yesno",
                                    ["draw_major_hgrid"], lambda t: t.strip(),
                                    class_default=False),
+        # The y-axis key is `draw_major_vgrid'.  This read `draw_major_grid',
+        # which is dead at scheme level (nothing under Stata's style/ reads
+        # `scheme draw_major_grid') and is `no' in every scheme, so the
+        # fixture recorded "no grid" for all fourteen where Stata gives yes
+        # for ten of them.
         "draw_major_vgrid": scalar("draw_major_vgrid", "yesno",
-                                   ["draw_major_grid"], lambda t: t.strip(),
+                                   ["draw_major_vgrid"], lambda t: t.strip(),
                                    class_default=False),
         "title_color": color_of("title_color", ["heading"]),
         "axis_line_color": color_of("axis_line_color", ["axisline"]),

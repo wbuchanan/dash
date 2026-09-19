@@ -1906,12 +1906,25 @@ class SchemeParser:
         self.graphsize_x: "float | None" = self._float("graphsize x", _gs_both)
         self.graphsize_y: "float | None" = self._float("graphsize y", _gs_both)
 
-        # Grid visibility.  Stata spells the vertical one `draw_major_grid`
-        # and the horizontal one `draw_major_hgrid`; both are `yesno`
-        # directives.  Parsed only -- section 12 consumes them when it wires
-        # grid rendering.
+        # Grid visibility.
+        #
+        # A Stata grid belongs to an AXIS, and the key is named for that
+        # axis's orientation, not for the direction of the lines:
+        #   style/axisstyle-horizontal_default.style:18
+        #       set draw_major_grid    scheme draw_major_hgrid
+        #   style/axisstyle-vertical_default.style:18
+        #       set draw_major_grid    scheme draw_major_vgrid
+        # The horizontal axis is x, and its major grid lines are the VERTICAL
+        # ones at the x ticks; the vertical axis is y, and its lines are
+        # HORIZONTAL.  The comment that used to sit here had it backwards.
+        #
+        # The y-axis flag came from `yesno draw_major_grid', which is DEAD at
+        # scheme level -- grep "scheme draw_major_grid" over Stata's
+        # style/ directory returns nothing.  Every scheme declares it `no',
+        # so the flag read False everywhere and looked plausible, while
+        # Stata's real answer for ten of the fourteen is `yes'.
         self.draw_major_hgrid: bool = self._yesno("yesno draw_major_hgrid", False)
-        self.draw_major_vgrid: bool = self._yesno("yesno draw_major_grid", False)
+        self.draw_major_vgrid: bool = self._yesno("yesno draw_major_vgrid", False)
 
         # Default marker size for the p cycle, and legend placement.
         # Parsed only; consumers land in sections 10 and 11.
@@ -2003,12 +2016,25 @@ class SchemeParser:
         if self.axis_line_color:
             fig.outline_line_color = self.axis_line_color
 
-        for grid in list(fig.xgrid) + list(fig.ygrid):
-            grid.grid_line_color = self.grid_color
-            grid.grid_line_width = self.grid_line_width
-            # `color minor_grid' was parsed and never read; Bokeh draws no
-            # minor grid by default, so the scheme's choice never appeared.
-            grid.minor_grid_line_color = self.minor_grid_color
+        # Per axis, because the scheme decides each one separately.  This
+        # loop used to colour every grid unconditionally, and Bokeh draws
+        # both by default, so dash drew a grid Stata does not draw in ten of
+        # the fourteen shipped schemes -- BOTH grids under s1color, s1mono,
+        # s1rcolor and stmono1, which draw none at all.
+        #
+        # `grid_line_color = None' is how the rest of the file expresses "no
+        # grid" (see the xlabel(, nogrid) path), so an explicit nogrid and a
+        # scheme-level no stay indistinguishable, which is what lets an
+        # explicit option override the scheme without special-casing.
+        for grids, draw in ((fig.xgrid, self.draw_major_hgrid),
+                            (fig.ygrid, self.draw_major_vgrid)):
+            for grid in grids:
+                grid.grid_line_color = self.grid_color if draw else None
+                grid.grid_line_width = self.grid_line_width
+                # `color minor_grid' was parsed and never read; Bokeh draws
+                # no minor grid by default, so the scheme's choice never
+                # appeared.
+                grid.minor_grid_line_color = self.minor_grid_color
 
         for axis in list(fig.xaxis) + list(fig.yaxis):
             axis.axis_line_color = self.axis_line_color

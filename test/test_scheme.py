@@ -260,10 +260,31 @@ class TestApplyToFigure:
         sp.apply_to_figure(fig)
         assert fig.border_fill_color == sp.background_color
 
-    def test_sets_grid_line_color(self):
+    def test_sets_grid_line_color_on_the_axes_the_scheme_draws(self):
+        """Per axis, not unconditionally.
+
+        This asserted that EVERY grid got the scheme's colour, which is the
+        behaviour that made dash draw a grid Stata does not draw in ten of
+        the fourteen shipped schemes.  s2color draws the horizontal lines at
+        its y ticks and no vertical ones: style/axisstyle-vertical_default
+        .style:18 resolves the y axis from `draw_major_vgrid' (yes), and
+        axisstyle-horizontal_default.style:18 resolves x from
+        `draw_major_hgrid' (no).  See test_scheme_grids.py.
+        """
         sp = SchemeParser("s2color")
         fig = self._make_fig()
         sp.apply_to_figure(fig)
+        assert (sp.draw_major_hgrid, sp.draw_major_vgrid) == (False, True)
+        for grid in list(fig.ygrid):
+            assert grid.grid_line_color == sp.grid_color
+        for grid in list(fig.xgrid):
+            assert grid.grid_line_color is None
+
+    def test_sets_grid_line_color_when_the_scheme_draws_both(self):
+        sp = SchemeParser("stcolor")
+        fig = self._make_fig()
+        sp.apply_to_figure(fig)
+        assert (sp.draw_major_hgrid, sp.draw_major_vgrid) == (True, True)
         for grid in list(fig.xgrid) + list(fig.ygrid):
             assert grid.grid_line_color == sp.grid_color
 

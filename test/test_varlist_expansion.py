@@ -262,8 +262,19 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               Stata's own style/gsize-*.style files, which disagreed with
 #               six of its fourteen entries.  Every dashboard changes.
 #               Intended; see .ultraplan/CHANGELOG.md.
+#   98d50ff6  The scheme now decides WHICH grids are drawn, not just their
+#               colour.  The two grid-visibility flags were parsed and never
+#               read, and Bokeh draws both grids by default, so dash drew a
+#               grid Stata does not draw in 10 of the 14 shipped schemes --
+#               both grids under s1color, s1mono, s1rcolor and stmono1, which
+#               draw none.  The y-axis flag was also read from
+#               `draw_major_grid', which is dead at scheme level and `no' in
+#               every scheme; Stata's key is `draw_major_vgrid' and is `yes'
+#               for ten of them.  s2color, the baseline's scheme, therefore
+#               loses its vertical grid lines and keeps its horizontal ones.
+#               Intended; see .ultraplan/CHANGELOG.md.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "f929e3d363017d0a247d847b5c2964f278386c139cdf4c6cd3659bcd439aa293"
+    "98d50ff6d0039702ea790766354c73f9f58a3a7615c10eeaa4821228151e0dd1"
 )
 
 

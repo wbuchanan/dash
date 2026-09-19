@@ -199,7 +199,19 @@ numstyle legend_cols  2
 * ---------------------------------------------------------------------------
 * Grid visibility (Stata `yesno` directives)
 * ---------------------------------------------------------------------------
+* GRID VISIBILITY.  A Stata grid belongs to an AXIS and the key is named for
+* that axis's orientation, not for the direction of the lines:
+*   style/axisstyle-horizontal_default.style:18  draw_major_grid <- draw_major_hgrid
+*   style/axisstyle-vertical_default.style:18    draw_major_grid <- draw_major_vgrid
+* The horizontal axis is x, and its major grid lines are the VERTICAL ones at
+* the x ticks; the vertical axis is y, and its lines are HORIZONTAL.
+* `yesno draw_major_grid' below is transcribed faithfully from Stata's file but
+* is DEAD at scheme level: grep "scheme draw_major_grid" over
+* /Applications/StataNow/ado/base/style/ returns nothing.  dash used to read it
+* for the y axis, which is why every scheme reported "no grid" and dash drew
+* both anyway.
 yesno draw_major_hgrid      no
+yesno draw_major_vgrid yes
 yesno draw_major_grid       no
 
 * -------------------------------------------------------------------------

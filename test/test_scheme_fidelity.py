@@ -216,7 +216,10 @@ STYLE_NAME_SCALARS = {
 #: fixture key -> directive chain; fixture value is "yes"/"no"
 YESNO_SCALARS = {
     "draw_major_hgrid": ["yesno draw_major_hgrid"],
-    "draw_major_vgrid": ["yesno draw_major_grid"],
+    # The y-axis key is `draw_major_vgrid'.  `draw_major_grid' is dead at
+    # scheme level and is `no' in every scheme, so keying on it made this
+    # fidelity check agree with a wrong value rather than catch it.
+    "draw_major_vgrid": ["yesno draw_major_vgrid"],
 }
 
 #: fixture key -> directive chain; fixture value is a float (inches)
