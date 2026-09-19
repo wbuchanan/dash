@@ -4439,12 +4439,32 @@ class TestCLIServeFlagsAccepted:
             return fh.read()
 
     def test_mode_server_in_choices(self, dr_module, auto_df):
-        """BUG-CLI-1a: --mode choices must include 'server' (not just 'serve')."""
+        """BUG-CLI-1a: --mode choices must include 'server', not 'serve'.
+
+        This searched the whole --help text for the substring "serve" with
+        "server" removed.  That stopped working the moment the option's help
+        string explained the distinction in words -- it names `dash serve'
+        while describing what --mode server does -- and the test failed on
+        its own documentation.
+
+        argparse renders an option's choices as a braced list, so the
+        question is asked of that list rather than of the surrounding prose.
+        """
+        import re
+
         help_txt = self._get_help_output()
-        assert "server" in help_txt, \
-            "--mode choices must include 'server' (visible in --help output)"
-        assert "serve" not in help_txt.replace("server", ""), \
-            "--mode choices must NOT include invalid choice 'serve'"
+        m = re.search(r"--mode\s*\{([^}]*)\}", help_txt)
+        assert m, (
+            f"--mode does not render a choice list in --help:\n"
+            f"{help_txt[:400]}"
+        )
+        choices = [c.strip() for c in m.group(1).split(",") if c.strip()]
+        assert "server" in choices, (
+            f"--mode choices must include 'server'; got {choices}"
+        )
+        assert "serve" not in choices, (
+            f"--mode must not offer the invalid choice 'serve'; got {choices}"
+        )
 
     def test_port_argument_defined(self, dr_module, auto_df):
         """BUG-CLI-1b: --port must be defined in argparse with integer type."""
