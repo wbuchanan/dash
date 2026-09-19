@@ -444,7 +444,8 @@ program define _dash_parse_plot_opts, sclass
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
         BWIDth(string)            DEGree(string)            PSTYle(string) ///
         CMISSing(string)          RECAST(string)            Connect(string) ///
-        BIN(string)               Width(string)             START(string) ///
+        BIN(string)               BINS(string)              Width(string) ///
+        START(string) ///
         PERCENT                   FREQuency                 DENsity ///
         FRACtion                  Kernel(string)            N(string) ///
         LEvel(string)             BAnds(string)             AT(string asis) ///
@@ -495,6 +496,25 @@ program define _dash_parse_plot_opts, sclass
     // cannot express them; they are declared above and merged here.
     // twoway accepts none of them, so this is a superset and cannot
     // break drop-in parity, but it keeps existing dash do-files working.
+    // twoway histogram spells the bin count bins(); dash historically
+    // declared only bin().  Stata accepts bin(), bins() and b() -- all
+    // measured -- and they mean the same thing.
+    if `"`bins'"' != "" & `"`bin'"' == "" local bin `"`bins'"'
+
+    // level() is validated HERE, where the user can see the error,
+    // rather than becoming a Python exception inside the renderer.
+    if `"`level'"' != "" {
+        capture confirm number `level'
+        if _rc {
+            display as error "level() must be a number between 0 and 100"
+            exit 198
+        }
+        if `level' <= 0 | `level' >= 100 {
+            display as error "level() must be between 0 and 100 (exclusive)"
+            exit 198
+        }
+    }
+
     if `"`bw'"' != "" & `"`barwidth'"' == "" local barwidth `"`bw'"'
     if `"`mlg'"' != "" & `"`mlabgap'"' == "" local mlabgap `"`mlg'"'
     if `"`cv'"' != "" & `"`colorvar'"' == "" local colorvar `"`cv'"'
@@ -1493,7 +1513,10 @@ program define _dash_render_immediate
     }
 
     // ---- Write spec JSON to temp file ----
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "default"}}"'
+    // Carry the session confidence level so the renderer does not have to
+    // assume 95.  A per-plot level() overrides it.
+    local _dash_lvl = c(level)
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "default", "level": "`_dash_lvl'"}}"'
 
     tempname fh
     file open `fh' using "`spec_json_path'", write replace text
@@ -1952,7 +1975,10 @@ program define _dash_build
     _dash_json_str `"`subtitle'"' _subtitle_esc
     // Escape tabs string for JSON embedding
     _dash_json_str `"`tabs'"' _tabs_esc
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'"}}"'
+    // Carry the session confidence level so the renderer does not have to
+    // assume 95.  A per-plot level() overrides it.
+    local _dash_lvl = c(level)
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'"}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text
@@ -2122,7 +2148,10 @@ program define _dash_serve
         local n_kpis = `n_kpis' + 1
     }
 
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"default","title":"","subtitle":"","registry":"`registry'"}}"'
+    // Carry the session confidence level so the renderer does not have to
+    // assume 95.  A per-plot level() overrides it.
+    local _dash_lvl = c(level)
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"default","title":"","subtitle":"","registry":"`registry'","level":"`_dash_lvl'"}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text

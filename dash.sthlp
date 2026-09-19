@@ -556,30 +556,61 @@ For range plot types, labels are placed at the upper boundary (y2 variable).
 {title:Smoother Plot-Type Options}
 
 {pstd}
-The following plot-level options apply specifically to {cmd:lpoly},
-{cmd:lpolyci}, {cmd:fpfit}, and {cmd:fpfitci} plot types.
+The following plot-level options apply specifically to {cmd:lpoly} and
+{cmd:lpolyci}.  They are {it:not} accepted by {cmd:fpfit}/{cmd:fpfitci} —
+see below.
 
 {synoptset 20}{...}
-{synopt:{opt bwidth(#)}}bandwidth for local polynomial smoother ({cmd:lpoly}/
-    {cmd:lpolyci}) as a fraction of the x-range; default is 0.5; valid range
-    0.01–1.0{p_end}
-{synopt:{opt degree(#)}}polynomial degree for local polynomial smoother;
-    0 = Nadaraya–Watson kernel estimator (default), 1 = local linear,
-    2 = local quadratic{p_end}
+{synopt:{opt bwidth(#)}}half-width of the smoothing kernel, as an
+    {bf:absolute bandwidth in the units of x}, exactly as in
+    {helpb twoway lpoly}.  With no {cmd:bwidth()} a rule-of-thumb bandwidth
+    is computed from the data{p_end}
+{synopt:{opt degree(#)}}polynomial degree; 0 = Nadaraya–Watson kernel
+    estimator (default), 1 = local linear, 2 = local quadratic{p_end}
+{synopt:{opt kernel(name)}}{cmd:epanechnikov} (default), {cmd:epan2},
+    {cmd:biweight}, {cmd:cosine}, {cmd:gaussian}, {cmd:parzen},
+    {cmd:rectangle} or {cmd:triangle}{p_end}
 {synoptline}
 
 {pstd}
-{cmd:lpoly} and {cmd:lpolyci} implement Gaussian kernel-weighted local
-polynomial regression — the same smoother underlying Stata's
-{helpb twoway lpoly}.  {cmd:lpolyci} adds a bootstrap 95% confidence band.
+{cmd:lpoly} and {cmd:lpolyci} implement kernel-weighted local polynomial
+regression — the same smoother underlying Stata's {helpb twoway lpoly},
+with the same default kernel ({cmd:epanechnikov}) and the same
+{cmd:degree(0)} default.
+
+{pstd}
+{bf:Note on {cmd:bwidth()} for {cmd:lowess}.}  Stata gives the same option
+name two different meanings: for {helpb twoway lpoly} it is an absolute
+bandwidth in x units, while for {helpb twoway lowess} it is the
+{it:fraction} of the sample used in each local regression (default 0.8).
+{cmd:dash} follows Stata in both cases.
+
+{pstd}
+{bf:Default bandwidth.}  With no {cmd:bwidth()}, {cmd:dash} uses a
+Fan–Gijbels rule of thumb.  Stata computes its own rule of thumb in
+compiled Mata and it is not reproducible from the published documentation,
+so the two agree to roughly 10%, not exactly.  Specify {cmd:bwidth()} to
+reproduce a Stata smoother exactly.
 
 {pstd}
 {cmd:fpfit} and {cmd:fpfitci} implement degree-2 fractional polynomial
 fitting (Royston & Altman, 1994), selecting the pair of powers from
 {c -(}{cmd:–2}, {cmd:–1}, {cmd:–0.5}, {cmd:0}, {cmd:0.5}, {cmd:1},
-{cmd:2}, {cmd:3}{c )-} that minimises the residual sum of squares.
-{cmd:fpfitci} adds a bootstrap 95% confidence band.  Both require
-positive x values.
+{cmd:2}, {cmd:3}{c )-} that minimises the residual sum of squares.  Both
+require positive x values and, like Stata, both evaluate at the distinct
+observed x values rather than on a fixed grid.
+
+{pstd}
+{bf:{cmd:fpfit} does not take {cmd:bwidth()} or {cmd:degree()}.}  Earlier
+versions of this help wrongly listed them.  Stata rejects both with r(198)
+— a fractional polynomial has no bandwidth at all, and its degree is
+spelled {cmd:estopts(degree(#))}.  {cmd:dash} accepts them so a pasted
+command still runs, and reports that they were ignored.
+
+{pstd}
+{cmd:fpfitci}, {cmd:lpolyci}, {cmd:lfitci} and {cmd:qfitci} draw a
+confidence band at {cmd:level()}, defaulting to the session's
+{cmd:c(level)} — so {cmd:set level 90} is honoured.
 
 {pstd}
 {it:Example:}

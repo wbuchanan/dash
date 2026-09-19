@@ -8,7 +8,8 @@ method, and none of those imports is guarded (verified in dash_render.py):
 
     dash_render.py:2404   from scipy import stats as scipy_stats           -> map_lfitci
     dash_render.py:2547   from statsmodels...smoothers_lowess import lowess -> map_lowess
-    dash_render.py:3055   from scipy.stats import gaussian_kde             -> map_kdensity
+    (map_kdensity used scipy.stats.gaussian_kde here until S07; it now
+     implements Stata's kernels directly and needs no optional dependency.)
     dash_render.py:4001   from scipy.interpolate import PchipInterpolator  -> map_mspline
 
 When the library is missing the ModuleNotFoundError escapes the mapper and
@@ -262,39 +263,45 @@ class TestLfitciScipyGuard:
 
 
 # ================================================================
-# map_kdensity  --  scipy.stats.gaussian_kde  (dash_render.py:3055)
+# map_kdensity  --  NO LONGER NEEDS scipy
 # ================================================================
-class TestKdensityScipyGuard:
+# S07 replaced scipy.stats.gaussian_kde with Stata's own kernel definitions
+# (_KERNELS in dash_render.py).  gaussian_kde can only ever be Gaussian, so it
+# could not express kernel() at all, and Stata's default kernel is
+# epanechnikov.  The guard these tests used to pin is therefore gone -- not
+# because the requirement was dropped, but because the dependency was.  The
+# tests below assert the STRONGER property that replaced it: kdensity works
+# with scipy entirely unavailable.
+class TestKdensityNeedsNoOptionalDependency:
 
-    def test_kdensity_populated_when_scipy_available(self, fig, fit_cds, gm):
-        pytest.importorskip("scipy.stats", reason="scipy not importable")
+    def test_kdensity_populated(self, fig, fit_cds, gm):
         result = gm.map_kdensity(fig, fit_cds, "y", {})
-        assert_populated_source(result, "map_kdensity with scipy present")
+        assert_populated_source(result, "map_kdensity")
 
-    def test_kdensity_missing_scipy_warns_and_degrades(self, fig, fit_cds, gm):
+    def test_kdensity_populated_even_without_scipy(self, fig, fit_cds, gm):
+        """The whole point of dropping gaussian_kde: no optional import left."""
         import warnings
         with blocked_import("scipy"):
             with warnings.catch_warnings(record=True) as record:
                 warnings.simplefilter("always")
-                result = call_expecting_graceful(
-                    lambda: gm.map_kdensity(fig, fit_cds, "y", {}), "map_kdensity"
-                )
-        assert_guard_warning(record, "scipy", "map_kdensity")
-        assert_empty_source(result, "map_kdensity without scipy")
+                result = gm.map_kdensity(fig, fit_cds, "y", {})
+        assert_populated_source(result, "map_kdensity without scipy")
+        assert not [w for w in record if "scipy" in str(w.message)], (
+            "map_kdensity still reaches for scipy somewhere"
+        )
 
-    def test_kdensity_missing_scipy_does_not_raise(self, fig, fit_cds, gm):
-        import warnings
-        with blocked_import("scipy"):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                try:
-                    result = gm.map_kdensity(fig, fit_cds, "y", {})
-                except BaseException as exc:  # noqa: BLE001 - intentional
-                    pytest.fail(
-                        f"map_kdensity raised {type(exc).__name__}: {exc} instead "
-                        f"of degrading gracefully"
-                    )
-        assert result is not None
+    def test_kdensity_source_has_no_scipy_import(self):
+        """Guard against gaussian_kde creeping back into the kdensity path."""
+        import inspect
+        from dash_render import GlyphMapper as _GM
+        # Strip comments: the method explains in prose WHY scipy is gone, and
+        # that explanation must not be what makes this test pass or fail.
+        code = "\n".join(
+            line.split("#", 1)[0]
+            for line in inspect.getsource(_GM.map_kdensity).splitlines()
+        )
+        assert "gaussian_kde" not in code, "gaussian_kde is back in map_kdensity"
+        assert "scipy" not in code, "map_kdensity imports scipy again"
 
 
 # ================================================================
