@@ -1,0 +1,3494 @@
+{
+  "_meta": {
+    "counts": {
+      "dataset_date_variables": 4,
+      "dataset_variables_recorded": 22,
+      "datasets_probed": 44,
+      "date_formats": 8,
+      "date_values_per_format": {
+        "%tC": 10,
+        "%tc": 10,
+        "%td": 12,
+        "%th": 9,
+        "%tm": 10,
+        "%tq": 10,
+        "%tw": 12,
+        "%ty": 9
+      },
+      "date_values_total": 82,
+      "jsonio_boundary_variables": 12,
+      "leap_probes": 7,
+      "numeric_formats": 15,
+      "numeric_values_total": 150,
+      "unverified": 0
+    },
+    "generated_by": "scripts/extract_date_truth.do",
+    "honesty": "Nothing here is recalled or inferred.  Anything that could not be derived empirically is marked \"source\": \"UNVERIFIED\" and listed under \"unverified\".",
+    "method": "Every value in this fixture was produced by a Stata display and carries the exact command that produced it.  Each date value is recorded twice: \"display\", the verbatim locale-dependent string Stata prints, and \"iso\", the same instant re-displayed through an explicit ISO-8601 picture, which is the unambiguous target for a Python converter.  Calendar-period formats (%tw %tm %tq %th) record the period START and END, derived with Stata's own dofw/dofm/dofq/dofh, and %ty with dofy, which takes a YEAR rather than an offset.  Display strings are captured between \"<\" and \">\" sentinels so that leading and trailing blanks -- which are part of what a numeric format means -- survive macro assignment; the sentinels are stripped when the fixture is written.",
+    "os": "Unix Mac (Apple Silicon)",
+    "record_delimiter_note": "Records are pipe-delimited; variable labels had \"|\" replaced with \"/\" before writing.  No display format or date string contains a pipe.",
+    "record_file": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/date_records.txt",
+    "run_date": "19 Sep 2026",
+    "stata_born_date": "12 Aug 2026",
+    "stata_edition": "MP",
+    "stata_flavor": "IC",
+    "stata_version": "19.5",
+    "sysdir_base": "/Applications/StataNow/ado/base/"
+  },
+  "dataset_date_variables": [
+    {
+      "dataset": "gnp96",
+      "format": "%tq",
+      "variable": "date"
+    },
+    {
+      "dataset": "sp500",
+      "format": "%td",
+      "variable": "date"
+    },
+    {
+      "dataset": "tsline2",
+      "format": "%td",
+      "variable": "day"
+    },
+    {
+      "dataset": "xtline1",
+      "format": "%td",
+      "variable": "day"
+    }
+  ],
+  "datasets": {
+    "__i10v2003": {
+      "nobs": 12029,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2004": {
+      "nobs": 12031,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2006": {
+      "nobs": 12065,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2007": {
+      "nobs": 12065,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2008": {
+      "nobs": 12065,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2009": {
+      "nobs": 12065,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2010": {
+      "nobs": 12132,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2011": {
+      "nobs": 12132,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2012": {
+      "nobs": 12132,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2013": {
+      "nobs": 12178,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2014": {
+      "nobs": 12178,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__i10v2016": {
+      "nobs": 12187,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__icd10": {
+      "nobs": 12608,
+      "nvars": 4,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__icd10cm": {
+      "nobs": 100485,
+      "nvars": 5,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "__icd10pcs": {
+      "nobs": 86369,
+      "nvars": 5,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "auto": {
+      "nobs": 74,
+      "nvars": 12,
+      "recorded": "all variables",
+      "variables": {
+        "displacement": {
+          "cmd": "sysuse auto, clear ; local f : format displacement",
+          "format": "%8.0g",
+          "is_date_format": false,
+          "label": "Displacement (cu. in.)",
+          "source": "stata",
+          "type": "int"
+        },
+        "foreign": {
+          "cmd": "sysuse auto, clear ; local f : format foreign",
+          "format": "%8.0g",
+          "is_date_format": false,
+          "label": "Car origin",
+          "source": "stata",
+          "type": "byte"
+        },
+        "gear_ratio": {
+          "cmd": "sysuse auto, clear ; local f : format gear_ratio",
+          "format": "%6.2f",
+          "is_date_format": false,
+          "label": "Gear ratio",
+          "source": "stata",
+          "type": "float"
+        },
+        "headroom": {
+          "cmd": "sysuse auto, clear ; local f : format headroom",
+          "format": "%6.1f",
+          "is_date_format": false,
+          "label": "Headroom (in.)",
+          "source": "stata",
+          "type": "float"
+        },
+        "length": {
+          "cmd": "sysuse auto, clear ; local f : format length",
+          "format": "%8.0g",
+          "is_date_format": false,
+          "label": "Length (in.)",
+          "source": "stata",
+          "type": "int"
+        },
+        "make": {
+          "cmd": "sysuse auto, clear ; local f : format make",
+          "format": "%-18s",
+          "is_date_format": false,
+          "label": "Make and model",
+          "source": "stata",
+          "type": "str18"
+        },
+        "mpg": {
+          "cmd": "sysuse auto, clear ; local f : format mpg",
+          "format": "%8.0g",
+          "is_date_format": false,
+          "label": "Mileage (mpg)",
+          "source": "stata",
+          "type": "int"
+        },
+        "price": {
+          "cmd": "sysuse auto, clear ; local f : format price",
+          "format": "%8.0gc",
+          "is_date_format": false,
+          "label": "Price",
+          "source": "stata",
+          "type": "int"
+        },
+        "rep78": {
+          "cmd": "sysuse auto, clear ; local f : format rep78",
+          "format": "%8.0g",
+          "is_date_format": false,
+          "label": "Repair record 1978",
+          "source": "stata",
+          "type": "int"
+        },
+        "trunk": {
+          "cmd": "sysuse auto, clear ; local f : format trunk",
+          "format": "%8.0g",
+          "is_date_format": false,
+          "label": "Trunk space (cu. ft.)",
+          "source": "stata",
+          "type": "int"
+        },
+        "turn": {
+          "cmd": "sysuse auto, clear ; local f : format turn",
+          "format": "%8.0g",
+          "is_date_format": false,
+          "label": "Turn circle (ft.)",
+          "source": "stata",
+          "type": "int"
+        },
+        "weight": {
+          "cmd": "sysuse auto, clear ; local f : format weight",
+          "format": "%8.0gc",
+          "is_date_format": false,
+          "label": "Weight (lbs.)",
+          "source": "stata",
+          "type": "int"
+        }
+      }
+    },
+    "auto16": {
+      "nobs": 74,
+      "nvars": 12,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "auto2": {
+      "nobs": 74,
+      "nvars": 12,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "autornd": {
+      "nobs": 74,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "bplong": {
+      "nobs": 240,
+      "nvars": 5,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "bpwide": {
+      "nobs": 120,
+      "nvars": 5,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "cancer": {
+      "nobs": 48,
+      "nvars": 8,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "census": {
+      "nobs": 50,
+      "nvars": 13,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "citytemp": {
+      "nobs": 956,
+      "nvars": 6,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "citytemp4": {
+      "nobs": 956,
+      "nvars": 6,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "educ99gdp": {
+      "nobs": 10,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "gnp96": {
+      "nobs": 142,
+      "nvars": 2,
+      "recorded": "only variables with a %t* display format",
+      "variables": {
+        "date": {
+          "cmd": "sysuse gnp96, clear ; local f : format date",
+          "format": "%tq",
+          "is_date_format": true,
+          "label": "Date",
+          "source": "stata",
+          "type": "int"
+        }
+      }
+    },
+    "icd9_cod": {
+      "nobs": 17563,
+      "nvars": 2,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "icd9_cop": {
+      "nobs": 4657,
+      "nvars": 2,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "lifeexp": {
+      "nobs": 68,
+      "nvars": 6,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "network1": {
+      "nobs": 77,
+      "nvars": 7,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "network1a": {
+      "nobs": 77,
+      "nvars": 11,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "nlsw88": {
+      "nobs": 2246,
+      "nvars": 17,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "nlswide1": {
+      "nobs": 9,
+      "nvars": 19,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "pop2000": {
+      "nobs": 17,
+      "nvars": 20,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "sandstone": {
+      "nobs": 6400,
+      "nvars": 4,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "sp500": {
+      "nobs": 248,
+      "nvars": 7,
+      "recorded": "all variables",
+      "variables": {
+        "change": {
+          "cmd": "sysuse sp500, clear ; local f : format change",
+          "format": "%9.0g",
+          "is_date_format": false,
+          "label": "Closing price change",
+          "source": "stata",
+          "type": "float"
+        },
+        "close": {
+          "cmd": "sysuse sp500, clear ; local f : format close",
+          "format": "%9.0g",
+          "is_date_format": false,
+          "label": "Closing price",
+          "source": "stata",
+          "type": "float"
+        },
+        "date": {
+          "cmd": "sysuse sp500, clear ; local f : format date",
+          "format": "%td",
+          "is_date_format": true,
+          "label": "Date",
+          "source": "stata",
+          "type": "int"
+        },
+        "high": {
+          "cmd": "sysuse sp500, clear ; local f : format high",
+          "format": "%9.0g",
+          "is_date_format": false,
+          "label": "High price",
+          "source": "stata",
+          "type": "float"
+        },
+        "low": {
+          "cmd": "sysuse sp500, clear ; local f : format low",
+          "format": "%9.0g",
+          "is_date_format": false,
+          "label": "Low price",
+          "source": "stata",
+          "type": "float"
+        },
+        "open": {
+          "cmd": "sysuse sp500, clear ; local f : format open",
+          "format": "%9.0g",
+          "is_date_format": false,
+          "label": "Opening price",
+          "source": "stata",
+          "type": "float"
+        },
+        "volume": {
+          "cmd": "sysuse sp500, clear ; local f : format volume",
+          "format": "%12.0gc",
+          "is_date_format": false,
+          "label": "Volume (thousands)",
+          "source": "stata",
+          "type": "double"
+        }
+      }
+    },
+    "surface": {
+      "nobs": 612,
+      "nvars": 5,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "tsline1": {
+      "nobs": 200,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "tsline2": {
+      "nobs": 365,
+      "nvars": 4,
+      "recorded": "only variables with a %t* display format",
+      "variables": {
+        "day": {
+          "cmd": "sysuse tsline2, clear ; local f : format day",
+          "format": "%td",
+          "is_date_format": true,
+          "label": "Date",
+          "source": "stata",
+          "type": "float"
+        }
+      }
+    },
+    "uslifeexp": {
+      "nobs": 100,
+      "nvars": 10,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "uslifeexp2": {
+      "nobs": 41,
+      "nvars": 2,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "voter": {
+      "nobs": 15,
+      "nvars": 5,
+      "recorded": "only variables with a %t* display format",
+      "variables": {}
+    },
+    "xtline1": {
+      "nobs": 1095,
+      "nvars": 3,
+      "recorded": "only variables with a %t* display format",
+      "variables": {
+        "day": {
+          "cmd": "sysuse xtline1, clear ; local f : format day",
+          "format": "%td",
+          "is_date_format": true,
+          "label": "Date",
+          "source": "stata",
+          "type": "float"
+        }
+      }
+    }
+  },
+  "date_formats": {
+    "%tC": {
+      "epoch": "01jan1960 00:00:00.000",
+      "epoch_evidence_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 0",
+      "epoch_iso_at_value_0": "1960-01-01T00:00:00.000",
+      "fixed_length": false,
+      "note": "A millisecond count from 01jan1960 that DOES include leap seconds, so it is NOT a fixed-length offset.  See \"leap_seconds\".",
+      "period": "millisecond",
+      "unit": "milliseconds (leap-second corrected)",
+      "value_count": 10,
+      "values": [
+        {
+          "display": "31dec1959 00:00:00",
+          "display_cmd": "display %tC -86400000",
+          "display_rc": 0,
+          "iso": "1959-12-31T00:00:00.000",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss -86400000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": -86400000
+        },
+        {
+          "display": "31dec1959 23:59:59",
+          "display_cmd": "display %tC -1",
+          "display_rc": 0,
+          "iso": "1959-12-31T23:59:59.999",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss -1",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": -1
+        },
+        {
+          "display": "01jan1960 00:00:00",
+          "display_cmd": "display %tC 0",
+          "display_rc": 0,
+          "iso": "1960-01-01T00:00:00.000",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 0",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "display": "01jan1960 00:00:00",
+          "display_cmd": "display %tC 1",
+          "display_rc": 0,
+          "iso": "1960-01-01T00:00:00.001",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 1",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1
+        },
+        {
+          "display": "01jan1960 00:00:01",
+          "display_cmd": "display %tC 1000",
+          "display_rc": 0,
+          "iso": "1960-01-01T00:00:01.000",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 1000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1000
+        },
+        {
+          "display": "02jan1960 00:00:00",
+          "display_cmd": "display %tC 86400000",
+          "display_rc": 0,
+          "iso": "1960-01-02T00:00:00.000",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 86400000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 86400000
+        },
+        {
+          "display": "31dec1979 23:59:52",
+          "display_cmd": "display %tC 631152000000",
+          "display_rc": 0,
+          "iso": "1979-12-31T23:59:52.000",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 631152000000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 631152000000
+        },
+        {
+          "display": "30dec1989 23:59:46",
+          "display_cmd": "display %tC 946684800000",
+          "display_rc": 0,
+          "iso": "1989-12-30T23:59:46.000",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 946684800000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 946684800000
+        },
+        {
+          "display": "13feb1999 23:31:08",
+          "display_cmd": "display %tC 1234567890123",
+          "display_rc": 0,
+          "iso": "1999-02-13T23:31:08.123",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 1234567890123",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1234567890123
+        },
+        {
+          "display": "31dec2019 23:59:33",
+          "display_cmd": "display %tC 1893456000000",
+          "display_rc": 0,
+          "iso": "2019-12-31T23:59:33.000",
+          "iso_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 1893456000000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1893456000000
+        }
+      ]
+    },
+    "%tc": {
+      "epoch": "01jan1960 00:00:00.000",
+      "epoch_evidence_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 0",
+      "epoch_iso_at_value_0": "1960-01-01T00:00:00.000",
+      "fixed_length": true,
+      "note": "A plain millisecond count from 01jan1960 00:00:00.000, with NO leap seconds.  Fixed-length: a timedelta of 'value' ms added to the epoch is exact.",
+      "period": "millisecond",
+      "unit": "milliseconds",
+      "value_count": 10,
+      "values": [
+        {
+          "display": "31dec1959 00:00:00",
+          "display_cmd": "display %tc -86400000",
+          "display_rc": 0,
+          "iso": "1959-12-31T00:00:00.000",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss -86400000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": -86400000
+        },
+        {
+          "display": "31dec1959 23:59:59",
+          "display_cmd": "display %tc -1",
+          "display_rc": 0,
+          "iso": "1959-12-31T23:59:59.999",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss -1",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": -1
+        },
+        {
+          "display": "01jan1960 00:00:00",
+          "display_cmd": "display %tc 0",
+          "display_rc": 0,
+          "iso": "1960-01-01T00:00:00.000",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 0",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "display": "01jan1960 00:00:00",
+          "display_cmd": "display %tc 1",
+          "display_rc": 0,
+          "iso": "1960-01-01T00:00:00.001",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 1",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1
+        },
+        {
+          "display": "01jan1960 00:00:01",
+          "display_cmd": "display %tc 1000",
+          "display_rc": 0,
+          "iso": "1960-01-01T00:00:01.000",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 1000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1000
+        },
+        {
+          "display": "02jan1960 00:00:00",
+          "display_cmd": "display %tc 86400000",
+          "display_rc": 0,
+          "iso": "1960-01-02T00:00:00.000",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 86400000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 86400000
+        },
+        {
+          "display": "01jan1980 00:00:00",
+          "display_cmd": "display %tc 631152000000",
+          "display_rc": 0,
+          "iso": "1980-01-01T00:00:00.000",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 631152000000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 631152000000
+        },
+        {
+          "display": "31dec1989 00:00:00",
+          "display_cmd": "display %tc 946684800000",
+          "display_rc": 0,
+          "iso": "1989-12-31T00:00:00.000",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 946684800000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 946684800000
+        },
+        {
+          "display": "13feb1999 23:31:30",
+          "display_cmd": "display %tc 1234567890123",
+          "display_rc": 0,
+          "iso": "1999-02-13T23:31:30.123",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 1234567890123",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1234567890123
+        },
+        {
+          "display": "01jan2020 00:00:00",
+          "display_cmd": "display %tc 1893456000000",
+          "display_rc": 0,
+          "iso": "2020-01-01T00:00:00.000",
+          "iso_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 1893456000000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1893456000000
+        }
+      ]
+    },
+    "%td": {
+      "epoch": "01jan1960",
+      "epoch_evidence_cmd": "display %tdCCYY-NN-DD 0",
+      "epoch_iso_at_value_0": "1960-01-01",
+      "fixed_length": true,
+      "note": "A plain day count from 01jan1960.  Fixed-length: a timedelta of 'value' days added to 1960-01-01 is exact.",
+      "period": "day",
+      "unit": "days",
+      "value_count": 12,
+      "values": [
+        {
+          "display": "15aug1932",
+          "display_cmd": "display %td -10000",
+          "display_rc": 0,
+          "iso": "1932-08-15",
+          "iso_cmd": "display %tdCCYY-NN-DD -10000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": -10000
+        },
+        {
+          "display": "31dec1949",
+          "display_cmd": "display %td -3653",
+          "display_rc": 0,
+          "iso": "1949-12-31",
+          "iso_cmd": "display %tdCCYY-NN-DD -3653",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": -3653
+        },
+        {
+          "display": "31dec1959",
+          "display_cmd": "display %td -1",
+          "display_rc": 0,
+          "iso": "1959-12-31",
+          "iso_cmd": "display %tdCCYY-NN-DD -1",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": -1
+        },
+        {
+          "display": "01jan1960",
+          "display_cmd": "display %td 0",
+          "display_rc": 0,
+          "iso": "1960-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD 0",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "display": "02jan1960",
+          "display_cmd": "display %td 1",
+          "display_rc": 0,
+          "iso": "1960-01-02",
+          "iso_cmd": "display %tdCCYY-NN-DD 1",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1
+        },
+        {
+          "display": "19may1987",
+          "display_cmd": "display %td 10000",
+          "display_rc": 0,
+          "iso": "1987-05-19",
+          "iso_cmd": "display %tdCCYY-NN-DD 10000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 10000
+        },
+        {
+          "display": "01jan1991",
+          "display_cmd": "display %td 11323",
+          "display_rc": 0,
+          "iso": "1991-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD 11323",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 11323
+        },
+        {
+          "display": "02jan2001",
+          "display_cmd": "display %td 14977",
+          "display_rc": 0,
+          "iso": "2001-01-02",
+          "iso_cmd": "display %tdCCYY-NN-DD 14977",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 14977
+        },
+        {
+          "display": "01jan2021",
+          "display_cmd": "display %td 22281",
+          "display_rc": 0,
+          "iso": "2021-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD 22281",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 22281
+        },
+        {
+          "display": "31dec2024",
+          "display_cmd": "display %td 23741",
+          "display_rc": 0,
+          "iso": "2024-12-31",
+          "iso_cmd": "display %tdCCYY-NN-DD 23741",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 23741
+        },
+        {
+          "display": "16oct2233",
+          "display_cmd": "display %td 100000",
+          "display_rc": 0,
+          "iso": "2233-10-16",
+          "iso_cmd": "display %tdCCYY-NN-DD 100000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 100000
+        },
+        {
+          "display": "27nov4697",
+          "display_cmd": "display %td 1000000",
+          "display_rc": 0,
+          "iso": "4697-11-27",
+          "iso_cmd": "display %tdCCYY-NN-DD 1000000",
+          "iso_rc": 0,
+          "source": "stata",
+          "value": 1000000
+        }
+      ]
+    },
+    "%th": {
+      "epoch": "1960h1",
+      "epoch_evidence_cmd": "display %tdCCYY-NN-DD dofh(0)",
+      "epoch_iso_at_value_0": "1960-01-01",
+      "fixed_length": false,
+      "note": "A CALENDAR half-year index; multiplication does not convert.",
+      "period": "calendar half-year",
+      "unit": "half-years",
+      "value_count": 9,
+      "values": [
+        {
+          "display": "1950h1",
+          "display_cmd": "display %th -20",
+          "display_rc": 0,
+          "iso": "1950-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(-20)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(-20+1)-1",
+          "period_end_iso": "1950-06-30",
+          "period_start_iso": "1950-01-01",
+          "source": "stata",
+          "value": -20
+        },
+        {
+          "display": "1959h2",
+          "display_cmd": "display %th -1",
+          "display_rc": 0,
+          "iso": "1959-07-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(-1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(-1+1)-1",
+          "period_end_iso": "1959-12-31",
+          "period_start_iso": "1959-07-01",
+          "source": "stata",
+          "value": -1
+        },
+        {
+          "display": "1960h1",
+          "display_cmd": "display %th 0",
+          "display_rc": 0,
+          "iso": "1960-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(0)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(0+1)-1",
+          "period_end_iso": "1960-06-30",
+          "period_start_iso": "1960-01-01",
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "display": "1960h2",
+          "display_cmd": "display %th 1",
+          "display_rc": 0,
+          "iso": "1960-07-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(1+1)-1",
+          "period_end_iso": "1960-12-31",
+          "period_start_iso": "1960-07-01",
+          "source": "stata",
+          "value": 1
+        },
+        {
+          "display": "1961h1",
+          "display_cmd": "display %th 2",
+          "display_rc": 0,
+          "iso": "1961-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(2)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(2+1)-1",
+          "period_end_iso": "1961-06-30",
+          "period_start_iso": "1961-01-01",
+          "source": "stata",
+          "value": 2
+        },
+        {
+          "display": "1990h1",
+          "display_cmd": "display %th 60",
+          "display_rc": 0,
+          "iso": "1990-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(60)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(60+1)-1",
+          "period_end_iso": "1990-06-30",
+          "period_start_iso": "1990-01-01",
+          "source": "stata",
+          "value": 60
+        },
+        {
+          "display": "2022h1",
+          "display_cmd": "display %th 124",
+          "display_rc": 0,
+          "iso": "2022-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(124)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(124+1)-1",
+          "period_end_iso": "2022-06-30",
+          "period_start_iso": "2022-01-01",
+          "source": "stata",
+          "value": 124
+        },
+        {
+          "display": "2025h2",
+          "display_cmd": "display %th 131",
+          "display_rc": 0,
+          "iso": "2025-07-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(131)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(131+1)-1",
+          "period_end_iso": "2025-12-31",
+          "period_start_iso": "2025-07-01",
+          "source": "stata",
+          "value": 131
+        },
+        {
+          "display": "2035h1",
+          "display_cmd": "display %th 150",
+          "display_rc": 0,
+          "iso": "2035-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofh(150)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofh(150+1)-1",
+          "period_end_iso": "2035-06-30",
+          "period_start_iso": "2035-01-01",
+          "source": "stata",
+          "value": 150
+        }
+      ]
+    },
+    "%tm": {
+      "epoch": "1960m1",
+      "epoch_evidence_cmd": "display %tdCCYY-NN-DD dofm(0)",
+      "epoch_iso_at_value_0": "1960-01-01",
+      "fixed_length": false,
+      "note": "A CALENDAR month index.  Months are 28-31 days; multiplication does not convert.",
+      "period": "calendar month",
+      "unit": "months",
+      "value_count": 10,
+      "values": [
+        {
+          "display": " 1950m1",
+          "display_cmd": "display %tm -120",
+          "display_rc": 0,
+          "iso": "1950-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(-120)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(-120+1)-1",
+          "period_end_iso": "1950-01-31",
+          "period_start_iso": "1950-01-01",
+          "source": "stata",
+          "value": -120
+        },
+        {
+          "display": "1959m12",
+          "display_cmd": "display %tm -1",
+          "display_rc": 0,
+          "iso": "1959-12-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(-1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(-1+1)-1",
+          "period_end_iso": "1959-12-31",
+          "period_start_iso": "1959-12-01",
+          "source": "stata",
+          "value": -1
+        },
+        {
+          "display": " 1960m1",
+          "display_cmd": "display %tm 0",
+          "display_rc": 0,
+          "iso": "1960-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(0)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(0+1)-1",
+          "period_end_iso": "1960-01-31",
+          "period_start_iso": "1960-01-01",
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "display": " 1960m2",
+          "display_cmd": "display %tm 1",
+          "display_rc": 0,
+          "iso": "1960-02-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(1+1)-1",
+          "period_end_iso": "1960-02-29",
+          "period_start_iso": "1960-02-01",
+          "source": "stata",
+          "value": 1
+        },
+        {
+          "display": "1960m12",
+          "display_cmd": "display %tm 11",
+          "display_rc": 0,
+          "iso": "1960-12-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(11)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(11+1)-1",
+          "period_end_iso": "1960-12-31",
+          "period_start_iso": "1960-12-01",
+          "source": "stata",
+          "value": 11
+        },
+        {
+          "display": " 1961m1",
+          "display_cmd": "display %tm 12",
+          "display_rc": 0,
+          "iso": "1961-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(12)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(12+1)-1",
+          "period_end_iso": "1961-01-31",
+          "period_start_iso": "1961-01-01",
+          "source": "stata",
+          "value": 12
+        },
+        {
+          "display": " 1990m1",
+          "display_cmd": "display %tm 360",
+          "display_rc": 0,
+          "iso": "1990-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(360)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(360+1)-1",
+          "period_end_iso": "1990-01-31",
+          "period_start_iso": "1990-01-01",
+          "source": "stata",
+          "value": 360
+        },
+        {
+          "display": " 2022m2",
+          "display_cmd": "display %tm 745",
+          "display_rc": 0,
+          "iso": "2022-02-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(745)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(745+1)-1",
+          "period_end_iso": "2022-02-28",
+          "period_start_iso": "2022-02-01",
+          "source": "stata",
+          "value": 745
+        },
+        {
+          "display": " 2025m1",
+          "display_cmd": "display %tm 780",
+          "display_rc": 0,
+          "iso": "2025-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(780)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(780+1)-1",
+          "period_end_iso": "2025-01-31",
+          "period_start_iso": "2025-01-01",
+          "source": "stata",
+          "value": 780
+        },
+        {
+          "display": " 2043m5",
+          "display_cmd": "display %tm 1000",
+          "display_rc": 0,
+          "iso": "2043-05-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofm(1000)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofm(1000+1)-1",
+          "period_end_iso": "2043-05-31",
+          "period_start_iso": "2043-05-01",
+          "source": "stata",
+          "value": 1000
+        }
+      ]
+    },
+    "%tq": {
+      "epoch": "1960q1",
+      "epoch_evidence_cmd": "display %tdCCYY-NN-DD dofq(0)",
+      "epoch_iso_at_value_0": "1960-01-01",
+      "fixed_length": false,
+      "note": "A CALENDAR quarter index; multiplication does not convert.",
+      "period": "calendar quarter",
+      "unit": "quarters",
+      "value_count": 10,
+      "values": [
+        {
+          "display": "1950q1",
+          "display_cmd": "display %tq -40",
+          "display_rc": 0,
+          "iso": "1950-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(-40)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(-40+1)-1",
+          "period_end_iso": "1950-03-31",
+          "period_start_iso": "1950-01-01",
+          "source": "stata",
+          "value": -40
+        },
+        {
+          "display": "1959q4",
+          "display_cmd": "display %tq -1",
+          "display_rc": 0,
+          "iso": "1959-10-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(-1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(-1+1)-1",
+          "period_end_iso": "1959-12-31",
+          "period_start_iso": "1959-10-01",
+          "source": "stata",
+          "value": -1
+        },
+        {
+          "display": "1960q1",
+          "display_cmd": "display %tq 0",
+          "display_rc": 0,
+          "iso": "1960-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(0)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(0+1)-1",
+          "period_end_iso": "1960-03-31",
+          "period_start_iso": "1960-01-01",
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "display": "1960q2",
+          "display_cmd": "display %tq 1",
+          "display_rc": 0,
+          "iso": "1960-04-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(1+1)-1",
+          "period_end_iso": "1960-06-30",
+          "period_start_iso": "1960-04-01",
+          "source": "stata",
+          "value": 1
+        },
+        {
+          "display": "1960q4",
+          "display_cmd": "display %tq 3",
+          "display_rc": 0,
+          "iso": "1960-10-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(3)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(3+1)-1",
+          "period_end_iso": "1960-12-31",
+          "period_start_iso": "1960-10-01",
+          "source": "stata",
+          "value": 3
+        },
+        {
+          "display": "1961q1",
+          "display_cmd": "display %tq 4",
+          "display_rc": 0,
+          "iso": "1961-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(4)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(4+1)-1",
+          "period_end_iso": "1961-03-31",
+          "period_start_iso": "1961-01-01",
+          "source": "stata",
+          "value": 4
+        },
+        {
+          "display": "1990q1",
+          "display_cmd": "display %tq 120",
+          "display_rc": 0,
+          "iso": "1990-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(120)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(120+1)-1",
+          "period_end_iso": "1990-03-31",
+          "period_start_iso": "1990-01-01",
+          "source": "stata",
+          "value": 120
+        },
+        {
+          "display": "2022q1",
+          "display_cmd": "display %tq 248",
+          "display_rc": 0,
+          "iso": "2022-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(248)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(248+1)-1",
+          "period_end_iso": "2022-03-31",
+          "period_start_iso": "2022-01-01",
+          "source": "stata",
+          "value": 248
+        },
+        {
+          "display": "2025q3",
+          "display_cmd": "display %tq 262",
+          "display_rc": 0,
+          "iso": "2025-07-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(262)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(262+1)-1",
+          "period_end_iso": "2025-09-30",
+          "period_start_iso": "2025-07-01",
+          "source": "stata",
+          "value": 262
+        },
+        {
+          "display": "2035q1",
+          "display_cmd": "display %tq 300",
+          "display_rc": 0,
+          "iso": "2035-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofq(300)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofq(300+1)-1",
+          "period_end_iso": "2035-03-31",
+          "period_start_iso": "2035-01-01",
+          "source": "stata",
+          "value": 300
+        }
+      ]
+    },
+    "%tw": {
+      "epoch": "1960w1",
+      "epoch_evidence_cmd": "display %tdCCYY-NN-DD dofw(0)",
+      "epoch_iso_at_value_0": "1960-01-01",
+      "fixed_length": false,
+      "note": "A CALENDAR week index.  Week 1 of every year starts on 01jan and week 52 absorbs the remaining 8 or 9 days, so weeks are not 7 days apart across a year boundary and multiplication does not convert.",
+      "period": "calendar week",
+      "unit": "weeks",
+      "value_count": 12,
+      "values": [
+        {
+          "display": " 1958w5",
+          "display_cmd": "display %tw -100",
+          "display_rc": 0,
+          "iso": "1958-01-29",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(-100)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(-100+1)-1",
+          "period_end_iso": "1958-02-04",
+          "period_start_iso": "1958-01-29",
+          "source": "stata",
+          "value": -100
+        },
+        {
+          "display": "1959w52",
+          "display_cmd": "display %tw -1",
+          "display_rc": 0,
+          "iso": "1959-12-24",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(-1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(-1+1)-1",
+          "period_end_iso": "1959-12-31",
+          "period_start_iso": "1959-12-24",
+          "source": "stata",
+          "value": -1
+        },
+        {
+          "display": " 1960w1",
+          "display_cmd": "display %tw 0",
+          "display_rc": 0,
+          "iso": "1960-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(0)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(0+1)-1",
+          "period_end_iso": "1960-01-07",
+          "period_start_iso": "1960-01-01",
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "display": " 1960w2",
+          "display_cmd": "display %tw 1",
+          "display_rc": 0,
+          "iso": "1960-01-08",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(1)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(1+1)-1",
+          "period_end_iso": "1960-01-14",
+          "period_start_iso": "1960-01-08",
+          "source": "stata",
+          "value": 1
+        },
+        {
+          "display": "1960w52",
+          "display_cmd": "display %tw 51",
+          "display_rc": 0,
+          "iso": "1960-12-23",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(51)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(51+1)-1",
+          "period_end_iso": "1960-12-31",
+          "period_start_iso": "1960-12-23",
+          "source": "stata",
+          "value": 51
+        },
+        {
+          "display": " 1961w1",
+          "display_cmd": "display %tw 52",
+          "display_rc": 0,
+          "iso": "1961-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(52)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(52+1)-1",
+          "period_end_iso": "1961-01-07",
+          "period_start_iso": "1961-01-01",
+          "source": "stata",
+          "value": 52
+        },
+        {
+          "display": " 1961w2",
+          "display_cmd": "display %tw 53",
+          "display_rc": 0,
+          "iso": "1961-01-08",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(53)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(53+1)-1",
+          "period_end_iso": "1961-01-14",
+          "period_start_iso": "1961-01-08",
+          "source": "stata",
+          "value": 53
+        },
+        {
+          "display": " 1990w1",
+          "display_cmd": "display %tw 1560",
+          "display_rc": 0,
+          "iso": "1990-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(1560)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(1560+1)-1",
+          "period_end_iso": "1990-01-07",
+          "period_start_iso": "1990-01-01",
+          "source": "stata",
+          "value": 1560
+        },
+        {
+          "display": "1998w25",
+          "display_cmd": "display %tw 2000",
+          "display_rc": 0,
+          "iso": "1998-06-18",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(2000)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(2000+1)-1",
+          "period_end_iso": "1998-06-24",
+          "period_start_iso": "1998-06-18",
+          "source": "stata",
+          "value": 2000
+        },
+        {
+          "display": " 2025w1",
+          "display_cmd": "display %tw 3380",
+          "display_rc": 0,
+          "iso": "2025-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(3380)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(3380+1)-1",
+          "period_end_iso": "2025-01-07",
+          "period_start_iso": "2025-01-01",
+          "source": "stata",
+          "value": 3380
+        },
+        {
+          "display": "2025w21",
+          "display_cmd": "display %tw 3400",
+          "display_rc": 0,
+          "iso": "2025-05-21",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(3400)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(3400+1)-1",
+          "period_end_iso": "2025-05-27",
+          "period_start_iso": "2025-05-21",
+          "source": "stata",
+          "value": 3400
+        },
+        {
+          "display": " 2056w9",
+          "display_cmd": "display %tw 5000",
+          "display_rc": 0,
+          "iso": "2056-02-26",
+          "iso_cmd": "display %tdCCYY-NN-DD dofw(5000)",
+          "iso_rc": 0,
+          "period_end_cmd": "display %tdCCYY-NN-DD dofw(5000+1)-1",
+          "period_end_iso": "2056-03-03",
+          "period_start_iso": "2056-02-26",
+          "source": "stata",
+          "value": 5000
+        }
+      ]
+    },
+    "%ty": {
+      "epoch": "NOT AN EPOCH",
+      "epoch_evidence_cmd": "display %tdCCYY-NN-DD dofy(0)",
+      "epoch_iso_at_value_0": null,
+      "fixed_length": false,
+      "note": "%ty is the YEAR ITSELF.  It is not an offset from 1960 and must not be offset at all.  See \"ty_is_the_year_itself\".",
+      "period": "calendar year",
+      "unit": "years",
+      "value_count": 9,
+      "values": [
+        {
+          "dec31_iso": null,
+          "display": " -50",
+          "display_cmd": "display %ty -50",
+          "display_rc": 0,
+          "iso": null,
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(-50)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(-50)",
+          "jan1_iso": null,
+          "note": "dofy() is undefined outside years 0100-9999, so no ISO date could be derived empirically for this %ty value; the value itself IS the year.",
+          "source": "stata",
+          "value": -50
+        },
+        {
+          "dec31_iso": null,
+          "display": "   0",
+          "display_cmd": "display %ty 0",
+          "display_rc": 0,
+          "iso": null,
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(0)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(0)",
+          "jan1_iso": null,
+          "note": "dofy() is undefined outside years 0100-9999, so no ISO date could be derived empirically for this %ty value; the value itself IS the year.",
+          "source": "stata",
+          "value": 0
+        },
+        {
+          "dec31_iso": null,
+          "display": "  38",
+          "display_cmd": "display %ty 38",
+          "display_rc": 0,
+          "iso": null,
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(38)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(38)",
+          "jan1_iso": null,
+          "note": "dofy() is undefined outside years 0100-9999, so no ISO date could be derived empirically for this %ty value; the value itself IS the year.",
+          "source": "stata",
+          "value": 38
+        },
+        {
+          "dec31_iso": "0100-12-31",
+          "display": "0100",
+          "display_cmd": "display %ty 100",
+          "display_rc": 0,
+          "iso": "0100-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(100)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(100)",
+          "jan1_iso": "0100-01-01",
+          "source": "stata",
+          "value": 100
+        },
+        {
+          "dec31_iso": "1960-12-31",
+          "display": "1960",
+          "display_cmd": "display %ty 1960",
+          "display_rc": 0,
+          "iso": "1960-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(1960)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(1960)",
+          "jan1_iso": "1960-01-01",
+          "source": "stata",
+          "value": 1960
+        },
+        {
+          "dec31_iso": "1998-12-31",
+          "display": "1998",
+          "display_cmd": "display %ty 1998",
+          "display_rc": 0,
+          "iso": "1998-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(1998)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(1998)",
+          "jan1_iso": "1998-01-01",
+          "source": "stata",
+          "value": 1998
+        },
+        {
+          "dec31_iso": "2001-12-31",
+          "display": "2001",
+          "display_cmd": "display %ty 2001",
+          "display_rc": 0,
+          "iso": "2001-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(2001)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(2001)",
+          "jan1_iso": "2001-01-01",
+          "source": "stata",
+          "value": 2001
+        },
+        {
+          "dec31_iso": "2025-12-31",
+          "display": "2025",
+          "display_cmd": "display %ty 2025",
+          "display_rc": 0,
+          "iso": "2025-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(2025)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(2025)",
+          "jan1_iso": "2025-01-01",
+          "source": "stata",
+          "value": 2025
+        },
+        {
+          "dec31_iso": null,
+          "display": "9999",
+          "display_cmd": "display %ty 9999",
+          "display_rc": 0,
+          "iso": "9999-01-01",
+          "iso_cmd": "display %tdCCYY-NN-DD dofy(9999)",
+          "iso_rc": 0,
+          "jan1_cmd": "display %tdCCYY-NN-DD dofy(9999)",
+          "jan1_iso": "9999-01-01",
+          "source": "stata",
+          "value": 9999
+        }
+      ]
+    }
+  },
+  "jsonio_display_formats": {
+    "StataAllToJSON_emitted_fields": [
+      "name",
+      "source",
+      "values",
+      "firstObservationId",
+      "lastObservationId",
+      "numberRecords",
+      "variableIndices",
+      "numberVariables",
+      "variableTypeIsString",
+      "variableNames",
+      "variableLabels",
+      "valueLabelNames",
+      "valueLabels"
+    ],
+    "StataAllToJSON_has_format_field": false,
+    "claim_in_plan": "jsonio has no option that emits display formats; jsonio.ado:238 gates on inlist(\"`metaprint'`filenm'\", ...)",
+    "dashstyle_payload_has_format_key": false,
+    "dashstyle_payload_top_level_keys": [
+      "firstRecordId",
+      "lastRecordId",
+      "numberOfRecords",
+      "numberOfVariables",
+      "valueLabelNames",
+      "valueLabels",
+      "values",
+      "variableIndices",
+      "variableIsString",
+      "variableLabels",
+      "variableNames"
+    ],
+    "empirical_probes": {
+      "dashstyle": {
+        "cmd": "jsonio out date close, what(all) filenm(<path>) metaprint(varnames varlabels vallabs labelnames)",
+        "output_exists": true,
+        "path": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/jsonio_dashstyle.json",
+        "rc": 0
+      },
+      "metaprint_no_filenm": {
+        "cmd": "jsonio out date close, metaprint(varlabels)",
+        "output_exists": true,
+        "path": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/jsonio_console.log",
+        "rc": 0
+      },
+      "metaprint_with_filenm": {
+        "cmd": "jsonio out date close, filenm(<path>) metaprint(varlabels)",
+        "output_exists": true,
+        "path": "/var/folders/cr/mvfn7pfn5l92lmfs20vc46lw0000gn/T//dash_date_probe/jsonio_metafile.json",
+        "rc": 0
+      }
+    },
+    "finding": "CONFIRMED on all three counts.  (1) jsonio.ado line 238 gates the metadata branch on inlist(\"`metaprint'`filenm'\", ...), which CONCATENATES the two macros, so any non-empty filenm() makes the test unmatchable and metaprint() becomes a no-op -- exactly what dash.ado:1481 does.  (2) The metaprint() keys StataMetaToJSON accepts are ['varlabels', 'varnames', 'vallabs', 'labelnames'] -- none is a display format.  (3) The what(all) payload jsonio actually wrote carries top-level keys ['firstRecordId', 'lastRecordId', 'numberOfRecords', 'numberOfVariables', 'valueLabelNames', 'valueLabels', 'values', 'variableIndices', 'variableIsString', 'variableLabels', 'variableNames'], with no format member.  jsonio therefore cannot emit display formats and dash must carry them itself.",
+    "gating_concatenates_macros": true,
+    "gating_fallthrough": {
+      "byte_identical_to_what_all": true,
+      "meaning": "metaprint() with a filenm() and NO what() produced a payload byte-identical to what(all): after the line 238 test fails, control reaches the final unconditional else (jsonio.ado:295) which calls printAllToFile.  metaprint() is not merely ignored -- the call silently degrades to a full data+metadata dump."
+    },
+    "gating_line_matches_plan_line_238": true,
+    "gating_line_number": 238,
+    "gating_line_text": "if inlist(`\"`metaprint'`filenm'\"', \"varlabels\", \"varnames\", \"vallabs\", ///",
+    "javap_Variables_format_members": [
+      "protected org.paces.Stata.Variables.VarDisplay displayFmt;",
+      "public org.paces.Stata.Variables.VarDisplay getDisplayFmt();",
+      "public java.lang.Boolean isDateTime(java.lang.String);"
+    ],
+    "javap_cmd": "javap -cp /Users/billy/Desktop/Programs/Java/StataJSON/target/jsonio-jar-with-dependencies.jar org.paces.Stata.MetaData.Variables",
+    "javap_note": null,
+    "metaprint_accepted_keys": [
+      "varlabels",
+      "varnames",
+      "vallabs",
+      "labelnames"
+    ],
+    "metaprint_no_filenm_console_tail": [
+      "{",
+      "  \"date\" : \"Date\",",
+      "  \"close\" : \"Closing price\"",
+      "}",
+      ". local rc1 = _rc",
+      ". capture log close zqjl"
+    ],
+    "note": "jsonio was read only.  Nothing in StataJSON was modified.",
+    "source_files_read": {
+      "ado": "/Users/billy/Desktop/Programs/Java/StataJSON/jsonio.ado",
+      "jar": "/Users/billy/Desktop/Programs/Java/StataJSON/target/jsonio-jar-with-dependencies.jar",
+      "java": "/Users/billy/Desktop/Programs/Java/StataJSON/src/main/java/org/paces/Stata/JSON"
+    }
+  },
+  "jsonio_value_boundary": {
+    "finding": "MEASURED, AND IT CONTRADICTS THE SECTION 08 OVERVIEW.  Section 08 opens with \"a %td variable arrives as a raw Stata SIF integer\".  It does not.  jsonio renders EVERY %t* variable through its display format and emits a JSON STRING (sp500 date arrives as \"02jan2001\", not 14977), while still reporting variableIsString=false for it.  Numeric display formats are NOT applied: %9.0fc and %9.2f come across as raw JSON numbers.  So the Python side must parse a formatted date STRING, not offset an integer -- and _load_data's existing pd.to_numeric(..., errors=\"coerce\") will turn those strings into NaN.  Tasks 08-03 and 08-04 must be re-read against this.",
+    "missing_value_encoding": {
+      "date_formats": "a blank-padded \".\" STRING, e.g. '        .'",
+      "numeric_formats": "the four-character STRING 'null' -- quoted, so it is NOT a JSON null",
+      "string_variables": "''"
+    },
+    "probe_cmd": "jsonio out <one var per format>, what(all) filenm(<path>) metaprint(varnames varlabels vallabs labelnames)",
+    "probe_rc": 0,
+    "sp500_first_rows": [
+      {
+        "close": 1283.27001953125,
+        "date": "02jan2001"
+      },
+      {
+        "close": 1347.56005859375,
+        "date": "03jan2001"
+      },
+      {
+        "close": 1333.3399658203125,
+        "date": "04jan2001"
+      }
+    ],
+    "sp500_probe_cmd": "jsonio out date close, what(all) filenm(<path>) metaprint(varnames varlabels vallabs labelnames)",
+    "sp500_variableIsString": {
+      "close": false,
+      "date": false
+    },
+    "stata_formats": {
+      "zq_f2": "%9.2f",
+      "zq_fc": "%9.0fc",
+      "zq_plain": "%9.0g",
+      "zq_str": "%12s",
+      "zq_tC": "%tC",
+      "zq_tc": "%tc",
+      "zq_td": "%td",
+      "zq_th": "%th",
+      "zq_tm": "%tm",
+      "zq_tq": "%tq",
+      "zq_tw": "%tw",
+      "zq_ty": "%ty"
+    },
+    "subsecond_precision": {
+      "finding": "jsonio renders %tc through the DEFAULT %tc picture, which stops at whole seconds, so the .123 millisecond component is destroyed in transit.  Sub-second precision cannot be recovered on the Python side from what jsonio emits.",
+      "jsonio_emitted": "13feb1999 23:31:30",
+      "probe_value_ms": 1234567890123,
+      "true_instant": "1999-02-13T23:31:30.123"
+    },
+    "variables": {
+      "zq_f2": {
+        "emitted_as_formatted_string": false,
+        "emitted_json_types_nonmissing": [
+          "float"
+        ],
+        "emitted_values": [
+          1234.5678,
+          0.0,
+          -1234.5678,
+          "null"
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "null",
+        "source": "stata",
+        "stata_format": "%9.2f"
+      },
+      "zq_fc": {
+        "emitted_as_formatted_string": false,
+        "emitted_json_types_nonmissing": [
+          "float"
+        ],
+        "emitted_values": [
+          1234567.891,
+          0.0,
+          -1234.5678,
+          "null"
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "null",
+        "source": "stata",
+        "stata_format": "%9.0fc"
+      },
+      "zq_plain": {
+        "emitted_as_formatted_string": false,
+        "emitted_json_types_nonmissing": [
+          "float"
+        ],
+        "emitted_values": [
+          1234.5678,
+          0.0,
+          -1234.5678,
+          "null"
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "null",
+        "source": "stata",
+        "stata_format": "%9.0g"
+      },
+      "zq_str": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          "abc",
+          "abc",
+          "abc",
+          ""
+        ],
+        "jsonio_variableIsString": true,
+        "missing_emitted_as": "",
+        "source": "stata",
+        "stata_format": "%12s"
+      },
+      "zq_tC": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          "13feb1999 23:31:08",
+          "01jan1960 00:00:00",
+          "31dec1959 23:59:59",
+          "                 ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "                 .",
+        "source": "stata",
+        "stata_format": "%tC"
+      },
+      "zq_tc": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          "13feb1999 23:31:30",
+          "01jan1960 00:00:00",
+          "31dec1959 23:59:59",
+          "                 ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "                 .",
+        "source": "stata",
+        "stata_format": "%tc"
+      },
+      "zq_td": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          "02jan2001",
+          "01jan1960",
+          "31dec1959",
+          "        ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "        .",
+        "source": "stata",
+        "stata_format": "%td"
+      },
+      "zq_th": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          "2022h1",
+          "1960h1",
+          "1959h2",
+          "     ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "     .",
+        "source": "stata",
+        "stata_format": "%th"
+      },
+      "zq_tm": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          " 2022m2",
+          " 1960m1",
+          "1959m12",
+          "      ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "      .",
+        "source": "stata",
+        "stata_format": "%tm"
+      },
+      "zq_tq": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          "2022q1",
+          "1960q1",
+          "1959q4",
+          "     ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "     .",
+        "source": "stata",
+        "stata_format": "%tq"
+      },
+      "zq_tw": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          " 2025w1",
+          " 1960w1",
+          "1959w52",
+          "      ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "      .",
+        "source": "stata",
+        "stata_format": "%tw"
+      },
+      "zq_ty": {
+        "emitted_as_formatted_string": true,
+        "emitted_json_types_nonmissing": [
+          "str"
+        ],
+        "emitted_values": [
+          "1998",
+          "1960",
+          "2025",
+          "   ."
+        ],
+        "jsonio_variableIsString": false,
+        "missing_emitted_as": "   .",
+        "source": "stata",
+        "stata_format": "%ty"
+      }
+    },
+    "why": "jsonio is the only route data takes from Stata into dash_render.py, so whatever it emits for a formatted variable is the actual input to _load_data.  This block records that, measured, rather than assuming a raw SIF integer arrives."
+  },
+  "leap_seconds": {
+    "finding": "Leap-second data IS available.  %tC and %tc interpret the SAME integer as instants that differ by the accumulated leap seconds: the offset measured with Cofc() runs from 9.0s to 27.0s across the probed range, growing with time.  Treating %tC as %tc is therefore wrong by up to that many seconds and, per section 08, is acceptable only if documented.",
+    "method": "Cofc(t) maps a %tc instant to the %tC value for the SAME instant, so Cofc(t) - t is the accumulated leap-second offset in milliseconds.  The same integer is also displayed under both pictures to show the two formats disagree on what a given number means.",
+    "probes": [
+      {
+        "Cofc_cmd": "display %21.0f Cofc(0)",
+        "Cofc_value": "0",
+        "cofC_roundtrip": "0",
+        "leap_offset_ms": 0,
+        "leap_offset_seconds": 0.0,
+        "source": "stata",
+        "tC_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 0",
+        "tC_iso": "1960-01-01T00:00:00.000",
+        "tC_rc": 0,
+        "tc_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 0",
+        "tc_iso": "1960-01-01T00:00:00.000",
+        "tc_rc": 0,
+        "value_ms": 0
+      },
+      {
+        "Cofc_cmd": "display %21.0f Cofc(1)",
+        "Cofc_value": "1",
+        "cofC_roundtrip": "1",
+        "leap_offset_ms": 0,
+        "leap_offset_seconds": 0.0,
+        "source": "stata",
+        "tC_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 1",
+        "tC_iso": "1960-01-01T00:00:00.001",
+        "tC_rc": 0,
+        "tc_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 1",
+        "tc_iso": "1960-01-01T00:00:00.001",
+        "tc_rc": 0,
+        "value_ms": 1
+      },
+      {
+        "Cofc_cmd": "display %21.0f Cofc(86400000)",
+        "Cofc_value": "86400000",
+        "cofC_roundtrip": "86400000",
+        "leap_offset_ms": 0,
+        "leap_offset_seconds": 0.0,
+        "source": "stata",
+        "tC_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 86400000",
+        "tC_iso": "1960-01-02T00:00:00.000",
+        "tC_rc": 0,
+        "tc_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 86400000",
+        "tc_iso": "1960-01-02T00:00:00.000",
+        "tc_rc": 0,
+        "value_ms": 86400000
+      },
+      {
+        "Cofc_cmd": "display %21.0f Cofc(631152000000)",
+        "Cofc_value": "631152009000",
+        "cofC_roundtrip": "631152000000",
+        "leap_offset_ms": 9000,
+        "leap_offset_seconds": 9.0,
+        "source": "stata",
+        "tC_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 631152000000",
+        "tC_iso": "1979-12-31T23:59:52.000",
+        "tC_rc": 0,
+        "tc_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 631152000000",
+        "tc_iso": "1980-01-01T00:00:00.000",
+        "tc_rc": 0,
+        "value_ms": 631152000000
+      },
+      {
+        "Cofc_cmd": "display %21.0f Cofc(946684800000)",
+        "Cofc_value": "946684814000",
+        "cofC_roundtrip": "946684800000",
+        "leap_offset_ms": 14000,
+        "leap_offset_seconds": 14.0,
+        "source": "stata",
+        "tC_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 946684800000",
+        "tC_iso": "1989-12-30T23:59:46.000",
+        "tC_rc": 0,
+        "tc_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 946684800000",
+        "tc_iso": "1989-12-31T00:00:00.000",
+        "tc_rc": 0,
+        "value_ms": 946684800000
+      },
+      {
+        "Cofc_cmd": "display %21.0f Cofc(1234567890123)",
+        "Cofc_value": "1234567912123",
+        "cofC_roundtrip": "1234567890123",
+        "leap_offset_ms": 22000,
+        "leap_offset_seconds": 22.0,
+        "source": "stata",
+        "tC_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 1234567890123",
+        "tC_iso": "1999-02-13T23:31:08.123",
+        "tC_rc": 0,
+        "tc_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 1234567890123",
+        "tc_iso": "1999-02-13T23:31:30.123",
+        "tc_rc": 0,
+        "value_ms": 1234567890123
+      },
+      {
+        "Cofc_cmd": "display %21.0f Cofc(1893456000000)",
+        "Cofc_value": "1893456027000",
+        "cofC_roundtrip": "1893456000000",
+        "leap_offset_ms": 27000,
+        "leap_offset_seconds": 27.0,
+        "source": "stata",
+        "tC_cmd": "display %tCCCYY-NN-DD!THH:MM:SS.sss 1893456000000",
+        "tC_iso": "2019-12-31T23:59:33.000",
+        "tC_rc": 0,
+        "tc_cmd": "display %tcCCYY-NN-DD!THH:MM:SS.sss 1893456000000",
+        "tc_iso": "2020-01-01T00:00:00.000",
+        "tc_rc": 0,
+        "value_ms": 1893456000000
+      }
+    ],
+    "tC_evaluable": true
+  },
+  "left_aligned_prefix": {
+    "note": "Task 08-03 must match the %t / %-t prefix case-sensitively.  These rows show Stata accepting the left-aligned variant of each date format.  The SAME integer 14977 is fed to all eight, so the resulting instants deliberately differ -- the point of these rows is that the %-t spelling parses, not what it means.",
+    "probes": [
+      {
+        "display": "02jan2001",
+        "display_cmd": "display %-td 14977",
+        "fmt": "%-td",
+        "rc": 0,
+        "value": "14977"
+      },
+      {
+        "display": "01jan1960 00:00:14",
+        "display_cmd": "display %-tc 14977",
+        "fmt": "%-tc",
+        "rc": 0,
+        "value": "14977"
+      },
+      {
+        "display": "01jan1960 00:00:14",
+        "display_cmd": "display %-tC 14977",
+        "fmt": "%-tC",
+        "rc": 0,
+        "value": "14977"
+      },
+      {
+        "display": "2248w2 ",
+        "display_cmd": "display %-tw 14977",
+        "fmt": "%-tw",
+        "rc": 0,
+        "value": "14977"
+      },
+      {
+        "display": "3208m2 ",
+        "display_cmd": "display %-tm 14977",
+        "fmt": "%-tm",
+        "rc": 0,
+        "value": "14977"
+      },
+      {
+        "display": "5704q2",
+        "display_cmd": "display %-tq 14977",
+        "fmt": "%-tq",
+        "rc": 0,
+        "value": "14977"
+      },
+      {
+        "display": "9448h2",
+        "display_cmd": "display %-th 14977",
+        "fmt": "%-th",
+        "rc": 0,
+        "value": "14977"
+      },
+      {
+        "display": "1.5e+04",
+        "display_cmd": "display %-ty 14977",
+        "fmt": "%-ty",
+        "rc": 0,
+        "value": "14977"
+      }
+    ]
+  },
+  "numeric_formats": {
+    "%-12.0gc": {
+      "comma_separated": true,
+      "constant_width": true,
+      "left_aligned": true,
+      "observed_widths": [
+        12
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "0           ",
+          "display_cmd": "display %-12.0gc 0",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "-1          ",
+          "display_cmd": "display %-12.0gc -1",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "1,234.5678  ",
+          "display_cmd": "display %-12.0gc 1234.5678",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1,234.5678 ",
+          "display_cmd": "display %-12.0gc -1234.5678",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": "1,234,567.9 ",
+          "display_cmd": "display %-12.0gc 1234567.891",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1,234,567.9",
+          "display_cmd": "display %-12.0gc -1234567.891",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": ".000123456  ",
+          "display_cmd": "display %-12.0gc 0.000123456",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": "1.00000e+12 ",
+          "display_cmd": "display %-12.0gc 1e12",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": ".           ",
+          "display_cmd": "display %-12.0gc .",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": ".a          ",
+          "display_cmd": "display %-12.0gc .a",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%-9.2f": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": true,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "0.00     ",
+          "display_cmd": "display %-9.2f 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "-1.00    ",
+          "display_cmd": "display %-9.2f -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "1234.57  ",
+          "display_cmd": "display %-9.2f 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1234.57 ",
+          "display_cmd": "display %-9.2f -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": "1.23e+06 ",
+          "display_cmd": "display %-9.2f 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1.23e+06",
+          "display_cmd": "display %-9.2f -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "0.00     ",
+          "display_cmd": "display %-9.2f 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": "1.00e+12 ",
+          "display_cmd": "display %-9.2f 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": ".        ",
+          "display_cmd": "display %-9.2f .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": ".a       ",
+          "display_cmd": "display %-9.2f .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%10.0g": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        10
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "         0",
+          "display_cmd": "display %10.0g 0",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "        -1",
+          "display_cmd": "display %10.0g -1",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": " 1234.5678",
+          "display_cmd": "display %10.0g 1234.5678",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1234.5678",
+          "display_cmd": "display %10.0g -1234.5678",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1234567.9",
+          "display_cmd": "display %10.0g 1234567.891",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1234567.9",
+          "display_cmd": "display %10.0g -1234567.891",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": " .00012346",
+          "display_cmd": "display %10.0g 0.000123456",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.000e+12",
+          "display_cmd": "display %10.0g 1e12",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "         .",
+          "display_cmd": "display %10.0g .",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "        .a",
+          "display_cmd": "display %10.0g .a",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%10.0gc": {
+      "comma_separated": true,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        10
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "         0",
+          "display_cmd": "display %10.0gc 0",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "        -1",
+          "display_cmd": "display %10.0gc -1",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": " 1,234.568",
+          "display_cmd": "display %10.0gc 1234.5678",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1,234.568",
+          "display_cmd": "display %10.0gc -1234.5678",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1234567.9",
+          "display_cmd": "display %10.0gc 1234567.891",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1234567.9",
+          "display_cmd": "display %10.0gc -1234567.891",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": " .00012346",
+          "display_cmd": "display %10.0gc 0.000123456",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.000e+12",
+          "display_cmd": "display %10.0gc 1e12",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "         .",
+          "display_cmd": "display %10.0gc .",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "        .a",
+          "display_cmd": "display %10.0gc .a",
+          "display_width": 10,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%12.0gc": {
+      "comma_separated": true,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        12
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "           0",
+          "display_cmd": "display %12.0gc 0",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "          -1",
+          "display_cmd": "display %12.0gc -1",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "  1,234.5678",
+          "display_cmd": "display %12.0gc 1234.5678",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": " -1,234.5678",
+          "display_cmd": "display %12.0gc -1234.5678",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1,234,567.9",
+          "display_cmd": "display %12.0gc 1234567.891",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1,234,567.9",
+          "display_cmd": "display %12.0gc -1234567.891",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "  .000123456",
+          "display_cmd": "display %12.0gc 0.000123456",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00000e+12",
+          "display_cmd": "display %12.0gc 1e12",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "           .",
+          "display_cmd": "display %12.0gc .",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "          .a",
+          "display_cmd": "display %12.0gc .a",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%12.2fc": {
+      "comma_separated": true,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        12
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "        0.00",
+          "display_cmd": "display %12.2fc 0",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "       -1.00",
+          "display_cmd": "display %12.2fc -1",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "    1,234.57",
+          "display_cmd": "display %12.2fc 1234.5678",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "   -1,234.57",
+          "display_cmd": "display %12.2fc -1234.5678",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": "1,234,567.89",
+          "display_cmd": "display %12.2fc 1234567.891",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": " -1234567.89",
+          "display_cmd": "display %12.2fc -1234567.891",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "        0.00",
+          "display_cmd": "display %12.2fc 0.000123456",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": "    1.00e+12",
+          "display_cmd": "display %12.2fc 1e12",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "           .",
+          "display_cmd": "display %12.2fc .",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "          .a",
+          "display_cmd": "display %12.2fc .a",
+          "display_width": 12,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%20.15g": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        20
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "                   0",
+          "display_cmd": "display %20.15g 0",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "                  -1",
+          "display_cmd": "display %20.15g -1",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "           1234.5678",
+          "display_cmd": "display %20.15g 1234.5678",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "          -1234.5678",
+          "display_cmd": "display %20.15g -1234.5678",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": "         1234567.891",
+          "display_cmd": "display %20.15g 1234567.891",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "        -1234567.891",
+          "display_cmd": "display %20.15g -1234567.891",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "          .000123456",
+          "display_cmd": "display %20.15g 0.000123456",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": "       1000000000000",
+          "display_cmd": "display %20.15g 1e12",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "                   .",
+          "display_cmd": "display %20.15g .",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "                  .a",
+          "display_cmd": "display %20.15g .a",
+          "display_width": 20,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%8.0g": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        8
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "       0",
+          "display_cmd": "display %8.0g 0",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "      -1",
+          "display_cmd": "display %8.0g -1",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": " 1234.57",
+          "display_cmd": "display %8.0g 1234.5678",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1234.57",
+          "display_cmd": "display %8.0g -1234.5678",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1.2e+06",
+          "display_cmd": "display %8.0g 1234567.891",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1.2e+06",
+          "display_cmd": "display %8.0g -1234567.891",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": " .000123",
+          "display_cmd": "display %8.0g 0.000123456",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.0e+12",
+          "display_cmd": "display %8.0g 1e12",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "       .",
+          "display_cmd": "display %8.0g .",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "      .a",
+          "display_cmd": "display %8.0g .a",
+          "display_width": 8,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%9.0f": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "        0",
+          "display_cmd": "display %9.0f 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "       -1",
+          "display_cmd": "display %9.0f -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "     1235",
+          "display_cmd": "display %9.0f 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "    -1235",
+          "display_cmd": "display %9.0f -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": "  1234568",
+          "display_cmd": "display %9.0f 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": " -1234568",
+          "display_cmd": "display %9.0f -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "        0",
+          "display_cmd": "display %9.0f 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00e+12",
+          "display_cmd": "display %9.0f 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "        .",
+          "display_cmd": "display %9.0f .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "       .a",
+          "display_cmd": "display %9.0f .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%9.0fc": {
+      "comma_separated": true,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "        0",
+          "display_cmd": "display %9.0fc 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "       -1",
+          "display_cmd": "display %9.0fc -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "    1,235",
+          "display_cmd": "display %9.0fc 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "   -1,235",
+          "display_cmd": "display %9.0fc -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": "1,234,568",
+          "display_cmd": "display %9.0fc 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": " -1234568",
+          "display_cmd": "display %9.0fc -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "        0",
+          "display_cmd": "display %9.0fc 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00e+12",
+          "display_cmd": "display %9.0fc 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "        .",
+          "display_cmd": "display %9.0fc .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "       .a",
+          "display_cmd": "display %9.0fc .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%9.0g": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "        0",
+          "display_cmd": "display %9.0g 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "       -1",
+          "display_cmd": "display %9.0g -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": " 1234.568",
+          "display_cmd": "display %9.0g 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1234.568",
+          "display_cmd": "display %9.0g -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": "  1234568",
+          "display_cmd": "display %9.0g 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": " -1234568",
+          "display_cmd": "display %9.0g -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": " .0001235",
+          "display_cmd": "display %9.0g 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00e+12",
+          "display_cmd": "display %9.0g 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "        .",
+          "display_cmd": "display %9.0g .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "       .a",
+          "display_cmd": "display %9.0g .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%9.2f": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "     0.00",
+          "display_cmd": "display %9.2f 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "    -1.00",
+          "display_cmd": "display %9.2f -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "  1234.57",
+          "display_cmd": "display %9.2f 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": " -1234.57",
+          "display_cmd": "display %9.2f -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1.23e+06",
+          "display_cmd": "display %9.2f 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1.23e+06",
+          "display_cmd": "display %9.2f -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "     0.00",
+          "display_cmd": "display %9.2f 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00e+12",
+          "display_cmd": "display %9.2f 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "        .",
+          "display_cmd": "display %9.2f .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "       .a",
+          "display_cmd": "display %9.2f .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%9.2fc": {
+      "comma_separated": true,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "     0.00",
+          "display_cmd": "display %9.2fc 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "    -1.00",
+          "display_cmd": "display %9.2fc -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": " 1,234.57",
+          "display_cmd": "display %9.2fc 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1,234.57",
+          "display_cmd": "display %9.2fc -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1.23e+06",
+          "display_cmd": "display %9.2fc 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1.23e+06",
+          "display_cmd": "display %9.2fc -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "     0.00",
+          "display_cmd": "display %9.2fc 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00e+12",
+          "display_cmd": "display %9.2fc 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "        .",
+          "display_cmd": "display %9.2fc .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "       .a",
+          "display_cmd": "display %9.2fc .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%9.3e": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": " 0.00e+00",
+          "display_cmd": "display %9.3e 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "-1.00e+00",
+          "display_cmd": "display %9.3e -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": " 1.23e+03",
+          "display_cmd": "display %9.3e 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1.23e+03",
+          "display_cmd": "display %9.3e -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1.23e+06",
+          "display_cmd": "display %9.3e 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1.23e+06",
+          "display_cmd": "display %9.3e -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": " 1.23e-04",
+          "display_cmd": "display %9.3e 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00e+12",
+          "display_cmd": "display %9.3e 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "        .",
+          "display_cmd": "display %9.3e .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "       .a",
+          "display_cmd": "display %9.3e .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    },
+    "%9.4f": {
+      "comma_separated": false,
+      "constant_width": true,
+      "left_aligned": false,
+      "observed_widths": [
+        9
+      ],
+      "value_count": 10,
+      "values": [
+        {
+          "display": "   0.0000",
+          "display_cmd": "display %9.4f 0",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0"
+        },
+        {
+          "display": "  -1.0000",
+          "display_cmd": "display %9.4f -1",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1"
+        },
+        {
+          "display": "1234.5678",
+          "display_cmd": "display %9.4f 1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234.5678"
+        },
+        {
+          "display": "-1.23e+03",
+          "display_cmd": "display %9.4f -1234.5678",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234.5678"
+        },
+        {
+          "display": " 1.23e+06",
+          "display_cmd": "display %9.4f 1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1234567.891"
+        },
+        {
+          "display": "-1.23e+06",
+          "display_cmd": "display %9.4f -1234567.891",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "-1234567.891"
+        },
+        {
+          "display": "   0.0001",
+          "display_cmd": "display %9.4f 0.000123456",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "0.000123456"
+        },
+        {
+          "display": " 1.00e+12",
+          "display_cmd": "display %9.4f 1e12",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "1e12"
+        },
+        {
+          "display": "        .",
+          "display_cmd": "display %9.4f .",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": "."
+        },
+        {
+          "display": "       .a",
+          "display_cmd": "display %9.4f .a",
+          "display_width": 9,
+          "rc": 0,
+          "source": "stata",
+          "value": ".a"
+        }
+      ]
+    }
+  },
+  "sp500_finding": "CONFIRMED: sysuse sp500 variable 'date' carries display format %td, measured with: local f : format date",
+  "ty_is_the_year_itself": {
+    "conclusion": "CONFIRMED: display %ty 38 prints \"38\", not \"1998\".  %ty carries the year itself; adding 1960 is wrong.",
+    "evidence": [
+      {
+        "display_as_td": "01jan1960",
+        "display_as_td_cmd": "display %td 0",
+        "display_as_ty": "   0",
+        "display_as_ty_cmd": "display %ty 0",
+        "value": 0
+      },
+      {
+        "display_as_td": "08feb1960",
+        "display_as_td_cmd": "display %td 38",
+        "display_as_ty": "  38",
+        "display_as_ty_cmd": "display %ty 38",
+        "value": 38
+      },
+      {
+        "display_as_td": "14may1965",
+        "display_as_td_cmd": "display %td 1960",
+        "display_as_ty": "1960",
+        "display_as_ty_cmd": "display %ty 1960",
+        "value": 1960
+      },
+      {
+        "display_as_td": "21jun1965",
+        "display_as_td_cmd": "display %td 1998",
+        "display_as_ty": "1998",
+        "display_as_ty_cmd": "display %ty 1998",
+        "value": 1998
+      },
+      {
+        "display_as_td": "18jul1965",
+        "display_as_td_cmd": "display %td 2025",
+        "display_as_ty": "2025",
+        "display_as_ty_cmd": "display %ty 2025",
+        "value": 2025
+      }
+    ],
+    "why_it_matters": "Offsetting a %ty value from 1960 -- the arithmetic that is correct for the other seven formats -- turns 1998 into 3958.  %ty must be used as-is."
+  },
+  "unverified": []
+}

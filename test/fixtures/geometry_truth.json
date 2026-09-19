@@ -1,0 +1,60 @@
+{
+  "_source": "Measured in StataNow (arch -arm64 /usr/local/bin/stata-mp) on 2026-09-19 via twoway scatter mpg weight (sysuse auto) + graph describe + graph save (plain-text .gph) + graph export.",
+  "_probes": [
+    "/tmp/dash-s10/probe1.do", "/tmp/dash-s10/probe2.do",
+    "/tmp/dash-s10/probe3.do", "/tmp/dash-s10/probe4.do", "/tmp/dash-s10/probe5.do"
+  ],
+  "units": {
+    "xsize": "inches",
+    "ysize": "inches",
+    "evidence_eps_bounding_box": "xsize(6) ysize(4) -> %%BoundingBox: 0 0 432 288 (432/72=6in, 288/72=4in)",
+    "evidence_gph_header": "xsize(6) ysize(4) -> '*! xsize: 6' and '*! ysize: 4' in the saved .gph",
+    "evidence_png": "graph export width(600) of a 6x4in graph -> 600x400 px (ratio 1.5 = 6/4)",
+    "graph_describe_order": "graph describe prints 'size: <ysize> x <xsize>' (height x width) -- NOT x-then-y"
+  },
+  "semantics": {
+    "xsize_ysize": "Overall GRAPH (canvas) dimensions in inches. Each is independent; supplying only xsize() leaves ysize at the scheme default (xsize(9) under stcolor -> 4.5 x 9).",
+    "xsize_ysize_validation": "xsize(0) and xsize(-3) both return r(198).",
+    "aspectratio": "Stata aspectratio(#) = PLOT REGION height / width. It does NOT change xsize/ysize: aspectratio(0.5) under stcolor still reports size 4.5 x 7.5 and the .gph records '.style.editstyle aspect_ratio(.5)' on the graph object only.",
+    "aspectratio_measured": {
+      "0.25": {"plotregion_px": [542, 152], "height_over_width": 0.28},
+      "1":    {"plotregion_px": [542, 542], "height_over_width": 1.0},
+      "4":    {"plotregion_px": [152, 542], "height_over_width": 3.57},
+      "note": "Measured on a 600x600 px export of a 6x6in graph. Confirms Stata aspectratio = height/width."
+    },
+    "bokeh_aspect_ratio": "Bokeh's Figure.aspect_ratio is width/height -- the RECIPROCAL of Stata's aspectratio(). Passing Stata's value straight through inverts the meaning.",
+    "scheme_graphsize_bare": "A bare 'graphsize <n>' scheme entry does not affect graph dimensions when 'graphsize x'/'graphsize y' are also set (they are, in every Stata base scheme). Probed with '#include s2color' + 'graphsize 3' -> still 4 x 5.5.",
+    "scheme_graphsize_xy": "'graphsize x' is the default xsize (width, inches); 'graphsize y' is the default ysize (height, inches). Each is independent: '#include s2color' + 'graphsize y 2' -> 2 x 5.5.",
+    "override_precedence": "An explicit xsize()/ysize() overrides the scheme's graphsize for that dimension only; the unspecified dimension keeps the scheme default.",
+    "stata_own_aspect_convention": "/Applications/StataNow/ado/base/m/matrixgraph_g.class:197 computes 'local aspect = graphsize.x / graphsize.y' -- i.e. Stata itself treats x/y (width/height) as the aspect when converting graphsize to a ratio. This is the Bokeh-compatible direction."
+  },
+  "default_scheme_of_this_installation": "stcolor",
+  "scheme_defaults": {
+    "stcolor":     {"xsize": 7.5,   "ysize": 4.5,   "aspect_w_over_h": 1.6667, "verified_in_stata": true},
+    "stcolor_alt": {"xsize": 6.0,   "ysize": 4.0,   "aspect_w_over_h": 1.5,    "verified_in_stata": true},
+    "stgcolor":    {"xsize": 3.987, "ysize": 2.392, "aspect_w_over_h": 1.6668, "verified_in_stata": true},
+    "stmono1":     {"xsize": 7.5,   "ysize": 4.5,   "aspect_w_over_h": 1.6667, "verified_in_stata": true},
+    "stmono2":     {"xsize": 7.5,   "ysize": 4.5,   "aspect_w_over_h": 1.6667, "verified_in_stata": true},
+    "stsj":        {"xsize": 3.575, "ysize": 2.6,   "aspect_w_over_h": 1.375,  "verified_in_stata": true},
+    "s1color":     {"xsize": 5.5,   "ysize": 4.0,   "aspect_w_over_h": 1.375,  "verified_in_stata": true},
+    "s1mono":      {"xsize": 5.5,   "ysize": 4.0,   "aspect_w_over_h": 1.375,  "verified_in_stata": true},
+    "s1rcolor":    {"xsize": 5.5,   "ysize": 4.0,   "aspect_w_over_h": 1.375,  "verified_in_stata": true},
+    "s2color":     {"xsize": 5.5,   "ysize": 4.0,   "aspect_w_over_h": 1.375,  "verified_in_stata": true},
+    "s2mono":      {"xsize": 5.5,   "ysize": 4.0,   "aspect_w_over_h": 1.375,  "verified_in_stata": true},
+    "s2gcolor":    {"xsize": 3.12,  "ysize": 2.392, "aspect_w_over_h": 1.3043, "verified_in_stata": true},
+    "sj":          {"xsize": 3.575, "ysize": 2.6,   "aspect_w_over_h": 1.375,  "verified_in_stata": true},
+    "economist":   {"xsize": 2.2,   "ysize": 2.2,   "aspect_w_over_h": 1.0,    "verified_in_stata": true}
+  },
+  "dash_translated_scheme_files_match": {
+    "checked": "All 14 files in /Users/billy/Desktop/Programs/StataPrograms/d/dash/schemes/*.scheme",
+    "result": "Every 'graphsize x'/'graphsize y' value in the translated scheme files matches the value Stata produces for that scheme. No discrepancies.",
+    "note": "None of the translated files carries a bare 'graphsize <n>' entry, while the real Stata scheme files do (e.g. scheme-stcolor.scheme:9 'graphsize 5'). This is harmless: the bare form is shadowed by graphsize x/y."
+  },
+  "fixture_cases_for_tests": [
+    {"opts": "xsize(6) ysize(4)",  "xsize": 6.0, "ysize": 4.0, "w_over_h": 1.5},
+    {"opts": "xsize(10) ysize(2)", "xsize": 10.0, "ysize": 2.0, "w_over_h": 5.0},
+    {"opts": "xsize(9)",           "xsize": 9.0, "ysize": 4.5, "w_over_h": 2.0, "scheme": "stcolor"},
+    {"opts": "(none)",             "xsize": 7.5, "ysize": 4.5, "w_over_h": 1.6667, "scheme": "stcolor"},
+    {"opts": "aspectratio(0.5)",   "xsize": 7.5, "ysize": 4.5, "note": "graph size unchanged; plot region h/w = 0.5"}
+  ]
+}
