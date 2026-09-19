@@ -390,3 +390,211 @@ compare against.
 `test_single_y_output_matches_prefix_baseline` moved again: every figure now
 carries an aspect ratio, and with no option given it comes from the scheme, so
 every dashboard changes. The reason is recorded beside the digest.
+
+---
+
+## S11 — the renderer now consumes the translated schemes
+
+Fourteen faithful scheme translations shipped in an earlier batch. Almost
+nothing read them. Only *hue* varied across series: marker symbol, marker
+size, line width, line pattern, fill intensity, the minor grid and the whole
+legend were literals in the renderer, identical under every scheme.
+`default_symbol()` and `default_line_pattern()` existed with **no call sites
+at all** — they had been written to be unit-tested.
+
+### Consumed now, with the key each value comes from
+
+| drawn | scheme key | was |
+|---|---|---|
+| marker symbol | `symbol p#` | `"circle"` |
+| marker size | `symbolsize p` | `8` |
+| scatter alpha | `intensity p` | `0.7` |
+| bar / histogram alpha | `intensity bar` | `0.8` |
+| area alpha | `intensity area` | `0.5` |
+| line width | `linewidth p` | `1.5` |
+| line dash | `linepattern p#lineplot` | none |
+| minor grid | `color minor_grid` | not drawn |
+| legend background, border, label size | `color legend`, `color legend_line`, `gsize text` | Bokeh defaults |
+| discrete `colorvar` palette | `color p1`–`p15` | Bokeh `Category10` |
+
+A **mono** scheme is the one that shows how much this mattered: its whole
+design is that the symbol and the dash distinguish the series, because the
+colour does not. Colour schemes declare `circle` for every `p#`, so they are
+unchanged — a fix that made every scheme cycle through symbols would have been
+wrong.
+
+### `p#lineplot` is not a fallback for `p#line`
+
+Stata resolves a plain `twoway line` through
+`linepattern p#lineplot → plineplot → p# → p`, while `linepattern p#line`
+belongs to the **connecting line of `twoway connected`**. The first
+implementation read `p#line`, which drew s2mono's three overlaid lines all
+solid where Stata draws solid / dash / vshortdash. The obvious repair — try
+`p#lineplot`, fall back to `p#line` — is wrong in the other direction:
+s1mono and stmono1 declare a varied `p#line` cycle and no `lineplot` key, and
+Stata draws their line plots solid. The chain is Stata's own, and it stops at
+the shared `linepattern p`.
+
+Two further traps, both now covered by tests:
+
+- a **declared** `solid` translates to an empty dash list, so resolving the
+  chain by truthiness treats it as absent and falls through to a dashed entry
+  — which `scheme-s2gmanual.scheme` would trigger exactly;
+- `color p#line` is likewise not the colour of a line plot. s1mono declares
+  `color p#line black`; Stata draws #606060 / #a0a0a0 / #808080, and dash drew
+  three identical black lines.
+
+Of the fourteen schemes, **four** declare `lineplot` keys (s2mono and the
+three that `#include` it: sj, stsj, stmono2). The other ten genuinely have
+none, and say so in an HONEST GAPS section rather than carrying a guess.
+
+### `_GSIZE_PT` disagreed with Stata
+
+Six of its fourteen entries were wrong against Stata's own
+`style/gsize-*.style` files, each of which states its point size in a comment:
+tiny was 7pt against Stata's 4, vsmall 8 against 6, small 9 against 8, large
+13 against 14, vlarge 15 against 16, huge 18 against 20. A scheme asking for
+small text got a size Stata does not specify.
+
+Marker sizes use the ratios from that corrected table with dash's own 8px
+anchored at Stata's `medium` — which is what s2color asks for, so the default
+dashboard is unchanged. Stata sizes a marker relative to a 4-inch-high graph,
+which no browser has, so claiming absolute pixel fidelity here would have been
+a fabrication.
+
+### Scheme selection
+
+- `SchemeParser.name` exists, so a caller can ask which scheme was actually
+  used. Nothing could before, and a silent fallback was indistinguishable from
+  a successful resolution.
+- **`c(scheme)` is the default.** A Stata user has already chosen how their
+  graphs look; dash was the one command in the session that ignored it.
+  Precedence is `scheme()` → `theme()` → `c(scheme)` → s2color.
+- `dash build` accepts `scheme()`. It only accepted `theme()`.
+- A **graph-level** `scheme()` was parsed, escaped into `graph_options` and
+  never read. It is honoured for the duration of that figure.
+- An unknown `scheme()` or `theme()` is **reported**. Stata returns rc 0 with
+  `note: scheme X not found, using s2color`, so dash does not abort either —
+  but `theme(dark)`, which is documented in `dash.sthlp` and absent from the
+  map, used to become s2color without a word. The message names the supported
+  set.
+- `dash.ado` stopped writing `"theme": "default"` when the user asked for no
+  theme. `default` is a real theme name that resolves to s2color, so writing
+  it made `c(scheme)` unreachable — a theme was always present.
+
+### The scheme stylesheet was inert twice over
+
+`css_block()` returned its own `<style>` element, and the Bootstrap head
+embeds the result **inside another one**: measured, six `<style>` tokens with
+one nested open, so CSS error recovery discarded the rule that followed it.
+Its selectors were `.dash-title`, `.dash-subtitle` and `.kpi-card` while the
+HTML emits `db-title`, `db-subtitle` and an unclassed KPI div, so all three
+matched nothing even where the block was not nested.
+
+`css_block()` now returns rules and `css_style_element()` wraps them; the KPI
+card carries `db-kpi-card` in the initial render and in all four JS rebuild
+paths; and the `layout(auto)` header gained the same classes the Bootstrap
+one uses — it carried a hardcoded `#555` subtitle, so a scheme's title colour
+reached one layout and not the other. A test now asserts mechanically that
+every selector the block emits matches a class the document actually uses.
+
+---
+
+## Certification suite — it was reporting success while testing almost nothing
+
+Not a planned section. Running the Stata suite to verify the KPI work turned
+up that it printed `ALL TESTS PASSED (5 passed, 9 skipped)` while **nine of
+fourteen scripts — every end-to-end one — had skipped**, and that the six
+which then ran all failed.
+
+### Why they skipped
+
+Each Python-dependent script decided whether Python was available with
+`capture python: pass`. That returns a nonzero rc inside the runner on a
+machine where the very same session renders Bokeh output through `dash build`
+seconds later. The guard now reads `c(python_exec)`, which is configuration
+rather than execution and cannot fail for reasons unrelated to Python being
+configured. A package check that genuinely must import something spends the
+first call on a throwaway and retries.
+
+On Apple silicon the suite must be run as `arch -arm64 stata-mp`: a long run
+was observed launching the x86_64 slice, which then cannot load the arm64
+`libpython`. Recorded in the runner's header.
+
+### Why they failed once they ran
+
+Every end-to-end script asked "does the dashboard contain this string?" by
+reading the HTML line by line into a Stata local. A line of Bokeh output is
+JSON dense with `"`, and sequences such as `"'` inside it terminate the
+compound quotes the macro is expanded in — the document's own content was
+being parsed as Stata code. Five scripts died with `too few quotes`, one with
+`unknown function ()`, and the plain-quoted variant died with
+`r(111) Security not found`, "Security" being a word from the page.
+
+`test/cert_helpers.do` answers the question from Mata, where a line is a value
+and nothing in it can be parsed as code, and exits 603 on a file it cannot
+open — so a security check that reads no file now fails instead of reporting
+"payload not found".
+
+`test/test_cscript_hygiene.py` makes both classes of defect mechanical: no
+script may decide Python's availability by running it, no macro holding a line
+read from a file may be expanded in plain quotes, an import probe must retry,
+and every `.cscript` must be wired into the runner.
+
+### Four product defects the unmasked suite found
+
+1. **A filter naming a non-variable was silently skipped.**
+   `dash build, filter(<script>alert, type(dropdown))` returned **rc 0** and
+   produced a dashboard carrying a filter that did nothing, with no message
+   anywhere. It is now an error, like every other Stata command. The offending
+   token is reduced to displayable characters before being echoed — echoing it
+   raw is the same hazard the path validator had.
+
+2. **The one-line form dropped `by()` and if-qualifier variables.**
+   `_dash_do_render` extracted only *plot* variables from the spec, while
+   `_dash_build` additionally ran `_dash_extract_qual_vars`. So
+   `dash scatter mpg weight, by(foreign) saving(out.html)` serialised no
+   `foreign` column, drew **one panel instead of two** and carried no value
+   labels, while the identical graph through `dash build` drew two labelled
+   panels. Two serialisation paths, one of them incomplete.
+
+3. **`_dash_validate_path` never ran the check it was built for.** Its comment
+   says the backtick and control characters are checked with `strpos+char()`
+   rather than a regex to avoid the `too few quotes` crash — but three checks
+   ran before it, each expanding the path inside plain double quotes, so a
+   path containing `"` died in the first of them with r(132). It failed
+   closed, but the user saw a quoting error rather than the diagnostic the
+   program exists to give. A Mata byte scan now runs first, where the path is
+   a value and cannot be parsed as code.
+
+4. **`dash_setup`'s version gate was invalid Python.** `try`/`except` are
+   compound statements and cannot be joined with `;` inside a `python: ///`
+   continuation; the line raised `SyntaxError` and r(7102), so `pkgver` was
+   never set and the comparison after it ran on an empty string. Nothing in
+   `test/` covered either macro. `_dash_pkg_version` asks the same question
+   with a lookup that needs no exception handling.
+
+### Two checks that could never fail
+
+Found while repairing them, and both now assert something real:
+
+- **P1B-68** searched the HTML for the graph names `s1`, `s2`, `h1`. dash uses
+  `name()` purely as a registry key and never puts it in the document; the
+  hits were coincidences inside base64 data and the minified BokehJS bundle
+  (`n.h1=d("h1")`), and `scatter.html` contains neither `s1` nor `s2` at all.
+  It now asserts each graph's title, which the renderer does draw.
+- **P1C-18** asserted that value labels appear for `scatter mpg foreign` —
+  a case where Stata labels the axis `0` and `1`. It now checks by() panel
+  titles, which is where Stata shows a value label, and that is what exposed
+  defect 2 above.
+
+### Re-baselined
+
+`test_single_y_output_matches_prefix_baseline` moved again: marker symbol,
+size, alpha, line width, dash pattern, the minor grid and the legend now all
+come from the scheme, and `_GSIZE_PT` was corrected. Every dashboard changes.
+The reason is recorded beside the digest.
+
+### Result
+
+16 of 16 certification scripts pass, 0 skipped. 2394 Python tests pass.

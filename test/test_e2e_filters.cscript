@@ -19,8 +19,14 @@ if _rc != 0 {
     exit 222
 }
 
-capture python: pass
-if _rc != 0 {
+// Do NOT probe with `capture python: pass'.  Measured: that returns a
+// nonzero rc inside the runner even though the very same session renders
+// Bokeh output through `dash build' moments later, and it made 9 of the 14
+// scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
+// PASSED.  c(python_exec) is set by Stata's own Python configuration and
+// reads without executing anything, so it cannot fail for reasons unrelated
+// to Python being present.
+if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
 }
@@ -29,6 +35,13 @@ qui sysuse auto, clear
 
 do "../dash_parse.mata"
 do "../dash.ado"
+
+// cert_file_has: asks whether a generated file contains a string, from Mata,
+// where the file's text is a value rather than macro text.  The scans below
+// used to expand each line of Bokeh output into a Stata expression, which a
+// quote character in that line ends.  The runner runs each script from this
+// directory, so this path is bare while the dash sources above are "../".
+do "cert_helpers.do"
 
 // ================================================================
 // P2-73 — dash build with filter(foreign, type(dropdown)) → HTML contains Select widget
@@ -49,41 +62,52 @@ dash build, saving("`outpath'") ///
 capture confirm file "`outpath'"
 assert _rc == 0
 
-// Search HTML for Bokeh Select widget indicator
-tempname fh
-file open `fh' using "`outpath'", read text
-local found_select = 0
-local ln ""
-file read `fh' ln
-while r(eof) == 0 {
-    // Bokeh Select widget emits type "Select" or "bk-Select" in the document JSON
-    if strpos(lower(`"`ln'"'), `""select""') > 0 | ///
-       strpos(lower(`"`ln'"'), "bk-select")  > 0 | ///
-       strpos(lower(`"`ln'"'), "select_widget") > 0 | ///
-       strpos(lower(`"`ln'"'), `"type.*select"') > 0 {
-        local found_select = 1
-    }
-    file read `fh' ln
-}
-file close `fh'
+// Search HTML for Bokeh Select widget indicator.
+//
+// This replaces a loop that read the file line by line and tested each line
+// with strpos(lower(`"`ln'"'), ...).  A line of Bokeh's document JSON is
+// dense with " characters, and a sequence such as "' inside one terminates
+// the compound quotes the macro is expanded in; the rest of the line is then
+// parsed as Stata code, and measured, this search died with r(133),
+// "unknown function ()".  cert_file_has asks the same question from Mata,
+// where the line is a value and can never be parsed.
+//
+// The loop's fourth needle, type.*select, was a regular expression handed to
+// strpos, which searches for a literal substring; no HTML file contains
+// those eleven characters, so that branch could not fire even before the
+// quoting broke.  What it meant to ask is whether a Select MODEL appears in
+// the document JSON, and the literal form of that question is a colon
+// followed by the quoted name: Bokeh 3 serialises the widget as
+// "name":"Select" and Bokeh 2 as "type":"Select", so :"select" matches
+// either.  Measured on the dashboards in this repository: :"Select" occurs
+// once in each file built with a dropdown filter and not at all in one built
+// without.  The branch is repaired rather than dropped because it is the
+// only one of the four that distinguishes a filter widget from the page it
+// is embedded in -- bokeh.min.js registers the class as o("Select", ...) and
+// sets __name__="Select", so the bare quoted name below is present in every
+// Bokeh document whether or not a widget was built.
+cert_file_has "`outpath'", needle(`":"select""') lower
+local found_select = r(found)
+cert_file_has "`outpath'", needle(`""select""') lower
+local found_select = max(`found_select', r(found))
+cert_file_has "`outpath'", needle("bk-select") lower
+local found_select = max(`found_select', r(found))
+cert_file_has "`outpath'", needle("select_widget") lower
+local found_select = max(`found_select', r(found))
 assert `found_select' == 1
 display "P2-73 PASS: HTML contains Bokeh Select widget for foreign filter"
 
 // ================================================================
 // P2-74 — "Domestic" and "Foreign" value labels appear in filter options
 // ================================================================
-tempname fh2
-file open `fh2' using "`outpath'", read text
-local found_domestic = 0
-local found_foreign  = 0
-local ln2 ""
-file read `fh2' ln2
-while r(eof) == 0 {
-    if strpos(`"`ln2'"', "Domestic") > 0 local found_domestic = 1
-    if strpos(`"`ln2'"', "Foreign")  > 0 local found_foreign  = 1
-    file read `fh2' ln2
-}
-file close `fh2'
+// The same substitution: the loop that scanned for these two labels expanded
+// every line of the file into a strpos() expression, and a quote character in
+// the data ends that expression.  The search stays case-sensitive, as the
+// loop's was -- the value labels are capitalised in the option list.
+cert_file_has "`outpath'", needle("Domestic")
+local found_domestic = r(found)
+cert_file_has "`outpath'", needle("Foreign")
+local found_foreign  = r(found)
 assert `found_domestic' == 1
 assert `found_foreign'  == 1
 display "P2-74 PASS: value labels 'Domestic' and 'Foreign' in filter widget HTML"
@@ -91,19 +115,14 @@ display "P2-74 PASS: value labels 'Domestic' and 'Foreign' in filter widget HTML
 // ================================================================
 // P2-75 — "All" option present in filter widget HTML
 // ================================================================
-tempname fh3
-file open `fh3' using "`outpath'", read text
-local found_all = 0
-local ln3 ""
-file read `fh3' ln3
-while r(eof) == 0 {
-    // "All" appears as an option value or label in the Select widget JSON
-    if strpos(`"`ln3'"', `""All""') > 0 | strpos(`"`ln3'"', "All") > 0 {
-        local found_all = 1
-    }
-    file read `fh3' ln3
-}
-file close `fh3'
+// The same substitution.  "All" is the label Bokeh writes for the sentinel
+// option the dropdown opens on, and it appears as an option value or label
+// in the Select widget JSON.  The loop OR'd a quoted needle with a bare one;
+// both are kept, so the assertion is neither widened nor narrowed here.
+cert_file_has "`outpath'", needle(`""All""')
+local found_all = r(found)
+cert_file_has "`outpath'", needle("All")
+local found_all = max(`found_all', r(found))
 assert `found_all' == 1
 display "P2-75 PASS: 'All' option present in filter widget HTML"
 

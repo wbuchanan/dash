@@ -19,8 +19,14 @@ if _rc != 0 {
     exit 222
 }
 
-capture python: pass
-if _rc != 0 {
+// Do NOT probe with `capture python: pass'.  Measured: that returns a
+// nonzero rc inside the runner even though the very same session renders
+// Bokeh output through `dash build' moments later, and it made 9 of the 14
+// scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
+// PASSED.  c(python_exec) is set by Stata's own Python configuration and
+// reads without executing anything, so it cannot fail for reasons unrelated
+// to Python being present.
+if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
 }
@@ -29,6 +35,13 @@ qui sysuse auto, clear
 
 do "../dash_parse.mata"
 do "../dash.ado"
+
+// cert_file_has: asks whether a generated file contains a string, from Mata,
+// where the file's text is a value rather than macro text.  The scans below
+// used to expand each line of Bokeh output into a Stata expression, which a
+// quote character in that line ends.  The runner runs each script from this
+// directory, so this path is bare while the dash sources above are "../".
+do "cert_helpers.do"
 
 // ================================================================
 // P2-76 — dash kpi mean(mpg) + build → HTML contains formatted mean value
@@ -52,42 +65,43 @@ dash build, saving("`outpath'") replace
 capture confirm file "`outpath'"
 assert _rc == 0
 
-// Search for the formatted mean in the HTML
-tempname fh
-file open `fh' using "`outpath'", read text
-local found_mean = 0
-local ln ""
-file read `fh' ln
-while r(eof) == 0 {
-    if strpos(`"`ln'"', "`expected_mean'") > 0 {
-        local found_mean = 1
-    }
-    file read `fh' ln
-}
-file close `fh'
+// Search for the formatted mean in the HTML.
+//
+// This replaces a loop that read the file line by line and tested each line
+// with strpos(`"`ln'"', "`expected_mean'").  A line of Bokeh's document JSON
+// is dense with " characters, and a sequence such as "' inside one
+// terminates the compound quotes the macro is expanded in; the rest of the
+// line is then parsed as Stata code, and measured, this search died with
+// r(132), "too few quotes".  cert_file_has runs the search in Mata, where
+// the line is a value and can never be parsed.
+//
+// The needle is this script's own macro, not file content, so expanding it
+// is safe.  It must stay strtrim()'d (above): %9.1f right-aligns in nine
+// columns, so Stata's own : display gives "     21.3", while the card holds
+// the value stripped, and the leading blanks would never be found.
+cert_file_has "`outpath'", needle("`expected_mean'")
+local found_mean = r(found)
 assert `found_mean' == 1
 display "P2-76 PASS: formatted mean value '`expected_mean'' found in HTML"
 
 // ================================================================
 // P2-77 — KPI card structure (title + styled div) present in output HTML
 // ================================================================
-tempname fh2
-file open `fh2' using "`outpath'", read text
-local found_title   = 0
-local found_kpi_div = 0
-local ln2 ""
-file read `fh2' ln2
-while r(eof) == 0 {
-    // Title "Avg MPG" should appear in the KPI card Div
-    if strpos(`"`ln2'"', "Avg MPG") > 0 local found_title = 1
-    // Bokeh Div widget emits "Div" in the document JSON
-    if strpos(lower(`"`ln2'"'), `""div""') > 0 | ///
-       strpos(lower(`"`ln2'"'), "kpi")     > 0 {
-        local found_kpi_div = 1
-    }
-    file read `fh2' ln2
-}
-file close `fh2'
+// The same substitution as above; the loop expanded each line of the file
+// into two strpos() expressions, and a quote character in the data ends
+// them.  The title search stays case-sensitive and the Div search stays
+// case-insensitive, exactly as the loop had them.
+//
+// Title "Avg MPG" should appear in the KPI card Div.
+cert_file_has "`outpath'", needle("Avg MPG")
+local found_title = r(found)
+// Bokeh Div widget emits "Div" in the document JSON.  The quote characters
+// are part of the needle: Bokeh writes the model name quoted, and a bare
+// div would also match every <div> of the surrounding page template.
+cert_file_has "`outpath'", needle(`""div""') lower
+local found_kpi_div = r(found)
+cert_file_has "`outpath'", needle("kpi") lower
+local found_kpi_div = max(`found_kpi_div', r(found))
 assert `found_title' == 1
 assert `found_kpi_div' == 1
 display "P2-77 PASS: KPI card title and Div structure found in HTML"
@@ -109,16 +123,14 @@ tempfile outfile2
 local outpath2 = "`outfile2'.html"
 dash build, saving("`outpath2'") replace
 
-tempname fh3
-file open `fh3' using "`outpath2'", read text
-local found_count = 0
-local ln3 ""
-file read `fh3' ln3
-while r(eof) == 0 {
-    if strpos(`"`ln3'"', "`expected_count'") > 0 local found_count = 1
-    file read `fh3' ln3
-}
-file close `fh3'
+// The same substitution.  As with the mean, the needle is this script's own
+// macro and is strtrim()'d (above) because %9.0fc right-aligns in nine
+// columns while the card holds the value stripped.  cert_file_has exits 603
+// if the file cannot be opened, so a dashboard that was never written is
+// reported as an unreadable file rather than as a value that is absent from
+// it -- this second build has no confirm file of its own.
+cert_file_has "`outpath2'", needle("`expected_count'")
+local found_count = r(found)
 assert `found_count' == 1
 display "P2-77b PASS: count KPI value '`expected_count'' found in HTML"
 

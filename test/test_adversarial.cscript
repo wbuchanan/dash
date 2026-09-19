@@ -21,13 +21,26 @@ if _rc != 0 {
     exit 222
 }
 
-capture python: pass
-if _rc != 0 {
+// Do NOT probe with `capture python: pass'.  Measured: that returns a
+// nonzero rc inside the runner even though the very same session renders
+// Bokeh output through `dash build' moments later, and it made 9 of the 14
+// scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
+// PASSED.  c(python_exec) is set by Stata's own Python configuration and
+// reads without executing anything, so it cannot fail for reasons unrelated
+// to Python being present.
+if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
 }
 
+// Whether bokeh is importable can only be answered by importing it, so
+// this probe does run Python -- but the FIRST python call of a session
+// returns a nonzero rc under the runner for reasons that have nothing to do
+// with the import (see the c(python_exec) note above).  Spend that failure
+// on a throwaway call, then ask the real question, then ask it once more.
+capture python: pass
 capture python: import bokeh
+if _rc != 0 capture python: import bokeh
 if _rc != 0 {
     display as error "SKIP: bokeh not installed. Run dash_setup first."
     exit 222
@@ -39,6 +52,13 @@ qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
 
+// Shared certification helpers.  cert_file_has searches a file from Mata,
+// where a line is a value rather than macro text, so no character in the
+// rendered dashboard can end a quote or be parsed as Stata code -- and it
+// exits 603 if the file cannot be opened, so a security check that reads no
+// file fails instead of reporting "payload not found".
+do "cert_helpers.do"
+
 // ================================================================
 // P2-78 — XSS in title → <script> HTML-escaped in output HTML
 // ================================================================
@@ -49,24 +69,41 @@ local xss_path = "`xss_out'.html"
 capture erase "`xss_path'"
 dash build, saving("`xss_path'") replace
 
-// Scan output file for unescaped <script>alert — should NOT be present
-local found_raw_xss = 0
-tempname xss_fh
-file open `xss_fh' using "`xss_path'", read text
-local xss_eof = 0
-while `xss_eof' == 0 {
-    file read `xss_fh' line
-    if _rc != 0 {
-        local xss_eof = 1
-        continue
-    }
-    // The Bokeh-rendered title must not expose raw JS injection
-    if strpos(`"`line'"', "<script>alert(1)") > 0 {
-        local found_raw_xss = 1
-        continue, break
-    }
-}
-file close `xss_fh'
+// Scan the output file for the raw payload — it must NOT be present.
+//
+// This was a line-by-line scan testing
+// `strpos(`"`line'"', "<script>alert(1)")'.  A line of the rendered
+// dashboard is JSON full of " characters, and a sequence such as "' or `"
+// inside it terminates the compound quotes the macro is expanded in; the
+// scan died with "too few quotes" r(132) and the document's own content was
+// handed to Stata as code.  It never reached its assertion, so this
+// security check has never once executed.
+//
+// WHAT IS ASSERTED.  The needle is the literal byte sequence
+// "<script>alert(1)" -- the payload in the form a browser would execute.
+// The renderer escapes what it puts in the document (html.escape for text
+// it writes itself, Bokeh's own serializer for text carried inside the
+// document JSON), so the payload is EXPECTED to be present in the file in
+// escaped form -- as HTML entities (&lt; and &gt;) where dash writes the
+// text itself, or as JSON unicode escapes for the angle brackets where
+// Bokeh serialises it into the document blob.  Neither escaped form
+// contains the raw literal we search for.  An escaped payload
+// therefore passes, which is the correct verdict: escaped, it is inert
+// text.  Only a payload that arrived as executable markup fails.  The
+// search is CASE-SENSITIVE: the question is whether the exact bytes that
+// were injected came back out, not whether the page anywhere mentions the
+// word "script".
+//
+// The limit of the check, stated rather than papered over: it asserts the
+// payload is not present raw, not that the title reached the document at
+// all, so a renderer that silently dropped the title would also pass.  The
+// positive half -- that the escaped form IS present -- is asserted by the
+// Python suite (test_html_output.py, TestXssInHtmlOutput), which can look
+// at the rendered string directly.  What this check no longer does is pass
+// when there is no file to read: cert_file_has exits 603 on a file it
+// cannot open.
+cert_file_has "`xss_path'", needle("<script>alert(1)")
+local found_raw_xss = r(found)
 assert `found_raw_xss' == 0
 display "P2-78 PASS: XSS title not present unescaped in HTML output"
 dash clear
@@ -112,23 +149,22 @@ local p281_rc = _rc
 // or it errors gracefully — either way, no OS execution should occur.
 // The key check: if the file was produced, it must not contain the literal call
 if `p281_rc' == 0 {
-    local found_exec = 0
-    tempname inj_fh
-    file open `inj_fh' using "`inject_path'", read text
-    local inj_eof = 0
-    while `inj_eof' == 0 {
-        file read `inj_fh' line
-        if _rc != 0 {
-            local inj_eof = 1
-            continue
-        }
-        if strpos(`"`line'"', "os.system") > 0 {
-            local found_exec = 1
-            continue, break
-        }
-    }
-    file close `inj_fh'
-    // os.system must not appear as executable code in output HTML
+    // This was a line-by-line scan testing
+    // `strpos(`"`line'"', "os.system")'.  Expanding a line of the rendered
+    // dashboard into a compound-quoted macro cannot survive the
+    // double-quote characters the embedded Bokeh document is made of, so
+    // the scan died instead of reaching a verdict and this branch asserted
+    // nothing.
+    //
+    // What is asserted: the literal "os.system" must appear nowhere in the
+    // rendered dashboard.  The payload was handed to dash as a colour
+    // value, so a value that was rejected or escaped leaves no executable
+    // trace of the call; a hit would mean the option value was carried
+    // through into the generated document as code.  The search is
+    // case-sensitive, as the loop's was -- it is a Python attribute name
+    // and its case is fixed.
+    cert_file_has "`inject_path'", needle("os.system")
+    local found_exec = r(found)
     assert `found_exec' == 0
 }
 capture erase "`inject_path'"
@@ -209,23 +245,29 @@ local xss_py_path = "`xss_py'.py"
 capture erase "`xss_py_path'"
 dash build, saving("`xss_py_path'") server replace
 
-// Scan .py for raw <script>alert — must not appear unescaped
-local found_raw_script = 0
-tempname xss_py_fh
-file open `xss_py_fh' using "`xss_py_path'", read text
-local xss_py_eof = 0
-while `xss_py_eof' == 0 {
-    file read `xss_py_fh' line
-    if _rc != 0 {
-        local xss_py_eof = 1
-        continue
-    }
-    if strpos(`"`line'"', "<script>alert(1)") > 0 {
-        local found_raw_script = 1
-        continue, break
-    }
-}
-file close `xss_py_fh'
+// Scan the generated .py for the raw payload — it must NOT be present.
+//
+// This was a line-by-line scan testing
+// `strpos(`"`line'"', "<script>alert(1)")'.  The generated app is made of
+// quoted base64 constants and quoted JS, so its lines are dense with "
+// characters and the expansion died the same way P2-78's did, without ever
+// asserting anything.
+//
+// WHAT IS ASSERTED, and what it does and does not cover.  The needle is the
+// raw payload as a browser would execute it.  This is the FIRST of dash's
+// two layers: the KPI title is carried into the app only inside the
+// base64-encoded spec constant, so the raw text must not appear as a
+// literal anywhere in the generated Python source -- if it did, the payload
+// would be injecting into the source file itself.  Because the title
+// travels base64-encoded, its absence in raw form is what a correct build
+// looks like, and no escaped form of it appears in this file either.  The
+// second layer, make_document calling html.escape on the decoded title
+// before it reaches a Div, is asserted positively by the Python suite
+// (test_server.py, test_xss_title_escaped), which can import the generated
+// module and inspect the document it builds.  The search is CASE-SENSITIVE:
+// the question is whether the exact bytes injected came back out.
+cert_file_has "`xss_py_path'", needle("<script>alert(1)")
+local found_raw_script = r(found)
 assert `found_raw_script' == 0
 display "P4-85 PASS: XSS in KPI title → <script> not present unescaped in .py"
 dash clear
@@ -246,16 +288,35 @@ local inj_py_path = "`inj_py'.py"
 capture erase "`inj_py_path'"
 dash build, saving("`inj_py_path'") server replace
 
+// A `python: ... end' block cannot be nested inside `capture { }'.  The
+// python block swallows the brace block's own closing `}' and then every
+// line after it up to the next `end', hands the lot to Python as source,
+// and -capture- hides the SyntaxError.  Measured in test_e2e_serve, where
+// the same construct ate an assert, a PASS message and the whole setup of
+// the following test; here it is the last `end' in the file, so it would
+// have eaten this assert, its PASS message, the three P2-85 path checks and
+// the final summary, and the script would have run off the end reporting
+// success.  This is the same interaction as Bug 15, where python:...end
+// closed a `program define' early (see test_ado_loads.cscript).
+//
+// The block therefore runs at the top level, the form the passing
+// test_abbreviations.cscript uses, and reports its own failure through a
+// global rather than through braces and -capture-.
 local p486_rc = 0
-capture {
-    python:
+global ZADV_PARSE_RC "0"
+python:
 import ast
-with open(r"`inj_py_path'", "r", encoding="utf-8") as _f:
-    _src = _f.read()
-ast.parse(_src)
-    end
-}
-if _rc != 0 local p486_rc = _rc
+import sfi
+
+try:
+    with open(r"`inj_py_path'", "r", encoding="utf-8") as _f:
+        _src = _f.read()
+    ast.parse(_src)
+except Exception:
+    sfi.Macro.setGlobal("ZADV_PARSE_RC", "1")
+end
+local p486_rc = $ZADV_PARSE_RC
+macro drop ZADV_PARSE_RC
 
 assert `p486_rc' == 0
 display "P4-86 PASS: data/label with injection chars → .py still compiles"
@@ -268,18 +329,26 @@ dash clear
 //         `"`_bc'"' produced `"`"' causing r(132) instead of a clean r(198).
 // ================================================================
 qui sysuse auto, clear
-do "../dash.ado"
+// dash.ado is already loaded by the setup block above; running it again
+// redefines `dash' and exits 110.  This line was unreachable until the
+// script stopped aborting earlier, which is why it never showed up.
 // Build a path that contains a backtick (char 96)
 local bad_path = "evil" + char(96) + "cmd.html"
 capture _dash_validate_path "`bad_path'"
 assert _rc == 198
 display "P2-85 PASS: backtick in saving() path → rc=198 (not too-few-quotes crash)"
 
-// Also verify dollar sign (char 36) and other control chars are rejected
-local bad_dollar = "evil" + char(36) + "HOME.html"
-capture _dash_validate_path "`bad_dollar'"
-assert _rc == 198
-display "P2-85b PASS: dollar sign in saving() path → rc=198"
+// Also verify the dollar sign is rejected.
+//
+// It cannot be delivered through a macro: "`bad_dollar'" expands $HOME as a
+// global-macro reference before the program ever sees it, so the path that
+// arrived was "evilHOME.html" -- a perfectly valid path, and the assertion
+// was testing something it had never sent.  Measured: rc 0, not 198.
+// The check is made where the character actually reaches, in the Mata
+// character scan _dash_validate_path now runs first.
+mata: st_local("_bad36", strofreal(_dash_path_badchar("evil" + char(36) + "HOME.html")))
+assert `_bad36' == 36
+display "P2-85b PASS: dollar sign in saving() path is rejected by the scan"
 
 local bad_pipe = "evil|cmd.html"
 capture _dash_validate_path "`bad_pipe'"

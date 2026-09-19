@@ -1,7 +1,16 @@
 *! run_all_cscripts.do
 *! Master test runner for dash certification scripts.
 *! Run from the dash/ directory:
-*!   /usr/local/bin/stata-mp do test/run_all_cscripts.do
+*!   arch -arm64 /usr/local/bin/stata-mp -b do test/run_all_cscripts.do
+*!
+*! On Apple silicon, run Stata through `arch -arm64'.  Stata and the
+*! configured Python are both universal/native, but a long run of this file
+*! was observed launching the x86_64 slice, and the arm64 libpython then
+*! cannot be loaded:
+*!     dlopen(.../libpython3.13.dylib): incompatible architecture
+*!       (have 'arm64', need 'x86_64')
+*! Every Python-dependent script then fails for a reason that has nothing to
+*! do with dash.  Forcing the slice makes the run reproducible.
 
 // ----------------------------------------------------------------
 // Setup
@@ -34,6 +43,15 @@ display as text ""
 local n_pass = 0
 local n_fail = 0
 local n_skip = 0
+
+// A machine without Python still runs the parser-only scripts; the
+// Python-dependent ones detect it for themselves through c(python_exec).
+// Do NOT probe here with `capture python: pass' -- measured, that reports a
+// nonzero rc in this context on a machine where Python works.
+if "`c(python_exec)'" == "" {
+    display as error "NOTE: Python is not configured; "                 ///
+                     "the Python-dependent scripts will skip."
+}
 
 // Scripts run under -capture noisily-, not bare -capture-.  Quiet capture
 // suppresses everything the scripts display, which hid the SKIP: messages
@@ -419,6 +437,54 @@ else if `rc' == 0 {
 }
 else {
     display as error "[ FAIL] test_varlist_expansion.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 15. test_path_validation.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_path_validation.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_path_validation.cscript"
+}
+local rc = _rc
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_path_validation.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_path_validation.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_path_validation.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 16. test_setup_version_gate.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_setup_version_gate.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_setup_version_gate.cscript"
+}
+local rc = _rc
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_setup_version_gate.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_setup_version_gate.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_setup_version_gate.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
 

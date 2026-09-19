@@ -151,6 +151,22 @@ program define _dash_validate_path
     version 16.0
     args fpath
 
+    // FIRST, before anything expands the path inside an expression.
+    // Every check below reads `fpath' inside quotes, and a path containing
+    // a double quote died in the first of them with
+    //     too few quotes
+    //     r(132)
+    // so the strpos+char() check at the end -- the one written specifically
+    // to catch that character -- never ran.  It failed closed, but the user
+    // saw a quoting error rather than the diagnostic this program exists to
+    // give.  _dash_path_badchar() reads the macro through st_local(), where
+    // its contents are a value and cannot be parsed as code.
+    mata: st_local("_pv_bad", strofreal(_dash_path_badchar(st_local("fpath"))))
+    if `_pv_bad' != 0 {
+        display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
+        exit(198)
+    }
+
     if regexm("`fpath'", "\.\.") {
         display as error "dash: saving() path may not contain '..' (path traversal not allowed)."
         exit(198)
@@ -1548,6 +1564,24 @@ program define _dash_render_immediate
     local needed_vars ""
     mata: _dash_extract_vars(`"`json_spec'"', "needed_vars")
 
+    // ...including the ones named only in by() or in an if-qualifier.
+    // _dash_extract_vars reads plot-variable keys only, so the one-line form
+    //     dash scatter mpg weight, by(foreign) saving(out.html)
+    // serialised no `foreign' column at all: the renderer had nothing to
+    // facet on, drew ONE panel instead of two and carried no value labels,
+    // while the identical graph through `dash build' -- which has always
+    // called _dash_extract_qual_vars -- drew two labelled panels.  Two
+    // serialisation paths, one of them incomplete.
+    local _qualvars ""
+    mata: _dash_extract_qual_vars(`"`json_spec'"', "_qualvars")
+    foreach _qv of local _qualvars {
+        capture confirm variable `_qv'
+        if _rc == 0 {
+            if !`: list _qv in needed_vars' local needed_vars "`needed_vars' `_qv'"
+        }
+    }
+    local needed_vars = strtrim("`needed_vars'")
+
     // scatteri, pci, pcscatter and function take literal coordinates or an
     // expression rather than variables, so having no varlist is correct for
     // them -- this guard used to reject those plot types outright.
@@ -1614,7 +1648,9 @@ program define _dash_render_immediate
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "default", "level": "`_dash_lvl'", "formats": `_dash_fmt_json'}}"'
+    local _dash_sess_scheme = c(scheme)
+    _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json'}}"'
 
     tempname fh
     file open `fh' using "`spec_json_path'", write replace text
@@ -1860,6 +1896,7 @@ program define _dash_build
         LAYout(string)          ///
         LINK(string)            ///
         THEME(string)           ///
+        SCHeme(string)          ///
         REPLACE                 ///
         SERVER                  ///
         TABS(string asis)       ///
@@ -1961,7 +1998,11 @@ program define _dash_build
         }
     }
 
-    if "`theme'" == "" local theme "default"
+    // Do NOT substitute "default" for an unspecified theme.  "default" is a
+    // real theme name that resolves to s2color, so writing it here made the
+    // session's own c(scheme) unreachable -- the renderer's precedence is
+    // scheme() then theme() then c(scheme), and a theme was always present.
+    // An empty theme means "the user did not ask", which is the truth.
 
     // ---- determine all variables needed ----
     local all_vars ""
@@ -2044,11 +2085,31 @@ program define _dash_build
             else {
                 local _fvar = word(`"`_this_seg'"', 1)
             }
-            // Only add if looks like a valid Stata variable name
-            if regexm("`_fvar'", "^[a-zA-Z_][a-zA-Z0-9_]*$") {
-                if !`: list _fvar in all_vars' {
-                    local all_vars "`all_vars' `_fvar'"
-                }
+            // A filter must name a real variable.  Silently skipping one
+            // that does not look like a variable name meant
+            //     dash build, filter(<script>alert, type(dropdown))
+            // returned rc 0 and produced a dashboard carrying a filter that
+            // did nothing, with no message anywhere.  Every other Stata
+            // command rejects a name it cannot resolve, and so does this.
+            //
+            // The offending token is echoed only after being reduced to
+            // characters that are safe to display: a value that reaches
+            // here is by definition not a variable name, and interpolating
+            // it into a message is the same hazard the path validator had.
+            if !regexm("`_fvar'", "^[a-zA-Z_][a-zA-Z0-9_]*$") {
+                mata: st_local("_fvar_safe", ///
+                    regexr(st_local("_fvar"), "[^A-Za-z0-9_.\-]+", "?"))
+                display as error "dash build: filter() names '`_fvar_safe''," ///
+                    " which is not a valid Stata variable name."
+                exit(198)
+            }
+            capture confirm variable `_fvar'
+            if _rc != 0 {
+                display as error "dash build: filter() variable `_fvar' not found."
+                exit(111)
+            }
+            if !`: list _fvar in all_vars' {
+                local all_vars "`all_vars' `_fvar'"
             }
         }
     }
@@ -2145,7 +2206,14 @@ program define _dash_build
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
+    // The session's own scheme.  A Stata user has already chosen how their
+    // graphs should look; without this dash was the one command in the
+    // session that ignored it.  An explicit scheme() or theme() still wins --
+    // the renderer applies them in that order.
+    local _dash_sess_scheme = c(scheme)
+    _dash_json_str `"`scheme'"'            _scheme_esc
+    _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text
@@ -2348,7 +2416,9 @@ program define _dash_serve
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"default","title":"","subtitle":"","registry":"`registry'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
+    local _dash_sess_scheme = c(scheme)
+    _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"","session_scheme":"`_sess_scheme_esc'","title":"","subtitle":"","registry":"`registry'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text

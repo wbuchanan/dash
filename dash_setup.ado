@@ -118,13 +118,8 @@ program define dash_setup
 
         // Retrieve installed version and compare to minimum
         local minver "`min_`pkg''"
-        python: ///
-            import importlib.metadata, sfi; ///
-            try: ///
-                v = importlib.metadata.version("`pkg'"); ///
-                sfi.Macro.setLocal("pkgver", v) ///
-            except Exception: ///
-                sfi.Macro.setLocal("pkgver", "unknown")
+        local pkgver ""
+        _dash_pkg_version "`pkg'" pkgver
 
         // Version gate: warn if below minimum (non-fatal — user may have
         // patched versions that still work).  Only run when packaging is
@@ -179,4 +174,43 @@ program define dash_setup
     display as text "You can now use {cmd:dash} to create interactive dashboards."
     display as text "Type {cmd:help dash} to get started."
 
+end
+
+
+// ================================================================
+// _dash_pkg_version  — installed version of a Python package
+//
+// Stores the version of `pkg' in the caller's local `outmac', or
+// "unknown" if the package is not installed.
+//
+// This exists because the question cannot be asked with a try/except
+// inside a `python: ///' continuation: the continuation joins its lines
+// with "; ", and try/except are compound statements that cannot be
+// joined that way.  Measured, the previous form raised
+//     SyntaxError: invalid syntax
+//     r(7102)
+// so `pkgver' was never set and the comparison after it ran on an empty
+// string.  A `python:' ... `end' block cannot be used either -- inside
+// the foreach loop this is called from, the block swallows the loop's
+// closing brace and everything up to the next `end'.
+//
+// The lookup below needs no exception handling at all: it scans the
+// installed distributions and takes a default when none matches.
+// ================================================================
+program define _dash_pkg_version
+    version 16.0
+    args pkg outmac
+
+    // Reject anything that is not a plain package name before it reaches
+    // Python, so the name cannot carry code into the expression below.
+    if !regexm("`pkg'", "^[A-Za-z0-9._-]+$") {
+        c_local `outmac' "unknown"
+        exit 0
+    }
+
+    local _pv "unknown"
+    capture python: import importlib.metadata as _im, sfi; sfi.Macro.setLocal("_pv", next((d.version for d in _im.distributions() if (d.metadata["Name"] or "").lower() == "`pkg'".lower()), "unknown"))
+    if _rc != 0 local _pv "unknown"
+    if "`_pv'" == "" local _pv "unknown"
+    c_local `outmac' "`_pv'"
 end

@@ -1,0 +1,106 @@
+*! test_path_validation.cscript
+*! Certification script for _dash_validate_path.
+*!
+*! Usage:  do test/test_path_validation.cscript
+*!
+*! Requires: nothing beyond Stata itself.
+*! Version: 1.0.0  19sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! _dash_validate_path rejects shell metacharacters in saving() so that the
+*! path can be handed to `shell open "..."' safely.  Its own comment says the
+*! backtick, dollar and control characters are checked with strpos+char()
+*! rather than a regex "to avoid the `too few quotes' crash that occurs when
+*! a compound-quoted macro value contains a backtick" -- but three checks ran
+*! BEFORE it, each expanding the path inside plain double quotes:
+*!
+*!     regexm("`fpath'", "\.\.")
+*!     regexm(lower("`fpath'"), "\.html$")
+*!     regexm("`fpath'", `"[;&|<>]"')
+*!
+*! Measured: a path containing a double quote died in the first of those with
+*!     too few quotes
+*!     r(132)
+*! so the check written to catch that very character never executed.  It
+*! failed closed -- the command aborted rather than reaching the shell -- but
+*! the user saw a quoting error instead of "disallowed characters", and the
+*! hardening did not do what its comment claimed.
+
+cscript "dash saving() path validation" adodir ".."
+
+// Load the Mata helpers explicitly.  `cscript ... adodir ".."' does not put
+// the package directory on the ado-path -- measured, `findfile
+// dash_parse.mata' returns 601 in this context -- so dash.ado's own autoload
+// finds nothing and every Mata-backed check would silently not run.
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+// ----------------------------------------------------------------
+// The payloads are built with char() so that THIS file's own parsing
+// cannot break on them, which is the same trap the validator fell into.
+// ----------------------------------------------------------------
+
+// A legitimate path is accepted.
+capture _dash_validate_path "/tmp/dashboard.html"
+assert _rc == 0
+display "PV-01 PASS: an ordinary .html path is accepted"
+
+// A path containing a double quote is rejected with the documented rc,
+// not with a Stata quoting error.
+local dq = "/tmp/a" + char(34) + "; touch /tmp/pwned; echo .html"
+capture _dash_validate_path `"`dq'"'
+assert _rc == 198
+display "PV-02 PASS: a double quote is rejected as a disallowed character"
+
+// The backtick and tab can be carried to the program through a macro.
+foreach _c of numlist 96 9 {
+    local p = "/tmp/a" + char(`_c') + "x.html"
+    capture _dash_validate_path `"`p'"'
+    assert _rc == 198
+}
+display "PV-03 PASS: backtick and tab are rejected"
+
+// Dollar, LF and CR cannot be delivered through a macro at all: `$' is
+// expanded as a global reference by the very act of passing the macro, and
+// a Stata macro cannot hold a line terminator.  Measured: a path built as
+// "/tmp/a" + char(36) + "x.html" arrives at the program as "/tmp/ax.html",
+// because $x expanded to nothing -- so a Stata-level test of those three
+// would assert something it never actually sent.  They are asserted where
+// the check lives instead.
+foreach _c of numlist 36 10 13 {
+    mata: st_local("_bad", strofreal(_dash_path_badchar("/tmp/a" + char(`_c') + "x.html")))
+    assert `_bad' == `_c'
+}
+display "PV-03b PASS: dollar, LF and CR are rejected by the character scan"
+
+// A path with none of them scans clean, so PV-03b is not passing because
+// the scan rejects everything.
+mata: st_local("_bad", strofreal(_dash_path_badchar("/tmp/ordinary.html")))
+assert `_bad' == 0
+display "PV-03c PASS: an ordinary path scans clean"
+
+foreach _m in ";" "&" "|" "<" ">" {
+    capture _dash_validate_path "/tmp/a`_m'x.html"
+    assert _rc == 198
+}
+display "PV-04 PASS: shell metacharacters are rejected"
+
+// Path traversal and the extension requirement still hold.
+capture _dash_validate_path "/tmp/../etc/passwd.html"
+assert _rc == 198
+display "PV-05 PASS: path traversal is rejected"
+
+capture _dash_validate_path "/tmp/dashboard.txt"
+assert _rc == 198
+display "PV-06 PASS: a non-.html extension is rejected"
+
+// Parentheses are deliberately allowed: every shell call site quotes the
+// path, inside which ( and ) are literal, and rejecting them broke every
+// Windows path under "Program Files (x86)".
+capture _dash_validate_path "C:/Program Files (x86)/out.html"
+assert _rc == 0
+display "PV-07 PASS: parentheses are still allowed"
+
+display ""
+display "test_path_validation.cscript: ALL CHECKS PASSED"

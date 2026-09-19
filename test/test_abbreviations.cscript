@@ -86,8 +86,14 @@ if _rc != 0 {
     exit 222
 }
 
-capture python: pass
-if _rc != 0 {
+// Do NOT probe with `capture python: pass'.  Measured: that returns a
+// nonzero rc inside the runner even though the very same session renders
+// Bokeh output through `dash build' moments later, and it made 9 of the 14
+// scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
+// PASSED.  c(python_exec) is set by Stata's own Python configuration and
+// reads without executing anything, so it cannot fail for reasons unrelated
+// to Python being present.
+if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
 }

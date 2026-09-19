@@ -19,8 +19,14 @@ if _rc != 0 {
     exit 222
 }
 
-capture python: pass
-if _rc != 0 {
+// Do NOT probe with `capture python: pass'.  Measured: that returns a
+// nonzero rc inside the runner even though the very same session renders
+// Bokeh output through `dash build' moments later, and it made 9 of the 14
+// scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
+// PASSED.  c(python_exec) is set by Stata's own Python configuration and
+// reads without executing anything, so it cannot fail for reasons unrelated
+// to Python being present.
+if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
 }
@@ -29,6 +35,11 @@ qui sysuse auto, clear
 
 do "../dash_parse.mata"
 do "../dash.ado"
+
+// Shared certification helpers.  cert_file_has searches a file from Mata,
+// where a line is a value rather than macro text, so no character in the
+// generated HTML can end a quote or be parsed as Stata code.
+do "cert_helpers.do"
 
 // ================================================================
 // P1B-67 — 3 named graphs + dash build → HTML file exists and is non-empty
@@ -50,57 +61,74 @@ capture confirm file "`outpath'"
 assert _rc == 0
 display "P1B-67a PASS: multi-graph HTML file created"
 
-// Verify non-empty
+// Verify non-empty.
+//
+// This used to read the first line into a local and test
+// assert length(`"`line'"') > 0.  That expands a line of the generated
+// HTML into an expression, which is the same defect as the search loops
+// below: a double quote in the embedded JSON ends the expansion early and
+// the remainder is parsed as Stata code.  Seeking to end-of-file and asking
+// for the offset measures the same thing -- the file holds at least one
+// byte -- without expanding the file's contents at all.
 tempname fh
 file open `fh' using "`outpath'", read text
-file read `fh' line
+file seek `fh' eof
+file seek `fh' query
+local fsize = r(loc)
 file close `fh'
-assert length("`line'") > 0
+assert `fsize' > 0
 display "P1B-67b PASS: multi-graph HTML file is non-empty"
 
 // ================================================================
-// P1B-68 — output HTML contains all 3 graph identifiers
+// P1B-68 — all 3 registered graphs reach the dashboard
 // ================================================================
-// The HTML should contain references to s1, s2, h1 as Bokeh model
-// ids or data attributes embedded in the JavaScript.
-tempname fh2
-file open `fh2' using "`outpath'", read text
-local found_s1 = 0
-local found_s2 = 0
-local found_h1 = 0
-local ln ""
-file read `fh2' ln
-while r(eof) == 0 {
-    if strpos(`"`ln'"', "s1") > 0 local found_s1 = 1
-    if strpos(`"`ln'"', "s2") > 0 local found_s2 = 1
-    if strpos(`"`ln'"', "h1") > 0 local found_h1 = 1
-    file read `fh2' ln
-}
-file close `fh2'
+// This searched the HTML for the strings "s1", "s2" and "h1" -- the name()
+// values -- on the theory that they appear as Bokeh model ids or data
+// attributes.  They do not.  dash uses a graph's name() purely as a
+// registry key; the only user-supplied name that reaches the document is a
+// KPI's, as id="kpi_val_<name>".  Measured: "s1" and "s2" occur exactly
+// once each in the repo's own dashboard.html, both inside a base64
+// "type":"bytes" data blob, and "h1" occurs inside the minified BokehJS
+// bundle as n.h1=d("h1"); scatter.html contains neither "s1" nor "s2" at
+// all.  So the check was both vacuous and flaky -- a dataset whose base64
+// payload happened not to contain "s1" would have failed it for no product
+// reason -- and it could only ever pass by coincidence.
+//
+// What identifies a graph in the output is its TITLE, which the renderer
+// draws on the figure.  That is what is asserted now: each of the three
+// registered graphs must be present, and a dropped graph fails.  (The
+// structural form of the same guarantee -- that every Figure built is
+// placed in the layout -- is asserted in the Python suite by
+// test_layout_facets.py::TestNoGraphVanishes.)
+cert_file_has "`outpath'", needle("MPG vs Weight")
+local found_s1 = r(found)
+cert_file_has "`outpath'", needle("MPG vs Length")
+local found_s2 = r(found)
+cert_file_has "`outpath'", needle("MPG Distribution")
+local found_h1 = r(found)
 assert `found_s1' == 1
 assert `found_s2' == 1
 assert `found_h1' == 1
-display "P1B-68 PASS: HTML contains identifiers s1, s2, h1"
+display "P1B-68 PASS: all three registered graphs reach the dashboard"
 
 // ================================================================
 // P1B-69 — output HTML contains Bokeh gridplot structure
 // ================================================================
 // Bokeh's gridplot emits a JSON model with type "GridPlot" or
 // embeds "gridplot" references in the Bokeh document JSON.
-tempname fh3
-file open `fh3' using "`outpath'", read text
-local found_grid = 0
-local ln3 ""
-file read `fh3' ln3
-while r(eof) == 0 {
-    if strpos(lower(`"`ln3'"'), "gridplot") > 0 | ///
-       strpos(lower(`"`ln3'"'), "grid_plot") > 0 | ///
-       strpos(lower(`"`ln3'"'), "gridlayout") > 0 {
-        local found_grid = 1
-    }
-    file read `fh3' ln3
-}
-file close `fh3'
+// This was a scan that ORed three needles through
+// strpos(lower(`"`ln3'"'), ...) on every line, and it could not reach a
+// verdict for the same reason as P1B-68: the double quotes in the Bokeh
+// document end the compound quotes the line is expanded in, and Stata then
+// parses the rest of the line as code.  Three calls combined with max()
+// preserve the original any-one-of-three assertion, case-insensitively as
+// lower() made it.
+cert_file_has "`outpath'", needle("gridplot") lower
+local found_grid = r(found)
+cert_file_has "`outpath'", needle("grid_plot") lower
+local found_grid = max(`found_grid', r(found))
+cert_file_has "`outpath'", needle("gridlayout") lower
+local found_grid = max(`found_grid', r(found))
 assert `found_grid' == 1
 display "P1B-69 PASS: HTML contains Bokeh gridplot structure"
 
@@ -140,11 +168,20 @@ capture confirm file "`outpath_if'"
 assert _rc == 0
 display "P1B-70a PASS: dash build with if() conditions completed without r(198)"
 
+// This read the first line into a local and tested
+// assert length("`line_if'") > 0.  Expanded inside plain double quotes, a
+// double quote in the HTML closes the Stata string early and the rest of
+// the line is parsed as code -- and this file is the likeliest to trip it,
+// since the if() expressions are written into the JSON as quoted strings.
+// Seeking to end-of-file and reading the offset asserts the same thing,
+// that the file holds at least one byte, without expanding its contents.
 tempname fh_if
 file open `fh_if' using "`outpath_if'", read text
-file read `fh_if' line_if
+file seek `fh_if' eof
+file seek `fh_if' query
+local fsize_if = r(loc)
 file close `fh_if'
-assert length("`line_if'") > 0
+assert `fsize_if' > 0
 display "P1B-70b PASS: HTML output from if() graphs is non-empty"
 
 // ================================================================

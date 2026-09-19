@@ -108,6 +108,42 @@ real scalar _is_utf8(string scalar s) {
     return(1)
 }
 
+// ============================================================
+// _dash_path_badchar(path)
+//
+// Returns the byte value of the first shell-hazardous character in
+// `path', or 0 if there is none.
+//
+// This lives in Mata because the caller cannot do it in Stata.
+// _dash_validate_path's own comment says the backtick and control
+// characters are checked with strpos+char() rather than a regex to
+// avoid the "too few quotes" crash -- but three checks ran before it,
+// each expanding the path inside plain double quotes, so a path
+// containing a double quote died in the FIRST of them with r(132) and
+// the check written to catch that character never executed.  A Mata
+// string read through st_local() is a value, not macro text, so
+// nothing the path contains can be parsed as code.
+//
+// Bytes rejected: " ` $ ; & | < > and TAB/LF/CR.  Scanning bytes
+// rather than characters is deliberate: these are shell metacharacters,
+// and a multibyte sequence that happens to contain one of these bytes
+// is still dangerous at the shell.  Parentheses are NOT rejected --
+// every call site quotes the path, inside which they are literal, and
+// rejecting them broke every Windows path under "Program Files (x86)".
+// ============================================================
+real scalar _dash_path_badchar(string scalar path) {
+    real scalar      i, c, n
+    real rowvector   bad
+
+    bad = (34, 96, 36, 59, 38, 124, 60, 62, 9, 10, 13)
+    n   = strlen(path)
+    for (i = 1; i <= n; i++) {
+        c = ascii(substr(path, i, 1))
+        if (anyof(bad, c)) return(c)
+    }
+    return(0)
+}
+
 void _dash_check_utf8(string scalar s) {
     if (!_is_utf8(s)) {
         errprintf("dash: input contains non-UTF-8 bytes. Ensure your do-file is saved as UTF-8.\n")

@@ -20,14 +20,27 @@ if _rc != 0 {
     exit 222
 }
 
-capture python: pass
-if _rc != 0 {
+// Do NOT probe with `capture python: pass'.  Measured: that returns a
+// nonzero rc inside the runner even though the very same session renders
+// Bokeh output through `dash build' moments later, and it made 9 of the 14
+// scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
+// PASSED.  c(python_exec) is set by Stata's own Python configuration and
+// reads without executing anything, so it cannot fail for reasons unrelated
+// to Python being present.
+if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
 }
 
 // Check Bokeh available
+// Whether bokeh is importable can only be answered by importing it, so
+// this probe does run Python -- but the FIRST python call of a session
+// returns a nonzero rc under the runner for reasons that have nothing to do
+// with the import (see the c(python_exec) note above).  Spend that failure
+// on a throwaway call, then ask the real question, then ask it once more.
+capture python: pass
 capture python: import bokeh
+if _rc != 0 capture python: import bokeh
 if _rc != 0 {
     display as error "SKIP: bokeh not installed. Run dash_setup first."
     exit 222
@@ -38,6 +51,11 @@ qui sysuse auto, clear
 // Load the dash command and parser
 do "../dash_parse.mata"
 do "../dash.ado"
+
+// Shared certification helpers.  cert_file_has searches a file from Mata,
+// where a line is a value rather than macro text, so no character in the
+// generated server app can end a quote or be parsed as Stata code.
+do "cert_helpers.do"
 
 // ================================================================
 // P4-73 — cscript header and dependency checks passed
@@ -99,12 +117,23 @@ capture confirm file "`outpath'"
 assert _rc == 0
 display "P4-78a PASS: dash build server → .py file created"
 
-// Verify file is non-empty
+// Verify file is non-empty.
+//
+// This used to read the first line into a local and test
+// `assert length(`"`line'"') > 0'.  That expands a line of the generated
+// app into an expression, which is the same defect as the search loops
+// below: the " characters in the base64 constants and in the embedded JS
+// end the expansion early and the remainder is parsed as Stata code.
+// Seeking to end-of-file and asking for the offset measures the same thing
+// -- the file holds at least one byte -- and never expands the file's
+// contents.
 tempname fh
 file open `fh' using "`outpath'", read text
-file read `fh' line
+file seek `fh' eof
+file seek `fh' query
+local fsize = r(loc)
 file close `fh'
-assert length("`line'") > 0
+assert `fsize' > 0
 display "P4-78b PASS: generated .py file is non-empty"
 
 dash clear
@@ -120,16 +149,37 @@ local outpath2 = "`outpy2'.py"
 capture erase "`outpath2'"
 dash build, saving("`outpath2'") server replace
 
+// A `python: ... end' block cannot be nested inside `capture { }'.  The
+// python block swallows the brace block's own closing `}' and then every
+// line after it up to the next `end', hands the lot to Python as source,
+// and -capture- hides the SyntaxError that results.  Measured in the suite
+// log: after `capture {' here the next line the do-file echoed was the
+// `tempname fh3' of P4-80.  Everything between -- this test's `assert',
+// its PASS message, and P4-80's `tempfile outpy3', `local outpath3' and
+// `dash build' -- was eaten as Python source, which is why P4-80 then
+// opened an EMPTY path and the script died with r(198) "invalid file
+// specification".  So P4-79 never asserted anything either.  This is the
+// same interaction as Bug 15, where python:...end closed a `program
+// define' early (see test_ado_loads.cscript).
+//
+// The block therefore runs at the top level, the form the passing
+// test_abbreviations.cscript uses, and reports its own failure through a
+// global rather than through braces and -capture-.
 local parse_rc = 0
-capture {
-    python:
+global ZSRV_PARSE_RC "0"
+python:
 import ast
-with open(r"`outpath2'", "r", encoding="utf-8") as _f:
-    _src = _f.read()
-ast.parse(_src)
-    end
-}
-if _rc != 0 local parse_rc = _rc
+import sfi
+
+try:
+    with open(r"`outpath2'", "r", encoding="utf-8") as _f:
+        _src = _f.read()
+    ast.parse(_src)
+except Exception:
+    sfi.Macro.setGlobal("ZSRV_PARSE_RC", "1")
+end
+local parse_rc = $ZSRV_PARSE_RC
+macro drop ZSRV_PARSE_RC
 
 assert `parse_rc' == 0
 display "P4-79 PASS: generated .py file passes ast.parse()"
@@ -147,35 +197,26 @@ local outpath3 = "`outpy3'.py"
 capture erase "`outpath3'"
 dash build, saving("`outpath3'") server replace
 
-// Read file content and check for make_document
-local found_mk = 0
-capture {
-    python:
-with open(r"`outpath3'", "r", encoding="utf-8") as _f:
-    _src = _f.read()
-if "def make_document" in _src:
-    from sfi import Macro
-    Macro.setLocal("found_mk", "1")
-    end
-}
-
-// Verify the string was found
-tempname fh3
-file open `fh3' using "`outpath3'", read text
-local found_in_file = 0
-local eof_flag = 0
-while `eof_flag' == 0 {
-    file read `fh3' line
-    if _rc != 0 {
-        local eof_flag = 1
-        continue
-    }
-    if strpos("`line'", "make_document") > 0 {
-        local found_in_file = 1
-        local eof_flag = 1
-    }
-}
-file close `fh3'
+// This check used to be two overlapping pieces and neither reached a
+// verdict.
+//
+// The first was a `capture { python: ... end }' block that set `found_mk'
+// from Python.  No assertion ever read `found_mk', so it certified
+// nothing, and it was the second instance of the brace-nested python block
+// described at P4-79.  It is gone: removing it removes no assertion.
+//
+// The second was a line-by-line scan testing
+// `strpos(`"`line'"', "make_document")'.  The generated app carries the
+// spec and the data as quoted base64 constants and embeds its JS callbacks
+// as quoted strings, so its lines are dense with " characters; a sequence
+// such as "' or `" inside one terminates the compound quotes the macro is
+// expanded in and Stata parses the rest of the app's own content as code.
+// cert_file_has runs the same search in Mata, where a line is a value and
+// nothing in it is ever expanded, and it exits 603 rather than reporting
+// "not found" if the file cannot be opened.  The search is case-sensitive,
+// as the loop's was.
+cert_file_has "`outpath3'", needle("make_document")
+local found_in_file = r(found)
 assert `found_in_file' == 1
 display "P4-80 PASS: generated .py contains 'make_document'"
 
@@ -192,22 +233,15 @@ local outpath4 = "`outpy4'.py"
 capture erase "`outpath4'"
 dash build, saving("`outpath4'") server replace
 
-tempname fh4
-file open `fh4' using "`outpath4'", read text
-local found_server = 0
-local eof4 = 0
-while `eof4' == 0 {
-    file read `fh4' line
-    if _rc != 0 {
-        local eof4 = 1
-        continue
-    }
-    if strpos("`line'", "Server") > 0 {
-        local found_server = 1
-        local eof4 = 1
-    }
-}
-file close `fh4'
+// This was a line-by-line scan testing `strpos(`"`line'"', "Server")'.  It
+// could not reach a verdict for the reason given at P4-80: a line of the
+// generated app is full of " characters, which end the compound quotes the
+// line is expanded in and leave Stata parsing the app's content as code.
+// The search is case-sensitive, as the loop's was: "Server" is the Bokeh
+// class name, and a case-insensitive search would also match the word
+// "server" in the paths, comments and mode strings the file is full of.
+cert_file_has "`outpath4'", needle("Server")
+local found_server = r(found)
 assert `found_server' == 1
 display "P4-81 PASS: generated .py contains 'Server'"
 
@@ -224,22 +258,16 @@ local outpath5 = "`outpy5'.py"
 capture erase "`outpath5'"
 dash build, saving("`outpath5'") server replace
 
-tempname fh5
-file open `fh5' using "`outpath5'", read text
-local found_wso = 0
-local eof5 = 0
-while `eof5' == 0 {
-    file read `fh5' line
-    if _rc != 0 {
-        local eof5 = 1
-        continue
-    }
-    if strpos("`line'", "allow_websocket_origin") > 0 {
-        local found_wso = 1
-        local eof5 = 1
-    }
-}
-file close `fh5'
+// This was a line-by-line scan testing
+// `strpos(`"`line'"', "allow_websocket_origin")'.  Same defect as P4-80 and
+// P4-81: expanding a line of the generated app into a compound-quoted macro
+// cannot survive the " characters it is made of.  That matters here in
+// particular -- this is the check that the server app pins its websocket
+// origin, and it has never actually run.  The search is case-sensitive, as
+// the loop's was; the needle is a Python keyword argument and its case is
+// fixed.
+cert_file_has "`outpath5'", needle("allow_websocket_origin")
+local found_wso = r(found)
 assert `found_wso' == 1
 display "P4-82 PASS: generated .py contains 'allow_websocket_origin'"
 
@@ -257,23 +285,35 @@ local outpath6 = "`outpy6'.py"
 capture erase "`outpath6'"
 dash build, saving("`outpath6'") server replace
 
+// Restructured for the reason given at P4-79: a `python: ... end' block
+// nested inside `capture { }' swallows the closing brace and every line
+// after it up to the next `end'.  This was the last such block in the
+// script, so there was no later `end' to stop at -- it would have eaten the
+// assert below, the PASS message and the whole final summary, and the
+// script would have run off the end reporting success without ever calling
+// make_document.  Run it at the top level and let Python report its own
+// failure through a global.
 local make_doc_rc = 0
-capture {
-    python:
+global ZSRV_MAKEDOC_RC "0"
+python:
 import importlib.util, sys
+import sfi
 from bokeh.document import Document
 
-_spec = importlib.util.spec_from_file_location("_test_serve_app", r"`outpath6'")
-_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_mod)
+try:
+    _spec = importlib.util.spec_from_file_location("_test_serve_app", r"`outpath6'")
+    _mod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
 
-_doc = Document()
-_mod.make_document(_doc)
-assert len(_doc.roots) > 0, "make_document produced no roots"
-del _spec, _mod, _doc
-    end
-}
-if _rc != 0 local make_doc_rc = _rc
+    _doc = Document()
+    _mod.make_document(_doc)
+    assert len(_doc.roots) > 0, "make_document produced no roots"
+    del _spec, _mod, _doc
+except Exception:
+    sfi.Macro.setGlobal("ZSRV_MAKEDOC_RC", "1")
+end
+local make_doc_rc = $ZSRV_MAKEDOC_RC
+macro drop ZSRV_MAKEDOC_RC
 
 assert `make_doc_rc' == 0
 display "P4-83 PASS: make_document callable with Bokeh Document; has roots"

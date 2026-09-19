@@ -1,0 +1,88 @@
+*! test_setup_version_gate.cscript
+*! Certification script for dash_setup's dependency version gate.
+*!
+*! Usage:  do test/test_setup_version_gate.cscript
+*!
+*! Requires: Python configured (c(python_exec)); bokeh installed.
+*! Version: 1.0.0  19sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! dash_setup reports the installed version of each Python dependency and
+*! warns when it is below the minimum.  It read that version with a
+*! single-line `python: ///' continuation whose joined text is
+*!
+*!     import importlib.metadata, sfi; try: v = ...; ...  except Exception: ...
+*!
+*! `try'/`except' are compound statements and cannot be joined with `;'.
+*! Measured: that line raises
+*!     SyntaxError: invalid syntax
+*!     r(7102)
+*! so `pkgver' was never set, the version comparison that follows it ran on
+*! an empty string, and nothing in test/ covered either macro.  The gate
+*! reported nothing and could abort the setup command it is part of.
+*!
+*! The replacement asks the same question without a compound statement.
+
+cscript "dash_setup version gate" adodir ".."
+
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+// Load dash_setup's programs.  `cscript ... adodir ".."' does not put the
+// package directory on the ado-path -- measured, `findfile' returns 601 in
+// this context -- so the program has to be defined explicitly.
+qui do "../dash_setup.ado"
+
+// ----------------------------------------------------------------
+// SVG-01 — the version probe runs at all
+// ----------------------------------------------------------------
+local pkg "bokeh"
+local pkgver ""
+capture _dash_pkg_version "`pkg'" pkgver
+assert _rc == 0
+display "SVG-01 PASS: the version probe returns rc 0"
+
+// ----------------------------------------------------------------
+// SVG-02 — it returns a real version, not an empty macro
+// ----------------------------------------------------------------
+assert "`pkgver'" != ""
+assert "`pkgver'" != "unknown"
+display "SVG-02 PASS: bokeh's version is reported as `pkgver'"
+
+// ----------------------------------------------------------------
+// SVG-03 — it looks like a version number
+// ----------------------------------------------------------------
+assert regexm("`pkgver'", "^[0-9]+\.[0-9]+")
+display "SVG-03 PASS: the reported version is well formed"
+
+// ----------------------------------------------------------------
+// SVG-04 — an absent package reports "unknown" rather than raising
+// ----------------------------------------------------------------
+local missingver ""
+capture _dash_pkg_version "no_such_package_xyzzy_42" missingver
+assert _rc == 0
+assert "`missingver'" == "unknown"
+display "SVG-04 PASS: an absent package reports unknown without raising"
+
+// ----------------------------------------------------------------
+// SVG-05 — the comparison the gate performs works on that value
+// ----------------------------------------------------------------
+capture python: pass
+capture noisily python: from packaging.version import Version; import sfi; sfi.Macro.setLocal("ver_ok", "1" if Version("`pkgver'") >= Version("0.0.1") else "0")
+assert _rc == 0
+assert "`ver_ok'" == "1"
+display "SVG-05 PASS: the version comparison runs on the reported value"
+
+display ""
+display "test_setup_version_gate.cscript: ALL CHECKS PASSED"

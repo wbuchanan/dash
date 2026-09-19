@@ -19,8 +19,14 @@ if _rc != 0 {
     exit 222
 }
 
-capture python: pass
-if _rc != 0 {
+// Do NOT probe with `capture python: pass'.  Measured: that returns a
+// nonzero rc inside the runner even though the very same session renders
+// Bokeh output through `dash build' moments later, and it made 9 of the 14
+// scripts -- every end-to-end one -- skip while the suite reported ALL TESTS
+// PASSED.  c(python_exec) is set by Stata's own Python configuration and
+// reads without executing anything, so it cannot fail for reasons unrelated
+// to Python being present.
+if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
     exit 222
 }
@@ -30,6 +36,11 @@ qui sysuse auto, clear
 // Load the dash command and parser
 do "../dash_parse.mata"
 do "../dash.ado"
+
+// Shared certification helpers.  cert_file_has searches a file from Mata,
+// where a line is a value rather than macro text, so no character in the
+// generated HTML can end a quote or be parsed as Stata code.
+do "cert_helpers.do"
 
 // ================================================================
 // P1C-15 — dash scatter mpg weight → HTML file exists with Bokeh embed
@@ -45,32 +56,40 @@ capture confirm file "`outpath'"
 assert _rc == 0
 display "P1C-15a PASS: HTML file created at `outpath'"
 
-// Verify file is non-empty
+// Verify file is non-empty.
+//
+// This used to read the first line into a local and test
+// assert length(`"`line'"') > 0.  That expands a line of Bokeh's HTML into
+// an expression, which is the same defect as the search loops below: a
+// double quote in the JSON ends the expansion early and the remainder is
+// parsed as Stata code.  Seeking to end-of-file and asking for the
+// offset measures the same thing -- the file holds at least one byte --
+// and never expands the file's contents.
 tempname fh
 file open `fh' using "`outpath'", read text
-file read `fh' line
+file seek `fh' eof
+file seek `fh' query
+local fsize = r(loc)
 file close `fh'
-assert length("`line'") > 0
+assert `fsize' > 0
 display "P1C-15b PASS: HTML file is non-empty"
 
 // Verify Bokeh embed string present
-// Bokeh standalone HTML contains "Bokeh" or "bokeh" in the script block
-tempname fh2
-file open `fh2' using "`outpath'", read text
-local html_content ""
-local ln ""
-local found_bokeh = 0
-local line_count = 0
-file read `fh2' ln
-while r(eof) == 0 & `line_count' < 500 {
-    if strpos(lower("`ln'"), "bokeh") > 0 | strpos(lower("`ln'"), "bk-") > 0 {
-        local found_bokeh = 1
-        continue, break
-    }
-    local line_count = `line_count' + 1
-    file read `fh2' ln
-}
-file close `fh2'
+// Bokeh standalone HTML contains "Bokeh" or "bokeh" in the script block.
+//
+// This was a line-by-line scan that expanded each line into
+// strpos(lower(`"`ln'"'), "bokeh").  A line of Bokeh's output is JSON dense
+// with double-quote characters, and one of them landing beside a macro
+// quote terminates the compound quotes the line is expanded in: measured,
+// the scan died here with "too few quotes" r(132), and the plain-quoted
+// variant died with r(111) on a word from the page.  The scan also stopped
+// after 500 lines, which was a performance guard rather than part of the
+// assertion; cert_file_has reads the whole file, so this check is strictly
+// stronger than the loop it replaces.
+cert_file_has "`outpath'", needle("bokeh") lower
+local found_bokeh = r(found)
+cert_file_has "`outpath'", needle("bk-") lower
+local found_bokeh = max(`found_bokeh', r(found))
 assert `found_bokeh' == 1
 display "P1C-15c PASS: HTML contains Bokeh embed string"
 
@@ -87,7 +106,9 @@ capture confirm file "`outpath2'"
 assert _rc == 0
 
 // The HTML should be larger than a single-plot HTML (more data/renderers)
-// We check size by reading line count
+// We check size by reading line count.  This loop counts lines and never
+// expands `ln3' into an expression, so the quote characters in the HTML
+// cannot reach the parser; it is left as it stands.
 tempname fh3
 file open `fh3' using "`outpath2'", read text
 local lc2 = 0
@@ -106,45 +127,67 @@ display "P1C-16 PASS: (scatter)(lfit) HTML exists and is non-trivially large"
 // ================================================================
 // P1C-17 — variable label "Mileage (mpg)" appears in output HTML as axis title
 // ================================================================
-tempname fh4
-file open `fh4' using "`outfile'.html", read text
-local found_label = 0
-local lv ""
-file read `fh4' lv
-while r(eof) == 0 {
-    if strpos(`"`lv'"', "Mileage") > 0 {
-        local found_label = 1
-        continue, break
-    }
-    file read `fh4' lv
-}
-file close `fh4'
-assert `found_label' == 1
+// This was a scan that tested strpos(`"`lv'"', "Mileage") line by line.
+// The axis title sits in the same JSON blob as the plot data, so the lines
+// leading up to it are dense with double quotes; measured, the script died
+// with "too few quotes" r(132) here before it ever reached the label.  The
+// search is case-sensitive, as the loop's was.
+cert_file_has "`outfile'.html", needle("Mileage")
+assert r(found) == 1
 display "P1C-17 PASS: variable label 'Mileage (mpg)' found in HTML"
 
 // ================================================================
 // P1C-18 — value labels "Domestic"/"Foreign" appear in output HTML
 // ================================================================
-// Produce a plot that uses the foreign variable (which has value labels)
+// The panel titles of a by() graph, which is where Stata shows a value
+// label.  This used to plot `foreign' on the x axis instead, which is not a
+// case where Stata shows value labels at all -- twoway scatter mpg foreign
+// labels that axis 0 and 1 -- so the check was asking for behaviour Stata
+// does not have.
+//
+// Measured on the previous tree, and the reason this check now uses by():
+// the one-line form drops by() and if-qualifier variables entirely.
+// _dash_do_render extracted only PLOT variables from the spec, while
+// _dash_build additionally ran _dash_extract_qual_vars, so
+//     dash scatter mpg weight, by(foreign) saving(out.html)
+// serialised no `foreign' column, produced ONE panel instead of two, and
+// carried no value labels -- while the same graph through `dash build'
+// produced two labelled panels.  P1C-18b below is the direct check.
 tempfile outfile3
 local outpath3 = "`outfile3'.html"
-dash scatter mpg foreign, saving("`outpath3'")
+dash scatter mpg weight, by(foreign) saving("`outpath3'")
 
-tempname fh5
-file open `fh5' using "`outpath3'", read text
-local found_vallabel = 0
-local lw ""
-file read `fh5' lw
-while r(eof) == 0 {
-    if strpos(`"`lw'"', "Domestic") > 0 | strpos(`"`lw'"', "Foreign") > 0 {
-        local found_vallabel = 1
-        continue, break
-    }
-    file read `fh5' lw
-}
-file close `fh5'
+// This was a scan that ORed strpos(`"`lw'"', "Domestic") and the same test
+// for "Foreign" over every line.  Expanding a line of the embedded Bokeh
+// document into a compound-quoted macro cannot survive the double quotes
+// it contains, so the loop died rather than reporting a verdict.
+// Two calls, ORed with max(), preserve the original either-one assertion;
+// both searches are case-sensitive, as the loop's were.
+cert_file_has "`outpath3'", needle("Domestic")
+local found_vallabel = r(found)
+cert_file_has "`outpath3'", needle("Foreign")
+local found_vallabel = max(`found_vallabel', r(found))
 assert `found_vallabel' == 1
 display "P1C-18 PASS: value labels 'Domestic'/'Foreign' found in HTML"
+
+// P1C-18b — BOTH panel labels, so a single panel cannot pass this.
+cert_file_has "`outpath3'", needle("Domestic")
+assert r(found) == 1
+cert_file_has "`outpath3'", needle("Foreign")
+assert r(found) == 1
+display "P1C-18b PASS: by() on the one-line form produces both labelled panels"
+
+// P1C-18c — the same graph through `dash build' must agree.  The two paths
+// disagreeing is what hid this: the build path was correct throughout.
+tempfile outfile3b
+local outpath3b = "`outfile3b'.html"
+dash clear
+dash scatter mpg weight, by(foreign) name(gby)
+dash build, saving("`outpath3b'") replace
+cert_file_has "`outpath3b'", needle("Domestic")
+assert r(found) == 1
+display "P1C-18c PASS: the one-line form and dash build agree on by()"
+dash clear
 
 display ""
 display "All single-graph E2E tests PASSED."
