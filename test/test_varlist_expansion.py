@@ -234,8 +234,18 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               from every glyph, so every single-series graph carried a
 #               legend twoway would not draw.  This is the intended,
 #               documented behaviour change; see .ultraplan/CHANGELOG.md.
+#   8cfdca74... S10.  Every figure now carries an aspect ratio.  There was
+#               previously no way at all -- option, scheme or data -- to
+#               influence a figure's proportions: all 67 Figure objects
+#               across 10 generated dashboards had no width, height,
+#               frame_width or aspect_ratio.  With none given the ratio now
+#               comes from the active scheme's graphsize, so every dashboard
+#               changes.  Also intended; see .ultraplan/CHANGELOG.md.  The
+#               same commit adds the viewport meta tag (without it a phone
+#               laid the page out at 980px and zoomed out) and the
+#               min/max height band the ratio is honoured within.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "264474fdf89664237ae29c80bdbb54cb6b4d80e4d5df027f4a3e4f5c2b477074"
+    "6f3eb5acbcf911ecceef87b0141a99f2b75f77c72e3fd7fc2e8e27234cd2b606"
 )
 
 

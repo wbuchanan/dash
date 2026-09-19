@@ -311,3 +311,82 @@ label column is now carried across and the sorted source is used.
 against unintended change. Its digest moved because a single-series scatter no
 longer draws a legend. The new digest is recorded with the reason in the test
 file.
+
+
+---
+
+## S10 — figure geometry and layout sizing
+
+### The starting point, measured
+
+No generated dashboard contained a figure `width`, `height`, `frame_width` or
+`aspect_ratio`: **67 Figure objects across 10 dashboards**, every one at
+`sizing_mode="stretch_width"` and Bokeh's default height. There was no way —
+by option, by scheme, or by data — for a user to influence plot proportions.
+
+### `aspectratio()` was inverted
+
+**Stata's `aspectratio()` is height/width. Bokeh's `aspect_ratio` is
+width/height.** dash passed the value straight through, so every request came
+out upside down: `aspectratio(0.5)` asks for a plot region half as tall as it
+is wide, and dash drew one twice as tall as it is wide. Measured on a 600×600
+export of a 6×6in graph: `aspectratio(0.25)` gives a plot region 542×152,
+i.e. h/w = 0.28.
+
+### What now sets a figure's proportions
+
+Precedence, documented in `dash.sthlp`:
+
+1. `xsize()` / `ysize()`, in inches. Either alone keeps the other from the
+   scheme — `xsize(9)` under `stcolor` gives 4.5 × 9, as Stata does.
+2. `aspectratio()`, with the reciprocal taken.
+3. The active scheme's `graphsize x` / `graphsize y`. All 14 translated
+   schemes carry Stata's own values, verified against Stata.
+
+Proportions are carried as a **ratio**, not converted to fixed pixels:
+pinning both dimensions would satisfy BR-10.1 and break BR-10.3, and BR-10.3
+is the abstract's headline claim. The ratio is honoured within a height band
+(`_MIN_FIGURE_HEIGHT` … `_MAX_FIGURE_HEIGHT`) so one square panel cannot fill
+a whole screen, and a 10×2in panel on a phone does not collapse to a 73px
+sliver — both measured.
+
+### Layout
+
+- The Bootstrap grid emitted **only an `md` breakpoint**, so a wide display
+  was never used. The `.db-col-lg-*` CSS already existed and nothing emitted
+  it. An `lg` tier is emitted now, and a narrow cell doubles up at `md` — four
+  columns that work at 1440px are cramped at 768px.
+- Graph row packing derives from each figure's **own** proportions: a panel
+  wide enough to need a full row takes one, without pushing every other graph
+  onto a row of its own.
+- `_compute_grid`'s `ceil(sqrt(n))` stays as the default, now ratio-aware.
+- The KPI-per-row limit is a named constant with a comment. Four per row is a
+  legibility judgement, not a derivable quantity.
+- Cell heights: a **graph** cell takes its height from the figure's ratio and
+  carries no height class. Giving it a min-height left dead space — measured
+  at 217px under a 10×2in panel in a full-width cell. A **KPI** card has no
+  intrinsic height, so it keeps one, keyed to its span.
+
+### Found by looking at it, which is the point of the section
+
+**The dashboard had no `<meta name="viewport">`.** At an emulated 375px device
+the page reported `window.innerWidth == 980`: a mobile browser lays out at its
+980px default and zooms the whole page out to fit, so every breakpoint below
+980 was unreachable on a phone and the text was unreadable. That is exactly
+the claim the conference abstract makes. No structural assertion would have
+caught it.
+
+### Verified at three widths
+
+`examples/geometry_responsive.do` (new) built from Stata and opened in a
+browser at 375, 768 and 1440px. No horizontal scroll at any width; no cell
+overlapping another; the wide panel wide and short and the square one square;
+the whole dashboard usable on a phone. The procedure and the measured numbers
+are recorded in `test/test_geometry_visual.md` so a later run has something to
+compare against.
+
+### Re-baselined
+
+`test_single_y_output_matches_prefix_baseline` moved again: every figure now
+carries an aspect ratio, and with no option given it comes from the scheme, so
+every dashboard changes. The reason is recorded beside the digest.

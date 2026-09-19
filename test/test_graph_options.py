@@ -140,22 +140,37 @@ class TestYtitle:
 # P6-03 — aspectratio applied to figure
 # ================================================================
 class TestAspectRatio:
-    def test_aspectratio_applied(self):
-        """P6-03: aspectratio option is forwarded to Bokeh figure."""
+    def test_aspectratio_is_inverted_for_bokeh(self):
+        """P6-03: Stata's aspectratio is height/width; Bokeh's is width/height.
+
+        dash forwarded the value unchanged, so every request came out upside
+        down.  Measured in Stata on a 600x600 export: aspectratio(0.25)
+        yields a plot region 542x152, i.e. height/width = 0.28.
+        """
         fig = _get_figure({"aspectratio": "1.5"})
-        assert fig.aspect_ratio == pytest.approx(1.5), (
-            f"Expected aspect_ratio=1.5, got {fig.aspect_ratio}"
+        assert fig.aspect_ratio == pytest.approx(1.0 / 1.5), (
+            f"Expected aspect_ratio=1/1.5, got {fig.aspect_ratio}"
         )
 
     def test_aspectratio_invalid_ignored(self):
         """P6-03: invalid aspectratio does not raise; figure still created."""
-        fig = _get_figure({"aspectratio": "not_a_number"})
+        import warnings as _w
+        with _w.catch_warnings(record=True):
+            _w.simplefilter("always")
+            fig = _get_figure({"aspectratio": "not_a_number"})
         assert fig is not None
 
-    def test_no_aspectratio_is_none(self):
-        """P6-03: without aspectratio option, figure.aspect_ratio is None."""
+    def test_no_aspectratio_falls_back_to_the_scheme(self):
+        """P6-03: with no option, proportions come from the scheme's graphsize.
+
+        This used to be None -- there was no way at all, by option, scheme or
+        data, to influence a figure's proportions.
+        """
         fig = _get_figure({})
-        assert fig.aspect_ratio is None
+        assert fig.aspect_ratio is not None
+        assert fig.aspect_ratio == pytest.approx(5.5 / 4.0, rel=1e-6), (
+            "s2color records graphsize x 5.5, graphsize y 4"
+        )
 
 
 # ================================================================

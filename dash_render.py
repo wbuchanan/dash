@@ -120,6 +120,17 @@ _DEFAULT_LEVEL = 95.0
 # does -- this is a cap for resource exhaustion, not a grid size.
 _FP_GRID_MAX = 1000
 
+# Bootstrap KPI cards per row.  A design choice about legibility, not
+# something derivable from the content.
+_MAX_KPIS_PER_ROW = 4
+
+# The band within which a figure's aspect ratio is honoured, in pixels.
+# Outside it the ratio yields, so that one square panel cannot fill an entire
+# screen and a 10x2in panel on a phone does not collapse to a 73px sliver.
+# Measured at 375px: without the floor, xsize(10) ysize(2) rendered 367x74.
+_MAX_FIGURE_HEIGHT = 560
+_MIN_FIGURE_HEIGHT = 160
+
 # Stata's fit-line grid: n() defaults to 100 and the points run from the
 # observed minimum to the observed maximum --
 # x_i = min + (i-1)*(max-min)/(n-1), from ado/base/_/_gs_x_create.ado.
@@ -514,6 +525,11 @@ _NONSELECTION_ALPHA = 0.15
 _CSP_META = (
     '<meta http-equiv="Content-Security-Policy" '
     "content=\"script-src 'unsafe-inline' 'unsafe-eval';\">"
+    # Without this a mobile browser lays the page out at its 980px default
+    # and zooms the whole thing out to fit, so every breakpoint below 980px
+    # is unreachable on a phone and the text is unreadable.  Found by opening
+    # a dashboard at 375px: window.innerWidth reported 980.
+    '\n<meta name="viewport" content="width=device-width, initial-scale=1">'
 )
 
 # Bootstrap-compatible 12-column responsive grid CSS (db- prefix avoids
@@ -576,6 +592,16 @@ _DASH_GRID_CSS = """\
 .db-col-lg-10{flex:0 0 83.3333%;max-width:83.3333%}
 .db-col-lg-11{flex:0 0 91.6667%;max-width:91.6667%}
 .db-col-lg-12{flex:0 0 100%;max-width:100%}
+}
+/* Cell heights keyed to a cell's span.  Every cell used to get the same
+   height, so a narrow col-4 cell was as tall as a full-width col-12 one and
+   looked stretched.  A min-height rather than a fixed height, so the cell
+   still grows with its content and the layout stays responsive. */
+.db-cell-h-sm{min-height:130px}
+.db-cell-h-md{min-height:150px}
+.db-cell-h-lg{min-height:170px}
+@media(max-width:767px){
+.db-cell-h-sm,.db-cell-h-md,.db-cell-h-lg{min-height:120px}
 }
 .db-section{margin-bottom:16px}
 .db-filter-bar{align-items:center;margin-bottom:12px;padding:8px 0;\
@@ -1852,6 +1878,45 @@ def _apply_jitter(
     x_noise = rng.uniform(-half_x, half_x, size=len(x_arr))
     y_noise = rng.uniform(-half_y, half_y, size=len(y_arr))
     return x_arr + x_noise, y_arr + y_noise
+
+
+def _md_span(span: int) -> int:
+    """The medium-breakpoint span for a cell whose large-breakpoint span is *span*.
+
+    A tablet is not a wide display: four columns that work at 1440px are
+    cramped at 768px, so anything narrower than a half width doubles up.
+
+    Args:
+        span: The 12-column span used at the large breakpoint.
+
+    Returns:
+        The span to use at the medium breakpoint.
+    """
+    if span <= 3:
+        return 6
+    if span <= 4:
+        return 6
+    return span
+
+
+def _cell_height_class(span: int) -> str:
+    """A height class keyed to a cell's span.
+
+    Every Bootstrap cell used to get the same height, so a col-4 cell was as
+    tall as a col-12 one and the narrow one looked stretched.  Height follows
+    width so cells keep a sensible shape.
+
+    Args:
+        span: The cell's 12-column span.
+
+    Returns:
+        The class suffix.
+    """
+    if span >= 12:
+        return "lg"
+    if span >= 6:
+        return "md"
+    return "sm"
 
 
 def _source_frame(source, fallback: "pd.DataFrame") -> "pd.DataFrame":
@@ -7800,6 +7865,64 @@ class DashRenderer:
                 pass
         fig.add_layout(legend, side)
 
+    def _resolve_aspect_ratio(self, graph_opts: dict) -> "float | None":
+        """Return Bokeh's width/height ratio for this figure.
+
+        Stata expresses proportions three ways and dash honoured none of
+        them.  Note the inversion: **Stata's aspectratio() is
+        height/width**, and Bokeh's ``aspect_ratio`` is **width/height**.
+        dash passed the value straight through, so every request came out
+        upside down -- ``aspectratio(0.5)`` asks for a plot region half as
+        tall as it is wide, and dash drew one twice as tall as it is wide.
+        Measured on a 600x600 export: ``aspectratio(0.25)`` yields a plot
+        region 542x152, i.e. h/w = 0.28.
+
+        Args:
+            graph_opts: The graph's options.
+
+        Returns:
+            A width/height ratio, or None to leave Bokeh's default.
+        """
+        xs = _stat_option_float(graph_opts, "xsize", None, "graph", lo=0.0)
+        ys = _stat_option_float(graph_opts, "ysize", None, "graph", lo=0.0)
+        for name, val in (("xsize", xs), ("ysize", ys)):
+            if val is not None and val <= 0:
+                # Stata returns r(198) for xsize(0) and xsize(-3).
+                warnings.warn(
+                    f"dash: {name}({graph_opts.get(name)}) must be a positive "
+                    f"number of inches; ignoring it.", UserWarning,
+                )
+                if name == "xsize":
+                    xs = None
+                else:
+                    ys = None
+
+        # Either one alone keeps the scheme's value for the other, exactly as
+        # Stata does: xsize(9) under stcolor gives 4.5 x 9.
+        sx = getattr(self.scheme, "graphsize_x", None)
+        sy = getattr(self.scheme, "graphsize_y", None)
+        if xs is not None or ys is not None:
+            w = xs if xs is not None else sx
+            h = ys if ys is not None else sy
+            if w and h:
+                return float(w) / float(h)
+
+        raw_ar = str(graph_opts.get("aspectratio", "") or "").strip()
+        if raw_ar:
+            ar = _stat_option_float(graph_opts, "aspectratio", None, "graph",
+                                    lo=0.0)
+            if ar is None or ar <= 0:
+                warnings.warn(
+                    f"dash: aspectratio({raw_ar}) must be a positive number; "
+                    f"ignoring it.", UserWarning,
+                )
+            else:
+                return 1.0 / float(ar)
+
+        if sx and sy:
+            return float(sx) / float(sy)
+        return None
+
     def _figure_date_kind(
         self, plots: list, key: str, fallback: str,
     ) -> "str | None":
@@ -8009,14 +8132,12 @@ class DashRenderer:
         n_rows = len(self.df)
         backend = "webgl" if n_rows > _WEBGL_THRESHOLD else "canvas"
 
-        # Aspect ratio
-        aspect_ratio = None
-        raw_ar = graph_opts.get("aspectratio", "")
-        if raw_ar:
-            try:
-                aspect_ratio = float(raw_ar)
-            except (ValueError, TypeError):
-                pass
+        # Figure proportions.  Precedence, documented in dash.sthlp:
+        #   1. xsize()/ysize()  2. aspectratio()  3. the scheme's graphsize
+        # Nothing set any of these before: every figure was emitted with
+        # sizing_mode="stretch_width" and Bokeh's default height, so there was
+        # no way at all -- option, scheme or data -- to influence proportions.
+        aspect_ratio = self._resolve_aspect_ratio(graph_opts)
 
         # Log scale and reverse options.
         # Determine axis types BEFORE creating the figure so that we only ever
@@ -8032,6 +8153,12 @@ class DashRenderer:
             y_axis_label=y_label,
             output_backend=backend,
             sizing_mode="stretch_width",
+            # With an aspect ratio and a stretched width, a square figure in
+            # a full-width cell on a 1440px display would be 1400px tall.
+            # The ratio is honoured up to this height so a dashboard stays
+            # scrollable; documented in dash.sthlp.
+            max_height=_MAX_FIGURE_HEIGHT,
+            min_height=_MIN_FIGURE_HEIGHT,
             tools="pan,wheel_zoom,box_select,lasso_select,reset",
         )
         if aspect_ratio is not None:
@@ -8897,6 +9024,7 @@ class DashRenderer:
     def _auto_bs_layout(
         all_names: "list[str]",
         kpi_names: "list[str]",
+        figures: "dict | None" = None,
     ) -> "list[list[tuple[str, int]]]":
         """Generate an automatic Bootstrap layout.
 
@@ -8917,8 +9045,10 @@ class DashRenderer:
         # ---- KPI row(s) ----
         if kpi_names:
             n_kpis = len(kpi_names)
-            # Up to 4 KPIs per row; span = 12 // per_row
-            per_row = min(n_kpis, 4)
+            # A KPI card has no aspect ratio to derive a count from -- four
+            # per row is a legibility judgement, not a derivable quantity, so
+            # it is a named constant rather than a bare literal.
+            per_row = min(n_kpis, _MAX_KPIS_PER_ROW)
             span = max(1, 12 // per_row)
             for i in range(0, n_kpis, per_row):
                 chunk = kpi_names[i : i + per_row]
@@ -8927,16 +9057,35 @@ class DashRenderer:
         # ---- Graph row(s) ----
         if graph_names:
             n_graphs = len(graph_names)
-            if n_graphs == 1:
-                per_row = 1
-            elif n_graphs <= 4:
-                per_row = 2
-            else:
-                per_row = 3
-            span = max(1, 12 // per_row)
-            for i in range(0, n_graphs, per_row):
-                chunk = graph_names[i : i + per_row]
-                rows.append([(name, span) for name in chunk])
+            # Derived from each figure's OWN proportions, not from the
+            # count alone and not from the widest figure on the dashboard: a
+            # panel wide enough to need a full row should take one without
+            # pushing every other graph onto a row of its own.
+            def _ar_of(nm):
+                _f = (figures or {}).get(nm)
+                _a = getattr(_f, "aspect_ratio", None) if _f else None
+                return float(_a) if _a else 0.0
+
+            _wide = [n for n in graph_names if _ar_of(n) >= 2.5]
+            _rest = [n for n in graph_names if n not in _wide]
+
+            for name in _wide:
+                rows.append([(name, 12)])
+
+            if _rest:
+                n_rest = len(_rest)
+                if n_rest == 1:
+                    per_row = 1
+                elif max((_ar_of(n) for n in _rest), default=0.0) >= 1.8:
+                    per_row = min(2, n_rest)
+                elif n_rest <= 4:
+                    per_row = 2
+                else:
+                    per_row = 3
+                span = max(1, 12 // per_row)
+                for i in range(0, n_rest, per_row):
+                    chunk = _rest[i : i + per_row]
+                    rows.append([(name, span) for name in chunk])
 
         return rows if rows else [[(n, 12 // max(1, len(all_names))) for n in all_names]]
 
@@ -8945,6 +9094,7 @@ class DashRenderer:
         layout_opt: str,
         all_names: "list[str]",
         kpi_names: "list[str]",
+        figures: "dict | None" = None,
     ) -> "list[list[tuple[str, int]]]":
         """Parse a Bootstrap layout string into rows of ``(name, col_span)`` pairs.
 
@@ -8973,12 +9123,12 @@ class DashRenderer:
         stripped = layout_opt.strip()
         # Pure "bs" or "bs " — auto layout
         if re.match(r"^bs\s*$", stripped, re.IGNORECASE):
-            return DashRenderer._auto_bs_layout(all_names, kpi_names)
+            return DashRenderer._auto_bs_layout(all_names, kpi_names, figures)
 
         # Explicit: "bs: <spec>"
         m = re.match(r"^bs\s*:\s*(.+)$", stripped, re.IGNORECASE | re.DOTALL)
         if not m:
-            return DashRenderer._auto_bs_layout(all_names, kpi_names)
+            return DashRenderer._auto_bs_layout(all_names, kpi_names, figures)
 
         spec_str = m.group(1)
         valid_names = set(all_names)
@@ -9013,7 +9163,7 @@ class DashRenderer:
         for name in unplaced:
             rows.append([(name, 12)])
 
-        return rows if rows else DashRenderer._auto_bs_layout(all_names, kpi_names)
+        return rows if rows else DashRenderer._auto_bs_layout(all_names, kpi_names, figures)
 
     def _render_bootstrap_html(
         self,
@@ -9067,7 +9217,8 @@ class DashRenderer:
         grid_names = [n for n in all_names if n not in tabbed_names]
 
         # Parse Bootstrap layout for grid items (KPIs + non-tabbed graphs).
-        bs_rows = DashRenderer._parse_bs_layout(layout_opt, grid_names, kpi_names)
+        bs_rows = DashRenderer._parse_bs_layout(
+            layout_opt, grid_names, kpi_names, self.figures)
 
         # ---- Collect all Bokeh models ----
         # file_html() + components() must share the same document; both calls
@@ -9136,16 +9287,22 @@ class DashRenderer:
         grid_parts: list[str] = []
         for row_spec in bs_rows:
             row_items = [
-                (span, name_to_div[name])
+                (span, name_to_div[name], name in kpi_names)
                 for name, span in row_spec
                 if name_to_div.get(name)
             ]
             if not row_items:
                 continue
             grid_parts.append('<div class="db-row db-section">')
-            for span, div_html in row_items:
+            for span, div_html, _is_kpi in row_items:
                 grid_parts.append(
-                    f'<div class="db-col-12 db-col-sm-12 db-col-md-{span}">'
+                    f'<div class="db-col-12 db-col-sm-12 '
+                    f'db-col-md-{_md_span(span)} db-col-lg-{span}'
+                    # A graph cell takes its height from the figure's own
+                    # aspect ratio; forcing a min-height on it leaves dead
+                    # space under a short wide panel.  A KPI card has no
+                    # intrinsic height, so it still gets one.
+                    f'{" db-cell-h-" + _cell_height_class(span) if _is_kpi else ""}">'
                     f"{div_html}"
                     "</div>"
                 )
@@ -9358,7 +9515,7 @@ class DashRenderer:
         """
         n = names_or_n if isinstance(names_or_n, int) else len(names_or_n)
         if not layout_opt or layout_opt.strip().lower() == "auto":
-            cols = math.ceil(math.sqrt(n)) if n > 0 else 1
+            cols = self._default_grid_cols(n)
             rows = math.ceil(n / cols) if cols > 0 else 1
             return rows, cols
 
@@ -9372,9 +9529,36 @@ class DashRenderer:
                 pass
 
         # Fallback: auto
-        cols = math.ceil(math.sqrt(n)) if n > 0 else 1
+        cols = self._default_grid_cols(n)
         rows = math.ceil(n / cols) if cols > 0 else 1
         return rows, cols
+
+    def _default_grid_cols(self, n: int) -> int:
+        """Columns for an automatic grid of *n* figures.
+
+        ``ceil(sqrt(n))`` is a reasonable default and stays, but it is now
+        aware of the proportions the figures actually have: a dashboard of
+        wide figures wants fewer columns than one of square figures, or every
+        cell is squeezed.
+
+        Args:
+            n: Number of figures.
+
+        Returns:
+            The column count, at least 1.
+        """
+        if n <= 0:
+            return 1
+        cols = math.ceil(math.sqrt(n))
+        ratios = [float(f.aspect_ratio) for f in self.figures.values()
+                  if getattr(f, "aspect_ratio", None)]
+        if ratios:
+            widest = max(ratios)
+            if widest >= 3.0:
+                cols = 1
+            elif widest >= 1.8:
+                cols = max(1, cols - 1)
+        return max(1, cols)
 
     def _pad_grid_children(
         self,

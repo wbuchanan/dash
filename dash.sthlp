@@ -674,15 +674,50 @@ the plot specification).
 {synopt:{cmdab:yli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw horizontal reference lines at y = {it:#}{p_end}
 {synopt:{cmd:note(}{it:string}{cmd:)}}footnote text below the figure{p_end}
 {synopt:{cmdab:cap:tion(}{it:string}{cmd:)}}caption text below the figure{p_end}
-{synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}height-to-width ratio of the plot area
-    (e.g. {cmd:aspectratio(1)} for a square plot){p_end}
+{synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}HEIGHT divided by WIDTH, as in
+    Stata (e.g. {cmd:aspectratio(1)} for a square plot, {cmd:aspectratio(0.5)}
+    for one half as tall as it is wide){p_end}
 {synopt:{cmdab:leg:end(off)}}hide the legend{p_end}
 {synopt:{cmdab:leg:end(on)}}show the legend (default){p_end}
 {synopt:{cmdab:leg:end(}{it:position}{cmd:)}}place legend: {cmd:top}, {cmd:bottom}, {cmd:left}, {cmd:right}{p_end}
 {synopt:{cmdab:leg:end(cols(}{it:#}{cmd:))}}arrange legend entries in {it:#} columns{p_end}
 {synopt:{cmdab:leg:end(rows(}{it:#}{cmd:))}}arrange legend entries in {it:#} rows{p_end}
 {synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for entry {it:#}{p_end}
+{synopt:{cmdab:xsiz:e(}{it:#}{cmd:)}}graph width in inches{p_end}
+{synopt:{cmdab:ysiz:e(}{it:#}{cmd:)}}graph height in inches{p_end}
 {synoptline}
+
+{marker geometry}
+{title:Figure proportions}
+
+{pstd}
+A {cmd:dash} dashboard is responsive: figures stretch to the width they are
+given rather than being drawn at a fixed pixel size.  {cmd:xsize()},
+{cmd:ysize()} and {cmd:aspectratio()} therefore set a figure's PROPORTIONS,
+and the figure fills the width available at that shape.
+
+{pstd}
+The precedence, highest first:
+
+{phang2}1. {cmd:xsize()} and {cmd:ysize()}, in inches, as in Stata.  Either
+    alone keeps the other from the scheme: under {cmd:stcolor},
+    {cmd:xsize(9)} gives 4.5 x 9, exactly as {helpb twoway} does.{p_end}
+{phang2}2. {cmd:aspectratio(}{it:#}{cmd:)}, which in Stata is
+    {bf:height divided by width} -- {cmd:aspectratio(0.5)} is half as tall as
+    it is wide.{p_end}
+{phang2}3. The active scheme's {cmd:graphsize x} and {cmd:graphsize y}, so a
+    {cmd:dash} dashboard has the proportions of your other graphs without
+    your asking.{p_end}
+
+{pstd}
+The ratio is honoured within a height band.  Outside it the ratio yields, so
+that a single square panel cannot fill an entire screen and a very wide panel
+does not collapse to an unreadable sliver on a phone.
+
+{pstd}
+{it:Examples:}
+{phang2}{cmd:. dash scatter mpg weight, xsize(10) ysize(2)}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, aspectratio(1)}{p_end}
 
 {pstd}
 {it:Examples:}
