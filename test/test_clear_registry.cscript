@@ -105,5 +105,18 @@ capture dash clear
 assert _rc == 0
 display "CLR-05 PASS: dash clear is idempotent"
 
+// ----------------------------------------------------------------
+// CLR-06 — the sweep does not take settings with it
+// ----------------------------------------------------------------
+// $dash_nobrowser is a user setting, not registry state.  The prefix sweep
+// is deliberately narrow (dash_spec_, dash_json_, dash_opts_, dash_kpi_)
+// rather than a blanket dash_*, so a setting survives a clear.  A run that
+// had suppressed the browser must not start opening windows halfway through.
+global dash_nobrowser 1
+dash scatter mpg weight, name(g8)
+dash clear
+assert "${dash_nobrowser}" == "1"
+display "CLR-06 PASS: dash clear does not drop user settings"
+
 display ""
 display "test_clear_registry.cscript: ALL CHECKS PASSED"
