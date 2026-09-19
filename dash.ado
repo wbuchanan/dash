@@ -1713,30 +1713,38 @@ end
 program define _dash_clear
     version 16.0
 
-    local registry = "${dash_graph_registry}"
-    if "`registry'" != "" {
-        local ntok : word count `registry'
-        forvalues k = 1/`ntok' {
-            local gname : word `k' of `registry'
-            capture macro drop dash_spec_`gname'
-            capture macro drop dash_json_`gname'
-            capture macro drop dash_opts_`gname'
-            capture macro drop dash_kpi_`gname'
-            capture macro drop dash_kpi_`gname'_stat
-            capture macro drop dash_kpi_`gname'_var
-            capture macro drop dash_kpi_`gname'_val
-            capture macro drop dash_kpi_`gname'_disp
-            capture macro drop dash_kpi_`gname'_fmt
-            capture macro drop dash_kpi_`gname'_tit
-            capture macro drop dash_kpi_`gname'_sub
-            capture macro drop dash_kpi_`gname'_col
-            capture macro drop dash_kpi_`gname'_bg
-            capture macro drop dash_kpi_`gname'_upd
-        }
-    }
+    // Sweep dash's whole global namespace, not an enumerated list.
+    //
+    // Two things were wrong with enumerating.  The wildcard below it read
+    //     macro drop _dash_*
+    // -- globals with a LEADING underscore -- and dash's globals are named
+    // `dash_*' with none, so it matched nothing and only the enumeration ran.
+    // And an enumeration goes stale: the list named dash_kpi_<name>_stat
+    // through _upd and did NOT name _if or _in, which carry a KPI's own
+    // qualifier, so
+    //     dash kpi mean(mpg) if foreign==1, name(k1)
+    //     dash clear
+    //     dash kpi mean(mpg), name(k1)
+    // left the qualifier in place and the second, unqualified KPI displayed
+    // the conditional mean.  A stale qualifier is worse than a stale label:
+    // the number is wrong and looks plausible.
+    //
+    // The registry loop could only ever drop what the registry still named,
+    // so a global belonging to a graph whose name had left the registry
+    // survived indefinitely.  A prefix sweep has neither problem and needs
+    // no maintenance when a new per-graph global is added.
+    //
+    // These four prefixes are dash's own namespace.  A user global that
+    // happens to start with one of them is not distinguishable from dash's
+    // and is cleared too; that is what `dash clear' means.
+    capture macro drop dash_spec_*
+    capture macro drop dash_json_*
+    capture macro drop dash_opts_*
+    capture macro drop dash_kpi_*
 
-    macro drop dash_graph_registry
-    macro drop _dash_*
+    capture macro drop dash_graph_registry
+    // Leading-underscore globals, if any command ever sets one.
+    capture macro drop _dash_*
 
     display as text "dash: registry cleared."
 end

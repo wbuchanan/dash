@@ -1,0 +1,109 @@
+*! test_clear_registry.cscript
+*! Certification script for `dash clear'.
+*!
+*! Usage:  do test/test_clear_registry.cscript
+*!
+*! Requires: nothing beyond Stata itself.
+*! Version: 1.0.0  19sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! `dash clear' has to leave no state behind, because everything it fails to
+*! drop is read by the NEXT build.  Two ways it did not:
+*!
+*!  1. Its wildcard sweep is `macro drop _dash_*' -- globals with a LEADING
+*!     underscore.  dash's globals are named `dash_*' with none, so the sweep
+*!     matched nothing.  What actually got dropped was the enumerated list
+*!     inside the registry loop, so any global belonging to a graph whose
+*!     name had already left the registry survived indefinitely.
+*!
+*!  2. The enumerated list is a list, so it goes stale.  It names
+*!     dash_kpi_<name>_stat through _upd and does NOT name _if or _in, which
+*!     carry a KPI's own qualifier.  So
+*!         dash kpi mean(mpg) if foreign==1, name(k1)
+*!         dash clear
+*!         dash kpi mean(mpg), name(k1)
+*!     left the qualifier in place and the second, UNQUALIFIED KPI displayed
+*!     the conditional mean.  A stale qualifier is worse than a stale label:
+*!     the number is wrong and looks plausible.
+
+cscript "dash clear registry" adodir ".."
+
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+qui sysuse auto, clear
+
+// ----------------------------------------------------------------
+// CLR-01 — the enumerated per-graph globals are dropped
+// ----------------------------------------------------------------
+dash scatter mpg weight, name(g1)
+dash kpi mean(mpg), name(k1) title("Mean")
+dash clear
+
+foreach g in g1 k1 {
+    foreach suffix in "" _stat _var _val _disp _fmt _tit _sub _col _bg _upd {
+        assert "${dash_spec_`g'}"      == ""
+        assert "${dash_json_`g'}"      == ""
+        assert "${dash_opts_`g'}"      == ""
+        assert "${dash_kpi_`g'`suffix'}" == ""
+    }
+}
+assert "${dash_graph_registry}" == ""
+display "CLR-01 PASS: the enumerated per-graph globals are dropped"
+
+// ----------------------------------------------------------------
+// CLR-02 — a KPI's own if/in qualifier is dropped too
+// ----------------------------------------------------------------
+// These two globals are newer than the enumerated list and were not in it.
+dash kpi mean(mpg) if foreign==1, name(k2) title("Foreign")
+assert "${dash_kpi_k2_if}" != ""
+dash clear
+assert "${dash_kpi_k2_if}" == ""
+assert "${dash_kpi_k2_in}" == ""
+display "CLR-02 PASS: a KPI's if/in qualifier does not survive dash clear"
+
+// ----------------------------------------------------------------
+// CLR-03 — the qualifier does not leak into the next KPI of the same name
+// ----------------------------------------------------------------
+// The behaviour the user sees, not just the macro state.
+qui summarize mpg if foreign==1, meanonly
+local conditional = r(mean)
+qui summarize mpg, meanonly
+local unconditional = r(mean)
+assert reldif(`conditional', `unconditional') > 0.01
+
+dash kpi mean(mpg) if foreign==1, name(k3) title("First")
+dash clear
+dash kpi mean(mpg), name(k3) title("Second")
+assert "${dash_kpi_k3_if}" == ""
+assert reldif(real("${dash_kpi_k3_val}"), `unconditional') < 1e-6
+display "CLR-03 PASS: an unqualified KPI is unqualified after a clear"
+dash clear
+
+// ----------------------------------------------------------------
+// CLR-04 — a global orphaned from the registry is still swept
+// ----------------------------------------------------------------
+// The registry loop can only drop what the registry still names.  Simulate
+// the orphan directly: this is exactly what `macro drop _dash_*' was meant
+// to catch and never did, because dash's globals carry no leading
+// underscore.
+global dash_json_orphan "{}"
+global dash_kpi_orphan_stat "mean"
+dash scatter mpg weight, name(g9)
+dash clear
+assert "${dash_json_orphan}"     == ""
+assert "${dash_kpi_orphan_stat}" == ""
+display "CLR-04 PASS: globals orphaned from the registry are swept"
+
+// ----------------------------------------------------------------
+// CLR-05 — clear is safe to call with nothing registered
+// ----------------------------------------------------------------
+capture dash clear
+assert _rc == 0
+capture dash clear
+assert _rc == 0
+display "CLR-05 PASS: dash clear is idempotent"
+
+display ""
+display "test_clear_registry.cscript: ALL CHECKS PASSED"
