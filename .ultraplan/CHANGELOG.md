@@ -702,3 +702,108 @@ names.
 
 18 of 18 certification scripts pass, 0 skipped — including, for the first
 time, every shipped example. 2531 Python tests pass.
+
+---
+
+## The audit: six confirmed gaps, and six tests that certified nothing
+
+Eight suspected gaps were investigated by independent read-only agents and
+each claimed defect was then put to three adversarial verifiers with distinct
+lenses (is the code observation right; is the claim about Stata right; would
+the fix break something). Six were confirmed, two refuted. Both refutations
+were of the *fix*, not the observation, and both were right — each is noted
+below where it changed what was done.
+
+### `update(brush)` recomputed on nothing at all
+
+`dash.sthlp`'s standalone-vs-server table says brush updating works in
+standalone HTML, and is careful to say "No" for histogram and fit-line
+recompute two lines above — so the author knew how to document a standalone
+limitation and did not document this one.
+
+Measured, it was **worse than unimplemented**: nothing was attached to any
+source's `selected` property, *and* the mode excluded the KPI from the filter
+callback, so the card was frozen at its initial value forever. Server mode
+already implemented the same three-valued rule, so the static renderer was the
+outlier and documenting the option away would have meant describing an option
+`dash.ado` still accepts and that has no valid use in the default output mode.
+
+The KPI recompute is hoisted out of `_FILTER_JS` into `dash_apply_kpis()`,
+which both paths call, and the per-KPI payload is built by one method. A second
+copy of Stata's percentile rule would have drifted from the first. The tests
+run the shipped JavaScript under node: brushing four rows shows the mean of
+those four, clearing the selection shows the mean of all.
+
+### The scheme decided which grids to draw — and dash ignored it
+
+See the separate section above.
+
+### The colour key was overwritten and then hidden
+
+See the separate section above.
+
+### `filter(label())` never arrived
+
+The renderer had always resolved a widget title correctly. `_parse_filter_raw`
+simply had no regex for `label()`, so the key the resolver reads first was
+absent. And the filter string reached the master JSON unescaped, so
+`label("Curb weight")` broke the document — and before that, the `exclude()`
+scanner expanded the string inside plain double quotes and `dash build` died
+with `type mismatch` r(109), an error naming neither the option nor the cause.
+
+One more found while measuring: a dropdown's title was `html.escape`d while
+the slider paths were not, so `label(R&D spend)` displayed as `R&amp;D spend`
+on a dropdown. Bokeh escapes a widget title itself.
+
+### A date filter had one reachable notch
+
+Bokeh types `DateSlider.step` and `DateRangeSlider.step` as `Int`, in **days**,
+defaulting to 1. dash computed a step and never passed it, so a `%tm` series
+spanning ten years was stepped one day at a time. Worse, a `%tc` clock series
+spanning a single day had **one** notch — the widget cannot express a step
+below a day, so passing the computed step would not have been enough. A clock
+variable gets `DatetimeRangeSlider` (millisecond steps), or for the
+single-handle form, which Bokeh has no datetime variant of, a numeric slider
+over epoch milliseconds with a datetime formatter.
+
+The tests caught two of their own fixtures being wrong, which is the trap this
+area sets: SIF values are counted in the unit the format implies, and 600
+months is 2010 while 600 half-years is 2260 — past what pandas can represent.
+Either mistake makes the column missing and the widget fall back to a numeric
+slider that proves nothing, so the render now runs with `UserWarning` as an
+error.
+
+### `tabs()` and `filterposition(left)` were silently Bootstrap-only
+
+Under `layout(auto)` — the **default** — the rendered document is
+byte-identical with and without either option once Bokeh's per-render ids are
+normalised. Both were parsed, validated against the registry, carried into
+Python and dropped, with no warning and rc 0. Neither option, nor
+`layout(bs)`, appeared anywhere in `dash.sthlp`.
+
+### Six tests that certified nothing
+
+The suite was green throughout. That is what makes these worth recording.
+
+| test | what it actually did |
+|---|---|
+| `test_linking.py` single-link-group | **zero `assert` statements**; passed whether the renderer made one group, four, or raised |
+| `test_kpi.py` × 2 update-mode | read `_kpi_update_modes`, a dict nothing writes; both assertions were `x is None or x == ...`, true for every input including a mode that does not exist |
+| `test_kpi.py` div-contains-value | claimed to test formatting with `value == display`, so it could not tell which the Div used |
+| `test_server.py` × 3 if_expr injection | **passed with dash's AST whitelist deleted** — pandas refuses `__import__`/`getattr`/`setattr` itself, so they certified pandas |
+| `test_server.py` lfit-in_expr | built both documents, computed both comparisons, and asserted only that one list was non-empty |
+
+The three injection tests now use payloads pandas *accepts* and dash blocks
+(`mpg > @df['mpg'].mean()`, `index > 14`, `mpg > abs(-26)`), with a companion
+test asserting that property directly so they cannot drift back. Their
+assertion is equality with the full row count, not "not partially filtered" —
+the old form was also satisfied by zero rows, so a regression that silently
+emptied every graph passed it.
+
+### Reported, not changed
+
+Six pytest skips are a repairable environment gap, not an absent dependency:
+`statsmodels` fails to import because `packaging` is missing from the pytest
+interpreter. Five `lowess` tests and one dependency guard never run.
+Installing into the user's interpreter is theirs to decide:
+`python3 -m pip install packaging`.

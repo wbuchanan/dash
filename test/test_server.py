@@ -2213,48 +2213,87 @@ class TestServerPerGraphFilter:
         assert any(n == n_foreign for n in lengths), \
             f"if_expr 'foreign == 1' must produce {n_foreign} rows, got: {lengths}"
 
-    def test_unsafe_if_expr_ignored(self, dr_module, auto_df):
-        """Unsafe if_expr must be silently ignored (no error, no filtering)."""
+    # The three payloads below are chosen so the assertion depends on dash's
+    # AST whitelist and NOT on pandas.
+    #
+    # The originals used __import__('os').getcwd(), getattr(mpg, '__class__')
+    # and setattr(mpg, 'x', 1).  Measured by neutering the guard in the
+    # generated app (rewriting `if _safe_g(` to `if True or _safe_g(`): all
+    # three tests pass with dash's whitelist entirely removed, because
+    # df.query(engine="python") refuses those names itself --
+    # `"__import__" is not a supported function`.  They certified pandas.
+    #
+    # These three are accepted by pandas and rejected by _validate_if_expr,
+    # so with the guard they leave the data unfiltered (30 rows) and without
+    # it they filter it (15).  The @-variable form is the vector called out
+    # in dash_render.py's own comment.
+    _BLOCKED_BUT_VALID = [
+        ("at_variable", "mpg > @df['mpg'].mean()"),
+        ("index_attr", "index > 14"),
+        ("builtin_call", "mpg > abs(-26)"),
+    ]
+
+    @pytest.mark.parametrize("label,expr",
+                             _BLOCKED_BUT_VALID,
+                             ids=[x[0] for x in _BLOCKED_BUT_VALID])
+    def test_a_blocked_if_expr_leaves_the_data_unfiltered(
+            self, dr_module, auto_df, label, expr):
         n_total = len(auto_df)
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
-            "graph_options": {"name": "g1", "if_expr": "__import__('os').getcwd()"},
+            "graph_options": {"name": "g1", "if_expr": expr},
         }])
         doc = self._exec_make_document(dr_module, auto_df, spec)
         lengths = self._collect_cds_lengths(doc)
-        # No crash, and full unfiltered data (or empty due to failed query — not partial)
-        assert not any(0 < n < n_total for n in lengths), \
-            "unsafe if_expr must not partially filter data"
+        assert lengths, "no ColumnDataSource was built at all"
+        # Equality, not "not partially filtered": the original assertion was
+        # `not any(0 < n < n_total)`, which n == 0 also satisfies, so a
+        # regression that silently emptied every graph passed it too.
+        assert all(n == n_total for n in lengths), (
+            f"{label}: a blocked if_expr must leave the data unfiltered; "
+            f"got {lengths} of {n_total}"
+        )
 
-    def test_getattr_if_expr_ignored(self, dr_module, auto_df):
-        """if_expr containing getattr() must be silently blocked."""
-        n_total = len(auto_df)
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
-            "graph_options": {"name": "g1", "if_expr": "getattr(mpg, '__class__')"},
-        }])
-        doc = self._exec_make_document(dr_module, auto_df, spec)
-        lengths = self._collect_cds_lengths(doc)
-        assert not any(0 < n < n_total for n in lengths), \
-            "if_expr with getattr() must not partially filter data"
+    @pytest.mark.parametrize("label,expr",
+                             _BLOCKED_BUT_VALID,
+                             ids=[x[0] for x in _BLOCKED_BUT_VALID])
+    def test_the_payload_is_one_pandas_would_have_accepted(self, label, expr):
+        """Without this, the tests above could drift back to certifying pandas.
 
-    def test_setattr_if_expr_ignored(self, dr_module, auto_df):
-        """if_expr containing setattr() must be silently blocked."""
-        n_total = len(auto_df)
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight"}],
-            "graph_options": {"name": "g1", "if_expr": "setattr(mpg, 'x', 1)"},
-        }])
-        doc = self._exec_make_document(dr_module, auto_df, spec)
-        lengths = self._collect_cds_lengths(doc)
-        assert not any(0 < n < n_total for n in lengths), \
-            "if_expr with setattr() must not partially filter data"
+        Each payload must be rejected by dash's validator and accepted by
+        pandas -- if pandas rejected it too, the test would pass with the
+        whitelist deleted.
+        """
+        import pandas as _pd
+        from dash_render import _validate_if_expr, _stata_if_to_pandas
 
-    def test_lfit_respects_in_expr(self, dr_module, auto_df):
-        """lfit with in_expr must use filtered data for regression, not full df."""
-        # With in_expr 1/5 (5 rows), the lfit CDS must reflect only those rows.
-        # The result will differ from full-data lfit unless data is constant.
-        import numpy as np
+        df = _pd.DataFrame({"mpg": [10.0, 20.0, 30.0, 40.0],
+                            "weight": [1.0, 2.0, 3.0, 4.0]})
+        translated = _stata_if_to_pandas(expr)
+        assert not _validate_if_expr(translated, df.columns), (
+            f"{label}: dash's whitelist does not block this, so the test "
+            f"above proves nothing"
+        )
+        try:
+            df.query(translated, engine="python")
+        except Exception as exc:          # noqa: BLE001 - reporting only
+            pytest.fail(
+                f"{label}: pandas rejects this payload itself "
+                f"({type(exc).__name__}), so blocking it is not dash's "
+                f"doing and the test above would pass without the guard"
+            )
+
+    def test_lfit_fits_only_the_rows_in_expr_keeps(self, dr_module, auto_df):
+        """The regression must be computed on the restricted sample.
+
+        This built both documents, collected both sets of CDS lengths, and
+        then asserted only ``len(lengths_filt) > 0`` -- its own comment
+        admitted it merely checked that the app "compiles and executes
+        without error".  lfit always emits 100 output points whatever the
+        input, so lengths could never distinguish the two.  The fitted LINE
+        can: Stata's ``in`` restricts the estimation sample, so the two fits
+        must differ.
+        """
         spec_full = _make_spec_json(graphs=[{
             "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight"}],
             "graph_options": {"name": "g1"},
@@ -2263,16 +2302,29 @@ class TestServerPerGraphFilter:
             "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight"}],
             "graph_options": {"name": "g1", "in_expr": "1/5"},
         }])
-        doc_full = self._exec_make_document(dr_module, auto_df, spec_full)
-        doc_filt = self._exec_make_document(dr_module, auto_df, spec_filt)
-        lengths_full = self._collect_cds_lengths(doc_full)
-        lengths_filt = self._collect_cds_lengths(doc_filt)
-        # The filtered lfit CDS y-values should differ from full lfit CDS
-        # (tested via CDS lengths — filtered version uses fewer input points)
-        # lfit always returns 100 output points regardless of input size,
-        # but using g_df ensures the regression is computed on the filtered subset.
-        # We verify by checking that the generated app compiles and executes without error.
-        assert len(lengths_filt) > 0, "filtered lfit must produce at least one CDS"
+        full = self._lfit_endpoints(
+            self._exec_make_document(dr_module, auto_df, spec_full))
+        filt = self._lfit_endpoints(
+            self._exec_make_document(dr_module, auto_df, spec_filt))
+        assert full is not None and filt is not None, (full, filt)
+        assert full != pytest.approx(filt), (
+            f"the fit over all rows and the fit over rows 1-5 are identical "
+            f"({full}); in() did not restrict the estimation sample"
+        )
+
+    @staticmethod
+    def _lfit_endpoints(doc):
+        """First and last y of the longest CDS that carries a `y` column."""
+        from bokeh.models import ColumnDataSource
+        best = None
+        for model in doc.roots:
+            for obj in model.select({"type": ColumnDataSource}):
+                ys = obj.data.get("y")
+                if ys is None or len(ys) < 2:
+                    continue
+                if best is None or len(ys) > best[0]:
+                    best = (len(ys), (float(ys[0]), float(ys[-1])))
+        return best[1] if best else None
 
     def test_histogram_respects_in_expr(self, dr_module, auto_df):
         """histogram with in_expr must bin only filtered rows."""

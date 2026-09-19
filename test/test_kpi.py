@@ -15,6 +15,9 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# The test directory too, so the shared conftest helpers are importable by
+# name the way the newer test files do it.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dash_render import DashRenderer
 
 
@@ -236,16 +239,29 @@ class TestKpiDivHtml:
         assert isinstance(div, Div)
         assert "Avg MPG" in div.text
 
-    def test_div_contains_value(self, renderer_with_data):
-        """P2-42: KPI Div HTML contains the formatted value."""
-        from bokeh.models import Div
+    def test_div_echoes_the_value_it_is_given(self, renderer_with_data):
+        """P2-42: the Div renders ``value``, and only ``value``.
+
+        This was called "contains the formatted value" and passed
+        ``value="74"`` alongside ``display="74"`` and ``fmt="%9.0fc"``, so it
+        could not tell which of the three the Div used and would have passed
+        had formatting broken entirely. Measured: the Div echoes ``value``
+        and never consults ``fmt`` or ``display``. Formatting happens
+        earlier, in ``_format_kpi_value``/``_effective_kpi_fmt``, and is
+        covered by test_kpi_values.py — so the honest thing for this test to
+        pin is the echo.
+        """
         div = renderer_with_data._make_kpi_div({
             "name": "k2", "stat": "count", "var": "mpg",
-            "value": "74", "display": "74",
+            "value": "74", "display": "999",
             "fmt": "%9.0fc", "title": "Sample Size", "subtitle": "",
             "color": "", "bgcolor": "", "update": "brush"
         })
         assert "74" in div.text
+        assert "999" not in div.text, (
+            "the Div used `display' rather than `value'; the two are "
+            "different here precisely so this can tell them apart"
+        )
 
     def test_div_contains_subtitle(self, renderer_with_data):
         """P2-42: KPI Div HTML contains subtitle when provided."""
@@ -263,28 +279,80 @@ class TestKpiDivHtml:
 # P2-43/P2-44/P2-45 — CustomJS update mode wiring
 # ================================================================
 class TestKpiUpdateMode:
-    def test_update_filter_attaches_to_widget_value(self, renderer_with_data):
-        """P2-43: update(filter) → CustomJS on widget value, not selected.indices."""
-        div = renderer_with_data._make_kpi_div({
-            "name": "k1", "stat": "mean", "var": "mpg",
-            "value": "20.27", "display": "20.3",
-            "fmt": "", "title": "T", "subtitle": "",
-            "color": "", "bgcolor": "", "update": "filter"
-        })
-        # Verify the KPI was created for filter mode
-        kpi_info = renderer_with_data._kpi_update_modes.get("k1", None)
-        assert kpi_info is None or kpi_info == "filter"
+    """Which callback a KPI's update() mode actually wires.
 
-    def test_update_brush_mode_recorded(self, renderer_with_data):
-        """P2-44: update(brush) → registered as brush mode."""
-        div = renderer_with_data._make_kpi_div({
-            "name": "k2", "stat": "count", "var": "mpg",
-            "value": "74", "display": "74",
-            "fmt": "", "title": "T", "subtitle": "",
-            "color": "", "bgcolor": "", "update": "brush"
-        })
-        kpi_info = renderer_with_data._kpi_update_modes.get("k2", None)
-        assert kpi_info is None or kpi_info == "brush"
+    These two tests used to read ``renderer._kpi_update_modes``, a dict that
+    is initialised and **never written to** — measured by calling
+    ``_make_kpi_div`` with update(filter), update(brush) and a mode that does
+    not exist, and getting ``{}`` every time. Both assertions were of the
+    form ``kpi_info is None or kpi_info == "filter"``, which is true for
+    every possible input including nonsense, so they could not fail.
+
+    They assert the real mechanism now: a filter-mode KPI is in the filter
+    callback's config and has no selection callback, a brush-mode KPI is the
+    other way round, and ``both`` gets both.
+    """
+
+    @staticmethod
+    def _dash(update):
+        import json as _json
+        import tempfile as _tf
+        import numpy as _np
+        import pandas as _pd
+        from conftest import make_spec as _ms, make_data_json as _md
+
+        df = _pd.DataFrame({"mpg": _np.linspace(12.0, 41.0, 20),
+                            "weight": _np.linspace(1760.0, 4840.0, 20)})
+        spec = _ms([{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                     "options": {}}])
+        spec["kpis"] = [{"name": "k1", "stat": "mean", "var": "mpg",
+                         "title": "T", "fmt": "%9.2f", "update": update}]
+        spec["build_options"]["registry"] = "k1 g1"
+        spec["build_options"]["filters"] = [
+            {"varname": "weight", "type": "range", "exclude": [],
+             "label": ""}]
+        sp = _tf.mkstemp(".json")[1]
+        dp = _tf.mkstemp(".json")[1]
+        op = _tf.mkstemp(".html")[1]
+        with open(sp, "w") as f:
+            _json.dump(spec, f)
+        with open(dp, "w") as f:
+            _json.dump(_md(df), f)
+        dr = DashRenderer(sp, dp, op)
+        dr.render()
+        for q in (sp, dp, op):
+            try:
+                os.unlink(q)
+            except OSError:
+                pass
+        in_filter = bool(_json.loads(
+            dr.filter_callbacks[0].args["kpi_config_json"]))
+        n_sel = sum(
+            len(getattr(src.selected, "js_property_callbacks", {}) or {})
+            for src in dr.sources.values()
+            if getattr(src, "selected", None) is not None)
+        return in_filter, n_sel
+
+    def test_update_filter_wires_the_filter_callback_only(self):
+        in_filter, n_sel = self._dash("filter")
+        assert in_filter, "a filter KPI is not in the filter callback"
+        assert n_sel == 0, "a filter KPI got a selection callback"
+
+    def test_update_brush_wires_a_selection_callback(self):
+        in_filter, n_sel = self._dash("brush")
+        assert n_sel > 0, "update(brush) attaches no selection callback"
+
+    def test_update_both_wires_both(self):
+        in_filter, n_sel = self._dash("both")
+        assert in_filter and n_sel > 0, (in_filter, n_sel)
+
+    def test_no_mode_recomputes_on_nothing(self):
+        """The defect these replaced could not see: a frozen card."""
+        for mode in ("filter", "brush", "both"):
+            in_filter, n_sel = self._dash(mode)
+            assert in_filter or n_sel, (
+                f"update({mode}) recomputes on neither filters nor brushing"
+            )
 
 
 # ================================================================

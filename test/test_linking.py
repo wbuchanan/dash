@@ -158,11 +158,22 @@ class TestLinkedBrushing:
     # ----------------------------------------------------------------
     # P1B-40 — single link group enforced (no second link() group)
     # ----------------------------------------------------------------
-    def test_single_link_group_enforced(self):
-        """P1B-40: DashRenderer enforces a single link group; multiple groups raise."""
-        # Test that passing a link spec that implies two distinct groups raises
-        # This is enforced by the syntax: only one link() option is accepted.
-        # Passing multiple link options (e.g. link="s1 s2, s3 s4") should error.
+    def test_a_semicolon_does_not_create_a_second_link_group(self):
+        """dash.sthlp:295 — "Only one link group per dashboard is supported."
+
+        This test used to contain **no assert statement at all**. Its body
+        was a try/except whose except branch was ``pass`` and whose try
+        branch discarded its own result, so it passed identically whether
+        the renderer produced one group, four groups, or raised — the exact
+        outcomes its own comment said had to be distinguished.
+
+        Measured: ``_parse_link_and_filters`` does
+        ``raw.replace(";", " ").split()``, so "a b; c d" flattens to four
+        names sharing ONE ColumnDataSource. That is the documented contract,
+        so it is what is asserted. (A malformed namelist never gets this far
+        from Stata: ``dash.ado`` checks every word against the registry and
+        exits 198 on the token carrying the semicolon.)
+        """
         import tempfile
         graphs   = [_make_graph_spec(n) for n in ["a", "b", "c", "d"]]
         master   = {
@@ -170,7 +181,6 @@ class TestLinkedBrushing:
             "kpis":   [],
             "build_options": {
                 "layout":   "auto",
-                # Intentionally malformed: two groups separated by semicolon
                 "link":     "a b; c d",
                 "filter":   "",
                 "theme":    "default",
@@ -189,26 +199,21 @@ class TestLinkedBrushing:
             with os.fdopen(data_fd, "w") as f:
                 json.dump(data, f)
             os.close(out_fd)
-
             renderer = DashRenderer(spec_path, data_path, out_path)
         finally:
-            # DashRenderer reads files in __init__; clean up immediately
             for _p in (spec_path, data_path, out_path):
                 try:
                     os.unlink(_p)
                 except OSError:
                     pass
 
-        # _setup_sources should either raise ValueError or treat "a b; c d"
-        # as a single group (implementation-dependent), but it must not crash silently
-        # with two independent linked groups.
-        # If the implementation raises, that's the expected strict enforcement.
-        # If it treats the semicolon as a separator, it must raise ValueError.
-        try:
-            sources = renderer._setup_sources()
-            # If no exception, verify the semi-colon was either stripped or
-            # the two groups were merged — but the contract is that the
-            # method returns a dict of CDS objects without error or
-            # raises ValueError for the invalid input.
-        except ValueError:
-            pass  # Expected: enforcing single group
+        sources = renderer._setup_sources()
+        assert set(sources) >= {"a", "b", "c", "d"}, sorted(sources)
+        assert len({id(sources[n]) for n in ("a", "b", "c", "d")}) == 1, (
+            "the semicolon created more than one link group; the documented "
+            "contract is that a dashboard has exactly one"
+        )
+        assert sources["a"] is sources["d"], (
+            "graphs on opposite sides of the semicolon must still share a "
+            "source, or brushing one will not brush the other"
+        )
