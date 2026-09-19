@@ -160,7 +160,9 @@ class TestLegitimateColoursStillWork:
         ("#FFF", "#fff"),
         ("red", "#ff0000"),
         ("navy", "#1a476f"),
-        ("eltblue", "#b7c9e2"),
+        # Stata's eltblue, from style/color-eltblue.style rgb "130 192 233".
+        # This asserted #b7c9e2, which is not a colour Stata has.
+        ("eltblue", "#82c0e9"),
         ("rebeccapurple", "rebeccapurple"),
         ("rgb(1,2,3)", "rgb(1,2,3)"),
     ])

@@ -687,12 +687,18 @@ class TestPlotOptionsInHtml:
         assert "#90353b" in html, "fcolor(maroon) should produce #90353b in Bokeh JSON"
 
     def test_fcolor_in_bar_html(self):
-        """fcolor(forest_green) in bar produces #538d22 in HTML."""
+        """fcolor(forest_green) in bar produces Stata's #55752f in HTML.
+
+        This asserted #538d22, which is not a colour Stata has.  Stata's
+        own style/color-forest_green.style sets rgb "85 117 47" = #55752f;
+        52 of the 92 named colours disagreed with their style files the same
+        way.  See test_color_fidelity.py.
+        """
         spec, data = _single_graph_spec(
             "bar", {"yvar": "y", "xvar": "x"}, options={"fcolor": "forest_green"}
         )
         html = _render_to_html(spec, data)
-        assert "#538d22" in html, "fcolor(forest_green) should produce #538d22"
+        assert "#55752f" in html, "fcolor(forest_green) should produce #55752f"
 
     def test_combined_mcolor_and_lcolor_in_scatter_html(self):
         """mcolor and lcolor options both appear in scatter HTML JSON."""

@@ -598,3 +598,43 @@ The reason is recorded beside the digest.
 ### Result
 
 16 of 16 certification scripts pass, 0 skipped. 2394 Python tests pass.
+
+---
+
+## Colour fidelity — 52 of 92 named colours were the wrong colour
+
+`dash scatter mpg weight, mcolor(eltblue)` has to draw the blue Stata draws.
+Measured against Stata's own `<ado>/base/style/color-<name>.style` files, each
+of which sets its colour with a `set rgb "R G B"` line, **52 of the 92 named
+colours disagreed**.
+
+The grey ramp was the worst of it: `gs10` was `#f0f0f0`, a near-white, where
+Stata's is `#a0a0a0`, a mid grey, and `gs14` and `gs15` were both pure white —
+so a scheme built on greys rendered as a white page. Twelve of the fifteen
+s2color `p#` colours were wrong too, so the default palette of the default
+scheme was not Stata's: `eltblue` `#b7c9e2` against `#82c0e9`, `edkbg`
+`#e8e3d2` against `#b2bfcb`, `emerald` `#50a050` against `#2d6d66`, `cranberry`
+`#a00000` against `#c10534`.
+
+The pattern is that the wrong values were plausible CSS colours — `green` was
+`#00ff00`, the CSS keyword, where Stata's `green` is `#008000` — which is why
+none of them ever looked obviously broken.
+
+`_COLOR_MAP` is regenerated from those files by
+`scripts/extract_color_truth.py`, and `test/test_color_fidelity.py` asserts
+every entry against `test/fixtures/color_truth.json` so the check runs without
+Stata. It also asserts the properties the ramp has to have — monotone, and
+actually grey — which no single value comparison would catch.
+
+Three existing tests asserted the wrong values and were corrected, each with
+the style file that settles it recorded beside the change.
+
+### `none` is not a colour
+
+Stata's `color-none.style` sets `rgb "0 0 0"` and then says
+`* values should not matter` — Stata never paints it. dash mapped the name to
+white, which was invisible on a white background and an opaque blob
+everywhere else; taking the style file literally would have painted it black.
+`fcolor(none)` was already special-cased; `mcolor`, `mfcolor` and `lcolor`
+were not, on either the marker or the line path. The token is handled in one
+place now and means what Stata means by it.

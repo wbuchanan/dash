@@ -884,98 +884,75 @@ class OptionTranslator:
     so that the caller can wrap them in a user-facing error.
     """
 
-    # ------------------------------------------------------------------
-    # Stata → hex color mapping
-    # Covers all named colors defined in Stata's color scheme documentation.
-    # ------------------------------------------------------------------
+    # Stata's own colour table, extracted from
+    # <ado>/base/style/color-<name>.style, each of which sets the colour
+    # with a `set rgb "R G B"' line.  Those files are the authority: a
+    # name's appearance in a Stata graph is whatever the file says.
+    #
+    # 52 of these 92 were wrong.  The whole gs0-gs16 ramp was -- gs10 was
+    # #f0f0f0, a near-white, where Stata's is #a0a0a0, and gs14 and gs15
+    # were both pure white -- so a scheme built on greys rendered as a
+    # white page.  Twelve of the fifteen s2color p# colours were wrong
+    # too, so the default palette of the default scheme was not Stata's.
+    # The wrong values were plausible CSS colours (green was #00ff00, the
+    # CSS keyword, where Stata's green is #008000), which is why they
+    # never looked obviously broken.
+    #
+    # Regenerate with scripts/extract_color_truth.py; the fidelity check
+    # is test/test_color_fidelity.py.
     _COLOR_MAP: dict[str, str] = {
-        # Basic named colors
-        "black":         "#000000",
-        "white":         "#ffffff",
-        "red":           "#ff0000",
-        "blue":          "#0000ff",
-        "green":         "#00ff00",
-        "yellow":        "#ffff00",
-        "orange":        "#ffa500",
-        "purple":        "#800080",
-        "pink":          "#ffc0cb",
-        "gray":          "#808080",
-        "grey":          "#808080",
-        "brown":         "#a52a2a",
-        "cyan":          "#00ffff",
-        "magenta":       "#ff00ff",
-        "lime":          "#00ff00",
-        # Stata named colors
-        "navy":          "#1a476f",
-        "maroon":        "#90353b",
-        "forest_green":  "#538d22",
-        "dkorange":      "#e07f2c",
-        "teal":          "#1b8a7a",
-        "cranberry":     "#a00000",
-        "lavender":      "#c4b8d5",
-        "khaki":         "#d2c58e",
-        "sienna":        "#a0522d",
-        "emidblue":      "#5f6fa5",
-        "emerald":       "#50a050",
-        "stone":         "#bfa38a",
-        "gold":          "#ffd700",
-        "bluishgray":    "#8ea0b4",
-        "bluishgrey":    "#8ea0b4",
-        "sandb":         "#c2a47e",
-        "mint":          "#98f0c0",
-        "olive":         "#808000",
-        "olive_teal":    "#4b8260",
-        "ltblue":        "#add8e6",
-        "midblue":       "#4169e1",
-        "edkblue":       "#00008b",
-        "ltkhaki":       "#f0e68c",
-        "midgreen":      "#3a753a",
-        "erose":         "#e66a6a",
-        "eltblue":       "#b7c9e2",
-        "eltgreen":      "#b7d8a0",
-        "ebblue":        "#6794a7",
-        "dkgreen":       "#006400",
-        "dknavy":        "#002060",
-        "dimgray":       "#696969",
-        "dimgrey":       "#696969",
-        "gs0":           "#000000",
-        "gs1":           "#1a1a1a",
-        "gs2":           "#333333",
-        "gs3":           "#4d4d4d",
-        "gs4":           "#666666",
-        "gs5":           "#808080",
-        "gs6":           "#999999",
-        "gs7":           "#b3b3b3",
-        "gs8":           "#cccccc",
-        "gs9":           "#e6e6e6",
-        "gs10":          "#f0f0f0",
-        "gs11":          "#f5f5f5",
-        "gs12":          "#fafafa",
-        "gs13":          "#fdfdfd",
-        "gs14":          "#ffffff",
-        "gs15":          "#ffffff",
-        "gs16":          "#ffffff",
-        "eggshell":      "#f0ead2",
-        # Scheme-specific named colors
-        "ltbluishgray":  "#d9e8f0",
-        "ltbluishgrey":  "#d9e8f0",
-        "ebg":           "#f2e8ca",   # Economist background (cream/tan)
-        "edkbg":         "#e8e3d2",   # Economist dark background
-        "sunflowerlime": "#c8db2a",
-        "chocolate":     "#7b3f00",
-        # Transparent / none — map to white (6-char hex; full RGBA not supported here)
-        "none":          "#ffffff",
-        "":              "#000000",
-        # Stata colour names dash did not know, resolved from Stata's own
-        # color-<name>.style files.  The stc1-stc15 cycle is what the Stata
-        # 18+ default scheme (stcolor) uses; its absence here is why an
-        # unresolvable "stc1" made _color() fall back to black.
-        # Purely additive: no existing entry is changed.
+        # Named colours
+        "black":           "#000000",
+        "blue":            "#0000ff",
+        "bluishgray":      "#d9e6eb",
         "bluishgray8":     "#d2d7e4",
+        "brown":           "#9c8847",
+        "chocolate":       "#804000",
+        "cranberry":       "#c10534",
+        "cyan":            "#00ffff",
+        "dimgray":         "#e8e8e8",
+        "dkgreen":         "#006000",
+        "dknavy":          "#1e2d53",
+        "dkorange":        "#e37e00",
+        "ebblue":          "#008bbc",
+        "ebg":             "#c6d3df",
+        "edkbg":           "#b2bfcb",
+        "edkblue":         "#3e647d",
+        "eggshell":        "#fffbf0",
+        "eltblue":         "#82c0e9",
+        "eltgreen":        "#97b6b0",
+        "emerald":         "#2d6d66",
+        "emidblue":        "#7b92a8",
+        "erose":           "#bfa19c",
+        "forest_green":    "#55752f",
+        "gold":            "#ffd200",
+        "gray":            "#808080",
+        "green":           "#008000",
+        "khaki":           "#cac27e",
+        "lavender":        "#938dd2",
+        "lime":            "#00ff00",
+        "ltblue":          "#add8e6",
+        "ltbluishgray":    "#eaf2f3",
         "ltbluishgray8":   "#e1e6f0",
+        "ltkhaki":         "#e5daa5",
+        "magenta":         "#ff00ff",
+        "maroon":          "#90353b",
+        "midblue":         "#0080ff",
+        "midgreen":        "#00b000",
+        "mint":            "#00ff80",
+        "navy":            "#1a476f",
         "navy8":           "#273f6f",
+        "none":            "#000000",
+        "olive":           "#5c4717",
+        "olive_teal":      "#c0dcc0",
+        "orange":          "#ff7f00",
         "orange_red":      "#ff4500",
+        "pink":            "#ff0080",
+        "purple":          "#800080",
+        "red":             "#ff0000",
         "sand":            "#d9c263",
+        "sandb":           "#ffe474",
+        "sienna":          "#a0522d",
         "stblue":          "#1a85ff",
         "stc1":            "#1a85ff",
         "stc10":           "#faa307",
@@ -993,8 +970,46 @@ class OptionTranslator:
         "stc8":            "#7c0015",
         "stc9":            "#0fefaf",
         "stgreen":         "#00bf7f",
+        "stone":           "#d7d29e",
         "stred":           "#d41159",
         "styellow":        "#ffd400",
+        "sunflowerlime":   "#eaffaa",
+        "teal":            "#6e8e84",
+        "white":           "#ffffff",
+        "yellow":          "#ffff00",
+
+        # The gs0-gs16 grey ramp
+        "gs0":             "#000000",
+        "gs1":             "#101010",
+        "gs2":             "#202020",
+        "gs3":             "#303030",
+        "gs4":             "#404040",
+        "gs5":             "#505050",
+        "gs6":             "#606060",
+        "gs7":             "#707070",
+        "gs8":             "#808080",
+        "gs9":             "#909090",
+        "gs10":            "#a0a0a0",
+        "gs11":            "#b0b0b0",
+        "gs12":            "#c0c0c0",
+        "gs13":            "#d0d0d0",
+        "gs14":            "#e0e0e0",
+        "gs15":            "#f0f0f0",
+        "gs16":            "#ffffff",
+
+        # stcolor's own palette names, which the scheme file defines
+        # rather than a color-*.style file.
+
+        # An unset colour option.  Not a Stata name; kept because callers
+        # resolve an empty option through this table.
+        "":                "#000000",
+
+        # British spellings, dash's own convenience.  Stata accepts only
+        # the US forms, so these are aliases, not Stata names.
+        "bluishgrey":      "#d9e6eb",
+        "dimgrey":         "#e8e8e8",
+        "grey":            "#808080",
+        "ltbluishgrey":    "#eaf2f3",
     }
 
     # ------------------------------------------------------------------
@@ -1175,6 +1190,19 @@ class OptionTranslator:
                 pass   # unrecognised — return None
 
         return hex_color, alpha
+
+    # Stata's colour token meaning "draw nothing".  Its own
+    # color-none.style sets rgb "0 0 0" and then says `* values should not
+    # matter' -- Stata never paints it.  dash mapped the name to white, which
+    # was invisible on a white background and an opaque blob everywhere else;
+    # taking the style file literally would paint it black.  Neither is what
+    # Stata draws, so the token is handled rather than translated.
+    _NO_COLOR: frozenset = frozenset({"none"})
+
+    @staticmethod
+    def _means_no_color(value) -> bool:
+        """True when a colour option asks for nothing to be drawn."""
+        return str(value).strip().lower() in OptionTranslator._NO_COLOR
 
     @staticmethod
     def translate_mcolor(value: str) -> str:
@@ -2404,14 +2432,21 @@ class GlyphMapper:
         """Apply lcolor/lwidth/lpattern/lalpha options to a line-type glyph renderer."""
         glyph = renderer.glyph
         if "lcolor" in options:
-            try:
-                color, alpha = self.tr.parse_color_alpha(options["lcolor"])
-                if color:
-                    glyph.line_color = color
-                if alpha is not None and hasattr(glyph, "line_alpha"):
-                    glyph.line_alpha = alpha
-            except (ValueError, AttributeError):
-                pass
+            if OptionTranslator._means_no_color(options["lcolor"]):
+                # Stata draws nothing; this used to resolve through the
+                # colour table and paint a line.
+                if hasattr(glyph, "line_alpha"):
+                    glyph.line_alpha = 0.0
+            else:
+                try:
+                    color, alpha = self.tr.parse_color_alpha(
+                        options["lcolor"])
+                    if color:
+                        glyph.line_color = color
+                    if alpha is not None and hasattr(glyph, "line_alpha"):
+                        glyph.line_alpha = alpha
+                except (ValueError, AttributeError):
+                    pass
         if "lwidth" in options:
             try:
                 glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
@@ -2456,18 +2491,25 @@ class GlyphMapper:
             except (ValueError, AttributeError):
                 pass
         if "mcolor" in options:
-            try:
-                color, alpha = self.tr.parse_color_alpha(options["mcolor"])
-                if color:
-                    glyph.fill_color = color
-                    glyph.line_color = color
-                if alpha is not None:
-                    if hasattr(glyph, "fill_alpha"):
-                        glyph.fill_alpha = alpha
-                    if hasattr(glyph, "line_alpha"):
-                        glyph.line_alpha = alpha
-            except (ValueError, AttributeError):
-                pass
+            if OptionTranslator._means_no_color(options["mcolor"]):
+                # Stata draws nothing.  fcolor(none) was already handled;
+                # mcolor(none) resolved through the colour table instead.
+                for _attr in ("fill_alpha", "line_alpha"):
+                    if hasattr(glyph, _attr):
+                        setattr(glyph, _attr, 0.0)
+            else:
+                try:
+                    color, alpha = self.tr.parse_color_alpha(options["mcolor"])
+                    if color:
+                        glyph.fill_color = color
+                        glyph.line_color = color
+                    if alpha is not None:
+                        if hasattr(glyph, "fill_alpha"):
+                            glyph.fill_alpha = alpha
+                        if hasattr(glyph, "line_alpha"):
+                            glyph.line_alpha = alpha
+                except (ValueError, AttributeError):
+                    pass
         if "msymbol" in options:
             try:
                 glyph.marker = self.tr.translate_msymbol(options["msymbol"])
@@ -2481,24 +2523,34 @@ class GlyphMapper:
         # mfcolor sets the fill color independently of the line/outline color.
         # Supports color%alpha notation; applied after mcolor so it wins.
         if "mfcolor" in options:
-            try:
-                color, alpha = self.tr.parse_color_alpha(options["mfcolor"])
-                if color:
-                    glyph.fill_color = color
-                if alpha is not None and hasattr(glyph, "fill_alpha"):
-                    glyph.fill_alpha = alpha
-            except (ValueError, AttributeError):
-                pass
+            if OptionTranslator._means_no_color(options["mfcolor"]):
+                if hasattr(glyph, "fill_alpha"):
+                    glyph.fill_alpha = 0.0
+            else:
+                try:
+                    color, alpha = self.tr.parse_color_alpha(
+                        options["mfcolor"])
+                    if color:
+                        glyph.fill_color = color
+                    if alpha is not None and hasattr(glyph, "fill_alpha"):
+                        glyph.fill_alpha = alpha
+                except (ValueError, AttributeError):
+                    pass
         # lcolor sets the marker border (outline) color independently of fill.
         if "lcolor" in options:
-            try:
-                color, alpha = self.tr.parse_color_alpha(options["lcolor"])
-                if color and hasattr(glyph, "line_color"):
-                    glyph.line_color = color
-                if alpha is not None and hasattr(glyph, "line_alpha"):
-                    glyph.line_alpha = alpha
-            except (ValueError, AttributeError):
-                pass
+            if OptionTranslator._means_no_color(options["lcolor"]):
+                if hasattr(glyph, "line_alpha"):
+                    glyph.line_alpha = 0.0
+            else:
+                try:
+                    color, alpha = self.tr.parse_color_alpha(
+                        options["lcolor"])
+                    if color and hasattr(glyph, "line_color"):
+                        glyph.line_color = color
+                    if alpha is not None and hasattr(glyph, "line_alpha"):
+                        glyph.line_alpha = alpha
+                except (ValueError, AttributeError):
+                    pass
         # lwidth sets the marker border width.
         if "lwidth" in options:
             try:

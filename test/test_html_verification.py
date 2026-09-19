@@ -627,12 +627,17 @@ class TestColorHexInJson:
         assert "#ff0000" in raw or '"red"' in raw
 
     def test_fcolor_in_bar_json(self):
-        """COL-V3: fcolor(cranberry) → cranberry hex #a00000 in bar JSON."""
+        """COL-V3: fcolor(cranberry) → Stata's #c10534 in bar JSON.
+
+        This asserted #a00000, which is not Stata's cranberry.  Its own
+        style/color-cranberry.style sets rgb "193 5 52" = #c10534.  See
+        test_color_fidelity.py for the other 51.
+        """
         html = _render([{"type": "bar", "yvar": "y", "xvar": "x",
                          "options": {"fcolor": "cranberry"}}])
         model = _bokeh_model_json(html)
         raw = json.dumps(model).lower()
-        assert "#a00000" in raw  # Stata cranberry
+        assert "#c10534" in raw  # Stata cranberry
 
     def test_mcolor_alpha_hex_still_present(self):
         """COL-V4: mcolor(navy%50) → navy hex in JSON (alpha separate from color)."""
