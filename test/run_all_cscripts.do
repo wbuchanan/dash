@@ -518,6 +518,31 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 18. test_examples_run.cscript
+// ----------------------------------------------------------------
+// Runs last: it is the slowest script, and it is the end-to-end gate.
+display as text "[ RUN ] test_examples_run.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_examples_run.cscript"
+}
+local rc = _rc
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_examples_run.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_examples_run.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_examples_run.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

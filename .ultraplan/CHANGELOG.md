@@ -638,3 +638,67 @@ everywhere else; taking the style file literally would have painted it black.
 `fcolor(none)` was already special-cased; `mcolor`, `mfcolor` and `lcolor`
 were not, on either the marker or the line path. The token is handled in one
 place now and means what Stata means by it.
+
+---
+
+## `tabs()` and `by()` destroyed each other, and `dash clear` left state behind
+
+Both found by running things that had never been run.
+
+### The shipped examples were never executed as a set
+
+Project rule 4 asks for end-to-end tests proving a user can use every feature
+without error. `examples/` is exactly that corpus — between them the eleven
+do-files exercise every plot type, KPIs, filters, linking, tabs, faceting,
+both layouts, dates and the Bootstrap grid — and nothing ran them.
+
+Run as a set for the first time, `examples/comprehensive_demo.do` aborted:
+
+    dash: the following graph(s) were built but never placed in the
+    dashboard: m10, m7, m8, m9, u5
+
+All five carry `by(foreign)`. **`tabs()` under `layout(bs)` dropped every
+faceted graph.** `_build_tabs_widget` recorded the *registered* name
+(`faceted`) in the set it returns, and the Bootstrap caller used that same set
+as if it held *figure keys* (`faceted__by__0`, `faceted__by__1`) — both to
+seed the placed set and to filter the grid. The registered name matches
+neither facet key, so the panels went into the tab widget and were recorded
+nowhere. `layout(auto)` was unaffected, which is why it survived: the two
+layouts disagreed and only one was ever checked.
+
+The builder returns both sets now, and each is used in its own space. Before
+the "no graph vanishes" guard landed earlier in this batch, this was silent —
+five panels simply absent from the dashboard, rc 0.
+
+`test_examples_run.cscript` runs the whole corpus, so a broken example now
+fails the suite. It asserts the corpus is non-empty first: one that had
+silently emptied would otherwise pass.
+
+### `dash clear` did not clear
+
+Its wildcard sweep read `macro drop _dash_*` — globals with a *leading*
+underscore — and dash's globals are named `dash_*` with none, so it matched
+nothing and only the enumeration inside the registry loop ran. That loop can
+drop only what the registry still names, so a global belonging to a graph
+whose name had left the registry survived indefinitely.
+
+And an enumeration goes stale. The list named `dash_kpi_<name>_stat` through
+`_upd` and did **not** name `_if` or `_in`, which carry a KPI's own qualifier,
+so
+
+    dash kpi mean(mpg) if foreign==1, name(k1)
+    dash clear
+    dash kpi mean(mpg), name(k1)
+
+left the qualifier in place and the second, unqualified KPI displayed the
+conditional mean. A stale qualifier is worse than a stale label: the number is
+wrong and looks plausible.
+
+Four prefix sweeps replace the list. They cannot go stale when a new
+per-graph global is added, and they catch orphans the registry no longer
+names.
+
+### Result
+
+18 of 18 certification scripts pass, 0 skipped — including, for the first
+time, every shipped example. 2531 Python tests pass.

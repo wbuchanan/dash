@@ -9816,6 +9816,7 @@ class DashRenderer:
         subtitle_text: str,
         tabs_widget: "Any | None" = None,
         tabbed_names: "set[str] | None" = None,
+        tabbed_keys: "set[str] | None" = None,
         filter_position: str = "top",
     ) -> str:
         """Build the final HTML document using a Bootstrap-compatible grid.
@@ -9840,6 +9841,10 @@ class DashRenderer:
             tabs_widget:         Optional Bokeh ``Tabs`` model containing all
                                  tabbed figures.  When present, tabbed figures
                                  are not added individually to the grid.
+            tabbed_keys:         Set of FIGURE KEYS already placed inside
+                                 *tabs_widget*.  Differs from *tabbed_names*
+                                 for a faceted graph, whose registered name
+                                 is not any of its figure keys.
             tabbed_names:        Set of element names already placed inside
                                  *tabs_widget*.  These are excluded from the
                                  Bootstrap grid.
@@ -9853,6 +9858,10 @@ class DashRenderer:
 
         if tabbed_names is None:
             tabbed_names = set()
+        if tabbed_keys is None:
+            # An older caller passing only names: the two spaces coincide for
+            # every graph that is not faceted.
+            tabbed_keys = set(tabbed_names)
 
         # Only names NOT assigned to a tab appear in the Bootstrap grid.
         grid_names = [n for n in all_names if n not in tabbed_names]
@@ -9875,7 +9884,9 @@ class DashRenderer:
 
         # 2. Grid items — KPIs and non-tabbed graphs
         _added: set[str] = set()
-        _placed_figs: set[str] = set(tabbed_names)
+        # Figure keys, not registered names -- this is the set the
+        # "no graph vanishes" guard is checked against.
+        _placed_figs: set[str] = set(tabbed_keys)
         for row_spec in bs_rows:
             for name, _ in row_spec:
                 if name in _added:
@@ -9888,7 +9899,7 @@ class DashRenderer:
                 # A faceted graph owns several figures; they go into one cell
                 # as a sub-grid so the user's span arithmetic still holds.
                 keys = [k for k in self._resolve_layout_names(name)
-                        if k not in tabbed_names]
+                        if k not in tabbed_keys]
                 if not keys:
                     continue
                 if len(keys) == 1:
@@ -10153,7 +10164,7 @@ class DashRenderer:
     def _build_tabs_widget(
         self,
         tabs_spec: "list[tuple[str, list[str]]]",
-    ) -> "tuple[Any, set[str]]":
+    ) -> "tuple[Any, set[str], set[str]]":
         """Build a Bokeh ``Tabs`` widget from a parsed tab specification.
 
         Each tab's content is laid out as a ``gridplot`` (``ceil(sqrt(N))``
@@ -10165,11 +10176,22 @@ class DashRenderer:
                        :meth:`_parse_tabs_option`.
 
         Returns:
-            A ``(Tabs, placed_names)`` tuple.  *placed_names* is the set of
-            dashboard element names included in the widget so that the caller
-            can omit them from the Bootstrap grid.
+            A ``(Tabs, placed_names, placed_keys)`` triple.
+
+            *placed_names* are the REGISTERED names consumed, which is what
+            the caller needs to decide which elements to leave out of the
+            Bootstrap grid.  *placed_keys* are the FIGURE KEYS consumed,
+            which is what the caller needs to record as placed.
+
+            They differ for a faceted graph -- registered ``g``, figures
+            ``g__by__0``, ``g__by__1`` -- and returning only the first made
+            the Bootstrap caller use registered names in figure-key space.
+            A faceted graph inside a tab was therefore placed in the widget
+            and recorded nowhere, and vanished from the dashboard with rc 0
+            until the "no graph vanishes" guard started catching it.
         """
         placed: set[str] = set()
+        placed_keys: set[str] = set()
         tab_panels: list[Any] = []
 
         for tab_title, names in tabs_spec:
@@ -10180,13 +10202,16 @@ class DashRenderer:
                         fig = self.figures.get(fkey)
                         if fig is not None:
                             items.append(fig)
+                            placed_keys.add(fkey)
                     placed.add(name)
                 elif name in self.figures:
                     items.append(self.figures[name])
                     placed.add(name)
+                    placed_keys.add(name)
                 elif name in self.kpi_divs:
                     items.append(self.kpi_divs[name])
                     placed.add(name)
+                    placed_keys.add(name)
 
             if not items:
                 continue
@@ -10205,10 +10230,10 @@ class DashRenderer:
             tab_panels.append(TabPanel(child=tab_content, title=tab_title))
 
         if not tab_panels:
-            return None, placed
+            return None, placed, placed_keys
 
         tabs_widget = Tabs(tabs=tab_panels, sizing_mode="stretch_width")
-        return tabs_widget, placed
+        return tabs_widget, placed, placed_keys
 
     # ------------------------------------------------------------------
     # Layout assembly helpers
@@ -10999,10 +11024,12 @@ class DashRenderer:
 
         tabs_widget:  Any       = None
         tabbed_names: set[str]  = set()
+        tabbed_keys:  set[str]  = set()
         if tabs_str and DashRenderer._is_bootstrap_layout(layout_opt):
             _tabs_spec = DashRenderer._parse_tabs_option(tabs_str, all_names)
             if _tabs_spec:
-                tabs_widget, tabbed_names = self._build_tabs_widget(_tabs_spec)
+                (tabs_widget, tabbed_names,
+                 tabbed_keys) = self._build_tabs_widget(_tabs_spec)
 
         if DashRenderer._is_bootstrap_layout(layout_opt):
             return self._render_bootstrap_html(
@@ -11014,6 +11041,7 @@ class DashRenderer:
                 subtitle_text=subtitle_text,
                 tabs_widget=tabs_widget,
                 tabbed_names=tabbed_names,
+                tabbed_keys=tabbed_keys,
                 filter_position=filter_position,
             )
 

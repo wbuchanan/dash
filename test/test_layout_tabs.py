@@ -55,17 +55,25 @@ def _df(n=30):
     })
 
 
-def _g(name, *, title=""):
+def _g(name, *, title="", by=""):
+    go = dict({"name": name}, **({"title": title} if title else {}))
+    if by:
+        go["by"] = by
     return {
         "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
                    "options": {}}],
-        "graph_options": dict({"name": name},
-                              **({"title": title} if title else {})),
+        "graph_options": go,
         "if_expr": "", "in_expr": "",
     }
 
 
-def _render(graphs, layout, *, tabs="", link=""):
+# Value labels for foreign, so a by() facet has a panel title to look for.
+_LABELS = {"origin": {"0": "Domestic", "1": "Foreign"}}
+_LABEL_NAMES = {"foreign": "origin"}
+
+
+def _render(graphs, layout, *, tabs="", link="", value_labels=None,
+            value_label_names=None):
     spec = make_spec(graphs[0]["plots"])
     spec["graphs"] = graphs
     spec["build_options"]["layout"] = layout
@@ -80,7 +88,8 @@ def _render(graphs, layout, *, tabs="", link=""):
     with open(sp, "w") as f:
         json.dump(spec, f)
     with open(dp, "w") as f:
-        json.dump(make_data_json(_df()), f)
+        json.dump(make_data_json(_df(), value_labels=value_labels,
+                                 value_label_names=value_label_names), f)
     dr = DashRenderer(sp, dp, op)
     out = dr.render()
     for p in (sp, dp, op):
@@ -325,3 +334,93 @@ class TestThereIsOneRenderPath:
             f"{n} of render()/_setup_sources()/_build_figures() build a "
             f"linked source of their own; there must be one implementation"
         )
+
+
+# ======================================================================
+# A tab that holds a faceted graph
+# ======================================================================
+
+class TestTabsHoldFacetedGraphs:
+    """``tabs()`` and ``by()`` destroyed each other under ``layout(bs)``.
+
+    Found by running the shipped examples end to end:
+    ``examples/comprehensive_demo.do`` aborted with
+
+        dash: the following graph(s) were built but never placed in the
+        dashboard: m10, m7, m8, m9, u5
+
+    and all five of those graphs carry ``by(foreign)``. Before the
+    "no graph vanishes" guard existed this was silent — five panels simply
+    absent from the dashboard, rc 0.
+
+    The cause is one set used in two different name spaces.
+    ``_build_tabs_widget`` puts the *registered* name (``"faceted"``) into the
+    set it returns, and the Bootstrap caller then uses that same set as if it
+    held *figure keys* (``"faceted__by__0"``, ``"faceted__by__1"``) — both to
+    seed ``_placed_figs`` and to filter the grid with ``k not in
+    tabbed_names``. The registered name matches neither facet key, so the
+    panels were placed in the tab widget and recorded nowhere.
+
+    ``layout(auto)`` was unaffected, which is why this survived: the two
+    layouts disagreed and only one of them was checked.
+    """
+
+    @staticmethod
+    def _tabbed(layout, *, by="foreign"):
+        graphs = [
+            _g("plain", title="Plain graph"),
+            _g("faceted", by=by, title="Faceted graph"),
+        ]
+        return _render(graphs, layout,
+                       tabs="one: plain / two: faceted",
+                       value_labels=_LABELS, value_label_names=_LABEL_NAMES)
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    def test_a_faceted_graph_in_a_tab_does_not_vanish(self, layout):
+        out, dr = self._tabbed(layout)
+        assert "Faceted graph" in out, (
+            f"layout({layout}): the faceted graph was dropped from the tab"
+        )
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    @pytest.mark.parametrize("label", ["Domestic", "Foreign"])
+    def test_both_facet_panels_are_in_the_tab(self, layout, label):
+        out, _ = self._tabbed(layout)
+        assert label in out, f"layout({layout}): facet panel {label!r} missing"
+
+    @pytest.mark.parametrize("layout", ["auto", "bs"])
+    def test_every_figure_reaches_the_document(self, layout):
+        out, dr = self._tabbed(layout)
+        for name, fig in dr.figures.items():
+            assert fig.id in out, (
+                f"layout({layout}): figure {name!r} was built but never "
+                f"placed"
+            )
+
+    def test_the_widget_reports_the_figure_keys_it_placed(self):
+        """The fix, at the level the defect lives.
+
+        The caller needs figure keys; the grid filter needs registered names.
+        One set cannot be both, so the builder returns both.
+        """
+        _, dr = self._tabbed("bs")
+        spec = dr._parse_tabs_option("one: plain / two: faceted",
+                                     ["plain", "faceted"])
+        widget, placed_names, placed_keys = dr._build_tabs_widget(spec)
+        assert widget is not None
+        assert placed_names == {"plain", "faceted"}, placed_names
+        assert placed_keys == {"plain", "faceted__by__0", "faceted__by__1"}, (
+            f"the widget must report the FIGURE KEYS it consumed, not the "
+            f"registered names: {placed_keys}"
+        )
+
+    def test_a_plain_graph_in_a_tab_still_works(self):
+        """The fix must not change the ordinary case."""
+        out, dr = self._tabbed("bs")
+        assert "Plain graph" in out
+
+    def test_a_tabbed_graph_is_not_also_drawn_in_the_grid(self):
+        """It is placed once, in the tab — not twice."""
+        out, dr = self._tabbed("bs")
+        for name, fig in dr.figures.items():
+            assert out.count(fig.id) >= 1, name

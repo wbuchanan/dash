@@ -1,0 +1,91 @@
+*! test_examples_run.cscript
+*! End-to-end certification: every shipped example must run clean.
+*!
+*! Usage:  do test/test_examples_run.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed.
+*! Version: 1.0.0  19sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! Project rule 4 asks for end-to-end tests proving a user can use every
+*! feature without error.  examples/ is exactly that corpus -- between them
+*! the eleven do-files exercise every plot type, KPIs, filters, linking,
+*! tabs, faceting, both layouts, dates and the Bootstrap grid -- and nothing
+*! ran them.
+*!
+*! Measured on 2026-09-19, the first time they were run as a set:
+*! examples/comprehensive_demo.do aborted with
+*!
+*!     dash: the following graph(s) were built but never placed in the
+*!     dashboard: m10, m7, m8, m9, u5
+*!
+*! All five carry by(foreign).  tabs() under layout(bs) recorded the
+*! REGISTERED name of a faceted graph in a set the caller then used as
+*! figure keys, so the panels were placed in the tab widget and recorded
+*! nowhere.  Before the "no graph vanishes" guard existed, that was silent:
+*! five panels simply absent, rc 0.
+*!
+*! $dash_nobrowser is set before the first iteration.  A verification loop
+*! that opens a browser window per example takes over the user's desktop.
+
+cscript "dash examples run clean" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// See test_cscript_hygiene.py: do NOT probe Python by running it.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+global dash_nobrowser 1
+
+local exdir "../examples"
+local files : dir "`exdir'" files "*.do"
+local files : list sort files
+local nfiles : word count `files'
+
+// A corpus that has silently emptied would otherwise pass this script.
+assert `nfiles' >= 10
+display "EX-00 PASS: `nfiles' example do-files found"
+
+local n_ok  = 0
+local n_bad = 0
+local failed ""
+foreach f of local files {
+    capture dash clear
+    clear all
+    global dash_nobrowser 1
+    capture noisily do "`exdir'/`f'"
+    if _rc == 0 {
+        local n_ok = `n_ok' + 1
+    }
+    else {
+        display as error "EX-FAIL `f' (rc=`_rc')"
+        local n_bad = `n_bad' + 1
+        local failed "`failed' `f'"
+    }
+}
+
+display ""
+display "examples: `n_ok' ran clean, `n_bad' failed"
+if "`failed'" != "" display as error "failed:`failed'"
+assert `n_bad' == 0
+assert `n_ok' == `nfiles'
+display "EX-01 PASS: every shipped example runs clean"
+
+display ""
+display "test_examples_run.cscript: ALL CHECKS PASSED"
