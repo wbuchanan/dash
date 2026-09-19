@@ -1262,3 +1262,96 @@ class TestFilterEdgeCases:
         src = self._src({"weight": [float("nan"), float("nan")]})
         widget, _ = FilterBuilder.build_range("weight", src)
         assert widget.disabled is True, "RangeSlider with all-NaN data must be disabled"
+
+
+# ================================================================
+# Filters must reach the source the FIGURE actually renders from
+# ================================================================
+# Found while verifying S08's date filter in a browser, and it is not
+# date-specific: dragging a range filter on a `dash build` dashboard of LINE
+# plots changes nothing on screen, while the same dashboard built from
+# `scatter` filters correctly.
+#
+# Measured in the browser on a real sp500 build:
+#
+#   line:    4 ColumnDataSources -- p1050 (index, volume, close) n=248 and
+#            p1101 (index, volume, high) n=248, which the figures render, plus
+#            p1009/p1012 n=5, which the callback filtered
+#   scatter: 2 ColumnDataSources -- p1009/p1012 n=5, filtered, and rendered
+#
+# map_line sorts by x and builds a NEW ColumnDataSource for the sorted data.
+# self.sources -- which is what render() passes to the callback as
+# all_graph_sources -- still holds the original, so the callback updates a
+# source no glyph is bound to.  Every plot type that derives its own source
+# has the same problem.
+#
+# Owned by S13 (linking, filters and KPI correctness).  The test is written
+# here, before the fix, per project rule 8.
+
+class TestFilterReachesTheRenderedSource:
+
+    def _sources_behind_glyphs(self, fig):
+        return {id(r.data_source) for r in fig.renderers
+                if hasattr(r, "data_source")}
+
+    def _build(self, ptype):
+        import tempfile
+        _HERE = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, _HERE)
+        from conftest import make_data_json, make_spec
+        df = pd.DataFrame({
+            "y": np.linspace(10, 50, 40),
+            "x": np.linspace(100, 500, 40)[::-1],   # unsorted, so map_line sorts
+        })
+        spec = make_spec(
+            [{"type": ptype, "yvar": "y", "xvar": "x", "options": {}}],
+            link="g1",
+        )
+        spec["build_options"]["filters"] = [
+            {"varname": "x", "type": "range", "exclude": [], "label": ""}]
+        sp = tempfile.mkstemp(".json")[1]
+        dp = tempfile.mkstemp(".json")[1]
+        op = tempfile.mkstemp(".html")[1]
+        with open(sp, "w") as f:
+            json.dump(spec, f)
+        with open(dp, "w") as f:
+            json.dump(make_data_json(df), f)
+        dr = DashRenderer(sp, dp, op)
+        dr.render()
+        for path in (sp, dp, op):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+        return dr
+
+    def test_scatter_filter_updates_the_rendered_source(self):
+        """The control: a scatter renders from the shared source."""
+        dr = self._build("scatter")
+        cb = dr.filter_callbacks[0]
+        targets = {id(s) for s in cb.args["all_graph_sources"]}
+        rendered = set()
+        for fig in dr.figures.values():
+            rendered |= self._sources_behind_glyphs(fig)
+        assert targets & rendered, (
+            "even a scatter's filter does not reach the rendered source"
+        )
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="S13: map_line builds a derived sorted ColumnDataSource, but "
+               "render() passes self.sources to the filter callback, so "
+               "dragging a filter on a line chart changes nothing on screen. "
+               "Reproduced in a browser on a real sp500 dashboard.",
+    )
+    def test_line_filter_updates_the_rendered_source(self):
+        dr = self._build("line")
+        cb = dr.filter_callbacks[0]
+        targets = {id(s) for s in cb.args["all_graph_sources"]}
+        rendered = set()
+        for fig in dr.figures.values():
+            rendered |= self._sources_behind_glyphs(fig)
+        assert targets & rendered, (
+            "the filter callback updates no source that any glyph renders "
+            "from — the filter is inert on screen"
+        )

@@ -1180,6 +1180,87 @@ end
 
 
 
+
+// ================================================================
+// _dash_formats_json  -- build the "formats" map, and name the date
+//                        variables that need numeric transport
+//
+// jsonio cannot emit display formats: its metadata branch is gated on
+// inlist("`metaprint'`filenm'", ...) -- a CONCATENATION -- so with a
+// non-empty filenm() the branch never fires and metaprint() is a no-op.
+// StataAllToJSON has no format field either; it holds
+// Variables.getDisplayFmt() internally and never serializes it.  So dash
+// carries the formats itself, in its own master JSON.  jsonio is not
+// modified.
+// ================================================================
+program define _dash_formats_json
+    version 16.0
+    args varlist_in out_macro datevars_macro
+
+    local parts ""
+    local nparts = 0
+    local datevars ""
+
+    foreach v of local varlist_in {
+        capture confirm variable `v'
+        if _rc continue
+        local f : format `v'
+        if `"`f'"' == "" continue
+
+        _dash_json_str `"`f'"' _fjv
+        if `nparts' > 0 local parts `"`parts',"'
+        local parts `"`parts'"`v'":"`_fjv'""'
+        local nparts = `nparts' + 1
+
+        // %t and %-t followed by one of the eight kind letters, case
+        // sensitively: %tc and %tC are different formats.
+        if regexm(`"`f'"', "^%-?t[cCdhmqwy]") {
+            local datevars `"`datevars' `v'"'
+        }
+    }
+
+    c_local `out_macro'      `"{`parts'}"'
+    c_local `datevars_macro' `"`datevars'"'
+end
+
+
+// ================================================================
+// _dash_date_fmts_swap / _dash_date_fmts_restore
+//
+// jsonio renders a %t* variable THROUGH its display format and emits a
+// JSON string ("02jan2001"), while still reporting variableIsString=false
+// for it.  The renderer then coerced that to a missing value and dropped
+// every row, so `dash line close date` produced a dashboard containing no
+// data at all.  Giving the variable a plain numeric format for the
+// duration of the jsonio call transports the underlying value intact; the
+// original format is restored immediately afterwards and travels
+// separately in the "formats" map.
+// ================================================================
+program define _dash_date_fmts_swap
+    version 16.0
+    args datevars
+
+    local saved ""
+    foreach v of local datevars {
+        local f : format `v'
+        local saved `"`saved' `f'"'
+        format `v' %12.0g
+    }
+    c_local _dash_saved_fmts `"`saved'"'
+end
+
+program define _dash_date_fmts_restore
+    version 16.0
+    args datevars saved
+
+    local i = 0
+    foreach v of local datevars {
+        local ++i
+        local f : word `i' of `saved'
+        if `"`f'"' != "" capture format `v' `f'
+    }
+end
+
 // ================================================================
 // _dash_report_ignored  — one note per command naming every option
 //                         dash accepted but did not honour
@@ -1498,9 +1579,22 @@ program define _dash_render_immediate
         exit(198)
     }
 
+    // Collect display formats, and transport date variables as
+    // numbers so jsonio does not render them to text.
+    _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
+    local _dash_saved_fmts ""
+    if `"`_dash_date_vars'"' != "" {
+        _dash_date_fmts_swap "`_dash_date_vars'"
+    }
     quietly jsonio out `needed_vars', ///
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
+
+    // Restore the user's formats immediately, whether or not
+    // jsonio succeeded: the data in memory is theirs.
+    if `"`_dash_date_vars'"' != "" {
+        _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+    }
 
     // jsonio returns non-zero _rc as part of normal operation (internal Stata
     // commands like restore set _rc).  Check for actual failure by verifying
@@ -1516,7 +1610,7 @@ program define _dash_render_immediate
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "default", "level": "`_dash_lvl'"}}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "default", "level": "`_dash_lvl'", "formats": `_dash_fmt_json'}}"'
 
     tempname fh
     file open `fh' using "`spec_json_path'", write replace text
@@ -1917,9 +2011,22 @@ program define _dash_build
 
     tempfile data_json_path master_json_path
 
+    // Collect display formats, and transport date variables as
+    // numbers so jsonio does not render them to text.
+    _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
+    local _dash_saved_fmts ""
+    if `"`_dash_date_vars'"' != "" {
+        _dash_date_fmts_swap "`_dash_date_vars'"
+    }
     quietly jsonio out `all_vars', ///
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
+
+    // Restore the user's formats immediately, whether or not
+    // jsonio succeeded: the data in memory is theirs.
+    if `"`_dash_date_vars'"' != "" {
+        _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+    }
 
     capture confirm file "`data_json_path'"
     if _rc != 0 {
@@ -1978,7 +2085,7 @@ program define _dash_build
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'"}}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text
@@ -2103,9 +2210,22 @@ program define _dash_serve
 
     tempfile data_json_path master_json_path
 
+    // Collect display formats, and transport date variables as
+    // numbers so jsonio does not render them to text.
+    _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
+    local _dash_saved_fmts ""
+    if `"`_dash_date_vars'"' != "" {
+        _dash_date_fmts_swap "`_dash_date_vars'"
+    }
     quietly jsonio out `all_vars', ///
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
+
+    // Restore the user's formats immediately, whether or not
+    // jsonio succeeded: the data in memory is theirs.
+    if `"`_dash_date_vars'"' != "" {
+        _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
+    }
 
     capture confirm file "`data_json_path'"
     if _rc != 0 {
@@ -2151,7 +2271,7 @@ program define _dash_serve
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"default","title":"","subtitle":"","registry":"`registry'","level":"`_dash_lvl'"}}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"default","title":"","subtitle":"","registry":"`registry'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
 
     tempname fh
     file open `fh' using "`master_json_path'", write replace text

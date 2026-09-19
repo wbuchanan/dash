@@ -91,3 +91,98 @@ a constant measured against Stata on seven datasets; the implied constant
 ranged over [0.597, 0.720], so the default lands within about ±11%. An explicit
 `bwidth()` is exact. This is stated in `dash.sthlp`, in the function's
 docstring, and pinned by a test with a 20% tolerance.
+
+
+---
+
+## S08 — display formats, dates, and a dashboard that contained no data
+
+### The headline defect
+
+`dash line close date` on `sysuse sp500` produced a dashboard with **zero
+data points** and returned rc 0. Verified end to end: the embedded Bokeh
+document held `"shape":[0]` for index, date and close.
+
+The section's premise was wrong about why. It said a `%td` variable "arrives
+as a raw Stata SIF integer and gets a linear axis reading 14.0k". Measured, it
+does not arrive as a number at all: **jsonio renders every `%t*` variable
+through its display format and emits a JSON string** — sp500's `date` arrived
+as `"02jan2001"` — while still reporting `variableIsString = false` for it.
+`_load_data` then ran `pd.to_numeric(errors="coerce")` over it, every date
+became NaN, and every row was dropped.
+
+dash now gives a date variable a plain numeric format for the duration of the
+jsonio call, so the underlying value is transported intact, and carries the
+display format separately in `build_options["formats"]`. jsonio is not
+modified. A spec from an older dash.ado, still carrying display strings, is
+parsed rather than coerced away.
+
+### A second transport defect found alongside it
+
+`_load_data` read **`variableTypeIsString`**. Real jsonio emits
+**`variableIsString`**. The key dash looked for is never present in
+production, so its string-column detection had never run outside the test
+suite — and `conftest.make_data_json` fabricated the wrong key, so the suite
+could not see it. Both keys are now honoured, and the helper emits both.
+
+### What changed
+
+| where | before | after |
+|---|---|---|
+| date columns | coerced to NaN, every row dropped | datetime64, all eight epochs |
+| axes | linear | `DatetimeAxis` with a formatter matched to the date kind |
+| `xscale(log)` on a date | silently a log axis | a date axis, with a warning |
+| hover | raw variable NAMES, raw values, three different hardcoded precisions | variable labels, dates as dates, formatted numerics, one precision derived from the data |
+| `filter(date, type(range))` | **no widget at all** — a datetime64 column fails `is_numeric_dtype` | `DateRangeSlider` with date bounds |
+| `filter(date, type(slider))` | no widget | `DateSlider` |
+| `filter(date, type(dropdown))` | epoch numbers | dates |
+| `kpi max(date)` | `15340` | `31 Dec 2001` |
+| a filtered date KPI | a raw number | still a date |
+| `kpi sum(date)` | silent nonsense | still computed, now reported as meaningless |
+| `by(datevar)` facet titles | raw values | dates |
+| `mlabel(datevar)` | raw values | dates |
+| a KPI with no `fmt()` | `%9.0f` | the variable's own Stata display format |
+
+`%tC` is converted with the same epoch as `%tc` and **warns** that leap
+seconds are not applied — measured at 9 s in 1980 rising to 27 s in 2020.
+Leap-second data IS available in Stata, so this is an approximation, and it
+says so rather than being silent.
+
+### The wire-format trap the section warned about
+
+The plan said the epoch-millisecond comparison in the filter JS "should work —
+verify this rather than assuming, because a mismatch silently filters
+nothing". Verified, and it did not work: Bokeh sends the live column as epoch
+milliseconds, but dash's own `orig_data` snapshot serialised the same column
+as date **strings**, because `_to_serialisable` calls `float(v)`, which raises
+on a Timestamp and falls through to `str(v)`. Dragging the slider filtered
+nothing and every date KPI collapsed to 0. Four tests now pin the two
+representations together.
+
+A related unit trap: pandas 3 preserves the resolution it inferred, so a
+datetime column can be `datetime64[us]` or `[ns]`. Dividing a raw
+`astype("int64")` by a fixed constant yields seconds for one and milliseconds
+for the other; the cast is now to an explicit `datetime64[ms]`.
+
+### Found but NOT fixed here — owned by S13
+
+**`filter()` is inert on any plot type that derives its own ColumnDataSource.**
+Found while checking the date filter in a browser, and it is not
+date-specific. `map_line` sorts by x and builds a new ColumnDataSource, but
+`render()` passes `self.sources` to the filter callback, so the callback
+updates a source no glyph is bound to. Measured on a real sp500 build:
+
+- `line`: four sources — two at n=248 that the figures render, two at n=5 that
+  the callback filtered
+- `scatter`: two sources, filtered and rendered, and the filter works
+
+Recorded as a strict xfail in `test/test_filters.py`, written before any fix,
+per project rule 8.
+
+### Visually verified
+
+The sp500 exemplar (`examples/sp500_dates.do`, new) was built from Stata and
+opened in a browser: calendar dates on the x-axis, dates in both KPI cards, a
+date range slider reading "02 Jan 2001 .. 31 Dec 2001", and KPIs that
+recompute to "22 Oct 2001" and a lower peak close when the slider is dragged.
+The graph itself does not move, for the S13 reason above.

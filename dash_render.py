@@ -133,6 +133,325 @@ _LPOLY_ROT_C = 0.65
 
 
 
+# ======================================================================
+# Stata display formats
+# ======================================================================
+# Stata's display formats never leave Stata on their own: jsonio cannot emit
+# them (its metaprint() branch is gated on a concatenation of `metaprint' and
+# `filenm', so a non-empty filenm() makes it unmatchable, and StataAllToJSON
+# has no format field at all -- it holds Variables.getDisplayFmt() internally
+# and never serializes it).  dash therefore carries them itself, in its own
+# master JSON, under build_options["formats"].  jsonio is not modified.
+#
+# What jsonio DOES do with a %t* variable is worse than dropping the format:
+# it renders the variable THROUGH the format and emits a JSON string, while
+# still reporting variableIsString=false.  sp500's `date` arrived as
+# "02jan2001", _load_data coerced it to NaN, every row was dropped, and
+# `dash line close date` produced a dashboard with zero data points.
+# dash.ado now swaps a date variable to a plain numeric format for the
+# duration of the jsonio call so the SIF value is transported intact.
+
+_STATA_DATE_KINDS = frozenset({"tc", "tC", "td", "th", "tm", "tq", "tw", "ty"})
+
+# %t or %-t, then exactly one kind letter, CASE SENSITIVELY -- %tc and %tC are
+# different formats -- optionally followed by a custom date picture.
+_DATE_FMT_RE = re.compile(r"^%-?t([cCdhmqwy])")
+
+_STATA_EPOCH = pd.Timestamp("1960-01-01")
+
+
+def _tooltip_precision(values) -> str:
+    """Choose a tooltip number format from the spread of *values*.
+
+    The fallback tooltips carried three different hardcoded precisions
+    (``0.2f``, ``0.3f``, ``0.4f``) in three adjacent branches, so the same
+    quantity was shown to different accuracy depending on which glyph was
+    under the cursor.
+
+    Args:
+        values: The column the tooltip will show.
+
+    Returns:
+        A Bokeh number format such as ``"0.00"``.
+    """
+    try:
+        arr = np.asarray(list(values), dtype=float)
+        arr = arr[np.isfinite(arr)]
+    except (TypeError, ValueError):
+        return "0.00"
+    if arr.size == 0:
+        return "0.00"
+    spread = float(np.nanmax(arr) - np.nanmin(arr))
+    if spread <= 0:
+        spread = abs(float(arr[0])) or 1.0
+    # Aim for roughly four significant figures across the visible range.
+    decimals = int(min(6, max(0, 4 - math.floor(math.log10(spread)) - 1)))
+    return "0" if decimals == 0 else "0." + "0" * decimals
+
+
+def _format_date_value_standalone(value, kind: str) -> str:
+    """Render one date value; the module-level twin of
+    :meth:`DashRenderer._format_date_value`, for callers that have no
+    renderer instance (the glyph mapper builds marker labels on its own)."""
+    try:
+        ts = (pd.Timestamp(value) if not isinstance(value, (int, float))
+              else pd.Timestamp(float(value), unit="ms"))
+    except (TypeError, ValueError, OverflowError):
+        return str(value)
+    if pd.isna(ts):
+        return ""
+    if kind == "ty":
+        return f"{ts.year}"
+    if kind in ("tc", "tC"):
+        return ts.strftime("%d %b %Y %H:%M:%S")
+    if kind in ("tm", "tq", "th"):
+        return ts.strftime("%b %Y")
+    return ts.strftime("%d %b %Y")
+
+
+def _is_datetime_column(source, varname: str) -> bool:
+    """True when *varname* in *source* holds datetime values.
+
+    A datetime64 column fails ``is_numeric_dtype``, and the range and slider
+    filters skipped any column that failed it (commit b25584c, added for
+    string columns) -- so a date range filter produced NO WIDGET at all.
+
+    Args:
+        source:  A ColumnDataSource or mapping.
+        varname: Column name.
+
+    Returns:
+        Whether the column is datetime-like.
+    """
+    try:
+        col = source.data[varname]
+    except (AttributeError, KeyError, TypeError):
+        return False
+    try:
+        return bool(pd.api.types.is_datetime64_any_dtype(pd.Series(col)))
+    except (TypeError, ValueError):
+        return False
+
+
+def _datetime_formatter_for(kind: str):
+    """A DatetimeTickFormatter matched to a Stata date kind.
+
+    Args:
+        kind: One of :data:`_STATA_DATE_KINDS`.
+
+    Returns:
+        A configured ``DatetimeTickFormatter``.
+    """
+    from bokeh.models import DatetimeTickFormatter
+
+    if kind == "ty":
+        return DatetimeTickFormatter(years="%Y", months="%Y", days="%Y")
+    if kind in ("tc", "tC"):
+        return DatetimeTickFormatter(
+            years="%Y", months="%b %Y", days="%d %b %Y",
+            hours="%d %b %H:%M", minutes="%H:%M", seconds="%H:%M:%S",
+        )
+    if kind in ("tm", "tq", "th"):
+        return DatetimeTickFormatter(years="%Y", months="%b %Y",
+                                     days="%b %Y")
+    return DatetimeTickFormatter(years="%Y", months="%b %Y", days="%d %b %Y")
+
+
+def _stata_date_kind(fmt: "str | None") -> "str | None":
+    """Classify a Stata display format as one of the eight date kinds.
+
+    Args:
+        fmt: A Stata format string such as ``"%td"``, ``"%tdCCYY-NN-DD"`` or
+             ``"%9.0fc"``.
+
+    Returns:
+        ``"td"``, ``"tc"``, ``"tC"``, ``"tw"``, ``"tm"``, ``"tq"``, ``"th"``
+        or ``"ty"``; ``None`` when the format is not a date format.
+    """
+    if not fmt or not isinstance(fmt, str):
+        return None
+    m = _DATE_FMT_RE.match(fmt.strip())
+    if not m:
+        return None
+    return "t" + m.group(1)
+
+
+def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
+    """Convert Stata SIF values of a given date *kind* to datetime64.
+
+    ``%tw``, ``%tm``, ``%tq`` and ``%th`` count CALENDAR periods, not
+    fixed-length intervals, so they cannot be converted by multiplication;
+    the timestamp is built from the period index.  ``%ty`` is the year
+    itself and is not offset from 1960 at all (verified: ``display %ty 38``
+    prints ``38``).
+
+    Args:
+        values: Numeric Stata values.
+        kind:   One of :data:`_STATA_DATE_KINDS`.
+
+    Returns:
+        A datetime64 Series; unconvertible entries are ``NaT``.
+    """
+    v = pd.to_numeric(pd.Series(values).reset_index(drop=True),
+                      errors="coerce")
+
+    if kind == "tC":
+        warnings.warn(
+            "dash: %tC is a leap-second-corrected millisecond count. dash "
+            "converts it with the same epoch as %tc, so timestamps are off "
+            "by the accumulated leap seconds (up to 27 seconds for recent "
+            "dates). Use %tc if that matters.",
+            UserWarning, stacklevel=3,
+        )
+
+    def _from_parts(year, month):
+        frame = pd.DataFrame({
+            "year": year, "month": month,
+            "day": np.ones(len(year), dtype="float64"),
+        })
+        ok = frame["year"].notna()
+        out = pd.Series(pd.NaT, index=frame.index, dtype="datetime64[ns]")
+        if ok.any():
+            out.loc[ok] = pd.to_datetime(frame.loc[ok].astype("int64"),
+                                          errors="coerce")
+        return out
+
+    try:
+        if kind in ("tc", "tC"):
+            out = _STATA_EPOCH + pd.to_timedelta(v, unit="ms", errors="coerce")
+        elif kind == "td":
+            out = _STATA_EPOCH + pd.to_timedelta(v, unit="D", errors="coerce")
+        elif kind == "ty":
+            out = _from_parts(v, pd.Series(np.ones(len(v))))
+        elif kind == "tm":
+            idx = np.floor(v)
+            out = _from_parts(1960 + np.floor(idx / 12.0), (idx % 12) + 1)
+        elif kind == "tq":
+            idx = np.floor(v)
+            out = _from_parts(1960 + np.floor(idx / 4.0), 3 * (idx % 4) + 1)
+        elif kind == "th":
+            idx = np.floor(v)
+            out = _from_parts(1960 + np.floor(idx / 2.0), 6 * (idx % 2) + 1)
+        elif kind == "tw":
+            # Stata's weeks restart every year: week 52 is the last one, and
+            # week 0 of a year is 1 January.  They are not 7-day offsets from
+            # a single epoch.
+            idx = np.floor(v)
+            years = 1960 + np.floor(idx / 52.0)
+            weeks = idx % 52
+            base = _from_parts(years, pd.Series(np.ones(len(v))))
+            out = base + pd.to_timedelta(weeks * 7, unit="D", errors="coerce")
+        else:
+            return pd.Series(pd.NaT, index=v.index, dtype="datetime64[ns]")
+    except (OverflowError, ValueError, pd.errors.OutOfBoundsDatetime):
+        out = pd.Series(pd.NaT, index=v.index, dtype="datetime64[ns]")
+
+    out = pd.Series(out).reset_index(drop=True)
+    lost = int((v.notna() & out.isna()).sum())
+    if lost:
+        # Stata's date range is wider than pandas' nanosecond datetime64
+        # (1677-2262).  Coerce rather than raise, but never silently.
+        warnings.warn(
+            f"dash: {lost} value(s) of a %{kind} variable fall outside the "
+            f"range of dates this renderer can represent (roughly 1677-2262) "
+            f"and are shown as missing.",
+            UserWarning, stacklevel=3,
+        )
+    return out
+
+
+def _parse_stata_numeric_fmt(fmt: "str | None") -> "tuple | None":
+    """Split a Stata numeric format into ``(width, decimals, kind, comma)``.
+
+    Only the fixed (``f``) and exponential (``e``) families are recognised.
+    ``%g`` is Stata's DEFAULT numeric format and expresses no user intent, so
+    it is deliberately not reproduced -- a ``%g`` value is left alone.
+
+    Args:
+        fmt: A Stata format string.
+
+    Returns:
+        ``(width, decimals, kind, comma)`` or ``None``.
+    """
+    if not fmt or not isinstance(fmt, str):
+        return None
+    m = re.fullmatch(r"%(-)?(\d+)\.(\d+)(f|e)(c)?", fmt.strip())
+    if not m:
+        return None
+    return int(m.group(2)), int(m.group(3)), m.group(4), bool(m.group(5))
+
+
+def _stata_numeric_pattern(fmt: "str | None") -> "str | None":
+    """Return a Bokeh/numbro tick pattern for a Stata numeric format.
+
+    ``%9.0fc`` becomes ``"0,0"`` and ``%9.2f`` becomes ``"0.00"``.  Axis
+    ticks and tooltips take a pattern rather than a formatted value.
+
+    Args:
+        fmt: A Stata format string.
+
+    Returns:
+        The pattern, or ``None`` when dash does not reproduce that format.
+    """
+    parsed = _parse_stata_numeric_fmt(fmt)
+    if parsed is None:
+        return None
+    _w, dec, kind, comma = parsed
+    if kind != "f":
+        return None
+    head = "0,0" if comma else "0"
+    return f"{head}.{'0' * dec}" if dec else head
+
+
+def _format_stata_numeric(value: float, fmt: "str | None") -> str:
+    """Format *value* the way Stata's display format would.
+
+    Reproduces the MEANING of the format -- decimal places, comma grouping,
+    and the width-driven fallbacks Stata applies when a value does not fit --
+    but not Stata's fixed-width left padding, which exists to align console
+    columns and has none in an HTML dashboard.
+
+    Stata's fallbacks, both measured: when a comma-grouped value would
+    overflow the width the commas are dropped (``%9.0fc`` of -1234567.891 is
+    ``-1234568``), and when it still does not fit the value goes to
+    scientific notation with two mantissa decimals (``%9.2f`` of 1234567.891
+    is ``1.23e+06``, and ``%12.2fc`` of 1e12 is ``1.00e+12`` -- two decimals
+    at both widths and at both decimal counts, in every measured case).
+
+    Args:
+        value: The number to format.
+        fmt:   A Stata format string.
+
+    Returns:
+        The formatted text, or ``""`` for a missing value.
+    """
+    parsed = _parse_stata_numeric_fmt(fmt)
+    try:
+        val = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if not np.isfinite(val):
+        return ""
+    if parsed is None:
+        return f"{val:g}"
+
+    width, dec, kind, comma = parsed
+
+    if kind == "e":
+        return f"{val:.{dec}e}"
+
+    plain = f"{val:.{dec}f}"
+    if comma:
+        grouped = f"{val:,.{dec}f}"
+        if len(grouped) <= width:
+            return grouped
+    if len(plain) <= width:
+        return plain
+    # Two mantissa decimals: measured for %9.0f, %9.2f and %12.2fc, i.e. at
+    # two different widths and two different decimal counts.
+    return f"{val:.2e}"
+
+
 def _optional_import(module: str, attr: "str | None", package: str, feature: str):
     """Import an optional dependency, warning instead of raising.
 
@@ -162,7 +481,6 @@ def _optional_import(module: str, attr: "str | None", package: str, feature: str
     Returns:
         The imported object, or None if the import failed.
     """
-    import warnings
 
     try:
         mod = __import__(module, fromlist=[attr] if attr else ["__name__"])
@@ -354,7 +672,9 @@ def _extract_region_lwidth(val: str) -> float | None:
         return OptionTranslator.translate_lwidth(raw) if raw else None
 
 
-def _extract_finite(source: "ColumnDataSource", varname: str) -> "np.ndarray":
+def _extract_finite(
+    source: "ColumnDataSource", varname: str, allow_datetime: bool = False,
+) -> "np.ndarray":
     """Return a float array of non-None, non-NaN values from a CDS column.
 
     Used by filter builders and distribution mappers to get clean numeric
@@ -363,11 +683,25 @@ def _extract_finite(source: "ColumnDataSource", varname: str) -> "np.ndarray":
     Args:
         source:  ColumnDataSource containing the data.
         varname: Column name to extract.
+        allow_datetime: When True, a datetime64 column is converted to epoch
+            milliseconds -- the representation Bokeh itself transports
+            datetimes in -- so slider bounds can be computed from it.  The
+            default is False so no existing caller changes behaviour.
 
     Returns:
         1-D numpy float array with None and NaN values removed.
     """
     col = source.data.get(varname, [])
+    if allow_datetime:
+        series = pd.Series(col)
+        if pd.api.types.is_datetime64_any_dtype(series):
+            # Cast to an explicit millisecond unit first.  pandas 3 preserves
+            # the resolution it inferred, so this column can be
+            # datetime64[us] or [ns]; dividing a raw astype("int64") by a
+            # fixed constant silently yields seconds for one and
+            # milliseconds for the other.
+            ms = series.dropna().astype("datetime64[ms]").astype("int64")
+            return ms.to_numpy(dtype=float)
     arr = np.array([v for v in col if v is not None], dtype=float)
     return arr[~np.isnan(arr)]
 
@@ -901,7 +1235,6 @@ class SchemeParser:
         Emits a UserWarning naming the directories searched when it has to
         fall all the way back, since that means the install is incomplete.
         """
-        import warnings
 
         for candidate in (name, "s2color"):
             if not candidate:
@@ -1092,7 +1425,6 @@ class SchemeParser:
         try:
             return OptionTranslator.translate_mcolor(raw)
         except ValueError:
-            import warnings
             warnings.warn(
                 f"dash scheme: colour '{raw}' (from '{key}') is not a colour "
                 f"dash recognises; falling back to {default}. The rendered "
@@ -1133,7 +1465,6 @@ class SchemeParser:
         try:
             return OptionTranslator.translate_lpattern(raw)
         except ValueError:
-            import warnings
             warnings.warn(
                 f"dash scheme: line pattern '{raw}' (from '{key}') is not "
                 "recognised; falling back to solid.",
@@ -1533,7 +1864,6 @@ class GlyphMapper:
         Emits a warning and returns False when any variable is missing so
         callers can skip the glyph rather than raising a KeyError.
         """
-        import warnings
         missing = [v for v in varnames if v and v not in source.data]
         if missing:
             warnings.warn(
@@ -2105,7 +2435,6 @@ class GlyphMapper:
                     "right",
                 )
             except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
-                import warnings
                 warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
 
         # ------------------------------------------------------------------
@@ -2160,10 +2489,28 @@ class GlyphMapper:
         if not mlabel_var or mlabel_var not in source.data:
             return
 
+        # mlabel(datevar) labelled points with the raw Stata value.  Bokeh
+        # renders whatever is in the column, so a formatted text column is
+        # derived beside it rather than reformatting in the browser.
+        text_col = mlabel_var
+        _kind = getattr(self, "date_vars", {}).get(mlabel_var)
+        _numfmt = getattr(self, "numeric_formats", {}).get(mlabel_var, "")
+        if _kind or _numfmt:
+            text_col = f"__mlabel__{mlabel_var}"
+            if text_col not in source.data:
+                raw = list(source.data[mlabel_var])
+                if _kind:
+                    rendered = [_format_date_value_standalone(v, _kind)
+                                for v in raw]
+                else:
+                    rendered = [_format_stata_numeric(v, _numfmt).strip()
+                                for v in raw]
+                source.data[text_col] = rendered
+
         kwargs: dict[str, Any] = dict(
             x=xvar,
             y=yvar,
-            text=mlabel_var,
+            text=text_col,
             source=source,
             text_font_size="10px",
             x_offset=4,
@@ -5610,11 +5957,37 @@ for (let ki = 0; ki < kpi_config.length; ki++) {
         }
     }
 
-    let fmt = result.toFixed(k.decimals);
-    if (k.commas) {
-        const parts = fmt.split('.');
-        parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
-        fmt = parts.join('.');
+    let fmt;
+    if (k.datekind) {
+        // The value is epoch milliseconds; render it the way the first
+        // render did, or a filtered date KPI reads as a raw number.
+        const d = new Date(result);
+        const MON = ['Jan','Feb','Mar','Apr','May','Jun',
+                     'Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (isNaN(d.getTime())) {
+            fmt = '—';
+        } else if (k.datekind === 'ty') {
+            fmt = String(d.getUTCFullYear());
+        } else if (k.datekind === 'tc' || k.datekind === 'tC') {
+            fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
+                  ' ' + d.getUTCFullYear() + ' ' +
+                  ('0' + d.getUTCHours()).slice(-2) + ':' +
+                  ('0' + d.getUTCMinutes()).slice(-2) + ':' +
+                  ('0' + d.getUTCSeconds()).slice(-2);
+        } else if (k.datekind === 'tm' || k.datekind === 'tq' ||
+                   k.datekind === 'th') {
+            fmt = MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+        } else {
+            fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
+                  ' ' + d.getUTCFullYear();
+        }
+    } else {
+        fmt = result.toFixed(k.decimals);
+        if (k.commas) {
+            const parts = fmt.split('.');
+            parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+            fmt = parts.join('.');
+        }
     }
 
     // Rebuild the complete Div HTML and assign to the Bokeh model property.
@@ -5949,7 +6322,7 @@ class FilterBuilder:
         _raw_lbl = label.strip() if label.strip() else safe_var
         _slider_title = _raw_lbl if _raw_lbl.endswith(("\u2265", ">=", "≥")) \
             else _raw_lbl + " \u2265"
-        arr = _extract_finite(source, varname)
+        arr = _extract_finite(source, varname, allow_datetime=True)
         if len(arr) == 0:
             widget = Slider(title=_slider_title, start=0, end=1, value=0, step=1,
                             disabled=True)
@@ -5960,8 +6333,13 @@ class FilterBuilder:
             vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
-        widget = Slider(title=_slider_title, start=vmin, end=vmax,
-                        value=vmin, step=vstep)
+        if _is_datetime_column(source, varname):
+            from bokeh.models import DateSlider
+            widget = DateSlider(title=_slider_title, start=vmin, end=vmax,
+                                value=vmin)
+        else:
+            widget = Slider(title=_slider_title, start=vmin, end=vmax,
+                            value=vmin, step=vstep)
 
         callback = CustomJS(
             args={
@@ -6001,7 +6379,8 @@ class FilterBuilder:
         if exclude_names is None:
             exclude_names = []
         safe_var = FilterBuilder._safe(varname)
-        arr = _extract_finite(source, varname)
+        is_date = _is_datetime_column(source, varname)
+        arr = _extract_finite(source, varname, allow_datetime=True)
         _raw_range_lbl = label.strip() if label.strip() else safe_var
         if len(arr) == 0:
             widget = RangeSlider(title=_raw_range_lbl, start=0, end=1,
@@ -6013,9 +6392,18 @@ class FilterBuilder:
             vmax = vmin + 1.0
         vstep = (vmax - vmin) / 100.0 or 1.0
 
-        widget = RangeSlider(title=_raw_range_lbl,
-                             start=vmin, end=vmax,
-                             value=(vmin, vmax), step=vstep)
+        if is_date:
+            # Bokeh transports datetimes as epoch milliseconds, which is the
+            # same number the filter JS compares against, so the existing
+            # comparison works unchanged -- verified by the round-trip test.
+            from bokeh.models import DateRangeSlider
+            widget = DateRangeSlider(title=_raw_range_lbl,
+                                     start=vmin, end=vmax,
+                                     value=(vmin, vmax))
+        else:
+            widget = RangeSlider(title=_raw_range_lbl,
+                                 start=vmin, end=vmax,
+                                 value=(vmin, vmax), step=vstep)
 
         callback = CustomJS(
             args={
@@ -6213,6 +6601,10 @@ class DashRenderer:
         # Propagate Stata label metadata to the GlyphMapper so that
         # _apply_colorvar (and any future consumer) can render value labels
         # and human-readable display names in legends/labels.
+        # Display-format context, so marker labels can render a date as a
+        # date rather than as the underlying Stata value.
+        self.mapper.date_vars         = dict(getattr(self, "date_vars", {}))
+        self.mapper.numeric_formats   = dict(getattr(self, "numeric_formats", {}))
         self.mapper.variable_labels   = self.variable_labels
         self.mapper.value_labels      = self.value_labels
         self.mapper.value_label_names = self.value_label_names
@@ -6246,14 +6638,59 @@ class DashRenderer:
         # Which variable uses which label set
         self.value_label_names = stata_json.get("valueLabelNames", {})
 
-        # String variable flags
-        type_is_string = stata_json.get("variableTypeIsString", {})
+        # String variable flags.
+        # Real jsonio emits "variableIsString"; "variableTypeIsString" is what
+        # StataAllToJSON's field list advertises and what dash read until now,
+        # so string detection never actually ran in production -- every string
+        # column was coerced to NaN.  Both keys are honoured.
+        type_is_string = dict(stata_json.get("variableTypeIsString", {}) or {})
+        type_is_string.update(stata_json.get("variableIsString", {}) or {})
         self.string_vars = {k for k, v in type_is_string.items() if v}
 
-        # Convert numeric columns to float so NaN propagates correctly
+        # Stata display formats, carried in the spec because jsonio cannot
+        # emit them.  Absent (an older dash.ado against a newer renderer) this
+        # is empty and every column takes exactly the path it took before.
+        formats = self.master_spec.get("build_options", {}).get("formats", {})
+        if not isinstance(formats, dict):
+            formats = {}
+        self.formats: dict[str, str] = {str(k): str(v)
+                                        for k, v in formats.items()}
+        self.date_vars: dict[str, str] = {}
+        self.numeric_formats: dict[str, str] = {}
+
         for col in self.df.columns:
-            if col not in self.string_vars:
+            if col in self.string_vars:
+                continue
+            kind = _stata_date_kind(self.formats.get(col))
+            if kind is None:
                 self.df[col] = pd.to_numeric(self.df[col], errors="coerce")
+                pattern = _stata_numeric_pattern(self.formats.get(col))
+                if pattern is not None:
+                    self.numeric_formats[col] = self.formats[col]
+                continue
+
+            raw = self.df[col]
+            numeric = pd.to_numeric(raw, errors="coerce")
+            if numeric.notna().any() or raw.isna().all():
+                converted = _stata_dates_to_datetime(numeric, kind)
+            else:
+                # Legacy transport: jsonio renders a %t* variable THROUGH its
+                # display format and emits a string ("02jan2001"), so a spec
+                # from an older dash.ado carries text here.  Coercing it to
+                # NaN drops every row of the dataset, which is how
+                # `dash line close date` came to produce an empty dashboard.
+                converted = pd.to_datetime(raw.astype(str).str.strip(),
+                                            errors="coerce")
+                if converted.isna().all() and raw.notna().any():
+                    warnings.warn(
+                        f"dash: variable '{col}' has display format "
+                        f"{self.formats.get(col)!r} but arrived as text this "
+                        f"renderer could not read as a date; it is shown as "
+                        f"missing. Re-run with a current dash.ado.",
+                        UserWarning,
+                    )
+            self.df[col] = pd.Series(converted).to_numpy()
+            self.date_vars[col] = kind
 
     # ------------------------------------------------------------------
     # _df property — convenience alias for self.df, settable for testing
@@ -6272,6 +6709,38 @@ class DashRenderer:
     # KPI statistic computation
     # ------------------------------------------------------------------
 
+    # KPI statistics whose RESULT is itself a date when the variable is one.
+    # count and dcount are counts; sd is a duration; sum is meaningless.
+    _DATE_VALUED_STATS = frozenset({"mean", "min", "max", "median", "p50",
+                                    "p25", "p75"})
+
+    def _kpi_column(self, col: "pd.Series", stat: str, varname: str
+                    ) -> "pd.Series":
+        """Coerce a KPI column to something the statistic can be taken of.
+
+        A datetime column becomes epoch milliseconds -- the representation
+        Bokeh itself uses -- so min, max, mean and the percentiles all work;
+        :meth:`_format_kpi_value` turns the answer back into a date.
+
+        Args:
+            col:     The raw column.
+            stat:    The requested statistic.
+            varname: Column name, for the warning text.
+
+        Returns:
+            A numeric Series.
+        """
+        if not pd.api.types.is_datetime64_any_dtype(col):
+            return col
+        if str(stat).lower().strip() == "sum":
+            warnings.warn(
+                f"dash: sum({varname}) adds up dates, which has no meaning. "
+                f"The result is shown as a number of milliseconds since "
+                f"01jan1960.",
+                UserWarning,
+            )
+        return col.dropna().astype("datetime64[ms]").astype("int64")
+
     def _compute_kpi_stat(self, stat: str, varname: str) -> float:
         """Compute a summary statistic from self._df.
 
@@ -6288,6 +6757,7 @@ class DashRenderer:
         """
         col = self._df[varname].dropna()
         s = stat.strip().lower()
+        col = self._kpi_column(col, stat, varname)
         if s == "mean":
             return float(col.mean())
         if s == "sum":
@@ -6334,6 +6804,7 @@ class DashRenderer:
             raise ValueError(f"Variable '{varname}' not in DataFrame")
         col = df[varname].dropna()
         s = stat.strip().lower()
+        col = self._kpi_column(col, stat, varname)
         if s == "mean":
             return float(col.mean())
         if s == "sum":
@@ -6356,18 +6827,35 @@ class DashRenderer:
             return float(col.quantile(0.75))
         raise ValueError(f"Unknown KPI statistic: '{stat}'")
 
-    def _format_kpi_value(self, value: float, fmt_str: str) -> str:
-        """Format a numeric value using a Stata format string.
+    def _format_kpi_value(self, value: float, fmt_str: str,
+                          varname: str = "", stat: str = "") -> str:
+        """Format a KPI value using a Stata format string.
 
-        Supports standard Stata numeric formats: %w.df, %w.dfc (comma).
+        Supports standard Stata numeric formats: %w.df, %w.dfc (comma).  A
+        statistic of a DATE variable whose result is itself a date is
+        rendered as a date rather than as the raw Stata value -- ``dash kpi
+        max(date)`` on sp500 used to read 15340.
 
         Args:
             value:   Numeric value to format.
             fmt_str: Stata format string, e.g. "%9.1f" or "%12.0fc".
+            varname: The variable the statistic was taken of.
+            stat:    The statistic, which decides whether a date variable
+                     produces a date.
 
         Returns:
             Formatted string (stripped of leading/trailing whitespace).
         """
+        kind = getattr(self, "date_vars", {}).get(varname)
+        if kind and str(stat).lower().strip() in self._DATE_VALUED_STATS:
+            return self._format_date_value(float(value), kind)
+
+        # No explicit fmt(): fall back to the variable's Stata display format.
+        if not fmt_str.strip():
+            own = getattr(self, "numeric_formats", {}).get(varname, "")
+            if own:
+                return _format_stata_numeric(value, own).strip()
+
         fmt = fmt_str.strip().lstrip("%")
         use_comma = fmt.endswith("c")
         if use_comma:
@@ -6475,7 +6963,6 @@ class DashRenderer:
             # function calls, attribute access, and all non-comparison nodes.
             # This replaces the old regex blacklist which did not block @.
             if not _validate_if_expr(pandas_expr, df.columns):
-                import warnings
                 warnings.warn(
                     "dash: if_expr filter skipped — invalid syntax "
                     f"(<unknown>, line 1)",
@@ -6490,7 +6977,6 @@ class DashRenderer:
                     # when a column referenced in if_expr was not serialised by
                     # Stata (e.g. a qualifier-only variable not in the data file).
                     # Degrade gracefully: warn and return the unfiltered DataFrame.
-                    import warnings
                     warnings.warn(
                         f"dash: if_expr filter skipped — {_qexc}",
                         stacklevel=2,
@@ -6680,6 +7166,18 @@ class DashRenderer:
         # empty-row group rather than the original full dataset.
         return groups if groups else [("", work_df.copy())]
 
+    def _format_date_value(self, value, kind: str) -> str:
+        """Render one value of a date variable the way its format implies.
+
+        Args:
+            value: A Timestamp, datetime64 or epoch-millisecond number.
+            kind:  One of :data:`_STATA_DATE_KINDS`.
+
+        Returns:
+            The formatted date, or ``str(value)`` if it cannot be read.
+        """
+        return _format_date_value_standalone(value, kind)
+
     def _facet_label(self, by_vars: list[str], key) -> str:
         """Build a human-readable label for one facet group key.
 
@@ -6702,6 +7200,16 @@ class DashRenderer:
             if pd.isna(val):
                 parts.append("Missing")
                 continue
+            # A by() on a date variable produced facet titles reading the
+            # underlying Stata value.
+            _kind = getattr(self, "date_vars", {}).get(var)
+            if _kind:
+                parts.append(self._format_date_value(val, _kind))
+                continue
+            _numfmt = getattr(self, "numeric_formats", {}).get(var, "")
+            if _numfmt:
+                parts.append(_format_stata_numeric(val, _numfmt).strip())
+                continue
             labelset = self.value_label_names.get(var, "")
             vlabels = self.value_labels.get(labelset, {}) if labelset else {}
             # Fallback: some callers key valueLabels by variable name rather
@@ -6721,6 +7229,38 @@ class DashRenderer:
     # ------------------------------------------------------------------
     # Figure construction helpers
     # ------------------------------------------------------------------
+
+    def _figure_date_kind(
+        self, plots: list, key: str, fallback: str,
+    ) -> "str | None":
+        """Return the date kind of the variable on one axis, or None.
+
+        Every plot on the figure has to agree: a graph overlaying a date
+        series and a numeric one cannot have a date axis, and silently
+        picking the first plot's answer would misplace the other.
+
+        Args:
+            plots:    The figure's plot specs.
+            key:      ``"xvar"`` or ``"yvar"``.
+            fallback: The variable to use when a plot does not name one.
+
+        Returns:
+            The date kind, or ``None``.
+        """
+        if not getattr(self, "date_vars", None):
+            return None
+        kinds = set()
+        for plot in plots or []:
+            name = plot.get(key, "") or (
+                plot.get("var", "") if key == "yvar" else "") or fallback
+            if not name:
+                continue
+            kinds.add(self.date_vars.get(name))
+        if not kinds:
+            return None
+        if len(kinds) > 1 or None in kinds:
+            return None
+        return kinds.pop()
 
     def _axis_label(self, varname: str) -> str:
         """Return the axis label for *varname*, using variable labels if available."""
@@ -6832,12 +7372,44 @@ class DashRenderer:
         )
         if aspect_ratio is not None:
             fig_kwargs["aspect_ratio"] = aspect_ratio
-        if _xs_log:
+        # Axis type is decided ONCE, before the single bokeh_figure() call.
+        # Commit c3941de fixed a bug caused by re-creating a figure to change
+        # its axis type; do not reintroduce it.
+        _x_date = self._figure_date_kind(plots, "xvar", xvar)
+        _y_date = self._figure_date_kind(plots, "yvar", yvar)
+
+        if _x_date and _xs_log:
+            warnings.warn(
+                f"dash: xscale(log) is meaningless for the date variable "
+                f"'{xvar}'; drawing a date axis instead.",
+                UserWarning,
+            )
+            _xs_log = False
+        if _y_date and _ys_log:
+            warnings.warn(
+                f"dash: yscale(log) is meaningless for the date variable "
+                f"'{yvar}'; drawing a date axis instead.",
+                UserWarning,
+            )
+            _ys_log = False
+
+        if _x_date:
+            fig_kwargs["x_axis_type"] = "datetime"
+        elif _xs_log:
             fig_kwargs["x_axis_type"] = "log"
-        if _ys_log:
+        if _y_date:
+            fig_kwargs["y_axis_type"] = "datetime"
+        elif _ys_log:
             fig_kwargs["y_axis_type"] = "log"
 
         fig = bokeh_figure(**fig_kwargs)
+
+        # Tick formatting matched to the date kind: years for %ty, dates for
+        # %td/%tw/%tm/%tq/%th, date and time for %tc/%tC.  An explicit
+        # xlabel()/ylabel() tick list still wins -- it is applied later.
+        for _axis, _kind in ((fig.xaxis, _x_date), (fig.yaxis, _y_date)):
+            if _kind:
+                _axis.formatter = _datetime_formatter_for(_kind)
 
         # Apply scheme defaults (before explicit graph options so they take precedence)
         self.scheme.apply_to_figure(fig)
@@ -7138,7 +7710,6 @@ class DashRenderer:
                                           on=_keep, how="inner")
                     source_for_plot = ColumnDataSource(_pdf)
                 except Exception as _pexc:          # never lose the layer
-                    import warnings
                     warnings.warn(
                         f"dash: per-plot qualifier on layer {pi + 1} could not "
                         f"be applied ({_pexc}); the layer is drawn unfiltered.",
@@ -7306,19 +7877,37 @@ class DashRenderer:
             _y2var_eff = _p0.get("yvar2", "")
             _hover_seen: set = set()
             _hover_fields: list = []
+            _hover_formatters: dict = {}
+
+            def _hover_row(col: str) -> None:
+                """Add one tooltip row, honouring the variable's Stata format.
+
+                Rows were labelled with the raw variable NAME even though
+                self.variable_labels is loaded and already used for axis
+                titles, and a date column showed its underlying number.
+                """
+                kind = getattr(self, "date_vars", {}).get(col)
+                if kind:
+                    spec = f"@{{{col}}}{{%F}}" if kind != "tc" else \
+                           f"@{{{col}}}{{%F %T}}"
+                    _hover_formatters[f"@{{{col}}}"] = "datetime"
+                else:
+                    pattern = getattr(self, "numeric_formats", {}).get(col, "")
+                    bokeh_pat = _stata_numeric_pattern(pattern) if pattern else None
+                    spec = (f"@{{{col}}}{{{bokeh_pat}}}" if bokeh_pat
+                            else f"@{{{col}}}")
+                _hover_fields.append((self._axis_label(col), spec))
+                _hover_seen.add(col)
+
             if xvar and xvar in source.data:
-                _hover_fields.append((xvar, f"@{{{xvar}}}"))
-                _hover_seen.add(xvar)
+                _hover_row(xvar)
             if _yvar_eff and _yvar_eff not in _hover_seen and _yvar_eff in source.data:
-                _hover_fields.append((_yvar_eff, f"@{{{_yvar_eff}}}"))
-                _hover_seen.add(_yvar_eff)
+                _hover_row(_yvar_eff)
             if _y2var_eff and _y2var_eff not in _hover_seen and _y2var_eff in source.data:
-                _hover_fields.append((_y2var_eff, f"@{{{_y2var_eff}}}"))
-                _hover_seen.add(_y2var_eff)
+                _hover_row(_y2var_eff)
             for _hv in _hover_extra:
                 if _hv not in _hover_seen and _hv in source.data:
-                    _hover_fields.append((_hv, f"@{{{_hv}}}"))
-                    _hover_seen.add(_hv)
+                    _hover_row(_hv)
             if _hover_fields:
                 # Restrict hover to renderers whose CDS contains every
                 # referenced column.  Fit-line, density, and histogram
@@ -7326,7 +7915,7 @@ class DashRenderer:
                 # names ("x"/"y", "top"/"left"/"right") — hovering over them
                 # with field specs that reference original variable names
                 # (e.g. "@{mpg}") would return "???" in the tooltip.
-                _hover_col_set = {f[0] for f in _hover_fields}
+                _hover_col_set = set(_hover_seen)
                 _data_renderers = [
                     _rend for _rend in fig.renderers
                     if hasattr(_rend, "data_source") and
@@ -7335,6 +7924,7 @@ class DashRenderer:
 
                 if _data_renderers:
                     fig.add_tools(HoverTool(tooltips=_hover_fields,
+                                            formatters=_hover_formatters,
                                             renderers=_data_renderers))
                 else:
                     # No renderer carries these exact columns (e.g. a
@@ -7351,18 +7941,27 @@ class DashRenderer:
                         # Use mode="vline" so the hover fires anywhere within a
                         # bin's x-range — quad hit-testing requires the cursor
                         # to land exactly on the bar, which is unreliable.
+                        # One precision, derived from the spread of the
+                        # data, rather than three different hardcoded ones
+                        # (0.2f, 0.3f, 0.4f) in three adjacent branches.
                         if "top" in _fb_src.data and "left" in _fb_src.data:
-                            _bin_var = _yvar_eff or "value"
+                            _bin_var = self._axis_label(_yvar_eff or "value")
+                            _p = _tooltip_precision(_fb_src.data.get("left", []))
                             _fb_fields = [
-                                (_bin_var,  "@{left}{0.2f} to @{right}{0.2f}"),
+                                (_bin_var,
+                                 f"@{{left}}{{{_p}}} to @{{right}}{{{_p}}}"),
                                 ("Count",   "@{top}"),
                             ]
                             _fb_mode = "vline"
                         # KDE / fit line: "x" and "y" columns
                         elif "x" in _fb_src.data and "y" in _fb_src.data:
+                            _px = _tooltip_precision(_fb_src.data.get("x", []))
+                            _py = _tooltip_precision(_fb_src.data.get("y", []))
                             _fb_fields = [
-                                (xvar or "x",     "@{x}{0.3f}"),
-                                (_yvar_eff or "y", "@{y}{0.4f}"),
+                                (self._axis_label(xvar or "x"),
+                                 f"@{{x}}{{{_px}}}"),
+                                (self._axis_label(_yvar_eff or "y"),
+                                 f"@{{y}}{{{_py}}}"),
                             ]
                         if _fb_fields:
                             fig.add_tools(HoverTool(tooltips=_fb_fields,
@@ -8285,9 +8884,25 @@ class DashRenderer:
 
     @staticmethod
     def _to_serialisable(v: "Any") -> "Any":
-        """Convert a single value to a JSON-safe Python scalar."""
+        """Convert a single value to a JSON-safe Python scalar.
+
+        A datetime becomes epoch MILLISECONDS, which is exactly how Bokeh
+        transports a datetime column to the browser.  Without this,
+        ``float(v)`` raises on a Timestamp and the fallback ``str(v)`` wrote
+        "2001-01-02 00:00:00" into the snapshot -- so the filter callback
+        compared a string against the slider's numeric bounds, dragging the
+        slider filtered nothing, and every date KPI collapsed to 0.
+        """
         if v is None:
             return None
+        if isinstance(v, (pd.Timestamp, np.datetime64)) or hasattr(v, "year"):
+            try:
+                ts = pd.Timestamp(v)
+            except (TypeError, ValueError):
+                return str(v)
+            if pd.isna(ts):
+                return None
+            return float(ts.value // 1_000_000)
         try:
             f = float(v)
             if math.isnan(f) or math.isinf(f):
@@ -8345,7 +8960,7 @@ class DashRenderer:
                     try:
                         val = self._compute_kpi_stat_on_df(facet_df, stat, varname)
                         facet_kpi["value"] = self._format_kpi_value(
-                            val, kpi.get("fmt", "")
+                            val, kpi.get("fmt", ""), varname, stat
                         )
                     except (ValueError, KeyError, TypeError):
                         facet_kpi["value"] = "—"
@@ -8357,7 +8972,7 @@ class DashRenderer:
                     try:
                         raw_val = self._compute_kpi_stat(stat, varname)
                         kpi_copy["value"] = self._format_kpi_value(
-                            raw_val, kpi.get("fmt", "")
+                            raw_val, kpi.get("fmt", ""), varname, stat
                         )
                     except (ValueError, KeyError, TypeError):
                         if not kpi_copy.get("value"):
@@ -8431,8 +9046,10 @@ class DashRenderer:
                 # Guard: slider requires numeric data.  Mirror the server-side
                 # is_numeric_dtype check so string columns skip gracefully.
                 _sl_col = fsource.data.get(fvar, [])
-                if not pd.api.types.is_numeric_dtype(pd.Series(_sl_col)):
-                    import warnings
+                # A datetime64 column is not "numeric" by this test, but it is
+                # perfectly filterable -- it used to be dropped silently.
+                if not (pd.api.types.is_numeric_dtype(pd.Series(_sl_col))
+                        or _is_datetime_column(fsource, fvar)):
                     warnings.warn(
                         f"dash: filter '{fvar}' type 'slider' requires numeric "
                         f"data; skipping widget (use type(dropdown) for string "
@@ -8447,8 +9064,10 @@ class DashRenderer:
             elif ftype == "range":
                 # Same guard for range slider.
                 _rng_col = fsource.data.get(fvar, [])
-                if not pd.api.types.is_numeric_dtype(pd.Series(_rng_col)):
-                    import warnings
+                # A datetime64 column is not "numeric" by this test, but it is
+                # perfectly filterable -- it used to be dropped silently.
+                if not (pd.api.types.is_numeric_dtype(pd.Series(_rng_col))
+                        or _is_datetime_column(fsource, fvar)):
                     warnings.warn(
                         f"dash: filter '{fvar}' type 'range' requires numeric "
                         f"data; skipping widget (use type(dropdown) for string "
@@ -8514,6 +9133,14 @@ class DashRenderer:
                     "varname":  _kvar,
                     "decimals": _dec,
                     "commas":   _comma,
+                    # A statistic of a date variable whose result is itself a
+                    # date has to be re-rendered as a date after filtering,
+                    # not as a number of milliseconds.
+                    "datekind": (
+                        getattr(self, "date_vars", {}).get(_kvar, "")
+                        if str(_kstat).lower().strip()
+                        in self._DATE_VALUED_STATS else ""
+                    ),
                     # HTML-escape title/subtitle to prevent DOM XSS when the filter
                     # callback reconstructs kpi_div.text via string concatenation.
                     "title":    html.escape(_kdef.get("title", "") or ""),

@@ -215,7 +215,14 @@ def make_data_json(
         "variableLabels": {v: v for v in varnames},
         "valueLabels": value_labels or {},
         "valueLabelNames": value_label_names or {},
+        # BOTH keys: real jsonio emits "variableIsString", while
+        # StataAllToJSON's advertised field list says "variableTypeIsString".
+        # This helper used to fabricate only the latter, so dash's string-
+        # column detection was never exercised against the key production
+        # actually sends -- and the bug that every string and date column was
+        # coerced to NaN was invisible to the whole suite.
         "variableTypeIsString": {v: False for v in varnames},
+        "variableIsString": {v: False for v in varnames},
         "values": values,
     }}
 
