@@ -6416,7 +6416,22 @@ for (let ki = 0; ki < kpi_config.length; ki++) {
 
     const col = new_data[k.varname];
     if (!col) continue;
-    const vals = col.filter(v => v !== null && v !== undefined && !isNaN(v));
+    // A KPI with its own if/in qualifier is restricted to the rows that
+    // qualifier selects, intersected with the rows the filters kept.  Without
+    // this the card opens on the conditional value and silently becomes the
+    // unconditional one the first time any widget moves.
+    let src_col = col;
+    if (k.has_qual) {
+        const qset = new Set(k.qual_ids || []);
+        const rids = new_data[ROW_ID];
+        src_col = [];
+        if (rids) {
+            for (let qi = 0; qi < col.length; qi++) {
+                if (qset.has(rids[qi])) src_col.push(col[qi]);
+            }
+        }
+    }
+    const vals = src_col.filter(v => v !== null && v !== undefined && !isNaN(v));
 
     let result = 0;
     const stat = k.stat;
@@ -6433,10 +6448,6 @@ for (let ki = 0; ki < kpi_config.length; ki++) {
             result = vals.reduce((a, b) => a < b ? a : b, vals[0]);
         } else if (stat === 'max') {
             result = vals.reduce((a, b) => a > b ? a : b, vals[0]);
-        } else if (stat === 'median' || stat === 'p50') {
-            const s = vals.slice().sort((a, b) => a - b);
-            const m = Math.floor(s.length / 2);
-            result = s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
         } else if (stat === 'dcount') {
             result = new Set(vals.map(String)).size;
         } else if (stat === 'sd' && vals.length > 1) {
@@ -6444,6 +6455,38 @@ for (let ki = 0; ki < kpi_config.length; ki++) {
             result = Math.sqrt(
                 vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
             );
+        } else if (stat === 'var' && vals.length > 1) {
+            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+            result = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0)
+                     / (vals.length - 1);
+        } else if (stat === 'cv' && vals.length > 1) {
+            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+            const sd = Math.sqrt(
+                vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / (vals.length - 1)
+            );
+            result = mu ? sd / mu : NaN;
+        } else if (stat === 'skewness' && vals.length > 1) {
+            // Stata's biased m3 / m2^1.5, matching the Python side.
+            const mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+            const m2 = vals.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / vals.length;
+            const m3 = vals.reduce((a, b) => a + Math.pow(b - mu, 3), 0) / vals.length;
+            result = m2 > 0 ? m3 / Math.pow(m2, 1.5) : NaN;
+        } else {
+            // median, p50, p25, p75 and any other pNN.  dash_pctl is
+            // STATA's percentile rule, the same one _stata_percentile
+            // implements in Python -- p25/p75 used to have no branch at all
+            // here and fell through to result = 0 on the first filter move,
+            // and a rule that merely looked reasonable would disagree with
+            // the initial render.
+            const s = vals.slice().sort((a, b) => a - b);
+            if (stat === 'median') {
+                result = dash_pctl(s, 50);
+            } else if (stat === 'iqr') {
+                result = dash_pctl(s, 75) - dash_pctl(s, 25);
+            } else {
+                const mp = /^p(\\d{1,2}(?:\\.\\d+)?)$/.exec(stat);
+                if (mp) result = dash_pctl(s, parseFloat(mp[1]));
+            }
         }
     }
 
@@ -6472,11 +6515,17 @@ for (let ki = 0; ki < kpi_config.length; ki++) {
                   ' ' + d.getUTCFullYear();
         }
     } else {
+        if (k.general) {
+            // Stata's %9.0g: six significant digits, the same as Python's
+            // f"{value:g}" on the initial render.
+            fmt = String(Number(result.toPrecision(6)));
+        } else {
         fmt = result.toFixed(k.decimals);
         if (k.commas) {
             const parts = fmt.split('.');
             parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
             fmt = parts.join('.');
+        }
         }
     }
 
@@ -7231,6 +7280,73 @@ class DashRenderer:
             )
         return col.dropna().astype("datetime64[ms]").astype("int64")
 
+    @staticmethod
+    def _kpi_statistic(col: "pd.Series", stat: str) -> float:
+        """Compute one KPI statistic the way Stata computes it.
+
+        Two places computed these and both used pandas' defaults.  The
+        percentile rule is the one that matters: Stata uses Hyndman-Fan
+        **type 2** -- ``j = N*p/100``; an integer ``j`` gives
+        ``(x_j + x_{j+1})/2``, otherwise ``x_ceil(j)`` -- and pandas defaults
+        to type 7.  They disagree on real data: p75 of ``mpg`` in
+        ``sysuse auto`` is 25 in Stata and 24.75 in pandas.  The correct
+        implementation already existed in this module as
+        ``_stata_percentile``; the KPI paths simply never called it.
+
+        Variance and standard deviation use N-1, and skewness is the biased
+        m3/m2^1.5, both matching Stata.
+
+        Args:
+            col:  The column, already reduced to non-missing values.
+            stat: The statistic name.
+
+        Returns:
+            The value.
+
+        Raises:
+            ValueError: for an unknown statistic.
+        """
+        s = str(stat).lower().strip()
+        if s == "count":
+            return float(len(col))
+        if s == "dcount":
+            return float(col.nunique())
+        if len(col) == 0:
+            return float("nan")
+        if s == "mean":
+            return float(col.mean())
+        if s == "sum":
+            return float(col.sum())
+        if s == "min":
+            return float(col.min())
+        if s == "max":
+            return float(col.max())
+        if s == "sd":
+            return float(col.std(ddof=1))
+        if s == "var":
+            return float(col.var(ddof=1))
+        if s == "cv":
+            m = float(col.mean())
+            return float(col.std(ddof=1) / m) if m else float("nan")
+        if s == "skewness":
+            # Stata's biased m3 / m2^1.5, not the sample-corrected form.
+            v = col.to_numpy(dtype=float)
+            m = v.mean()
+            m2 = ((v - m) ** 2).mean()
+            m3 = ((v - m) ** 3).mean()
+            return float(m3 / m2 ** 1.5) if m2 > 0 else float("nan")
+
+        srt = np.sort(col.to_numpy(dtype=float))
+        if s == "iqr":
+            return float(_stata_percentile(srt, 75)
+                         - _stata_percentile(srt, 25))
+        if s in ("median", "p50"):
+            return float(_stata_percentile(srt, 50))
+        m_p = re.fullmatch(r"p(\d{1,2}(?:\.\d+)?)", s)
+        if m_p:
+            return float(_stata_percentile(srt, float(m_p.group(1))))
+        raise ValueError(f"Unknown KPI statistic: '{stat}'")
+
     def _compute_kpi_stat(self, stat: str, varname: str) -> float:
         """Compute a summary statistic from self._df.
 
@@ -7246,29 +7362,8 @@ class DashRenderer:
             ValueError: If stat is unknown or varname not in DataFrame.
         """
         col = self._df[varname].dropna()
-        s = stat.strip().lower()
         col = self._kpi_column(col, stat, varname)
-        if s == "mean":
-            return float(col.mean())
-        if s == "sum":
-            return float(col.sum())
-        if s == "count":
-            return float(len(col))
-        if s == "dcount":
-            return float(col.nunique())
-        if s == "min":
-            return float(col.min())
-        if s == "max":
-            return float(col.max())
-        if s in ("median", "p50"):
-            return float(col.median())
-        if s == "sd":
-            return float(col.std(ddof=1))
-        if s == "p25":
-            return float(col.quantile(0.25))
-        if s == "p75":
-            return float(col.quantile(0.75))
-        raise ValueError(f"Unknown KPI statistic: '{stat}'")
+        return self._kpi_statistic(col, stat)
 
     def _compute_kpi_stat_on_df(
         self, df: "pd.DataFrame", stat: str, varname: str
@@ -7293,29 +7388,36 @@ class DashRenderer:
         if varname not in df.columns:
             raise ValueError(f"Variable '{varname}' not in DataFrame")
         col = df[varname].dropna()
-        s = stat.strip().lower()
         col = self._kpi_column(col, stat, varname)
-        if s == "mean":
-            return float(col.mean())
-        if s == "sum":
-            return float(col.sum())
-        if s == "count":
-            return float(len(col))
-        if s == "dcount":
-            return float(col.nunique())
-        if s == "min":
-            return float(col.min())
-        if s == "max":
-            return float(col.max())
-        if s in ("median", "p50"):
-            return float(col.median())
-        if s == "sd":
-            return float(col.std(ddof=1))
-        if s == "p25":
-            return float(col.quantile(0.25))
-        if s == "p75":
-            return float(col.quantile(0.75))
-        raise ValueError(f"Unknown KPI statistic: '{stat}'")
+        return self._kpi_statistic(col, stat)
+
+    def _effective_kpi_fmt(self, kpi: dict, varname: str) -> str:
+        """The format a KPI is actually displayed with.
+
+        The initial render fell back to the variable's Stata display format
+        when ``fmt()`` was absent, and the filter callback fell back to
+        ``%9.0f``, so a card that read 21.2973 became 21 the first time any
+        filter moved.  Both paths resolve the format here.
+
+        Args:
+            kpi:     The KPI spec.
+            varname: The variable the statistic is taken of.
+
+        Returns:
+            A Stata format string, possibly empty.
+        """
+        explicit = str(kpi.get("fmt", "") or "").strip()
+        if explicit:
+            return explicit
+        own = getattr(self, "numeric_formats", {}).get(varname, "") or ""
+        if own:
+            return own
+        # Neither given: Stata's own default display, %9.0g, which shows six
+        # significant digits.  Both paths implement it -- the callback used
+        # %9.0f (no decimals at all) and the initial render printed the raw
+        # float, so a card read 21.2972972972973 and became 21 the first time
+        # a filter moved.
+        return "%9.0g"
 
     def _format_kpi_value(self, value: float, fmt_str: str,
                           varname: str = "", stat: str = "") -> str:
@@ -7340,11 +7442,18 @@ class DashRenderer:
         if kind and str(stat).lower().strip() in self._DATE_VALUED_STATS:
             return self._format_date_value(float(value), kind)
 
-        # No explicit fmt(): fall back to the variable's Stata display format.
+        # No explicit fmt(): fall back to the variable's Stata display
+        # format, exactly as _effective_kpi_fmt resolves it for the callback.
         if not fmt_str.strip():
             own = getattr(self, "numeric_formats", {}).get(varname, "")
             if own:
                 return _format_stata_numeric(value, own).strip()
+
+        if fmt_str.strip() in ("", "%9.0g"):
+            # Stata's default display: six significant digits.  The callback
+            # does the same via toPrecision(6), so the card does not change
+            # shape when a filter moves.
+            return f"{float(value):g}"
 
         fmt = fmt_str.strip().lstrip("%")
         use_comma = fmt.endswith("c")
@@ -7440,6 +7549,31 @@ class DashRenderer:
             out.append({"filter": bool_filter, "src_index": idx,
                         "member_ids": member_ids})
         return out
+
+    def _kpi_qualifier_row_ids(self, kpi_def: dict) -> "list[int] | None":
+        """Row identities a KPI's own if/in qualifier selects.
+
+        Returns ``None`` when the KPI carries no qualifier, so the caller can
+        tell "no restriction" from "a restriction that happens to be empty" --
+        an empty list must blank the card, not show every row.
+
+        Args:
+            kpi_def: The KPI specification, with optional ``if_expr`` /
+                ``in_expr`` keys.
+
+        Returns:
+            One integer per qualifying row, or None if unqualified.
+        """
+        if not (str(kpi_def.get("if_expr", "") or "").strip()
+                or str(kpi_def.get("in_expr", "") or "").strip()):
+            return None
+        try:
+            return self._row_ids_for(self._apply_graph_filter(kpi_def))
+        except (ValueError, KeyError, TypeError):
+            # _apply_graph_filter already warns; a qualifier that cannot be
+            # applied must not silently become "every row" in the browser
+            # while the initial render used the full frame too.
+            return None
 
     def _row_ids_for(self, frame: "pd.DataFrame") -> "list[int]":
         """Return each row's position in the primary frame.
@@ -10252,7 +10386,8 @@ class DashRenderer:
                     try:
                         val = self._compute_kpi_stat_on_df(facet_df, stat, varname)
                         facet_kpi["value"] = self._format_kpi_value(
-                            val, kpi.get("fmt", ""), varname, stat
+                            val, self._effective_kpi_fmt(kpi, varname),
+                            varname, stat
                         )
                     except (ValueError, KeyError, TypeError):
                         facet_kpi["value"] = "—"
@@ -10262,9 +10397,18 @@ class DashRenderer:
                 kpi_copy = dict(kpi)
                 if stat and varname and varname in self.df.columns:
                     try:
-                        raw_val = self._compute_kpi_stat(stat, varname)
+                        # Honour the KPI's own if/in qualifier.  Stata
+                        # computes the right value and stores it; this
+                        # recompute used to run on the FULL frame and
+                        # overwrite it, so `dash kpi mean(mpg) if foreign==1`
+                        # displayed the unconditional 21.2973 where Stata's
+                        # summarize reports 24.7727.
+                        _kdf = self._apply_graph_filter(kpi)
+                        raw_val = self._compute_kpi_stat_on_df(
+                            _kdf, stat, varname)
                         kpi_copy["value"] = self._format_kpi_value(
-                            raw_val, kpi.get("fmt", ""), varname, stat
+                            raw_val, self._effective_kpi_fmt(kpi, varname),
+                            varname, stat
                         )
                     except (ValueError, KeyError, TypeError):
                         if not kpi_copy.get("value"):
@@ -10416,14 +10560,28 @@ class DashRenderer:
                     continue
                 _kstat  = _kdef.get("stat", "mean")
                 _kvar   = _kdef.get("var") or _kdef.get("varname", "")
-                _kfmt   = _kdef.get("fmt", "%9.0f")
+                # The SAME resolution the initial render uses, or the
+                # card changes shape on the first filter move.
+                _kfmt   = self._effective_kpi_fmt(_kdef, _kvar)
                 _dec, _comma = DashRenderer._parse_fmt(_kfmt)
+                # A KPI carrying its own if/in must keep carrying it after a
+                # filter moves.  The callback works on row identities, so the
+                # qualifier travels as the set of rows it selects rather than
+                # as an expression -- no evaluator in the browser, nothing to
+                # inject into.  Only a qualified KPI pays for the list.
+                _kqual_ids = self._kpi_qualifier_row_ids(_kdef)
                 _kpi_config_for_cb.append({
                     "name":     _kname,
                     "stat":     _kstat,
                     "varname":  _kvar,
                     "decimals": _dec,
                     "commas":   _comma,
+                    "has_qual": _kqual_ids is not None,
+                    "qual_ids": _kqual_ids if _kqual_ids is not None else [],
+                    # No fixed format anywhere: both sides fall back to
+                    # Stata's general display rather than to two different
+                    # defaults.
+                    "general":  _kfmt.strip() in ("", "%9.0g"),
                     # A statistic of a date variable whose result is itself a
                     # date has to be re-rendered as a date after filtering,
                     # not as a number of milliseconds.

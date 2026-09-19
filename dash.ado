@@ -1720,8 +1720,18 @@ program define _dash_kpi
     local stat    = regexs(1)
     local kpi_var = regexs(2)
 
-    local valid_stats "mean sum count dcount min max median sd p25 p50 p75"
-    if !`: list stat in valid_stats' {
+    local valid_stats "mean sum count dcount min max median sd var cv iqr skewness p25 p50 p75"
+    // pNN for any percentile, not just the three _pctile was frozen at.
+    local is_pctile = 0
+    if regexm("`stat'", "^p([0-9]+)$") local is_pctile = 1
+    if `is_pctile' {
+        local pnum = real(regexs(1))
+        if `pnum' <= 0 | `pnum' >= 100 {
+            display as error "dash kpi: percentile must be between 1 and 99"
+            exit(198)
+        }
+    }
+    if !`: list stat in valid_stats' & !`is_pctile' {
         display as error "dash kpi: unsupported statistic '`stat''. Choose from: `valid_stats'"
         exit(198)
     }
@@ -1751,14 +1761,35 @@ program define _dash_kpi
         else if "`stat'" == "count" local kpi_value = r(N)
     }
     else if "`stat'" == "dcount" {
-        quietly codebook `kpi_var' `if' `in'
-        local kpi_value = r(unique)
+        // codebook is NOT r-class: r(unique) is always missing, so this
+        // statistic has never produced a value.  Measured alternatives:
+        // inspect gives r(N_unique) but stops reporting at 100 distinct and
+        // is numeric-only; tabulate dies at 200k distinct; levelsof fails
+        // once r(levels) exceeds c(macrolen).  egen group() has no ceiling,
+        // works for string and numeric alike, and was the fastest measured.
+        tempvar _dash_grp
+        quietly egen `_dash_grp' = group(`kpi_var') `if' `in'
+        quietly summarize `_dash_grp', meanonly
+        local kpi_value = cond(r(N) == 0, 0, r(max))
     }
-    else if inlist("`stat'", "median", "p25", "p50", "p75") {
-        quietly _pctile `kpi_var' `if' `in', p(25 50 75)
-        if      "`stat'" == "p25"    local kpi_value = r(r1)
-        else if inlist("`stat'", "median", "p50") local kpi_value = r(r2)
-        else if "`stat'" == "p75"    local kpi_value = r(r3)
+    else if "`stat'" == "median" {
+        quietly _pctile `kpi_var' `if' `in', p(50)
+        local kpi_value = r(r1)
+    }
+    else if "`stat'" == "iqr" {
+        quietly _pctile `kpi_var' `if' `in', p(25 75)
+        local kpi_value = r(r2) - r(r1)
+    }
+    else if `is_pctile' {
+        // Any percentile, not the three p(25 50 75) was frozen at.
+        quietly _pctile `kpi_var' `if' `in', p(`pnum')
+        local kpi_value = r(r1)
+    }
+    else if inlist("`stat'", "var", "cv", "skewness") {
+        quietly summarize `kpi_var' `if' `in', detail
+        if      "`stat'" == "var"      local kpi_value = r(Var)
+        else if "`stat'" == "cv"       local kpi_value = cond(r(mean)==0, ., r(sd)/r(mean))
+        else if "`stat'" == "skewness" local kpi_value = r(skewness)
     }
 
     local kpi_display = "`kpi_value'"
@@ -1781,6 +1812,14 @@ program define _dash_kpi
     global dash_kpi_`name'_col   "`color'"
     global dash_kpi_`name'_bg    "`bgcolor'"
     global dash_kpi_`name'_upd   "`update'"
+    // The KPI's own if/in.  Stata computes the right value above and
+    // stores it, but the renderer recomputes from the full frame, so
+    // without these `dash kpi mean(mpg) if foreign==1` displayed the
+    // UNCONDITIONAL mean.
+    local _kif = strtrim(regexr(`"`if'"', "^[ ]*if[ ]+", ""))
+    local _kin = strtrim(regexr(`"`in'"', "^[ ]*in[ ]+", ""))
+    global dash_kpi_`name'_if    `"`_kif'"'
+    global dash_kpi_`name'_in    `"`_kin'"'
 
     local registry = "${dash_graph_registry}"
     local already  = 0
@@ -1933,6 +1972,21 @@ program define _dash_build
         if "${dash_kpi_`gname'}" != "" {
             local kpi_var = "${dash_kpi_`gname'_var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
+            // A KPI qualifier may name variables that appear nowhere else
+            // (dash kpi mean(mpg) if foreign==1 needs foreign serialised, or
+            // the renderer cannot reproduce the conditional value).
+            local _kifx = "${dash_kpi_`gname'_if}"
+            if `"`_kifx'"' != "" {
+                _dash_json_str `"`_kifx'"' _kifx_esc
+                local kqvars ""
+                mata: _dash_extract_qual_vars(`"{"if_expr":"`_kifx_esc'"}"', "kqvars")
+                foreach v of local kqvars {
+                    capture confirm variable `v'
+                    if _rc == 0 {
+                        if !`: list v in all_vars' local all_vars "`all_vars' `v'"
+                    }
+                }
+            }
             continue
         }
 
@@ -2070,11 +2124,13 @@ program define _dash_build
         _dash_json_str `"${dash_kpi_`gname'_col}"' _kcol_esc
         _dash_json_str `"${dash_kpi_`gname'_bg}"'  _kbg_esc
         local kupdate = "${dash_kpi_`gname'_upd}"
+        _dash_json_str `"${dash_kpi_`gname'_if}"' _kif_esc
+        _dash_json_str `"${dash_kpi_`gname'_in}"' _kin_esc
         _dash_json_str `"`kdisp'"' _kdisp_esc
         _dash_json_str `"`kfmt'"'  _kfmt_esc
 
         if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
-        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
+        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","if_expr":"`_kif_esc'","in_expr":"`_kin_esc'"}"'
         local n_kpis = `n_kpis' + 1
     }
 
@@ -2178,6 +2234,21 @@ program define _dash_serve
         if "${dash_kpi_`gname'}" != "" {
             local kpi_var = "${dash_kpi_`gname'_var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
+            // A KPI qualifier may name variables that appear nowhere else
+            // (dash kpi mean(mpg) if foreign==1 needs foreign serialised, or
+            // the renderer cannot reproduce the conditional value).
+            local _kifx = "${dash_kpi_`gname'_if}"
+            if `"`_kifx'"' != "" {
+                _dash_json_str `"`_kifx'"' _kifx_esc
+                local kqvars ""
+                mata: _dash_extract_qual_vars(`"{"if_expr":"`_kifx_esc'"}"', "kqvars")
+                foreach v of local kqvars {
+                    capture confirm variable `v'
+                    if _rc == 0 {
+                        if !`: list v in all_vars' local all_vars "`all_vars' `v'"
+                    }
+                }
+            }
             continue
         }
 
@@ -2265,10 +2336,12 @@ program define _dash_serve
         _dash_json_str `"${dash_kpi_`gname'_col}"' _kcol_esc
         _dash_json_str `"${dash_kpi_`gname'_bg}"'  _kbg_esc
         local kupdate = "${dash_kpi_`gname'_upd}"
+        _dash_json_str `"${dash_kpi_`gname'_if}"' _kif_esc
+        _dash_json_str `"${dash_kpi_`gname'_in}"' _kin_esc
         _dash_json_str `"`kdisp'"' _kdisp_esc
         _dash_json_str `"`kfmt'"'  _kfmt_esc
         if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
-        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'"}"'
+        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","if_expr":"`_kif_esc'","in_expr":"`_kin_esc'"}"'
         local n_kpis = `n_kpis' + 1
     }
 

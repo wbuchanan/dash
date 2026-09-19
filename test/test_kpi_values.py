@@ -61,6 +61,16 @@ def truth():
         return json.load(fh)
 
 
+def _stat(truth, scope, name):
+    """One measured statistic from the fixture.
+
+    Each entry is stored as ``{"cmd": ..., "value": ...}`` so a reviewer can
+    re-derive it in Stata; this unwraps the value.
+    """
+    entry = truth["kpi_stats"][scope][name]
+    return float(entry["value"] if isinstance(entry, dict) else entry)
+
+
 _AUTO_CSV = os.path.join(_HERE, "fixtures", "data", "auto.csv")
 
 
@@ -69,7 +79,9 @@ def auto():
     """sysuse auto's mpg and weight, at full precision."""
     if not os.path.exists(_AUTO_CSV):
         pytest.skip("test/fixtures/data/auto.csv is missing")
-    return pd.read_csv(_AUTO_CSV)
+    # float, not int64: make_data_json emits raw values and numpy ints are
+    # not JSON-serialisable. Stata stores these as numerics anyway.
+    return pd.read_csv(_AUTO_CSV).astype(float)
 
 
 def _render_kpi(df, *, stat, var, if_expr="", fmt="", extra_cols=None,
@@ -113,13 +125,13 @@ class TestQualifiedKpiShowsTheConditionalStatistic:
     def test_the_anchor_is_what_stata_measured(self, truth):
         a = truth["anchor"]
         assert a["confirmed"] is True
-        assert float(a["full_precision"]) == pytest.approx(
+        assert float(a["full_precision"]["value"]) == pytest.approx(
             24.772727272727273)
 
     def test_an_unqualified_mean_is_the_unconditional_one(self, truth, auto):
         dr = _render_kpi(auto, stat="mean", var="mpg", fmt="%9.4f")
-        want = truth["kpi_stats"]["all"]["mean"]
-        assert f"{float(want):.4f}" in _card_text(dr), _card_text(dr)[:300]
+        want = _stat(truth, "all", "mean")
+        assert f"{want:.4f}" in _card_text(dr), _card_text(dr)[:300]
 
     def test_a_qualified_mean_shows_the_conditional_value(self, truth, auto):
         """The card shows 21.2973 where Stata reports 24.7727."""
@@ -165,25 +177,29 @@ class TestPercentileKpisUseStatasRule:
     @pytest.mark.parametrize("stat,p", [("p25", 25), ("p50", 50),
                                         ("p75", 75)])
     def test_the_kpi_matches_stata(self, truth, auto, stat, p):
-        want = float(truth["kpi_stats"]["all"][stat])
+        want = _stat(truth, "all", stat)
         dr = _render_kpi(auto, stat=stat, var="mpg", fmt="%9.4f")
         assert f"{want:.4f}" in _card_text(dr), (
             f"{stat} showed something other than Stata's {want}; card: "
             f"{_card_text(dr)[:200]}"
         )
 
-    def test_compute_kpi_stat_uses_the_stata_helper(self):
-        """The correct implementation already exists in the file."""
+    def test_no_kpi_path_uses_pandas_quantile(self):
+        """The correct implementation already existed in the file."""
         import inspect
-        src = inspect.getsource(DashRenderer._compute_kpi_stat)
-        assert ".quantile(" not in src, (
-            "the KPI path still uses pandas' quantile, which is "
-            "Hyndman-Fan type 7; Stata uses type 2"
-        )
-        assert "_stata_percentile" in src
+        for fn in (DashRenderer._kpi_statistic,
+                   DashRenderer._compute_kpi_stat,
+                   DashRenderer._compute_kpi_stat_on_df):
+            src = inspect.getsource(fn)
+            assert ".quantile(" not in src, (
+                f"{fn.__name__} still uses pandas' quantile, which is "
+                f"Hyndman-Fan type 7; Stata uses type 2"
+            )
+        assert "_stata_percentile" in inspect.getsource(
+            DashRenderer._kpi_statistic)
 
     def test_median_agrees_with_stata(self, truth, auto):
-        want = float(truth["kpi_stats"]["all"]["median"])
+        want = _stat(truth, "all", "median")
         dr = _render_kpi(auto, stat="median", var="mpg", fmt="%9.4f")
         assert f"{want:.4f}" in _card_text(dr)
 
@@ -199,7 +215,7 @@ class TestEveryStatisticMatchesStata:
         "p25", "p50", "p75",
     ])
     def test_unconditional(self, truth, auto, stat):
-        want = float(truth["kpi_stats"]["all"][stat])
+        want = _stat(truth, "all", stat)
         dr = _render_kpi(auto, stat=stat, var="mpg", fmt="%12.6f")
         assert f"{want:.6f}" in _card_text(dr), (
             f"{stat}: expected {want:.6f}; card: {_card_text(dr)[:200]}"
@@ -209,7 +225,7 @@ class TestEveryStatisticMatchesStata:
     def test_the_statistics_the_command_does_not_yet_accept(self, truth, auto,
                                                             stat):
         """Capability gap: accepted by neither dash.ado nor the renderer."""
-        want = float(truth["kpi_stats"]["all"][stat])
+        want = _stat(truth, "all", stat)
         dr = _render_kpi(auto, stat=stat, var="mpg", fmt="%12.6f")
         assert f"{want:.6f}" in _card_text(dr), (
             f"{stat} is not supported; expected {want:.6f}"
@@ -242,45 +258,142 @@ def _filtered_dashboard(df, stat, fmt=""):
 
 class TestKpisUnderFiltering:
 
-    @pytest.mark.parametrize("stat", ["p25", "p75"])
-    def test_percentiles_are_in_the_javascript_recompute_list(self, stat):
-        """They fall through to result = 0 on the first filter interaction."""
+    @staticmethod
+    def _js_kpi(stat, values):
+        """Run the SHIPPED KPI recompute for one statistic under node.
+
+        Asserting that a literal like 'p25' appears in the JS would pass or
+        fail on an implementation detail -- the branch is a regex over pNN,
+        which is better code and invisible to a substring search. This runs
+        the code users receive and compares the number it produces.
+        """
+        import shutil, subprocess, tempfile
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node is not installed")
         js = dash_render._FILTER_JS
-        lo = js.index("for (let ki = 0; ki < kpi_config.length")
-        block = js[lo:lo + 4000]
-        assert f"'{stat}'" in block or f'"{stat}"' in block, (
-            f"{stat} has no branch in the KPI recompute, so the card reads 0 "
-            f"as soon as any filter moves"
+        helpers = js[js.index("function dash_pctl"):
+                     js.index("// agg_sources is a Bokeh model list")]
+        lo = js.index("    if (stat === 'count') {")
+        hi = js.index("    let fmt;", lo)
+        block = js[lo:hi]
+        harness = (
+            helpers
+            + "\nconst vals = " + json.dumps([float(v) for v in values]) + ";"
+            + "\nconst stat = " + json.dumps(stat) + ";"
+            + "\nlet result = 0;\n" + block
+            + "\nprocess.stdout.write(JSON.stringify(result));"
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".mjs",
+                                          delete=False) as fh:
+            fh.write(harness)
+            path = fh.name
+        try:
+            res = subprocess.run([node, path], capture_output=True,
+                                 text=True, timeout=60)
+            assert res.returncode == 0, (
+                f"the shipped KPI recompute failed under node:\n"
+                f"{res.stderr[:1200]}"
+            )
+            return json.loads(res.stdout)
+        finally:
+            os.unlink(path)
+
+    @pytest.mark.parametrize("stat", [
+        "mean", "sum", "count", "min", "max", "median", "sd",
+        "p25", "p50", "p75", "var", "cv", "iqr", "skewness", "dcount",
+    ])
+    def test_the_callback_agrees_with_the_initial_render(self, auto, stat):
+        """Every supported statistic, recomputed by the shipped JavaScript.
+
+        p25 and p75 had no branch at all and fell through to ``result = 0``
+        the first time any filter moved. Adding a statistic that silently
+        reads 0 under filtering would be the same defect again, so this
+        covers all of them.
+        """
+        col = auto["mpg"].dropna()
+        want = DashRenderer._kpi_statistic(col, stat)
+        got = self._js_kpi(stat, col.tolist())
+        assert got is not None and got == pytest.approx(want, rel=1e-9), (
+            f"{stat}: the callback computes {got}, the initial render "
+            f"{want}"
         )
 
-    @pytest.mark.parametrize("stat", ["mean", "sum", "count", "min", "max",
-                                      "median", "sd", "p25", "p50", "p75",
-                                      "var", "cv", "iqr", "skewness",
-                                      "dcount"])
-    def test_every_supported_statistic_has_a_recompute_branch(self, stat):
-        """Adding a statistic that silently reads 0 under filtering is the
-        same defect again."""
-        js = dash_render._FILTER_JS
-        lo = js.index("for (let ki = 0; ki < kpi_config.length")
-        block = js[lo:lo + 6000]
-        assert f"'{stat}'" in block or f'"{stat}"' in block, stat
+    @pytest.mark.parametrize("stat", ["p25", "p75", "median", "iqr"])
+    def test_the_callback_uses_statas_percentile_rule(self, auto, stat):
+        """Not merely non-zero -- the same rule as the initial render."""
+        col = auto["mpg"].dropna()
+        got = self._js_kpi(stat, col.tolist())
+        pandas_rule = {
+            "p25": float(col.quantile(0.25)),
+            "p75": float(col.quantile(0.75)),
+            "median": float(col.median()),
+            "iqr": float(col.quantile(0.75) - col.quantile(0.25)),
+        }[stat]
+        stata_rule = DashRenderer._kpi_statistic(col, stat)
+        if stata_rule != pytest.approx(pandas_rule):
+            assert got == pytest.approx(stata_rule), (
+                f"{stat}: the callback used pandas' rule ({pandas_rule}) "
+                f"rather than Stata's ({stata_rule})"
+            )
 
-    def test_the_precision_does_not_change_when_a_filter_moves(self, auto):
-        """Initial render and callback must agree on the format."""
-        dr = _filtered_dashboard(auto, "mean")
+    @staticmethod
+    def _js_format(cfg_entry, value):
+        """Run the SHIPPED formatting branch of the callback under node."""
+        import shutil, subprocess, tempfile
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node is not installed")
+        js = dash_render._FILTER_JS
+        lo = js.index("    let fmt;")
+        hi = js.index("    // Rebuild the complete Div HTML", lo)
+        block = js[lo:hi]
+        harness = (
+            "const k = " + json.dumps(cfg_entry) + ";"
+            + "\nconst result = " + json.dumps(float(value)) + ";\n"
+            + block
+            + "\nprocess.stdout.write(JSON.stringify(fmt));"
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".mjs",
+                                          delete=False) as fh:
+            fh.write(harness)
+            path = fh.name
+        try:
+            res = subprocess.run([node, path], capture_output=True,
+                                 text=True, timeout=60)
+            assert res.returncode == 0, (
+                f"the shipped formatting branch failed under node:\n"
+                f"{res.stderr[:1200]}"
+            )
+            return json.loads(res.stdout)
+        finally:
+            os.unlink(path)
+
+    @pytest.mark.parametrize("fmt", ["", "%9.4f", "%9.0f", "%12.0fc"])
+    def test_the_displayed_value_is_identical_before_and_after_a_filter(
+        self, auto, fmt
+    ):
+        """The card must not change shape the moment a filter moves.
+
+        The initial render fell back to the variable's display format and the
+        callback to %9.0f, so with no fmt() a mean read 21.2972972972973 and
+        became 21 on the first interaction.
+        """
+        dr = _filtered_dashboard(auto, "mean", fmt=fmt)
         assert dr.filter_callbacks, "no filter callback was built"
         cfg = json.loads(dr.filter_callbacks[0].args["kpi_config_json"])
         assert cfg, "the KPI did not reach the callback"
-        text = _card_text(dr)
+
+        value = DashRenderer._kpi_statistic(auto["mpg"].dropna(), "mean")
         import re
-        m = re.search(r">([\d,]+\.?\d*)<", text)
+        text = _card_text(dr)
+        m = re.search(r">([\-\d,]+\.?\d*(?:e[+\-]?\d+)?)<", text)
         assert m, f"no numeric value in the card: {text[:200]}"
-        shown = m.group(1)
-        initial_dp = len(shown.split(".")[1]) if "." in shown else 0
-        assert cfg[0]["decimals"] == initial_dp, (
-            f"the card shows {initial_dp} decimal places and the callback "
-            f"would show {cfg[0]['decimals']} — the number changes shape as "
-            f"soon as a filter moves"
+        initial = m.group(1)
+        from_js = self._js_format(cfg[0], value)
+        assert from_js == initial, (
+            f"fmt({fmt!r}): the card shows {initial!r} and the callback "
+            f"would show {from_js!r} for the same number"
         )
 
     def test_the_javascript_uses_statas_percentile_rule(self):
@@ -311,3 +424,173 @@ class TestBrushUpdateIsRealOrDocumentedAsAbsent:
                 "update(brush) has no implementation and the help does not "
                 "say so"
             )
+
+
+# ======================================================================
+# The qualifier must survive a filter move
+# ======================================================================
+
+class TestQualifiedKpiUnderFiltering:
+    """Honouring if_expr only on the initial render is half a fix.
+
+    The initial render now applies the KPI's own qualifier, but the filter
+    callback recomputes from the rows that survived the *filter* alone.  So
+    ``dash kpi mean(mpg) if foreign==1`` opens at Stata's 24.7727 and jumps to
+    the unconditional mean the first time any widget moves -- the same defect,
+    one interaction later, and harder to notice because the opening value is
+    right.
+    """
+
+    @staticmethod
+    def _qualified(df):
+        return _render_kpi(
+            df, stat="mean", var="mpg", if_expr="foreign == 1", fmt="%9.4f",
+            filters=[{"varname": "weight", "type": "range", "exclude": [],
+                      "label": ""}],
+        )
+
+    @staticmethod
+    def _df():
+        df = pd.read_csv(_AUTO_CSV).astype(float)
+        df["foreign"] = np.where(df["weight"] < 3000, 1.0, 0.0)
+        return df
+
+    def test_the_callback_receives_the_qualifying_rows(self):
+        df = self._df()
+        dr = self._qualified(df)
+        assert dr.filter_callbacks, "no filter callback was built"
+        cfg = json.loads(dr.filter_callbacks[0].args["kpi_config_json"])
+        assert cfg, "the KPI did not reach the callback"
+        assert cfg[0].get("has_qual") is True, (
+            "the callback was told nothing about the KPI's qualifier, so it "
+            "recomputes on every filtered row"
+        )
+        want = set(
+            int(i) for i in range(len(df)) if df["foreign"].iloc[i] == 1.0
+        )
+        assert set(cfg[0].get("qual_ids", [])) == want, (
+            "the row identities the qualifier selects were not passed to the "
+            "callback"
+        )
+
+    def test_an_unqualified_kpi_carries_no_row_list(self):
+        """The row list is per-KPI overhead; it must not be paid by default."""
+        dr = _render_kpi(
+            self._df(), stat="mean", var="mpg", fmt="%9.4f",
+            filters=[{"varname": "weight", "type": "range", "exclude": [],
+                      "label": ""}],
+        )
+        cfg = json.loads(dr.filter_callbacks[0].args["kpi_config_json"])
+        assert not cfg[0].get("has_qual"), cfg[0]
+        assert not cfg[0].get("qual_ids"), (
+            "an unqualified KPI shipped a row-identity list it never uses"
+        )
+
+    @staticmethod
+    def _js_recompute(cfg_entry, rows, varname):
+        """Run the SHIPPED KPI recompute over a filtered row payload.
+
+        ``rows`` is a list of ``(row_id, value)`` -- exactly what ``new_data``
+        holds after a filter move.
+        """
+        import shutil, subprocess, tempfile
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node is not installed")
+        js = dash_render._FILTER_JS
+        helpers = js[js.index("function dash_pctl"):
+                     js.index("// agg_sources is a Bokeh model list")]
+        lo = js.index("    const col = new_data[k.varname];")
+        hi = js.index("    let fmt;", lo)
+        block = js[lo:hi]
+        payload = {
+            "__dash_row__": [int(r) for r, _ in rows],
+            varname: [float(v) for _, v in rows],
+        }
+        harness = (
+            helpers
+            + '\nconst ROW_ID = "__dash_row__";'
+            + "\nconst new_data = " + json.dumps(payload) + ";"
+            + "\nconst k = " + json.dumps(cfg_entry) + ";"
+            # The shipped block declares `result` itself and uses `continue`
+            # to skip a KPI, so it is run as one iteration of a loop rather
+            # than transliterated.
+            + "\nlet out = null;"
+            + "\nfor (let _once = 0; _once < 1; _once++) {\n"
+            + block
+            + "\nout = result;\n}"
+            + "\nprocess.stdout.write(JSON.stringify(out));"
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".mjs",
+                                          delete=False) as fh:
+            fh.write(harness)
+            path = fh.name
+        try:
+            res = subprocess.run([node, path], capture_output=True,
+                                 text=True, timeout=60)
+            assert res.returncode == 0, (
+                f"the shipped KPI recompute failed under node:\n"
+                f"{res.stderr[:1200]}"
+            )
+            return json.loads(res.stdout)
+        finally:
+            os.unlink(path)
+
+    def test_the_javascript_restricts_the_statistic_to_the_qualifier(self):
+        """The number the user sees after moving a widget."""
+        df = self._df()
+        dr = self._qualified(df)
+        cfg = json.loads(dr.filter_callbacks[0].args["kpi_config_json"])[0]
+
+        # The filter kept every row with weight < 4000; of those, the KPI's
+        # own qualifier keeps the ones with foreign == 1.
+        kept = [i for i in range(len(df)) if df["weight"].iloc[i] < 4000]
+        rows = [(i, df["mpg"].iloc[i]) for i in kept]
+        want = float(
+            df["mpg"].iloc[[i for i in kept if df["foreign"].iloc[i] == 1.0]]
+            .mean()
+        )
+        unconditional = float(df["mpg"].iloc[kept].mean())
+        assert want != pytest.approx(unconditional), (
+            "the fixture does not distinguish the two rules"
+        )
+        got = self._js_recompute(cfg, rows, "mpg")
+        assert got == pytest.approx(want, rel=1e-9), (
+            f"after a filter move the callback computed {got}; the "
+            f"qualified mean is {want} and the unconditional one "
+            f"{unconditional}"
+        )
+
+    def test_an_unqualified_kpi_is_unaffected(self):
+        """The fix must not change the ordinary case."""
+        df = self._df()
+        dr = _render_kpi(
+            df, stat="mean", var="mpg", fmt="%9.4f",
+            filters=[{"varname": "weight", "type": "range", "exclude": [],
+                      "label": ""}],
+        )
+        cfg = json.loads(dr.filter_callbacks[0].args["kpi_config_json"])[0]
+        kept = [i for i in range(len(df)) if df["weight"].iloc[i] < 4000]
+        rows = [(i, df["mpg"].iloc[i]) for i in kept]
+        want = float(df["mpg"].iloc[kept].mean())
+        got = self._js_recompute(cfg, rows, "mpg")
+        assert got == pytest.approx(want, rel=1e-9), (got, want)
+
+    def test_the_card_opens_and_stays_on_the_same_number(self):
+        """End to end: initial render and callback agree for a qualified KPI."""
+        import re
+        df = self._df()
+        dr = self._qualified(df)
+        cfg = json.loads(dr.filter_callbacks[0].args["kpi_config_json"])[0]
+        text = _card_text(dr)
+        m = re.search(r">([\-\d,]+\.?\d*)<", text)
+        assert m, f"no numeric value in the card: {text[:200]}"
+        # Every row passes the (untouched) filter, so the callback sees them all.
+        rows = [(i, df["mpg"].iloc[i]) for i in range(len(df))]
+        got = self._js_recompute(cfg, rows, "mpg")
+        # The card is rendered through fmt(%9.4f); compare at that precision.
+        assert float(m.group(1).replace(",", "")) == pytest.approx(
+            round(got, 4), abs=1e-9), (
+            f"the card opens on {m.group(1)} and the first filter move would "
+            f"change it to {got}"
+        )
