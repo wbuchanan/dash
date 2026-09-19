@@ -8592,8 +8592,26 @@ class TestProxiedRateLimiterBucket:
     # BUG-41-1b: helper prefers X-Forwarded-For over remote_ip
     # ------------------------------------------------------------------
 
-    def test_helper_prefers_xff(self, dr_module, auto_df):
-        """BUG-41-1b: _client_ip_from_request returns XFF first token, not remote_ip."""
+    def test_helper_prefers_xff_when_the_proxy_is_trusted(self, dr_module,
+                                                          auto_df):
+        """BUG-41-1b, now behind the trust flag.
+
+        This asserted that the helper preferred X-Forwarded-For with no flag
+        set. That is the behaviour that made the rate limiter bypassable:
+        measured against a running server, 700 requests with a varying
+        spoofed header got 700 x 200 and not one 429, where the same burst
+        without the header was cut off at 600. The header is
+        client-settable unless a proxy you control overwrites it.
+
+        BUG-41's actual complaint -- that every user behind a proxy shared
+        one bucket -- is still addressed, but only when the operator says
+        there IS such a proxy. Do not delete the flag to make this green; see
+        test_server_rate_limit.py.
+
+        The value is also validated as an IP and key-spaced, so a forwarded
+        10.0.0.1 cannot land in the real 10.0.0.1's bucket -- hence the
+        assertion is on containment rather than equality.
+        """
         src = self._build_source(dr_module, auto_df)
         mod = types.ModuleType("_b41_mod")
         exec(compile(src, "<test>", "exec"), mod.__dict__)
@@ -8601,10 +8619,16 @@ class TestProxiedRateLimiterBucket:
 
         class _FakeReq:
             remote_ip = "10.0.0.1"  # proxy IP
-            headers = {"X-Forwarded-For": "203.0.113.55, 10.0.0.1"}
+            headers = {"X-Forwarded-For": "203.0.113.55, 198.51.100.7"}
 
-        assert helper(_FakeReq()) == "203.0.113.55", (
-            "Helper should return first XFF token (end-user IP), not remote_ip"
+        assert helper(_FakeReq()).endswith("10.0.0.1"), (
+            "untrusted by default, the helper must use the peer address"
+        )
+        mod._TRUST_FORWARDED_FOR = True
+        got = helper(_FakeReq())
+        assert "198.51.100.7" in got, (
+            f"with the proxy trusted, the hop the proxy appended must be the "
+            f"bucket key; got {got!r}"
         )
 
     # ------------------------------------------------------------------

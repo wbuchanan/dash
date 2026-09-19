@@ -149,7 +149,14 @@ end
 // ================================================================
 program define _dash_validate_path
     version 16.0
-    args fpath
+    args fpath ext
+
+    // The expected extension, so the server branch can share every other
+    // check.  It used to hardcode .html, so server mode skipped the
+    // validator entirely and tested only the suffix -- a .py saving() path
+    // therefore got no traversal check, no shell-metacharacter check and no
+    // quote check at all.
+    if "`ext'" == "" local ext "html"
 
     // FIRST, before anything expands the path inside an expression.
     // Every check below reads `fpath' inside quotes, and a path containing
@@ -171,8 +178,8 @@ program define _dash_validate_path
         display as error "dash: saving() path may not contain '..' (path traversal not allowed)."
         exit(198)
     }
-    if !regexm(lower("`fpath'"), "\.html$") {
-        display as error "dash: saving() path must end in .html (got: `fpath')"
+    if !regexm(lower("`fpath'"), "\.`ext'$") {
+        display as error "dash: saving() path must end in .`ext' (got: `fpath')"
         exit(198)
     }
     // Reject shell metacharacters to prevent command injection via shell open/start/xdg-open.
@@ -1937,13 +1944,13 @@ program define _dash_build
             display as error "dash build: saving() path may not contain '..' (path traversal not allowed)."
             exit(198)
         }
-        if !regexm(lower("`saving'"), "\.py$") {
-            display as error "dash build: server mode requires saving() path ending in .py (got: `saving')"
-            exit(198)
-        }
+        // The same validator, asked for .py.  This branch used to check the
+        // extension and nothing else, so a server-mode path skipped the
+        // traversal, metacharacter and quote checks entirely.
+        _dash_validate_path "`saving'" "py"
     }
     else {
-        _dash_validate_path "`saving'"
+        _dash_validate_path "`saving'" "html"
     }
 
     if "`replace'" == "" {
@@ -2493,11 +2500,21 @@ program define _dash_serve
     local no_browser_flag ""
     if "`nobrowser'" == "nobrowser" local no_browser_flag "--no-browser"
 
-    // Temp path for the generated Bokeh Server .py app (must have .py extension).
-    // Use tempfile to generate a unique base path so concurrent dash serve
-    // invocations do not overwrite each other's app file.
-    tempfile _serve_app_base
-    local serve_app_path "`_serve_app_base'.py"
+    // Temp path for the generated Bokeh Server app.
+    //
+    // Use the tempfile macro DIRECTLY.  It used to be `_serve_app_base'.py',
+    // a name Stata never registered, so Stata dutifully erased the
+    // extension-less file it had registered -- which nothing ever wrote --
+    // and left the .py behind for good.  Each one embeds the whole dataset
+    // in decodable base64: measured on this machine, 142 orphans totalling
+    // 18 MB, the newest decoding to 74 observations of mpg, weight and
+    // foreign, in a directory any local user can read.
+    //
+    // No .py suffix is needed because the app is launched as
+    // `python <path>', which does not care about the extension.  If that
+    // ever reverts to `bokeh serve', which dispatches on the extension, the
+    // suffix has to come back -- and so does an explicit erase.
+    tempfile serve_app_path
 
     // Escape paths for safe Python string literal interpolation (see _dash_do_render).
     _dash_json_str `"`master_json_path'"' _py_master

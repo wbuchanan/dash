@@ -102,5 +102,51 @@ capture _dash_validate_path "C:/Program Files (x86)/out.html"
 assert _rc == 0
 display "PV-07 PASS: parentheses are still allowed"
 
+// ----------------------------------------------------------------
+// PV-08 — the validator can be asked for an extension other than .html
+// ----------------------------------------------------------------
+// Server mode writes a .py.  It used to skip the validator entirely and
+// check only the extension, so a server-mode saving() path got none of the
+// traversal, metacharacter or quote checks that a .html path gets.
+capture _dash_validate_path "/tmp/app.py" "py"
+assert _rc == 0
+display "PV-08 PASS: a .py path validates when .py is asked for"
+
+capture _dash_validate_path "/tmp/app.html" "py"
+assert _rc == 198
+display "PV-09 PASS: the requested extension is enforced, not ignored"
+
+capture _dash_validate_path "/tmp/dashboard.html"
+assert _rc == 0
+display "PV-10 PASS: the default is still .html"
+
+// ----------------------------------------------------------------
+// PV-11 — a hostile .py path is rejected the same way a .html one is
+// ----------------------------------------------------------------
+local dq2 = "/tmp/a" + char(34) + "; touch /tmp/pwned2; echo .py"
+capture _dash_validate_path `"`dq2'"' "py"
+assert _rc == 198
+capture _dash_validate_path "/tmp/a;rm -rf x.py" "py"
+assert _rc == 198
+capture _dash_validate_path "/tmp/../etc/passwd.py" "py"
+assert _rc == 198
+display "PV-11 PASS: a server-mode path gets the same checks as an HTML one"
+
+// ----------------------------------------------------------------
+// PV-12 — and the command itself rejects it
+// ----------------------------------------------------------------
+// The integration form: the validator being callable is not the same as the
+// server branch calling it.
+// dash_parse.mata and dash.ado are already loaded at the top of this
+// script; running the mata file twice exits 3000 ("already exists").
+qui sysuse auto, clear
+global dash_nobrowser 1
+capture dash clear
+dash scatter mpg weight, name(pvg1)
+capture dash build, saving("/tmp/a;b.py") server replace
+assert _rc == 198
+capture dash clear
+display "PV-12 PASS: dash build, server rejects a hostile saving() path"
+
 display ""
 display "test_path_validation.cscript: ALL CHECKS PASSED"

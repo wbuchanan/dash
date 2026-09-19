@@ -495,9 +495,24 @@ the app serves itself with {cmd:python app.py}.
 {pstd}
 {ul:Security.}  The Bokeh Server restricts WebSocket connections to the
 loopback interface -- both {cmd:localhost} and {cmd:127.0.0.1} -- and
-{cmd:--allow-websocket-origin} adds any further host you choose to accept.  All user-supplied strings (titles, KPI labels) are
-HTML-escaped in the generated file.  Data values are base64-encoded,
-preventing any data content from affecting the Python file syntax.
+{cmd:--allow-websocket-origin} adds any further host you choose to accept.
+All user-supplied strings (titles, KPI labels) are HTML-escaped in the
+generated file.  Data values are base64-encoded, preventing any data content
+from affecting the Python file syntax.
+
+{pstd}
+Session creation and {cmd:/health} are rate limited per client.  The client is
+identified by the peer address, not by {cmd:X-Forwarded-For}, because that
+header is set by the client unless a proxy you control overwrites it --
+trusting it made the limit bypassable with a single header.  Behind such a
+proxy, pass {cmd:--trust-forwarded-for} so that each end user gets their own
+bucket rather than sharing the proxy's.
+
+{pstd}
+The generated app embeds your whole dataset, base64-encoded.  Treat the
+{cmd:.py} file as you would the data: {cmd:dash serve} writes its copy to a
+Stata temporary file that Stata erases when the command ends, and a file you
+name with {cmd:saving()} is yours to manage.
 
 
 {marker examples}
