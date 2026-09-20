@@ -7134,6 +7134,26 @@ dash_apply_kpis(sel, kpi_config, kpi_divs, ROW_ID);
 """
 
 
+def _whole_number_step(arr: "np.ndarray", span: float) -> float:
+    """The slider step for a column, 1 when every value is a whole number.
+
+    Args:
+        arr:  The finite values behind the widget.
+        span: ``vmax - vmin``.
+
+    Returns:
+        A positive step.
+    """
+    try:
+        finite = np.asarray(arr, dtype=float)
+        finite = finite[np.isfinite(finite)]
+        if finite.size and np.all(finite == np.floor(finite)):
+            return 1.0
+    except (TypeError, ValueError):
+        pass
+    return float(span) / 100.0 or 1.0
+
+
 class FilterBuilder:
     """Builds Bokeh filter widgets with secure, parameterized CustomJS callbacks.
 
@@ -7315,7 +7335,10 @@ class FilterBuilder:
         vmin, vmax = float(arr.min()), float(arr.max())
         if vmin == vmax:
             vmax = vmin + 1.0
-        vstep = (vmax - vmin) / 100.0 or 1.0
+        # A range of whole numbers steps by 1.  (vmax - vmin) / 100.0 gave
+        # rep78, which takes the values 1..5, a step of 0.04, so the handle
+        # stopped at 1.04, 1.08, ... and a user could not select `2'.
+        vstep = _whole_number_step(arr, vmax - vmin)
 
         if _is_datetime_column(source, varname):
             if _is_clock_kind(date_kind):
@@ -7391,7 +7414,10 @@ class FilterBuilder:
         vmin, vmax = float(arr.min()), float(arr.max())
         if vmin == vmax:
             vmax = vmin + 1.0
-        vstep = (vmax - vmin) / 100.0 or 1.0
+        # A range of whole numbers steps by 1.  (vmax - vmin) / 100.0 gave
+        # rep78, which takes the values 1..5, a step of 0.04, so the handle
+        # stopped at 1.04, 1.08, ... and a user could not select `2'.
+        vstep = _whole_number_step(arr, vmax - vmin)
 
         if is_date:
             # Bokeh transports datetimes as epoch milliseconds, which is the
@@ -7484,13 +7510,25 @@ def _resolve_scheme_name(master_spec: dict) -> str:
     # A dashboard draws one page, so several graphs cannot each have
     # their own.  The first one wins and the rest are named, rather than
     # picking one of several user intentions without saying which.
+    # dash.ado emits a graph as
+    #     {"plots":[...], "graph_options":{...}, "if_expr":"", "in_expr":""}
+    # -- "options" is a PLOT key and appears on no graph it writes.  Reading
+    # "options" here made this whole branch dead against real output: it fired
+    # only for hand-built test fixtures, which is why the tests that covered
+    # it passed while `dash scatter mpg weight, scheme(economist)' still drew
+    # the session's scheme.  "options" is kept as a fallback so those fixtures
+    # keep working.
     _graph_schemes: list = []
     for _g in master_spec.get("graphs", []):
         if not isinstance(_g, dict):
             continue
-        _gs = str((_g.get("options") or {}).get("scheme", "")).strip()
+        _go = _g.get("graph_options") or _g.get("options") or {}
+        if not isinstance(_go, dict):
+            continue
+        _gs = str(_go.get("scheme", "") or "").strip()
         if _gs:
-            _graph_schemes.append((str(_g.get("name", "")), _gs))
+            _graph_schemes.append(
+                (str(_go.get("name", "") or _g.get("name", "")), _gs))
     _graph_scheme: str = _graph_schemes[0][1] if _graph_schemes else ""
     if len({_s for _n, _s in _graph_schemes}) > 1:
         _others = ", ".join(
@@ -11805,7 +11843,12 @@ class ServerAppBuilder:
         for _fn in (_stat_option_float, _fit_grid,
                     _stata_percentile, _stata_kde_bandwidth, _kde_curve,
                     _mband_default_bands, _stata_bin_count,
-                    _histogram_heights):
+                    _histogram_heights,
+                    # Stata's `if' grammar and its arithmetic operators.  The
+                    # standalone renderer translates both before parsing; this
+                    # file did neither, so `if inlist(rep78,1,2)' filtered
+                    # nothing and `function y = x^2' drew nothing at all.
+                    _stata_if_to_pandas, _stata_expr_to_python):
             out += _textwrap.dedent(
                 _inspect.getsource(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
@@ -12404,6 +12447,22 @@ class ServerAppBuilder:
             "",
             "",
             "# ---- Aggregate compute helpers ----",
+            "def _dash_slider_step(vmin, vmax, values):",
+            "    # A range of whole numbers steps by 1.  (vmax - vmin) / 100",
+            "    # gave rep78, which takes the values 1..5, a step of 0.04 --",
+            "    # so the handle stopped at 1.04, 1.08, ... and a user could",
+            "    # not select `2'.",
+            "    _span = float(vmax) - float(vmin)",
+            "    try:",
+            "        _arr = np.asarray(values, dtype=float)",
+            "        _arr = _arr[np.isfinite(_arr)]",
+            "        if _arr.size and np.all(_arr == np.floor(_arr)):",
+            "            return 1.0",
+            "    except (TypeError, ValueError):",
+            "        pass",
+            "    return (_span / 100.0) or 1.0",
+            "",
+            "",
             'def _compute_histogram(df, varname, options=None):',
             "    # The renderer's own grid and height rules.  This used to be",
             '    # np.histogram(data, bins=<int>) returning RAW COUNTS, so start() and',
@@ -12451,6 +12510,18 @@ class ServerAppBuilder:
             '    # 74-point fixture the band came out 0.0015 wide where the standalone',
             "    # renderer's is 1.39 -- a hairline drawn on the fit and labelled a",
             '    # confidence interval.  s = se_slope * sqrt(Sxx) recovers it.',
+            '    if not _HAS_SCIPY:',
+            '        # scipy is optional.  These two were the only places the',
+            '        # generated app still hard-required it, and the exception',
+            '        # escaped make_document -- so a user without scipy got no',
+            '        # dashboard at all, where the standalone path draws an',
+            '        # empty band and warns.',
+            '        warnings.warn(',
+            '            "dash: a confidence band needs scipy, which could not "',
+            '            "be imported; the band is drawn empty. Run dash_setup.",',
+            '            UserWarning,',
+            '        )',
+            '        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])',
             '    from scipy import stats as _sp_stats',
             '    clean = df[list(dict.fromkeys([xvar, yvar]))].dropna()',
             '    x = clean[xvar].values.astype(float)',
@@ -12503,6 +12574,18 @@ class ServerAppBuilder:
             '    # are 1, ~3e3 and ~1e7 and the pseudo-inverse discards a real singular',
             '    # value.  This emitted a FLAT band of width t * sd(residuals), which is',
             '    # not a confidence interval for the mean at all.',
+            '    if not _HAS_SCIPY:',
+            '        # scipy is optional.  These two were the only places the',
+            '        # generated app still hard-required it, and the exception',
+            '        # escaped make_document -- so a user without scipy got no',
+            '        # dashboard at all, where the standalone path draws an',
+            '        # empty band and warns.',
+            '        warnings.warn(',
+            '            "dash: a confidence band needs scipy, which could not "',
+            '            "be imported; the band is drawn empty. Run dash_setup.",',
+            '            UserWarning,',
+            '        )',
+            '        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])',
             '    from scipy import stats as _sp_stats',
             '    clean = df[list(dict.fromkeys([xvar, yvar]))].dropna()',
             '    x = clean[xvar].values.astype(float)',
@@ -12942,7 +13025,7 @@ class ServerAppBuilder:
             "                g_df = g_df.iloc[_g_lo:_g_hi].copy()",
             "        _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
             "        if _g_if:",
-            "            _g_px = _g_if.replace('~=', '!=')",
+            "            _g_px = _stata_if_to_pandas(_g_if.replace('~=', '!='))",
             "            if _safe_g(_g_px, g_df.columns):",
             "                try: g_df = g_df.query(_g_px, engine='python')",
             "                except Exception: pass",
@@ -13964,7 +14047,11 @@ class ServerAppBuilder:
             "            elif ptype == 'function':",
             "                import ast as _ast",
             "                import math as _math",
-            "                pexpr = plot.get('expr', '')",
+            "                # Stata's ^ is exponentiation; Python's is XOR.",
+            "                # Translate before parsing, as the standalone",
+            "                # renderer does -- the AST whitelist then sees the",
+            "                # rewritten text, so nothing is loosened.",
+            "                pexpr = _stata_expr_to_python(plot.get('expr', ''))",
             "                opts = plot.get('options', {})",
             "                x_lo, x_hi = 0.0, 1.0",
             "                n_pts = 300",
@@ -14100,7 +14187,7 @@ class ServerAppBuilder:
             "                _by_q_df = _by_q_df.iloc[_by_lo:_by_hi].copy()",
             "        _by_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
             "        if _by_if:",
-            "            _by_px = _by_if.replace('~=', '!=')",
+            "            _by_px = _stata_if_to_pandas(_by_if.replace('~=', '!='))",
             "            if _safe_g(_by_px, _by_q_df.columns):",
             "                try: _by_q_df = _by_q_df.query(_by_px, engine='python')",
             "                except Exception: pass",
@@ -14414,6 +14501,14 @@ class ServerAppBuilder:
             "        fvar = fspec['var']",
             "        ftype = fspec['type']",
             "        fexcl = fspec.get('exclude', [])",
+            "        # The explicit label(), then the Stata variable label,",
+            "        # then the bare name -- the same three steps the",
+            "        # standalone renderer resolves a widget title by.  This",
+            "        # file read only the last two, so",
+            "        # filter(rep78, label(\"Repair record\")) showed up",
+            "        # titled `rep78'.",
+            "        _ftitle = (str(fspec.get('label', '') or '').strip()",
+            "                   or var_labels.get(fvar, fvar))",
             "        if fvar not in df.columns:",
             "            continue",
             "        if ftype == 'dropdown':",
@@ -14434,7 +14529,7 @@ class ServerAppBuilder:
             "                for v in uniq",
             "            ]",
             "            widget = Select(",
-            "                title=var_labels.get(fvar, fvar),",
+            "                title=_ftitle,",
             "                value=_sent,",
             "                options=opts,",
             "            )",
@@ -14464,10 +14559,10 @@ class ServerAppBuilder:
             "                continue",
             "            if vmin == vmax: vmax = vmin + 1.0",
             "            widget = RangeSlider(",
-            "                title=var_labels.get(fvar, fvar),",
+            "                title=_ftitle,",
             "                start=vmin, end=vmax,",
             "                value=(vmin, vmax),",
-            "                step=(vmax - vmin) / 100,",
+            "                step=_dash_slider_step(vmin, vmax, df[fvar].values),",
             "            )",
             "            widget._dash_var = fvar",
             "            widget._dash_exclude = fexcl",
@@ -14494,9 +14589,9 @@ class ServerAppBuilder:
             "                continue",
             "            if vmin == vmax: vmax = vmin + 1.0",
             "            widget = Slider(",
-            "                title=var_labels.get(fvar, fvar),",
+            "                title=_ftitle,",
             "                start=vmin, end=vmax, value=vmin,",
-            "                step=(vmax - vmin) / 100,",
+            "                step=_dash_slider_step(vmin, vmax, df[fvar].values),",
             "            )",
             "            widget._dash_var = fvar",
             "            widget._dash_exclude = fexcl",
@@ -14594,7 +14689,7 @@ class ServerAppBuilder:
             "                            if type(nd) not in _ALLOW_CB: return False",
             "                            if isinstance(nd, _ast_cb.Name) and nd.id not in cs and nd.id not in _SNAMES_CB: return False",
             "                        return True",
-            "                    _px_cb = _if_cb.replace('~=', '!=')",
+            "                    _px_cb = _stata_if_to_pandas(_if_cb.replace('~=', '!='))",
             "                    if _safe_g_cb(_px_cb, _gdf.columns):",
             "                        try: _gdf = _gdf.query(_px_cb, engine='python')",
             "                        except Exception: pass",

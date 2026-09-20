@@ -1322,6 +1322,16 @@ program define _dash_report_ignored
     // verbatim text Stata could not match (unknown, from the trailing *).  Cut
     // each token at its opening parenthesis so the user sees option names, not
     // the values they supplied.
+    // Walk the string with paren depth, so an option's argument is consumed
+    // with its key.  `foreach tok of local raw' splits on whitespace and
+    // parentheses are not grouping characters to it, so an unknown option
+    // carrying a multi-word argument was reported as several options:
+    //     dash scatter y x, addplot(line y2 x)
+    //     dash: ignoring unsupported option(s): addplot() y2() x)()
+    // naming two options that do not exist.
+    mata: _dash_option_names("raw", "_dash_optnames")
+    local raw `"`_dash_optnames'"'
+
     local seen ""
     local out  ""
     foreach tok of local raw {
@@ -1386,9 +1396,19 @@ program define _dash_plot
               subtitle2 nodraw play {
             if `"`s(`gk')'"' != "" local g_`gk' `"`s(`gk')'"'
         }
+        // The graph-level options dash cannot honour, captured HERE.
+        //
+        // _dash_parse_graph_opts sreturns them, and nothing read them: the
+        // accumulator was initialised to "" just below, and the first thing
+        // the segment loop does is `sreturn clear', which destroys s().  So
+        // in paren mode -- `dash (scatter y x) (line y x), fxsize(30)' --
+        // an unsupported graph-level option was dropped in complete
+        // silence, which is the one thing the reporter exists to prevent,
+        // while the identical option in comma mode was named correctly.
+        local _dash_gopt_ignored `"`s(_pending)' `s(_unknown)'"'
     }
 
-    local _dash_ignored_acc ""
+    local _dash_ignored_acc `"`_dash_gopt_ignored'"'
 
     // ---- Parse each plot segment ----
     local plots_json ""

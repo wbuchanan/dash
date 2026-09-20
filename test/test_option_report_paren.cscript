@@ -1,0 +1,107 @@
+*! test_option_report_paren.cscript
+*! Certification: the unsupported-option note in paren mode, and its wording.
+*!
+*! Usage:  do test/test_option_report_paren.cscript
+*!
+*! Requires: dash_setup completed (jsonio).
+*! Version: 1.0.0  20sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! Two defects in the reporter, both in the paren/`||' form.
+*!
+*! 1. GRAPH-LEVEL OPTIONS WERE DROPPED IN SILENCE.
+*!    _dash_parse_graph_opts sreturns s(_pending) and s(_unknown), and
+*!    _dash_plot read neither: it initialised the accumulator to "" and the
+*!    first thing the segment loop did was `sreturn clear'.  So
+*!        dash (scatter mpg weight) (lfit mpg weight), fxsize(30)
+*!    named nothing, while the identical option in comma mode
+*!        dash scatter mpg weight, fxsize(30)
+*!    was named correctly.  A silent drop is the one thing this mechanism
+*!    exists to prevent.
+*!
+*! 2. AN OPTION'S ARGUMENT BECAME EXTRA OPTION NAMES.
+*!    _dash_report_ignored split with `foreach tok of local raw', which
+*!    splits on whitespace; parentheses do not group.  So an undeclared
+*!    option with a multi-word argument was reported as several:
+*!        dash scatter mpg weight, addplot(line price weight)
+*!        dash: ignoring unsupported option(s): addplot() price() weight)()
+*!    naming two options that do not exist.
+
+cscript "option report paren mode" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+qui do "../dash.ado"
+do "cert_helpers.do"
+
+global dash_nobrowser 1
+
+// A named log is how the note itself can be inspected.
+local logfile "`c(tmpdir)'dash_option_report.log"
+
+program define _dash_note_for, rclass
+    version 16.0
+    args cmdtext logpath
+    capture log close _optlog
+    capture erase "`logpath'"
+    log using "`logpath'", name(_optlog) text replace
+    capture noisily `cmdtext'
+    log close _optlog
+end
+
+// ---------------------------------------------------------------
+// 1. comma mode still names an unsupported graph-level option
+// ---------------------------------------------------------------
+sysuse auto, clear
+dash clear
+_dash_note_for `"dash scatter mpg weight, name(c1) fxsize(30)"' "`logfile'"
+cert_file_has "`logfile'", needle("fxsize()")
+assert r(found) == 1
+
+display as result "  [1/4] comma mode names it: PASS"
+
+// ---------------------------------------------------------------
+// 2. paren mode names it too
+// ---------------------------------------------------------------
+dash clear
+_dash_note_for `"dash (scatter mpg weight) (lfit mpg weight), name(p1) fxsize(30)"' "`logfile'"
+cert_file_has "`logfile'", needle("fxsize()")
+assert r(found) == 1
+
+display as result "  [2/4] paren mode names it: PASS"
+
+// ---------------------------------------------------------------
+// 3. an undeclared option with a multi-word argument is ONE name
+// ---------------------------------------------------------------
+dash clear
+_dash_note_for `"dash scatter mpg weight, name(m1) addplot(line price weight)"' "`logfile'"
+cert_file_has "`logfile'", needle("addplot()")
+assert r(found) == 1
+// the argument's words must NOT appear as option names
+cert_file_has "`logfile'", needle("price()")
+assert r(found) == 0
+cert_file_has "`logfile'", needle("weight)()")
+assert r(found) == 0
+
+display as result "  [3/4] an argument is not reported as options: PASS"
+
+// ---------------------------------------------------------------
+// 4. a quoted argument containing a paren cannot unbalance the scan
+// ---------------------------------------------------------------
+dash clear
+_dash_note_for `"dash scatter mpg weight, name(q1) addplot(line price weight) play(x)"' "`logfile'"
+cert_file_has "`logfile'", needle("addplot()")
+assert r(found) == 1
+cert_file_has "`logfile'", needle("play()")
+assert r(found) == 1
+
+display as result "  [4/4] several unsupported options are all named: PASS"
+
+capture program drop _dash_note_for
+dash clear
+display as result "test_option_report_paren.cscript: ALL PASS"

@@ -906,6 +906,87 @@ void _dash_json_get_str(string scalar json_str,
     st_local(out_macro, value)
 }
 
+// ---------------------------------------------------------------------
+// _dash_option_names — the option NAMES in a raw option string.
+//
+// `_dash_report_ignored' used to split its input with
+//     foreach tok of local raw
+// which splits on whitespace.  Parentheses are not grouping characters to
+// Stata's list handling, so an unsupported option carrying a multi-word
+// argument was reported as several options:
+//
+//     dash scatter y x, addplot(line y2 x)
+//     dash: ignoring unsupported option(s): addplot() y2() x)()
+//
+// naming two options that do not exist.  This walks the string tracking
+// paren depth and emits one token per option, its argument consumed with
+// it.  A `(' inside a quoted argument does not open a group, so
+// label("a (b") cannot unbalance the scan.
+// ---------------------------------------------------------------------
+// The bare option NAME of one token, with a leading space, or "".
+//
+// The truncation happens HERE, not on the Stata side: `foreach tok of local'
+// re-splits the macro's value on whitespace, so returning
+// `addplot(line price weight)' as one token achieved nothing -- Stata took it
+// apart again.  Names contain no spaces, so a list of names survives.
+string scalar _dash_optname_of(string scalar tok)
+{
+    string scalar t
+    real scalar   ppos
+
+    t = strtrim(tok)
+    if (t == "") return("")
+    ppos = strpos(t, "(")
+    if (ppos > 0) t = strtrim(substr(t, 1, ppos - 1))
+    if (t == "") return("")
+    return(" " + t)
+}
+
+void _dash_option_names(string scalar in_macro, string scalar out_macro)
+{
+    string scalar raw, out, tok, ch, quote
+    real scalar i, n, depth, inq
+
+    raw   = st_local(in_macro)
+    n     = strlen(raw)
+    out   = ""
+    tok   = ""
+    depth = 0
+    inq   = 0
+    quote = char(34)
+
+    for (i = 1; i <= n; i++) {
+        ch = substr(raw, i, 1)
+
+        if (ch == quote) {
+            inq = !inq
+            tok = tok + ch
+            continue
+        }
+        if (inq) {
+            tok = tok + ch
+            continue
+        }
+        if (ch == "(") {
+            depth++
+            tok = tok + ch
+            continue
+        }
+        if (ch == ")") {
+            if (depth > 0) depth--
+            tok = tok + ch
+            continue
+        }
+        if (depth == 0 & (ch == " " | ch == char(9))) {
+            out = out + _dash_optname_of(tok)
+            tok = ""
+            continue
+        }
+        tok = tok + ch
+    }
+    out = out + _dash_optname_of(tok)
+
+    st_local(out_macro, strtrim(out))
+}
+
 end
-
-

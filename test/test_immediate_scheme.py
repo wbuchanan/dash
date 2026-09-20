@@ -25,12 +25,19 @@ import dash_render as dr
 from conftest import make_data_json
 
 
-def _render(tmp_path, build_options, graph_options):
+def _render(tmp_path, build_options, graph_options, key="graph_options"):
+    """Render one graph.
+
+    `key' is which JSON key the graph's options live under.  dash.ado writes
+    "graph_options"; an earlier version of this test used "options", which is
+    a PLOT key, so every assertion here passed against a shape dash never
+    emits while the real command still drew the wrong scheme.
+    """
     graph = {
         "name": "g1",
         "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
                    "options": {}}],
-        "options": graph_options,
+        key: dict(graph_options, name="g1"),
     }
     spec = tmp_path / "spec.json"
     data = tmp_path / "data.json"
@@ -96,3 +103,36 @@ class TestGraphLevelScheme:
         with pytest.warns(UserWarning, match="scheme"):
             r = dr.DashRenderer(str(spec), str(data))
         assert r.scheme.name == "economist"
+
+
+class TestTheKeyDashAdoActuallyWrites:
+    """dash.ado emits "graph_options"; "options" belongs to a plot."""
+
+    def test_graph_options_is_read(self, tmp_path):
+        r = _render(tmp_path, dict(IMMEDIATE), {"scheme": "economist"},
+                    key="graph_options")
+        assert r.scheme.name == "economist"
+
+    def test_options_still_works_for_older_specs(self, tmp_path):
+        r = _render(tmp_path, dict(IMMEDIATE), {"scheme": "economist"},
+                    key="options")
+        assert r.scheme.name == "economist"
+
+    def test_the_shape_dash_ado_writes_end_to_end(self, tmp_path):
+        """The literal graph object dash.ado assembles (dash.ado:1482)."""
+        import json as _json
+
+        import pandas as _pd
+
+        graph = {"plots": [{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}],
+                 "graph_options": {"name": "g1", "scheme": "economist"},
+                 "if_expr": "", "in_expr": ""}
+        master = {"graphs": [graph], "build_options": dict(IMMEDIATE)}
+        spec = tmp_path / "real.json"
+        data = tmp_path / "realdata.json"
+        spec.write_text(_json.dumps(master))
+        df = _pd.DataFrame({"mpg": [22.0, 18.0], "weight": [2930.0, 3350.0]})
+        data.write_text(_json.dumps(make_data_json(df)))
+        assert dr._resolve_scheme_name(master) == "economist"
+        assert dr.DashRenderer(str(spec), str(data)).scheme.name == "economist"
