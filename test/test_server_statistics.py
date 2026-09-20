@@ -170,6 +170,62 @@ class TestLinearFit:
         assert float(np.nanmax(np.abs(on - srv["y"]))) <= 1e-6 * max(span, 1.0)
 
 
+class TestTheConfidenceBandIsTheRightWidth:
+    """`se` from scipy's linregress is the standard error of the SLOPE.
+
+    The emitted `_compute_lfitci` used it where the residual standard error
+    belongs, then multiplied by sqrt(n-2) to compensate. Measured on a
+    74-point fixture: standalone's mean 95% band width is 1.39, the server's
+    is 0.0015 — about 900 times too narrow, a hairline drawn on the fit and
+    labelled a confidence interval.
+    """
+
+    @pytest.mark.parametrize("level", ["50", "95", "99"])
+    def test_the_band_matches_standalone(self, tmp_path, level):
+        spec = _spec("lfitci", {"level": level})
+        srv = _pick(_server_sources(tmp_path, spec),
+                    "x_fit", "y_lower", "y_upper")
+        std = _pick(_standalone_sources(tmp_path, spec),
+                    "x_fit", "y_lower", "y_upper")
+        assert srv is not None and std is not None
+        sw = float(np.nanmean(srv["y_upper"] - srv["y_lower"]))
+        tw = float(np.nanmean(std["y_upper"] - std["y_lower"]))
+        assert abs(sw - tw) <= 0.02 * tw, (
+            f"level({level}): server band is {sw:.4f} wide, standalone "
+            f"{tw:.4f}"
+        )
+
+    def test_the_quadratic_band_matches_standalone(self, tmp_path):
+        spec = _spec("qfitci")
+        srv = _pick(_server_sources(tmp_path, spec),
+                    "x_fit", "y_lower", "y_upper")
+        std = _pick(_standalone_sources(tmp_path, spec),
+                    "x_fit", "y_lower", "y_upper")
+        assert srv is not None and std is not None
+        sw = float(np.nanmean(srv["y_upper"] - srv["y_lower"]))
+        tw = float(np.nanmean(std["y_upper"] - std["y_lower"]))
+        assert abs(sw - tw) <= 0.05 * tw, (
+            f"server qfitci band is {sw:.4f} wide, standalone {tw:.4f}"
+        )
+
+
+class TestLowess:
+    def test_the_default_fraction_is_statas_point_eight(self, tmp_path):
+        pytest.importorskip("statsmodels")
+        spec = _spec("lowess")
+        srv = _pick(_server_sources(tmp_path, spec), "x", "y")
+        std = _pick(_standalone_sources(tmp_path, spec), "x_lw", "y_lw")
+        assert srv is not None and std is not None
+        on = np.interp(srv["x"], std["x_lw"], std["y_lw"])
+        span = float(np.nanmax(std["y_lw"]) - np.nanmin(std["y_lw"]))
+        worst = float(np.nanmax(np.abs(on - srv["y"])))
+        assert worst <= 0.02 * span, (
+            f"served lowess differs from standalone by {worst:.4f} "
+            f"({100 * worst / span:.1f}% of its range) — the server is not "
+            f"using Stata's default bwidth(0.8)"
+        )
+
+
 class TestConfidenceLevel:
     def test_level_reaches_the_server_ci(self, tmp_path):
         wide = _server_sources(tmp_path, _spec("lfitci", {"level": "99"}))
