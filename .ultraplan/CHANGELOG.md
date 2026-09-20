@@ -1139,26 +1139,57 @@ the help's redirect to Stata's manual; an option only dash has is not.
 
 ### What the survey found that is not fixed here
 
-Stated plainly, because the section is where completion is claimed:
+Every item listed here when S16 closed has since been worked. What follows
+is the record of each, and what is left.
 
-- **S15-03's full collapse** — 38 `map_*` methods, 37 server `ptype`
-  branches and two facet loops reduced to one dispatch table — remains
-  undone. The parity test pins that the two implementations *agree*, not
-  that there is one of them.
-- **The conformance corpus still never renders.** Every probe appends
-  `name()`. `test_every_plot_type_draws.py` covers the plot-type half of
-  what a rendering corpus would catch; the option half is not covered.
-- **Ten of the 51 closed entries in `BUGS.md` have regression tests that
-  would stay green if the bug returned**, and one (#41, the rate limiter's
-  proxy bucket) was deliberately reverted by `7cff67f` to close a worse
-  hole, so its Resolution text no longer describes HEAD.
-- **86 of the 215 hardcoding-register items are still open**, most of them
-  in the generated app's emitted literals. The register's own total of 211
-  is a four-item miscount in the source audit.
-- **The standalone HTML embeds one full copy of the dataset per filter
-  widget**, so size is quadratic in the filter count: 100k rows with five
-  sliders produced 169.6 MB of HTML at 2.77 GB RSS, against 5.98 MB with no
-  filters. Nothing bounds or warns about dataset size in either mode.
-- `lfit` and `qfit` still evaluate on 200 points over a range padded 10%,
-  while `lfitci` and `qfitci` use Stata's 100 points over the observed
-  range, so the two disagree on identical data.
+**Done.**
+
+- **`lfit` and `qfit` evaluated on a padded 200-point grid** where `lfitci`
+  and `qfitci` use Stata's 100 points over the observed range, so the same
+  fit drew two different lines and `lfit` put fitted values on screen at an
+  x no observation reaches. All four call `_fit_grid` now, in both modes,
+  and `n()` reaches them.
+- **The standalone HTML embedded one full copy of the dataset per filter
+  widget**, quadratically. Measured on 8,000 rows by 6 columns: 1.63 MB with
+  no filters and 11.47 MB with five, now 4.27 MB. The snapshots are shared
+  ColumnDataSources, which Bokeh writes once and refers to by id.
+- **Nothing bounded or reported dataset size.** `_report_dataset_size` names
+  the observation count and the size it implies, once, in both modes, above
+  a million cells — well above every dataset that ships with Stata.
+- **Ten closed `BUGS.md` entries had regression tests that could not fail.**
+  Each is fixed and each fix was mutation-tested: the defect was
+  reintroduced and the tests confirmed to die. Three of them were Python
+  re-implementations of Stata logic, deleted in favour of cscript cases.
+  Entry #41 was not a defect but a stale record, now corrected.
+- **The conformance corpus never rendered.** `test_conformance.cscript`
+  registers 58 real twoway commands and renders them in one build, asserting
+  none is rejected, none draws nothing and none is dropped. The renderer
+  reports an empty layer and a missing graph so that those two assertions
+  have something to read. It found `tsrline` on tsset data immediately.
+- **86 of the 215 hardcoding-register items.** The remaining style literals
+  are gone from both renderers, `_CI_BAND_ALPHA` and `_WEBGL_THRESHOLD` are
+  named once and shared, and the retained constants say why they are
+  constants.
+- **S15-03's collapse.** The generated app carries the renderer's own
+  `GlyphMapper`, `OptionTranslator` and `SchemeParser`, copied by
+  `inspect.getsource`, and stays self-contained: the scheme arrives as a
+  property dict, so no `.scheme` file is read at run time. The app grows
+  from 4,128 lines to 9,603 and takes 667 ms to import, once per `dash
+  serve` process.
+
+**Left.**
+
+- **Only the scatter branch is delegated so far.** It was the proof that the
+  emitted layer works end to end, and it closed three drifts at once — the
+  branch had been re-implementing `map_scatter` down to its own marker-size
+  map and mlabel offsets. The remaining 45 branches still hold their own
+  drawing code. The parity corpus is the guard on them meanwhile: 176
+  assertions across 21 cases, comparing every glyph property and every
+  annotation, plus a bytecode check that no copied helper has lost a callee.
+- **The `_MAX_IPS` eviction in the served rate limiter** is still an
+  eviction primitive: one machine cycling 10,000 forwarded keys took 300
+  sessions inside a 60-second window against a nominal 60. It needs a
+  different structure, not a larger cap.
+- **A dropdown filter on a continuous variable** emits one option per
+  distinct value with no cap — 200,001 options on 200,000 observations.
+- **`by()` has no group cap**: `by(id)` builds one figure per value.
