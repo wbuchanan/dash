@@ -2176,6 +2176,33 @@ def _apply_jitter(
     return x_arr + x_noise, y_arr + y_noise
 
 
+def _with_color_alias(options: dict, specific: str) -> dict:
+    """Let Stata's generic ``color()`` stand in for a specific colour option.
+
+    ``color(colorstyle)`` is Stata's series colour: the marker colour on
+    ``scatter``, the line colour on ``line``, the fill on ``bar`` and
+    ``area``. dash read it in five mappers -- area, bar, histogram, dropline
+    and rcapsym -- and nowhere else, so ``dash scatter mpg weight,
+    color(navy)`` drew the scheme's colour and reported color() as an option
+    it had ignored. The same option on ``bar`` was honoured, and reported
+    ignored just the same.
+
+    The specific spelling always wins: a user who wrote both ``color()`` and
+    ``mcolor()`` meant the second to be the marker colour.
+
+    Args:
+        options:  Translated plot-level options.
+        specific: The option ``color()`` stands in for here.
+
+    Returns:
+        *options* unchanged, or a copy carrying *specific*.
+    """
+    generic = str(options.get("color", "") or "").strip()
+    if generic and not str(options.get(specific, "") or "").strip():
+        return dict(options, **{specific: generic})
+    return options
+
+
 def _jitter_seed(options: dict) -> "int | None":
     """Return the jitter RNG seed a plot asked for, under either spelling.
 
@@ -2543,6 +2570,10 @@ class GlyphMapper:
     ) -> None:
         """Apply lcolor/lwidth/lpattern/lalpha options to a line-type glyph renderer."""
         glyph = renderer.glyph
+        # A bar's own blcolor() is applied by map_bar just before this call,
+        # so color() must not stand in for lcolor() and overwrite it.
+        if not str(options.get("blcolor", "") or "").strip():
+            options = _with_color_alias(options, "lcolor")
         if "lcolor" in options:
             if OptionTranslator._means_no_color(options["lcolor"]):
                 # Stata draws nothing; this used to resolve through the
@@ -2596,6 +2627,7 @@ class GlyphMapper:
         because it is applied last.
         """
         glyph = renderer.glyph
+        options = _with_color_alias(options, "mcolor")
         # Handle generic 'm → marker' abbreviation as msymbol alias
         if "marker" in options and "msymbol" not in options:
             try:
