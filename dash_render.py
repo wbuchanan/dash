@@ -11883,17 +11883,27 @@ class ServerAppBuilder:
                 _inspect.getsource(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
 
-        # Three of them are staticmethods on GlyphMapper.  Their bodies
-        # reference no self or cls, so dropping the decorator makes each a
-        # module-level function of the same name -- again the SAME text.
+        # Four of them are staticmethods on a class.  Their bodies reference
+        # no self or cls, so dropping the decorator makes each a module-level
+        # function of the same name -- again the SAME text.
+        #
+        # _kpi_statistic is here because `dash kpi' accepts fifteen statistics
+        # (dash.ado's `valid_stats') and the hand-written copy this file used
+        # to carry knew ten.  var(), cv(), iqr() and skewness() each drew a
+        # card reading `.' under `dash serve' and a number under `dash build',
+        # p25/p75 disagreed because the copy used pandas' linear interpolation
+        # rather than Stata's percentile, and `count' over a filtered-to-empty
+        # selection read `.' where standalone reads 0.
         for _sm in (GlyphMapper._histogram_grid,
                     GlyphMapper._default_lpoly_bwidth,
-                    GlyphMapper._compute_lpoly_fit):
+                    GlyphMapper._compute_lpoly_fit,
+                    DashRenderer._kpi_statistic):
             _lines = _textwrap.dedent(
                 _inspect.getsource(_sm)).rstrip("\n").split("\n")
             while _lines and _lines[0].strip().startswith("@"):
                 _lines = _lines[1:]
-            _lines = [_l.replace("GlyphMapper._", "_") for _l in _lines]
+            _lines = [_l.replace("GlyphMapper._", "_")
+                       .replace("DashRenderer._", "_") for _l in _lines]
             out += _lines + ["", ""]
 
         # Whatever module-level CONSTANTS those bodies reference must come
@@ -12903,22 +12913,20 @@ class ServerAppBuilder:
             "",
             "",
             "def _compute_kpi(df, stat, varname):",
-            '    """Compute a KPI statistic from df[varname]. Returns float."""',
-            "    series = df[varname].dropna() if varname in df.columns else pd.Series([], dtype=float)",
-            "    if len(series) == 0:",
+            '    """Compute a KPI statistic from df[varname]. Returns float.',
+            "",
+            "    Delegates to _kpi_statistic, which is the standalone",
+            "    renderer's own function copied in verbatim above -- so a",
+            "    served card and a saved one cannot compute differently.",
+            "    An unknown statistic raises there and is reported as a",
+            "    missing value here, exactly as an empty column is.",
+            '    """',
+            "    try:",
+            "        series = (df[varname].dropna() if varname in df.columns",
+            "                  else pd.Series([], dtype=float))",
+            "        return float(_kpi_statistic(series, stat))",
+            "    except Exception:",
             "        return float('nan')",
-            "    stat = stat.lower()",
-            "    if stat == 'mean':   return float(series.mean())",
-            "    if stat == 'sum':    return float(series.sum())",
-            "    if stat == 'count':  return float(len(series))",
-            "    if stat == 'dcount': return float(series.nunique())",
-            "    if stat == 'min':    return float(series.min())",
-            "    if stat == 'max':    return float(series.max())",
-            "    if stat == 'sd':     return float(series.std(ddof=1))",
-            "    if stat in ('median', 'p50'): return float(series.median())",
-            "    if stat == 'p25':    return float(series.quantile(0.25))",
-            "    if stat == 'p75':    return float(series.quantile(0.75))",
-            "    return float('nan')",
             "",
             "",
             "def _format_kpi(value, fmt_str):",
