@@ -583,6 +583,20 @@ class TestHistogramDefaults:
             f"bar areas sum to {area}, not 1 — the default is raw counts"
         )
 
+    def test_explicit_density_is_honoured(self):
+        """density() names the default, so it must still BE the default.
+
+        Its three siblings each change the output and so were each found to
+        be live; density() alone renders identically whether written or
+        omitted, which is why dash.ado went on naming it in the
+        ignoring-unsupported note long after _histogram_grid began reading
+        it. See test_unsupported_report_is_true.py for that guard.
+        """
+        top, left, right = self._hist(2000, {"density": "density"},
+                                      lo=0.0, hi=100.0)
+        area = float(np.sum(top * (right - left)))
+        assert area == pytest.approx(1.0, abs=1e-9)
+
     def test_frequency_gives_counts(self):
         top, _, _ = self._hist(2000, {"frequency": "frequency"})
         assert float(np.sum(top)) == pytest.approx(2000.0)

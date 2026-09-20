@@ -31,6 +31,7 @@ default — so a live option looked dead. Two non-default values have no such
 trap.
 """
 import hashlib
+import inspect
 import json
 import os
 import re
@@ -222,4 +223,51 @@ def test_a_graph_option_reported_unsupported_really_is(tmp_path, opt):
     assert first == second, (
         f"dash reports graph-level {opt}() as unsupported, but {how} changes "
         f"the rendered dashboard — the note names an option that works"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A flag that NAMES the default cannot be measured by present-against-absent.
+# ---------------------------------------------------------------------------
+#
+# `density' is the histogram's default y axis, so rendering with it and
+# rendering without it give the same document -- and the comparisons above
+# therefore certify it as ignored whatever the renderer does with it. That is
+# how it stayed on the pending list while `_histogram_grid' was reading it, so
+#
+#     . dash histogram mpg, density
+#     dash: ignoring unsupported option(s): density()
+#
+# drew a density and then said density() had been ignored. Its three siblings
+# -- frequency, percent, fraction -- each change the output, so each was found
+# and taken off the list; density alone was invisible to that method.
+#
+# The discriminating question is not whether the output moves but whether the
+# renderer READS the option. This takes the y-axis family straight out of
+# `_histogram_grid' rather than listing it here, so a fifth member cannot be
+# added to the renderer and left off this guard.
+
+
+def _ymode_flags() -> "list[str]":
+    """The y-axis flags `_histogram_grid' reads, read out of its own source."""
+    src = inspect.getsource(dr.GlyphMapper._histogram_grid)
+    m = re.search(r"for flag in \(([^)]*)\):", src)
+    if not m:
+        return []
+    return sorted(re.findall(r'"(\w+)"', m.group(1)))
+
+
+def test_the_y_axis_family_was_actually_found():
+    """Guards the guard: a moved loop must fail here, not silently pass."""
+    assert _ymode_flags() == ["density", "fraction", "frequency", "percent"], (
+        "the y-axis flag tuple is no longer where _ymode_flags looks for it, "
+        "so the checks below would vacuously pass"
+    )
+
+
+@pytest.mark.parametrize("flag", _ymode_flags() or ["NOT_FOUND"])
+def test_a_histogram_y_axis_flag_is_never_reported_unsupported(flag):
+    assert flag not in _plot_pending(), (
+        f"_histogram_grid reads {flag}() and sets the y axis from it, but "
+        f"dash.ado still names {flag}() in the ignoring-unsupported note"
     )

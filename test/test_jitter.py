@@ -240,3 +240,179 @@ class TestJitterHtmlIntegration:
         """No jitter → no _x_jit column in output."""
         html_str = self._render({})
         assert "_x_jit" not in html_str
+
+
+# ============================================================
+# Stata spells the seed jitterseed(); dash read only its own jseed()
+# ============================================================
+#
+# `twoway scatter' takes jitter(#) and jitterseed(#). There is no jseed() in
+# Stata -- that spelling is dash's own. `_build_jitter_source' read the dash
+# spelling and nothing else, and dash.ado put jitterseed on the
+# ignoring-unsupported list, so a command pasted straight out of a Stata
+# do-file:
+#
+#     . dash scatter mpg weight, jitter(5) jitterseed(12345)
+#     dash: ignoring unsupported option(s): jitterseed()
+#
+# drew jitter from an unseeded generator -- a different cloud of points on
+# every render of the same command -- while reporting the seed as dropped.
+# Reproducibility is the entire purpose of the option.
+
+class TestStatasOwnSeedSpelling:
+    """The discriminating question is whether the SAME seed repeats.
+
+    Two *different* seeds give two different clouds whether or not the seed
+    is read at all, because an unread seed leaves the generator unseeded and
+    unseeded draws differ anyway. Only "the same seed twice" separates a seed
+    that works from one that is ignored.
+
+    The jittered values live in the source's ``_x_jit``/``_y_jit`` columns,
+    not in the original ones -- ``_build_jitter_source`` returns the effective
+    names alongside the source. Reading the original column compares an
+    untouched array against itself and passes no matter what.
+    """
+
+    @staticmethod
+    def _cloud(gm, df, options):
+        src = _make_source(df, "weight", "mpg")
+        out, eff_x, eff_y = gm._build_jitter_source(
+            src, "weight", "mpg", options)
+        return (np.asarray(out.data[eff_x], dtype=float),
+                np.asarray(out.data[eff_y], dtype=float))
+
+    def test_the_jittered_columns_are_not_the_originals(self, gm, auto_df):
+        """Guards the guard: if this stops holding, the checks below go blind."""
+        src = _make_source(auto_df, "weight", "mpg")
+        _out, eff_x, eff_y = gm._build_jitter_source(
+            src, "weight", "mpg", {"jitter": "5", "jseed": "1"})
+        assert (eff_x, eff_y) != ("weight", "mpg"), (
+            "jitter now writes back into the original columns; the seed "
+            "checks below must be re-pointed or they compare an untouched "
+            "array against itself"
+        )
+
+    def test_jitterseed_makes_jitter_reproducible(self, gm, auto_df):
+        a = self._cloud(gm, auto_df, {"jitter": "5", "jitterseed": "12345"})
+        b = self._cloud(gm, auto_df, {"jitter": "5", "jitterseed": "12345"})
+        np.testing.assert_allclose(
+            a[0], b[0],
+            err_msg="jitterseed() -- Stata's own spelling -- is not seeding "
+                    "the generator, so the same command draws a different "
+                    "cloud every time it is run",
+        )
+        np.testing.assert_allclose(a[1], b[1])
+
+    def test_an_unseeded_jitter_really_is_unseeded(self, gm, auto_df):
+        """Establishes that the check above can fail at all."""
+        a = self._cloud(gm, auto_df, {"jitter": "5"})
+        b = self._cloud(gm, auto_df, {"jitter": "5"})
+        assert not np.allclose(a[0], b[0]), (
+            "jitter with no seed is reproducible, so seeding it could not be "
+            "measured by repeating a render"
+        )
+
+    def test_the_dash_spelling_still_works(self, gm, auto_df):
+        """jseed() is documented, so it stays accepted."""
+        a = self._cloud(gm, auto_df, {"jitter": "5", "jseed": "7"})
+        b = self._cloud(gm, auto_df, {"jitter": "5", "jseed": "7"})
+        np.testing.assert_allclose(a[0], b[0])
+
+    def test_the_two_spellings_agree(self, gm, auto_df):
+        """The same seed under either name must give the same jitter."""
+        a = self._cloud(gm, auto_df, {"jitter": "5", "jseed": "99"})
+        b = self._cloud(gm, auto_df, {"jitter": "5", "jitterseed": "99"})
+        np.testing.assert_allclose(
+            a[0], b[0],
+            err_msg="jseed(99) and jitterseed(99) give different jitter",
+        )
+
+    def test_jseed_wins_when_both_are_given(self, gm, auto_df):
+        """An explicit dash spelling is not silently overridden."""
+        a = self._cloud(gm, auto_df,
+                        {"jitter": "5", "jseed": "4", "jitterseed": "5"})
+        b = self._cloud(gm, auto_df, {"jitter": "5", "jseed": "4"})
+        np.testing.assert_allclose(a[0], b[0])
+
+    def test_jitterseed_is_not_reported_as_unsupported(self):
+        """dash.ado must not name an option the renderer honours."""
+        import re as _re
+        with open(os.path.join(os.path.dirname(__file__), "..", "dash.ado"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        i = src.index("program define _dash_parse_plot_opts")
+        j = src.index("local _dash_unknown", i)
+        pending = _re.findall(r"_dash_pending' (\w+)\"", src[i:j])
+        assert "jitterseed" not in pending, (
+            "jitterseed() seeds the jitter, but dash.ado still names it in "
+            "the ignoring-unsupported note"
+        )
+
+
+class TestEverySeedSiteReadsBothSpellings:
+    """Five places read the seed; one fix to one of them is not a fix.
+
+    ``map_scatter`` went through ``_build_jitter_source``, but ``map_dropline``
+    and ``map_scatteri`` each read ``options["jseed"]`` themselves, the
+    bootstrap bands read it through ``_resolve_seed``, and the generated
+    server app emits its own copy. Stata's ``jitterseed()`` reached none of
+    them.
+    """
+
+    def test_dropline_honours_jitterseed(self, gm, auto_df):
+        from bokeh.plotting import figure
+        src = _make_source(auto_df, "weight", "mpg")
+
+        def cloud():
+            rs = gm.map_dropline(figure(), src, "mpg", "weight",
+                                 {"jitter": "5", "jitterseed": "31"})
+            return np.asarray(rs[0].data_source.data["x"], dtype=float)
+
+        np.testing.assert_allclose(
+            cloud(), cloud(),
+            err_msg="map_dropline ignores jitterseed(), so the same command "
+                    "draws a different figure every render",
+        )
+
+    def test_scatteri_honours_jitterseed(self, gm):
+        from bokeh.plotting import figure
+
+        def cloud():
+            r = gm.map_scatteri(
+                figure(),
+                [[1.0, 10.0], [2.0, 20.0], [3.0, 30.0], [4.0, 40.0]],
+                {"jitter": "5", "jitterseed": "31"})
+            src = r[0].data_source if isinstance(r, list) else r.data_source
+            return np.asarray(src.data["x"], dtype=float)
+
+        np.testing.assert_allclose(
+            cloud(), cloud(),
+            err_msg="map_scatteri ignores jitterseed()",
+        )
+
+    def test_the_bootstrap_seed_reads_jitterseed(self):
+        import dash_render as _dr
+        assert _dr._resolve_seed({"jitterseed": "7"}, default=42) == 7, (
+            "a resampling layer ignores jitterseed(), so it always "
+            "bootstraps on seed 42"
+        )
+        assert _dr._resolve_seed({"jseed": "7"}, default=42) == 7
+        assert _dr._resolve_seed({}, default=42) == 42
+        assert _dr._resolve_seed({"jseed": "not a number"}, default=42) == 42
+
+    def test_a_non_numeric_seed_does_not_crash_dropline(self, gm, auto_df):
+        """`int(float(options["jseed"]))` raised on any non-numeric value."""
+        from bokeh.plotting import figure
+        src = _make_source(auto_df, "weight", "mpg")
+        gm.map_dropline(figure(), src, "mpg", "weight",
+                        {"jitter": "5", "jseed": "abc"})
+
+    def test_the_served_app_reads_jitterseed(self):
+        """The generated app emits its own seed read; it must read both."""
+        import inspect as _inspect
+        import dash_render as _dr
+        src = _inspect.getsource(_dr.ServerAppBuilder)
+        assert "jitterseed" in src, (
+            "the generated server app never mentions jitterseed(), so a "
+            "served figure jitters unseeded where a saved one does not"
+        )

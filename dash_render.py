@@ -2176,6 +2176,35 @@ def _apply_jitter(
     return x_arr + x_noise, y_arr + y_noise
 
 
+def _jitter_seed(options: dict) -> "int | None":
+    """Return the jitter RNG seed a plot asked for, under either spelling.
+
+    Stata's option is ``jitterseed(#)``; ``jseed(#)`` is dash's own shorthand
+    and the only one the code used to read. Five separate places read it --
+    ``_build_jitter_source``, ``map_dropline``, ``map_scatteri``,
+    ``_resolve_seed`` and the generated server app -- so a command pasted out
+    of a do-file drew an unseeded cloud, different on every render, while
+    dash reported ``jitterseed()`` as an option it had ignored.
+
+    ``jseed()`` wins when both are given: it is the more specific spelling
+    and the one a dash user wrote deliberately.
+
+    Args:
+        options: Translated plot-level options.
+
+    Returns:
+        The seed, or ``None`` when none was given or it was not a number.
+    """
+    for key in ("jseed", "jitterseed"):
+        raw = str(options.get(key, "") or "").strip()
+        if raw:
+            try:
+                return int(float(raw))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
 def _md_span(span: int) -> int:
     """The medium-breakpoint span for a cell whose large-breakpoint span is *span*.
 
@@ -2356,13 +2385,7 @@ class GlyphMapper:
         # Clamp to [1, 100]
         jitter_pct = min(100.0, jitter_pct)
 
-        seed_raw = options.get("jseed", "").strip()
-        seed_val: int | None = None
-        if seed_raw:
-            try:
-                seed_val = int(float(seed_raw))
-            except (ValueError, TypeError):
-                pass
+        seed_val: int | None = _jitter_seed(options)
 
         x_arr = np.asarray(source.data[xvar], dtype=float)
         y_arr = np.asarray(source.data[yvar], dtype=float)
@@ -5010,7 +5033,7 @@ class GlyphMapper:
         x_plot, y_plot = _apply_jitter(
             x_arr, y_arr,
             float(options.get("jitter", 0) or 0),
-            int(float(options["jseed"])) if "jseed" in options else None,
+            _jitter_seed(options),
         ) if options.get("jitter") else (x_arr, y_arr)
 
         dl_source = ColumnDataSource({
@@ -5173,14 +5196,8 @@ class GlyphMapper:
             except (ValueError, TypeError):
                 jitter_pct = 0.0
             if jitter_pct > 0:
-                seed_raw = options.get("jseed", "")
-                seed_val: int | None = None
-                if seed_raw:
-                    try:
-                        seed_val = int(float(seed_raw))
-                    except (ValueError, TypeError):
-                        pass
-                x_vals, y_vals = _apply_jitter(x_vals, y_vals, jitter_pct, seed_val)
+                x_vals, y_vals = _apply_jitter(
+                    x_vals, y_vals, jitter_pct, _jitter_seed(options))
 
         si_source = ColumnDataSource({"x": x_vals.tolist(), "y": y_vals.tolist()})
 
@@ -6185,17 +6202,13 @@ def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL) -> float:
 def _resolve_seed(options: dict, default: int = 42) -> int:
     """Return the RNG seed for a resampling layer.
 
-    ``jseed()`` is the only seed option dash declares; it seeds jitter and,
-    here, the bootstrap confidence bands, so a user who needs a different
-    resample draw can ask for one instead of always getting seed 42.
+    The seed option seeds jitter and, here, the bootstrap confidence bands,
+    so a user who needs a different resample draw can ask for one instead of
+    always getting seed 42. Stata spells it ``jitterseed()`` and dash also
+    accepts ``jseed()``; :func:`_jitter_seed` reads both.
     """
-    raw = options.get("jseed", "")
-    if str(raw).strip():
-        try:
-            return int(float(str(raw).strip()))
-        except (TypeError, ValueError):
-            pass
-    return default
+    seed = _jitter_seed(options)
+    return default if seed is None else seed
 
 
 def _stat_option_float(
@@ -13314,8 +13327,10 @@ class ServerAppBuilder:
             "                        _jitter_pct = 0.0",
             "                    if _jitter_pct > 0:",
             "                        import numpy as _jnp",
-            "                        _jseed_raw = opts.get('jseed', '')",
-            "                        _jseed = int(float(_jseed_raw)) if _jseed_raw else None",
+            "                        # Stata spells the seed jitterseed();",
+            "                        # jseed() is dash's own shorthand.",
+            "                        _jseed_raw = (str(opts.get('jseed', '') or '').strip()",
+            "                                      or str(opts.get('jitterseed', '') or '').strip())",
             "                        try: _jseed = int(float(_jseed_raw)) if _jseed_raw else None",
             "                        except (ValueError, TypeError): _jseed = None",
             "                        _jrng = _jnp.random.default_rng(_jseed)",
