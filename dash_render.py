@@ -2454,7 +2454,7 @@ class GlyphMapper:
         )
         line_r = fig.line(
             x=x_col, y=y_col, source=source,
-            line_color=color, line_width=2.0, legend_label=yvar,
+            line_color=color, line_width=self.scheme.default_line_width, legend_label=yvar,
         )
         self._apply_line_opts(line_r, options)
         self._apply_fill_opts(band_r, options)
@@ -3459,7 +3459,7 @@ class GlyphMapper:
             border_color = r.glyph.fill_color or "#aec7e8"
             border_source = ColumnDataSource({xvar: x_arr, yvar: y_arr})
             line_r = fig.line(x=xvar, y=yvar, source=border_source,
-                               line_color=border_color, line_width=1.5)
+                               line_color=border_color, line_width=self.scheme.default_line_width)
             self._apply_line_opts(line_r, options)
 
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
@@ -3607,7 +3607,7 @@ class GlyphMapper:
         _seg_kwargs: dict = dict(x0="x0", y0="y0", x1="x1", y1="y1",
                                   source=seg_source,
                                   line_color=self.scheme.default_color(color_idx, "scatter"),
-                                  line_width=1.5,
+                                  line_width=self.scheme.default_line_width,
                                   legend_label=yvar)
         if view is not None:
             _seg_kwargs["view"] = view
@@ -3665,7 +3665,7 @@ class GlyphMapper:
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0, line_dash="solid",
+                     line_width=self.scheme.default_line_width, line_dash="solid",
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -3712,7 +3712,7 @@ class GlyphMapper:
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0,
+                     line_width=self.scheme.default_line_width,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -3759,7 +3759,7 @@ class GlyphMapper:
                 source=empty_ci_src, fill_alpha=0.2, fill_color=_lfitci_color
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color=_lfitci_color, line_width=2.0,
+                              line_color=_lfitci_color, line_width=self.scheme.default_line_width,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -3838,7 +3838,7 @@ class GlyphMapper:
                 source=empty_ci_src, fill_alpha=0.2, fill_color=_qfitci_color
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
-                              line_color=_qfitci_color, line_width=2.0,
+                              line_color=_qfitci_color, line_width=self.scheme.default_line_width,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -3946,7 +3946,7 @@ class GlyphMapper:
         })
         r = fig.line(x="x_lw", y="y_lw", source=lw_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0,
+                     line_width=self.scheme.default_line_width,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -4138,7 +4138,7 @@ class GlyphMapper:
         })
         r = fig.line(x="x_lp", y="y_lp", source=lp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0,
+                     line_width=self.scheme.default_line_width,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -4180,7 +4180,7 @@ class GlyphMapper:
                 source=empty_src, fill_alpha=0.2, fill_color=_lpolyci_color,
             )
             line_r = fig.line(x="x_lp", y="y_lp", source=empty_src,
-                              line_color=_lpolyci_color, line_width=2.0,
+                              line_color=_lpolyci_color, line_width=self.scheme.default_line_width,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -4363,7 +4363,7 @@ class GlyphMapper:
         })
         r = fig.line(x="x_fp", y="y_fp", source=fp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0,
+                     line_width=self.scheme.default_line_width,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return r
@@ -4405,7 +4405,7 @@ class GlyphMapper:
                 source=empty_src, fill_alpha=0.2, fill_color=_fpfitci_color,
             )
             line_r = fig.line(x="x_fp", y="y_fp", source=empty_src,
-                              line_color=_fpfitci_color, line_width=2.0,
+                              line_color=_fpfitci_color, line_width=self.scheme.default_line_width,
                               legend_label=yvar)
             return [line_r, band_r]
 
@@ -4658,7 +4658,7 @@ class GlyphMapper:
         kd_source = ColumnDataSource({"x": x_range, "y": density})
         r = fig.line(x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0,
+                     line_width=self.scheme.default_line_width,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         # Tag renderer so DashRenderer can wire filter-callback recomputation.
@@ -4795,7 +4795,7 @@ class GlyphMapper:
             return [fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=empty_src)]
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
                                    line_color=self.scheme.default_color(color_idx, "scatter"),
-                                   line_width=1.5,
+                                   line_width=self.scheme.default_line_width,
                                    legend_label=y1var)
         if view is not None:
             _rseg_kwargs["view"] = view
@@ -4849,14 +4849,14 @@ class GlyphMapper:
         _rcap_color = self.scheme.default_color(color_idx, "scatter")
         _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
                                     source=cap_source,
-                                    line_color=_rcap_color, line_width=1.5,
+                                    line_color=_rcap_color, line_width=self.scheme.default_line_width,
                                     legend_label=y1var)
         _bot_kwargs: dict = dict(x0=_x0_col, y0=y1var, x1=_x1_col, y1=y1var,
                                   source=cap_source,
-                                  line_color=_rcap_color, line_width=1.5)
+                                  line_color=_rcap_color, line_width=self.scheme.default_line_width)
         _top_kwargs: dict = dict(x0=_x0_col, y0=y2var, x1=_x1_col, y1=y2var,
                                   source=cap_source,
-                                  line_color=_rcap_color, line_width=1.5)
+                                  line_color=_rcap_color, line_width=self.scheme.default_line_width)
         if view is not None:
             _spine_kwargs["view"] = view
             _bot_kwargs["view"] = view
@@ -4895,11 +4895,11 @@ class GlyphMapper:
         """
         _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=source,
                                   line_color=self.scheme.default_color(color_idx, "line"),
-                                  line_width=1.5,
+                                  line_width=self.scheme.default_line_width,
                                   legend_label=y1var)
         _rl2_kwargs: dict = dict(x=xvar, y=y2var, source=source,
                                   line_color=self.scheme.default_color(color_idx + 1, "line"),
-                                  line_width=1.5)
+                                  line_width=self.scheme.default_line_width)
         if view is not None:
             _rl1_kwargs["view"] = view
             _rl2_kwargs["view"] = view
@@ -11560,12 +11560,42 @@ class DashRenderer:
             elif name in self.kpi_divs:
                 cells.append(self.kpi_divs[name])
 
+        # layout(name:row,col) decides WHERE each element goes, not merely how
+        # big the grid is.  _placement_map was consulted by _compute_grid and
+        # by nothing else, so the grid came out the right size and was then
+        # filled in registration order: `layout(s1:1,1 s2:2,2)' put s2 beside
+        # s1 instead of diagonally below it, and any spec whose order or gaps
+        # differ from registration order was silently rearranged.  The served
+        # document has placed correctly since the server layout was written;
+        # this is the standalone half.
+        _by_name = dict(zip(_grid_names, cells))
+        _placed = {nm: rc
+                   for nm, rc in self._placement_map(layout_opt).items()
+                   if nm in _by_name}
+
         while len(cells) < rows_n * cols_n:
             cells.append(None)
 
-        grid_rows = [
-            cells[r * cols_n : (r + 1) * cols_n] for r in range(rows_n)
-        ]
+        if _placed:
+            _slots: "list[list[Any]]" = [[None] * cols_n
+                                         for _ in range(rows_n)]
+            for _nm, (_r, _c) in _placed.items():
+                if 0 <= _r < rows_n and 0 <= _c < cols_n:
+                    _slots[_r][_c] = _by_name.get(_nm)
+            # Anything the spec did not place fills the remaining cells in
+            # registration order, which is what the Bootstrap path does.
+            _free = [(r, c) for r in range(rows_n) for c in range(cols_n)
+                     if _slots[r][c] is None]
+            for _nm in [n for n in _grid_names if n not in _placed]:
+                if not _free:
+                    break
+                _r, _c = _free.pop(0)
+                _slots[_r][_c] = _by_name.get(_nm)
+            grid_rows = _slots
+        else:
+            grid_rows = [
+                cells[r * cols_n : (r + 1) * cols_n] for r in range(rows_n)
+            ]
         grid = gridplot(grid_rows, sizing_mode="stretch_width")
 
         # The tabs widget sits above the remaining grid.  An empty grid --
@@ -13580,7 +13610,7 @@ class ServerAppBuilder:
             "                _conn_kw = dict(line_color=color, line_width=_line_width)",
             "                if _line_dash: _conn_kw['line_dash'] = _line_dash",
             "                fig.line(x=xvar, y=yvar, source=csrc, **_conn_kw)",
-            "                _conn_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                _conn_ms_map = dict(_SIZE_MAP)",
             "                _conn_sz = _conn_ms_map.get(opts.get('msize',''), 8)",
             "                _conn_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
             "                _conn_sym = _conn_sym_map.get(opts.get('msymbol',''), 'circle')",
@@ -13599,7 +13629,7 @@ class ServerAppBuilder:
             "                _dot_cols = list(dict.fromkeys(_dot_cols))  # `scatter mpg mpg' is legal; g_df[[c, c]] is not",
             "                clean = g_df[_dot_cols].dropna() if xvar and yvar else g_df",
             "                dsrc = ColumnDataSource(clean)",
-            "                _dot_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                _dot_ms_map = dict(_SIZE_MAP)",
             "                _dot_sz = _dot_ms_map.get(opts.get('msize',''), 8)",
             "                _dot_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
             "                _dot_sym = _dot_sym_map.get(opts.get('msymbol',''), 'circle')",
@@ -13801,7 +13831,7 @@ class ServerAppBuilder:
             "                    _rc1_kw = dict(line_color=color, line_width=_line_width)",
             "                    if _line_dash: _rc1_kw['line_dash'] = _line_dash",
             "                    fig.line(x=xvar, y=y1var, source=rsrc, **_rc1_kw)",
-            "                    _rc_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _rc_ms_map = dict(_SIZE_MAP)",
             "                    _rc_sz = _rc_ms_map.get(opts.get('msize',''), 6)",
             "                    _rc_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
             "                    _rc_sym = _rc_sym_map.get(opts.get('msymbol',''), 'circle')",
@@ -13842,7 +13872,7 @@ class ServerAppBuilder:
             "                    if _line_dash: _dl_kw['line_dash'] = _line_dash",
             "                    fig.segment(x0='x', y0='y0', x1='x', y1='y',",
             "                                source=dsrc, **_dl_kw)",
-            "                    _dl_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _dl_ms_map = dict(_SIZE_MAP)",
             "                    _dl_sz = _dl_ms_map.get(opts.get('msize',''), 8)",
             "                    _dl_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
             "                    _dl_sym = _dl_sym_map.get(opts.get('msymbol',''), 'circle')",
@@ -13874,7 +13904,7 @@ class ServerAppBuilder:
             "                                source=csrc, **_rcs_kw)",
             "                    fig.segment(x0='x0_c', y0='y2', x1='x1_c', y1='y2',",
             "                                source=csrc, **_rcs_kw)",
-            "                    _rcsym_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _rcsym_ms_map = dict(_SIZE_MAP)",
             "                    _rcsym_sz = _rcsym_ms_map.get(opts.get('msize',''), 7)",
             "                    _rcsym_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
             "                    _rcsym_sym = _rcsym_sym_map.get(opts.get('msymbol',''), 'circle')",
@@ -13901,7 +13931,7 @@ class ServerAppBuilder:
             "                    si_y = [float(p[0]) for p in vals]",
             "                    si_x = [float(p[1]) for p in vals]",
             "                    si_src = ColumnDataSource({'x': si_x, 'y': si_y})",
-            "                    _si_ms_map = {'vvsmall':3,'vsmall':4,'small':6,'medsmall':7,'medium':8,'medlarge':9,'large':11,'vlarge':14,'huge':18}",
+            "                    _si_ms_map = dict(_SIZE_MAP)",
             "                    _si_sz = _si_ms_map.get(opts.get('msize',''), 8)",
             "                    _si_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
             "                    _si_sym = _si_sym_map.get(opts.get('msymbol',''), 'circle')",
