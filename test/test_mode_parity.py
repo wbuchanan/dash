@@ -217,6 +217,27 @@ CORPUS = [
     ("scatter with an explicit line width",
      [{"type": "line", "yvar": "mpg", "xvar": "weight",
        "options": {"lwidth": "thick"}}], {}),
+    ("lpoly and lpolyci on the same data",
+     [{"type": "lpoly", "yvar": "mpg", "xvar": "weight", "options": {}},
+      {"type": "lpolyci", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {}),
+    ("dot",
+     [{"type": "dot", "yvar": "mpg", "xvar": "weight", "options": {}}], {}),
+    ("rcapsym",
+     [{"type": "rcapsym", "yvar1": "mpg", "yvar2": "weight",
+       "xvar": "foreign", "options": {}}], {}),
+    ("scatteri",
+     [{"type": "scatteri",
+       "values": [[20.0, 3000.0], [30.0, 4000.0]], "options": {}}], {}),
+    ("mspline, economist",
+     [{"type": "mspline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {"scheme": "economist"}),
+    ("spike, economist",
+     [{"type": "spike", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {"scheme": "economist"}),
+    ("dropline, economist",
+     [{"type": "dropline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {"scheme": "economist"}),
 ]
 
 
@@ -318,3 +339,82 @@ class TestTheAllowanceListIsExplicit:
         assert ALLOWED, "an empty allowance list hides nothing, but says nothing"
         for key, why in ALLOWED.items():
             assert len(why) > 40, f"{key}: allowances must say why"
+
+
+class TestTheCopiedHelpersBringTheirCallees:
+    """A function copied into the app whose callee stays behind is a NameError.
+
+    `_shared_stat_lines' copies the renderer's own statistical helpers into
+    the generated app with `inspect.getsource', which copies the TEXT and not
+    what the text calls. It has now happened three times:
+
+      * `_stata_if_to_pandas' gained `_mask_string_literals' and the served
+        page raised on every qualifier;
+      * `_resolve_seed' gained `_jitter_seed' and the served lpolyci band
+        raised on every session;
+      * before either, a copied body referenced `_LPOLY_ROT_C', which is why
+        `_supply_missing_constants' exists -- but that pass supplies
+        CONSTANTS, not functions.
+
+    Each time, the failure surfaced on the served page rather than here. This
+    imports the generated app and asks Python to resolve every global the
+    copied block refers to.
+    """
+
+    @staticmethod
+    def _app_module(tmp_path):
+        import importlib.util
+        import warnings
+        tag = next(_SEQ)
+        spec = _spec([{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}])
+        sp = tmp_path / f"cs_{tag}.json"
+        dp = tmp_path / f"cd_{tag}.json"
+        ap = tmp_path / f"ca_{tag}.py"
+        sp.write_text(json.dumps(spec))
+        dp.write_text(json.dumps(make_data_json(_DF)))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
+        ms = importlib.util.spec_from_file_location(f"_callee_{tag}", str(ap))
+        mod = importlib.util.module_from_spec(ms)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ms.loader.exec_module(mod)
+        return mod
+
+    def test_every_global_a_copied_helper_calls_is_defined(self, tmp_path):
+        import types
+        mod = self._app_module(tmp_path)
+        names = set(vars(mod))
+        missing = {}
+        for _n, _obj in list(vars(mod).items()):
+            if not isinstance(_obj, types.FunctionType):
+                continue
+            if getattr(_obj, "__module__", None) != mod.__name__:
+                continue
+            # co_names mixes globals with ATTRIBUTE names -- `w._dash_var'
+            # is in it too -- so read the bytecode and take only the names
+            # loaded as globals.
+            import builtins
+            import dis
+            for _ins in dis.get_instructions(_obj):
+                if _ins.opname not in ("LOAD_GLOBAL", "LOAD_NAME"):
+                    continue
+                _g = _ins.argval
+                if not isinstance(_g, str):
+                    continue
+                if (_g not in names and not hasattr(builtins, _g)):
+                    missing.setdefault(_n, set()).add(_g)
+        assert not missing, (
+            f"the generated app calls names it does not define: {missing}. "
+            f"A helper copied by _shared_stat_lines must bring its callees."
+        )
+
+    def test_the_scan_found_the_copied_helpers(self):
+        """Guards the guard: an app with no copied functions proves nothing."""
+        import inspect
+        src = inspect.getsource(dr.ServerAppBuilder._shared_stat_lines)
+        for name in ("_stata_if_to_pandas", "_resolve_seed", "_bootstrap_ci",
+                     "_kpi_statistic"):
+            assert name in src, f"{name} is no longer copied into the app"

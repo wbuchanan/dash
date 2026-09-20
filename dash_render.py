@@ -2297,6 +2297,14 @@ def _floats_only(tree: "_ast.AST") -> "_ast.AST":
     return _ast.fix_missing_locations(tree)
 
 
+# Opacity of a confidence band.
+#
+# Deliberately a constant: it is a legibility judgement -- the band must read
+# as an envelope around the fit and not as a filled area in its own right --
+# and no scheme key describes it. Every *ci layer uses it, and the generated
+# app used to invent its own 0.35 for lpolyci.
+_CI_BAND_ALPHA = 0.2
+
 _MIN_BAR_WIDTH = 1e-9
 
 # The largest number of median bands dash will draw.  The generated server
@@ -2629,7 +2637,7 @@ class GlyphMapper:
         """
         band_r = fig.varea(
             x=x_col, y1=lo_col, y2=hi_col,
-            source=source, fill_alpha=0.2, fill_color=color,
+            source=source, fill_alpha=_CI_BAND_ALPHA, fill_color=color,
         )
         line_r = fig.line(
             x=x_col, y=y_col, source=source,
@@ -3946,7 +3954,7 @@ class GlyphMapper:
         if scipy_stats is None or n < 3 or np.std(x) == 0.0:
             band_r = fig.varea(
                 x="x_fit", y1="y_lower", y2="y_upper",
-                source=empty_ci_src, fill_alpha=0.2, fill_color=_lfitci_color
+                source=empty_ci_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_lfitci_color
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
                               line_color=_lfitci_color, line_width=self.scheme.default_line_width,
@@ -4025,7 +4033,7 @@ class GlyphMapper:
             })
             band_r = fig.varea(
                 x="x_fit", y1="y_lower", y2="y_upper",
-                source=empty_ci_src, fill_alpha=0.2, fill_color=_qfitci_color
+                source=empty_ci_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_qfitci_color
             )
             line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
                               line_color=_qfitci_color, line_width=self.scheme.default_line_width,
@@ -4367,7 +4375,7 @@ class GlyphMapper:
         if len(x) < 3:
             band_r = fig.varea(
                 x="x_lp", y1="y_lower", y2="y_upper",
-                source=empty_src, fill_alpha=0.2, fill_color=_lpolyci_color,
+                source=empty_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_lpolyci_color,
             )
             line_r = fig.line(x="x_lp", y="y_lp", source=empty_src,
                               line_color=_lpolyci_color, line_width=self.scheme.default_line_width,
@@ -4592,7 +4600,7 @@ class GlyphMapper:
         if len(x) < 4:
             band_r = fig.varea(
                 x="x_fp", y1="y_lower", y2="y_upper",
-                source=empty_src, fill_alpha=0.2, fill_color=_fpfitci_color,
+                source=empty_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_fpfitci_color,
             )
             line_r = fig.line(x="x_fp", y="y_fp", source=empty_src,
                               line_color=_fpfitci_color, line_width=self.scheme.default_line_width,
@@ -5427,7 +5435,13 @@ class GlyphMapper:
         except ValueError:
             pass
 
-        size = self.tr.translate_msize(options.get("msize", "medium"))
+        # The scheme's marker size, not a literal "medium": every other
+        # marker-drawing mapper takes its default from the scheme, and
+        # scatteri taking "medium" made it 11px under s2color where a
+        # scatter beside it is 8.
+        size = (self.tr.translate_msize(options["msize"])
+                if str(options.get("msize", "")).strip()
+                else self.scheme.default_marker_size(color_idx))
         marker = self.tr.translate_msymbol(options.get("msymbol", "circle"))
 
         r = fig.scatter(x="x", y="y", source=si_source,
@@ -5634,7 +5648,8 @@ class GlyphMapper:
         pc_source = ColumnDataSource({"x": x_all.tolist(), "y": y_all.tolist()})
 
         _pcsc_kwargs: dict = dict(source=pc_source,
-                                   size=8, color=self.scheme.default_color(color_idx, "scatter"),
+                                   size=self.scheme.default_marker_size(color_idx),
+                                   color=self.scheme.default_color(color_idx, "scatter"),
                                    legend_label=y1var)
         if view is not None:
             _pcsc_kwargs["view"] = view
@@ -5885,7 +5900,8 @@ class GlyphMapper:
             "y": y_all[mask].tolist(),
         })
         _rs_kwargs: dict = dict(source=rs_source,
-                                 size=8, color=self.scheme.default_color(color_idx, "scatter"),
+                                 size=self.scheme.default_marker_size(color_idx),
+                                 color=self.scheme.default_color(color_idx, "scatter"),
                                  legend_label=y1var)
         if view is not None:
             _rs_kwargs["view"] = view
@@ -5959,7 +5975,7 @@ class GlyphMapper:
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
         r = fig.line(x="x_sp", y="y_sp", source=ms_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0,
+                     line_width=self.scheme.default_line_width,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
@@ -6147,7 +6163,8 @@ class GlyphMapper:
                 UserWarning, stacklevel=2,
             )
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
-                             line_color="#d62728", line_width=2.0)]
+                             line_color=self.scheme.default_color(0, "line"),
+                             line_width=self.scheme.default_line_width)]
 
         try:
             tree = _ast.parse(expr, mode="eval")
@@ -6158,7 +6175,8 @@ class GlyphMapper:
         # expression escaped this guard and took the whole dashboard with it.
         except (SyntaxError, ValueError, RecursionError, MemoryError):
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
-                             line_color="#d62728", line_width=2.0)]
+                             line_color=self.scheme.default_color(0, "line"),
+                             line_width=self.scheme.default_line_width)]
 
         x_lo, x_hi = float(x_range[0]), float(x_range[1])
         x_arr = np.linspace(x_lo, x_hi, int(n_points))
@@ -6190,11 +6208,13 @@ class GlyphMapper:
                 y_arr = np.full(len(x_arr), float(y_arr))
         except Exception:
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
-                             line_color="#d62728", line_width=2.0)]
+                             line_color=self.scheme.default_color(0, "line"),
+                             line_width=self.scheme.default_line_width)]
 
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
         r = fig.line(x="x_fn", y="y_fn", source=fn_source,
-                     line_color="#d62728", line_width=2.0,
+                     line_color=self.scheme.default_color(0, "line"),
+                     line_width=self.scheme.default_line_width,
                      legend_label=expr[:40])
         self._apply_line_opts(r, options)
         return [r]
@@ -12341,6 +12361,9 @@ class ServerAppBuilder:
         out += ["_FIT_GRID = %d" % _FIT_GRID, "", ""]
 
         for _fn in (_stat_option_float, _fit_grid,
+                    # lpolyci's band is a bootstrap; without these the served
+                    # branch was a verbatim copy of lpoly and drew no band.
+                    _resolve_level, _resolve_seed, _jitter_seed,
                     _stata_percentile, _stata_kde_bandwidth, _kde_curve,
                     _mband_default_bands, _stata_bin_count,
                     _histogram_heights,
@@ -12373,6 +12396,7 @@ class ServerAppBuilder:
         for _sm in (GlyphMapper._histogram_grid,
                     GlyphMapper._default_lpoly_bwidth,
                     GlyphMapper._compute_lpoly_fit,
+                    GlyphMapper._bootstrap_ci,
                     DashRenderer._kpi_statistic):
             _lines = _textwrap.dedent(
                 _inspect.getsource(_sm)).rstrip("\n").split("\n")
@@ -12455,6 +12479,7 @@ class ServerAppBuilder:
             "_SCHEME_BAR_ALPHA = %r" % (sch.bar_alpha,),
             "_SCHEME_AREA_ALPHA = %r" % (sch.area_alpha,),
             "_SCHEME_LINE_WIDTH = %r" % (sch.default_line_width,),
+            "_CI_BAND_ALPHA = %r" % (_CI_BAND_ALPHA,),
             "_SCHEME_LINE_PATTERNS = %r" % ([sch.default_line_pattern(i)
                                              for i in range(15)],),
             "_SCHEME_CONNECT_PATTERNS = %r" % ([sch.default_connect_pattern(i)
@@ -13425,6 +13450,49 @@ class ServerAppBuilder:
             "        return {'x': [], 'y': []}",
             "",
             "",
+            "def _compute_lpolyci(df, yvar, xvar, options=None):",
+            '    """Return the lpoly fit and its bootstrap confidence band.',
+            "",
+            "    The served lpolyci branch used to be a verbatim copy of the",
+            "    lpoly one: it drew the smoother and no band at all, so a",
+            "    served lpolyci and a saved one were different figures.",
+            "    _bootstrap_ci and _compute_lpoly_fit are the standalone",
+            "    renderer's own functions, copied in above.",
+            '    """',
+            "    options = options or {}",
+            "    clean = df[[xvar, yvar]].dropna()",
+            "    if len(clean) < 3:",
+            "        return dict(x_lp=[], y_lp=[], y_lower=[], y_upper=[])",
+            "    x = clean[xvar].to_numpy(dtype=float)",
+            "    y = clean[yvar].to_numpy(dtype=float)",
+            "    bwidth = _stat_option_float(options, 'bwidth', None, 'lpolyci', lo=0.0)",
+            "    if bwidth is not None and bwidth <= 0:",
+            "        bwidth = None",
+            "    degree = int(_stat_option_float(options, 'degree', 0.0, 'lpoly',",
+            "                                    lo=0.0, hi=3.0) or 0.0)",
+            "    kernel = str(options.get('kernel', '') or 'epanechnikov').strip().lower()",
+            "    if kernel not in _KERNELS:",
+            "        kernel = 'epanechnikov'",
+            "    x_grid, y_fit = _compute_lpoly_fit(x, y, bwidth=bwidth,",
+            "                                       degree=degree, kernel=kernel,",
+            "                                       n_grid=100)",
+            "",
+            "    def _fn(xi, yi, _xg):",
+            "        _, yb = _compute_lpoly_fit(xi, yi, bwidth=bwidth,",
+            "                                   degree=degree, kernel=kernel,",
+            "                                   n_grid=100)",
+            "        return yb",
+            "",
+            "    y_lower, y_upper = _bootstrap_ci(",
+            "        x, y, x_grid, _fn, fallback=y_fit,",
+            "        level=_resolve_level(options), seed=_resolve_seed(options))",
+            "    valid = ~np.isnan(y_fit)",
+            "    return dict(x_lp=x_grid[valid].tolist(),",
+            "                y_lp=y_fit[valid].tolist(),",
+            "                y_lower=y_lower[valid].tolist(),",
+            "                y_upper=y_upper[valid].tolist())",
+            "",
+            "",
             "def _compute_kpi(df, stat, varname):",
             '    """Compute a KPI statistic from df[varname]. Returns float.',
             "",
@@ -14029,23 +14097,21 @@ class ServerAppBuilder:
             "                fig.line(x='x_lp', y='y_lp', source=lp_src, **_lp_kw)",
             "",
             "            elif ptype == 'lpolyci':",
-            "                _lp_bw = 0.5",
-            "                try: _lp_bw = max(0.01, min(1.0, float(opts.get('bwidth', '0.5') or '0.5')))",
-            "                except (ValueError, TypeError): pass",
-            "                _lp_deg = 0",
-            "                try: _lp_deg = max(0, min(3, int(opts.get('degree', '0') or '0')))",
-            "                except (ValueError, TypeError): pass",
-            "                lp_data = _compute_lpoly(g_df, yvar, xvar, opts)",
-            "                lp_src = ColumnDataSource(lp_data)",
+            "                # The band, not just the smoother: this branch",
+            "                # used to be a verbatim copy of lpoly's.",
+            "                lpci_data = _compute_lpolyci(g_df, yvar, xvar, opts)",
+            "                lpci_src = ColumnDataSource(lpci_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'opts': opts,",
-            "                    'source': lp_src, 'type': 'lpoly',",
+            "                    'source': lpci_src, 'type': 'lpolyci',",
             "                    'yvar': yvar, 'xvar': xvar,",
-            "                    'bwidth': _lp_bw, 'degree': _lp_deg,",
             "                }",
+            "                fig.varea(x='x_lp', y1='y_lower', y2='y_upper',",
+            "                          source=lpci_src, fill_color=color,",
+            "                          fill_alpha=_CI_BAND_ALPHA)",
             "                _lp_kw = dict(line_color=color, line_width=_line_width)",
             "                if _line_dash: _lp_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x_lp', y='y_lp', source=lp_src, **_lp_kw)",
+            "                fig.line(x='x_lp', y='y_lp', source=lpci_src, **_lp_kw)",
             "",
             "            elif ptype == 'fpfit':",
             "                fp_data = _compute_fpfit(g_df, yvar, xvar)",
@@ -14145,7 +14211,7 @@ class ServerAppBuilder:
             "                if _line_dash: _conn_kw['line_dash'] = _line_dash",
             "                fig.line(x=xvar, y=yvar, source=csrc, **_conn_kw)",
             "                _conn_ms_map = dict(_SIZE_MAP)",
-            "                _conn_sz = _conn_ms_map.get(opts.get('msize',''), 8)",
+            "                _conn_sz = _conn_ms_map.get(opts.get('msize',''), _SCHEME_MARKER_SIZE)",
             "                _conn_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
             "                _conn_sym = _conn_sym_map.get(opts.get('msymbol',''), 'circle')",
             "                _conn_mc = _dash_scheme_color(pi, 'scatter')",
@@ -14169,7 +14235,7 @@ class ServerAppBuilder:
             "                clean = g_df[_dot_cols].dropna() if xvar and yvar else g_df",
             "                dsrc = ColumnDataSource(clean)",
             "                _dot_ms_map = dict(_SIZE_MAP)",
-            "                _dot_sz = _dot_ms_map.get(opts.get('msize',''), 8)",
+            "                _dot_sz = _dot_ms_map.get(opts.get('msize',''), _SCHEME_MARKER_SIZE)",
             "                _dot_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
             "                _dot_sym = _dot_sym_map.get(opts.get('msymbol',''), 'circle')",
             "                _dot_mfc = color",
@@ -14412,7 +14478,7 @@ class ServerAppBuilder:
             "                    fig.segment(x0='x', y0='y0', x1='x', y1='y',",
             "                                source=dsrc, **_dl_kw)",
             "                    _dl_ms_map = dict(_SIZE_MAP)",
-            "                    _dl_sz = _dl_ms_map.get(opts.get('msize',''), 8)",
+            "                    _dl_sz = _dl_ms_map.get(opts.get('msize',''), _SCHEME_MARKER_SIZE)",
             "                    _dl_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
             "                    _dl_sym = _dl_sym_map.get(opts.get('msymbol',''), 'circle')",
             "                    fig.scatter(x='x', y='y', source=dsrc, marker=_dl_sym,",
@@ -14471,7 +14537,7 @@ class ServerAppBuilder:
             "                    si_x = [float(p[1]) for p in vals]",
             "                    si_src = ColumnDataSource({'x': si_x, 'y': si_y})",
             "                    _si_ms_map = dict(_SIZE_MAP)",
-            "                    _si_sz = _si_ms_map.get(opts.get('msize',''), 8)",
+            "                    _si_sz = _si_ms_map.get(opts.get('msize',''), _SCHEME_MARKER_SIZE)",
             "                    _si_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus'}",
             "                    _si_sym = _si_sym_map.get(opts.get('msymbol',''), 'circle')",
             "                    _si_mfc = color",
@@ -14993,7 +15059,7 @@ class ServerAppBuilder:
             "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, **_glyph_kw)",
             "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('dot',):",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=8, color=color, marker='circle', legend_label=yvar_f, **_glyph_kw)",
+            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=_SCHEME_MARKER_SIZE, color=color, marker='circle', legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('spike',):",
             "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('dropline',):",
@@ -15094,7 +15160,7 @@ class ServerAppBuilder:
             "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color)",
             "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color, legend_label=yvar_f)",
             "                elif ptype in ('dot',):",
-            "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=8, color=color, marker='circle', legend_label=yvar_f)",
+            "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=_SCHEME_MARKER_SIZE, color=color, marker='circle', legend_label=yvar_f)",
             "                elif ptype in ('spike',):",
             "                    _tot_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
             "                elif ptype in ('dropline',):",
@@ -15412,6 +15478,8 @@ class ServerAppBuilder:
             "                    agg['source'].data = _compute_kdensity(agg_fdf, agg['var'], agg.get('opts') or {})",
             "                elif atype == 'lowess':",
             "                    agg['source'].data = _compute_lowess(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
+            "                elif atype == 'lpolyci':",
+            "                    agg['source'].data = _compute_lpolyci(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
             "                elif atype == 'lpoly':",
             "                    agg['source'].data = _compute_lpoly(",
             "                        agg_fdf, agg['yvar'], agg['xvar'],",

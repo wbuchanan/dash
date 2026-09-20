@@ -516,9 +516,26 @@ class TestMapFunction:
         assert np.allclose(y_vals, expected, atol=1e-12)
 
     def test_function_default_line_color(self, fig, gm):
-        """P4-52: map_function uses the expected default red color."""
+        """P4-52: map_function takes its colour from the scheme.
+
+        This used to require `#d62728' -- matplotlib's red -- which is what
+        the mapper drew whatever scheme was set, so a function plot was the
+        one layer on the page that ignored the scheme entirely. It takes the
+        scheme's first line colour now, as every other layer does.
+        """
         result = gm.map_function(fig, "x", (0, 1), 10, {})
-        assert result[0].glyph.line_color == "#d62728"
+        assert result[0].glyph.line_color == \
+            gm.scheme.default_color(0, "line")
+
+    def test_function_colour_follows_the_scheme(self, fig):
+        """Two schemes, two colours -- a literal would make these equal."""
+        import dash_render as _dr
+        a = _dr.GlyphMapper(scheme=_dr.SchemeParser("s2color"))
+        b = _dr.GlyphMapper(scheme=_dr.SchemeParser("economist"))
+        from bokeh.plotting import figure as _figure
+        ca = a.map_function(_figure(), "x", (0, 1), 10, {})[0].glyph.line_color
+        cb = b.map_function(_figure(), "x", (0, 1), 10, {})[0].glyph.line_color
+        assert ca != cb, "the function line is the same under both schemes"
 
     def test_function_lcolor_option(self, fig, gm):
         """P4-53: lcolor option overrides the default function line color."""
