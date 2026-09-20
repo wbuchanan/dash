@@ -31,7 +31,13 @@ components that are missing.
 {pstd}
 {cmd:dash_setup} performs the following checks in order:
 
-{phang2}1.  Verifies that Python 3.8+ is available to Stata via {cmd:python query}.
+{phang2}1.  Verifies that Python is available to Stata via {cmd:python query},
+    then compares the linked interpreter's version against the 3.8 minimum
+    and reports it.  A version below 3.8 is named as such rather than
+    reported as {cmd:OK}: {cmd:python query} succeeds for any linked Python,
+    so without the comparison a user on 3.7 was sent on to fail later inside
+    {cmd:bokeh}.  The comparison is numeric per component, so 3.10 is
+    correctly newer than 3.9.
 
 {phang2}2.  Checks for each required Python package.  Missing packages are
     installed automatically via {cmd:pip}.

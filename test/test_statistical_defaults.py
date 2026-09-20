@@ -704,3 +704,73 @@ class TestStudentTQuantile:
         # z_{0.975} = 1.959963985
         assert dash_render._t_ppf(0.975, 10_000_000) == pytest.approx(
             1.959963985, rel=1e-6)
+
+
+class TestKdensityRange:
+    """`range()` limited a function plot's domain and was dropped by kdensity.
+
+    Stata gives `twoway kdensity` a `range(# #)` option that sets the range
+    over which the density is estimated. dash read `range()` in the function
+    branch -- `range(0 10)` there really does span 0 to 10 -- and nowhere
+    else, so `dash kdensity mpg, range(10 30)` estimated over the default
+    span and said nothing, while dash.ado named range() in the
+    ignoring-unsupported note, which was wrong for every function plot.
+
+    The existing measurement in test_unsupported_report_is_true.py set
+    range() on a kdensity, where it was dead, and so certified the option as
+    ignored -- the plot type, not the option, was what made the comparison
+    come out empty.
+    """
+
+    @staticmethod
+    def _curve(options):
+        rng = np.random.default_rng(7)
+        arr = rng.normal(20.0, 5.0, 300)
+        src = ColumnDataSource({"mpg": arr.tolist()})
+        gm = GlyphMapper()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = gm.map_kdensity(figure(), src, "mpg", options)
+        ds = (r[0] if isinstance(r, list) else r).data_source
+        return np.asarray(ds.data["x"], dtype=float)
+
+    def test_range_sets_the_estimation_span(self):
+        x = self._curve({"range": "10 30"})
+        assert x.min() == pytest.approx(10.0), (
+            "kdensity ignores range(); the curve starts where the data and "
+            "bandwidth put it, not where the user asked"
+        )
+        assert x.max() == pytest.approx(30.0)
+
+    def test_a_different_range_moves_it(self):
+        a = self._curve({"range": "10 30"})
+        b = self._curve({"range": "5 25"})
+        assert not np.allclose(a, b)
+
+    def test_without_range_the_default_span_is_unchanged(self):
+        """The default must stay min-3h to max+3h, not become the data range."""
+        x = self._curve({})
+        rng = np.random.default_rng(7)
+        arr = rng.normal(20.0, 5.0, 300)
+        assert x.min() < arr.min() and x.max() > arr.max()
+
+    def test_a_reversed_or_malformed_range_is_reported_not_fatal(self):
+        for bad in ("30 10", "10", "", "a b", "10 20 30"):
+            x = self._curve({"range": bad})
+            assert len(x) > 1 and np.all(np.isfinite(x)), (
+                f"range({bad}) produced an unusable grid"
+            )
+
+    def test_range_is_not_reported_as_unsupported(self):
+        import re as _re
+        with open(os.path.join(os.path.dirname(__file__), "..", "dash.ado"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        i = src.index("program define _dash_parse_plot_opts")
+        j = src.index("local _dash_unknown", i)
+        pending = _re.findall(r"_dash_pending' (\w+)\"", src[i:j])
+        assert "range" not in pending, (
+            "range() sets a function plot's domain and a kdensity's "
+            "estimation span, but dash.ado still names it in the "
+            "ignoring-unsupported note"
+        )

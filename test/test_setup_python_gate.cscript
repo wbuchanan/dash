@@ -1,0 +1,99 @@
+*! test_setup_python_gate.cscript
+*! Certification script for dash_setup's Python version gate.
+*!
+*! Usage:  do test/test_setup_python_gate.cscript
+*! Version: 1.0.0  20sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! dash_setup.sthlp says, of dash_setup's first step:
+*!
+*!     1.  Verifies that Python 3.8+ is available to Stata via `python query'.
+*!
+*! It did not.  dash_setup.ado ran `capture python query' -- which succeeds
+*! for ANY linked Python, 3.6 included -- then read sys.version into a macro
+*! and printed it.  Nothing anywhere compared it to 3.8.  A user on Python
+*! 3.7 was told "Python ............. OK (version 3.7.9)" and sent on to
+*! fail later, inside bokeh, with a message about neither Python nor dash.
+*!
+*! The comparison cannot be tested by running it, because testing "3.7 is
+*! rejected" would need a Python 3.7 to hand.  So the comparison lives in
+*! _dash_pyver_ok, which takes the two version strings as arguments and can
+*! be driven through every case from any interpreter.
+
+cscript "dash_setup python version gate" adodir ".."
+
+adopath ++ ".."
+qui do "../dash_setup.ado"
+
+local fail 0
+
+program define _chk
+    args label got want
+    if "`got'" != "`want'" {
+        display as error "FAIL: `label' -- got `got', want `want'"
+        c_local fail = 1
+    }
+    else display as text "  ok: `label'"
+end
+
+// ---- at or above the minimum ----
+_dash_pyver_ok "3.8.0"  "3.8"
+_chk "3.8.0 >= 3.8"   "`r(ok)'" "1"
+_dash_pyver_ok "3.8"    "3.8"
+_chk "3.8 >= 3.8"     "`r(ok)'" "1"
+_dash_pyver_ok "3.9.6"  "3.8"
+_chk "3.9.6 >= 3.8"   "`r(ok)'" "1"
+_dash_pyver_ok "3.14.5" "3.8"
+_chk "3.14.5 >= 3.8"  "`r(ok)'" "1"
+_dash_pyver_ok "4.0.0"  "3.8"
+_chk "4.0.0 >= 3.8"   "`r(ok)'" "1"
+
+// 3.10 is NOT less than 3.9: a string comparison says it is, which is the
+// classic way this check is got wrong.
+_dash_pyver_ok "3.10.0" "3.9"
+_chk "3.10.0 >= 3.9 (not a string compare)" "`r(ok)'" "1"
+
+// ---- below the minimum ----
+_dash_pyver_ok "3.7.9"  "3.8"
+_chk "3.7.9 < 3.8"    "`r(ok)'" "0"
+_dash_pyver_ok "3.6.15" "3.8"
+_chk "3.6.15 < 3.8"   "`r(ok)'" "0"
+_dash_pyver_ok "2.7.18" "3.8"
+_chk "2.7.18 < 3.8"   "`r(ok)'" "0"
+
+// ---- input that is not a version ----
+// A version string dash cannot read must not abort setup; it reports and
+// lets the run continue, because a wrong guess here is worse than none.
+_dash_pyver_ok ""       "3.8"
+_chk "empty is unknown"      "`r(ok)'" "-1"
+_dash_pyver_ok "abc"    "3.8"
+_chk "non-numeric is unknown" "`r(ok)'" "-1"
+_dash_pyver_ok "3.8.0rc1" "3.8"
+_chk "3.8.0rc1 >= 3.8"   "`r(ok)'" "1"
+
+// ---- the help's claim is the contract ----
+// Read the repo's own files by path, not through findfile: inside the full
+// runner the adopath also carries an installed copy of dash, and findfile
+// returned THAT one -- so this check passed or failed depending on which
+// dash happened to be installed, which is no check at all.
+tempname fh
+_dash_pymin
+local pymin "`r(pymin)'"
+_chk "dash_setup names a minimum" "`=cond("`pymin'"=="", "0", "1")'" "1"
+
+local found 0
+file open `fh' using "../dash_setup.sthlp", read text
+file read `fh' line
+while r(eof) == 0 {
+    if strpos(`"`line'"', "`pymin'") > 0 local found 1
+    file read `fh' line
+}
+file close `fh'
+_chk "dash_setup.sthlp states the same minimum (`pymin')" "`found'" "1"
+
+if `fail' {
+    display as error "SOME TESTS FAILED"
+    exit 9
+}
+display as text "ALL TESTS PASSED"

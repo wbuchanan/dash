@@ -395,9 +395,23 @@ Syntax:
 {phang2}{cmd:exclude(}{it:namelist}{cmd:)} — prevent the filter from
     affecting the specified graphs and KPIs.
 
+{phang2}{cmd:label(}{it:string}{cmd:)} — the text shown beside the widget.
+    Without it the variable's own label is used, and failing that its name.
+
 {pstd}
-Multiple {cmd:filter()} options may be specified on the same
-{cmd:dash build} call.
+{ul:More than one filter.}  Give {cmd:filter()} as many times as you need on
+the same {cmd:dash build} or {cmd:dash serve} call.  Because Stata's
+{cmd:syntax} keeps only the last of a repeated option, {cmd:dash} collects
+them itself before parsing and joins them with a semicolon internally; you
+never write the semicolon.  Each group is validated on its own, so
+{cmd:exclude()} on the second filter is honoured exactly as on the first.
+
+{pstd}
+{ul:The dropdown's "All" entry.}  A {cmd:type(dropdown)} widget carries an
+{cmd:All} entry that removes the filter.  It is the selected entry when the
+dashboard opens, and it is carried in the page as the reserved value
+{cmd:__all__}; a variable whose own data contains that string is filtered on
+as normal, because the sentinel lives in the widget rather than in the data.
 
 {pstd}
 Example:
@@ -435,11 +449,23 @@ brush selections change (depending on the {cmd:update()} option).
 {synopt:{cmd:min}}minimum value{p_end}
 {synopt:{cmd:max}}maximum value{p_end}
 {synopt:{cmd:median}}median (50th percentile){p_end}
-{synopt:{cmd:sd}}standard deviation{p_end}
+{synopt:{cmd:sd}}standard deviation (N-1){p_end}
+{synopt:{cmd:var}}variance (N-1){p_end}
+{synopt:{cmd:cv}}coefficient of variation, {cmd:sd}/{cmd:mean}{p_end}
+{synopt:{cmd:iqr}}interquartile range, {cmd:p75} - {cmd:p25}{p_end}
+{synopt:{cmd:skewness}}skewness{p_end}
 {synopt:{cmd:p25}}25th percentile{p_end}
 {synopt:{cmd:p50}}50th percentile (same as {cmd:median}){p_end}
 {synopt:{cmd:p75}}75th percentile{p_end}
 {synoptline}
+
+{pstd}
+Any percentile may be requested as {cmd:p}{it:#}, not only the three listed
+above: {cmd:p10}, {cmd:p90} and {cmd:p97.5} are all accepted.  Percentiles
+follow Stata's own rule rather than the interpolated one most software uses,
+so {cmd:dash kpi p25(price)} reports the number {cmd:summarize, detail}
+reports.  Variance and standard deviation divide by N-1, and skewness is
+Stata's biased m3/m2^1.5 -- again, the values {cmd:summarize, detail} gives.
 
 {pstd}
 {ul:Options:}
@@ -536,12 +562,30 @@ script no way to register an extra route, so {cmd:/health} exists only when
 the app serves itself with {cmd:python app.py}.
 
 {pstd}
-{ul:Security.}  The Bokeh Server restricts WebSocket connections to the
-loopback interface -- both {cmd:localhost} and {cmd:127.0.0.1} -- and
-{cmd:--allow-websocket-origin} adds any further host you choose to accept.
-All user-supplied strings (titles, KPI labels) are HTML-escaped in the
-generated file.  Data values are base64-encoded, preventing any data content
-from affecting the Python file syntax.
+{ul:Security.}  The app binds the loopback interface, so by default only
+this machine can reach it.  {cmd:--address} {it:addr} opens it deliberately
+-- {cmd:--address 0.0.0.0} listens on every interface -- and
+{cmd:--allow-websocket-origin} {it:host:port} then admits the {cmd:Origin}
+values a browser will send from there.
+
+{pstd}
+Understand what that second option is, before relying on it.  The
+{cmd:Origin} allow-list filters a header the {it:client} supplies, so it
+stops a page on another website from driving your dashboard in your browser.
+It is not an access control: a client that is not a browser can omit the
+header or forge an accepted one.  There is no password.
+
+{pstd}
+So the generated app is a single-user tool.  It embeds your whole dataset,
+and anything that can reach the port can read it.  If you open it beyond
+loopback, put it behind something that authenticates -- an SSH tunnel, a
+reverse proxy, a firewall rule -- and treat the port as public otherwise.
+
+{pstd}
+Within the file, data values are base64-encoded so that no data content can
+affect the Python source's syntax, and every user-supplied string reaches
+the page as a Bokeh model property or an escaped HTML attribute rather than
+as markup.
 
 {pstd}
 Session creation and {cmd:/health} are rate limited per client.  The client is
@@ -679,8 +723,10 @@ see below.
     {bf:absolute bandwidth in the units of x}, exactly as in
     {helpb twoway lpoly}.  With no {cmd:bwidth()} a rule-of-thumb bandwidth
     is computed from the data{p_end}
-{synopt:{opt degree(#)}}polynomial degree; 0 = Nadaraya–Watson kernel
-    estimator (default), 1 = local linear, 2 = local quadratic{p_end}
+{synopt:{opt degree(#)}}polynomial degree, 0-3; 0 = Nadaraya–Watson kernel
+    estimator (default), 1 = local linear, 2 = local quadratic,
+    3 = local cubic.  A degree outside 0-3 is reported and the default
+    used{p_end}
 {synopt:{opt kernel(name)}}{cmd:epanechnikov} (default), {cmd:epan2},
     {cmd:biweight}, {cmd:cosine}, {cmd:gaussian}, {cmd:parzen},
     {cmd:rectangle} or {cmd:triangle}{p_end}
@@ -751,6 +797,10 @@ graph border.
     outer margin area; Bokeh {cmd:border_fill_color}{p_end}
 {synopt:{opt graphregion(fcolor(}{it:color}{opt ))}}fill color alias for
     {cmd:graphregion(color())}{p_end}
+{synopt:{cmdab:bgc:olor(}{it:color}{cmd:)}}shorthand for
+    {cmd:graphregion(color())}{p_end}
+{synopt:{opt plotbgcolor(color)}}shorthand for
+    {cmd:plotregion(color())}.  Abbreviation: {cmd:pbgc()}{p_end}
 {synoptline}
 
 {pstd}
@@ -777,10 +827,10 @@ All are specified in the per-graph option list (after the comma following
 the plot specification).
 
 {synoptset 38}{...}
-{synopt:{cmdab:xti:tle(}{it:string}{cmd:)}}label for the x axis{p_end}
-{synopt:{cmdab:yti:tle(}{it:string}{cmd:)}}label for the y axis{p_end}
-{synopt:{cmdab:xla:bel(}{it:#}[{it:#} ...]{cmd:)}}custom x-axis tick positions{p_end}
-{synopt:{cmdab:yla:bel(}{it:#}[{it:#} ...]{cmd:)}}custom y-axis tick positions{p_end}
+{synopt:{cmdab:xt:itle(}{it:string}{cmd:)}}label for the x axis{p_end}
+{synopt:{cmdab:yt:itle(}{it:string}{cmd:)}}label for the y axis{p_end}
+{synopt:{cmdab:xl:abel(}{it:#}[{it:#} ...]{cmd:)}}custom x-axis tick positions{p_end}
+{synopt:{cmdab:yl:abel(}{it:#}[{it:#} ...]{cmd:)}}custom y-axis tick positions{p_end}
 {synopt:{cmdab:xl:abel(}{it:#}[{it:#} ...]{cmd:, format(}{it:fmt}{cmd:))}}custom ticks with format string{p_end}
 {synopt:{cmdab:xsc:ale(log)}}display the x axis on a log scale{p_end}
 {synopt:{cmdab:ysc:ale(log)}}display the y axis on a log scale{p_end}
@@ -799,7 +849,69 @@ the plot specification).
 {synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for entry {it:#}{p_end}
 {synopt:{cmdab:xsiz:e(}{it:#}{cmd:)}}graph width in inches{p_end}
 {synopt:{cmdab:ysiz:e(}{it:#}{cmd:)}}graph height in inches{p_end}
+{synopt:{cmdab:xtic:k(}{it:#}[{it:#} ...]{cmd:)}}x-axis tick positions
+    without labels{p_end}
+{synopt:{cmdab:ytic:k(}{it:#}[{it:#} ...]{cmd:)}}y-axis tick positions
+    without labels{p_end}
 {synoptline}
+
+{pstd}
+{ul:Secondary axes.}  Write {opt yaxis(2)} on any plot layer to put it on a
+right-hand y axis scaled to that layer's own data, or {opt xaxis(2)} for a
+top x axis.  The secondary range is computed from the data on that axis.
+Both are plot-level options, given inside the layer's parentheses.
+
+{synoptset 38}{...}
+{synopt:{opt ytitle2(string)}}title for the right-hand y axis.
+    Abbreviation: {cmd:yti2()}{p_end}
+{synopt:{opt ylabel2(numlist)}}tick positions for the right-hand y axis.
+    Abbreviation: {cmd:yla2()}{p_end}
+{synopt:{opt yscale2(log)}}log scale on the right-hand y axis.
+    Abbreviation: {cmd:ysc2()}{p_end}
+{synopt:{opt xtitle2(string)}}title for the top x axis.
+    Abbreviation: {cmd:xti2()}{p_end}
+{synopt:{opt xlabel2(numlist)}}tick positions for the top x axis.
+    Abbreviation: {cmd:xla2()}{p_end}
+{synopt:{opt xscale2(log)}}log scale on the top x axis.
+    Abbreviation: {cmd:xsc2()}{p_end}
+{synoptline}
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash (line sales year) (line margin year, yaxis(2)), ytitle2(Margin %)}{p_end}
+
+
+{marker colorvar}
+{title:Mapping a Variable to Colour}
+
+{pstd}
+A plot layer may take its colour from a third variable rather than from the
+scheme's series cycle.  {cmd:colorvar()} is Stata 18's own option and behaves
+as it does there; the four that configure it are specific to {cmd:dash}.
+
+{synoptset 38}{...}
+{synopt:{opt colorvar(varname)}}colour each observation by {it:varname}.
+    Abbreviations: {cmd:colv()}, {cmd:cv()}{p_end}
+{synopt:{opt colordiscrete}}treat {it:varname} as categorical rather than
+    continuous{p_end}
+{synopt:{opt colorcuts(numlist)}}explicit break points for the colour
+    bins{p_end}
+{synopt:{cmdab:colpal:ette(}{it:name}{cmd:)}}the palette to map through:
+    {cmd:viridis} (the default), {cmd:magma}, {cmd:inferno}, {cmd:plasma},
+    {cmd:cividis}, {cmd:turbo}, {cmd:greys}, {cmd:blues} or {cmd:reds}{p_end}
+{synopt:{cmdab:colorn:levels(}{it:#}{cmd:)}}number of colour levels for a
+    continuous {it:varname}{p_end}
+{synopt:{cmdab:colorm:issing(}{it:color}{cmd:)}}colour drawn for observations
+    where {it:varname} is missing{p_end}
+{synoptline}
+
+{pstd}
+A continuous {cmd:colorvar()} draws a colour bar beside the figure; a
+discrete one draws a legend entry per level.
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash scatter mpg weight, colorvar(price) colpalette(magma) colornlevels(8)}{p_end}
 
 {marker geometry}
 {title:Figure proportions}
@@ -843,63 +955,167 @@ does not collapse to an unreadable sliver on a phone.
 {phang2}{cmd:. dash scatter mpg weight, aspectratio(0.75)}{p_end}
 
 
+{marker markers}
+{title:Marker and Transparency Options}
+
+{pstd}
+These plot-level options are supported and honoured.  They were documented
+under {it:Unsupported Stata twoway options} in earlier versions of this help,
+which was wrong in both directions: they work, and the note {cmd:dash} prints
+has never named them.
+
+{synoptset 28}{...}
+{synopt:{opt jitter(#)}}add uniform noise scaled to {it:#}% of the axis range
+    to both coordinates.  Supported on {cmd:scatter}, {cmd:dot},
+    {cmd:dropline} and {cmd:scatteri}{p_end}
+{synopt:{opt jitterseed(#)}}random-number seed for {cmd:jitter()}, spelled as
+    in Stata.  With no seed the noise differs on every render{p_end}
+{synopt:{opt jseed(#)}}a {cmd:dash} synonym for {cmd:jitterseed()}; if both
+    are given, {cmd:jseed()} wins{p_end}
+{synopt:{cmdab:msa:ngle(}{it:#}{cmd:)}}rotate every marker in the layer
+    {it:#} degrees clockwise.  Valid for {cmd:scatter}, {cmd:dot},
+    {cmd:dropline}, {cmd:connected} and {cmd:scatteri}{p_end}
+{synopt:{cmdab:mal:pha(}{it:#}{cmd:)}}opacity of the markers, 0-100{p_end}
+{synopt:{cmdab:lal:pha(}{it:#}{cmd:)}}opacity of the lines, 0-100{p_end}
+{synopt:{cmdab:fa:lpha(}{it:#}{cmd:)}}opacity of the fill, 0-100{p_end}
+{synoptline}
+
+{pstd}
+Stata's {cmd:color%alpha} notation works too, so {cmd:mcolor(red%50)} and
+{cmd:mcolor(red) malpha(50)} are the same thing.
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash scatter mpg weight, jitter(5) jitterseed(12345) malpha(60)}{p_end}
+
+
+{marker scheme}
+{title:Stata scheme support}
+
+{pstd}
+{cmd:scheme()} applies a named Stata graph scheme to the whole dashboard.
+With no {cmd:scheme()} and no {cmd:theme()}, {cmd:dash} follows the session's
+own {cmd:c(scheme)}, so a dashboard has the look of every other graph you
+draw without your asking.
+
+{pstd}
+{cmd:dash} ships faithful translations of fourteen StataCorp schemes:
+
+{synoptset 16}{...}
+{synopt:{cmd:stcolor}}Stata 18+ default{p_end}
+{synopt:{cmd:stcolor_alt}}{p_end}
+{synopt:{cmd:stgcolor}}{p_end}
+{synopt:{cmd:stmono1}}{p_end}
+{synopt:{cmd:stmono2}}{p_end}
+{synopt:{cmd:stsj}}{p_end}
+{synopt:{cmd:s2color}}the default from Stata 10 to 17{p_end}
+{synopt:{cmd:s2mono}}{p_end}
+{synopt:{cmd:s2gcolor}}{p_end}
+{synopt:{cmd:s1color}}{p_end}
+{synopt:{cmd:s1mono}}{p_end}
+{synopt:{cmd:s1rcolor}}light on a dark background{p_end}
+{synopt:{cmd:economist}}{p_end}
+{synopt:{cmd:sj}}{p_end}
+{synoptline}
+
+{pstd}
+The scheme sets the background and plot-region colours, the series colour,
+symbol, line-pattern and line-width cycles, the marker size, the font sizes,
+the grid, the legend and the figure proportions.  An explicit graph option
+always wins: {cmd:bgcolor()}, {cmd:plotregion()}, {cmd:mcolor()} and the rest
+take precedence over whatever the scheme asks for.
+
+{pstd}
+{cmd:theme(}{it:name}{cmd:)} is an alias for a scheme, kept for
+compatibility: {cmd:default} is {cmd:s2color}, {cmd:clean} is {cmd:s1color},
+{cmd:mono} is {cmd:s1mono}, {cmd:dark} is {cmd:s1rcolor}, and
+{cmd:economist} and {cmd:sj} name themselves.  {cmd:scheme()} wins if both
+are given.
+
+{pstd}
+A name that is neither a translated scheme nor one of those aliases is
+reported and {cmd:s2color} is used -- {cmd:dash} does not silently draw
+something other than what you asked for.  To use a scheme {cmd:dash} does not
+ship, put its Stata-format {cmd:.scheme} file in the working directory and
+give its base name without the extension.
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash build, saving(d.html) scheme(s1rcolor) replace}{p_end}
+
+
 {marker unsupported}
 {title:Unsupported Stata twoway options}
 
 {pstd}
-The following Stata {helpb twoway} options are accepted but not honoured.
-No error is produced for any of them, so existing Stata graph commands
-copy-pasted into {cmd:dash} still run even when they contain options that
-have no Bokeh equivalent — and every one that is supplied is named in the
-command's note, so nothing is dropped in silence.
+The options below are {it:accepted and not honoured}.  None of them is ever
+an error, so a command copy-pasted from a do-file always runs -- and every
+one that is supplied is named in that command's note, so nothing is dropped
+in silence:
 
-{phang2}{opt connect(list)} — control how missing values join points.
-    Not applicable to Bokeh renderers; use {cmd:connected} plot type instead.
-    Accepted and named in the note; not honoured.
+{p 12 12 2}{cmd:. dash scatter mpg weight, pstyle(p3) t1title("hi")}{p_end}
+{p 12 12 2}{cmd:dash: ignoring unsupported option(s): pstyle() t1title()}{p_end}
 
-{phang2}{opt cmissing(y|n ...)} — treatment of missing values in lines.
-    Bokeh always drops missing observations before rendering.
-    Accepted and named in the note; not honoured.
+{pstd}
+This list and that note are generated from the same declarations in
+{cmd:dash.ado}, and {cmd:test/test_help_conformance.py} fails if they
+disagree in either direction.
 
-{phang2}{opt jitter(#)} — add random noise to marker positions.
-    Uniformly distributed noise scaled to #% of the axis range is added to
-    both x and y coordinates.  Combine with {opt jseed(#)} for reproducible
-    results.  Supported on {cmd:scatter}, {cmd:dot}, {cmd:dropline}, and
-    {cmd:scatteri} plot types; accepted but not honoured on line and fit plots.
+{phang2}{ul:Alternative and multi-line titles.}
+    {opt t1title(string)}, {opt t2title(string)}, {opt b1title(string)},
+    {opt b2title(string)}, {opt l1title(string)}, {opt l2title(string)},
+    {opt r1title(string)}, {opt r2title(string)}, {opt title2(string)},
+    {opt subtitle2(string)} — {cmd:dash} draws one title per side.  Use
+    {cmd:title()}, {cmd:subtitle()}, {cmd:xtitle()} and {cmd:ytitle()}.
 
-{phang2}{opt jseed(#)} — random-number seed for {opt jitter()}.
-    Pass any non-negative integer to make jitter reproducible across renders.
+{phang2}{ul:Minor ticks and minor labels.}
+    {opt xmtick(numlist)}, {opt ymtick(numlist)},
+    {opt xmlabel(numlist)}, {opt ymlabel(numlist)} — Bokeh draws one tick
+    level per axis.  {cmd:xtick()} and {cmd:xlabel()} are honoured.
 
-{phang2}{opt msangle(#)} — rotate all markers in a scatter layer by {it:#} degrees.
-    Applies a uniform clockwise rotation to every marker symbol in the layer.
-    Abbreviation: {cmd:msa()}.  Valid for {cmd:scatter}, {cmd:dot},
-    {cmd:dropline}, {cmd:connected}, and {cmd:scatteri} plot types.
+{phang2}{ul:Fixed sizing inside a combined graph.}
+    {opt fxsize(#)}, {opt fysize(#)}, {opt scale(#)} — these size a panel
+    within {cmd:graph combine}, which has no equivalent here: a
+    {cmd:dash} figure stretches to the width it is given.  Use
+    {cmd:xsize()}, {cmd:ysize()} or {cmd:aspectratio()} to set its
+    proportions, and {cmd:layout()} to place it.
 
-{phang2}{opt recast(plottype)} — recast one plot type to another at render time.
-    Not supported; specify the desired plot type directly.
-    Accepted and named in the note; not honoured.
+{phang2}{ul:Named style stubs.}
+    {opt pstyle(name)}, {opt lstyle(name)}, {opt mstyle(name)},
+    {opt mlstyle(name)}, {opt mlpattern(patternstyle)},
+    {opt mlabwidth(size)}, {opt colorlist(colors)},
+    {opt coloruseplegend} — a style stub names a bundle of settings in a
+    {cmd:.scheme} file.  {cmd:dash} reads the scheme's own {cmd:p}{it:#}
+    cycles directly; set the properties you want with {cmd:mcolor()},
+    {cmd:msymbol()}, {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()}.
 
-{phang2}{opt xaxis(#)} / {opt yaxis(#)} — assign a plot layer to a secondary axis.
-    Use {cmd:yaxis(2)} on any plot layer to add a right-hand y-axis scaled to
-    that layer's data.  Use {cmd:xaxis(2)} to add a top x-axis.  The secondary
-    axis range is computed automatically from the data.  Pair with
-    {cmd:ytitle2()}, {cmd:ylabel2()}, {cmd:yscale2(log)} for the right-hand
-    axis (or {cmd:xtitle2()}, {cmd:xlabel2()}, {cmd:xscale2(log)} for the
-    top axis).
+{phang2}{ul:Sub-option pass-through.}
+    {opt ciopts(...)}, {opt lineopts(...)}, {opt fitopts(...)} — the
+    confidence band, the density line and the fitted line each take the
+    scheme's own styling.  Their contents are not read.
 
-{phang2}{opt scheme(schemename)} — apply a named Stata graph scheme to the dashboard.
-    {cmd:dash} ships with bundled approximations of five built-in Stata schemes:
-    {cmd:s2color} (default), {cmd:s1color}, {cmd:s1mono}, {cmd:economist}, and
-    {cmd:sj}.  To use a custom scheme, place a Stata-format {cmd:.scheme} file
-    in the current working directory and specify its base name without the
-    extension.  The scheme controls background colors, marker color cycles,
-    line patterns, font sizes, and grid appearance.  Explicit graph options
-    ({cmd:bgcolor()}, {cmd:plotbgcolor()}, etc.) take precedence over scheme
-    defaults.
+{phang2}{ul:Bar and dot geometry.}
+    {opt at(varname)}, {opt blabel(...)}, {opt horizontal}, {opt vertical},
+    {opt sort} — bars are drawn vertically at the x variable's values, and
+    {cmd:line} plots are already sorted by x, as in {cmd:twoway}.
 
-{phang2}{opt nodraw} — suppress graph display.
-    Not applicable; {cmd:dash} always writes to a file or starts a server.
-    Use the {opt saving()} option without immediately opening the output.
+{phang2}{ul:No Bokeh equivalent.}
+    {opt connect(list)} — use the {cmd:connected} plot type.
+    {opt cmissing(y|n)} — missing observations are always dropped before
+    rendering.
+    {opt recast(plottype)} — name the plot type you want directly.
+    {opt nodraw} — {cmd:dash} always writes a file or starts a server;
+    {cmd:nodraw} does suppress the browser window, as {cmd:nobrowser} does.
+    {opt play(recordingname)} — there is no graph editor to replay.
+    {opt text(# # "string")} — use {cmd:note()} or {cmd:caption()}.
+
+{pstd}
+Two further notes on the note itself.  It names option {it:names}, never the
+values supplied.  And because an unknown option cannot be told apart from a
+misspelled supported one, a typo is reported as ignored rather than
+rejected: {cmd:titl(x)} abbreviates {cmd:title()} and works, while
+{cmd:titel(x)} appears in the note.
+
 
 
 {marker dependencies}

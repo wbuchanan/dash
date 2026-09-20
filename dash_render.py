@@ -1312,8 +1312,17 @@ class OptionTranslator:
         if v in OptionTranslator._COLOR_MAP:
             return OptionTranslator._COLOR_MAP[v]
 
-        # Passthrough for hex values already in CSS format
-        if v.startswith("#") and len(v) in (4, 7):
+        # Passthrough for hex values already in CSS format.
+        #
+        # The length test alone was the whole check, so any 4- or
+        # 7-character string starting with '#' was returned as a colour --
+        # '#}a{b;c' among them. SchemeParser puts this value into a <style>
+        # block where html.escape leaves '{', '}' and ';' alone, so a
+        # .scheme file (which the help invites the user to take from the
+        # working directory) could close dash's own rule and open its own.
+        # The KPI colour path was hardened against exactly this; this was
+        # the colour path it did not reach.
+        if re.fullmatch(r"#(?:[0-9a-f]{3}|[0-9a-f]{6})", v):
             return v
 
         raise ValueError(
@@ -1625,7 +1634,16 @@ class SchemeParser:
                 os.path.abspath(os.path.join(d, name)) for d in search_dirs
             ]
         else:
-            candidates = [
+            # CWD first, then the package's own schemes/.  A bare base name
+            # used to be looked for ONLY in the package directory, so
+            # dash.sthlp's instruction -- put a .scheme file in the working
+            # directory and give its base name -- did not work: the name was
+            # reported as an unknown scheme, and only `scheme(mytheme.scheme)'
+            # found it. The path validator below applies to these candidates
+            # exactly as it does to the file-reference branch.
+            candidates = [os.path.abspath(
+                os.path.join(os.getcwd(), name + ".scheme"))]
+            candidates += [
                 os.path.abspath(os.path.join(d, name + ".scheme"))
                 for d in search_dirs
             ]
@@ -2174,6 +2192,50 @@ def _apply_jitter(
     x_noise = rng.uniform(-half_x, half_x, size=len(x_arr))
     y_noise = rng.uniform(-half_y, half_y, size=len(y_arr))
     return x_arr + x_noise, y_arr + y_noise
+
+
+# The smallest bar width dash will pass to Bokeh.  Bokeh raises
+# "Distances must be positive!" on anything at or below zero, and that
+# exception is not confined to the bar -- it loses the whole dashboard.
+# The longest function() expression dash will validate.  _validate_expr_node
+# recurses once per AST node, so a machine-generated expression of tens of
+# thousands of terms raised RecursionError -- which is not a SyntaxError or a
+# ValueError, so it escaped the guard and lost the whole dashboard.
+_MAX_EXPR_CHARS = 5000
+
+
+def _floats_only(tree: "_ast.AST") -> "_ast.AST":
+    """Make every numeric literal in *tree* a float.
+
+    Stata evaluates in double precision, so ``9^9^9^9`` overflows to missing.
+    Python's integer power is exact and unbounded, so the same expression
+    computed a number with billions of digits: measured past 20 seconds with
+    the GIL held throughout, which means Stata's Break key cannot recover it
+    and the process must be killed.
+
+    Turning the constants into floats gives Python the same arithmetic Stata
+    has -- ``9.0 ** 9.0 ** 9.0`` is ``inf`` immediately -- so an expression
+    that overflows draws nothing instead of never returning.
+
+    Args:
+        tree: A parsed, already-validated expression tree.
+
+    Returns:
+        The same tree, with integer constants replaced by floats.
+    """
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Constant) and isinstance(node.value, int) \
+                and not isinstance(node.value, bool):
+            node.value = float(node.value)
+    return _ast.fix_missing_locations(tree)
+
+
+_MIN_BAR_WIDTH = 1e-9
+
+# The largest number of median bands dash will draw.  The generated server
+# app has always clamped to this; the standalone renderer had no bound, so
+# bands(1000000000) allocated 8 GB for the bin edges alone.
+_MAX_MBANDS = 1000
 
 
 def _with_color_alias(options: dict, specific: str) -> dict:
@@ -3564,14 +3626,20 @@ class GlyphMapper:
         else:
             bar_width = 0.8
 
-        # barwidth() / width() options override the auto-computed bar width
+        # barwidth() / width() options override the auto-computed bar width.
+        #
+        # Read through _stat_option_float so a value that is not a number, not
+        # finite, or not positive is REPORTED and the computed width used.
+        # A bare float() let barwidth(-5) through to Bokeh, which raised
+        # "Distances must be positive!" and lost the whole dashboard -- Stata
+        # itself rejects a negative barwidth with a clear r(198).
         for key in ("barwidth", "width"):
             if key in options:
-                try:
-                    bar_width = float(options[key])
-                    break
-                except (ValueError, TypeError):
-                    pass
+                _bw = _stat_option_float(options, key, None, "bar",
+                                         lo=_MIN_BAR_WIDTH)
+                if _bw is not None:
+                    bar_width = _bw
+                break
 
         # base() option sets the bar bottom; default 0
         base_val = 0.0
@@ -4601,7 +4669,21 @@ class GlyphMapper:
             span = abs(a_max) or 1.0
 
         if width is not None:
-            n_bins = int(math.ceil(span / width))
+            # A denormal width -- width(1e-310) -- makes span/width overflow
+            # to inf, and math.ceil(inf) raises OverflowError, which took the
+            # whole dashboard down rather than this one histogram.
+            _ratio = span / width if width else float("inf")
+            if not math.isfinite(_ratio) or _ratio > _MAX_BINS:
+                warnings.warn(
+                    f"dash: histogram option width({options.get('width')}) "
+                    f"would need more than {_MAX_BINS} bins; deriving the "
+                    f"width from the data instead.",
+                    UserWarning, stacklevel=2,
+                )
+                width = None
+                n_bins = _stata_bin_count(n)
+            else:
+                n_bins = int(math.ceil(_ratio))
         else:
             requested = _stat_option_float(options, "bin", None, "histogram", lo=1.0)
             n_bins = int(requested) if requested is not None else _stata_bin_count(n)
@@ -4706,7 +4788,29 @@ class GlyphMapper:
         n_pts = _stat_option_float(options, "n", 300.0, "kdensity", lo=2.0,
                                    hi=10000.0) or 300.0
         # Extend beyond the data so the tails of the kernel are drawn.
-        x_range = np.linspace(arr.min() - 3 * bw, arr.max() + 3 * bw,
+        # Stata's kdensity takes range(# #), the span the density is
+        # estimated over. dash read range() in the `function' branch and
+        # nowhere else, so `kdensity mpg, range(10 30)' estimated over the
+        # default span and said nothing about it.
+        _lo, _hi = arr.min() - 3 * bw, arr.max() + 3 * bw
+        _rng_raw = str(options.get("range", "") or "").strip()
+        if _rng_raw:
+            _parts = _rng_raw.split()
+            _ok = False
+            if len(_parts) == 2:
+                try:
+                    _a, _b = float(_parts[0]), float(_parts[1])
+                    if np.isfinite(_a) and np.isfinite(_b) and _a < _b:
+                        _lo, _hi, _ok = _a, _b, True
+                except (TypeError, ValueError):
+                    pass
+            if not _ok:
+                warnings.warn(
+                    f"dash: kdensity range({_rng_raw}) is not a low-then-high "
+                    f"pair of numbers; estimating over the default span.",
+                    UserWarning, stacklevel=2,
+                )
+        x_range = np.linspace(_lo, _hi,
                               int(n_pts))
         density = _kde_curve(arr, x_range, bw, kernel)
 
@@ -5754,7 +5858,11 @@ class GlyphMapper:
             r = fig.line(x="x_mb", y="y_mb", source=empty)
             return [r]
 
-        requested = _stat_option_float(options, "bands", None, "mband", lo=1.0)
+        # hi= matches the clamp the generated server app applies, so the two
+        # modes draw the same number of bands.  Without it, bands(1e9)
+        # allocated 8 GB in np.linspace before any drawing happened.
+        requested = _stat_option_float(options, "bands", None, "mband",
+                                       lo=1.0, hi=float(_MAX_MBANDS))
         n_bands = (int(requested) if requested is not None
                    else _mband_default_bands(len(x_clean)))
         x_min, x_max = float(x_clean.min()), float(x_clean.max())
@@ -5787,7 +5895,7 @@ class GlyphMapper:
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
         r = fig.line(x="x_mb", y="y_mb", source=mb_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
-                     line_width=2.0,
+                     line_width=self.scheme.default_line_width,
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
@@ -5884,11 +5992,25 @@ class GlyphMapper:
 
         expr = _stata_expr_to_python(expr)
 
+        if len(expr) > _MAX_EXPR_CHARS:
+            warnings.warn(
+                f"dash: function expression is {len(expr)} characters, over "
+                f"the {_MAX_EXPR_CHARS} limit; the layer is drawn empty. "
+                f"Validating it is recursive, one frame per term, so a long "
+                f"expression exhausts the stack.",
+                UserWarning, stacklevel=2,
+            )
+            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
+                             line_color="#d62728", line_width=2.0)]
+
         try:
             tree = _ast.parse(expr, mode="eval")
             _validate_expr_node(tree)
+            tree = _floats_only(tree)
             code = compile(tree, "<function>", "eval")
-        except (SyntaxError, ValueError):
+        # RecursionError is neither a SyntaxError nor a ValueError, so a deep
+        # expression escaped this guard and took the whole dashboard with it.
+        except (SyntaxError, ValueError, RecursionError, MemoryError):
             return [fig.line(x="x_fn", y="y_fn", source=empty_source,
                              line_color="#d62728", line_width=2.0)]
 
@@ -6506,6 +6628,61 @@ def _stata_expr_to_python(expr: str) -> str:
     return "".join(out)
 
 
+_LITERAL_MARK = "\x01"
+
+
+def _mask_string_literals(expr: str) -> "tuple[str, list[str]]":
+    """Replace every quoted literal with a placeholder the rewrites ignore.
+
+    Returns ``(masked, literals)``.  The placeholder is ``\x01<i>\x01``:
+    it carries no operator, no comma and no identifier, so none of the
+    qualifier rewrites can match inside it, and ``inlist(x, <ph>, <ph>)``
+    still splits on its commas exactly as before.
+
+    An unterminated quote is masked to the end of the string.  Leaving it
+    unmasked would mean the one case where the user most likely mistyped is
+    also the one case the rewrites are free to alter.
+    """
+    out: "list[str]" = []
+    lits: "list[str]" = []
+    buf = ""
+    quote = ""
+    i = 0
+    while i < len(expr):
+        ch = expr[i]
+        if quote:
+            buf += ch
+            if ch == "\\" and i + 1 < len(expr):
+                buf += expr[i + 1]
+                i += 2
+                continue
+            if ch == quote:
+                out.append(f"{_LITERAL_MARK}{len(lits)}{_LITERAL_MARK}")
+                lits.append(buf)
+                buf = ""
+                quote = ""
+            i += 1
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            buf = ch
+            i += 1
+            continue
+        out.append(ch)
+        i += 1
+    if buf:                                   # unterminated quote
+        out.append(f"{_LITERAL_MARK}{len(lits)}{_LITERAL_MARK}")
+        lits.append(buf)
+    return "".join(out), lits
+
+
+def _unmask_string_literals(expr: str, literals: "list[str]") -> str:
+    """Put the literals masked by :func:`_mask_string_literals` back."""
+    for i, lit in enumerate(literals):
+        expr = expr.replace(f"{_LITERAL_MARK}{i}{_LITERAL_MARK}", lit)
+    return expr
+
+
 def _stata_if_to_pandas(expr: str) -> str:
     """Rewrite Stata's qualifier idioms into plain comparison expressions.
 
@@ -6522,6 +6699,18 @@ def _stata_if_to_pandas(expr: str) -> str:
     which fails to parse.  Covered by the adversarial tests in
     test/test_axis_options.py.
 
+    Quoted string literals are masked out before any rewrite and restored
+    afterwards, so a literal is data and not syntax.  Without that,
+
+        if make == "Wow!"
+
+    became ``make == "Wow~"``, matched no rows and drew an empty graph
+    without a word -- the rewritten expression is still valid, so nothing
+    reported that the qualifier had been altered.  Masking rather than
+    splitting, because ``inlist(make, "AMC", "BMW")`` is a legitimate
+    qualifier whose arguments ARE literals: the rewrites must still see the
+    call, just not the contents of its strings.
+
     Args:
         expr: A Stata if-qualifier expression.
 
@@ -6530,7 +6719,7 @@ def _stata_if_to_pandas(expr: str) -> str:
     """
     if not expr:
         return expr
-    out = str(expr)
+    out, _literals = _mask_string_literals(str(expr))
 
     # inlist(x, a, b, ...) -> ((x == a) | (x == b) | ...)
     def _inlist(m):
@@ -6571,7 +6760,7 @@ def _stata_if_to_pandas(expr: str) -> str:
     # Stata's ~= is !=, and its ! is a logical not; leave != alone.
     out = out.replace("~=", "!=")
     out = re.sub(r"!(?!=)", "~", out)
-    return out
+    return _unmask_string_literals(out, _literals)
 
 
 def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
@@ -11923,6 +12112,12 @@ class ServerAppBuilder:
                     # standalone renderer translates both before parsing; this
                     # file did neither, so `if inlist(rep78,1,2)' filtered
                     # nothing and `function y = x^2' drew nothing at all.
+                    #
+                    # The two masking helpers come WITH _stata_if_to_pandas:
+                    # it calls them, and a copied function whose callees stay
+                    # behind raises NameError on the served page rather than
+                    # here, where it would be noticed.
+                    _mask_string_literals, _unmask_string_literals,
                     _stata_if_to_pandas, _stata_expr_to_python):
             out += _textwrap.dedent(
                 _inspect.getsource(_fn)).rstrip("\n").split("\n")
@@ -12011,6 +12206,15 @@ class ServerAppBuilder:
             "_SCHEME_SYMBOLS = %r" % ([sch.default_symbol(i)
                                        for i in range(15)],),
             "_SCHEME_MARKER_SIZE = %r" % (sch.default_marker_size(0),),
+            # The generated app used to hold its own literals for these --
+            # alpha=0.7 on every scatter, fill_alpha=0.4 on every area,
+            # 0.8 on every histogram, line_width=1.5 on every line -- so a
+            # served figure ignored `intensity p', `intensity area',
+            # `intensity bar' and `linewidth p' whatever the scheme said.
+            "_SCHEME_FILL_ALPHA = %r" % (sch.fill_alpha,),
+            "_SCHEME_BAR_ALPHA = %r" % (sch.bar_alpha,),
+            "_SCHEME_AREA_ALPHA = %r" % (sch.area_alpha,),
+            "_SCHEME_LINE_WIDTH = %r" % (sch.default_line_width,),
             "_SCHEME_LINE_PATTERNS = %r" % ([sch.default_line_pattern(i)
                                              for i in range(15)],),
             "_SCHEME_CONNECT_PATTERNS = %r" % ([sch.default_connect_pattern(i)
@@ -13319,7 +13523,7 @@ class ServerAppBuilder:
             "                       'medium':1.5,'medthick':2.0,'thick':2.5,'vthick':3.5,'vvthick':5.0}",
             "            _lp_map = {'solid':[],'dash':[8,4],'dot':[2,4],'dash_dot':[8,4,2,4],",
             "                       'shortdash':[4,4],'shortdot':[2,2],'longdash':[16,4],'blank':[0,100]}",
-            "            _line_width = _lw_map.get(opts.get('lwidth',''), 1.5)",
+            "            _line_width = _lw_map.get(opts.get('lwidth',''), _SCHEME_LINE_WIDTH)",
             "            _lpattern = opts.get('lpattern', '')",
             "            _line_dash = (_lp_map.get(_lpattern, []) if _lpattern",
             "                          else _dash_scheme_dash(pi, ptype))",
@@ -13401,7 +13605,7 @@ class ServerAppBuilder:
             "                _sc_extra = {'view': _sc_view} if _sc_view is not None else {}",
             "                r = fig.scatter(x=_eff_x, y=_eff_y, source=csrc,",
             "                               fill_color=_sc_fill, line_color=color,",
-            "                               size=_sc_size, marker=_sc_marker, alpha=0.7,",
+            "                               size=_sc_size, marker=_sc_marker, alpha=_SCHEME_FILL_ALPHA,",
             "                               angle=_sc_angle, angle_units='rad',",
             "                               nonselection_alpha=0.15, **_sc_extra)",
             "                fig.add_tools(HoverTool(tooltips=[(yvar, f'@{yvar}'), (xvar, f'@{xvar}')]))",
@@ -13494,7 +13698,7 @@ class ServerAppBuilder:
             "                if _hfc:",
             "                    _hfc_r = _resolve_color(_hfc)",
             "                    if _hfc_r: _hist_fill = _hfc_r",
-            "                _hist_alpha = 0.8",
+            "                _hist_alpha = _SCHEME_BAR_ALPHA",
             "                _hfi = opts.get('fintensity', '')",
             "                if _hfi:",
             "                    try:",
@@ -13507,7 +13711,9 @@ class ServerAppBuilder:
             "                    _hlc_r = _resolve_color(_hlc)",
             "                    if _hlc_r: _hist_line = _hlc_r",
             "                _hist_quad_kw = dict(fill_color=_hist_fill, line_color=_hist_line,",
-            "                                     alpha=_hist_alpha, line_width=_line_width)",
+            "                                     alpha=_hist_alpha)",
+            "                if opts.get('lwidth'):",
+            "                    _hist_quad_kw['line_width'] = _line_width",
             "                if _line_dash: _hist_quad_kw['line_dash'] = _line_dash",
             "                fig.quad(top='top', bottom=0, left='left', right='right',",
             "                         source=hist_src, **_hist_quad_kw)",
@@ -13613,7 +13819,7 @@ class ServerAppBuilder:
             "                if _afc:",
             "                    _afc_r = _resolve_color(_afc)",
             "                    if _afc_r: _ar_fill = _afc_r",
-            "                _ar_alpha = 0.4",
+            "                _ar_alpha = _SCHEME_AREA_ALPHA",
             "                _afi = opts.get('fintensity', '')",
             "                if _afi:",
             "                    try:",
@@ -13641,13 +13847,13 @@ class ServerAppBuilder:
             "                if _bfc_raw:",
             "                    _bfc_r = _resolve_color(_bfc_raw)",
             "                    if _bfc_r: _bar_fill = _bfc_r",
-            "                _bar_line = 'white'",
+            "                _bar_line = _bar_fill",
             "                _blc_raw = opts.get('blcolor', '')",
             "                if _blc_raw:",
             "                    _blc_r = _resolve_color(_blc_raw)",
             "                    if _blc_r: _bar_line = _blc_r",
             "                _bar_vbar_kw = dict(width=width, fill_color=_bar_fill,",
-            "                                   line_color=_bar_line, line_width=_line_width)",
+            "                                   line_color=_bar_line)",
             "                if _line_dash: _bar_vbar_kw['line_dash'] = _line_dash",
             "                fig.vbar(x=xvar, top=yvar, bottom=_bar_bottom, source=bsrc, **_bar_vbar_kw)",
             "                graph_sources[gname].append(bsrc)",
@@ -13678,13 +13884,18 @@ class ServerAppBuilder:
             "                _conn_sz = _conn_ms_map.get(opts.get('msize',''), 8)",
             "                _conn_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
             "                _conn_sym = _conn_sym_map.get(opts.get('msymbol',''), 'circle')",
-            "                _conn_mfc = color",
+            "                _conn_mc = _dash_scheme_color(pi, 'scatter')",
+            "                _conn_mc_raw = opts.get('mcolor', '')",
+            "                if _conn_mc_raw:",
+            "                    _cmc_r = _resolve_color(_conn_mc_raw)",
+            "                    if _cmc_r: _conn_mc = _cmc_r",
+            "                _conn_mfc = _conn_mc",
             "                _conn_mfc_raw = opts.get('mfcolor', '')",
             "                if _conn_mfc_raw:",
             "                    _cmfc_r = _resolve_color(_conn_mfc_raw)",
             "                    if _cmfc_r: _conn_mfc = _cmfc_r",
             "                fig.scatter(x=xvar, y=yvar, source=csrc, marker=_conn_sym,",
-            "                            fill_color=_conn_mfc, line_color=color, size=_conn_sz, alpha=0.7)",
+            "                            fill_color=_conn_mfc, line_color=_conn_mc, size=_conn_sz, alpha=_SCHEME_FILL_ALPHA)",
             "                graph_sources[gname].append(csrc)",
             "",
             "            elif ptype == 'dot':",
@@ -13703,7 +13914,7 @@ class ServerAppBuilder:
             "                    _dmfc_r = _resolve_color(_dot_mfc_raw)",
             "                    if _dmfc_r: _dot_mfc = _dmfc_r",
             "                fig.scatter(x=xvar, y=yvar, source=dsrc, marker=_dot_sym,",
-            "                            fill_color=_dot_mfc, line_color=color, size=_dot_sz, alpha=0.7)",
+            "                            fill_color=_dot_mfc, line_color=color, size=_dot_sz, alpha=_SCHEME_FILL_ALPHA)",
             "                graph_sources[gname].append(dsrc)",
             "",
             "            elif ptype == 'lfitci':",
@@ -13771,7 +13982,7 @@ class ServerAppBuilder:
             "                    if _ra_fc:",
             "                        _ra_fc_r = _resolve_color(_ra_fc)",
             "                        if _ra_fc_r: _ra_fill = _ra_fc_r",
-            "                    _ra_alpha = 0.4",
+            "                    _ra_alpha = _SCHEME_AREA_ALPHA",
             "                    _ra_fi = opts.get('fintensity', '')",
             "                    if _ra_fi:",
             "                        try:",
@@ -14171,11 +14382,41 @@ class ServerAppBuilder:
             "                    elif isinstance(node, _ast.Call):",
             "                        if not isinstance(node.func, _ast.Name) or node.func.id not in _SAFE_FUNCS:",
             "                            raise ValueError('Disallowed function call')",
-            "                        for a in node.args: _val_node(a)",
+            "                        # A keyword argument's VALUE is an arbitrary",
+            "                        # expression that Python evaluates before the",
+            "                        # call. Walking only node.args left",
+            "                        #   sin(x, out=<anything>)",
+            "                        # unvalidated, and <anything> could reach",
+            "                        # builtins through object.__subclasses__() --",
+            "                        # an empty __builtins__ does not stop that.",
+            "                        # The standalone validator has always",
+            "                        # rejected keywords; this copy did not.",
+            "                        if node.keywords:",
+            "                            raise ValueError('Keyword arguments are not allowed')",
+            "                        for a in node.args:",
+            "                            if isinstance(a, _ast.Starred):",
+            "                                raise ValueError('Starred arguments are not allowed')",
+            "                            _val_node(a)",
             "                    else: raise ValueError(f'Disallowed node: {type(node).__name__}')",
             "                try:",
+            "                    # Validating is recursive, one frame per",
+            "                    # term, so a machine-generated expression of",
+            "                    # tens of thousands of terms exhausts the",
+            "                    # stack rather than being reported.",
+            "                    if len(pexpr) > 5000:",
+            "                        raise ValueError('Expression too long')",
             "                    _tree = _ast.parse(pexpr, mode='eval')",
             "                    _val_node(_tree)",
+            "                    # Stata evaluates in double precision, so",
+            "                    # 9^9^9^9 overflows to missing. Python's",
+            "                    # integer power is exact and unbounded, and",
+            "                    # the same expression never returned.",
+            "                    for _n in _ast.walk(_tree):",
+            "                        if (isinstance(_n, _ast.Constant)",
+            "                                and isinstance(_n.value, int)",
+            "                                and not isinstance(_n.value, bool)):",
+            "                            _n.value = float(_n.value)",
+            "                    _ast.fix_missing_locations(_tree)",
             "                    _code = compile(_tree, '<function>', 'eval')",
             "                    _x = np.linspace(x_lo, x_hi, n_pts)",
             "                    _ns = {'x': _x, 'pi': _math.pi, 'e': _math.e,",
@@ -14440,11 +14681,11 @@ class ServerAppBuilder:
             "                if ptype == 'scatter':",
             "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype == 'line':",
-            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f, **_glyph_kw)",
+            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('bar',):",
             "                    _fac_fig.vbar(x=xvar_f, top=yvar_f, source=_fac_src, width=0.8, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype == 'area':",
-            "                    _fac_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_fac_src, fill_color=color, fill_alpha=0.4, legend_label=yvar_f, **_glyph_kw)",
+            "                    _fac_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_fac_src, fill_color=color, fill_alpha=_SCHEME_AREA_ALPHA, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('histogram', 'hist'):",
             "                    _hvar = plot.get('var', '') or yvar_f",
             "                    _hdata = _compute_histogram(_fac_gdf, _hvar, opts)",
@@ -14455,42 +14696,42 @@ class ServerAppBuilder:
             "                    _lfdata = _compute_lfit(_fac_gdf, yvar_f, xvar_f)",
             "                    _lfsrc = ColumnDataSource(_lfdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _lfsrc, 'type': 'lfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x', 'y', source=_lfsrc, line_width=1.5, color=color, legend_label=f'lfit {yvar_f}')",
+            "                    _fac_fig.line('x', 'y', source=_lfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lfit {yvar_f}')",
             "                elif ptype == 'qfit':",
             "                    _qfdata = _compute_qfit(_fac_gdf, yvar_f, xvar_f)",
             "                    _qfsrc = ColumnDataSource(_qfdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _qfsrc, 'type': 'qfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x', 'y', source=_qfsrc, line_width=1.5, color=color, legend_label=f'qfit {yvar_f}')",
+            "                    _fac_fig.line('x', 'y', source=_qfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'qfit {yvar_f}')",
             "                elif ptype == 'kdensity':",
             "                    _kdvar = plot.get('var', '') or yvar_f",
             "                    _kddata = _compute_kdensity(_fac_gdf, _kdvar)",
             "                    _kdsrc = ColumnDataSource(_kddata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _kdsrc, 'type': 'kdensity', 'var': _kdvar}",
-            "                    _fac_fig.line('x', 'y', source=_kdsrc, line_width=1.5, color=color, legend_label=_kdvar)",
+            "                    _fac_fig.line('x', 'y', source=_kdsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=_kdvar)",
             "                elif ptype == 'lowess':",
             "                    _lwdata = _compute_lowess(_fac_gdf, yvar_f, xvar_f)",
             "                    _lwsrc = ColumnDataSource(_lwdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _lwsrc, 'type': 'lowess', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x', 'y', source=_lwsrc, line_width=1.5, color=color, legend_label=f'lowess {yvar_f}')",
+            "                    _fac_fig.line('x', 'y', source=_lwsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lowess {yvar_f}')",
             "                elif ptype in ('lpoly', 'lpolyci'):",
             "                    _lp_bw_f = float(opts.get('bwidth', 0.5))",
             "                    _lp_deg_f = int(opts.get('degree', 0))",
             "                    _lpdata = _compute_lpoly(_fac_gdf, yvar_f, xvar_f, opts)",
             "                    _lpsrc = ColumnDataSource(_lpdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _lpsrc, 'type': 'lpoly', 'yvar': yvar_f, 'xvar': xvar_f, 'bwidth': _lp_bw_f, 'degree': _lp_deg_f}",
-            "                    _fac_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=1.5, color=color, legend_label=f'lpoly {yvar_f}')",
+            "                    _fac_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lpoly {yvar_f}')",
             "                elif ptype in ('fpfit', 'fpfitci'):",
             "                    _fpdata = _compute_fpfit(_fac_gdf, yvar_f, xvar_f)",
             "                    _fpsrc = ColumnDataSource(_fpdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _fpsrc, 'type': 'fpfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=1.5, color=color, legend_label=f'fpfit {yvar_f}')",
+            "                    _fac_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'fpfit {yvar_f}')",
             "                elif ptype in ('connected',):",
-            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=1.5, color=color, **_glyph_kw)",
+            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, **_glyph_kw)",
             "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('dot',):",
             "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=8, color=color, marker='circle', legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('spike',):",
-            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.5, color=color, legend_label=yvar_f, **_glyph_kw)",
+            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('dropline',):",
             "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.0, color=color, **_glyph_kw)",
             "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
@@ -14506,7 +14747,7 @@ class ServerAppBuilder:
             "                                _s = (_mb_x >= _x_e[_bi]) & ((_mb_x < _x_e[_bi+1]) if _bi < _n_b-1 else (_mb_x <= _x_e[_bi+1]))",
             "                                if _s.sum(): _xm.append(float(0.5*(_x_e[_bi]+_x_e[_bi+1]))); _ym.append(float(np.median(_mb_y[_s])))",
             "                            if _xm:",
-            "                                _fac_fig.line('x_mb', 'y_mb', source=ColumnDataSource({'x_mb': _xm, 'y_mb': _ym}), line_width=1.5, color=color, legend_label=yvar_f)",
+            "                                _fac_fig.line('x_mb', 'y_mb', source=ColumnDataSource({'x_mb': _xm, 'y_mb': _ym}), line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
             "            figures[_fac_name] = _fac_fig",
             "            facet_entries.append((_fac_name, _fac_label))",
             "            _facet_group_vals[_fac_name] = (by_vars, _fac_key)",
@@ -14541,11 +14782,11 @@ class ServerAppBuilder:
             "                if ptype == 'scatter':",
             "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color, legend_label=yvar_f)",
             "                elif ptype == 'line':",
-            "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=1.5, color=color, legend_label=yvar_f)",
+            "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
             "                elif ptype in ('bar',):",
             "                    _tot_fig.vbar(x=xvar_f, top=yvar_f, source=_tot_src, width=0.8, color=color, legend_label=yvar_f)",
             "                elif ptype == 'area':",
-            "                    _tot_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_tot_src, fill_color=color, fill_alpha=0.4, legend_label=yvar_f)",
+            "                    _tot_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_tot_src, fill_color=color, fill_alpha=_SCHEME_AREA_ALPHA, legend_label=yvar_f)",
             "                elif ptype in ('histogram', 'hist'):",
             "                    _hvar = plot.get('var', '') or yvar_f",
             "                    _hdata = _compute_histogram(work_df, _hvar, opts)",
@@ -14556,42 +14797,42 @@ class ServerAppBuilder:
             "                    _lfdata = _compute_lfit(work_df, yvar_f, xvar_f)",
             "                    _lfsrc = ColumnDataSource(_lfdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _lfsrc, 'type': 'lfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x', 'y', source=_lfsrc, line_width=1.5, color=color, legend_label=f'lfit {yvar_f}')",
+            "                    _tot_fig.line('x', 'y', source=_lfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lfit {yvar_f}')",
             "                elif ptype == 'qfit':",
             "                    _qfdata = _compute_qfit(work_df, yvar_f, xvar_f)",
             "                    _qfsrc = ColumnDataSource(_qfdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _qfsrc, 'type': 'qfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x', 'y', source=_qfsrc, line_width=1.5, color=color, legend_label=f'qfit {yvar_f}')",
+            "                    _tot_fig.line('x', 'y', source=_qfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'qfit {yvar_f}')",
             "                elif ptype == 'kdensity':",
             "                    _kdvar = plot.get('var', '') or yvar_f",
             "                    _kddata = _compute_kdensity(work_df, _kdvar)",
             "                    _kdsrc = ColumnDataSource(_kddata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _kdsrc, 'type': 'kdensity', 'var': _kdvar}",
-            "                    _tot_fig.line('x', 'y', source=_kdsrc, line_width=1.5, color=color, legend_label=_kdvar)",
+            "                    _tot_fig.line('x', 'y', source=_kdsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=_kdvar)",
             "                elif ptype == 'lowess':",
             "                    _lwdata = _compute_lowess(work_df, yvar_f, xvar_f)",
             "                    _lwsrc = ColumnDataSource(_lwdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _lwsrc, 'type': 'lowess', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x', 'y', source=_lwsrc, line_width=1.5, color=color, legend_label=f'lowess {yvar_f}')",
+            "                    _tot_fig.line('x', 'y', source=_lwsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lowess {yvar_f}')",
             "                elif ptype in ('lpoly', 'lpolyci'):",
             "                    _lp_bw_t = float(opts.get('bwidth', 0.5))",
             "                    _lp_deg_t = int(opts.get('degree', 0))",
             "                    _lpdata = _compute_lpoly(work_df, yvar_f, xvar_f, opts)",
             "                    _lpsrc = ColumnDataSource(_lpdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _lpsrc, 'type': 'lpoly', 'yvar': yvar_f, 'xvar': xvar_f, 'bwidth': _lp_bw_t, 'degree': _lp_deg_t}",
-            "                    _tot_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=1.5, color=color, legend_label=f'lpoly {yvar_f}')",
+            "                    _tot_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lpoly {yvar_f}')",
             "                elif ptype in ('fpfit', 'fpfitci'):",
             "                    _fpdata = _compute_fpfit(work_df, yvar_f, xvar_f)",
             "                    _fpsrc = ColumnDataSource(_fpdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _fpsrc, 'type': 'fpfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=1.5, color=color, legend_label=f'fpfit {yvar_f}')",
+            "                    _tot_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'fpfit {yvar_f}')",
             "                elif ptype in ('connected',):",
-            "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=1.5, color=color)",
+            "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color)",
             "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color, legend_label=yvar_f)",
             "                elif ptype in ('dot',):",
             "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=8, color=color, marker='circle', legend_label=yvar_f)",
             "                elif ptype in ('spike',):",
-            "                    _tot_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_tot_src, line_width=1.5, color=color, legend_label=yvar_f)",
+            "                    _tot_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
             "                elif ptype in ('dropline',):",
             "                    _tot_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_tot_src, line_width=1.0, color=color)",
             "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color, legend_label=yvar_f)",
@@ -14607,7 +14848,7 @@ class ServerAppBuilder:
             "                                _s_t = (_mb_x_t >= _x_e_t[_bi_t]) & ((_mb_x_t < _x_e_t[_bi_t+1]) if _bi_t < _n_b_t-1 else (_mb_x_t <= _x_e_t[_bi_t+1]))",
             "                                if _s_t.sum(): _xm_t.append(float(0.5*(_x_e_t[_bi_t]+_x_e_t[_bi_t+1]))); _ym_t.append(float(np.median(_mb_y_t[_s_t])))",
             "                            if _xm_t:",
-            "                                _tot_fig.line('x_mb', 'y_mb', source=ColumnDataSource({'x_mb': _xm_t, 'y_mb': _ym_t}), line_width=1.5, color=color, legend_label=yvar_f)",
+            "                                _tot_fig.line('x_mb', 'y_mb', source=ColumnDataSource({'x_mb': _xm_t, 'y_mb': _ym_t}), line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
             "            figures[_tot_name] = _tot_fig",
             "            facet_entries.append((_tot_name, 'Total'))",
             "            _facet_group_vals[_tot_name] = (by_vars, None)  # Total = no group filter",
@@ -15276,9 +15517,16 @@ class ServerAppBuilder:
             "    for _o in (origins or []):",
             "        if _o and _o not in _origins:",
             "            _origins.append(_o)",
-            "    _kw = {}",
-            "    if address:",
-            "        _kw['address'] = address",
+            "    # Bind loopback unless the operator asks otherwise.",
+            "    # Passing no address at all makes Bokeh listen on every",
+            "    # interface -- measured as ('0.0.0.0', port) and",
+            "    # ('::', port) -- so `dash serve' on a laptop served the",
+            "    # whole embedded dataset to the local network. The only",
+            "    # gate was allow_websocket_origin, which filters a header",
+            "    # the CLIENT supplies: a client that omits Origin, or",
+            "    # forges localhost:<port>, completed the handshake.",
+            "    # --address 0.0.0.0 still opens it deliberately.",
+            "    _kw = {'address': address or '127.0.0.1'}",
             "    return Server(",
             "        {'/': Application(FunctionHandler(make_document))},",
             "        port=_p,",

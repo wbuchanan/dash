@@ -617,7 +617,6 @@ program define _dash_parse_plot_opts, sclass
     if `"`pstyle'"' != "" local _dash_pending `"`_dash_pending' pstyle"'
     if `"`r1title'"' != "" local _dash_pending `"`_dash_pending' r1title"'
     if `"`r2title'"' != "" local _dash_pending `"`_dash_pending' r2title"'
-    if `"`range'"' != "" local _dash_pending `"`_dash_pending' range"'
     if `"`recast'"' != "" local _dash_pending `"`_dash_pending' recast"'
     if `"`scale'"' != "" local _dash_pending `"`_dash_pending' scale"'
     if `"`sort'"' != "" local _dash_pending `"`_dash_pending' sort"'

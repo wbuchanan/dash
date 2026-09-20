@@ -182,6 +182,41 @@ CORPUS = [
      [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}},
       {"type": "scatter", "yvar": "weight", "xvar": "mpg", "options": {}}],
      {"scheme": "s2color"}),
+    # Every entry above is a scatter, which is how seven glyph types and
+    # every annotation drifted without this file noticing.
+    ("line, default scheme",
+     [{"type": "line", "yvar": "mpg", "xvar": "weight", "options": {}}], {}),
+    ("line, economist",
+     [{"type": "line", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {"scheme": "economist"}),
+    ("area",
+     [{"type": "area", "yvar": "mpg", "xvar": "weight", "options": {}}], {}),
+    ("bar",
+     [{"type": "bar", "yvar": "mpg", "xvar": "weight", "options": {}}], {}),
+    ("histogram",
+     [{"type": "histogram", "yvar": "mpg", "xvar": "", "options": {}}], {}),
+    ("kdensity",
+     [{"type": "kdensity", "yvar": "mpg", "xvar": "", "options": {}}], {}),
+    ("mband",
+     [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}], {}),
+    ("dropline",
+     [{"type": "dropline", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {}),
+    ("spike",
+     [{"type": "spike", "yvar": "mpg", "xvar": "weight", "options": {}}], {}),
+    ("connected, s1mono",
+     [{"type": "connected", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {"scheme": "s1mono"}),
+    ("scatter with a fit, economist",
+     [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}},
+      {"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {"scheme": "economist"}),
+    ("scatter with marker labels",
+     [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+       "options": {"mlabel": "foreign"}}], {}),
+    ("scatter with an explicit line width",
+     [{"type": "line", "yvar": "mpg", "xvar": "weight",
+       "options": {"lwidth": "thick"}}], {}),
 ]
 
 
@@ -193,16 +228,39 @@ class TestTheTwoModesAgree:
         assert len(_standalone_figures(tmp_path, spec)) == \
                len(_server_figures(tmp_path, spec))
 
-    def test_same_marker_colour_and_size(self, tmp_path, name, plots, bo):
+    def test_same_glyph_properties(self, tmp_path, name, plots, bo):
+        """Every property _glyph_profile collects, for every glyph type.
+
+        This used to assert four of the seven collected properties, and only
+        on Scatter glyphs. line_width, line_dash and fill_alpha were gathered
+        and thrown away, and every non-scatter glyph was skipped -- so the
+        file was green while the served app drew area fills at 0.4 where
+        standalone draws 1.0, histogram bars with a white 1.5px outline that
+        standalone does not draw, and faceted markers at a fixed size 6
+        whatever the scheme asked for.
+        """
         spec = _spec(plots, bo)
         std = _glyph_profile(_standalone_figures(tmp_path, spec)[0])
         srv = _glyph_profile(_server_figures(tmp_path, spec)[0])
-        for attr in ("marker", "size", "fill_color", "line_color"):
-            a = [g.get(attr) for g in std if g["type"] == "Scatter"]
-            b = [g.get(attr) for g in srv if g["type"] == "Scatter"]
-            assert a == b, (
-                f"{name}: {attr} differs — standalone {a}, server {b}"
-            )
+        assert [g["type"] for g in std] == [g["type"] for g in srv], (
+            f"{name}: different glyphs — standalone "
+            f"{[g['type'] for g in std]}, server {[g['type'] for g in srv]}"
+        )
+        for i, (a, b) in enumerate(zip(std, srv)):
+            for attr in sorted(set(a) | set(b)):
+                assert a.get(attr) == b.get(attr), (
+                    f"{name}: glyph {i} ({a['type']}) {attr} differs — "
+                    f"standalone {a.get(attr)!r}, server {b.get(attr)!r}"
+                )
+
+    def test_the_profile_is_not_empty(self, tmp_path, name, plots, bo):
+        """Guards the guard: comparing two empty lists proves nothing."""
+        spec = _spec(plots, bo)
+        std = _glyph_profile(_standalone_figures(tmp_path, spec)[0])
+        assert std, f"{name}: no glyphs collected, so nothing was compared"
+        assert all(len(g) > 1 for g in std), (
+            f"{name}: glyphs carry no comparable properties"
+        )
 
     def test_same_figure_chrome(self, tmp_path, name, plots, bo):
         spec = _spec(plots, bo)

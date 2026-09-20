@@ -18,6 +18,14 @@ program define dash_setup
     // ----------------------------------------------------------------
     // 1. Check Python availability
     // ----------------------------------------------------------------
+    // The minimum Python dash_setup.sthlp advertises.  Held by a program
+    // rather than a local so that a test can ask the code what it is
+    // instead of parsing this file -- dash_setup.ado's own lines carry
+    // compound quotes, and re-quoting them to scan for a pattern is
+    // "too few quotes", r(132).
+    _dash_pymin
+    local c_pymin "`r(pymin)'"
+
     display as text _newline "{txt}dash_setup: checking dependencies..."
     display as text "{hline 60}"
 
@@ -29,9 +37,27 @@ program define dash_setup
         exit 198
     }
 
-    // Retrieve Python version string for display
+    // Retrieve Python version string and compare it to the minimum.
+    //
+    // `python query' succeeds for ANY linked Python, 3.6 included, and this
+    // step used to read the version only to print it.  dash_setup.sthlp says
+    // this step verifies Python 3.8+, so it now does: a user on 3.7 was told
+    // "OK (version 3.7.9)" and sent on to fail later inside bokeh, with a
+    // message about neither Python nor dash.
     python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
-    display as text "  Python ............. {res}OK{txt} (version `pyver')"
+    _dash_pyver_ok "`pyver'" "`c_pymin'"
+    local pyok = r(ok)
+    if `pyok' == 1 {
+        display as text "  Python ............. {res}OK{txt} (version `pyver')"
+    }
+    else if `pyok' == 0 {
+        display as error "  Python ............. version `pyver' is below the minimum `c_pymin'."
+        display as error "    bokeh and pandas will not install or import reliably."
+        display as error "    Link Stata to Python `c_pymin' or later: {help python}"
+    }
+    else {
+        display as text "  Python ............. {res}OK{txt} (version `pyver'; could not be compared to `c_pymin')"
+    }
 
     // ----------------------------------------------------------------
     // 2. Ensure `packaging` is available before version comparisons
@@ -197,6 +223,81 @@ end
 // The lookup below needs no exception handling at all: it scans the
 // installed distributions and takes a default when none matches.
 // ================================================================
+program define _dash_pymin, rclass
+    /*
+        The minimum Python version dash requires, named once.
+
+        returns r(pymin): the version string, e.g. "3.8".
+
+        dash_setup displays it, _dash_pyver_ok compares against it, and
+        test/test_setup_python_gate.cscript asserts dash_setup.sthlp states
+        the same number -- so the help cannot drift from the check.
+    */
+    return local pymin "3.8"
+end
+
+program define _dash_pyver_ok, rclass
+    /*
+        Is a dotted version string at or above a minimum?
+
+        args:  got  -- the version to test, e.g. "3.10.0" or "3.8.0rc1"
+               want -- the minimum, e.g. "3.8"
+
+        returns r(ok):  1 at or above, 0 below, -1 unreadable.
+
+        Compared component by component as NUMBERS.  A string comparison
+        gets this wrong in the one case that matters most -- "3.10" sorts
+        before "3.9" -- and that is how the check is usually botched.
+
+        An unreadable version returns -1 rather than 0: refusing to set up
+        on a version dash merely failed to parse is worse than proceeding.
+    */
+    args got want
+
+    local got  = strtrim(`"`got'"')
+    local want = strtrim(`"`want'"')
+    if "`got'" == "" | "`want'" == "" {
+        return scalar ok = -1
+        exit
+    }
+
+    local gparts = subinstr("`got'", ".", " ", .)
+    local wparts = subinstr("`want'", ".", " ", .)
+    local ng : word count `gparts'
+    local nw : word count `wparts'
+    local n = max(`ng', `nw')
+
+    forvalues i = 1/`n' {
+        local g : word `i' of `gparts'
+        local w : word `i' of `wparts'
+        if "`g'" == "" local g "0"
+        if "`w'" == "" local w "0"
+
+        // A component may carry a suffix -- "0rc1" -- so take its leading
+        // digits and ignore the rest.
+        if !regexm("`g'", "^([0-9]+)") {
+            return scalar ok = -1
+            exit
+        }
+        local gnum = real(regexs(1))
+        if !regexm("`w'", "^([0-9]+)") {
+            return scalar ok = -1
+            exit
+        }
+        local wnum = real(regexs(1))
+
+        if `gnum' > `wnum' {
+            return scalar ok = 1
+            exit
+        }
+        if `gnum' < `wnum' {
+            return scalar ok = 0
+            exit
+        }
+    }
+    return scalar ok = 1
+end
+
 program define _dash_pkg_version
     version 16.0
     args pkg outmac
