@@ -147,6 +147,34 @@ def _glyph_profile(fig):
     return prof
 
 
+def _annotations(fig):
+    """The annotations a figure carries, as comparable dicts.
+
+    Glyph properties were compared and annotations were not, so the served
+    marker labels could use a second size table, a different default font and
+    different offsets (measured: 14px at (5, 5) against the renderer's 15px at
+    (4, 0)), and the served note and caption could sit on top of each other,
+    without this file noticing.
+    """
+    from bokeh.models import Label, LabelSet, Span
+    out = []
+    for r in list(fig.center) + list(fig.above) + list(fig.below) + \
+            list(fig.left) + list(fig.right):
+        if isinstance(r, LabelSet):
+            out.append({"kind": "LabelSet", "text": r.text,
+                        "font": r.text_font_size, "color": r.text_color,
+                        "x_offset": r.x_offset, "y_offset": r.y_offset})
+        elif isinstance(r, Label):
+            out.append({"kind": "Label", "text": r.text,
+                        "font": r.text_font_size, "color": r.text_color})
+        elif isinstance(r, Span):
+            out.append({"kind": "Span", "dimension": r.dimension,
+                        "location": r.location, "color": r.line_color,
+                        "width": r.line_width, "dash": list(r.line_dash or [])})
+    return sorted(out, key=lambda d: json.dumps(d, sort_keys=True,
+                                                default=str))
+
+
 def _chrome(fig):
     return {
         "background_fill_color": fig.background_fill_color,
@@ -238,18 +266,33 @@ CORPUS = [
     ("dropline, economist",
      [{"type": "dropline", "yvar": "mpg", "xvar": "weight", "options": {}}],
      {"scheme": "economist"}),
+    ("scatter with marker labels and a size",
+     [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+       "options": {"mlabel": "foreign", "mlabsize": "large"}}], {}),
+    ("reference lines",
+     [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {}, {"xline": "3000", "yline": "20"}),
+    ("a styled reference line",
+     [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {}, {"xline": "3000, lcolor(red) lpattern(solid) lwidth(thick)"}),
+    ("note and caption",
+     [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {}, {"note": "N", "caption": "C"}),
 ]
 
 
-@pytest.mark.parametrize("name,plots,bo", CORPUS,
+CORPUS = [(c + ({},))[:4] for c in CORPUS]
+
+
+@pytest.mark.parametrize("name,plots,bo,go", CORPUS,
                          ids=[c[0] for c in CORPUS])
 class TestTheTwoModesAgree:
-    def test_same_number_of_figures(self, tmp_path, name, plots, bo):
-        spec = _spec(plots, bo)
+    def test_same_number_of_figures(self, tmp_path, name, plots, bo, go):
+        spec = _spec(plots, bo, go)
         assert len(_standalone_figures(tmp_path, spec)) == \
                len(_server_figures(tmp_path, spec))
 
-    def test_same_glyph_properties(self, tmp_path, name, plots, bo):
+    def test_same_glyph_properties(self, tmp_path, name, plots, bo, go):
         """Every property _glyph_profile collects, for every glyph type.
 
         This used to assert four of the seven collected properties, and only
@@ -260,7 +303,7 @@ class TestTheTwoModesAgree:
         standalone does not draw, and faceted markers at a fixed size 6
         whatever the scheme asked for.
         """
-        spec = _spec(plots, bo)
+        spec = _spec(plots, bo, go)
         std = _glyph_profile(_standalone_figures(tmp_path, spec)[0])
         srv = _glyph_profile(_server_figures(tmp_path, spec)[0])
         assert [g["type"] for g in std] == [g["type"] for g in srv], (
@@ -274,17 +317,25 @@ class TestTheTwoModesAgree:
                     f"standalone {a.get(attr)!r}, server {b.get(attr)!r}"
                 )
 
-    def test_the_profile_is_not_empty(self, tmp_path, name, plots, bo):
+    def test_same_annotations(self, tmp_path, name, plots, bo, go):
+        spec = _spec(plots, bo, go)
+        std = _annotations(_standalone_figures(tmp_path, spec)[0])
+        srv = _annotations(_server_figures(tmp_path, spec)[0])
+        assert std == srv, (
+            f"{name}: annotations differ\n  standalone {std}\n  server     {srv}"
+        )
+
+    def test_the_profile_is_not_empty(self, tmp_path, name, plots, bo, go):
         """Guards the guard: comparing two empty lists proves nothing."""
-        spec = _spec(plots, bo)
+        spec = _spec(plots, bo, go)
         std = _glyph_profile(_standalone_figures(tmp_path, spec)[0])
         assert std, f"{name}: no glyphs collected, so nothing was compared"
         assert all(len(g) > 1 for g in std), (
             f"{name}: glyphs carry no comparable properties"
         )
 
-    def test_same_figure_chrome(self, tmp_path, name, plots, bo):
-        spec = _spec(plots, bo)
+    def test_same_figure_chrome(self, tmp_path, name, plots, bo, go):
+        spec = _spec(plots, bo, go)
         std = _chrome(_standalone_figures(tmp_path, spec)[0])
         srv = _chrome(_server_figures(tmp_path, spec)[0])
         assert std["background_fill_color"] == srv["background_fill_color"]

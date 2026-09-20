@@ -407,12 +407,63 @@ class TestEverySeedSiteReadsBothSpellings:
         gm.map_dropline(figure(), src, "mpg", "weight",
                         {"jitter": "5", "jseed": "abc"})
 
-    def test_the_served_app_reads_jitterseed(self):
-        """The generated app emits its own seed read; it must read both."""
-        import inspect as _inspect
+    def test_the_served_app_reads_jitterseed(self, tmp_path):
+        """A served scatter must jitter reproducibly, as a saved one does.
+
+        This used to grep ServerAppBuilder's source for the word
+        `jitterseed'. The app no longer spells it there: its scatter branch
+        calls the renderer's own map_scatter, which reads the seed through
+        _jitter_seed. The grep asked where the behaviour lived rather than
+        whether it was there, so it failed on a change that improved it.
+        """
+        import importlib.util
+        import json as _json
+        import warnings as _w
+        import numpy as _np
+        import pandas as _pd
         import dash_render as _dr
-        src = _inspect.getsource(_dr.ServerAppBuilder)
-        assert "jitterseed" in src, (
-            "the generated server app never mentions jitterseed(), so a "
-            "served figure jitters unseeded where a saved one does not"
+        from bokeh.document import Document
+        from bokeh.models import ColumnDataSource as _CDS
+
+        _df = _pd.DataFrame({"weight": _np.linspace(1000, 4000, 40),
+                             "mpg": _np.linspace(10, 40, 40)})
+        spec = {"graphs": [{"name": "g1", "graph_options": {"name": "g1"},
+                            "options": {},
+                            "plots": [{"type": "scatter", "yvar": "mpg",
+                                       "xvar": "weight",
+                                       "options": {"jitter": "5",
+                                                   "jitterseed": "31"}}]}],
+                "kpis": [],
+                "build_options": {"layout": "auto", "registry": "g1",
+                                  "level": "95", "formats": {}, "theme": "",
+                                  "scheme": "", "session_scheme": ""}}
+
+        def _cloud(tag):
+            sp = tmp_path / f"js_{tag}.json"
+            dp = tmp_path / f"jd_{tag}.json"
+            ap = tmp_path / f"ja_{tag}.py"
+            sp.write_text(_json.dumps(spec))
+            dp.write_text(_json.dumps({
+                "variableNames": list(_df.columns),
+                "values": _df.to_dict("records")}))
+            with _w.catch_warnings():
+                _w.simplefilter("ignore")
+                _dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
+            ms = importlib.util.spec_from_file_location(f"_js{tag}", str(ap))
+            mod = importlib.util.module_from_spec(ms)
+            with _w.catch_warnings():
+                _w.simplefilter("ignore")
+                ms.loader.exec_module(mod)
+                doc = Document()
+                mod.make_document(doc)
+            for m in doc.select({"type": _CDS}):
+                if "_x_jit" in m.data:
+                    return [float(v) for v in m.data["_x_jit"]]
+            return None
+
+        a, b = _cloud("a"), _cloud("b")
+        assert a is not None, "the served scatter did not jitter at all"
+        assert a == b, (
+            "the same command jitters differently on each render, so "
+            "jitterseed() is not reaching the served figure"
         )

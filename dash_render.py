@@ -12312,6 +12312,128 @@ class ServerAppBuilder:
             _resolve_scheme_name(self.spec), "the dashboard",
         )
 
+    def _glyph_layer_lines(self) -> "list[str]":
+        """Emit the renderer's own glyph layer into the app, verbatim.
+
+        S15-03. The generated app used to carry 46 hand-written ``ptype``
+        branches that re-implemented what ``GlyphMapper``'s 39 ``map_*``
+        methods already do. They drifted, repeatedly and silently: served
+        scatters at alpha 0.7 where the scheme says 0.8, areas at 0.4 against
+        1.0, bars outlined white, a served ``lpolyci`` that drew no band at
+        all. Each was found by measurement after the fact.
+
+        So the app gets ONE implementation -- this one, copied by
+        ``inspect.getsource`` as the statistical helpers already are -- and
+        the branches call into it.
+
+        The app stays self-contained, which ``dash.sthlp`` promises in three
+        places: nothing is imported from the package, the classes are written
+        into the file, and the scheme arrives as a property dict rather than
+        as a ``.scheme`` file the app would have to find on disk.
+
+        Returns:
+            The lines to write, in dependency order.
+        """
+        import inspect as _inspect
+        import sys as _sys
+        import textwrap as _textwrap
+
+        _mod = _sys.modules[__name__]
+        out: "list[str]" = [
+            "",
+            "# ---- The glyph layer, copied verbatim from dash_render.py ----",
+            "#",
+            "# inspect.getsource, not a transcription: the standalone renderer",
+            "# and this file run the SAME map_* methods, so a change to one",
+            "# cannot land without the other. S15-03.",
+            "",
+            "# SchemeParser resolves its bundled schemes/ directory relative",
+            "# to __file__. This app is normally imported, and __file__ is",
+            "# then set -- but it is also exec()'d, by tests and by anything",
+            "# that reads the source and runs it, and there __file__ does not",
+            "# exist and the class body raises on definition. The scheme",
+            "# arrives below as a property dict, so the directory is never",
+            "# read; this only lets the class be defined.",
+            "if '__file__' not in globals():",
+            "    __file__ = '<dash server app>'",
+            "",
+        ]
+
+        # Constants these classes reference that are not already written out
+        # by _shared_stat_lines and are not modules the app imports.
+        _already = set(self._shared_stat_lines())
+        for _name in ("_TEXTBOX_SUBOPT_RE",
+                      "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
+                      "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
+                      "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_CI_BAND_ALPHA",
+                      "_NONSELECTION_ALPHA", "_ROW_ID_COLUMN"):
+            _val = getattr(_mod, _name, None)
+            if _val is None:
+                continue
+            if any(_l.startswith(_name + " =") for _l in _already):
+                continue
+            if hasattr(_val, "pattern") and hasattr(_val, "flags"):
+                # repr() of a compiled pattern TRUNCATES anything over 200
+                # characters with an ellipsis, which then compiles to a
+                # different regex or not at all.
+                out.append("%s = re.compile(%r, %d)"
+                           % (_name, _val.pattern, int(_val.flags)))
+                continue
+            out.append("%s = %r" % (_name, _val))
+        out += [""]
+
+        # Module-level helpers the classes call. Those _shared_stat_lines
+        # already writes are skipped; emitting a def twice is legal but
+        # leaves two texts to keep in step, which is the whole problem.
+        _emitted_names = {
+            _l.split("(")[0][4:] for _l in _already if _l.startswith("def ")
+        }
+        for _fn_name in ("_parse_textbox_opt",
+                         "_optional_import", "_extract_finite", "_apply_jitter",
+                         "_with_color_alias", "_jitter_seed", "_floats_only",
+                         "_parse_stata_numeric_fmt", "_format_stata_numeric",
+                         "_format_date_value_standalone", "_fp_grid",
+                         "_fp_report_unsupported", "_betacf", "_betainc",
+                         "_t_cdf", "_t_ppf"):
+            if _fn_name in _emitted_names:
+                continue
+            _fn = getattr(_mod, _fn_name, None)
+            if _fn is None:
+                continue
+            out += _textwrap.dedent(
+                _inspect.getsource(_fn)).rstrip("\n").split("\n")
+            out += ["", ""]
+
+        # The three classes, in dependency order.
+        for _cls in (OptionTranslator, SchemeParser, GlyphMapper):
+            out += _inspect.getsource(_cls).rstrip("\n").split("\n")
+            out += ["", ""]
+
+        # The scheme, as a property dict rather than a file. SchemeParser
+        # reads .scheme files from disk; an app that has been moved, or a
+        # machine without dash installed, has none. __new__ plus the parsed
+        # properties gives a REAL SchemeParser with no file access, so the
+        # served figure is styled by the same code the saved one is.
+        out += [
+            "_SCHEME_PROPS = %r" % (dict(getattr(self.scheme, "_props", {})),),
+            "",
+            "",
+            "def _dash_build_scheme():",
+            '    """The dashboard\'s scheme, rebuilt without touching the disk."""',
+            "    _s = SchemeParser.__new__(SchemeParser)",
+            "    _s._props = dict(_SCHEME_PROPS)",
+            "    _s.name = %r" % (getattr(self.scheme, "name", "s2color"),),
+            "    _s.is_fallback = False",
+            "    _s._init_properties()",
+            "    return _s",
+            "",
+            "",
+            "_DASH_SCHEME = _dash_build_scheme()",
+            "_DASH_MAPPER = GlyphMapper(scheme=_DASH_SCHEME)",
+            "",
+        ]
+        return out
+
     @staticmethod
     def _shared_stat_lines() -> "list[str]":
         """Emit the renderer's own statistical helpers into the app.
@@ -12709,7 +12831,15 @@ class ServerAppBuilder:
             "import html",
             "import json",
             "import math",
+            "import os",
             "import re",
+            "import ast as _ast",
+            # GlyphMapper's signatures annotate with Any, Callable and List.
+            # Annotations are evaluated when the class body runs on any
+            # interpreter without PEP 649's lazy evaluation -- Stata's
+            # embedded Python among them -- and the app then raises
+            # NameError at import. It did.
+            "from typing import Any, Callable, Iterable, List",
             "import numpy as np",
             "import warnings",
             "import pandas as pd",
@@ -12853,7 +12983,8 @@ class ServerAppBuilder:
             "        f'</div>'",
             "    )",
             "",
-        ] + self._scheme_lines() + self._shared_stat_lines() + [
+        ] + self._scheme_lines() + self._shared_stat_lines() \
+          + self._glyph_layer_lines() + [
             "",
             "_RATE_LIMIT_RPM = 60   # max dashboard session connections per IP per minute",
             "_HEALTH_LIMIT_RPM = 600  # max /health requests per IP per minute (infrastructure checks)",
@@ -13450,6 +13581,27 @@ class ServerAppBuilder:
             "        return {'x': [], 'y': []}",
             "",
             "",
+            "def _textbox_size_px(opts, default):",
+            '    """Font size for a note/caption/subtitle, from its size() sub-option."""',
+            "    try:",
+            "        _v = float(str(opts.get('size', '')).strip())",
+            "        if _v > 0:",
+            "            return '%gpx' % _v",
+            "    except (TypeError, ValueError):",
+            "        pass",
+            "    return '%gpx' % float(default)",
+            "",
+            "",
+            "def _textbox_color_of(opts, default):",
+            '    """Colour for a note/caption/subtitle, from its color() sub-option."""',
+            "    _c = str(opts.get('color', '') or '').strip()",
+            "    if _c:",
+            "        _r = _resolve_color(_c)",
+            "        if _r:",
+            "            return _r",
+            "    return default",
+            "",
+            "",
             "def _compute_lpolyci(df, yvar, xvar, options=None):",
             '    """Return the lpoly fit and its bootstrap confidence band.',
             "",
@@ -13766,28 +13918,71 @@ class ServerAppBuilder:
             "                try: fig.y_range = Range1d(float(_yr_parts[0]), float(_yr_parts[1]))",
             "                except (ValueError, TypeError): pass",
             "        # note / caption annotations",
+            "        #",
+            "        # Both used to be drawn at screen (0, 0) at 11px, so they",
+            "        # sat ON TOP OF EACH OTHER and the caption was the wrong",
+            "        # size. Measured in Stata, the note is ring(4) and the",
+            "        # caption ring(5) -- the caption sits BELOW the note and",
+            "        # the note is the smaller of the two. Their sub-options",
+            "        # were dropped too, and the text was HTML-escaped, which",
+            "        # is wrong for canvas text: a note reading `R&D' came out",
+            "        # `R&amp;D'.",
             "        from bokeh.models import Label as _Label",
+            "        _TEXTBOX_DEFAULTS = {",
+            "            'note':    {'size': 11.0, 'color': '#555555', 'y': 2.0},",
+            "            'caption': {'size': 12.0, 'color': '#555555', 'y': -12.0},",
+            "        }",
             "        for _ann_key in ('note', 'caption'):",
-            "            _ann_txt = go.get(_ann_key, '')",
-            "            if _ann_txt:",
-            "                fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
-            "                    text=html.escape(_ann_txt), text_font_size='11px', text_color='#555555'), 'below')",
+            "            _ann_raw = go.get(_ann_key, '')",
+            "            if not _ann_raw:",
+            "                continue",
+            "            _ann_txt, _ann_opts = _parse_textbox_opt(_ann_raw)",
+            "            if not _ann_txt:",
+            "                continue",
+            "            _d = _TEXTBOX_DEFAULTS[_ann_key]",
+            "            fig.add_layout(_Label(",
+            "                x=0, y=_d['y'], x_units='screen', y_units='screen',",
+            "                text=_ann_txt,",
+            "                text_font_size=_textbox_size_px(_ann_opts, _d['size']),",
+            "                text_color=_textbox_color_of(_ann_opts, _d['color'])),",
+            "                'below')",
             "        # subtitle annotation",
             "        _sub_txt = go.get('subtitle', '')",
             "        if _sub_txt:",
             "            fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
             "                text=html.escape(_sub_txt), text_font_size='13px', text_color='#444444'), 'above')",
             "        # xline / yline reference lines",
+            "        #",
+            "        # This used to float-cast every whitespace token and",
+            "        # discard whatever would not cast, so `xline(3000,",
+            "        # lcolor(red) lwidth(thick))' drew NOTHING -- the first",
+            "        # token was `3000,' and the rest were sub-options. The",
+            "        # default was also a grey literal; measured in Stata it",
+            "        # is BLACK dashed. _parse_textbox_opt is the standalone",
+            "        # renderer's own splitter, copied in above.",
             "        for _refkey, _dim in (('xline', 'height'), ('yline', 'width')):",
             "            _refraw = go.get(_refkey, '')",
-            "            if _refraw:",
-            "                for _rv in str(_refraw).split():",
-            "                    try:",
-            "                        fig.add_layout(Span(location=float(_rv),",
-            "                            dimension=_dim, line_color='#888888',",
-            "                            line_dash='dashed', line_width=1.0))",
-            "                    except (ValueError, TypeError):",
-            "                        pass",
+            "            if not _refraw:",
+            "                continue",
+            "            _refhead, _refopts = _parse_textbox_opt(str(_refraw))",
+            "            _refkw = dict(line_color='#000000', line_dash='dashed',",
+            "                          line_width=1.0)",
+            "            _rc_raw = _refopts.get('lcolor', '')",
+            "            if _rc_raw:",
+            "                _rc = _resolve_color(_rc_raw)",
+            "                if _rc: _refkw['line_color'] = _rc",
+            "            if _refopts.get('lpattern'):",
+            "                try: _refkw['line_dash'] = OptionTranslator.translate_lpattern(_refopts['lpattern'])",
+            "                except (ValueError, TypeError): pass",
+            "            if _refopts.get('lwidth'):",
+            "                try: _refkw['line_width'] = OptionTranslator.translate_lwidth(_refopts['lwidth'])",
+            "                except (ValueError, TypeError): pass",
+            "            for _rv in _refhead.replace(',', ' ').split():",
+            "                try:",
+            "                    fig.add_layout(Span(location=float(_rv),",
+            "                                        dimension=_dim, **_refkw))",
+            "                except (ValueError, TypeError):",
+            "                    pass",
             "        from bokeh.models.tickers import FixedTicker as _FT",
             "        from bokeh.models.formatters import CustomJSTickFormatter as _CJSF",
             "        import re as _re, json as _json",
@@ -13885,88 +14080,18 @@ class ServerAppBuilder:
             "                        _sc_view = CDSView(filter=IndexFilter(_sc_pos))",
             "                else:",
             "                    csrc = ColumnDataSource(clean) if xvar and yvar else src",
-            "                # --- jitter ---",
-            "                _jitter_raw = opts.get('jitter', '')",
-            "                _eff_x, _eff_y = xvar, yvar",
-            "                if _jitter_raw:",
-            "                    try:",
-            "                        _jitter_pct = float(_jitter_raw)",
-            "                    except (ValueError, TypeError):",
-            "                        _jitter_pct = 0.0",
-            "                    if _jitter_pct > 0:",
-            "                        import numpy as _jnp",
-            "                        # Stata spells the seed jitterseed();",
-            "                        # jseed() is dash's own shorthand.",
-            "                        _jseed_raw = (str(opts.get('jseed', '') or '').strip()",
-            "                                      or str(opts.get('jitterseed', '') or '').strip())",
-            "                        try: _jseed = int(float(_jseed_raw)) if _jseed_raw else None",
-            "                        except (ValueError, TypeError): _jseed = None",
-            "                        _jrng = _jnp.random.default_rng(_jseed)",
-            "                        _xa = _jnp.asarray(csrc.data[xvar], dtype=float)",
-            "                        _ya = _jnp.asarray(csrc.data[yvar], dtype=float)",
-            "                        _xr = float(_jnp.nanmax(_xa) - _jnp.nanmin(_xa)) or 1.0",
-            "                        _yr = float(_jnp.nanmax(_ya) - _jnp.nanmin(_ya)) or 1.0",
-            "                        _hw_x = min(100.0, _jitter_pct) / 100.0 * _xr / 2.0",
-            "                        _hw_y = min(100.0, _jitter_pct) / 100.0 * _yr / 2.0",
-            "                        _jdata = dict(csrc.data)",
-            "                        _jdata['_x_jit'] = (_xa + _jrng.uniform(-_hw_x, _hw_x, len(_xa))).tolist()",
-            "                        _jdata['_y_jit'] = (_ya + _jrng.uniform(-_hw_y, _hw_y, len(_ya))).tolist()",
-            "                        csrc = ColumnDataSource(_jdata)",
-            "                        _eff_x, _eff_y = '_x_jit', '_y_jit'",
-            "                _sc_fill = color",
-            "                _mfc_val = opts.get('mfcolor', '')",
-            "                if _mfc_val:",
-            "                    _mfc_resolved = _resolve_color(_mfc_val)",
-            "                    if _mfc_resolved: _sc_fill = _mfc_resolved",
-            "                _ms_map = {'circle':'circle','square':'square','triangle':'triangle',",
-            "                           'diamond':'diamond','plus':'plus','x':'x',",
-            "                           'circle_cross':'circle_cross','circle_x':'circle_x',",
-            "                           'square_cross':'square_cross','square_x':'square_x',",
-            "                           'asterisk':'asterisk','cross':'cross'}",
-            "                _sc_marker = _ms_map.get(opts.get('msymbol',''), _dash_scheme_symbol(pi))",
-            "                # The standalone renderer's own map.  These used to be",
-            "                # two scales for one set of Stata keywords, so",
-            "                # msize(large) drew at 15px in one mode and 12px in",
-            "                # the other, from the same command.",
-            "                _sz_map = _SIZE_MAP",
-            "                _sc_size = _sz_map.get(opts.get('msize',''), _SCHEME_MARKER_SIZE)",
-            "                if opts.get('msize','').replace('.','',1).isdigit():",
-            "                    _sc_size = float(opts.get('msize','8'))",
-            "                _sc_angle_deg = opts.get('msangle', '')",
-            "                _sc_angle = math.radians(float(_sc_angle_deg)) if _sc_angle_deg and _sc_angle_deg.strip().lstrip('-').replace('.','',1).isdigit() else 0.0",
-            "                _sc_extra = {'view': _sc_view} if _sc_view is not None else {}",
-            "                r = fig.scatter(x=_eff_x, y=_eff_y, source=csrc,",
-            "                               fill_color=_sc_fill, line_color=color,",
-            "                               size=_sc_size, marker=_sc_marker, alpha=_SCHEME_FILL_ALPHA,",
-            "                               angle=_sc_angle, angle_units='rad',",
-            "                               nonselection_alpha=0.15, **_sc_extra)",
-            "                fig.add_tools(HoverTool(tooltips=[(yvar, f'@{yvar}'), (xvar, f'@{xvar}')]))",
-            "                # mlabel — add LabelSet annotation if option is set",
-            "                _mlab_var = opts.get('mlabel', '')",
-            "                if _mlab_var and _mlab_var in csrc.data:",
-            "                    _mlab_kw = dict(x=xvar, y=yvar, text=_mlab_var, source=csrc,",
-            "                                    text_font_size='9px', text_color='#333333',",
-            "                                    x_offset=5, y_offset=5)",
-            "                    _mlc = _resolve_color(opts.get('mlabcolor', ''))",
-            "                    if _mlc: _mlab_kw['text_color'] = _mlc",
-            "                    _mls_map = {'tiny':'7px','vsmall':'8px','small':'9px','medsmall':'10px',",
-            "                                'medium':'11px','medlarge':'12px','large':'14px',",
-            "                                'vlarge':'16px','huge':'20px'}",
-            "                    _mls = _mls_map.get(opts.get('mlabsize',''), '')",
-            "                    if _mls: _mlab_kw['text_font_size'] = _mls",
-            "                    # mlabposition — clock position (0-12) → x/y offset",
-            "                    _mlabpos_map = {",
-            "                        '0':(0,10),'12':(0,10),'1':(7,7),'2':(10,0),'3':(10,-5),",
-            "                        '4':(7,-7),'5':(4,-10),'6':(0,-10),'7':(-7,-7),'8':(-10,-5),",
-            "                        '9':(-10,0),'10':(-7,7),'11':(-4,10)",
-            "                    }",
-            "                    _mlp = opts.get('mlabposition', '')",
-            "                    if _mlp in _mlabpos_map:",
-            "                        _mlabpos_x, _mlabpos_y = _mlabpos_map[_mlp]",
-            "                        _mlab_kw['x_offset'] = _mlabpos_x",
-            "                        _mlab_kw['y_offset'] = _mlabpos_y",
-            "                    fig.add_layout(LabelSet(**_mlab_kw))",
-            "                graph_sources[gname].append(csrc)  # update to clean source",
+            "                # One dispatch, into the renderer's own",
+            "                # GlyphMapper. This branch used to re-implement",
+            "                # map_scatter: its own jitter, its own marker",
+            "                # size map, its own mlabel LabelSet with a",
+            "                # second size table and different offsets, and",
+            "                # a hover tool showing raw variable names where",
+            "                # the saved dashboard shows labels and formats.",
+            "                _r = _DASH_MAPPER.map_scatter(",
+            "                    fig, csrc, yvar, xvar, opts,",
+            "                    view=_sc_view, color_idx=pi)",
+            "                graph_sources[gname].append(",
+            "                    getattr(_r, 'data_source', None) or csrc)",
             "",
             "            elif ptype == 'line':",
             "                _line_mlab = opts.get('mlabel', '')",
@@ -14808,6 +14933,14 @@ class ServerAppBuilder:
             "        # layer's renderers begin lets the legend be built once, here,",
             '        # instead of threading a label through every call.',
             '        if _leg_bounds and fig.renderers:',
+            "            # Any legend Bokeh built from a delegated mapper's own",
+            "            # legend_label is replaced, not added to: the mapper",
+            "            # labels its glyphs, so leaving those in place and",
+            "            # adding this one gave the served figure TWO legends",
+            "            # where the saved one has one.",
+            "            for _old_lg in [m for m in fig.center",
+            "                            if isinstance(m, Legend)]:",
+            "                fig.center.remove(_old_lg)",
             '            _items = []',
             '            for _bi, (_start, _lbl) in enumerate(_leg_bounds):',
             '                _end = (_leg_bounds[_bi + 1][0]',
