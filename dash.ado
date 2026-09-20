@@ -971,8 +971,15 @@ program define _dash_process_segment, rclass
     // Determine varpart syntax group for this plot type:
     //   1v  : histogram kdensity
     //   3v  : rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline
-    //   4v  : pcspike pcarrow pcbarrow
-    //   any : scatteri pci pcscatter function
+    //   4v  : pcspike pcarrow pcbarrow pcscatter
+    //   any : scatteri pci function
+    //
+    // pcscatter takes FOUR VARIABLES in Stata -- `pcscatter y1 x1 y2 x2' --
+    // and was routed to the literal parser, which wrote its variable names
+    // into the spec as bare identifiers inside a JSON array:
+    //     "values":[[mpg,weight],[mpg,price]]
+    // which is not valid JSON.  The renderer read nothing from it and drew
+    // an empty plot region, with rc 0 and no warning.
     //   std : everything else (including dot)
 
     local yvar  ""
@@ -1004,7 +1011,7 @@ program define _dash_process_segment, rclass
         local if_cl `"`s(if_clause)'"'
         local in_cl `"`s(in_clause)'"'
     }
-    else if inlist("`ptype'", "pcspike", "pcarrow", "pcbarrow") {
+    else if inlist("`ptype'", "pcspike", "pcarrow", "pcbarrow", "pcscatter") {
         _dash_parse_varpart_4v `varpart'
         local vl = "`s(varlist)'"
         local y1var = word("`vl'", 1)
@@ -1014,7 +1021,7 @@ program define _dash_process_segment, rclass
         local if_cl `"`s(if_clause)'"'
         local in_cl `"`s(in_clause)'"'
     }
-    else if inlist("`ptype'", "scatteri", "pci", "pcscatter", "function") {
+    else if inlist("`ptype'", "scatteri", "pci", "function") {
         _dash_parse_varpart_any `varpart'
         if "`ptype'" == "function" {
             // Remove optional "y=" prefix
@@ -1127,7 +1134,7 @@ program define _dash_process_segment, rclass
         _dash_json_str "`xvar'"  _jxv
         local vfields `""yvar1":"`_jy1'","yvar2":"`_jy2'","xvar":"`_jxv'""'
     }
-    else if inlist("`ptype'", "pcspike", "pcarrow", "pcbarrow") {
+    else if inlist("`ptype'", "pcspike", "pcarrow", "pcbarrow", "pcscatter") {
         _dash_json_str "`y1var'" _jy1
         _dash_json_str "`x1var'" _jx1
         _dash_json_str "`y2var'" _jy2
@@ -1138,7 +1145,7 @@ program define _dash_process_segment, rclass
         _dash_json_str `"`expr'"' _jex
         local vfields `""expr":"`_jex'""'
     }
-    else if inlist("`ptype'", "scatteri", "pci", "pcscatter") {
+    else if inlist("`ptype'", "scatteri", "pci") {
         // Encode as a JSON array of [y, x] pairs, each optionally followed by a
         // quoted marker label:   scatteri 20 3000 "A" 30 4000 "B"
         // This used to pair tokens blindly, checking only that the count was

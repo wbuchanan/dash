@@ -337,15 +337,32 @@ class TestSchemeSelection:
         )
 
     def test_an_unknown_theme_is_reported_not_silently_substituted(self):
-        """theme(dark) is documented and absent from the map."""
+        """A name that is neither a theme alias nor a scheme must be named.
+
+        This used to be written against theme(dark), which was documented
+        and absent from the map. The better fix was to make the documented
+        name work -- dark is s1rcolor, Stata's own dark scheme, which dash
+        ships -- so the case is now tested with a name that really is
+        unknown. test_theme_aliases.py covers the six that resolve.
+        """
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            _render(theme="chartreuse")
+        msgs = " ".join(str(w.message) for w in caught)
+        assert "chartreuse" in msgs, (
+            "an unknown theme fell back to s2color in silence"
+        )
+
+    def test_theme_dark_draws_statas_dark_scheme(self):
+        """The name the help has always advertised now resolves."""
         import warnings
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             _render(theme="dark")
         msgs = " ".join(str(w.message) for w in caught)
-        assert "dark" in msgs, (
-            "theme(dark) fell back to s2color in silence; it is documented "
-            "in dash.sthlp and absent from the theme map"
+        assert "dark" not in msgs, (
+            f"theme(dark) is still reported as unknown: {msgs}"
         )
 
     def test_the_report_names_the_supported_set(self):

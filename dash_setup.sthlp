@@ -58,13 +58,28 @@ See {helpb python} for instructions on linking Python.
 
 {pstd}{ul:Python packages (minimum versions)}
 
+{pstd}Three are required.  Without any of them {cmd:dash} cannot draw
+anything at all:
+
 {synoptset 20 tabbed}{...}
 {synopt:{opt bokeh}}3.0 or later{p_end}
 {synopt:{opt numpy}}1.23 or later{p_end}
-{synopt:{opt scipy}}1.9 or later{p_end}
-{synopt:{opt statsmodels}}0.13 or later{p_end}
 {synopt:{opt pandas}}1.5 or later{p_end}
 {synoptline}
+
+{pstd}Two are optional.  A missing optional package costs you the layers
+that need it and nothing else: the layer is drawn empty and a warning names
+the package, so the rest of the dashboard is unaffected and setup does not
+stop:
+
+{synoptset 20 tabbed}{...}
+{synopt:{opt scipy}}1.9 or later — {cmd:lfitci}, {cmd:qfitci},
+    {cmd:kdensity} and {cmd:mspline}{p_end}
+{synopt:{opt statsmodels}}0.13 or later — {cmd:lowess}{p_end}
+{synoptline}
+
+{pstd}{cmd:dash_setup} also installs {cmd:packaging} before anything else,
+because the version comparisons below use it.
 
 {pstd}All packages are installed automatically if missing.  If automatic
 installation fails (e.g., in a restricted network environment), install
@@ -85,8 +100,10 @@ See {helpb jsonio} for details on this package.
 {phang2}The {cmd:dash serve} subcommand and {cmd:dash build, server} option use
 the Bokeh Server, which is built on the Tornado web framework.
 Tornado is bundled with Bokeh 3.0 and later — no additional installation
-is required.  {cmd:dash_setup} verifies that the installed bokeh version
-is 3.0 or later, which guarantees Tornado availability.
+is required.  {cmd:dash_setup} reports the installed bokeh version and
+warns when it is below 3.0; it does not refuse to continue, because a
+patched or pre-release build below the nominal minimum often works.  A
+warning there is the signal that Tornado may be absent.
 
 
 {marker troubleshooting}

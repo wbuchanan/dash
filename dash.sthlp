@@ -284,8 +284,11 @@ The following options are available on {cmd:dash build}.
 {synopt:{cmdab:filterpos:ition}{cmd:(}{it:where}{cmd:)}}where the filter
     widgets are placed: {cmd:top} (the default) puts them in a row above the
     dashboard, {cmd:left} puts them in a sidebar beside it{p_end}
-{synopt:{cmd:theme(}{it:name}{cmd:)}}dashboard color theme
-    ({cmd:default}, {cmd:clean}, {cmd:dark}){p_end}
+{synopt:{cmdab:sch:eme}{cmd:(}{it:schemename}{cmd:)}}apply a named Stata
+    graph scheme; see {help dash##scheme:Stata scheme support}{p_end}
+{synopt:{cmd:theme(}{it:name}{cmd:)}}an alias for a scheme
+    ({cmd:default}, {cmd:clean}, {cmd:mono}, {cmd:dark}, {cmd:economist},
+    {cmd:sj}); {cmd:scheme()} wins if both are given{p_end}
 {synopt:{cmd:server}}write a self-contained Bokeh Server {cmd:.py} app
     instead of a standalone HTML file; saving() path must end in
     {cmd:.py}; does not block or open a browser{p_end}
@@ -672,7 +675,10 @@ that group.
 {pstd}
 Value labels are used for facet panel titles when available.
 Multiple by-variables produce composite labels (e.g. "Domestic / 3").
-{cmd:by()} cannot be combined with {cmd:link()}.
+{cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
+draws its panels as views over the one shared data source, so a box-select
+in any panel highlights the matching observations in every other panel and
+in every other linked graph.
 
 {pstd}
 {it:Example:}
@@ -842,10 +848,18 @@ the plot specification).
     Stata (e.g. {cmd:aspectratio(1)} for a square plot, {cmd:aspectratio(0.5)}
     for one half as tall as it is wide){p_end}
 {synopt:{cmdab:leg:end(off)}}hide the legend{p_end}
-{synopt:{cmdab:leg:end(on)}}show the legend (default){p_end}
+{synopt:{cmdab:leg:end(on)}}draw a legend on a graph that has fewer than two
+    keys, which would otherwise have none{p_end}
 {synopt:{cmdab:leg:end(}{it:position}{cmd:)}}place legend: {cmd:top}, {cmd:bottom}, {cmd:left}, {cmd:right}{p_end}
+{synopt:{cmdab:leg:end(position(}{it:#}{cmd:))}}place legend by Stata clock
+    position: 12 is above, 3 right, 6 below, 9 left{p_end}
+{synopt:{cmdab:leg:end(ring(0))}}keep the legend inside the plot region
+    rather than beside it{p_end}
 {synopt:{cmdab:leg:end(cols(}{it:#}{cmd:))}}arrange legend entries in {it:#} columns{p_end}
 {synopt:{cmdab:leg:end(rows(}{it:#}{cmd:))}}arrange legend entries in {it:#} rows{p_end}
+{synopt:{cmdab:leg:end(order(}{it:numlist}{cmd:))}}reorder the entries; an
+    entry left out of {it:numlist} is dropped from the legend{p_end}
+{synopt:{cmdab:leg:end(size(}{it:size}{cmd:))}}font size of the legend text{p_end}
 {synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for entry {it:#}{p_end}
 {synopt:{cmdab:xsiz:e(}{it:#}{cmd:)}}graph width in inches{p_end}
 {synopt:{cmdab:ysiz:e(}{it:#}{cmd:)}}graph height in inches{p_end}
@@ -854,6 +868,30 @@ the plot specification).
 {synopt:{cmdab:ytic:k(}{it:#}[{it:#} ...]{cmd:)}}y-axis tick positions
     without labels{p_end}
 {synoptline}
+
+{pstd}
+{ul:Axis labels.}  {cmd:xlabel()} and {cmd:ylabel()} take Stata's own
+vocabulary, not just a list of numbers:
+
+{synoptset 24}{...}
+{synopt:{it:numlist}}explicit tick positions, e.g. {cmd:xlabel(1000 2000 3000)}{p_end}
+{synopt:{cmd:#}{it:N}}about {it:N} ticks, chosen over the data range{p_end}
+{synopt:{it:a}{cmd:(}{it:b}{cmd:)}{it:c}}from {it:a} to {it:c} in steps of {it:b}{p_end}
+{synopt:{cmd:minmax}}label only the smallest and largest values{p_end}
+{synopt:{cmd:none}}draw no tick labels{p_end}
+{synoptline}
+
+{pstd}
+Any of those may be followed by a comma and the sub-options
+{cmd:format(}{it:fmt}{cmd:)}, {cmd:labsize(}{it:size}{cmd:)},
+{cmd:angle(}{it:#}{cmd:)}, and {cmd:grid} or {cmd:nogrid}.  The axis range
+itself is set with {cmd:xscale(range(}{it:a b}{cmd:))} /
+{cmd:yscale(range(}{it:a b}{cmd:))}.
+
+{pstd}
+{it:Examples:}
+{phang2}{cmd:. dash scatter mpg weight, xlabel(#8, grid) ylabel(10(5)40, format(%9.0f))}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, xlabel(minmax) yscale(range(0 50))}{p_end}
 
 {pstd}
 {ul:Secondary axes.}  Write {opt yaxis(2)} on any plot layer to put it on a
@@ -912,6 +950,13 @@ discrete one draws a legend entry per level.
 {pstd}
 {it:Example:}
 {phang2}{cmd:. dash scatter mpg weight, colorvar(price) colpalette(magma) colornlevels(8)}{p_end}
+
+{pstd}
+{ul:When a legend appears.}  As in {helpb twoway}, a legend is drawn only
+when the graph has two or more keys: a lone {cmd:scatter} gets none, a
+{cmd:scatter} with an {cmd:lfit} over it gets one.  {cmd:legend(on)} forces
+one onto a single-key graph and {cmd:legend(off)} removes it from any graph.
+
 
 {marker geometry}
 {title:Figure proportions}
@@ -1104,8 +1149,12 @@ disagree in either direction.
     {opt cmissing(y|n)} — missing observations are always dropped before
     rendering.
     {opt recast(plottype)} — name the plot type you want directly.
-    {opt nodraw} — {cmd:dash} always writes a file or starts a server;
-    {cmd:nodraw} does suppress the browser window, as {cmd:nobrowser} does.
+    {opt nodraw} — there is no graph window to suppress: {cmd:dash} always
+    writes a file or starts a server.  On a single immediate render it does
+    keep the browser window shut, which is the one thing it can still mean;
+    on {cmd:dash build} use {cmd:nobrowser}, or set {cmd:$dash_nobrowser} for
+    a whole session.  It is named in the note because nothing else it means
+    in {cmd:twoway} survives.
     {opt play(recordingname)} — there is no graph editor to replay.
     {opt text(# # "string")} — use {cmd:note()} or {cmd:caption()}.
 
@@ -1127,8 +1176,14 @@ Run {helpb dash_setup} once before using {cmd:dash}.
 
 {phang2}{ul:Python 3.8+} — linked to Stata via {helpb python}.
 
-{phang2}{ul:Python packages} — bokeh≥3.0, numpy≥1.23, scipy≥1.9,
-    statsmodels≥0.13, pandas≥1.5.
+{phang2}{ul:Python packages, required} — bokeh≥3.0, numpy≥1.23,
+    pandas≥1.5.
+
+{phang2}{ul:Python packages, optional} — scipy≥1.9 for {cmd:lfitci},
+    {cmd:qfitci}, {cmd:kdensity} and {cmd:mspline}; statsmodels≥0.13 for
+    {cmd:lowess}.  Without one of these the layers that need it are drawn
+    empty with a warning naming the package; the rest of the dashboard is
+    unaffected.
 
 {phang2}{ul:jsonio} — Stata package for JSON serialization of datasets.
     See {helpb jsonio}.

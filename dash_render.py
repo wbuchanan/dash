@@ -5172,10 +5172,17 @@ class GlyphMapper:
             _jitter_seed(options),
         ) if options.get("jitter") else (x_arr, y_arr)
 
-        dl_source = ColumnDataSource({
+        _dl_cols: dict = {
             "x": x_plot, "y": y_plot, "y0": zeros,
             xvar: x_arr, yvar: y_arr,
-        })
+        }
+        # _apply_mlabel_opts reads the label column out of THIS source, so a
+        # source carrying only the two plot variables meant mlabel() drew
+        # nothing on a dropline -- which dash.sthlp lists as taking it.
+        _dl_mlab = str(options.get("mlabel", "") or "").strip()
+        if _dl_mlab and _dl_mlab in source.data:
+            _dl_cols[_dl_mlab] = np.asarray(source.data[_dl_mlab])[mask]
+        dl_source = ColumnDataSource(_dl_cols)
         color = self.scheme.default_color(color_idx, "scatter")
         try:
             if "mcolor" in options:
@@ -5185,17 +5192,24 @@ class GlyphMapper:
         except ValueError:
             pass
 
-        _dl_seg_kwargs: dict = dict(x0="x", y0="y0", x1="x", y1="y",
-                                     source=dl_source, line_color=color, line_width=1.5)
-        _dl_dot_kwargs: dict = dict(x="x", y="y", source=dl_source,
-                                     fill_color=color, line_color=color, size=8,
-                                     legend_label=yvar)
+        _dl_seg_kwargs: dict = dict(
+            x0="x", y0="y0", x1="x", y1="y", source=dl_source,
+            line_color=color, line_width=self.scheme.default_line_width)
+        _dl_dot_kwargs: dict = dict(
+            x="x", y="y", source=dl_source,
+            fill_color=color, line_color=color,
+            size=self.scheme.default_marker_size(color_idx),
+            legend_label=yvar)
         if view is not None:
             _dl_seg_kwargs["view"] = view
             _dl_dot_kwargs["view"] = view
         seg = fig.segment(**_dl_seg_kwargs)
         dot = fig.scatter(**_dl_dot_kwargs)
         self._apply_line_opts(seg, options)
+        # msymbol(), msize(), msangle() and malpha() are read here and
+        # nowhere else, and the dot was never passed through -- so a dropline
+        # drew a default circle whatever was asked for.
+        self._apply_marker_opts(dot, options)
         self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar)
         return [seg, dot]
 
@@ -5352,6 +5366,10 @@ class GlyphMapper:
         r = fig.scatter(x="x", y="y", source=si_source,
                         marker=marker, size=size,
                         fill_color=color, line_color=color)
+        # mcolor(), msize() and msymbol() are resolved above; msangle() and
+        # malpha() are read only here, and dash.sthlp lists scatteri as
+        # taking msangle().
+        self._apply_marker_opts(r, options)
         # Marker labels, one per point, from the optional third element.
         if _has_labels:
             from bokeh.models import LabelSet
@@ -5445,6 +5463,67 @@ class GlyphMapper:
             List with the single Segment GlyphRenderer.
         """
         return self.map_pcspike(fig, source, y1var, x1var, y2var, x2var, options, view=view, color_idx=color_idx)
+
+    def map_pci_literal(
+        self,
+        fig: Any,
+        values: list,
+        options: "dict[str, str]",
+        color_idx: int = 0,
+    ) -> list:
+        """Draw ``twoway pci``'s literal coordinate pairs as segments.
+
+        ``pci 20 3000 30 4000`` names two points -- ``(y=20, x=3000)`` and
+        ``(y=30, x=4000)`` -- and draws a line between them.  More points
+        draw more segments, two at a time.  dash.ado writes the list as
+        ``[[20,3000],[30,4000]]``, in ``(y, x)`` order, the same order
+        ``scatteri`` uses.
+
+        Args:
+            fig:       Bokeh Figure object.
+            values:    List of ``[y, x]`` pairs from the spec.
+            options:   Translated plot-level options dict.
+            color_idx: Zero-based plot index, for the scheme's colour cycle.
+
+        Returns:
+            List with the single Segment GlyphRenderer.
+        """
+        pts: "list[tuple[float, float]]" = []
+        for pair in values or []:
+            try:
+                pts.append((float(pair[0]), float(pair[1])))
+            except (TypeError, ValueError, IndexError) as exc:
+                raise ValueError(
+                    "dash: pci coordinates must be numeric y x pairs; got "
+                    f"{values!r} ({exc})."
+                ) from exc
+
+        if len(pts) % 2:
+            warnings.warn(
+                f"dash: pci was given {len(pts)} coordinate pairs; they are "
+                f"drawn two at a time, so the last one is not drawn.",
+                UserWarning, stacklevel=2,
+            )
+
+        y0s = [pts[i][0] for i in range(0, len(pts) - 1, 2)]
+        x0s = [pts[i][1] for i in range(0, len(pts) - 1, 2)]
+        y1s = [pts[i + 1][0] for i in range(0, len(pts) - 1, 2)]
+        x1s = [pts[i + 1][1] for i in range(0, len(pts) - 1, 2)]
+
+        src = ColumnDataSource({"x0": x0s, "y0": y0s, "x1": x1s, "y1": y1s})
+        color = self.scheme.default_color(color_idx, "line")
+        try:
+            if "lcolor" in options:
+                color = self.tr.translate_mcolor(options["lcolor"])
+            elif "color" in options:
+                color = self.tr.translate_mcolor(options["color"])
+        except ValueError:
+            pass
+        r = fig.segment(x0="x0", y0="y0", x1="x1", y1="y1", source=src,
+                        line_color=color,
+                        line_width=self.scheme.default_line_width)
+        self._apply_line_opts(r, options)
+        return [r]
 
     def map_pcscatter(
         self,
@@ -7710,6 +7789,12 @@ _THEME_SCHEME_MAP: "dict[str, str]" = {
     "default":    "s2color",
     "clean":      "s1color",
     "mono":       "s1mono",
+    # s1rcolor is Stata's own dark scheme -- light markers and light text on
+    # a black plot region.  dash.sthlp has advertised theme(dark) since the
+    # first release and the map had no such key, so the one theme name a user
+    # picks precisely because they want a dark dashboard warned that it was
+    # unknown and drew s2color, which is white.
+    "dark":       "s1rcolor",
     "economist":  "economist",
     "sj":         "sj",
 }
@@ -9744,7 +9829,10 @@ class DashRenderer:
             "rcapsym", "tsrline", "rscatter",
         })
         _UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
-        _PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow"})
+        # pcscatter belongs here: it takes four variables, exactly as the
+        # other three do.  Left out, it fell through to no branch at all and
+        # drew an empty plot region with rc 0 and no warning.
+        _PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter"})
 
         # Add glyphs for each plot layer
         for pi, plot in enumerate(plots):
@@ -9834,6 +9922,13 @@ class DashRenderer:
             if ptype.lower() == "scatteri":
                 # Inline coordinate list — no shared source variable needed
                 self.mapper.map_scatteri(fig, plot.get("values", []), popts, color_idx=pi)
+            elif ptype.lower() == "pci":
+                # Also an inline coordinate list: `pci 20 3000 30 4000' is
+                # written as [[20,3000],[30,4000]], (y, x) pairs taken two at
+                # a time.  map_pci delegated to map_pcspike, which wants
+                # variable names, so nothing was ever drawn.
+                self.mapper.map_pci_literal(fig, plot.get("values", []),
+                                            popts, color_idx=pi)
             elif ptype.lower() in _PC_TYPES:
                 py1var = plot.get("y1var", "")
                 px1var = plot.get("x1var", "")
