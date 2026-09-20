@@ -624,7 +624,6 @@ program define _dash_parse_plot_opts, sclass
     if `"`range'"' != "" local _dash_pending `"`_dash_pending' range"'
     if `"`recast'"' != "" local _dash_pending `"`_dash_pending' recast"'
     if `"`scale'"' != "" local _dash_pending `"`_dash_pending' scale"'
-    if `"`scheme'"' != "" local _dash_pending `"`_dash_pending' scheme"'
     if `"`sort'"' != "" local _dash_pending `"`_dash_pending' sort"'
     if `"`subtitle2'"' != "" local _dash_pending `"`_dash_pending' subtitle2"'
     if `"`t1title'"' != "" local _dash_pending `"`_dash_pending' t1title"'
@@ -634,12 +633,16 @@ program define _dash_parse_plot_opts, sclass
     if `"`vertical'"' != "" local _dash_pending `"`_dash_pending' vertical"'
     if `"`xmlabel'"' != "" local _dash_pending `"`_dash_pending' xmlabel"'
     if `"`xmtick'"' != "" local _dash_pending `"`_dash_pending' xmtick"'
-    if `"`xsize'"' != "" local _dash_pending `"`_dash_pending' xsize"'
-    if `"`xtick'"' != "" local _dash_pending `"`_dash_pending' xtick"'
     if `"`ymlabel'"' != "" local _dash_pending `"`_dash_pending' ymlabel"'
     if `"`ymtick'"' != "" local _dash_pending `"`_dash_pending' ymtick"'
-    if `"`ysize'"' != "" local _dash_pending `"`_dash_pending' ysize"'
-    if `"`ytick'"' != "" local _dash_pending `"`_dash_pending' ytick"'
+    // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
+    // are twoway GRAPH-level options, and this program promotes them --
+    // `sreturn local g_xsize' and friends just above, picked up by the
+    // promotion loop in _dash_process_segment -- so however they are
+    // written they reach the renderer and are honoured.  Naming them here
+    // told a user who typed dash.sthlp's own example,
+    //     dash scatter mpg weight, xsize(10) ysize(2)
+    // that dash had ignored two options it had just applied.
     // Whatever Stata could not match at all, via the trailing *.
     local _dash_unknown `"`options'"'
 
