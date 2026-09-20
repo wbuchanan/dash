@@ -6127,7 +6127,7 @@ class TestFilterPerSourceOrigData:
         )
 
     def test_callback_has_per_source_orig_json_arg(self, dr_module, auto_df):
-        """BUG-29-1a: filter callback must include all_graph_sources_orig_json."""
+        """BUG-29-1a: filter callback must include all_graph_sources_orig."""
         spec = self._make_different_schema_spec()
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
@@ -6135,8 +6135,8 @@ class TestFilterPerSourceOrigData:
             renderer.render()
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
-            assert "all_graph_sources_orig_json" in cb_args, (
-                "callback args must contain 'all_graph_sources_orig_json' for per-source snapshots"
+            assert "all_graph_sources_orig" in cb_args, (
+                "callback args must contain 'all_graph_sources_orig' for per-source snapshots"
             )
         finally:
             for _p in (spec_path, data_path):
@@ -6146,7 +6146,7 @@ class TestFilterPerSourceOrigData:
                     pass
 
     def test_per_source_orig_json_length_matches_sources(self, dr_module, auto_df):
-        """BUG-29-1b: all_graph_sources_orig_json must have same length as all_graph_sources."""
+        """BUG-29-1b: all_graph_sources_orig must have same length as all_graph_sources."""
         spec = self._make_different_schema_spec()
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
@@ -6155,9 +6155,9 @@ class TestFilterPerSourceOrigData:
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
-            orig_jsons = cb_args.get("all_graph_sources_orig_json", [])
+            orig_jsons = cb_args.get("all_graph_sources_orig", [])
             assert len(srcs) == len(orig_jsons), (
-                f"all_graph_sources_orig_json length ({len(orig_jsons)}) must match "
+                f"all_graph_sources_orig length ({len(orig_jsons)}) must match "
                 f"all_graph_sources length ({len(srcs)})"
             )
         finally:
@@ -6178,12 +6178,13 @@ class TestFilterPerSourceOrigData:
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
-            orig_jsons = cb_args.get("all_graph_sources_orig_json", [])
+            orig_jsons = cb_args.get("all_graph_sources_orig", [])
             assert len(srcs) == len(orig_jsons) >= 2, (
                 "need at least 2 source snapshots to verify per-source column preservation"
             )
-            for i, (src, orig_json_str) in enumerate(zip(srcs, orig_jsons)):
-                orig = _json.loads(orig_json_str)
+            for i, (src, orig_model) in enumerate(zip(srcs, orig_jsons)):
+                # A shared ColumnDataSource now, not a JSON string.
+                orig = orig_model.data
                 src_cols = set(src.data.keys())
                 orig_cols = set(orig.keys())
                 assert src_cols == orig_cols, (
@@ -6209,15 +6210,15 @@ class TestFilterPerSourceOrigData:
                 return
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
-            orig_jsons = cb_args.get("all_graph_sources_orig_json", [])
+            orig_jsons = cb_args.get("all_graph_sources_orig", [])
             if len(srcs) < 2:
                 return
             g2_src = renderer.sources.get("g2")
             if g2_src is None:
                 return
-            for src, orig_json_str in zip(srcs, orig_jsons):
+            for src, orig_model in zip(srcs, orig_jsons):
                 if src is g2_src:
-                    orig = _json.loads(orig_json_str)
+                    orig = orig_model.data
                     assert "price" in orig, (
                         "g2 source orig_json must contain 'price' (g2's y-column)"
                     )
@@ -6233,10 +6234,10 @@ class TestFilterPerSourceOrigData:
                     pass
 
     def test_filter_js_uses_per_source_orig_json(self, dr_module, auto_df):
-        """BUG-29-1e: _FILTER_JS must reference all_graph_sources_orig_json."""
+        """BUG-29-1e: _FILTER_JS must reference all_graph_sources_orig."""
         js = dr_module._FILTER_JS
-        assert "all_graph_sources_orig_json" in js, (
-            "_FILTER_JS must reference all_graph_sources_orig_json so each source "
+        assert "all_graph_sources_orig" in js, (
+            "_FILTER_JS must reference all_graph_sources_orig so each source "
             "is filtered with its own column snapshot, not the primary source's snapshot"
         )
 
@@ -6249,8 +6250,9 @@ class TestFilterPerSourceOrigData:
             html_out = renderer.render()
             assert len(html_out) > 100, "rendered HTML must be non-trivial"
             # Verify per-source orig data is embedded in the HTML
-            assert "all_graph_sources_orig_json" in html_out, (
-                "rendered HTML must embed all_graph_sources_orig_json callback arg"
+            assert "all_graph_sources_orig" in html_out, (
+                "rendered HTML must embed the all_graph_sources_orig "
+                "callback arg"
             )
         finally:
             for _p in (spec_path, data_path):

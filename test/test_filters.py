@@ -663,15 +663,15 @@ class TestFilterCallbackNoBooleanFilterClass:
             )
 
     def test_dropdown_callback_uses_orig_data_arg(self):
-        """Dropdown callback must include 'orig_data_json' key in args (BF-04).
+        """Dropdown callback must include 'orig_source' key in args (BF-04).
 
         The new source.data replacement approach stores original data as a
-        JSON string in orig_data_json to avoid Bokeh 3.x Map serialisation.
+        JSON string in orig_source to avoid Bokeh 3.x Map serialisation.
         """
         cds = self._make_cds()
         _, cb = FilterBuilder.build_dropdown("foreign", cds, None, {})
-        assert "orig_data_json" in cb.args, (
-            "Dropdown callback must have 'orig_data_json' key in args"
+        assert "orig_source" in cb.args, (
+            "Dropdown callback must have 'orig_source' key in args"
         )
 
     def test_dropdown_js_replaces_source_data(self):
@@ -751,20 +751,26 @@ class TestFilterCallbackNoBooleanFilterClass:
         # Render must produce at least one filter callback
         assert len(r.filter_callbacks) > 0, "Expected at least one filter callback after render"
 
-        # Every callback must have orig_data_json populated (non-empty JSON string)
-        import json as _json
+        # Every callback must have orig_source populated. It is a shared
+        # ColumnDataSource, not a JSON string: a string is written into the
+        # document once per callback, so k filters meant k copies of the
+        # dataset. See test_filter_payload_size.py.
+        from bokeh.models import ColumnDataSource as _CDS
+        _seen = set()
         for cb in r.filter_callbacks:
             assert hasattr(cb, "args"), "Filter callback must have args"
-            assert "orig_data_json" in cb.args, (
-                "Filter callback must have 'orig_data_json' key after render wiring"
+            assert "orig_source" in cb.args, (
+                "Filter callback must have 'orig_source' key after render wiring"
             )
-            assert isinstance(cb.args["orig_data_json"], str), (
-                "orig_data_json must be a JSON string"
+            assert isinstance(cb.args["orig_source"], _CDS), (
+                "orig_source must be a ColumnDataSource, so Bokeh writes the "
+                "data into the document once and refers to it by id"
             )
-            orig = _json.loads(cb.args["orig_data_json"])
+            orig = cb.args["orig_source"].data
             assert isinstance(orig, dict) and len(orig) > 0, (
-                "orig_data_json must deserialise to a non-empty dict"
+                "orig_source must carry a non-empty snapshot"
             )
+            _seen.add(id(cb.args["orig_source"]))
             # No IndexFilter instances should be in callback args
             for arg_val in cb.args.values():
                 assert not isinstance(arg_val, IndexFilter), (
@@ -778,6 +784,11 @@ class TestFilterCallbackNoBooleanFilterClass:
                         )
 
 
+
+        assert len(_seen) == 1, (
+            "each callback holds its own snapshot, so the dataset is written "
+            "into the document once per filter"
+        )
 class TestFilterWiringPrimarySourceOnly:
     """Regression tests for Bug: filter IndexFilter wired to computed-glyph renderers.
 
@@ -848,22 +859,24 @@ class TestFilterWiringPrimarySourceOnly:
         fsource = r.sources.get("s1")
         assert fsource is not None, "Expected source 's1' to exist"
 
-        # Every filter callback must have orig_data_json populated from fsource
+        # Every filter callback must have orig_source populated from fsource
         import json as _json
         assert len(r.filter_callbacks) > 0, "Expected at least one filter callback"
         for cb in r.filter_callbacks:
             assert hasattr(cb, "args"), "Callback must have args"
-            assert "orig_data_json" in cb.args, (
-                "Callback must have 'orig_data_json' key populated by render wiring"
+            assert "orig_source" in cb.args, (
+                "Callback must have 'orig_source' key populated by render wiring"
             )
-            orig = _json.loads(cb.args["orig_data_json"])
+            # A shared ColumnDataSource, not a JSON string -- see
+            # test_filter_payload_size.py.
+            orig = cb.args["orig_source"].data
             assert isinstance(orig, dict) and len(orig) > 0, (
-                "orig_data_json must deserialise to a non-empty dict"
+                "orig_source must carry a non-empty snapshot"
             )
             # orig_data must contain the same columns as the source
             for col in fsource.data:
                 assert col in orig, (
-                    f"orig_data_json must contain column '{col}' from fsource"
+                    f"orig_source must contain column '{col}' from fsource"
                 )
 
         # No IndexFilter instances should appear in callback args

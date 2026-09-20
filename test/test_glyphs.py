@@ -408,49 +408,39 @@ class TestMapLfit:
         renderer = gm.map_lfit(fig, cds, "mpg", "weight", {})
         assert isinstance(renderer.glyph, Line)
 
-    def test_lfit_x_range_extends_beyond_data_bounds_lf01(self, fig, cds, gm):
-        """LF-01: lfit x_fit must extend at least 8% beyond data min/max.
+    def test_lfit_spans_the_observed_range_and_no_further_lf01(self, fig, cds, gm):
+        """LF-01: lfit spans the observed x range, as Stata's does.
 
-        The fit line should span the full visible plot area, not just the data
-        range.  Bokeh's DataRange1d adds 10% padding; lfit x_fit is extended by
-        the same 10% so it reaches the visible axis boundaries.
+        This test used to require the opposite -- that the line extend 10%
+        past the data at each end, to reach Bokeh's padded axis boundary. It
+        is the wrong contract twice over. `twoway lfit' draws over the
+        observed range (`ado/base/_/_gs_x_create.ado'), so the padded line
+        put fitted values on screen at an x no observation reaches; and
+        `lfitci', which was corrected to Stata's rule earlier, drew the same
+        fit over a different span, so the two disagreed on identical data.
         """
         x_data = np.array(cds.data["weight"])
         x_min, x_max = x_data.min(), x_data.max()
         renderer = gm.map_lfit(fig, cds, "mpg", "weight", {})
         x_fit = np.array(renderer.data_source.data["x"])
-        assert x_fit.min() < x_min, (
-            f"lfit x_fit min ({x_fit.min():.1f}) should extend below data min "
-            f"({x_min:.1f}) to reach the visible axis boundary"
+        assert x_fit.min() == pytest.approx(x_min), (
+            f"lfit starts at {x_fit.min():.1f}, before the smallest "
+            f"observation ({x_min:.1f})"
         )
-        assert x_fit.max() > x_max, (
-            f"lfit x_fit max ({x_fit.max():.1f}) should extend above data max "
-            f"({x_max:.1f}) to reach the visible axis boundary"
+        assert x_fit.max() == pytest.approx(x_max), (
+            f"lfit ends at {x_fit.max():.1f}, past the largest observation "
+            f"({x_max:.1f})"
         )
-        # Verify the extension is approximately 10% on each side
-        dx = x_max - x_min
-        assert x_fit.min() <= x_min - 0.08 * dx, "Extension should be ~10% below data min"
-        assert x_fit.max() >= x_max + 0.08 * dx, "Extension should be ~10% above data max"
 
-    def test_qfit_x_range_extends_beyond_data_bounds_lf02(self, fig, cds, gm):
-        """LF-02: qfit x_fit must extend at least 8% beyond data min/max."""
+    def test_qfit_spans_the_observed_range_and_no_further_lf02(self, fig, cds, gm):
+        """LF-02: qfit follows the same rule as lfit and qfitci."""
         x_data = np.array(cds.data["weight"])
-        x_min, x_max = x_data.min(), x_data.max()
         renderer = gm.map_qfit(fig, cds, "mpg", "weight", {})
-        x_fit = np.array(renderer.data_source.data["x"])
-        dx = x_max - x_min
-        assert x_fit.min() <= x_min - 0.08 * dx, (
-            "qfit x_fit must extend below data min to reach visible axis boundary"
-        )
-        assert x_fit.max() >= x_max + 0.08 * dx, (
-            "qfit x_fit must extend above data max to reach visible axis boundary"
-        )
+        rs = renderer if isinstance(renderer, list) else [renderer]
+        x_fit = np.array(rs[0].data_source.data["x"])
+        assert x_fit.min() == pytest.approx(x_data.min())
+        assert x_fit.max() == pytest.approx(x_data.max())
 
-
-# ----------------------------------------------------------------
-# P1B-50 — qfit line has 3 coefficients
-# ----------------------------------------------------------------
-class TestMapQfit:
     def test_qfit_has_3_coefficients(self, fig, cds, gm):
         """P1B-50: qfit uses a degree-2 polynomial (3 coefficients)."""
         renderer = gm.map_qfit(fig, cds, "mpg", "weight", {})

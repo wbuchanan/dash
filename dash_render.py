@@ -519,6 +519,53 @@ def _optional_import(module: str, attr: "str | None", package: str, feature: str
 # the canvas backend draws faster and renders text more crisply; above it the
 # canvas backend drops frames while panning.  There is nothing in a Stata
 # dataset that could tell dash where that crossover is.
+# Dataset size, in CELLS (rows x columns), above which dash says the output
+# will be large.
+#
+# Deliberately a constant and deliberately a REPORT rather than a refusal:
+# the user may well mean it, and `twoway' does not refuse to plot ten million
+# points either. The number is calibrated, not guessed -- measured at roughly
+# 34 bytes of HTML per cell, so a million cells is about 33 MB of standalone
+# HTML and a comparable base64 payload in a served app. Below it sit every
+# dataset that ships with Stata: auto is 888 cells, nlsw88 is 38,182.
+_LARGE_DATASET_CELLS = 1_000_000
+
+# Measured bytes of standalone HTML per data cell, used only to put a figure
+# in the warning above. It is an order-of-magnitude estimate, not a promise.
+_HTML_BYTES_PER_CELL = 34
+
+
+def _report_dataset_size(df: "pd.DataFrame", mode: str) -> None:
+    """Say so, once, when a dataset will make an unwieldy dashboard.
+
+    Neither renderer bounded or reported this. Measured by the adversarial
+    pass: 2,000,000 rows by 2 columns rendered to 90.6 MB of HTML at 1.71 GB
+    RSS with rc 0 and nothing said, and the served app embeds the same data
+    base64 and rebuilds the frame on every session. The user finds out when
+    the file will not open, and a Stata user has no way to know in advance --
+    `dash scatter y x' looks the same on 74 observations and on ten million.
+
+    Args:
+        df:   The frame about to be embedded.
+        mode: "dashboard" or "server app", for the message.
+    """
+    try:
+        rows, cols = int(df.shape[0]), int(df.shape[1])
+    except (AttributeError, TypeError, ValueError):
+        return
+    cells = rows * cols
+    if cells < _LARGE_DATASET_CELLS:
+        return
+    mb = cells * _HTML_BYTES_PER_CELL / 1_000_000.0
+    warnings.warn(
+        f"dash: {rows:,} observations on {cols} variables is a large "
+        f"dataset to embed; this {mode} will be roughly {mb:,.0f} MB and "
+        f"slow to open. Reduce it with an `if' or `in' qualifier, or keep "
+        f"only the variables the dashboard uses.",
+        UserWarning, stacklevel=3,
+    )
+
+
 _WEBGL_THRESHOLD = 10_000
 
 # Opacity of the observations NOT selected by a brush.
@@ -3799,10 +3846,12 @@ class GlyphMapper:
             return fig.line(x="x", y="y", source=empty)
 
         coeffs = np.polyfit(x, y, 1)  # [slope, intercept]
-        # Extend x range by Bokeh's default 10% padding on each side so the
-        # fit line spans the full visible plot area, not just the data range.
-        _dx_lfit = x.max() - x.min() if x.max() > x.min() else 1.0
-        x_fit = np.linspace(x.min() - 0.1 * _dx_lfit, x.max() + 0.1 * _dx_lfit, 200)
+        # _fit_grid is Stata's rule -- n() points, 100 by default, over the
+        # OBSERVED range.  This used to be 200 points over a range padded
+        # 10% at each end, so lfit and lfitci drew the same fit at different
+        # x values and lfit put fitted values on screen at an x no
+        # observation reaches, which twoway does not do.
+        x_fit = _fit_grid(x, options)
         y_fit = np.polyval(coeffs, x_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
@@ -3846,10 +3895,8 @@ class GlyphMapper:
             return fig.line(x="x", y="y", source=empty)
 
         coeffs = np.polyfit(x, y, 2)
-        # Extend x range by Bokeh's default 10% padding on each side so the
-        # fit line spans the full visible plot area, not just the data range.
-        _dx_qfit = x.max() - x.min() if x.max() > x.min() else 1.0
-        x_fit = np.linspace(x.min() - 0.1 * _dx_qfit, x.max() + 0.1 * _dx_qfit, 200)
+        # Stata's grid, as map_lfit uses -- see the note there.
+        x_fit = _fit_grid(x, options)
         y_fit = np.polyval(coeffs, x_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
@@ -6980,7 +7027,7 @@ _FILTER_JS = """
 // Bokeh 3.x serialises Python dicts as JavaScript Map objects, not plain {}.
 // All structured args (orig_data, filter_specs, kpi_config) are therefore
 // passed as JSON strings and parsed here to avoid Map-vs-object mismatches.
-const orig        = JSON.parse(orig_data_json);
+const orig        = orig_source.data;
 const filter_specs = JSON.parse(filter_specs_json);
 const kpi_config  = JSON.parse(kpi_config_json);
 
@@ -7044,7 +7091,7 @@ for (let i = 0; i < n_rows; i++) {
 // source per facet and a qualified graph a pre-filtered one -- so the mask
 // applies correctly to every source regardless of column differences.
 const _srcs = all_graph_sources;
-const _srcs_orig_json = all_graph_sources_orig_json;
+const _srcs_orig = all_graph_sources_orig;
 const ROW_ID = "__dash_row__";
 
 // The set of row identities that survived every active filter, taken from
@@ -7064,8 +7111,8 @@ if (_primary_ids) {
 const _kept_ids_by_src = [];
 
 for (let _si = 0; _si < _srcs.length; _si++) {
-    // Parse this source's own snapshot — preserves its unique column set.
-    const _orig_i = JSON.parse(_srcs_orig_json[_si]);
+    // This source's own snapshot — preserves its unique column set.
+    const _orig_i = _srcs_orig[_si].data;
     const _cols_i = Object.keys(_orig_i);
     const _n_i    = _cols_i.length > 0 ? _orig_i[_cols_i[0]].length : 0;
     const _ids_i  = _orig_i[ROW_ID];
@@ -7609,8 +7656,10 @@ class FilterBuilder:
                 "source":            source,
                 # JSON strings (not dicts/lists) so Bokeh 3.x serialises
                 # them as plain JS strings, not Map objects.  Parsed via
-                # JSON.parse() inside _FILTER_JS.
-                "orig_data_json":    "{}",  # populated by DashRenderer.render()
+                # JSON.parse() inside _FILTER_JS.  orig_source is a MODEL,
+                # not a string: it is shared by every callback so the dataset
+                # is written into the document once.
+                "orig_source":       ColumnDataSource(),  # populated by DashRenderer.render()
                 "all_widgets":       [],    # populated by DashRenderer.render()
                 "filter_specs_json": "[]",  # populated by DashRenderer.render()
                 "kpi_config_json":   "[]",  # populated by DashRenderer.render()
@@ -7627,7 +7676,7 @@ class FilterBuilder:
                 # for each source using its own column schema.  Prevents
                 # unlinked graphs with different columns from being corrupted
                 # when a single new_data payload is broadcast to all sources.
-                "all_graph_sources_orig_json": [],   # populated by DashRenderer.render()
+                "all_graph_sources_orig": [],   # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -7700,7 +7749,7 @@ class FilterBuilder:
         callback = CustomJS(
             args={
                 "source":            source,
-                "orig_data_json":    "{}",
+                "orig_source":       ColumnDataSource(),
                 "all_widgets":       [],
                 "filter_specs_json": "[]",
                 "kpi_config_json":   "[]",
@@ -7708,7 +7757,7 @@ class FilterBuilder:
                 "agg_sources":       [],
                 "agg_configs_json":  "[]",
                 "all_graph_sources": [],              # populated by DashRenderer.render()
-                "all_graph_sources_orig_json": [],   # populated by DashRenderer.render()
+                "all_graph_sources_orig": [],   # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -7782,7 +7831,7 @@ class FilterBuilder:
         callback = CustomJS(
             args={
                 "source":            source,
-                "orig_data_json":    "{}",
+                "orig_source":       ColumnDataSource(),
                 "all_widgets":       [],
                 "filter_specs_json": "[]",
                 "kpi_config_json":   "[]",
@@ -7790,7 +7839,7 @@ class FilterBuilder:
                 "agg_sources":       [],
                 "agg_configs_json":  "[]",
                 "all_graph_sources": [],              # populated by DashRenderer.render()
-                "all_graph_sources_orig_json": [],   # populated by DashRenderer.render()
+                "all_graph_sources_orig": [],   # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -11688,13 +11737,35 @@ class DashRenderer:
             built_filter_specs.append(fc)  # record only successfully-built specs
 
         # Wire multi-filter state into every callback.
-        # Each callback gets orig_data_json, all_widgets, filter_specs_json,
+        # Each callback gets orig_source, all_widgets, filter_specs_json,
         # kpi_config_json, kpi_divs, agg_sources, agg_configs_json so it can
         # re-apply all active filter conditions on every widget change.
+        # The unfiltered data every callback reads, held in ONE
+        # ColumnDataSource rather than serialised into each callback's args.
+        #
+        # This used to be `json.dumps(_orig_data)' computed inside the
+        # per-callback loop below, so Bokeh wrote a full copy of the dataset
+        # into the document for every filter widget -- and because each
+        # filter also adds a column to every copy, the growth was quadratic
+        # in the filter count. Measured on 8,000 rows x 6 columns: 1.63 MB
+        # with no filters, 11.47 MB with five. Bokeh serialises a model once
+        # and refers to it by id, so a shared source appears once.
         _orig_data: dict = {}
         if fsource is not None:
             for _col, _arr in fsource.data.items():
                 _orig_data[_col] = [DashRenderer._to_serialisable(v) for v in _arr]
+        _orig_snapshot = ColumnDataSource(_orig_data)
+
+        # One snapshot model per graph source, shared by every callback that
+        # is not excluding that graph.
+        _snapshot_of: "dict[int, ColumnDataSource]" = {}
+        for _gsrc in self.sources.values():
+            if id(_gsrc) in _snapshot_of:
+                continue
+            _snapshot_of[id(_gsrc)] = ColumnDataSource({
+                _col: [DashRenderer._to_serialisable(v) for v in _arr]
+                for _col, _arr in _gsrc.data.items()
+            })
 
         # Build filter_specs from only the successfully-built specs so that
         # JS callbacks index all_widgets correctly (1:1 correspondence).
@@ -11726,7 +11797,7 @@ class DashRenderer:
                     self._kpi_callback_config(_kname, _kdef))
                 _kpi_divs_for_cb.append(_kdiv)
 
-            _cb.args["orig_data_json"]    = json.dumps(_orig_data)
+            _cb.args["orig_source"]       = _orig_snapshot
             _cb.args["all_widgets"]       = list(self.filter_widgets)
             _cb.args["filter_specs_json"] = json.dumps(_filter_specs)
             _cb.args["kpi_config_json"]   = json.dumps(_kpi_config_for_cb)
@@ -11754,14 +11825,9 @@ class DashRenderer:
             # a single new_data (built from the primary source) to all sources
             # drops columns that belong to secondary sources only — corrupting
             # unlinked graphs whose schemas differ from the primary source.
-            _per_src_orig_json: list = []
-            for _gsrc in _graph_srcs_for_cb:
-                _src_snap: dict = {
-                    _col: [DashRenderer._to_serialisable(v) for v in _arr]
-                    for _col, _arr in _gsrc.data.items()
-                }
-                _per_src_orig_json.append(json.dumps(_src_snap))
-            _cb.args["all_graph_sources_orig_json"] = _per_src_orig_json
+            _cb.args["all_graph_sources_orig"] = [
+                _snapshot_of[id(_gsrc)] for _gsrc in _graph_srcs_for_cb
+            ]
 
             _agg_srcs: list = []
             _agg_cfgs: list = []
@@ -12024,6 +12090,8 @@ class DashRenderer:
         graphs = self.master_spec.get("graphs", [])
         kpis   = self.master_spec.get("kpis", [])
         build  = self.master_spec.get("build_options", {})
+
+        _report_dataset_size(self.df, "dashboard")
 
         # ---- Parse build options ----
         link_names, filters_cfg = self._parse_link_and_filters(build)
@@ -12412,6 +12480,25 @@ class ServerAppBuilder:
             try:
                 port = int(bo["port"])
             except (ValueError, TypeError):
+                pass
+
+        # ServerAppBuilder holds the data as a JSON string, not a frame.
+        # Parsing a large one costs about a second, so it is only parsed when
+        # it COULD reach the threshold: the smallest plausible cell is about
+        # six bytes of JSON (`"a":1,'), so a string shorter than six bytes
+        # per cell cannot hold a million cells and needs no parse.
+        if len(self._raw_data_str) >= _LARGE_DATASET_CELLS * 6:
+            try:
+                _d = json.loads(self._raw_data_str)
+                # jsonio wraps everything in a "StataJSON" object.
+                _d = _d.get("StataJSON", _d)
+                _vals = _d.get("values") or []
+                _cols = _d.get("variableNames") or (
+                    list(_vals[0]) if _vals else [])
+                _report_dataset_size(
+                    pd.DataFrame(index=range(len(_vals)),
+                                 columns=list(_cols)), "server app")
+            except (ValueError, TypeError, KeyError, IndexError):
                 pass
 
         source = self._generate_app_source(port)
@@ -12893,23 +12980,28 @@ class ServerAppBuilder:
             '                right=np.asarray(edges[1:]).tolist())',
             '',
             '',
-            "def _compute_lfit(df, yvar, xvar):",
-            '    """Return line source dict for OLS fit of yvar on xvar."""',
+            "def _compute_lfit(df, yvar, xvar, options=None):",
+            '    """Return line source dict for OLS fit of yvar on xvar.',
+            "",
+            "    _fit_grid is the standalone renderer's own function, copied",
+            "    in above, so n() is read here too and both modes draw at the",
+            "    same x. The point count was written as a literal 100.",
+            '    """',
             "    clean = df[[xvar, yvar]].dropna()",
             "    if len(clean) < 2:",
             "        return dict(x=[], y=[])",
             "    coeffs = np.polyfit(clean[xvar].values, clean[yvar].values, 1)",
-            "    x_range = np.linspace(clean[xvar].min(), clean[xvar].max(), 100)",
+            "    x_range = _fit_grid(clean[xvar].values, options or {})",
             "    return dict(x=x_range.tolist(), y=np.polyval(coeffs, x_range).tolist())",
             "",
             "",
-            "def _compute_qfit(df, yvar, xvar):",
+            "def _compute_qfit(df, yvar, xvar, options=None):",
             '    """Return line source dict for quadratic fit of yvar on xvar."""',
             "    clean = df[[xvar, yvar]].dropna()",
             "    if len(clean) < 3:",
             "        return dict(x=[], y=[])",
             "    coeffs = np.polyfit(clean[xvar].values, clean[yvar].values, 2)",
-            "    x_range = np.linspace(clean[xvar].min(), clean[xvar].max(), 100)",
+            "    x_range = _fit_grid(clean[xvar].values, options or {})",
             "    return dict(x=x_range.tolist(), y=np.polyval(coeffs, x_range).tolist())",
             "",
             "",
@@ -13747,7 +13839,7 @@ class ServerAppBuilder:
             "                graph_sources[gname].append(csrc)",
             "",
             "            elif ptype == 'lfit':",
-            "                fit_data = _compute_lfit(g_df, yvar, xvar)",
+            "                fit_data = _compute_lfit(g_df, yvar, xvar, opts)",
             "                fit_src = ColumnDataSource(fit_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'opts': opts,",
@@ -13760,7 +13852,7 @@ class ServerAppBuilder:
             "                fig.line(x='x', y='y', source=fit_src, **_lfit_kw)",
             "",
             "            elif ptype == 'qfit':",
-            "                fit_data = _compute_qfit(g_df, yvar, xvar)",
+            "                fit_data = _compute_qfit(g_df, yvar, xvar, opts)",
             "                fit_src = ColumnDataSource(fit_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'opts': opts,",
@@ -14792,12 +14884,12 @@ class ServerAppBuilder:
             "                    agg_sources[(_fac_name, pi)] = {'source': _hsrc, 'type': 'histogram', 'var': _hvar, 'bins': 20}",
             "                    _fac_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6, legend_label=_hvar)",
             "                elif ptype == 'lfit':",
-            "                    _lfdata = _compute_lfit(_fac_gdf, yvar_f, xvar_f)",
+            "                    _lfdata = _compute_lfit(_fac_gdf, yvar_f, xvar_f, opts)",
             "                    _lfsrc = ColumnDataSource(_lfdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _lfsrc, 'type': 'lfit', 'yvar': yvar_f, 'xvar': xvar_f}",
             "                    _fac_fig.line('x', 'y', source=_lfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lfit {yvar_f}')",
             "                elif ptype == 'qfit':",
-            "                    _qfdata = _compute_qfit(_fac_gdf, yvar_f, xvar_f)",
+            "                    _qfdata = _compute_qfit(_fac_gdf, yvar_f, xvar_f, opts)",
             "                    _qfsrc = ColumnDataSource(_qfdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _qfsrc, 'type': 'qfit', 'yvar': yvar_f, 'xvar': xvar_f}",
             "                    _fac_fig.line('x', 'y', source=_qfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'qfit {yvar_f}')",
@@ -14893,12 +14985,12 @@ class ServerAppBuilder:
             "                    agg_sources[(_tot_name, pi)] = {'source': _hsrc, 'type': 'histogram', 'var': _hvar, 'bins': 20}",
             "                    _tot_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6, legend_label=_hvar)",
             "                elif ptype == 'lfit':",
-            "                    _lfdata = _compute_lfit(work_df, yvar_f, xvar_f)",
+            "                    _lfdata = _compute_lfit(work_df, yvar_f, xvar_f, opts)",
             "                    _lfsrc = ColumnDataSource(_lfdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _lfsrc, 'type': 'lfit', 'yvar': yvar_f, 'xvar': xvar_f}",
             "                    _tot_fig.line('x', 'y', source=_lfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lfit {yvar_f}')",
             "                elif ptype == 'qfit':",
-            "                    _qfdata = _compute_qfit(work_df, yvar_f, xvar_f)",
+            "                    _qfdata = _compute_qfit(work_df, yvar_f, xvar_f, opts)",
             "                    _qfsrc = ColumnDataSource(_qfdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _qfsrc, 'type': 'qfit', 'yvar': yvar_f, 'xvar': xvar_f}",
             "                    _tot_fig.line('x', 'y', source=_qfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'qfit {yvar_f}')",
@@ -15240,9 +15332,9 @@ class ServerAppBuilder:
             "                if atype == 'histogram':",
             "                    agg['source'].data = _compute_histogram(agg_fdf, agg['var'], agg.get('opts') or {})",
             "                elif atype == 'lfit':",
-            "                    agg['source'].data = _compute_lfit(agg_fdf, agg['yvar'], agg['xvar'])",
+            "                    agg['source'].data = _compute_lfit(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
             "                elif atype == 'qfit':",
-            "                    agg['source'].data = _compute_qfit(agg_fdf, agg['yvar'], agg['xvar'])",
+            "                    agg['source'].data = _compute_qfit(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
             "                elif atype == 'kdensity':",
             "                    agg['source'].data = _compute_kdensity(agg_fdf, agg['var'], agg.get('opts') or {})",
             "                elif atype == 'lowess':",

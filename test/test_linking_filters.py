@@ -175,10 +175,13 @@ def _callback_payload(dr):
     assert dr.filter_callbacks, "no filter callback was built"
     cb = dr.filter_callbacks[0]
     return {
-        "primary": json.loads(cb.args["orig_data_json"]),
+        # The snapshot is a shared ColumnDataSource now, not a JSON string
+        # serialised into every callback's args -- see
+        # test_filter_payload_size.py for why.
+        "primary": dict(cb.args["orig_source"].data),
         "sources": list(cb.args["all_graph_sources"]),
-        "snapshots": [json.loads(s)
-                      for s in cb.args["all_graph_sources_orig_json"]],
+        "snapshots": [dict(m.data)
+                      for m in cb.args["all_graph_sources_orig"]],
         "specs": json.loads(cb.args["filter_specs_json"]),
     }
 
@@ -323,7 +326,7 @@ class TestTheShippedJavascriptMasksByIdentity:
     def test_the_mask_loop_uses_the_row_identifier(self):
         js = dash_render._FILTER_JS
         key = dash_render._ROW_ID_COLUMN
-        lo = js.index("const _srcs_orig_json")
+        lo = js.index("const _srcs_orig ")
         hi = js.index("// Also update the primary", lo)
         block = js[lo:hi]
         assert key in block, (
@@ -342,15 +345,17 @@ class TestTheShippedJavascriptMasksByIdentity:
                   for v in primary["filtvar"]]
 
         js = dash_render._FILTER_JS
-        lo = js.index("const _srcs_orig_json")
+        lo = js.index("const _srcs_orig ")
         hi = js.index("// Also update the primary", lo)
         block = js[lo:hi]
 
         snapshots = [s for s in p["snapshots"] if s]
         harness = (
-            "const all_graph_sources_orig_json = "
-            + json.dumps([json.dumps(s) for s in snapshots]) + ";\n"
-            + "const _srcs = all_graph_sources_orig_json.map(() => "
+            # The snapshots are MODELS now, so the stub must expose each
+            # one's `.data', as a real ColumnDataSource does.
+            "const all_graph_sources_orig = "
+            + json.dumps([{"data": s} for s in snapshots]) + ";\n"
+            + "const _srcs = all_graph_sources_orig.map(() => "
             "({data:null, selected:{indices:[]}, change:{emit:()=>{}}}));\n"
             + "const active = " + json.dumps(active) + ";\n"
             + "const new_data = " + json.dumps(primary) + ";\n"

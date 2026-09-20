@@ -654,7 +654,7 @@ class TestDateFilterActuallyFilters:
         dr = self._rendered(tmp_path)
         assert dr.filter_callbacks, "no filter callback was built"
         cb = dr.filter_callbacks[0]
-        snap = json.loads(cb.args["orig_data_json"])
+        snap = dict(cb.args["orig_source"].data)
         assert "date" in snap, "the snapshot has no date column"
         vals = [v for v in snap["date"] if v is not None]
         assert vals, "the snapshot's date column is empty"
@@ -666,7 +666,7 @@ class TestDateFilterActuallyFilters:
 
     def test_the_snapshot_values_are_epoch_milliseconds(self, tmp_path):
         dr = self._rendered(tmp_path)
-        snap = json.loads(dr.filter_callbacks[0].args["orig_data_json"])
+        snap = dict(dr.filter_callbacks[0].args["orig_source"].data)
         first = [v for v in snap["date"] if v is not None][0]
         assert pd.Timestamp(first, unit="ms").date().isoformat() == "2001-01-02"
 
@@ -692,7 +692,7 @@ class TestDateFilterActuallyFilters:
         sliders = [w for w in dr.filter_widgets
                    if isinstance(w, DateRangeSlider)]
         assert sliders
-        snap = json.loads(dr.filter_callbacks[0].args["orig_data_json"])
+        snap = dict(dr.filter_callbacks[0].args["orig_source"].data)
         vals = [v for v in snap["date"] if v is not None]
         assert min(vals) == pytest.approx(float(sliders[0].start))
         assert max(vals) == pytest.approx(float(sliders[0].end))
