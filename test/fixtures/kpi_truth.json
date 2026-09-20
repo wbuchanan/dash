@@ -1,0 +1,975 @@
+{
+  "_meta": {
+    "generated_by": "/tmp/dash-kpi/p.do, p2.do, p3.do, p4.do, p5.do (probe do-files; nothing was written into the repository except this fixture)",
+    "run_date": "19 Sep 2026",
+    "stata_version": "19.5",
+    "stata_version_in_effect_during_the_run": "16",
+    "stata_flavor": "IC",
+    "stata_edition": "MP",
+    "stata_born_date": "12 Aug 2026",
+    "c_level_default": 95,
+    "dataset": "sysuse auto (N=74)",
+    "method": "Every number is Stata's own r() result, read back immediately after the command that produced it and written with %20.17g so doubles round-trip. The command that produced each number is stored beside it in that entry's \"cmd\" field. r()/e() contents were enumerated with the :r(scalars), :r(macros), :r(matrices), :e(scalars) and :e(macros) extended macro functions, so the 'what does this command leave behind' answers are measured, not remembered.",
+    "precision": "Values are exact doubles as Stata computed them. mpg is a Stata int, so every order statistic is an exact integer; the means, variances and moments are full doubles and should round-trip through JSON unchanged.",
+    "counts": {
+      "kpi_statistics_per_scope": 14,
+      "scopes": 2,
+      "dcount_commands_tested": 7,
+      "dcount_variables": 2,
+      "unicode_names_tested": 18,
+      "percentile_probes": 6,
+      "scale_probes": 6,
+      "bugs_found": 2
+    },
+    "self_checks": {
+      "renum_sees_callers_r": true,
+      "summarize_detail_matches_pctile": true,
+      "tabstat_matches_summarize": true,
+      "hand_computed_percentile_matches_stata": true,
+      "hand_computed_skewness_matches_stata": true,
+      "mata_uniqrows_matches_egen_group": true
+    }
+  },
+  "anchor": {
+    "claim_in_plan": "mean(mpg) if foreign==1 = 24.7727",
+    "confirmed": true,
+    "full_precision": {
+      "cmd": "summarize mpg if foreign==1 -> r(mean), %20.17g",
+      "value": 24.772727272727273
+    },
+    "as_displayed_9_4f": {
+      "cmd": "summarize mpg if foreign==1 -> r(mean), %9.4f",
+      "value": "24.7727"
+    },
+    "exact_rational": "545/22"
+  },
+  "kpi_stats": {
+    "all": {
+      "_scope": "unconditional",
+      "mean": {
+        "cmd": "summarize mpg -> r(mean)",
+        "value": 21.2972972972973
+      },
+      "sum": {
+        "cmd": "summarize mpg -> r(sum)",
+        "value": 1576
+      },
+      "count": {
+        "cmd": "summarize mpg -> r(N)",
+        "value": 74
+      },
+      "min": {
+        "cmd": "summarize mpg -> r(min)",
+        "value": 12
+      },
+      "max": {
+        "cmd": "summarize mpg -> r(max)",
+        "value": 41
+      },
+      "median": {
+        "cmd": "summarize mpg, detail -> r(p50)",
+        "value": 20
+      },
+      "sd": {
+        "cmd": "summarize mpg -> r(sd)",
+        "value": 5.785503209735141
+      },
+      "p25": {
+        "cmd": "summarize mpg, detail -> r(p25)",
+        "value": 18
+      },
+      "p50": {
+        "cmd": "summarize mpg, detail -> r(p50)",
+        "value": 20
+      },
+      "p75": {
+        "cmd": "summarize mpg, detail -> r(p75)",
+        "value": 25
+      },
+      "var": {
+        "cmd": "summarize mpg -> r(Var)",
+        "value": 33.47204738985561
+      },
+      "iqr": {
+        "cmd": "summarize mpg, detail -> r(p75)-r(p25)",
+        "value": 7
+      },
+      "skewness": {
+        "cmd": "summarize mpg, detail -> r(skewness)",
+        "value": 0.9487175964588155
+      },
+      "cv": {
+        "cmd": "summarize mpg -> r(sd)/r(mean)",
+        "value": 0.2716543385281728
+      },
+      "_also": {
+        "sum_w": {
+          "cmd": "summarize mpg -> r(sum_w)",
+          "value": 74
+        },
+        "kurtosis": {
+          "cmd": "summarize mpg, detail -> r(kurtosis)",
+          "value": 3.97500459645325
+        },
+        "p1": {
+          "cmd": "summarize mpg, detail -> r(p1)",
+          "value": 12
+        },
+        "p5": {
+          "cmd": "summarize mpg, detail -> r(p5)",
+          "value": 14
+        },
+        "p10": {
+          "cmd": "summarize mpg, detail -> r(p10)",
+          "value": 14
+        },
+        "p90": {
+          "cmd": "summarize mpg, detail -> r(p90)",
+          "value": 29
+        },
+        "p95": {
+          "cmd": "summarize mpg, detail -> r(p95)",
+          "value": 34
+        },
+        "p99": {
+          "cmd": "summarize mpg, detail -> r(p99)",
+          "value": 41
+        }
+      },
+      "_cross_checks": {
+        "pctile_p25": {
+          "cmd": "_pctile mpg, p(25 50 75) -> r(r1)",
+          "value": 18
+        },
+        "pctile_p50": {
+          "cmd": "_pctile mpg, p(25 50 75) -> r(r2)",
+          "value": 20
+        },
+        "pctile_p75": {
+          "cmd": "_pctile mpg, p(25 50 75) -> r(r3)",
+          "value": 25
+        },
+        "tabstat_mean": {
+          "cmd": "tabstat mpg, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 21.2972972972973
+        },
+        "tabstat_sd": {
+          "cmd": "tabstat mpg, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 5.785503209735141
+        },
+        "tabstat_variance": {
+          "cmd": "tabstat mpg, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 33.47204738985561
+        },
+        "tabstat_iqr": {
+          "cmd": "tabstat mpg, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 7
+        },
+        "tabstat_skewness": {
+          "cmd": "tabstat mpg, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 0.9487175964588155
+        },
+        "tabstat_cv": {
+          "cmd": "tabstat mpg, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 0.27165433852817283
+        },
+        "note_cv_last_bit": "tabstat's cv differs from r(sd)/r(mean) in the 16th significant digit only; either is correct to double precision. Compare cv with a relative tolerance of 1e-12, not for equality."
+      }
+    },
+    "foreign1": {
+      "_scope": "if foreign==1",
+      "mean": {
+        "cmd": "summarize mpg if foreign==1 -> r(mean)",
+        "value": 24.772727272727273
+      },
+      "sum": {
+        "cmd": "summarize mpg if foreign==1 -> r(sum)",
+        "value": 545
+      },
+      "count": {
+        "cmd": "summarize mpg if foreign==1 -> r(N)",
+        "value": 22
+      },
+      "min": {
+        "cmd": "summarize mpg if foreign==1 -> r(min)",
+        "value": 14
+      },
+      "max": {
+        "cmd": "summarize mpg if foreign==1 -> r(max)",
+        "value": 41
+      },
+      "median": {
+        "cmd": "summarize mpg if foreign==1, detail -> r(p50)",
+        "value": 24.5
+      },
+      "sd": {
+        "cmd": "summarize mpg if foreign==1 -> r(sd)",
+        "value": 6.611186898567625
+      },
+      "p25": {
+        "cmd": "summarize mpg if foreign==1, detail -> r(p25)",
+        "value": 21
+      },
+      "p50": {
+        "cmd": "summarize mpg if foreign==1, detail -> r(p50)",
+        "value": 24.5
+      },
+      "p75": {
+        "cmd": "summarize mpg if foreign==1, detail -> r(p75)",
+        "value": 28
+      },
+      "var": {
+        "cmd": "summarize mpg if foreign==1 -> r(Var)",
+        "value": 43.70779220779221
+      },
+      "iqr": {
+        "cmd": "summarize mpg if foreign==1, detail -> r(p75)-r(p25)",
+        "value": 7
+      },
+      "skewness": {
+        "cmd": "summarize mpg if foreign==1, detail -> r(skewness)",
+        "value": 0.6573289935421612
+      },
+      "cv": {
+        "cmd": "summarize mpg if foreign==1 -> r(sd)/r(mean)",
+        "value": 0.2668735995752068
+      },
+      "_also": {
+        "sum_w": {
+          "cmd": "summarize mpg if foreign==1 -> r(sum_w)",
+          "value": 22
+        },
+        "kurtosis": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(kurtosis)",
+          "value": 3.107339938424982
+        },
+        "p1": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(p1)",
+          "value": 14
+        },
+        "p5": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(p5)",
+          "value": 17
+        },
+        "p10": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(p10)",
+          "value": 17
+        },
+        "p90": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(p90)",
+          "value": 35
+        },
+        "p95": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(p95)",
+          "value": 35
+        },
+        "p99": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(p99)",
+          "value": 41
+        }
+      },
+      "_cross_checks": {
+        "pctile_p25": {
+          "cmd": "_pctile mpg if foreign==1, p(25 50 75) -> r(r1)",
+          "value": 21
+        },
+        "pctile_p50": {
+          "cmd": "_pctile mpg if foreign==1, p(25 50 75) -> r(r2)",
+          "value": 24.5
+        },
+        "pctile_p75": {
+          "cmd": "_pctile mpg if foreign==1, p(25 50 75) -> r(r3)",
+          "value": 28
+        },
+        "tabstat_mean": {
+          "cmd": "tabstat mpg if foreign==1, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 24.772727272727273
+        },
+        "tabstat_sd": {
+          "cmd": "tabstat mpg if foreign==1, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 6.611186898567625
+        },
+        "tabstat_variance": {
+          "cmd": "tabstat mpg if foreign==1, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 43.70779220779221
+        },
+        "tabstat_iqr": {
+          "cmd": "tabstat mpg if foreign==1, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 7
+        },
+        "tabstat_skewness": {
+          "cmd": "tabstat mpg if foreign==1, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 0.6573289935421612
+        },
+        "tabstat_cv": {
+          "cmd": "tabstat mpg if foreign==1, stat(mean sum count min max median sd var iqr skewness cv p25 p75) save -> r(StatTotal)",
+          "value": 0.26687359957520684
+        },
+        "note_cv_last_bit": "tabstat's cv differs from r(sd)/r(mean) in the 16th significant digit only; either is correct to double precision. Compare cv with a relative tolerance of 1e-12, not for equality."
+      }
+    }
+  },
+  "count_semantics": {
+    "warning": "'count' is ambiguous. summarize's r(N) counts observations with a NON-MISSING value of the variable; the -count- command counts observations that satisfy if/in regardless of missingness. They agree for mpg (no missing) but will not agree for rep78 (5 missing). dash kpi count() currently uses summarize r(N), i.e. the non-missing count.",
+    "all_summarize_r_N": {
+      "cmd": "summarize mpg -> r(N)",
+      "value": 74
+    },
+    "all_count_command": {
+      "cmd": "count -> r(N)",
+      "value": 74
+    },
+    "all_count_nonmissing": {
+      "cmd": "count if !missing(mpg) -> r(N)",
+      "value": 74
+    },
+    "foreign1_summarize_r_N": {
+      "cmd": "summarize mpg if foreign==1 -> r(N)",
+      "value": 22
+    },
+    "foreign1_count_command": {
+      "cmd": "count if foreign==1 -> r(N)",
+      "value": 22
+    },
+    "foreign1_count_nonmissing": {
+      "cmd": "count if foreign==1 & !missing(mpg) -> r(N)",
+      "value": 22
+    },
+    "dataset_N": {
+      "cmd": "sysuse auto, clear ; count",
+      "value": 74
+    }
+  },
+  "percentile_definition": {
+    "definition": "Stata's percentile (summarize, detail; _pctile; pctile; tabstat p25/p50/p75; egen pctile) is the AVERAGED INVERSE EMPIRICAL CDF, Hyndman-Fan type 2. With the N non-missing values sorted x(1) <= ... <= x(N) and j = N*p/100: if j is an integer the answer is (x(j)+x(j+1))/2, otherwise it is x(ceil(j)). No interpolation between order statistics other than that midpoint. Weights change j to the running sum of weights, but dash passes no weights to its KPI code.",
+    "verified_by_hand": {
+      "all": {
+        "N_nonmissing": {
+          "cmd": "keep ; drop if missing(mpg) ; count",
+          "value": 74
+        },
+        "p25": {
+          "stata": {
+            "cmd": "summarize mpg, detail -> r(p25)",
+            "value": 18
+          },
+          "by_hand": {
+            "cmd": "j=N*p/100=18.5 not integer -> x[ceil(j)]=x[19]",
+            "value": 18
+          },
+          "agrees": true
+        },
+        "p50": {
+          "stata": {
+            "cmd": "summarize mpg, detail -> r(p50)",
+            "value": 20
+          },
+          "by_hand": {
+            "cmd": "j=N*p/100=37 is integer -> (x[37]+x[37+1])/2 = (20+20)/2",
+            "value": 20
+          },
+          "agrees": true
+        },
+        "p75": {
+          "stata": {
+            "cmd": "summarize mpg, detail -> r(p75)",
+            "value": 25
+          },
+          "by_hand": {
+            "cmd": "j=N*p/100=55.5 not integer -> x[ceil(j)]=x[56]",
+            "value": 25
+          },
+          "agrees": true
+        }
+      },
+      "foreign1": {
+        "N_nonmissing": {
+          "cmd": "keep if foreign==1 ; drop if missing(mpg) ; count",
+          "value": 22
+        },
+        "p25": {
+          "stata": {
+            "cmd": "summarize mpg if foreign==1, detail -> r(p25)",
+            "value": 21
+          },
+          "by_hand": {
+            "cmd": "j=N*p/100=5.5 not integer -> x[ceil(j)]=x[6]",
+            "value": 21
+          },
+          "agrees": true
+        },
+        "p50": {
+          "stata": {
+            "cmd": "summarize mpg if foreign==1, detail -> r(p50)",
+            "value": 24.5
+          },
+          "by_hand": {
+            "cmd": "j=N*p/100=11 is integer -> (x[11]+x[11+1])/2 = (24+25)/2",
+            "value": 24.5
+          },
+          "agrees": true
+        },
+        "p75": {
+          "stata": {
+            "cmd": "summarize mpg if foreign==1, detail -> r(p75)",
+            "value": 28
+          },
+          "by_hand": {
+            "cmd": "j=N*p/100=16.5 not integer -> x[ceil(j)]=x[17]",
+            "value": 28
+          },
+          "agrees": true
+        }
+      }
+    },
+    "do_not_use_these": {
+      "numpy_pandas_default_type7": {
+        "note": "numpy.percentile / pandas .quantile() / .median() default to linear interpolation (Hyndman-Fan type 7) and DISAGREE with Stata. dash_render.py and the CustomJS KPI code must reproduce the Stata rule, not the pandas one.",
+        "all_p75_stata": {
+          "cmd": "summarize mpg, detail -> r(p75)",
+          "value": 25
+        },
+        "all_p75_type7": {
+          "cmd": "numpy/pandas default: x[floor(h)] + frac*(x[floor(h)+1]-x[floor(h)]), h=(N-1)p/100=54.75",
+          "value": 24.75
+        },
+        "foreign1_p75_stata": {
+          "cmd": "summarize mpg if foreign==1, detail -> r(p75)",
+          "value": 28
+        },
+        "foreign1_p75_type7": {
+          "cmd": "numpy/pandas default: x[floor(h)] + frac*(x[floor(h)+1]-x[floor(h)]), h=(N-1)p/100=15.75",
+          "value": 27.5
+        },
+        "all_p25_agrees_by_luck": true,
+        "medians_agree_here": true
+      },
+      "centile": {
+        "note": "-centile- uses a DIFFERENT, interpolating definition and is not the one summarize,detail uses. Never use centile to produce a dash KPI percentile.",
+        "all_p25": {
+          "cmd": "centile mpg, centile(25 50 75) -> r(c_1)",
+          "value": 17.75
+        },
+        "all_p50": {
+          "cmd": "centile mpg, centile(25 50 75) -> r(c_2)",
+          "value": 20
+        },
+        "all_p75": {
+          "cmd": "centile mpg, centile(25 50 75) -> r(c_3)",
+          "value": 25
+        },
+        "foreign1_p25": {
+          "cmd": "centile mpg, centile(25 50 75) -> r(c_1)",
+          "value": 20.25
+        },
+        "foreign1_p50": {
+          "cmd": "centile mpg, centile(25 50 75) -> r(c_2)",
+          "value": 24.5
+        },
+        "foreign1_p75": {
+          "cmd": "centile mpg, centile(25 50 75) -> r(c_3)",
+          "value": 28.5
+        }
+      }
+    }
+  },
+  "moment_definitions": {
+    "variance_and_sd": {
+      "rule": "summarize r(Var) and r(sd) use the N-1 divisor (sample variance). pandas .var()/.std() default to ddof=1 and therefore agree; numpy .var()/.std() default to ddof=0 and do NOT.",
+      "measured": {
+        "cmd": "summarize mpg -> r(Var) (divisor N-1)",
+        "value": 33.47204738985561
+      }
+    },
+    "skewness": {
+      "rule": "summarize, detail r(skewness) is the BIASED / population moment ratio m3 / m2^1.5, where m_k = (1/N)*sum((x-xbar)^k) with the N divisor - not the sample-corrected g1 that scipy.stats.skew(bias=False) or Excel's SKEW() return. scipy.stats.skew(x) with its default bias=True matches Stata.",
+      "stata": {
+        "cmd": "summarize mpg, detail -> r(skewness)",
+        "value": 0.9487175964588155
+      },
+      "hand_computed_m3_over_m2_1p5": {
+        "cmd": "m3/m2^1.5 with m_k = mean((x-xbar)^k), N divisor",
+        "value": 0.948717596458816
+      },
+      "agree_to": "1e-15 relative; the last two digits differ because the hand computation accumulates in a different order"
+    },
+    "iqr": {
+      "rule": "IQR is simply p75 - p25 under the same type-2 percentile rule; tabstat's iqr agrees exactly.",
+      "all": {
+        "cmd": "summarize mpg, detail -> r(p75)-r(p25)",
+        "value": 7
+      },
+      "foreign1": {
+        "cmd": "summarize mpg if foreign==1, detail -> r(p75)-r(p25)",
+        "value": 7
+      }
+    },
+    "cv": {
+      "rule": "Coefficient of variation is r(sd)/r(mean) - the sample sd over the mean, NOT a percentage. tabstat's cv statistic returns the same number.",
+      "all": {
+        "cmd": "summarize mpg -> r(sd)/r(mean)",
+        "value": 0.2716543385281728
+      },
+      "foreign1": {
+        "cmd": "summarize mpg if foreign==1 -> r(sd)/r(mean)",
+        "value": 0.2668735995752068
+      }
+    }
+  },
+  "dcount": {
+    "truth": {
+      "rep78_distinct_nonmissing": 5,
+      "rep78_distinct_including_missing": 6,
+      "rep78_n_missing": {
+        "cmd": "count if missing(rep78) -> r(N)",
+        "value": 5
+      },
+      "make_distinct_nonmissing": 74,
+      "make_distinct_including_missing": 74,
+      "make_n_missing": {
+        "cmd": "count if missing(make) -> r(N)",
+        "value": 0
+      },
+      "note": "'distinct' here means distinct non-missing values, which is what codebook, levelsof, egen group() and pandas .nunique() all mean by default, and what a JavaScript Set over the non-null values gives."
+    },
+    "what_each_command_returns": {
+      "rep78": {
+        "codebook": {
+          "cmd": "codebook rep78",
+          "r_scalars": "(none)",
+          "r_macros": "(none)",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "usable_for_dcount": false,
+          "verdict": "CONFIRMED: -codebook- is NOT r-class for this purpose. For numeric rep78 it leaves NOTHING in r(); for string make it leaves only r(str_embedded) and r(str_type). r(unique) does not exist, so `local kpi_value = r(unique)` yields system missing.",
+          "what_dash_ado_gets_today": {
+            "cmd": "dash.ado _dash_kpi: quietly codebook rep78 ; local kpi_value = r(unique)",
+            "value": "value=<.> (empty means codebook returned nothing)"
+          }
+        },
+        "levelsof": {
+          "cmd": "levelsof rep78",
+          "r_scalars": "N=69 r=5",
+          "r_macros": "levels={1 2 3 4 5}",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "r_r": {
+            "cmd": "levelsof rep78 -> r(r)",
+            "value": 5
+          },
+          "r_r_with_missing_option": {
+            "cmd": "levelsof rep78, missing -> r(r)",
+            "value": 6
+          },
+          "usable_for_dcount": true,
+          "caveat": "r(r) is correct, but levelsof also builds r(levels), a macro holding every distinct value. That macro is capped at c(macrolen) characters and levelsof fails with rc 198 when it overflows - see the scale section."
+        },
+        "egen_group": {
+          "cmd": "egen __grp = group(rep78) ; summarize __grp, meanonly -> r(max)",
+          "value": 5,
+          "with_missing_option": {
+            "cmd": "egen __grpm = group(rep78), missing ; summarize __grpm, meanonly -> r(max)",
+            "value": 6
+          },
+          "returns": "egen itself returns nothing in r(); the count comes from summarize's r(max) on the group variable. egen group() numbers groups 1..k in sort order and leaves missing as missing unless the missing option is given.",
+          "usable_for_dcount": true
+        },
+        "inspect": {
+          "cmd": "inspect rep78",
+          "r_scalars": "N_neg=0 N_negint=0 N_0=0 N_pos=69 N_posint=69 N=69 N_unique=5 N_undoc=.",
+          "r_macros": "(none)",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "usable_for_dcount": false,
+          "verdict": "inspect returns r(N_unique), but it is capped: the value is system missing as soon as there are 100 or more distinct values."
+        },
+        "tabulate": {
+          "cmd": "tabulate rep78",
+          "r_scalars": "N=69 r=5",
+          "r_macros": "(none)",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "r_r": {
+            "cmd": "tabulate rep78 -> r(r)",
+            "value": 5
+          },
+          "usable_for_dcount": true,
+          "caveat": "r(r) is the number of distinct non-missing values, but tabulate refuses with rc 134 ('too many values') above its row limit - see the scale section."
+        },
+        "egen_tag": {
+          "cmd": "egen __tg = tag(rep78) ; count if __tg==1 & !missing(rep78) -> r(N)",
+          "value": 5,
+          "usable_for_dcount": true,
+          "note": "egen tag() already excludes missing, so the extra !missing() is redundant here; count if __tg==1 gives the same answer."
+        },
+        "mata_uniqrows": {
+          "cmd": "mata: rows(uniqrows(non-missing rep78))",
+          "value": 5,
+          "usable_for_dcount": true,
+          "caveat": "Correct, but it copies the column into Mata memory and needs separate numeric and string branches."
+        }
+      },
+      "make": {
+        "codebook": {
+          "cmd": "codebook make",
+          "r_scalars": "(none)",
+          "r_macros": "str_embedded={make} str_type={make}",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "usable_for_dcount": false,
+          "verdict": "CONFIRMED: -codebook- is NOT r-class for this purpose. For numeric rep78 it leaves NOTHING in r(); for string make it leaves only r(str_embedded) and r(str_type). r(unique) does not exist, so `local kpi_value = r(unique)` yields system missing.",
+          "what_dash_ado_gets_today": {
+            "cmd": "dash.ado _dash_kpi: quietly codebook rep78 ; local kpi_value = r(unique)",
+            "value": "value=<.> (empty means codebook returned nothing)"
+          }
+        },
+        "levelsof": {
+          "cmd": "levelsof make",
+          "r_scalars": "N=74 r=74",
+          "r_macros": "(none)",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "r_r": {
+            "cmd": "levelsof make -> r(r)",
+            "value": 74
+          },
+          "r_r_with_missing_option": {
+            "cmd": "levelsof make, missing -> r(r)",
+            "value": 74
+          },
+          "usable_for_dcount": true,
+          "caveat": "r(r) is correct, but levelsof also builds r(levels), a macro holding every distinct value. That macro is capped at c(macrolen) characters and levelsof fails with rc 198 when it overflows - see the scale section."
+        },
+        "egen_group": {
+          "cmd": "egen __grp = group(make) ; summarize __grp, meanonly -> r(max)",
+          "value": 74,
+          "with_missing_option": {
+            "cmd": "egen __grpm = group(make), missing ; summarize __grpm, meanonly -> r(max)",
+            "value": 74
+          },
+          "returns": "egen itself returns nothing in r(); the count comes from summarize's r(max) on the group variable. egen group() numbers groups 1..k in sort order and leaves missing as missing unless the missing option is given.",
+          "usable_for_dcount": true
+        },
+        "inspect": {
+          "cmd": "inspect make",
+          "r_scalars": "N_neg=0 N_negint=0 N_0=0 N_pos=0 N_posint=0 N=0 N_unique=0 N_undoc=.",
+          "r_macros": "(none)",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "usable_for_dcount": false,
+          "verdict": "inspect returns r(N_unique), but it is capped: the value is system missing as soon as there are 100 or more distinct values. It is also numeric-only - on the string variable make it reports N=0 and N_unique=0, which is wrong."
+        },
+        "tabulate": {
+          "cmd": "tabulate make",
+          "r_scalars": "N=74 r=74",
+          "r_macros": "(none)",
+          "r_matrices": "(none)",
+          "e_scalars": "(none)",
+          "e_macros": "(none)",
+          "r_r": {
+            "cmd": "tabulate make -> r(r)",
+            "value": 74
+          },
+          "usable_for_dcount": true,
+          "caveat": "r(r) is the number of distinct non-missing values, but tabulate refuses with rc 134 ('too many values') above its row limit - see the scale section."
+        },
+        "egen_tag": {
+          "cmd": "egen __tg = tag(make) ; count if __tg==1 & !missing(make) -> r(N)",
+          "value": 74,
+          "usable_for_dcount": true,
+          "note": "egen tag() already excludes missing, so the extra !missing() is redundant here; count if __tg==1 gives the same answer."
+        },
+        "mata_uniqrows": {
+          "cmd": "mata: rows(uniqrows(sort(non-empty make,1)))",
+          "value": 74,
+          "usable_for_dcount": true,
+          "caveat": "Correct, but it copies the column into Mata memory and needs separate numeric and string branches."
+        }
+      }
+    },
+    "inspect_cap": {
+      "finding": "r(N_unique) from -inspect- is exact up to 99 distinct values and system missing from 100 upward.",
+      "probes": {
+        "k5": "inspect=5 levelsof=5 egengroup=5",
+        "k50": "inspect=50 levelsof=50 egengroup=50",
+        "k98": "inspect=98 levelsof=98 egengroup=98",
+        "k99": "inspect=99 levelsof=99 egengroup=99",
+        "k100": "inspect=. levelsof=100 egengroup=100",
+        "k101": "inspect=. levelsof=101 egengroup=101",
+        "k500": "inspect=. levelsof=500 egengroup=500"
+      }
+    },
+    "scale": {
+      "setup": "200,000 observations, 200,000 distinct values; a long numeric x and a str12 s.",
+      "c_macrolen": {
+        "cmd": "c(macrolen)",
+        "value": 645200
+      },
+      "tabulate": {
+        "cmd": "tabulate x  (200,000 distinct)",
+        "value": "rc=134"
+      },
+      "levelsof_numeric": {
+        "cmd": "levelsof x  (200,000 distinct)",
+        "value": "rc=198 r(r)=."
+      },
+      "levelsof_string": {
+        "cmd": "levelsof s  (200,000 distinct str12)",
+        "value": "rc=198 r(r)=."
+      },
+      "egen_group_numeric": {
+        "cmd": "egen __g = group(x) ; summarize __g, meanonly -> r(max)",
+        "value": 200000
+      },
+      "egen_group_string": {
+        "cmd": "egen __gs = group(s) ; summarize __gs, meanonly -> r(max)",
+        "value": 200000
+      },
+      "inspect_numeric": {
+        "cmd": "inspect x -> r(N_unique)",
+        "value": "."
+      },
+      "seconds": {
+        "tabulate": 0.278,
+        "levelsof_numeric": 0.107,
+        "levelsof_string": 0.0649999999999999,
+        "egen_group_numeric": 0.028,
+        "egen_group_string": 0.074,
+        "inspect_numeric": 0.003
+      },
+      "note": "tabulate and levelsof both FAIL at 200k distinct values (rc 134 and rc 198). egen group() answers correctly and is the fastest of the six. This is the deciding measurement."
+    },
+    "verdict": {
+      "codebook_returns_nothing_usable": true,
+      "current_dash_implementation_is_broken": true,
+      "current_dash_code": "_dash_kpi: quietly codebook `kpi_var' `if' `in' ; local kpi_value = r(unique)  ->  kpi_value is always system missing '.'",
+      "recommended": "tempvar g ; quietly egen `g' = group(`kpi_var') `if' `in' ; quietly summarize `g', meanonly ; local kpi_value = r(max)",
+      "why": "Correct for numeric and string variables, excludes missing by default (matching pandas .nunique() and a JavaScript Set over non-null values), has no distinct-value ceiling, needs no macro to hold the levels, and was the fastest command measured at 200,000 distinct values.",
+      "edge_case_zero_rows": "If the if/in selection is empty, or every value is missing, egen group() leaves the temp variable all-missing and summarize, meanonly sets r(max) to missing with r(N)==0. The implementation must special-case r(N)==0 and report a dcount of 0 rather than '.'.",
+      "runner_up": "levelsof `var' `if' `in' -> r(r). Simpler, and correct on small data, but it also materialises r(levels) and dies with rc 198 once that macro exceeds c(macrolen) = 645,200 characters.",
+      "do_not_use": [
+        "codebook (returns nothing)",
+        "inspect (r(N_unique) is missing once there are 100 or more distinct values; numeric-only)",
+        "tabulate (rc 134 above its row limit)"
+      ]
+    }
+  },
+  "unicode_names": {
+    "stata_rules": {
+      "summary": "Stata 14+ accepts Unicode letters in variable names. The rule measured here: the name must start with a Unicode LETTER or an underscore and may then contain Unicode letters, ASCII digits and underscores. Length is limited to 32 CHARACTERS, not 32 bytes.",
+      "accepted": [
+        {
+          "name": "café",
+          "cmd": "generate café = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=5 chars=4"
+        },
+        {
+          "name": "αβγ",
+          "cmd": "generate αβγ = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=6 chars=3"
+        },
+        {
+          "name": "日本語",
+          "cmd": "generate 日本語 = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=9 chars=3"
+        },
+        {
+          "name": "naïve",
+          "cmd": "generate naïve = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=6 chars=5"
+        },
+        {
+          "name": "_ünder",
+          "cmd": "generate _ünder = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=7 chars=6"
+        },
+        {
+          "name": "ñ",
+          "cmd": "generate ñ = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=2 chars=1"
+        },
+        {
+          "name": "Ωmega",
+          "cmd": "generate Ωmega = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=6 chars=5"
+        },
+        {
+          "name": "über2",
+          "cmd": "generate über2 = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=6 chars=5"
+        },
+        {
+          "name": "ＳＴＡＴＡ",
+          "cmd": "generate ＳＴＡＴＡ = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=15 chars=5"
+        },
+        {
+          "name": "x😀",
+          "cmd": "generate x😀 = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=5 chars=2"
+        },
+        {
+          "name": "café_2",
+          "cmd": "generate café_2 = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=7 chars=6"
+        },
+        {
+          "name": "Straße",
+          "cmd": "generate Straße = _n",
+          "rc": 0,
+          "detail": "rc=0 bytes=7 chars=6"
+        }
+      ],
+      "rejected": [
+        {
+          "name": "７seven",
+          "cmd": "generate ７seven = _n",
+          "rc": 198,
+          "detail": "rc=198 bytes=8 chars=6"
+        },
+        {
+          "name": "2café",
+          "cmd": "generate 2café = _n",
+          "rc": 198,
+          "detail": "rc=198 bytes=6 chars=5"
+        }
+      ],
+      "length_limit": {
+        "cjk_32_chars_96_bytes": {
+          "cmd": "generate <32-char name> = _n",
+          "value": "rc=0 bytes=96 chars=32"
+        },
+        "cjk_33_chars_99_bytes": {
+          "cmd": "generate <33-char name> = _n",
+          "value": "rc=198 bytes=99 chars=33"
+        },
+        "ascii_32_chars": {
+          "cmd": "generate <32-char name> = _n",
+          "value": "rc=0 bytes=32 chars=32"
+        },
+        "ascii_33_chars": {
+          "cmd": "generate <33-char name> = _n",
+          "value": "rc=198 bytes=33 chars=33"
+        },
+        "conclusion": "The 32 limit is counted in characters (ustrlen), not bytes: a 32-character / 96-byte CJK name is accepted and a 33-character name is rejected with rc 198, exactly like ASCII."
+      },
+      "surprises": [
+        "An emoji is accepted INSIDE a name: generate x😀 = _n succeeded with rc 0. Stata treats the emoji as a name character once the name starts with a letter.",
+        "A full-width digit does not count as a digit for the leading-character rule: the name starting with U+FF17 was rejected with rc 198, like an ASCII leading digit.",
+        "Full-width Latin letters (U+FF33 ...) are accepted as letters."
+      ],
+      "final_varlist": {
+        "cmd": "describe, varlist -> r(varlist)",
+        "value": "make price mpg rep78 headroom trunk weight length turn displacement gear_ratio foreign café αβγ 日本語 naïve _ünder ñ Ωmega über2 ＳＴＡＴＡ x😀 café_2 Straße 日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日 abcdefghijabcdefghijabcdefghijab"
+      }
+    },
+    "what_dash_does": {
+      "claim_under_test": "'Unicode names silently dropped'",
+      "verdict": "NOT CONFIRMED for the plotting path. A Unicode-named variable survives dash end to end: Stata's -syntax varlist- accepts it, the Mata parser keeps it, jsonio serialises it, and it reaches the browser as a Bokeh column, a glyph field, a hover tooltip and an axis label. Nothing is dropped and nothing is silent.",
+      "syntax_varlist_accepts_unicode": {
+        "cmd": "program with -version 16.0- and -syntax varlist-: _vlprobe café weight",
+        "value": "rc=0 varlist=<café weight>"
+      },
+      "ascii_control_scatter": {
+        "cmd": "dash scatter mpg weight, saving(/tmp/dash-kpi/ctl.html) replace",
+        "value": "rc=0"
+      },
+      "unicode_y_scatter": {
+        "cmd": "dash scatter café weight, saving(/tmp/dash-kpi/uni_y.html) replace",
+        "value": "rc=0"
+      },
+      "unicode_y_html_written": {
+        "cmd": "confirm file /tmp/dash-kpi/uni_y.html",
+        "value": "rc=0"
+      },
+      "unicode_both_axes_scatter": {
+        "cmd": "dash scatter café 日本語, saving(/tmp/dash-kpi/uni_both.html) replace",
+        "value": "rc=0"
+      },
+      "unicode_both_html_written": {
+        "cmd": "confirm file /tmp/dash-kpi/uni_both.html",
+        "value": "rc=0"
+      },
+      "html_evidence": {
+        "file": "/tmp/dash-kpi/uni_y.html (1,227,280 bytes)",
+        "column_in_ColumnDataSource": "\"caf\\u00e9\",[22.0,17.0,22.0,20.0,15.0,...]  - all 74 values present",
+        "glyph_field": "{\"x\":{\"type\":\"field\",\"field\":\"weight\"},\"y\":{\"type\":\"field\",\"field\":\"caf\\u00e9\"}}",
+        "hover_tooltip": "[[\"weight\",\"@{weight}\"],[\"caf\\u00e9\",\"@{caf\\u00e9}\"]]",
+        "axis_label": "\"Unicode named mpg\" (the variable label, exactly as for an ASCII variable)",
+        "cjk_column": "\"\\u65e5\\u672c\\u8a9e\",[2930.0,3350.0,2640.0,...]",
+        "note": "The names appear as \\uXXXX escapes because Bokeh JSON-escapes non-ASCII; the browser decodes them back to the original characters. That is correct behaviour, not loss."
+      },
+      "one_real_wart_but_not_unicode": {
+        "observation": "A variable with NO variable label produces an empty axis label and an empty hover-tooltip label instead of falling back to the variable name.",
+        "ascii_control": "dash scatter mpg nolab -> tooltip label \"\" for nolab",
+        "unicode_case": "dash scatter mpg <CJK> -> tooltip label \"\" for the CJK variable",
+        "conclusion": "Identical for ASCII and Unicode, so this is a missing-variable-label fallback bug, NOT a Unicode bug. Anyone who tested Unicode with an unlabelled variable would have mistaken it for one."
+      },
+      "where_unicode_IS_rejected": {
+        "cmd": "dash kpi mean(café), title(\"Unicode KPI\") name(kuni)",
+        "rc": 198,
+        "message": "dash kpi: syntax is stat(varname), e.g. mean(mpg).",
+        "cause": "_dash_kpi validates the whole stat(var) spec with regexm(`statspec', \"^([a-zA-Z0-9]+)\\(([a-zA-Z_][a-zA-Z0-9_]*)\\)$\"), an ASCII-only character class.",
+        "regex_on_unicode": {
+          "cmd": "regexm(\"mean(café)\", \"^([a-zA-Z0-9]+)\\(([a-zA-Z_][a-zA-Z0-9_]*)\\)$\")",
+          "value": "0"
+        },
+        "regex_on_ascii": {
+          "cmd": "regexm(\"mean(mpg)\", \"^([a-zA-Z0-9]+)\\(([a-zA-Z_][a-zA-Z0-9_]*)\\)$\")",
+          "value": "1"
+        },
+        "severity": "Loud, not silent - the user gets rc 198 and a message. But it is still wrong: Stata accepts the name and dash's own plotting path accepts it.",
+        "fix": "Match the variable part with ustrregexm and Stata's own name rule, or drop the regex for the variable and let -confirm variable- (already called on the next line) do the validating."
+      }
+    }
+  },
+  "bugs_found": [
+    {
+      "id": "KPI-BUG-1",
+      "severity": "blocker",
+      "title": "Every name() in dash is rejected on Stata 18+: the bounded regex quantifier {0,31} is not supported under version 16.0",
+      "symptom": "dash scatter mpg weight, name(gasc)  ->  'dash: invalid graph name 'gasc''  rc 198.  dash kpi mean(mpg), title(t) name(kasc)  ->  'dash kpi: invalid name 'kasc''  rc 198.  Both the KPI subcommand and every named graph, and therefore dash build, are unusable.",
+      "root_cause": "dash.ado validates names with regexm(\"`name'\", \"^[a-zA-Z_][a-zA-Z0-9_]{0,31}$\"). Stata 18 replaced the engine behind regexm(); the OLD engine, which is what -version 16.0- (declared at the top of every dash program) selects, does not support the {n,m} interval quantifier and treats {0,31} as literal text, so the pattern can never match.",
+      "measured": {
+        "regexm_bounded_under_version_16": 0,
+        "regexm_star_under_version_16": 1,
+        "ustrregexm_bounded_under_version_16": 1,
+        "regexm_bounded_under_version_18": 1
+      },
+      "affected_lines": "dash.ado 1452 (_dash_validate/graph name), dash.ado 1731 (_dash_kpi name)",
+      "fix": "Use ustrregexm(), which honours {0,31} under every version setting, or express the length limit without an interval quantifier: regexm(\"`name'\", \"^[a-zA-Z_][a-zA-Z0-9_]*$\") & ustrlen(\"`name'\") <= 32.",
+      "regression_test": "cscript: assert that dash scatter mpg weight, name(g1) returns rc 0 and that dash kpi mean(mpg), title(T) name(k1) returns rc 0 and registers $dash_kpi_k1_val."
+    },
+    {
+      "id": "KPI-BUG-2",
+      "severity": "high",
+      "title": "dcount always evaluates to system missing because codebook returns nothing",
+      "symptom": "dash kpi dcount(rep78), ... stores kpi_value = '.' rather than 5.",
+      "root_cause": "_dash_kpi runs `quietly codebook `kpi_var'` and reads r(unique). codebook leaves no r(unique) - it leaves an entirely empty r() for a numeric variable, and only r(str_embedded)/r(str_type) for a string one.",
+      "measured": {
+        "cmd": "dash.ado _dash_kpi: quietly codebook rep78 ; local kpi_value = r(unique)",
+        "value": "value=<.> (empty means codebook returned nothing)"
+      },
+      "fix": "Replace with egen group() + summarize, meanonly as set out in dcount.verdict.recommended.",
+      "regression_test": "cscript: dash kpi dcount(rep78) on sysuse auto must store 5, and dcount(make) must store 74; a dcount over an empty if-selection must store 0."
+    }
+  ]
+}

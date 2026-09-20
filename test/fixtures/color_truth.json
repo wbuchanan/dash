@@ -1,0 +1,930 @@
+{
+  "_meta": {
+    "generated_utc": "2026-09-19T16:31:10Z",
+    "n_colors": 92,
+    "note": "Every entry is the `set rgb' line of Stata's own color-<name>.style file. These are the colours Stata draws; dash's _COLOR_MAP must agree with them exactly.",
+    "style_dir": "/Applications/StataNow/ado/base/style"
+  },
+  "colors": {
+    "black": {
+      "hex": "#000000",
+      "label": "Black",
+      "rgb": [
+        0,
+        0,
+        0
+      ],
+      "source": "color-black.style"
+    },
+    "blue": {
+      "hex": "#0000ff",
+      "label": "Blue",
+      "rgb": [
+        0,
+        0,
+        255
+      ],
+      "source": "color-blue.style"
+    },
+    "bluishgray": {
+      "hex": "#d9e6eb",
+      "label": "Bluish-gray",
+      "rgb": [
+        217,
+        230,
+        235
+      ],
+      "source": "color-bluishgray.style"
+    },
+    "bluishgray8": {
+      "hex": "#d2d7e4",
+      "label": "Bluish-gray 8",
+      "rgb": [
+        210,
+        215,
+        228
+      ],
+      "source": "color-bluishgray8.style"
+    },
+    "brown": {
+      "hex": "#9c8847",
+      "label": "Brown",
+      "rgb": [
+        156,
+        136,
+        71
+      ],
+      "source": "color-brown.style"
+    },
+    "chocolate": {
+      "hex": "#804000",
+      "label": "Chocolate",
+      "rgb": [
+        128,
+        64,
+        0
+      ],
+      "source": "color-chocolate.style"
+    },
+    "cranberry": {
+      "hex": "#c10534",
+      "label": "Cranberry",
+      "rgb": [
+        193,
+        5,
+        52
+      ],
+      "source": "color-cranberry.style"
+    },
+    "cyan": {
+      "hex": "#00ffff",
+      "label": "Cyan",
+      "rgb": [
+        0,
+        255,
+        255
+      ],
+      "source": "color-cyan.style"
+    },
+    "dimgray": {
+      "hex": "#e8e8e8",
+      "label": "Dim gray",
+      "rgb": [
+        232,
+        232,
+        232
+      ],
+      "source": "color-dimgray.style"
+    },
+    "dkgreen": {
+      "hex": "#006000",
+      "label": "Dark green",
+      "rgb": [
+        0,
+        96,
+        0
+      ],
+      "source": "color-dkgreen.style"
+    },
+    "dknavy": {
+      "hex": "#1e2d53",
+      "label": "Dark navy",
+      "rgb": [
+        30,
+        45,
+        83
+      ],
+      "source": "color-dknavy.style"
+    },
+    "dkorange": {
+      "hex": "#e37e00",
+      "label": "Dark orange",
+      "rgb": [
+        227,
+        126,
+        0
+      ],
+      "source": "color-dkorange.style"
+    },
+    "ebblue": {
+      "hex": "#008bbc",
+      "label": "ebrightblue",
+      "rgb": [
+        0,
+        139,
+        188
+      ],
+      "source": "color-ebblue.style"
+    },
+    "ebg": {
+      "hex": "#c6d3df",
+      "label": "ebackground",
+      "rgb": [
+        198,
+        211,
+        223
+      ],
+      "source": "color-ebg.style"
+    },
+    "edkbg": {
+      "hex": "#b2bfcb",
+      "label": "edkbackground",
+      "rgb": [
+        178,
+        191,
+        203
+      ],
+      "source": "color-edkbg.style"
+    },
+    "edkblue": {
+      "hex": "#3e647d",
+      "label": "edarkblue",
+      "rgb": [
+        62,
+        100,
+        125
+      ],
+      "source": "color-edkblue.style"
+    },
+    "eggshell": {
+      "hex": "#fffbf0",
+      "label": "Eggshell",
+      "rgb": [
+        255,
+        251,
+        240
+      ],
+      "source": "color-eggshell.style"
+    },
+    "eltblue": {
+      "hex": "#82c0e9",
+      "label": "elightblue",
+      "rgb": [
+        130,
+        192,
+        233
+      ],
+      "source": "color-eltblue.style"
+    },
+    "eltgreen": {
+      "hex": "#97b6b0",
+      "label": "elightgreen",
+      "rgb": [
+        151,
+        182,
+        176
+      ],
+      "source": "color-eltgreen.style"
+    },
+    "emerald": {
+      "hex": "#2d6d66",
+      "label": "Emerald",
+      "rgb": [
+        45,
+        109,
+        102
+      ],
+      "source": "color-emerald.style"
+    },
+    "emidblue": {
+      "hex": "#7b92a8",
+      "label": "emidblue",
+      "rgb": [
+        123,
+        146,
+        168
+      ],
+      "source": "color-emidblue.style"
+    },
+    "erose": {
+      "hex": "#bfa19c",
+      "label": "erose",
+      "rgb": [
+        191,
+        161,
+        156
+      ],
+      "source": "color-erose.style"
+    },
+    "forest_green": {
+      "hex": "#55752f",
+      "label": "Forest green",
+      "rgb": [
+        85,
+        117,
+        47
+      ],
+      "source": "color-forest_green.style"
+    },
+    "gold": {
+      "hex": "#ffd200",
+      "label": "Gold",
+      "rgb": [
+        255,
+        210,
+        0
+      ],
+      "source": "color-gold.style"
+    },
+    "gray": {
+      "hex": "#808080",
+      "label": "Gray",
+      "rgb": [
+        128,
+        128,
+        128
+      ],
+      "source": "color-gray.style"
+    },
+    "green": {
+      "hex": "#008000",
+      "label": "Green",
+      "rgb": [
+        0,
+        128,
+        0
+      ],
+      "source": "color-green.style"
+    },
+    "gs0": {
+      "hex": "#000000",
+      "label": "Gray 0",
+      "rgb": [
+        0,
+        0,
+        0
+      ],
+      "source": "color-gs0.style"
+    },
+    "gs1": {
+      "hex": "#101010",
+      "label": "Gray 1",
+      "rgb": [
+        16,
+        16,
+        16
+      ],
+      "source": "color-gs1.style"
+    },
+    "gs10": {
+      "hex": "#a0a0a0",
+      "label": "Gray 10",
+      "rgb": [
+        160,
+        160,
+        160
+      ],
+      "source": "color-gs10.style"
+    },
+    "gs11": {
+      "hex": "#b0b0b0",
+      "label": "Gray 11",
+      "rgb": [
+        176,
+        176,
+        176
+      ],
+      "source": "color-gs11.style"
+    },
+    "gs12": {
+      "hex": "#c0c0c0",
+      "label": "Gray 12",
+      "rgb": [
+        192,
+        192,
+        192
+      ],
+      "source": "color-gs12.style"
+    },
+    "gs13": {
+      "hex": "#d0d0d0",
+      "label": "Gray 13",
+      "rgb": [
+        208,
+        208,
+        208
+      ],
+      "source": "color-gs13.style"
+    },
+    "gs14": {
+      "hex": "#e0e0e0",
+      "label": "Gray 14",
+      "rgb": [
+        224,
+        224,
+        224
+      ],
+      "source": "color-gs14.style"
+    },
+    "gs15": {
+      "hex": "#f0f0f0",
+      "label": "Gray 15",
+      "rgb": [
+        240,
+        240,
+        240
+      ],
+      "source": "color-gs15.style"
+    },
+    "gs16": {
+      "hex": "#ffffff",
+      "label": "Gray 16",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "source": "color-gs16.style"
+    },
+    "gs2": {
+      "hex": "#202020",
+      "label": "Gray 2",
+      "rgb": [
+        32,
+        32,
+        32
+      ],
+      "source": "color-gs2.style"
+    },
+    "gs3": {
+      "hex": "#303030",
+      "label": "Gray 3",
+      "rgb": [
+        48,
+        48,
+        48
+      ],
+      "source": "color-gs3.style"
+    },
+    "gs4": {
+      "hex": "#404040",
+      "label": "Gray 4",
+      "rgb": [
+        64,
+        64,
+        64
+      ],
+      "source": "color-gs4.style"
+    },
+    "gs5": {
+      "hex": "#505050",
+      "label": "Gray 5",
+      "rgb": [
+        80,
+        80,
+        80
+      ],
+      "source": "color-gs5.style"
+    },
+    "gs6": {
+      "hex": "#606060",
+      "label": "Gray 6",
+      "rgb": [
+        96,
+        96,
+        96
+      ],
+      "source": "color-gs6.style"
+    },
+    "gs7": {
+      "hex": "#707070",
+      "label": "Gray 7",
+      "rgb": [
+        112,
+        112,
+        112
+      ],
+      "source": "color-gs7.style"
+    },
+    "gs8": {
+      "hex": "#808080",
+      "label": "Gray 8",
+      "rgb": [
+        128,
+        128,
+        128
+      ],
+      "source": "color-gs8.style"
+    },
+    "gs9": {
+      "hex": "#909090",
+      "label": "Gray 9",
+      "rgb": [
+        144,
+        144,
+        144
+      ],
+      "source": "color-gs9.style"
+    },
+    "khaki": {
+      "hex": "#cac27e",
+      "label": "Khaki",
+      "rgb": [
+        202,
+        194,
+        126
+      ],
+      "source": "color-khaki.style"
+    },
+    "lavender": {
+      "hex": "#938dd2",
+      "label": "Lavender",
+      "rgb": [
+        147,
+        141,
+        210
+      ],
+      "source": "color-lavender.style"
+    },
+    "lime": {
+      "hex": "#00ff00",
+      "label": "Lime",
+      "rgb": [
+        0,
+        255,
+        0
+      ],
+      "source": "color-lime.style"
+    },
+    "ltblue": {
+      "hex": "#add8e6",
+      "label": "Light blue",
+      "rgb": [
+        173,
+        216,
+        230
+      ],
+      "source": "color-ltblue.style"
+    },
+    "ltbluishgray": {
+      "hex": "#eaf2f3",
+      "label": "Light bluish-gray",
+      "rgb": [
+        234,
+        242,
+        243
+      ],
+      "source": "color-ltbluishgray.style"
+    },
+    "ltbluishgray8": {
+      "hex": "#e1e6f0",
+      "label": "Light bluish-gray 8",
+      "rgb": [
+        225,
+        230,
+        240
+      ],
+      "source": "color-ltbluishgray8.style"
+    },
+    "ltkhaki": {
+      "hex": "#e5daa5",
+      "label": "Light khaki",
+      "rgb": [
+        229,
+        218,
+        165
+      ],
+      "source": "color-ltkhaki.style"
+    },
+    "magenta": {
+      "hex": "#ff00ff",
+      "label": "Magenta",
+      "rgb": [
+        255,
+        0,
+        255
+      ],
+      "source": "color-magenta.style"
+    },
+    "maroon": {
+      "hex": "#90353b",
+      "label": "Maroon",
+      "rgb": [
+        144,
+        53,
+        59
+      ],
+      "source": "color-maroon.style"
+    },
+    "midblue": {
+      "hex": "#0080ff",
+      "label": "Medium blue",
+      "rgb": [
+        0,
+        128,
+        255
+      ],
+      "source": "color-midblue.style"
+    },
+    "midgreen": {
+      "hex": "#00b000",
+      "label": "Medium green",
+      "rgb": [
+        0,
+        176,
+        0
+      ],
+      "source": "color-midgreen.style"
+    },
+    "mint": {
+      "hex": "#00ff80",
+      "label": "Mint",
+      "rgb": [
+        0,
+        255,
+        128
+      ],
+      "source": "color-mint.style"
+    },
+    "navy": {
+      "hex": "#1a476f",
+      "label": "Navy",
+      "rgb": [
+        26,
+        71,
+        111
+      ],
+      "source": "color-navy.style"
+    },
+    "navy8": {
+      "hex": "#273f6f",
+      "label": "Navy 8",
+      "rgb": [
+        39,
+        63,
+        111
+      ],
+      "source": "color-navy8.style"
+    },
+    "none": {
+      "hex": "#000000",
+      "label": "None",
+      "rgb": [
+        0,
+        0,
+        0
+      ],
+      "source": "color-none.style"
+    },
+    "olive": {
+      "hex": "#5c4717",
+      "label": "Olive",
+      "rgb": [
+        92,
+        71,
+        23
+      ],
+      "source": "color-olive.style"
+    },
+    "olive_teal": {
+      "hex": "#c0dcc0",
+      "label": "Olive teal",
+      "rgb": [
+        192,
+        220,
+        192
+      ],
+      "source": "color-olive_teal.style"
+    },
+    "orange": {
+      "hex": "#ff7f00",
+      "label": "Orange",
+      "rgb": [
+        255,
+        127,
+        0
+      ],
+      "source": "color-orange.style"
+    },
+    "orange_red": {
+      "hex": "#ff4500",
+      "label": "Orange red",
+      "rgb": [
+        255,
+        69,
+        0
+      ],
+      "source": "color-orange_red.style"
+    },
+    "pink": {
+      "hex": "#ff0080",
+      "label": "Pink",
+      "rgb": [
+        255,
+        0,
+        128
+      ],
+      "source": "color-pink.style"
+    },
+    "purple": {
+      "hex": "#800080",
+      "label": "Purple",
+      "rgb": [
+        128,
+        0,
+        128
+      ],
+      "source": "color-purple.style"
+    },
+    "red": {
+      "hex": "#ff0000",
+      "label": "Red",
+      "rgb": [
+        255,
+        0,
+        0
+      ],
+      "source": "color-red.style"
+    },
+    "sand": {
+      "hex": "#d9c263",
+      "label": "Sand",
+      "rgb": [
+        217,
+        194,
+        99
+      ],
+      "source": "color-sand.style"
+    },
+    "sandb": {
+      "hex": "#ffe474",
+      "label": "Sand (b)",
+      "rgb": [
+        255,
+        228,
+        116
+      ],
+      "source": "color-sandb.style"
+    },
+    "sienna": {
+      "hex": "#a0522d",
+      "label": "Sienna",
+      "rgb": [
+        160,
+        82,
+        45
+      ],
+      "source": "color-sienna.style"
+    },
+    "stblue": {
+      "hex": "#1a85ff",
+      "label": "stblue",
+      "rgb": [
+        26,
+        133,
+        255
+      ],
+      "source": "color-stblue.style"
+    },
+    "stc1": {
+      "hex": "#1a85ff",
+      "label": "stc1",
+      "rgb": [
+        26,
+        133,
+        255
+      ],
+      "source": "color-stc1.style"
+    },
+    "stc10": {
+      "hex": "#faa307",
+      "label": "stc10",
+      "rgb": [
+        250,
+        163,
+        7
+      ],
+      "source": "color-stc10.style"
+    },
+    "stc11": {
+      "hex": "#758bfd",
+      "label": "stc11",
+      "rgb": [
+        117,
+        139,
+        253
+      ],
+      "source": "color-stc11.style"
+    },
+    "stc12": {
+      "hex": "#fed9b7",
+      "label": "stc12",
+      "rgb": [
+        254,
+        217,
+        183
+      ],
+      "source": "color-stc12.style"
+    },
+    "stc13": {
+      "hex": "#08234c",
+      "label": "stc13",
+      "rgb": [
+        8,
+        35,
+        76
+      ],
+      "source": "color-stc13.style"
+    },
+    "stc14": {
+      "hex": "#f88dad",
+      "label": "stc14",
+      "rgb": [
+        248,
+        141,
+        173
+      ],
+      "source": "color-stc14.style"
+    },
+    "stc15": {
+      "hex": "#0f5156",
+      "label": "stc15",
+      "rgb": [
+        15,
+        81,
+        86
+      ],
+      "source": "color-stc15.style"
+    },
+    "stc2": {
+      "hex": "#d41159",
+      "label": "stc2",
+      "rgb": [
+        212,
+        17,
+        89
+      ],
+      "source": "color-stc2.style"
+    },
+    "stc3": {
+      "hex": "#00bf7f",
+      "label": "stc3",
+      "rgb": [
+        0,
+        191,
+        127
+      ],
+      "source": "color-stc3.style"
+    },
+    "stc4": {
+      "hex": "#ffd400",
+      "label": "stc4",
+      "rgb": [
+        255,
+        212,
+        0
+      ],
+      "source": "color-stc4.style"
+    },
+    "stc5": {
+      "hex": "#4f2c99",
+      "label": "stc5",
+      "rgb": [
+        79,
+        44,
+        153
+      ],
+      "source": "color-stc5.style"
+    },
+    "stc6": {
+      "hex": "#ff6333",
+      "label": "stc6",
+      "rgb": [
+        255,
+        99,
+        51
+      ],
+      "source": "color-stc6.style"
+    },
+    "stc7": {
+      "hex": "#4db7ff",
+      "label": "stc7",
+      "rgb": [
+        77,
+        183,
+        255
+      ],
+      "source": "color-stc7.style"
+    },
+    "stc8": {
+      "hex": "#7c0015",
+      "label": "stc8",
+      "rgb": [
+        124,
+        0,
+        21
+      ],
+      "source": "color-stc8.style"
+    },
+    "stc9": {
+      "hex": "#0fefaf",
+      "label": "stc9",
+      "rgb": [
+        15,
+        239,
+        175
+      ],
+      "source": "color-stc9.style"
+    },
+    "stgreen": {
+      "hex": "#00bf7f",
+      "label": "stgreen",
+      "rgb": [
+        0,
+        191,
+        127
+      ],
+      "source": "color-stgreen.style"
+    },
+    "stone": {
+      "hex": "#d7d29e",
+      "label": "Stone",
+      "rgb": [
+        215,
+        210,
+        158
+      ],
+      "source": "color-stone.style"
+    },
+    "stred": {
+      "hex": "#d41159",
+      "label": "stred",
+      "rgb": [
+        212,
+        17,
+        89
+      ],
+      "source": "color-stred.style"
+    },
+    "styellow": {
+      "hex": "#ffd400",
+      "label": "styellow",
+      "rgb": [
+        255,
+        212,
+        0
+      ],
+      "source": "color-styellow.style"
+    },
+    "sunflowerlime": {
+      "hex": "#eaffaa",
+      "label": "Sunflower lime",
+      "rgb": [
+        234,
+        255,
+        170
+      ],
+      "source": "color-sunflowerlime.style"
+    },
+    "teal": {
+      "hex": "#6e8e84",
+      "label": "Teal",
+      "rgb": [
+        110,
+        142,
+        132
+      ],
+      "source": "color-teal.style"
+    },
+    "white": {
+      "hex": "#ffffff",
+      "label": "White",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "source": "color-white.style"
+    },
+    "yellow": {
+      "hex": "#ffff00",
+      "label": "Yellow",
+      "rgb": [
+        255,
+        255,
+        0
+      ],
+      "source": "color-yellow.style"
+    }
+  }
+}
