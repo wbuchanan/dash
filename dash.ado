@@ -338,6 +338,22 @@ program define _dash_parse_graph_opts, sclass
     // Options dash accepts but does not yet honour.  Each supplied one
     // is recorded by name so it is reported rather than silently
     // dropped while the owning section is outstanding.
+    //
+    // This list went stale once.  Later sections implemented bin(),
+    // level(), kernel(), width(), start(), n(), fraction/percent/
+    // frequency, falpha(), mlcolor(), mlwidth() and -- at graph level --
+    // scheme(), xsize(), ysize(), xtick() and ytick(), and nothing took
+    // them off it.  So
+    //     . dash scatter mpg weight, level(90)
+    //     dash: ignoring unsupported option(s): level()
+    // while the interval was in fact computed at 90.  A note that names
+    // the wrong options is worse than no note: it tells the user to stop
+    // using something that works.
+    //
+    // test_unsupported_report_is_true.py reads this block and renders
+    // every option it names with two different values, asserting the
+    // output does not change.  Implement one and forget to remove it
+    // here, and that test fails.
     local _dash_pending ""
     if `"`b1title'"' != "" local _dash_pending `"`_dash_pending' b1title"'
     if `"`b2title'"' != "" local _dash_pending `"`_dash_pending' b2title"'
@@ -350,7 +366,6 @@ program define _dash_parse_graph_opts, sclass
     if `"`r1title'"' != "" local _dash_pending `"`_dash_pending' r1title"'
     if `"`r2title'"' != "" local _dash_pending `"`_dash_pending' r2title"'
     if `"`scale'"' != "" local _dash_pending `"`_dash_pending' scale"'
-    if `"`scheme'"' != "" local _dash_pending `"`_dash_pending' scheme"'
     if `"`subtitle2'"' != "" local _dash_pending `"`_dash_pending' subtitle2"'
     if `"`t1title'"' != "" local _dash_pending `"`_dash_pending' t1title"'
     if `"`t2title'"' != "" local _dash_pending `"`_dash_pending' t2title"'
@@ -358,12 +373,8 @@ program define _dash_parse_graph_opts, sclass
     if `"`title2'"' != "" local _dash_pending `"`_dash_pending' title2"'
     if `"`xmlabel'"' != "" local _dash_pending `"`_dash_pending' xmlabel"'
     if `"`xmtick'"' != "" local _dash_pending `"`_dash_pending' xmtick"'
-    if `"`xsize'"' != "" local _dash_pending `"`_dash_pending' xsize"'
-    if `"`xtick'"' != "" local _dash_pending `"`_dash_pending' xtick"'
     if `"`ymlabel'"' != "" local _dash_pending `"`_dash_pending' ymlabel"'
     if `"`ymtick'"' != "" local _dash_pending `"`_dash_pending' ymtick"'
-    if `"`ysize'"' != "" local _dash_pending `"`_dash_pending' ysize"'
-    if `"`ytick'"' != "" local _dash_pending `"`_dash_pending' ytick"'
     // Whatever Stata could not match at all, via the trailing *.
     local _dash_unknown `"`options'"'
 
@@ -556,12 +567,27 @@ program define _dash_parse_plot_opts, sclass
     // Options dash accepts but does not yet honour.  Each supplied one
     // is recorded by name so it is reported rather than silently
     // dropped while the owning section is outstanding.
+    //
+    // This list went stale once.  Later sections implemented bin(),
+    // level(), kernel(), width(), start(), n(), fraction/percent/
+    // frequency, falpha(), mlcolor(), mlwidth() and -- at graph level --
+    // scheme(), xsize(), ysize(), xtick() and ytick(), and nothing took
+    // them off it.  So
+    //     . dash scatter mpg weight, level(90)
+    //     dash: ignoring unsupported option(s): level()
+    // while the interval was in fact computed at 90.  A note that names
+    // the wrong options is worse than no note: it tells the user to stop
+    // using something that works.
+    //
+    // test_unsupported_report_is_true.py reads this block and renders
+    // every option it names with two different values, asserting the
+    // output does not change.  Implement one and forget to remove it
+    // here, and that test fails.
     local _dash_pending ""
     if `"`at'"' != "" local _dash_pending `"`_dash_pending' at"'
     if `"`b1title'"' != "" local _dash_pending `"`_dash_pending' b1title"'
     if `"`b2title'"' != "" local _dash_pending `"`_dash_pending' b2title"'
     if `"`bands'"' != "" local _dash_pending `"`_dash_pending' bands"'
-    if `"`bin'"' != "" local _dash_pending `"`_dash_pending' bin"'
     if `"`blabel'"' != "" local _dash_pending `"`_dash_pending' blabel"'
     if `"`ciopts'"' != "" local _dash_pending `"`_dash_pending' ciopts"'
     if `"`cmissing'"' != "" local _dash_pending `"`_dash_pending' cmissing"'
@@ -570,29 +596,20 @@ program define _dash_parse_plot_opts, sclass
     if `"`coloruseplegend'"' != "" local _dash_pending `"`_dash_pending' coloruseplegend"'
     if `"`connect'"' != "" local _dash_pending `"`_dash_pending' connect"'
     if `"`density'"' != "" local _dash_pending `"`_dash_pending' density"'
-    if `"`falpha'"' != "" local _dash_pending `"`_dash_pending' falpha"'
     if `"`fitopts'"' != "" local _dash_pending `"`_dash_pending' fitopts"'
-    if `"`fraction'"' != "" local _dash_pending `"`_dash_pending' fraction"'
-    if `"`frequency'"' != "" local _dash_pending `"`_dash_pending' frequency"'
     if `"`fxsize'"' != "" local _dash_pending `"`_dash_pending' fxsize"'
     if `"`fysize'"' != "" local _dash_pending `"`_dash_pending' fysize"'
     if `"`horizontal'"' != "" local _dash_pending `"`_dash_pending' horizontal"'
     if `"`jitterseed'"' != "" local _dash_pending `"`_dash_pending' jitterseed"'
-    if `"`kernel'"' != "" local _dash_pending `"`_dash_pending' kernel"'
     if `"`l1title'"' != "" local _dash_pending `"`_dash_pending' l1title"'
     if `"`l2title'"' != "" local _dash_pending `"`_dash_pending' l2title"'
-    if `"`level'"' != "" local _dash_pending `"`_dash_pending' level"'
     if `"`lineopts'"' != "" local _dash_pending `"`_dash_pending' lineopts"'
     if `"`lstyle'"' != "" local _dash_pending `"`_dash_pending' lstyle"'
     if `"`mlabwidth'"' != "" local _dash_pending `"`_dash_pending' mlabwidth"'
-    if `"`mlcolor'"' != "" local _dash_pending `"`_dash_pending' mlcolor"'
     if `"`mlpattern'"' != "" local _dash_pending `"`_dash_pending' mlpattern"'
     if `"`mlstyle'"' != "" local _dash_pending `"`_dash_pending' mlstyle"'
-    if `"`mlwidth'"' != "" local _dash_pending `"`_dash_pending' mlwidth"'
     if `"`mstyle'"' != "" local _dash_pending `"`_dash_pending' mstyle"'
-    if `"`n'"' != "" local _dash_pending `"`_dash_pending' n"'
     if `"`nodraw'"' != "" local _dash_pending `"`_dash_pending' nodraw"'
-    if `"`percent'"' != "" local _dash_pending `"`_dash_pending' percent"'
     if `"`play'"' != "" local _dash_pending `"`_dash_pending' play"'
     if `"`pstyle'"' != "" local _dash_pending `"`_dash_pending' pstyle"'
     if `"`r1title'"' != "" local _dash_pending `"`_dash_pending' r1title"'
@@ -602,14 +619,12 @@ program define _dash_parse_plot_opts, sclass
     if `"`scale'"' != "" local _dash_pending `"`_dash_pending' scale"'
     if `"`scheme'"' != "" local _dash_pending `"`_dash_pending' scheme"'
     if `"`sort'"' != "" local _dash_pending `"`_dash_pending' sort"'
-    if `"`start'"' != "" local _dash_pending `"`_dash_pending' start"'
     if `"`subtitle2'"' != "" local _dash_pending `"`_dash_pending' subtitle2"'
     if `"`t1title'"' != "" local _dash_pending `"`_dash_pending' t1title"'
     if `"`t2title'"' != "" local _dash_pending `"`_dash_pending' t2title"'
     if `"`text'"' != "" local _dash_pending `"`_dash_pending' text"'
     if `"`title2'"' != "" local _dash_pending `"`_dash_pending' title2"'
     if `"`vertical'"' != "" local _dash_pending `"`_dash_pending' vertical"'
-    if `"`width'"' != "" local _dash_pending `"`_dash_pending' width"'
     if `"`xmlabel'"' != "" local _dash_pending `"`_dash_pending' xmlabel"'
     if `"`xmtick'"' != "" local _dash_pending `"`_dash_pending' xmtick"'
     if `"`xsize'"' != "" local _dash_pending `"`_dash_pending' xsize"'
