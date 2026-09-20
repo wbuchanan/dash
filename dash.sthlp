@@ -159,9 +159,20 @@ This help file documents only the features that differ from or extend
     interactivity.
 
 {phang2}5.  {ul:Unsupported twoway options.}
-    The following {cmd:twoway} options are not yet supported by {cmd:dash}:
-    {cmd:play()}, {cmd:nodraw}.
-    Specifying them will produce a warning and the option will be ignored.
+    {cmd:dash} accepts every {cmd:twoway} option.  An unknown option is never
+    an error, so a command copy-pasted from a do-file always runs.  Anything
+    {cmd:dash} cannot honour is named once per command, in a single note:
+
+{p 12 12 2}{cmd:. dash scatter mpg weight, play(x) nodraw}{p_end}
+{p 12 12 2}{cmd:dash: ignoring unsupported option(s): play() nodraw()}{p_end}
+
+{phang2}
+    The note names option {it:names}, never the values supplied.  Because
+    an unknown option cannot be distinguished from a misspelled supported
+    one, a typo is reported as ignored rather than rejected: {cmd:titl(x)}
+    is abbreviated {cmd:title()} and works, but {cmd:titel(x)} appears in
+    the note.  Nothing is ever dropped without being named.  The full list
+    is in {help dash##unsupported:Unsupported Stata twoway options}.
     Note: {cmd:scheme()} is fully supported — see
     {help dash##scheme:Stata scheme support} below.
 
@@ -836,24 +847,25 @@ does not collapse to an unreadable sliver on a phone.
 {title:Unsupported Stata twoway options}
 
 {pstd}
-The following Stata {helpb twoway} options are either silently ignored or not
-supported.  No error is produced for unknown options, so existing Stata graph
-commands copy-pasted into {cmd:dash} will still run even when they contain
-options that have no Bokeh equivalent.
+The following Stata {helpb twoway} options are accepted but not honoured.
+No error is produced for any of them, so existing Stata graph commands
+copy-pasted into {cmd:dash} still run even when they contain options that
+have no Bokeh equivalent — and every one that is supplied is named in the
+command's note, so nothing is dropped in silence.
 
 {phang2}{opt connect(list)} — control how missing values join points.
     Not applicable to Bokeh renderers; use {cmd:connected} plot type instead.
-    Silently ignored when encountered.
+    Accepted and named in the note; not honoured.
 
 {phang2}{opt cmissing(y|n ...)} — treatment of missing values in lines.
     Bokeh always drops missing observations before rendering.
-    Silently ignored when encountered.
+    Accepted and named in the note; not honoured.
 
 {phang2}{opt jitter(#)} — add random noise to marker positions.
     Uniformly distributed noise scaled to #% of the axis range is added to
     both x and y coordinates.  Combine with {opt jseed(#)} for reproducible
     results.  Supported on {cmd:scatter}, {cmd:dot}, {cmd:dropline}, and
-    {cmd:scatteri} plot types; silently ignored on line and fit plots.
+    {cmd:scatteri} plot types; accepted but not honoured on line and fit plots.
 
 {phang2}{opt jseed(#)} — random-number seed for {opt jitter()}.
     Pass any non-negative integer to make jitter reproducible across renders.
@@ -865,7 +877,7 @@ options that have no Bokeh equivalent.
 
 {phang2}{opt recast(plottype)} — recast one plot type to another at render time.
     Not supported; specify the desired plot type directly.
-    Silently ignored when encountered.
+    Accepted and named in the note; not honoured.
 
 {phang2}{opt xaxis(#)} / {opt yaxis(#)} — assign a plot layer to a secondary axis.
     Use {cmd:yaxis(2)} on any plot layer to add a right-hand y-axis scaled to

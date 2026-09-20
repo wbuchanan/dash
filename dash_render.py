@@ -4184,26 +4184,46 @@ class GlyphMapper:
                               legend_label=yvar)
             return [line_r, band_r]
 
-        bwidth = 0.5
-        try:
-            bwidth = max(0.01, min(1.0, float(options.get("bwidth", "0.5"))))
-        except (ValueError, TypeError):
-            pass
+        # The same resolution map_lpoly uses.  This was left on the pre-S07
+        # code -- bwidth clamped to [0.01, 1.0] as a FRACTION, no kernel
+        # lookup at all -- so `lpoly y x, bwidth(500)' and
+        # `lpolyci y x, bwidth(500)' asked for one smoother and got two, and
+        # kernel() was read by nothing here.  Silently, in both cases: the
+        # curve is drawn, it is simply not the curve that was asked for, and
+        # the band is then computed around the wrong curve.
+        bwidth = _stat_option_float(options, "bwidth", None, "lpoly", lo=0.0)
+        if bwidth is not None and bwidth <= 0.0:
+            warnings.warn(
+                f"dash: lpolyci option bwidth({options.get('bwidth')}) must "
+                f"be positive; deriving it from the data instead.",
+                UserWarning, stacklevel=2,
+            )
+            bwidth = None
 
-        degree = 0
-        try:
-            degree = max(0, min(3, int(options.get("degree", "0"))))
-        except (ValueError, TypeError):
-            pass
+        degree = int(_stat_option_float(options, "degree", 0.0, "lpoly",
+                                        lo=0.0, hi=3.0) or 0.0)
+
+        kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
+        if kernel not in _KERNELS:
+            warnings.warn(
+                f"dash: lpolyci kernel({options.get('kernel')}) is not one of "
+                f"{sorted(_KERNELS)}; using epanechnikov.",
+                UserWarning, stacklevel=2,
+            )
+            kernel = "epanechnikov"
 
         n_grid = 100  # coarser grid for speed
         x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bwidth,
-                                                 degree=degree, n_grid=n_grid)
+                                                 degree=degree, kernel=kernel,
+                                                 n_grid=n_grid)
 
-        # Bootstrap CI (200 resamples for speed)
+        # Bootstrap CI (200 resamples for speed).  The resamples must use the
+        # same smoother as the point estimate, or the band is not a band
+        # around the line that is drawn.
         def _lpoly_fn(xi: "np.ndarray", yi: "np.ndarray", _xg: "np.ndarray") -> "np.ndarray":
             _, yb = self._compute_lpoly_fit(xi, yi, bwidth=bwidth,
-                                            degree=degree, n_grid=n_grid)
+                                            degree=degree, kernel=kernel,
+                                            n_grid=n_grid)
             return yb  # NaN entries are replaced by fallback in _bootstrap_ci
 
         y_lower, y_upper = GlyphMapper._bootstrap_ci(
