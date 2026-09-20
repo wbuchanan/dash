@@ -303,3 +303,136 @@
   - Description: `SchemeParser._resolve_path()` validates only the candidate path string (`abspath`) against allowed directories, but it does not validate the resolved target (`realpath`). A symlink placed in the current working directory (for example `tmp_symlink_test.scheme -> /etc/hosts`) passes the allowed-directory check and is returned; `_parse_file()` then opens the symlink path and reads the external file target. Reproduced locally in this repo with a Python snippet: `_resolve_path('tmp_symlink_test.scheme')` returned a CWD path while `realpath(...)` resolved to `/private/etc/hosts`. This is a security bug because it bypasses the intended directory boundary enforcement.
   - Suggested fix: Resolve each candidate with `os.path.realpath()` before the allowed-directory check, and enforce that resolved paths stay under allowed roots. Keep using `realpath` for cycle detection and open only the validated resolved path.
   - Resolution: Fixed. In `SchemeParser._resolve_path()` (dash_render.py), after the existing `abspath` boundary check, added a second check using `os.path.realpath(candidate)` against `realpath`-resolved allowed dirs. Symlinks whose targets resolve outside CWD or the schemes dir now raise `ValueError("...via symlink outside allowed directories...")`. Symlinks whose targets remain within an allowed dir are still accepted (intra-CWD symlinks work normally). 5 regression tests added in `test_scheme.py::TestSecurity` (BUG-51-1a through 1e) covering external-target rejection, same-CWD symlink acceptance, and source-code verification of the realpath check. All 1468 tests pass.
+
+- [x] Title: Generated Bokeh Server app executes arbitrary Python from a function() expression
+  - File Names and Line Numbers: dash_render.py (emitted `_val_node' Call branch; compare the standalone validator's `if node.keywords' guard)
+  - Description: The generated app carries its own copy of the function() expression validator. Its Call branch walked `node.args' and never `node.keywords'. A keyword argument's VALUE is an arbitrary expression that Python evaluates before the call, so `function sin(x, out=<expression reaching open() through object.__subclasses__()>)' wrote a file when the document was built. An empty `__builtins__' does not prevent the escape. The standalone validator has always rejected keywords, so the two modes disagreed about what was safe -- and the generated .py is the artefact users are told to keep and re-run.
+  - Suggested fix: Reject keyword arguments in the emitted validator as the standalone one does, and reject starred arguments with them.
+  - Resolution: Fixed. The emitted Call branch now raises on `node.keywords' and on `_ast.Starred' arguments. test/test_server_function_security.py drives the escape payload through both renderers and asserts neither executes it; 2 of its 14 assertions were red before the fix.
+
+- [x] Title: `dash serve' binds every network interface, and its only gate is a client-supplied header
+  - File Names and Line Numbers: dash_render.py (`_dash_server_app', the Server(...) call and its `address' kwarg); dash.sthlp Server Mode security paragraph
+  - Description: The generated launcher passed no `address', which Bokeh reads as "bind everything". Measured: the listening sockets were ('0.0.0.0', port) and ('::', port), reachable from the LAN, while the launcher's own --address help text said the default was loopback. The only access gate was `allow_websocket_origin', which filters the browser-supplied Origin header: measured with raw sockets, a client that omits Origin, or forges `localhost:<port>', completed the handshake. dash.sthlp stated that connections were restricted to the loopback interface. The help also says the generated app embeds the whole dataset.
+  - Suggested fix: Default the bind address to loopback, leave --address as the deliberate way to open it, and correct the help to describe what the Origin allow-list is and is not.
+  - Resolution: Fixed. `_dash_server_app' passes `address=address or '127.0.0.1''. dash.sthlp now says the app binds loopback, that the Origin allow-list stops another website driving the dashboard in the user's browser but is not an access control, that there is no password, and that anything beyond loopback needs a tunnel, proxy or firewall. test/test_security_surface.py asserts both, reading the generated app rather than the builder.
+
+- [x] Title: A .scheme file can break out of dash's own CSS rules
+  - File Names and Line Numbers: dash_render.py (`OptionTranslator.translate_mcolor' hex passthrough; `SchemeParser._color' -> `css_block')
+  - Description: `translate_mcolor' returned any 4- or 7-character string beginning with `#' as a colour, checking only the length. `SchemeParser' interpolates that value into a `<style>' block where `html.escape' leaves `{', `}' and `;' untouched, so a scheme file containing `color background #}a{b;c' closed dash's own `body' rule and opened one of its own. dash.sthlp invites the user to place a custom .scheme file in the working directory, so the file is untrusted input. The KPI colour path was hardened against exactly this; this was the colour path the hardening did not reach.
+  - Suggested fix: Validate the passthrough as hexadecimal instead of by length.
+  - Resolution: Fixed. The passthrough is now `re.fullmatch(r"#(?:[0-9a-f]{3}|[0-9a-f]{6})", v)'; anything else falls through to the existing ValueError. test/test_security_surface.py drives eight malformed values and an end-to-end .scheme file, and asserts the emitted stylesheet's braces stay balanced.
+
+- [x] Title: An `if' qualifier was rewritten inside its own string literals
+  - File Names and Line Numbers: dash_render.py (`_stata_if_to_pandas')
+  - Description: The translator applied its rewrites to the whole expression, so `if make == "Wow!"' became `make == "Wow~"', matched no rows and drew an empty graph. The rewritten expression is still valid, so nothing warned. Measured: `make == "a~=b"' -> `make == "a!=b"', `make == "inlist(a,b)"' -> `make == "((a == b))"'. The sibling `_stata_expr_to_python' tracks quote state and its docstring says why.
+  - Suggested fix: Mask quoted literals before the rewrites and restore them afterwards -- masking rather than splitting, because `inlist(make, "AMC", "BMW")' is a legitimate qualifier whose arguments are literals.
+  - Resolution: Fixed. `_mask_string_literals'/`_unmask_string_literals' replace each literal with a placeholder carrying no operator, comma or identifier. Both are copied into the generated app alongside `_stata_if_to_pandas'. test/test_security_surface.py covers eight literals plus controls that the rewriting outside quotes still happens.
+
+- [x] Title: `function 9^9^9^9' never returns, and Stata's Break key cannot recover it
+  - File Names and Line Numbers: dash_render.py (`map_function' eval; the same eval in the generated server app)
+  - Description: Python's integer power is exact and unbounded, so the expression computed a number with billions of digits. Measured past 20 seconds with the GIL held throughout, inside Stata's embedded Python, in one uninterruptible call -- so the only way out is killing Stata. Stata itself evaluates in double precision and overflows the same expression to missing.
+  - Suggested fix: Give Python the same arithmetic Stata has by making every numeric literal in the validated tree a float.
+  - Resolution: Fixed. `_floats_only' walks the already-validated tree and converts integer constants; `9.0 ** 9.0 ** 9.0' is `inf' immediately, so an overflowing expression draws nothing instead of hanging. The generated app does the same. test/test_resource_limits.py runs the expression in a subprocess with a 25-second timeout.
+
+- [x] Title: A long function() expression takes the whole dashboard down with RecursionError
+  - File Names and Line Numbers: dash_render.py (`_validate_expr_node', which recurses once per AST node, and the guard around it)
+  - Description: The guard caught `SyntaxError' and `ValueError'. `RecursionError' is neither, so a 50,000-term expression -- about 100,000 characters, which fits inside Stata's command-line limit -- escaped it and lost every graph, KPI and filter in the dashboard, with a message naming nothing.
+  - Suggested fix: Bound the expression length before parsing and widen the except clause.
+  - Resolution: Fixed. `_MAX_EXPR_CHARS' is 5000; over that the layer is drawn empty with a warning that says why. The except clause now also catches RecursionError and MemoryError, and the generated app carries the same bound.
+
+- [x] Title: `histogram width(1e-310)' raises OverflowError and destroys the dashboard
+  - File Names and Line Numbers: dash_render.py (`GlyphMapper._histogram_grid', `n_bins = int(math.ceil(span / width))')
+  - Description: A denormal width makes `span / width' overflow to `inf', and `math.ceil(inf)' raises OverflowError. The exception is not confined to the histogram: it takes every other graph, KPI and filter in the same build with it. In server mode the generated app raised on every session, so the served page was permanently broken.
+  - Suggested fix: Check the ratio is finite and within the bin cap before using it.
+  - Resolution: Fixed. A width that would need more than `_MAX_BINS' bins, or that produces a non-finite ratio, is reported and the width derived from the data instead. test/test_resource_limits.py covers three denormal widths and asserts an ordinary width still sets the bin width exactly.
+
+- [x] Title: `bar barwidth(-5)' raises inside Bokeh and destroys the dashboard
+  - File Names and Line Numbers: dash_render.py (`map_bar', the bare `float(options[key])' for barwidth/width)
+  - Description: The value was parsed with a bare float() guarded only against ValueError and TypeError, then handed to Bokeh, which raised "Distances must be positive!" -- a message naming neither the option nor the plot -- and lost the whole dashboard. Stata rejects a negative barwidth with a clear r(198).
+  - Suggested fix: Read it through `_stat_option_float' with a positive lower bound, as the other numeric options are read.
+  - Resolution: Fixed. `_MIN_BAR_WIDTH' bounds it; a value that is not a number, not finite or not positive is reported and the computed width used. test/test_resource_limits.py covers -5, -0.1, nan, inf and -inf.
+
+- [x] Title: `mband bands()' is unbounded in one mode and clamped in the other
+  - File Names and Line Numbers: dash_render.py (`map_mband', `_stat_option_float(..., lo=1.0)' with no hi; the generated app's own `min(n_bands, 1000)')
+  - Description: The standalone renderer had no upper bound, so `bands(4000000)' took 7.7 seconds on 74 observations and `bands(1000000000)' allocated 8 GB for the bin edges alone before drawing anything. The generated server app clamped the same option to 1000, so the two modes drew different numbers of bands from the same command.
+  - Suggested fix: Give the standalone read the same clamp the served copy uses.
+  - Resolution: Fixed. `_MAX_MBANDS' is 1000 and both modes use it; over that the count is reported and clamped.
+
+- [x] Title: Every KPI statistic but ten returns a missing value under `dash serve'
+  - File Names and Line Numbers: dash_render.py (the generated app's hand-written `_compute_kpi'); dash.ado (`valid_stats')
+  - Description: `dash kpi' accepts fifteen statistics plus any pNN. The generated app carried a third, hand-written copy that knew ten. Measured on a 74-observation fixture: var 29.178 standalone against nan served, and the same for cv, iqr and skewness, so those cards read `.' under `dash serve' and a number under `dash build'. p25 and p75 disagreed as well -- 17.551 against 17.563 -- because the copy used pandas' linear interpolation where Stata, and every other path in dash, uses its own percentile rule. `count' over a selection filtered down to nothing read `.' rather than 0.
+  - Suggested fix: Emit the standalone renderer's own `_kpi_statistic' into the app and delegate to it, as the statistical helpers are already emitted.
+  - Resolution: Fixed. `_kpi_statistic' is copied in by `inspect.getsource' and `_compute_kpi' delegates to it, so the two modes run the same text. test/test_server_kpi_statistics.py reads dash.ado's `valid_stats' rather than restating it; 13 of its 26 assertions were red before the fix.
+
+- [x] Title: Stata's `jitterseed()' reached none of the five places that read a jitter seed
+  - File Names and Line Numbers: dash_render.py (`_build_jitter_source', `map_dropline', `map_scatteri', `_resolve_seed', and the generated app's own copy)
+  - Description: `twoway scatter' takes `jitter(#)' and `jitterseed(#)'. `jseed(#)' is dash's own shorthand and was the only spelling any of the five sites read, and dash.ado listed jitterseed on the ignoring-unsupported list. So a command pasted out of a do-file drew jitter from an unseeded generator -- a different cloud of points on every render of the same command -- while reporting the seed as dropped. Reproducibility is the entire purpose of the option. `map_dropline' also parsed the seed with a bare `int(float(...))', so `jseed(abc)' took the render down.
+  - Suggested fix: Read both spellings through one helper, with the dash spelling winning when both are given.
+  - Resolution: Fixed. `_jitter_seed()' is used at all five sites and reports a non-numeric seed as absent. test/test_jitter.py gains twelve assertions, eight red before the fix, including two controls: that the jittered values do not live in the original columns, and that an unseeded jitter really is unseeded.
+
+- [x] Title: dash reported `density()', `color()', `bands()' and `range()' as ignored while honouring them
+  - File Names and Line Numbers: dash.ado (`_dash_pending' blocks in `_dash_parse_plot_opts'); dash_render.py (`_histogram_grid', `map_bar'/`map_area'/`map_histogram', `map_mband', the function branch)
+  - Description: The existing measurement renders each pending option at two different values and asserts the output does not change. It could not see these four. `density' NAMES the default histogram y axis, so writing it and omitting it give the same document whatever the renderer does. `bands' was measured on a kdensity, where Stata does not define it, and `range' on a kdensity too; both are live elsewhere. `color' was measured on a scatter, one of the mappers that did not read it, while bar, area, histogram, dropline and rcapsym honoured it. So `dash mband y x, bands(5)' drew five bands and said bands() had been ignored.
+  - Suggested fix: Take the four off the list, make `color()' reach scatter and line as Stata's generic series colour does, and implement `range()' for kdensity, which Stata defines and dash read only for function plots.
+  - Resolution: Fixed. `_with_color_alias()' lets the generic name stand in for `mcolor'/`lcolor' only when the specific one is absent, leaving a bar's own blcolor() alone. kdensity reads range() and reports a malformed pair. A new guard in test_unsupported_report_is_true.py reads the y-axis family out of `_histogram_grid''s own source and asserts no member of it is on the pending list, so a flag that names a default cannot hide there again.
+
+- [x] Title: Sixteen glyph properties differ between a saved dashboard and a served one
+  - File Names and Line Numbers: dash_render.py (ServerAppBuilder's emitted style literals); test/test_mode_parity.py
+  - Description: The parity guard collected `line_width', `line_dash' and `fill_alpha' and asserted four other properties, on Scatter glyphs only, over an eight-case corpus of nothing but scatters. Widened to every glyph and every property it collects, over line, area, bar, histogram, kdensity, mband, dropline, spike, connected, a fit and marker labels, it failed sixteen times at once: served scatters at alpha 0.7 where the scheme says 0.8, areas 0.4 against 1.0, histograms 0.8 against 1.0, bars outlined white rather than in their own fill, economist lines 1.5 against the scheme's 1.2, mband 1.5 against 2.0, and a connected plot's marker black where the mono scheme asks for #606060. Both by() facet loops held a third set of the same literals.
+  - Suggested fix: Emit the scheme's own numbers and read them, and widen the guard so the next drift fails here.
+  - Resolution: Fixed. The generated app carries `_SCHEME_FILL_ALPHA', `_SCHEME_BAR_ALPHA', `_SCHEME_AREA_ALPHA' and `_SCHEME_LINE_WIDTH'; mband's own 2.0 in the standalone renderer became the scheme's width too. The parity corpus is now thirteen cases across eleven glyph types and asserts every property it gathers, plus a control that the profile is not empty. 87 parity assertions pass.
+
+- [x] Title: `pcscatter' is parsed as literal coordinates although it takes four variables
+  - File Names and Line Numbers: dash.ado (the varpart and JSON branches that listed pcscatter with scatteri, pci and function)
+  - Description: Measured: `dash pcscatter mpg weight mpg price' wrote `"values":[[mpg,weight],[mpg,price]]' -- the variable names as bare identifiers inside a JSON array, which is not valid JSON. The renderer read nothing from it and drew a titled, axed, empty plot region with rc 0 and no warning.
+  - Suggested fix: Route it with pcspike, pcarrow and pcbarrow, which is what it is.
+  - Resolution: Fixed in both branches, and `_PC_TYPES' in the render loop gained it. test/test_every_plot_type_draws.py reads the supported-type list out of the message dash.ado prints and renders every entry.
+
+- [x] Title: `pci' draws nothing: there is no renderer for its literal coordinates
+  - File Names and Line Numbers: dash_render.py (`map_pci' delegated to `map_pcspike'; the render loop routed pci nowhere)
+  - Description: `twoway pci 20 3000 30 4000' names two points and draws a line between them, and dash.ado writes them correctly as [[20,3000],[30,4000]]. `map_pci' delegated to `map_pcspike', which wants variable names, and the render loop did not route pci there in any case. The result was an empty plot region with rc 0.
+  - Suggested fix: Give pci a literal renderer, as scatteri has.
+  - Resolution: Fixed. `map_pci_literal' draws the pairs two at a time in the (y, x) order scatteri uses, honours lcolor()/color(), and reports an unpaired last point rather than dropping it in silence.
+
+- [x] Title: `dropline' ignores every marker option the help says it takes
+  - File Names and Line Numbers: dash_render.py (`map_dropline': size=8 and line_width=1.5 written into the call, no `_apply_marker_opts', a source without the mlabel column)
+  - Description: dash.sthlp lists dropline among the plot types accepting mlabel() and msangle(). It honoured neither, nor msymbol(), msize() or malpha(), because the scatter renderer was never passed to `_apply_marker_opts' -- the only place those options are read. mlabel() failed a second way: `_apply_mlabel_opts' was given a source carrying only x, y, y0 and the two plot variables, so the label column was never in it. The two literals are the ones S11 replaced elsewhere; under economist the scheme asks for 10.18 and 1.2.
+  - Suggested fix: Pass the dot through `_apply_marker_opts', add the label column to the source, and take the size and width from the scheme.
+  - Resolution: Fixed, and `map_scatteri' -- which had the same gap for msangle() and malpha() -- is routed through the same helper. test/test_dropline_marker_options.py carries twelve assertions, eight red before the fix.
+
+- [x] Title: `theme(dark)' has been advertised since the first release and never existed
+  - File Names and Line Numbers: dash_render.py (`_THEME_SCHEME_MAP'); dash.sthlp (Dashboard Options table)
+  - Description: The map held default, clean, mono, economist and sj. `dark' was in neither the map nor any scheme file, so `dash build, theme(dark)' warned that the name was unknown and drew s2color, which is white -- from the one theme name a user picks precisely because they want a dark dashboard. The table also omitted mono, economist and sj, which work, and had no scheme() row at all although scheme() is in the syntax diagram.
+  - Suggested fix: Map dark to s1rcolor, Stata's own dark scheme, which dash ships.
+  - Resolution: Fixed. test/test_theme_aliases.py asserts every advertised alias resolves to a scheme that ships, that an unknown name is still reported, and that the help's list and the map agree in both directions. test_scheme_consumption.py's theme test was written against dark being unknown and now tests a name that really is.
+
+- [x] Title: A custom scheme's base name is rejected although the help says to use one
+  - File Names and Line Numbers: dash_render.py (`SchemeParser._resolve_path': a bare name was looked for only in the package's schemes/)
+  - Description: dash.sthlp tells the user to put a .scheme file in the working directory and give its base name. A bare name was resolved only against the package's own schemes/ directory, so the file was reported as an unknown scheme and only `scheme(myscheme.scheme)' found it.
+  - Suggested fix: Try the working directory first for a bare name, as the file-reference branch already does.
+  - Resolution: Fixed, with the same path validation applied to the new candidate.
+
+- [x] Title: `dash_setup' never performs the Python version check its help describes
+  - File Names and Line Numbers: dash_setup.ado (the Python availability step); dash_setup.sthlp
+  - Description: The help said step 1 verifies Python 3.8+. The code ran `capture python query', which succeeds for any linked Python including 3.6, then read `sys.version' into a macro and printed it. Nothing compared it to anything. A user on Python 3.7 was told "Python ............. OK (version 3.7.9)" and sent on to fail later inside bokeh, with a message about neither Python nor dash.
+  - Suggested fix: Compare the version, numerically and per component, and report a version below the minimum.
+  - Resolution: Fixed. `_dash_pymin' holds the minimum in one place and `_dash_pyver_ok' compares component by component as numbers -- so 3.10 is newer than 3.9, which is how this check is usually got wrong -- returning 1, 0 or -1 so that an unreadable version is reported as unknown rather than as too old. test/test_setup_python_gate.cscript drives thirteen cases from any interpreter and asserts dash_setup.sthlp states the same minimum the code uses.
+
+- [x] Title: Three test fixtures are not in the repository, so 174 tests skip on a clone
+  - File Names and Line Numbers: test/fixtures/kpi_truth.json, test/fixtures/color_truth.json, test/fixtures/scheme_visual/truth.json; .git/info/exclude
+  - Description: All three are measured against real Stata and the tests that read them skip when the file is absent. Measured, a clean `git archive HEAD' export against the working tree: 2934 passed / 116 skipped against 3056 passed / 33 skipped. So 174 tests -- precisely the Stata-ground-truth checks for KPI statistics, the colour table and rendered geometry -- never ran on a clone, and the suite still exited 0. The cause is a local `*.json' rule under "Common ASCII dataset extensions"; the other six truth fixtures are tracked because they were added with `git add -f'.
+  - Suggested fix: Force-add the three, and make a missing fixture fail rather than skip.
+  - Resolution: Fixed. test/test_fixtures_are_committed.py asks `git ls-files', not the filesystem, so a fixture that exists only on the author's machine fails there rather than on someone else's clone.
+
+- [x] Title: Eight fills in comprehensive_demo.do render at a hundredth of the intended opacity
+  - File Names and Line Numbers: examples/comprehensive_demo.do (fa() at eight sites)
+  - Description: falpha() is a percentage, 0-100, as Stata's intensity options are. The example wrote fa(0.4), fa(0.3), fa(0.25) and fa(0.5), so fa(0.4) rendered fill_alpha 0.004 and every shaded band and area in the showcase was effectively invisible.
+  - Suggested fix: Write the percentages the option takes.
+  - Resolution: Fixed in all eight places. examples/feature_tour.do is new and exercises the options no example reached -- bin(), level(), kernel(), bwidth(), legend(), xline(), note(), mlabel(), xlabel(), yaxis(), jitter(), function, a multi-variable varlist, a named scheme, tabs, a filter sidebar and the four KPI statistics the help used to omit.
+
+- [x] Title: Three dead artefacts in dash_render.py, one of them with three tests attached
+  - File Names and Line Numbers: dash_render.py (`safe_title'; `if True:' around the hover block; `_pad_grid_children'); test/test_layout.py
+  - Description: `safe_title' was computed from the page title and never read. `if True:' wrapped ninety-seven lines of hover construction, which is not a condition. `_pad_grid_children' has never been called by the renderer -- the live path pads its own grid inline -- yet three tests in test_layout.py called it directly, so they certified a duplicate implementation and would have stayed green if the padding the product actually does had been deleted.
+  - Suggested fix: Remove all three and point the tests at the live grid.
+  - Resolution: Fixed. The three empty-cell tests now read the GridPlot the renderer built, the way test_layout_placement.py does, and one more asserts that five graphs in a 2x2 layout lose none of themselves.
+

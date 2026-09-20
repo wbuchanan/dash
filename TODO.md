@@ -760,3 +760,27 @@ Previously-parsed graph options (xtitle, ytitle, aspectratio, note, caption, leg
 - [x] A-81  Feature: scheme color cycling applied — GlyphMapper now receives SchemeParser instance from DashRenderer; plot loop tracks index pi and passes color_idx=pi to _add_glyph/_add_pc_glyph/map_scatteri; all 34 map_* methods accept color_idx=0 and use scheme.default_color(color_idx, type) as default instead of hardcoded #1f77b4; user option overrides (mcolor/lcolor/fcolor etc.) still take priority; server-mode by()+link() CDSView fix also included — generated app imports CDSView/BooleanFilter, by() faceting loop detects linked_names membership and applies CDSView with BooleanFilter mask per panel; 1046 tests pass
 - [x] A-82  Architecture: v2.0 parser rewrite — dash_parse.mata stripped of hand-rolled tokenizer/option-parser/structural-parser (~500 lines removed); replaced by Stata's built-in -syntax- command for ALL option parsing; Mata now handles ONLY: (1) segment splitting on || and () syntax via _dash_split_segs, (2) option-key abbreviation pre-expansion via _dash_expand_opts_str (mc→mcolor, ms→msymbol, etc.), (3) plot-type abbreviation expansion via _dash_expand_plottype, (4) first top-level comma position via _dash_comma_pos; dash.ado: new programs _dash_parse_graph_opts/_dash_parse_plot_opts (syntax-based), _dash_parse_varpart_std/1v/3v/4v/any (varlist validation via syntax), _dash_process_segment (per-segment orchestrator), _dash_plot_opts_to_json (JSON assembly from s() values); critical bugs fixed: option routing (mc(red) now correctly lands in plot.options not graph_options), sreturn clear before each _dash_parse_plot_opts call, substr position 5 (not 3) for stripping Stata if/in keyword prefix; test cscripts P1A-20-30 and P1A-31-43 updated for new API; 1046 Python tests still pass; feature branch: feature/v2-syntax-parser
 - [x] A-83  Bug: server-mode filter callbacks missing for mspline, mband, rscatter, pci, pcscatter — these 5 plot types were not registering their ColumnDataSources in graph_sources or agg_sources so filter widget changes produced stale charts; fix: added _compute_mspline(), _compute_mband(), _compute_rscatter(), _compute_pcscatter() helpers to generated server app; mspline/mband/rscatter/pcscatter now register in agg_sources with new type keys; pci registers in graph_sources (column names match df columns so standard replacement works); _on_filter_change updated with elif branches for all 4 new agg types; rscatter yvar lookup fixed to handle yvar/y1var/yvar1 aliases; 11 new tests A-90 through A-94; 1057 tests pass
+
+---
+
+## THE `.ultraplan` PASS — SIXTEEN SECTIONS
+
+The roadmap above is complete through A-83. Everything after it was done
+under the plan in `.ultraplan/`, which is the record: `PLAN.md` for the
+sections, `CHANGELOG.md` for what changed and why, `BUGS.md` in this
+directory for every defect with its regression test.
+
+Do not add A-NN items here for that work. It is tracked by section, and the
+sections are finished in this order: S01 baseline and test integrity, S02
+packaging, S03 scheme translation, S04 abbreviations, S05 the option
+surface, S06 varlists, S07 statistical defaults, S08 formats and dates, S09
+axes and legends, S10 geometry, S11 scheme consumption, S12 layout and
+faceting, S13 linking and filters, S14 server mode, S15 server/standalone
+unification, S16 help reconciliation, conformance and security.
+
+**What remains is listed once, at the end of `.ultraplan/CHANGELOG.md`**,
+under "What the survey found that is not fixed here". The largest items are
+S15-03's dispatch-table collapse, giving the 299-command conformance corpus
+a render step, the ten closed `BUGS.md` entries whose regression tests would
+stay green if the bug returned, and the quadratic per-filter data copies in
+the standalone HTML.

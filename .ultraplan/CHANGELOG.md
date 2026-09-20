@@ -1018,3 +1018,147 @@ the two facet loops reduced to one dispatch table, with the generated app
 importing `GlyphMapper` — is **not** done. What the parity test now pins is
 that the two implementations *agree*, not that there is one of them. The
 remaining duplication is real and the test is the guard on it.
+
+
+## S16 — the help describes the package, and the adversarial pass lands
+
+The section where "done" is declared, so the claims had to be checked rather
+than restated. Eight parallel auditors measured the whole surface first: the
+help against the code, every input surface against injection and exhaustion,
+the 215-item hardcoding register against HEAD, the 51 closed entries in
+`BUGS.md`, the test suite against its own vacuity, and `examples/` against
+what now works. What follows is what they found and what was done about it.
+
+### Security — four holes, one of them remote code execution
+
+**The served `function()` validator never walked keyword arguments.** Its
+`Call` branch read `node.args` and stopped. A keyword argument's *value* is
+an arbitrary expression that Python evaluates before the call, so
+
+    function sin(x, out=<expression reaching open() via __subclasses__>)
+
+wrote a file when the document was built. `{'__builtins__': {}}` does not
+help: the escape reaches builtins through `object.__subclasses__()`. The
+standalone validator has always rejected keywords, so the two modes
+disagreed about what was safe — and the generated `.py` is the artefact
+users are told to keep and re-run.
+
+**`dash serve` bound every interface.** Measured: `('0.0.0.0', port)` and
+`('::', port)`, reachable from the LAN, while the launcher's own `--address`
+help said the default was loopback. The only gate was
+`allow_websocket_origin`, which filters a header the *client* supplies —
+measured with raw sockets, a client that omits `Origin`, or forges
+`localhost:<port>`, completed the handshake. `dash.sthlp` told the user
+connections were restricted to loopback. It now binds `127.0.0.1` by
+default, and the help says what the allow-list is and is not.
+
+**A `.scheme` file could close dash's own CSS rule.** `translate_mcolor`
+returned any 4- or 7-character string beginning with `#`, checking only the
+length; `html.escape` leaves `{`, `}` and `;` alone. Validated as hex now,
+which is the check the KPI colour path already had.
+
+**`if make == "Wow!"` filtered on `"Wow~"`.** The qualifier translator
+rewrote `!`, `~=`, `inlist()` and `missing()` everywhere, including inside
+quoted literals, and the result is still valid so nothing warned. Literals
+are masked before the rewrites and restored after — masked rather than
+split, because `inlist(make, "AMC", "BMW")` is a legitimate qualifier whose
+arguments *are* literals.
+
+### Five values that lost the whole dashboard, or never returned
+
+A dashboard is many graphs, KPIs and filters built in one pass, so an
+exception while one layer draws is the loss of everything the user built.
+
+| input | before |
+|---|---|
+| `function 9^9^9^9` | never returned — measured past 20s with the GIL held, so Stata's Break key cannot recover it |
+| `function <50,000 terms>` | `RecursionError`, which is neither `SyntaxError` nor `ValueError` and escaped the guard |
+| `histogram mpg, width(1e-310)` | `span/width` overflowed to `inf`; `math.ceil(inf)` raised |
+| `bar y x, barwidth(-5)` | reached Bokeh, which raised "Distances must be positive!" |
+| `mband y x, bands(1e9)` | 8 GB allocated in `np.linspace`; the served copy clamped at 1000 and the standalone one did not |
+
+Stata evaluates in double precision and overflows `9^9^9^9` to missing, so
+dash now does too: every numeric literal in the validated tree becomes a
+float. The rest are reported and the default used.
+
+### The parity guard was collecting properties it never asserted
+
+`test_mode_parity.py` gathered `line_width`, `line_dash` and `fill_alpha`
+and compared four *other* properties, on `Scatter` glyphs only, over an
+eight-case corpus of nothing but scatters. Widened to every glyph and every
+property it collects, over eleven glyph types, it failed **sixteen times
+immediately**: served scatters at alpha 0.7 where the scheme says 0.8, areas
+0.4 against 1.0, histograms 0.8 against 1.0, bars outlined white rather than
+in their own fill, economist lines 1.5 against the scheme's 1.2, mband 1.5
+against 2.0, and a connected plot's marker black where a mono scheme asks
+for `#606060`. Both `by()` facet loops held a third copy of the same
+literals. The generated app now carries `_SCHEME_FILL_ALPHA`,
+`_SCHEME_BAR_ALPHA`, `_SCHEME_AREA_ALPHA` and `_SCHEME_LINE_WIDTH`.
+
+### Four plot types dash advertises drew nothing or drew it wrong
+
+`pcscatter` takes four variables and was parsed as literal coordinates, so
+its variable names went into the spec as bare identifiers inside a JSON
+array. `pci` takes literals and had no renderer that read them. `dropline`
+and `scatteri` never reached `_apply_marker_opts`, the only place
+`msymbol()`, `msize()`, `msangle()` and `malpha()` are read, and
+`dropline`'s `mlabel()` was handed a source without the label column.
+
+None of this was visible to the conformance corpus, because every one of its
+299 commands is given `name()` — which registers the spec and never renders
+it. So the drop-in claim was proved at the `syntax` layer and no further.
+`test_every_plot_type_draws.py` reads the supported-type list out of the
+message `dash.ado` prints when it rejects an unknown type — the package's
+own promise, not a restatement — and asserts each one produces a glyph over
+a non-empty source.
+
+### The help now describes the package
+
+`test_help_conformance.py` asserts in **both** directions, because one
+direction is how 98 accepted options came to be undocumented. It decides
+what needs documenting mechanically: an option `twoway` has is covered by
+the help's redirect to Stata's manual; an option only dash has is not.
+
+- **seven options sat under "Unsupported Stata twoway options" although dash
+  honours them** — `jitter`, `jseed`, `msangle`, `saving`, `scheme`,
+  `xaxis`, `yaxis` — so the help told users to stop using things that work;
+- **thirty-five options dash accepts and reports as ignored were not listed
+  there at all**, though the section claimed to be the full list;
+- four `{cmdab:}` claims advertised a *longer* minimum than dash accepts,
+  and `xlabel` was given two different minima nine lines apart;
+- `var`, `cv`, `iqr` and `skewness` are accepted by `dash kpi` and were
+  missing from its table, as was the whole `pNN` family;
+- `{help dash##scheme}` pointed at a marker that did not exist;
+- the secondary-axis and `colorvar()` families were entirely undocumented;
+- `by() cannot be combined with link()` had been false for a long time;
+- `legend(on) — show the legend (default)` was false: as in `twoway`, a
+  legend is drawn only on a graph with two or more keys;
+- `theme(dark)` had been advertised since the first release and existed in
+  no map and no scheme file. `s1rcolor` is Stata's own dark scheme and ships
+  in `schemes/`, so the documented name now means it.
+
+### What the survey found that is not fixed here
+
+Stated plainly, because the section is where completion is claimed:
+
+- **S15-03's full collapse** — 38 `map_*` methods, 37 server `ptype`
+  branches and two facet loops reduced to one dispatch table — remains
+  undone. The parity test pins that the two implementations *agree*, not
+  that there is one of them.
+- **The conformance corpus still never renders.** Every probe appends
+  `name()`. `test_every_plot_type_draws.py` covers the plot-type half of
+  what a rendering corpus would catch; the option half is not covered.
+- **Ten of the 51 closed entries in `BUGS.md` have regression tests that
+  would stay green if the bug returned**, and one (#41, the rate limiter's
+  proxy bucket) was deliberately reverted by `7cff67f` to close a worse
+  hole, so its Resolution text no longer describes HEAD.
+- **86 of the 215 hardcoding-register items are still open**, most of them
+  in the generated app's emitted literals. The register's own total of 211
+  is a four-item miscount in the source audit.
+- **The standalone HTML embeds one full copy of the dataset per filter
+  widget**, so size is quadratic in the filter count: 100k rows with five
+  sliders produced 169.6 MB of HTML at 2.77 GB RSS, against 5.98 MB with no
+  filters. Nothing bounds or warns about dataset size in either mode.
+- `lfit` and `qfit` still evaluate on 200 points over a range padded 10%,
+  while `lfitci` and `qfitci` use Stata's 100 points over the observed
+  range, so the two disagree on identical data.

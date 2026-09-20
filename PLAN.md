@@ -698,5 +698,6 @@ dash serve [, port(5006)]
 | Port injection | `port("5006; drop_tables()")` | Rejected by regex; not an integer |
 | XSS in server mode | `title("<script>alert(1)</script>")` | html.escape() in generated Div.text |
 | Data payload injection | Data column containing `\'` + `\n` | Base64 encoding prevents any escape |
-| WebSocket hijack | Cross-origin request | `allow_websocket_origin` restricts to localhost |
-| Resource exhaustion | 1000 browser tabs to server | `num_procs=1` + Tornado's built-in connection limits |
+| WebSocket hijack | Cross-origin request | `allow_websocket_origin` rejects a *wrong* Origin, so it stops another website driving the dashboard in the user's browser. **It is not an access control**: measured with raw sockets, a client that omits the header, or forges `localhost:<port>`, completes the handshake. The socket itself binds loopback by default; `--address` opens it deliberately. See `.ultraplan/CHANGELOG.md`, S16. |
+| Resource exhaustion | 1000 browser tabs to server | `num_procs=1`, Tornado's own connection limits, and a per-IP sliding-window limiter on session creation and `/health`. **Measured open**: one IP obtained 300 sessions in a 60-second window against a nominal 60 by cycling 10,000 fresh forwarded-for keys to evict its own bucket. |
+| Resource exhaustion | One option value | Bounded: `function` expression length and float arithmetic, `histogram width()`, `bar barwidth()`, `mband bands()`, `function n()`, `kdensity n()`, the fit grid. **Measured open**: nothing bounds dataset size, `by()` group count, or the per-filter data copies the standalone HTML embeds. |
