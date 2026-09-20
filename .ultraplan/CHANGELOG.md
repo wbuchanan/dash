@@ -924,3 +924,97 @@ do not recompute on filter. They do — the bar heights are rescaled from the
 filtered rows — but the *bin edges* are fixed at build time. The server
 recomputes the bins themselves. The table now states the distinction, and
 records that kernel density recomputes on both paths.
+
+---
+
+## S15 — the two renderers stop disagreeing
+
+`dash` has two renderers. `DashRenderer` builds Bokeh models directly;
+`ServerAppBuilder` emits a `.py` file that builds them again, in generated
+string literals. They had drifted, and nothing could tell.
+
+### `link()` did nothing in server mode
+
+The generated app builds a shared `ColumnDataSource` for the graphs named by
+`link()`, records it, and then every plot ignores it and builds its own.
+**Measured:** two graphs under `link(_all)` rendered from two *distinct*
+sources, so a box-select in one could never appear in the other.
+
+**Changed.** A linked graph renders from the shared source. One with its own
+`if`/`in` gets a `CDSView` over that source instead of a private copy — it
+must not draw rows the qualifier excluded — which is how the standalone
+renderer has always done it.
+
+### `msize(large)` meant two different sizes
+
+`OptionTranslator._SIZE_MAP` has `medium=11`, `large=15`. The generated app
+had `medium=8`, `large=12`. One set of Stata keywords, two scales, 15px
+against 12px from the same command. The generated app is given `_SIZE_MAP`
+itself now.
+
+### The server did not use Stata's bin rule
+
+```
+try: nbins = max(1, min(int(opts.get('bin', 20)), 1000))
+```
+
+A literal 20, where standalone derives the count from the data with Stata's
+rule. `dash histogram mpg` drew **8** bars standalone and **20** served, and
+20 is not Stata's answer. Both use `_stata_bin_count` now. The count is then
+held fixed while the *edges* recompute live: a histogram whose number of bars
+changes as you drag a slider is not reporting the same statistic twice.
+
+### The KPI card was built five times, and the server's was unsafe
+
+**Security.** Standalone resolves a KPI colour through `_resolve_kpi_color` —
+translate the Stata name, then sanitise — because the value lands inside
+`style="...color:{c};"`, where `html.escape` does not stop a CSS *property*
+injection: `;`, `(` and `)` pass straight through. The generated app only
+escaped. **Measured:** `color(red; background:url(http://evil/x))` reached
+the served document as
+
+```
+style="font-size:28px;font-weight:bold;color:red; background:url(http://evil/x);"
+```
+
+a second declaration the browser honours, while the same spec rendered
+standalone contained no such string.
+
+**Correctness.** Stata colour names were never translated in server mode, so
+`color(navy)` gave CSS navy (#000080) where Stata's navy is #1a476f, and
+`gs10` and `red%50` — both legitimate — were not CSS at all.
+
+**Drift.** The value was 36px standalone and 28px served, with different
+padding, border and label colours.
+
+**Changed.** One builder, `_dash_kpi_card`, producing the standalone markup,
+over a `_dash_kpi_color` that translates then sanitises. `_resolve_color` and
+the colour table moved to module scope in the generated app so the card
+builder can use them rather than carry a second copy. Two builders remain —
+the Python one and the in-browser JavaScript one — because one of them is
+JavaScript; they are asserted to agree rather than merged.
+
+### `dash scatter mpg mpg` crashed the server app
+
+`twoway scatter mpg mpg` is legal. The plot source is built as
+`g_df[[xvar, yvar]]`, which pandas rejects with `DuplicateError` when the two
+names are the same. Standalone rendered it; the served app raised. Column
+lists are deduplicated now, at all seven sites.
+
+### `test_mode_parity.py`
+
+The deliverable that outlives the section: a corpus rendered through **both**
+paths, comparing glyph type, marker, size, colour, line width, dash and the
+figure chrome. Legitimate differences are listed in `ALLOWED` with a reason,
+rather than tolerated by a loose comparison — a test that accepts unknown
+differences passes the next drift too.
+
+**16 of its 27 assertions fail** against the renderer as it stood at `7cff67f`.
+
+### Not done in this pass
+
+S15-03's full collapse — 38 `map_*` methods, 37 server `ptype` branches and
+the two facet loops reduced to one dispatch table, with the generated app
+importing `GlyphMapper` — is **not** done. What the parity test now pins is
+that the two implementations *agree*, not that there is one of them. The
+remaining duplication is real and the test is the guard on it.
