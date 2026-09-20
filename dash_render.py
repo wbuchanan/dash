@@ -7411,6 +7411,101 @@ class FilterBuilder:
 # DashRenderer
 # ===========================================================================
 
+# Stata theme names are aliases for schemes.  dash.ado writes
+# build_options["theme"] using them; build_options["scheme"] takes a scheme
+# name directly.
+_THEME_SCHEME_MAP: "dict[str, str]" = {
+    "default":    "s2color",
+    "clean":      "s1color",
+    "mono":       "s1mono",
+    "economist":  "economist",
+    "sj":         "sj",
+}
+
+
+def _resolve_scheme_name(master_spec: dict) -> str:
+    """Return the scheme name a spec asks for, after every fallback.
+
+    Precedence: ``scheme()``, then ``theme()``, then a ``scheme()`` written on
+    a graph, then the session's own ``c(scheme)``, then ``s2color``.
+
+    One function, because there are two renderers.  ``ServerAppBuilder``
+    used to consult none of these keys -- ``grep scheme`` over the generated
+    app returned nothing -- so the same command produced the user's scheme in
+    standalone and Bokeh's default blue on a served page.
+
+    Args:
+        master_spec: The parsed master specification.
+
+    Returns:
+        A scheme name suitable for :meth:`SchemeParser.resolve_or_fallback`.
+    """
+    _build_opts: dict = master_spec.get("build_options", {})
+
+    # A scheme() written on a single graph rather than on `dash build'.
+    # `dash scatter mpg weight, scheme(economist)' takes the immediate
+    # render path, which writes its own build_options with no scheme key
+    # in it at all, and stores the option on the graph -- where nothing
+    # read it.  The explicit option lost to the session's c(scheme), and
+    # lost silently: a dashboard appeared, just not the one asked for.
+    #
+    # A dashboard draws one page, so several graphs cannot each have
+    # their own.  The first one wins and the rest are named, rather than
+    # picking one of several user intentions without saying which.
+    _graph_schemes: list = []
+    for _g in master_spec.get("graphs", []):
+        if not isinstance(_g, dict):
+            continue
+        _gs = str((_g.get("options") or {}).get("scheme", "")).strip()
+        if _gs:
+            _graph_schemes.append((str(_g.get("name", "")), _gs))
+    _graph_scheme: str = _graph_schemes[0][1] if _graph_schemes else ""
+    if len({_s for _n, _s in _graph_schemes}) > 1:
+        _others = ", ".join(
+            f"{_n or '?'}: {_s}" for _n, _s in _graph_schemes[1:]
+        )
+        warnings.warn(
+            f"dash: a dashboard draws one scheme; using "
+            f"{_graph_scheme!r} from the first graph and ignoring "
+            f"{_others}. Set the scheme once with "
+            f"`dash build, scheme()'.", UserWarning,
+        )
+
+    # Prefer explicit 'scheme' key, then 'theme', then a scheme named on
+    # a graph, then the session's own c(scheme).  The session scheme is
+    # what a Stata user has already chosen for every graph they draw, so
+    # ignoring it made dash the one command in their session that did not
+    # look like the rest.
+    _raw_name: str = (
+        _build_opts.get("scheme", "").strip()
+        or _build_opts.get("theme", "").strip()
+        or _graph_scheme
+        or _build_opts.get("session_scheme", "").strip()
+        or ""
+    )
+    # theme() takes Stata theme names, which are aliases for schemes.  A
+    # name that is neither a known alias nor a known scheme is reported:
+    # theme(dark) is documented in dash.sthlp, is absent from the map, and
+    # used to fall through to s2color without a word.
+    _lower = _raw_name.lower()
+    if (_raw_name and _lower not in _THEME_SCHEME_MAP
+            and _lower not in SchemeParser._BUILTIN_NAMES
+            and not _raw_name.endswith(".scheme")):
+        warnings.warn(
+            f"dash: {_raw_name!r} is not a known theme or scheme; using "
+            f"s2color. Themes: "
+            f"{', '.join(sorted(_THEME_SCHEME_MAP))}. Schemes: "
+            f"{', '.join(sorted(SchemeParser._BUILTIN_NAMES))}.",
+            UserWarning,
+        )
+        _raw_name = ""
+        _lower = ""
+    _scheme_name: str = (
+        _THEME_SCHEME_MAP.get(_lower, _raw_name) or "s2color"
+    )
+    return _scheme_name
+
+
 class DashRenderer:
     """Orchestrates the full Bokeh dashboard build from a master spec JSON.
 
@@ -7499,17 +7594,6 @@ class DashRenderer:
 
         self.translator = OptionTranslator()
 
-        # Load scheme — falls back to s2color if unrecognised.
-        # dash.ado writes build_options["theme"] using Stata theme names; the
-        # Python side uses build_options["scheme"] for direct scheme names.
-        # Both are honoured here via a theme→scheme mapping.
-        _THEME_SCHEME_MAP: dict = {
-            "default":    "s2color",
-            "clean":      "s1color",
-            "mono":       "s1mono",
-            "economist":  "economist",
-            "sj":         "sj",
-        }
         _build_opts: dict = self.master_spec.get("build_options", {})
 
         # Session confidence level, serialized from c(level) by dash.ado.  A
@@ -7533,67 +7617,7 @@ class DashRenderer:
                     f"using {_DEFAULT_LEVEL}.", UserWarning,
                 )
 
-        # A scheme() written on a single graph rather than on `dash build'.
-        # `dash scatter mpg weight, scheme(economist)' takes the immediate
-        # render path, which writes its own build_options with no scheme key
-        # in it at all, and stores the option on the graph -- where nothing
-        # read it.  The explicit option lost to the session's c(scheme), and
-        # lost silently: a dashboard appeared, just not the one asked for.
-        #
-        # A dashboard draws one page, so several graphs cannot each have
-        # their own.  The first one wins and the rest are named, rather than
-        # picking one of several user intentions without saying which.
-        _graph_schemes: list = []
-        for _g in self.master_spec.get("graphs", []):
-            if not isinstance(_g, dict):
-                continue
-            _gs = str((_g.get("options") or {}).get("scheme", "")).strip()
-            if _gs:
-                _graph_schemes.append((str(_g.get("name", "")), _gs))
-        _graph_scheme: str = _graph_schemes[0][1] if _graph_schemes else ""
-        if len({_s for _n, _s in _graph_schemes}) > 1:
-            _others = ", ".join(
-                f"{_n or '?'}: {_s}" for _n, _s in _graph_schemes[1:]
-            )
-            warnings.warn(
-                f"dash: a dashboard draws one scheme; using "
-                f"{_graph_scheme!r} from the first graph and ignoring "
-                f"{_others}. Set the scheme once with "
-                f"`dash build, scheme()'.", UserWarning,
-            )
-
-        # Prefer explicit 'scheme' key, then 'theme', then a scheme named on
-        # a graph, then the session's own c(scheme).  The session scheme is
-        # what a Stata user has already chosen for every graph they draw, so
-        # ignoring it made dash the one command in their session that did not
-        # look like the rest.
-        _raw_name: str = (
-            _build_opts.get("scheme", "").strip()
-            or _build_opts.get("theme", "").strip()
-            or _graph_scheme
-            or _build_opts.get("session_scheme", "").strip()
-            or ""
-        )
-        # theme() takes Stata theme names, which are aliases for schemes.  A
-        # name that is neither a known alias nor a known scheme is reported:
-        # theme(dark) is documented in dash.sthlp, is absent from the map, and
-        # used to fall through to s2color without a word.
-        _lower = _raw_name.lower()
-        if (_raw_name and _lower not in _THEME_SCHEME_MAP
-                and _lower not in SchemeParser._BUILTIN_NAMES
-                and not _raw_name.endswith(".scheme")):
-            warnings.warn(
-                f"dash: {_raw_name!r} is not a known theme or scheme; using "
-                f"s2color. Themes: "
-                f"{', '.join(sorted(_THEME_SCHEME_MAP))}. Schemes: "
-                f"{', '.join(sorted(SchemeParser._BUILTIN_NAMES))}.",
-                UserWarning,
-            )
-            _raw_name = ""
-            _lower = ""
-        _scheme_name: str = (
-            _THEME_SCHEME_MAP.get(_lower, _raw_name) or "s2color"
-        )
+        _scheme_name: str = _resolve_scheme_name(self.master_spec)
         self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
             _scheme_name, "the dashboard",
         )
@@ -11666,6 +11690,109 @@ class ServerAppBuilder:
 
         self._spec_str: str = json.dumps(self.spec)
 
+        # The same scheme the standalone renderer would resolve, from the
+        # same function.  This builder used to consult neither `scheme' nor
+        # `theme': `grep scheme' over a generated app returned nothing, and
+        # every plot came out Bokeh's default blue no matter what the user
+        # had set -- in their session or on the command.
+        self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
+            _resolve_scheme_name(self.spec), "the dashboard",
+        )
+
+    def _scheme_lines(self) -> "list[str]":
+        """Emit the resolved scheme as data the generated app can read.
+
+        The scheme is resolved here, in-process, where ``SchemeParser`` is
+        available; the app receives the answers rather than the machinery, so
+        it stays runnable without ``dash_render.py`` on the path.
+
+        The 15 entries are Stata's ``p1``-``p15``; ``default_color`` wraps
+        with ``index % 15`` and so does the generated lookup.
+        """
+        sch = self.scheme
+        kinds = ("scatter", "line", "connected", "bar", "area", "histogram",
+                 "rbar", "rarea", "rline", "rconnected", "tsline", "mspline",
+                 "mband")
+        colors = {k: [sch.default_color(i, k) for i in range(15)]
+                  for k in kinds}
+        return [
+            "# ---- Scheme, resolved at build time ----",
+            "#",
+            "# scheme() / theme() / c(scheme) used to reach nothing here, so a",
+            "# served dashboard was Bokeh's default blue whatever the user had",
+            "# set.  These are the same values SchemeParser gives the",
+            "# standalone renderer, written out as data so this file still",
+            "# runs without dash_render.py on the path.",
+            "_SCHEME_NAME = %r" % sch.name,
+            "_SCHEME_COLORS = %r" % (colors,),
+            "_SCHEME_SYMBOLS = %r" % ([sch.default_symbol(i)
+                                       for i in range(15)],),
+            "_SCHEME_MARKER_SIZE = %r" % (sch.default_marker_size(0),),
+            "_SCHEME_LINE_PATTERNS = %r" % ([sch.default_line_pattern(i)
+                                             for i in range(15)],),
+            "_SCHEME_CONNECT_PATTERNS = %r" % ([sch.default_connect_pattern(i)
+                                                for i in range(15)],),
+            "_SCHEME_CHROME = %r" % ({
+                "plotregion_color": sch.plotregion_color,
+                "background_color": sch.background_color,
+                "axis_line_color": sch.axis_line_color,
+                "grid_color": sch.grid_color,
+                "grid_line_width": sch.grid_line_width,
+                "minor_grid_color": sch.minor_grid_color,
+                "draw_major_hgrid": bool(sch.draw_major_hgrid),
+                "draw_major_vgrid": bool(sch.draw_major_vgrid),
+                "axis_title_font_size": sch.axis_title_font_size,
+                "tick_label_font_size": sch.tick_label_font_size,
+            },),
+            "",
+            "",
+            "def _dash_scheme_color(index, plot_type='scatter'):",
+            "    # The scheme's colour for plot *index* of this type.",
+            "    _seq = _SCHEME_COLORS.get(plot_type) or _SCHEME_COLORS['scatter']",
+            "    return _seq[index % len(_seq)]",
+            "",
+            "",
+            "def _dash_scheme_symbol(index):",
+            "    # The scheme's marker for plot *index*.  Every scatter used to",
+            "    # be a circle regardless of the scheme, and regardless of how",
+            "    # many series shared the figure.",
+            "    return _SCHEME_SYMBOLS[index % len(_SCHEME_SYMBOLS)]",
+            "",
+            "",
+            "def _dash_scheme_dash(index, plot_type):",
+            "    # The scheme's dash pattern, for the plot types that have one.",
+            "    # `color p#line' is the CONNECTING line of twoway connected; a",
+            "    # plain line reads p#lineplot.  Same split as the standalone",
+            "    # renderer, so the two modes dash the same series alike.",
+            "    if plot_type in ('line', 'tsline', 'tsrline', 'mspline',",
+            "                     'mband', 'rline'):",
+            "        return _SCHEME_LINE_PATTERNS[index % len(_SCHEME_LINE_PATTERNS)]",
+            "    if plot_type in ('connected', 'rconnected'):",
+            "        return _SCHEME_CONNECT_PATTERNS[index % len(_SCHEME_CONNECT_PATTERNS)]",
+            "    return []",
+            "",
+            "",
+            "def _dash_apply_scheme(fig):",
+            "    # Scheme chrome, applied before any explicit graph option, in",
+            "    # the same order the standalone renderer uses -- so an explicit",
+            "    # option still overrides the scheme in both modes.",
+            "    _c = _SCHEME_CHROME",
+            "    fig.background_fill_color = _c['plotregion_color']",
+            "    fig.border_fill_color = _c['background_color']",
+            "    if _c['axis_line_color']:",
+            "        fig.outline_line_color = _c['axis_line_color']",
+            "    for _grids, _draw in ((fig.xgrid, _c['draw_major_hgrid']),",
+            "                          (fig.ygrid, _c['draw_major_vgrid'])):",
+            "        for _g in _grids:",
+            "            _g.grid_line_color = _c['grid_color'] if _draw else None",
+            "            _g.grid_line_width = _c['grid_line_width']",
+            "            _g.minor_grid_line_color = _c['minor_grid_color']",
+            "    for _ax in list(fig.xaxis) + list(fig.yaxis):",
+            "        _ax.axis_line_color = _c['axis_line_color']",
+            "        _ax.axis_label_text_font_size = _c['axis_title_font_size']",
+            "        _ax.major_label_text_font_size = _c['tick_label_font_size']",
+        ]
+
     def build(self, output_path: str, port: int = 5006) -> None:
         """Generate the Bokeh Server app file and write it to *output_path*.
 
@@ -11855,6 +11982,8 @@ class ServerAppBuilder:
             "# Width of the filterposition(left) sidebar, shared with the",
             "# standalone renderer so the two documents match.",
             "_SIDEBAR_WIDTH_PX = %d" % _SIDEBAR_WIDTH_PX,
+            "",
+        ] + self._scheme_lines() + [
             "",
             "_RATE_LIMIT_RPM = 60   # max dashboard session connections per IP per minute",
             "_HEALTH_LIMIT_RPM = 600  # max /health requests per IP per minute (infrastructure checks)",
@@ -12541,6 +12670,8 @@ class ServerAppBuilder:
             "        if 'log' in _xs_toks: _fig_kw['x_axis_type'] = 'log'",
             "        if 'log' in _ys_toks: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
+            "        # Scheme first, so an explicit graph option still wins.",
+            "        _dash_apply_scheme(fig)",
             "        if 'reverse' in _xs_toks:",
             "            try: fig.x_range.flipped = True",
             "            except AttributeError: pass",
@@ -12696,7 +12827,7 @@ class ServerAppBuilder:
             "            y2var = plot.get('yvar2', '')",
             "            opts = plot.get('options', {})",
             "",
-            "            color = '#1f77b4'",
+            "            color = _dash_scheme_color(pi, ptype)",
             "            if 'mcolor' in opts or 'lcolor' in opts:",
             "                _c = opts.get('mcolor', opts.get('lcolor', ''))",
             "                _resolved = _resolve_color(_c)",
@@ -12708,7 +12839,8 @@ class ServerAppBuilder:
             "                       'shortdash':[4,4],'shortdot':[2,2],'longdash':[16,4],'blank':[0,100]}",
             "            _line_width = _lw_map.get(opts.get('lwidth',''), 1.5)",
             "            _lpattern = opts.get('lpattern', '')",
-            "            _line_dash = _lp_map.get(_lpattern, []) if _lpattern else []",
+            "            _line_dash = (_lp_map.get(_lpattern, []) if _lpattern",
+            "                          else _dash_scheme_dash(pi, ptype))",
             "",
             "            if ptype in ('scatter',):",
             "                _sc_label_var = opts.get('mlabel', '')",
@@ -12751,10 +12883,10 @@ class ServerAppBuilder:
             "                           'circle_cross':'circle_cross','circle_x':'circle_x',",
             "                           'square_cross':'square_cross','square_x':'square_x',",
             "                           'asterisk':'asterisk','cross':'cross'}",
-            "                _sc_marker = _ms_map.get(opts.get('msymbol',''), 'circle')",
+            "                _sc_marker = _ms_map.get(opts.get('msymbol',''), _dash_scheme_symbol(pi))",
             "                _sz_map = {'tiny':4,'vsmall':5,'small':6,'medsmall':7,'medium':8,",
             "                           'medlarge':10,'large':12,'vlarge':16,'huge':20}",
-            "                _sc_size = _sz_map.get(opts.get('msize',''), 8)",
+            "                _sc_size = _sz_map.get(opts.get('msize',''), _SCHEME_MARKER_SIZE)",
             "                if opts.get('msize','').replace('.','',1).isdigit():",
             "                    _sc_size = float(opts.get('msize','8'))",
             "                _sc_angle_deg = opts.get('msangle', '')",
@@ -13690,6 +13822,7 @@ class ServerAppBuilder:
             "                output_backend='webgl' if len(df) > 10000 else 'canvas',",
             "            )",
             "            _fac_fig = bokeh_figure(**_fac_kw)",
+            "            _dash_apply_scheme(_fac_fig)",
             "            # Render plots on facet figure using facet CDS",
             "            _fac_src_list = graph_sources[_fac_name]",
             "            _fac_src = (_fac_src_list[0] if _fac_src_list else shared_source)",
@@ -13698,7 +13831,8 @@ class ServerAppBuilder:
             "                opts = plot.get('options', {})",
             "                yvar_f = plot.get('yvar', '') or plot.get('var', '')",
             "                xvar_f = plot.get('xvar', '')",
-            "                color = _resolve_color(opts.get('lcolor') or opts.get('mcolor', '')) or '#1f77b4'",
+            "                color = (_resolve_color(opts.get('lcolor') or opts.get('mcolor', ''))",
+            "                         or _dash_scheme_color(pi, ptype))",
             "                _glyph_kw = {'view': _fac_view} if _fac_view is not None else {}",
             "                if ptype == 'scatter':",
             "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
@@ -13790,13 +13924,15 @@ class ServerAppBuilder:
             "                sizing_mode='stretch_width',",
             "                output_backend='webgl' if len(df) > 10000 else 'canvas',",
             "            )",
+            "            _dash_apply_scheme(_tot_fig)",
             "            _tot_src = graph_sources[_tot_name][0]",
             "            for pi, plot in enumerate(g.get('plots', [])):",
             "                ptype = plot.get('type', '').lower()",
             "                opts = plot.get('options', {})",
             "                yvar_f = plot.get('yvar', '') or plot.get('var', '')",
             "                xvar_f = plot.get('xvar', '')",
-            "                color = _resolve_color(opts.get('lcolor') or opts.get('mcolor', '')) or '#1f77b4'",
+            "                color = (_resolve_color(opts.get('lcolor') or opts.get('mcolor', ''))",
+            "                         or _dash_scheme_color(pi, ptype))",
             "                # Total panel uses full dispatch — same plot types as per-group facets.",
             "                # work_df plays the role of _fac_gdf for aggregates.",
             "                if ptype == 'scatter':",
@@ -14226,7 +14362,27 @@ class ServerAppBuilder:
             "    def _make_brush_cb(_kpi_divs, _kpi_defs, _df_ref, _src):",
             "        def _on_selection_change(attr, old, new):",
             "            indices = new",
-            "            sel_df = _df_ref.iloc[indices] if indices else _df_ref",
+            "            # Selection indices are positions in THIS source, and a",
+            "            # plot's source is g_df[cols].dropna() -- not the frame.",
+            "            # Reading them as positions in _df_ref therefore named",
+            "            # the wrong rows whenever anything had been dropped.",
+            "            # Bokeh keeps the original labels in the 'index' column,",
+            "            # so the mapping is by row identity, as the standalone",
+            "            # path does it.",
+            "            if not indices:",
+            "                sel_df = _df_ref",
+            "            else:",
+            "                _ids = _src.data.get('index')",
+            "                if _ids is None:",
+            "                    _n = len(_df_ref)",
+            "                    sel_df = _df_ref.iloc[[i for i in indices",
+            "                                           if 0 <= i < _n]]",
+            "                else:",
+            "                    _labels = [_ids[i] for i in indices",
+            "                               if 0 <= i < len(_ids)]",
+            "                    _idx = _df_ref.index",
+            "                    sel_df = _df_ref.loc[[l for l in _labels",
+            "                                          if l in _idx]]",
             "            for kpi in _kpi_defs:",
             "                kupdate = kpi.get('update', 'filter')",
             "                if kupdate not in ('brush', 'both'):",
@@ -14250,9 +14406,35 @@ class ServerAppBuilder:
             "                )",
             "        return _on_selection_change",
             "",
-            "    shared_source.selected.on_change('indices', _make_brush_cb(",
-            "        kpi_divs, kpi_defs, df, shared_source",
-            "    ))",
+            "    # Wire the brush to every source a glyph actually draws from.",
+            "    #",
+            "    # This used to be one line -- shared_source.selected.on_change",
+            "    # -- and shared_source is rendered by nothing: each plot builds",
+            "    # its own ColumnDataSource from the cleaned frame.  Measured:",
+            "    # with a KPI declared update(brush), the served document",
+            "    # contained exactly one ColumnDataSource, the graph's own, and",
+            "    # shared_source was not in the document at all.  Nothing could",
+            "    # select it, so the KPI never changed -- with or without",
+            "    # link(), which the earlier reading of this blamed.",
+            "    #",
+            "    # Only sources carrying an 'index' column are wired: that is",
+            "    # what marks a source whose rows ARE data rows.  A histogram's",
+            "    # bins or a fitted line's points have no row identity, and",
+            "    # mapping a selection on them back to observations would",
+            "    # produce a confident, wrong number.",
+            "    if any(k.get('update', 'filter') in ('brush', 'both')",
+            "           for k in kpi_defs):",
+            "        _brush_wired = set()",
+            "        for _bsrcs in graph_sources.values():",
+            "            for _bsrc in (_bsrcs if isinstance(_bsrcs, list) else [_bsrcs]):",
+            "                if id(_bsrc) in _brush_wired:",
+            "                    continue",
+            "                if 'index' not in getattr(_bsrc, 'data', {}):",
+            "                    continue",
+            "                _brush_wired.add(id(_bsrc))",
+            "                _bsrc.selected.on_change('indices', _make_brush_cb(",
+            "                    kpi_divs, kpi_defs, df, _bsrc",
+            "                ))",
             "",
             '    # ---- Assemble grid layout ----',
             '    #',
@@ -14583,6 +14765,7 @@ def main(
     data_json_path: str,
     output_path: str,
     mode: str = "standalone",
+    port: int = 5006,
 ) -> None:
     """Build the dashboard and write it to *output_path*.
 
@@ -14594,13 +14777,22 @@ def main(
         data_json_path:   Path to the jsonio data JSON.
         output_path:      Destination path for the output file.
         mode:             ``'standalone'`` (default) or ``'server'``.
+        port:             Port to embed in the generated server app.  Ignored
+                          for standalone.  ``build_options["port"]`` still
+                          wins, because that is what dash.ado writes.
 
     Raises:
         ValueError: If *mode* is not a recognised value.
     """
     if mode == "server":
+        # --port used to stop here: this call passed three arguments and no
+        # port, so every generated app embedded _port = 5006 whatever the
+        # user asked for.  `dash serve' did not notice because it passes
+        # --port again to the app it launches; `dash build, saving(app.py)
+        # server' followed by `python app.py' -- the documented non-blocking
+        # route -- served on 5006 regardless.
         builder = ServerAppBuilder(master_spec_path, data_json_path)
-        builder.build(output_path)
+        builder.build(output_path, port=max(1024, min(int(port), 65535)))
     elif mode == "standalone":
         renderer = DashRenderer(master_spec_path, data_json_path)
         html_content = renderer.render()
@@ -14659,7 +14851,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Build the output file (HTML or server app .py)
-    main(args.spec, args.data, args.output, args.mode)
+    main(args.spec, args.data, args.output, args.mode, args.port)
 
     # When mode is 'server' AND the caller asked for it, launch the app.
     #

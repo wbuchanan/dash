@@ -807,3 +807,120 @@ Six pytest skips are a repairable environment gap, not an absent dependency:
 interpreter. Five `lowess` tests and one dependency guard never run.
 Installing into the user's interpreter is theirs to decide:
 `python3 -m pip install packaging`.
+
+---
+
+## S14 — server mode honours what it was given
+
+### `dash serve` accepted three options and discarded the rest
+
+`_dash_serve` declared `port()`, `nobrowser` and `timeout()`, and wrote a
+master JSON whose `build_options` were literal constants:
+
+```
+"layout":"auto","link":"","filter":"","theme":"","title":"","subtitle":""
+```
+
+with no `scheme`, `tabs` or `filter_position` key present at all. No build
+option could be supplied to it and none was inherited, so **`dash serve`
+could never create a filter widget** — the one capability the live server is
+sold on, since a filter is what makes it recompute aggregates rather than
+mask precomputed ones. `dash.sthlp` documented the defect:
+
+```
+. dash build, saving(dashboard.html) filter(foreign, type(dropdown)) replace
+. * -- or launch live server (filter recomputes aggregates) --
+. dash serve, port(5006)
+```
+
+served a dashboard with no filter in it, with rc 0 and no message.
+
+**Changed.** There were two copies of the validate/collect/serialize/assemble
+sequence and they had drifted; there is now one, `_dash_prepare_spec`, called
+by both commands. `_dash_serve_spec` declares only the options `dash serve`
+owns and lets `syntax`'s `*` collect the rest, so it never enumerates the
+build surface and cannot drift from it again.
+
+`dash serve` now also **inherits** the preceding `dash build`'s options for
+anything not restated, which is what the documented sequence assumes. An
+option given on `dash serve` wins. `dash clear` discards the remembered
+options along with the registry.
+
+### `layout()`, `tabs()`, `filterposition()` and `subtitle()` were inert in server mode
+
+The generated app read two keys out of `build_options` — `link` and `title` —
+and derived its grid from `len(all_names)` alone. **Measured:** two apps whose
+specs differed only in `layout`, `tabs`, `filter_position`, `subtitle`,
+`theme` or `scheme` had byte-identical *code*; the only change in the file was
+the base64 spec blob the app decodes and then does not consult.
+
+**Changed.** The served document resolves the grid the way standalone does —
+`auto`, `N M` rows-by-columns, or `name:row,col` placements with unplaced
+elements filling the rest. `tabs()` builds a `Tabs` widget from the same
+`Title: a b / Title2: c` grammar and accepts only registered names.
+`filterposition(left)` builds the same fixed-width sidebar. `subtitle()` is
+escaped and drawn under the title.
+
+**Not supported in server mode:** a Bootstrap `layout(bs...)` spec, which has
+no markup to live in there; it falls back to a grid rather than being dropped.
+`dash.sthlp`'s comparison table now says so.
+
+### The scheme reached nothing in server mode
+
+`grep scheme` over a generated app returned nothing. Every plot was
+`#1f77b4`, every marker a circle, every plot region white — whatever the user
+had set, in their session or on the command. The same command produced their
+scheme in standalone and Bokeh's default blue on a served page.
+
+**Changed.** `_resolve_scheme_name()` is one function now, used by both
+`DashRenderer` and `ServerAppBuilder`, so the two modes cannot disagree about
+which scheme was asked for. The builder resolves the scheme in-process and
+writes the answers into the app as data — colours per plot index and plot
+kind, markers, marker size, dash patterns, and the figure chrome — so the
+generated file still runs with no `dash_render.py` on the path. An explicit
+`mcolor()`, `msymbol()`, `msize()` or `lpattern()` still wins over the scheme,
+in both modes.
+
+**Visible change:** server-mode dashboards change colour. They are now the
+scheme's colours rather than Bokeh's default, which is the point.
+
+### `scheme()` on a single command did nothing
+
+`dash scatter mpg weight, scheme(economist)` takes the immediate render path,
+which writes its own `build_options` with `"theme": ""` and no `scheme` key,
+and stores the option on the *graph* — where nothing read it. The explicit
+option lost silently to the session's `c(scheme)`: a dashboard appeared, just
+not the one asked for.
+
+**Changed.** The renderer reads a graph-level scheme after `scheme()` and
+`theme()` and before `c(scheme)`. Several graphs naming different schemes
+report the conflict and use the first, rather than picking one silently.
+
+### `--port` stopped at the CLI
+
+`dash_render.py`'s `__main__` parsed `--port` and then called
+`main(spec, data, output, mode)` — four arguments, no port — so every
+generated app embedded `_port = 5006`. `dash serve` did not notice because it
+passes `--port` again to the app it launches; the documented non-blocking
+route, `dash build, saving(app.py) server` then `python app.py`, served on
+5006 regardless. `main()` takes a port now, clamped to 1024–65535;
+`build_options["port"]` still wins, because that is what dash.ado writes.
+
+### Two bugs in the new tests, fixed before they could certify nothing
+
+- `layout()` is rows then columns; the first expectation had it reversed.
+- Both builds in a comparison wrote one `app.py`. `layout(4 1)` and
+  `layout(1 4)` produce files of identical size, and written in the same
+  second they share an mtime, so the second import replayed the first's
+  `__pycache__` entry and the test compared one document with itself.
+- A walker over the document treated a `GridPlot`'s `(child, row, col)`
+  tuples as models, so it never reached a figure and reported an empty
+  document instead of a wrong colour.
+
+### Corrected in `dash.sthlp`
+
+The standalone-vs-server table **understated standalone**: it said histograms
+do not recompute on filter. They do — the bar heights are rescaled from the
+filtered rows — but the *bin edges* are fixed at build time. The server
+recomputes the bins themselves. The table now states the distinction, and
+records that kernel density recomputes on both paths.

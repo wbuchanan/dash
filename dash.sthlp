@@ -481,12 +481,23 @@ follows:
 {synopt:Shareable as a single file}    Yes                 No (.py, run with python){p_end}
 {synopt:Filter widgets}                CustomJS (in-browser) Python callbacks{p_end}
 {synopt:KPI recomputation on filter}   Yes (JS aggregation) Yes (Python/pandas){p_end}
-{synopt:Histogram recompute on filter} No                  Yes{p_end}
+{synopt:Histogram recompute on filter} Bar heights only    Yes, including bin edges{p_end}
+{synopt:Kernel density on filter}      Yes (JS)            Yes (Python){p_end}
 {synopt:Fit-line recompute on filter}  No                  Yes{p_end}
 {synopt:Brush/lasso KPI update}        Yes                 Yes{p_end}
+{synopt:{cmd:scheme()} / {cmd:theme()}}            Yes                 Yes{p_end}
+{synopt:{cmd:layout()}, {cmd:tabs()}, {cmd:filterposition()}} Yes                 Yes{p_end}
+{synopt:Bootstrap {cmd:layout(bs)}}         Yes                 No (falls back to a grid){p_end}
 {synopt:Health endpoint}              n/a                 {cmd:/health}{p_end}
 {synopt:Deployment}                    Email / open file   {cmd:python app.py}{p_end}
 {synoptline}
+
+{pstd}
+{ul:What "histogram recompute" means.}  Standalone rescales the bars from
+the rows that pass the filter but keeps the bin edges chosen when the
+dashboard was built, so the bins do not move as you filter.  The server
+recomputes the bins themselves from the filtered rows.  The same
+distinction applies to any layer whose x-grid is derived from the data.
 
 {pstd}
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server
