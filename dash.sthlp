@@ -97,7 +97,8 @@
 [{cmd:,}
 {cmd:port(}{it:#}{cmd:)}
 {cmd:nobrowser}
-{cmd:timeout(}{it:#}{cmd:)}]
+{cmd:timeout(}{it:#}{cmd:)}
+[{it:other_build_options}]]
 
 {pstd}{ul:Clear registry}{p_end}
 
@@ -219,6 +220,26 @@ widget interaction.
 {synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes;
     0 means run until Ctrl+C (default){p_end}
 {synoptline}
+
+{pstd}
+{cmd:dash serve} also accepts every option {cmd:dash build} accepts —
+{cmd:title()}, {cmd:subtitle()}, {cmd:layout()}, {cmd:link()},
+{cmd:filter()}, {cmd:theme()}, {cmd:scheme()}, {cmd:tabs()} and
+{cmd:filterposition()} — with the same meanings and the same validation.
+See {help dash##dashboard_options:Dashboard Options}.
+
+{pstd}
+{ul:Inheriting a previous build.}  If a {cmd:dash build} has already run in
+this session, {cmd:dash serve} reuses its options for anything you do not
+restate, so
+
+{phang2}{cmd:. dash build, saving(dashboard.html) filter(foreign, type(dropdown)) replace}{p_end}
+{phang2}{cmd:. dash serve, port(5006)}{p_end}
+
+{pstd}
+serves the dashboard you just built, filter and all.  An option given on
+{cmd:dash serve} always wins over the inherited one.  {cmd:dash clear}
+discards the remembered options along with the registry.
 
 {dlgtab:dash clear}
 

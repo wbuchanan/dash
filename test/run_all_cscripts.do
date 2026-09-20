@@ -591,6 +591,30 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 21. test_serve_options.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_serve_options.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_serve_options.cscript"
+}
+local rc = _rc
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_serve_options.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_serve_options.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_serve_options.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

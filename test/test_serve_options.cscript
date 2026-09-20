@@ -1,0 +1,152 @@
+*! test_serve_options.cscript
+*! Certification script for `dash serve' option pass-through.
+*!
+*! Usage:  do test/test_serve_options.cscript
+*!
+*! Requires: dash_setup completed (jsonio).
+*! Version: 1.0.0  20sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! `dash serve' accepted three options -- port(), nobrowser(), timeout() --
+*! and wrote a master JSON whose build_options were literal constants:
+*!
+*!     "layout":"auto","link":"","filter":"","theme":"","title":"","subtitle":""
+*!
+*! with no scheme, tabs or filter_position key at all.  So no build option
+*! could be supplied and none was inherited.  `dash serve' could therefore
+*! never create a filter widget -- the one capability the live server is sold
+*! on, since it is what recomputes aggregates -- and dash.sthlp's own example
+*!
+*!     . dash build, saving(dashboard.html) filter(foreign, type(dropdown)) replace
+*!     . * -- or launch live server (filter recomputes aggregates) --
+*!     . dash serve, port(5006)
+*!
+*! documented the bug: the served dashboard had no filter in it.
+*!
+*! The launch itself is not exercised here (a cscript must not start a server
+*! or block).  _dash_serve_spec is everything `dash serve' does except the
+*! launch: parse, validate, collect variables, assemble and write the master
+*! JSON.  Asserting on the JSON it writes tests the whole path that was
+*! broken.
+
+cscript "dash serve options" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// _dash_serve_spec is internal to dash.ado; loading the file defines it.
+qui do "../dash.ado"
+
+do "cert_helpers.do"
+
+// ---------------------------------------------------------------
+// 1. Options given on dash serve reach build_options
+// ---------------------------------------------------------------
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(s1)
+
+tempfile mj1 dj1
+_dash_serve_spec, specpath("`mj1'") datapath("`dj1'") port(5006) timeout(0) ///
+    title("Live") subtitle("Sub") layout(1 1) scheme(economist) ///
+    tabs("Main: s1") filterposition(left) ///
+    filter(foreign, type(dropdown) label("Origin"))
+
+local mj "`r(master_json_path)'"
+local dj "`r(data_json_path)'"
+capture confirm file "`mj'"
+assert _rc == 0
+
+cert_file_has "`mj'", needle(`""filter":"foreign"')
+assert r(found) == 1
+cert_file_has "`mj'", needle(`""title":"Live""')
+assert r(found) == 1
+cert_file_has "`mj'", needle(`""subtitle":"Sub""')
+assert r(found) == 1
+cert_file_has "`mj'", needle(`""scheme":"economist""')
+assert r(found) == 1
+cert_file_has "`mj'", needle(`""layout":"1 1""')
+assert r(found) == 1
+cert_file_has "`mj'", needle(`""filter_position":"left""')
+assert r(found) == 1
+cert_file_has "`mj'", needle("Main: s1")
+assert r(found) == 1
+// The label() the user wrote must survive into the filter spec.
+cert_file_has "`mj'", needle("Origin")
+assert r(found) == 1
+
+display as result "  [1/5] dash serve options reach build_options: PASS"
+
+// ---------------------------------------------------------------
+// 2. A filter variable named only in filter() is serialized
+//    (without this the widget renders and then filters nothing)
+// ---------------------------------------------------------------
+cert_file_has "`dj'", needle("foreign")
+assert r(found) == 1
+
+display as result "  [2/5] filter-only variable is serialized: PASS"
+
+// ---------------------------------------------------------------
+// 3. dash serve inherits the preceding dash build's options
+//    -- this is exactly the sequence dash.sthlp documents
+// ---------------------------------------------------------------
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(s1)
+tempfile built
+dash build, saving("`built'.html") replace nobrowser ///
+    title("Inherited") filter(foreign, type(dropdown))
+
+tempfile mj2f dj2f
+_dash_serve_spec, specpath("`mj2f'") datapath("`dj2f'") port(5006) timeout(0)
+
+local mj2 "`r(master_json_path)'"
+cert_file_has "`mj2'", needle(`""filter":"foreign"')
+assert r(found) == 1
+cert_file_has "`mj2'", needle(`""title":"Inherited""')
+assert r(found) == 1
+
+display as result "  [3/5] dash serve inherits the prior build's options: PASS"
+
+// ---------------------------------------------------------------
+// 4. An explicit option on dash serve overrides the inherited one
+// ---------------------------------------------------------------
+tempfile mj3f dj3f
+_dash_serve_spec, specpath("`mj3f'") datapath("`dj3f'") port(5006) timeout(0) title("Override")
+
+local mj3 "`r(master_json_path)'"
+cert_file_has "`mj3'", needle(`""title":"Override""')
+assert r(found) == 1
+cert_file_has "`mj3'", needle(`""title":"Inherited""')
+assert r(found) == 0
+// ...while an option NOT given is still inherited.
+cert_file_has "`mj3'", needle(`""filter":"foreign"')
+assert r(found) == 1
+
+display as result "  [4/5] explicit option overrides inherited: PASS"
+
+// ---------------------------------------------------------------
+// 5. dash serve validates what dash build validates
+// ---------------------------------------------------------------
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(s1)
+
+tempfile mj4 dj4
+capture _dash_serve_spec, specpath("`mj4'") datapath("`dj4'") layout(0 0)
+assert _rc == 198
+capture _dash_serve_spec, specpath("`mj4'") datapath("`dj4'") filterposition(sideways)
+assert _rc == 198
+capture _dash_serve_spec, specpath("`mj4'") datapath("`dj4'") link(no_such_graph)
+assert _rc == 198
+capture _dash_serve_spec, specpath("`mj4'") datapath("`dj4'") filter(no_such_var, type(dropdown))
+assert _rc == 111
+
+display as result "  [5/5] dash serve validates like dash build: PASS"
+
+dash clear
+display as result "test_serve_options.cscript: ALL PASS"

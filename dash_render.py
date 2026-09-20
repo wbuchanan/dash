@@ -7533,13 +7533,44 @@ class DashRenderer:
                     f"using {_DEFAULT_LEVEL}.", UserWarning,
                 )
 
-        # Prefer explicit 'scheme' key, then 'theme', then the session's own
-        # c(scheme).  The session scheme is what a Stata user has already
-        # chosen for every graph they draw, so ignoring it made dash the one
-        # command in their session that did not look like the rest.
+        # A scheme() written on a single graph rather than on `dash build'.
+        # `dash scatter mpg weight, scheme(economist)' takes the immediate
+        # render path, which writes its own build_options with no scheme key
+        # in it at all, and stores the option on the graph -- where nothing
+        # read it.  The explicit option lost to the session's c(scheme), and
+        # lost silently: a dashboard appeared, just not the one asked for.
+        #
+        # A dashboard draws one page, so several graphs cannot each have
+        # their own.  The first one wins and the rest are named, rather than
+        # picking one of several user intentions without saying which.
+        _graph_schemes: list = []
+        for _g in self.master_spec.get("graphs", []):
+            if not isinstance(_g, dict):
+                continue
+            _gs = str((_g.get("options") or {}).get("scheme", "")).strip()
+            if _gs:
+                _graph_schemes.append((str(_g.get("name", "")), _gs))
+        _graph_scheme: str = _graph_schemes[0][1] if _graph_schemes else ""
+        if len({_s for _n, _s in _graph_schemes}) > 1:
+            _others = ", ".join(
+                f"{_n or '?'}: {_s}" for _n, _s in _graph_schemes[1:]
+            )
+            warnings.warn(
+                f"dash: a dashboard draws one scheme; using "
+                f"{_graph_scheme!r} from the first graph and ignoring "
+                f"{_others}. Set the scheme once with "
+                f"`dash build, scheme()'.", UserWarning,
+            )
+
+        # Prefer explicit 'scheme' key, then 'theme', then a scheme named on
+        # a graph, then the session's own c(scheme).  The session scheme is
+        # what a Stata user has already chosen for every graph they draw, so
+        # ignoring it made dash the one command in their session that did not
+        # look like the rest.
         _raw_name: str = (
             _build_opts.get("scheme", "").strip()
             or _build_opts.get("theme", "").strip()
+            or _graph_scheme
             or _build_opts.get("session_scheme", "").strip()
             or ""
         )

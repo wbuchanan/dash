@@ -1899,21 +1899,51 @@ end
 // ================================================================
 // _dash_build  — build dashboard
 // ================================================================
-program define _dash_build
+// ================================================================
+// _dash_prepare_spec  — everything `dash build' and `dash serve' do
+// before they hand the spec to Python: validate the build options,
+// work out which variables have to be serialized, run jsonio, and
+// assemble the master JSON.
+//
+// WHY THIS PROGRAM EXISTS
+//
+// There were two copies of this, and they had drifted.  `dash build'
+// carried every option the user gave it.  `dash serve' declared three
+// options -- port(), nobrowser(), timeout() -- and wrote build_options
+// that were literal constants:
+//
+//     "layout":"auto","link":"","filter":"","theme":"","title":"","subtitle":""
+//
+// with no scheme, tabs or filter_position key present at all.  So
+// `dash serve' could not be given a filter and could not inherit one,
+// which means the live server -- whose entire selling point is that a
+// filter recomputes aggregates rather than masking precomputed ones --
+// could never have a filter in it.  dash.sthlp documents the sequence
+//
+//     . dash build, saving(dashboard.html) filter(foreign, type(dropdown)) replace
+//     . * -- or launch live server (filter recomputes aggregates) --
+//     . dash serve, port(5006)
+//
+// which produced a served dashboard with no filter and no message.
+//
+// The caller owns the tempfiles: a `tempfile' macro is erased when the
+// program that declared it ends, so specpath() and datapath() come in
+// from the caller rather than being created here.
+//
+// The option list below is the full build surface.  It is repeated in
+// `_dash_build' and `_dash_serve' because each of those also has
+// options of its own; test_serve_options.py asserts the three lists
+// agree, so they cannot drift again the way these two did.
+// ================================================================
+program define _dash_prepare_spec, rclass
     version 16.0
 
-    // Pre-extract ALL filter() options from `0' before -syntax- runs.
-    // Stata's -syntax- only accepts one option of a given name; using two
-    // filter() options (as in full_dashboard.do) would trigger an error.
-    // _dash_extract_filters() scans `0', removes every filter(...) group,
-    // joins their contents with " || ", and stores them in `_filter_parts'.
-    // The cleaned command is stored in `_cmd_nofilter' and assigned back to
-    // `0' so that -syntax- sees only the remaining options.
-    mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
-    local filter `"`_filter_parts'"'
-    local 0      `"`_cmd_nofilter'"'
-
     syntax [, ///
+        CMDname(string)         ///
+        SPECpath(string)        ///
+        DATApath(string)        ///
+        INHERIT                 ///
+        FILTer(string)          ///
         SAVing(string)          ///
         TItle(string)           ///
         SUBtitle(string)        ///
@@ -1928,38 +1958,33 @@ program define _dash_build
         FILTERPOSition(string)  ///
     ]
 
+    if `"`cmdname'"' == "" local cmdname "dash build"
+
+    // ---- inherit the preceding dash build's options ----
+    //
+    // Only what the user did not specify on this command.  An option
+    // given here always wins; an option given on neither is empty, as
+    // it was before.  Read through Mata rather than by expanding the
+    // global inside quotes: these carry the user's own title() and
+    // label() text, and expanding a value containing a double quote is
+    // the failure this file has already been bitten by twice.
+    if "`inherit'" != "" {
+        foreach _bo in title subtitle layout link theme scheme tabs filterposition filter {
+            local _cur : length local `_bo'
+            if `_cur' == 0 {
+                mata: st_local("_bo_val", st_global("dash_opts_" + st_local("_bo")))
+                local _bolen : length local _bo_val
+                if `_bolen' > 0 local `_bo' `"`_bo_val'"'
+            }
+        }
+    }
+
     // ---- check registry is not empty ----
     if "${dash_graph_registry}" == "" {
-        display as error "dash build: no graphs registered. Define graphs with name() before running dash build."
+        display as error "`cmdname': no graphs registered. Define graphs with name() before running `cmdname'."
         exit(198)
     }
-
-    // ---- validate saving() ----
-    if "`saving'" == "" {
-        display as error "dash build: saving() is required."
-        exit(198)
-    }
-    if "`server'" != "" {
-        if regexm("`saving'", "\.\.") {
-            display as error "dash build: saving() path may not contain '..' (path traversal not allowed)."
-            exit(198)
-        }
-        // The same validator, asked for .py.  This branch used to check the
-        // extension and nothing else, so a server-mode path skipped the
-        // traversal, metacharacter and quote checks entirely.
-        _dash_validate_path "`saving'" "py"
-    }
-    else {
-        _dash_validate_path "`saving'" "html"
-    }
-
-    if "`replace'" == "" {
-        capture confirm new file "`saving'"
-        if _rc != 0 {
-            display as error "dash build: file '`saving'' already exists. Use replace option to overwrite."
-            exit(198)
-        }
-    }
+    local registry = "${dash_graph_registry}"
 
     // ---- validate layout ----
     if "`layout'" == "" local layout "auto"
@@ -1969,7 +1994,7 @@ program define _dash_build
         if !regexm("`layout'", "^[1-9][0-9]* [1-9][0-9]*$") & ///
            !regexm("`layout'", "^[a-zA-Z_][a-zA-Z0-9_]*:[0-9]+,[0-9]+") & ///
            !regexm(lower("`layout'"), "^bs") {
-            display as error "dash build: layout() must be 'auto', 'N M' grid (N and M >= 1), 'name:row,col' placement, or 'bs[: spec]' Bootstrap layout."
+            display as error "`cmdname': layout() must be 'auto', 'N M' grid (N and M >= 1), 'name:row,col' placement, or 'bs[: spec]' Bootstrap layout."
             exit(198)
         }
     }
@@ -1979,18 +2004,17 @@ program define _dash_build
     if "`filterposition'" != "top" & "`filterposition'" != "left" {
         // The option is declared FILTERPOSition(); naming it filter_position()
         // here sent the user to an option -syntax- does not accept.
-        display as error "dash build: filterposition() must be 'top' (default) or 'left' (sidebar)."
+        display as error "`cmdname': filterposition() must be 'top' (default) or 'left' (sidebar)."
         exit(198)
     }
 
     // ---- validate link() names ----
-    local registry = "${dash_graph_registry}"
     if "`link'" != "" & "`link'" != "_all" {
         local ntok_link : word count `link'
         forvalues k = 1/`ntok_link' {
             local lname : word `k' of `link'
             if !`: list lname in registry' {
-                display as error "dash build: link() name '`lname'' not found in registry."
+                display as error "`cmdname': link() name '`lname'' not found in registry."
                 exit(198)
             }
         }
@@ -2016,7 +2040,7 @@ program define _dash_build
                 forvalues ke = 1/`n_excl' {
                     local ename : word `ke' of `_excl_names'
                     if !`: list ename in registry' {
-                        display as error "dash build: filter exclude() name '`ename'' not found in registry."
+                        display as error "`cmdname': filter exclude() name '`ename'' not found in registry."
                         exit(198)
                     }
                 }
@@ -2132,13 +2156,13 @@ program define _dash_build
             if !regexm("`_fvar'", "^[a-zA-Z_][a-zA-Z0-9_]*$") {
                 mata: st_local("_fvar_safe", ///
                     regexr(st_local("_fvar"), "[^A-Za-z0-9_.\-]+", "?"))
-                display as error "dash build: filter() names '`_fvar_safe''," ///
+                display as error "`cmdname': filter() names '`_fvar_safe''," ///
                     " which is not a valid Stata variable name."
                 exit(198)
             }
             capture confirm variable `_fvar'
             if _rc != 0 {
-                display as error "dash build: filter() variable `_fvar' not found."
+                display as error "`cmdname': filter() variable `_fvar' not found."
                 exit(111)
             }
             if !`: list _fvar in all_vars' {
@@ -2150,7 +2174,7 @@ program define _dash_build
     local all_vars = strtrim("`all_vars'")
 
     if "`all_vars'" == "" {
-        display as error "dash build: no variables identified across registered graphs."
+        display as error "`cmdname': no variables identified across registered graphs."
         exit(198)
     }
 
@@ -2161,8 +2185,6 @@ program define _dash_build
         exit(198)
     }
 
-    tempfile data_json_path master_json_path
-
     // Collect display formats, and transport date variables as
     // numbers so jsonio does not render them to text.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
@@ -2171,7 +2193,7 @@ program define _dash_build
         _dash_date_fmts_swap "`_dash_date_vars'"
     }
     quietly jsonio out `all_vars', ///
-        what(all) filenm("`data_json_path'") ///
+        what(all) filenm("`datapath'") ///
         metaprint(varnames varlabels vallabs labelnames)
 
     // Restore the user's formats immediately, whether or not
@@ -2180,9 +2202,9 @@ program define _dash_build
         _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
     }
 
-    capture confirm file "`data_json_path'"
+    capture confirm file "`datapath'"
     if _rc != 0 {
-        display as error "dash build: jsonio failed to serialize data."
+        display as error "`cmdname': jsonio failed to serialize data."
         exit(198)
     }
 
@@ -2258,9 +2280,122 @@ program define _dash_build
     local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
 
     tempname fh
-    file open `fh' using "`master_json_path'", write replace text
+    file open `fh' using "`specpath'", write replace text
     file write `fh' `"`master_json'"'
     file close `fh'
+
+    return local layout          `"`layout'"'
+    return local filterposition  `"`filterposition'"'
+    return local n_graphs        = `n_graphs'
+    return local n_kpis          = `n_kpis'
+    return local vars            `"`all_vars'"'
+end
+
+
+program define _dash_build
+    version 16.0
+
+    // Pre-extract ALL filter() options from `0' before -syntax- runs.
+    // Stata's -syntax- only accepts one option of a given name; using two
+    // filter() options (as in full_dashboard.do) would trigger an error.
+    // _dash_extract_filters() scans `0', removes every filter(...) group,
+    // joins their contents with " || ", and stores them in `_filter_parts'.
+    // The cleaned command is stored in `_cmd_nofilter' and assigned back to
+    // `0' so that -syntax- sees only the remaining options.
+    mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
+    local filter `"`_filter_parts'"'
+    local 0      `"`_cmd_nofilter'"'
+
+    syntax [, ///
+        SAVing(string)          ///
+        TItle(string)           ///
+        SUBtitle(string)        ///
+        LAYout(string)          ///
+        LINK(string)            ///
+        THEME(string)           ///
+        SCHeme(string)          ///
+        NOBRowser               ///
+        REPLACE                 ///
+        SERVER                  ///
+        TABS(string asis)       ///
+        FILTERPOSition(string)  ///
+    ]
+
+    // ---- check registry is not empty ----
+    if "${dash_graph_registry}" == "" {
+        display as error "dash build: no graphs registered. Define graphs with name() before running dash build."
+        exit(198)
+    }
+
+    // ---- validate saving() ----
+    if "`saving'" == "" {
+        display as error "dash build: saving() is required."
+        exit(198)
+    }
+    if "`server'" != "" {
+        if regexm("`saving'", "\.\.") {
+            display as error "dash build: saving() path may not contain '..' (path traversal not allowed)."
+            exit(198)
+        }
+        // The same validator, asked for .py.  This branch used to check the
+        // extension and nothing else, so a server-mode path skipped the
+        // traversal, metacharacter and quote checks entirely.
+        _dash_validate_path "`saving'" "py"
+    }
+    else {
+        _dash_validate_path "`saving'" "html"
+    }
+
+    if "`replace'" == "" {
+        capture confirm new file "`saving'"
+        if _rc != 0 {
+            display as error "dash build: file '`saving'' already exists. Use replace option to overwrite."
+            exit(198)
+        }
+    }
+
+    // ---- validate, collect, serialize and assemble ----
+    //
+    // Shared with `dash serve', which used to do all of this itself with
+    // the build options hardcoded to blanks.  The tempfiles are declared
+    // here because a `tempfile' macro is erased when the program that
+    // declares it ends.
+    //
+    // `0' is the command's own option string with the filter() groups
+    // already removed by _dash_extract_filters, so it is forwarded as
+    // written rather than reassembled option by option -- reassembling
+    // would expand the user's title() and label() text a second time.
+    tempfile data_json_path master_json_path
+
+    // -syntax- leaves `0' as it found it, which means it still carries the
+    // leading comma.  Forwarding it after options of our own produced two
+    // commas on one line, and everything after the second was read as a
+    // positional argument: `invalid 'saving''.  `: subinstr local' replaces
+    // the FIRST occurrence unless told otherwise, which is the leading
+    // comma.  Both extended functions work on the macro's VALUE, so neither
+    // expands the user's title() or label() text a second time.
+    local _fwd_opts : copy local 0
+    local _fwd_opts : subinstr local _fwd_opts "," ""
+
+    _dash_prepare_spec, cmdname("dash build") ///
+        specpath("`master_json_path'") datapath("`data_json_path'") ///
+        filter(`"`filter'"') `_fwd_opts'
+
+    // ---- remember these for a later dash serve ----
+    //
+    // dash.sthlp documents building a dashboard and then serving it live
+    // with a bare `dash serve, port()'.  That only means anything if the
+    // options survive the first command, so they are recorded here and
+    // `dash serve' inherits any the user does not restate.
+    global dash_opts_title          `"`title'"'
+    global dash_opts_subtitle       `"`subtitle'"'
+    global dash_opts_layout         `"`r(layout)'"'
+    global dash_opts_link           `"`link'"'
+    global dash_opts_theme          `"`theme'"'
+    global dash_opts_scheme         `"`scheme'"'
+    global dash_opts_tabs           `"`tabs'"'
+    global dash_opts_filterposition `"`r(filterposition)'"'
+    global dash_opts_filter         `"`filter'"'
 
     // ---- Locate dash_render.py ----
     // Strategy: use findfile to locate dash_render.py on the adopath.
@@ -2318,12 +2453,39 @@ end
 
 
 // ================================================================
-// _dash_serve  — launch Bokeh Server for live interactive mode
+// _dash_serve_spec  — everything `dash serve' does except the launch.
+//
+// Separated so the option pass-through can be certified without a
+// certification script starting a server, which it must never do.
+// test_serve_options.cscript calls this directly and reads the master
+// JSON it writes.
+//
+// The caller owns the two paths: a `tempfile' macro is erased when the
+// program that declares it ends, so a file created here would be gone
+// before `_dash_serve' could launch anything from it.
 // ================================================================
-program define _dash_serve
+program define _dash_serve_spec, rclass
     version 16.0
 
-    syntax [, PORT(string) NOBROWSER TIMEOUT(string)]
+    // Pre-extract every filter() group before -syntax- runs, exactly as
+    // `dash build' does: -syntax- accepts one option of a given name, and
+    // a dashboard may legitimately have several filters.
+    mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
+    local filter `"`_filter_parts'"'
+    local 0      `"`_cmd_nofilter'"'
+
+    // Only the options `dash serve' owns are named here.  The trailing *
+    // collects every build option into `options' exactly as the user
+    // wrote it, so this program never has to enumerate the build surface
+    // -- which is how the two copies drifted apart in the first place.
+    syntax [, ///
+        SPECpath(string)    ///
+        DATApath(string)    ///
+        PORT(string)        ///
+        NOBRowser           ///
+        TIMEOUT(string)     ///
+        *                   ///
+    ]
 
     if "`port'"    == "" local port    "5006"
     if "`timeout'" == "" local timeout "0"
@@ -2342,143 +2504,43 @@ program define _dash_serve
         exit(198)
     }
 
-    if "${dash_graph_registry}" == "" {
-        display as error "dash serve: no graphs registered. Define graphs with name() before running dash serve."
+    if `"`specpath'"' == "" | `"`datapath'"' == "" {
+        display as error "dash serve: internal error — specpath() and datapath() are required."
         exit(198)
     }
 
-    // ---- determine all variables needed ----
-    local all_vars ""
-    local registry = "${dash_graph_registry}"
-    local ntok_reg : word count `registry'
-    forvalues k = 1/`ntok_reg' {
-        local gname : word `k' of `registry'
+    // inherit: reuse the options of a `dash build' earlier in this session
+    // for anything not restated here.  dash.sthlp documents exactly that
+    // sequence, and without this the served dashboard silently lost the
+    // filter the documented example builds it with.
+    _dash_prepare_spec, cmdname("dash serve") inherit ///
+        specpath(`"`specpath'"') datapath(`"`datapath'"') ///
+        filter(`"`filter'"') `options'
 
-        if "${dash_kpi_`gname'}" != "" {
-            local kpi_var = "${dash_kpi_`gname'_var}"
-            if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
-            // A KPI qualifier may name variables that appear nowhere else
-            // (dash kpi mean(mpg) if foreign==1 needs foreign serialised, or
-            // the renderer cannot reproduce the conditional value).
-            local _kifx = "${dash_kpi_`gname'_if}"
-            if `"`_kifx'"' != "" {
-                _dash_json_str `"`_kifx'"' _kifx_esc
-                local kqvars ""
-                mata: _dash_extract_qual_vars(`"{"if_expr":"`_kifx_esc'"}"', "kqvars")
-                foreach v of local kqvars {
-                    capture confirm variable `v'
-                    if _rc == 0 {
-                        if !`: list v in all_vars' local all_vars "`all_vars' `v'"
-                    }
-                }
-            }
-            continue
-        }
+    return local master_json_path `"`specpath'"'
+    return local data_json_path   `"`datapath'"'
+    return local port             "`port_int'"
+    return local timeout          "`timeout'"
+    return local nobrowser        "`nobrowser'"
+    return local layout           `"`r(layout)'"'
+    return local filterposition   `"`r(filterposition)'"'
+end
 
-        local _chk : strlen global dash_json_`gname'
-        if `_chk' > 0 {
-            local gvars ""
-            mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
-            foreach v of local gvars {
-                if !`: list v in all_vars' local all_vars "`all_vars' `v'"
-            }
-            // Also extract qualifier (if_expr) and facet (by) variables.
-            local qvars ""
-            mata: _dash_extract_qual_vars(`"${dash_json_`gname'}"', "qvars")
-            foreach v of local qvars {
-                capture confirm variable `v'
-                if _rc == 0 {
-                    if !`: list v in all_vars' local all_vars "`all_vars' `v'"
-                }
-            }
-        }
-    }
-    local all_vars = strtrim("`all_vars'")
 
-    if "`all_vars'" == "" {
-        display as error "dash serve: no variables identified across registered graphs."
-        exit(198)
-    }
-
-    capture which jsonio
-    if _rc != 0 {
-        display as error "dash: jsonio is required but not found. Run dash_setup first."
-        exit(198)
-    }
+// ================================================================
+// _dash_serve  — launch Bokeh Server for live interactive mode
+// ================================================================
+program define _dash_serve
+    version 16.0
 
     tempfile data_json_path master_json_path
 
-    // Collect display formats, and transport date variables as
-    // numbers so jsonio does not render them to text.
-    _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
-    local _dash_saved_fmts ""
-    if `"`_dash_date_vars'"' != "" {
-        _dash_date_fmts_swap "`_dash_date_vars'"
-    }
-    quietly jsonio out `all_vars', ///
-        what(all) filenm("`data_json_path'") ///
-        metaprint(varnames varlabels vallabs labelnames)
+    _dash_serve_spec, specpath("`master_json_path'") datapath("`data_json_path'") `0'
 
-    // Restore the user's formats immediately, whether or not
-    // jsonio succeeded: the data in memory is theirs.
-    if `"`_dash_date_vars'"' != "" {
-        _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
-    }
-
-    capture confirm file "`data_json_path'"
-    if _rc != 0 {
-        display as error "dash serve: jsonio failed to serialize data."
-        exit(198)
-    }
-
-    // ---- assemble master JSON ----
-    local graphs_json ""
-    local n_graphs = 0
-    forvalues k = 1/`ntok_reg' {
-        local gname : word `k' of `registry'
-        if "${dash_kpi_`gname'}" != "" continue
-        if `n_graphs' > 0 local graphs_json `"`graphs_json', "'
-        local graphs_json `"`graphs_json'${dash_json_`gname'}"'
-        local n_graphs = `n_graphs' + 1
-    }
-
-    local kpis_json ""
-    local n_kpis = 0
-    forvalues k = 1/`ntok_reg' {
-        local gname : word `k' of `registry'
-        if "${dash_kpi_`gname'}" == "" continue
-        // Read each KPI field from its dedicated global (preserves multi-word values)
-        // then JSON-escape the string fields before insertion.
-        local kstat   = "${dash_kpi_`gname'_stat}"
-        local kvar    = "${dash_kpi_`gname'_var}"
-        local kval    = "${dash_kpi_`gname'_val}"
-        local kdisp   = "${dash_kpi_`gname'_disp}"
-        local kfmt    = "${dash_kpi_`gname'_fmt}"
-        _dash_json_str `"${dash_kpi_`gname'_tit}"' _ktitle_esc
-        _dash_json_str `"${dash_kpi_`gname'_sub}"' _ksub_esc
-        _dash_json_str `"${dash_kpi_`gname'_col}"' _kcol_esc
-        _dash_json_str `"${dash_kpi_`gname'_bg}"'  _kbg_esc
-        local kupdate = "${dash_kpi_`gname'_upd}"
-        _dash_json_str `"${dash_kpi_`gname'_if}"' _kif_esc
-        _dash_json_str `"${dash_kpi_`gname'_in}"' _kin_esc
-        _dash_json_str `"`kdisp'"' _kdisp_esc
-        _dash_json_str `"`kfmt'"'  _kfmt_esc
-        if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
-        local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","if_expr":"`_kif_esc'","in_expr":"`_kin_esc'"}"'
-        local n_kpis = `n_kpis' + 1
-    }
-
-    // Carry the session confidence level so the renderer does not have to
-    // assume 95.  A per-plot level() overrides it.
-    local _dash_lvl = c(level)
-    local _dash_sess_scheme = c(scheme)
-    _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"auto","link":"","filter":"","theme":"","session_scheme":"`_sess_scheme_esc'","title":"","subtitle":"","registry":"`registry'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
-
-    tempname fh
-    file open `fh' using "`master_json_path'", write replace text
-    file write `fh' `"`master_json'"'
-    file close `fh'
+    local port_int   "`r(port)'"
+    local timeout    "`r(timeout)'"
+    local no_browser_flag ""
+    if "`r(nobrowser)'" == "nobrowser" local no_browser_flag "--no-browser"
 
     // ---- Locate dash_render.py ----
     capture findfile dash_render.py
@@ -2496,9 +2558,6 @@ program define _dash_serve
             local render_py "`c(sysdir_plus)'d/dash_render.py"
         }
     }
-
-    local no_browser_flag ""
-    if "`nobrowser'" == "nobrowser" local no_browser_flag "--no-browser"
 
     // Temp path for the generated Bokeh Server app.
     //
@@ -2522,6 +2581,9 @@ program define _dash_serve
     _dash_json_str `"`serve_app_path'"'   _py_serve
     _dash_json_str `"`render_py'"'        _py_render
 
+    display as text "dash serve: starting Bokeh Server on port `port_int'." ///
+        "  Stata is blocked until the server stops (Ctrl+C)."
+
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
     python: import sys, runpy
     // --launch: `dash serve' is the path whose job IS to run a server.  The
@@ -2532,5 +2594,9 @@ program define _dash_serve
     if "`no_browser_flag'" != "" {
         python: sys.argv.append("--no-browser")
     }
-    python: runpy.run_path("`_py_render'", run_name="__main__")
+    // Assign the result.  A single-line `python:' echoes the value of the
+    // expression, and run_path returns the module globals dict, so this
+    // line used to dump dash_render.py's whole namespace into the Stata log
+    // on every render -- roughly 10 KB of noise per command.
+    python: _dash_serve_ns = runpy.run_path("`_py_render'", run_name="__main__")
 end
