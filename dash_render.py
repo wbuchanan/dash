@@ -4568,8 +4568,20 @@ class GlyphMapper:
 
         edges = start + width * np.arange(n_bins + 1, dtype=float)
         # The last edge must cover the data even when start()/width() were
-        # given explicitly, or np.histogram silently drops the top observations.
-        if edges[-1] < a_max:
+        # given explicitly, or np.histogram silently drops the top
+        # observations.
+        #
+        # The comparison needs a tolerance.  When width was DERIVED as
+        # span / n_bins, edges[-1] is a_max in exact arithmetic but can land a
+        # few ulps below it in floating point -- and then this appended a bin
+        # about 1e-14 wide.  A density is count / (total * width), so that bin
+        # became a spike twelve orders of magnitude above every real bar and
+        # flattened the rest of the histogram to nothing.  Measured on a
+        # 74-observation fixture: bin(6) and bin(12) each drew one bar more
+        # than asked for, of width 7.105e-15 and density 1.902e+12.
+        _edge_tol = 1e-9 * max(abs(float(a_max)), abs(float(start)),
+                               float(width), 1.0)
+        if edges[-1] < a_max - _edge_tol:
             edges = np.append(edges, a_max)
 
         ymode = "density"
@@ -9492,6 +9504,7 @@ class DashRenderer:
             _g_if = (graph_spec.get("if_expr") or "").strip()
             _g_in = (graph_spec.get("in_expr") or "").strip()
             source_for_plot = source
+            _plot_view = facet_view
             if (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in):
                 try:
                     # _apply_graph_filter filters self.df, so restrict to the
@@ -9500,12 +9513,34 @@ class DashRenderer:
                     _pdf = self._apply_graph_filter(
                         {"if_expr": _p_if, "in_expr": _p_in}
                     )
-                    _sdf = self._df_for_source(source)
-                    _keep = [c for c in _sdf.columns if c in _pdf.columns]
-                    if _keep and len(_sdf) != len(self.df):
-                        _pdf = _pdf.merge(_sdf[_keep].drop_duplicates(),
-                                          on=_keep, how="inner")
-                    source_for_plot = ColumnDataSource(_pdf)
+                    # A CDSView over the source the graph already draws from,
+                    # NOT a ColumnDataSource of its own.  A layer on a private
+                    # source is outside link() -- measured on link(_all) with
+                    # two graphs, the qualified layer had its own source while
+                    # the other two shared one -- and outside the filter
+                    # callback, which only ever touches the sources it was
+                    # given.  Every source carries __dash_row__, the row's
+                    # position in self.df, so the mask is by identity and
+                    # holds however short or reordered the source is.
+                    _ids = list(source.data.get(_ROW_ID_COLUMN, []))
+                    if not _ids:
+                        raise ValueError("source carries no row identity")
+                    _pos = {idx: i for i, idx in enumerate(self.df.index)}
+                    _wanted = {_pos.get(i, -1) for i in _pdf.index}
+                    _mask = [bool(r in _wanted) for r in _ids]
+                    # Intersect with a view already on this layer -- a facet
+                    # panel, or a linked graph's own qualifier -- rather than
+                    # replacing it and losing that restriction.
+                    _prev = (getattr(facet_view, "filter", None)
+                             if facet_view is not None else None)
+                    _prev_bools = getattr(_prev, "booleans", None)
+                    if _prev_bools is not None and len(_prev_bools) == len(_mask):
+                        _mask = [bool(a and b)
+                                 for a, b in zip(_prev_bools, _mask)]
+                    _pf = BooleanFilter(booleans=_mask)
+                    _plot_view = CDSView(filter=_pf)
+                    self._register_view_filter(
+                        source, _pf, self._row_ids_for(_pdf))
                 except Exception as _pexc:          # never lose the layer
                     warnings.warn(
                         f"dash: per-plot qualifier on layer {pi + 1} could not "
@@ -9533,17 +9568,17 @@ class DashRenderer:
                 py2var = plot.get("y2var", "")
                 px2var = plot.get("x2var", "")
                 self._add_pc_glyph(fig, source_for_plot, ptype, py1var, px1var, py2var, px2var, popts,
-                                   view=facet_view, color_idx=pi)
+                                   view=_plot_view, color_idx=pi)
             elif ptype.lower() in _RANGE_TYPES:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
                 self._add_glyph(fig, source_for_plot, ptype, py1var, pxvar, popts,
-                                y2var=py2var, view=facet_view, color_idx=pi)
+                                y2var=py2var, view=_plot_view, color_idx=pi)
             elif ptype.lower() in _UNIVARIATE_TYPES:
                 pyvar = (plot.get("yvar", "") or plot.get("var", "")
                          or yvar)
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
-                                view=facet_view, color_idx=pi)
+                                view=_plot_view, color_idx=pi)
             elif ptype.lower() == "function":
                 pexpr = plot.get("expr", "")
                 # Stata's documented defaults for twoway function:
@@ -9570,7 +9605,7 @@ class DashRenderer:
             else:
                 pyvar = plot.get("yvar", yvar)
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
-                                view=facet_view, color_idx=pi)
+                                view=_plot_view, color_idx=pi)
 
             _plot_renderers.append((plot, list(fig.renderers[_r_before:])))
 
@@ -11769,10 +11804,54 @@ class ServerAppBuilder:
 
         for _fn in (_stat_option_float, _fit_grid,
                     _stata_percentile, _stata_kde_bandwidth, _kde_curve,
-                    _mband_default_bands, _stata_bin_count):
+                    _mband_default_bands, _stata_bin_count,
+                    _histogram_heights):
             out += _textwrap.dedent(
                 _inspect.getsource(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
+
+        # Three of them are staticmethods on GlyphMapper.  Their bodies
+        # reference no self or cls, so dropping the decorator makes each a
+        # module-level function of the same name -- again the SAME text.
+        for _sm in (GlyphMapper._histogram_grid,
+                    GlyphMapper._default_lpoly_bwidth,
+                    GlyphMapper._compute_lpoly_fit):
+            _lines = _textwrap.dedent(
+                _inspect.getsource(_sm)).rstrip("\n").split("\n")
+            while _lines and _lines[0].strip().startswith("@"):
+                _lines = _lines[1:]
+            _lines = [_l.replace("GlyphMapper._", "_") for _l in _lines]
+            out += _lines + ["", ""]
+
+        # Whatever module-level CONSTANTS those bodies reference must come
+        # with them.  Found by scanning rather than listed, so adding a
+        # constant to one of the copied functions cannot leave the generated
+        # app raising NameError at import -- which _LPOLY_ROT_C did.
+        import re as _re_const
+        _mod = _sys.modules[__name__]
+        _names = set()
+        for _l in out:
+            _names.update(_re_const.findall(r"\b_[A-Z][A-Z0-9_]*\b", _l))
+        import ast as _ast_const
+        _consts = []
+        for _nm in sorted(_names):
+            # Already written out above, as a plain or an annotated
+            # assignment.  _KERNELS is the annotated one, and it holds
+            # lambdas, so repr() of it is not even valid Python.
+            if any(_l.startswith(_nm + " =") or _l.startswith(_nm + ":")
+                   for _l in out):
+                continue
+            _val = getattr(_mod, _nm, None)
+            try:
+                if _ast_const.literal_eval(repr(_val)) != _val:
+                    continue
+            except (ValueError, SyntaxError, TypeError):
+                continue                      # not expressible as a literal
+            _consts.append("%s = %r" % (_nm, _val))
+        if _consts:
+            out = (out[:1]
+                   + ["", "# Constants the copied helpers reference."]
+                   + _consts + [""] + out[1:])
         return out
 
     def _scheme_lines(self) -> "list[str]":
@@ -12325,18 +12404,26 @@ class ServerAppBuilder:
             "",
             "",
             "# ---- Aggregate compute helpers ----",
-            "def _compute_histogram(df, varname, bins=None):",
-            '    """Return Bokeh quad() source dict from histogram of df[varname]."""',
-            "    data = df[varname].dropna().values.astype(float)",
-            "    if len(data) == 0:",
-            "        return dict(top=[], left=[], right=[])",
-            "    if bins is None:",
-            "        bins = _stata_bin_count(len(data))",
-            "    bins = max(1, min(int(bins), 1000))  # clamp: prevent resource exhaustion",
-            "    hist, edges = np.histogram(data, bins=bins)",
-            "    return dict(top=hist.tolist(), left=edges[:-1].tolist(), right=edges[1:].tolist())",
-            "",
-            "",
+            'def _compute_histogram(df, varname, options=None):',
+            "    # The renderer's own grid and height rules.  This used to be",
+            '    # np.histogram(data, bins=<int>) returning RAW COUNTS, so start() and',
+            "    # width() were dropped and the y-axis was permanently Stata's",
+            "    # `frequency'.  Measured on auto/mpg: standalone tops [0.0522, 0.0969,",
+            '    # 0.0485] (density, the default), served [14, 26, 13].  The same',
+            '    # command, two different quantities, with no note that the axis had',
+            '    # changed meaning.',
+            '    options = options or {}',
+            '    data = df[varname].dropna().values.astype(float)',
+            '    if len(data) == 0:',
+            '        return dict(top=[], left=[], right=[])',
+            '    edges, ymode = _histogram_grid(data, options)',
+            '    counts, _ = np.histogram(data, bins=edges)',
+            '    tops = _histogram_heights(counts, edges, ymode)',
+            '    return dict(top=np.asarray(tops).tolist(),',
+            '                left=np.asarray(edges[:-1]).tolist(),',
+            '                right=np.asarray(edges[1:]).tolist())',
+            '',
+            '',
             "def _compute_lfit(df, yvar, xvar):",
             '    """Return line source dict for OLS fit of yvar on xvar."""',
             "    clean = df[[xvar, yvar]].dropna()",
@@ -12524,45 +12611,37 @@ class ServerAppBuilder:
             "    return dict(x=[], y=[])",
             "",
             "",
-            "def _lpoly_kernel_fit(x, y, bwidth=0.5, degree=0, n_grid=200):",
-            '    """Gaussian kernel-weighted local polynomial regression."""',
-            "    x_min, x_max = x.min(), x.max()",
-            "    x_range = x_max - x_min or 1.0",
-            "    h = bwidth * x_range",
-            "    x_grid = np.linspace(x_min, x_max, n_grid)",
-            "    y_fit = np.empty(n_grid)",
-            "    for i, x0 in enumerate(x_grid):",
-            "        w = np.exp(-0.5 * ((x - x0) / h) ** 2)",
-            "        w_sum = w.sum()",
-            "        if w_sum < 1e-12:",
-            "            y_fit[i] = np.nan",
-            "            continue",
-            "        if degree == 0:",
-            "            y_fit[i] = np.dot(w, y) / w_sum",
-            "        else:",
-            "            try:",
-            "                c = np.polyfit(x, y, deg=degree, w=w)",
-            "                y_fit[i] = np.polyval(c, x0)",
-            "            except Exception:",
-            "                y_fit[i] = np.dot(w, y) / w_sum",
-            "    return x_grid, y_fit",
-            "",
-            "",
-            "def _compute_lpoly(df, yvar, xvar, bwidth=0.5, degree=0):",
-            '    """Return line source dict for local polynomial smoother."""',
-            "    clean = df[[xvar, yvar]].dropna()",
-            "    if len(clean) < 2:",
-            "        return dict(x_lp=[], y_lp=[])",
-            "    x = clean[xvar].values.astype(float)",
-            "    y = clean[yvar].values.astype(float)",
-            "    x_grid, y_fit = _lpoly_kernel_fit(x, y, bwidth=bwidth, degree=degree)",
-            "    valid = ~np.isnan(y_fit)",
-            "    return dict(x_lp=x_grid[valid].tolist(), y_lp=y_fit[valid].tolist())",
-            "",
-            "",
+            'def _compute_lpoly(df, yvar, xvar, options=None):',
+            "    # The renderer's own _compute_lpoly_fit, with Stata's semantics:",
+            '    # bwidth() is an ABSOLUTE bandwidth in x-units with a data-driven',
+            '    # default, and kernel() selects from _KERNELS.  This file used to carry',
+            '    # its own _lpoly_kernel_fit with a hard-coded Gaussian weight and a',
+            '    # bwidth treated as a FRACTION of the x-range clamped to [0.01, 1.0],',
+            '    # so bwidth(500) on weight became the whole range and kernel() was read',
+            '    # by nothing -- up to 7.5 mpg away from the standalone curve for the',
+            '    # same command.',
+            '    options = options or {}',
+            '    clean = df[list(dict.fromkeys([xvar, yvar]))].dropna()',
+            '    if len(clean) < 2:',
+            '        return dict(x_lp=[], y_lp=[])',
+            '    x = clean[xvar].values.astype(float)',
+            '    y = clean[yvar].values.astype(float)',
+            "    bwidth = _stat_option_float(options, 'bwidth', None, 'lpoly', lo=0.0)",
+            '    if bwidth is not None and bwidth <= 0.0:',
+            '        bwidth = None',
+            "    degree = int(_stat_option_float(options, 'degree', 0.0, 'lpoly',",
+            '                                    lo=0.0, hi=3.0) or 0.0)',
+            "    kernel = str(options.get('kernel', '') or 'epanechnikov').strip().lower()",
+            '    if kernel not in _KERNELS:',
+            "        kernel = 'epanechnikov'",
+            '    x_grid, y_fit = _compute_lpoly_fit(x, y, bwidth=bwidth, degree=degree,',
+            '                                       kernel=kernel)',
+            '    valid = ~np.isnan(y_fit)',
+            '    return dict(x_lp=np.asarray(x_grid)[valid].tolist(),',
+            '                y_lp=np.asarray(y_fit)[valid].tolist())',
+            '',
+            '',
             "_FP_POWERS = (-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0)",
-            "",
-            "",
             "def _fp_transform(x, p):",
             '    """FP power transform: x^p (p==0 -> ln x)."""',
             "    with np.errstate(divide='ignore', invalid='ignore'):",
@@ -13222,19 +13301,16 @@ class ServerAppBuilder:
             "                # the modes, but a histogram whose number of bars",
             "                # changes as you drag a slider is not reporting the",
             "                # same statistic twice.",
-            "                _nb_raw = opts.get('bin', '')",
-            "                if _nb_raw in ('', None):",
-            "                    nbins = _stata_bin_count(int(g_df[hvar].notna().sum()))",
-            "                else:",
-            "                    try: nbins = max(1, min(int(_nb_raw), 1000))  # clamp: prevent resource exhaustion",
-            "                    except (ValueError, TypeError): nbins = _stata_bin_count(int(g_df[hvar].notna().sum()))",
-            "                hist_data = _compute_histogram(g_df, hvar, nbins)",
+            '                # _histogram_grid resolves bin()/start()/width() and the',
+            '                # y-axis family together, exactly as the standalone',
+            '                # renderer does; the count is no longer resolved here.',
+            '                hist_data = _compute_histogram(g_df, hvar, opts)',
             "                hist_src = ColumnDataSource(hist_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'opts': opts,",
             "                    'source': hist_src,",
             "                    'type': 'histogram',",
-            "                    'var': hvar, 'bins': nbins,",
+            "                    'var': hvar,",
             "                }",
             "                _hist_fill = color",
             "                _hfc = opts.get('fcolor', '')",
@@ -13293,7 +13369,7 @@ class ServerAppBuilder:
             "                _lp_deg = 0",
             "                try: _lp_deg = max(0, min(3, int(opts.get('degree', '0') or '0')))",
             "                except (ValueError, TypeError): pass",
-            "                lp_data = _compute_lpoly(g_df, yvar, xvar, bwidth=_lp_bw, degree=_lp_deg)",
+            "                lp_data = _compute_lpoly(g_df, yvar, xvar, opts)",
             "                lp_src = ColumnDataSource(lp_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'opts': opts,",
@@ -13312,7 +13388,7 @@ class ServerAppBuilder:
             "                _lp_deg = 0",
             "                try: _lp_deg = max(0, min(3, int(opts.get('degree', '0') or '0')))",
             "                except (ValueError, TypeError): pass",
-            "                lp_data = _compute_lpoly(g_df, yvar, xvar, bwidth=_lp_bw, degree=_lp_deg)",
+            "                lp_data = _compute_lpoly(g_df, yvar, xvar, opts)",
             "                lp_src = ColumnDataSource(lp_data)",
             "                agg_sources[(gname, pi)] = {",
             "                    'opts': opts,",
@@ -14124,7 +14200,7 @@ class ServerAppBuilder:
             "                    _fac_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_fac_src, fill_color=color, fill_alpha=0.4, legend_label=yvar_f, **_glyph_kw)",
             "                elif ptype in ('histogram', 'hist'):",
             "                    _hvar = plot.get('var', '') or yvar_f",
-            "                    _hdata = _compute_histogram(_fac_gdf, _hvar)",
+            "                    _hdata = _compute_histogram(_fac_gdf, _hvar, opts)",
             "                    _hsrc = ColumnDataSource(_hdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _hsrc, 'type': 'histogram', 'var': _hvar, 'bins': 20}",
             "                    _fac_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6, legend_label=_hvar)",
@@ -14152,7 +14228,7 @@ class ServerAppBuilder:
             "                elif ptype in ('lpoly', 'lpolyci'):",
             "                    _lp_bw_f = float(opts.get('bwidth', 0.5))",
             "                    _lp_deg_f = int(opts.get('degree', 0))",
-            "                    _lpdata = _compute_lpoly(_fac_gdf, yvar_f, xvar_f, bwidth=_lp_bw_f, degree=_lp_deg_f)",
+            "                    _lpdata = _compute_lpoly(_fac_gdf, yvar_f, xvar_f, opts)",
             "                    _lpsrc = ColumnDataSource(_lpdata)",
             "                    agg_sources[(_fac_name, pi)] = {'source': _lpsrc, 'type': 'lpoly', 'yvar': yvar_f, 'xvar': xvar_f, 'bwidth': _lp_bw_f, 'degree': _lp_deg_f}",
             "                    _fac_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=1.5, color=color, legend_label=f'lpoly {yvar_f}')",
@@ -14225,7 +14301,7 @@ class ServerAppBuilder:
             "                    _tot_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_tot_src, fill_color=color, fill_alpha=0.4, legend_label=yvar_f)",
             "                elif ptype in ('histogram', 'hist'):",
             "                    _hvar = plot.get('var', '') or yvar_f",
-            "                    _hdata = _compute_histogram(work_df, _hvar)",
+            "                    _hdata = _compute_histogram(work_df, _hvar, opts)",
             "                    _hsrc = ColumnDataSource(_hdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _hsrc, 'type': 'histogram', 'var': _hvar, 'bins': 20}",
             "                    _tot_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6, legend_label=_hvar)",
@@ -14253,7 +14329,7 @@ class ServerAppBuilder:
             "                elif ptype in ('lpoly', 'lpolyci'):",
             "                    _lp_bw_t = float(opts.get('bwidth', 0.5))",
             "                    _lp_deg_t = int(opts.get('degree', 0))",
-            "                    _lpdata = _compute_lpoly(work_df, yvar_f, xvar_f, bwidth=_lp_bw_t, degree=_lp_deg_t)",
+            "                    _lpdata = _compute_lpoly(work_df, yvar_f, xvar_f, opts)",
             "                    _lpsrc = ColumnDataSource(_lpdata)",
             "                    agg_sources[(_tot_name, pi)] = {'source': _lpsrc, 'type': 'lpoly', 'yvar': yvar_f, 'xvar': xvar_f, 'bwidth': _lp_bw_t, 'degree': _lp_deg_t}",
             "                    _tot_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=1.5, color=color, legend_label=f'lpoly {yvar_f}')",
@@ -14567,7 +14643,7 @@ class ServerAppBuilder:
             "                    agg_fdf = fdf",
             "                atype = agg['type']",
             "                if atype == 'histogram':",
-            "                    agg['source'].data = _compute_histogram(agg_fdf, agg['var'], agg.get('bins', 20))",
+            "                    agg['source'].data = _compute_histogram(agg_fdf, agg['var'], agg.get('opts') or {})",
             "                elif atype == 'lfit':",
             "                    agg['source'].data = _compute_lfit(agg_fdf, agg['yvar'], agg['xvar'])",
             "                elif atype == 'qfit':",
@@ -14577,9 +14653,9 @@ class ServerAppBuilder:
             "                elif atype == 'lowess':",
             "                    agg['source'].data = _compute_lowess(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
             "                elif atype == 'lpoly':",
-            "                    agg['source'].data = _compute_lpoly(agg_fdf, agg['yvar'], agg['xvar'],",
-            "                                                        bwidth=agg.get('bwidth', 0.5),",
-            "                                                        degree=agg.get('degree', 0))",
+            "                    agg['source'].data = _compute_lpoly(",
+            "                        agg_fdf, agg['yvar'], agg['xvar'],",
+            "                        agg.get('opts') or {})",
             "                elif atype == 'fpfit':",
             "                    agg['source'].data = _compute_fpfit(agg_fdf, agg['yvar'], agg['xvar'])",
             "                elif atype == 'lfitci':",
@@ -15012,7 +15088,62 @@ class ServerAppBuilder:
             f"        print('Server stopped.')",
         ]
 
+        lines = self._supply_missing_constants(lines)
         return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def _supply_missing_constants(lines: "list[str]") -> "list[str]":
+        """Define any module constant the generated app refers to but lacks.
+
+        The app is assembled from many separate blocks of emitted text, and a
+        block that uses one of this module's UPPERCASE constants has no way to
+        say so.  Two landed at once -- ``_LPOLY_ROT_C`` and ``_FP_POWERS`` --
+        each raising ``NameError`` at import of the generated file, which is
+        the worst place to find out.
+
+        Scanned rather than listed, so the next one cannot repeat it.  Only
+        values whose ``repr`` round-trips through ``ast.literal_eval`` are
+        written; anything else (``_KERNELS`` holds lambdas) is left to the
+        block that copies its source.
+
+        Args:
+            lines: The assembled source, one line each.
+
+        Returns:
+            The same lines, with any missing definitions inserted after the
+            imports.
+        """
+        import ast as _ast_sup
+        import re as _re_sup
+        import sys as _sys_sup
+
+        src = "\n".join(lines)
+        used = set(_re_sup.findall(r"\b_[A-Z][A-Z0-9_]*\b", src))
+        assigned = set(_re_sup.findall(
+            r"^([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?=", src, _re_sup.MULTILINE))
+        mod = _sys_sup.modules[__name__]
+
+        missing = []
+        for name in sorted(used - assigned):
+            val = getattr(mod, name, None)
+            if val is None:
+                continue
+            try:
+                if _ast_sup.literal_eval(repr(val)) != val:
+                    continue
+            except (ValueError, SyntaxError, TypeError):
+                continue
+            missing.append("%s = %r" % (name, val))
+        if not missing:
+            return lines
+
+        for i, line in enumerate(lines):
+            if line.startswith("import ") or line.startswith("from "):
+                last_import = i
+        out = list(lines)
+        out[last_import + 1:last_import + 1] = (
+            ["", "# Constants the copied helpers refer to."] + missing + [""])
+        return out
 
 
 # ===========================================================================

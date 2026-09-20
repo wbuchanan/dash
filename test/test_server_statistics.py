@@ -239,3 +239,109 @@ class TestConfidenceLevel:
             f"level() does not reach the server CI: 99% band is "
             f"{w_width:.3f} wide, 50% band is {n_width:.3f}"
         )
+
+
+def _hist(tmp_path, options):
+    """The served histogram's (tops, lefts) for one option set."""
+    srv = _server_sources(tmp_path, _spec("histogram", options))
+    got = _pick(srv, "top", "left", "right")
+    assert got is not None, "no histogram source in the served document"
+    return got
+
+
+def _hist_standalone(tmp_path, options):
+    std = _standalone_sources(tmp_path, _spec("histogram", options))
+    got = _pick(std, "top", "left", "right")
+    assert got is not None, "no histogram source in the standalone document"
+    return got
+
+
+class TestTheServedHistogramIsTheSameHistogram:
+    """It returned raw counts, i.e. Stata's `frequency', permanently.
+
+    Standalone defaults to density, so the bars meant different quantities in
+    the two modes with nothing saying the axis had changed.
+    """
+
+    def test_the_default_is_density_in_both_modes(self, tmp_path):
+        srv = _hist(tmp_path, {})
+        std = _hist_standalone(tmp_path, {})
+        assert np.allclose(srv["top"], std["top"], rtol=1e-9, atol=1e-12)
+        # ...and a density, not a count: the bar areas integrate to 1.
+        widths = srv["right"] - srv["left"]
+        assert abs(float(np.sum(srv["top"] * widths)) - 1.0) < 1e-9
+
+    @pytest.mark.parametrize("ymode", ["frequency", "fraction", "percent",
+                                       "density"])
+    def test_each_y_axis_family_matches_standalone(self, tmp_path, ymode):
+        srv = _hist(tmp_path, {ymode: ymode})
+        std = _hist_standalone(tmp_path, {ymode: ymode})
+        assert np.allclose(srv["top"], std["top"], rtol=1e-9, atol=1e-12), (
+            f"{ymode}: served tops {srv['top'][:3]} vs standalone "
+            f"{std['top'][:3]}"
+        )
+
+    def test_width_defines_the_grid(self, tmp_path):
+        srv = _hist(tmp_path, {"width": "5"})
+        std = _hist_standalone(tmp_path, {"width": "5"})
+        assert len(srv["left"]) == len(std["left"])
+        assert np.allclose(srv["left"], std["left"], rtol=1e-9, atol=1e-9)
+
+    def test_start_and_width_together_define_the_grid(self, tmp_path):
+        srv = _hist(tmp_path, {"start": "10", "width": "5"})
+        std = _hist_standalone(tmp_path, {"start": "10", "width": "5"})
+        assert np.allclose(srv["left"], std["left"], rtol=1e-9, atol=1e-9)
+        assert abs(float(srv["left"][0]) - 10.0) < 1e-9
+
+    @pytest.mark.parametrize("n", ["5", "6", "12"])
+    def test_bin_still_wins_over_the_data_rule(self, tmp_path, n):
+        srv = _hist(tmp_path, {"bin": n})
+        assert len(srv["top"]) == int(n)
+
+
+class TestLocalPolynomial:
+    """The server carried its own `_lpoly_kernel_fit'.
+
+    A hard-coded Gaussian weight, and `bwidth' treated as a FRACTION of the
+    x-range clamped to [0.01, 1.0] — so `bwidth(500)' on weight became the
+    whole range and `kernel()' was read by nothing. Measured: up to 7.5 mpg
+    from the standalone curve for the same command.
+    """
+
+    @pytest.mark.parametrize("opts", [
+        {},
+        {"bwidth": "500"},
+        {"kernel": "gaussian", "bwidth": "500"},
+        {"degree": "1", "bwidth": "800"},
+        {"kernel": "rectangle", "bwidth": "600"},
+    ])
+    def test_the_curve_is_the_standalone_curve(self, tmp_path, opts):
+        spec = _spec("lpoly", opts)
+        srv = _pick(_server_sources(tmp_path, spec), "x_lp", "y_lp")
+        std = _pick(_standalone_sources(tmp_path, spec), "x_lp", "y_lp")
+        assert srv is not None and std is not None
+        on = np.interp(srv["x_lp"], std["x_lp"], std["y_lp"])
+        worst = float(np.nanmax(np.abs(on - srv["y_lp"])))
+        assert worst <= 1e-9, (
+            f"{opts}: served lpoly differs from standalone by {worst:.6f}"
+        )
+
+    def test_an_absolute_bandwidth_is_not_a_fraction(self, tmp_path):
+        a = _pick(_server_sources(tmp_path, _spec("lpoly", {"bwidth": "200"})),
+                  "x_lp", "y_lp")
+        b = _pick(_server_sources(tmp_path, _spec("lpoly", {"bwidth": "1500"})),
+                  "x_lp", "y_lp")
+        assert a is not None and b is not None
+        assert not np.allclose(a["y_lp"], b["y_lp"])
+
+    def test_the_kernel_reaches_the_server(self, tmp_path):
+        a = _pick(_server_sources(
+            tmp_path, _spec("lpoly", {"bwidth": "600",
+                                      "kernel": "epanechnikov"})),
+            "x_lp", "y_lp")
+        b = _pick(_server_sources(
+            tmp_path, _spec("lpoly", {"bwidth": "600",
+                                      "kernel": "rectangle"})),
+            "x_lp", "y_lp")
+        assert a is not None and b is not None
+        assert not np.allclose(a["y_lp"], b["y_lp"])

@@ -615,6 +615,31 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 22. test_render_log_clean.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_render_log_clean.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_render_log_clean.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _dashlog
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_render_log_clean.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_render_log_clean.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_render_log_clean.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

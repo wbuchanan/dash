@@ -140,7 +140,14 @@ program define _dash_do_render
     // Single-line python: statements do not have this issue.
     python: import sys, runpy
     python: sys.argv = ["dash_render.py", "--spec", "`_py_spec'", "--data", "`_py_data'", "--output", "`_py_output'", "--mode", "`_py_mode'"]
-    python: runpy.run_path("`_py_renderpy'", run_name="__main__")
+    // Assign the result.  A single-line `python:' ECHOES the value of the
+    // expression it evaluates, and run_path returns the executed module's
+    // globals dict -- so this line printed the whole of dash_render.py's
+    // namespace into the Stata log on EVERY render.  Measured:
+    // `dash scatter mpg weight, saving(x.html)' produced a 48 KB, 653-line
+    // log, of which the dump began at line 91.  Contrary to project rule 14,
+    // and it buries any message dash actually displays.
+    python: _dash_render_ns = runpy.run_path("`_py_renderpy'", run_name="__main__")
 end
 
 

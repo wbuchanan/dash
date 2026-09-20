@@ -286,10 +286,13 @@ def test_filter_callback_recomputes_histogram(dr_module, auto_df):
 
         doc = Document()
         app_mod.make_document(doc)
-        # Test _compute_histogram directly with filtered data
-        full_result = app_mod._compute_histogram(auto_df, "mpg", bins=10)
+        # Test _compute_histogram directly with filtered data.  frequency()
+        # is asked for explicitly, because the default is a density now --
+        # it is Stata's default and the standalone renderer's.
+        _freq = {"bin": "10", "frequency": "frequency"}
+        full_result = app_mod._compute_histogram(auto_df, "mpg", _freq)
         half_df = auto_df[auto_df["foreign"] == 0]
-        half_result = app_mod._compute_histogram(half_df, "mpg", bins=10)
+        half_result = app_mod._compute_histogram(half_df, "mpg", _freq)
 
         assert len(full_result["top"]) == 10
         assert len(half_result["top"]) == 10
@@ -603,15 +606,26 @@ def test_compute_histogram_structure(dr_module, auto_df):
         app_mod = importlib.util.module_from_spec(app_spec_obj)
         app_spec_obj.loader.exec_module(app_mod)
 
-        result = app_mod._compute_histogram(auto_df, "mpg", bins=15)
+        # The signature takes the plot's OPTIONS now, not a bin count, so
+        # start()/width() and the y-axis family reach it the way they reach
+        # the standalone renderer.  The heights are a DENSITY by default, as
+        # Stata's histogram is; this used to assert raw counts, which is
+        # Stata's `frequency' and was the defect.
+        result = app_mod._compute_histogram(auto_df, "mpg", {"bin": "15"})
         assert set(result.keys()) == {"top", "left", "right"}
         assert len(result["top"]) == 15
         assert len(result["left"]) == 15
         assert len(result["right"]) == 15
         # All heights non-negative
         assert all(v >= 0 for v in result["top"])
-        # Total count equals number of non-NaN values
-        assert sum(result["top"]) == auto_df["mpg"].dropna().shape[0]
+        # A density: the bar areas integrate to 1.
+        _area = sum(t * (r - l) for t, l, r
+                    in zip(result["top"], result["left"], result["right"]))
+        assert abs(_area - 1.0) < 1e-9
+        # frequency() asks for the counts, and then they are the counts.
+        counts = app_mod._compute_histogram(
+            auto_df, "mpg", {"bin": "15", "frequency": "frequency"})
+        assert sum(counts["top"]) == auto_df["mpg"].dropna().shape[0]
     finally:
         os.unlink(spec_path)
         os.unlink(data_path)
@@ -4902,9 +4916,11 @@ class TestServerHistogramBinClamp:
             "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "", "options": {}}],
             "graph_options": {"name": "g1"},
         }]))
-        # _compute_histogram body must clamp bins
-        assert "max(1, min(int(bins), 1000))" in source or "clamp" in source.lower(), (
-            "_compute_histogram in generated source must clamp bins parameter"
+        # The clamp lives in _histogram_grid now, which the generated app
+        # carries verbatim from the renderer; either spelling satisfies the
+        # requirement, which is that an enormous bin() cannot be applied.
+        assert "_MAX_BINS" in source or "clamp" in source.lower(), (
+            "the generated source must clamp the bin count"
         )
 
     def test_histogram_bin_minimum_is_1(self, dr_module, auto_df):

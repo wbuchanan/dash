@@ -1,0 +1,106 @@
+*! test_render_log_clean.cscript
+*! Certification script: rendering must not dump Python's namespace into the log.
+*!
+*! Usage:  do test/test_render_log_clean.cscript
+*!
+*! Requires: dash_setup completed (jsonio, Python).
+*! Version: 1.0.0  20sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! A single-line `python:' statement ECHOES the value of the expression it
+*! evaluates, and runpy.run_path() returns the executed module's globals
+*! dict.  So
+*!
+*!     python: runpy.run_path("`_py_renderpy'", run_name="__main__")
+*!
+*! printed the whole of dash_render.py's namespace -- every class, every
+*! constant, the colour table, __builtins__ -- into the Stata log on EVERY
+*! render.  Measured: `dash scatter mpg weight, saving(x.html)' produced a
+*! 48 KB, 653-line log, of which the dump began at line 91.
+*!
+*! That is contrary to project rule 14 (robust logging without a performance
+*! penalty), and it buries any real message dash displays.
+*!
+*! `dash serve' had the same line and was fixed when it was rewritten; this
+*! script covers the path every other command takes.
+
+cscript "render log clean" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// See test_cscript_hygiene.py: do NOT probe Python by running it.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui do "../dash.ado"
+do "cert_helpers.do"
+
+global dash_nobrowser 1
+
+tempfile outhtml
+// An explicit name: `log using' appends its own extension, and a tempfile
+// macro's path is easier to get wrong than to read.
+local logdir  "`c(tmpdir)'"
+local logfile "`logdir'dash_render_log_clean.log"
+capture erase "`logfile'"
+sysuse auto, clear
+dash clear
+
+// A nested, named log captures exactly what this one command emits.
+capture log close _dashlog
+log using "`logfile'", name(_dashlog) text replace
+
+dash scatter mpg weight, saving("`outhtml'.html") replace
+
+log close _dashlog
+
+// ---------------------------------------------------------------
+// 1. The dashboard was actually produced (a silent failure would
+//    leave the log clean for the wrong reason)
+// ---------------------------------------------------------------
+capture confirm file "`outhtml'.html"
+assert _rc == 0
+cert_file_has "`outhtml'.html", needle("bokeh") lower
+assert r(found) == 1
+
+display as result "  [1/3] the dashboard was rendered: PASS"
+
+// ---------------------------------------------------------------
+// 2. No Python namespace dump
+// ---------------------------------------------------------------
+cert_file_has "`logfile'", needle("__builtins__")
+assert r(found) == 0
+cert_file_has "`logfile'", needle("DashRenderer")
+assert r(found) == 0
+cert_file_has "`logfile'", needle("GlyphMapper")
+assert r(found) == 0
+
+display as result "  [2/3] no Python namespace in the log: PASS"
+
+// ---------------------------------------------------------------
+// 3. The log stays small.  653 lines for one command was the
+//    measured before; a clean render is a handful.
+// ---------------------------------------------------------------
+tempname fh
+file open `fh' using "`logfile'", read text
+local nlines = 0
+file read `fh' line
+while r(eof) == 0 {
+    local nlines = `nlines' + 1
+    file read `fh' line
+}
+file close `fh'
+display as text "     log lines for one render: `nlines'"
+assert `nlines' < 60
+
+display as result "  [3/3] the log is short: PASS"
+
+dash clear
+display as result "test_render_log_clean.cscript: ALL PASS"
