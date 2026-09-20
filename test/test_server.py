@@ -4125,6 +4125,12 @@ class TestServerFunctionExpressionOperators:
     iter_child_nodes() which yields the operator node (Add, Sub, etc.) as
     well as the operands, and the operator node fell into the else-raise
     branch.  After the fix, operator nodes are silently skipped.
+
+    The seven behavioural tests below used to assert `len(doc.roots) > 0'.
+    Measured: that is 1 whether or not the function layer was built, because
+    the document always carries the title/layout column as a root -- an
+    expression the validator REJECTS gives roots 1, glyphs 0 just the same.
+    They count glyph renderers now, which is what the bug destroyed.
     """
 
     # BUG-FE-1a: generated source must contain the operator-skip guard
@@ -4140,43 +4146,55 @@ class TestServerFunctionExpressionOperators:
     def test_function_addition_does_not_raise(self, dr_module, auto_df):
         """BUG-FE-1b: x + 1 must not raise ValueError in server make_document."""
         doc = _exec_function_app(dr_module, "x + 1")
-        assert len(doc.roots) > 0, "make_document must add roots for 'x + 1'"
+        assert _count_glyph_renderers(doc) > 0, (
+            "the function layer for 'x + 1' was not drawn"
+        )
 
     # BUG-FE-1c: subtraction (BinOp with Sub)
     def test_function_subtraction_does_not_raise(self, dr_module, auto_df):
         """BUG-FE-1c: x - 1 must not raise ValueError in server make_document."""
         doc = _exec_function_app(dr_module, "x - 1")
-        assert len(doc.roots) > 0, "make_document must add roots for 'x - 1'"
+        assert _count_glyph_renderers(doc) > 0, (
+            "the function layer for 'x - 1' was not drawn"
+        )
 
     # BUG-FE-1d: multiplication (BinOp with Mult)
     def test_function_multiplication_does_not_raise(self, dr_module, auto_df):
         """BUG-FE-1d: x * 2 must not raise ValueError in server make_document."""
         doc = _exec_function_app(dr_module, "x * 2")
-        assert len(doc.roots) > 0, "make_document must add roots for 'x * 2'"
+        assert _count_glyph_renderers(doc) > 0, (
+            "the function layer for 'x * 2' was not drawn"
+        )
 
     # BUG-FE-1e: division (BinOp with Div)
     def test_function_division_does_not_raise(self, dr_module, auto_df):
         """BUG-FE-1e: x / 2 must not raise ValueError in server make_document."""
         doc = _exec_function_app(dr_module, "x / 2")
-        assert len(doc.roots) > 0, "make_document must add roots for 'x / 2'"
+        assert _count_glyph_renderers(doc) > 0, (
+            "the function layer for 'x / 2' was not drawn"
+        )
 
     # BUG-FE-1f: exponentiation (BinOp with Pow)
     def test_function_power_does_not_raise(self, dr_module, auto_df):
         """BUG-FE-1f: x ** 2 must not raise ValueError in server make_document."""
         doc = _exec_function_app(dr_module, "x ** 2")
-        assert len(doc.roots) > 0, "make_document must add roots for 'x ** 2'"
+        assert _count_glyph_renderers(doc) > 0, (
+            "the function layer for 'x ** 2' was not drawn"
+        )
 
     # BUG-FE-1g: unary negation (UnaryOp with USub)
     def test_function_unary_negation_does_not_raise(self, dr_module, auto_df):
         """BUG-FE-1g: -x must not raise ValueError in server make_document."""
         doc = _exec_function_app(dr_module, "-x")
-        assert len(doc.roots) > 0, "make_document must add roots for '-x'"
+        assert _count_glyph_renderers(doc) > 0, (
+            "the function layer for '-x' was not drawn"
+        )
 
     # BUG-FE-1h: complex nested expression
     def test_function_complex_expr_does_not_raise(self, dr_module, auto_df):
         """BUG-FE-1h: sin(x) + x**2 - 1 must not raise ValueError."""
         doc = _exec_function_app(dr_module, "sin(x) + x**2 - 1")
-        assert len(doc.roots) > 0, (
+        assert _count_glyph_renderers(doc) > 0, (
             "make_document must add roots for complex expression 'sin(x) + x**2 - 1'"
         )
 
@@ -4323,61 +4341,61 @@ class TestServerFunctionConstantExpressions:
 # ================================================================
 
 class TestServerFunctionNClamp:
-    """Regression suite for BUG-FE-2: function n option must be clamped 2..10000."""
+    """Regression suite for BUG-FE-2: function n option must be clamped 2..10000.
 
-    # BUG-FE-2a: generated source must contain the clamp expression
-    def test_function_n_clamp_in_source(self, dr_module, auto_df):
-        """BUG-FE-2a: generated server source must clamp n_pts to prevent resource exhaustion."""
-        import pandas as pd, numpy as np
-        df = pd.DataFrame({"x": np.linspace(0, 10, 20), "y": np.linspace(0, 10, 20)})
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "function", "expr": "x",
-                       "range": [0, 10], "options": {"n": "200"}}],
-            "graph_options": {"name": "g1"},
-        }])
-        source = _build_app(dr_module, df, spec)
-        # Generated code must clamp n_pts — check for any of the clamp patterns
-        has_clamp = (
-            "max(2, min(" in source
-            or "min(int(opts['n']), 10000)" in source
-            or "clamp" in source.lower()
-        )
-        assert has_clamp, (
-            "generated server code must clamp n_pts (e.g. max(2, min(int(opts['n']), 10000))) "
-            "to prevent resource exhaustion; fix: mirror standalone path"
-        )
+    These used to assert that the generated SOURCE contained `max(2, min(',
+    `10000' or the word `clamp'. Measured against the app as it is emitted
+    now, `max(2,' appears on two lines and `10000' on several, one of them
+    inside a copied helper that has nothing to do with function plots -- so
+    all three greps were satisfied by text the bug does not touch, and
+    deleting the clamp left them green.
 
-    # BUG-FE-2b: large n must be clamped — document loads without OOM
-    def test_function_large_n_does_not_exhaust(self, dr_module, auto_df):
-        """BUG-FE-2b: n=1000000 must not produce 1M-element arrays (clamped to 10000)."""
-        import pandas as pd, numpy as np, importlib.util, tempfile, os, inspect
+    They assert the grid length instead, which is what the clamp exists to
+    bound.
+    """
+
+    @staticmethod
+    def _fn_grid(dr_module, n_value):
+        """Length of the function layer's x grid for options {n: n_value}."""
+        import importlib.util
+        import os
+        import tempfile
+        import warnings
+        import numpy as np
+        import pandas as pd
         from bokeh.document import Document
+        from bokeh.models import ColumnDataSource
 
-        df = pd.DataFrame({"x": np.linspace(0, 10, 20), "y": np.linspace(0, 10, 20)})
+        df = pd.DataFrame({"x": np.linspace(0, 10, 20),
+                           "y": np.linspace(0, 10, 20)})
         spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "function", "expr": "x",
-                       "range": [0, 10], "options": {"n": "1000000"}}],
+            "plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
+                       "options": {}},
+                      {"type": "function", "expr": "x",
+                       "options": {"n": str(n_value), "range": "0 10"}}],
             "graph_options": {"name": "g1"},
         }])
         spec_path, data_path = _write_temp_files(df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py",
+                                            delete=False)
         out_f.close()
         try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            with open(out_f.name) as fh:
-                generated = fh.read()
-            # Generated source must have the clamp so n never reaches 1 000 000
-            assert "10000" in generated, (
-                "generated source must reference 10000 as the max clamp for n"
-            )
-            # Run make_document to confirm it completes in reasonable time
-            app_spec = importlib.util.spec_from_file_location("_tfc2", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            assert doc is not None, "make_document must complete without crashing for n=1000000"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                dr_module.ServerAppBuilder(spec_path, data_path).build(
+                    out_f.name)
+            ms = importlib.util.spec_from_file_location(
+                f"_nclamp_{abs(hash(str(n_value))) % 100000}", out_f.name)
+            mod = importlib.util.module_from_spec(ms)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                ms.loader.exec_module(mod)
+                doc = Document()
+                mod.make_document(doc)
+            for m in doc.select({"type": ColumnDataSource}):
+                if "x_fn" in m.data:
+                    return len(m.data["x_fn"])
+            return 0
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try:
@@ -4385,35 +4403,22 @@ class TestServerFunctionNClamp:
                 except OSError:
                     pass
 
-    # BUG-FE-2c: n below minimum (0, 1) must be clamped up to 2
-    def test_function_n_below_minimum_clamped_to_2(self, dr_module, auto_df):
-        """BUG-FE-2c: n=0 or n=1 must be clamped to 2 (minimum safe for linspace)."""
-        import pandas as pd, numpy as np
-        df = pd.DataFrame({"x": np.linspace(0, 10, 20), "y": np.linspace(0, 10, 20)})
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "function", "expr": "x",
-                       "range": [0, 10], "options": {"n": "1"}}],
-            "graph_options": {"name": "g1"},
-        }])
-        source = _build_app(dr_module, df, spec)
-        # Clamp must ensure n >= 2
-        assert "max(2," in source, (
-            "generated server code must clamp n_pts to minimum 2 (max(2, ...)) "
-            "so np.linspace never receives n < 2"
+    def test_an_ordinary_n_is_honoured(self, dr_module, auto_df):
+        """The control: without this, a clamp to a constant would pass."""
+        assert self._fn_grid(dr_module, 200) == 200
+
+    def test_a_huge_n_is_clamped(self, dr_module, auto_df):
+        """BUG-FE-2b: n(1000000) must not allocate a million points."""
+        n = self._fn_grid(dr_module, 1_000_000)
+        assert 0 < n <= 10_000, (
+            f"n(1000000) produced a {n}-point grid; the clamp is 10000"
         )
 
+    def test_n_below_the_minimum_is_raised_to_two(self, dr_module, auto_df):
+        """BUG-FE-2c: np.linspace needs at least two points."""
+        assert self._fn_grid(dr_module, 1) == 2
+        assert self._fn_grid(dr_module, 0) == 2
 
-# ================================================================
-# BUG-CLI-1: dash serve invokes unsupported renderer CLI mode/flags
-# Regression for: "_dash_serve sets sys.argv with --mode 'serve' plus
-# --port/--timeout flags, but dash_render.py only accepts
-# --mode {standalone,server} and does not define --port, --timeout, or
-# --no-browser."
-# Fix:
-#   (1) dash.ado: changed --mode serve → --mode server and
-#       --output serve → a real .py temp-file path
-#   (2) dash_render.py: added --port, --timeout, --no-browser to argparse
-# ================================================================
 
 class TestCLIServeFlagsAccepted:
     """Regression suite for BUG-CLI-1: dash_render.py must accept serve-mode flags.
@@ -4866,73 +4871,85 @@ class TestGraphQualifierPropagation:
 # ================================================================
 
 class TestServerHistogramBinClamp:
-    """Regression suite for BUG-HIST-1: server histogram bin() must be clamped 1..1000."""
+    """Regression suite for BUG-HIST-1: server histogram bin() clamped 1..1000.
 
-    def test_histogram_bin_clamp_in_source(self, dr_module, auto_df):
-        """BUG-HIST-1a: generated server source must clamp nbins to 1..1000."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
-                       "options": {"bin": "20"}}],
-            "graph_options": {"name": "g1"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "max(1, min(" in source or "min(int(" in source, (
-            "generated server source must clamp nbins with max(1, min(..., 1000)) "
-            "to prevent resource exhaustion"
-        )
+    These used to assert that the generated SOURCE contained `max(1, min(',
+    `_MAX_BINS', `1000' or the word `clamp'. Measured against the app as it
+    is emitted now: `max(1, min(' appears on exactly one line, and that line
+    is mband's band clamp, which has nothing to do with histograms; `1000'
+    appears on nine lines and `clamp' on six. So the greps were satisfied by
+    unrelated text and deleting the histogram clamp left them green.
 
-    def test_histogram_large_bin_does_not_exhaust(self, dr_module, auto_df):
-        """BUG-HIST-1b: bin=100000 must be clamped and document loads without OOM."""
-        import importlib.util, tempfile, os
+    They count bars instead, and read the warning, which is what the clamp
+    does.
+    """
+
+    @staticmethod
+    def _bars(dr_module, df, bin_value):
+        """(bar count, warning messages) for a served histogram with bin()."""
+        import importlib.util
+        import os
+        import tempfile
+        import warnings
         from bokeh.document import Document
+        from bokeh.models import ColumnDataSource
+
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
-                       "options": {"bin": "100000"}}],
+                       "options": {"bin": str(bin_value)}}],
             "graph_options": {"name": "g1"},
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py",
+                                            delete=False)
         out_f.close()
         try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            with open(out_f.name) as fh:
-                generated = fh.read()
-            assert "1000" in generated, "generated source must reference 1000 as max bin clamp"
-            app_spec = importlib.util.spec_from_file_location("_th2", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            assert doc is not None, "make_document must complete with bin=100000"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                dr_module.ServerAppBuilder(spec_path, data_path).build(
+                    out_f.name)
+            ms = importlib.util.spec_from_file_location(
+                f"_hclamp_{abs(hash(str(bin_value))) % 100000}", out_f.name)
+            mod = importlib.util.module_from_spec(ms)
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                ms.loader.exec_module(mod)
+                doc = Document()
+                mod.make_document(doc)
+                msgs = [str(w.message) for w in caught]
+            for m in doc.select({"type": ColumnDataSource}):
+                if "left" in m.data and "right" in m.data:
+                    return len(m.data["left"]), msgs
+            return 0, msgs
         finally:
             for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
 
-    def test_compute_histogram_clamps_bins(self, dr_module, auto_df):
-        """BUG-HIST-1c: generated _compute_histogram must clamp bins internally."""
-        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
-            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }]))
-        # The clamp lives in _histogram_grid now, which the generated app
-        # carries verbatim from the renderer; either spelling satisfies the
-        # requirement, which is that an enormous bin() cannot be applied.
-        assert "_MAX_BINS" in source or "clamp" in source.lower(), (
-            "the generated source must clamp the bin count"
+    def test_an_ordinary_bin_count_is_honoured(self, dr_module, auto_df):
+        """The control: a clamp to a constant would otherwise pass."""
+        n, _msgs = self._bars(dr_module, auto_df, 20)
+        assert n == 20
+
+    def test_a_huge_bin_count_is_clamped(self, dr_module, auto_df):
+        """BUG-HIST-1b: bin(100000) must not draw 100,000 bars."""
+        n, _msgs = self._bars(dr_module, auto_df, 100_000)
+        assert 0 < n <= 1000, (
+            f"bin(100000) drew {n} bars; the clamp is 1000"
         )
 
-    def test_histogram_bin_minimum_is_1(self, dr_module, auto_df):
-        """BUG-HIST-1d: bin=0 must be clamped to minimum 1."""
-        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
-            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
-                       "options": {"bin": "0"}}],
-            "graph_options": {"name": "g1"},
-        }]))
-        assert "max(1," in source, (
-            "generated server code must ensure bins >= 1 via max(1, ...)"
+    def test_the_clamp_is_reported(self, dr_module, auto_df):
+        """Clamping silently is how the user never learns what happened."""
+        _n, msgs = self._bars(dr_module, auto_df, 100_000)
+        assert any("bin" in m and "1000" in m for m in msgs), (
+            f"the bin count was clamped without a word: {msgs}"
         )
+
+    def test_a_bin_count_below_one_is_raised(self, dr_module, auto_df):
+        n, _msgs = self._bars(dr_module, auto_df, 0)
+        assert n >= 1
 
 
 # ================================================================
@@ -5035,65 +5052,101 @@ class TestDualLogScale:
 # ================================================================
 
 class TestFacetedAggregatePerFacetData:
-    """Regression suite for BUG-FAC-1: faceted aggregates must use per-facet data."""
+    """Regression suite for BUG-FAC-1: faceted aggregates use per-facet data.
 
-    def test_server_source_uses_agg_fdf_not_fdf(self, dr_module, auto_df):
-        """BUG-FAC-1a: generated server source must use agg_fdf (not fdf) for aggregates."""
-        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
-            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
-                       "options": {}}],
-            "graph_options": {"name": "g1", "by": "foreign"},
-        }]))
-        # The aggregate recompute loop must use agg_fdf, not global fdf
-        assert "agg_fdf" in source, (
-            "generated server source must use agg_fdf (per-facet data frame) "
-            "in aggregate recompute loop, not global fdf"
-        )
+    These used to assert that the generated source contained the identifiers
+    `agg_fdf' and `_fgvals', and that `make_document' produced at least one
+    root. Measured: collapsing the per-facet branch to `agg_fdf = fdf'
+    unconditionally -- the exact bug -- leaves both identifiers in the
+    emitted text and the root count unchanged, so all three stayed green.
 
-    def test_server_source_derives_facet_mask_for_agg(self, dr_module, auto_df):
-        """BUG-FAC-1b: generated server source must derive facet mask for aggregates."""
-        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
-            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight",
-                       "options": {}}],
-            "graph_options": {"name": "g1", "by": "foreign"},
-        }]))
-        # The facet-aware derive pattern for aggregates
-        assert "_fgvals" in source, \
-            "generated server source must use _fgvals for facet-aware aggregate recompute"
-        assert "agg_fdf" in source, \
-            "generated server source must assign agg_fdf per aggregate entry"
+    They compare the two facets' histogram bars instead. A histogram over
+    domestic cars and one over foreign cars are different histograms; if the
+    aggregate is recomputed from the global frame, both facets get the same
+    bars.
+    """
 
-    def test_server_faceted_histogram_generates_without_crash(self, dr_module, auto_df):
-        """BUG-FAC-1c: server app with by() and histogram must build and run without crash."""
-        import importlib.util, tempfile, os
+    @staticmethod
+    def _facet_histograms(dr_module, df):
+        """The `top' array of every histogram source in a faceted document."""
+        import importlib.util
+        import os
+        import tempfile
+        import warnings
         from bokeh.document import Document
+        from bokeh.models import ColumnDataSource
+
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "",
                        "options": {}}],
             "graph_options": {"name": "g1", "by": "foreign"},
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py",
+                                            delete=False)
         out_f.close()
         try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tfac1", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            assert len(doc.roots) > 0, \
-                "faceted histogram server app must build a document with roots"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                dr_module.ServerAppBuilder(spec_path, data_path).build(
+                    out_f.name)
+            ms = importlib.util.spec_from_file_location(
+                "_facetagg", out_f.name)
+            mod = importlib.util.module_from_spec(ms)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                ms.loader.exec_module(mod)
+                doc = Document()
+                mod.make_document(doc)
+            out = []
+            for m in doc.select({"type": ColumnDataSource}):
+                if "top" in m.data and len(m.data["top"]):
+                    out.append([float(v) for v in m.data["top"]])
+            return out
         finally:
             for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
 
+    def test_there_are_two_facets_to_compare(self, dr_module, auto_df):
+        """Guards the guard: one histogram would make the check vacuous."""
+        tops = self._facet_histograms(dr_module, auto_df)
+        assert len(tops) >= 2, (
+            f"a by(foreign) histogram produced {len(tops)} histogram "
+            f"source(s); the comparison below needs two"
+        )
 
-# ---------------------------------------------------------------------------
-# BUG-FILT-OR: Server build drops additional filter() clauses joined with ||
-# ---------------------------------------------------------------------------
+    def test_each_facet_is_binned_from_its_own_rows(self, dr_module, auto_df):
+        """BUG-FAC-1: the two facets must not hold identical bars."""
+        tops = self._facet_histograms(dr_module, auto_df)
+        assert tops[0] != tops[1], (
+            "both facets hold the same histogram, so the aggregate was "
+            "recomputed from the global frame rather than each facet's rows"
+        )
+
+    def test_a_facets_bars_match_its_own_data(self, dr_module, auto_df):
+        """The bars must be the histogram of that facet, not of anything."""
+        import numpy as np
+        tops = self._facet_histograms(dr_module, auto_df)
+        expected = []
+        for _key, grp in auto_df.groupby("foreign"):
+            arr = grp["mpg"].dropna().to_numpy(dtype=float)
+            edges, ymode = dr_module.GlyphMapper._histogram_grid(arr, {})
+            counts, _ = np.histogram(arr, bins=edges)
+            expected.append(
+                [float(v) for v in
+                 dr_module._histogram_heights(counts, edges, ymode)])
+        for want in expected:
+            assert any(
+                len(want) == len(got)
+                and all(abs(a - b) < 1e-9 for a, b in zip(want, got))
+                for got in tops), (
+                f"no facet's bars match the histogram of its own rows: "
+                f"wanted {want[:4]}..., got {[t[:4] for t in tops]}"
+            )
+
 
 class TestServerFilterOrClauses:
     """Regression tests for BUG-FILT-OR: ServerAppBuilder must parse || -joined
@@ -5189,93 +5242,16 @@ class TestServerFilterOrClauses:
 
 
 # ---------------------------------------------------------------------------
-# BUG-SHELL: saving() path shell-metacharacter hardening
+# BUG-12: saving() path shell-metacharacter hardening
+#
+# This was covered by `_validate_saving_path', a Python re-implementation of
+# _dash_validate_path, plus twelve tests that called it. Deleting
+# _dash_validate_path from dash.ado entirely left all twelve green, and the
+# mirror had already drifted from the real validator -- it rejected '(' and
+# ')', which dash.ado accepts. The real validator is certified from Stata in
+# test/test_path_validation.cscript.
 # ---------------------------------------------------------------------------
 
-def _validate_saving_path(fpath: str) -> None:
-    """Python re-implementation of Stata's _dash_validate_path logic.
-
-    Raises ValueError if fpath contains '..' (path traversal), does not end
-    in '.html', or contains any shell metacharacter that could be exploited
-    in ``shell open/start/xdg-open "<path>"``.
-    """
-    import re
-    if ".." in fpath:
-        raise ValueError("path traversal not allowed")
-    if not fpath.lower().endswith(".html"):
-        raise ValueError("path must end in .html")
-    # Shell metacharacters: ; & | < > ( ) backtick dollar newline CR tab
-    _SHELL_BAD = set(";&|<>()\x60\x24\n\r\t")
-    for ch in fpath:
-        if ch in _SHELL_BAD:
-            raise ValueError(f"disallowed character in path: {ch!r}")
-
-
-class TestSavingPathHardening:
-    """Regression tests for BUG-SHELL: saving() path must not allow shell metacharacters."""
-
-    def test_normal_path_accepted(self):
-        """BUG-SHELL-1a: a normal absolute path ending in .html must be accepted."""
-        _validate_saving_path("/tmp/my_dashboard.html")  # must not raise
-
-    def test_path_with_spaces_accepted(self):
-        """BUG-SHELL-1b: spaces in paths are permitted (valid on all OSes)."""
-        _validate_saving_path("/tmp/my dashboard.html")  # must not raise
-
-    def test_path_traversal_rejected(self):
-        """BUG-SHELL-1c: path containing '..' must be rejected."""
-        with pytest.raises(ValueError, match="path traversal"):
-            _validate_saving_path("/tmp/../etc/passwd.html")
-
-    def test_non_html_rejected(self):
-        """BUG-SHELL-1d: path not ending in .html must be rejected."""
-        with pytest.raises(ValueError, match=".html"):
-            _validate_saving_path("/tmp/dashboard.py")
-
-    def test_semicolon_in_path_rejected(self):
-        """BUG-SHELL-1e: semicolon must be rejected (command chaining)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo;rm -rf /.html")
-
-    def test_ampersand_in_path_rejected(self):
-        """BUG-SHELL-1f: ampersand must be rejected (background execution)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo&id.html")
-
-    def test_pipe_in_path_rejected(self):
-        """BUG-SHELL-1g: pipe must be rejected (output piping)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo|cat /etc/passwd.html")
-
-    def test_backtick_in_path_rejected(self):
-        """BUG-SHELL-1h: backtick must be rejected (command substitution)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo`id`.html")
-
-    def test_dollar_in_path_rejected(self):
-        """BUG-SHELL-1i: dollar sign must be rejected (variable expansion)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo$(touch /tmp/pwned).html")
-
-    def test_angle_bracket_in_path_rejected(self):
-        """BUG-SHELL-1j: < and > must be rejected (redirection)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo</dev/urandom.html")
-
-    def test_newline_in_path_rejected(self):
-        """BUG-SHELL-1k: newline in path must be rejected (command injection)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo\nrm -rf /.html")
-
-    def test_paren_in_path_rejected(self):
-        """BUG-SHELL-1l: parenthesis must be rejected (subshell invocation)."""
-        with pytest.raises(ValueError, match="disallowed character"):
-            _validate_saving_path("/tmp/foo(bar).html")
-
-
-# ---------------------------------------------------------------------------
-# BUG-REGEX: Generated server unsafe-token regex uses word boundaries (\b)
-# ---------------------------------------------------------------------------
 
 class TestUnsafeTokenRegexWordBoundaries:
     """Regression tests for BUG-REGEX: _UNSAFE_G and _UNSAFE_BY in generated
@@ -5377,6 +5353,59 @@ class TestUnsafeTokenRegexWordBoundaries:
 # BUG-IQUAL: Immediate render jsonio qualifier wrongly pre-filters multi-plot data
 # ---------------------------------------------------------------------------
 
+class TestImmediateRenderExportsEveryRow:
+    """BUG-14's fix is an ABSENCE, and nothing asserted it.
+
+    `_dash_render_immediate' used to pass the FIRST plot's if/in qualifier to
+    `jsonio out', so a two-layer command with different qualifiers exported
+    only the rows the first layer wanted and the second drew from a frame
+    that no longer held its rows. The fix was to export everything and let
+    the renderer apply each layer's qualifier.
+
+    The four tests that guarded it built a DashRenderer and read its frame.
+    None of them read dash.ado, so re-adding the qualifier to the export
+    would have left all four green: the defect is in the Stata half and the
+    tests only ever exercised the Python half.
+    """
+
+    @staticmethod
+    def _immediate_jsonio_call():
+        import os
+        import re as _re
+        with open(os.path.join(os.path.dirname(__file__), "..", "dash.ado"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        i = src.index("program define _dash_render_immediate")
+        j = src.index("\nend", i)
+        body = src[i:j]
+        k = body.index("jsonio out")
+        # The command continues while the line ends with ///
+        out, rest = [], body[k:].split("\n")
+        for line in rest:
+            out.append(line)
+            if not line.rstrip().endswith("///"):
+                break
+        return " ".join(out)
+
+    def test_the_call_was_found(self):
+        """Guards the guard: a moved call would make the check vacuous."""
+        call = self._immediate_jsonio_call()
+        assert call.startswith("jsonio out"), call
+        assert "filenm(" in call, call
+
+    def test_the_export_carries_no_qualifier(self):
+        import re as _re
+        call = self._immediate_jsonio_call()
+        assert not _re.search(r"\bif\b", call), (
+            f"_dash_render_immediate exports with an `if' qualifier, so a "
+            f"second plot layer with a different qualifier draws from a "
+            f"frame that no longer holds its rows: {call}"
+        )
+        assert not _re.search(r"\bin\b(?!lm)", call), (
+            f"_dash_render_immediate exports with an `in' qualifier: {call}"
+        )
+
+
 class TestImmediateRenderQualifierHandling:
     """Regression tests for BUG-IQUAL: immediate render must not pre-filter
     jsonio with the first plot's qualifier when multiple plots have different
@@ -5472,118 +5501,16 @@ class TestImmediateRenderQualifierHandling:
 
 
 # ---------------------------------------------------------------------------
-# BUG-EXCL: dash build validates only first exclude() group
+# BUG-15: filter() exclude() validation across ALL groups, not just the first
+#
+# This was covered by `_validate_filter_exclude_names', a Python
+# re-implementation of the Stata validation loop, plus six tests that called
+# it and a seventh that asserted only that two variable names appeared in the
+# generated source. Reverting dash.ado's loop to its original single-group
+# form left them all green. The behaviour is certified from Stata instead, in
+# test/test_e2e_filters.cscript (FL-EX-1).
 # ---------------------------------------------------------------------------
 
-def _validate_filter_exclude_names(filter_str: str, registry: set) -> list:
-    """Python re-implementation of the Stata filter exclude() validation loop.
-
-    Returns a list of unrecognised exclude names, or raises nothing if all
-    names are in the registry.  Mirrors the updated Stata code that iterates
-    over ALL exclude() groups in the (||/;-joined) filter string.
-    """
-    import re as _re
-    unknown = []
-    remaining = filter_str
-    while True:
-        pos = remaining.find("exclude(")
-        if pos < 0:
-            break
-        inner = remaining[pos + 8:]
-        end = inner.find(")")
-        if end < 0:
-            break  # malformed
-        names = inner[:end].split()
-        for name in names:
-            if name not in registry:
-                unknown.append(name)
-        remaining = inner[end + 1:]
-    return unknown
-
-
-class TestFilterExcludeValidationAllGroups:
-    """Regression tests for BUG-EXCL: build must validate ALL exclude() groups
-    in a multi-filter spec, not just the first one."""
-
-    def test_no_exclude_passes(self):
-        """BUG-EXCL-1a: filter string with no exclude() must validate cleanly."""
-        unknown = _validate_filter_exclude_names(
-            "foreign, type(dropdown)", {"g1", "g2"}
-        )
-        assert unknown == [], "no exclude() should produce no unknown names"
-
-    def test_single_valid_exclude_passes(self):
-        """BUG-EXCL-1b: single exclude() with known names must validate cleanly."""
-        unknown = _validate_filter_exclude_names(
-            "foreign, type(dropdown) exclude(g1)", {"g1", "g2"}
-        )
-        assert unknown == [], "valid single exclude() must pass"
-
-    def test_single_invalid_exclude_fails(self):
-        """BUG-EXCL-1c: single exclude() with unknown name must be flagged."""
-        unknown = _validate_filter_exclude_names(
-            "foreign, type(dropdown) exclude(g99)", {"g1", "g2"}
-        )
-        assert "g99" in unknown, "unknown exclude name must be detected"
-
-    def test_second_exclude_group_validated(self):
-        """BUG-EXCL-1d: second exclude() group after || must also be validated."""
-        # Only first group has known names; second has unknown
-        unknown = _validate_filter_exclude_names(
-            "foreign, type(dropdown) exclude(g1) || weight, type(range) exclude(g99)",
-            {"g1", "g2"}
-        )
-        assert "g99" in unknown, \
-            "second exclude() group must be validated (not just first)"
-
-    def test_both_groups_validated_when_both_invalid(self):
-        """BUG-EXCL-1e: all exclude() groups must be validated — both unknown names reported."""
-        unknown = _validate_filter_exclude_names(
-            "foreign, type(dropdown) exclude(badA) || weight, type(range) exclude(badB)",
-            {"g1", "g2"}
-        )
-        assert "badA" in unknown, "first exclude() group's unknown name must appear"
-        assert "badB" in unknown, "second exclude() group's unknown name must appear"
-
-    def test_three_exclude_groups_all_checked(self):
-        """BUG-EXCL-1f: three || -joined filters with exclude() are all checked."""
-        unknown = _validate_filter_exclude_names(
-            "a, type(dropdown) exclude(g1) || b, type(range) exclude(g2) || c, type(range) exclude(zz)",
-            {"g1", "g2"}
-        )
-        assert "zz" in unknown, "third exclude() group must be validated"
-        assert "g1" not in unknown, "known name in first group must not be flagged"
-        assert "g2" not in unknown, "known name in second group must not be flagged"
-
-    def test_server_builder_generates_exclude_metadata_for_all_filters(
-            self, dr_module, auto_df):
-        """BUG-EXCL-1g: generated server source must carry exclude metadata for every filter."""
-        spec = _make_spec_json(
-            graphs=[
-                {"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                            "options": {}}], "graph_options": {"name": "g1"}},
-                {"plots": [{"type": "scatter", "yvar": "price", "xvar": "weight",
-                            "options": {}}], "graph_options": {"name": "g2"}},
-            ],
-            build_options={
-                "layout": "auto", "link": "",
-                "filter": (
-                    "foreign, type(dropdown), exclude(g2) || "
-                    "weight, type(range), exclude(g1)"
-                ),
-                "theme": "default", "title": "T", "subtitle": "", "registry": "g1 g2",
-                "mode": "server", "port": "5006",
-            }
-        )
-        src = _build_app(dr_module, auto_df, spec)
-        # Both filter specs should be present in the generated source
-        assert "'foreign'" in src, "first filter var must appear in generated source"
-        assert "'weight'" in src, "second filter var must appear in generated source"
-
-
-# ---------------------------------------------------------------------------
-# BUG-CBEXCL: Filter callback exclude() binds to wrong widget when var is missing
-# ---------------------------------------------------------------------------
 
 class TestFilterCallbackExcludeAlignment:
     """Regression tests for BUG-CBEXCL: when a filter spec is skipped because
@@ -5871,123 +5798,16 @@ class TestLogScalePreservesStyle:
 
 
 # ---------------------------------------------------------------------------
-# BUG-FILT-COMMA: filter() extraction fails when preceded by comma (no space)
+# BUG-19: multiple filter() extraction when the first option follows the comma
+#
+# This was covered by `_simulate_extract_filters', a Python re-implementation
+# of the Mata word-boundary check, plus six tests that called it and a
+# seventh whose own comment said it simulated what _dash_build would store.
+# None of them ran any Stata, so reverting _dash_extract_filters left every
+# one green. The behaviour is certified from Stata instead, in
+# test/test_e2e_filters.cscript (FL-CP-1).
 # ---------------------------------------------------------------------------
 
-def _simulate_extract_filters(cmd_str: str) -> tuple:
-    """Python re-implementation of Mata _dash_extract_filters boundary logic.
-
-    Accepts comma, space, or tab as valid word boundaries before filter/filt/filte.
-    Returns (filter_out, remaining) where filter_out is ||-joined filter specs.
-    """
-    import re as _re
-    raw = cmd_str
-    lraw = raw.lower()
-    n = len(raw)
-    result_parts = []
-    remaining = []
-    i = 0
-    while i < n:
-        matched = 0
-        klen = 0
-        for kw in ("filter", "filte", "filt"):
-            if lraw[i:i+len(kw)] == kw:
-                matched = 1
-                klen = len(kw)
-                break
-        if matched:
-            prev_ch = raw[i-1] if i > 0 else ""
-            before_ok = (i == 0 or prev_ch in (" ", ",", "\t"))
-            if before_ok:
-                j = i + klen
-                # Skip spaces before "("
-                while j < n and raw[j] == " ":
-                    j += 1
-                if j < n and raw[j] == "(":
-                    depth = 1
-                    k = j + 1
-                    while k < n and depth > 0:
-                        if raw[k] == "(":
-                            depth += 1
-                        elif raw[k] == ")":
-                            depth -= 1
-                        k += 1
-                    if depth == 0:
-                        inner = raw[j+1:k-1].strip()
-                        result_parts.append(inner)
-                        i = k
-                        while i < n and raw[i] == " ":
-                            i += 1
-                        continue
-        remaining.append(raw[i])
-        i += 1
-    return " || ".join(result_parts), "".join(remaining).strip()
-
-
-class TestFilterExtractionCommaPrefix:
-    """Regression tests for BUG-FILT-COMMA: _dash_extract_filters must recognise
-    filter() when preceded by a comma (standard Stata option syntax)."""
-
-    def test_space_separated_filter_extracted(self):
-        """BUG-FILT-COMMA-1a: filter preceded by space must be extracted."""
-        result, _ = _simulate_extract_filters("varname filter(foreign, type(dropdown))")
-        assert "foreign" in result, "space-separated filter must be extracted"
-
-    def test_comma_no_space_filter_extracted(self):
-        """BUG-FILT-COMMA-1b: filter preceded by comma (no space) must be extracted."""
-        result, _ = _simulate_extract_filters("varname,filter(foreign, type(dropdown))")
-        assert "foreign" in result, \
-            "comma-prefixed filter (,filter) must be extracted — this is standard Stata syntax"
-
-    def test_comma_space_filter_extracted(self):
-        """BUG-FILT-COMMA-1c: filter preceded by ', ' (comma+space) must be extracted."""
-        result, _ = _simulate_extract_filters("varname, filter(foreign, type(dropdown))")
-        assert "foreign" in result, "', filter' must be extracted"
-
-    def test_two_filters_comma_prefix(self):
-        """BUG-FILT-COMMA-1d: two comma-prefixed filters must both be extracted."""
-        result, _ = _simulate_extract_filters(
-            "var,filter(foreign, type(dropdown)),filter(weight, type(range))"
-        )
-        assert "foreign" in result, "first comma-prefixed filter must be extracted"
-        assert "weight" in result, "second comma-prefixed filter must be extracted"
-        assert "||" in result, "multiple filters must be joined with ||"
-
-    def test_filter_substr_in_varname_not_extracted(self):
-        """BUG-FILT-COMMA-1e: 'filter' as part of a varname must not be extracted."""
-        result, remaining = _simulate_extract_filters("my_filtervariable other_var")
-        assert result == "", "'filter' substring in varname must not match word boundary"
-        assert "my_filtervariable" in remaining
-
-    def test_comma_filter_remaining_is_clean(self):
-        """BUG-FILT-COMMA-1f: after extraction, the filter() group must be removed from remaining."""
-        _, remaining = _simulate_extract_filters("varname,filter(foreign, type(dropdown))")
-        assert "filter(" not in remaining.lower(), \
-            "filter() group must be removed from remaining text"
-        assert "varname" in remaining, "non-filter tokens must remain in remaining"
-
-    def test_server_build_accepts_comma_filter_spec(self, dr_module, auto_df):
-        """BUG-FILT-COMMA-1g: server builder must produce filter widget for comma-prefixed spec."""
-        # Simulate what _dash_build would store in build_options.filter after extraction:
-        # the inner content of filter() — in both space-before and comma-before cases
-        # the inner content would be the same ("foreign, type(dropdown)")
-        spec = _make_spec_json(
-            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                                "options": {}}], "graph_options": {"name": "g1"}}],
-            build_options={
-                "layout": "auto", "link": "",
-                "filter": "foreign, type(dropdown)",  # inner content, already extracted
-                "theme": "default", "title": "T", "subtitle": "", "registry": "g1",
-                "mode": "server", "port": "5006",
-            }
-        )
-        src = _build_app(dr_module, auto_df, spec)
-        assert "foreign" in src, "filter var must appear in generated server source"
-
-
-# ---------------------------------------------------------------------------
-# BUG-MTSRC: Standalone filter callbacks only update single source
-# ---------------------------------------------------------------------------
 
 class TestFilterUpdatesAllSources:
     """Regression tests for BUG-MTSRC: filter callbacks in unlinked standalone
@@ -9172,11 +8992,25 @@ class TestSemicolonFilterSerialization:
     # ------------------------------------------------------------------
 
     def test_ado_contains_semicolon_normalization(self):
-        """BUG-45-1a: dash.ado filter loop must normalize semicolons to '||'."""
+        """BUG-45-1a: dash.ado's filter loop normalises semicolons to '||'.
+
+        This used to AND three substrings -- 'subinstr', '";"' and '"||"' --
+        matched anywhere in a 2,600-line file. `subinstr' occurs nine times
+        and `"||"' occurs again on the very next line, in the loop that
+        CONSUMES the normalised string, so deleting the normalisation left
+        all three present and the test green. It reads the one statement
+        now.
+        """
+        import re as _re
         with open(os.path.join(_DASH_DIR, "dash.ado"), encoding="utf-8") as f:
             ado_text = f.read()
-        assert 'subinstr' in ado_text and '";"' in ado_text and '"||"' in ado_text, (
-            "dash.ado should convert semicolons to '||' via subinstr before iterating"
+        i = ado_text.index("local _filt_work")
+        j = ado_text.index("local _filt_done", i)
+        block = ado_text[i:j]
+        assert _re.search(r'subinstr\([^)]*";"\s*,\s*"\|\|"', block), (
+            "the filter loop no longer converts ';' to '||' before "
+            "splitting, so only the first of several semicolon-separated "
+            "filters is built:\n" + block
         )
 
     # ------------------------------------------------------------------
@@ -9473,14 +9307,34 @@ class TestServeUniqueAppPath:
     # ------------------------------------------------------------------
     # BUG-47-1a: dash.ado no longer contains the fixed constant filename
     # ------------------------------------------------------------------
-    def test_BUG_47_1a_fixed_constant_removed_from_ado(self):
-        """dash.ado must not contain the hard-coded string 'dash_serve_app.py'."""
+    def test_BUG_47_1a_the_served_app_path_is_a_tempfile(self):
+        """`dash serve' must name its app file with tempfile, not a constant.
+
+        This used to assert only that one literal -- 'dash_serve_app.py' --
+        was absent from dash.ado, so any OTHER fixed filename reintroduced
+        the race and left the test green. It asserts the positive property
+        now: the path comes from `tempfile' and nothing assigns a literal to
+        it.
+        """
+        import re as _re
         ado_path = os.path.join(os.path.dirname(__file__), "..", "dash.ado")
         with open(ado_path, "r", encoding="utf-8") as fh:
             content = fh.read()
-        assert "dash_serve_app.py" not in content, (
-            "dash.ado still references the fixed filename 'dash_serve_app.py'; "
-            "the tempfile-based unique path was not applied (BUG-47 regression)."
+        # Anchored on the end of the line: `program define _dash_serve_spec'
+        # comes FIRST in the file, so a bare index() reads the wrong body.
+        m = _re.search(r"^program define _dash_serve\s*$", content,
+                       _re.MULTILINE)
+        assert m, "program _dash_serve not found"
+        i = m.start()
+        j = content.index("\nend", i)
+        body = content[i:j]
+        assert _re.search(r"tempfile\s+[^\n]*serve_app", body), (
+            "_dash_serve does not take its app path from tempfile, so two "
+            "sessions serving at once overwrite each other's file"
+        )
+        bad = _re.findall(r'local\s+serve_app\w*\s*[=]?\s*"[^"`]+"', body)
+        assert not bad, (
+            f"a literal filename is assigned to the served app path: {bad}"
         )
 
     # ------------------------------------------------------------------

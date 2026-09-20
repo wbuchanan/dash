@@ -126,6 +126,49 @@ local found_all = max(`found_all', r(found))
 assert `found_all' == 1
 display "P2-75 PASS: 'All' option present in filter widget HTML"
 
+// ================================================================
+// FL-EX-1 — exclude() is validated on EVERY filter group, not the first
+// ================================================================
+// This was covered only by a Python re-implementation of the Stata
+// validation loop in test/test_server.py, which meant reverting the loop to
+// its original single-group form left the tests green.  It is asserted here,
+// against the real command.
+dash clear
+sysuse auto, clear
+dash scatter mpg weight, name(gA)
+
+tempfile exfile
+capture dash build, saving("`exfile'.html") replace ///
+    filter(weight, type(range) exclude(gA)) ///
+    filter(mpg, type(range) exclude(nosuchgraph))
+assert _rc == 198
+display "FL-EX-1 PASS: an unknown exclude() name in the SECOND group is rejected"
+
+// The control: the same command with both names known must succeed, or the
+// assertion above would pass on any error at all.
+capture dash build, saving("`exfile'2.html") replace ///
+    filter(weight, type(range) exclude(gA)) ///
+    filter(mpg, type(range) exclude(gA))
+assert _rc == 0
+display "FL-EX-1 PASS: both groups naming a real graph is accepted"
+
+// ================================================================
+// FL-CP-1 — filter() is extracted when it follows the comma directly
+// ================================================================
+// `dash build,filter(...)' with no space after the comma.  The Mata
+// extractor's word-boundary check is what makes this work, and it too was
+// covered only by a Python simulation.
+dash clear
+sysuse auto, clear
+dash scatter mpg weight, name(gB)
+
+tempfile cpfile
+capture dash build,saving("`cpfile'.html") replace filter(foreign, type(dropdown))
+assert _rc == 0
+cert_file_has "`cpfile'.html", needle("Select")
+assert r(found) == 1
+display "FL-CP-1 PASS: filter() directly after the comma builds its widget"
+
 // ----------------------------------------------------------------
 // Cleanup
 // ----------------------------------------------------------------
