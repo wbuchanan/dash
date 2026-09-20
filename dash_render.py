@@ -10043,7 +10043,33 @@ class DashRenderer:
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=_plot_view, color_idx=pi)
 
-            _plot_renderers.append((plot, list(fig.renderers[_r_before:])))
+            _layer_renderers = list(fig.renderers[_r_before:])
+            _plot_renderers.append((plot, _layer_renderers))
+
+            # A layer that drew nothing used to say nothing: `pci' and
+            # `pcscatter' each produced a titled, axed, empty plot region
+            # with rc 0, and the conformance corpus could not see it because
+            # every probe in it appends name(), which registers the spec and
+            # never renders one.
+            #
+            # Reported only when the graph's own data is non-empty: an `if'
+            # qualifier that selects no rows is the user's doing, not a
+            # broken layer, and the optional-package smoothers (lowess,
+            # mspline) already name the package they are missing.
+            try:
+                _rows_here = len(source_for_plot.data.get(
+                    next(iter(source_for_plot.data), ""), []))
+            except (AttributeError, TypeError, StopIteration):
+                _rows_here = 0
+            if _rows_here and not self._layer_drew_anything(_layer_renderers):
+                warnings.warn(
+                    f"dash: graph "
+                    f"{graph_opts.get('name', '') or graph_spec.get('name', '?')!r}"
+                    f" plot {pi + 1} "
+                    f"({ptype}) drew nothing from {_rows_here:,} "
+                    f"observations.",
+                    UserWarning, stacklevel=2,
+                )
 
             # Assign secondary axis range names to newly added renderers
             if _use_y2 or _use_x2:
@@ -10257,6 +10283,33 @@ class DashRenderer:
                                                 mode=_fb_mode))
 
         return fig
+
+    @staticmethod
+    def _layer_drew_anything(renderers: list) -> bool:
+        """Did this plot layer put any data on the figure?
+
+        A layer may add a renderer whose source is empty -- that is how a
+        rejected ``function`` expression and an unsupported plot type both
+        appear -- so the renderer count alone is not the question.
+
+        Args:
+            renderers: The renderers this layer added, in order.
+
+        Returns:
+            True if any of them carries at least one value.
+        """
+        if not renderers:
+            return False
+        for _r in renderers:
+            _src = getattr(_r, "data_source", None)
+            if _src is None:
+                return True          # an annotation, not a data glyph
+            try:
+                if any(len(_v) for _v in _src.data.values()):
+                    return True
+            except (AttributeError, TypeError):
+                return True          # not inspectable: assume it drew
+        return False
 
     def _add_glyph(
         self,
@@ -12153,6 +12206,26 @@ class DashRenderer:
         kpi_names:  list[str] = list(self.kpi_divs.keys())
         for g in graphs:
             all_names.append(g.get("graph_options", {}).get("name", ""))
+
+        # Every registered graph must have become a figure. A graph that is
+        # dropped between the registry and the dashboard leaves no trace at
+        # all -- the file is written, rc is 0, and the user counts the
+        # panels to find out. This is the third of the three assertions
+        # test_conformance.cscript makes across the corpus.
+        _want = {str(_g.get("graph_options", {}).get("name", "")
+                     or _g.get("name", "") or "")
+                 for _g in graphs}
+        _want.discard("")
+        # A by() graph becomes one figure per facet panel, keyed by facet,
+        # and _facet_map records the owner. Those are present, not dropped.
+        _built = set(self.figures) | set(getattr(self, "_facet_map", {}))
+        _missing = sorted(_want - _built)
+        if _missing:
+            warnings.warn(
+                f"dash: {len(_missing)} registered graph(s) did not reach "
+                f"the dashboard: {', '.join(_missing)}.",
+                UserWarning, stacklevel=2,
+            )
 
         return self._assemble_layout(
             graphs=graphs,

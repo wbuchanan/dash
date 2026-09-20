@@ -691,6 +691,31 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 25. test_conformance.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_conformance.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_conformance.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _cflog
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_conformance.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_conformance.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_conformance.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

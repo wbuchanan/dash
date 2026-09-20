@@ -1,0 +1,186 @@
+*! test_conformance.cscript
+*! The drop-in claim, proved by RENDERING rather than by parsing.
+*!
+*! Usage:  do test/test_conformance.cscript
+*! Version: 1.0.0  20sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! dash.sthlp says a twoway command copied into dash runs.  The 299-command
+*! corpus in test_option_surface.cscript checks that claim at the -syntax-
+*! layer and no further: _dsp_probe appends name() to every probe, which
+*! registers the specification and never renders it.  A command can be
+*! accepted with rc 0 and then draw nothing, and that corpus is structurally
+*! incapable of noticing -- which is exactly what `pci' and `pcscatter' did,
+*! for as long as the package has existed, without one test failing.
+*!
+*! So this script registers a corpus covering every plot type dash advertises
+*! and every option family, then renders all of it in ONE `dash build', and
+*! asserts three things:
+*!
+*!   1. no command is rejected          -- rc 0 on every registration
+*!   2. no graph is silently dropped    -- every name reaches the output
+*!   3. no layer silently draws nothing -- the renderer reports an empty
+*!                                         layer by graph and plot number,
+*!                                         and the log must hold none
+*!
+*! One build renders the whole corpus, so the cost is one Python invocation
+*! rather than one per command.
+*!
+*! lowess is deliberately absent: it needs the OPTIONAL statsmodels package,
+*! and on a machine without it the layer is drawn empty on purpose, with a
+*! warning naming the package.  test/test_server_optional_deps.py owns that
+*! case.
+
+cscript "dash conformance: the corpus renders" adodir ".."
+
+adopath ++ ".."
+
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+global dash_nobrowser 1
+
+capture program drop cert_file_has
+quietly do "cert_helpers.do"
+
+sysuse auto, clear
+generate double lo   = mpg - 3
+generate double hi   = mpg + 3
+generate double w2   = weight + 250
+generate double m2   = mpg + 4
+generate int    t    = _n
+tsset t
+
+dash clear
+
+local n_cmd  = 0
+local n_bad  = 0
+local n_badn = 0
+local names  ""
+
+// ----------------------------------------------------------------
+// C-01 — register the corpus.
+// ----------------------------------------------------------------
+// The commands live in test/fixtures/conformance_corpus.txt, one per line,
+// so they can be read and added to without touching this script.
+//
+// The line is expanded with `macval' straight into the command rather than
+// through a helper program or a global: a global whose value is a command
+// carrying commas and parentheses does not survive the round trip, and the
+// loop fails to parse.
+//
+// A command with no options of its own needs a comma before name(); one
+// that already has options needs only a space, or Stata reads name() as
+// part of the varlist and answers r(101).
+tempname fh
+file open `fh' using "fixtures/conformance_corpus.txt", read text
+file read `fh' line
+while r(eof) == 0 {
+    if `"`macval(line)'"' != "" {
+        local ++n_cmd
+        local id "c`n_cmd'"
+        if strpos(`"`macval(line)'"', ",") == 0 {
+            capture noisily dash `macval(line)', name(`id')
+        }
+        else {
+            capture noisily dash `macval(line)' name(`id')
+        }
+        if _rc != 0 {
+            local ++n_bad
+            display as error `"C-01 REJECTED [`id'] rc=`=_rc': `macval(line)'"'
+        }
+        else {
+            local names "`names' `id'"
+        }
+    }
+    file read `fh' line
+}
+file close `fh'
+
+
+display ""
+display "C-01: `n_cmd' commands registered, `n_bad' rejected"
+assert `n_cmd' >= 55
+assert `n_bad' == 0
+display "C-01 PASS: every corpus command was accepted"
+
+// ----------------------------------------------------------------
+// C-02 — render the whole corpus in one build, capturing the log.
+// ----------------------------------------------------------------
+tempfile outhtml
+tempfile buildlog
+capture log close _cflog
+quietly log using "`buildlog'", replace text name(_cflog)
+capture noisily dash build, saving("`outhtml'.html") replace
+local build_rc = _rc
+capture quietly log close _cflog
+
+assert `build_rc' == 0
+display "C-02 PASS: the corpus rendered (rc 0)"
+
+// ----------------------------------------------------------------
+// C-03 — no layer drew nothing.
+// ----------------------------------------------------------------
+// The renderer names an empty layer by graph and plot number.  Anything
+// reported here is a command dash accepted and then did not draw.
+tempname lg
+local n_empty = 0
+local emptylist ""
+file open `lg' using "`buildlog'", read text
+file read `lg' line
+while r(eof) == 0 {
+    if strpos(`"`macval(line)'"', "drew nothing") > 0 {
+        local ++n_empty
+        local emptylist `"`emptylist' | `macval(line)'"'
+    }
+    file read `lg' line
+}
+file close `lg'
+
+if `n_empty' > 0 {
+    display as error "C-03 FAIL: `n_empty' layer(s) drew nothing:"
+    display as error `"`emptylist'"'
+}
+assert `n_empty' == 0
+display "C-03 PASS: every layer in the corpus drew something"
+
+// ----------------------------------------------------------------
+// C-04 — no graph was silently dropped.
+// ----------------------------------------------------------------
+// The renderer names any registered graph that did not become a figure.
+// A graph dropped between the registry and the dashboard leaves no other
+// trace: the file is written, rc is 0, and the user counts the panels.
+tempname lg2
+local n_drop = 0
+local droplist ""
+file open `lg2' using "`buildlog'", read text
+file read `lg2' line
+while r(eof) == 0 {
+    if strpos(`"`macval(line)'"', "did not reach") > 0 {
+        local ++n_drop
+        local droplist `"`droplist' | `macval(line)'"'
+    }
+    file read `lg2' line
+}
+file close `lg2'
+
+if `n_drop' > 0 {
+    display as error "C-04 FAIL: a registered graph was dropped:"
+    display as error `"`droplist'"'
+}
+assert `n_drop' == 0
+
+// And the file is real, not an empty shell.
+capture confirm file "`outhtml'.html"
+assert _rc == 0
+checksum "`outhtml'.html"
+assert r(filelen) > 100000
+display "C-04 PASS: all `n_cmd' graphs reached the rendered dashboard"
+
+dash clear
+
+display ""
+display "All conformance tests PASSED (`n_cmd' commands rendered)."

@@ -1008,6 +1008,22 @@ program define _dash_process_segment, rclass
         local yvar1 = word("`vl'", 1)
         local yvar2 = word("`vl'", 2)
         local xvar  = word("`vl'", 3)
+        // `twoway tsrline lo hi' on tsset data is legal Stata and takes the
+        // time variable as x.  The tsset fallback existed only on the
+        // two-variable path, which tsrline never reaches -- it is a range
+        // type and so parsed with 2 or 3 variables -- so the x column name
+        // stayed empty and the render aborted asking for a time variable
+        // the user had already set.
+        if "`ptype'" == "tsrline" & "`xvar'" == "" {
+            local xvar `"`_dta[_TStvar]'"'
+            if `"`xvar'"' == "" {
+                // r(111) is what twoway itself returns on un-tsset data.
+                display as error "dash: tsrline needs a time variable. " ///
+                    "Either tsset your data first, or give the x " ///
+                    "variable explicitly, as in: dash tsrline `yvar1' `yvar2' timevar"
+                exit(111)
+            }
+        }
         local if_cl `"`s(if_clause)'"'
         local in_cl `"`s(in_clause)'"'
     }

@@ -1,0 +1,128 @@
+"""A plot layer that drew nothing said nothing.
+
+`pci` and `pcscatter` each produced a titled, axed, empty plot region with
+rc 0 and no warning, and nothing in the repository noticed -- because the
+299-command conformance corpus appends `name()` to every probe, which
+registers the spec and never renders it. The drop-in claim was proved at the
+`syntax` layer and no further.
+
+So the renderer now says so. After each layer is dispatched it knows how many
+renderers that layer produced and whether any of them holds data; if the
+frame has rows and the layer does not, the layer is named:
+
+    dash: graph 'g1' plot 2 (pcscatter) drew nothing from 74 observations.
+
+That turns "draws nothing" from a defect no test could see into one every
+render reports, and it is what test_conformance.cscript asserts across the
+corpus.
+
+A layer may be legitimately empty -- an `if' qualifier that selects no rows,
+or a smoother whose optional package is absent -- so the report fires only
+when the graph's own data is non-empty, and the optional-package layers warn
+for themselves already.
+"""
+import json
+import os
+import sys
+import tempfile
+import warnings
+
+import numpy as np
+import pandas as pd
+import pytest
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, ".."))
+sys.path.insert(0, _HERE)
+
+import dash_render as dr
+
+_DF = pd.DataFrame({
+    "y":  [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    "x":  [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    "y2": [2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+    "x2": [2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+})
+
+
+def _render(plots, graph_options=None):
+    td = tempfile.mkdtemp()
+    spec = {"graphs": [{"name": "g1",
+                        "graph_options": dict(graph_options or {}, name="g1"),
+                        "options": {}, "plots": plots}],
+            "kpis": [], "build_options": {"layout": "auto", "level": "95"}}
+    sp, dp = os.path.join(td, "s.json"), os.path.join(td, "d.json")
+    with open(sp, "w") as fh:
+        json.dump(spec, fh)
+    with open(dp, "w") as fh:
+        json.dump({"variableNames": list(_DF.columns),
+                   "values": _DF.to_dict("records")}, fh)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        dr.DashRenderer(sp, dp).render()
+    return [str(w.message) for w in caught]
+
+
+def _empty_reports(msgs):
+    return [m for m in msgs if "drew nothing" in m]
+
+
+class TestALayerThatDrawsNothingIsNamed:
+    def test_an_unknown_plot_type_is_reported(self):
+        msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
+                         "options": {}},
+                        {"type": "no_such_plot_type", "yvar": "y",
+                         "xvar": "x", "options": {}}])
+        hits = _empty_reports(msgs)
+        assert hits, f"a layer that drew nothing was not reported: {msgs}"
+        assert any("no_such_plot_type" in m for m in hits), (
+            f"the report does not name the plot type: {hits}"
+        )
+        assert any("g1" in m for m in hits), (
+            f"the report does not name the graph: {hits}"
+        )
+
+    def test_a_function_whose_expression_is_rejected_is_reported(self):
+        """The validator refuses it and the layer is drawn empty."""
+        msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
+                         "options": {}},
+                        {"type": "function", "expr": "__import__('os')",
+                         "options": {}}])
+        assert _empty_reports(msgs), (
+            f"a rejected function expression drew nothing in silence: {msgs}"
+        )
+
+    def test_the_report_names_the_observation_count(self):
+        msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
+                         "options": {}},
+                        {"type": "no_such_plot_type", "yvar": "y",
+                         "xvar": "x", "options": {}}])
+        assert any("6 observation" in m for m in _empty_reports(msgs)), (
+            f"the report does not say how many rows were available: {msgs}"
+        )
+
+
+class TestAnOrdinaryGraphIsSilent:
+    """The control: a report on every render is a report nobody reads."""
+
+    @pytest.mark.parametrize("ptype", ["scatter", "line", "connected", "area",
+                                       "bar", "spike", "histogram", "lfit",
+                                       "qfit", "mband", "dropline"])
+    def test_a_working_layer_is_not_reported(self, ptype):
+        plot = ({"type": ptype, "yvar": "y", "xvar": "", "options": {}}
+                if ptype == "histogram"
+                else {"type": ptype, "yvar": "y", "xvar": "x", "options": {}})
+        msgs = _render([plot])
+        assert not _empty_reports(msgs), (
+            f"{ptype} draws and was reported as empty: {msgs}"
+        )
+
+    def test_a_qualifier_that_selects_no_rows_is_not_reported(self):
+        """An empty selection is the user's own doing, not a broken layer."""
+        msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
+                         "options": {}}],
+                       graph_options={"if_expr": "y > 1000"})
+        assert not _empty_reports(msgs), (
+            f"an if() that matches nothing was reported as a broken layer: "
+            f"{msgs}"
+        )
