@@ -512,10 +512,23 @@ def _optional_import(module: str, attr: "str | None", package: str, feature: str
 # Module-level constants
 # ---------------------------------------------------------------------------
 
-# Number of data points above which WebGL rendering is used for performance.
+# Number of data points above which WebGL rendering is used.
+#
+# Deliberately a constant, not derived: it is a property of the BROWSER, not
+# of the data or of anything the user typed.  Below roughly this many glyphs
+# the canvas backend draws faster and renders text more crisply; above it the
+# canvas backend drops frames while panning.  There is nothing in a Stata
+# dataset that could tell dash where that crossover is.
 _WEBGL_THRESHOLD = 10_000
 
-# Default nonselection alpha for linked-brushing dimming effect.
+# Opacity of the observations NOT selected by a brush.
+#
+# Deliberately a constant.  It is a legibility judgement -- unselected points
+# must stay visible enough to give the selection context, and faint enough
+# that the selection reads as the subject -- and no property of the data
+# implies a number.  Stata has no equivalent to derive it from: `twoway' has
+# no brushing.  A user who wants a different value sets the marker's own
+# alpha with malpha() or mcolor(col%nn).
 _NONSELECTION_ALPHA = 0.15
 
 # Every ColumnDataSource carries this column: the row's position in the
@@ -1313,6 +1326,13 @@ class OptionTranslator:
             return OptionTranslator._COLOR_MAP[v]
 
         # Passthrough for hex values already in CSS format.
+        #
+        # The 3- and 6-digit forms are the only ones deliberately accepted:
+        # they are what Stata's own scheme files and dash's colour table
+        # carry, and what every browser reads the same way.  4- and 8-digit
+        # forms carry alpha, which dash sets separately through malpha(),
+        # lalpha() and falpha(), so accepting them would give two places to
+        # set one property.
         #
         # The length test alone was the whole check, so any 4- or
         # 7-character string starting with '#' was returned as a colour --
@@ -10085,104 +10105,107 @@ class DashRenderer:
         if _has_hover and _hover_extra:
             # Remove existing hover tools before adding comprehensive one with extras
             fig.tools = [t for t in fig.tools if not isinstance(t, HoverTool)]
-        if True:  # Always build and add comprehensive hover
-            # For range plots (rbar, rcap, rspike, rline, rarea, rconnected),
-            # plots[0] uses yvar1/yvar2 keys rather than yvar.
-            _p0 = plots[0] if plots else {}
-            _yvar_eff = yvar or _p0.get("yvar1", "")
-            _y2var_eff = _p0.get("yvar2", "")
-            _hover_seen: set = set()
-            _hover_fields: list = []
-            _hover_formatters: dict = {}
+        # A hover tool is always built, so the layer's own tooltips replace
+        # whatever Bokeh's default would have been.
+        # A hover tool is always built here, so the layer's own tooltips
+        # replace whatever Bokeh's default would otherwise have been.
+        # For range plots (rbar, rcap, rspike, rline, rarea, rconnected),
+        # plots[0] uses yvar1/yvar2 keys rather than yvar.
+        _p0 = plots[0] if plots else {}
+        _yvar_eff = yvar or _p0.get("yvar1", "")
+        _y2var_eff = _p0.get("yvar2", "")
+        _hover_seen: set = set()
+        _hover_fields: list = []
+        _hover_formatters: dict = {}
 
-            def _hover_row(col: str) -> None:
-                """Add one tooltip row, honouring the variable's Stata format.
+        def _hover_row(col: str) -> None:
+            """Add one tooltip row, honouring the variable's Stata format.
 
-                Rows were labelled with the raw variable NAME even though
-                self.variable_labels is loaded and already used for axis
-                titles, and a date column showed its underlying number.
-                """
-                kind = getattr(self, "date_vars", {}).get(col)
-                if kind:
-                    spec = f"@{{{col}}}{{%F}}" if kind != "tc" else \
-                           f"@{{{col}}}{{%F %T}}"
-                    _hover_formatters[f"@{{{col}}}"] = "datetime"
-                else:
-                    pattern = getattr(self, "numeric_formats", {}).get(col, "")
-                    bokeh_pat = _stata_numeric_pattern(pattern) if pattern else None
-                    spec = (f"@{{{col}}}{{{bokeh_pat}}}" if bokeh_pat
-                            else f"@{{{col}}}")
-                _hover_fields.append((self._axis_label(col), spec))
-                _hover_seen.add(col)
+            Rows were labelled with the raw variable NAME even though
+            self.variable_labels is loaded and already used for axis
+            titles, and a date column showed its underlying number.
+            """
+            kind = getattr(self, "date_vars", {}).get(col)
+            if kind:
+                spec = f"@{{{col}}}{{%F}}" if kind != "tc" else \
+                       f"@{{{col}}}{{%F %T}}"
+                _hover_formatters[f"@{{{col}}}"] = "datetime"
+            else:
+                pattern = getattr(self, "numeric_formats", {}).get(col, "")
+                bokeh_pat = _stata_numeric_pattern(pattern) if pattern else None
+                spec = (f"@{{{col}}}{{{bokeh_pat}}}" if bokeh_pat
+                        else f"@{{{col}}}")
+            _hover_fields.append((self._axis_label(col), spec))
+            _hover_seen.add(col)
 
-            if xvar and xvar in source.data:
-                _hover_row(xvar)
-            if _yvar_eff and _yvar_eff not in _hover_seen and _yvar_eff in source.data:
-                _hover_row(_yvar_eff)
-            if _y2var_eff and _y2var_eff not in _hover_seen and _y2var_eff in source.data:
-                _hover_row(_y2var_eff)
-            for _hv in _hover_extra:
-                if _hv not in _hover_seen and _hv in source.data:
-                    _hover_row(_hv)
-            if _hover_fields:
-                # Restrict hover to renderers whose CDS contains every
-                # referenced column.  Fit-line, density, and histogram
-                # renderers use independent CDS objects with generic column
-                # names ("x"/"y", "top"/"left"/"right") — hovering over them
-                # with field specs that reference original variable names
-                # (e.g. "@{mpg}") would return "???" in the tooltip.
-                _hover_col_set = set(_hover_seen)
-                _data_renderers = [
-                    _rend for _rend in fig.renderers
-                    if hasattr(_rend, "data_source") and
-                    all(c in _rend.data_source.data for c in _hover_col_set)
-                ]
+        if xvar and xvar in source.data:
+            _hover_row(xvar)
+        if _yvar_eff and _yvar_eff not in _hover_seen and _yvar_eff in source.data:
+            _hover_row(_yvar_eff)
+        if _y2var_eff and _y2var_eff not in _hover_seen and _y2var_eff in source.data:
+            _hover_row(_y2var_eff)
+        for _hv in _hover_extra:
+            if _hv not in _hover_seen and _hv in source.data:
+                _hover_row(_hv)
+        if _hover_fields:
+            # Restrict hover to renderers whose CDS contains every
+            # referenced column.  Fit-line, density, and histogram
+            # renderers use independent CDS objects with generic column
+            # names ("x"/"y", "top"/"left"/"right") — hovering over them
+            # with field specs that reference original variable names
+            # (e.g. "@{mpg}") would return "???" in the tooltip.
+            _hover_col_set = set(_hover_seen)
+            _data_renderers = [
+                _rend for _rend in fig.renderers
+                if hasattr(_rend, "data_source") and
+                all(c in _rend.data_source.data for c in _hover_col_set)
+            ]
 
-                if _data_renderers:
-                    fig.add_tools(HoverTool(tooltips=_hover_fields,
-                                            formatters=_hover_formatters,
-                                            renderers=_data_renderers))
-                else:
-                    # No renderer carries these exact columns (e.g. a
-                    # histogram-only figure).  Fall back to a generic tooltip
-                    # built from the first renderer's actual CDS columns so
-                    # something meaningful is shown rather than "???".
-                    _fb_rends = [_r for _r in fig.renderers
-                                 if hasattr(_r, "data_source")]
-                    if _fb_rends:
-                        _fb_src = _fb_rends[0].data_source
-                        _fb_fields: list = []
-                        _fb_mode = "mouse"
-                        # Histogram: "left"/"right" are bin edges, "top" = count
-                        # Use mode="vline" so the hover fires anywhere within a
-                        # bin's x-range — quad hit-testing requires the cursor
-                        # to land exactly on the bar, which is unreliable.
-                        # One precision, derived from the spread of the
-                        # data, rather than three different hardcoded ones
-                        # (0.2f, 0.3f, 0.4f) in three adjacent branches.
-                        if "top" in _fb_src.data and "left" in _fb_src.data:
-                            _bin_var = self._axis_label(_yvar_eff or "value")
-                            _p = _tooltip_precision(_fb_src.data.get("left", []))
-                            _fb_fields = [
-                                (_bin_var,
-                                 f"@{{left}}{{{_p}}} to @{{right}}{{{_p}}}"),
-                                ("Count",   "@{top}"),
-                            ]
-                            _fb_mode = "vline"
-                        # KDE / fit line: "x" and "y" columns
-                        elif "x" in _fb_src.data and "y" in _fb_src.data:
-                            _px = _tooltip_precision(_fb_src.data.get("x", []))
-                            _py = _tooltip_precision(_fb_src.data.get("y", []))
-                            _fb_fields = [
-                                (self._axis_label(xvar or "x"),
-                                 f"@{{x}}{{{_px}}}"),
-                                (self._axis_label(_yvar_eff or "y"),
-                                 f"@{{y}}{{{_py}}}"),
-                            ]
-                        if _fb_fields:
-                            fig.add_tools(HoverTool(tooltips=_fb_fields,
-                                                    renderers=_fb_rends[:1],
-                                                    mode=_fb_mode))
+            if _data_renderers:
+                fig.add_tools(HoverTool(tooltips=_hover_fields,
+                                        formatters=_hover_formatters,
+                                        renderers=_data_renderers))
+            else:
+                # No renderer carries these exact columns (e.g. a
+                # histogram-only figure).  Fall back to a generic tooltip
+                # built from the first renderer's actual CDS columns so
+                # something meaningful is shown rather than "???".
+                _fb_rends = [_r for _r in fig.renderers
+                             if hasattr(_r, "data_source")]
+                if _fb_rends:
+                    _fb_src = _fb_rends[0].data_source
+                    _fb_fields: list = []
+                    _fb_mode = "mouse"
+                    # Histogram: "left"/"right" are bin edges, "top" = count
+                    # Use mode="vline" so the hover fires anywhere within a
+                    # bin's x-range — quad hit-testing requires the cursor
+                    # to land exactly on the bar, which is unreliable.
+                    # One precision, derived from the spread of the
+                    # data, rather than three different hardcoded ones
+                    # (0.2f, 0.3f, 0.4f) in three adjacent branches.
+                    if "top" in _fb_src.data and "left" in _fb_src.data:
+                        _bin_var = self._axis_label(_yvar_eff or "value")
+                        _p = _tooltip_precision(_fb_src.data.get("left", []))
+                        _fb_fields = [
+                            (_bin_var,
+                             f"@{{left}}{{{_p}}} to @{{right}}{{{_p}}}"),
+                            ("Count",   "@{top}"),
+                        ]
+                        _fb_mode = "vline"
+                    # KDE / fit line: "x" and "y" columns
+                    elif "x" in _fb_src.data and "y" in _fb_src.data:
+                        _px = _tooltip_precision(_fb_src.data.get("x", []))
+                        _py = _tooltip_precision(_fb_src.data.get("y", []))
+                        _fb_fields = [
+                            (self._axis_label(xvar or "x"),
+                             f"@{{x}}{{{_px}}}"),
+                            (self._axis_label(_yvar_eff or "y"),
+                             f"@{{y}}{{{_py}}}"),
+                        ]
+                    if _fb_fields:
+                        fig.add_tools(HoverTool(tooltips=_fb_fields,
+                                                renderers=_fb_rends[:1],
+                                                mode=_fb_mode))
 
         return fig
 
@@ -10702,7 +10725,6 @@ class DashRenderer:
 
         # ---- Assemble page layout ----
         scheme_css_block = self.scheme.css_block()
-        safe_title = _html.escape(title_text or "dash")
 
         if filter_position == "left" and filter_row_widgets:
             # Vertical sidebar: filters in a narrow left column, content on right
@@ -11058,28 +11080,6 @@ class DashRenderer:
             elif widest >= 1.8:
                 cols = max(1, cols - 1)
         return max(1, cols)
-
-    def _pad_grid_children(
-        self,
-        children: list,
-        rows: int,
-        cols: int,
-    ) -> list:
-        """Pad *children* with ``None`` to fill a rows×cols grid.
-
-        Args:
-            children: Ordered list of grid cell items (figures, Divs, etc.).
-            rows:     Number of grid rows.
-            cols:     Number of grid columns.
-
-        Returns:
-            A new list of length ``rows * cols`` padded with ``None``.
-        """
-        padded = list(children)
-        target = rows * cols
-        while len(padded) < target:
-            padded.append(None)
-        return padded
 
     def _setup_sources(self) -> "dict[str, ColumnDataSource]":
         """Build the dashboard's ColumnDataSources.
@@ -12301,6 +12301,10 @@ class ServerAppBuilder:
             "_SCHEME_SYMBOLS = %r" % ([sch.default_symbol(i)
                                        for i in range(15)],),
             "_SCHEME_MARKER_SIZE = %r" % (sch.default_marker_size(0),),
+            # Same crossover the standalone renderer uses. It was written
+            # here as a bare 10000 in three places, so changing it in one
+            # mode changed it in one mode.
+            "_WEBGL_THRESHOLD = %r" % (_WEBGL_THRESHOLD,),
             # The generated app used to hold its own literals for these --
             # alpha=0.7 on every scatter, fill_alpha=0.4 on every area,
             # 0.8 on every histogram, line_width=1.5 on every line -- so a
@@ -13446,7 +13450,7 @@ class ServerAppBuilder:
             "            y_label = html.escape(raw_yt) if raw_yt else var_labels.get(yv, yv)",
             "",
             "        n_rows = len(df)",
-            "        backend = 'webgl' if n_rows > 10000 else 'canvas'",
+            "        backend = 'webgl' if n_rows > _WEBGL_THRESHOLD else 'canvas'",
             "        _fig_kw = dict(",
             "            title=html.escape(go.get('title', '') or ''),",
             "            x_axis_label=x_label,",
@@ -14758,7 +14762,7 @@ class ServerAppBuilder:
             "                    g.get('plots', [{}])[0].get('yvar', '') or g.get('plots', [{}])[0].get('var', ''), ''),",
             "                tools=[PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()],",
             "                sizing_mode='stretch_width',",
-            "                output_backend='webgl' if len(df) > 10000 else 'canvas',",
+            "                output_backend='webgl' if len(df) > _WEBGL_THRESHOLD else 'canvas',",
             "            )",
             "            _fac_fig = bokeh_figure(**_fac_kw)",
             "            _dash_apply_scheme(_fac_fig)",
@@ -14861,7 +14865,7 @@ class ServerAppBuilder:
             "                title='Total',",
             "                tools=[PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()],",
             "                sizing_mode='stretch_width',",
-            "                output_backend='webgl' if len(df) > 10000 else 'canvas',",
+            "                output_backend='webgl' if len(df) > _WEBGL_THRESHOLD else 'canvas',",
             "            )",
             "            _dash_apply_scheme(_tot_fig)",
             "            _tot_src = graph_sources[_tot_name][0]",

@@ -154,24 +154,66 @@ class TestAutoLayout:
 # P1B-34 — fewer graphs than grid cells → empty cells (None) in gridplot
 # ================================================================
 class TestEmptyCells:
-    def test_3_graphs_in_2x2_has_empty_cell(self):
-        """P1B-34: 3 graphs in a 2x2 layout → 1 None cell."""
-        renderer = _make_renderer(3, layout="2 2")
-        # _build_grid_children should pad with None
-        children = renderer._pad_grid_children(["a", "b", "c"], rows=2, cols=2)
-        assert len(children) == 4
-        assert children[-1] is None
+    """A 2x2 layout given fewer than four graphs leaves the rest empty.
 
-    def test_1_graph_in_2x2_has_3_empty_cells(self):
-        renderer = _make_renderer(1, layout="2 2")
-        children = renderer._pad_grid_children(["a"], rows=2, cols=2)
-        assert len(children) == 4
-        assert children.count(None) == 3
+    These used to call `_pad_grid_children', a helper the renderer never
+    called: the live path pads inline, with
 
-    def test_4_graphs_no_empty_cells(self):
-        renderer = _make_renderer(4, layout="2 2")
-        children = renderer._pad_grid_children(["a", "b", "c", "d"], rows=2, cols=2)
-        assert None not in children
+        while len(cells) < rows_n * cols_n: cells.append(None)
+
+    so the three tests certified a duplicate implementation and would have
+    stayed green if the live padding had been deleted. They now read the
+    GridPlot the renderer actually built, the way test_layout_placement.py
+    does.
+    """
+
+    @staticmethod
+    def _occupied(r):
+        """How many cells of the assembled grid hold a figure."""
+        from bokeh.models import GridPlot
+        root = getattr(r, "_last_layout_root", None)
+        assert root is not None, "the renderer kept no layout root to inspect"
+        figs = {id(f) for f in r.figures.values()}
+        seen, found = set(), 0
+
+        def walk(m):
+            nonlocal found
+            if isinstance(m, (list, tuple)):
+                for x in m:
+                    if x is not None and not isinstance(x, (int, float, str)):
+                        walk(x)
+                return
+            if m is None or id(m) in seen:
+                return
+            seen.add(id(m))
+            if isinstance(m, GridPlot):
+                for child in m.children:
+                    if id(child[0]) in figs:
+                        found += 1
+            for attr in ("children", "tabs", "child"):
+                k = getattr(m, attr, None)
+                if k is not None:
+                    walk(k)
+
+        walk(root)
+        return found
+
+    @pytest.mark.parametrize("n_graphs", [1, 2, 3, 4])
+    def test_a_two_by_two_grid_holds_exactly_the_graphs_given(self, n_graphs):
+        r = _make_renderer(n_graphs, layout="2 2")
+        r.render()
+        assert self._occupied(r) == n_graphs, (
+            f"{n_graphs} graph(s) in a 2x2 layout should occupy {n_graphs} "
+            f"cells; the rest of the grid is empty"
+        )
+
+    def test_no_graph_is_dropped_when_the_grid_is_too_small(self):
+        """The guard S12 added: a graph must never vanish."""
+        r = _make_renderer(5, layout="2 2")
+        r.render()
+        assert self._occupied(r) == 5, (
+            "a 2x2 layout given five graphs dropped one instead of growing"
+        )
 
 
 # ================================================================
