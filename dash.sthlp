@@ -167,18 +167,19 @@ This help file documents only the features that differ from or extend
     {cmd:dash kpi}, {cmd:dash build}, and {cmd:dash clear} have no
     {cmd:twoway} equivalents.  See {help dash##subcommands:Subcommands}.
 
-{phang2}    {ul:Write a graph-level option after the plots, not inside
-    one.}  A graph-level option such as {cmd:title()} belongs after the
-    top-level comma:
+{phang2}    {ul:Where a graph-level option may be written.}  A
+    graph-level option such as {cmd:title()} is honoured wherever
+    {cmd:twoway} honours it: after the top-level comma, or inside a plot
+    segment, in both the parenthesis and the {cmd:||} forms.
 
 {phang3}{cmd:. dash (scatter mpg weight) (line mpg weight), title("G") name(g1)}{p_end}
+{phang3}{cmd:. dash (scatter mpg weight, title("A")) (line mpg weight), name(g2)}{p_end}
 
-{phang2}    Written inside a plot segment it is currently DROPPED, in both
-    the parenthesis and the {cmd:||} forms, and without a message --
-    {cmd:dash (scatter mpg weight, title("A")) (line mpg weight)} registers a
-    graph with no title at all.  This is a known defect, recorded in
-    {cmd:BUGS.md}, not the intended behaviour; put such options after the
-    comma until it is fixed.
+{phang2}    Both register a titled graph.  When more than one place names the
+    same option, {cmd:dash} resolves it as {cmd:twoway} does: an option
+    written after the top-level comma beats one written inside a segment,
+    and among segments the last one to name it wins -- including when the
+    last one gives an empty value, which clears it.
 
 {phang2}4.  {ul:New build-time options.}
     {cmd:link()}, {cmd:filter()}, {cmd:layout()}, and {cmd:theme()} are

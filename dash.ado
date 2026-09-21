@@ -1415,7 +1415,17 @@ program define _dash_plot
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 nodraw play {
-            if `"`s(`gk')'"' != "" local g_`gk' `"`s(`gk')'"'
+            if `"`s(`gk')'"' != "" {
+                local g_`gk' `"`s(`gk')'"'
+                // Remembered so the segment loop below cannot overwrite it.
+                // An option written after the top-level comma applies to the
+                // GRAPH, and twoway lets it beat one written inside a plot:
+                //     twoway (scatter y x, title("INSIDE")) (line y x), title("AFTER")
+                // stores "AFTER" -- measured from the saved .gph.  dash
+                // stored "INSIDE", because these accumulators are filled here
+                // first and _dash_process_segment then c_locals over them.
+                local _gafter_`gk' `"`s(`gk')'"'
+            }
         }
         // The graph-level options dash cannot honour, captured HERE.
         //
@@ -1448,6 +1458,22 @@ program define _dash_plot
 
         if `k' > 1 local plots_json `"`plots_json',"'
         local plots_json `"`plots_json'`_json_k'"'
+    }
+
+    // ---- An after-comma option outranks a segment's ----
+    // Restored after the segment loop rather than guarded inside it: the
+    // loop reaches the accumulators through c_local from another program,
+    // so there is no single place inside it to test.  Only keys the
+    // after-comma parse actually set are restored, so a graph that names an
+    // option only inside a segment keeps that value.
+    foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
+              ylabel xline yline legend by xscale yscale aspectratio scheme ///
+              plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
+              xtitle2 ylabel2 xlabel2 yscale2 xscale2 xsize ysize fxsize fysize ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              t2title b1title b2title l1title l2title r1title r2title title2 ///
+              subtitle2 nodraw play {
+        if `"`_gafter_`gk''"' != "" local g_`gk' `"`_gafter_`gk''"'
     }
 
     // ---- Report unsupported options, once, naming every one ----

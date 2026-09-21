@@ -1,0 +1,162 @@
+*! test_graph_option_scope.cscript  v1.0
+*! Certification script for where a graph-level option may be written.
+*!
+*! A graph-level option such as title() may appear inside a plot segment or
+*! after the top-level comma.  This pins down which one the graph ends up
+*! with, measured against real twoway rather than assumed.
+*!
+*! MEASURED IN TWOWAY (titles read out of the saved .gph's
+*! `.insert (title = ... mtextq(...))' line):
+*!
+*!   twoway (scatter mpg weight, title("A")) (line mpg weight, title("B"))
+*!       -> "B"      the LAST segment to name it wins
+*!   twoway (scatter mpg weight, title("A")) (line mpg weight)
+*!       -> "A"      one segment naming it is enough
+*!   twoway (scatter mpg weight, title("INSIDE")) (line mpg weight), title("AFTER")
+*!       -> "AFTER"  the option after the comma beats a segment's
+*!   twoway (scatter mpg weight, title("A")) (line mpg weight, title(""))
+*!       -> ""       a later segment CAN blank an earlier value
+*!
+*! dash matched twoway on the first, second and fourth and diverged on the
+*! third: the segment's value won, because _dash_plot parses the after-comma
+*! options into the g_* accumulators first and the segment loop then
+*! overwrites them through c_local.
+*!
+*! A NOTE ON A RETRACTED CLAIM.  A BUGS.md entry and a passage of dash.sthlp
+*! previously said a graph-level option written inside a segment was DROPPED
+*! entirely.  That was wrong.  It came from a probe that ran `dash clear'
+*! between the registrations and then read the globals afterwards, so every
+*! graph but the last had been wiped before it was looked at -- the empty
+*! value was the clear, not the parser.  Registering under distinct names
+*! without clearing shows all four values present.  REG-01..04 below exist so
+*! that mistake cannot be made again: they assert the option IS honoured.
+*!
+*! Tests: GOS-01 through GOS-10
+*!
+*! Usage:  do test/test_graph_option_scope.cscript
+*! Version: 1.0  21sep2026
+
+cscript "graph-level option scope and precedence" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// Read one graph-level option out of a registered graph's JSON.  Mata
+// throughout: the value carries the quotes Stata's `asis' preserved, and a
+// Stata macro round-trip loses them.
+capture program drop _gos_opt
+program define _gos_opt, rclass
+    args gname key
+    mata: _dash_json_get_str(st_global("dash_json_" + st_local("gname")), ///
+                             st_local("key"), "_gos_v")
+    mata: st_local("_gos_has", strofreal(strpos(st_local("_gos_v"), ///
+                                                st_local("want")) > 0))
+    return local value `"`_gos_v'"'
+end
+
+// Assert that graph `g''s option `key' contains `want'.
+capture program drop _gos_assert
+program define _gos_assert
+    args gname key want
+    mata: _dash_json_get_str(st_global("dash_json_" + st_local("gname")), ///
+                             st_local("key"), "_gos_v")
+    mata: st_local("_gos_ok", strofreal(strpos(st_local("_gos_v"), ///
+                                               st_local("want")) > 0))
+    if `_gos_ok' != 1 {
+        display as error "expected `key' of `gname' to contain '`want''"
+        exit 9
+    }
+end
+
+// Every graph here gets a distinct name and NOTHING is cleared between
+// them: `dash clear' wipes the globals, and reading them afterwards is what
+// produced the retracted claim above.
+dash clear
+
+
+// ================================================================
+// GOS-01..04 — an option inside a segment IS honoured
+// ================================================================
+
+dash (scatter mpg weight, title("A")) (line mpg weight, title("B")), name(g1)
+_gos_assert g1 title B
+display "GOS-01 PASS: paren mode keeps the last segment's title"
+
+dash scatter mpg weight, title("A") name(g2) || line mpg weight, title("B")
+_gos_assert g2 title B
+display "GOS-02 PASS: flat mode keeps the last segment's title"
+
+dash (scatter mpg weight, title("A")) (line mpg weight), name(g3)
+_gos_assert g3 title A
+display "GOS-03 PASS: one segment naming the title is enough"
+
+dash (scatter mpg weight, subtitle("S1")) (line mpg weight, subtitle("S2")), name(g4)
+_gos_assert g4 subtitle S2
+display "GOS-04 PASS: the rule is not specific to title()"
+
+
+// ================================================================
+// GOS-05 — an option after the comma beats one inside a segment
+// ================================================================
+// twoway gives "AFTER" here; dash gave "INSIDE", because _dash_plot parsed
+// the after-comma options into the accumulators first and the segment loop
+// then overwrote them.
+dash (scatter mpg weight, title("INSIDE")) (line mpg weight), title("AFTER") name(g5)
+_gos_assert g5 title AFTER
+display "GOS-05 PASS: the option after the comma wins, as in twoway"
+
+dash (scatter mpg weight, subtitle("IN")) (line mpg weight), subtitle("AFT") name(g6)
+_gos_assert g6 subtitle AFT
+display "GOS-06 PASS: the same precedence holds for subtitle()"
+
+
+// ================================================================
+// GOS-07 — a later segment can blank an earlier value
+// ================================================================
+// twoway stores an empty title here, so dash must not keep "A".
+dash (scatter mpg weight, title("A")) (line mpg weight, title("")), name(g7)
+_gos_opt g7 title
+local v `"`r(value)'"'
+mata: st_local("_gos_hasA", strofreal(strpos(st_local("v"), "A") > 0))
+assert `_gos_hasA' == 0
+display "GOS-07 PASS: a later segment blanks an earlier title, as in twoway"
+
+
+// ================================================================
+// GOS-08 — the after-comma-only form is unchanged
+// ================================================================
+dash (scatter mpg weight) (line mpg weight), title("G") name(g8)
+_gos_assert g8 title G
+display "GOS-08 PASS: an option given only after the comma still applies"
+
+// ================================================================
+// GOS-09 — flat mode, one segment naming the option
+// ================================================================
+// `||' has no "after all the plots" position: the trailing options belong
+// to the LAST plot.  twoway gives "A" here (measured).
+dash scatter mpg weight, title("A") name(g9) || line mpg weight
+_gos_assert g9 title A
+display "GOS-09 PASS: flat mode keeps a title only one segment names"
+
+// ================================================================
+// GOS-10 — the restore must not clobber a key it did not set
+// ================================================================
+// The fix holds each after-comma value in `_gafter_<key>' and puts it back
+// once the segment loop has run.  A key the after-comma parse never set must
+// be left alone, or a graph that names subtitle() only inside a segment
+// would lose it.  twoway gives title "AFTER" and subtitle "SA" for the
+// equivalent command (measured from `.Graph.subtitle.text[1]').
+dash (scatter mpg weight, subtitle("SEG")) (line mpg weight), title("AFTER") name(g10)
+_gos_assert g10 title AFTER
+_gos_assert g10 subtitle SEG
+display "GOS-10 PASS: an after-comma key does not disturb a segment-only key"
+
+capture program drop _gos_opt
+capture program drop _gos_assert
+
+display ""
+display "All graph-option scope tests PASSED."
