@@ -303,3 +303,76 @@ class TestTheAlignedLayersStayAligned:
                 % (name, len(list(bl)), len(src.data[key]))
             )
         assert checked, "%s attached no view to assert about" % name
+
+
+# Rows spaced 10 apart in the selected group, 1 apart in the excluded one, so
+# a width derived from the wrong rows is off by an order of magnitude and
+# plainly visible rather than a rounding difference.
+_SPACED = pd.DataFrame({
+    "x":  [0.0, 10.0, 20.0, 30.0, 31.0, 32.0],
+    "y":  [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    "y2": [2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+    "g":  [1.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+})
+_SPACED_QUALIFIER = _SPACED.g == 1.0
+
+
+def _bar_width(name, varnames, source, view):
+    """The bar or cap width the mapper derives from the data."""
+    mapper = dr.GlyphMapper()
+    fig = figure()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = getattr(mapper, name)(fig, source, *varnames, {},
+                                       view=view, color_idx=0)
+    renderers = result if isinstance(result, (list, tuple)) else [result]
+    for rend in renderers:
+        glyph = getattr(rend, "glyph", None)
+        width = getattr(glyph, "width", None)
+        if isinstance(width, (int, float)):
+            return round(float(width), 6)
+        src = getattr(rend, "data_source", None)
+        if src is None:
+            continue
+        cap = next((k for k in src.data if k.endswith("x0_cap")), None)
+        if cap is not None:
+            xcol = "x" if "x" in src.data else None
+            if xcol is None:
+                continue
+            x = np.asarray(src.data[xcol], dtype=float)
+            x0 = np.asarray(src.data[cap], dtype=float)
+            return round(float(np.nanmax(np.abs(x - x0))), 6)
+    return None
+
+
+class TestADerivedWidthComesFromTheRowsDrawn:
+    """A bar or cap width is derived from the data, so the qualifier moves it.
+
+    These four size their glyphs from the spacing of the x values.  Three of
+    them took that spacing from the WHOLE column while drawing only the
+    selected rows, so adding a qualifier changed the bars' width rather than
+    just which bars appeared -- measured, 0.8 where plotting the same subset
+    on its own gives 8.0, an order of magnitude and plainly visible.
+
+    map_rbar, map_rcap and map_rcapsym do not have the stale-mask defect the
+    rest of this file is about: their sources keep every row, so the mask
+    lines up.  This is the other half of "honour the rows you were given".
+    """
+
+    @pytest.mark.parametrize("name,varnames", [
+        ("map_bar",     ("y", "x")),
+        ("map_rbar",    ("y", "y2", "x")),
+        ("map_rcap",    ("y", "y2", "x")),
+        ("map_rcapsym", ("y", "y2", "x")),
+    ])
+    def test_the_width_matches_the_prefiltered_width(self, name, varnames):
+        via_view = _bar_width(name, varnames, _source(_SPACED),
+                              _mask_view(_SPACED, _SPACED_QUALIFIER))
+        subset = _SPACED[_SPACED_QUALIFIER].reset_index(drop=True)
+        via_subset = _bar_width(name, varnames, _source(subset), None)
+        assert via_view is not None, "%s exposed no width to check" % name
+        assert via_view == via_subset, (
+            "%s sized its glyphs %r through a qualifier but %r when handed "
+            "the same rows directly -- the width came from rows that are not "
+            "drawn" % (name, via_view, via_subset)
+        )

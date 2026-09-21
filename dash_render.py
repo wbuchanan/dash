@@ -5139,8 +5139,17 @@ class GlyphMapper:
         if self._is_empty(source, xvar, y1var, y2var):
             empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
             return [fig.vbar(x=xvar, top=y2var, bottom=y1var, width=0.8, source=empty_src)]
-        x_vals = sorted(set(float(v) for v in source.data[xvar]
-                            if not math.isnan(float(v))))
+        # The width is DERIVED from the data, so it must come from the rows
+        # this layer draws.  The source below keeps every row -- so the
+        # caller's mask lines up with it and the view is attached as usual --
+        # but the spacing was taken from the whole column, and a qualifier
+        # then changed how WIDE the bars were as well as which appeared.
+        # Measured: 0.8 where plotting the same subset alone gives 8.0.
+        _rb_x = np.asarray(source.data[xvar], dtype=float)
+        _rb_sel = self._view_mask(view, len(_rb_x))
+        if _rb_sel is not None:
+            _rb_x = _rb_x[_rb_sel]
+        x_vals = sorted(set(float(v) for v in _rb_x if not math.isnan(v)))
         bar_width = 0.8 * min(
             (x_vals[i+1] - x_vals[i] for i in range(len(x_vals)-1)),
             default=0.8,
@@ -5223,8 +5232,18 @@ class GlyphMapper:
         y1_arr = np.array(source.data[y1var], dtype=float)
         y2_arr = np.array(source.data[y2var], dtype=float)
 
+        # The width is DERIVED from the data, so it must come from the rows
+        # this layer draws.  The source below keeps every row -- so the
+        # caller's mask lines up with it and the view is attached as usual --
+        # but the spacing was taken from the whole column, and a qualifier
+        # then changed how WIDE the bars were as well as which appeared.
+        # Measured: 0.8 where plotting the same subset alone gives 8.0.
         # Estimate cap half-width from x spacing
-        x_sorted = np.sort(x_arr[~np.isnan(x_arr)])
+        _cap_x = x_arr
+        _cap_sel = self._view_mask(view, len(_cap_x))
+        if _cap_sel is not None:
+            _cap_x = _cap_x[_cap_sel]
+        x_sorted = np.sort(_cap_x[~np.isnan(_cap_x)])
         if len(x_sorted) >= 2:
             cap_hw = 0.2 * np.min(np.diff(x_sorted))
         else:
@@ -5478,7 +5497,17 @@ class GlyphMapper:
         y1_arr = np.array(source.data[y1var], dtype=float)
         y2_arr = np.array(source.data[y2var], dtype=float)
 
-        x_sorted = np.sort(x_arr[~np.isnan(x_arr)])
+        # The width is DERIVED from the data, so it must come from the rows
+        # this layer draws.  The source below keeps every row -- so the
+        # caller's mask lines up with it and the view is attached as usual --
+        # but the spacing was taken from the whole column, and a qualifier
+        # then changed how WIDE the bars were as well as which appeared.
+        # Measured: 0.8 where plotting the same subset alone gives 8.0.
+        _cap_x = x_arr
+        _cap_sel = self._view_mask(view, len(_cap_x))
+        if _cap_sel is not None:
+            _cap_x = _cap_x[_cap_sel]
+        x_sorted = np.sort(_cap_x[~np.isnan(_cap_x)])
         if len(x_sorted) >= 2:
             cap_hw = 0.2 * float(np.min(np.diff(x_sorted)))
         else:
