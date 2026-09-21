@@ -149,9 +149,36 @@ This help file documents only the features that differ from or extend
     in the dashboard registry for use with {cmd:dash build}.
     It does NOT interact with Stata's graph memory.
 
+{phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
+    item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
+    a graph already holds and a graph cannot take a KPI's.  Either is
+    refused with {cmd:r(198)} unless you write
+    {cmd:name(}{it:name}{cmd:, replace)}, which retires whatever held the
+    name before.  {cmd:dash clear} empties the registry.
+
+{phang2}    {ul:The registry lives in Stata globals.}  It is kept in
+    {cmd:$dash_graph_registry} and a set of {cmd:$dash_*} macros, which is
+    what lets {cmd:dash clear} empty it and what lets a later
+    {cmd:dash serve} inherit a {cmd:dash build}'s options.  Setting those
+    macros by hand is not supported: {cmd:dash} validates what it registers,
+    not what you assign afterwards.
+
 {phang2}3.  {ul:New subcommands.}
     {cmd:dash kpi}, {cmd:dash build}, and {cmd:dash clear} have no
     {cmd:twoway} equivalents.  See {help dash##subcommands:Subcommands}.
+
+{phang2}    {ul:Write a graph-level option after the plots, not inside
+    one.}  A graph-level option such as {cmd:title()} belongs after the
+    top-level comma:
+
+{phang3}{cmd:. dash (scatter mpg weight) (line mpg weight), title("G") name(g1)}{p_end}
+
+{phang2}    Written inside a plot segment it is currently DROPPED, in both
+    the parenthesis and the {cmd:||} forms, and without a message --
+    {cmd:dash (scatter mpg weight, title("A")) (line mpg weight)} registers a
+    graph with no title at all.  This is a known defect, recorded in
+    {cmd:BUGS.md}, not the intended behaviour; put such options after the
+    comma until it is fixed.
 
 {phang2}4.  {ul:New build-time options.}
     {cmd:link()}, {cmd:filter()}, {cmd:layout()}, and {cmd:theme()} are

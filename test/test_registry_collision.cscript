@@ -1,0 +1,241 @@
+*! test_registry_collision.cscript  v1.0
+*! Certification script for the graph/KPI registry namespace.
+*!
+*! Graphs and KPIs share one registry and one namespace.  `dash' checked for
+*! a collision on one side of it and not the other:
+*!
+*!   dash scatter mpg weight, name(g1)      -> registered
+*!   dash line    mpg weight, name(g1)      -> r(198), use name(g1, replace)
+*!   dash kpi     mean(mpg),  name(g1)      -> rc 0, in SILENCE
+*!
+*! _dash_register_graph refuses a duplicate unless `replace' is given.
+*! _dash_kpi had no check at all, so a KPI could take a name a graph already
+*! held -- and then win it.  At build time _dash_prepare_spec skips any
+*! registry entry carrying a KPI marker, so the graph was dropped from the
+*! dashboard: measured, the built file held the KPI's text and ZERO graph
+*! models.  rc 0 throughout, and no message.
+*!
+*! A second KPI of the same name overwrote the first as quietly -- measured,
+*! `dash kpi mean(mpg), name(k2)' then `dash kpi max(mpg), name(k2)' left
+*! ${dash_kpi_k2_stat} == "max" with nothing said.
+*!
+*! The reverse direction was already safe: a graph cannot take a KPI's name,
+*! because _dash_register_graph looks at the registry and the KPI is in it.
+*!
+*! Tests: REG-01 through REG-15
+*!
+*! Usage:  do test/test_registry_collision.cscript
+*! Version: 1.0  21sep2026
+
+cscript "graph and KPI share one namespace" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// How many globals does the registry still hold for `name'?  Counted in
+// Mata against the exact names, because `macro drop dash_kpi_g1*' would also
+// take g10's -- the name grammar allows both to exist at once.
+capture program drop _reg_count
+program define _reg_count, rclass
+    args nm
+    mata: st_local("_rc_n", strofreal(_reg_item_globals("`nm'")))
+    return scalar n = `_rc_n'
+end
+
+mata:
+real scalar _reg_item_globals(string scalar nm)
+{
+    string colvector all
+    real scalar      i, n
+    n   = 0
+    all = st_dir("global", "macro", "dash_*")
+    for (i = 1; i <= length(all); i++) {
+        if (all[i] == "dash_json_" + nm |
+            all[i] == "dash_spec_" + nm |
+            all[i] == "dash_kpi_"  + nm |
+            substr(all[i], 1, strlen("dash_kpi_" + nm + "_"))
+                == "dash_kpi_" + nm + "_") n = n + 1
+    }
+    return(n)
+}
+
+real scalar _reg_log_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, found
+    string scalar line
+    found = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (strpos(strlower(line), strlower(needle))) found = 1
+    }
+    fclose(fh)
+    return(found)
+}
+end
+
+
+// ================================================================
+// REG-01..03 — a KPI may not silently take a graph's name
+// ================================================================
+dash clear
+dash scatter mpg weight, name(g1)
+capture noisily dash kpi mean(mpg), name(g1) title("Avg")
+assert _rc == 198
+display "REG-01 PASS: a KPI cannot take a graph's name without replace"
+
+// The refusal must leave the graph exactly as it was.
+assert `"${dash_json_g1}"' != ""
+assert "${dash_kpi_g1}" == ""
+assert "${dash_graph_registry}" == "g1"
+display "REG-02 PASS: the refused KPI left the graph untouched"
+
+// And the build still contains the graph.
+tempfile out1
+capture noisily dash build, saving("`out1'.html") replace nobrowser
+assert _rc == 0
+display "REG-03 PASS: the graph still builds after a refused KPI"
+
+// ================================================================
+// REG-04..06 — with replace, the KPI takes the name cleanly
+// ================================================================
+dash clear
+dash scatter mpg weight, name(g1)
+capture noisily dash kpi mean(mpg), name(g1, replace) title("Avg")
+assert _rc == 0
+display "REG-04 PASS: name(g1, replace) lets a KPI take a graph's name"
+
+// No orphan: the graph's JSON must be gone, or the build would carry a
+// registry entry that is both a graph and a KPI.
+assert `"${dash_json_g1}"' == ""
+assert `"${dash_spec_g1}"' == ""
+assert "${dash_kpi_g1}" == "1"
+display "REG-05 PASS: the superseded graph's globals are dropped"
+
+assert "${dash_graph_registry}" == "g1"
+display "REG-06 PASS: the name appears once in the registry, not twice"
+
+// ================================================================
+// REG-07..09 — a KPI may not silently take another KPI's name
+// ================================================================
+dash clear
+dash kpi mean(mpg), name(k2) title("A")
+capture noisily dash kpi max(mpg), name(k2) title("B")
+assert _rc == 198
+assert "${dash_kpi_k2_stat}" == "mean"
+display "REG-07 PASS: a duplicate KPI name is refused, and the first survives"
+
+capture noisily dash kpi max(mpg), name(k2, replace) title("B")
+assert _rc == 0
+assert "${dash_kpi_k2_stat}" == "max"
+display "REG-08 PASS: with replace the second KPI wins"
+
+assert "${dash_graph_registry}" == "k2"
+display "REG-09 PASS: replacing a KPI does not duplicate the registry entry"
+
+// ================================================================
+// REG-10..11 — the reverse direction, which was already safe
+// ================================================================
+dash clear
+dash kpi mean(mpg), name(k1) title("Avg")
+capture noisily dash scatter mpg weight, name(k1)
+assert _rc == 198
+display "REG-10 PASS: a graph cannot take a KPI's name without replace"
+
+capture noisily dash scatter mpg weight, name(k1, replace)
+assert _rc == 0
+// The KPI's globals must go, or the build skips the graph it just accepted.
+assert "${dash_kpi_k1}" == ""
+assert "${dash_kpi_k1_stat}" == ""
+assert `"${dash_json_k1}"' != ""
+display "REG-11 PASS: replacing a KPI with a graph drops the KPI's globals"
+
+// ================================================================
+// REG-12 — no item leaves globals behind after a replace
+// ================================================================
+// Counted exactly, so a stray dash_kpi_<name>_* cannot hide.
+dash clear
+dash scatter mpg weight, name(g2)
+_reg_count g2
+local before = r(n)
+assert `before' > 0
+capture noisily dash kpi mean(mpg), name(g2, replace) title("K")
+assert _rc == 0
+_reg_count g2
+// Only the KPI's own globals remain: no dash_json_g2, no dash_spec_g2.
+assert `"${dash_json_g2}"' == ""
+assert `"${dash_spec_g2}"' == ""
+display "REG-12 PASS: a replace leaves no globals from the superseded item"
+
+// ================================================================
+// REG-13 — a similarly-named item is not collateral damage
+// ================================================================
+// `macro drop dash_kpi_g1*' would take g10's globals too.  Both names are
+// legal and may be registered at once.
+dash clear
+dash kpi mean(mpg),  name(k1) title("one")
+dash kpi max(mpg),   name(k10) title("ten")
+capture noisily dash kpi min(mpg), name(k1, replace) title("one again")
+assert _rc == 0
+assert "${dash_kpi_k10}" == "1"
+assert "${dash_kpi_k10_stat}" == "max"
+assert `"${dash_kpi_k10_tit}"' == "ten"
+display "REG-13 PASS: replacing k1 does not disturb k10"
+
+// ================================================================
+// REG-14 — regression: ordinary registration still works
+// ================================================================
+dash clear
+dash scatter mpg weight, name(a1)
+dash line mpg weight, name(a2)
+dash kpi mean(mpg), name(a3) title("M")
+assert "${dash_graph_registry}" == "a1 a2 a3"
+tempfile out2
+capture noisily dash build, saving("`out2'.html") replace nobrowser
+assert _rc == 0
+display "REG-14 PASS: two graphs and a KPI register and build as before"
+
+// ================================================================
+// REG-15 — a name holding both is reported, not silently dropped
+// ================================================================
+// Neither registrar can produce this state any more.  The registry is kept
+// in ordinary Stata globals, though, so a do-file that sets dash_* by hand
+// still can -- and the build used to pass over such an entry without a word.
+dash clear
+dash scatter mpg weight, name(b1)
+global dash_kpi_b1      "1"
+global dash_kpi_b1_stat "mean"
+global dash_kpi_b1_var  "mpg"
+global dash_kpi_b1_val  "21"
+global dash_kpi_b1_disp "21"
+global dash_kpi_b1_tit  "forced"
+global dash_kpi_b1_upd  "filter"
+tempname blf
+tempfile blg
+quietly log using "`blg'", replace text name(`blf')
+tempfile out3
+capture noisily dash build, saving("`out3'.html") replace nobrowser
+local brc = _rc
+quietly log close `blf'
+mata: st_local("_reg_warned", strofreal(_reg_log_has("`blg'", "both")))
+assert `brc' == 0
+assert `_reg_warned' == 1
+display "REG-15 PASS: an entry registered as both is named in the output"
+
+capture program drop _reg_count
+
+display ""
+display "All registry collision tests PASSED."

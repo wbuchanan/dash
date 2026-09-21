@@ -1228,6 +1228,47 @@ string scalar _dash_option_names_scan(string scalar raw,
 // When the quote-aware pass ends mid-quote the input cannot be honestly
 // quoted, so a second pass reads '"' as an ordinary character.  That
 // recovers the remaining option names instead of dropping them.
+// ============================================================
+// _dash_item_globals — every global belonging to one registry item
+// ============================================================
+//
+// Graphs and KPIs share one registry and one namespace, and replacing an
+// item of one kind with the other has to take the loser's globals with it --
+// a name left carrying both a `dash_json_' and a `dash_kpi_' is skipped at
+// build time, so the graph the user just registered would vanish.
+//
+// The match has to be EXACT rather than a prefix sweep.  `macro drop
+// dash_kpi_g1*' also matches dash_kpi_g10 and every one of its suffixes, and
+// the name grammar -- [a-zA-Z_][a-zA-Z0-9_]{0,31} -- lets g1 and g10 be
+// registered at the same time.  Enumerating the suffixes instead would go
+// stale the moment one is added, which is the failure `_dash_clear' records
+// in its own comment.  Asking Stata what it actually holds has neither
+// problem.
+//
+// Returns the matching global names, space separated, in out_macro.
+//
+void _dash_item_globals(string scalar nm, string scalar out_macro)
+{
+    string colvector all
+    string scalar    hit, kpi_prefix
+    real scalar      i
+
+    hit        = ""
+    kpi_prefix = "dash_kpi_" + nm + "_"
+    all        = st_dir("global", "macro", "dash_*")
+
+    for (i = 1; i <= length(all); i++) {
+        if (all[i] == "dash_json_" + nm |
+            all[i] == "dash_spec_" + nm |
+            all[i] == "dash_kpi_"  + nm |
+            substr(all[i], 1, strlen(kpi_prefix)) == kpi_prefix) {
+            hit = hit + " " + all[i]
+        }
+    }
+    st_local(out_macro, strtrim(hit))
+}
+
+
 void _dash_option_names(string scalar in_macro, string scalar out_macro)
 {
     string scalar raw, out

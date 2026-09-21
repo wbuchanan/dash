@@ -1517,6 +1517,31 @@ end
 // ================================================================
 // _dash_register_graph  — store named graph in global registry
 // ================================================================
+// ================================================================
+// _dash_drop_item  — retire every global a registry item owns
+//
+// Graphs and KPIs share one registry and one namespace, so replacing an
+// item of one kind with the other has to take the loser's globals with it.
+// A name left carrying both a `dash_json_' and a `dash_kpi_' marker is
+// skipped at build time -- _dash_prepare_spec's graph loop passes over any
+// entry with a KPI marker -- so the item the user just registered would
+// vanish from the dashboard without a word.
+//
+// The names are resolved in Mata against what Stata actually holds, because
+// `macro drop dash_kpi_g1*' would also take g10's, and g1 and g10 can both
+// be registered at once.  See _dash_item_globals in dash_parse.mata.
+// ================================================================
+program define _dash_drop_item
+    version 16.0
+    args name
+
+    mata: _dash_item_globals("`name'", "_dash_item_kill")
+    foreach _g of local _dash_item_kill {
+        capture macro drop `_g'
+    }
+end
+
+
 program define _dash_register_graph
     version 16.0
     args name raw_spec json_spec
@@ -1563,6 +1588,13 @@ program define _dash_register_graph
         display as error "dash: graph name '`name'' already exists. " ///
             "Use name(`name', replace) to overwrite."
         exit(198)
+    }
+
+    // Retire whatever held this name before.  Without this a graph that
+    // replaced a KPI kept the KPI's marker, and _dash_prepare_spec then
+    // skipped the graph -- the user replaced an item and lost both.
+    if `already' == 1 {
+        _dash_drop_item "`name'"
     }
 
     // Store spec and JSON
@@ -1863,9 +1895,48 @@ program define _dash_kpi
 
     confirm variable `kpi_var'
 
+    // Split off a ", replace" sub-option BEFORE validating the name, exactly
+    // as _dash_register_graph does: syntax's name(string) captures the whole
+    // of "k1, replace", which would then fail the name regex below.
+    local replace_flag = 0
+    local _nm = strtrim(`"`name'"')
+    if regexm(`"`_nm'"', "^([^,]+)[ \t]*,[ \t]*replace[ \t]*$") {
+        local _nm = strtrim(regexs(1))
+        local replace_flag = 1
+    }
+    local name `"`_nm'"'
+
     if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]{0,31}$") {
         display as error "dash kpi: invalid name '`name''."
         exit(198)
+    }
+
+    // Graphs and KPIs share ONE registry and one namespace.
+    // _dash_register_graph has always refused a duplicate unless replace was
+    // given; this program checked nothing, so a KPI could quietly take a
+    // name a graph already held -- and then win it, because the build's
+    // graph loop passes over any entry carrying a KPI marker.  Measured:
+    //     dash scatter mpg weight, name(g1)
+    //     dash kpi mean(mpg), name(g1) title("Avg")
+    //     dash build, saving(out.html) replace
+    // returned rc 0 at every step, said nothing, and wrote a dashboard with
+    // the KPI's text and no graph at all.  A second KPI of the same name
+    // overwrote the first just as quietly.
+    local _kpi_registry = "${dash_graph_registry}"
+    local _kpi_already  = 0
+    local _kpi_ntok : word count `_kpi_registry'
+    forvalues k = 1/`_kpi_ntok' {
+        if "`:word `k' of `_kpi_registry''" == "`name'" local _kpi_already = 1
+    }
+    if `_kpi_already' == 1 & `replace_flag' == 0 {
+        display as error "dash kpi: name '`name'' already exists. " ///
+            "Use name(`name', replace) to overwrite."
+        exit(198)
+    }
+    // Retire whatever held the name before, so the entry does not end up
+    // carrying a graph's JSON and a KPI's marker at the same time.
+    if `_kpi_already' == 1 {
+        _dash_drop_item "`name'"
     }
 
     if "`update'" == "" local update "filter"
@@ -2305,7 +2376,22 @@ program define _dash_prepare_spec, rclass
 
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
-        if "${dash_kpi_`gname'}" != "" continue
+        if "${dash_kpi_`gname'}" != "" {
+            // An entry should never hold a graph AND a KPI: both registrars
+            // retire whatever held the name before.  If one does, this loop
+            // would drop the graph from the dashboard in silence, which is
+            // exactly the defect that used to be reachable through
+            // `dash kpi ..., name(<an existing graph>)'.  The registry lives
+            // in ordinary Stata globals, so a do-file that sets dash_* by
+            // hand can still produce this; say so rather than swallow it.
+            if `"${dash_json_`gname'}"' != "" {
+                display as text "`cmdname': '`gname'' is registered as both " ///
+                    "a graph and a KPI; drawing the KPI." 
+                display as text "  Run {cmd:dash clear} and register it once, " ///
+                    "or use {cmd:name(`gname', replace)}."
+            }
+            continue
+        }
 
         if `n_graphs' > 0 local graphs_json `"`graphs_json', "'
         local graphs_json `"`graphs_json'${dash_json_`gname'}"'
