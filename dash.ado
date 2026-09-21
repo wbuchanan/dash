@@ -1723,7 +1723,9 @@ program define _dash_render_immediate
     local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json'}}"'
 
     tempname fh
-    file open `fh' using "`spec_json_path'", write replace text
+    // quietly: `write replace' notes a missing file, and this path is a
+    // fresh tempfile, so the note fired on every successful render.
+    quietly file open `fh' using "`spec_json_path'", write replace text
     file write `fh' `"`master_json'"'
     file close `fh'
 
@@ -2043,6 +2045,32 @@ program define _dash_prepare_spec, rclass
     }
 
     // ---- check registry is not empty ----
+    // saving(), replace and server describe writing a FILE.  That is what
+    // `dash build' does and what `dash serve' does not -- dash.sthlp lists
+    // serve's surface as port(), nobrowser(), timeout() and the dashboard
+    // options, and none of these three is on it.  They arrive here through
+    // the trailing * of _dash_serve_spec, are declared below for dash
+    // build's sake, and were read by nobody, so
+    //     . dash serve, saving(out.html)
+    //     served a dashboard and wrote no file, in silence.
+    //
+    // The check lives HERE rather than in _dash_serve_spec because
+    // test_serve_options.py requires that program to forward the build
+    // surface untouched rather than enumerate it -- enumerating it is how
+    // the two copies drifted apart in the first place.  This program already
+    // declares all three, and already knows which command called it.
+    if "`cmdname'" == "dash serve" {
+        local _srv_na ""
+        if `"`saving'"' != "" local _srv_na `"`_srv_na' saving()"'
+        if "`replace'" != ""  local _srv_na `"`_srv_na' replace"'
+        if "`server'"  != ""  local _srv_na `"`_srv_na' server"'
+        if `"`_srv_na'"' != "" {
+            display as text "dash serve: ignoring option(s) that only apply to dash build:" ///
+                as result `"`_srv_na'"'
+            display as text "  dash serve streams the dashboard; it writes no file."
+        }
+    }
+
     if "${dash_graph_registry}" == "" {
         display as error "`cmdname': no graphs registered. Define graphs with name() before running `cmdname'."
         exit(198)
@@ -2343,7 +2371,9 @@ program define _dash_prepare_spec, rclass
     local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
 
     tempname fh
-    file open `fh' using "`specpath'", write replace text
+    // quietly: see the note at the other spec writer -- `write replace'
+    // reports a missing file, and this path is always a fresh tempfile.
+    quietly file open `fh' using "`specpath'", write replace text
     file write `fh' `"`master_json'"'
     file close `fh'
 
@@ -2598,7 +2628,23 @@ program define _dash_serve
 
     tempfile data_json_path master_json_path
 
-    _dash_serve_spec, specpath("`master_json_path'") datapath("`data_json_path'") `0'
+    // `0' still carries the leading comma -syntax- left on it, so forwarding
+    // it after options of our own put TWO commas on one line and everything
+    // past the second was read as a positional argument:
+    //     . dash serve, port(5006)
+    //     invalid 'port'
+    //     r(198);
+    // -- every option dash.sthlp documents for this command, including the
+    // port(5006) example it gives.  Only the bare form ran.  _dash_build has
+    // fixed exactly this at its own forwarding site for some time; this path
+    // never got the same treatment.  `: copy local' and `: subinstr local'
+    // both work on the macro's VALUE, so neither expands the user's title()
+    // or label() text a second time, and subinstr replaces only the FIRST
+    // occurrence, which is the leading comma.
+    local _srv_fwd : copy local 0
+    local _srv_fwd : subinstr local _srv_fwd "," ""
+
+    _dash_serve_spec, specpath("`master_json_path'") datapath("`data_json_path'") `_srv_fwd'
 
     local port_int   "`r(port)'"
     local timeout    "`r(timeout)'"

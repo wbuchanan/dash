@@ -1,0 +1,225 @@
+*! test_serve_launch.cscript  v1.0
+*! Certification script for `dash serve' as a COMMAND.
+*!
+*! `dash serve, port(5006)' -- the example dash.sthlp gives -- returned
+*! r(198) "invalid 'port'".  So did timeout() and nobrowser, and so did every
+*! build option the help says serve inherits.  Only the bare form ran.
+*!
+*! _dash_serve forwarded `0' to _dash_serve_spec verbatim, and `0' still
+*! carries its leading comma, so the call became
+*!     _dash_serve_spec, specpath(...) datapath(...) , port(5006)
+*! -- two commas on one line, and everything after the second was read as a
+*! positional argument.  _dash_build fixes exactly this at its own forwarding
+*! site with `: subinstr local' and has done for some time; the serve path
+*! never got the same treatment.
+*!
+*! Nothing caught it because test_serve_options.cscript calls
+*! _dash_serve_spec DIRECTLY, bypassing the one line the defect lives on --
+*! its own header says it covers "everything `dash serve' does except the
+*! launch".  Its five PASS banners are labelled "dash serve ..." and none of
+*! them runs `dash serve'.  Every other serve case in the suite is a
+*! `capture' asserting _rc == 198 on an error path.
+*!
+*! WHY THIS SCRIPT DOES NOT START A SERVER.  `dash serve' blocks Stata until
+*! the server stops, and timeout() is measured in MINUTES, so the shortest
+*! real launch this suite could assert would hold it for sixty seconds.  The
+*! cases below instead drive `dash serve' with an EMPTY registry: option
+*! parsing happens first, so a correctly-parsed command reaches the registry
+*! check and stops there.  That distinguishes the two outcomes precisely --
+*! "no graphs registered" means the options parsed, "invalid 'port'" means
+*! they did not -- and costs nothing.  A real launch was verified by hand
+*! against this fix; see the BUGS.md entry.
+*!
+*! Tests: SRV-01 through SRV-16
+*!
+*! Usage:  do test/test_serve_launch.cscript
+*! Version: 1.0  21sep2026
+
+cscript "dash serve accepts its own options" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// Run `dash serve' with whatever options are given, on an EMPTY registry,
+// and hand back the return code and the message.  Options are parsed before
+// the registry is looked at, so this separates "the options parsed" from
+// "the options did not".
+capture program drop _srv_try
+program define _srv_try, rclass
+    args opts
+    dash clear
+    tempname lf
+    tempfile lg
+    quietly log using "`lg'", replace text name(`lf')
+    capture noisily dash serve, `opts'
+    local rc = _rc
+    quietly log close `lf'
+    // Read the captured output from Mata: a line of it is a value there, so
+    // nothing the message contains can end a Stata string or be parsed as
+    // code.  cert_helpers.do takes the same approach for generated HTML.
+    mata: st_local("_srv_invalid",  strofreal(_srv_file_has("`lg'", "invalid")))
+    mata: st_local("_srv_noregist", strofreal(_srv_file_has("`lg'", "no graphs registered")))
+    mata: st_local("_srv_buildonly", strofreal(_srv_file_has("`lg'", "only apply to")))
+    return scalar rc        = `rc'
+    return scalar invalid   = `_srv_invalid'
+    return scalar noregist  = `_srv_noregist'
+    return scalar buildonly = `_srv_buildonly'
+end
+
+mata:
+real scalar _srv_file_has(string scalar fn, string scalar needle)
+{
+    real scalar fh, found
+    string scalar line
+    found = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (strpos(strlower(line), strlower(needle))) found = 1
+    }
+    fclose(fh)
+    return(found)
+}
+end
+
+
+// ================================================================
+// SRV-01..04 — each documented option must PARSE
+// ================================================================
+// "invalid 'port'" means the option never reached the parser.  Reaching the
+// registry check means it did.
+
+_srv_try "port(5099)"
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-01 PASS: port() parses"
+
+_srv_try "timeout(1)"
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-02 PASS: timeout() parses"
+
+_srv_try "nobrowser"
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-03 PASS: nobrowser parses"
+
+_srv_try "port(5099) timeout(1) nobrowser"
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-04 PASS: all three together parse"
+
+// ================================================================
+// SRV-05..08 — the build options the help says serve inherits
+// ================================================================
+// dash.sthlp: "dash serve also accepts every option dash build accepts --
+// title(), subtitle(), layout(), link(), filter(), theme(), scheme(),
+// tabs() and filterposition()".
+
+_srv_try `"title("A Title")"'
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-05 PASS: title() parses on dash serve"
+
+_srv_try "layout(1 1)"
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-06 PASS: layout() parses on dash serve"
+
+_srv_try "scheme(s2color)"
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-07 PASS: scheme() parses on dash serve"
+
+_srv_try `"port(5099) title("T") layout(1 1) nobrowser"'
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-08 PASS: serve options and build options mix"
+
+// ================================================================
+// SRV-09..11 — validation must still reject bad values
+// ================================================================
+// The fix must not turn a rejected value into an accepted one.
+
+_srv_try "port(80)"
+assert r(rc) == 198
+display "SRV-09 PASS: port() below 1024 is still rejected"
+
+_srv_try "port(70000)"
+assert r(rc) == 198
+display "SRV-10 PASS: port() above 65535 is still rejected"
+
+_srv_try "port(abc)"
+assert r(rc) == 198
+display "SRV-11 PASS: a non-numeric port() is still rejected"
+
+// ================================================================
+// SRV-12 — the bare form still works
+// ================================================================
+_srv_try ""
+assert r(invalid) == 0
+assert r(noregist) == 1
+display "SRV-12 PASS: bare dash serve still reaches the registry check"
+
+// ================================================================
+// SRV-13..15 — build-only options are NAMED, not silently dropped
+// ================================================================
+// saving(), replace and server describe writing a file.  dash.sthlp does not
+// list them for dash serve, and _dash_prepare_spec declares all three and
+// reads none, so before this they were accepted and vanished.
+
+_srv_try `"saving(out.html)"'
+assert r(invalid) == 0
+assert r(buildonly) == 1
+display "SRV-13 PASS: saving() on dash serve is reported, not dropped"
+
+_srv_try "replace"
+assert r(invalid) == 0
+assert r(buildonly) == 1
+display "SRV-14 PASS: replace on dash serve is reported, not dropped"
+
+_srv_try "server"
+assert r(invalid) == 0
+assert r(buildonly) == 1
+display "SRV-15 PASS: server on dash serve is reported, not dropped"
+
+// ... and a command with none of them must NOT print the note.
+_srv_try "port(5099)"
+assert r(buildonly) == 0
+display "SRV-15b PASS: the note is silent when no build-only option is given"
+
+// ================================================================
+// SRV-16 — the option surface of dash serve and _dash_serve_spec agree
+// ================================================================
+// test_serve_options.cscript drives _dash_serve_spec directly, which is why
+// it never saw the forwarding defect.  This asserts the two entry points
+// accept the same things, so a future divergence shows up here.
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(sv1)
+tempfile sp dp
+capture noisily _dash_serve_spec, specpath("`sp'") datapath("`dp'") ///
+    port(5099) timeout(1) nobrowser title("T")
+assert _rc == 0
+assert "`r(port)'" == "5099"
+assert "`r(timeout)'" == "1"
+assert "`r(nobrowser)'" == "nobrowser"
+display "SRV-16 PASS: _dash_serve_spec still parses the same options directly"
+
+capture program drop _srv_try
+
+display ""
+display "All dash serve option tests PASSED."
