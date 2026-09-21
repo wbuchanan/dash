@@ -1075,21 +1075,33 @@ void _dash_json_get_str(string scalar json_str,
             // Unescaped closing double-quote — end of string value
             break
         }
-        else if (ch == "\\") {
-            // Escape sequence — peek at next character
+        else if (ch == char(92)) {
+            // Escape sequence — peek at next character.
+            //
+            // char(92), not "\\".  Mata does NOT collapse a doubled
+            // backslash in a string literal the way C does: measured,
+            // strlen("\\") is 2 and "\\" == char(92) is false.  So every
+            // one of these comparisons was a 1-character string against a
+            // 2-character one, never true, and this decoder has never
+            // decoded anything.  The first backslash of an escape fell
+            // through to the plain-character branch and the '"' that
+            // followed it was read as the closing quote, so
+            //     "if_expr": "make == \"AMC Concord\""
+            // -- the very case this function was written for -- came back
+            // as a single backslash.
             if (pos + 1 <= n) {
                 ch = substr(json_str, pos + 1, 1)
                 if      (ch == char(34)) value = value + char(34)
-                else if (ch == "\\")     value = value + "\\"
+                else if (ch == char(92)) value = value + char(92)
                 else if (ch == "n")      value = value + char(10)
                 else if (ch == "r")      value = value + char(13)
                 else if (ch == "t")      value = value + char(9)
-                else                     value = value + "\\" + ch
+                else                     value = value + char(92) + ch
                 pos = pos + 2
             }
             else {
                 // Trailing backslash with no next char — keep it
-                value = value + "\\"
+                value = value + char(92)
                 pos++
             }
         }

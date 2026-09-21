@@ -822,6 +822,31 @@ _TEXTBOX_SUBOPT_RE = re.compile(
     r",\s*(?=(?:" + "|".join(_TEXTBOX_SUBOPTS) + r")\b)", re.I)
 
 
+def _textbox_split_point(text: str) -> int:
+    """Index of the comma that starts a textbox's sub-options, or ``-1``.
+
+    Stata writes a textbox option as ``text[, suboptions]``, but the text is
+    the user's and may contain commas of its own.  Only a comma outside the
+    quoted text can be the separator, so the scan tracks quote state rather
+    than letting a regex match anywhere -- the same discipline the Mata
+    scanners in ``dash_parse.mata`` apply to the command line.
+
+    Args:
+        text: The raw option value, quotes included.
+
+    Returns:
+        The index of the separating comma, or ``-1`` when there is none.
+    """
+    in_quote = False
+    for i, ch in enumerate(text):
+        if ch == '"':
+            in_quote = not in_quote
+        elif ch == "," and not in_quote:
+            if _TEXTBOX_SUBOPT_RE.match(text, i):
+                return i
+    return -1
+
+
 def _textbox_size(opts: dict, default: float) -> float:
     """Resolve a textbox size() sub-option to pixels.
 
@@ -878,17 +903,39 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
     if not raw:
         return "", {}
     text = str(raw)
-    m = _TEXTBOX_SUBOPT_RE.search(text)
+    # Only a comma OUTSIDE the user's quoted text introduces sub-options.
+    #
+    # This used to be a bare _TEXTBOX_SUBOPT_RE.search() over the whole
+    # value, so a comma inside the text itself was read as the sub-option
+    # separator whenever an ordinary English word happened to follow it --
+    # and the keyword list is ordinary English: size, color, just, width,
+    # height, style, span, box, margin, position.  Measured,
+    #     title("Sales, size matters")   rendered as   "Sales"
+    #     title("Revenue, color coded")  rendered as   "Revenue"
+    # with the rest of the user's text silently discarded.  twoway keeps it.
+    split_at = _textbox_split_point(text)
     tail = ""
-    if m:
+    if split_at >= 0:
+        m = _TEXTBOX_SUBOPT_RE.match(text, split_at)
         tail = text[m.end():]
-        text = text[:m.start()]
+        text = text[:split_at]
     text = text.strip()
-    # Stata's `asis` declarations keep the quotes the user typed.  A title
-    # may also be several quoted strings, one per line.
+    # Stata's `asis` declarations keep the quotes the user typed, which is
+    # what makes the multi-string form legible here: a text option may be
+    # SEVERAL quoted strings, and Stata renders each as its own LINE --
+    # title("line one" "line two") is stored as mtextq(`""line one" "line
+    # two""') in a .gph and drawn on two lines.
+    #
+    # These used to be joined with a space, so every such value collapsed
+    # onto one line.  BokehJS renders "\n" as a real line break in both Title
+    # and Label -- verified visually against bokeh 3.9, not inferred from the
+    # model accepting the character.
+    #
+    # A single quoted string joins to itself, so the ordinary case is
+    # untouched and cannot gain a stray break.
     quoted = re.findall(r'"([^"]*)"', text)
     if quoted:
-        text = " ".join(quoted)
+        text = "\n".join(quoted)
     else:
         text = text.strip('"').strip()
 
@@ -9862,10 +9909,20 @@ class DashRenderer:
         # drawn ON TOP OF EACH OTHER.  Measured in Stata: the note is ring(4)
         # and the caption ring(5), i.e. the caption sits BELOW the note, and
         # the note is the smaller of the two.
+        #
+        # What separates them is the ORDER they are added in -- add_layout(...,
+        # "below") gives each Label a row of its own -- not the y offset.  The
+        # caption was given y = -12.0 to push it down, and a negative screen
+        # offset puts it outside the row Bokeh sized for it, where it is
+        # clipped: measured in a browser against bokeh 3.9, an identical Label
+        # renders at y = 0.0 and at y = 2.0 and does NOT render at all at
+        # y = -12.0.  So no dash dashboard has ever drawn a caption.  Both now
+        # sit at the top of their own row, which stacks them the way Stata
+        # does and keeps every line of a multi-line value on screen.
         from bokeh.models import Label
         _TEXTBOX_DEFAULTS = {
             "note":     {"size": 11.0, "color": "#555555", "y": 2.0},
-            "caption":  {"size": 12.0, "color": "#555555", "y": -12.0},
+            "caption":  {"size": 12.0, "color": "#555555", "y": 2.0},
         }
         for ann_key in ("note", "caption"):
             ann_raw = graph_opts.get(ann_key, "")
@@ -12388,7 +12445,7 @@ class ServerAppBuilder:
         _emitted_names = {
             _l.split("(")[0][4:] for _l in _already if _l.startswith("def ")
         }
-        for _fn_name in ("_parse_textbox_opt",
+        for _fn_name in ("_parse_textbox_opt", "_textbox_split_point",
                          "_optional_import", "_extract_finite", "_apply_jitter",
                          "_with_color_alias", "_jitter_seed", "_floats_only",
                          "_parse_stata_numeric_fmt", "_format_stata_numeric",

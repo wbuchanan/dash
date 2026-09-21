@@ -32,7 +32,21 @@ FLAGS = {
     "percent", "frequency", "density", "fraction", "horizontal", "vertical",
     "sort", "nodraw", "colordiscrete", "coloruseplegend",
 }
+# `asis' means Stata hands the option's text to dash WITHOUT dequoting it.
+#
+# For a structured value (legend(), by(), xlabel() ...) that is required: the
+# quotes are part of the sub-option syntax the renderer has to read.
+#
+# For the four DISPLAY-TEXT options it is required for a different reason.
+# Stata lets such an option take several quoted strings, each rendering as its
+# own LINE -- title("line one" "line two") stores mtextq(`""line one" "line
+# two""') in a .gph and draws two lines.  Without `asis' Stata dequotes at
+# capture, dash receives `line one line two', and the line break is gone
+# before the renderer ever sees it.  title and subtitle were declared plain
+# `string' and collapsed to one line; note and caption were already `asis'.
+# That asymmetry was the visible symptom, not the defect.
 ASIS = {
+    "title", "subtitle",
     "note", "caption", "xlabel", "ylabel", "xline", "yline", "legend", "by",
     "xscale", "yscale", "plotregion", "graphregion", "filter", "colorcuts",
     "ylabel2", "xlabel2", "yscale2", "xscale2",

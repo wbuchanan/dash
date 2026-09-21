@@ -1,0 +1,187 @@
+*! test_textbox_multiline.cscript  v1.0
+*! Certification script for Stata's multi-string text form in dash.
+*!
+*! Stata lets a text option take SEVERAL quoted strings, each rendering as its
+*! own LINE.  Measured against real twoway, `title("line one" "line two")'
+*! stores mtextq(`""line one" "line two""') in the .gph -- two separate
+*! strings -- and the graph shows two lines.
+*!
+*! dash collapsed every one of these to a single line, for two different
+*! reasons:
+*!
+*!   title() and subtitle() were declared `string' rather than `string asis',
+*!   so Stata stripped the quotes at capture and the spec carried
+*!   `line one line two'.  The information was gone before the renderer ran:
+*!   _parse_textbox_opt had nothing left to split on.  note() and caption()
+*!   were already `asis', which is why they behaved differently -- that
+*!   difference was the symptom, not the defect.
+*!
+*!   _parse_textbox_opt then joined the quoted runs it did find with a SPACE,
+*!   so even note() and caption(), whose quotes survived, rendered
+*!   `note one note two' on one line.
+*!
+*! This script covers the Stata half: that all four options now carry the
+*! user's quoting through to the spec.  test_textbox_multiline.py covers the
+*! renderer half.
+*!
+*! Tests: TBX-01 through TBX-12
+*!
+*! Usage:  do test/test_textbox_multiline.cscript
+*! Version: 1.0  21sep2026
+
+cscript "multi-string text options reach the spec intact" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui sysuse auto, clear
+
+// Load the parser and the command, as every end-to-end script here does.
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// Assert a graph_options value, entirely inside Mata.
+//
+// These values now legitimately contain escaped double quotes.  Carrying
+// them through Stata macros does not survive: `local j "${dash_json_g}"'
+// lets the first embedded quote terminate the string -- measured, that
+// yielded a lone backslash of length 1 -- and an r() round-trip fares no
+// better.  A Mata string is a value, not macro text, so the extraction and
+// the comparison both happen there and only "1" or "0" crosses back.
+// cert_helpers.do takes the same approach for reading generated HTML.
+mata:
+void _tbx_has(string scalar gname, string scalar key,
+              string scalar needle, string scalar outmac)
+{
+    string scalar v
+    _dash_json_get_str(st_global("dash_json_" + gname), key, "_tbx_tmp")
+    v = st_local("_tbx_tmp")
+    st_local(outmac, strofreal(strpos(v, needle) > 0))
+}
+end
+
+// ================================================================
+// The four display-text options must all preserve the user's quoting
+// ================================================================
+
+// ----------------------------------------------------------------
+// TBX-01..04 — a two-string value keeps both quoted runs
+// ----------------------------------------------------------------
+dash clear
+dash scatter mpg weight, name(t1)                      ///
+    title("line one" "line two")                       ///
+    subtitle("sub one" "sub two")                      ///
+    note("note one" "note two")                        ///
+    caption("cap one" "cap two")
+
+mata: _tbx_has("t1", "title", char(34), "ok")
+assert "`ok'" == "1"
+display "TBX-01 PASS: title() keeps the user's quoting in the spec"
+
+mata: _tbx_has("t1", "subtitle", char(34), "ok")
+assert "`ok'" == "1"
+display "TBX-02 PASS: subtitle() keeps the user's quoting in the spec"
+
+mata: _tbx_has("t1", "note", char(34), "ok")
+assert "`ok'" == "1"
+display "TBX-03 PASS: note() keeps the user's quoting in the spec"
+
+mata: _tbx_has("t1", "caption", char(34), "ok")
+assert "`ok'" == "1"
+display "TBX-04 PASS: caption() keeps the user's quoting in the spec"
+
+// ----------------------------------------------------------------
+// TBX-05..08 — both strings survive, not just the first
+// ----------------------------------------------------------------
+mata: _tbx_has("t1", "title", "line one", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t1", "title", "line two", "ok")
+assert "`ok'" == "1"
+display "TBX-05 PASS: both title strings reach the spec"
+
+mata: _tbx_has("t1", "subtitle", "sub one", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t1", "subtitle", "sub two", "ok")
+assert "`ok'" == "1"
+display "TBX-06 PASS: both subtitle strings reach the spec"
+
+mata: _tbx_has("t1", "note", "note one", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t1", "note", "note two", "ok")
+assert "`ok'" == "1"
+display "TBX-07 PASS: both note strings reach the spec"
+
+mata: _tbx_has("t1", "caption", "cap one", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t1", "caption", "cap two", "ok")
+assert "`ok'" == "1"
+display "TBX-08 PASS: both caption strings reach the spec"
+
+// ----------------------------------------------------------------
+// TBX-09 — the ordinary single-string form is unchanged
+// ----------------------------------------------------------------
+// This is the overwhelmingly common case and must not regress.  The value
+// may carry quotes now, but the text must be intact and singular.
+dash clear
+dash scatter mpg weight, name(t2) title("Just One") note("Only Note")
+mata: _tbx_has("t2", "title", "Just One", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t2", "note", "Only Note", "ok")
+assert "`ok'" == "1"
+display "TBX-09 PASS: a single-string title/note is unchanged"
+
+// ----------------------------------------------------------------
+// TBX-10 — an unquoted value still works
+// ----------------------------------------------------------------
+dash clear
+dash scatter mpg weight, name(t3) title(Plain) note(AlsoPlain)
+mata: _tbx_has("t3", "title", "Plain", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t3", "note", "AlsoPlain", "ok")
+assert "`ok'" == "1"
+display "TBX-10 PASS: an unquoted title/note value still works"
+
+// ----------------------------------------------------------------
+// TBX-11 — the textbox sub-option form still parses
+// ----------------------------------------------------------------
+// twoway accepts title("T", size(large)); measured rc 0.  The comma must not
+// be read as the end of the graph options.
+dash clear
+capture noisily dash scatter mpg weight, name(t4) ///
+    title("T text", size(large)) note("N text", size(small))
+assert _rc == 0
+mata: _tbx_has("t4", "title", "T text", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t4", "title", "size(large)", "ok")
+assert "`ok'" == "1"
+display "TBX-11 PASS: the title(text, size()) sub-option form survives capture"
+
+// ----------------------------------------------------------------
+// TBX-12 — a value carrying its own punctuation survives capture
+// ----------------------------------------------------------------
+// `asis' hands the text to dash verbatim rather than letting Stata
+// dequote it, so a value with internal punctuation is the shape most
+// likely to break on the changed declaration.
+dash clear
+capture noisily dash scatter mpg weight, name(t5) ///
+    title("Sales: Q1-Q4 (2026)") note("Source: n=74, p<0.05")
+assert _rc == 0
+mata: _tbx_has("t5", "title", "Sales: Q1-Q4 (2026)", "ok")
+assert "`ok'" == "1"
+mata: _tbx_has("t5", "note", "Source: n=74, p<0.05", "ok")
+assert "`ok'" == "1"
+display "TBX-12 PASS: punctuation inside a text value survives capture"
+
+
+display ""
+display "All multi-string text-option tests PASSED."

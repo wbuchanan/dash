@@ -459,24 +459,50 @@ class TestTitleTextFidelity:
         assert str(fig.title.text) == "Ford's mileage"
 
     def test_note_and_caption_do_not_overlap(self):
-        """Both were a Label at screen (0,0) added "below"."""
+        """Both were a Label at screen (0,0) added "below".
+
+        What separates them is that each add_layout(..., "below") call gets a
+        row of its own -- NOT a difference in y.  This used to assert
+        ``note.y != caption.y``, which is a proxy for the wrong mechanism:
+        the caption was given y = -12.0 to push it down, a negative screen
+        offset puts a Label outside the row Bokeh sized for it, and it is
+        clipped.  Measured in a browser against bokeh 3.9, an otherwise
+        identical Label renders at y = 0.0 and y = 2.0 and does not render at
+        all at y = -12.0 -- so this assertion passed for as long as the
+        caption was invisible.  Assert the two properties that actually
+        decide the outcome instead: separate rows, and a drawable offset.
+        """
         fig, _ = _fig_with_gopts(
             _SCATTER, {"note": "the note", "caption": "the caption"})
         labels = [r for r in list(fig.below) + list(fig.center)
                   if hasattr(r, "text") and hasattr(r, "y")]
         found = {str(r.text): r for r in labels}
         assert "the note" in found and "the caption" in found, list(found)
-        assert found["the note"].y != found["the caption"].y, (
-            "note and caption are drawn at the same position"
+        assert found["the note"] is not found["the caption"], (
+            "note and caption must be separate Labels in separate rows"
         )
+        for key in ("the note", "the caption"):
+            assert found[key].y >= 0, (
+                "%s is at y=%r, outside its own row, where it is clipped"
+                % (key, found[key].y)
+            )
 
     def test_the_caption_sits_below_the_note(self, truth):
-        """Measured in Stata: note is ring(4), caption ring(5)."""
+        """Measured in Stata: note is ring(4), caption ring(5).
+
+        Bokeh stacks the "below" panel in the order things are added to it, so
+        the caption sitting lower is a matter of being added second -- not of
+        carrying a smaller y, which only moves it within its own row (and, if
+        negative, out of that row entirely).  This asserted
+        ``caption.y < note.y`` and so passed while the caption was clipped
+        away; it now asserts the ordering that actually places them.
+        """
         fig, _ = _fig_with_gopts(
             _SCATTER, {"note": "the note", "caption": "the caption"})
-        labels = {str(r.text): r for r in list(fig.below) + list(fig.center)
-                  if hasattr(r, "text") and hasattr(r, "y")}
-        assert labels["the caption"].y < labels["the note"].y
+        below = [str(r.text) for r in fig.below
+                 if hasattr(r, "text") and hasattr(r, "y")]
+        assert "the note" in below and "the caption" in below, below
+        assert below.index("the note") < below.index("the caption"), below
 
     def test_the_subtitle_does_not_collide_with_the_title(self):
         fig, _ = _fig_with_gopts(

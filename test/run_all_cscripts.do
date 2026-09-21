@@ -740,6 +740,30 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 27. test_textbox_multiline.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_textbox_multiline.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_textbox_multiline.cscript"
+}
+local rc = _rc
+capture file close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_textbox_multiline.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_textbox_multiline.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_textbox_multiline.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

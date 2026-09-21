@@ -279,7 +279,7 @@ program define _dash_parse_graph_opts, sclass
     // still run; without this they did not.  Unmatched options are
     // reported by name, once per command -- never silently dropped.
     syntax [, ///
-        TItle(string)             SUBtitle(string)          NOTE(string asis) ///
+        TItle(string asis)        SUBtitle(string asis)     NOTE(string asis) ///
         CAPtion(string asis)      NAMe(string)              SAVing(string) ///
         XTitle(string)            YTitle(string)            XLabel(string asis) ///
         YLabel(string asis)       XLIne(string asis)        YLIne(string asis) ///
@@ -497,7 +497,7 @@ program define _dash_parse_plot_opts, sclass
         LStyle(string)            MLStyle(string)           MLPattern(string) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
-        JITTERSEED(string)        TItle(string)             SUBtitle(string) ///
+        JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
         NOTE(string asis)         CAPtion(string asis)      NAMe(string) ///
         SAVing(string)            XTitle(string)            YTitle(string) ///
         XLabel(string asis)       YLabel(string asis)       XLIne(string asis) ///

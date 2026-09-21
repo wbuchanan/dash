@@ -392,5 +392,74 @@ assert strpos(`"`_on3'"', "xlabel") > 0
 display "P1B-25 PASS: a compound-quoted value does not drop trailing options"
 
 
+// ================================================================
+// _dash_json_get_str must actually decode JSON escapes
+// ================================================================
+// This function exists to read a JSON string value that contains \" -- its
+// own docstring names `"if_expr": "make == \"AMC Concord\""' as the case it
+// was written for.  It never worked.  Every escape branch compared a
+// one-character string against the Mata literal "\\", which is TWO
+// characters -- measured, strlen("\\") is 2 and "\\" == char(92) is false --
+// so no comparison was ever true.  The first backslash fell through to the
+// plain-character branch and the '"' after it ended the value, returning a
+// lone backslash.
+//
+// The whole of its previous coverage was `assert "_dash_json_get_str" in
+// src' in test_server.py: a check that the name exists, not that it works.
+// These run it.
+
+// ----------------------------------------------------------------
+// P1B-27 — an escaped quote decodes to a quote
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_json_get_str("{" + char(34) + "if_expr" + char(34) + ":" + char(34) +
+                       "make == " + char(92) + char(34) + "AMC Concord" +
+                       char(92) + char(34) + char(34) + "}",
+                       "if_expr", "_jv1")
+}
+end
+assert `"`_jv1'"' == `"make == "AMC Concord""'
+display "P1B-27 PASS: an escaped quote decodes back to a quote"
+
+// ----------------------------------------------------------------
+// P1B-28 — a value with no escapes is unchanged
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_json_get_str("{" + char(34) + "k" + char(34) + ":" + char(34) +
+                       "plain value" + char(34) + "}", "k", "_jv2")
+}
+end
+assert "`_jv2'" == "plain value"
+display "P1B-28 PASS: a value with no escapes is returned verbatim"
+
+// ----------------------------------------------------------------
+// P1B-29 — an escaped backslash decodes to one backslash
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_json_get_str("{" + char(34) + "k" + char(34) + ":" + char(34) +
+                       "C:" + char(92) + char(92) + "dir" + char(34) + "}",
+                       "k", "_jv3")
+}
+end
+mata: st_local("_jlen3", strofreal(strlen(st_local("_jv3"))))
+assert `_jlen3' == 6
+display "P1B-29 PASS: an escaped backslash decodes to a single backslash"
+
+// ----------------------------------------------------------------
+// P1B-30 — a missing key returns empty rather than erroring
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_json_get_str("{" + char(34) + "a" + char(34) + ":" + char(34) +
+                       "1" + char(34) + "}", "nosuchkey", "_jv4")
+}
+end
+assert "`_jv4'" == ""
+display "P1B-30 PASS: a missing key returns empty"
+
+
 display ""
 display "All parser-integrity tests PASSED."
