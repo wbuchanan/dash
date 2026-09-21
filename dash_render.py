@@ -1010,6 +1010,7 @@ def _extract_region_lwidth(val: str) -> float | None:
 
 def _extract_finite(
     source: "ColumnDataSource", varname: str, allow_datetime: bool = False,
+    view=None,
 ) -> "np.ndarray":
     """Return a float array of non-None, non-NaN values from a CDS column.
 
@@ -1023,11 +1024,19 @@ def _extract_finite(
             milliseconds -- the representation Bokeh itself transports
             datetimes in -- so slider bounds can be computed from it.  The
             default is False so no existing caller changes behaviour.
+        view: Optional CDSView whose mask restricts the rows read.  The
+            distribution layers pass their own view so a qualified histogram
+            or kdensity describes the rows the user asked for.  The filter
+            widgets deliberately do NOT: a slider's bounds come from the whole
+            column, not from whatever a layer happens to be showing.
 
     Returns:
         1-D numpy float array with None and NaN values removed.
     """
     col = source.data.get(varname, [])
+    sel = GlyphMapper._view_mask(view, len(col))
+    if sel is not None:
+        col = list(np.asarray(col, dtype=object)[sel])
     if allow_datetime:
         series = pd.Series(col)
         if pd.api.types.is_datetime64_any_dtype(series):
@@ -3658,11 +3667,11 @@ class GlyphMapper:
         Returns:
             The single VArea GlyphRenderer created.
         """
-        x_arr = np.array(source.data[xvar], dtype=float)
-        y_arr = np.array(source.data[yvar], dtype=float)
-        # Drop NaN rows
-        mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
-        x_arr, y_arr = x_arr[mask], y_arr[mask]
+        # Masked by the layer's own view: a per-plot `if', a by() facet
+        # panel or a linked graph's qualifier.  map_area builds its own
+        # ColumnDataSource below, so a view attached to the renderer would
+        # have nothing left to filter.
+        x_arr, y_arr = self._masked(source, view, xvar, yvar)
         # base() option sets the lower boundary; default 0
         base_val = 0.0
         if "base" in options:
@@ -3865,6 +3874,86 @@ class GlyphMapper:
     # Phase 1B plot types — computed glyphs
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _view_mask(view, n: int) -> "np.ndarray | None":
+        """The boolean row mask *view* selects, or ``None`` for "all rows".
+
+        A plain glyph layer can be handed a ``CDSView`` and let Bokeh do the
+        filtering.  A computed layer cannot: it builds its own
+        ``ColumnDataSource`` from a grid it calculates, so by the time there
+        is a renderer to attach a view to, the statistic has already been
+        computed from the wrong rows.  Those mappers ask for the mask instead
+        and apply it to their input.
+
+        Args:
+            view: A ``CDSView``, or ``None``.
+            n:    Number of rows in the source the mask must align with.
+
+        Returns:
+            A boolean array of length *n*, or ``None`` when there is nothing
+            to filter or the view cannot be read.  ``None`` means "use every
+            row", which is the behaviour of a layer with no qualifier.
+        """
+        if view is None:
+            return None
+        flt = getattr(view, "filter", None)
+        if flt is None:
+            return None
+
+        booleans = getattr(flt, "booleans", None)
+        if booleans is not None:
+            mask = np.asarray(booleans, dtype=bool)
+        else:
+            indices = getattr(flt, "indices", None)
+            if indices is None:
+                # A filter type this does not understand -- an intersection,
+                # a group filter, a custom one.  Drawing every row is wrong
+                # but visible; guessing at the filter's meaning is wrong and
+                # silent.
+                return None
+            mask = np.zeros(n, dtype=bool)
+            keep = np.asarray(list(indices), dtype=int)
+            keep = keep[(keep >= 0) & (keep < n)]
+            mask[keep] = True
+            return mask
+
+        if mask.size != n:
+            # Never apply a mask that does not line up: a shorter one would
+            # silently drop the tail of the data and a longer one would
+            # raise.  Every mask dash builds is sized from the source's own
+            # __dash_row__ column, so this means something else produced it.
+            warnings.warn(
+                f"dash: a layer's row filter has {mask.size} entries but its "
+                f"data has {n} rows, so the filter does not match and was "
+                f"ignored; the layer is computed from every row.",
+                stacklevel=2,
+            )
+            return None
+        return mask
+
+    @staticmethod
+    def _masked(source: ColumnDataSource, view, *varnames: str) -> tuple:
+        """Float arrays for *varnames*, restricted to the rows *view* selects.
+
+        Rows where any of the named columns is NaN are dropped together, so
+        the returned arrays stay aligned with each other -- the pairing every
+        caller relied on when it did this inline.
+
+        Returns:
+            One float array per name in *varnames*, in order.
+        """
+        cols = [np.asarray(source.data[v], dtype=float) for v in varnames]
+        n = len(cols[0]) if cols else 0
+
+        sel = GlyphMapper._view_mask(view, n)
+        if sel is not None:
+            cols = [c[sel] for c in cols]
+
+        finite = ~np.isnan(cols[0])
+        for c in cols[1:]:
+            finite &= ~np.isnan(c)
+        return tuple(c[finite] for c in cols)
+
     def map_lfit(
         self,
         fig: Any,
@@ -3889,11 +3978,11 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer for the fit line.
         """
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        # Drop NaN pairs
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         # Need at least 2 points to fit a line
         if len(x) < 2:
@@ -3939,10 +4028,11 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer for the fit line.
         """
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         # Need at least 3 points for a degree-2 polyfit
         if len(x) < 3:
@@ -3986,10 +4076,11 @@ class GlyphMapper:
         """
         scipy_stats = _optional_import("scipy", "stats", "scipy", "lfitci")
 
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
         n = len(x)
 
         # Need at least 3 points: df = n-2 must be >= 1, and we need
@@ -4067,10 +4158,11 @@ class GlyphMapper:
         Returns:
             List with [line_renderer, band_renderer].
         """
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         # Need at least 3 points for a degree-2 polyfit
         _qfitci_color = self.scheme.default_color(color_idx, "line")
@@ -4171,10 +4263,11 @@ class GlyphMapper:
             "statsmodels", "lowess",
         )
 
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         # Need statsmodels, at least 2 points, and x must vary
         if lowess is None or len(x) < 2 or np.std(x) == 0.0:
@@ -4344,10 +4437,11 @@ class GlyphMapper:
         Returns:
             GlyphRenderer for the smoother line.
         """
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         if len(x) < 2:
             empty = ColumnDataSource({"x_lp": [], "y_lp": []})
@@ -4410,10 +4504,11 @@ class GlyphMapper:
         Returns:
             List with [line_renderer, band_renderer].
         """
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         _lpolyci_color = self.scheme.default_color(color_idx, "line")
         empty_src = ColumnDataSource({
@@ -4587,10 +4682,11 @@ class GlyphMapper:
         Returns:
             GlyphRenderer for the FP fit line.
         """
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         if len(x) < 4:
             empty = ColumnDataSource({"x_fp": [], "y_fp": []})
@@ -4635,10 +4731,11 @@ class GlyphMapper:
         Returns:
             List with [line_renderer, band_renderer].
         """
-        x = np.array(source.data[xvar], dtype=float)
-        y = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x) | np.isnan(y))
-        x, y = x[mask], y[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x, y = self._masked(source, view, xvar, yvar)
 
         _fpfitci_color = self.scheme.default_color(color_idx, "line")
         empty_src = ColumnDataSource({
@@ -4710,7 +4807,7 @@ class GlyphMapper:
             empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
             return fig.quad(top="top", bottom=0, left="left", right="right",
                             source=empty_src)
-        arr = _extract_finite(source, yvar)
+        arr = _extract_finite(source, yvar, view=view)
 
         edges, ymode = self._histogram_grid(arr, options)
         counts, _ = np.histogram(arr, bins=edges)
@@ -4874,7 +4971,7 @@ class GlyphMapper:
         """
         if options is None:
             options = {}
-        arr = _extract_finite(source, yvar)
+        arr = _extract_finite(source, yvar, view=view)
 
         # Stata's kernels are implemented directly (see _KERNELS): scipy's
         # gaussian_kde can only ever be Gaussian, so it could not express
@@ -5986,11 +6083,11 @@ class GlyphMapper:
             "scipy.interpolate", "PchipInterpolator", "scipy", "mspline",
         )
 
-        x_arr = np.array(source.data[xvar], dtype=float)
-        y_arr = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
-        x_clean = x_arr[mask]
-        y_clean = y_arr[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x_clean, y_clean = self._masked(source, view, xvar, yvar)
 
         # Sort by x
         order = np.argsort(x_clean)
@@ -6055,11 +6152,11 @@ class GlyphMapper:
         Returns:
             List with the single GlyphRenderer for the median-band line.
         """
-        x_arr = np.array(source.data[xvar], dtype=float)
-        y_arr = np.array(source.data[yvar], dtype=float)
-        mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
-        x_clean = x_arr[mask]
-        y_clean = y_arr[mask]
+        # Masked by the layer's own view: a per-plot `if', a by()
+        # facet panel or a linked graph's qualifier.  Reading the
+        # whole source here computed the statistic from rows the user
+        # had excluded, and said nothing.
+        x_clean, y_clean = self._masked(source, view, xvar, yvar)
 
         empty = ColumnDataSource({"x_mb": [], "y_mb": []})
 
