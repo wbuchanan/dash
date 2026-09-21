@@ -270,14 +270,89 @@ void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
 
 
 // ============================================================
+// 3a. SHARED QUOTE STATE MACHINE
+// ============================================================
+//
+// Every scanner below walks the raw command text and must treat the
+// inside of a quoted run as opaque -- a parenthesis, a comma or a "||"
+// written inside a title is text, not syntax.
+//
+// There were four hand-written copies of this logic and two of them were
+// wrong in the same way: they entered a quote only when the paren depth
+// was zero.  So in flat (||) mode a '(' inside a quoted option value
+// unbalanced `depth' for the rest of the scan and every later "||"
+// stopped being a separator -- measured,
+//     dash scatter mpg weight, title("a ( b") name(g) || line mpg weight
+// registered ONE plot and reported four options that do not exist, while
+// real twoway drew both.  A fifth copy, in _dash_extract_filters, had no
+// quote handling at all, so `filter(' inside a title was harvested as a
+// filter widget and cut out of the user's text.
+//
+// This is now the only copy.  Depth is deliberately NOT a parameter: a
+// quote is opaque at every depth, which is the entire point.
+//
+// Handles Stata's two quoting forms:
+//     "..."      plain double quotes
+//     `"..."'    compound quotes, which may themselves contain '"'
+//
+// Returns the index just past whatever it consumed, or 0 when the
+// character at `i' is not quote-related and the caller should handle it
+// itself.  `in_dq' and `in_cq' are updated in place -- Mata passes
+// arguments by reference, verified by probe.
+//
+real scalar _dash_quote_step(string scalar s,
+                             real scalar len,
+                             real scalar i,
+                             real scalar in_dq,
+                             real scalar in_cq)
+{
+    real scalar c_code
+
+    c_code = ascii(substr(s, i, 1))
+
+    // Inside a compound quote: it ends on the two-character sequence "'
+    // and a bare '"' within it is ordinary text.
+    if (in_cq) {
+        if (c_code == 34 & i + 1 <= len & ascii(substr(s, i+1, 1)) == 39) {
+            in_cq = 0
+            return(i + 2)
+        }
+        return(i + 1)
+    }
+
+    // Inside a plain quote: it ends on the next '"'.
+    if (in_dq) {
+        if (c_code == 34) {
+            in_dq = 0
+        }
+        return(i + 1)
+    }
+
+    // Opening a compound quote -- checked before the plain form so that
+    // the '"' of a `" pair is not mistaken for a plain opening quote.
+    if (c_code == 96 & i + 1 <= len & ascii(substr(s, i+1, 1)) == 34) {
+        in_cq = 1
+        return(i + 2)
+    }
+
+    // Opening a plain quote.
+    if (c_code == 34) {
+        in_dq = 1
+        return(i + 1)
+    }
+
+    return(0)
+}
+
+
+// ============================================================
 // 4. COMMA POSITION FINDER
 // ============================================================
 
 // Return the character position (1-based) of the first comma at
 // depth 0 (outside parens and quotes), or 0 if none found.
 real scalar _first_comma_pos(string scalar input) {
-    real scalar i, len, depth, in_dq, in_cq, c_code
-    string scalar ch
+    real scalar i, len, depth, in_dq, in_cq, c_code, nxt
 
     len   = strlen(input)
     depth = 0
@@ -286,29 +361,18 @@ real scalar _first_comma_pos(string scalar input) {
     i     = 1
 
     while (i <= len) {
-        ch     = substr(input, i, 1)
-        c_code = ascii(ch)
+        // Quoted text is opaque at ANY depth.  This used to enter a quote
+        // only when depth was 0, so a '(' inside a quoted option value left
+        // the depth counter stuck and a later option comma was mistaken for
+        // the top-level one.
+        nxt = _dash_quote_step(input, len, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
 
-        if (in_dq) {
-            if (c_code == 34) in_dq = 0
-            i++; continue
-        }
-        if (in_cq) {
-            if (c_code == 34 & i+1 <= len & ascii(substr(input, i+1, 1)) == 39) {
-                i = i + 2; in_cq = 0
-            }
-            else i++
-            continue
-        }
-        if (c_code == 34 & depth == 0) {
-            in_dq = 1
-            i++
-            continue
-        }
-        if (c_code == 96 & depth == 0 &
-            i+1 <= len & ascii(substr(input, i+1, 1)) == 34) {
-            in_cq = 1; i = i + 2; continue
-        }
+        c_code = ascii(substr(input, i, 1))
+
         if (c_code == 40) {
             depth++
             i++
@@ -353,9 +417,10 @@ void _dash_comma_pos(string scalar input, string scalar out_macro) {
 // In both modes each _seg_K includes the plot-type name as its first word.
 //
 void _dash_split_segs(string scalar input) {
-    real   scalar  i, len, depth, in_dq, in_cq, c_code
+    real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt
     real   scalar  seg_start, n_segs
-    string scalar  ch, seg_text, trimmed
+    string scalar  seg_text, trimmed, stray, qword
+    real   scalar  qual_seen, qnext
     string vector  segs
     string scalar  graph_opts_raw
 
@@ -390,31 +455,18 @@ void _dash_split_segs(string scalar input) {
         in_dq    = 0
         in_cq    = 0
         seg_start = 0
+        qual_seen = 0
         i         = 1
 
         while (i <= len) {
-            ch     = substr(trimmed, i, 1)
-            c_code = ascii(ch)
+            // Quoted text is opaque at any depth.
+            nxt = _dash_quote_step(trimmed, len, i, in_dq, in_cq)
+            if (nxt) {
+                i = nxt
+                continue
+            }
 
-            if (in_dq) {
-                if (c_code == 34) in_dq = 0
-                i++; continue
-            }
-            if (in_cq) {
-                if (c_code == 34 & i+1 <= len & ascii(substr(trimmed, i+1, 1)) == 39) {
-                    i = i + 2; in_cq = 0
-                }
-                else i++
-                continue
-            }
-            if (c_code == 34) {
-                in_dq = 1
-                i++
-                continue
-            }
-            if (c_code == 96 & i+1 <= len & ascii(substr(trimmed, i+1, 1)) == 34) {
-                in_cq = 1; i = i + 2; continue
-            }
+            c_code = ascii(substr(trimmed, i, 1))
 
             if (c_code == 40 & depth == 0) {
                 seg_start = i + 1
@@ -432,12 +484,96 @@ void _dash_split_segs(string scalar input) {
                     seg_start = 0
                 }
             }
+            else if (c_code == 41) {
+                // A ')' with nothing open.  This used to fall through to
+                // i++ and be ignored, so `(a)) (b)' drew both plots where
+                // twoway returns r(198).
+                errprintf("dash: unmatched ')' in the plot specification.\n")
+                exit(198)
+            }
             else if (c_code == 44 & depth == 0) {
                 // top-level comma after all () groups → graph opts
                 graph_opts_raw = strtrim(substr(trimmed, i + 1, .))
+                // A graph option always begins with its own name, so a '('
+                // opening this text is a plot group written after the
+                // comma.  twoway returns r(198) for `(a), (b)'; dash used
+                // to swallow the second group into the option string.
+                if (graph_opts_raw != "" &
+                    ascii(substr(graph_opts_raw, 1, 1)) == 40) {
+                    errprintf(
+                      "dash: a plot group may not follow the graph-option comma.\n")
+                    errprintf(
+                      "      Write every plot before the comma: (plot1) (plot2), <options>\n")
+                    exit(198)
+                }
                 break
             }
+            else if (depth == 0 & c_code != 32 & c_code != 9) {
+                // "||" is a legal separator BETWEEN parenthesised groups:
+                // twoway accepts `(scatter y x) || (line y x)', measured
+                // rc 0.  Treating it as stray text rejected a form dash
+                // claims drop-in parity for.
+                if (c_code == 124) {
+                    i++
+                    continue
+                }
+
+                // A top-level if/in qualifier may follow the plot groups:
+                //     (scatter y x) if foreign==1, title("T")
+                // twoway accepts all four shapes of this (measured rc 0)
+                // and dash.sthlp documents them.  This scanner has always
+                // walked past such a qualifier without capturing it,
+                // leaving the top-level comma to be found as usual; that
+                // is preserved exactly.  Policing stray text stops here so
+                // the qualifier's own words are not mistaken for it.
+                if (!qual_seen) {
+                    qword = strlower(substr(trimmed, i, 2))
+                    qnext = (i + 2 <= len ? ascii(substr(trimmed, i+2, 1)) : 32)
+                    if ((qword == "if" | qword == "in") &
+                        (qnext == 32 | qnext == 9)) {
+                        qual_seen = 1
+                        i = i + 2
+                        continue
+                    }
+                }
+                if (qual_seen) {
+                    i++
+                    continue
+                }
+
+                // Text between top-level groups, which twoway rejects --
+                // `(a) junk (b)' is r(198) there and used to be rc 0 here
+                // with `junk' silently discarded.  Report the whole word,
+                // not the one character the scan happened to stop on.
+                stray = substr(trimmed, i, .)
+                if (strpos(stray, " ") > 0) {
+                    stray = substr(stray, 1, strpos(stray, " ") - 1)
+                }
+                errprintf("dash: unexpected text between plot groups: '%s'\n",
+                          stray)
+                errprintf(
+                  "      Each plot must be its own parenthesised group.\n")
+                exit(198)
+            }
             i++
+        }
+
+        // Reaching the end mid-construct means the specification is
+        // malformed.  Both conditions used to yield one silent segment.
+        // (A `break' at the top-level comma leaves the graph options
+        // unscanned by design -- Stata's -syntax- validates those.)
+        //
+        // The quote is tested FIRST because an unterminated quote also
+        // leaves `depth' stuck: `title("oops || line y x' is a missing '"',
+        // and reporting it as a paren problem sends the user hunting for
+        // the wrong character.
+        if (in_dq | in_cq) {
+            errprintf("dash: unterminated quotation in the plot specification.\n")
+            exit(198)
+        }
+        if (depth != 0) {
+            errprintf("dash: unbalanced parentheses in the plot specification.\n")
+            exit(198)
         }
     }
     // ================================================================
@@ -451,29 +587,21 @@ void _dash_split_segs(string scalar input) {
         i         = 1
 
         while (i <= len) {
-            ch     = substr(trimmed, i, 1)
-            c_code = ascii(ch)
+            // Quoted text is opaque at ANY depth.  These two branches used
+            // to carry `& depth == 0', so a '(' inside a quoted option
+            // value was counted as a real parenthesis, `depth' never
+            // returned to 0, and every later "||" stopped separating --
+            // the whole of the remaining command was folded into segment 1
+            // and reported as unknown options.  Paren mode never had the
+            // gate and has always been the correct reference.
+            nxt = _dash_quote_step(trimmed, len, i, in_dq, in_cq)
+            if (nxt) {
+                i = nxt
+                continue
+            }
 
-            if (in_dq) {
-                if (c_code == 34) in_dq = 0
-                i++; continue
-            }
-            if (in_cq) {
-                if (c_code == 34 & i+1 <= len & ascii(substr(trimmed, i+1, 1)) == 39) {
-                    i = i + 2; in_cq = 0
-                }
-                else i++
-                continue
-            }
-            if (c_code == 34 & depth == 0) {
-                in_dq = 1
-                i++
-                continue
-            }
-            if (c_code == 96 & depth == 0 &
-                i+1 <= len & ascii(substr(trimmed, i+1, 1)) == 34) {
-                in_cq = 1; i = i + 2; continue
-            }
+            c_code = ascii(substr(trimmed, i, 1))
+
             if (c_code == 40) {
                 depth++
                 i++
@@ -483,6 +611,15 @@ void _dash_split_segs(string scalar input) {
                 depth--
                 i++
                 continue
+            }
+            if (c_code == 41) {
+                // A ')' with nothing open.  Flat mode used to fall through
+                // to i++ and ignore it, so `scatter y x, title("ok"))' was
+                // rc 0 here and r(198) in twoway -- measured.  An
+                // unbalanced ')' never leaves `depth' non-zero, so the
+                // end-of-scan check below cannot catch this one.
+                errprintf("dash: unmatched ')' in the plot specification.\n")
+                exit(198)
             }
 
             // Check for "||" at depth 0
@@ -498,6 +635,22 @@ void _dash_split_segs(string scalar input) {
                 continue
             }
             i++
+        }
+
+        // Reaching the end mid-construct means the specification is
+        // malformed.  Both conditions used to yield one silent segment:
+        //     scatter y x, legend(off || line y2 x      -- unclosed '('
+        //     scatter y x, title("oops || line y2 x     -- unterminated '"'
+        //
+        // Quote first: an unterminated quote also leaves `depth' stuck, and
+        // naming the parenthesis sends the user after the wrong character.
+        if (in_dq | in_cq) {
+            errprintf("dash: unterminated quotation in the plot specification.\n")
+            exit(198)
+        }
+        if (depth != 0) {
+            errprintf("dash: unbalanced parentheses in the plot specification.\n")
+            exit(198)
         }
 
         // final (or only) segment
@@ -753,6 +906,7 @@ void _dash_extract_filters(string scalar filter_out,
                             string scalar cmd_out) {
     string scalar raw, lraw, result, remaining, ch, inner
     real scalar   i, n, depth, jj, k, klen, matched, before_ok
+    real scalar   in_dq, in_cq, nxt, k_dq, k_cq, out_depth
 
     raw       = st_local("0")   // raw command string
     lraw      = strlower(raw)
@@ -760,14 +914,39 @@ void _dash_extract_filters(string scalar filter_out,
     result    = ""
     remaining = ""
     i         = 1
+    in_dq     = 0
+    in_cq     = 0
+    out_depth = 0
 
     while (i <= n) {
+        // Quoted text is the user's, not syntax.  This scan had no quote
+        // handling at all, so `filter(' written inside a title was
+        // harvested as a real filter widget AND cut out of the title:
+        //     dash build, title("Q1 filter(foreign) report")
+        // rendered as "Q1 report" with rc 0 and no warning.  Matching is
+        // done against the lower-cased copy, so it fired on `FILTER(' too.
+        nxt = _dash_quote_step(raw, n, i, in_dq, in_cq)
+        if (nxt) {
+            remaining = remaining + substr(raw, i, nxt - i)
+            i = nxt
+            continue
+        }
+
         // Attempt to match a filter keyword at position i.
         // Accepted abbreviated forms: filt(4), filte(5), filter(6).
+        //
+        // Only at paren depth 0: filter() is a top-level option of
+        // `dash build' and `dash serve', never a sub-option of another.
+        // Without this the scan reached inside any option that happened to
+        // contain the word -- measured, `tabs(a, filter(x))' harvested `x'
+        // as a real filter and left the user with `tabs(a, )'.
         matched = 0
         klen    = 0
 
-        if (i + 5 <= n & substr(lraw, i, 6) == "filter") {
+        if (out_depth > 0) {
+            // fall through to the copy-one-character path below
+        }
+        else if (i + 5 <= n & substr(lraw, i, 6) == "filter") {
             matched = 1; klen = 6
         }
         else if (i + 4 <= n & substr(lraw, i, 5) == "filte") {
@@ -800,7 +979,18 @@ void _dash_extract_filters(string scalar filter_out,
             if (jj <= n & substr(raw, jj, 1) == "(") {
                 depth = 1
                 k     = jj + 1
+                k_dq  = 0
+                k_cq  = 0
                 while (k <= n & depth > 0) {
+                    // Quote-aware here too, so a filter whose own argument
+                    // carries an unbalanced paren in a quoted label --
+                    //     filter(foreign, label("a (b"))
+                    // -- does not run the matcher off the end of the string.
+                    nxt = _dash_quote_step(raw, n, k, k_dq, k_cq)
+                    if (nxt) {
+                        k = nxt
+                        continue
+                    }
                     ch = substr(raw, k, 1)
                     if      (ch == "(") depth++
                     else if (ch == ")") depth--
@@ -819,7 +1009,13 @@ void _dash_extract_filters(string scalar filter_out,
             }
         }
 
-        remaining = remaining + substr(raw, i, 1)
+        // Track the depth of the option this character sits in, so the
+        // keyword test above can require top level.
+        ch = substr(raw, i, 1)
+        if      (ch == "(") out_depth++
+        else if (ch == ")" & out_depth > 0) out_depth--
+
+        remaining = remaining + ch
         i++
     }
 
@@ -942,51 +1138,98 @@ string scalar _dash_optname_of(string scalar tok)
     return(" " + t)
 }
 
-void _dash_option_names(string scalar in_macro, string scalar out_macro)
+// One pass of the option-name scan.
+//
+// `track_quotes' is 0 for the fallback pass described in
+// _dash_option_names: with an unbalanced quote in the input, honouring
+// quotes swallows the rest of the line into a single token and every
+// option after the stray '"' is lost from the report.
+//
+// Sets `unbalanced' to 1 when the pass ended inside a quote.
+string scalar _dash_option_names_scan(string scalar raw,
+                                      real scalar track_quotes,
+                                      real scalar unbalanced)
 {
-    string scalar raw, out, tok, ch, quote
-    real scalar i, n, depth, inq
+    string scalar out, tok, ch
+    real scalar i, n, depth, in_dq, in_cq, nxt
 
-    raw   = st_local(in_macro)
     n     = strlen(raw)
     out   = ""
     tok   = ""
     depth = 0
-    inq   = 0
-    quote = char(34)
+    in_dq = 0
+    in_cq = 0
+    i     = 1
 
-    for (i = 1; i <= n; i++) {
+    while (i <= n) {
+        if (track_quotes) {
+            // Consume a quoted run verbatim into the current token so the
+            // option's argument stays attached to its key.  The old loop
+            // flipped a flag on every '"' with no compound-quote handling,
+            // so a compound-quoted value carrying plain quotes came apart.
+            nxt = _dash_quote_step(raw, n, i, in_dq, in_cq)
+            if (nxt) {
+                tok = tok + substr(raw, i, nxt - i)
+                i   = nxt
+                continue
+            }
+        }
+
         ch = substr(raw, i, 1)
 
-        if (ch == quote) {
-            inq = !inq
-            tok = tok + ch
-            continue
-        }
-        if (inq) {
-            tok = tok + ch
-            continue
-        }
         if (ch == "(") {
             depth++
             tok = tok + ch
+            i++
             continue
         }
         if (ch == ")") {
             if (depth > 0) depth--
             tok = tok + ch
+            i++
             continue
         }
         if (depth == 0 & (ch == " " | ch == char(9))) {
             out = out + _dash_optname_of(tok)
             tok = ""
+            i++
             continue
         }
         tok = tok + ch
+        i++
     }
     out = out + _dash_optname_of(tok)
 
-    st_local(out_macro, strtrim(out))
+    unbalanced = (in_dq | in_cq ? 1 : 0)
+    return(strtrim(out))
+}
+
+// Reduce raw option text to bare option names, walking with paren depth
+// so an option's multi-word argument is consumed with its key.
+//
+// This runs on the error-reporting path (dash.ado's _dash_report_ignored),
+// which means it must never itself fail and must never lose information --
+// it is the one place that tells the user what dash ignored.  An odd number
+// of double quotes used to leave the scanner stuck inside a quote so every
+// option after the stray one vanished from the note:
+//     title("unbalanced quote) xlabel(1)   ->   reported only `title'
+// When the quote-aware pass ends mid-quote the input cannot be honestly
+// quoted, so a second pass reads '"' as an ordinary character.  That
+// recovers the remaining option names instead of dropping them.
+void _dash_option_names(string scalar in_macro, string scalar out_macro)
+{
+    string scalar raw, out
+    real scalar   unbalanced
+
+    raw        = st_local(in_macro)
+    unbalanced = 0
+
+    out = _dash_option_names_scan(raw, 1, unbalanced)
+    if (unbalanced) {
+        out = _dash_option_names_scan(raw, 0, unbalanced)
+    }
+
+    st_local(out_macro, out)
 }
 
 end

@@ -1,0 +1,396 @@
+*! test_parser_integrity.cscript  v1.0
+*! Certification script for the dash_parse.mata scanners' quote handling.
+*!
+*! Every scanner in dash_parse.mata walks the raw command text with its own
+*! copy of a quote state machine.  Three of those copies were wrong, and each
+*! one silently changed what the user asked for:
+*!
+*!   A6  _dash_split_segs flat mode and _first_comma_pos gated their
+*!       quote-ENTRY branches on `depth == 0'.  Paren mode did not.  So a '('
+*!       inside a quoted option value permanently unbalanced `depth' and every
+*!       later '||' stopped being a separator:
+*!           dash scatter mpg weight, title("a ( b") || line mpg weight
+*!       registered ONE plot, reported four options that do not exist, and
+*!       returned rc 0.  Real twoway draws both plots.
+*!
+*!   A7  _dash_extract_filters had no quote tracking at all, so the word
+*!       `filter(' inside a quoted title was harvested as a real filter widget
+*!       AND cut out of the user's text:
+*!           dash build, title("Q1 filter(foreign) report")
+*!       rendered the title as "Q1 report", with rc 0 and no warning.
+*!
+*!   A8  Neither mode checked its state at end of scan, so an unclosed '(' or
+*!       an unterminated '"' yielded one segment and no message.
+*!
+*! Tests: P1B-01 through P1B-22
+*!
+*! Usage:  do test/test_parser_integrity.cscript
+*! Version: 1.0  21sep2026
+
+cscript "dash_parse.mata scanner quote handling" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+do "../dash_parse.mata"
+
+
+// ================================================================
+// A6 — quotes are tracked at ANY paren depth
+// ================================================================
+
+// ----------------------------------------------------------------
+// P1B-01 — control: no paren in the quoted value, two segments
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, title("a b") || line mpg weight"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-01 PASS: control — quoted value without a paren splits on ||"
+
+// ----------------------------------------------------------------
+// P1B-02 — an opening paren inside a quoted value must not eat the ||
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, title("a ( b") || line mpg weight"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-02 PASS: '(' inside a quoted value does not swallow the next segment"
+
+// ----------------------------------------------------------------
+// P1B-03 — a closing paren inside a quoted value is equally inert
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, title("a ) b") || line mpg weight"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-03 PASS: ')' inside a quoted value does not unbalance the scan"
+
+// ----------------------------------------------------------------
+// P1B-04 — the quoted value is nested one paren deep (the legend idiom)
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, legend(label(1 "a ( b")) || line mpg weight"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-04 PASS: '(' inside a quote nested in parens is inert"
+
+// ----------------------------------------------------------------
+// P1B-05 — a balanced pair inside a quoted value leaves depth alone
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, note("x (y) z") || line mpg weight"')
+}
+end
+assert "`_n_segs'" == "2"
+display "P1B-05 PASS: a balanced paren pair inside a quote is inert"
+
+// ----------------------------------------------------------------
+// P1B-06 — '||' inside a quoted value is NOT a separator, at any depth
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, title("a || b")"')
+}
+end
+assert "`_n_segs'" == "1"
+display "P1B-06 PASS: '||' inside a quoted value is not a separator"
+
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, legend(label(1 "a || b"))"')
+}
+end
+assert "`_n_segs'" == "1"
+display "P1B-06b PASS: '||' inside a quote nested in parens is not a separator"
+
+// ----------------------------------------------------------------
+// P1B-07 — paren mode already worked; it must keep working
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"(scatter mpg weight, title("a ( b")) (line mpg weight)"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-07 PASS: paren mode unchanged by the flat-mode fix"
+
+// ----------------------------------------------------------------
+// P1B-08 — compound quotes carrying a paren
+// ----------------------------------------------------------------
+mata:
+{
+    _dash_split_segs(`"scatter mpg weight, title(`"a ( b"') || line mpg weight"')
+}
+end
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-08 PASS: '(' inside a compound-quoted value is inert"
+
+
+// ================================================================
+// A6 — _first_comma_pos carries the identical defect
+// ================================================================
+
+// ----------------------------------------------------------------
+// P1B-09 — control: a comma inside a plain quoted value is not top-level
+// ----------------------------------------------------------------
+local cp1 = 0
+mata: _dash_comma_pos(`"scatter mpg weight, title("a, b")"', "cp1")
+assert `cp1' == 19
+display "P1B-09 PASS: control — comma inside a quote is not the top-level comma"
+
+// ----------------------------------------------------------------
+// P1B-10 — a comma inside a quote that also holds a paren
+// ----------------------------------------------------------------
+local cp2 = 0
+mata: _dash_comma_pos(`"scatter mpg weight, title("a, ( b")"', "cp2")
+assert `cp2' == 19
+display "P1B-10 PASS: comma inside a quote containing '(' is not top-level"
+
+// ----------------------------------------------------------------
+// P1B-11 — the whole quoted value looks like a paren group
+// ----------------------------------------------------------------
+local cp3 = 0
+mata: _dash_comma_pos(`"scatter mpg weight, title("(a, b)")"', "cp3")
+assert `cp3' == 19
+display "P1B-11 PASS: a quoted value shaped like a paren group is still opaque"
+
+// ----------------------------------------------------------------
+// P1B-12 — a comma genuinely inside parens is still not top-level
+// ----------------------------------------------------------------
+local cp4 = 0
+mata: _dash_comma_pos("scatter mpg weight, mc(red,blue)", "cp4")
+assert `cp4' == 19
+display "P1B-12 PASS: regression — comma inside real parens still not top-level"
+
+
+// ================================================================
+// A8 — unbalanced input is an error, not a silent single segment
+// ================================================================
+
+// ----------------------------------------------------------------
+// P1B-13 — an unclosed '(' must not silently swallow the rest
+// ----------------------------------------------------------------
+capture mata: _dash_split_segs(`"scatter mpg weight, legend(off || line mpg weight"')
+assert _rc != 0
+display "P1B-13 PASS: an unclosed '(' is an error, not one silent segment"
+
+// ----------------------------------------------------------------
+// P1B-14 — an unterminated '"' must not silently swallow the rest
+// ----------------------------------------------------------------
+capture mata: _dash_split_segs(`"scatter mpg weight, title("oops || line mpg weight"')
+assert _rc != 0
+display "P1B-14 PASS: an unterminated quote is an error, not one silent segment"
+
+// ----------------------------------------------------------------
+// P1B-15 — an unmatched ')' in paren mode is an error
+// ----------------------------------------------------------------
+capture mata: _dash_split_segs("(scatter mpg weight)) (line mpg weight)")
+assert _rc != 0
+display "P1B-15 PASS: an unmatched ')' in paren mode is an error"
+
+// ----------------------------------------------------------------
+// P1B-15b — an unmatched ')' in FLAT mode is an error too
+// ----------------------------------------------------------------
+// An extra ')' never leaves depth non-zero, so the end-of-scan balance
+// check cannot catch it.  twoway returns r(198); dash used to return 0.
+capture mata: _dash_split_segs(`"scatter mpg weight, title("ok"))"')
+assert _rc != 0
+display "P1B-15b PASS: an unmatched ')' in flat mode is an error"
+
+// ----------------------------------------------------------------
+// P1B-16 — stray text between paren groups is an error
+// ----------------------------------------------------------------
+capture mata: _dash_split_segs("(scatter mpg weight) junk (line mpg weight)")
+assert _rc != 0
+display "P1B-16 PASS: stray text between paren groups is an error"
+
+// ----------------------------------------------------------------
+// P1B-17 — a plot group after the top-level comma is an error
+// ----------------------------------------------------------------
+capture mata: _dash_split_segs("(scatter mpg weight), (line mpg weight)")
+assert _rc != 0
+display "P1B-17 PASS: a paren group after the graph-option comma is an error"
+
+// ----------------------------------------------------------------
+// P1B-18 — regression guards: legal forms must NOT newly error
+// ----------------------------------------------------------------
+capture mata: _dash_split_segs(`"(scatter mpg weight) (line mpg weight), title("T") legend(off)"')
+assert _rc == 0
+assert "`_n_segs'" == "2"
+assert strpos(`"`_graph_opts_raw'"', "title") > 0
+display "P1B-18 PASS: paren mode with trailing graph options still accepted"
+
+capture mata: _dash_split_segs("scatter mpg weight || line mpg weight || qfit mpg weight")
+assert _rc == 0
+assert "`_n_segs'" == "3"
+display "P1B-18b PASS: three flat segments still accepted"
+
+capture mata: _dash_split_segs("(scatter mpg weight if foreign==1) (line mpg weight if foreign==0)")
+assert _rc == 0
+assert "`_n_segs'" == "2"
+display "P1B-18c PASS: per-plot if qualifiers still accepted"
+
+capture mata: _dash_split_segs("scatter mpg weight, note(a||b)")
+assert _rc == 0
+assert "`_n_segs'" == "1"
+display "P1B-18d PASS: '||' inside real parens still not a separator"
+
+// ----------------------------------------------------------------
+// P1B-18e — paren groups joined by '||' (measured legal in twoway)
+// ----------------------------------------------------------------
+// The stray-text check added for P1B-16 must not reject this: real twoway
+// accepts `(scatter y x) || (line y x)' with rc 0, and dash.sthlp claims
+// drop-in parity.
+capture mata: _dash_split_segs("(scatter mpg weight) || (line mpg weight)")
+assert _rc == 0
+assert "`_n_segs'" == "2"
+assert `"`_seg_2'"' == "line mpg weight"
+display "P1B-18e PASS: paren groups joined by '||' still accepted"
+
+// ----------------------------------------------------------------
+// P1B-18f — a top-level if/in qualifier in paren mode
+// ----------------------------------------------------------------
+// twoway accepts all four of these with rc 0 and dash.sthlp documents the
+// form.  This scanner has never captured the qualifier, but it must not
+// start rejecting it either -- a silent drop is a separate defect, and
+// turning it into an abort would be a regression on documented syntax.
+capture mata: _dash_split_segs("(scatter mpg weight) if foreign==1")
+assert _rc == 0
+assert "`_n_segs'" == "1"
+display "P1B-18f PASS: a top-level if qualifier is accepted in paren mode"
+
+capture mata: _dash_split_segs("(scatter mpg weight) in 1/10")
+assert _rc == 0
+assert "`_n_segs'" == "1"
+display "P1B-18g PASS: a top-level in qualifier is accepted in paren mode"
+
+// The qualifier must not hide the graph-option comma that follows it.
+capture mata: _dash_split_segs(`"(scatter mpg weight) if foreign==1, title("T")"')
+assert _rc == 0
+assert "`_n_segs'" == "1"
+assert strpos(`"`_graph_opts_raw'"', "title") > 0
+display "P1B-18h PASS: graph options after an if qualifier are still found"
+
+
+// ================================================================
+// A7 — _dash_extract_filters must not read inside quotes
+// ================================================================
+
+// ----------------------------------------------------------------
+// P1B-19 — control: a real filter() is still harvested
+// ----------------------------------------------------------------
+local 0 `", filter(foreign, type(dropdown)) saving(x.html)"'
+mata: _dash_extract_filters("_fp", "_cmd")
+assert `"`_fp'"' == "foreign, type(dropdown)"
+assert strpos(`"`_cmd'"', "filter") == 0
+display "P1B-19 PASS: control — a real filter() is harvested and removed"
+
+// ----------------------------------------------------------------
+// P1B-20 — filter( inside a quoted title is left alone
+// ----------------------------------------------------------------
+local 0 `", title("Q1 filter(foreign) report") saving(x.html)"'
+mata: _dash_extract_filters("_fp2", "_cmd2")
+assert `"`_fp2'"' == ""
+assert strpos(`"`_cmd2'"', "filter(foreign)") > 0
+display "P1B-20 PASS: 'filter(' inside a quoted title is neither harvested nor cut"
+
+// ----------------------------------------------------------------
+// P1B-21 — the scan is case-insensitive, so the quoted form must be too
+// ----------------------------------------------------------------
+local 0 `", note("see FILTER(abc) here") saving(x.html)"'
+mata: _dash_extract_filters("_fp3", "_cmd3")
+assert `"`_fp3'"' == ""
+assert strpos(`"`_cmd3'"', "FILTER(abc)") > 0
+display "P1B-21 PASS: an upper-case 'FILTER(' inside a quote is left alone"
+
+// ----------------------------------------------------------------
+// P1B-22 — a real filter() alongside a quoted one: harvest exactly one
+// ----------------------------------------------------------------
+local 0 `", title("Q1 filter(foreign) report") filter(price, type(range))"'
+mata: _dash_extract_filters("_fp4", "_cmd4")
+assert `"`_fp4'"' == "price, type(range)"
+assert strpos(`"`_cmd4'"', "filter(foreign)") > 0
+display "P1B-22 PASS: the real filter() is harvested, the quoted one is not"
+
+// ----------------------------------------------------------------
+// P1B-22d — a filter() nested inside another option is not top level
+// ----------------------------------------------------------------
+// filter() is a top-level option of dash build / dash serve.  The scan
+// reached inside any option that happened to contain the word, so
+// `tabs(a, filter(x))' harvested `x' as a real filter and left the user
+// holding `tabs(a, )'.
+local 0 `", tabs(a, filter(x)) saving(y.html)"'
+mata: _dash_extract_filters("_fp6", "_cmd6")
+assert `"`_fp6'"' == ""
+assert strpos(`"`_cmd6'"', "filter(x)") > 0
+display "P1B-22d PASS: a nested filter() is not harvested out of its option"
+
+// ----------------------------------------------------------------
+// P1B-22e — a real filter() whose label carries a parenthesised quote
+// ----------------------------------------------------------------
+local 0 `", filter(foreign, label("a (b)")) saving(y.html)"'
+mata: _dash_extract_filters("_fp7", "_cmd7")
+assert `"`_fp7'"' == `"foreign, label("a (b)")"'
+display "P1B-22e PASS: a quoted, parenthesised filter label survives extraction"
+
+// ----------------------------------------------------------------
+// P1B-22b — two real filters still join with ' || '
+// ----------------------------------------------------------------
+local 0 `", filter(foreign, type(dropdown)) filter(price, type(range))"'
+mata: _dash_extract_filters("_fp5", "_cmd5")
+assert `"`_fp5'"' == "foreign, type(dropdown) || price, type(range)"
+display "P1B-22c PASS: regression — two real filters still join with ' || '"
+
+
+// ================================================================
+// A8 — _dash_option_names must not lose options to an odd quote
+// ================================================================
+
+// ----------------------------------------------------------------
+// P1B-23 — an unbalanced quote must not drop the trailing options
+// ----------------------------------------------------------------
+local raw `"title("unbalanced quote) xlabel(1)"'
+mata: _dash_option_names("raw", "_on1")
+assert strpos(`"`_on1'"', "title") > 0
+assert strpos(`"`_on1'"', "xlabel") > 0
+display "P1B-23 PASS: an unbalanced quote does not drop trailing option names"
+
+// ----------------------------------------------------------------
+// P1B-24 — regression: a well-formed list is unchanged
+// ----------------------------------------------------------------
+local raw2 `"title("My Title") xlabel(1 2 3) legend(off)"'
+mata: _dash_option_names("raw2", "_on2")
+assert strpos(`"`_on2'"', "title") > 0
+assert strpos(`"`_on2'"', "xlabel") > 0
+assert strpos(`"`_on2'"', "legend") > 0
+display "P1B-24 PASS: regression — a well-formed option list is unchanged"
+
+// ----------------------------------------------------------------
+// P1B-25 — a compound-quoted value carrying quotes
+// ----------------------------------------------------------------
+local raw3 `"title(`"a "b" c"') xlabel(1)"'
+mata: _dash_option_names("raw3", "_on3")
+assert strpos(`"`_on3'"', "title") > 0
+assert strpos(`"`_on3'"', "xlabel") > 0
+display "P1B-25 PASS: a compound-quoted value does not drop trailing options"
+
+
+display ""
+display "All parser-integrity tests PASSED."
