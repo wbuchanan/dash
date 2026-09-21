@@ -3741,8 +3741,22 @@ class GlyphMapper:
         if self._is_empty(source, xvar, yvar):
             empty_src = ColumnDataSource({xvar: [], yvar: []})
             return fig.vbar(x=xvar, top=yvar, bottom=0, width=0.8, source=empty_src)
-        # Drop NaN rows
+        # Masked by the layer's own view BEFORE the source is rebuilt.
+        # The view's BooleanFilter is sized to the CALLER's source; the
+        # source built below is shorter once rows with missing values are
+        # dropped, and Bokeh applies a mask by position -- so attaching the
+        # view to the rebuilt source selected the wrong observations.
+        #
+        # The raw mask rather than _masked(): xvar may be a STRING column
+        # here (the fallback below spaces string categories uniformly) and
+        # _masked casts to float.  Masking before dropna also means the
+        # bar width below is derived from the rows actually plotted, so a
+        # qualified bar chart looks like the same chart drawn from that
+        # subset alone.
         df = pd.DataFrame({xvar: source.data[xvar], yvar: source.data[yvar]})
+        _bar_sel = self._view_mask(view, len(df))
+        if _bar_sel is not None:
+            df = df[_bar_sel]
         df = df.dropna(subset=[xvar, yvar])
         clean_source = ColumnDataSource(df)
 
@@ -3790,8 +3804,7 @@ class GlyphMapper:
             # `intensity bar' was parsed and never read.
             fill_alpha=self.scheme.bar_alpha,
         )
-        if view is not None:
-            _vbar_kwargs["view"] = view
+        # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
         if "color" in options:
             try:
@@ -3840,11 +3853,12 @@ class GlyphMapper:
         Returns:
             The single Segment GlyphRenderer created.
         """
-        x_arr = np.array(source.data[xvar], dtype=float)
-        y_arr = np.array(source.data[yvar], dtype=float)
-        # Drop NaN rows
-        mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
-        x_arr, y_arr = x_arr[mask], y_arr[mask]
+        # Masked by the layer's own view BEFORE the source is rebuilt.
+        # The view's BooleanFilter is sized to the CALLER's source; the
+        # source built below is shorter once rows with missing values are
+        # dropped, and Bokeh applies a mask by position -- so attaching the
+        # view to the rebuilt source selected the wrong observations.
+        x_arr, y_arr = self._masked(source, view, xvar, yvar)
         # base() option sets the spike origin; default 0
         base_val = 0.0
         if "base" in options:
@@ -3863,8 +3877,7 @@ class GlyphMapper:
                                   line_color=self.scheme.default_color(color_idx, "scatter"),
                                   line_width=self.scheme.default_line_width,
                                   legend_label=yvar)
-        if view is not None:
-            _seg_kwargs["view"] = view
+        # No view here: seg_source already holds only the selected rows.
         r = fig.segment(**_seg_kwargs)
         self._apply_line_opts(r, options)
         self._apply_mlabel_opts(fig, source, options, xvar, yvar)
@@ -5639,20 +5652,28 @@ class GlyphMapper:
         Returns:
             List with the single Segment GlyphRenderer.
         """
+        # Masked by the layer's own view BEFORE the rows are dropped.  The
+        # view's BooleanFilter is sized to the CALLER's source; the source
+        # built below is shorter once rows with missing values go, and Bokeh
+        # applies a mask by position -- so attaching the view to the rebuilt
+        # source selected the wrong observations.
         clean = pd.DataFrame({
             y1var: source.data[y1var],
             x1var: source.data[x1var],
             y2var: source.data[y2var],
             x2var: source.data[x2var],
-        }).dropna()
+        })
+        _pc_sel = self._view_mask(view, len(clean))
+        if _pc_sel is not None:
+            clean = clean[_pc_sel]
+        clean = clean.dropna()
         source_clean = ColumnDataSource(clean)
         _pcseg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                     source=source_clean,
                                     line_color=self.scheme.default_color(color_idx, "scatter"),
                                     line_width=1.5,
                                     legend_label=y1var)
-        if view is not None:
-            _pcseg_kwargs["view"] = view
+        # No view here: source_clean already holds only the selected rows.
         r = fig.segment(**_pcseg_kwargs)
         self._apply_line_opts(r, options)
         return [r]
@@ -5779,12 +5800,21 @@ class GlyphMapper:
         Returns:
             List with the single scatter GlyphRenderer.
         """
+        # Masked by the layer's own view BEFORE the rows are dropped.  The
+        # view's BooleanFilter is sized to the CALLER's source; the source
+        # built below is shorter once rows with missing values go, and Bokeh
+        # applies a mask by position -- so attaching the view to the rebuilt
+        # source selected the wrong observations.
         clean = pd.DataFrame({
             y1var: source.data[y1var],
             x1var: source.data[x1var],
             y2var: source.data[y2var],
             x2var: source.data[x2var],
-        }).dropna()
+        })
+        _pc_sel = self._view_mask(view, len(clean))
+        if _pc_sel is not None:
+            clean = clean[_pc_sel]
+        clean = clean.dropna()
 
         # Concatenate both endpoint sets into one scatter source
         x_all = np.concatenate([clean[x1var].values, clean[x2var].values])
@@ -5795,8 +5825,7 @@ class GlyphMapper:
                                    size=self.scheme.default_marker_size(color_idx),
                                    color=self.scheme.default_color(color_idx, "scatter"),
                                    legend_label=y1var)
-        if view is not None:
-            _pcsc_kwargs["view"] = view
+        # No view here: pc_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_pcsc_kwargs)
         self._apply_marker_opts(r, options)
         return [r]
@@ -5830,12 +5859,21 @@ class GlyphMapper:
         Returns:
             List with the segment GlyphRenderer (Arrow annotations are layout objects).
         """
+        # Masked by the layer's own view BEFORE the rows are dropped.  The
+        # view's BooleanFilter is sized to the CALLER's source; the source
+        # built below is shorter once rows with missing values go, and Bokeh
+        # applies a mask by position -- so attaching the view to the rebuilt
+        # source selected the wrong observations.
         clean = pd.DataFrame({
             y1var: source.data[y1var],
             x1var: source.data[x1var],
             y2var: source.data[y2var],
             x2var: source.data[x2var],
-        }).dropna()
+        })
+        _pc_sel = self._view_mask(view, len(clean))
+        if _pc_sel is not None:
+            clean = clean[_pc_sel]
+        clean = clean.dropna()
         pc_source = ColumnDataSource(clean)
 
         color = self.scheme.default_color(color_idx, "scatter")
@@ -5850,8 +5888,7 @@ class GlyphMapper:
         _pca_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=1.5,
                                       legend_label=y1var)
-        if view is not None:
-            _pca_seg_kwargs["view"] = view
+        # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pca_seg_kwargs)
         self._apply_line_opts(seg, options)
 
@@ -5902,12 +5939,21 @@ class GlyphMapper:
         Returns:
             List with the segment GlyphRenderer (Arrow annotations are layout objects).
         """
+        # Masked by the layer's own view BEFORE the rows are dropped.  The
+        # view's BooleanFilter is sized to the CALLER's source; the source
+        # built below is shorter once rows with missing values go, and Bokeh
+        # applies a mask by position -- so attaching the view to the rebuilt
+        # source selected the wrong observations.
         clean = pd.DataFrame({
             y1var: source.data[y1var],
             x1var: source.data[x1var],
             y2var: source.data[y2var],
             x2var: source.data[x2var],
-        }).dropna()
+        })
+        _pc_sel = self._view_mask(view, len(clean))
+        if _pc_sel is not None:
+            clean = clean[_pc_sel]
+        clean = clean.dropna()
         pc_source = ColumnDataSource(clean)
 
         color = self.scheme.default_color(color_idx, "scatter")
@@ -5922,8 +5968,7 @@ class GlyphMapper:
         _pcb_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=1.5,
                                       legend_label=y1var)
-        if view is not None:
-            _pcb_seg_kwargs["view"] = view
+        # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pcb_seg_kwargs)
         self._apply_line_opts(seg, options)
 
@@ -6034,6 +6079,19 @@ class GlyphMapper:
         y1_arr = np.array(source.data[y1var], dtype=float)
         y2_arr = np.array(source.data[y2var], dtype=float)
 
+        # Masked by the layer's own view BEFORE stacking.  The source built
+        # below holds TWO entries per observation, so the caller's row mask
+        # cannot be attached to it -- Bokeh applies a mask by position and it
+        # would land on the wrong half.  _masked() is deliberately not used:
+        # it drops a row when ANY named column is NaN, which would discard
+        # the y2 point of an observation whose y1 alone is missing.  The
+        # per-entry test below keeps that point, as it always has.
+        _rs_sel = self._view_mask(view, len(x_arr))
+        if _rs_sel is not None:
+            x_arr = x_arr[_rs_sel]
+            y1_arr = y1_arr[_rs_sel]
+            y2_arr = y2_arr[_rs_sel]
+
         # Interleave both y-boundary points at the same x
         x_all = np.concatenate([x_arr, x_arr])
         y_all = np.concatenate([y1_arr, y2_arr])
@@ -6047,8 +6105,7 @@ class GlyphMapper:
                                  size=self.scheme.default_marker_size(color_idx),
                                  color=self.scheme.default_color(color_idx, "scatter"),
                                  legend_label=y1var)
-        if view is not None:
-            _rs_kwargs["view"] = view
+        # No view here: rs_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_rs_kwargs)
         self._apply_marker_opts(r, options)
         return [r]
