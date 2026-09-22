@@ -2502,24 +2502,38 @@ class TestServerFitCIFilterRecompute:
             "qfitci plot must register agg_sources entry with type='qfitci'"
 
     def test_lfitci_filter_callback_recomputes(self, dr_module, auto_df):
-        """Filter callback must handle atype=='lfitci' for recompute."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "lfitci", "yvar": "mpg", "xvar": "weight"}],
-            "graph_options": {"name": "g1"},
-        }])
-        src = self._get_source(dr_module, auto_df, spec, "_tlfci_cb")
-        assert "_compute_lfitci" in src and "atype == 'lfitci'" in src, \
-            "Filter callback must have 'elif atype == lfitci' recompute branch"
+        """After a filter move the served lfitci layer equals a saved one built
+        from the filtered rows.
+
+        This asserted that the generated source contained the text
+        "_compute_lfitci" and "atype == 'lfitci'".  Both were true while the layer
+        was NOT recomputed: no registration site ever wrote that type, so
+        the branch was unreachable, and the text-level check passed over a
+        served layer that went stale (or, once the mapper-built source was
+        refreshed by row index, over ten points of the old curve).  The
+        served app now redraws a computed layer through the same mapper on
+        the filtered frame; the check is against the saved renderer on
+        those rows.
+        """
+        _assert_served_layer_refits(dr_module, auto_df, "lfitci")
+
 
     def test_qfitci_filter_callback_recomputes(self, dr_module, auto_df):
-        """Filter callback must handle atype=='qfitci' for recompute."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "qfitci", "yvar": "mpg", "xvar": "weight"}],
-            "graph_options": {"name": "g1"},
-        }])
-        src = self._get_source(dr_module, auto_df, spec, "_tqfci_cb")
-        assert "_compute_qfitci" in src and "atype == 'qfitci'" in src, \
-            "Filter callback must have 'elif atype == qfitci' recompute branch"
+        """After a filter move the served qfitci layer equals a saved one built
+        from the filtered rows.
+
+        This asserted that the generated source contained the text
+        "_compute_qfitci" and "atype == 'qfitci'".  Both were true while the layer
+        was NOT recomputed: no registration site ever wrote that type, so
+        the branch was unreachable, and the text-level check passed over a
+        served layer that went stale (or, once the mapper-built source was
+        refreshed by row index, over ten points of the old curve).  The
+        served app now redraws a computed layer through the same mapper on
+        the filtered frame; the check is against the saved renderer on
+        those rows.
+        """
+        _assert_served_layer_refits(dr_module, auto_df, "qfitci")
+
 
     # ------------------------------------------------------------------
     # A-90 through A-94 — mspline / mband / rscatter / pci / pcscatter
@@ -2537,14 +2551,21 @@ class TestServerFitCIFilterRecompute:
             "mspline must register agg_sources entry with type='mspline'"
 
     def test_mspline_filter_callback_recomputes(self, dr_module, auto_df):
-        """A-90: Filter callback must handle atype=='mspline' for recompute."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        src = self._get_source(dr_module, auto_df, spec, "_tmsp_cb")
-        assert "_compute_mspline" in src and "atype == 'mspline'" in src, \
-            "Filter callback must have 'elif atype == mspline' recompute branch"
+        """After a filter move the served mspline layer equals a saved one built
+        from the filtered rows.
+
+        This asserted that the generated source contained the text
+        "_compute_mspline" and "atype == 'mspline'".  Both were true while the layer
+        was NOT recomputed: no registration site ever wrote that type, so
+        the branch was unreachable, and the text-level check passed over a
+        served layer that went stale (or, once the mapper-built source was
+        refreshed by row index, over ten points of the old curve).  The
+        served app now redraws a computed layer through the same mapper on
+        the filtered frame; the check is against the saved renderer on
+        those rows.
+        """
+        _assert_served_layer_refits(dr_module, auto_df, "mspline")
+
 
     def test_mband_registered_in_agg_sources(self, dr_module, auto_df):
         """A-91: mband must register its source in agg_sources for filter updates."""
@@ -2557,14 +2578,21 @@ class TestServerFitCIFilterRecompute:
             "mband must register agg_sources entry with type='mband'"
 
     def test_mband_filter_callback_recomputes(self, dr_module, auto_df):
-        """A-91: Filter callback must handle atype=='mband' for recompute."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        src = self._get_source(dr_module, auto_df, spec, "_tmb_cb")
-        assert "_compute_mband" in src and "atype == 'mband'" in src, \
-            "Filter callback must have 'elif atype == mband' recompute branch"
+        """After a filter move the served mband layer equals a saved one built
+        from the filtered rows.
+
+        This asserted that the generated source contained the text
+        "_compute_mband" and "atype == 'mband'".  Both were true while the layer
+        was NOT recomputed: no registration site ever wrote that type, so
+        the branch was unreachable, and the text-level check passed over a
+        served layer that went stale (or, once the mapper-built source was
+        refreshed by row index, over ten points of the old curve).  The
+        served app now redraws a computed layer through the same mapper on
+        the filtered frame; the check is against the saved renderer on
+        those rows.
+        """
+        _assert_served_layer_refits(dr_module, auto_df, "mband")
+
 
     def test_rscatter_registered_in_agg_sources(self, dr_module, auto_df):
         """A-92: rscatter must register its source in agg_sources for filter updates."""
@@ -2578,15 +2606,21 @@ class TestServerFitCIFilterRecompute:
             "rscatter must register agg_sources entry with type='rscatter'"
 
     def test_rscatter_filter_callback_recomputes(self, dr_module, auto_df):
-        """A-92: Filter callback must handle atype=='rscatter' for recompute."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "rscatter", "yvar1": "mpg", "yvar2": "price",
-                       "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        src = self._get_source(dr_module, auto_df, spec, "_trs_cb")
-        assert "_compute_rscatter" in src and "atype == 'rscatter'" in src, \
-            "Filter callback must have 'elif atype == rscatter' recompute branch"
+        """After a filter move the served rscatter layer equals a saved one built
+        from the filtered rows.
+
+        This asserted that the generated source contained the text
+        "_compute_rscatter" and "atype == 'rscatter'".  Both were true while the layer
+        was NOT recomputed: no registration site ever wrote that type, so
+        the branch was unreachable, and the text-level check passed over a
+        served layer that went stale (or, once the mapper-built source was
+        refreshed by row index, over ten points of the old curve).  The
+        served app now redraws a computed layer through the same mapper on
+        the filtered frame; the check is against the saved renderer on
+        those rows.
+        """
+        _assert_served_layer_refits(dr_module, auto_df, "rscatter")
+
 
     def test_pci_registered_in_graph_sources(self, dr_module, auto_df):
         """A-93: pci must register its source in graph_sources so the filter callback updates it."""
@@ -2612,15 +2646,21 @@ class TestServerFitCIFilterRecompute:
             "pcscatter must register agg_sources entry with type='pcscatter'"
 
     def test_pcscatter_filter_callback_recomputes(self, dr_module, auto_df):
-        """A-94: Filter callback must handle atype=='pcscatter' for recompute."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "pcscatter", "y1var": "mpg", "x1var": "weight",
-                       "y2var": "price", "x2var": "length", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        src = self._get_source(dr_module, auto_df, spec, "_tpcs_cb")
-        assert "_compute_pcscatter" in src and "atype == 'pcscatter'" in src, \
-            "Filter callback must have 'elif atype == pcscatter' recompute branch"
+        """After a filter move the served pcscatter layer equals a saved one built
+        from the filtered rows.
+
+        This asserted that the generated source contained the text
+        "_compute_pcscatter" and "atype == 'pcscatter'".  Both were true while the layer
+        was NOT recomputed: no registration site ever wrote that type, so
+        the branch was unreachable, and the text-level check passed over a
+        served layer that went stale (or, once the mapper-built source was
+        refreshed by row index, over ten points of the old curve).  The
+        served app now redraws a computed layer through the same mapper on
+        the filtered frame; the check is against the saved renderer on
+        those rows.
+        """
+        _assert_served_layer_refits(dr_module, auto_df, "pcscatter")
+
 
     def test_mspline_compute_fn_changes_with_filter(self, dr_module, auto_df):
         """A-90: _compute_mspline must return different y values for filtered vs full data."""
@@ -3304,42 +3344,98 @@ class TestServerLpolyFpfit:
     # ------------------------------------------------------------------
 
     def test_lpoly_faceted_bwidth_respected(self, dr_module, auto_df):
-        """Regression: faceted lpoly must read bwidth from opts (not hardcode 0.5)."""
-        import re, base64 as _b64
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
-                       "options": {"bwidth": "0.3"}}],
-            "graph_options": {"name": "g1", "by": "foreign"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        compile(source, "<generated>", "exec")
-        # The fix: generated faceted code must read bwidth from opts not hardcode it.
-        # Verify: _SPEC_B64 roundtrip preserves the bwidth value
-        m = re.search(r'_SPEC_B64\s*=\s*"([^"]+)"', source)
-        assert m, "_SPEC_B64 must be present in generated source"
-        decoded = _b64.b64decode(m.group(1)).decode("utf-8")
-        assert "0.3" in decoded, "bwidth=0.3 must be preserved in embedded spec"
-        # Also verify generated code reads from opts (not hardcoded default)
-        assert "opts.get('bwidth'" in source or 'opts.get("bwidth"' in source, \
-            "faceted lpoly code must read bwidth from opts dict"
+        """A faceted lpoly honours bwidth(0.3): its panels differ from the default's.
+
+        This asserted the generated source contained "opts.get('bwidth'".  The
+        by() panels are drawn by the same mapper as the graph now, which
+        reads the option under its own name, so the text is gone and the
+        behaviour is what is checked: the curve with the option is not the
+        curve without it, in every panel.
+        """
+        from bokeh.document import Document
+        import importlib.util
+        import warnings
+
+        def _curves(options):
+            spec = _make_spec_json(graphs=[{
+                "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                           "options": options}],
+                "graph_options": {"name": "g1", "by": "foreign"},
+            }])
+            spec_path, data_path = _write_temp_files(auto_df, spec)
+            out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+            out_f.close()
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+                    ms = importlib.util.spec_from_file_location("_lpf_bwidth", out_f.name)
+                    mod = importlib.util.module_from_spec(ms)
+                    ms.loader.exec_module(mod)
+                    doc = Document()
+                    mod.make_document(doc)
+                out = []
+                for m in doc.select({"type": object}):
+                    d = getattr(m, "data", None)
+                    if isinstance(d, dict) and "y_lp" in d and len(d["y_lp"]):
+                        out.append([round(float(v), 6) for v in d["y_lp"]])
+                return out
+            finally:
+                for _p in (spec_path, data_path, out_f.name):
+                    try: os.unlink(_p)
+                    except OSError: pass
+
+        with_opt = _curves({"bwidth": "0.3"})
+        plain = _curves({})
+        assert len(with_opt) == len(plain) == 2, (with_opt, plain)
+        assert with_opt != plain, "bwidth(0.3) changed nothing in the served panels"
 
     def test_lpoly_faceted_degree_respected(self, dr_module, auto_df):
-        """Regression: faceted lpoly must read degree from opts (not hardcode 0)."""
-        import re, base64 as _b64
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
-                       "options": {"degree": "2"}}],
-            "graph_options": {"name": "g1", "by": "foreign"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        compile(source, "<generated>", "exec")
-        m = re.search(r'_SPEC_B64\s*=\s*"([^"]+)"', source)
-        assert m, "_SPEC_B64 must be present in generated source"
-        decoded = _b64.b64decode(m.group(1)).decode("utf-8")
-        assert '"degree": "2"' in decoded or '"degree":"2"' in decoded, \
-            "degree=2 must be preserved in embedded spec"
-        assert "opts.get('degree'" in source or 'opts.get("degree"' in source, \
-            "faceted lpoly code must read degree from opts dict"
+        """A faceted lpoly honours degree(2): its panels differ from the default's.
+
+        This asserted the generated source contained "opts.get('degree'".  The
+        by() panels are drawn by the same mapper as the graph now, which
+        reads the option under its own name, so the text is gone and the
+        behaviour is what is checked: the curve with the option is not the
+        curve without it, in every panel.
+        """
+        from bokeh.document import Document
+        import importlib.util
+        import warnings
+
+        def _curves(options):
+            spec = _make_spec_json(graphs=[{
+                "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                           "options": options}],
+                "graph_options": {"name": "g1", "by": "foreign"},
+            }])
+            spec_path, data_path = _write_temp_files(auto_df, spec)
+            out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+            out_f.close()
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+                    ms = importlib.util.spec_from_file_location("_lpf_degree", out_f.name)
+                    mod = importlib.util.module_from_spec(ms)
+                    ms.loader.exec_module(mod)
+                    doc = Document()
+                    mod.make_document(doc)
+                out = []
+                for m in doc.select({"type": object}):
+                    d = getattr(m, "data", None)
+                    if isinstance(d, dict) and "y_lp" in d and len(d["y_lp"]):
+                        out.append([round(float(v), 6) for v in d["y_lp"]])
+                return out
+            finally:
+                for _p in (spec_path, data_path, out_f.name):
+                    try: os.unlink(_p)
+                    except OSError: pass
+
+        with_opt = _curves({"degree": "2"})
+        plain = _curves({})
+        assert len(with_opt) == len(plain) == 2, (with_opt, plain)
+        assert with_opt != plain, "degree(2) changed nothing in the served panels"
 
     def test_lpoly_faceted_make_document_runs(self, dr_module, auto_df):
         """lpoly with by() must produce a valid document with custom bwidth/degree."""
@@ -4276,6 +4372,139 @@ class TestServerFunctionExpressionOperators:
 # Fix: mirror standalone map_function by broadcasting scalar results to
 # len(_x) before creating ColumnDataSource.
 # ================================================================
+
+
+def _assert_served_layer_refits(dr_module, df, ptype):
+    """Serve *ptype* with a dropdown on `foreign', move it to 1, and compare
+    every derived column against the saved renderer on the foreign==1 rows."""
+    import importlib.util
+    import warnings
+    from bokeh.document import Document
+    from bokeh.models import Select
+
+    def _derived(figs):
+        out, seen = {}, set()
+        for f in figs:
+            for r in f.renderers:
+                src = getattr(r, "data_source", None)
+                if src is None or id(src) in seen:
+                    continue
+                seen.add(id(src))
+                for k, v in src.data.items():
+                    if k in ("index", dr_module._ROW_ID_COLUMN) or not len(v):
+                        continue
+                    try:
+                        vals = [float(x) for x in v]
+                    except (TypeError, ValueError):
+                        continue
+                    out.setdefault(k, []).append((len(vals), round(sum(vals), 4)))
+        return {k: sorted(v) for k, v in out.items()}
+
+    if ptype in ("rscatter",):
+        plot = {"type": ptype, "yvar1": "mpg", "yvar2": "price",
+                "xvar": "weight", "options": {}}
+    elif ptype in ("pcscatter",):
+        plot = {"type": ptype, "y1var": "mpg", "x1var": "weight",
+                "y2var": "price", "x2var": "foreign", "options": {}}
+    else:
+        plot = {"type": ptype, "yvar": "mpg", "xvar": "weight", "options": {}}
+    graphs = [{"plots": [plot], "graph_options": {"name": "g1"}}]
+    spec = _make_spec_json(graphs=graphs,
+                           build_options={"filter": "foreign, type(dropdown)"})
+    spec_path, data_path = _write_temp_files(df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+            ms = importlib.util.spec_from_file_location("_refit_" + ptype,
+                                                        out_f.name)
+            mod = importlib.util.module_from_spec(ms)
+            ms.loader.exec_module(mod)
+            doc = Document()
+            mod.make_document(doc)
+            figs = [m for m in doc.select({"type": object})
+                    if type(m).__name__ == "figure"]
+            w = [m for m in doc.select({"type": Select})][0]
+            old = w.value
+            w.value = "1.0"
+            for cb in w._callbacks.get("value", []):
+                cb("value", old, "1.0")
+            got = _derived(figs)
+    finally:
+        for _p in (spec_path, data_path, out_f.name):
+            try: os.unlink(_p)
+            except OSError: pass
+    spec2 = _make_spec_json(graphs=graphs)
+    spec_path, data_path = _write_temp_files(df[df["foreign"] == 1.0], spec2)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr_module.DashRenderer(spec_path, data_path)
+            r.render()
+            want = _derived(r.figures.values())
+    finally:
+        for _p in (spec_path, data_path):
+            try: os.unlink(_p)
+            except OSError: pass
+    assert got, "%s drew no derived source to compare" % ptype
+    assert got == want, ("%s after filtering to foreign==1: served %s, "
+                         "saved on those rows %s" % (ptype, got, want))
+
+
+def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
+    """Rows drawn per by(foreign) panel, in each render mode, for a qualifier."""
+    import importlib.util
+    import warnings
+    from bokeh.document import Document
+
+    def _rows(figs):
+        out = []
+        for f in figs:
+            n = 0
+            for r in f.renderers:
+                src = getattr(r, "data_source", None)
+                if src is None:
+                    continue
+                d = dict(src.data)
+                k = next(iter(d), None)
+                view = getattr(r, "view", None)
+                flt = getattr(view, "filter", None) if view is not None else None
+                idx = getattr(flt, "indices", None) if flt is not None else None
+                n += len(idx) if idx is not None else (len(d[k]) if k else 0)
+            out.append(n)
+        return out
+
+    g = {"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+         "graph_options": {"name": "g1", "by": "foreign"}}
+    if if_expr:
+        g["if_expr"] = if_expr
+    if in_expr:
+        g["in_expr"] = in_expr
+    spec = _make_spec_json(graphs=[g])
+    spec_path, data_path = _write_temp_files(df, spec)
+    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    out_f.close()
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+            ms = importlib.util.spec_from_file_location("_prb", out_f.name)
+            mod = importlib.util.module_from_spec(ms)
+            ms.loader.exec_module(mod)
+            doc = Document()
+            mod.make_document(doc)
+            served_rows = _rows([m for m in doc.select({"type": object})
+                                 if type(m).__name__ == "figure"])
+            r = dr_module.DashRenderer(spec_path, data_path)
+            r.render()
+            saved_rows = _rows(r.figures.values())
+    finally:
+        for _p in (spec_path, data_path, out_f.name):
+            try: os.unlink(_p)
+            except OSError: pass
+    return {"served": served_rows, "saved": saved_rows}
 
 def _count_glyph_renderers(doc) -> int:
     """Count all glyph renderers in a Bokeh document, traversing layouts."""
@@ -7670,37 +7899,29 @@ class TestKpiColorCssInjectionHardening:
 # use that as the base for `work_df` so groupby() groups only qualified rows.
 
 class TestServerByFacetingRespectsQualifiers:
-    """Regression suite for BUG-36: server by() faceting must honour if_expr/in_expr."""
+    """Regression suite for BUG-36: server by() faceting must honour if_expr/in_expr.
 
-    # ------------------------------------------------------------------
-    # BUG-36-1a: generated source contains qualifier-base frame variable
-    # ------------------------------------------------------------------
+    BUG-36-1a and 1b used to assert that the generated source contained the
+    identifiers `_by_q_df', `_by_if' and `_by_px'.  The faceting block that
+    held them is gone: the by() panels are built by the same figure body as
+    the graph, from a frame the shared qualifier reader has already
+    narrowed.  The two are restated below as behaviour -- the served panels
+    hold the rows the saved ones hold.
+    """
 
-    def test_generated_source_contains_by_q_df(self, dr_module, auto_df):
-        """BUG-36-1a: generated source must contain '_by_q_df' qualifier frame."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "by": "foreign", "if_expr": "foreign == 1"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "_by_q_df" in source, (
-            "Generated source must define '_by_q_df' to apply qualifier before faceting"
-        )
+    def test_served_panels_hold_the_qualified_rows_the_saved_ones_hold(
+            self, dr_module, auto_df):
+        """BUG-36-1a, restated: by(foreign) if foreign == 1 -> one panel, both modes."""
+        rows = _panel_rows_both_modes(dr_module, auto_df, "foreign == 1", "")
+        assert rows["served"] == rows["saved"] == [len(auto_df[auto_df["foreign"] == 1])]
 
-    # ------------------------------------------------------------------
-    # BUG-36-1b: generated source applies if_expr before faceting
-    # ------------------------------------------------------------------
+    def test_an_in_range_narrows_the_facets_in_both_modes(
+            self, dr_module, auto_df):
+        """BUG-36-1b, restated: by(foreign) in 1/5 groups the first five rows only."""
+        rows = _panel_rows_both_modes(dr_module, auto_df, "", "1/5")
+        assert rows["served"] == rows["saved"]
+        assert sum(rows["served"]) == 5
 
-    def test_generated_source_applies_if_expr_before_faceting(self, dr_module, auto_df):
-        """BUG-36-1b: generated source must apply if_expr qualifier before work_df groupby."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "by": "foreign", "if_expr": "foreign == 1"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        # _by_if must appear before work_df assignment in the faceting block
-        assert "_by_if" in source, "Generated source must check _by_if in faceting block"
-        assert "_by_px" in source, "Generated source must build _by_px predicate for query"
 
     # ------------------------------------------------------------------
     # BUG-36-1c: runtime — if_expr limits facets to qualified groups only
@@ -8090,17 +8311,55 @@ class TestServerByTotalFullDispatch:
     # ------------------------------------------------------------------
 
     def test_by_total_source_in_generated_source(self, dr_module, auto_df):
-        """BUG-38-1c: generated source must use work_df for Total agg computations."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "by": "foreign, total"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        # Total lfit must call _compute_lfit(work_df, ...) not _compute_lfit(_fac_gdf, ...)
-        assert "work_df" in source, "Generated source must reference work_df for Total panel"
-        assert "_compute_lfit(work_df" in source, (
-            "Total lfit must use work_df, not a facet-specific _fac_gdf frame"
-        )
+        """BUG-38-1c, restated: the Total panel's fit is the fit of ALL rows.
+
+        This asserted "_compute_lfit(work_df" appeared in the generated
+        source.  The Total panel is drawn by the same figure body as the
+        graph now, from the whole (qualified) frame, so the text is gone and
+        the fit itself is checked: it equals the unfaceted graph's fit and
+        differs from each group's.
+        """
+        from bokeh.document import Document
+        import importlib.util
+        import warnings
+
+        def _fits(by):
+            go = {"name": "g1"}
+            if by:
+                go["by"] = by
+            spec = _make_spec_json(graphs=[{
+                "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
+                "graph_options": go,
+            }])
+            spec_path, data_path = _write_temp_files(auto_df, spec)
+            out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+            out_f.close()
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+                    ms = importlib.util.spec_from_file_location("_tot_fit", out_f.name)
+                    mod = importlib.util.module_from_spec(ms)
+                    ms.loader.exec_module(mod)
+                    doc = Document()
+                    mod.make_document(doc)
+                out = []
+                for f in [m for m in doc.select({"type": object}) if type(m).__name__ == "figure"]:
+                    for r in f.renderers:
+                        d = getattr(getattr(r, "data_source", None), "data", {})
+                        if "y" in d and len(d["y"]):
+                            out.append((f.title.text, [round(float(v), 6) for v in d["y"]]))
+                return out
+            finally:
+                for _p in (spec_path, data_path, out_f.name):
+                    try: os.unlink(_p)
+                    except OSError: pass
+
+        panels = dict(_fits("foreign, total"))
+        whole = dict(_fits(""))
+        assert "Total" in panels, list(panels)
+        assert panels["Total"] == whole[""], "the Total panel's fit is not the fit of all rows"
+        assert all(panels["Total"] != v for k, v in panels.items() if k != "Total")
 
     # ------------------------------------------------------------------
     # BUG-38-1d: by(total) with dot renders Total panel
@@ -9964,7 +10223,12 @@ class TestTheServerDispatchesThroughTheSharedTable:
                  for t in ("dot", "qfit", "lfitci", "qfitci", "fpfit",
                            "fpfitci")]
         src = self._app_source(tmp_path, dr_module, auto_df, plots)
+        # WP-09 left one branch per type, each the same eleven lines; WP-11
+        # folded them into ONE dispatch by plot-type family, which the by()
+        # panels and the filter redraw call as well.  So: no per-type branch
+        # for these six, and the shared dispatch functions are what is
+        # called.
         for t in ("dot", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci"):
-            assert ("elif ptype == '%s':" % t) in src, t
-        # Each of those branches now dispatches instead of re-implementing.
-        assert src.count("_r = _dash_add_glyph(") >= 6
+            assert ("elif ptype == '%s':" % t) not in src, t
+        assert src.count("def _dash_draw_layer(") == 1
+        assert "_dash_add_glyph(" in src and "_dash_add_pc_glyph(" in src

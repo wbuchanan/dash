@@ -616,15 +616,27 @@ program define _dash_setup_check_files, rclass
     display as text "  dash_render.py ..... {res}OK{txt}"
 
     // Ask the renderer whether it can actually read a scheme file.
+    //
+    // The probe's fallback warning is silenced for the probe ONLY.  This
+    // used to call warnings.simplefilter("ignore") and leave it installed,
+    // which silenced every warning Python raised for the rest of the Stata
+    // session -- so a user who ran dash_setup and then dash saw none of
+    // dash's reports: not the empty-layer report, not the by() sub-option
+    // report, not the unknown-scheme report.  Measured: two warning lines
+    // from one render before, zero after.  The filter list is saved and
+    // put back; a `with' block cannot follow `;' on the one line Stata's
+    // ado-path loader allows.
     local _sch_ok "0"
     capture python: ///
         import importlib.util as _iu, sfi, warnings; ///
         _sp = _iu.spec_from_file_location("_dash_setup_probe", r"`render_py'"); ///
         _m = _iu.module_from_spec(_sp); ///
         _sp.loader.exec_module(_m); ///
+        _dash_setup_filters = warnings.filters[:]; ///
         warnings.simplefilter("ignore"); ///
         sfi.Macro.setLocal("_sch_ok", ///
-            "0" if _m.SchemeParser.resolve_or_fallback("s2color", "dash_setup").is_fallback else "1")
+            "0" if _m.SchemeParser.resolve_or_fallback("s2color", "dash_setup").is_fallback else "1"); ///
+        warnings.filters[:] = _dash_setup_filters
     if _rc != 0 | "`_sch_ok'" != "1" {
         display as error "  schemes ............ {err}unreachable{txt}"
         display as error "    dash found its renderer but the renderer could" ///

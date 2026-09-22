@@ -703,6 +703,10 @@ that group.
 {pstd}
 Value labels are used for facet panel titles when available.
 Multiple by-variables produce composite labels (e.g. "Domestic / 3").
+{cmd:cols()}, {cmd:total} and {cmd:missing} are the {cmd:by()} sub-options
+{cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
+example {cmd:rows()}, {cmd:holes()} or {cmd:compact} -- is accepted, named
+in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the one shared data source, so a box-select
 in any panel highlights the matching observations in every other panel and

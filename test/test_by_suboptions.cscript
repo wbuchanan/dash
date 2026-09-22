@@ -1,0 +1,182 @@
+*! test_by_suboptions.cscript  v1.0
+*! Certification script for by() sub-options dash does not implement.
+*!
+*! Stata's by() takes some thirty sub-options.  dash implements three --
+*! cols(#), total and missing -- and used to discard every other one
+*! without a word: `by(foreign, rows(2) compact)' faceted as if the user had
+*! typed `by(foreign)', and nothing told them.  ROADMAP BR-11.2: a by()
+*! sub-option that is not implemented is NAMED, not discarded.
+*!
+*! The renderer names them in one Python warning, which Stata prints into
+*! the log; this script captures the log and reads it back, the way
+*! test_render_log_clean.cscript and test_conformance.cscript do.
+*!
+*! Tests: BYS-01 through BYS-06
+*!
+*! Usage:  do test/test_by_suboptions.cscript
+*! Version: 1.0  22sep2026
+
+cscript "an unimplemented by() sub-option is named" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui sysuse auto, clear
+global dash_nobrowser 1
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+mata:
+// Read a captured log, re-join "> " continuations into logical lines, and
+// report how many carry the by() sub-option warning and the first that does.
+void _bys_scan(string scalar fn)
+{
+    real scalar   fh, n
+    string scalar line, full, first
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    first = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, "by() sub-option")) {
+            n = n + 1
+            if (first == "") first = full
+        }
+        full = line
+    }
+    if (strpos(full, "by() sub-option")) {
+        n = n + 1
+        if (first == "") first = full
+    }
+    fclose(fh)
+    st_local("_bys_scan_n", strofreal(n))
+    st_local("_bys_scan_line", first)
+}
+end
+
+// Render one command with the log captured, and count the logical lines of
+// the log that carry the by() sub-option warning.  Returns the count in
+// r(n) and the first matching line in r(line); the caller copies them into
+// `_bys_n' and `_bys_line'.
+capture program drop _bys_render
+program define _bys_render, rclass
+    version 16.0
+    args byspec
+    tempfile out
+    local logfile "`c(tmpdir)'dash_bys_`=subinstr("`c(current_time)'", ":", "", .)'.log"
+    // A fixed width, so the renderer's message wraps at the same place in
+    // every run and the re-join below is exercised every time.
+    set linesize 80
+    capture log close _byslog
+    log using "`logfile'", name(_byslog) text replace
+    dash clear
+    capture noisily dash scatter mpg weight, by(`byspec') saving("`out'.html")
+    local rc = _rc
+    log close _byslog
+    if `rc' != 0 {
+        display as error "render failed with rc=`rc'"
+        exit `rc'
+    }
+    // Stata wraps the log at c(linesize) and prefixes each continuation
+    // with "> ".  The renderer's message can break anywhere -- measured, it
+    // broke between "not implemented" and "and ignored: rows(2)" -- so the
+    // physical lines are re-joined into logical ones before matching.  In
+    // Mata, the way test_option_surface.cscript reads its notes: a log line
+    // can carry a quote (the unknown-scheme warning does), and a Stata
+    // macro that is re-expanded to accumulate such text loses it.
+    mata: _bys_scan("`logfile'")
+    capture erase "`logfile'"
+    return scalar n = `_bys_scan_n'
+    return local line `"`macval(_bys_scan_line)'"'
+end
+
+// The caller-side copy, so each case reads like the others.
+capture program drop _bys_take
+program define _bys_take
+    c_local _bys_n    = r(n)
+    c_local _bys_line `"`r(line)'"'
+end
+
+
+// ================================================================
+// BYS-01 — the implemented sub-options draw no warning
+// ================================================================
+_bys_render "foreign, cols(1) total"
+_bys_take
+assert `_bys_n' == 0
+display "BYS-01 PASS: by(foreign, cols(1) total) is not warned about"
+
+
+// ================================================================
+// BYS-02..03 — an unimplemented sub-option is named, once
+// ================================================================
+_bys_render "foreign, rows(2)"
+_bys_take
+display `"  read: `macval(_bys_line)'"'
+assert `_bys_n' >= 1
+assert strpos(`"`macval(_bys_line)'"', "rows(2)") > 0
+display "BYS-02 PASS: by(foreign, rows(2)) names rows(2)"
+
+_bys_render "foreign, rows(2) compact"
+_bys_take
+assert `_bys_n' >= 1
+assert strpos(`"`_bys_line'"', "rows(2)") > 0
+assert strpos(`"`_bys_line'"', "compact") > 0
+display "BYS-03 PASS: two unimplemented sub-options are named in one line"
+
+
+// ================================================================
+// BYS-04 — the supported ones beside them are not named
+// ================================================================
+_bys_render "foreign, cols(2) holes(1)"
+_bys_take
+assert `_bys_n' >= 1
+assert strpos(`"`_bys_line'"', "holes(1)") > 0
+assert strpos(`"`_bys_line'"', "cols") == 0
+display "BYS-04 PASS: cols(2) is not reported alongside holes(1)"
+
+
+// ================================================================
+// BYS-05 — and the dashboard is still built
+// ================================================================
+// A warning, not an error: the user asked for facets and gets them.
+tempfile out5
+dash clear
+dash scatter mpg weight, by(foreign, rows(2)) saving("`out5'.html")
+confirm file "`out5'.html"
+display "BYS-05 PASS: the faceted dashboard is written despite the warning"
+
+
+// ================================================================
+// BYS-06 — the warning survives dash_setup's own probe
+// ================================================================
+// dash_setup's scheme probe used to install warnings.simplefilter("ignore")
+// in the embedded interpreter and never remove it, so a user who ran
+// dash_setup and then dash in one session saw NONE of dash's reports.
+// Found because test_setup_honesty.cscript runs the probe four scripts
+// before this one in the same session, and BYS-02 could not see the
+// warning it was written to read.
+qui do "../dash_setup.ado"
+capture noisily _dash_setup_check_files
+_bys_render "foreign, rows(2)"
+_bys_take
+assert `_bys_n' >= 1
+assert strpos(`"`_bys_line'"', "rows(2)") > 0
+display "BYS-06 PASS: the report is still printed after dash_setup's probe"
+
+capture program drop _bys_render
+dash clear
+
+display ""
+display "All by() sub-option tests PASSED."

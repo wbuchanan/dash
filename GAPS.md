@@ -543,7 +543,7 @@ both modes -- graph, plot and KPI -- through `_validate_if_expr`'s whitelist.
 The app's own `_safe_g` is an alias of it now. `dash.ado:1787` and `:2023`
 were corrected.
 
-### D4. `by()` drops 20 plot types in server mode — S1, READ
+### D4. `by()` drops 20 plot types in server mode — S1, CLOSED by WP-11
 
 The facet and Total chains (`:15144-15212`, `:15245-15302`) handle 18 types.
 Missing: `lfitci qfitci rarea rbar rspike rcap rline rconnected rcapsym
@@ -554,6 +554,15 @@ the full dispatch.
 
 Those blocks also hardcode the style the parity test exists to catch:
 `size=6` at `:15145, 15200, 15246`; `width=0.8` at `:15150`.
+
+
+**Closed by WP-11.** The two chains are gone; every by() panel is built by
+the same emitted figure body as the graph, through one family dispatch.
+Measured after: 0 of 38 types differ under `by(foreign)`, every panel
+compared. Found alongside and fixed: the SAVED dashboard grouped the
+unqualified frame (the reverse of D3), a served histogram ignored its
+qualifier, and — a WP-09 regression — no served computed layer was
+recomputed after a filter move.
 
 ### D5. `mlabel()` excludes all range types in server mode — S2, CLOSED by WP-10
 

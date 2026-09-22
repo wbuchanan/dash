@@ -278,6 +278,27 @@ CORPUS = [
     ("note and caption",
      [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
      {}, {"note": "N", "caption": "C"}),
+    # by() -- the corpus never set it, which is how twenty plot types came
+    # to serve empty panels (GAPS.md D4).  These compare the FIRST panel;
+    # test_server_facets.py compares every panel of all 38 types.
+    ("scatter under by()",
+     [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {}, {"by": "foreign"}),
+    ("lfitci under by()",
+     [{"type": "lfitci", "yvar": "mpg", "xvar": "weight", "options": {}}],
+     {}, {"by": "foreign"}),
+    ("rarea under by()",
+     [{"type": "rarea", "yvar1": "mpg", "yvar2": "weight", "xvar": "foreign",
+       "options": {}}], {}, {"by": "foreign"}),
+    ("histogram under by(, total)",
+     [{"type": "histogram", "yvar": "mpg", "xvar": "", "options": {}}],
+     {}, {"by": "foreign, total"}),
+    ("function under by()",
+     [{"type": "function", "expr": "x^2", "options": {}}],
+     {}, {"by": "foreign"}),
+    ("pcspike under by()",
+     [{"type": "pcspike", "y1var": "mpg", "x1var": "weight", "y2var": "mpg",
+       "x2var": "foreign", "options": {}}], {}, {"by": "foreign"}),
 ]
 
 

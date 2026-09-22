@@ -8544,6 +8544,168 @@ _DASH_UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
 _DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter"})
 
 
+#: Injection patterns a by() string may not carry.  One copy: the saved
+#: renderer and the generated app each used to hold their own.
+_DASH_UNSAFE_BY = re.compile(
+    r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
+    r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
+)
+
+#: The by() sub-options dash implements, with the abbreviations Stata's
+#: by_option grammar allows for them (c:ols, miss:ing; total has none).
+_DASH_BY_SUPPORTED = {
+    "cols": ("c", "co", "col", "cols"),
+    "missing": ("miss", "missi", "missin", "missing"),
+    "total": ("total",),
+}
+
+
+def _dash_by_tokens(subopts):
+    """Split a by() sub-option string into its options.
+
+    ``rows(2) title("By origin") compact`` is three options, not five words:
+    a parenthesised argument may hold spaces and quotes.  Splitting on
+    whitespace alone is how ``holes(1 3)`` would be reported as two.
+    """
+    out, buf, depth, quote = [], [], 0, ""
+    for ch in subopts:
+        if quote:
+            buf.append(ch)
+            if ch == quote:
+                quote = ""
+            continue
+        if ch in ('"', "'") and depth:
+            quote = ch
+            buf.append(ch)
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        if ch.isspace() and depth == 0:
+            if buf:
+                out.append("".join(buf))
+                buf = []
+            continue
+        buf.append(ch)
+    if buf:
+        out.append("".join(buf))
+    return out
+
+
+def _dash_parse_by(by_raw, warn=True):
+    """Parse ``by(varlist [, subopts])`` the same way in both render modes.
+
+    Returns ``(varlist, by_cols, by_total, by_missing, unsupported)``.  The
+    varlist is "" when the string carries an injection pattern, and callers
+    treat an empty varlist as "no faceting", which is what both renderers
+    did with their own copies of the check.
+
+    Stata's by() takes some thirty sub-options; dash implements three.  The
+    rest used to be matched by nothing and discarded by everything --
+    ``by(foreign, rows(2) compact)`` faceted as though the user had typed
+    ``by(foreign)``, and nothing said so.  They are named here, once, in
+    one warning, because a sub-option that is not implemented must be
+    NAMED rather than silently dropped (ROADMAP BR-11.2).  Implementing
+    them is other work.
+
+    ``warn=False`` parses without reporting.  The saved renderer parses a
+    graph's by() twice -- once to group the frame and once, in the layout,
+    for its cols(#) -- and reported the same sub-options twice per render.
+    The grouping parse reports; the layout parse does not.
+    """
+    by_raw = (by_raw or "").strip()
+    if not by_raw or _DASH_UNSAFE_BY.search(by_raw):
+        return "", 0, False, False, []
+    if "," in by_raw:
+        varlist_part, subopts = by_raw.split(",", 1)
+    else:
+        varlist_part, subopts = by_raw, ""
+    varlist = varlist_part.strip()
+    by_cols, by_total, by_missing = 0, False, False
+    unsupported = []
+    for tok in _dash_by_tokens(subopts.strip()):
+        name = tok.split("(", 1)[0].strip().lower()
+        arg = tok[len(name) + 1:-1] if "(" in tok and tok.endswith(")") else ""
+        if name in _DASH_BY_SUPPORTED["cols"] and "(" in tok:
+            try:
+                by_cols = int(arg.strip())
+            except ValueError:
+                unsupported.append(tok)
+        elif name in _DASH_BY_SUPPORTED["total"] and "(" not in tok:
+            by_total = True
+        elif name in _DASH_BY_SUPPORTED["missing"] and "(" not in tok:
+            by_missing = True
+        else:
+            unsupported.append(tok)
+    if unsupported and warn:
+        # Names ONLY what was dropped.  Naming the three that work beside
+        # them read as though those had been dropped too.
+        warnings.warn(
+            "dash: by() sub-option(s) not implemented and ignored: "
+            + " ".join(unsupported),
+            UserWarning, stacklevel=2,
+        )
+    return varlist, by_cols, by_total, by_missing, unsupported
+
+
+def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
+                      date_vars=None, numeric_formats=None,
+                      date_formatter=None):
+    """The title of one by() panel, the same in both render modes.
+
+    Value labels where the dataset has them, a date shown as a date, a
+    number shown in the variable's own display format, and "Missing" for a
+    missing key.  Written once: the generated app carried its own copy of
+    the value-label half and none of the rest.
+
+    Args:
+        by_vars:            The by() variables, in order.
+        key:                The group key -- scalar for one variable, tuple
+                            for several.
+        value_label_names:  ``{varname: labelset}``.
+        value_labels:       ``{labelset: {code: text}}``.
+        date_vars:          ``{varname: kind}`` for date variables.
+        numeric_formats:    ``{varname: "%9.2f"}`` display formats.
+        date_formatter:     ``f(value, kind) -> str``.
+
+    Returns:
+        A display string like ``"Domestic"`` or ``"Domestic / 3"``.
+    """
+    value_label_names = value_label_names or {}
+    value_labels = value_labels or {}
+    date_vars = date_vars or {}
+    numeric_formats = numeric_formats or {}
+    keys = [key] if len(by_vars) == 1 else list(key)
+    parts = []
+    for var, val in zip(by_vars, keys):
+        if pd.isna(val):
+            parts.append("Missing")
+            continue
+        _kind = date_vars.get(var)
+        if _kind and date_formatter is not None:
+            parts.append(date_formatter(val, _kind))
+            continue
+        _numfmt = numeric_formats.get(var, "")
+        if _numfmt:
+            parts.append(_format_stata_numeric(val, _numfmt).strip())
+            continue
+        labelset = value_label_names.get(var, "")
+        vlabels = value_labels.get(labelset, {}) if labelset else {}
+        # Some callers key valueLabels by variable name rather than by
+        # label-set name (regen scripts that pre-date jsonio's format).
+        if not vlabels:
+            candidate = value_labels.get(var, {})
+            if isinstance(candidate, dict):
+                vlabels = candidate
+        str_val = str(val)
+        int_str = (str(int(val)) if isinstance(val, float) and val == int(val)
+                   else str_val)
+        label = vlabels.get(str_val) or vlabels.get(int_str) or str_val
+        parts.append(html.escape(label))
+    return " / ".join(parts)
+
+
 def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
                        shared_source, shared_pos, fallback_src,
                        extra_cols=()):
@@ -8570,7 +8732,7 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     # hover(rep78) would otherwise silently delete the five cars whose
     # rep78 is missing.
     _drop_on = [c for c in [xvar, yvar] if c and c in g_df.columns]
-    clean = g_df[cols].dropna(subset=_drop_on) if xvar and yvar else g_df
+    clean = g_df[cols].dropna(subset=_drop_on) if _drop_on else g_df
 
     view = None
     if gname in linked_names and xvar and yvar:
@@ -8578,8 +8740,17 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
         if len(clean) != len(df):
             pos = [shared_pos[_l] for _l in clean.index if _l in shared_pos]
             view = CDSView(filter=IndexFilter(pos))
+    elif xvar and yvar:
+        csrc = ColumnDataSource(clean)
+    elif yvar and yvar in g_df.columns:
+        # A univariate layer -- histogram, kdensity -- draws the frame it
+        # was GIVEN.  It used to be handed the graph's initial source, built
+        # from the whole dataset before any qualifier, so a served
+        # `histogram mpg if foreign==1' binned every observation: measured,
+        # three bars where the saved dashboard draws two.
+        csrc = ColumnDataSource(clean)
     else:
-        csrc = ColumnDataSource(clean) if xvar and yvar else fallback_src
+        csrc = fallback_src
     return csrc, view
 
 
@@ -9849,21 +10020,7 @@ class DashRenderer:
             the requested column count (0 = auto), and *by_total* /
             *by_missing* are boolean flags.
         """
-        import re as _re
-
-        if "," in by_raw:
-            varlist_part, subopts = by_raw.split(",", 1)
-        else:
-            varlist_part, subopts = by_raw, ""
-
-        varlist = varlist_part.strip()
-        subopts = subopts.strip()
-
-        cols_m = _re.search(r"\bcols?\((\d+)\)", subopts, _re.IGNORECASE)
-        by_cols = int(cols_m.group(1)) if cols_m else 0
-        by_total = bool(_re.search(r"\btotal\b", subopts, _re.IGNORECASE))
-        by_missing = bool(_re.search(r"\bmissing\b", subopts, _re.IGNORECASE))
-
+        varlist, by_cols, by_total, by_missing, _unsup = _dash_parse_by(by_raw)
         return varlist, by_cols, by_total, by_missing
 
     @staticmethod
@@ -9965,17 +10122,11 @@ class DashRenderer:
         if not by_raw:
             return [("", df)]
 
-        # Security: reject injection patterns in by-variable names
-        _UNSAFE_BY = _re.compile(
-            r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
-            r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
-        )
-        if _UNSAFE_BY.search(by_raw):
-            return [("", df)]
-
-        # Parse varlist + suboptions from the raw by() string
-        varlist, by_cols_parsed, by_total_parsed, by_missing_parsed = \
-            self._parse_by_raw(by_raw)
+        # One parser for both render modes; it rejects injection patterns
+        # by returning an empty varlist, and names the sub-options dash
+        # does not implement.
+        varlist, by_cols_parsed, by_total_parsed, by_missing_parsed, _ = \
+            _dash_parse_by(by_raw)
 
         by_vars = varlist.split()
         # Validate that all by-variables exist in the DataFrame
@@ -10047,41 +10198,11 @@ class DashRenderer:
         Returns:
             A display string like ``"Domestic"`` or ``"Domestic / 3"``.
         """
-        if len(by_vars) == 1:
-            keys = [key]
-        else:
-            keys = list(key)
-
-        parts = []
-        for var, val in zip(by_vars, keys):
-            if pd.isna(val):
-                parts.append("Missing")
-                continue
-            # A by() on a date variable produced facet titles reading the
-            # underlying Stata value.
-            _kind = getattr(self, "date_vars", {}).get(var)
-            if _kind:
-                parts.append(self._format_date_value(val, _kind))
-                continue
-            _numfmt = getattr(self, "numeric_formats", {}).get(var, "")
-            if _numfmt:
-                parts.append(_format_stata_numeric(val, _numfmt).strip())
-                continue
-            labelset = self.value_label_names.get(var, "")
-            vlabels = self.value_labels.get(labelset, {}) if labelset else {}
-            # Fallback: some callers key valueLabels by variable name rather
-            # than label-set name (e.g. regen scripts that pre-date the
-            # standard Stata jsonio format).
-            if not vlabels:
-                candidate = self.value_labels.get(var, {})
-                if isinstance(candidate, dict):
-                    vlabels = candidate
-            # Try raw string and int-string lookups for value labels
-            str_val = str(val)
-            int_str = str(int(val)) if isinstance(val, float) and val == int(val) else str_val
-            label = vlabels.get(str_val) or vlabels.get(int_str) or str_val
-            parts.append(html.escape(label))
-        return " / ".join(parts)
+        return _dash_facet_label(
+            by_vars, key, self.value_label_names, self.value_labels,
+            getattr(self, "date_vars", {}),
+            getattr(self, "numeric_formats", {}),
+            self._format_date_value)
 
     # ------------------------------------------------------------------
     # Figure construction helpers
@@ -12287,7 +12408,8 @@ class DashRenderer:
                             linked_vars.append(vname)
                     by_raw_lnk = (g.get("graph_options", {}).get("by") or "").strip()
                     if by_raw_lnk:
-                        varlist_lnk, _, _, _ = DashRenderer._parse_by_raw(by_raw_lnk)
+                        # Silent: _expand_by_groups reports the sub-options.
+                        varlist_lnk = _dash_parse_by(by_raw_lnk, warn=False)[0]
                         for bv in varlist_lnk.split():
                             if bv and bv not in linked_vars:
                                 linked_vars.append(bv)
@@ -12337,7 +12459,10 @@ class DashRenderer:
                             linked_source, _qf, self._row_ids_for(_g_fdf))
                     by_raw_lnk2 = (g.get("graph_options", {}).get("by") or "").strip()
                     if by_raw_lnk2:
-                        by_groups_lnk = self._expand_by_groups(g, base_df=self.df)
+                        # The QUALIFIED frame.  This was self.df, so a linked
+                        # `if price > 4500, by(foreign)' faceted every row.
+                        by_groups_lnk = self._expand_by_groups(
+                            g, base_df=self._apply_graph_filter(g))
                         facet_entries_lnk = []
                         facet_masks_lnk   = []
                         for idx, (label, group_df) in enumerate(by_groups_lnk):
@@ -12370,7 +12495,13 @@ class DashRenderer:
                 base_src = self.sources.pop(name, None)
                 if base_src is None:
                     continue
-                by_groups = self._expand_by_groups(g, base_df=self.df)
+                # The QUALIFIED frame, not self.df.  Measured on ten rows:
+                # `if price > 4500, by(foreign)' faceted 5 + 4 observations
+                # when saved and the 2 + 3 that qualify when served.  The
+                # base source built in phase 2 was already qualified; the
+                # grouping simply did not start from it.
+                by_groups = self._expand_by_groups(
+                    g, base_df=self._apply_graph_filter(g))
                 if len(by_groups) == 1 and by_groups[0][0] == "":
                     # No faceting (by() vars missing from df) OR all facet
                     # values are NaN (work_df became empty after dropna).
@@ -12937,9 +13068,10 @@ class DashRenderer:
                          if g.get("graph_options", {}).get("name") == name),
                         {},
                     )
-                    _, by_cols_from_raw, _, _ = DashRenderer._parse_by_raw(
-                        (gopts.get("by") or "")
-                    )
+                    # Silent: the grouping parse has already reported any
+                    # sub-option this by() carries that dash ignores.
+                    by_cols_from_raw = _dash_parse_by(
+                        (gopts.get("by") or ""), warn=False)[1]
                     by_cols_key_raw = gopts.get("by_cols", "0")
                     try:
                         by_cols_key = int(by_cols_key_raw) if by_cols_key_raw else 0
@@ -13128,7 +13260,8 @@ class DashRenderer:
         for g in graphs:
             by_raw = (g.get("graph_options", {}).get("by") or "").strip()
             if by_raw:
-                varlist, _, _, _ = DashRenderer._parse_by_raw(by_raw)
+                # Silent: _expand_by_groups reports the sub-options.
+                varlist = _dash_parse_by(by_raw, warn=False)[0]
                 for bv in varlist.split():
                     if bv and bv not in all_vars:
                         all_vars.append(bv)
@@ -13316,6 +13449,9 @@ class ServerAppBuilder:
                       # _dash_legend_entries' own type tables.
                       "_DASH_FIT_TYPES", "_DASH_CI_TYPES",
                       "_DASH_DATE_VALUED_STATS",
+                      # _dash_parse_by's own tables; the regex is written
+                      # out as re.compile(pattern, flags) below.
+                      "_DASH_UNSAFE_BY", "_DASH_BY_SUPPORTED",
                       "_NONSELECTION_ALPHA", "_ROW_ID_COLUMN",
                       # The plot-type categories.  The app used to carry its
                       # own copies inside an if/elif chain, which is how the
@@ -13394,7 +13530,10 @@ class ServerAppBuilder:
                          "_dash_placement_map",
                          # The KPI card's format resolution and rendering.
                          "_dash_effective_kpi_fmt",
-                         "_dash_format_kpi_value"):
+                         "_dash_format_kpi_value",
+                         # by(): one parser, one panel-label rule.
+                         "_dash_by_tokens", "_dash_parse_by",
+                         "_dash_facet_label"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -14822,9 +14961,118 @@ class ServerAppBuilder:
             "    figures: dict = {}",
             "    TOOLS = [PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()]",
             "",
-            "    for g in graphs:",
+            "    _redrawn_ids = set()",
+            "",
+            "    def _dash_draw_layer(fig, g_df, plot, pi, gname, _ln, _shared, _fallback):",
+            '        """Draw one layer of one figure; return (layer_source, [drawn sources]).',
+
+            "        The one place a plot type is dispatched to its mapper,",
+            "        for the live figure, for every by() panel, and for the",
+            "        redraw a filter move triggers.  Family order is the",
+            "        saved renderer's: literal, function, pc, range, else.",
+            '        """',
+            "        ptype = str(plot.get('type', '') or '').lower()",
+            "        if ptype == 'hist':",
+            "            ptype = 'histogram'",
+            "        opts = plot.get('options', {})",
+            "        yvar = plot.get('yvar', '') or plot.get('var', '')",
+            "        xvar = plot.get('xvar', '')",
+            "        _hv = _hover_cols_of(gname)",
+            "        _before = len(fig.renderers)",
+            "        _ly_src = None",
+            "        if ptype == 'scatteri':",
+            "            _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=pi)",
+            "        elif ptype == 'pci':",
+            "            _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=pi)",
+            "        elif ptype == 'function':",
+            "            _fn_range, _fn_n = _dash_function_args(opts)",
+            "            _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts)",
+            "        elif ptype in _DASH_PC_TYPES:",
+            "            _ly_src, _ok = _dash_pc_source(",
+            "                g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
+            "                plot.get('y2var', ''), plot.get('x2var', ''))",
+            "            if _ok:",
+            "                _dash_add_pc_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype,",
+            "                    plot.get('y1var', ''), plot.get('x1var', ''),",
+            "                    plot.get('y2var', ''), plot.get('x2var', ''),",
+            "                    opts, color_idx=pi)",
+            "        elif ptype in _DASH_RANGE_TYPES:",
+            "            y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
+            "            y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
+            "            _ly_src, _ok = _dash_range_source(",
+            "                g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
+            "                extra_cols=_hv)",
+            "            if _ok:",
+            "                _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                    opts, y2var=y2var, color_idx=pi)",
+            "        else:",
+            "            _ly_src, _ly_view = _dash_layer_source(",
+            "                g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                gname, _ln, _shared, _shared_pos, _fallback,",
+            "                extra_cols=_hv)",
+            "            if _ly_src is not None:",
+            "                _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "        _srcs = []",
+            "        for _rr in fig.renderers[_before:]:",
+            "            _rs = getattr(_rr, 'data_source', None)",
+            "            if _rs is not None and all(_rs is not _s for _s in _srcs):",
+            "                _srcs.append(_rs)",
+            "        return _ly_src, _srcs",
+            "",
+            "    def _hover_cols_of(gname):",
+            "        # The columns hover() asks for, carried into every layer",
+            "        # source so the tooltip can read them.",
+            "        for _gx in graphs:",
+            "            if _gx.get('graph_options', {}).get('name', '') == gname.split('__by__')[0]:",
+            "                _raw = (_gx.get('graph_options', {}).get('hover', '') or '').strip()",
+            "                return [_c for _c in _raw.split() if _c in df.columns]",
+            "        return []",
+            "",
+            "    def _dash_redraw_for(g, plot, pi, gname):",
+            '        """A closure that redraws one layer from a frame the callback hands it.',
+
+            "        The frame arrives filtered and, for a by() panel, masked to",
+            "        the panel's group.  The layer's own if()/in() is applied",
+            "        here, so a qualified fit stays qualified after a filter",
+            "        move.  Drawn on a throwaway figure with no linking, because",
+            "        only the DATA the mapper produces is wanted.",
+            '        """',
+            "        _go = g.get('graph_options', {})",
+            "        _g_if = (_go.get('if_expr') or g.get('if_expr') or '').strip()",
+            "        _g_in = (_go.get('in_expr') or g.get('in_expr') or '').strip()",
+            "        _p_if = (plot.get('if_expr') or '').strip()",
+            "        _p_in = (plot.get('in_expr') or '').strip()",
+            "        def _redraw(frame):",
+            "            # The graph's qualifier, then the layer's own where it",
+            "            # differs -- the same two steps the live figure took.",
+            "            _fr = _dash_qualified_frame(frame, _g_if, _g_in,",
+            "                                        'graph %r' % gname, copy=False)",
+            "            if (_p_if and _p_if != _g_if) or (_p_in and _p_in != _g_in):",
+            "                _fr = _dash_qualified_frame(_fr, _p_if, _p_in,",
+            "                                            'graph %r plot %d' % (gname, pi + 1),",
+            "                                            copy=False)",
+            "            _tfig = bokeh_figure()",
+            "            _ly, _srcs = _dash_draw_layer(_tfig, _fr, plot, pi, gname,",
+            "                                          set(), None, None)",
+            "            return [_s for _s in _srcs if _s is not _ly]",
+            "        return _redraw",
+            "",
+            "    def _dash_figure_for(g, gname, g_df, _fac_title=None):",
+            '        """Build one figure: a graph, or one by() panel of it.',
+
+            "        This is the body of what used to be the per-graph loop.",
+            "        The by() panels used to be drawn by two REDUCED copies",
+            "        of it -- eighteen plot types, hardcoded marker sizes,",
+            "        no hover, Bokeh's default legend -- and the other twenty",
+            "        types fell off the end of them and drew nothing.  One",
+            "        body, called once per panel, is the only way the panels",
+            "        can be the graph.",
+            '        """',
             "        go = g.get('graph_options', {})",
-            "        gname = go.get('name', '')",
             "        _src_list = graph_sources.get(gname)",
             "        src = (_src_list[-1] if isinstance(_src_list, list) and _src_list else shared_source)",
             "        # ---- Per-graph if_expr / in_expr filtering ----",
@@ -14832,18 +15080,12 @@ class ServerAppBuilder:
             "        # so that qualifiers set by dash.ado at the graph level are honoured.",
             "        _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
             "        _g_in = (go.get('in_expr') or g.get('in_expr') or '').strip()",
-            "        g_df = _dash_qualified_frame(df, _g_if, _g_in,",
-            "                                     'graph %r' % gname)",
+            "        # g_df arrives QUALIFIED from the caller: the graph's own",
+            "        # rows, or one by() panel's share of them.  It is not",
+            "        # re-qualified here -- `in 3/5' is not idempotent.",
             "        # The graph's own rows, before any per-LAYER qualifier",
             "        # narrows them further.  Each layer starts from here.",
             "        _g_df_graph = g_df",
-            "        # Columns hover() asks for, carried into every layer",
-            "        # source so the tooltip can actually read them.  The",
-            "        # saved dashboard draws from ONE source holding every",
-            "        # variable of the graph, so it never had to ask.",
-            "        _hv_raw = (go.get('hover', '') or '').strip()",
-            "        _hv_cols = [_c for _c in _hv_raw.split()",
-            "                    if _c in df.columns]",
             "",
             "        x_label = ''",
             "        y_label = ''",
@@ -15099,709 +15341,42 @@ class ServerAppBuilder:
             '            else:',
             '                g_df = _g_df_graph',
             '',
-            '            color = _dash_scheme_color(pi, ptype)',
-            "            if 'mcolor' in opts or 'lcolor' in opts:",
-            "                _c = opts.get('mcolor', opts.get('lcolor', ''))",
-            "                _resolved = _resolve_color(_c)",
-            "                if _resolved: color = _resolved",
-            "            # lwidth / lpattern — common to all line-bearing plot types",
-            "            _lw_map = {'vvthin':0.4,'vthin':0.6,'thin':0.8,'medthin':1.0,",
-            "                       'medium':1.5,'medthick':2.0,'thick':2.5,'vthick':3.5,'vvthick':5.0}",
-            "            _lp_map = {'solid':[],'dash':[8,4],'dot':[2,4],'dash_dot':[8,4,2,4],",
-            "                       'shortdash':[4,4],'shortdot':[2,2],'longdash':[16,4],'blank':[0,100]}",
-            "            _line_width = _lw_map.get(opts.get('lwidth',''), _SCHEME_LINE_WIDTH)",
-            "            _lpattern = opts.get('lpattern', '')",
-            "            _line_dash = (_lp_map.get(_lpattern, []) if _lpattern",
-            "                          else _dash_scheme_dash(pi, ptype))",
-            "",
-            "            if ptype in ('scatter',):",
-            "                _sc_label_var = opts.get('mlabel', '')",
-            "                _sc_cols = [c for c in [xvar, yvar, _sc_label_var] + _hv_cols",
-            "                            if c and c in g_df.columns]",
-            "                _sc_cols = list(dict.fromkeys(_sc_cols))  # `scatter mpg mpg' is legal; g_df[[c, c]] is not",
-            "                _sc_drop = [c for c in [xvar, yvar] if c and c in g_df.columns]",
-            "                clean = (g_df[_sc_cols].dropna(subset=_sc_drop)",
-            "                         if xvar and yvar else g_df)",
-            "                # link() shares a source; it used to record one in",
-            "                # graph_sources and then build a fresh one here, so",
-            "                # two graphs under link(_all) rendered from two",
-            "                # distinct sources and a selection in one could",
-            "                # never appear in the other.",
-            "                #",
-            "                # A graph with its own if()/in() cannot simply be",
-            "                # pointed at the shared source -- that would draw",
-            "                # rows the qualifier excluded -- so it gets a",
-            "                # CDSView over it instead, which is how the",
-            "                # standalone renderer has always done it.",
-            "                _sc_view = None",
-            "                if gname in linked_names and xvar and yvar:",
-            "                    csrc = shared_source",
-            "                    if len(clean) != len(df):",
-            "                        _sc_pos = [_shared_pos[_l] for _l in clean.index",
-            "                                   if _l in _shared_pos]",
-            "                        _sc_view = CDSView(filter=IndexFilter(_sc_pos))",
-            "                else:",
-            "                    csrc = ColumnDataSource(clean) if xvar and yvar else src",
-            "                # One dispatch, into the renderer's own",
-            "                # GlyphMapper. This branch used to re-implement",
-            "                # map_scatter: its own jitter, its own marker",
-            "                # size map, its own mlabel LabelSet with a",
-            "                # second size table and different offsets, and",
-            "                # a hover tool showing raw variable names where",
-            "                # the saved dashboard shows labels and formats.",
-            "                _r = _DASH_MAPPER.map_scatter(",
-            "                    fig, csrc, yvar, xvar, opts,",
-            "                    view=_sc_view, color_idx=pi)",
-            "                graph_sources[gname].append(",
-            "                    getattr(_r, 'data_source', None) or csrc)",
-            "",
-            "            elif ptype == 'line':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_line.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'lfit':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_lfit.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'qfit':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_qfit.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'histogram':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_histogram.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'kdensity':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_kdensity.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'lowess':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_lowess.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'lpoly':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_lpoly.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'lpolyci':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_lpolyci.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'fpfit':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_fpfit.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'fpfitci':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_fpfitci.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'area':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_area.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'bar':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_bar.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'spike':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_spike.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'connected':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_connected.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'dot':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_dot.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'lfitci':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_lfitci.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'qfitci':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_qfitci.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rarea':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rarea.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rbar':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rbar.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rspike':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rspike.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rcap':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rcap.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rline':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rline.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rconnected':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rconnected.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'dropline':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_dropline.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rcapsym':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rcapsym.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'scatteri':",
-            "                # An inline coordinate list.  This branch drew it with",
-            "                # a bare fig.scatter and a six-name symbol table;",
-            "                # map_scatteri reads the optional third element of",
-            "                # each triple as a marker LABEL and goes through the",
-            "                # translator's full 50-entry symbol map.",
-            "                _r = _DASH_MAPPER.map_scatteri(",
-            "                    fig, plot.get('values', []), opts, color_idx=pi)",
-            "                for _rr in (_r if isinstance(_r, (list, tuple)) else [_r]):",
-            "                    _rs = getattr(_rr, 'data_source', None)",
-            "                    if _rs is not None:",
-            "                        graph_sources[gname].append(_rs)",
-            "",
-            "            elif ptype == 'pcspike':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_pcspike.",
-            "                _pc_src, _pc_ok = _dash_pc_source(",
-            "                    g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                    plot.get('y2var', ''), plot.get('x2var', ''))",
-            "                if _pc_ok:",
-            "                    _r = _dash_add_pc_glyph(",
-            "                        _DASH_MAPPER, fig, _pc_src, ptype,",
-            "                        plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                        plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                        opts, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _pc_src:",
-            "                        graph_sources[gname].append(_pc_src)",
-            "                    graph_sources[gname].append(_r_src or _pc_src)",
-            "",
-            "            elif ptype in ('pcarrow', 'pcbarrow'):",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_pcarrow and map_pcbarrow.",
-            "                _pc_src, _pc_ok = _dash_pc_source(",
-            "                    g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                    plot.get('y2var', ''), plot.get('x2var', ''))",
-            "                if _pc_ok:",
-            "                    _r = _dash_add_pc_glyph(",
-            "                        _DASH_MAPPER, fig, _pc_src, ptype,",
-            "                        plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                        plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                        opts, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _pc_src:",
-            "                        graph_sources[gname].append(_pc_src)",
-            "                    graph_sources[gname].append(_r_src or _pc_src)",
-            "",
-            "            elif ptype == 'tsline':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_tsline.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'tsrline':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_tsrline.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'mspline':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_mspline.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                # Both, when the mapper built its own source.",
-            "                # graph_sources feeds the filter snapshot AND",
-            "                # the brush-to-KPI wiring, and the latter SKIPS",
-            "                # any source with no 'index' column -- which a",
-            "                # mapper-built one has not got.  Registering the",
-            "                # layer source too keeps the layer able to drive",
-            "                # a brush selection, which is what the inline",
-            "                # branch did by registering its own.",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'mband':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_mband.",
-            "                _ly_src, _ly_view = _dash_layer_source(",
-            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
-            "                    gname, linked_names, shared_source, _shared_pos, src,",
-            "                    extra_cols=_hv_cols)",
-            "                _r = _dash_add_glyph(",
-            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
-            "                    view=_ly_view, color_idx=pi)",
-            "                _r_src = getattr(_r, 'data_source', None)",
-            "                if _r_src is not None and _r_src is not _ly_src:",
-            "                    graph_sources[gname].append(_ly_src)",
-            "                graph_sources[gname].append(_r_src or _ly_src)",
-            "",
-            "            elif ptype == 'rscatter':",
-            "                y1var = y1var or plot.get('yvar', '') or plot.get('y1var', '')",
-            "                y2var = y2var or plot.get('y2var', '')",
-            "                xvar = xvar or plot.get('xvar', '')",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_rscatter.",
-            "                _ly_src, _ly_ok = _dash_range_source(",
-            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv_cols)",
-            "                if _ly_ok:",
-            "                    _r = _dash_add_glyph(",
-            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
-            "                        opts, y2var=y2var, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _ly_src:",
-            "                        graph_sources[gname].append(_ly_src)",
-            "                    graph_sources[gname].append(_r_src or _ly_src)",
-            "                    # The stacked source is recomputed on every",
-            "                    # filter move, so it has to stay registered.",
-            "                    # Dropping this registration freezes the",
-            "                    # points at their unfiltered values while the",
-            "                    # rest of the figure moves.",
-            "                    if _r_src is not None:",
-            "                        agg_sources[(gname, pi)] = {",
-            "                            'source': _r_src, 'type': 'rscatter',",
-            "                            'yvar1': y1var, 'yvar2': y2var, 'xvar': xvar,",
-            "                        }",
-            "",
-            "            elif ptype == 'pci':",
-            "                # An inline coordinate list, not variable names.",
-            "                # This branch read y1var/x1var/y2var/x2var from the",
-            "                # plot, which `pci 20 3000 30 4000' does not set, so",
-            "                # a served pci layer drew nothing at all.  The",
-            "                # standalone caller has always used map_pci_literal.",
-            "                _r = _DASH_MAPPER.map_pci_literal(",
-            "                    fig, plot.get('values', []), opts, color_idx=pi)",
-            "                for _rr in (_r if isinstance(_r, (list, tuple)) else [_r]):",
-            "                    _rs = getattr(_rr, 'data_source', None)",
-            "                    if _rs is not None:",
-            "                        graph_sources[gname].append(_rs)",
-            "",
-            "            elif ptype == 'pcscatter':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # This branch used to re-implement map_pcscatter.",
-            "                _pc_src, _pc_ok = _dash_pc_source(",
-            "                    g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                    plot.get('y2var', ''), plot.get('x2var', ''))",
-            "                if _pc_ok:",
-            "                    _r = _dash_add_pc_glyph(",
-            "                        _DASH_MAPPER, fig, _pc_src, ptype,",
-            "                        plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                        plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                        opts, color_idx=pi)",
-            "                    _r_src = getattr(_r, 'data_source', None)",
-            "                    if _r_src is not None and _r_src is not _pc_src:",
-            "                        graph_sources[gname].append(_pc_src)",
-            "                    graph_sources[gname].append(_r_src or _pc_src)",
-            "                    # Stacked coordinates are recomputed on every",
-            "                    # filter move, so the source stays registered.",
-            "                    if _r_src is not None:",
-            "                        agg_sources[(gname, pi)] = {",
-            "                            'source': _r_src, 'type': 'pcscatter',",
-            "                            'y1var': plot.get('y1var', ''),",
-            "                            'x1var': plot.get('x1var', ''),",
-            "                            'y2var': plot.get('y2var', ''),",
-            "                            'x2var': plot.get('x2var', ''),",
-            "                        }",
-            "",
-            "            elif ptype == 'function':",
-            "                # One dispatch, into the renderer's own GlyphMapper.",
-            "                # range() and n() are parsed by the shared helper, so",
-            "                # Stata's documented defaults -- range(0 1), n(300) --",
-            "                # cannot drift between the two modes.",
-            "                _fn_range, _fn_n = _dash_function_args(opts)",
-            "                _DASH_MAPPER.map_function(",
-            "                    fig, plot.get('expr', ''), _fn_range, _fn_n, opts)",
-            "",
+            "            # ---- One dispatch, by plot-type family ----",
+            "            # WP-09 routed all 38 types through GlyphMapper but left one",
+            "            # branch per type standing, each the same eleven lines with",
+            "            # a different name in them.  WP-11 folds them into",
+            "            # _dash_draw_layer, which the by() panels and the filter",
+            "            # callback call as well, so there is exactly one place that",
+            "            # decides how a layer is drawn.",
+            "            _drawn = _dash_draw_layer(fig, g_df, plot, pi, gname,",
+            "                                      linked_names, shared_source, src)",
+            "            _ly_src = _drawn[0]",
+            "            _r_srcs = _drawn[1]",
+            "            if _ly_src is not None and _r_srcs and _ly_src not in _r_srcs:",
+            "                # The mapper drew from a source it built.  The layer",
+            "                # source is registered as well: graph_sources feeds the",
+            "                # brush-to-KPI wiring, which wants a source whose rows",
+            "                # ARE data rows (one carrying 'index').",
+            "                graph_sources[gname].append(_ly_src)",
+            "            for _rs in _r_srcs:",
+            "                graph_sources[gname].append(_rs)",
+            "            if _r_srcs and any(_rs is not _ly_src for _rs in _r_srcs):",
+            "                # A source the mapper BUILT -- a fitted line, a histogram,",
+            "                # a line sorted along x -- cannot be refreshed by swapping",
+            "                # its columns for the filtered rows: the columns are not",
+            "                # dataset columns, or are not in dataset order.  Measured",
+            "                # after one filter move: a served lfit was ten points of",
+            "                # the OLD line, and a served line was drawn in dataset",
+            "                # order, crossing itself.  Such a layer is REDRAWN: the",
+            "                # same mapper, the filtered frame, a throwaway figure,",
+            "                # and the fresh data copied onto the live sources.",
+            "                agg_sources[(gname, pi)] = {",
+            "                    'type': ptype,",
+            "                    'sources': [_rs for _rs in _r_srcs if _rs is not _ly_src],",
+            "                    'redraw': _dash_redraw_for(g, plot, pi, gname),",
+            "                }",
+            "                for _rs in agg_sources[(gname, pi)]['sources']:",
+            "                    _redrawn_ids.add(id(_rs))",
             # Marker labels are the MAPPER's business, in both modes.
             # This is where a second implementation of mlabel() used to
             # live: a hand-written block that ran after the dispatch and
@@ -15930,7 +15505,76 @@ class ServerAppBuilder:
             "            univar=_p0.get('var', ''),",
             '        )',
             '',
-            "        figures[gname] = fig",
+            "        if _fac_title is not None:",
+            "            fig.title.text = _fac_title",
+            "        return fig",
+
+            "    # ---- Build figures: one call per graph, or per by() panel ----",
+            "    _facet_map = {}         # gname -> [(panel_key, label)]",
+            "    _facet_group_vals = {}  # panel_key -> (by_vars, group_key)",
+            "    _facet_cols = {}        # gname -> cols(#) from by()",
+            "    for g in graphs:",
+            "        go = g.get('graph_options', {})",
+            "        gname = go.get('name', '')",
+            "        _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
+            "        _g_in = (go.get('in_expr') or g.get('in_expr') or '').strip()",
+            "        g_df = _dash_qualified_frame(df, _g_if, _g_in, 'graph %r' % gname)",
+            "        # One parser for both render modes.  It rejects an",
+            "        # injection pattern by returning no variables, and names",
+            "        # the sub-options dash does not implement.",
+            "        _bv, _bcols, _btotal, _bmissing, _ = _dash_parse_by(",
+            "            (go.get('by') or '').strip())",
+            "        by_vars = [v for v in _bv.split() if v in df.columns]",
+            "        if not by_vars:",
+            "            figures[gname] = _dash_figure_for(g, gname, g_df)",
+            "            continue",
+            "        _btotal = _btotal or go.get('by_total', '0') == '1'",
+            "        _bmissing = _bmissing or go.get('by_missing', '0') == '1'",
+            "        # The QUALIFIED frame is what is grouped -- the saved",
+            "        # renderer grouped the whole dataset until WP-11, and",
+            "        # `if price > 4500, by(foreign)' faceted every row.",
+            "        work_df = g_df if _bmissing else g_df.dropna(subset=by_vars)",
+            "        if work_df.empty:",
+            "            # Every by() value is missing: one empty panel, as saved.",
+            "            figures[gname] = _dash_figure_for(g, gname, work_df)",
+            "            continue",
+            "        _facet_cols[gname] = _bcols",
+            "        if gname not in linked_names:",
+            "            graph_sources.pop(gname, None)",
+            "        _gvars = []",
+            "        for _pp in g.get('plots', []):",
+            "            for _k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
+            "                _v = _pp.get(_k, '')",
+            "                if _v and _v in df.columns and _v not in _gvars:",
+            "                    _gvars.append(_v)",
+            "        _title = html.escape(go.get('title', '') or '')",
+            "        _panels = []",
+            "        _groupby = by_vars[0] if len(by_vars) == 1 else by_vars",
+            "        for _key, _gdf in work_df.groupby(_groupby, sort=True, dropna=False):",
+            "            _vals = (_key,) if len(by_vars) == 1 else _key",
+            "            if not _bmissing and any(pd.isna(_v) for _v in _vals):",
+            "                continue",
+            "            _panels.append((_dash_facet_label(by_vars, _key, val_label_names, val_labels),",
+            "                            _gdf, _key))",
+            "        if _btotal:",
+            "            _panels.append(('Total', work_df, None))",
+            "        _entries = []",
+            "        for _fi, (_label, _gdf, _key) in enumerate(_panels):",
+            "            _fname = f'{gname}__by__{_fi}'",
+            "            if gname in linked_names:",
+            "                # A panel of a linked graph draws from the shared",
+            "                # source through a view, as the saved one does.",
+            "                linked_names.add(_fname)",
+            "                graph_sources[_fname] = [shared_source]",
+            "            else:",
+            "                graph_sources[_fname] = [ColumnDataSource(",
+            "                    {_v: _gdf[_v].tolist() for _v in _gvars})]",
+            "            figures[_fname] = _dash_figure_for(",
+            "                g, _fname, _gdf,",
+            "                _fac_title=(f'{_title} \u2014 {_label}' if _title else _label))",
+            "            _entries.append((_fname, _label))",
+            "            _facet_group_vals[_fname] = (by_vars, _key)",
+            "        _facet_map[gname] = _entries",
             "",
             "    # ---- Persist per-graph qualifier metadata for filter callbacks ----",
             "    # Graph-level if_expr/in_expr are applied during initial rendering",
@@ -15945,309 +15589,6 @@ class ServerAppBuilder:
             "        if _qi or _qn:",
             "            _graph_qualifiers[_gnq] = {'if_expr': _qi, 'in_expr': _qn}",
             "",
-            "    # ---- by() faceting: split figures into per-group panels ----",
-            "    _facet_map = {}  # gname → [(facet_key, label)]",
-            "    _facet_group_vals = {}  # facet_key → (by_vars, raw_group_key)",
-            "    _UNSAFE_BY = _re_clr.compile(",
-            "        r'[;`$\\\\]|import\\s|__|\\beval\\b|\\bexec\\b|\\bopen\\b'",
-            "        r'|\\bgetattr\\b|\\bsetattr\\b|\\bhasattr\\b|\\bdelattr\\b'",
-            "    )",
-            "    for g in graphs:",
-            "        go = g.get('graph_options', {})",
-            "        gname = go.get('name', '')",
-            "        by_raw = (go.get('by') or '').strip()",
-            "        if not by_raw or _UNSAFE_BY.search(by_raw):",
-            "            continue",
-            "        # Parse varlist + suboptions from the raw by() string",
-            "        _by_comma = by_raw.split(',', 1)",
-            "        _by_varlist = _by_comma[0].strip()",
-            "        _by_subopts = _by_comma[1].strip() if len(_by_comma) > 1 else ''",
-            "        by_vars = [v for v in _by_varlist.split() if v in df.columns]",
-            "        if not by_vars:",
-            "            continue",
-            "        import re as _re_by",
-            "        _cols_m = _re_by.search(r'cols?\\((\\d+)\\)', _by_subopts, _re_by.IGNORECASE)",
-            "        by_total = (bool(_re_by.search(r'\\btotal\\b', _by_subopts, _re_by.IGNORECASE))",
-            "                    or go.get('by_total', '0') == '1')",
-            "        by_missing = (bool(_re_by.search(r'\\bmissing\\b', _by_subopts, _re_by.IGNORECASE))",
-            "                      or go.get('by_missing', '0') == '1')",
-            "        # Apply graph-level qualifiers before faceting so by() groups",
-            "        # are derived only from the qualifier-filtered subset, not global df.",
-            "        _by_q_df = df.copy()",
-            "        _by_in = (go.get('in_expr') or g.get('in_expr') or '').strip()",
-            "        if _by_in:",
-            "            _by_m = _re_clr.match(r'^(\\d+)/(\\d+)$', _by_in)",
-            "            if _by_m:",
-            "                _by_lo = max(0, int(_by_m.group(1)) - 1)",
-            "                _by_hi = int(_by_m.group(2))",
-            "                _by_q_df = _by_q_df.iloc[_by_lo:_by_hi].copy()",
-            "        _by_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
-            "        if _by_if:",
-            "            _by_px = _stata_if_to_pandas(_by_if.replace('~=', '!='))",
-            "            if _safe_g(_by_px, _by_q_df.columns):",
-            "                try: _by_q_df = _by_q_df.query(_by_px, engine='python')",
-            "                except Exception: pass",
-            "        work_df = _by_q_df",
-            "        if not by_missing:",
-            "            work_df = work_df.dropna(subset=by_vars)",
-            "        if work_df.empty:",
-            "            # All facet-key values are missing (by_missing=False).",
-            "            # Zero out the original unfaceted source so the graph",
-            "            # renders with no data rows instead of falling back to",
-            "            # the full un-faceted dataset.",
-            "            _empty_srcs = graph_sources.get(gname, [])",
-            "            for _es in (_empty_srcs if isinstance(_empty_srcs, list) else [_empty_srcs]):",
-            "                if _es is not None:",
-            "                    _es.data = {_col: [] for _col in _es.data}",
-            "            continue",
-            "        groupby_key = by_vars[0] if len(by_vars) == 1 else by_vars",
-            "        facet_entries = []",
-            "        # Remove the unfaceted figure",
-            "        orig_fig = figures.pop(gname, None)",
-            "        # For linked graphs keep shared source intact; for others pop it",
-            "        if gname in linked_names:",
-            "            orig_src = graph_sources.get(gname)",
-            "        else:",
-            "            orig_src = graph_sources.pop(gname, None)",
-            "        for _fac_idx, (_fac_key, _fac_gdf) in enumerate(",
-            "            work_df.groupby(groupby_key, sort=True, dropna=False)",
-            "        ):",
-            "            _fac_vals = (_fac_key,) if len(by_vars) == 1 else _fac_key",
-            "            if not by_missing and any(pd.isna(v) for v in _fac_vals):",
-            "                continue",
-            "            # Build facet label using value labels",
-            "            _fac_parts = []",
-            "            for _bv, _bval in zip(by_vars, _fac_vals):",
-            "                if pd.isna(_bval):",
-            "                    _fac_parts.append('Missing')",
-            "                    continue",
-            "                _lset = val_label_names.get(_bv, '')",
-            "                _vl = val_labels.get(_lset, {})",
-            "                _sv = str(_bval)",
-            "                _iv = str(int(_bval)) if isinstance(_bval, float) and _bval == int(_bval) else _sv",
-            "                _fac_parts.append(html.escape(_vl.get(_sv) or _vl.get(_iv) or _sv))",
-            "            _fac_label = ' / '.join(_fac_parts)",
-            "            _fac_name = f'{gname}__by__{_fac_idx}'",
-            "            # Build CDS for this facet (linked graphs use shared source + CDSView)",
-            "            _fac_gvars = []",
-            "            for p in g.get('plots', []):",
-            "                for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
-            "                    v = p.get(k, '')",
-            "                    if v and v in _fac_gdf.columns and v not in _fac_gvars:",
-            "                        _fac_gvars.append(v)",
-            "            if gname in linked_names:",
-            "                graph_sources[_fac_name] = [shared_source]",
-            "                _fac_mask = [i in _fac_gdf.index for i in df.index]",
-            "                _fac_view = CDSView(filter=BooleanFilter(booleans=_fac_mask))",
-            "            else:",
-            "                graph_sources[_fac_name] = [ColumnDataSource(",
-            "                    {v: _fac_gdf[v].tolist() for v in _fac_gvars}",
-            "                ) if _fac_gvars else ColumnDataSource({})]",
-            "                _fac_view = None",
-            "            # Clone the figure for this facet (rebuild from spec)",
-            "            _fac_title = html.escape(go.get('title', '') or '')",
-            "            if _fac_title:",
-            "                _fac_title = f'{_fac_title} \\u2014 {_fac_label}'",
-            "            else:",
-            "                _fac_title = _fac_label",
-            "            _fac_kw = dict(",
-            "                title=_fac_title,",
-            "                x_axis_label=var_labels.get(",
-            "                    g.get('plots', [{}])[0].get('xvar', ''), ''),",
-            "                y_axis_label=var_labels.get(",
-            "                    g.get('plots', [{}])[0].get('yvar', '') or g.get('plots', [{}])[0].get('var', ''), ''),",
-            "                tools=[PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()],",
-            "                sizing_mode='stretch_width',",
-            "                output_backend='webgl' if len(df) > _WEBGL_THRESHOLD else 'canvas',",
-            "            )",
-            "            _fac_fig = bokeh_figure(**_fac_kw)",
-            "            _dash_apply_scheme(_fac_fig)",
-            "            # Render plots on facet figure using facet CDS",
-            "            _fac_src_list = graph_sources[_fac_name]",
-            "            _fac_src = (_fac_src_list[0] if _fac_src_list else shared_source)",
-            "            for pi, plot in enumerate(g.get('plots', [])):",
-            "                ptype = plot.get('type', '').lower()",
-            "                opts = plot.get('options', {})",
-            "                yvar_f = plot.get('yvar', '') or plot.get('var', '')",
-            "                xvar_f = plot.get('xvar', '')",
-            "                color = (_resolve_color(opts.get('lcolor') or opts.get('mcolor', ''))",
-            "                         or _dash_scheme_color(pi, ptype))",
-            "                _glyph_kw = {'view': _fac_view} if _fac_view is not None else {}",
-            "                if ptype == 'scatter':",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype == 'line':",
-            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype in ('bar',):",
-            "                    _fac_fig.vbar(x=xvar_f, top=yvar_f, source=_fac_src, width=0.8, color=color, legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype == 'area':",
-            "                    _fac_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_fac_src, fill_color=color, fill_alpha=_SCHEME_AREA_ALPHA, legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype in ('histogram', 'hist'):",
-            "                    _hvar = plot.get('var', '') or yvar_f",
-            "                    _hdata = _compute_histogram(_fac_gdf, _hvar, opts)",
-            "                    _hsrc = ColumnDataSource(_hdata)",
-            "                    agg_sources[(_fac_name, pi)] = {'source': _hsrc, 'type': 'histogram', 'var': _hvar, 'bins': 20}",
-            "                    _fac_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6, legend_label=_hvar)",
-            "                elif ptype == 'lfit':",
-            "                    _lfdata = _compute_lfit(_fac_gdf, yvar_f, xvar_f, opts)",
-            "                    _lfsrc = ColumnDataSource(_lfdata)",
-            "                    agg_sources[(_fac_name, pi)] = {'source': _lfsrc, 'type': 'lfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x', 'y', source=_lfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lfit {yvar_f}')",
-            "                elif ptype == 'qfit':",
-            "                    _qfdata = _compute_qfit(_fac_gdf, yvar_f, xvar_f, opts)",
-            "                    _qfsrc = ColumnDataSource(_qfdata)",
-            "                    agg_sources[(_fac_name, pi)] = {'source': _qfsrc, 'type': 'qfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x', 'y', source=_qfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'qfit {yvar_f}')",
-            "                elif ptype == 'kdensity':",
-            "                    _kdvar = plot.get('var', '') or yvar_f",
-            "                    _kddata = _compute_kdensity(_fac_gdf, _kdvar)",
-            "                    _kdsrc = ColumnDataSource(_kddata)",
-            "                    agg_sources[(_fac_name, pi)] = {'source': _kdsrc, 'type': 'kdensity', 'var': _kdvar}",
-            "                    _fac_fig.line('x', 'y', source=_kdsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=_kdvar)",
-            "                elif ptype == 'lowess':",
-            "                    _lwdata = _compute_lowess(_fac_gdf, yvar_f, xvar_f)",
-            "                    _lwsrc = ColumnDataSource(_lwdata)",
-            "                    agg_sources[(_fac_name, pi)] = {'source': _lwsrc, 'type': 'lowess', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x', 'y', source=_lwsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lowess {yvar_f}')",
-            "                elif ptype in ('lpoly', 'lpolyci'):",
-            "                    _lp_bw_f = float(opts.get('bwidth', 0.5))",
-            "                    _lp_deg_f = int(opts.get('degree', 0))",
-            "                    _lpdata = _compute_lpoly(_fac_gdf, yvar_f, xvar_f, opts)",
-            "                    _lpsrc = ColumnDataSource(_lpdata)",
-            "                    agg_sources[(_fac_name, pi)] = {'source': _lpsrc, 'type': 'lpoly', 'yvar': yvar_f, 'xvar': xvar_f, 'bwidth': _lp_bw_f, 'degree': _lp_deg_f}",
-            "                    _fac_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lpoly {yvar_f}')",
-            "                elif ptype in ('fpfit', 'fpfitci'):",
-            "                    _fpdata = _compute_fpfit(_fac_gdf, yvar_f, xvar_f)",
-            "                    _fpsrc = ColumnDataSource(_fpdata)",
-            "                    agg_sources[(_fac_name, pi)] = {'source': _fpsrc, 'type': 'fpfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _fac_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'fpfit {yvar_f}')",
-            "                elif ptype in ('connected',):",
-            "                    _fac_fig.line(xvar_f, yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, **_glyph_kw)",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype in ('dot',):",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=_SCHEME_MARKER_SIZE, color=color, marker='circle', legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype in ('spike',):",
-            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype in ('dropline',):",
-            "                    _fac_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_fac_src, line_width=1.0, color=color, **_glyph_kw)",
-            "                    _fac_fig.scatter(xvar_f, yvar_f, source=_fac_src, size=6, color=color, legend_label=yvar_f, **_glyph_kw)",
-            "                elif ptype == 'mband':",
-            "                    if xvar_f and yvar_f:",
-            "                        _mb_d = _fac_gdf[[xvar_f, yvar_f]].dropna() if xvar_f in _fac_gdf.columns and yvar_f in _fac_gdf.columns else None",
-            "                        if _mb_d is not None and len(_mb_d) >= 4:",
-            "                            _mb_x = _mb_d[xvar_f].values; _mb_y = _mb_d[yvar_f].values",
-            "                            _n_b = int(np.clip(int(np.ceil(len(_mb_x)/5)), 2, 20))",
-            "                            _x_e = np.linspace(_mb_x.min(), _mb_x.max(), _n_b+1)",
-            "                            _xm, _ym = [], []",
-            "                            for _bi in range(_n_b):",
-            "                                _s = (_mb_x >= _x_e[_bi]) & ((_mb_x < _x_e[_bi+1]) if _bi < _n_b-1 else (_mb_x <= _x_e[_bi+1]))",
-            "                                if _s.sum(): _xm.append(float(0.5*(_x_e[_bi]+_x_e[_bi+1]))); _ym.append(float(np.median(_mb_y[_s])))",
-            "                            if _xm:",
-            "                                _fac_fig.line('x_mb', 'y_mb', source=ColumnDataSource({'x_mb': _xm, 'y_mb': _ym}), line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
-            "            figures[_fac_name] = _fac_fig",
-            "            facet_entries.append((_fac_name, _fac_label))",
-            "            _facet_group_vals[_fac_name] = (by_vars, _fac_key)",
-            "        if by_total:",
-            "            _tot_name = f'{gname}__by__{len(facet_entries)}'",
-            "            _tot_gvars = []",
-            "            for p in g.get('plots', []):",
-            "                for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2'):",
-            "                    v = p.get(k, '')",
-            "                    if v and v in work_df.columns and v not in _tot_gvars:",
-            "                        _tot_gvars.append(v)",
-            "            graph_sources[_tot_name] = [ColumnDataSource(",
-            "                {v: work_df[v].tolist() for v in _tot_gvars}",
-            "            )]",
-            "            _tot_fig = bokeh_figure(",
-            "                title='Total',",
-            "                tools=[PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()],",
-            "                sizing_mode='stretch_width',",
-            "                output_backend='webgl' if len(df) > _WEBGL_THRESHOLD else 'canvas',",
-            "            )",
-            "            _dash_apply_scheme(_tot_fig)",
-            "            _tot_src = graph_sources[_tot_name][0]",
-            "            for pi, plot in enumerate(g.get('plots', [])):",
-            "                ptype = plot.get('type', '').lower()",
-            "                opts = plot.get('options', {})",
-            "                yvar_f = plot.get('yvar', '') or plot.get('var', '')",
-            "                xvar_f = plot.get('xvar', '')",
-            "                color = (_resolve_color(opts.get('lcolor') or opts.get('mcolor', ''))",
-            "                         or _dash_scheme_color(pi, ptype))",
-            "                # Total panel uses full dispatch — same plot types as per-group facets.",
-            "                # work_df plays the role of _fac_gdf for aggregates.",
-            "                if ptype == 'scatter':",
-            "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color, legend_label=yvar_f)",
-            "                elif ptype == 'line':",
-            "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
-            "                elif ptype in ('bar',):",
-            "                    _tot_fig.vbar(x=xvar_f, top=yvar_f, source=_tot_src, width=0.8, color=color, legend_label=yvar_f)",
-            "                elif ptype == 'area':",
-            "                    _tot_fig.varea(x=xvar_f, y1=0, y2=yvar_f, source=_tot_src, fill_color=color, fill_alpha=_SCHEME_AREA_ALPHA, legend_label=yvar_f)",
-            "                elif ptype in ('histogram', 'hist'):",
-            "                    _hvar = plot.get('var', '') or yvar_f",
-            "                    _hdata = _compute_histogram(work_df, _hvar, opts)",
-            "                    _hsrc = ColumnDataSource(_hdata)",
-            "                    agg_sources[(_tot_name, pi)] = {'source': _hsrc, 'type': 'histogram', 'var': _hvar, 'bins': 20}",
-            "                    _tot_fig.quad(top='top', bottom=0, left='left', right='right', source=_hsrc, fill_color=color, fill_alpha=0.6, legend_label=_hvar)",
-            "                elif ptype == 'lfit':",
-            "                    _lfdata = _compute_lfit(work_df, yvar_f, xvar_f, opts)",
-            "                    _lfsrc = ColumnDataSource(_lfdata)",
-            "                    agg_sources[(_tot_name, pi)] = {'source': _lfsrc, 'type': 'lfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x', 'y', source=_lfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lfit {yvar_f}')",
-            "                elif ptype == 'qfit':",
-            "                    _qfdata = _compute_qfit(work_df, yvar_f, xvar_f, opts)",
-            "                    _qfsrc = ColumnDataSource(_qfdata)",
-            "                    agg_sources[(_tot_name, pi)] = {'source': _qfsrc, 'type': 'qfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x', 'y', source=_qfsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'qfit {yvar_f}')",
-            "                elif ptype == 'kdensity':",
-            "                    _kdvar = plot.get('var', '') or yvar_f",
-            "                    _kddata = _compute_kdensity(work_df, _kdvar)",
-            "                    _kdsrc = ColumnDataSource(_kddata)",
-            "                    agg_sources[(_tot_name, pi)] = {'source': _kdsrc, 'type': 'kdensity', 'var': _kdvar}",
-            "                    _tot_fig.line('x', 'y', source=_kdsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=_kdvar)",
-            "                elif ptype == 'lowess':",
-            "                    _lwdata = _compute_lowess(work_df, yvar_f, xvar_f)",
-            "                    _lwsrc = ColumnDataSource(_lwdata)",
-            "                    agg_sources[(_tot_name, pi)] = {'source': _lwsrc, 'type': 'lowess', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x', 'y', source=_lwsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lowess {yvar_f}')",
-            "                elif ptype in ('lpoly', 'lpolyci'):",
-            "                    _lp_bw_t = float(opts.get('bwidth', 0.5))",
-            "                    _lp_deg_t = int(opts.get('degree', 0))",
-            "                    _lpdata = _compute_lpoly(work_df, yvar_f, xvar_f, opts)",
-            "                    _lpsrc = ColumnDataSource(_lpdata)",
-            "                    agg_sources[(_tot_name, pi)] = {'source': _lpsrc, 'type': 'lpoly', 'yvar': yvar_f, 'xvar': xvar_f, 'bwidth': _lp_bw_t, 'degree': _lp_deg_t}",
-            "                    _tot_fig.line('x_lp', 'y_lp', source=_lpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'lpoly {yvar_f}')",
-            "                elif ptype in ('fpfit', 'fpfitci'):",
-            "                    _fpdata = _compute_fpfit(work_df, yvar_f, xvar_f)",
-            "                    _fpsrc = ColumnDataSource(_fpdata)",
-            "                    agg_sources[(_tot_name, pi)] = {'source': _fpsrc, 'type': 'fpfit', 'yvar': yvar_f, 'xvar': xvar_f}",
-            "                    _tot_fig.line('x_fp', 'y_fp', source=_fpsrc, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=f'fpfit {yvar_f}')",
-            "                elif ptype in ('connected',):",
-            "                    _tot_fig.line(xvar_f, yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color)",
-            "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color, legend_label=yvar_f)",
-            "                elif ptype in ('dot',):",
-            "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=_SCHEME_MARKER_SIZE, color=color, marker='circle', legend_label=yvar_f)",
-            "                elif ptype in ('spike',):",
-            "                    _tot_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_tot_src, line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
-            "                elif ptype in ('dropline',):",
-            "                    _tot_fig.segment(x0=xvar_f, y0=0, x1=xvar_f, y1=yvar_f, source=_tot_src, line_width=1.0, color=color)",
-            "                    _tot_fig.scatter(xvar_f, yvar_f, source=_tot_src, size=6, color=color, legend_label=yvar_f)",
-            "                elif ptype == 'mband':",
-            "                    if xvar_f and yvar_f:",
-            "                        _mb_d_t = work_df[[xvar_f, yvar_f]].dropna() if xvar_f in work_df.columns and yvar_f in work_df.columns else None",
-            "                        if _mb_d_t is not None and len(_mb_d_t) >= 4:",
-            "                            _mb_x_t = _mb_d_t[xvar_f].values; _mb_y_t = _mb_d_t[yvar_f].values",
-            "                            _n_b_t = int(np.clip(int(np.ceil(len(_mb_x_t)/5)), 2, 20))",
-            "                            _x_e_t = np.linspace(_mb_x_t.min(), _mb_x_t.max(), _n_b_t+1)",
-            "                            _xm_t, _ym_t = [], []",
-            "                            for _bi_t in range(_n_b_t):",
-            "                                _s_t = (_mb_x_t >= _x_e_t[_bi_t]) & ((_mb_x_t < _x_e_t[_bi_t+1]) if _bi_t < _n_b_t-1 else (_mb_x_t <= _x_e_t[_bi_t+1]))",
-            "                                if _s_t.sum(): _xm_t.append(float(0.5*(_x_e_t[_bi_t]+_x_e_t[_bi_t+1]))); _ym_t.append(float(np.median(_mb_y_t[_s_t])))",
-            "                            if _xm_t:",
-            "                                _tot_fig.line('x_mb', 'y_mb', source=ColumnDataSource({'x_mb': _xm_t, 'y_mb': _ym_t}), line_width=_SCHEME_LINE_WIDTH, color=color, legend_label=yvar_f)",
-            "            figures[_tot_name] = _tot_fig",
-            "            facet_entries.append((_tot_name, 'Total'))",
-            "            _facet_group_vals[_tot_name] = (by_vars, None)  # Total = no group filter",
-            "        _facet_map[gname] = facet_entries",
             "",
             "    # ---- Build KPI Divs ----",
             "    kpi_divs: dict = {}",
@@ -16413,7 +15754,7 @@ class ServerAppBuilder:
             "        for _s in (_gs_list if isinstance(_gs_list, list) else [_gs_list]):",
             "            _orig_src_data[id(_s)] = {c: list(v) for c, v in _s.data.items()}",
             "",
-            "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig):",
+            "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset()):",
             "        def _on_filter_change(attr, old, new):",
             "            # 1. Build combined mask from all active widgets",
             "            mask = pd.Series([True] * len(_df_ref), index=_df_ref.index)",
@@ -16497,6 +15838,10 @@ class ServerAppBuilder:
             "                        try: _gdf = _gdf.query(_px_cb, engine='python')",
             "                        except Exception: pass",
             "                for src in (srcs if isinstance(srcs, list) else [srcs]):",
+            "                    if id(src) in _redrawn:",
+            "                        # A mapper-built source; the redraw below",
+            "                        # refreshes it from the filtered frame.",
+            "                        continue",
             "                    new_data = {}",
             "                    # Row indices of filtered rows in _df_ref.",
             "                    # _df_ref always has a RangeIndex so these are valid",
@@ -16539,37 +15884,24 @@ class ServerAppBuilder:
             "                        agg_fdf = _df_ref[_fmask_a]",
             "                else:",
             "                    agg_fdf = fdf",
-            "                atype = agg['type']",
-            "                if atype == 'histogram':",
-            "                    agg['source'].data = _compute_histogram(agg_fdf, agg['var'], agg.get('opts') or {})",
-            "                elif atype == 'lfit':",
-            "                    agg['source'].data = _compute_lfit(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
-            "                elif atype == 'qfit':",
-            "                    agg['source'].data = _compute_qfit(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
-            "                elif atype == 'kdensity':",
-            "                    agg['source'].data = _compute_kdensity(agg_fdf, agg['var'], agg.get('opts') or {})",
-            "                elif atype == 'lowess':",
-            "                    agg['source'].data = _compute_lowess(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
-            "                elif atype == 'lpolyci':",
-            "                    agg['source'].data = _compute_lpolyci(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
-            "                elif atype == 'lpoly':",
-            "                    agg['source'].data = _compute_lpoly(",
-            "                        agg_fdf, agg['yvar'], agg['xvar'],",
-            "                        agg.get('opts') or {})",
-            "                elif atype == 'fpfit':",
-            "                    agg['source'].data = _compute_fpfit(agg_fdf, agg['yvar'], agg['xvar'])",
-            "                elif atype == 'lfitci':",
-            "                    agg['source'].data = _compute_lfitci(agg_fdf, agg['yvar'], agg['xvar'], (agg.get('opts') or {}).get('level'))",
-            "                elif atype == 'qfitci':",
-            "                    agg['source'].data = _compute_qfitci(agg_fdf, agg['yvar'], agg['xvar'], (agg.get('opts') or {}).get('level'))",
-            "                elif atype == 'mspline':",
-            "                    agg['source'].data = _compute_mspline(agg_fdf, agg['yvar'], agg['xvar'])",
-            "                elif atype == 'mband':",
-            "                    agg['source'].data = _compute_mband(agg_fdf, agg['yvar'], agg['xvar'], agg.get('opts') or {})",
-            "                elif atype == 'rscatter':",
-            "                    agg['source'].data = _compute_rscatter(agg_fdf, agg['yvar1'], agg['yvar2'], agg['xvar'])",
-            "                elif atype == 'pcscatter':",
-            "                    agg['source'].data = _compute_pcscatter(agg_fdf, agg['y1var'], agg['x1var'], agg['y2var'], agg['x2var'])",
+            "                # Redraw through the mapper.  This used to dispatch on",
+            "                # agg['type'] to a second set of statistical helpers,",
+            "                # _compute_<type>, that had drifted from the mappers",
+            "                # they twinned: lowess returned x/y for a glyph bound",
+            "                # to x_lw/y_lw, lfitci ignored n(), no site registered",
+            "                # the plot options at all, and five branches were",
+            "                # unreachable.  The mapper that drew the layer draws",
+            "                # it again from the filtered frame, and its data is",
+            "                # copied onto the live sources, so nothing can drift.",
+            "                _fresh = agg['redraw'](agg_fdf)",
+            "                for _live, _new in zip(agg['sources'], _fresh):",
+            "                    _live.data = dict(_new.data)",
+            "                if len(_fresh) != len(agg['sources']):",
+            "                    warnings.warn(",
+            "                        'dash: %s layer %d redrew %d source(s) where %d were '",
+            "                        'expected; the layer may be stale.' % (",
+            "                            agg.get('type'), key[1] + 1, len(_fresh), len(agg['sources'])),",
+            "                        UserWarning)",
             "            # 4. Recompute filter-mode KPIs",
             "            for kpi in _kpi_defs:",
             "                kupdate = kpi.get('update', 'filter')",
@@ -16599,7 +15931,7 @@ class ServerAppBuilder:
             "        _cb_for_w = _make_filter_cb(",
             "            w, filter_widgets, graph_sources, agg_sources, kpi_divs, kpi_defs, df,",
             "            _facet_map, _facet_group_vals, _orig_src_data,",
-            "            _graph_qualifiers, _facet_to_orig",
+            "            _graph_qualifiers, _facet_to_orig, _redrawn_ids",
             "        )",
             "        if isinstance(w, Select):",
             "            w.on_change('value', _cb_for_w)",
@@ -16711,11 +16043,14 @@ class ServerAppBuilder:
             "                if _gx.get('graph_options', {}).get('name') == name:",
             "                    _go = _gx.get('graph_options', {})",
             '                    break',
+            "            # cols(#) parsed from by() first, then the by_cols key,",
+            "            # then the square-root default -- the saved renderer's rule.",
+            "            # The parsed value used to be computed and never read.",
             "            _by_cols_raw = _go.get('by_cols', '0')",
-            '            try:',
-            '                _by_cn = int(_by_cols_raw) if _by_cols_raw else 0',
-            '            except (ValueError, TypeError):',
-            '                _by_cn = 0',
+            "            try:",
+            "                _by_cn = _facet_cols.get(name, 0) or (int(_by_cols_raw) if _by_cols_raw else 0)",
+            "            except (ValueError, TypeError):",
+            "                _by_cn = _facet_cols.get(name, 0)",
             '            if _by_cn <= 0:',
             '                _by_cn = min(len(_fac_figs), max(1, math.ceil(math.sqrt(len(_fac_figs)))))',
             '            _sub_rows = [_fac_figs[_si:_si + _by_cn]',

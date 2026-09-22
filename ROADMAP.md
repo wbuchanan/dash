@@ -980,6 +980,81 @@ Covered by WP-12's expanded parity corpus plus targeted regression tests in
 
 **Gaps closed:** D4 · **Severity:** S1 · **Effort:** M · **Depends on:** WP-09
 
+> **DONE.** All 38 plot types under `by(foreign)` — every panel compared,
+> glyph for glyph, row for row, hover, labels and legend — report **zero**
+> differences between the modes. Before this work every one of the 38
+> differed: the twenty D4 names served empty panels, and the eighteen that
+> drew had no hover tool, a visible Bokeh-default legend at 13px keyed
+> "lfit mpg", no band for `lpolyci` or `fpfitci`, and `fpfit` at 200 points
+> where the saved dashboard draws five.
+>
+> **TR-11.1 went further than deleting the two chains.** The per-graph loop
+> body is now one emitted function, `_dash_figure_for`, called once per
+> graph or once per panel; and the 38 per-type branches WP-09 left standing
+> — each the same eleven lines with a different name in them, measured by
+> normalising the bodies: ten distinct texts, all by family — are one
+> dispatch, `_dash_draw_layer`, in the saved renderer's order. The old
+> facet block is deleted, not narrowed.
+>
+> **Three defects the plan does not mention were found by measuring along
+> the way, and fixed here because facets ride the same code.**
+>
+> * **The saved dashboard grouped the unqualified frame.** The reverse of
+>   D3: `if price > 4500, by(foreign)` faceted every observation when saved
+>   and the qualified ones when served (BUG-36 had fixed the server). Both
+>   `_expand_by_groups` call sites now group `_apply_graph_filter(g)`.
+> * **WP-09 broke live recompute for every computed layer.** Once fits went
+>   through the mapper, nothing registered them for recompute; their
+>   mapper-built sources sat in `graph_sources`, where the raw-source refresh
+>   "restored" `x`/`y` by the filtered row index. Measured after one filter
+>   move: a 100-point `lfit` became ten points of the OLD line; a served
+>   `line` and `area` were drawn in dataset order, crossing themselves. A
+>   read-only audit of the fifteen `_compute_<type>` twins the old recompute
+>   dispatched to found `lowess` returning `x`/`y` for a glyph bound to
+>   `x_lw`/`y_lw`, `lfitci`/`qfitci` ignoring `n()`, no registration site
+>   writing the plot options, and five branches unreachable. Rather than
+>   repair fifteen twins, a mapper-built layer is now **redrawn by the same
+>   mapper on the filtered frame** and the fresh data copied onto the live
+>   sources — one text, so nothing can drift. Verified for seventeen types,
+>   per facet, and for a qualified layer against the saved renderer run on
+>   the filtered rows. The twins stay emitted, uncalled, for WP-26.
+> * **A served `histogram` ignored its qualifier**: the univariate path of
+>   `_dash_layer_source` handed it the graph's initial, unqualified source.
+>   Three bars where the saved dashboard draws two.
+>
+> **TR-11.2:** `_dash_parse_by` is one parser for both modes (it also holds
+> the one copy of the injection check both had), tokenises respecting
+> parentheses and quotes so `holes(1 3)` is one option, accepts Stata's
+> abbreviations for the three it implements, and names every other
+> sub-option in one warning. `cols(#)` was also **inert when served** — the
+> grid read a `by_cols` graph option nothing writes and never the value it
+> had just parsed; it uses it now, with the saved renderer's fallback rule.
+> `dash.sthlp` says which sub-options are implemented and what happens to
+> the rest.
+>
+> **AC-11.1 and AC-11.2 are met.** `test/test_server_facets.py`: 124 cases
+> (every type under `by()`, total, two variables, missing, linked, qualifier
+> in both modes, recompute against the saved-on-filtered-rows oracle, the
+> parser, one-dispatch source guards, `cols()`); six `by()` entries in the
+> standing parity corpus; `test/test_by_suboptions.cscript` (BYS-01..06)
+> reads the warning back out of the Stata log. Fourteen existing tests
+> asserted the emitted TEXT of the old chains (`_compute_lfitci`,
+> `atype == 'lfitci'`, `_by_q_df`, `opts.get('bwidth'`, `elif ptype ==
+> 'dot':`) and were restated as behaviour in place, each with the reason.
+>
+> **A fourth, found by the certification suite itself:** `dash_setup`'s
+> scheme probe installed `warnings.simplefilter("ignore")` in Stata's
+> embedded interpreter and never removed it, so a user who ran `dash_setup`
+> and then `dash` in one session saw none of dash's reports. Measured: two
+> warning lines from one render before, zero after. The new cert script
+> could not see the warning it was written to read because
+> `test_setup_honesty.cscript` runs the probe four scripts earlier in the
+> same session. The filters are now saved and restored around the probe;
+> BYS-06 pins it.
+>
+> **Not fixed, recorded:** a `by()` panel of an integer-valued float is
+> titled "3.0" in both modes where Stata says 3 (BUGS.md).
+>
 > **User story.** As a user, I want `by(foreign)` to work in server mode for
 > every plot type it works for in a saved dashboard.
 
