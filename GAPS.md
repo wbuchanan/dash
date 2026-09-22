@@ -333,11 +333,39 @@ The comment above those lines anticipates *one* flattening
 `findfile s2color.scheme` **does** locate the installed file (`plus/s/…`,
 rc=0). `dash.ado` never looks, and never tells Python where to look.
 
+**RESOLVED (WP-05).** `SchemeParser` now has a `_PLUS_ROOT` guarded on the
+package directory being named `py`, and an `_installed_letter_dir(name)` that
+returns a directory only for one of the fourteen literal `_BUILTIN_NAMES`.
+The lookup is an isolated block *after* the candidate loop and does not extend
+`allowed`: doing so would also authorise the caller-controlled CWD candidate,
+letting a symlink named `s2color.scheme` reach any file in `PLUS/s`. That
+over-broad variant was built and measured — 25 files reachable under the test
+PLUS, the whole subtree once CWD was inside it, and the entire home tree when
+`dash_render.py` was not under `py/`. Verified end to end against a real
+install: `scheme(s1color)` now emits zero warnings and the HTML no longer
+carries s2color's `#eaf2f3`. The `_FALLBACK_PROPS` deltas this section
+measured are fixed too — it now carries s2color's grid, graphsize, gsize,
+linewidth, symbolsize and intensity values, held there by
+`test_scheme_fallback_provenance.py`. Tests: `test/test_installed_layout.py`
+(INST-01..16).
+
 ### B2. The hardcoded fallback renderer path points at the wrong directory — S3, READ
 
 `dash.ado:1747`, `:2480`, `:2621` all fall back to
 `` `c(sysdir_plus)'d/dash_render.py ``. The installer puts it in `py/`. Masked
 today because `findfile` succeeds first.
+
+**RESOLVED (WP-05), with a correction.** Measured: `findfile dash_render.py`
+does succeed on an installed tree — it searches the *extension* subdirectory,
+returning `PLUS/py/dash_render.py` — so neither fallback was ever reached by a
+real user and this was never a live failure. What made it worth removing is
+that nothing confirmed the file existed before the path reached
+`runpy.run_path`, so when a branch *was* reached the user got a Python
+`FileNotFoundError` naming a Stata internal directory, `r(7102)`, and no
+message from dash; `dash serve` announced the server first and died after. All
+three copies are replaced by one `_dash_find_render` holding only the two
+candidates that can succeed, exiting 601 with a dash-authored message
+otherwise. Tests: `test/test_render_locate.cscript` (LOC-01..09).
 
 ### B3. Schemes install under names Stata cannot see, and may collide — S3, READ
 
@@ -345,6 +373,28 @@ They install as bare `s2color.scheme`, not `scheme-s2color.scheme`, so they
 are invisible to Stata's own `set scheme`. `plus/s/sj.scheme` and friends also
 sit in the shared PLUS letter directories, where they can collide with other
 packages.
+
+**CORRECTED, then CLOSED as a documented limitation (WP-05).** "Invisible" is
+the wrong word, and the mechanism matters. Stata's own
+`/Applications/StataNow/ado/base/s/scheme.class:171-173` reads:
+
+```
+capture findfile scheme-`scheme'.scheme
+if (_rc) capture findfile `scheme'.scheme
+```
+
+so a bare `<name>.scheme` is *second in line*, not unseen. dash's files are
+shadowed rather than invisible, and shadowed by StataCorp's own copy for all
+fourteen names, so `set scheme s2color` is unaffected — measured, rc 0 with
+StataCorp's background colour.
+
+The collision with other packages is real but was measured to be inert for
+dash: `net install` refuses a duplicated basename with `rc 602` and
+`, replace` overwrites it, which is generic packaging behaviour for any
+duplicated name rather than anything specific to schemes. Renaming to
+`dash_<name>.scheme` would end it, but `scheme(<file>.scheme)` is a supported
+way to name a file, so the names are kept and the limitation is now stated in
+`dash.sthlp` rather than left implicit.
 
 ### B4. `dash.pkg` cannot be updated by `adoupdate`, and states the wrong version — S3, READ
 
@@ -354,6 +404,18 @@ The manifest carries its version only as prose (`dash.pkg:25`,
 
 It is also **out of step with the code**: `dash.ado` and `dash_parse.mata`
 both declare `v2.0 27mar2026`. An installed package reports 1.0.0.
+
+**RESOLVED (WP-05), with a correction.** The joint attribution above is wrong.
+`v` is the manifest's **file-format** version — the same field `stata.toc`
+sets to 3, maximum 3, with `v 4` being `r(610)` — not the package's version,
+and `net install` does not copy it into `stata.trk`, so it cannot take part in
+an update comparison at all. Only `d Distribution-Date:` can. `dash.pkg` now
+leads with `v 3` (StataCorp conformance, not the fix) and carries
+`d Version: 2.0  27mar2026` and `d Distribution-Date: 20260327`;
+`dash_setup.ado`, `dash.sthlp` and `dash_setup.sthlp` were moved to the same
+version so all six agree. Tests: `test/test_pkg_metadata.py` (PKG-01..08),
+which asserts the date and the format version **separately** so the two
+reasons cannot be conflated again.
 
 All 20 declared files exist and nothing shippable is missing; `stata.toc` is
 correct and minimal.

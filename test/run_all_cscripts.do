@@ -839,6 +839,56 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 31. test_render_locate.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_render_locate.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_render_locate.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_render_locate.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_render_locate.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_render_locate.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 32. test_theme_escaping.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_theme_escaping.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_theme_escaping.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_theme_escaping.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_theme_escaping.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_theme_escaping.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

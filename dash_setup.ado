@@ -10,7 +10,7 @@
 *! Usage: dash_setup
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 1.0.0  25mar2026
+*! Version: 2.0  27mar2026
 
 program define dash_setup
     version 16.0

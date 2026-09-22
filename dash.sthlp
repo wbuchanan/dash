@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.0  25mar2026}{...}
+{* *! version 2.0  27mar2026}{...}
 {viewerjumpto "Syntax"            "dash##syntax"}{...}
 {viewerjumpto "Description"       "dash##description"}{...}
 {viewerjumpto "Differences from twoway" "dash##differences"}{...}
@@ -1115,6 +1115,28 @@ give its base name without the extension.
 {pstd}
 {it:Example:}
 {phang2}{cmd:. dash build, saving(d.html) scheme(s1rcolor) replace}{p_end}
+
+{pstd}
+{ul:Where the shipped schemes live after an install.}  {cmd:net install}
+files by basename and extension rather than by the path in the manifest, so
+the fourteen {cmd:.scheme} files land in the {cmd:PLUS} letter directories --
+{cmd:PLUS/s/s2color.scheme}, {cmd:PLUS/e/economist.scheme} and so on -- while
+{cmd:dash_render.py} goes to {cmd:PLUS/py/}.  {cmd:dash} looks there, so
+{cmd:scheme()} works the same from an installed copy as from a source
+checkout.  A {cmd:.scheme} file you put in the working directory still wins
+over the shipped one of the same name.
+
+{pstd}
+{ul:They are named without Stata's {cmd:scheme-} prefix, deliberately.}
+StataCorp's own files are {cmd:scheme-}{it:name}{cmd:.scheme} and
+{cmd:dash}'s are plain {it:name}{cmd:.scheme}.  {cmd:set scheme}
+{it:name} looks for {cmd:scheme-}{it:name}{cmd:.scheme} first and only then
+for {it:name}{cmd:.scheme}, so Stata always finds its own copy and
+{cmd:dash}'s translations never change how {cmd:graph} draws.  Renaming them
+to {cmd:dash_}{it:name}{cmd:.scheme} would end the chance of a clash with
+another package that ships a bare {it:name}{cmd:.scheme}, but
+{cmd:scheme(}{it:file}{cmd:.scheme)} is a supported way to name a file, so
+the current names are kept and the clash is accepted as a known limitation.
 
 
 {marker unsupported}

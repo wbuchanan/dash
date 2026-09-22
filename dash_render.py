@@ -1587,6 +1587,30 @@ class SchemeParser:
         os.path.dirname(os.path.abspath(__file__)),
     )
 
+    # Where a `net install' really puts things.  Measured, from a real install
+    # into a clean PLUS (Stata's own stata.trk records the same destinations):
+    #
+    #     PLUS/py/dash_render.py          <- EXTENSION subdirectory
+    #     PLUS/e/economist.scheme
+    #     PLUS/s/s2color.scheme  (+ the other twelve)
+    #
+    # Stata files by basename and extension, so the `schemes/' component of
+    # each `f schemes/<name>.scheme' manifest line is dropped.  Neither search
+    # dir above exists on such a tree, so all fourteen schemes fell back --
+    # including the default, which made every installed build warn.
+    #
+    # The `== "py"' guard is what keeps this inert everywhere else.  In the
+    # repo, and in a loose copy of dash_render.py sitting in someone's
+    # Downloads folder, _PLUS_ROOT is None and nothing below does anything.
+    # Without the guard, dirname(dirname(__file__)) would be an unrelated
+    # parent directory -- a home directory -- and treating it as an install
+    # root would be a real disclosure.
+    _PKG_DIR: str = os.path.dirname(os.path.abspath(__file__))
+    _PLUS_ROOT: "str | None" = (
+        os.path.dirname(_PKG_DIR)
+        if os.path.basename(_PKG_DIR) == "py" else None
+    )
+
     # The translated StataCorp schemes dash ships.  Each is a faithful
     # translation of the same-named Stata scheme, generated from
     # test/fixtures/scheme_truth.json by scripts/extract_scheme_truth.py.
@@ -1604,7 +1628,13 @@ class SchemeParser:
     # e.g. an install whose scheme files did not ship.  Mirrors s2color so the
     # output stays recognisable.  Without this, the fallback path re-ran the
     # same failing lookup and raised, so every render on such an install ended
-    # in a traceback.  Names here must exist in OptionTranslator._COLOR_MAP.
+    # in a traceback.  Colour names here must exist in
+    # OptionTranslator._COLOR_MAP.
+    #
+    # "Mirrors s2color" is held to by test_scheme_fallback_provenance.py,
+    # which compares every public attribute of fallback() against
+    # SchemeParser("s2color") parsed from the shipped file.  It was NOT true
+    # when that test was written: twelve attributes differed.
     _FALLBACK_PROPS: "dict[str, str]" = {
         "color background": "ltbluishgray",
         "color plotregion": "white",
@@ -1622,6 +1652,36 @@ class SchemeParser:
         "color p11": "emerald",      "color p12": "brown",
         "color p13": "erose",        "color p14": "gold",
         "color p15": "bluishgray",
+
+        # The non-colour half of the promise.  These were absent, so a
+        # fallback render differed from s2color in twelve translated
+        # attributes, not just in provenance: no vertical grid
+        # (draw_major_vgrid True -> False), grid lines at 0.8 rather than
+        # 1.5, area and bar fills at 0.8 rather than opaque, and every font
+        # size a step off (heading 14pt -> 13pt, text 11pt -> 10pt, note 8pt
+        # -> 9pt).  "Recognisable" is the only reason this dict exists, so it
+        # now carries s2color's own values for each.  Read from the shipped
+        # schemes/s2color.scheme, which is itself generated from Stata's
+        # scheme-s2color.scheme by scripts/extract_scheme_truth.py.
+        "color grid":             "#eaf2f3",
+        "graphsize x":            "5.5",
+        "graphsize y":            "4",
+        "gsize axis_title":       "medsmall",
+        "gsize heading":          "large",
+        "gsize note":             "small",
+        "gsize text":             "medium",
+        "gsize tick_label":       "medsmall",
+        "linewidth major_grid":   "medium",
+        "linewidth p":            "medium",
+        "numstyle legend_cols":   "2",
+        "clockdir legend_position": "6",
+        "symbolsize p":           "medium",
+        "intensity area":         "full",
+        "intensity bar":          "full",
+        "intensity p":            "inten80",
+        "yesno draw_major_grid":  "no",
+        "yesno draw_major_hgrid": "no",
+        "yesno draw_major_vgrid": "yes",
     }
 
     @classmethod
@@ -1673,7 +1733,10 @@ class SchemeParser:
                 continue
         warnings.warn(
             f"dash: no scheme file could be resolved for {context} (searched "
-            f"{', '.join(cls._SCHEME_SEARCH_DIRS)}). Falling back to built-in "
+            f"{', '.join(cls._SCHEME_SEARCH_DIRS)}"
+            + (f", {os.path.join(cls._PLUS_ROOT, '<letter>')}"
+               if cls._PLUS_ROOT else "")
+            + "). Falling back to built-in "
             "defaults. The package's schemes/ directory appears to be missing "
             "— reinstall dash or run dash_setup.",
             UserWarning,
@@ -1744,6 +1807,31 @@ class SchemeParser:
     # Path resolution
     # ------------------------------------------------------------------
 
+    @classmethod
+    def _installed_letter_dir(cls, name: str) -> "str | None":
+        """The install directory that would hold *name*, or None.
+
+        Returns a directory ONLY for one of the fourteen names dash ships, and
+        only on an installed tree.  That is the whole of the narrowing: the
+        join's second component is one of fourteen literals matching
+        ``^[a-z][a-z0-9_]*$``, so no caller string can steer it out of
+        _PLUS_ROOT, and a letter directory is never offered for a name dash
+        does not ship.  The letter directories are SHARED -- every package
+        whose files start with the same letter installs into them -- so
+        resolving an arbitrary name there would expose other packages' files.
+        """
+        if cls._PLUS_ROOT is None:
+            return None
+        base = (name or "").strip()
+        if os.sep in base or "/" in base:
+            return None
+        if base.lower().endswith(".scheme"):
+            base = base[:-len(".scheme")]
+        base = base.lower()
+        if base not in cls._BUILTIN_NAMES:
+            return None
+        return os.path.join(cls._PLUS_ROOT, base[0])
+
     def _resolve_path(self, name: str) -> str:
         """Return absolute path for a scheme name, blocking path traversal."""
         is_file_ref = name.endswith(".scheme") or os.sep in name or "/" in name
@@ -1804,6 +1892,37 @@ class SchemeParser:
                 )
             if os.path.isfile(candidate):
                 return candidate
+
+        # Last resort: the file where a `net install' put it.
+        #
+        # Deliberately NOT a candidate in the loop above, and the letter
+        # directory is deliberately NOT appended to `allowed'.  `allowed'
+        # also governs the CWD candidate, which the caller fully controls, so
+        # adding <PLUS>/s to it would let a symlink named `s2color.scheme'
+        # planted in the working directory point at any file in <PLUS>/s --
+        # reopening BUG-51 for exactly the fourteen names this is meant to
+        # help.  Checking one path against its own directory keeps the
+        # reachable set byte-identical to before.
+        installed_dir = self._installed_letter_dir(name)
+        if installed_dir is not None:
+            base = name.strip().lower()
+            if base.endswith(".scheme"):
+                base = base[:-len(".scheme")]
+            candidate = os.path.join(installed_dir, base + ".scheme")
+            if os.path.isfile(candidate):
+                real_dir = os.path.realpath(installed_dir)
+                if os.path.realpath(candidate).startswith(real_dir + os.sep):
+                    return candidate
+                # The file is there but points outside its own directory.
+                # Falling through silently would hide a tampered install, so
+                # say so and let the caller's fallback take over.
+                warnings.warn(
+                    f"dash: the installed scheme file for {name!r} at "
+                    f"{candidate} resolves outside {installed_dir} and was "
+                    "not read. Reinstall dash.",
+                    UserWarning,
+                    stacklevel=3,
+                )
 
         built_in_list = ", ".join(sorted(self._BUILTIN_NAMES))
         raise ValueError(
@@ -12548,8 +12667,14 @@ class ServerAppBuilder:
         # `theme': `grep scheme' over a generated app returned nothing, and
         # every plot came out Bokeh's default blue no matter what the user
         # had set -- in their session or on the command.
+        # The requested name is kept as well as the resolved one.  When
+        # resolution falls back, `self.scheme.name' is the literal "s2color"
+        # (SchemeParser.fallback sets it), so a message built from it would
+        # tell the user they got what they asked for.  Only this string can
+        # name what they did NOT get.
+        self.scheme_requested: str = _resolve_scheme_name(self.spec)
         self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
-            _resolve_scheme_name(self.spec), "the dashboard",
+            self.scheme_requested, "the dashboard",
         )
 
     def _glyph_layer_lines(self) -> "list[str]":
@@ -12656,6 +12781,9 @@ class ServerAppBuilder:
         # served figure is styled by the same code the saved one is.
         out += [
             "_SCHEME_PROPS = %r" % (dict(getattr(self.scheme, "_props", {})),),
+            "_DASH_SCHEME_IS_FALLBACK = %r"
+            % (bool(getattr(self.scheme, "is_fallback", False)),),
+            "_DASH_SCHEME_REQUESTED = %r" % (self.scheme_requested,),
             "",
             "",
             "def _dash_build_scheme():",
@@ -12663,9 +12791,25 @@ class ServerAppBuilder:
             "    _s = SchemeParser.__new__(SchemeParser)",
             "    _s._props = dict(_SCHEME_PROPS)",
             "    _s.name = %r" % (getattr(self.scheme, "name", "s2color"),),
-            "    _s.is_fallback = False",
+            "    _s.is_fallback = _DASH_SCHEME_IS_FALLBACK",
             "    _s._init_properties()",
             "    return _s",
+            "",
+            "",
+            "# Provenance travels with the properties.  This used to be\n"
+            "# the literal False, so an app built where no .scheme file\n"
+            "# could be read was indistinguishable from a healthy one --\n"
+            "# and the resolution warning is emitted in the BUILDER's\n"
+            "# process, so whoever later runs the app was told nothing.",
+            "if _DASH_SCHEME_IS_FALLBACK:",
+            "    warnings.warn(",
+            "        \"dash: this app was built where no .scheme file \"",
+            "        \"could be read. You asked for %s; it is drawing \"",
+            "        \"dash's built-in fallback properties, not that \"",
+            "        \"scheme. Reinstall dash or run dash_setup, then \"",
+            "        \"rebuild the app.\" % (_DASH_SCHEME_REQUESTED,),",
+            "        UserWarning, stacklevel=2,",
+            "    )",
             "",
             "",
             "_DASH_SCHEME = _dash_build_scheme()",

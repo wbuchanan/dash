@@ -117,6 +117,70 @@ end
 //
 // mode defaults to "standalone" if omitted.
 // ================================================================
+// ================================================================
+// _dash_find_render  — locate dash_render.py, once
+// ================================================================
+// Three programs carried their own copy of this search and the copies
+// drifted: each ended with
+//
+//     local render_py "`c(sysdir_plus)'d/dash_render.py"
+//
+// which names a path that cannot exist.  Measured from a real `net install'
+// into a clean PLUS, Stata files this one by EXTENSION rather than by first
+// letter -- PLUS/py/dash_render.py -- while PLUS/d holds dash.ado,
+// dash.sthlp, dash_parse.mata and the two dash_setup files and no .py at
+// all.  The dash.ado-derived branch assumes the renderer sits beside
+// dash.ado and computes the same wrong directory.
+//
+// Neither is reached on a healthy install: findfile DOES search the
+// extension subdirectory, so candidate 1 wins for every installed user
+// (measured, rc 0 -> PLUS/py/dash_render.py).  What made them worth
+// removing is what happened when they WERE reached -- nothing confirmed the
+// file existed, so the path went to `runpy.run_path' and the user got a
+// Python FileNotFoundError naming a Stata internal directory, r(7102), and
+// no message from dash.  `dash serve' announced "starting Bokeh Server ...
+// Stata is blocked until the server stops" first and died after.
+//
+// Only the two candidates that can succeed are kept.  A candidate under
+// $PLUS/py or $PERSONAL/py was considered and rejected: dash executes
+// whatever this returns, `confirm file' is an existence check rather than a
+// trust check, and those are trees the shipping code never ran from.
+//
+// Syntax:
+//   _dash_find_render
+//   -> r(fn), or rc 601 with a message naming what to do.
+// ================================================================
+program define _dash_find_render, rclass
+    version 16.0
+
+    capture findfile dash_render.py
+    if _rc == 0 {
+        return local fn `"`r(fn)'"'
+        exit
+    }
+
+    // Beside dash.ado: the development layout, and any install that keeps
+    // the package together.  Confirmed before it is returned, because the
+    // caller hands it straight to Python.
+    capture findfile dash.ado
+    if _rc == 0 {
+        local _ado_fn `"`r(fn)'"'
+        local _beside = substr(`"`_ado_fn'"', 1, ///
+            strlen(`"`_ado_fn'"') - strlen("dash.ado")) + "dash_render.py"
+        capture confirm file `"`_beside'"'
+        if _rc == 0 {
+            return local fn `"`_beside'"'
+            exit
+        }
+    }
+
+    display as error "dash: cannot locate dash_render.py."
+    display as error "      Not on the ado-path and not beside dash.ado."
+    display as error "      Reinstall dash, or put its directory on the ado-path."
+    exit 601
+end
+
+
 program define _dash_do_render
     version 16.0
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
@@ -1788,25 +1852,8 @@ program define _dash_render_immediate
     file close `fh'
 
     // ---- Locate dash_render.py ----
-    // Strategy: use findfile to locate dash_render.py on the adopath.
-    // This works for both development installs (dash/ on adopath) and
-    // package installs (PLUS/d/ on adopath).
-    capture findfile dash_render.py
-    if _rc == 0 {
-        local render_py "`r(fn)'"
-    }
-    else {
-        // Fallback: derive path from dash.ado location
-        capture findfile dash.ado
-        if _rc == 0 {
-            local _ado_fn "`r(fn)'"
-            local render_py = substr("`_ado_fn'", 1, ///
-                strlen("`_ado_fn'") - strlen("dash.ado")) + "dash_render.py"
-        }
-        else {
-            local render_py "`c(sysdir_plus)'d/dash_render.py"
-        }
-    }
+    _dash_find_render
+    local render_py `"`r(fn)'"'
 
     // ---- Invoke Python renderer via helper ----
     // (python:...end must be in a dedicated program; see _dash_do_render)
@@ -2480,7 +2527,17 @@ program define _dash_prepare_spec, rclass
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`scheme'"'            _scheme_esc
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`theme'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
+    // theme() was the one user string on the master-spec line that went in
+    // raw while every other went through _dash_json_str.  Measured:
+    // theme("C:\temp\x"), theme("a\q"), theme("a\") and a theme()
+    // containing a double quote each gave r(7102) and a Python
+    // JSONDecodeError traceback, with no message from dash; theme("a\b")
+    // gave rc 0 and silently delivered a BACKSPACE, because \b happens to
+    // be a valid JSON escape.  The same values in scheme() were all fine.
+    // link(), layout() and filterposition() are validated before this line
+    // and reject such a value with r(198); tabs() is escaped already.
+    _dash_json_str `"`theme'"'             _theme_esc
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
 
     tempname fh
     // quietly: see the note at the other spec writer -- `write replace'
@@ -2603,25 +2660,8 @@ program define _dash_build
     global dash_opts_filter         `"`filter'"'
 
     // ---- Locate dash_render.py ----
-    // Strategy: use findfile to locate dash_render.py on the adopath.
-    // This works for both development installs (dash/ on adopath) and
-    // package installs (PLUS/d/ on adopath).
-    capture findfile dash_render.py
-    if _rc == 0 {
-        local render_py "`r(fn)'"
-    }
-    else {
-        // Fallback: derive path from dash.ado location
-        capture findfile dash.ado
-        if _rc == 0 {
-            local _ado_fn "`r(fn)'"
-            local render_py = substr("`_ado_fn'", 1, ///
-                strlen("`_ado_fn'") - strlen("dash.ado")) + "dash_render.py"
-        }
-        else {
-            local render_py "`c(sysdir_plus)'d/dash_render.py"
-        }
-    }
+    _dash_find_render
+    local render_py `"`r(fn)'"'
 
     local render_mode "standalone"
     if "`server'" != "" local render_mode "server"
@@ -2764,21 +2804,8 @@ program define _dash_serve
     if "`r(nobrowser)'" == "nobrowser" local no_browser_flag "--no-browser"
 
     // ---- Locate dash_render.py ----
-    capture findfile dash_render.py
-    if _rc == 0 {
-        local render_py "`r(fn)'"
-    }
-    else {
-        capture findfile dash.ado
-        if _rc == 0 {
-            local _ado_fn "`r(fn)'"
-            local render_py = substr("`_ado_fn'", 1, ///
-                strlen("`_ado_fn'") - strlen("dash.ado")) + "dash_render.py"
-        }
-        else {
-            local render_py "`c(sysdir_plus)'d/dash_render.py"
-        }
-    }
+    _dash_find_render
+    local render_py `"`r(fn)'"'
 
     // Temp path for the generated Bokeh Server app.
     //

@@ -1,0 +1,154 @@
+*! test_theme_escaping.cscript  v1.0
+*! Certification script for theme() as a data input.
+*!
+*! _dash_build assembles the master spec by interpolating locals into a JSON
+*! string.  Every other user-supplied string on that line goes through
+*! _dash_json_str first -- scheme(), title(), subtitle(), tabs(), and the
+*! session scheme -- and theme() did not:
+*!
+*!     "theme":"`theme'","scheme":"`_scheme_esc'", ...
+*!
+*! so a backslash or a double quote in theme() went into the JSON unescaped.
+*! Measured, each on an ordinary two-command build:
+*!
+*!     theme("a\q")        -> r(7102), Python JSONDecodeError traceback
+*!     theme("C:\temp\x")  -> r(7102), same
+*!     theme("a\")         -> r(7102), same
+*!     theme(`"a"b"')      -> r(7102), same
+*!     theme("a\b")        -> rc 0, and WORSE: \b is a valid JSON escape, so
+*!                            the value silently became a backspace character
+*!
+*! and the identical values in scheme(), which is escaped, all returned rc 0.
+*! A Windows-style path is the obvious way to reach this by accident.  The
+*! user got a raw Python traceback naming dash_render.py and no message from
+*! dash, which is the failure project rule 16 exists to prevent.
+*!
+*! The other raw interpolations on that line were measured and are NOT
+*! affected, because each is validated before it gets there:
+*!
+*!     link("a\q")             -> r(198)      layout("a\q")  -> r(198)
+*!     filterposition("a\q")   -> r(198)      tabs("a\q")    -> rc 0, escaped
+*!
+*! so theme() was the only hole, and this script pins that.
+*!
+*! Tests: THM-01 through THM-09
+*!
+*! Usage:  do test/test_theme_escaping.cscript
+*! Version: 1.0  21sep2026
+
+cscript "theme() is escaped like every other spec string" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// Build once with the given theme() value and hand back the return code.
+// A fresh registry each time, so a refused build cannot be masked by a
+// graph left over from the one before.
+capture program drop _thm_build
+program define _thm_build, rclass
+    args val
+    dash clear
+    qui sysuse auto, clear
+    dash scatter mpg weight, name(tg1)
+    tempfile out
+    capture noisily dash build, saving("`out'.html") replace nobrowser ///
+        theme(`"`val'"')
+    return scalar rc = _rc
+end
+
+
+// ================================================================
+// THM-01..05 — a hostile or careless theme() must not reach Python raw
+// ================================================================
+// rc 0 is the assertion, not rc 198: theme() takes an arbitrary string and
+// an unknown one is reported by the renderer as "not a known theme", which
+// is dash's own message.  What must never happen is r(7102).
+
+_thm_build `"a\q"'
+assert r(rc) == 0
+display "THM-01 PASS: an invalid JSON escape in theme() no longer aborts"
+
+_thm_build `"C:\temp\x"'
+assert r(rc) == 0
+display "THM-02 PASS: a Windows path in theme() no longer aborts"
+
+_thm_build `"a\"'
+assert r(rc) == 0
+display "THM-03 PASS: a trailing backslash in theme() no longer aborts"
+
+_thm_build `"a"b"'
+assert r(rc) == 0
+display "THM-04 PASS: a double quote in theme() no longer aborts"
+
+_thm_build `"x","injected":"y"'
+assert r(rc) == 0
+display "THM-05 PASS: a theme() that looks like JSON cannot add spec keys"
+
+// ================================================================
+// THM-06 — the value survives intact rather than being mangled
+// ================================================================
+// theme("a\b") returned rc 0 before this, because \b is a valid JSON escape
+// -- the renderer received a BACKSPACE character where the user wrote two
+// ordinary ones.  Silent corruption is worse than the abort.
+_thm_build `"a\b"'
+assert r(rc) == 0
+display "THM-06 PASS: a backslash-b in theme() is two characters, not one"
+
+// ================================================================
+// THM-07 — the escaping is done by the shared helper, at the one site
+// ================================================================
+mata:
+real scalar _thm_code_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, trimmed
+    n  = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        trimmed = strltrim(line)
+        if (substr(trimmed, 1, 2) == "//") continue
+        if (strpos(line, needle)) n = n + 1
+    }
+    fclose(fh)
+    return(n)
+}
+end
+// The needle is built from char() codes.  Writing the backtick-quote form
+// literally would let Stata expand it as a macro before Mata saw it, and
+// the needle would collapse to `"theme":"' -- which the FIXED line still
+// contains, so the assertion would be unsatisfiable.
+// char(96) is ` and char(39) is '.
+mata: st_local("_thm_raw", strofreal(_thm_code_has("../dash.ado", ///
+    char(34) + "theme" + char(34) + ":" + char(34) + char(96) + "theme" + char(39))))
+assert `_thm_raw' == 0
+display "THM-07 PASS: theme() is no longer interpolated raw into the spec"
+
+// ================================================================
+// THM-08 — an ordinary theme() still works
+// ================================================================
+_thm_build "default"
+assert r(rc) == 0
+display "THM-08 PASS: an ordinary theme() is unaffected"
+
+_thm_build ""
+assert r(rc) == 0
+display "THM-09 PASS: an empty theme() is unaffected"
+
+capture program drop _thm_build
+
+display ""
+display "All theme() escaping tests PASSED."

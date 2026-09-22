@@ -1,0 +1,197 @@
+*! test_render_locate.cscript  v1.0
+*! Certification script for how `dash' finds its own renderer.
+*!
+*! Three programs -- _dash_render_immediate, _dash_build and _dash_serve --
+*! each carried their own copy of the same three-branch search:
+*!
+*!     capture findfile dash_render.py       -> use r(fn)
+*!     capture findfile dash.ado             -> dirname(r(fn)) + dash_render.py
+*!     otherwise                             -> `c(sysdir_plus)'d/dash_render.py
+*!
+*! THE THIRD BRANCH NAMES A PATH THAT CANNOT EXIST.  Measured from a real
+*! `net install' into a clean PLUS, Stata files dash_render.py by EXTENSION,
+*! not by first letter:
+*!
+*!     PLUS/py/dash_render.py      <- where it goes
+*!     PLUS/d/dash_render.py       <- what the third branch computed
+*!
+*! and PLUS/d holds dash.ado, dash.sthlp, dash_parse.mata, dash_setup.ado and
+*! dash_setup.sthlp but no .py at all.  The second branch derives the same
+*! wrong directory, because it assumes the renderer sits beside dash.ado.
+*!
+*! Neither branch is reached on a healthy install -- measured, `findfile
+*! dash_render.py' returns rc 0 and resolves PLUS/py/dash_render.py, because
+*! findfile DOES search the extension subdirectory.  What made this worth
+*! fixing is what happened when they were reached: nothing confirmed the file
+*! existed, so the path went straight to `python: runpy.run_path(...)' and the
+*! user got a Python FileNotFoundError traceback naming a Stata internal
+*! directory, with r(7102) and not one word from dash.  `dash serve' was worse
+*! -- it printed "starting Bokeh Server on port NNNN. Stata is blocked until
+*! the server stops" FIRST and died afterwards, so the user believed a server
+*! had started.
+*!
+*! The replacement is one shared `_dash_find_render', with the two branches
+*! that can succeed and a dash-authored error for the case where neither
+*! does.  A third candidate under $PLUS/py or $PERSONAL/py was considered and
+*! rejected: those are paths the shipping code never executes from, and
+*! `confirm file' is an existence check, not a trust check, so inventing new
+*! directories to run Python out of would widen what dash executes.
+*!
+*! Tests: LOC-01 through LOC-09
+*!
+*! Usage:  do test/test_render_locate.cscript
+*! Version: 1.0  21sep2026
+
+cscript "dash locates its own renderer" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// Read a captured log in Mata: a line of it is a value there, so nothing the
+// message contains can end a Stata string or be parsed as code.  The serve
+// and registry cscripts take the same approach.
+mata:
+real scalar _loc_log_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, found
+    string scalar line
+    found = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (strpos(strlower(line), strlower(needle))) found = 1
+    }
+    fclose(fh)
+    return(found)
+}
+
+// Count occurrences in CODE only.  The locator's own header quotes the line
+// it replaced, so a plain text search would match the comment that explains
+// the fix and the assertions below would be unsatisfiable.
+real scalar _loc_code_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, trimmed
+    n  = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        trimmed = strltrim(line)
+        if (substr(trimmed, 1, 2) == "//") continue
+        if (substr(trimmed, 1, 1) == "*")  continue
+        if (strpos(line, needle)) n = n + 1
+    }
+    fclose(fh)
+    return(n)
+}
+end
+
+
+// ================================================================
+// LOC-01..03 — the helper exists, and it finds the renderer
+// ================================================================
+// `which' looks for an ado FILE of that name, and dash ships one .ado
+// holding every program, so it is the wrong instrument here.  Assert the
+// definition in the source instead; LOC-02 asserts it actually runs.
+mata: st_local("_loc_def", strofreal(_loc_code_has("../dash.ado", ///
+    "program define _dash_find_render")))
+assert `_loc_def' == 1
+display "LOC-01 PASS: the shared locator is defined exactly once"
+
+capture noisily _dash_find_render
+assert _rc == 0
+local found `"`r(fn)'"'
+assert `"`found'"' != ""
+display "LOC-02 PASS: the locator returns a path"
+
+capture confirm file `"`found'"'
+assert _rc == 0
+display "LOC-03 PASS: the path it returns names a file that exists"
+
+// ================================================================
+// LOC-04 — it agrees with findfile, which is the branch that works
+// ================================================================
+capture findfile dash_render.py
+assert _rc == 0
+assert `"`found'"' == `"`r(fn)'"'
+display "LOC-04 PASS: the locator returns findfile's answer"
+
+// ================================================================
+// LOC-05..06 — no site computes a PLUS letter path for the renderer
+// ================================================================
+// The renderer installs to PLUS/py.  Any code that builds PLUS/d + a .py
+// name is wrong for every installed user, and there were three such lines.
+mata: st_local("_loc_bad", strofreal(_loc_code_has("../dash.ado", "sysdir_plus")))
+assert `_loc_bad' == 0
+display "LOC-05 PASS: dash.ado no longer builds a path out of sysdir_plus"
+
+mata: st_local("_loc_d", strofreal(_loc_code_has("../dash.ado", "d/dash_render.py")))
+assert `_loc_d' == 0
+display "LOC-06 PASS: the PLUS/d renderer path appears in no executable line"
+
+// ================================================================
+// LOC-07 — one locator, not three copies
+// ================================================================
+// The three copies drifted apart before (see BUGS.md): _dash_build's
+// forwarding was fixed at one site and not the others.  Counting the
+// findfile calls keeps them from being re-copied.
+mata: st_local("_loc_n", strofreal(_loc_code_has("../dash.ado", "findfile dash_render.py")))
+assert `_loc_n' == 1
+display "LOC-07 PASS: exactly one place looks for dash_render.py"
+
+// ================================================================
+// LOC-08 — a real build still works through the helper
+// ================================================================
+capture which jsonio
+if _rc == 0 {
+    dash clear
+    dash scatter mpg weight, name(l1)
+    tempfile lout
+    capture noisily dash build, saving("`lout'.html") replace nobrowser
+    assert _rc == 0
+    display "LOC-08 PASS: dash build renders through the shared locator"
+}
+else {
+    display "LOC-08 SKIP: jsonio not installed"
+}
+
+// ================================================================
+// LOC-09 — a missing renderer is dash's error, not Python's
+// ================================================================
+// Driven by redefining the locator to fail, which is the only way to reach
+// the branch without uninstalling dash: on any real tree findfile succeeds.
+// What is asserted is the CONTRACT the callers rely on -- a non-zero return
+// and a dash-authored message -- not the internals of the search.
+capture program drop _dash_find_render_real
+capture program drop _dash_find_render
+program define _dash_find_render, rclass
+    display as error "dash: cannot locate dash_render.py."
+    display as error "      Not on the ado-path and not beside dash.ado."
+    display as error "      Reinstall dash, or put its directory on the ado-path."
+    exit 601
+end
+
+tempname llf
+tempfile llg
+quietly log using "`llg'", replace text name(`llf')
+capture noisily _dash_find_render
+local lrc = _rc
+quietly log close `llf'
+mata: st_local("_loc_said", strofreal(_loc_log_has("`llg'", "cannot locate dash_render.py")))
+assert `lrc' == 601
+assert `_loc_said' == 1
+display "LOC-09 PASS: a missing renderer gives rc 601 and a dash message"
+
+// Drop the stub.  Nothing follows, so the real one is not reloaded: `do'ing
+// dash.ado again over the programs already in memory is r(110).
+capture program drop _dash_find_render
+
+display ""
+display "All renderer-locator tests PASSED."

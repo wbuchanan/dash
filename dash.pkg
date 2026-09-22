@@ -1,3 +1,4 @@
+v 3
 d 'DASH': Interactive HTML dashboards from twoway syntax
 d
 d dash converts Stata twoway plot syntax into standalone interactive
@@ -18,7 +19,8 @@ d           render empty with a warning; everything else works.
 d
 d Run -dash_setup- once after installation to install all dependencies.
 d
-d Version: 1.0.0  25mar2026
+d Version: 2.0  27mar2026
+d Distribution-Date: 20260327
 d
 f dash.ado
 f dash.sthlp

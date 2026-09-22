@@ -350,6 +350,54 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 
 **Gaps closed:** B1, B2, B3, B4 · **Severity:** S1 · **Effort:** M · **Depends on:** —
 
+> **DONE.** Delivered against a real `net install`, not a model of one. What
+> shipped, and where this plan was wrong:
+>
+> * **TR-05.1** landed, but *not* as written. Appending the install root and
+>   its letter subdirectories to `allowed` was built and measured to be
+>   exploitable: `allowed` also governs the caller-controlled CWD candidate,
+>   so a symlink named `s2color.scheme` in the working directory would reach
+>   any file in `PLUS/s` — reopening BUG-51 for exactly the fourteen names the
+>   change was meant to help. The shipped version adds no directory to
+>   `allowed` at all; it checks one computed path against its own realpath'd
+>   directory, after the candidate loop.
+> * **TR-05.2 was NOT built, deliberately.** Passing a `findfile`-resolved
+>   absolute path into the spec looked robust and is not: `findfile` returns
+>   only the *first* adopath hit and `.` precedes `PLUS`, so a stray
+>   `s2color.scheme` in the working directory would silently win for every
+>   graph; and it would have the renderer accept an arbitrary absolute path
+>   from the spec, bypassing the containment checks entirely. The renderer-side
+>   fix needs no `dash.ado` change and keeps every guard.
+> * **TR-05.3** landed, with its premise corrected: `findfile` *does* search
+>   `PLUS/py`, so the wrong hardcoded paths were never reached by a real user.
+>   They were removed for the failure mode they produced when reached — an
+>   unguarded path handed to `runpy`.
+> * **TR-05.4**'s mechanism was wrong (the literal suppresses nothing; the
+>   parent has already warned) and its conclusion right (the generated app is
+>   silent). Fixed by emitting the provenance and a notice naming the
+>   *requested* scheme. A second, unrecorded defect was found and fixed here:
+>   `_FALLBACK_PROPS` differed from s2color in twelve public attributes while
+>   claiming to mirror it.
+> * **TR-05.5** is left to WP-17, which owns the `scheme()` policy. Escalating
+>   to an error now would have made every installed build fail outright, since
+>   the *default* scheme was among the fourteen that could not resolve. The
+>   crux question was measured: Python `UserWarning`s **do** reach the Stata
+>   console (and survive `quietly`, though not `capture`), so the current
+>   behaviour is loud — just raw.
+> * **TR-05.6** landed with its premise corrected — see GAPS B4. `v 2` was
+>   wrong twice over.
+> * **TR-05.7** closed as a documented limitation, with its rationale
+>   corrected: the shipped schemes are *shadowed*, not invisible, because
+>   `scheme.class` falls back to a bare `<name>.scheme`.
+> * **Not in this plan at all:** `theme()` was the one user string interpolated
+>   into the master spec unescaped, giving `r(7102)` and a Python traceback for
+>   a Windows-style path. Fixed under rule 16.
+>
+> New tests: `test/test_installed_layout.py` (52 cases), `test_pkg_metadata.py`
+> (13), `test_scheme_fallback_provenance.py` (9), `test_render_locate.cscript`
+> (LOC-01..09, runner #31), `test_theme_escaping.cscript` (THM-01..09,
+> runner #32).
+
 > **User story.** As a user who installed `dash` with `net install`, I want
 > `scheme(stcolor)` to give me stcolor — not a fallback that looks like
 > nothing Stata ships.
