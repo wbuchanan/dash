@@ -564,6 +564,31 @@ should land:
 
 **Gaps closed:** J3, J4, J5 · **Severity:** S2 · **Effort:** S · **Depends on:** —
 
+> **DONE**, with one technical requirement measured to be wrong.
+>
+> * **TR-07.1, TR-07.2, TR-07.3, TR-07.5** landed as written.
+> * **TR-07.4 was NOT implemented as written, because it is a regression.**
+>   The return code of the Mata `run` does not carry the question: a benign
+>   second load returns r(3000), the same code as a total compile failure, so
+>   refusing to run on a non-zero code breaks every user — and every cscript
+>   here — that loads `dash_parse.mata` before `dash.ado`. What landed instead
+>   checks whether the functions dash calls are present and, on a miss, loads
+>   the library itself before re-checking and reporting.
+> * A first attempt that checked presence and *vetoed* also failed, against
+>   `test_examples_run.cscript`: the library is routinely absent at the entry
+>   to a command through no fault of the install. Both wrong turns are
+>   recorded in BUGS.md, with the measurements.
+> * **AC-07.3** is met by the repair path: all three staged broken trees now
+>   give a dash-authored message and r(198) instead of `_dash_check_utf8() not
+>   found` — or, for the partial break, rc 0 and "graph registered".
+> * The test-plan row "extend `test_mata_autoload.cscript` — a failed compile
+>   is reported at load time" is deliberately not done: reporting at load time
+>   is what the rc check would have been, and it is wrong for the reason
+>   above. The reporting happens at entry, covered by ENV-08..11.
+>
+> New: `test/test_env_guards.cscript` (ENV-01..16, runner #34), plus a new
+> class in `test_cscript_hygiene.py` covering the two shipped `.ado` files.
+
 > **User story.** As a user without Python linked, I want `dash` to tell me to
 > run `dash_setup` — the way it already does for `jsonio` — instead of
 > handing me a raw Stata Python error.

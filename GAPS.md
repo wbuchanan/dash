@@ -1085,6 +1085,15 @@ runs via `subprocess` *inside* `python:`), so that half of the rule holds.
 `test/test_cscript_hygiene.py:12-14` enforces the rule only for `.cscript`
 files, so `dash_setup.ado` is outside the net.
 
+**RESOLVED (WP-07).** `_dash_python_ok` takes the value as an argument and
+`_dash_require_python` passes it `c(python_exec)`. Split that way because the
+failing state cannot otherwise be reached on a machine that has Python: `c()`
+is read-only and `set python_exec` refuses a nonexistent path (measured,
+r(601)). `dash_setup`'s `capture python query` is replaced by the same probe;
+`python query` is kept for *reporting* the version. `test_cscript_hygiene.py`
+now applies its rule to `dash.ado` and `dash_setup.ado` — enforcing it for
+`.cscript` files only is how `dash_setup` kept that probe.
+
 ### J4. `dash` itself never checks that Python is available — S2, READ
 
 `_dash_do_render` goes straight to `python:`. A user without a linked Python
@@ -1093,6 +1102,24 @@ gets a raw Stata Python error rather than the "run dash_setup" message the
 CLAUDE.md rule 15 asks for environment verification at startup.
 
 ### J5. The Mata library's compile status is never checked — S2, READ
+
+**RESOLVED (WP-07), and this section's account is wrong twice over.** It names
+`_dash_split_segs()`; the function actually reached first is
+`_dash_check_utf8()`. And "a failed Mata compile surfaces much later as
+r(3499)" is only one of three measured outcomes — with one unrelated function
+broken, `dash scatter mpg weight` returned **rc 0** and reported "graph
+registered", which is worse, because the user has no reason to look.
+
+ROADMAP TR-07.4's remedy — check the return code of the `run` — was measured
+to be a regression. A benign *second* load returns r(3000), the same code as a
+total compile failure, so vetoing on a non-zero code breaks every user and
+every cscript that loads `dash_parse.mata` before `dash.ado`.
+
+`_dash_require_mata` instead checks whether the functions dash calls are
+present and, on a miss, **loads the library itself** before re-checking and
+reporting. It therefore cannot false-positive, and it repairs a library
+cleared by `clear all` rather than complaining about it. See the BUGS.md
+entries.
 
 `dash.ado:55` does `capture run "`_dash_matalib'"` and **discards the return
 code**. A failed Mata compile therefore surfaces much later as

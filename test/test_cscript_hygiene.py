@@ -33,6 +33,12 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _CSCRIPTS = sorted(glob.glob(os.path.join(_HERE, "*.cscript")))
 _RUNNER = os.path.join(_HERE, "run_all_cscripts.do")
 
+_REPO = os.path.dirname(_HERE)
+#: The shipped ado files. The rule below was written for the certification
+#: scripts and enforced only there, so dash.ado and dash_setup.ado sat
+#: outside the net that exists to catch exactly their mistake.
+_ADOS = [os.path.join(_REPO, n) for n in ("dash.ado", "dash_setup.ado")]
+
 
 def _name(path):
     return os.path.basename(path)
@@ -138,4 +144,72 @@ class TestEveryCscriptIsWiredIntoTheRunner:
             runner = fh.read()
         assert _name(path) in runner, (
             f"{_name(path)} exists but run_all_cscripts.do never runs it"
+        )
+
+
+class TestTheShippedAdoFilesFollowTheSameRule:
+    """The rule was enforced for .cscript files only.
+
+    That is how ``dash_setup.ado`` kept ``capture python query`` as its
+    availability probe, and how ``dash.ado`` reached ``python:`` with no
+    check at all -- ``c(python_exec)`` appeared in neither file. The cost of
+    probing by execution is already measured in this file's docstring: the
+    first python call of a session returns a nonzero rc under the runner on
+    a machine where dash renders Bokeh output seconds later.
+
+    Availability is configuration. Running Python to ask whether Python is
+    there can fail for reasons that have nothing to do with the answer.
+    """
+
+    @pytest.fixture(params=_ADOS, ids=lambda p: os.path.basename(p))
+    def ado(self, request):
+        with open(request.param, encoding="utf-8") as fh:
+            return request.param, fh.read()
+
+    @staticmethod
+    def _code(src):
+        """Source with // comments and *! header lines removed."""
+        out = []
+        for line in src.splitlines():
+            stripped = line.lstrip()
+            if stripped.startswith("//") or stripped.startswith("*!"):
+                continue
+            out.append(line.split("//", 1)[0])
+        return out
+
+    def test_availability_is_not_decided_by_running_python(self, ado):
+        path, src = ado
+        bad = [
+            f"{os.path.basename(path)}:{i}: {line.strip()}"
+            for i, line in enumerate(self._code(src), 1)
+            if "capture python query" in line
+        ]
+        assert not bad, (
+            "availability is decided by running Python; use "
+            "c(python_exec), which is configuration and cannot fail for "
+            "reasons unrelated to the question:\n" + "\n".join(bad)
+        )
+
+    def test_availability_is_decided_by_the_setting(self, ado):
+        path, src = ado
+        code = "\n".join(self._code(src))
+        assert "python_exec" in code, (
+            f"{os.path.basename(path)} reaches Python but never consults "
+            f"c(python_exec); a user with no linked Python gets a raw Stata "
+            f"Python error naming neither dash nor the remedy"
+        )
+
+    def test_a_bare_python_pass_is_not_used_as_a_probe(self, ado):
+        path, src = ado
+        lines = self._code(src)
+        bad = []
+        for i, line in enumerate(lines):
+            if "capture python: pass" not in line:
+                continue
+            after = "\n".join(lines[i + 1:i + 5])
+            if "not available" in after or "Python is not" in after:
+                bad.append(i + 1)
+        assert not bad, (
+            f"{os.path.basename(path)} lines {bad}: concludes Python is "
+            f"missing from the rc of a bare warm-up call"
         )

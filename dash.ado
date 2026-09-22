@@ -51,12 +51,37 @@ else {
         if _rc != 0 local _dash_matalib ""
     }
 }
+// dash's Mata library.  The return code of `run' is DELIBERATELY not used
+// as a verdict.  Measured:
+//
+//     state                       run rc    functions present
+//     healthy, first load              0                  yes
+//     healthy, loaded a second time 3000                  yes
+//     nothing compiles              3000                   no
+//     one unrelated function broken  199                  yes
+//     file not found           (not run)          not by this
+//
+// A second load returns the SAME code as a total compile failure, so
+// refusing to run on a non-zero rc would break every user -- and every
+// certification script -- that loads dash_parse.mata itself before dash.ado.
+// ROADMAP TR-07.4 asks for exactly that; it would be a regression.
+//
+// What is authoritative is whether the functions dash calls are there, and
+// _dash_require_mata asks that at the entry to every command.  It is also
+// the only check that sees a library cleared mid-session.
 if `"`_dash_matalib'"' != "" {
     capture run "`_dash_matalib'"
 }
 
 program define dash
     version 16.0
+
+    // Every subcommand parses through Mata, so this is the one place that
+    // covers all of them.  Without it a broken or missing dash_parse.mata
+    // surfaced as "<istmt>: 3499 _dash_check_utf8() not found", naming an
+    // internal function and giving the user nothing to act on -- or, for a
+    // partial compile, as rc 0 and "graph registered".
+    _dash_require_mata
 
     // ----------------------------------------------------------------
     // Subcommand routing
@@ -117,6 +142,120 @@ end
 //
 // mode defaults to "standalone" if omitted.
 // ================================================================
+// ================================================================
+// _dash_python_ok  — is Python configured?
+// ================================================================
+// A pure function of its argument, so the failing state can be reached from
+// a certification script.  `c()' is read-only and `set python_exec' refuses
+// a path that does not exist -- measured, r(601) -- so a machine that HAS
+// Python cannot be made to look like one that has not, except by asking the
+// question this way.
+//
+// The probe is `c(python_exec)', which is CONFIGURATION rather than
+// execution.  `capture python query' and `capture python: pass' both run
+// Python, and the certification suite already learned what that costs:
+// measured, the first python call of a session returns a nonzero rc under
+// the runner on a machine where dash renders Bokeh output seconds later, so
+// nine scripts skipped and the runner printed ALL TESTS PASSED.
+// test_cscript_hygiene.py has enforced the rule for .cscript files since;
+// it now covers dash.ado and dash_setup.ado too.
+//
+// Syntax:
+//   _dash_python_ok "<value of c(python_exec)>"   -> r(ok) 0 or 1
+// ================================================================
+program define _dash_python_ok, rclass
+    version 16.0
+    args probe
+    local probe = strtrim(`"`probe'"')
+    return scalar ok = cond(`"`probe'"' == "", 0, 1)
+end
+
+
+// ================================================================
+// _dash_require_python  — refuse to start rather than fail inside Python
+// ================================================================
+// _dash_do_render and _dash_serve go straight to `python:'.  Without this a
+// user with no linked Python got a raw Stata Python error naming neither
+// dash nor the remedy -- while the jsonio check a few lines away has always
+// given them a sentence they can act on.  This is modelled on that message.
+// ================================================================
+program define _dash_require_python
+    version 16.0
+    _dash_python_ok `"`c(python_exec)'"'
+    if r(ok) != 1 {
+        display as error "dash: Python is required but is not available to Stata."
+        display as error "      Run {cmd:dash_setup} first, or link Stata to " ///
+            "Python 3.8+: {help python}"
+        exit 198
+    }
+end
+
+
+// ================================================================
+// _dash_require_mata  — refuse to start rather than fail on a missing function
+// ================================================================
+// Two checks, because neither covers the other.  The recorded load error is
+// the only witness to a PARTIAL compile -- `run' returned 199 while the
+// functions were still present -- and `mata describe' is the only witness to
+// a library that was never loaded or has since been cleared, which `run'
+// never gets to report.
+// ================================================================
+program define _dash_require_mata
+    version 16.0
+
+    // Every Mata function dash.ado calls, named once.  Checking a single
+    // one would pass a library that compiled half way.
+    local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
+        _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
+        _dash_item_globals _dash_json_get_str _dash_option_names ///
+        _dash_split_segs
+
+    // The common case, and the cheap one.
+    quietly capture mata: mata describe _dash_check_utf8()
+    if _rc == 0 exit
+
+    // Not loaded.  REPAIR rather than refuse: measured, the library is
+    // routinely absent at this point through no fault of the install --
+    // `clear all' drops it, `dash clear' never needed it, and dash.ado's
+    // own top-level loader does not always run before the first command
+    // when the file is reached through the ado-path.  A guard that simply
+    // vetoed here failed test_examples_run.cscript, which runs `clear all'
+    // before each of the eleven shipped examples.
+    capture findfile dash_parse.mata
+    if _rc == 0 {
+        capture run `"`r(fn)'"'
+    }
+    else {
+        capture findfile dash.ado
+        if _rc == 0 {
+            local _ado `"`r(fn)'"'
+            local _beside = substr(`"`_ado'"', 1, ///
+                strlen(`"`_ado'"') - strlen("dash.ado")) + "dash_parse.mata"
+            capture confirm file `"`_beside'"'
+            if _rc == 0 capture run `"`_beside'"'
+        }
+    }
+
+    // Only now is it a real failure.  Without this the user got
+    // "<istmt>: 3499 _dash_check_utf8() not found", naming an internal
+    // function, or -- when only part of the library was missing -- rc 0 and
+    // "graph registered" for a command that had not run.
+    local _missing ""
+    foreach f of local _needed {
+        quietly capture mata: mata describe `f'()
+        if _rc != 0 local _missing `"`_missing' `f'()"'
+    }
+    if `"`_missing'"' != "" {
+        display as error "dash: dash's Mata library could not be loaded."
+        display as error "      Missing:`_missing'"
+        display as error "      dash_parse.mata is not on the ado-path and " ///
+            "not beside dash.ado."
+        display as error "      Reinstall dash, or run {cmd:dash_setup}."
+        exit 198
+    }
+end
+
+
 // ================================================================
 // _dash_find_render  — locate dash_render.py, once
 // ================================================================
@@ -185,6 +324,11 @@ program define _dash_do_render
     version 16.0
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
             [MODE(string)]
+
+    // Before `python:', not after: a user with no linked Python used to get
+    // a raw Stata Python error naming neither dash nor the remedy.
+    _dash_require_python
+
     if `"`mode'"' == "" local mode "standalone"
 
     // Escape each path so double-quotes and backslashes in user-supplied paths
@@ -2804,6 +2948,10 @@ program define _dash_serve
     if "`r(nobrowser)'" == "nobrowser" local no_browser_flag "--no-browser"
 
     // ---- Locate dash_render.py ----
+    // Before the announcement below, and before `python:'.  `dash serve'
+    // used to print "starting Bokeh Server on port NNNN. Stata is blocked
+    // until the server stops" and only then discover it could not run.
+    _dash_require_python
     _dash_find_render
     local render_py `"`r(fn)'"'
 

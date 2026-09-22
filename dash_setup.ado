@@ -2,7 +2,7 @@
 *! Installs and verifies all dependencies required by the dash command.
 *!
 *! Dependencies checked:
-*!   - Python (via Stata's python query)
+*!   - Python (via c(python_exec); python query reports the version)
 *!   - Python packages: bokeh, numpy, pandas (required);
 *!                      scipy, statsmodels (optional, per-plot-type)
 *!   - Stata package: jsonio (auto-installed from SSC if missing)
@@ -42,11 +42,22 @@ program define dash_setup
     display as text _newline "{txt}dash_setup: checking dependencies..."
     display as text "{hline 60}"
 
-    capture python query
-    if _rc != 0 {
+    // Availability is CONFIGURATION, so it is read from configuration.
+    // `capture python query' ran Python to ask whether Python was there,
+    // and the certification suite has already paid for that mistake: the
+    // first python call of a session returns a nonzero rc under the runner
+    // on a machine where dash renders Bokeh output seconds later, so nine
+    // scripts skipped and the runner printed ALL TESTS PASSED.  `python
+    // query' is still used below, to REPORT the version, which is what it
+    // is for.
+    if `"`c(python_exec)'"' == "" {
         display as error "Python is not available to Stata."
         display as error "Please install Python 3.8+ and link it to Stata:"
         display as error "  help python"
+        local n_fail = `n_fail' + 1
+        local fail_items `"`fail_items' Python (not linked to Stata)"'
+        _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+            items(`"`fail_items'`warn_items'"')
         exit 198
     }
 

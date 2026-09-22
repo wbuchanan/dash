@@ -1,0 +1,295 @@
+*! test_env_guards.cscript  v1.0
+*! Certification script for dash's checks on its own environment.
+*!
+*! CLAUDE.md rule 15 asks for the environment to be verified at start-up.
+*! dash verified one of its three external dependencies.  `jsonio' was
+*! checked, and well -- "dash: jsonio is required but not found. Run
+*! dash_setup first." -- and the other two were not checked at all.
+*!
+*! PYTHON.  `_dash_do_render' and `_dash_serve' go straight to `python:'.
+*! A user with no linked Python got a raw Stata Python error naming neither
+*! dash nor the remedy, where the jsonio path next to it gives a sentence
+*! they can act on.  `c(python_exec)' -- which is configuration rather than
+*! execution, and so cannot fail for reasons unrelated to Python being
+*! configured -- appeared NOWHERE in dash.ado or dash_setup.ado; the only
+*! probe was `capture python query' in dash_setup.
+*!
+*! THE MATA LIBRARY.  dash.ado ends its loader with
+*!
+*!     if `"`_dash_matalib'"' != "" {
+*!         capture run "`_dash_matalib'"
+*!     }
+*!
+*! which discards the return code, and does nothing whatever when the file
+*! was not found.  Measured on three broken trees:
+*!
+*!   file absent            -> `run' is never called; the first command dies
+*!                             with "<istmt>: 3499 _dash_check_utf8() not
+*!                             found" and not one word about a missing file
+*!   nothing compiles       -> "'this' found where almost anything else
+*!                             expected", 1238 lines skipped, then the same
+*!                             3499
+*!   one function broken    -> a bare "command real is unrecognized", and
+*!                             then `dash scatter mpg weight' returns RC 0
+*!                             and reports "graph 'b1' registered"
+*!
+*! The last is the worst: the command succeeds, so the user has no reason to
+*! look, and GAPS J5 does not describe it -- it says the failure surfaces as
+*! `_dash_split_segs() not found', which is neither the function measured
+*! (`_dash_check_utf8', the first one dash calls) nor the only outcome.
+*!
+*! WHY THE RETURN CODE IS NOT THE CHECK.  ROADMAP TR-07.4 asks for the
+*! return code of the `run' to be checked.  Measured, that would be a
+*! regression:
+*!
+*!     state                         run rc    functions present
+*!     healthy, first load                0                  yes
+*!     healthy, loaded a second time   3000                  yes
+*!     nothing compiles                3000                   no
+*!     one unrelated function broken    199                  yes
+*!     file not found            (not called)         not by this
+*!
+*! A benign SECOND load returns the same 3000 as a total compile failure, so
+*! refusing to run on a non-zero code would break every user -- and every
+*! certification script in this directory -- that loads dash_parse.mata
+*! itself before dash.ado.  The rc simply does not carry the question.
+*!
+*! What is authoritative is whether the functions dash calls are PRESENT.
+*! That distinguishes every state above and is unaffected by double loading.
+*!
+*! AND THE GUARD REPAIRS BEFORE IT REPORTS.  A guard that simply vetoed on
+*! "not loaded" was measured to be wrong: the library is routinely absent at
+*! the entry to a command through no fault of the install.  `dash clear'
+*! never needed it and succeeds without it; `clear all' drops it; and
+*! dash.ado's own top-level loader does not always run before the first
+*! command when the file is reached through the ado-path -- measured,
+*! `mata describe' returned 111 immediately after a successful `dash clear'
+*! from the ado-path, and 0 only after a later reload.  The vetoing version
+*! failed test_examples_run.cscript, which runs `clear all' before each of
+*! the eleven shipped examples.  So the guard loads the library itself, the
+*! same way dash.ado's loader does, and reports only if it still cannot.
+*!
+*! HOW THE FAILURE PATHS ARE TESTED ON A HEALTHY MACHINE.  `c()' is
+*! read-only and `set python_exec' refuses a path that does not exist --
+*! measured, r(601) -- so the no-Python state cannot be produced here.  The
+*! probe is therefore a separate program taking the value as an argument,
+*! and the guard is driven by redefining it, which is what
+*! test_render_locate.cscript does for the renderer locator.
+*!
+*! Tests: ENV-01 through ENV-16
+*!
+*! Usage:  do test/test_env_guards.cscript
+*! Version: 1.0  22sep2026
+
+cscript "dash verifies its own environment" adodir ".."
+
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+mata:
+real scalar _env_log_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, found
+    string scalar line
+    found = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (strpos(strlower(line), strlower(needle))) found = 1
+    }
+    fclose(fh)
+    return(found)
+}
+
+// Count matching CODE lines only, so a comment quoting the old form cannot
+// satisfy or defeat an assertion about the code.
+real scalar _env_code_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, trimmed
+    n  = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        trimmed = strltrim(line)
+        if (substr(trimmed, 1, 2) == "//") continue
+        if (substr(trimmed, 1, 2) == "*!") continue
+        if (strpos(line, needle)) n = n + 1
+    }
+    fclose(fh)
+    return(n)
+}
+end
+
+// Run a guard and hand back its return code and what it said.
+capture program drop _env_try
+program define _env_try, rclass
+    args prog needle
+    tempname lf
+    tempfile lg
+    quietly log using "`lg'", replace text name(`lf')
+    capture noisily `prog'
+    local rc = _rc
+    quietly log close `lf'
+    mata: st_local("_env_said", strofreal(_env_log_has("`lg'", `"`needle'"')))
+    return scalar rc   = `rc'
+    return scalar said = `_env_said'
+end
+
+
+// ================================================================
+// ENV-01..04 — the Python probe is a pure function of its argument
+// ================================================================
+// Separate from the guard precisely so the failing state can be reached on
+// a machine that has Python: c() is read-only and `set python_exec' refuses
+// a path that does not exist (measured, r(601)).
+
+_dash_python_ok ""
+assert r(ok) == 0
+display "ENV-01 PASS: an empty python_exec is not available"
+
+_dash_python_ok "   "
+assert r(ok) == 0
+display "ENV-02 PASS: a blank python_exec is not available"
+
+_dash_python_ok "/usr/bin/python3"
+assert r(ok) == 1
+display "ENV-03 PASS: a path is available"
+
+// The real setting on this machine, whatever it is, must agree with
+// whether Stata reports one at all.
+_dash_python_ok `"`c(python_exec)'"'
+assert r(ok) == `=cond(`"`c(python_exec)'"' == "", 0, 1)'
+display "ENV-04 PASS: the probe agrees with c(python_exec)"
+
+
+// ================================================================
+// ENV-05..07 — the guard, on this machine and on a machine without Python
+// ================================================================
+capture noisily _dash_require_python
+assert _rc == 0
+display "ENV-05 PASS: the guard passes where Python is configured"
+
+// Drive the failing path by redefining the probe, the way
+// test_render_locate.cscript drives its locator.
+capture program drop _dash_python_ok_real
+capture program drop _dash_python_ok
+program define _dash_python_ok, rclass
+    args probe
+    return scalar ok = 0
+end
+
+_env_try _dash_require_python "dash_setup"
+assert r(rc) == 198
+display "ENV-06 PASS: no Python gives r(198), not a raw Python error"
+
+assert r(said) == 1
+display "ENV-07 PASS: the message names dash_setup, as the jsonio one does"
+
+// Put the real probe back.  Re-`do'ing dash.ado over the programs already
+// in memory is r(110), so the body is restated here; ENV-01..05 above
+// exercised the shipped one before it was stubbed.
+capture program drop _dash_python_ok
+program define _dash_python_ok, rclass
+    version 16.0
+    args probe
+    local probe = strtrim(`"`probe'"')
+    return scalar ok = cond(`"`probe'"' == "", 0, 1)
+end
+
+
+// ================================================================
+// ENV-08..11 — the Mata library is verified, both ways
+// ================================================================
+capture noisily _dash_require_mata
+assert _rc == 0
+display "ENV-08 PASS: the guard passes with the library loaded"
+
+// Loading the library a second time must NOT be treated as a failure.
+// Measured, `run' returns 3000 for a benign reload -- the same code as a
+// total compile failure -- which is why the rc is not the check.
+quietly capture run "../dash_parse.mata"
+local _env_reload = _rc
+capture noisily _dash_require_mata
+assert _rc == 0
+display "ENV-09 PASS: a reload (run rc=`_env_reload') is not mistaken for a failure"
+
+// ENV-10, the missing-library case, is at the END of this script: it works
+// by clearing Mata, which also drops the two helpers defined above.
+
+
+// ================================================================
+// ENV-12..13 — the guards are actually wired in
+// ================================================================
+// A guard nothing calls is worse than no guard: it reads as covered.
+mata: st_local("_env_py", strofreal(_env_code_has("../dash.ado", ///
+    "_dash_require_python")))
+assert `_env_py' >= 3
+display "ENV-12 PASS: the Python guard is defined and called at both python: sites"
+
+mata: st_local("_env_mt", strofreal(_env_code_has("../dash.ado", ///
+    "_dash_require_mata")))
+assert `_env_mt' >= 2
+display "ENV-13 PASS: the Mata guard is defined and called"
+
+
+// ================================================================
+// ENV-14..16 — availability is probed by configuration, not by execution
+// ================================================================
+mata: st_local("_env_cfg", strofreal(_env_code_has("../dash.ado", "python_exec")))
+assert `_env_cfg' >= 1
+display "ENV-14 PASS: dash.ado reads c(python_exec)"
+
+mata: st_local("_env_cfg2", strofreal(_env_code_has("../dash_setup.ado", "python_exec")))
+assert `_env_cfg2' >= 1
+display "ENV-15 PASS: dash_setup.ado reads c(python_exec)"
+
+// `python query' succeeds for any linked Python and is fine for REPORTING
+// the version.  What it must not be is the availability decision.
+mata: st_local("_env_q", strofreal(_env_code_has("../dash_setup.ado", ///
+    "capture python query")))
+assert `_env_q' == 0
+display "ENV-16 PASS: no availability decision is made by running Python"
+
+
+// ================================================================
+// ENV-10..11 — a library that is not there, checked last
+// ================================================================
+// `mata clear' drops this script's own _env_log_has and _env_code_has as
+// well as dash's, so this is the last thing done.  Measured, this is the
+// state `run' can never report: it is never called when the file is absent,
+// so only the entry check sees it.
+capture program drop _env_try
+capture mata: mata clear
+
+capture noisily _dash_require_mata
+local _env_rc = _rc
+assert `_env_rc' == 0
+display "ENV-10 PASS: a cleared library is RELOADED by the guard, not vetoed"
+
+// And it really is back, not merely tolerated.
+capture mata: mata describe _dash_split_segs()
+assert _rc == 0
+display "ENV-11 PASS: the functions are present again after the repair"
+
+// The genuine failure -- a tree with dash.ado and no dash_parse.mata
+// anywhere to repair from -- is NOT asserted here.  A certification script
+// cannot reliably take its own package off the ado-path: under
+// run_all_cscripts.do the directory is on it twice (the runner prepends it
+// and `cscript ... adodir ".."' adds it again), so removing one copy leaves
+// the other and the guard repairs, as it should.
+//
+// That branch was verified by hand instead, against three staged trees, and
+// the results are in this script's header: with dash_parse.mata absent, or
+// unable to compile, `dash scatter mpg weight' now prints
+//
+//     dash: dash's Mata library could not be loaded.
+//           Missing: _dash_check_utf8() ... _dash_split_segs()
+//           dash_parse.mata is not on the ado-path and not beside dash.ado.
+//           Reinstall dash, or run dash_setup.
+//
+// and returns r(198), where before it gave "<istmt>: 3499
+// _dash_check_utf8() not found" -- or, for a partial break, rc 0 and
+// "graph 'b1' registered".
+
+display ""
+display "All environment guard tests PASSED."
