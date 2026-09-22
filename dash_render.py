@@ -3791,6 +3791,20 @@ class GlyphMapper:
         # ColumnDataSource below, so a view attached to the renderer would
         # have nothing left to filter.
         x_arr, y_arr = self._masked(source, view, xvar, yvar)
+
+        # Bokeh's varea joins its points in the order it is given them, and
+        # Stata's twoway area draws along x -- so unsorted rows produce a
+        # self-intersecting polygon, silently, with every point present and
+        # correct.  map_line and map_connected have always sorted; this did
+        # not.  Measured on x = [3, 1, 2]: map_line gave [1, 2, 3] and
+        # map_area gave [3, 1, 2].  Found while comparing the two render
+        # modes, where the generated server app's own area branch sorts and
+        # this one did not.
+        if len(x_arr):
+            _order = np.argsort(x_arr, kind="stable")
+            x_arr = x_arr[_order]
+            y_arr = y_arr[_order]
+
         # base() option sets the lower boundary; default 0
         base_val = 0.0
         if "base" in options:
@@ -4085,6 +4099,34 @@ class GlyphMapper:
         for c in cols[1:]:
             finite &= ~np.isnan(c)
         return tuple(c[finite] for c in cols)
+
+    @staticmethod
+    def _masked_order(source: ColumnDataSource, view, xvar: str, *others: str):
+        """Row indices selecting the drawn rows, in x order.
+
+        Returns the positions into ``source.data`` that ``_masked`` would
+        keep, sorted by *xvar*.  Indices rather than arrays, so a caller can
+        carry a NON-NUMERIC column -- an mlabel, say -- through the same
+        selection.  ``_masked`` coerces everything to float and cannot.
+        """
+        cols = [np.asarray(source.data[v], dtype=float)
+                for v in (xvar,) + others]
+        n = len(cols[0]) if cols else 0
+        idx = np.arange(n)
+
+        sel = GlyphMapper._view_mask(view, n)
+        if sel is not None:
+            cols = [c[sel] for c in cols]
+            idx = idx[sel]
+
+        finite = ~np.isnan(cols[0])
+        for c in cols[1:]:
+            finite &= ~np.isnan(c)
+        idx = idx[finite]
+        xs = cols[0][finite]
+        if len(xs):
+            idx = idx[np.argsort(xs, kind="stable")]
+        return idx
 
     def map_lfit(
         self,
@@ -5220,6 +5262,21 @@ class GlyphMapper:
         if self._is_empty(source, xvar, y1var, y2var):
             empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
             return [fig.varea(x=xvar, y1=y1var, y2=y2var, source=empty_src)]
+
+        # Sorted for the same reason as map_rline above: a varea joined in
+        # dataset order is a band with no relation to the data.  Masked and
+        # rebuilt rather than sorted in place, because the source is shared.
+        _ord = self._masked_order(source, view, xvar, y1var, y2var)
+        _cols = {
+            v: np.asarray(source.data[v], dtype=float)[_ord]
+            for v in (xvar, y1var, y2var)
+        }
+        for _extra in (options.get("mlabel", ""),):
+            if _extra and _extra in source.data and _extra not in _cols:
+                _cols[_extra] = [source.data[_extra][_i] for _i in _ord]
+        source = ColumnDataSource(_cols)
+        view = None
+
         _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
                                     fill_color=self.scheme.default_color(color_idx, "area"),
                                     fill_alpha=0.5,
@@ -5422,6 +5479,27 @@ class GlyphMapper:
         Returns:
             List with [lower_line_renderer, upper_line_renderer].
         """
+        # Bokeh joins a line's points in the order it is given them and
+        # Stata's twoway rline draws along x, so unsorted rows make both
+        # boundaries cross themselves.  The rows cannot be sorted in the
+        # SHARED source -- other layers draw from it, and a view over it is
+        # an IndexFilter in the original row order -- so the mask is applied
+        # here and a sorted source built from the result, exactly as
+        # map_area does.  That is also why no view is passed on below: these
+        # rows are already the selected ones.
+        _ord = self._masked_order(source, view, xvar, y1var, y2var)
+        _cols = {
+            v: np.asarray(source.data[v], dtype=float)[_ord]
+            for v in (xvar, y1var, y2var)
+        }
+        # Any other column the layer needs -- an mlabel is not numeric, so it
+        # rides the same row order rather than going through _masked.
+        for _extra in (options.get("mlabel", ""),):
+            if _extra and _extra in source.data and _extra not in _cols:
+                _cols[_extra] = [source.data[_extra][_i] for _i in _ord]
+        source = ColumnDataSource(_cols)
+        view = None
+
         _rl1_kwargs: dict = dict(x=xvar, y=y1var, source=source,
                                   line_color=self.scheme.default_color(color_idx, "line"),
                                   line_width=self.scheme.default_line_width,
@@ -8392,6 +8470,29 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     else:
         csrc = ColumnDataSource(clean) if xvar and yvar else fallback_src
     return csrc, view
+
+
+def _dash_range_source(g_df, y1var, y2var, xvar, label_var):
+    """Build the ColumnDataSource for one range-plot layer.
+
+    Range layers name their variables ``y1var``/``y2var``/``xvar`` rather than
+    ``yvar``/``xvar``, so they cannot use ``_dash_layer_source``.  The NaN
+    drop is done HERE, not in the mapper: ``map_rcap`` and ``map_rcapsym``
+    read ``source.data[xvar]`` straight into ``np.array(..., dtype=float)``
+    with no guard, so a NaN row reaching them is a crash rather than a gap.
+    Every inline range branch dropped first, and this keeps that.
+
+    Returns ``(source, ok)``; ``ok`` is False when a required variable is
+    missing, in which case the caller draws nothing, as the branches did.
+    """
+    if not (y1var and y2var and xvar):
+        return None, False
+    cols = [c for c in [y1var, y2var, xvar, label_var]
+            if c and c in g_df.columns]
+    cols = list(dict.fromkeys(cols))
+    if not all(v in g_df.columns for v in (y1var, y2var, xvar)):
+        return None, False
+    return ColumnDataSource(g_df[cols].dropna()), True
 
 
 def _dash_glyph_dispatch(mapper):
@@ -12868,7 +12969,8 @@ class ServerAppBuilder:
                          # statistical helpers above and for the same reason:
                          # both modes then run the SAME table, so a plot type
                          # added to one is added to both.
-                         "_dash_layer_source", "_dash_glyph_dispatch",
+                         "_dash_layer_source", "_dash_range_source",
+                         "_dash_glyph_dispatch",
                          "_dash_pc_dispatch", "_dash_add_glyph",
                          "_dash_add_pc_glyph"):
             if _fn_name in _emitted_names:
@@ -14589,15 +14691,26 @@ class ServerAppBuilder:
             "                    getattr(_r, 'data_source', None) or csrc)",
             "",
             "            elif ptype == 'line':",
-            "                _line_mlab = opts.get('mlabel', '')",
-            "                _line_cols = [c for c in [xvar, yvar, _line_mlab] if c and c in g_df.columns]",
-            "                _line_cols = list(dict.fromkeys(_line_cols))  # `scatter mpg mpg' is legal; g_df[[c, c]] is not",
-            "                clean = g_df[_line_cols].dropna().sort_values(xvar) if xvar and yvar else g_df",
-            "                csrc = ColumnDataSource(clean)",
-            "                _line_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _line_kw['line_dash'] = _line_dash",
-            "                fig.line(x=xvar, y=yvar, source=csrc, **_line_kw)",
-            "                graph_sources[gname].append(csrc)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_line.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'lfit':",
             "                fit_data = _compute_lfit(g_df, yvar, xvar, opts)",
@@ -14621,8 +14734,18 @@ class ServerAppBuilder:
             "                _r = _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
             "                    view=_ly_view, color_idx=pi)",
-            "                graph_sources[gname].append(",
-            "                    getattr(_r, 'data_source', None) or _ly_src)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'histogram':",
             "                hvar = yvar or xvar",
@@ -14670,18 +14793,26 @@ class ServerAppBuilder:
             "                         source=hist_src, **_hist_quad_kw)",
             "",
             "            elif ptype == 'kdensity':",
-            "                kvar = yvar or xvar",
-            "                kde_data = _compute_kdensity(g_df, kvar, opts)",
-            "                kde_src = ColumnDataSource(kde_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': kde_src,",
-            "                    'type': 'kdensity',",
-            "                    'var': kvar,",
-            "                }",
-            "                _kde_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _kde_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x', y='y', source=kde_src, **_kde_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_kdensity.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'lowess':",
             "                lw_data = _compute_lowess(g_df, yvar, xvar, opts)",
@@ -14697,40 +14828,48 @@ class ServerAppBuilder:
             "                fig.line(x='x', y='y', source=lw_src, **_lowess_kw)",
             "",
             "            elif ptype == 'lpoly':",
-            "                _lp_bw = 0.5",
-            "                try: _lp_bw = max(0.01, min(1.0, float(opts.get('bwidth', '0.5') or '0.5')))",
-            "                except (ValueError, TypeError): pass",
-            "                _lp_deg = 0",
-            "                try: _lp_deg = max(0, min(3, int(opts.get('degree', '0') or '0')))",
-            "                except (ValueError, TypeError): pass",
-            "                lp_data = _compute_lpoly(g_df, yvar, xvar, opts)",
-            "                lp_src = ColumnDataSource(lp_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': lp_src, 'type': 'lpoly',",
-            "                    'yvar': yvar, 'xvar': xvar,",
-            "                    'bwidth': _lp_bw, 'degree': _lp_deg,",
-            "                }",
-            "                _lp_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _lp_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x_lp', y='y_lp', source=lp_src, **_lp_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_lpoly.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'lpolyci':",
-            "                # The band, not just the smoother: this branch",
-            "                # used to be a verbatim copy of lpoly's.",
-            "                lpci_data = _compute_lpolyci(g_df, yvar, xvar, opts)",
-            "                lpci_src = ColumnDataSource(lpci_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': lpci_src, 'type': 'lpolyci',",
-            "                    'yvar': yvar, 'xvar': xvar,",
-            "                }",
-            "                fig.varea(x='x_lp', y1='y_lower', y2='y_upper',",
-            "                          source=lpci_src, fill_color=color,",
-            "                          fill_alpha=_CI_BAND_ALPHA)",
-            "                _lp_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _lp_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x_lp', y='y_lp', source=lpci_src, **_lp_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_lpolyci.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'fpfit':",
             "                # One dispatch, into the renderer's own GlyphMapper.",
@@ -14741,8 +14880,18 @@ class ServerAppBuilder:
             "                _r = _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
             "                    view=_ly_view, color_idx=pi)",
-            "                graph_sources[gname].append(",
-            "                    getattr(_r, 'data_source', None) or _ly_src)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'fpfitci':",
             "                # One dispatch, into the renderer's own GlyphMapper.",
@@ -14753,31 +14902,32 @@ class ServerAppBuilder:
             "                _r = _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
             "                    view=_ly_view, color_idx=pi)",
-            "                graph_sources[gname].append(",
-            "                    getattr(_r, 'data_source', None) or _ly_src)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
-            "            elif ptype in ('area',):",
-            "                clean = g_df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else g_df",
-            "                asrc = ColumnDataSource(clean)",
-            "                _ar_base = 0.0",
-            "                try: _ar_base = float(opts.get('base', '0') or '0')",
-            "                except (ValueError, TypeError): pass",
-            "                asrc.data['_zero'] = [_ar_base] * len(clean)",
-            "                _ar_fill = color",
-            "                _afc = opts.get('fcolor', '')",
-            "                if _afc:",
-            "                    _afc_r = _resolve_color(_afc)",
-            "                    if _afc_r: _ar_fill = _afc_r",
-            "                _ar_alpha = _SCHEME_AREA_ALPHA",
-            "                _afi = opts.get('fintensity', '')",
-            "                if _afi:",
-            "                    try:",
-            "                        _av = _afi.strip()",
-            "                        _ar_alpha = min(1.0, max(0.0, float(_av[5:])/100.0 if _av.startswith('inten') else float(_av)/100.0))",
-            "                    except (ValueError, AttributeError): pass",
-            "                fig.varea(x=xvar, y1='_zero', y2=yvar, source=asrc,",
-            "                          fill_color=_ar_fill, alpha=_ar_alpha)",
-            "                graph_sources[gname].append(asrc)",
+            "            elif ptype == 'area':",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_area.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'bar':",
             "                clean = g_df[[xvar, yvar]].dropna() if xvar and yvar else g_df",
@@ -14856,8 +15006,18 @@ class ServerAppBuilder:
             "                _r = _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
             "                    view=_ly_view, color_idx=pi)",
-            "                graph_sources[gname].append(",
-            "                    getattr(_r, 'data_source', None) or _ly_src)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'lfitci':",
             "                # One dispatch, into the renderer's own GlyphMapper.",
@@ -14868,8 +15028,18 @@ class ServerAppBuilder:
             "                _r = _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
             "                    view=_ly_view, color_idx=pi)",
-            "                graph_sources[gname].append(",
-            "                    getattr(_r, 'data_source', None) or _ly_src)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'qfitci':",
             "                # One dispatch, into the renderer's own GlyphMapper.",
@@ -14880,36 +15050,32 @@ class ServerAppBuilder:
             "                _r = _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
             "                    view=_ly_view, color_idx=pi)",
-            "                graph_sources[gname].append(",
-            "                    getattr(_r, 'data_source', None) or _ly_src)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'rarea':",
-            "                if y1var and y2var and xvar:",
-            "                    _ra_mlab = opts.get('mlabel', '')",
-            "                    rcols = [c for c in [y1var, y2var, xvar, _ra_mlab] if c and c in g_df.columns]",
-            "                    rclean = g_df[rcols].dropna()",
-            "                    rsrc = ColumnDataSource(rclean)",
-            "                    _ra_fill = color",
-            "                    _ra_fc = opts.get('fcolor', '')",
-            "                    if _ra_fc:",
-            "                        _ra_fc_r = _resolve_color(_ra_fc)",
-            "                        if _ra_fc_r: _ra_fill = _ra_fc_r",
-            "                    _ra_alpha = _SCHEME_AREA_ALPHA",
-            "                    _ra_fi = opts.get('fintensity', '')",
-            "                    if _ra_fi:",
-            "                        try:",
-            "                            _rav = _ra_fi.strip()",
-            "                            _ra_alpha = min(1.0, max(0.0, float(_rav[5:])/100.0 if _rav.startswith('inten') else float(_rav)/100.0))",
-            "                        except (ValueError, AttributeError): pass",
-            "                    fig.varea(x=xvar, y1=y1var, y2=y2var, source=rsrc,",
-            "                              fill_color=_ra_fill, alpha=_ra_alpha)",
-            "                    if _ra_mlab and _ra_mlab in rsrc.data:",
-            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
-            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_ra_mlab, source=rsrc,",
-            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
-            "                                          x_offset=5, y_offset=5)",
-            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
-            "                    graph_sources[gname].append(rsrc)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_rarea.",
+            "                _ly_src, _ly_ok = _dash_range_source(",
+            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''))",
+            "                if _ly_ok:",
+            "                    _r = _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                        opts, y2var=y2var, color_idx=pi)",
+            "                    _r_src = getattr(_r, 'data_source', None)",
+            "                    if _r_src is not None and _r_src is not _ly_src:",
+            "                        graph_sources[gname].append(_ly_src)",
+            "                    graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'rbar':",
             "                if y1var and y2var and xvar:",
@@ -14942,22 +15108,18 @@ class ServerAppBuilder:
             "                    graph_sources[gname].append(rsrc)",
             "",
             "            elif ptype == 'rspike':",
-            "                if y1var and y2var and xvar:",
-            "                    _rsp_mlab = opts.get('mlabel', '')",
-            "                    rcols = [c for c in [y1var, y2var, xvar, _rsp_mlab] if c and c in g_df.columns]",
-            "                    rclean = g_df[rcols].dropna()",
-            "                    rsrc = ColumnDataSource(rclean)",
-            "                    _rsp_kw = dict(line_color=color, line_width=_line_width)",
-            "                    if _line_dash: _rsp_kw['line_dash'] = _line_dash",
-            "                    fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var,",
-            "                                source=rsrc, **_rsp_kw)",
-            "                    if _rsp_mlab and _rsp_mlab in rsrc.data:",
-            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
-            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_rsp_mlab, source=rsrc,",
-            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
-            "                                          x_offset=5, y_offset=5)",
-            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
-            "                    graph_sources[gname].append(rsrc)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_rspike.",
+            "                _ly_src, _ly_ok = _dash_range_source(",
+            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''))",
+            "                if _ly_ok:",
+            "                    _r = _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                        opts, y2var=y2var, color_idx=pi)",
+            "                    _r_src = getattr(_r, 'data_source', None)",
+            "                    if _r_src is not None and _r_src is not _ly_src:",
+            "                        graph_sources[gname].append(_ly_src)",
+            "                    graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'rcap':",
             "                if y1var and y2var and xvar:",
@@ -14990,24 +15152,18 @@ class ServerAppBuilder:
             "                    graph_sources[gname].append(rsrc)",
             "",
             "            elif ptype == 'rline':",
-            "                if y1var and y2var and xvar:",
-            "                    _rl_mlab = opts.get('mlabel', '')",
-            "                    rcols = [c for c in [y1var, y2var, xvar, _rl_mlab] if c and c in g_df.columns]",
-            "                    rclean = g_df[rcols].dropna().sort_values(xvar)",
-            "                    rsrc = ColumnDataSource(rclean)",
-            "                    _rl_kw = dict(line_color=color, line_width=_line_width)",
-            "                    if _line_dash: _rl_kw['line_dash'] = _line_dash",
-            "                    fig.line(x=xvar, y=y1var, source=rsrc, **_rl_kw)",
-            "                    _rl2_kw = dict(line_color=color, line_width=_line_width, line_dash='dashed')",
-            "                    if _line_dash: _rl2_kw['line_dash'] = _line_dash",
-            "                    fig.line(x=xvar, y=y2var, source=rsrc, **_rl2_kw)",
-            "                    if _rl_mlab and _rl_mlab in rsrc.data:",
-            "                        _r_mlc = _resolve_color(opts.get('mlabcolor', ''))",
-            "                        _r_mlab_kw = dict(x=xvar, y=y2var, text=_rl_mlab, source=rsrc,",
-            "                                          text_font_size='9px', text_color=_r_mlc or '#333333',",
-            "                                          x_offset=5, y_offset=5)",
-            "                        fig.add_layout(LabelSet(**_r_mlab_kw))",
-            "                    graph_sources[gname].append(rsrc)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_rline.",
+            "                _ly_src, _ly_ok = _dash_range_source(",
+            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''))",
+            "                if _ly_ok:",
+            "                    _r = _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                        opts, y2var=y2var, color_idx=pi)",
+            "                    _r_src = getattr(_r, 'data_source', None)",
+            "                    if _r_src is not None and _r_src is not _ly_src:",
+            "                        graph_sources[gname].append(_ly_src)",
+            "                    graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'rconnected':",
             "                if y1var and y2var and xvar:",
@@ -15183,31 +15339,40 @@ class ServerAppBuilder:
             "                graph_sources[gname].append(csrc)",
             "",
             "            elif ptype == 'tsrline':",
-            "                ts_y1 = plot.get('yvar1', '')",
-            "                ts_y2 = plot.get('yvar2', '')",
-            "                if ts_y1 and ts_y2 and xvar:",
-            "                    rcols = [c for c in [ts_y1, ts_y2, xvar] if c in g_df.columns]",
-            "                    rclean = g_df[rcols].dropna().sort_values(xvar)",
-            "                    rsrc = ColumnDataSource(rclean)",
-            "                    _tsr1_kw = dict(line_color=color, line_width=_line_width)",
-            "                    if _line_dash: _tsr1_kw['line_dash'] = _line_dash",
-            "                    fig.line(x=xvar, y=ts_y1, source=rsrc, **_tsr1_kw)",
-            "                    _tsr2_kw = dict(line_color=color, line_width=_line_width, line_dash='dashed')",
-            "                    if _line_dash: _tsr2_kw['line_dash'] = _line_dash",
-            "                    fig.line(x=xvar, y=ts_y2, source=rsrc, **_tsr2_kw)",
-            "                    graph_sources[gname].append(rsrc)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_tsrline.",
+            "                _ly_src, _ly_ok = _dash_range_source(",
+            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''))",
+            "                if _ly_ok:",
+            "                    _r = _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                        opts, y2var=y2var, color_idx=pi)",
+            "                    _r_src = getattr(_r, 'data_source', None)",
+            "                    if _r_src is not None and _r_src is not _ly_src:",
+            "                        graph_sources[gname].append(_ly_src)",
+            "                    graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'mspline':",
-            "                if xvar and yvar:",
-            "                    ms_data = _compute_mspline(g_df, yvar, xvar)",
-            "                    ms_src = ColumnDataSource(ms_data)",
-            "                    agg_sources[(gname, pi)] = {",
-            "                        'source': ms_src, 'type': 'mspline',",
-            "                        'yvar': yvar, 'xvar': xvar,",
-            "                    }",
-            "                    _ms_kw = dict(line_color=color, line_width=_line_width)",
-            "                    if _line_dash: _ms_kw['line_dash'] = _line_dash",
-            "                    fig.line(x='x_sp', y='y_sp', source=ms_src, **_ms_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_mspline.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                # Both, when the mapper built its own source.",
+            "                # graph_sources feeds the filter snapshot AND",
+            "                # the brush-to-KPI wiring, and the latter SKIPS",
+            "                # any source with no 'index' column -- which a",
+            "                # mapper-built one has not got.  Registering the",
+            "                # layer source too keeps the layer able to drive",
+            "                # a brush selection, which is what the inline",
+            "                # branch did by registering its own.",
+            "                _r_src = getattr(_r, 'data_source', None)",
+            "                if _r_src is not None and _r_src is not _ly_src:",
+            "                    graph_sources[gname].append(_ly_src)",
+            "                graph_sources[gname].append(_r_src or _ly_src)",
             "",
             "            elif ptype == 'mband':",
             "                if xvar and yvar:",
@@ -15223,17 +15388,31 @@ class ServerAppBuilder:
             "                        fig.line(x='x_mb', y='y_mb', source=_mb_src, **_mb_kw)",
             "",
             "            elif ptype == 'rscatter':",
-            "                y1v = plot.get('yvar', '') or plot.get('y1var', '') or plot.get('yvar1', '')",
-            "                y2v = plot.get('y2var', '') or plot.get('yvar2', '')",
-            "                xv  = plot.get('xvar', '')",
-            "                if y1v and y2v and xv:",
-            "                    _rs_data = _compute_rscatter(g_df, y1v, y2v, xv)",
-            "                    _rs_src = ColumnDataSource(_rs_data)",
-            "                    agg_sources[(gname, pi)] = {",
-            "                        'source': _rs_src, 'type': 'rscatter',",
-            "                        'yvar1': y1v, 'yvar2': y2v, 'xvar': xv,",
-            "                    }",
-            "                    fig.scatter('x', 'y', source=_rs_src, size=6, color=color, legend_label=y1v)",
+            "                y1var = y1var or plot.get('yvar', '') or plot.get('y1var', '')",
+            "                y2var = y2var or plot.get('y2var', '')",
+            "                xvar = xvar or plot.get('xvar', '')",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_rscatter.",
+            "                _ly_src, _ly_ok = _dash_range_source(",
+            "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''))",
+            "                if _ly_ok:",
+            "                    _r = _dash_add_glyph(",
+            "                        _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
+            "                        opts, y2var=y2var, color_idx=pi)",
+            "                    _r_src = getattr(_r, 'data_source', None)",
+            "                    if _r_src is not None and _r_src is not _ly_src:",
+            "                        graph_sources[gname].append(_ly_src)",
+            "                    graph_sources[gname].append(_r_src or _ly_src)",
+            "                    # The stacked source is recomputed on every",
+            "                    # filter move, so it has to stay registered.",
+            "                    # Dropping this registration freezes the",
+            "                    # points at their unfiltered values while the",
+            "                    # rest of the figure moves.",
+            "                    if _r_src is not None:",
+            "                        agg_sources[(gname, pi)] = {",
+            "                            'source': _r_src, 'type': 'rscatter',",
+            "                            'yvar1': y1var, 'yvar2': y2var, 'xvar': xvar,",
+            "                        }",
             "",
             "            elif ptype in ('pci', 'pcscatter'):",
             "                y1v = plot.get('y1var', '')",
