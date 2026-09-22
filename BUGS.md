@@ -882,6 +882,30 @@
   - Suggested fix: Resolve the alias by plot type.
   - Resolution: Fixed. The parser sreturns bw() untouched and `_dash_fold_bw', called once the type is known, gives it twoway's meaning on the bandwidth types, dash's documented barwidth() reading on the bar family, names it in the note elsewhere, and returns twoway's r(198) beside bwidth(). test_alias_semantics.cscript runs twoway first for every type and certifies dash against its rc; test_abbreviations.cscript's R3 case for bw moved to a bar context.
 
+- [x] Title: Sub-options of legend(), the axis options, the textbox options, xline() and filter() vanished without a word
+  - File Names and Line Numbers: dash_render.py `_dash_apply_legend', `_dash_parse_axis_spec'/`_dash_apply_axis_options', `_parse_scale_opt' and the old `_report_unhandled_scale_opts', `_dash_axis_labels', the saved and emitted reference-line and note/caption blocks, `_parse_filter_raw'
+  - Description: GAPS.md E3. dash.sthlp promises that nothing is ever dropped without being named; by() kept it since WP-11 and nothing else did. Measured 22sep2026 in both modes: legend(span stack holes(1)), xlabel(, valuelabel), ylabel(, labcolor(red)), yscale(reverse noline titlegap(2)), xline(3000, lstyle(foreground)) and filter(price, type(bogus)) all rendered with rc 0 and no warning. xtitle("Weight", orientation(vertical)) titled the axis "Weight, orientation(vertical)".
+  - Suggested fix: One reporter, by()'s wording, from shared code.
+  - Resolution: Fixed. `_dash_report_suboptions' names the tokens as written, once per graph per render (a by() panel does not repeat its graph's), and is fed by `_dash_legend_unsupported', `_dash_textbox' (title, subtitle, note, caption, xtitle, ytitle -- size() and color() honoured, the rest named), `_dash_parse_axis_spec' (labcolor(), labgap(), tlength(), valuelabel ...), `_dash_scale_spec' (noline, titlegap(), off ...; the five-token warning is subsumed), `_dash_reference_lines' (lstyle(), noextend, axis()) and `_dash_parse_filter_raw' (stray tokens). test/test_suboption_warnings.py (both modes) and test/test_suboption_reporting.cscript certify it; the parity guard compares the warnings.
+
+- [x] Title: A filter() label containing __ or an ordinary word made the whole widget vanish, silently
+  - File Names and Line Numbers: dash_render.py DashRenderer._parse_filter_raw (the `_UNSAFE_F' pattern applied to the whole group text)
+  - Description: A group whose text contained ; ` $ \ __ or the words import, eval, exec, open, getattr was discarded whole with rc 0 and no message. Measured: filter(price, type(range) label("R&D __ spend")) and label("open the door") produced no widget in either mode, from Stata too. Sink analysis: the label reaches only a Bokeh widget title (entity-escaped on the way into the page) and, in the served app, a repr() Python literal; filter_specs_json and the filter JavaScript carry varname, type and sentinel only. Nothing in the label is evaluated anywhere, so the gate protected nothing.
+  - Suggested fix: Refuse only what a sink needs refused, and say so.
+  - Resolution: Fixed. `_dash_parse_filter_raw' is one parser for both modes: the variable name and every exclude() name must be Stata names, type() must be one of the three widgets; each refusal is a warning naming the group and the reason, an unknown type() names the accepted types, a variable not in the data is named too, and any other token is named as an unimplemented sub-option. The label may be any text but a semicolon, which separates groups on the Stata side as well; the help says so. label("Size (in)") also survives now: the old label regex stopped at the first ")".
+
+- [x] Title: ylabel(#5, grid) was silently ignored
+  - File Names and Line Numbers: dash_render.py `_dash_parse_axis_spec' (the sub-option strip)
+  - Description: Stripping a recognised sub-option out of the value left its comma behind, so `#5, grid' arrived at the keyword forms as `#5,', matched none of them, fell through to the numlist parse and produced no ticks -- with no warning. Found when the new reporter named `#5' as an unknown token.
+  - Suggested fix: Strip the trailing comma.
+  - Resolution: Fixed; ylabel(#5, grid) is a count form again.
+
+- [x] Title: title() sub-options, xscale(range()) and the caption's position were served differently from saved
+  - File Names and Line Numbers: dash_render.py (the emitted figure body: title from `_parse_textbox_opt(...)[0]' with no style; xrange/yrange keys dash.ado never writes; the emitted caption Label at y = -12)
+  - Description: Measured while widening the reporter: title("T", size(large) color(red)) was 15px red saved and 13px grey served; xscale(range(1500 4500)) bounded the saved axis and left the served one on its data range; the served caption sat at y = -12, where the saved renderer's own comment records that a Label is clipped and never drawn. None was in the parity corpus, and the parity profile did not record a Label's position.
+  - Suggested fix: One text for each, and the profile made to look.
+  - Resolution: Fixed. `_dash_figure_title', `_dash_style_axis_titles', `_dash_scale_spec'/`_dash_apply_scale_ranges', `_dash_text_annotations' and `_dash_reference_lines' are module-level and run by both modes; the served twins `_textbox_size_px'/`_textbox_color_of' and the emitted reference-line and annotation blocks are gone. The parity profile records a Label's position and units, and the corpus carries each case.
+
 - [ ] Title: Under layout(bs) the served app draws the auto grid, without a word
   - File Names and Line Numbers: dash_render.py ServerAppBuilder (no Bootstrap path); DashRenderer._render_bootstrap_html
   - Description: dash.sthlp's server-mode table says "Bootstrap layout(bs) ... No (falls back to a grid)", so this is documented, and the parity guard records it as a legitimate difference (no Bokeh layout root to compare; per-figure toolbars kept on the Bootstrap page and merged into the grid's when served). Nothing warns the user who builds a server app from a bs spec. ROADMAP WP-21 TR-21.4 decides what the served page should do.

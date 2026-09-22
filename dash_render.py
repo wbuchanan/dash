@@ -802,16 +802,6 @@ def _parse_scale_range(raw: str) -> "tuple[float | None, float | None]":
     return vals[0], vals[1]
 
 
-def _report_unhandled_scale_opts(raw: str, which: str) -> None:
-    """Report xscale()/yscale() sub-options dash does not implement."""
-    for tok in ("noextend", "extend", "alt", "fextend", "nofextend"):
-        if re.search(r"\b" + tok + r"\b", raw or "", re.I):
-            warnings.warn(
-                f"dash: {which}({tok}) is not implemented and is being "
-                f"ignored.", UserWarning, stacklevel=3,
-            )
-
-
 _TEXTBOX_SUBOPTS = (
     "size", "color", "colour", "position", "pos", "span", "box", "nobox",
     "justification", "just", "alignment", "margin", "linegap", "bexpand",
@@ -8646,7 +8636,7 @@ def _dash_move_legend(fig, legend, side):
 
 
 def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
-                       default_level=None, chrome=None):
+                       default_level=None, chrome=None, seen=None, key=""):
     """Stata's keys, Stata's drawing rule, and every legend() sub-option.
 
     ``twoway`` draws a legend if and only if the graph has two or more keys;
@@ -8677,6 +8667,10 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     chrome = chrome or {}
     if default_level is None:
         default_level = _DEFAULT_LEVEL
+    # Before the early return: a sub-option dash has no reading for is
+    # dropped whether or not this figure has a legend to apply it to.
+    _dash_report_suboptions("legend", _dash_legend_unsupported(legend_opt),
+                            seen, key)
     if not fig.legend:
         # The mapper made none (pci, scatteri, lowess): twoway draws none.
         return
@@ -8801,7 +8795,7 @@ def _dash_histogram_ymode(options):
     return "density"
 
 
-def _dash_axis_labels(plots, graph_opts, var_labels):
+def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
     """``(x_label, y_label)``: xtitle()/ytitle() first, else Stata's default.
 
     The default is the FIRST layer's variable label.  For the univariate
@@ -8831,8 +8825,13 @@ def _dash_axis_labels(plots, graph_opts, var_labels):
     else:
         xvar, yvar = p0.get("xvar", ""), p0.get("yvar", "")
         x_default, y_default = vl.get(xvar, xvar), vl.get(yvar, yvar)
-    x_label = str(go.get("xtitle", "") or "") or x_default
-    y_label = str(go.get("ytitle", "") or "") or y_default
+    # The text, split from its sub-options: xtitle("Weight", size(large))
+    # used to title the axis "Weight, size(large)".  size() and color()
+    # are applied by _dash_style_axis_titles; the rest is named.
+    x_text, _ = _dash_textbox(go.get("xtitle", ""), "xtitle", seen, key)
+    y_text, _ = _dash_textbox(go.get("ytitle", ""), "ytitle", seen, key)
+    x_label = x_text or x_default
+    y_label = y_text or y_default
     return x_label, y_label
 
 
@@ -8889,10 +8888,22 @@ def _dash_parse_axis_spec(raw):
     """
     out = {"mode": "default", "ticks": [], "count": None,
            "labels": {}, "format": None, "labsize": None,
-           "angle": None, "grid": None}
+           "angle": None, "grid": None, "unsupported": []}
     if not raw or not str(raw).strip():
         return out
     text = str(raw)
+
+    # The sub-options are what follows the first comma that introduces a
+    # name (Stata also accepts a comma-separated numlist, which must
+    # survive).  Each one dash does not honour is recorded, as written, for
+    # the caller to name: labcolor(), labgap(), tlength(), valuelabel ...
+    # used to be stripped or ignored without a word.
+    _m_tail = re.search(r",\s*(?=[A-Za-z_])", text)
+    if _m_tail:
+        for _tok in _dash_by_tokens(text[_m_tail.end():].strip()):
+            if _dash_subopt_name(_tok) not in ("format", "labsize", "angle",
+                                               "grid", "nogrid"):
+                out["unsupported"].append(_tok)
 
     out["angle"] = _parse_axis_angle(text)
     m = re.search(r"\bformat\s*\(\s*([^)]+?)\s*\)", text, re.I)
@@ -8916,7 +8927,10 @@ def _dash_parse_axis_spec(raw):
     m_sub = re.search(r",\s*(?=[A-Za-z_])", head)
     if m_sub:
         head = head[:m_sub.start()]
-    head = head.strip()
+    # Stripping the sub-options above leaves their comma behind, so
+    # `#5, grid' arrived here as `#5,' and matched none of the keyword
+    # forms: the count was dropped in silence.  Measured 22sep2026.
+    head = head.strip().rstrip(",").strip()
 
     if re.fullmatch(r"none", head, re.I):
         out["mode"] = "none"
@@ -8949,6 +8963,19 @@ def _dash_parse_axis_spec(raw):
 
     bare_ticks, labels = _dash_parse_axis_label_opt(rest)
     ticks.extend(bare_ticks)
+    # A bare word in the numlist that is not a number, a label or one of
+    # the keyword forms above is a sub-option written before the comma.
+    _prev_num = False
+    for _dq, _sq, _bare in re.findall(r'"([^"]*)"|\'([^\']*)\'|([^\s,"\']+)',
+                                      rest):
+        if _bare:
+            try:
+                float(_bare)
+                _prev_num = True
+                continue
+            except ValueError:
+                out["unsupported"].append(_bare)
+        _prev_num = False
     if ticks:
         out["mode"] = "explicit"
         out["ticks"] = sorted(set(ticks))
@@ -9035,8 +9062,9 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
 
 
 def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
-                             numeric_formats):
-    """xlabel()/ylabel(), with xtick()/ytick() as the fallback, on a figure."""
+                             numeric_formats, seen=None, key=""):
+    """xlabel()/ylabel(), with xtick()/ytick() as the fallback, on a figure;
+    the sub-options the grammar does not honour are named."""
     cols = getattr(frame, "columns", [])
     for ax_key, tick_key, axis_obj, grid_obj, var in (
             ("xlabel", "xtick", fig.xaxis, fig.xgrid, xvar),
@@ -9044,8 +9072,11 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         raw = graph_opts.get(ax_key, "") or graph_opts.get(tick_key, "")
         if not raw:
             continue
+        spec = _dash_parse_axis_spec(raw)
+        _dash_report_suboptions(ax_key if graph_opts.get(ax_key) else tick_key,
+                                spec.get("unsupported", []), seen, key)
         col = frame[var] if var and var in cols else None
-        _dash_apply_axis_spec(axis_obj, grid_obj, _dash_parse_axis_spec(raw),
+        _dash_apply_axis_spec(axis_obj, grid_obj, spec,
                               col, (numeric_formats or {}).get(var, ""))
 
 
@@ -9530,6 +9561,362 @@ def _dash_session_level(build_options, default=_DEFAULT_LEVEL):
             UserWarning, stacklevel=2)
         return float(default)
     return val
+
+
+
+# ---- Sub-options: honour, or name ------------------------------------------
+#
+# dash.sthlp: "Nothing is ever dropped without being named."  It held for
+# options (the ignoring note) and, since WP-11, for by()'s sub-options; it
+# did not hold for the sub-options of legend(), xlabel()/ylabel(),
+# xscale()/yscale(), the textbox options, xline()/yline() or filter().
+# Measured 22sep2026, every one of those rendered with no warning in either
+# mode.  One report, in by()'s words, from code both modes run.
+
+def _dash_report_suboptions(option, tokens, seen=None, key=""):
+    """Name the sub-options of *option* dash does not implement.
+
+    Once per graph per render: the figure body runs once per by() panel,
+    and *seen* -- a set the caller keeps for the render -- stops the same
+    report repeating per panel.  *key* is the graph's name.
+    """
+    toks = [t for t in tokens if t]
+    if not toks:
+        return
+    if seen is not None:
+        mark = (key, option, tuple(toks))
+        if mark in seen:
+            return
+        seen.add(mark)
+    warnings.warn(
+        "dash: %s() sub-option(s) not implemented and ignored: %s"
+        % (option, " ".join(toks)), UserWarning, stacklevel=2)
+
+
+def _dash_subopt_name(tok):
+    """``holes(1)`` -> ``holes``; ``span`` -> ``span``."""
+    return tok.split("(", 1)[0].strip().lower()
+
+
+#: legend() sub-options _dash_apply_legend honours.
+_DASH_LEGEND_SUBOPTS = frozenset({
+    "on", "off", "position", "pos", "ring", "order", "label", "cols", "rows",
+    "size", "top", "bottom", "left", "right"})
+
+
+def _dash_legend_unsupported(legend_opt):
+    """The legend() tokens dash has no reading for, as the user wrote them."""
+    return [t for t in _dash_by_tokens(str(legend_opt or "").strip())
+            if _dash_subopt_name(t) not in _DASH_LEGEND_SUBOPTS]
+
+
+#: Textbox sub-options the figure title, the axis titles, the subtitle, the
+#: note and the caption honour.
+_DASH_TEXTBOX_HONOURED = frozenset({"size", "color", "colour"})
+
+
+def _dash_textbox(raw, option, seen=None, key=""):
+    """``(text, sub-options)`` of a textbox option, the rest named.
+
+    Only a comma followed by a sub-option name Stata's textbox grammar
+    knows starts the sub-options (``_textbox_split_point``), so
+    ``title("Sales, size matters")`` keeps its comma; a name in that
+    grammar that dash does not honour -- ``orientation()``,
+    ``justification()``, ``span`` -- is named here rather than dropped.
+    """
+    text, opts = _parse_textbox_opt(raw or "")
+    raw_s = str(raw or "")
+    cut = _textbox_split_point(raw_s)
+    if cut >= 0:
+        tail = raw_s[cut + 1:]
+        bad = [t for t in _dash_by_tokens(tail.strip())
+               if _dash_subopt_name(t) not in _DASH_TEXTBOX_HONOURED]
+        _dash_report_suboptions(option, bad, seen, key)
+    return text, opts
+
+
+def _dash_figure_title(fig, graph_opts, seen=None, key=""):
+    """title() sub-options on the Title model: size() and color(), the
+    rest named.  The text itself went in when the figure was made.  The
+    served app applied none of them; measured, title("T", size(large)
+    color(red)) was 15px red saved and 13px grey served."""
+    raw = (graph_opts or {}).get("title", "")
+    if not raw or fig.title is None:
+        return
+    _t_text, _t_opts = _dash_textbox(raw, "title", seen, key)
+    if not _t_text or not _t_opts:
+        return
+    if "size" in _t_opts:
+        fig.title.text_font_size = f"{_textbox_size(_t_opts, 16.0):g}px"
+    if "color" in _t_opts or "colour" in _t_opts:
+        fig.title.text_color = _textbox_color(_t_opts, "#000000")
+
+
+def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
+    """xtitle()/ytitle() size() and color() on the axis titles; the text
+    was set by _dash_axis_labels, which also names the rest."""
+    for opt, axes in (("xtitle", fig.xaxis), ("ytitle", fig.yaxis)):
+        raw = (graph_opts or {}).get(opt, "")
+        if not raw:
+            continue
+        _, opts = _parse_textbox_opt(raw)
+        if not opts:
+            continue
+        for ax in axes:
+            if "size" in opts:
+                ax.axis_label_text_font_size = (
+                    f"{_textbox_size(opts, 13.0):g}px")
+            if "color" in opts or "colour" in opts:
+                ax.axis_label_text_color = _textbox_color(opts, "#000000")
+
+
+#: Where the note, the caption and the subtitle sit, and their defaults.
+#: Measured in Stata: the note is ring(4) and the caption ring(5), so the
+#: caption sits BELOW the note, and the note is the smaller of the two.
+#: add_layout(..., "below") gives each Label a row of its own.  y = 2.0
+#: for both: a negative screen offset was clipped and no dashboard ever
+#: drew a caption.
+_DASH_TEXTBOX_DEFAULTS = {
+    "note":     {"size": 11.0, "color": "#555555", "y": 2.0, "side": "below"},
+    "caption":  {"size": 12.0, "color": "#555555", "y": 2.0, "side": "below"},
+    "subtitle": {"size": 13.0, "color": "#444444", "y": 0.0, "side": "above"},
+}
+
+
+def _dash_text_annotations(fig, graph_opts, seen=None, key=""):
+    """note(), caption() and subtitle() as Labels, in both modes.
+
+    The generated app carried its own copy of this loop, with its own
+    size and colour helpers; one text now, with the unimplemented
+    sub-options named.
+    """
+    from bokeh.models import Label
+    for ann_key in ("note", "caption", "subtitle"):
+        raw = (graph_opts or {}).get(ann_key, "")
+        if not raw:
+            continue
+        text, opts = _dash_textbox(raw, ann_key, seen, key)
+        if not text:
+            continue
+        d = _DASH_TEXTBOX_DEFAULTS[ann_key]
+        fig.add_layout(Label(
+            x=0, y=d["y"], x_units="screen", y_units="screen", text=text,
+            text_font_size=f"{_textbox_size(opts, d['size']):g}px",
+            text_color=_textbox_color(opts, d["color"]),
+        ), d["side"])
+
+
+#: xscale()/yscale() sub-options dash honours.
+_DASH_SCALE_SUBOPTS = frozenset({"log", "reverse", "range"})
+
+
+def _dash_scale_spec(raw, option="", seen=None, key=""):
+    """``{"log", "reverse", "lo", "hi"}`` for an xscale()/yscale() value,
+    every other sub-option named.  This used to warn for five tokens
+    (noextend, extend, alt, fextend, nofextend) and drop the rest --
+    noline, titlegap(), off -- in silence."""
+    toks = _dash_by_tokens(str(raw or "").strip())
+    names = [_dash_subopt_name(t) for t in toks]
+    if option:
+        _dash_report_suboptions(
+            option, [t for t, n in zip(toks, names)
+                     if n not in _DASH_SCALE_SUBOPTS], seen, key)
+    lo, hi = _parse_scale_range(raw or "")
+    return {"log": "log" in names, "reverse": "reverse" in names,
+            "lo": lo, "hi": hi}
+
+
+def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
+    """xscale(range())/yscale(range()) as Range1d bounds, then reverse.
+
+    One bound given keeps the data's own value for the other.  The
+    generated app read ``xrange``/``yrange`` keys dash.ado never writes,
+    so a served range() was dropped; measured, xscale(range(1500 4500))
+    bounded the saved axis and left the served one on its data range.
+    """
+    from bokeh.models import Range1d
+    cols = getattr(frame, "columns", [])
+    for spec, attr, var in ((xspec, "x_range", xvar), (yspec, "y_range", yvar)):
+        lo, hi = spec.get("lo"), spec.get("hi")
+        if lo is None and hi is None:
+            continue
+        cur = getattr(fig, attr)
+        cur_lo, cur_hi = getattr(cur, "start", None), getattr(cur, "end", None)
+        if lo is None or hi is None:
+            if var and var in cols:
+                v = pd.to_numeric(frame[var], errors="coerce").dropna()
+                if len(v):
+                    cur_lo, cur_hi = float(v.min()), float(v.max())
+        new_lo = lo if lo is not None else cur_lo
+        new_hi = hi if hi is not None else cur_hi
+        if new_lo is not None and new_hi is not None:
+            setattr(fig, attr, Range1d(float(new_lo), float(new_hi)))
+    for spec, attr in ((xspec, "x_range"), (yspec, "y_range")):
+        if spec.get("reverse"):
+            try:
+                getattr(fig, attr).flipped = True
+            except AttributeError:
+                pass
+
+
+#: xline()/yline() sub-options dash honours.
+_DASH_REFLINE_SUBOPTS = frozenset({"lcolor", "lpattern", "lwidth"})
+
+
+def _dash_reference_lines(fig, graph_opts, seen=None, key=""):
+    """xline()/yline() as Spans, in both modes: a numlist of positions and
+    lcolor()/lpattern()/lwidth(); every other sub-option named.
+
+    Stata's measured default is BLACK dashed at the gridline width.  The
+    generated app carried its own copy of this; one text now.
+    """
+    from bokeh.models import Span
+    for opt, dim in (("xline", "height"), ("yline", "width")):
+        raw = (graph_opts or {}).get(opt, "")
+        values, style, bad = [], {}, []
+        if not raw:
+            # The legacy list form, xline_values/yline_values: positions
+            # only, no sub-options.  dash.ado never writes it; the saved
+            # renderer has always accepted it.
+            for v in (graph_opts or {}).get(opt + "_values", []) or []:
+                try:
+                    values.append(float(v))
+                except (ValueError, TypeError):
+                    pass
+            raw = ""
+        for tok in _dash_by_tokens(str(raw).replace(",", " ").strip()) if raw else ():
+            name = _dash_subopt_name(tok)
+            if "(" in tok and name in _DASH_REFLINE_SUBOPTS:
+                style[name] = tok[len(name) + 1:-1].strip() if tok.endswith(")") else ""
+                continue
+            try:
+                values.append(float(tok))
+            except ValueError:
+                bad.append(tok)
+        _dash_report_suboptions(opt, bad, seen, key)
+        kw = {"line_color": "#000000", "line_dash": "dashed", "line_width": 1.0}
+        if style.get("lcolor"):
+            try:
+                kw["line_color"] = OptionTranslator.translate_mcolor(style["lcolor"])
+            except (ValueError, TypeError):
+                warnings.warn(
+                    f"dash: lcolor({style['lcolor']}) on a reference line is "
+                    f"not a recognised colour; ignoring it.", UserWarning)
+        if style.get("lpattern"):
+            try:
+                kw["line_dash"] = OptionTranslator.translate_lpattern(style["lpattern"])
+            except (ValueError, TypeError):
+                pass
+        if style.get("lwidth"):
+            try:
+                kw["line_width"] = OptionTranslator.translate_lwidth(style["lwidth"])
+            except (ValueError, TypeError):
+                pass
+        for v in values:
+            fig.add_layout(Span(location=v, dimension=dim, **kw))
+
+
+#: filter() widget types dash builds.
+_DASH_FILTER_TYPES = ("dropdown", "range", "slider")
+_DASH_FILTER_SUBOPTS = frozenset({"type", "exclude", "label"})
+_DASH_VARNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _dash_display(text, limit=80):
+    """User text as a warning may echo it: printable characters only, and
+    not more than *limit* of them."""
+    s = "".join(ch if ch.isprintable() else "?" for ch in str(text))
+    return s if len(s) <= limit else s[:limit - 3] + "..."
+
+
+def _dash_warn_filter_missing(fvar):
+    warnings.warn(
+        f"dash: filter({_dash_display(fvar)}): the variable is not in the "
+        f"data; no widget was built.", UserWarning, stacklevel=2)
+
+
+def _dash_warn_filter_type(fvar, ftype):
+    warnings.warn(
+        f"dash: filter({_dash_display(fvar)}, type({_dash_display(ftype)})): "
+        f"type() must be one of {', '.join(_DASH_FILTER_TYPES)}; no widget "
+        f"was built.", UserWarning, stacklevel=2)
+
+
+def _dash_parse_filter_raw(raw, warn=True):
+    """Parse ``build_options["filter"]`` into widget specs, refusing aloud.
+
+    ``dash.ado`` emits the option as plain text; several filter() groups
+    are joined with ``||`` (``;`` in older specs).  Each group is
+    ``varname[, type(...) exclude(...) label(...)]`` and becomes
+    ``{"varname", "type", "exclude", "label"}``.
+
+    What is refused, and why that is all: the variable name and every
+    exclude() name must be Stata names (they become column and registry
+    keys); type() must be a widget dash builds.  The label is text -- a
+    Bokeh widget title in the saved page and in the served one, and a
+    ``repr`` literal in the generated app -- so nothing in it is
+    evaluated anywhere.  A pattern here used to refuse a whole group
+    whose text contained ``;`` `` ` `` ``$`` ``\\`` ``__`` or the words
+    import, eval, exec, open, getattr -- so label("R&D __ spend") made
+    the widget vanish with rc 0 and no message, and ``open the door`` did
+    the same.  Refusal is now for the three keys above, and it says so.
+    """
+    if not raw or raw in ('"', ""):
+        return []
+    result = []
+    for part in raw.replace(";", "||").split("||"):
+        part = part.strip()
+        if not part:
+            continue
+        fvar = re.split(r"[,\s]", part)[0].strip()
+        if not _DASH_VARNAME_RE.match(fvar):
+            if warn:
+                warnings.warn(
+                    f"dash: filter({_dash_display(part)}) refused: "
+                    f"{_dash_display(fvar)!r} is not a valid variable name; "
+                    f"no widget was built.", UserWarning, stacklevel=2)
+            continue
+        rest = part[len(fvar):].lstrip()
+        if rest.startswith(","):
+            rest = rest[1:]
+        ftype, excl, flabel, bad, ok = "dropdown", [], "", [], True
+        # Sub-options may be comma-separated as well as space-separated
+        # (filter(foreign, type(dropdown), exclude(g1)) is the documented
+        # form); a comma between them is not part of a token.
+        toks = [t.rstrip(",") for t in _dash_by_tokens(rest.strip())]
+        for tok in [t for t in toks if t]:
+            name = _dash_subopt_name(tok)
+            arg = tok[len(name) + 1:-1] if "(" in tok and tok.endswith(")") else ""
+            if name == "type" and "(" in tok:
+                ftype = arg.strip().lower()
+            elif name == "exclude" and "(" in tok:
+                excl = arg.split()
+                badx = [x for x in excl if not _DASH_VARNAME_RE.match(x)]
+                if badx:
+                    if warn:
+                        warnings.warn(
+                            f"dash: filter({_dash_display(part)}) refused: "
+                            f"exclude() names {[_dash_display(x) for x in badx]} "
+                            f"are not valid names; no widget was built.",
+                            UserWarning, stacklevel=2)
+                    ok = False
+            elif name == "label" and "(" in tok:
+                # The optional quotes are Stata's: label("Curb weight") and
+                # label(Curb weight) both reach here verbatim.
+                flabel = arg.strip().strip('"').strip()
+            else:
+                bad.append(tok)
+        if not ok:
+            continue
+        if ftype not in _DASH_FILTER_TYPES:
+            if warn:
+                _dash_warn_filter_type(fvar, ftype)
+            continue
+        if warn:
+            _dash_report_suboptions("filter", bad)
+        result.append({"varname": fvar, "type": ftype, "exclude": excl,
+                       "label": flabel})
+    return result
 
 
 def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
@@ -10861,76 +11248,9 @@ class DashRenderer:
 
     @staticmethod
     def _parse_filter_raw(raw: str) -> "list[dict]":
-        """Parse a raw filter spec string from build_options[\"filter\"] into a
-        structured list suitable for the filter-widget loop in ``render()`` and
-        ``_setup_sources()``.
-
-        ``dash.ado`` emits ``build_options.filter`` as a plain Stata option
-        string, not a JSON array.  Multiple filter specs are joined with ``||``
-        (or ``;`` for legacy server-mode compatibility).
-
-        Format::
-
-            "foreign, type(dropdown)"
-            "foreign, type(dropdown) || weight, type(range) exclude(h1 d1)"
-
-        Each spec is parsed into::
-
-            {"varname": str, "type": str, "exclude": [str, ...]}
-
-        Security: variable names are validated against the same ``_UNSAFE``
-        pattern used elsewhere in the renderer.
-
-        Args:
-            raw: Raw filter option string from ``build_options["filter"]``.
-
-        Returns:
-            List of filter spec dicts, one per filter widget.  Empty list if
-            the input is empty or contains only unsafe characters.
-        """
-        import re as _re
-        _UNSAFE_F = _re.compile(
-            r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
-            r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
-        )
-
-        if not raw or raw in ('"', ""):
-            return []
-
-        # Normalise separator: treat ";" as "||" for legacy compatibility
-        normalized = raw.replace(";", "||")
-
-        result: list[dict] = []
-        for part in normalized.split("||"):
-            part = part.strip()
-            if not part:
-                continue
-            # Security: reject injection patterns in filter spec
-            if _UNSAFE_F.search(part):
-                continue
-            # Extract variable name: first token before comma or whitespace
-            fvar = _re.split(r"[,\s]", part)[0].strip()
-            if not fvar:
-                continue
-            # Validate variable name characters (alphanumeric + underscore only)
-            if not _re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', fvar):
-                continue
-            m_type = _re.search(r"\btype\(([^)]+)\)", part, _re.IGNORECASE)
-            m_excl = _re.search(r"\bexclude\(([^)]+)\)", part, _re.IGNORECASE)
-            # label() had no regex here at all, so the key the widget-title
-            # resolver reads FIRST was simply absent and every filter fell
-            # back to the variable name.  dash.ado did not reject the
-            # suboption either, so the user got silence rather than an error.
-            # The optional quotes are Stata's: label("Curb weight") and
-            # label(Curb weight) both reach here verbatim.
-            m_label = _re.search(r'\blabel\(\s*"?([^)"]*)"?\s*\)',
-                                 part, _re.IGNORECASE)
-            ftype = m_type.group(1).strip().lower() if m_type else "dropdown"
-            excl = m_excl.group(1).split() if m_excl else []
-            flabel = m_label.group(1).strip() if m_label else ""
-            result.append({"varname": fvar, "type": ftype, "exclude": excl,
-                           "label": flabel})
-        return result
+        """Parse ``build_options["filter"]``; see ``_dash_parse_filter_raw``,
+        the one parser both render modes run."""
+        return _dash_parse_filter_raw(raw)
 
     def _expand_by_groups(
         self,
@@ -11077,7 +11397,9 @@ class DashRenderer:
             getattr(self, "default_level", _DEFAULT_LEVEL),
             {"legend_bg_color": self.scheme.legend_bg_color,
              "legend_border_color": self.scheme.legend_border_color,
-             "text_font_size": self.scheme.text_font_size})
+             "text_font_size": self.scheme.text_font_size},
+            getattr(self, "_reported_subopts", None),
+            graph_opts.get("name", ""))
 
     @staticmethod
     def _move_legend(fig, legend, side: str) -> None:
@@ -11265,8 +11587,10 @@ class DashRenderer:
         # helper the generated app runs as well.  Canvas text, NOT html:
         # Bokeh draws a figure title and axis labels as glyphs, so escaping
         # made title("R&D spend") display as "R&amp;D spend".
+        _seen = getattr(self, "_reported_subopts", None)
+        _gkey = graph_opts.get("name", "")
         x_label, y_label = _dash_axis_labels(plots, graph_opts,
-                                             self.variable_labels)
+                                             self.variable_labels, _seen, _gkey)
 
         # Enable WebGL for large datasets
         n_rows = len(self.df)
@@ -11284,8 +11608,12 @@ class DashRenderer:
         # call bokeh_figure() once.  Previously, log scale caused a second
         # bokeh_figure() call that discarded all styling applied after the first
         # call (scheme, bgcolor, plotbgcolor, plotregion, graphregion).
-        _xs_log, _xs_rev = _parse_scale_opt(graph_opts.get("xscale", ""))
-        _ys_log, _ys_rev = _parse_scale_opt(graph_opts.get("yscale", ""))
+        _xsc = _dash_scale_spec(graph_opts.get("xscale", ""), "xscale",
+                                _seen, _gkey)
+        _ysc = _dash_scale_spec(graph_opts.get("yscale", ""), "yscale",
+                                _seen, _gkey)
+        _xs_log, _xs_rev = _xsc["log"], _xsc["reverse"]
+        _ys_log, _ys_rev = _ysc["log"], _ysc["reverse"]
 
         fig_kwargs = dict(
             title=_parse_textbox_opt(graph_opts.get("title", ""))[0],
@@ -11335,16 +11663,6 @@ class DashRenderer:
 
         fig = bokeh_figure(**fig_kwargs)
 
-        # title() sub-options: applied to the Title model, since the text
-        # itself went in via fig_kwargs.
-        _t_text, _t_opts = _parse_textbox_opt(graph_opts.get("title", ""))
-        if _t_text and _t_opts and fig.title is not None:
-            if "size" in _t_opts:
-                fig.title.text_font_size = (
-                    f"{_textbox_size(_t_opts, 16.0):g}px")
-            if "color" in _t_opts or "colour" in _t_opts:
-                fig.title.text_color = _textbox_color(_t_opts, "#000000")
-
         # Tick formatting matched to the date kind: years for %ty, dates for
         # %td/%tw/%tm/%tq/%th, date and time for %tc/%tC.  An explicit
         # xlabel()/ylabel() tick list still wins -- it is applied later.
@@ -11354,6 +11672,10 @@ class DashRenderer:
 
         # Apply scheme defaults (before explicit graph options so they take precedence)
         self.scheme.apply_to_figure(fig)
+        # title(), xtitle()/ytitle() sub-options, after the scheme so the
+        # user's size() and color() win; the rest named.
+        _dash_figure_title(fig, graph_opts, _seen, _gkey)
+        _dash_style_axis_titles(fig, graph_opts, _seen, _gkey)
 
         # Figure background colors
         # bgcolor  → border_fill_color  (outer area around the plot)
@@ -11416,175 +11738,26 @@ class DashRenderer:
         _has_y2, _has_x2 = _dash_add_secondary_axes(
             fig, plots, graph_opts, _source_frame(source, self.df))
 
-        # Axis range limits, from Stata's xscale(range())/yscale(range()).
-        # The previous implementation read graph_opts["xrange"]/["yrange"],
-        # keys dash.ado has never emitted -- it looked implemented and was
-        # dead.  Those keys are gone; range() is the option Stata documents.
-        from bokeh.models import Range1d as _Rng
-        for _raw_sc, _which, _axis_attr in (
-            (graph_opts.get("xscale", ""), "xscale", "x_range"),
-            (graph_opts.get("yscale", ""), "yscale", "y_range"),
-        ):
-            _report_unhandled_scale_opts(_raw_sc, _which)
-            _lo, _hi = _parse_scale_range(_raw_sc)
-            if _lo is None and _hi is None:
-                continue
-            _cur = getattr(fig, _axis_attr)
-            _cur_lo = getattr(_cur, "start", None)
-            _cur_hi = getattr(_cur, "end", None)
-            if _lo is None or _hi is None:
-                # One bound given: keep the data's own value for the other.
-                _col = xvar if _axis_attr == "x_range" else yvar
-                if _col in getattr(self.df, "columns", []):
-                    _v = pd.to_numeric(self.df[_col], errors="coerce").dropna()
-                    if len(_v):
-                        _cur_lo = float(_v.min())
-                        _cur_hi = float(_v.max())
-            _new_lo = _lo if _lo is not None else _cur_lo
-            _new_hi = _hi if _hi is not None else _cur_hi
-            if _new_lo is not None and _new_hi is not None:
-                setattr(fig, _axis_attr, _Rng(float(_new_lo), float(_new_hi)))
+        # xscale(range())/yscale(range()) and reverse, through the helper
+        # the generated app runs as well: it read xrange/yrange keys
+        # dash.ado never writes, so a served range() was dropped.
+        _dash_apply_scale_ranges(fig, _xsc, _ysc, _source_frame(source, self.df),
+                                 xvar, yvar)
 
-        # Apply axis reversal (after any Range1d replacement so flipped sticks)
-        if _xs_rev:
-            try:
-                fig.x_range.flipped = True
-            except AttributeError:
-                pass
-        if _ys_rev:
-            try:
-                fig.y_range.flipped = True
-            except AttributeError:
-                pass
+        # xline()/yline(), through the helper the generated app runs as well.
+        _dash_reference_lines(fig, graph_opts, _seen, _gkey)
 
-        # Reference lines
-        # Reference lines — support both string "xline"/"yline" (parser output)
-        # and legacy list "xline_values"/"yline_values" forms.
-        def _parse_refline(opt_key: str, list_key: str) -> "tuple[list, dict]":
-            """Return the reference-line positions AND their style sub-options.
-
-            dash.ado passes lcolor()/lpattern()/lwidth() through intact and
-            this parser used to float-cast every token and discard them,
-            forcing every reference line to grey dashed.  Measured in Stata,
-            the default is BLACK dashed -- not grey -- and the sub-options
-            take effect.
-            """
-            raw = graph_opts.get(opt_key, "")
-            if not raw:
-                return list(graph_opts.get(list_key, [])), {}
-            head, opts = _parse_textbox_opt(raw)
-            # _parse_textbox_opt strips quotes; a numlist has none, and it
-            # splits off exactly the sub-option tail we want.
-            values = [v.strip() for v in head.replace(",", " ").split()
-                      if v.strip()]
-            return values, opts
-
-        def _refline_kwargs(opts: dict) -> dict:
-            """Bokeh Span properties for a set of reference-line sub-options."""
-            kw: dict = {
-                # Stata's measured default: black, dashed, scheme gridline
-                # width.  dash forced grey.
-                "line_color": "#000000",
-                "line_dash":  "dashed",
-                "line_width": 1.0,
-            }
-            if opts.get("lcolor"):
-                try:
-                    kw["line_color"] = OptionTranslator.translate_mcolor(
-                        opts["lcolor"])
-                except (ValueError, TypeError):
-                    warnings.warn(
-                        f"dash: lcolor({opts['lcolor']}) on a reference line "
-                        f"is not a recognised colour; ignoring it.",
-                        UserWarning,
-                    )
-            if opts.get("lpattern"):
-                try:
-                    kw["line_dash"] = OptionTranslator.translate_lpattern(
-                        opts["lpattern"])
-                except (ValueError, TypeError):
-                    pass
-            if opts.get("lwidth"):
-                try:
-                    kw["line_width"] = OptionTranslator.translate_lwidth(
-                        opts["lwidth"])
-                except (ValueError, TypeError):
-                    pass
-            return kw
-
-        _xl_vals, _xl_opts = _parse_refline("xline", "xline_values")
-        _xl_kw = _refline_kwargs(_xl_opts)
-        for xline_val in _xl_vals:
-            try:
-                fig.add_layout(Span(location=float(xline_val),
-                                    dimension="height", **_xl_kw))
-            except (ValueError, TypeError):
-                pass
-        _yl_vals, _yl_opts = _parse_refline("yline", "yline_values")
-        _yl_kw = _refline_kwargs(_yl_opts)
-        for yline_val in _yl_vals:
-            try:
-                fig.add_layout(Span(location=float(yline_val),
-                                    dimension="width", **_yl_kw))
-            except (ValueError, TypeError):
-                pass
-
-        # ---- Note / caption ----
-        # Both used to be a Label at screen (0, 0) added "below", so they were
-        # drawn ON TOP OF EACH OTHER.  Measured in Stata: the note is ring(4)
-        # and the caption ring(5), i.e. the caption sits BELOW the note, and
-        # the note is the smaller of the two.
-        #
-        # What separates them is the ORDER they are added in -- add_layout(...,
-        # "below") gives each Label a row of its own -- not the y offset.  The
-        # caption was given y = -12.0 to push it down, and a negative screen
-        # offset puts it outside the row Bokeh sized for it, where it is
-        # clipped: measured in a browser against bokeh 3.9, an identical Label
-        # renders at y = 0.0 and at y = 2.0 and does NOT render at all at
-        # y = -12.0.  So no dash dashboard has ever drawn a caption.  Both now
-        # sit at the top of their own row, which stacks them the way Stata
-        # does and keeps every line of a multi-line value on screen.
-        from bokeh.models import Label
-        _TEXTBOX_DEFAULTS = {
-            "note":     {"size": 11.0, "color": "#555555", "y": 2.0},
-            "caption":  {"size": 12.0, "color": "#555555", "y": 2.0},
-        }
-        for ann_key in ("note", "caption"):
-            ann_raw = graph_opts.get(ann_key, "")
-            if not ann_raw:
-                continue
-            ann_text, ann_opts = _parse_textbox_opt(ann_raw)
-            if not ann_text:
-                continue
-            d = _TEXTBOX_DEFAULTS[ann_key]
-            lbl = Label(
-                x=0, y=d["y"],
-                x_units="screen", y_units="screen",
-                text=ann_text,
-                text_font_size=f"{_textbox_size(ann_opts, d['size']):g}px",
-                text_color=_textbox_color(ann_opts, d["color"]),
-            )
-            fig.add_layout(lbl, "below")
-
-        # Subtitle annotation (appears above the plot area)
-        subtitle_text, subtitle_opts = _parse_textbox_opt(
-            graph_opts.get("subtitle", ""))
-        if subtitle_text:
-            subtitle_lbl = Label(
-                x=0, y=0,
-                x_units="screen", y_units="screen",
-                text=subtitle_text,
-                text_font_size=f"{_textbox_size(subtitle_opts, 13.0):g}px",
-                text_color=_textbox_color(subtitle_opts, "#444444"),
-            )
-            fig.add_layout(subtitle_lbl, "above")
+        # note(), caption(), subtitle(), through the helper the generated
+        # app runs as well.
+        _dash_text_annotations(fig, graph_opts, _seen, _gkey)
 
         # xlabel()/ylabel(), xtick()/ytick(): Stata's full grammar, through
         # the helper the generated app runs as well.  Its own parser read a
         # bare numlist and angle() and nothing else.
         _dash_apply_axis_options(fig, graph_opts, xvar, yvar,
                                  _source_frame(source, self.df),
-                                 getattr(self, "numeric_formats", {}))
+                                 getattr(self, "numeric_formats", {}),
+                                 _seen, _gkey)
 
         # Plot categories that use non-standard JSON variable keys.  Defined
         # at module level so the generated server app shares them rather than
@@ -13058,6 +13231,7 @@ class DashRenderer:
                 fsource = next(iter(self.sources.values())) if self.sources else None
 
             if fsource is None or fvar not in fsource.data:
+                _dash_warn_filter_missing(fvar)
                 continue
 
             # Resolve value labels (standard Stata format or direct-by-varname)
@@ -13124,6 +13298,7 @@ class DashRenderer:
                     column=self.df[fvar] if fvar in self.df.columns else None,
                 )
             else:
+                _dash_warn_filter_type(fvar, ftype)
                 continue
 
             filter_row_widgets.append(widget)
@@ -13453,6 +13628,9 @@ class DashRenderer:
         build  = self.master_spec.get("build_options", {})
 
         _report_dataset_size(self.df, "dashboard")
+        # Sub-option reports already made this render, so a by() panel does
+        # not repeat its graph's.
+        self._reported_subopts = set()
 
         # ---- Parse build options ----
         link_names, filters_cfg = self._parse_link_and_filters(build)
@@ -13686,7 +13864,12 @@ class ServerAppBuilder:
                       "_DASH_LEGEND_KEYWORD_LOC", "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_SWATCH_PREFIX",
                       # _stata_date_kind's own pattern, for an axis format().
-                      "_MS_PER_DAY", "_DATE_FMT_RE"):
+                      "_MS_PER_DAY", "_DATE_FMT_RE",
+                      # The sub-option tables and the filter parser's own.
+                      "_DASH_LEGEND_SUBOPTS", "_DASH_TEXTBOX_HONOURED",
+                      "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
+                      "_DASH_REFLINE_SUBOPTS", "_DASH_FILTER_TYPES",
+                      "_DASH_FILTER_SUBOPTS", "_DASH_VARNAME_RE"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -13790,7 +13973,18 @@ class ServerAppBuilder:
                          "_dash_header_fragments", "_dash_header_models",
                          # The columns a layer's options name.
                          "_dash_option_columns", "_dash_attach_labels",
-                         "_dash_is_swatch"):
+                         "_dash_is_swatch",
+                         # Sub-options: honoured or named, in one text.
+                         "_textbox_size", "_textbox_color",
+                         "_parse_scale_range",
+                         "_dash_report_suboptions", "_dash_subopt_name",
+                         "_dash_legend_unsupported", "_dash_textbox",
+                         "_dash_figure_title", "_dash_style_axis_titles",
+                         "_dash_text_annotations", "_dash_scale_spec",
+                         "_dash_apply_scale_ranges", "_dash_reference_lines",
+                         "_dash_display",
+                         "_dash_warn_filter_missing", "_dash_warn_filter_type",
+                         "_dash_parse_filter_raw"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -14978,27 +15172,6 @@ class ServerAppBuilder:
             "        return {'x': [], 'y': []}",
             "",
             "",
-            "def _textbox_size_px(opts, default):",
-            '    """Font size for a note/caption/subtitle, from its size() sub-option."""',
-            "    try:",
-            "        _v = float(str(opts.get('size', '')).strip())",
-            "        if _v > 0:",
-            "            return '%gpx' % _v",
-            "    except (TypeError, ValueError):",
-            "        pass",
-            "    return '%gpx' % float(default)",
-            "",
-            "",
-            "def _textbox_color_of(opts, default):",
-            '    """Colour for a note/caption/subtitle, from its color() sub-option."""',
-            "    _c = str(opts.get('color', '') or '').strip()",
-            "    if _c:",
-            "        _r = _resolve_color(_c)",
-            "        if _r:",
-            "            return _r",
-            "    return default",
-            "",
-            "",
             "def _compute_lpolyci(df, yvar, xvar, options=None):",
             '    """Return the lpoly fit and its bootstrap confidence band.',
             "",
@@ -15205,6 +15378,9 @@ class ServerAppBuilder:
             "    TOOLS = [PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()]",
             "",
             "    _redrawn_ids = set()",
+            "    # Sub-option reports already made this render, so a by()",
+            "    # panel does not repeat its graph's.",
+            "    _reported_subopts = set()",
             "",
             "    def _dash_draw_layer(fig, g_df, plot, pi, gname, _ln, _shared, _fallback):",
             '        """Draw one layer of one figure; return (layer_source, [drawn sources]).',
@@ -15343,7 +15519,8 @@ class ServerAppBuilder:
             "        # this used to html.escape the user's title and to title a",
             "        # histogram's y axis with the variable, where the saved",
             "        # figure titled it nothing and Stata writes 'Density'.",
-            "        x_label, y_label = _dash_axis_labels(plots, go, var_labels)",
+            "        x_label, y_label = _dash_axis_labels(plots, go, var_labels,",
+            "                                             _reported_subopts, gname)",
             "",
             "        n_rows = len(df)",
             "        backend = 'webgl' if n_rows > _WEBGL_THRESHOLD else 'canvas'",
@@ -15359,26 +15536,26 @@ class ServerAppBuilder:
             "        if _raw_ar:",
             "            try: _fig_kw['aspect_ratio'] = float(_raw_ar)",
             "            except (ValueError, TypeError): pass",
-            "        _xs_toks = go.get('xscale', '').lower().split()",
-            "        _ys_toks = go.get('yscale', '').lower().split()",
-            "        if 'log' in _xs_toks: _fig_kw['x_axis_type'] = 'log'",
-            "        if 'log' in _ys_toks: _fig_kw['y_axis_type'] = 'log'",
+            "        _xsc = _dash_scale_spec(go.get('xscale', ''), 'xscale', _reported_subopts, gname)",
+            "        _ysc = _dash_scale_spec(go.get('yscale', ''), 'yscale', _reported_subopts, gname)",
+            "        if _xsc['log']: _fig_kw['x_axis_type'] = 'log'",
+            "        if _ysc['log']: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
             "        # Scheme first, so an explicit graph option still wins.",
             "        _dash_apply_scheme(fig)",
             "        # yaxis(2)/xaxis(2): the second axis, from the rows this",
             "        # figure draws.  There used to be none when served.",
             "        _dash_add_secondary_axes(fig, plots, go, g_df)",
+            "        # title(), xtitle()/ytitle() sub-options, after the scheme so",
+            "        # the user's size() and color() win; the rest named.",
+            "        _dash_figure_title(fig, go, _reported_subopts, gname)",
+            "        _dash_style_axis_titles(fig, go, _reported_subopts, gname)",
             "        # Initialised with the figure, not with the plot loop: a",
             "        # faceted graph never enters that loop and would reach the",
             "        # legend block with the name unbound.",
             "        _leg_bounds = []",
-            "        if 'reverse' in _xs_toks:",
-            "            try: fig.x_range.flipped = True",
-            "            except AttributeError: pass",
-            "        if 'reverse' in _ys_toks:",
-            "            try: fig.y_range.flipped = True",
-            "            except AttributeError: pass",
+            "        # range() and reverse are applied by _dash_apply_scale_ranges,",
+            "        # after the region colours below, as the saved figure does.",
             "        # bgcolor / plotbgcolor — figure background colors",
             "        _raw_bgc = go.get('bgcolor', '')",
             "        if _raw_bgc:",
@@ -15418,91 +15595,17 @@ class ServerAppBuilder:
             "            if _gr_bg:",
             "                _c = _resolve_color(_gr_bg)",
             "                if _c: fig.border_fill_color = _c",
-            "        # xrange / yrange axis limits",
-            "        _raw_xr = go.get('xrange', '')",
-            "        if _raw_xr:",
-            "            _xr_parts = _raw_xr.split()",
-            "            if len(_xr_parts) >= 2:",
-            "                try: fig.x_range = Range1d(float(_xr_parts[0]), float(_xr_parts[1]))",
-            "                except (ValueError, TypeError): pass",
-            "        _raw_yr = go.get('yrange', '')",
-            "        if _raw_yr:",
-            "            _yr_parts = _raw_yr.split()",
-            "            if len(_yr_parts) >= 2:",
-            "                try: fig.y_range = Range1d(float(_yr_parts[0]), float(_yr_parts[1]))",
-            "                except (ValueError, TypeError): pass",
-            "        # note / caption annotations",
-            "        #",
-            "        # Both used to be drawn at screen (0, 0) at 11px, so they",
-            "        # sat ON TOP OF EACH OTHER and the caption was the wrong",
-            "        # size. Measured in Stata, the note is ring(4) and the",
-            "        # caption ring(5) -- the caption sits BELOW the note and",
-            "        # the note is the smaller of the two. Their sub-options",
-            "        # were dropped too, and the text was HTML-escaped, which",
-            "        # is wrong for canvas text: a note reading `R&D' came out",
-            "        # `R&amp;D'.",
-            "        from bokeh.models import Label as _Label",
-            "        _TEXTBOX_DEFAULTS = {",
-            "            'note':    {'size': 11.0, 'color': '#555555', 'y': 2.0},",
-            "            'caption': {'size': 12.0, 'color': '#555555', 'y': -12.0},",
-            "        }",
-            "        for _ann_key in ('note', 'caption'):",
-            "            _ann_raw = go.get(_ann_key, '')",
-            "            if not _ann_raw:",
-            "                continue",
-            "            _ann_txt, _ann_opts = _parse_textbox_opt(_ann_raw)",
-            "            if not _ann_txt:",
-            "                continue",
-            "            _d = _TEXTBOX_DEFAULTS[_ann_key]",
-            "            fig.add_layout(_Label(",
-            "                x=0, y=_d['y'], x_units='screen', y_units='screen',",
-            "                text=_ann_txt,",
-            "                text_font_size=_textbox_size_px(_ann_opts, _d['size']),",
-            "                text_color=_textbox_color_of(_ann_opts, _d['color'])),",
-            "                'below')",
-            "        # subtitle annotation",
-            "        _sub_txt, _sub_opts = _parse_textbox_opt(go.get('subtitle', '') or '')",
-            "        if _sub_txt:",
-            "            fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
-            "                text=_sub_txt, text_font_size=_textbox_size_px(_sub_opts, 13.0),",
-            "                text_color=_textbox_color_of(_sub_opts, '#444444')), 'above')",
-            "        # xline / yline reference lines",
-            "        #",
-            "        # This used to float-cast every whitespace token and",
-            "        # discard whatever would not cast, so `xline(3000,",
-            "        # lcolor(red) lwidth(thick))' drew NOTHING -- the first",
-            "        # token was `3000,' and the rest were sub-options. The",
-            "        # default was also a grey literal; measured in Stata it",
-            "        # is BLACK dashed. _parse_textbox_opt is the standalone",
-            "        # renderer's own splitter, copied in above.",
-            "        for _refkey, _dim in (('xline', 'height'), ('yline', 'width')):",
-            "            _refraw = go.get(_refkey, '')",
-            "            if not _refraw:",
-            "                continue",
-            "            _refhead, _refopts = _parse_textbox_opt(str(_refraw))",
-            "            _refkw = dict(line_color='#000000', line_dash='dashed',",
-            "                          line_width=1.0)",
-            "            _rc_raw = _refopts.get('lcolor', '')",
-            "            if _rc_raw:",
-            "                _rc = _resolve_color(_rc_raw)",
-            "                if _rc: _refkw['line_color'] = _rc",
-            "            if _refopts.get('lpattern'):",
-            "                try: _refkw['line_dash'] = OptionTranslator.translate_lpattern(_refopts['lpattern'])",
-            "                except (ValueError, TypeError): pass",
-            "            if _refopts.get('lwidth'):",
-            "                try: _refkw['line_width'] = OptionTranslator.translate_lwidth(_refopts['lwidth'])",
-            "                except (ValueError, TypeError): pass",
-            "            for _rv in _refhead.replace(',', ' ').split():",
-            "                try:",
-            "                    fig.add_layout(Span(location=float(_rv),",
-            "                                        dimension=_dim, **_refkw))",
-            "                except (ValueError, TypeError):",
-            "                    pass",
+            "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv)",
+            "        # note(), caption(), subtitle(): the helper the saved renderer runs.",
+            "        _dash_text_annotations(fig, go, _reported_subopts, gname)",
+            "        # xline()/yline(): the helper the saved renderer runs.",
+            "        _dash_reference_lines(fig, go, _reported_subopts, gname)",
             "        # xlabel()/ylabel()/xtick()/ytick(): Stata's full grammar,",
             "        # through the helper the saved renderer runs.  A 14-line",
             "        # parser here read a bare numlist and angle() and nothing",
             "        # else, so xlabel(2000(1000)4000) was ignored when served.",
-            "        _dash_apply_axis_options(fig, go, xv, yv, g_df, _num_formats)",
+            "        _dash_apply_axis_options(fig, go, xv, yv, g_df, _num_formats,",
+            "                                 _reported_subopts, gname)",
             "",
             '        # Legend boundaries.  NOT ONE of the 44 glyph calls in this loop',
             '        # passed legend_label, so a served figure had no legend at all --',
@@ -15649,7 +15752,7 @@ class ServerAppBuilder:
             "        # clickable where the saved one is not.",
             "        _dash_apply_legend(fig, _plot_rends, go.get('legend', ''),",
             "                           var_labels, _DASH_MAPPER.default_level,",
-            "                           _SCHEME_CHROME)",
+            "                           _SCHEME_CHROME, _reported_subopts, gname)",
             "",
             '        # ---- The figure\'s one HoverTool ----',
             '        # GAPS.md D2: HoverTool was imported into this file and',
@@ -15819,6 +15922,7 @@ class ServerAppBuilder:
             "        _ftitle = _dash_filter_title(fspec.get('label', ''),",
             "                                     var_labels.get(fvar, fvar), ftype)",
             "        if fvar not in df.columns:",
+            "            _dash_warn_filter_missing(fvar)",
             "            continue",
             "        # Value labels, by label set or directly by variable name.",
             "        lset = meta['val_label_names'].get(fvar, '')",
@@ -15829,7 +15933,9 @@ class ServerAppBuilder:
             "        # runs: option values, titles, steps and bounds are one rule.",
             "        widget, _sent = _dash_filter_widget(ftype, fvar, df[fvar], _ftitle, vlabels)",
             "        if widget is None:",
-            "            if ftype in ('range', 'slider'):",
+            "            if ftype not in _DASH_FILTER_TYPES:",
+            "                _dash_warn_filter_type(fvar, ftype)",
+            "            elif ftype in ('range', 'slider'):",
             "                warnings.warn(",
             "                    f\"dash: filter '{fvar}' type '{ftype}' requires numeric \"",
             "                    f\"data; skipping widget (use type(dropdown) for string \"",

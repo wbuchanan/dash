@@ -384,8 +384,13 @@ def _annotations(fig):
                         "x_offset": r.x_offset, "y_offset": r.y_offset,
                         "rows": len(idx or [])})
         elif isinstance(r, Label):
+            # Position too: the served caption sat at y = -12, where the
+            # saved renderer's own comment says a Label is clipped and
+            # never drawn, and this profile did not look.
             out.append({"kind": "Label", "text": r.text,
-                        "font": r.text_font_size, "color": r.text_color})
+                        "font": r.text_font_size, "color": r.text_color,
+                        "x": _num(float(r.x)), "y": _num(float(r.y)),
+                        "x_units": r.x_units, "y_units": r.y_units})
         elif isinstance(r, Span):
             out.append({"kind": "Span", "dimension": r.dimension,
                         "location": _num(r.location), "color": r.line_color,
@@ -760,6 +765,21 @@ CORPUS = [
     _case("a styled reference line", [_sc()], None,
           {"xline": "3000, lcolor(red) lpattern(solid) lwidth(thick)"}),
     _case("note and caption", [_sc()], None, {"note": "N", "caption": "C"}),
+    _case("note, caption and subtitle with sub-options", [_sc()], None,
+          {"note": "N, size(large)", "caption": "C, color(red)",
+           "subtitle": "S, size(small) span"}),
+    _case("graph title with sub-options", [_sc()], None,
+          {"title": "T, size(large) color(red) box"}),
+    _case("legend with an unimplemented sub-option",
+          [_sc(), plot_for("lfit")], None,
+          {"legend": "position(6) span holes(1)"}),
+    _case("xscale(range()) and yscale with an unimplemented sub-option",
+          [_sc()], None, {"xscale": "range(1500 4500)",
+                          "yscale": "reverse noline"}),
+    _case("xline with an unimplemented sub-option", [_sc()], None,
+          {"xline": "3000, lcolor(red) lstyle(foreground)"}),
+    _case("xlabel with an unimplemented sub-option", [_sc()], None,
+          {"xlabel": "#5, valuelabel", "ytitle": "Miles, orientation(vertical)"}),
     _case("graph title", [_sc()], None, {"title": "G"}),
     _case("graph title and subtitle with an ampersand", [_sc()], None,
           {"title": "R&D", "subtitle": "a & b"}),
@@ -857,6 +877,10 @@ CORPUS = [
     _case("filter(, type(slider))", [_sc()], {"filter": "price, type(slider)"}),
     _case("filter(, label())", [_sc()],
           {"filter": 'rep, type(range) label("Repair record")'}),
+    _case("filter() with a label the old gate refused", [_sc()],
+          {"filter": 'price, type(range) label("R&D __ spend")'}),
+    _case("filter() with an unknown type", [_sc()],
+          {"filter": "price, type(bogus); foreign, type(dropdown)"}),
     _case("two filters, filterposition(left)", [_sc()],
           {"filter": "foreign, type(dropdown); price, type(range)",
            "filter_position": "left"}),

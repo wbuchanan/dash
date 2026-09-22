@@ -1330,7 +1330,7 @@ contradiction was documented, not accidental.
 
 ---
 
-## WP-14 · Sub-options stop vanishing
+## WP-14 · Sub-options stop vanishing — DONE
 
 **Gaps closed:** E3 · **Severity:** S2 · **Effort:** M · **Depends on:** WP-13
 
@@ -1338,39 +1338,84 @@ contradiction was documented, not accidental.
 > sub-options did nothing — `dash.sthlp:162` promises "nothing is ever dropped
 > without being named".
 
-### Business requirements
+### What was measured before any code changed
 
-- **BR-14.1** `dash.sthlp:162`'s promise — "nothing is ever dropped without
-  being named" — holds for sub-options as well as options.
-- **BR-14.2** A security filter may refuse input, but never silently.
+Every E3 premise held, in both render modes: `legend(span stack holes(1)
+keygap(2))`, `xlabel(, valuelabel)`, `ylabel(, labcolor(red))`,
+`yscale(reverse noline titlegap(2))`, `xline(3000, lstyle(foreground))`,
+`filter(price, type(bogus))` and `filter(nosuchvar, ...)` all rendered with
+rc 0 and no warning; `filter(price, type(range) label("R&D __ spend"))`
+and `label("open the door")` produced no widget; `xtitle("Weight",
+orientation(vertical))` titled the axis with the sub-option text. One E3
+claim was stale: `xline(3000, lcolor() lpattern())` is honoured (WP-10's
+corpus pins it), so it is not named.
 
-### Technical requirements
+The sink analysis for the filter text: the label reaches only a Bokeh
+widget title (entity-escaped into the page) and, served, a `repr` Python
+literal; the filter JavaScript carries varname, type and sentinel only.
+Nothing in the label is evaluated anywhere. The old `_UNSAFE_F` gate
+protected nothing and refused real labels.
 
-- **TR-14.1** Add an unknown-sub-option warning to `_rebuild_legend`
-  (`dash_render.py:8956`), the axis-label and axis-scale parsers, `xline()`,
-  and `xtitle()`. Only `xscale`/`yscale` warn today
-  (`_report_unhandled_scale_opts:805`), and only for 5 tokens.
-- **TR-14.2** `by()` — covered by TR-11.2.
-- **TR-14.3** Stop `_parse_filter_raw` (`:8730-8774`) discarding a whole
-  `filter()` group in silence when its text trips `_UNSAFE_F` or the varname
-  regex. A legitimate `label("R&D __ spend")` makes the widget vanish with
-  `rc=0`. Warn, and narrow the pattern so it matches genuine injection rather
-  than ordinary label text.
-- **TR-14.4** Warn on an unrecognised filter `type()` (`:11804-11805`, server
-  `:15462-15463`), which currently produces no widget and no message.
+### Technical requirements, as delivered
 
-### Acceptance criteria
+- **TR-14.1** One reporter, `_dash_report_suboptions`, in by()'s words
+  (`dash: legend() sub-option(s) not implemented and ignored: span
+  stack`), once per graph per render, from shared code: legend
+  (`_dash_legend_unsupported`), the axis grammar (`_dash_parse_axis_spec`
+  records what it does not honour; `_dash_apply_axis_options` names it),
+  the scales (`_dash_scale_spec`, which subsumes the old five-token
+  warning), the textboxes (`_dash_textbox`: title, subtitle, note,
+  caption, xtitle, ytitle -- size() and color() honoured, the rest named;
+  the text split from its sub-options), and the reference lines
+  (`_dash_reference_lines`).
+- **TR-14.2** by(): WP-11.
+- **TR-14.3** `_dash_parse_filter_raw` is the one parser for both modes. It
+  refuses a group only for a variable or exclude() name that is not a
+  name, or a type() it does not build, and says so; a stray token is
+  named; the label may be any text but a semicolon (the group separator,
+  on the Stata side too -- documented).
+- **TR-14.4** An unknown `type()` is named with the three accepted types, in
+  the parser and in both widget loops; a variable not in the data is named
+  too.
 
-- **AC-14.1** Every sub-option in the GAPS E3 list produces a named warning.
-- **AC-14.2** `filter(x, label("R&D __ spend"))` produces a widget.
-- **AC-14.3** `filter(x, type(bogus))` warns.
+### Acceptance
 
-### Test plan
+- **AC-14.1** every E3 sub-option: `test_suboption_warnings.py` (both modes,
+  13 named cases, 7 honoured-only cases) and `test_suboption_reporting.cscript`
+  SR-01 to SR-09.
+- **AC-14.2** `filter(x, label("R&D __ spend"))` produces the widget, in
+  both modes and from Stata (SR-07).
+- **AC-14.3** `filter(x, type(bogus))` warns, naming the accepted types.
 
-| Kind | Test | Asserts |
-|---|---|---|
-| Cert | new `test_suboption_reporting.cscript` | Each E3 sub-option is named once |
-| Unit | `test_filters.py` | Benign labels survive; genuine injection payloads are still refused **and reported** |
+### Found on the way
+
+- `ylabel(#5, grid)` was silently ignored: the stripped sub-option left its
+  comma behind and `#5,` matched no keyword form. Fixed.
+- Three served divergences the parity corpus lacked: `title()` size() and
+  color() (15px red saved, 13px grey served), `xscale(range())` (dropped
+  served), and the caption at y = -12 served, where the saved renderer's
+  own comment says a Label is clipped. All three now run one text, the
+  parity profile records a Label's position, and the corpus carries each.
+- Not covered, and said so: `plotregion()`, `graphregion()`, the `*2` axis
+  options, `colorcuts()` and `tabs()` still drop their sub-options in
+  silence.
+
+### Verification, measured 22sep2026
+
+| Suite | Result |
+|---|---|
+| `test_suboption_warnings.py` (both modes) | 39 passed |
+| `test_suboption_reporting.cscript` SR-01 to SR-09 | ALL CHECKS PASSED |
+| Parity guard `test_mode_parity.py`, corpus + 8 | 2048 passed, 1 skipped (layout(bs), stated), 5 xfailed |
+| Full Python suite (`-n auto`) | 6357 passed, 54 skipped (stated reasons), 6 xfailed, 0 failed |
+| Full certification suite | 40 passed, 0 failed, 0 skipped |
+
+Four `test_server.py` xscale tests grepped the generated source for the
+old emitted text (`x_range.flipped`, `_xs_toks`); they now assert on the
+served document (flipped ranges, `LogScale`), and BUG-21e's
+comma-separated `filter(foreign, type(dropdown), exclude(g1))` caught
+the shared parser reading `type(dropdown),` as an empty type -- fixed,
+and pinned in `test_suboption_warnings.py`.
 
 ---
 

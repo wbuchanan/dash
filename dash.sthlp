@@ -203,6 +203,13 @@ This help file documents only the features that differ from or extend
     is abbreviated {cmd:title()} and works, but {cmd:titel(x)} appears in
     the note.  Nothing is ever dropped without being named.  The full list
     is in {help dash##unsupported:Unsupported Stata twoway options}.
+    The same holds one level down: a sub-option of {cmd:legend()},
+    {cmd:xlabel()}/{cmd:ylabel()}, {cmd:xscale()}/{cmd:yscale()},
+    {cmd:xtitle()}/{cmd:ytitle()}, {cmd:title()}, {cmd:subtitle()},
+    {cmd:note()}, {cmd:caption()}, {cmd:xline()}/{cmd:yline()} or
+    {cmd:filter()} that {cmd:dash} does not implement is named in a
+    warning, as {cmd:by()}'s are:
+    {cmd:dash: legend() sub-option(s) not implemented and ignored: span stack}.
     A weight expression -- {cmd:[aweight=}{it:exp}{cmd:]}, {cmd:[fweight=]},
     {cmd:[pweight=]} or {cmd:[iweight=]} -- is accepted on any plot, so a
     pasted command still runs, but nothing is weighted; the weight is named
@@ -435,6 +442,14 @@ Syntax:
 
 {phang2}{cmd:label(}{it:string}{cmd:)} — the text shown beside the widget.
     Without it the variable's own label is used, and failing that its name.
+    The text may be anything but a semicolon, which separates filters.
+
+{pstd}
+{cmd:type()} must be one of the three above; any other value is named in a
+warning and no widget is built.  A group whose variable is not in the data,
+or whose {cmd:exclude()} names are not valid names, is refused with the
+same kind of warning.  Any other sub-option is accepted, named in a
+warning, and ignored.
 
 {pstd}
 {ul:More than one filter.}  Give {cmd:filter()} as many times as you need on

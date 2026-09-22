@@ -3501,50 +3501,53 @@ class TestServerLpolyFpfit:
 # P4-74 — server-mode xscale/yscale reverse
 # ================================================================
 class TestServerXscaleYscaleReverse:
-    """Server-mode xscale(reverse)/yscale(reverse) must emit flipped assignments."""
+    """xscale(reverse)/yscale(reverse)/xscale(log) in the served DOCUMENT.
+
+    These used to grep the generated source for the emitted assignment
+    text (``x_range.flipped``, ``_xs_toks``).  The scale and the flip are
+    now applied by the helpers the saved renderer runs as well
+    (``_dash_scale_spec``/``_dash_apply_scale_ranges``, copied into the
+    app by name), so the text is gone and the document is what matters.
+    """
+
+    def _figure(self, dr_module, auto_df, mod_name, **gopts):
+        from bokeh.models import Plot
+        graph_opts = {"name": "g1"}
+        graph_opts.update(gopts)
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": graph_opts,
+        }])
+        doc, _ = _exec_doc(dr_module, auto_df, spec, mod_name)
+        figs = [m for m in doc.models if isinstance(m, Plot)]
+        assert len(figs) == 1, figs
+        return figs[0]
 
     def test_xscale_reverse_in_server_source(self, dr_module, auto_df):
-        """P4-74: xscale(reverse) → generated source contains flipped = True for x_range."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "xscale": "reverse"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "x_range.flipped" in source, "xscale(reverse) must produce x_range.flipped in source"
+        """P4-74: xscale(reverse) flips the served x range, and only it."""
+        fig = self._figure(dr_module, auto_df, "_xsr_x", xscale="reverse")
+        assert fig.x_range.flipped is True
+        assert not fig.y_range.flipped
 
     def test_yscale_reverse_in_server_source(self, dr_module, auto_df):
-        """P4-75: yscale(reverse) → generated source contains flipped = True for y_range."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "yscale": "reverse"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "y_range.flipped" in source, "yscale(reverse) must produce y_range.flipped in source"
+        """P4-75: yscale(reverse) flips the served y range, and only it."""
+        fig = self._figure(dr_module, auto_df, "_xsr_y", yscale="reverse")
+        assert fig.y_range.flipped is True
+        assert not fig.x_range.flipped
 
     def test_xscale_log_reverse_server_source(self, dr_module, auto_df):
-        """P4-76: xscale(log reverse) must produce both x_axis_type and flipped in source."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "xscale": "log reverse"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "x_axis_type" in source
-        assert "x_range.flipped" in source
+        """P4-76: xscale(log reverse) gives a log x scale AND a flipped range."""
+        from bokeh.models import LogScale
+        fig = self._figure(dr_module, auto_df, "_xsr_lr", xscale="log reverse")
+        assert isinstance(fig.x_scale, LogScale), type(fig.x_scale)
+        assert fig.x_range.flipped is True
 
     def test_xscale_log_only_uses_runtime_conditional_for_flip(self, dr_module, auto_df):
-        """P4-74b: xscale(log) — generated source guards flipping with runtime token check.
-
-        The flip code is always emitted as a conditional; we verify x_axis_type is present
-        and that the reverse guard condition is in the source.
-        """
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "xscale": "log"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "x_axis_type" in source
-        # Flip guarded by runtime token check — not unconditionally applied
-        assert "_xs_toks" in source, "Generated source must use token-based xscale parsing"
+        """P4-74b: xscale(log) alone is a log scale and NOT a flip."""
+        from bokeh.models import LogScale
+        fig = self._figure(dr_module, auto_df, "_xsr_l", xscale="log")
+        assert isinstance(fig.x_scale, LogScale), type(fig.x_scale)
+        assert not fig.x_range.flipped
 
 
 # ================================================================

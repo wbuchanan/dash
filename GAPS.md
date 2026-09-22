@@ -724,7 +724,7 @@ one twice to prove it changes the document -- 86 options, all live.
 The `_dash_prepare_spec` row is unchanged.
 | `saving()`, `replace`, `server` in `_dash_prepare_spec` | `:2009, 2019, 2020` | Declared and never referenced in the body. Harmless for `dash build`; `dash serve` forwards them through its `*`, so they would be accepted-and-ignored if C1 were fixed. |
 
-### E3. Sub-options vanish without a note — S2, MEASURED
+### E3. Sub-options vanish without a note — S2, CLOSED by WP-14
 
 `legend()`, `xlabel()`, `yscale()`, `by()`, `xline()`, `filter()` are all
 declared `string asis`, so unknown *sub*-keys never reach the ignored-option
@@ -753,6 +753,23 @@ is discarded **whole**, with `rc=0` and no message. A legitimate
 `label("R&D __ spend")` makes the entire filter widget vanish. An
 unrecognised `type()` is likewise skipped silently (`:11804-11805`, server
 `:15462-15463`).
+
+**Closed by WP-14.** One reporter, in by()'s words -- `dash: <option>()
+sub-option(s) not implemented and ignored: <tokens as written>` -- from code
+both render modes run, once per graph per render: `legend()`,
+`xlabel()`/`ylabel()`/`xtick()`/`ytick()`, `xscale()`/`yscale()`,
+`title()`/`subtitle()`/`note()`/`caption()`/`xtitle()`/`ytitle()`,
+`xline()`/`yline()` and `filter()`. The filter parser refuses aloud, and
+only for a name that is not a name or a `type()` it does not build: the
+label reaches nothing but a Bokeh widget title and a `repr` literal, so the
+old gate refused `label("R&D __ spend")` and protected nothing. On the way:
+`xtitle("Weight", size(large))` no longer titles the axis with the
+sub-option text; `ylabel(#5, grid)` was silently ignored (the stripped
+sub-option left its comma behind); and three served divergences the parity
+guard now names -- `title()` size()/color(), `xscale(range())`, and the
+caption's position. Not covered, and said so: `plotregion()`,
+`graphregion()`, `xlabel2()`/`ylabel2()`/`xscale2()`/`yscale2()`,
+`colorcuts()` and `tabs()` still drop their sub-options in silence.
 
 ### E4. `bw()` silently changes meaning — S2, CLOSED by WP-13
 

@@ -95,7 +95,10 @@ def _render_raw(raw, df=None, variable_labels=None):
     with open(dp, "w") as f:
         json.dump(data, f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    # A second render() would re-home the same Bokeh models in a new
+    # document and fail; keep the one document's HTML for the callers that
+    # need to look at it.
+    dr.rendered_html = dr.render()
     for p in (sp, dp, op):
         try:
             os.unlink(p)
@@ -153,13 +156,25 @@ class TestTheLabelIsNotAnInjectionVector:
             "foreign": np.array([0.0, 1.0] * 10),
         })
         raw = "%s, type(%s) label(%s)" % (var, ftype, payload)
-        try:
-            dr = _render_raw(raw, df=df)
-        except Exception:
-            return          # rejected outright is also a correct outcome
-        out = dr.render() if False else None
-        # re-render to inspect the document
-        assert dr.filter_widgets, raw
+        import warnings as _w
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            try:
+                dr = _render_raw(raw, df=df)
+            except Exception:
+                return          # rejected outright is also a correct outcome
+        # Since WP-14 a refused filter group is refused ALOUD: the parser
+        # names the group and the reason rather than dropping it in
+        # silence.  The payload with the ';' splits into groups whose
+        # variable tokens are not names, and each is refused with a
+        # warning.  Either outcome -- a widget whose title Bokeh escapes,
+        # or a named refusal -- is correct; silence is not.
+        refused = [str(c.message) for c in caught
+                   if "filter(" in str(c.message) and "refused" in str(c.message)]
+        assert dr.filter_widgets or refused, (raw, [str(c.message) for c in caught])
+        if dr.filter_widgets:
+            assert payload not in dr.rendered_html, (
+                "the payload reached the document unescaped")
 
 
 class TestTheTitleIsNotDoubleEscaped:
