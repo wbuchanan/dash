@@ -1684,7 +1684,7 @@ reference-line and legend sub-options.
 
 ---
 
-## WP-16 · Schemes reach the page
+## WP-16 · Schemes reach the page — DONE
 
 **Gaps closed:** G3, G4, G5, G6 · **Severity:** S1/S2 · **Effort:** M · **Depends on:** WP-09
 
@@ -1692,63 +1692,371 @@ reference-line and legend sub-options.
 > to look like s1color — including *not* drawing gridlines s1color does not
 > draw.
 
-### Business requirements
+### What was measured before any code changed
 
-- **BR-16.1** A chosen scheme governs what is drawn, including what is *not*
-  drawn.
-- **BR-16.2** No scheme directive is parsed without reaching rendered output.
-- **BR-16.3** Relative-size units convert on Stata's scale, not an invented
-  one.
+The rendered baseline, 22sep2026: every one of the 14 shipped schemes in
+both modes, four cases each (a scatter with a line and title, subtitle,
+note and caption; a bar; a scatter with a KPI; a scatter with
+`xlabel(, grid)`), read off the Bokeh models. Every scheme drew a minor
+grid on both axes (`#505050` in twelve, `#808080` s1rcolor, `#ffffff`
+economist) at alpha 1.0, the four that draw no major grid included
+(s1color, s1mono, s1rcolor, stmono1). `fig.title` was Bokeh's
+`#444444`/`13px` under all 14, dark grey on s1rcolor's black plot; the
+subtitle, note and caption Labels were the literals 13px `#444444`, 11px
+`#555555` and 12px `#555555` under all 14; axis titles and tick labels
+`#444444` under all 14. The legend sat `top_right`, vertical, `ncols` auto
+under all 14 while the schemes say 6 o'clock in two columns (nine of
+them), 3 o'clock in one (stcolor, stgcolor, stmono1, stmono2) and 12
+o'clock in three (economist). Every KPI card was inline `#f8f9fa` on
+`#dee2e6` under all 14, and no card Div carried a stylesheet. economist's
+heading was 7pt under an 11pt subtitle (`int(6.0 * 1.2)`) and its lines
+1.2px against every other scheme's 1.5px. `xlabel(, grid)` drew `#e5e5e5`
+on the ten schemes whose x grid is off. Markers were 8.0px medium, 5.82px
+small, 10.18px large. Warnings: none. The two modes agreed on every figure
+value; their one disagreement was the whitespace of the KPI Div.
 
-### Technical requirements
+The Stata truth, read from `scheme-*.scheme` and `style/*.style` with no
+Stata run: minor grids off on both axes in all 14 chains, economist's y
+axis through `vertical_nolinetick` and `draw_minor_nlt_vgrid`; the bare
+`draw_minor_grid` and `draw_major_grid` keys are read by no style file.
+The textbox mapping: `title()` is `heading`, `subtitle()` `subheading`,
+`caption()` `body`, `note()` `small_body` (not `gsize note`, which every
+scheme declares and no textbox reads), legend entries `key_label`, axis
+titles `axis_title`, tick labels `tick_label`; a KPI card's nearest Stata
+object is the legend box (`color legend`, `color legend_line`, text `color
+text`). Units: every `gsize-*`, `symbolsize-*` and `linewidth-*` style is
+`sztype relative`, 100 is the graph's smaller dimension, 2.88pt per unit
+at the four-inch reference (medium 3.8194 = 11pt; the style files' own
+comments say so, and `test/fixtures/scheme_visual/truth.json` measures it);
+the symbolsize ladder is not the gsize ladder (large over medium 1.59
+against 1.27); economist's `gsize heading 6.0` is 17.28pt and its
+`linewidth p 1.2` four times medium. Every value dash's translated files
+already carried agreed with the chains; what they lacked was every
+`draw_minor_*`, `color
+subheading/body/small_body/text/axis_title/tick_label/key_label/foreground`,
+`gsize subheading/body/small_body/key_label`, `linewidth
+minor_grid/axisline` and `numstyle legend_rows`.
 
-- **TR-16.1 (G3, highest severity here).** Stop setting the minor grid
-  unconditionally at `dash_render.py:2185`. Measured: s1color and stmono1
-  draw **no** major grid and a `#505050` minor grid on both axes; s2color
-  draws a pale `#eaf2f3` major and a dark `#505050` minor. Stata draws none of
-  these — its schemes declare `draw_minor_grid no`. Add `draw_minor_hgrid` /
-  `draw_minor_vgrid` to the translated scheme files and to the parser, and
-  default to off.
-- **TR-16.2 (G5).** Fix the `gsize` scale factor at `:1846-1849`:
-  `int(val * 1.2)` should be `× 2.880` — Stata's `gsize-medium.style` is
-  `3.8194` = 11 pt on a 4-inch graph. `economist`'s `gsize heading 6.0` means
-  ≈17 pt; dash renders 7 pt, smaller than its own subtitle.
-- **TR-16.3 (G5).** Fix the `linewidth` interpretation at `:1899-1911`, which
-  takes the number as pixels. Stata's `linewidth medium` is `.30`; economist's
-  `linewidth p 1.2` is 4× medium, and currently renders *thinner* than every
-  other scheme.
-- **TR-16.4 (G4).** Wire or remove the parsed-but-unconsumed attributes:
-  `note_font_size` (`:2047`, note/caption sizes hardcoded at `:9866-9868`),
-  `p_mark_colors` (`:1980`, never indexed by `default_color` at `:2103-2112`),
-  `legend_position` and `legend_cols` (`:2086-2088` — dead standalone, and
-  dead in the server too because `lg.location = 6` at `:12661` raises
-  `ValueError` in Bokeh 3.9 and takes `legend_cols` down with it inside the
-  same `try`). **Split that `try` block** regardless.
-- **TR-16.5 (G4).** Apply `color heading` / `gsize heading` to Bokeh figure
-  titles — they reach only the dashboard CSS today, so every scheme renders
-  `#444444` / `13px`.
-- **TR-16.6 (G6).** Stop the inline `style=` on KPI cards (`:10484-10495`,
-  server `:12977-12982`) overriding `css_block()`'s `.db-kpi-card` rule. Move
-  the scheme-driven values into the class.
-- **TR-16.7** Remove the hardcoded `g.grid_line_color = "#e5e5e5"` at `:9188`
-  in favour of the scheme's `color major_grid`.
+Three claims in this package as first written were stale at the WP-16
+baseline (`52c473c`): the major grid was already per axis from
+`draw_major_hgrid`/`draw_major_vgrid`, so G3 was the minor grid alone; the
+served legend already ran the shared `_dash_apply_legend`, so the
+`lg.location = 6` `ValueError` of the old TR-16.4 no longer existed and
+the two attributes were simply unread in both modes; and the served app
+already built a real `SchemeParser` from `_SCHEME_PROPS`, so glyph
+colours, symbols, patterns, alphas and marker sizes were already in
+parity. The test side explained why all of it passed: `test_scheme_fidelity.py`
+compares parsed attributes to the fixture and by its own docstring refuses
+the pt/px conversion; nothing read `minor_grid_line_color`, a Label's
+font, the legend's placement or a card's style off a figure; and the
+parity profile recorded neither the minor grid nor the card's style, so a
+one-mode change there would have been invisible.
 
-### Acceptance criteria
+### Technical requirements, as delivered
 
-- **AC-16.1** Under s1color and stmono1, both major and minor grids are absent.
-- **AC-16.2** economist's title renders larger than its subtitle, and its
-  lines render thicker than s2color's.
-- **AC-16.3** A KPI card under economist uses the scheme's legend colours.
-- **AC-16.4** No scheme attribute is parsed without a consumer.
+- **TR-16.1 (G3)** `scripts/extract_scheme_truth.py` extracts `yesno
+  draw_minor_grid/draw_minor_hgrid/draw_minor_vgrid`, `color
+  subheading/body/text/small_body/axis_title/tick_label/key_label/foreground`,
+  `gsize subheading/body/small_body/key_label`, `linewidth
+  minor_grid/axisline` and `numstyle legend_rows`, writes the EFFECTIVE
+  per-axis flags through the axisstyle indirection (economist's y axis
+  from `draw_major_nlt_vgrid`/`draw_minor_nlt_vgrid`), and records
+  `_meta.units` with the three ladders and the pt formula;
+  `test/fixtures/scheme_truth.json` and the 14 `schemes/*.scheme` are
+  regenerated from it, additions only. `SchemeParser` gains
+  `draw_minor_hgrid`/`draw_minor_vgrid` (default no),
+  `subheading_font_size`, `body_font_size`, `small_body_font_size`,
+  `key_label_font_size`, `subheading_color`, `body_color`,
+  `small_body_color`, `text_color`, `axis_title_color`, `tick_label_color`,
+  `key_label_color`, `minor_grid_line_width` and `legend_rows`, each with
+  its s2color value in `_FALLBACK_PROPS`. `apply_to_figure` colours a minor
+  grid only where the axis's flag is yes, else `None`, at
+  `minor_grid_line_width`. After the review: `axis_line_width` (`linewidth
+  axisline`, through `_lwidth` with a thin default) is parsed too and
+  `apply_to_figure` sets each axis's `axis_line_width` from it; `color
+  foreground` is carried in the files and the fixture with no parser
+  attribute, because no Bokeh property answers to it.
+- **TR-16.2 (G5)** `_gsize` numeric is `val * 2.88` pt, formatted `%g`, no
+  `max(6, ...)` floor, no `int()`; `_GSIZE_PT` minuscule 1pt and vhuge 28pt;
+  `_lwidth` numeric is `val * 5.0` px, so keyword medium .30 and numeric
+  .30 are both 1.5px and economist's 1.2 is 6.0px; a `_SYMBOLSIZE_PT`
+  ladder (zero 0, vtiny 0.29, tiny 1.0, vsmall 1.5, small 3.0, medsmall 3.6,
+  medium 4.4, medlarge 5.6, large 7.0, vlarge 9.0, huge 14.0, vhuge 16.0,
+  ehuge 32.0) with `_markersize_px` anchored at medium 4.4pt = 8px. The
+  linewidth keyword ladder `_LWIDTH_MAP` is untouched (a follow-up, below).
+- **TR-16.3 (G4)** `apply_to_figure` sets `fig.title.text_color` and
+  `text_font_size` from `color heading`/`gsize heading` and each axis's
+  `axis_label_text_color`/`major_label_text_color` from `color
+  axis_title`/`color tick_label`; `_dash_figure_title` still runs after it,
+  so `title(, size() color())` wins. `_dash_text_annotations(fig,
+  graph_opts, seen, key, scheme=None)` draws `subtitle()` at subheading
+  size and colour, `note()` at small_body size and colour and
+  `caption()` at body size and colour, falling back to
+  `_DASH_TEXTBOX_DEFAULTS` only when no scheme is passed; both call sites
+  pass one. `note_font_size` stays parsed for the fidelity check and is
+  read for nothing.
+- **TR-16.4 (G4)** One module-level `_dash_scheme_chrome(scheme)` builds
+  the legend chrome for `_rebuild_legend` and the served call: background,
+  border, label size and colour from `key_label`, `legend_position`,
+  `legend_cols`, `legend_rows`. `_dash_apply_legend` applies the scheme's
+  placement only when the user gave no `position()`, `pos()`, `ring()` or
+  keyword: 6 is below and horizontal in `legend_cols` columns, 12 above and
+  horizontal, 3 right and vertical, 9 left, the other clock values through
+  `_DASH_CLOCK_SIDE`; user `cols()`/`rows()` win. After the review: a
+  legend the scheme or a user `position()` puts in a side panel is inserted
+  nearest the plot (after the axis in `fig.below`/`fig.above`, before every Label, Stata's
+  `legend_ring 3` inside note, caption, subtitle and title) and centred
+  (`location = "center"`); a user `rows()` alone sets `ncols` to `"auto"`
+  and `cols()` alone `nrows` to `"auto"`, so the scheme's columns never
+  survive a user `rows()`; a `clockdir legend_position` outside 1-12 or a
+  negative `legend_cols`/`legend_rows` is refused with the `dash scheme:`
+  warning and the default used.
+- **TR-16.5 (G4)** `default_color(index, plot_type)` reads `p_mark_colors`
+  for the marker types (scatter, scatteri, dot, dropline, connected's
+  markers, rscatter, pcscatter). Equal to `p_colors` in every shipped
+  scheme, so no rendered change; a user scheme declaring `color p1mark`
+  now works. After the review the lookup is gated on the glyph, not on the
+  plot type's "scatter" alias: the marker glyphs of scatter, scatteri, dot,
+  rscatter, pcscatter, dropline and rcapsym read `p#mark`; the Segments of
+  spike, rcap, rspike, pcspike and pcarrow and the line halves of dropline
+  and rcapsym read `p#`, as Stata's `p#mark`/`p#line`/`p#other` split
+  intends.
+- **TR-16.6 (G6)** One module-level `_dash_kpi_card_html(title, value,
+  subtitle, color, bgcolor, name, scheme)` writes the card for
+  `_make_kpi_div`, the served `_dash_kpi_card` and, mirrored, the JS
+  rebuild in `_FILTER_JS`: class `db-kpi-card`, the layout-only inline
+  properties, no inline background or border unless `bgcolor()` was given
+  (then `background:<explicit>` inline, and it wins; the JS config sends
+  "" when it is not explicit), value colour `color()` or the scheme's
+  `text_color`, title and subtitle `text_color` plain. Every card Div in
+  both modes gets `stylesheets=[InlineStyleSheet(scheme.css_block())]`,
+  because a Bokeh 3 Div renders in a shadow root; `css_block` emits
+  `.db-kpi-card { background-color: <legend>; border: 1px solid
+  <legend_line>; color: <text>; }`, `.db-title` at heading colour and size
+  and `.db-subtitle` at subheading colour and size.
+- **TR-16.7 (G6)** `_dash_apply_axis_options(..., grid_color=None)`: the
+  `xlabel(, grid)` branch colours the grid it turns on with the scheme's
+  grid colour, not `"#e5e5e5"`; both callers pass `scheme.grid_color`.
+- **TR-16.8** Served app: `_dash_apply_scheme(fig)` is
+  `_DASH_SCHEME.apply_to_figure(fig)` and its hand-copied body is gone; the
+  unread served constants (`_SCHEME_NAME`, `_SCHEME_MARKER_SIZE`,
+  `_SCHEME_FILL_ALPHA`, `_SCHEME_BAR_ALPHA`, `_SCHEME_AREA_ALPHA`,
+  `_SCHEME_LINE_WIDTH`, `_SCHEME_COLORS`, `_SCHEME_SYMBOLS`,
+  `_SCHEME_LINE_PATTERNS`, `_SCHEME_CONNECT_PATTERNS`, `_SCHEME_CHROME`) and
+  the helpers `_dash_scheme_color/_symbol/_dash` are deleted;
+  `_SCHEME_GRAPHSIZE_X/Y` stay, and the served figure takes the standalone
+  aspect fallback to the scheme's graphsize ratio.
+- **TR-16.9** `test_scheme_fidelity.py` checks every new directive
+  parsed-against-truth for all 14 schemes; the new
+  `test_scheme_rendered_output.py` reads the values above off real figures
+  for all 14 schemes in both modes and asserts the two modes' profiles
+  equal; `test_mode_parity.py`'s profile records the minor grid and its
+  width, the axis line and text colours, the title style, the legend's
+  `ncols`/`nrows`/label colour, and a card's class, inline background and
+  stylesheet text, with four new corpus entries (s1color with a legend and
+  a KPI; economist with the four texts and a legend; stcolor's default
+  legend placement; an explicit `bgcolor()` under economist). Wrong-value
+  pins restated: `test_scheme_coercion.py` (numeric linewidth is Stata's
+  unit; no 6pt floor), `test_kpi.py`, `test_kpi_security.py` and
+  `test_option_validation.py` (no inline background, the class rule
+  carries it; the KPI value's default colour is the scheme's `color text`,
+  not `#212529`); and `test_scheme.py` `TestApplyToFigure` gains a
+  minor-grid test (`None` under s2color). After the review: the parity
+  `_chrome` profile also records `aspect_ratio`, `min_height`,
+  `max_height`, the minor grid's width and the axis line width, and
+  `_kpi_card` the value and title colours; the corpus gains "by() with a
+  graph title" and "legend(rows(1)) with three series under s2color"; the
+  note Label is checked against the fixture's `small_body_color`; and the
+  new `test_scheme_review_fixes.py` pins each renderer fix listed under
+  "Found on the way".
+- **TR-16.10** `BUGS.md`: the G3 entry written first, then G4, G5 and G6;
+  `GAPS.md` G3-G6 closed with the measured before and after; `dash.sthlp`'s
+  scheme section says what a scheme governs on the page, on which unit
+  scale, how an `#include` in a user `.scheme` file is resolved, and that
+  an explicit option wins.
 
-### Test plan
+### Acceptance
 
-| Kind | Test | Asserts |
-|---|---|---|
-| Unit | `test_scheme_fidelity.py` — **strengthen** | Today it asserts attributes are *exposed*; it must assert they reach rendered output. This is why G4 passed the suite |
-| Unit | new `test_scheme_rendered_output.py`, all 14 schemes | Grid colours, title colour/size, line width, KPI card colours read back off real Bokeh models |
-| Truth | `scripts/extract_scheme_truth.py` | Add `draw_minor_*`, and the `gsize`/`linewidth` unit conversions |
-| Regression | `BUGS.md` entry for G3 | Written first |
+- **AC-16.1** minor grid `None` on both axes under all 14 schemes in both
+  modes, and major `None` too under s1color, s1mono, s1rcolor and stmono1:
+  `test_scheme_rendered_output.py`.
+- **AC-16.2** economist's title 17.28pt over its 11pt subtitle Label, and
+  its line 6.0 over s2color's 1.5, in both modes: `test_scheme_rendered_output.py`.
+- **AC-16.3** a KPI card under economist carries no inline background and
+  an `InlineStyleSheet` whose `.db-kpi-card` rule is `#c6d3df` on
+  `#c6d3df`; `bgcolor(#ecf0f1)` is still inline: `test_scheme_rendered_output.py`.
+- **AC-16.4** every parsed attribute has a consumer, with one stated
+  exception: `note_font_size` (`gsize note`) is kept parsed for the
+  fidelity check and read for nothing, because Stata's note textbox reads
+  `small_body`; `graphsize x/y` stays ratio-only, as the figure-proportions
+  help documents.
+- **AC-16.5** both modes agree on every value above: the per-scheme
+  profiles are asserted equal in `test_scheme_rendered_output.py`, and the
+  widened parity guard stays green.
+
+### Found on the way
+
+- `gsize note` is declared by every scheme and read by no Stata textbox;
+  the note textbox is `small_body`. dash's `note_font_size` read the wrong
+  key, and any fix that wired it would have drawn economist's notes at
+  14pt where Stata draws 8pt.
+- economist's y axis is `axisstyle vertical_default vertical_nolinetick`,
+  whose style file reads `draw_major_nlt_vgrid`/`draw_minor_nlt_vgrid`, not
+  `draw_major_vgrid`; the same yes/no by coincidence, so the fixture now
+  records the effective per-axis flag rather than the bare key.
+- `SchemeParser._parse_file` takes `tokens[-1]` as the value, so a quoted
+  RGB triple in a user scheme (`color major_grid "200 200 200"`, which
+  Stata documents) is misread; the shipped files write hex and avoid it.
+  Not fixed here; WP-17's territory. A `#include` in a user file is
+  resolved against dash's own search path -- the working directory, then
+  the fourteen translations -- never Stata's ado tree; an unresolvable one
+  is skipped in silence. The help as first written said the file had to be
+  self-contained and could include only a shipped name; the review
+  corrected it to the resolution order above.
+- The linewidth keyword ladder `_LWIDTH_MAP` keeps ratios that are not
+  Stata's (dash thin .533 of medium, Stata .667; dash vthick 2.33, Stata
+  4.667). Not fixed here; recorded as a follow-up.
+- s1rcolor's bar alpha 0.8 is scheme-driven (`intensity bar inten80`), not
+  a defect; `p_mark_colors` equals `p_colors` in all 14 shipped schemes,
+  so TR-16.5 exists for user schemes only.
+- The visual delta the risk table asks to state: every dashboard loses
+  its minor grid; s1color, s1mono, s1rcolor and stmono1 lose every grid
+  line; economist's title grows from 7pt to 17.28pt and its lines from
+  1.2px to 6px; KPI cards take the scheme's legend colours (black with
+  white text under s1rcolor, `#c6d3df` under economist); legends move to
+  the scheme's clock position and columns; markers under the st* schemes
+  shrink from 5.82px to 5.45px and economist's grow from 10.18px to
+  12.73px; every text under s1rcolor turns white; figure titles take the
+  scheme's heading colour and size.
+- Stale line references, in G3-G6 and in this package as first written,
+  were measured at `187a786`; at `52c473c` the minor-grid assignment was
+  at `dash_render.py:2365` (served `:14617`), `_gsize` at `:2024`, `_lwidth`
+  at `:2083`, the parser rows at `:2145-2268`, `default_color` at `:2274`,
+  the `"#e5e5e5"` literal at `:9379`, the textbox literals at `:10018`, the
+  card markup at `:12362` (served `:14910`, JS `:8163`).
+- The adversarial review of this package (22sep2026) found, and the same
+  package fixed before commit, each with its test written first in the new
+  `test/test_scheme_review_fixes.py` unless said otherwise, and each an
+  entry in `BUGS.md`:
+  `layout(bs)` with a KPI or a filter widget was a blank page, pre-existing
+  and S1: `_render_bootstrap_html` scraped the head of Bokeh's `file_html`
+  with a non-greedy `<head>(.*?)</head>`, and Bokeh 3.9's inlined
+  `bokeh-widgets.min.js` contains the literal `<head></head>` 189,588
+  characters into the 378,283-character bundle, so the widgets script was
+  cut there and never closed -- 3 `<script` opens against 2 `</script>`
+  closes, no `/* END bokeh-widgets.min.js */` marker, `Uncaught
+  SyntaxError` in the browser and a white page, at HEAD as well; the same
+  page without a KPI rendered, and the checked-in sample pages were made
+  with a bundle that lacked the string. Fixed by taking the head up to the
+  last `</head>` (`rfind`); pinned by the open/close count and the END
+  marker.
+- Review: the scheme-placed legend was the outermost item on its side
+  (under s2color `fig.below = [axis, note, caption, legend]`; under
+  economist Bokeh's reversed `fig.above` put it between the title and the
+  subtitle) where Stata's rings put it nearest the plot (`legend_ring 3`,
+  note 4, caption 5, subtitle 6, title 7), and right-aligned (Bokeh's
+  `top_right` default) where Stata centres a 6 or 12 o'clock legend; and a
+  user `legend(rows(1))` with three series drew a 2x2 grid because the
+  scheme's `ncols` 2 survived beside `nrows` 1. Fixed: inserted after the panel's axis, before every Label
+  of the panel, `location = "center"`, and `rows()` alone sets `ncols`
+  "auto" (`cols()` alone `nrows` "auto"); both modes; the parity corpus
+  gains "legend(rows(1)) with three series under s2color".
+- Review: `color p#mark` reached the Segments of spike, rcap, rspike,
+  pcspike and pcarrow and the line halves of dropline and rcapsym, because
+  those mappers asked `default_color` for "scatter"; invisible under the
+  14 shipped schemes (`p#mark == p#`), a regression for a user scheme
+  declaring `color p1mark`. Fixed: the lookup is gated on the glyph, marker
+  glyphs only; the test writes a scheme with `color p1 #111111` and `color
+  p1mark #22aa22` and reads each mapper's glyphs in both modes.
+- Review: `_gsize` numeric formatted with `%g`, so `gsize body 0.00001`
+  became `2.88e-05pt`, which Bokeh's FontSize validator rejects, and the
+  whole figure aborted where HEAD floored to 6pt and drew. Fixed: fixed
+  decimals, and a point size outside (0, 1000] falls back to the default
+  with the `dash scheme:` warning. TR-16.2's "formatted `%g`" is therefore
+  superseded.
+- Review: `linewidth axisline` and `color foreground` were extracted,
+  carried in all 14 files and the fallback dict, and read by nothing.
+  Fixed for the axis line: `axis_line_width` is parsed and applied to each
+  axis in `apply_to_figure`, and the parity `_chrome` profile records it.
+  `color foreground` stays a carried directive with no consumer,
+  deliberately, the second stated exception beside `note_font_size`
+  (AC-16.4).
+- Review: a user scheme's hostile placement values passed in silence --
+  `clockdir legend_position 99` became "right", `numstyle legend_rows
+  1000` a thousand rows, `linewidth major_grid -4` a zero-width, invisible
+  grid -- while a bad colour warned. Fixed: `_init_properties` range-checks
+  the clock (1-12), cols/rows (>= 0) and every linewidth (>= 0) with the
+  `_color` warning shape; the hostile file in the test draws three warnings
+  and the defaults.
+- Review: after a filter move the JS-rebuilt KPI card lost its value div's
+  `id="kpi_val_<name>"` (pre-existing; every other byte matched
+  `_dash_kpi_card_html` over 18 scheme-by-option combinations). Fixed: the
+  escaped name rides in `kpi_config` and the template emits the id; the
+  test diffs the Python card against a JS-template rendering with the same
+  config.
+- Review: the served by() panel title was `html.escape(go["title"])`, so
+  `title("By") by(foreign)` served `&quot;By&quot; -- Domestic` where the
+  saved page showed `By -- Domestic` (pre-existing; the parity corpus had
+  no by() case with a title). Fixed: the served template uses the parsed
+  title text, as `_dash_figure_title` does; the parity corpus gains "by()
+  with a graph title".
+- Review, Stata side: `dash bar price` and `dash scatter mpg` (and `line`,
+  `lfit`, `dot`, `spike` with one variable) registered with rc 0 and a
+  `dash build` died with a Python `KeyError: ''` in `map_bar`, r(7102),
+  where `twoway bar price` and `twoway scatter mpg` refuse at parse time
+  with r(102) (`twoway bar` with no variable: `varlist required`, r(100)),
+  measured with the console binary. Fixed in `dash.ado`: a two-variable
+  plot type given one variable is refused at registration with `dash:
+  <type> requires a y and an x variable (got: <varlist>)` and twoway's own
+  r(102); the one-variable types (histogram, kdensity, tsline, function and
+  the rest) are untouched; cert cases OV-135 to OV-141 in
+  `test_option_validation.cscript` (bar, scatter, a short segment inside a
+  multi-segment command, `line price if foreign`, and histogram and
+  kdensity as the one-variable controls).
+- Review, docs: seven statements in this package, `BUGS.md`, `GAPS.md` and
+  the help were corrected: the `#include` resolution order (the bullet
+  above), `test_kpi_security.py`'s seven `#212529` pins that no owner had
+  restated (7 failed, 25 passed against the tree), the note colour (`color
+  small_body`, not `color body`), the full list of eighteen directives the
+  shipped files lacked, the helper's name (`_dash_apply_axis_spec`; no
+  `_dash_apply_one_axis` exists), `test_scheme.py`'s minor-grid test being
+  new rather than restated, and five line ranges in BUGS G4/G5 that were
+  off by two or three at `52c473c`.
+- Not fixed here, two follow-ups from the review. `s2color8`, the session
+  scheme `cscript` sets (`c(scheme_cscript)`, cscript.ado:35), is not among
+  the 14 translations, so every unschemed `dash build` under the
+  certification runner writes `dash: 's2color8' is not a known theme or
+  scheme; using s2color` into the Stata log -- 41 occurrences across 11 of
+  the 12 certification logs the review read, at HEAD as well, because
+  `dash.ado` forwards `c(scheme)` as the session scheme; extracting a
+  fifteenth translation is the fix (WP-17 TR-17.3 already lists
+  `s2color8`), an alias to s2color the stopgap. And
+  `test_render_log_clean.cscript` asserts only on `__builtins__`,
+  `DashRenderer`, `GlyphMapper` and a line count, so it tolerates a
+  `UserWarning` line; it should assert that none appears, so a
+  session-scheme warning is caught rather than tolerated.
+
+### Verification, measured 22sep2026
+
+| Suite | Result |
+|---|---|
+| `test_scheme_rendered_output.py`, all 14 schemes, both modes | 826 passed |
+| `test_scheme_review_fixes.py` (the review's ten items, written first) | 102 passed |
+| `test_scheme_fidelity.py`, 132 property units per scheme against Stata's files | 90 passed |
+| Parity guard `test_mode_parity.py`, profile widened, corpus + 6 | 2114 passed, 1 skipped (layout(bs), stated), 5 xfailed |
+| `test_option_validation.cscript` OV-01 to OV-141 plus the corpus arbiter | ALL CHECKS PASSED (210 checks) |
+| Full Python suite | 7578 passed, 56 skipped (stated reasons), 6 xfailed, 0 failed |
+| Full certification suite | 41 passed, 0 failed, 0 skipped |
+
+Between the first implementation and this commit an adversarial review
+found and fixed: the scheme-placed legend sitting outside the note and
+caption and flush right (Stata keeps it nearest the plot, centred); a
+user rows() fighting the scheme's columns; the marker colour reaching
+the spike-family segments; a tiny numeric gsize aborting the figure; a
+served by() panel title carrying html entities; and, older than this
+package, every Bootstrap page holding a KPI or a filter widget blank in
+the browser, and a one-variable bar or scatter registering with rc 0
+and dying at build.
 
 ---
 

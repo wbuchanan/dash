@@ -142,13 +142,21 @@ class TestGsize:
             return float(sp._gsize("gsize k").rstrip("pt"))
         assert pt("small") < pt("medium") < pt("large")
 
-    def test_a_numeric_value_is_converted(self, sp):
+    def test_a_numeric_value_is_a_stata_relative_size(self, sp):
+        """A bare number in a gsize directive is Stata's relative unit:
+        100 = the graph's smaller dimension, so at Stata's 4-inch reference
+        one unit is 2.88 pt (style/gsize-medium.style: 3.8194 is "11 pt
+        based on a 4 inch high graph").  It was read as ``int(val * 1.2)``
+        pt, which made economist's ``gsize heading 6.0`` a 7 pt title under
+        its 11 pt subtitle.  WP-16 (GAPS G5)."""
         _set(sp, **{"gsize k": "5.0"})
-        assert sp._gsize("gsize k").endswith("pt")
+        assert sp._gsize("gsize k") == "14.4pt"
 
-    def test_a_tiny_numeric_value_is_floored_to_remain_legible(self, sp):
+    def test_a_tiny_numeric_value_is_not_floored(self, sp):
+        """This asserted a 6 pt floor -- dash's invention, not Stata's.  A
+        scheme that asks for 0.1 (0.288 pt) gets 0.288 pt."""
         _set(sp, **{"gsize k": "0.1"})
-        assert float(sp._gsize("gsize k").rstrip("pt")) >= 6
+        assert sp._gsize("gsize k") == "0.288pt"
 
     def test_an_unparseable_value_returns_the_default(self, sp):
         _set(sp, **{"gsize k": "enormous"})
@@ -193,9 +201,16 @@ class TestLineWidth:
     def test_absent_returns_the_default(self, sp):
         assert sp._lwidth("linewidth p1", default=2.5) == 2.5
 
-    def test_a_numeric_value_is_used_directly(self, sp):
+    def test_a_numeric_value_is_a_stata_linewidth_unit(self, sp):
+        """A bare number in a linewidth directive is Stata's unit, the one
+        the keywords are defined in (style/linewidth-medium.style sets
+        .30).  dash anchors medium at 1.5 px, so a number is 5 px per unit:
+        economist's ``linewidth p 1.2`` is 6.0 px, four medium widths, not
+        the 1.2 px this test used to pin.  WP-16 (GAPS G5)."""
         _set(sp, **{"linewidth p1": "3.5"})
-        assert sp._lwidth("linewidth p1") == pytest.approx(3.5)
+        assert sp._lwidth("linewidth p1") == pytest.approx(17.5)
+        _set(sp, **{"linewidth p1": "0.30"})
+        assert sp._lwidth("linewidth p1") == pytest.approx(1.5)
 
     def test_a_named_width_is_translated(self, sp):
         _set(sp, **{"linewidth p1": "thick"})

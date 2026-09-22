@@ -373,8 +373,17 @@ def _annotations(fig):
     (4, 0)), and the served note and caption could sit on top of each other,
     without this file noticing.  The legend is an annotation too: its keys,
     size, visibility, placement, orientation and click policy all drifted.
+
+    WP-16 added the legend's side panel, columns, rows and label colour: a
+    scheme's ``clockdir legend_position`` moves the legend into a panel and
+    ``numstyle legend_cols`` sets its columns, and neither was recorded, so
+    a placement applied in one mode only would have compared equal.
     """
     out = []
+    panel = {}
+    for side in ("center", "above", "below", "left", "right"):
+        for r in getattr(fig, side):
+            panel.setdefault(id(r), side)
     for r in _sides(fig):
         if isinstance(r, LabelSet):
             _, idx = _drawn(r)
@@ -402,9 +411,12 @@ def _annotations(fig):
                                     for x in i.renderers])
                                   for i in r.items],
                         "font": r.label_text_font_size,
+                        "label_color": r.label_text_color,
                         "visible": r.visible,
+                        "side": panel.get(id(r)),
                         "location": str(r.location),
                         "orientation": r.orientation,
+                        "ncols": r.ncols, "nrows": r.nrows,
                         "click_policy": r.click_policy,
                         "background": r.background_fill_color,
                         "border": r.border_line_color})
@@ -477,18 +489,54 @@ def _axes(fig):
 
 
 def _chrome(fig):
+    """The figure's frame: fills, grids, axis lines and text colours, title,
+    proportions.
+
+    WP-16 added the MINOR grid colour, the grid line width, the axis line
+    and axis text colours and the title's font style.  The minor grid was
+    the case in point: both modes drew one under every scheme, and a fix
+    to one mode only would have been invisible here because only the major
+    grid's colour was recorded.
+
+    The adversarial review of WP-16 (22sep2026) mutated the standalone
+    models after a render and found what this profile still could not see:
+    the minor grid's WIDTH (only its colour was recorded), the figure's
+    ``aspect_ratio`` / ``min_height`` / ``max_height`` (the served app
+    takes the scheme's graphsize ratio through its own fallback), and the
+    axis line's width (``linewidth axisline``, which the scheme now sets).
+    """
     t = fig.title
     ad = fig.toolbar.active_drag
+
+    def axis(a):
+        return {"line_color": a.axis_line_color,
+                "line_width": _num(float(a.axis_line_width)),
+                "label_color": a.axis_label_text_color,
+                "tick_color": a.major_label_text_color}
+
+    ar = fig.aspect_ratio
     return {
         "background_fill_color": fig.background_fill_color,
         "border_fill_color": fig.border_fill_color,
         "outline_line_color": fig.outline_line_color,
         "xgrid": [g.grid_line_color for g in fig.xgrid],
         "ygrid": [g.grid_line_color for g in fig.ygrid],
+        "xgrid_minor": [g.minor_grid_line_color for g in fig.xgrid],
+        "ygrid_minor": [g.minor_grid_line_color for g in fig.ygrid],
+        "xgrid_width": [g.grid_line_width for g in fig.xgrid],
+        "ygrid_width": [g.grid_line_width for g in fig.ygrid],
+        "xgrid_minor_width": [g.minor_grid_line_width for g in fig.xgrid],
+        "ygrid_minor_width": [g.minor_grid_line_width for g in fig.ygrid],
+        "xaxis": [axis(a) for a in fig.xaxis],
+        "yaxis": [axis(a) for a in fig.yaxis],
         "title": t.text if t else "",
         "title_font": t.text_font_size if t else "",
         "title_color": t.text_color if t else "",
+        "title_style": t.text_font_style if t else "",
         "width": fig.width, "height": fig.height,
+        "aspect_ratio": (_num(float(ar)) if isinstance(ar, (int, float))
+                         else ar),
+        "min_height": fig.min_height, "max_height": fig.max_height,
         "sizing_mode": fig.sizing_mode,
         "toolbar_location": fig.toolbar_location,
         "active_drag": (type(ad).__name__ if ad not in (None, "auto")
@@ -502,8 +550,34 @@ def _figure_profile(fig):
             "tools": _tools(fig), "axes": _axes(fig), "chrome": _chrome(fig)}
 
 
-def _kpi_card(text):
-    """``(name, shown value)`` from a KPI card's markup, or None."""
+_CARD_OPEN = re.compile(r"<div\b([^>]*)>", re.S)
+
+
+def _css_color_of(style):
+    """The ``color:`` declaration of a style attribute's text, anchored at
+    a declaration boundary so ``background-color`` never matches."""
+    m = re.search(r"(?:^|[;\s])color\s*:\s*([^;\"]+)", style or "")
+    return m.group(1).strip() if m else None
+
+
+def _kpi_card(div):
+    """``(name, shown value, class, inline background?, stylesheet css,
+    value colour, title colour)`` from a KPI card Div, or None for any
+    other Div (or text).
+
+    This reduced a card to ``(name, value)``, so its styling was never
+    compared.  WP-16 styles the card from the scheme -- the legend box's
+    colours as a ``.db-kpi-card`` class rule on a stylesheet attached to
+    the Div, and no inline background unless bgcolor() was given -- and a
+    card styled that way in one mode only must fail here.
+
+    The value's and the title's colours were still not recorded (the
+    adversarial review of 22sep2026 turned the standalone value #212529
+    and the title #6c757d without this file noticing), and they are the
+    very defaults WP-16 moved to the scheme's ``color text``: the title
+    and subtitle divs carry it, the value div carries color() or it.
+    """
+    text = div.text if isinstance(div, Div) else div
     if not isinstance(text, str) or "kpi_val_" not in text:
         return None
     rest = text[text.find("kpi_val_"):]
@@ -511,7 +585,23 @@ def _kpi_card(text):
     name = rest[len("kpi_val_"):rest.find('"')]
     o = rest.find(">")
     c = rest.find("<", o)
-    return (name, rest[o + 1:c].strip())
+    m = _CARD_OPEN.search(text)
+    attrs = m.group(1) if m else ""
+    cls = re.search(r'class="([^"]*)"', attrs)
+    style = re.search(r'style="([^"]*)"', attrs)
+    inline_bg = bool(style and re.search(
+        r"(?:^|[;\s])background(?:-color)?\s*:", style.group(1)))
+    sheets = getattr(div, "stylesheets", None) or []
+    css = "".join(getattr(s, "css", "") or "" for s in sheets)
+    mv = re.search(r'id="kpi_val_[^"]*"\s+style="([^"]*)"', text, re.S)
+    value_color = _css_color_of(mv.group(1)) if mv else None
+    # The title div is the first div INSIDE the card's outer div.
+    inner = _CARD_OPEN.search(text, m.end()) if m else None
+    title_style = (re.search(r'style="([^"]*)"', inner.group(1))
+                   if inner else None)
+    title_color = _css_color_of(title_style.group(1)) if title_style else None
+    return (name, rest[o + 1:c].strip(), cls.group(1) if cls else None,
+            inline_bg, css, value_color, title_color)
 
 
 def _widget_profile(w):
@@ -561,7 +651,7 @@ def _layout_tree(m, figures):
         figures.append(_figure_profile(m))
         return ("figure", len(figures) - 1)
     if isinstance(m, Div):
-        card = _kpi_card(m.text)
+        card = _kpi_card(m)
         return ("Div", ("kpi",) + card if card else ("text", m.text))
     if isinstance(m, TabPanel):
         return ("TabPanel", m.title, _layout_tree(m.child, figures))
@@ -618,8 +708,7 @@ def _render_pair(name, spec):
 
     if std_tree is None:
         std_widgets = [_widget_profile(w) for w in r.filter_widgets]
-        std_kpis = [_kpi_card(d.text)
-                    for d in r.kpi_divs.values()]
+        std_kpis = [_kpi_card(d) for d in r.kpi_divs.values()]
     else:
         std_widgets = leaves(std_tree, "Widget")
         std_kpis = kpis_of(std_tree)
@@ -707,6 +796,22 @@ CORPUS = [
     _case("spike, economist", [plot_for("spike")], {"scheme": "economist"}),
     _case("dropline, economist", [plot_for("dropline")],
           {"scheme": "economist"}),
+    # WP-16: what a scheme decides beyond the glyphs -- grids, text sizes
+    # and colours, legend placement and columns, the KPI card's colours.
+    _case("scheme s1color with a legend and a KPI",
+          [_sc(), plot_for("lfit")], {"scheme": "s1color"}, kpis=[_kpi()]),
+    _case("scheme economist with title, subtitle, note, caption and a legend",
+          [_sc(), plot_for("line")], {"scheme": "economist"},
+          {"title": "T", "subtitle": "S", "note": "N", "caption": "C"}),
+    _case("scheme stcolor legend default placement",
+          [_sc(), plot_for("lfit")], {"scheme": "stcolor"}),
+    _case("kpi with explicit bgcolor under economist", [_sc()],
+          {"scheme": "economist"}, kpis=[_kpi(bgcolor="#ecf0f1")]),
+    # Review R4: a user rows() must not keep the scheme's ncols (s2color's
+    # legend_cols is 2); one mode honouring rows(1) alone would show here.
+    _case("legend(rows(1)) with three series under s2color",
+          [_sc(), plot_for("line"), plot_for("lfit")], {"scheme": "s2color"},
+          {"legend": "rows(1)"}),
     _case("line with an explicit line width", [plot_for("line",
                                                         {"lwidth": "thick"})]),
     _case("connected, marker and pattern options",
@@ -853,6 +958,12 @@ CORPUS = [
           if_expr="price > 4500"),
     _case("by() with marker labels and hover",
           [_sc(mlabel="rep")], None, {"by": "foreign", "hover": "price"}),
+    # Review R10: the served panel title was html.escape(go["title"]) and
+    # the saved one the PARSED text, so title("By") -- stored with its
+    # quotes, as Stata's asis declaration keeps them -- served as
+    # `&quot;By&quot; -- Domestic'.
+    _case("by() with a graph title", [_sc()], None,
+          {"by": "foreign", "title": '"By"'}),
     # ---- several graphs, link(), layout() -----------------------------------
     _case("two graphs", graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])]),
     _case("two graphs, link()", bo={"link": "g1 g2"},

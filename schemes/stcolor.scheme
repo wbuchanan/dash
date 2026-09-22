@@ -226,6 +226,63 @@ yesno draw_major_vgrid yes
 yesno draw_major_grid       no
 
 * ---------------------------------------------------------------------------
+* Added 22sep2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Minor grid switches -- EFFECTIVE per-axis values.  twoway builds the x
+* axis with `axisstyle horizontal_default' and the y axis with `axisstyle
+* vertical_default'; the scheme maps each role to a style name, and that
+* style file names the `yesno' key Stata actually reads:
+*   x axis: axisstyle horizontal_default = horizontal_default
+*           -> style/axisstyle-horizontal_default.style
+*           -> draw_major_hgrid / draw_minor_hgrid
+*   y axis: axisstyle vertical_default = vertical_default
+*           -> style/axisstyle-vertical_default.style
+*           -> draw_major_vgrid / draw_minor_vgrid
+* The draw_major_hgrid / draw_major_vgrid lines above hold the same
+* effective values.  `yesno draw_minor_grid' is transcribed from Stata's
+* file but, like draw_major_grid, no style file reads it.
+yesno draw_minor_hgrid  no
+yesno draw_minor_vgrid  no
+yesno draw_minor_grid   no
+
+* Text colours, one per textbox style: style/textboxstyle-<name>.style
+* reads `color <name>'.  title() is heading (above), subtitle()
+* subheading, caption() body, note() small_body, legend keys key_label,
+* axis titles axis_title, tick labels tick_label.  `color text' and
+* `color foreground' are the scheme's general text and foreground
+* colours.
+color subheading  #000000
+color body        #000000
+color small_body  #000000
+color text        #000000
+color axis_title  #000000
+color tick_label  #000000
+color key_label   #000000
+color foreground  #000000
+
+* Text sizes, one per textbox style (Stata gsize style names; the
+* fixture's _meta.units gives each name's relative value and its points
+* at Stata's 4-inch reference).  note() is drawn with small_body: the
+* `gsize note' line above is not the key Stata's note textbox reads.
+gsize subheading  medium
+gsize body        medsmall
+gsize small_body  small
+gsize key_label   medsmall
+
+* Minor grid and axis line widths (Stata linewidth style names).
+linewidth minor_grid  thin
+linewidth axisline    thin
+
+* Legend rows; 0 means not fixed, so the column count above decides.
+numstyle legend_rows  0
+
+* ---------------------------------------------------------------------------
 * HONEST GAP (project rule 2) -- the p#lineplot keys
 * ---------------------------------------------------------------------------
 * Stata does not read a plain `twoway line` plot's line from the

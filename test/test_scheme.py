@@ -288,6 +288,26 @@ class TestApplyToFigure:
         for grid in list(fig.xgrid) + list(fig.ygrid):
             assert grid.grid_line_color == sp.grid_color
 
+    def test_draws_no_minor_grid_where_the_scheme_draws_none(self):
+        """The minor grid follows `yesno draw_minor_hgrid' (x) and
+        `draw_minor_vgrid' (y), the same way the major grid follows the
+        major flags above.
+
+        `color minor_grid' was assigned to every grid unconditionally, and
+        Bokeh draws a minor grid the moment it has a colour, so every
+        figure carried a #505050 minor grid on both axes -- under s2color,
+        which declares both minor flags `no', and under s1color, whose
+        whole point is to draw no grid at all.  WP-16 (GAPS G3).
+        """
+        sp = SchemeParser("s2color")
+        fig = self._make_fig()
+        sp.apply_to_figure(fig)
+        assert (sp.draw_minor_hgrid, sp.draw_minor_vgrid) == (False, False)
+        for grid in list(fig.xgrid) + list(fig.ygrid):
+            assert grid.minor_grid_line_color is None, (
+                f"a minor grid {grid.minor_grid_line_color!r} where s2color "
+                f"draws none")
+
     def test_sets_axis_label_font_size(self):
         sp = SchemeParser("s2color")
         fig = self._make_fig()

@@ -632,8 +632,19 @@ class TestKpiEmptyColorFallback:
                 except OSError: pass
         return r
 
-    def test_empty_bgcolor_uses_default_not_invalid_css(self, tmp_path):
-        """Bug 12: empty bgcolor='' must fall back to default, not emit 'background:;'."""
+    def test_empty_bgcolor_uses_the_schemes_card_not_invalid_css(self, tmp_path):
+        """Bug 12: empty bgcolor='' must not emit 'background:;'.
+
+        Nor, since WP-16, the inline default ``background:#f8f9fa`` this
+        test used to require: with no bgcolor() the card carries NO inline
+        background at all.  The card is Stata's legend box, and the
+        scheme's ``color legend`` / ``color legend_line`` reach it as the
+        ``.db-kpi-card`` class rule on a stylesheet attached to the Div --
+        a Bokeh 3 Div renders in a shadow root, so a rule in the page head
+        never applies to it, which is how the old inline literal drew a
+        light card on s1rcolor's black page.
+        """
+        import re
         import sys, os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from dash_render import DashRenderer
@@ -644,18 +655,35 @@ class TestKpiEmptyColorFallback:
                    "color": "", "bgcolor": "", "update": "filter"}
         r = self._make_renderer_with_kpi(kpi_def, tmp_path)
         r.render()
-        div_html = r.kpi_divs["k2"].text
+        div = r.kpi_divs["k2"]
+        div_html = div.text
         assert "background:;" not in div_html, (
-            "Bug 12: empty bgcolor produced invalid CSS 'background:;'. "
-            "_make_kpi_div must fall back to default color '#f8f9fa' when bgcolor is empty."
+            "Bug 12: empty bgcolor produced invalid CSS 'background:;'."
         )
-        # Should contain a valid background color (the default)
-        assert "background:#f8f9fa" in div_html or "background: #f8f9fa" in div_html, (
-            f"Default bgcolor '#f8f9fa' not found in div HTML: {div_html[:400]}"
+        outer = re.search(r"<div\b([^>]*)>", div_html)
+        assert outer and 'class="db-kpi-card"' in outer.group(1), div_html[:400]
+        style = re.search(r'style="([^"]*)"', outer.group(1))
+        inline = style.group(1) if style else ""
+        assert not re.search(r"(?:^|[;\s])background(?:-color)?\s*:", inline), (
+            f"an empty bgcolor() must leave the card to the scheme's class "
+            f"rule, not an inline background: {inline!r}"
         )
+        css = "".join(getattr(s, "css", "") or "" for s in div.stylesheets)
+        rule = re.search(r"\.db-kpi-card\s*\{([^}]*)\}", css)
+        assert rule, f"no .db-kpi-card rule on the Div's stylesheets: {css!r}"
+        assert re.search(r"background-color:\s*" + re.escape(r.scheme.legend_bg_color),
+                         rule.group(1)), rule.group(1)
 
-    def test_empty_color_uses_default_not_invalid_css(self, tmp_path):
-        """Bug 12: empty color='' must fall back to default, not emit 'color:;'."""
+    def test_empty_color_uses_the_schemes_text_colour_not_invalid_css(
+            self, tmp_path):
+        """Bug 12: empty color='' must not emit 'color:;'.
+
+        The fallback is the scheme's ``color text`` -- the KPI card is
+        Stata's legend box and its text is the scheme's text colour -- not
+        the ``#212529`` literal this test used to require, which stayed
+        dark on s1rcolor's black page.  WP-16 (GAPS G6).
+        """
+        import re
         import sys, os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         from dash_render import DashRenderer
@@ -668,12 +696,15 @@ class TestKpiEmptyColorFallback:
         r.render()
         div_html = r.kpi_divs["k3"].text
         assert "color:;" not in div_html, (
-            "Bug 12: empty color produced invalid CSS 'color:;'. "
-            "_make_kpi_div must fall back to default '#212529' when color is empty."
+            "Bug 12: empty color produced invalid CSS 'color:;'."
         )
-        # The default color should appear
-        assert "#212529" in div_html, (
-            f"Default color '#212529' not found in div HTML: {div_html[:400]}"
+        value = re.search(r'id="kpi_val_k3"\s+style="([^"]*)"', div_html)
+        assert value, div_html[:400]
+        colour = re.search(r"(?:^|[;\s])color\s*:\s*([^;]+)", value.group(1))
+        assert colour and colour.group(1).strip().lower() == \
+            r.scheme.text_color.lower(), (
+            f"the value must take the scheme's text colour "
+            f"{r.scheme.text_color}: {value.group(1)!r}"
         )
 
 

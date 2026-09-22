@@ -29,15 +29,13 @@ extractor explicitly said it could not derive.
    with a tolerance of ``COLOR_CHANNEL_TOL``.
 
 2. DECLARED STYLE NAMES — line widths, ``gsize`` font sizes, symbol size, marker
-   symbols and line patterns.  ``_meta.units`` and the extractor's own
-   "unresolvable" notes state plainly that Stata's mapping from these style names
-   to points/pixels was NOT derived from the style files (e.g. ``linewidth
-   medium`` is ``.30`` in unknown units; ``gsize medsmall`` is ``3.4722``
-   *relative* units).  Asserting dash's pt/px translation against those numbers
-   would assert an invented conversion.  So for these the test compares the
-   Stata style *name* the translated ``.scheme`` file declares against the name
-   Stata's own scheme declares — exact string match, which is exactly what the
-   translation controls.
+   symbols and line patterns.  The fixture's ``_meta.units`` records Stata's
+   own ladders for these (style-file value and the point size at Stata's
+   4-inch reference), but dash's pt/px *translation* of them is the renderer's
+   business and is pinned by the rendered-output tests, not here.  So for
+   these the test compares the Stata style *name* the translated ``.scheme``
+   file declares against the name Stata's own scheme declares — exact string
+   match, which is exactly what the translation controls.
 
    ``p_line_dash_patterns`` is therefore excluded from the comparison entirely:
    it is the same information as ``p_line_patterns`` expressed in Stata's
@@ -46,7 +44,7 @@ extractor explicitly said it could not derive.
 
 COVERAGE HARNESS
 ----------------
-``test_scheme_coverage`` reports two fractions per scheme over the same 115
+``test_scheme_coverage`` reports two fractions per scheme over the same 132
 property units:
 
   * ``supplied``  — the translated ``.scheme`` file contains a directive that
@@ -174,6 +172,18 @@ COLOR_SCALARS = {
     "minor_grid_color":    ["color minor_grid"],
     "title_color":         ["color heading"],
     "axis_line_color":     ["color axisline"],
+    # One colour per textbox style.  style/textboxstyle-<name>.style reads
+    # `color <name>': subtitle() is subheading, caption() body, legend keys
+    # key_label, axis titles axis_title, tick labels tick_label.  (note() is
+    # small_body, whose colour key `color small_body' the fixture also
+    # records; the parser exposes no attribute for it yet.)
+    "subheading_color":    ["color subheading"],
+    "body_color":          ["color body"],
+    "small_body_color":    ["color small_body"],
+    "text_color":          ["color text"],
+    "axis_title_color":    ["color axis_title"],
+    "tick_label_color":    ["color tick_label"],
+    "key_label_color":     ["color key_label"],
 }
 
 #: fixture key -> per-index directive chain templates
@@ -211,6 +221,15 @@ STYLE_NAME_SCALARS = {
     "tick_label_size":    ["gsize tick_label"],
     "note_size":          ["gsize note"],
     "symbolsize":         ["symbolsize p"],
+    # The textbox sizes Stata draws subtitle(), caption(), note() and the
+    # legend keys with.  Stata's note textbox uses small_body, not `gsize
+    # note'; both are recorded so the file is checked for what it declares.
+    "subheading_size":    ["gsize subheading"],
+    "body_size":          ["gsize body"],
+    "small_body_size":    ["gsize small_body"],
+    "key_label_size":     ["gsize key_label"],
+    "minor_grid_line_width": ["linewidth minor_grid"],
+    "axis_line_width":    ["linewidth axisline"],
 }
 
 #: fixture key -> directive chain; fixture value is "yes"/"no"
@@ -220,6 +239,17 @@ YESNO_SCALARS = {
     # scheme level and is `no' in every scheme, so keying on it made this
     # fidelity check agree with a wrong value rather than catch it.
     "draw_major_vgrid": ["yesno draw_major_vgrid"],
+    # Minor grid switches, same axis mapping.  The fixture holds the
+    # EFFECTIVE per-axis value, resolved through the scheme's `axisstyle'
+    # indirection (economist's y axis is `vertical_nolinetick', whose style
+    # file reads draw_major_nlt_vgrid / draw_minor_nlt_vgrid), and the
+    # translated file must carry that effective value under the key dash
+    # reads.  The two bare keys are dead at scheme level and are checked
+    # only as faithful transcriptions.
+    "draw_minor_hgrid": ["yesno draw_minor_hgrid"],
+    "draw_minor_vgrid": ["yesno draw_minor_vgrid"],
+    "draw_major_grid":  ["yesno draw_major_grid"],
+    "draw_minor_grid":  ["yesno draw_minor_grid"],
 }
 
 #: fixture key -> directive chain; fixture value is a float (inches)
@@ -232,9 +262,10 @@ NUMERIC_SCALARS = {
 INT_SCALARS = {
     "legend_position": ["clockdir legend_position"],
     "legend_cols":     ["numstyle legend_cols"],
+    "legend_rows":     ["numstyle legend_rows"],
 }
 
-#: Total property units per scheme: 6 lists x 15 + 25 scalars = 115.
+#: Total property units per scheme: 6 lists x 15 + 42 scalars = 132.
 N_PLOTS = 15
 
 
@@ -519,6 +550,33 @@ def test_fixture_is_present_and_complete():
     assert names == sorted(EXPECTED_SCHEMES), (
         f"fixture covers {names}, expected {sorted(EXPECTED_SCHEMES)}"
     )
+
+    # Every fixture key the property maps name must be present for every
+    # scheme.  evaluate_scheme() skips a property whose fixture value is
+    # absent, so a key missing from a regenerated fixture would turn its
+    # check into a silent pass rather than a failure.
+    wanted = sorted(set(COLOR_SCALARS) | set(COLOR_LISTS) | set(NAME_LISTS)
+                    | set(ALPHA_SCALARS) | set(STYLE_NAME_SCALARS)
+                    | set(YESNO_SCALARS) | set(NUMERIC_SCALARS)
+                    | set(INT_SCALARS))
+    missing = {
+        name: [k for k in wanted if TRUTH[name].get(k) is None]
+        for name in names
+    }
+    missing = {n: ks for n, ks in missing.items() if ks}
+    assert not missing, (
+        "fixture entries lack keys the property maps check: "
+        f"{missing}; regenerate with scripts/extract_scheme_truth.py"
+    )
+
+    # The unit ladders the renderer's size translation is measured against.
+    units = TRUTH["_meta"].get("units") or {}
+    for ladder in ("gsize", "symbolsize", "linewidth"):
+        table = (units.get(ladder) or {}).get("ladder")
+        assert isinstance(table, dict) and "medium" in table, (
+            f"fixture _meta.units.{ladder}.ladder is missing or has no "
+            "'medium' entry"
+        )
 
 
 def test_fixture_sanity_anchors():

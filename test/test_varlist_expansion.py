@@ -283,8 +283,17 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               list -- diffed token by token against HEAD before
 #               re-baselining, 38 chunks, all of them that one object.
 #               Intended.
+#   5e1c3a24  WP-16.  The scheme reaches the page: the figure title takes
+#               `color heading' and `gsize heading' (was Bokeh's #444444 at
+#               13px), the minor grid is None on both axes (was #505050),
+#               the legend sits below the plot, centred, in the scheme's
+#               columns (was top_right inside), and the axis text takes the
+#               scheme's colours.  Not diffed token by token; each of those
+#               changes is pinned off the models by
+#               test_scheme_rendered_output.py for all 14 schemes in both
+#               modes.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "2bf51dc0452f30c142bc91fad12a77ea48c09747f4eb77ad703d33176da19645"
+    "5e1c3a248b539a5cda6f29849941310e9a8d4dceedc212d8d3fb76173b49e8f5"
 )
 
 

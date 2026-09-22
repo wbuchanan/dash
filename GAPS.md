@@ -1059,7 +1059,7 @@ than transcription (`color p#line`, `color p#bar`, `color p#mark`, `symbol p#`,
 `test/fixtures/scheme_truth.json`'s `sources` map, but the provenance does not
 survive into the shipped files.
 
-### G3. Every dashboard draws a dark grid Stata never draws — S1, MEASURED
+### G3. Every dashboard draws a dark grid Stata never draws — S1, CLOSED by WP-16
 
 `dash_render.py:2185` sets the minor grid unconditionally:
 
@@ -1081,7 +1081,33 @@ Stata's own s2color declares `draw_minor_grid no`, `draw_minor_hgrid no`,
 `draw_minor_vgrid no`. dash's translated file carries no `draw_minor_*` key at
 all. So schemes that draw **no grid whatsoever** get a dark grid on both axes.
 
-### G4. Parsed scheme attributes with no consumer — S2, MEASURED
+**Closed by WP-16.** Measured first, 22sep2026, on real figures for all 14
+schemes in both modes: `minor_grid_line_color` set on both axes everywhere
+(`#505050` in twelve, `#808080` s1rcolor, `#ffffff` economist) at Bokeh's
+`minor_grid_line_alpha` 1.0, so every dashboard drew it. The major grid was
+already right at that baseline -- per axis from `draw_major_hgrid` and
+`draw_major_vgrid`, none under s1color, s1mono, s1rcolor and stmono1 -- so
+the minor grid was the whole of this gap. Stata's truth, read from the style
+files: `draw_minor_hgrid no` and `draw_minor_vgrid no` in every chain,
+economist's y axis through its `vertical_nolinetick` axis style and
+`draw_minor_nlt_vgrid no`; the bare `draw_minor_grid` key is read by no
+style file. Now `scripts/extract_scheme_truth.py` records the effective
+per-axis minor flags, the fourteen shipped files carry them, `SchemeParser`
+parses `draw_minor_hgrid`/`draw_minor_vgrid` (default no, with
+`_FALLBACK_PROPS` entries), and `apply_to_figure` colours a minor grid only
+where the axis's flag is yes, else `None`, at `linewidth minor_grid`; the
+served app runs that same method in place of its hand-copied body. After:
+minor `None` on both axes under all 14 schemes in both modes, and major
+`None` too under the four no-grid schemes, pinned for every scheme and mode
+by `test_scheme_rendered_output.py`. The adversarial review of the package
+(22sep2026) added one guard on the same path: a negative `linewidth` in a
+user scheme (`linewidth major_grid -4` drew a zero-width, invisible grid in
+silence) is refused with the `dash scheme:` warning and the default used,
+pinned by `test_scheme_review_fixes.py`. The line reference in the body
+above was measured at `187a786`; at the WP-16 baseline (`52c473c`) the
+assignment was at `dash_render.py:2365` and its served copy at `:14617`.
+
+### G4. Parsed scheme attributes with no consumer — S2, CLOSED by WP-16
 
 Confirmed by reference count (a count of 1 means the assignment and nothing
 else):
@@ -1100,7 +1126,61 @@ Parser branches no shipped scheme exercises (dead code, not a rendering gap):
 p1`–`p15`, bare `graphsize`, and `#include` support (`:1786-1800`) — **zero**
 of the 14 files contain an `#include`, whereas 25 of Stata's 26 do.
 
-### G5. Numeric scale factors are wrong — S2, MEASURED
+**Closed by WP-16.** Measured first, 22sep2026, all 14 schemes, both modes:
+`fig.title` Bokeh's `#444444`/`13px` everywhere; the subtitle, note and
+caption Labels 13px `#444444`, 11px `#555555` and 12px `#555555` dash
+literals everywhere; axis titles and tick labels `#444444` everywhere, dark
+grey on black under s1rcolor; the legend `top_right`, vertical, `ncols`
+auto everywhere, while the schemes say 6 o'clock in 2 columns (nine
+schemes), 3 o'clock in 1 (stcolor, stgcolor, stmono1, stmono2) or 12
+o'clock in 3 (economist); `p_mark_colors` read by nothing. Two rows of the
+table above were stale by then: the served legend already went through the
+shared `_dash_apply_legend`, so the `lg.location = 6` `ValueError` no
+longer existed and `legend_position`/`legend_cols` were simply unread in
+both modes; and the served app already built a real `SchemeParser` from
+`_SCHEME_PROPS`, so the glyph cycles were in parity. One row was wrong
+about Stata: `gsize note` exists in every scheme, but Stata's note textbox
+is `small_body` (its title is `heading`, subtitle `subheading`, caption
+`body`, legend entries `key_label`, axis titles `axis_title`, tick labels
+`tick_label`), so `note_font_size` read a key Stata does not read either.
+Now each element takes the size and colour of the textbox style that draws
+it in Stata: `apply_to_figure` sets the figure title from `color
+heading`/`gsize heading` and the axis-title and tick-label colours from
+`color axis_title`/`color tick_label`, an explicit `title(, size() color())`
+still running after it; `_dash_text_annotations` takes the scheme, subtitle
+at subheading, note at small_body in its own colour, caption at body; one
+`_dash_scheme_chrome(scheme)` builds the legend chrome for both modes with
+`key_label` text, and `_dash_apply_legend` places the legend from `clockdir
+legend_position` and `numstyle legend_cols`/`legend_rows` when no
+`position()`, `ring()` or keyword was given (6 below and horizontal in the
+scheme's columns, 12 above, 3 right, 9 left; `cols()`/`rows()` win);
+`default_color` reads `p_mark_colors` for the marker types; the unread
+served constants are gone. `note_font_size` stays parsed for the fidelity
+check and is read for nothing, by design; `graphsize x/y` stays ratio-only,
+as the figure-proportions help documents. After: under s1rcolor every text
+is white; economist's title 17.28pt over an 11pt subtitle; s2color's legend
+below in two columns, stcolor's right in one, economist's above in three;
+pinned in both modes by `test_scheme_rendered_output.py`. The adversarial
+review of the package (22sep2026) found four more consumers to put right on
+this gap, closed in the same package: the scheme-placed legend was the
+outermost item on its side and right-aligned (Stata's `legend_ring 3` is
+nearest the plot, and a 6 or 12 o'clock legend is centred) and a user
+`legend(rows(1))` inherited the scheme's `ncols` -- now inserted after the panel's axis, before every Label
+of the panel, `location` center, and `rows()` alone sets `ncols` auto
+(`cols()` alone `nrows` auto); `color p#mark` had reached the Segments of
+the spike family and the line halves of dropline and rcapsym through the
+"scatter" alias -- now marker glyphs only; `linewidth axisline` was
+extracted and carried but read by nothing -- now `axis_line_width` on each
+axis; and a hostile `clockdir legend_position 99` or `numstyle legend_rows
+1000` passed in silence -- now range-checked with the colour path's
+warning. `color foreground` joins `note_font_size` as a directive carried
+and read for nothing, by design. Pinned in both modes by
+`test_scheme_review_fixes.py`. The line
+references above were measured at `187a786`; at `52c473c` the parser rows
+were at `dash_render.py:2145-2268`, `default_color` at `:2274` and the
+textbox literals at `:10018`.
+
+### G5. Numeric scale factors are wrong — S2, CLOSED by WP-16
 
 - **`gsize`**: `dash_render.py:1846-1849` computes `int(val * 1.2)`. Stata's
   relative-size unit is fixed — `gsize-medium.style` = `3.8194` = 11 pt on a
@@ -1114,7 +1194,36 @@ of the 14 files contain an `#include`, whereas 25 of Stata's 26 do.
   economist = **1.2** — economist's deliberately heavy lines render *thinner*
   than every other scheme's.
 
-### G6. Inline styles defeat the scheme on KPI cards — S2, MEASURED
+**Closed by WP-16.** The factor was verified against the style files,
+22sep2026: every `gsize-*`, `symbolsize-*` and `linewidth-*` style sets
+`sztype relative`, `size.sthlp` defines 100 as the graph's smaller
+dimension, and the measured `test/fixtures/scheme_visual/truth.json`
+(stcolor's title 15.74pt = 4.859% of a 4.5-inch height) confirms it, so one
+unit is 2.88pt on the four-inch reference and `gsize heading 6.0` is
+17.28pt. Measured before: economist's title 7pt under an 11pt subtitle in
+both modes; economist's `linewidth p 1.2` at 1.2px against 1.5px for every
+other scheme's medium; `_GSIZE_PT` had minuscule 2pt (Stata 1pt) and vhuge
+24pt (Stata 28pt); symbolsize keywords were scaled through the text ladder,
+so `large` markers were 10.18px where Stata's symbolsize ratio (7pt over
+medium's 4.4pt) gives 12.73px, and stcolor's `small` 5.82px where it gives
+5.45px. Now `_gsize` numeric is `val * 2.88` pt, no floor, no truncation;
+the two table entries are corrected; `_lwidth` numeric is Stata's unit at
+`val * 5.0` px (medium .30 stays 1.5px, economist 6.0px); a
+`_SYMBOLSIZE_PT` ladder from the `symbolsize-*.style` files, anchored at
+medium 4.4pt = 8px, sizes the markers; the fixture's `_meta.units` records
+the three ladders and the formula. Not changed, a follow-up: the linewidth
+keyword ladder `_LWIDTH_MAP` (thin .8px to vvthick 5.0px) keeps ratios that
+are not Stata's (Stata's thin is 0.667 of medium, vthick 4.667). After:
+economist's title 17.28pt over 11pt, its line 6.0 over s2color's 1.5,
+markers 5.45px (stcolor), 8px (s2color), 12.73px (economist), in both
+modes. The adversarial review of the package (22sep2026) found that the
+numeric branch's `%g` formatting turned `gsize body 0.00001` into
+`2.88e-05pt`, which Bokeh's FontSize validator rejects, aborting the whole
+figure where the old floor had drawn 6pt; `_gsize` now formats fixed
+decimals and a point size outside (0, 1000] falls back to the default with
+the `dash scheme:` warning, pinned by `test_scheme_review_fixes.py`.
+
+### G6. Inline styles defeat the scheme on KPI cards — S2, CLOSED by WP-16
 
 `css_block()` (`:2214-2215`) emits `.db-kpi-card { background-color: …;
 border-color: …; }`, but the Div is written with an inline
@@ -1126,6 +1235,42 @@ with a `#dee2e6` border. Same in the server path (`:12977-12982`).
 Similarly `:9188` hardcodes `g.grid_line_color = "#e5e5e5"` when
 `xlabel(, grid)` turns on a grid the scheme left off, ignoring the scheme's
 `color major_grid`.
+
+**Closed by WP-16.** Measured first, 22sep2026, all 14 schemes, both modes:
+every card `background:#f8f9fa; ... border:1px solid #dee2e6` inline (a
+light card on s1rcolor's black page; `#f8f9fa` where economist's legend box
+is `#c6d3df`), and the `.db-kpi-card` rule reached no card Div at all,
+because a Bokeh 3 Div renders in a shadow root and only the header Divs
+carried `css_block()` as an `InlineStyleSheet`; the whitespace of that Div
+was the only place the two modes disagreed. `xlabel(, grid)` drew `#e5e5e5`
+on the ten schemes whose x grid is off (`#e0e0e0` wanted under s1color,
+`#ffffff` economist, `#505050` s1rcolor, `#eaf2f3` s2color, `#e8e8e8`
+s2mono). Now one module-level `_dash_kpi_card_html(...)` writes the card for
+`_make_kpi_div`, the served `_dash_kpi_card` and the JS filter rebuild
+alike: class `db-kpi-card`, layout-only inline properties, no inline
+background or border unless `bgcolor()` was given (then inline, and it
+wins), value colour `color()` or the scheme's `color text`, title and
+subtitle `color text`; every card Div carries
+`stylesheets=[InlineStyleSheet(scheme.css_block())]` and the rule is
+`background-color: <color legend>; border: 1px solid <color legend_line>;
+color: <color text>`. `_dash_apply_axis_options` takes the scheme's grid
+colour for the `grid` branch. After: economist's card `#c6d3df`, s1rcolor's
+black with white text, `bgcolor(#ecf0f1)` still inline, `xlabel(, grid)`
+under s1color `#e0e0e0`; both modes, pinned by
+`test_scheme_rendered_output.py`. The adversarial review of the package
+(22sep2026) found the seven `#212529` pins in `test_kpi_security.py` that
+no owner had restated (7 failed, 25 passed against the tree; restated to
+the scheme's `color text`), one byte the JS rebuild still got wrong (the
+value div's `id="kpi_val_<name>"`, pre-existing, now emitted from the
+config), and, pre-existing and outside this gap, that every `layout(bs)`
+page carrying a KPI or a filter widget was blank, because
+`_render_bootstrap_html`'s non-greedy head scrape stopped at the literal
+`<head></head>` inside Bokeh 3.9's inlined widgets bundle -- so the card's
+stylesheet reached the bs page only at the JSON level until the head was
+taken up to the last `</head>`; each in `BUGS.md` and pinned by
+`test_scheme_review_fixes.py`. The line references above were measured
+at `187a786`; at `52c473c` the card markup was at `dash_render.py:12362-12369`
+(served `:14910-14917`, JS `:8163-8168`) and the grid literal at `:9379`.
 
 ### G7. What works — no gap
 

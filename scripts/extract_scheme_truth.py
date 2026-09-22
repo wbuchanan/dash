@@ -12,7 +12,37 @@ sizes, line widths and intensities are *themselves* indirections into
 
 This script walks that whole graph and emits a single JSON document of fully
 resolved values, which is the specification the translated ``dash`` scheme files
-are written from.
+are written from -- and it then brings those fourteen files
+(``schemes/<name>.scheme``) up to date with it: every directive the fixture pins
+is checked against the file, a value that disagrees is corrected on its own
+line and reported, and a directive the file lacks is appended in a dated block
+after the file's last directive.  The files' hand-written provenance comments
+are left untouched, and a second run changes nothing.
+
+GRID SWITCHES ARE RECORDED AS *EFFECTIVE* PER-AXIS VALUES
+---------------------------------------------------------
+twoway builds its x axis with ``axisstyle horizontal_default`` and its y axis
+with ``axisstyle vertical_default``.  The scheme maps each of those roles to a
+style name, and ``style/axisstyle-<name>.style`` then names the ``yesno`` key
+that is actually read (``set draw_major_grid scheme draw_major_hgrid``).  For
+thirteen schemes the roles map to themselves, so the keys are
+``draw_major_hgrid``/``draw_minor_hgrid`` (x) and ``draw_major_vgrid``/
+``draw_minor_vgrid`` (y); economist maps ``vertical_default`` to
+``vertical_nolinetick``, whose style file reads ``draw_major_nlt_vgrid`` and
+``draw_minor_nlt_vgrid`` instead.  The fixture keys ``draw_major_hgrid``,
+``draw_minor_hgrid``, ``draw_major_vgrid`` and ``draw_minor_vgrid`` therefore
+hold the value Stata ends up with for that axis, whichever key supplied it, and
+``grid_axes`` records the chain.  No style file reads the bare
+``draw_major_grid``/``draw_minor_grid``; they are recorded only as transcribed.
+
+UNITS
+-----
+help size: "relative size, where size 100 = minimum of width and height of
+graph".  Every official gsize-/symbolsize-*.style sets ``sztype relative`` and
+linewidth's numeric form is the same unit.  On Stata's 4-inch reference (s2color
+is 5.5 x 4in) one unit is 2.88pt, and every sized value in the fixture carries
+its ``pt_at_4in``; ``_meta.units`` holds the three keyword ladders read from the
+style files.
 
 SOURCE OF TRUTH (measured on this machine, 2026-09-18)
 ------------------------------------------------------
@@ -28,7 +58,9 @@ is identical, so either tree yields the same answer.  Override the location with
 USAGE
 -----
     /opt/homebrew/bin/python3.14 scripts/extract_scheme_truth.py \
-        --out test/fixtures/scheme_truth.json
+        --out test/fixtures/scheme_truth.json          # also updates schemes/*.scheme
+    ... --no-scheme-files                             # fixture only
+    ... --schemes-dir /elsewhere                      # files live elsewhere
 
 COLOUR INTENSITY MULTIPLIERS (``navy*0.5``)
 -------------------------------------------
@@ -59,6 +91,9 @@ import sys
 from decimal import Decimal, ROUND_HALF_UP
 
 DEFAULT_STATA_BASE = "/Applications/StataNow/ado/base"
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_SCHEMES_DIR = os.path.join(REPO_ROOT, "schemes")
 
 # Number of overlaid plots in a Stata scheme's colour cycle.
 N_PLOTS = 15
@@ -91,7 +126,8 @@ class SchemeResolver:
         self.style_dir = os.path.join(stata_base, "style")
         # (class, key) -> value.  key "" is the class-level default.
         self.settings: dict[tuple[str, str], str] = {}
-        # Ordered list of scheme names actually spliced in, parent-first.
+        # Scheme names in the order their files were OPENED: the child first,
+        # then each #include as it is met (child -> ... -> root).
         self.include_chain: list[str] = []
         self._style_cache: dict[str, dict[str, str]] = {}
 
@@ -307,42 +343,145 @@ def _as_number(text: str):
         return None
 
 
+# Stata's relative size: 100 = the graph's smaller dimension (help size).  The
+# reference graph is s2color's 5.5 x 4 inches, so one unit is 4in/100 * 72pt.
+REFERENCE_MIN_DIMENSION_IN = 4.0
+PT_PER_UNIT_AT_REFERENCE = REFERENCE_MIN_DIMENSION_IN / 100.0 * 72.0   # 2.88
+
+# The keyword ladders, in Stata's own order.  gsize has no `ehuge' style file
+# (only symbolsize does); the fractional gsize names are real styles too.
+GSIZE_KEYWORDS = (
+    "zero", "minuscule", "quarter_tiny", "third_tiny", "half_tiny", "tiny",
+    "vsmall", "small", "medsmall", "medium", "medlarge", "large", "vlarge",
+    "huge", "vhuge", "default", "tenth", "quarter", "third", "half", "full",
+)
+SYMBOLSIZE_KEYWORDS = (
+    "zero", "vtiny", "tiny", "vsmall", "small", "medsmall", "medium",
+    "medlarge", "large", "vlarge", "huge", "vhuge", "ehuge",
+)
+LINEWIDTH_KEYWORDS = (
+    "none", "vvvthin", "vvthin", "vthin", "thin", "medthin", "medium",
+    "medthick", "thick", "vthick", "vvthick", "vvvthick",
+)
+
+
+def pt_at_reference(value, ndigits: int = 2):
+    """Points at Stata's 4-inch reference for a relative-size *value*."""
+    if value is None:
+        return None
+    return round(float(value) * PT_PER_UNIT_AT_REFERENCE, ndigits)
+
+
 def resolve_sized(r: SchemeResolver, cls: str, token: str | None):
-    """Resolve a gsize/symbolsize token to {name, value, sztype}.
+    """Resolve a gsize/symbolsize token to {name, value, sztype, pt_at_4in}.
 
     A token is either a literal number (a relative size) or a style name such as
     ``medsmall`` that indirects into ``style/<cls>-<name>.style`` which carries
-    ``set val`` and ``set sztype``.
+    ``set val`` and ``set sztype``.  ``pt_at_4in`` is the size in points on
+    Stata's 4-inch reference graph; None when the style is not relative.
     """
     if token is None:
         return None
     tok = token.strip().strip('"')
     lit = _as_number(tok)
     if lit is not None:
-        return {"name": tok, "value": float(lit), "sztype": "relative"}
+        return {"name": tok, "value": float(lit), "sztype": "relative",
+                "pt_at_4in": pt_at_reference(lit)}
     st = r.style(cls, tok.lower())
     if not st or "val" not in st:
-        return {"name": tok, "value": None, "sztype": None}
+        return {"name": tok, "value": None, "sztype": None, "pt_at_4in": None}
     val = _as_number(st["val"])
+    sztype = st.get("sztype")
     return {
         "name": tok,
         "value": float(val) if val is not None else None,
-        "sztype": st.get("sztype"),
+        "sztype": sztype,
+        "pt_at_4in": pt_at_reference(val) if sztype == "relative" else None,
     }
 
 
 def resolve_linewidth(r: SchemeResolver, token: str | None):
+    """Resolve a linewidth token to {name, value, pt_at_4in} (same unit)."""
     if token is None:
         return None
     tok = token.strip().strip('"')
     lit = _as_number(tok)
     if lit is not None:
-        return {"name": tok, "value": float(lit)}
+        return {"name": tok, "value": float(lit),
+                "pt_at_4in": pt_at_reference(lit, 3)}
     st = r.style("linewidth", tok.lower())
     if not st or "val" not in st:
-        return {"name": tok, "value": None}
+        return {"name": tok, "value": None, "pt_at_4in": None}
     val = _as_number(st["val"])
-    return {"name": tok, "value": float(val) if val is not None else None}
+    return {"name": tok, "value": float(val) if val is not None else None,
+            "pt_at_4in": pt_at_reference(val, 3)}
+
+
+def unit_ladders(r: SchemeResolver) -> dict:
+    """The gsize / symbolsize / linewidth keyword ladders, read from style/.
+
+    Each entry is ``{"value": <set val>, "pt_at_4in": ...}`` (plus ``sztype``
+    for the sized classes); a keyword with no style file is recorded as None
+    rather than invented.
+    """
+    def ladder(cls, names, ndigits):
+        out = {}
+        for name in names:
+            st = r.style(cls, name)
+            if not st or "val" not in st:
+                out[name] = None
+                continue
+            val = _as_number(st["val"])
+            entry = {"value": float(val) if val is not None else None}
+            if cls != "linewidth":
+                entry["sztype"] = st.get("sztype")
+            relative = st.get("sztype", "relative") == "relative"
+            entry["pt_at_4in"] = (
+                pt_at_reference(val, ndigits) if relative and val is not None
+                else None)
+            out[name] = entry
+        return out
+    return {
+        "gsize": ladder("gsize", GSIZE_KEYWORDS, 2),
+        "symbolsize": ladder("symbolsize", SYMBOLSIZE_KEYWORDS, 2),
+        "linewidth": ladder("linewidth", LINEWIDTH_KEYWORDS, 3),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Grid switches: the axisstyle indirection
+# --------------------------------------------------------------------------- #
+
+# twoway builds its x axis with `axisstyle horizontal_default' and its y axis
+# with `axisstyle vertical_default' (t/twowaygraph_g.class:870,914 and
+# x/xygraph_g.class:149,212).  The scheme maps each role to a style name, and
+# style/axisstyle-<name>.style then names the `yesno' key that is read --
+# `set draw_major_grid scheme draw_major_hgrid' -- or gives a literal yes/no.
+AXIS_ROLES = {"x": "horizontal_default", "y": "vertical_default"}
+
+
+def axis_grid_switches(r: SchemeResolver, axis: str) -> dict:
+    """Which scheme key (or literal) each grid switch of *axis* comes from."""
+    role = AXIS_ROLES[axis]
+    tok = r.get("axisstyle", role, class_default=False)
+    name = (tok if tok is not None else role).strip().strip('"')
+    st = r.style("axisstyle", name.lower()) or {}
+    info = {
+        "role": role,
+        "axisstyle": name,
+        "axisstyle_declared": tok is not None,
+        "style_file": f"style/axisstyle-{name.lower()}.style",
+    }
+    for which in ("major", "minor"):
+        setting = st.get(f"draw_{which}_grid")
+        parts = setting.split() if setting else []
+        if len(parts) == 2 and parts[0] == "scheme":
+            info[f"{which}_key"] = parts[1]
+            info[f"{which}_literal"] = None
+        else:
+            info[f"{which}_key"] = None
+            info[f"{which}_literal"] = parts[0] if parts else None
+    return info
 
 
 def resolve_intensity(r: SchemeResolver, token: str | None):
@@ -492,8 +631,41 @@ def extract(stata_base: str, scheme: str) -> dict:
             return None
         return _as_number(tok.strip())
 
+    # --- grid switches, resolved through the axisstyle indirection ---------- #
+    grid_axes = {"x": axis_grid_switches(r, "x"),
+                 "y": axis_grid_switches(r, "y")}
+
+    def effective_grid(out_key: str, axis: str, which: str):
+        """The yes/no Stata ends up with for *which* grid of *axis*."""
+        info = grid_axes[axis]
+        key = info[f"{which}_key"]
+        if key is None:
+            lit = info[f"{which}_literal"]
+            if lit is None:
+                unresolvable.append(
+                    f"{out_key}: {info['style_file']} sets no draw_{which}_grid")
+                sources[out_key] = None
+                return None
+            sources[out_key] = f"{info['style_file']}: set draw_{which}_grid {lit}"
+            return lit
+        tok = r.get("yesno", key, class_default=False)
+        if tok is None:
+            unresolvable.append(
+                f"{out_key}: yesno {key} (named by {info['style_file']}) is "
+                "not set anywhere in the #include chain")
+            sources[out_key] = None
+            return None
+        via = ""
+        if info["axisstyle"].lower() != info["role"]:
+            via = (f" (via axisstyle {info['role']} = {info['axisstyle']}, "
+                   f"{info['style_file']})")
+        sources[out_key] = f"yesno {key}{via}"
+        return tok.strip()
+
     out = {
-        "include_chain": list(reversed(r.include_chain)),  # child -> ... -> root
+        # root -> ... -> child: the order the directives are applied, the
+        # child's last.  (The resolver opens the files child-first.)
+        "include_chain": list(reversed(r.include_chain)),
         "p_colors": p_colors,
         "p_line_colors": p_line_colors,
         "p_bar_colors": p_bar_colors,
@@ -521,28 +693,58 @@ def extract(stata_base: str, scheme: str) -> dict:
         # Stata draws the major grid; "color grid" is the generic fallback.
         "grid_color": color_of("grid_color", ["major_grid", "grid"]),
         "minor_grid_color": color_of("minor_grid_color", ["minor_grid"]),
-        # Not requested, but grid_color is meaningless without it: s2color (and
-        # therefore the whole s1* family) sets both of these to "no", so those
-        # schemes never draw a grid at all.
-        "draw_major_hgrid": scalar("draw_major_hgrid", "yesno",
-                                   ["draw_major_hgrid"], lambda t: t.strip(),
-                                   class_default=False),
-        # The y-axis key is `draw_major_vgrid'.  This read `draw_major_grid',
-        # which is dead at scheme level (nothing under Stata's style/ reads
-        # `scheme draw_major_grid') and is `no' in every scheme, so the
-        # fixture recorded "no grid" for all fourteen where Stata gives yes
-        # for ten of them.
-        "draw_major_vgrid": scalar("draw_major_vgrid", "yesno",
-                                   ["draw_major_vgrid"], lambda t: t.strip(),
-                                   class_default=False),
+        # Grid switches: the EFFECTIVE per-axis values (see the module
+        # docstring).  A grid belongs to an axis and its key is named for that
+        # axis's orientation: the x (horizontal) axis draws the VERTICAL
+        # lines at the x ticks from draw_*_hgrid; the y axis draws the
+        # horizontal lines from draw_*_vgrid -- or, where the scheme maps
+        # `axisstyle vertical_default' elsewhere (economist), from whatever
+        # key that style file names.  `sources' records which key it was.
+        # The y-axis flag once came from `draw_major_grid', which nothing
+        # under style/ reads; it is `no' in every scheme, so the fixture said
+        # "no grid" for all fourteen where Stata gives yes for ten.
+        "draw_major_hgrid": effective_grid("draw_major_hgrid", "x", "major"),
+        "draw_minor_hgrid": effective_grid("draw_minor_hgrid", "x", "minor"),
+        "draw_major_vgrid": effective_grid("draw_major_vgrid", "y", "major"),
+        "draw_minor_vgrid": effective_grid("draw_minor_vgrid", "y", "minor"),
+        # The bare keys, as transcribed: dead at scheme level, kept so the
+        # translated file's faithful copy of them can be checked.
+        "draw_major_grid": scalar("draw_major_grid", "yesno",
+                                  ["draw_major_grid"], lambda t: t.strip(),
+                                  class_default=False),
+        "draw_minor_grid": scalar("draw_minor_grid", "yesno",
+                                  ["draw_minor_grid"], lambda t: t.strip(),
+                                  class_default=False),
+        "grid_axes": grid_axes,
+
         "title_color": color_of("title_color", ["heading"]),
         "axis_line_color": color_of("axis_line_color", ["axisline"]),
+        # One colour per textbox style: style/textboxstyle-<name>.style reads
+        # `color <name>'.  title() is heading, subtitle() subheading,
+        # caption() body, note() small_body (NOT body), legend keys
+        # key_label, axis titles axis_title, tick labels tick_label.
+        # `color text' and `color foreground' are the scheme's general text
+        # and foreground colours.
+        "subheading_color": color_of("subheading_color", ["subheading"]),
+        "body_color": color_of("body_color", ["body"]),
+        "small_body_color": color_of("small_body_color", ["small_body"]),
+        "text_color": color_of("text_color", ["text"]),
+        "axis_title_color": color_of("axis_title_color", ["axis_title"]),
+        "tick_label_color": color_of("tick_label_color", ["tick_label"]),
+        "key_label_color": color_of("key_label_color", ["key_label"]),
+        "foreground_color": color_of("foreground_color", ["foreground"]),
 
         "default_line_width": scalar(
             "default_line_width", "linewidth", ["p"],
             lambda t: resolve_linewidth(r, t), class_default=True),
         "grid_line_width": scalar(
             "grid_line_width", "linewidth", ["major_grid", "grid"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
+        "minor_grid_line_width": scalar(
+            "minor_grid_line_width", "linewidth", ["minor_grid"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
+        "axis_line_width": scalar(
+            "axis_line_width", "linewidth", ["axisline"],
             lambda t: resolve_linewidth(r, t), class_default=True),
 
         "fill_alpha": scalar("fill_alpha", "intensity", ["p"],
@@ -562,6 +764,17 @@ def extract(stata_base: str, scheme: str) -> dict:
                                   lambda t: resolve_sized(r, "gsize", t)),
         "note_size": scalar("note_size", "gsize", ["note"],
                             lambda t: resolve_sized(r, "gsize", t)),
+        # The textbox sizes: subtitle() subheading, caption() body, note()
+        # small_body (Stata's note textbox does not read `gsize note'),
+        # legend keys key_label.
+        "subheading_size": scalar("subheading_size", "gsize", ["subheading"],
+                                  lambda t: resolve_sized(r, "gsize", t)),
+        "body_size": scalar("body_size", "gsize", ["body"],
+                            lambda t: resolve_sized(r, "gsize", t)),
+        "small_body_size": scalar("small_body_size", "gsize", ["small_body"],
+                                  lambda t: resolve_sized(r, "gsize", t)),
+        "key_label_size": scalar("key_label_size", "gsize", ["key_label"],
+                                 lambda t: resolve_sized(r, "gsize", t)),
 
         "graphsize_x": graphsize("x"),
         "graphsize_y": graphsize("y"),
@@ -575,6 +788,9 @@ def extract(stata_base: str, scheme: str) -> dict:
         "legend_cols": scalar("legend_cols", "numstyle", ["legend_cols"],
                               lambda t: _as_number(t.strip()),
                               class_default=False),
+        "legend_rows": scalar("legend_rows", "numstyle", ["legend_rows"],
+                              lambda t: _as_number(t.strip()),
+                              class_default=False),
     }
 
     out["sources"] = sources
@@ -585,6 +801,304 @@ def extract(stata_base: str, scheme: str) -> dict:
             unresolvable.append(msg)
     out["unresolvable"] = unresolvable
     return out
+
+
+# --------------------------------------------------------------------------- #
+# The translated scheme files (schemes/<name>.scheme)
+# --------------------------------------------------------------------------- #
+#
+# A translated file is Stata's own one-directive-per-line grammar with every
+# colour pre-resolved to #rrggbb and the p#stub -> pstub -> p# -> p fallback
+# flattened into explicit p1..p15 lines, because SchemeParser reads by exact
+# key.  The files carry hand-written provenance comments, so they are UPDATED
+# IN PLACE rather than rewritten: every directive the fixture pins is checked
+# against the file; a directive whose value disagrees is corrected on its own
+# line and reported on stderr; a directive the file lacks is appended, in a
+# dated block, after the file's last directive.  A second run changes nothing.
+
+def _fmt(value) -> str:
+    """A fixture value as the token a .scheme directive carries."""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def _same(old: str, new: str) -> bool:
+    """Directive values agree: same token, or the same number."""
+    a, b = old.strip().lower(), new.strip().lower()
+    if a == b:
+        return True
+    na, nb = _as_number(a), _as_number(b)
+    return na is not None and nb is not None and float(na) == float(nb)
+
+
+def _grid_comment(e: dict) -> list[str]:
+    """The minor-grid comment, naming this scheme's own axisstyle chain."""
+    ax = e.get("grid_axes") or {}
+    x, y = ax.get("x") or {}, ax.get("y") or {}
+
+    def chain(label, a):
+        return [
+            f"  {label} axis: axisstyle {a.get('role')} = {a.get('axisstyle')}",
+            f"          -> {a.get('style_file')}",
+            f"          -> {a.get('major_key') or a.get('major_literal')} / "
+            f"{a.get('minor_key') or a.get('minor_literal')}",
+        ]
+    return [
+        "Minor grid switches -- EFFECTIVE per-axis values.  twoway builds the x",
+        "axis with `axisstyle horizontal_default' and the y axis with `axisstyle",
+        "vertical_default'; the scheme maps each role to a style name, and that",
+        "style file names the `yesno' key Stata actually reads:",
+        *chain("x", x),
+        *chain("y", y),
+        "The draw_major_hgrid / draw_major_vgrid lines above hold the same",
+        "effective values.  `yesno draw_minor_grid' is transcribed from Stata's",
+        "file but, like draw_major_grid, no style file reads it.",
+    ]
+
+
+def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple[str, str, str]]]]":
+    """The directives a translated file must carry for fixture entry *e*.
+
+    Returns ordered groups ``(comment_lines, [(class, key, value), ...])``;
+    the comment is written above the group when any of it has to be appended.
+    A ``None`` value (Stata colour ``none``, or an unresolvable entry) is
+    skipped rather than written.
+    """
+    groups: list = []
+
+    def group(comment, items):
+        items = [(c, k, _fmt(v)) for c, k, v in items if v is not None]
+        if items:
+            groups.append((comment, items))
+
+    def name_of(spec):
+        return (spec or {}).get("name")
+
+    group(["Background and region colours."], [
+        ("color", "background", e.get("background_color")),
+        ("color", "plotregion", e.get("plotregion_color")),
+        ("color", "legend", e.get("legend_bg_color")),
+        ("color", "legend_line", e.get("legend_border_color")),
+        ("color", "major_grid", e.get("grid_color")),
+        ("color", "minor_grid", e.get("minor_grid_color")),
+        ("color", "heading", e.get("title_color")),
+        ("color", "axisline", e.get("axis_line_color")),
+    ])
+    for stub, key in (("", "p_colors"), ("line", "p_line_colors"),
+                      ("bar", "p_bar_colors"), ("mark", "p_mark_colors")):
+        vals = e.get(key) or []
+        group([f"Per-plot colour cycle p#{stub} (Stata's p#stub -> pstub -> p# -> p chain, flattened)."],
+              [("color", f"p{i}{stub}", vals[i - 1]) for i in range(1, N_PLOTS + 1)
+               if len(vals) >= i])
+    decl = e.get("lineplot_declared") or {}
+    if decl.get("color"):
+        vals = e.get("p_lineplot_colors") or []
+        group(["Per-plot `twoway line' colour (Stata: color p#lineplot; declared by this chain)."],
+              [("color", f"p{i}lineplot", vals[i - 1]) for i in range(1, N_PLOTS + 1)
+               if len(vals) >= i])
+    vals = e.get("p_symbols") or []
+    group(["Marker symbol cycle."],
+          [("symbol", f"p{i}", vals[i - 1]) for i in range(1, N_PLOTS + 1)
+           if len(vals) >= i])
+    vals = e.get("p_line_patterns") or []
+    group(["Line patterns of the connecting line (Stata: linepattern p#line)."],
+          [("linepattern", f"p{i}line", vals[i - 1]) for i in range(1, N_PLOTS + 1)
+           if len(vals) >= i])
+    if decl.get("linepattern"):
+        vals = e.get("p_lineplot_patterns") or []
+        group(["Line patterns of `twoway line' (Stata: linepattern p#lineplot; declared by this chain)."],
+              [("linepattern", f"p{i}lineplot", vals[i - 1])
+               for i in range(1, N_PLOTS + 1) if len(vals) >= i])
+    group(["Line widths (Stata linewidth style names)."], [
+        ("linewidth", "p", name_of(e.get("default_line_width"))),
+        ("linewidth", "major_grid", name_of(e.get("grid_line_width"))),
+    ])
+    group(["Fill intensities."], [
+        ("intensity", "p", name_of(e.get("fill_alpha"))),
+        ("intensity", "bar", name_of(e.get("bar_alpha"))),
+        ("intensity", "area", name_of(e.get("area_alpha"))),
+    ])
+    group(["Font sizes (Stata gsize style names, relative units)."], [
+        ("gsize", "text", name_of(e.get("text_size"))),
+        ("gsize", "heading", name_of(e.get("heading_size"))),
+        ("gsize", "axis_title", name_of(e.get("axis_title_size"))),
+        ("gsize", "tick_label", name_of(e.get("tick_label_size"))),
+        ("gsize", "note", name_of(e.get("note_size"))),
+    ])
+    group(["Graph dimensions, in inches."], [
+        ("graphsize", "x", e.get("graphsize_x")),
+        ("graphsize", "y", e.get("graphsize_y")),
+    ])
+    group(["Marker size and legend placement."], [
+        ("symbolsize", "p", name_of(e.get("symbolsize"))),
+        ("clockdir", "legend_position", e.get("legend_position")),
+        ("numstyle", "legend_cols", e.get("legend_cols")),
+    ])
+    group(["Major grid switches (effective per-axis values; see the minor-grid note)."], [
+        ("yesno", "draw_major_hgrid", e.get("draw_major_hgrid")),
+        ("yesno", "draw_major_vgrid", e.get("draw_major_vgrid")),
+        ("yesno", "draw_major_grid", e.get("draw_major_grid")),
+    ])
+    # --- the directives the first translation did not carry ---------------- #
+    group(_grid_comment(e), [
+        ("yesno", "draw_minor_hgrid", e.get("draw_minor_hgrid")),
+        ("yesno", "draw_minor_vgrid", e.get("draw_minor_vgrid")),
+        ("yesno", "draw_minor_grid", e.get("draw_minor_grid")),
+    ])
+    group([
+        "Text colours, one per textbox style: style/textboxstyle-<name>.style",
+        "reads `color <name>'.  title() is heading (above), subtitle()",
+        "subheading, caption() body, note() small_body, legend keys key_label,",
+        "axis titles axis_title, tick labels tick_label.  `color text' and",
+        "`color foreground' are the scheme's general text and foreground",
+        "colours.",
+    ], [
+        ("color", "subheading", e.get("subheading_color")),
+        ("color", "body", e.get("body_color")),
+        ("color", "small_body", e.get("small_body_color")),
+        ("color", "text", e.get("text_color")),
+        ("color", "axis_title", e.get("axis_title_color")),
+        ("color", "tick_label", e.get("tick_label_color")),
+        ("color", "key_label", e.get("key_label_color")),
+        ("color", "foreground", e.get("foreground_color")),
+    ])
+    group([
+        "Text sizes, one per textbox style (Stata gsize style names; the",
+        "fixture's _meta.units gives each name's relative value and its points",
+        "at Stata's 4-inch reference).  note() is drawn with small_body: the",
+        "`gsize note' line above is not the key Stata's note textbox reads.",
+    ], [
+        ("gsize", "subheading", name_of(e.get("subheading_size"))),
+        ("gsize", "body", name_of(e.get("body_size"))),
+        ("gsize", "small_body", name_of(e.get("small_body_size"))),
+        ("gsize", "key_label", name_of(e.get("key_label_size"))),
+    ])
+    group(["Minor grid and axis line widths (Stata linewidth style names)."], [
+        ("linewidth", "minor_grid", name_of(e.get("minor_grid_line_width"))),
+        ("linewidth", "axisline", name_of(e.get("axis_line_width"))),
+    ])
+    group(["Legend rows; 0 means not fixed, so the column count above decides."], [
+        ("numstyle", "legend_rows", e.get("legend_rows")),
+    ])
+    return groups
+
+
+def _file_directives(lines: list[str]) -> dict:
+    """``(class, key) -> (line index, value)`` for every directive line."""
+    out = {}
+    for i, raw in enumerate(lines):
+        line = raw.strip()
+        if (not line or line.startswith("*") or line.startswith("#include")
+                or line.startswith("label")):
+            continue
+        tokens = line.split()
+        if len(tokens) < 3:
+            continue
+        out[(tokens[0].lower(), tokens[1].lower())] = (i, " ".join(tokens[2:]))
+    return out
+
+
+def _replace_value(line: str, value: str) -> str:
+    """The same directive line with only its value token replaced."""
+    head = line.rstrip()
+    old = head.split()[-1]
+    return head[: head.rfind(old)] + value
+
+
+def _chain_text(name: str, e: dict) -> str:
+    """The #include chain as root -> ... -> child, whichever way it is stored."""
+    chain = list(e.get("include_chain") or [name])
+    if chain and chain[0] == name and len(chain) > 1:
+        chain.reverse()
+    return " -> ".join(chain)
+
+
+def _render_block(name: str, e: dict, groups, stamp: str) -> list[str]:
+    rule = "* " + "-" * 75
+    out = [
+        rule,
+        f"* Added {stamp} by scripts/extract_scheme_truth.py (WP-16): directives",
+        "* Stata consumes that the translation above did not carry.  Values are",
+        "* resolved from the same Stata #include chain and style files as the",
+        f"* rest of this file (chain: {_chain_text(name, e)}); colours are",
+        "* pre-resolved #rrggbb.  Re-running the script re-checks every directive",
+        "* in this file and appends only what is missing.",
+        rule,
+    ]
+    for comment, items in groups:
+        out.append("")
+        out.extend("* " + c if c else "*" for c in comment)
+        width = max(len(k) for _, k, _ in items)
+        for cls, key, value in items:
+            out.append(f"{cls} {key:<{width}}  {value}")
+    return out
+
+
+def _new_file_header(name: str, e: dict, stata_base: str, stamp: str) -> list[str]:
+    chain = _chain_text(name, e)
+    rule = "* " + "-" * 75
+    return [
+        f"* {name}.scheme",
+        rule,
+        f"* dash translation of Stata's {name} scheme, written {stamp} by",
+        "* scripts/extract_scheme_truth.py from Stata's own scheme-*.scheme and",
+        "* style/*.style files.",
+        f"*   Source Stata scheme : {os.path.join(stata_base, 's', f'scheme-{name}.scheme')}",
+        f"*                         (Stata #include chain: {chain})",
+        "* Every colour is a RESOLVED #rrggbb value; every p#stub is spelled out",
+        "* p1..p15 because SchemeParser reads by exact key with no fallback.",
+        rule,
+        "",
+        f'label "{name}"',
+    ]
+
+
+def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
+                       stamp: str) -> dict:
+    """Bring ``schemes/<name>.scheme`` into line with fixture entry *e*.
+
+    Returns ``{"changed": [...], "added": [...], "created": bool}`` describing
+    what was written; an empty result means the file already agreed.
+    """
+    created = not os.path.exists(path)
+    if created:
+        lines = _new_file_header(name, e, stata_base, stamp)
+    else:
+        with open(path, "r", encoding="utf-8") as fh:
+            lines = fh.read().split("\n")
+    present = _file_directives(lines)
+    changed, added, append_groups = [], [], []
+    for comment, items in expected_directives(e):
+        missing = []
+        for cls, key, value in items:
+            hit = present.get((cls, key.lower()))
+            if hit is None:
+                missing.append((cls, key, value))
+                continue
+            idx, old = hit
+            if not _same(old, value):
+                lines[idx] = _replace_value(lines[idx], value)
+                changed.append(f"{cls} {key}: {old} -> {value}")
+        if missing:
+            append_groups.append((comment, missing))
+            added.extend(f"{c} {k}" for c, k, _ in missing)
+    if append_groups:
+        if present:
+            insert_at = max(i for i, _ in present.values()) + 1
+        else:
+            insert_at = len(lines)
+        block = _render_block(name, e, append_groups, stamp)
+        lines[insert_at:insert_at] = [""] + block
+    if created or changed or added:
+        text = "\n".join(lines)
+        if not text.endswith("\n"):
+            text += "\n"
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    return {"changed": changed, "added": added, "created": created}
 
 
 # --------------------------------------------------------------------------- #
@@ -602,12 +1116,20 @@ def main(argv=None) -> int:
                     help="Stata ado/base directory (default: %(default)s)")
     ap.add_argument("--out", required=True, help="output JSON path")
     ap.add_argument("--schemes", nargs="*", default=SCHEMES)
+    ap.add_argument("--schemes-dir", default=DEFAULT_SCHEMES_DIR,
+                    help="directory of dash's translated <name>.scheme files "
+                         "to update from the fixture (default: %(default)s)")
+    ap.add_argument("--no-scheme-files", action="store_true",
+                    help="write the fixture only; leave schemes/*.scheme alone")
     args = ap.parse_args(argv)
 
     base = args.stata_base
     if not os.path.isdir(os.path.join(base, "s")):
         sys.stderr.write(f"error: no scheme directory under {base}\n")
         return 2
+
+    ladders = unit_ladders(SchemeResolver(base))
+    stamp = datetime.date.today().strftime("%d%b%Y").lower()
 
     doc: dict = {
         "_meta": {
@@ -670,10 +1192,94 @@ def main(argv=None) -> int:
             ),
             "units": {
                 "graphsize_x/graphsize_y": "inches",
-                "*_size.value": "Stata relative size units (sztype gives the kind)",
-                "default_line_width/grid_line_width.value": "Stata linewidth units",
+                "*_size.value": (
+                    "Stata relative size units (sztype gives the kind); "
+                    "pt_at_4in is that value in points on Stata's 4-inch "
+                    "reference graph"),
+                "default_line_width/grid_line_width.value": (
+                    "Stata linewidth units, the same relative size; "
+                    "pt_at_4in likewise"),
                 "*_alpha.pct": "percent as written in the scheme; alpha = pct/100",
                 "legend_position": "clock direction (0-12)",
+                "legend_cols/legend_rows": "integers; 0 rows = not fixed",
+                "relative_size": {
+                    "definition": (
+                        "help size: 'relative size, where size 100 = minimum "
+                        "of width and height of graph'; every official "
+                        "gsize-/symbolsize-*.style sets sztype relative, and "
+                        "linewidthstyle's numeric form is the same unit"),
+                    "formula_pt": (
+                        "pt = value / 100 * min(graphsize x, graphsize y) "
+                        "[inches] * 72"),
+                    "reference_min_dimension_in": REFERENCE_MIN_DIMENSION_IN,
+                    "pt_per_unit_at_4in": PT_PER_UNIT_AT_REFERENCE,
+                    "note": (
+                        "pt_at_4in figures use Stata's 4-inch reference "
+                        "(s2color is 5.5 x 4in); at a scheme's own graphsize "
+                        "multiply by min(x, y) / 4"),
+                },
+                "gsize": {
+                    "unit": "relative size (text height)",
+                    "dash_rule": (
+                        "a numeric gsize is pt = value * 2.88 (the 4-inch "
+                        "reference), written f'{pt:g}pt' with no minimum and "
+                        "no truncation; a keyword takes its pt_at_4in below"),
+                    "no_style_file": [k for k, v in ladders["gsize"].items()
+                                      if v is None] + ["ehuge"],
+                    "ladder": ladders["gsize"],
+                },
+                "symbolsize": {
+                    "unit": "relative size (marker diameter, outline excluded)",
+                    "dash_rule": (
+                        "a keyword takes its pt_at_4in below; a numeric "
+                        "symbolsize is pt = value * 2.88; pixels anchor "
+                        "medium (4.4pt) at 8px, i.e. px = pt * 8 / 4.4"),
+                    "not_the_gsize_ladder": (
+                        "large/medium = 1.59 here vs 1.27 for gsize; "
+                        "small/medium = 0.68 vs 0.73"),
+                    "ladder": ladders["symbolsize"],
+                },
+                "linewidth": {
+                    "unit": "relative size (help linewidthstyle)",
+                    "dash_rule": (
+                        "a numeric linewidth is px = value * 5.0 (medium .30 "
+                        "anchored at dash's 1.5px); keywords still go through "
+                        "OptionTranslator._LWIDTH_MAP, whose ratios are not "
+                        "this ladder's -- recorded as a follow-up"),
+                    "ladder": ladders["linewidth"],
+                },
+            },
+            "grid_switches": (
+                "draw_major_hgrid/draw_minor_hgrid (x axis, the vertical lines "
+                "at the x ticks) and draw_major_vgrid/draw_minor_vgrid (y axis, "
+                "the horizontal lines) are EFFECTIVE values: twoway builds the "
+                "x axis with axisstyle horizontal_default and the y axis with "
+                "axisstyle vertical_default, the scheme maps each role to a "
+                "style name, and style/axisstyle-<name>.style names the yesno "
+                "key that is read. Per-scheme 'grid_axes' records that chain "
+                "and 'sources' the key that supplied each value (economist's y "
+                "axis: draw_major_nlt_vgrid / draw_minor_nlt_vgrid via "
+                "vertical_nolinetick). draw_major_grid/draw_minor_grid are the "
+                "bare keys as transcribed; no style file reads them."
+            ),
+            "textbox_styles": {
+                "title()": {"style": "heading", "size": "gsize heading",
+                            "color": "color heading"},
+                "subtitle()": {"style": "subheading", "size": "gsize subheading",
+                               "color": "color subheading"},
+                "caption()": {"style": "body", "size": "gsize body",
+                              "color": "color body"},
+                "note()": {"style": "small_body", "size": "gsize small_body",
+                           "color": "color small_body",
+                           "note": "Stata's note textbox does not read gsize note"},
+                "legend keys": {"style": "key_label", "size": "gsize key_label",
+                                "color": "color key_label"},
+                "axis titles": {"style": "axis_title", "size": "gsize axis_title",
+                                "color": "color axis_title"},
+                "tick labels": {"style": "tick_label", "size": "gsize tick_label",
+                                "color": "color tick_label"},
+                "source": "style/textboxstyle-<name>.style: set size scheme "
+                          "<name>; set color scheme <name>",
             },
         }
     }
@@ -686,6 +1292,22 @@ def main(argv=None) -> int:
         json.dump(doc, fh, indent=2, ensure_ascii=False)
         fh.write("\n")
     sys.stderr.write(f"wrote {args.out} ({len(args.schemes)} schemes)\n")
+
+    if args.no_scheme_files:
+        return 0
+    for s in args.schemes:
+        path = os.path.join(args.schemes_dir, f"{s}.scheme")
+        result = update_scheme_file(path, s, doc[s], base, stamp)
+        for line in result["changed"]:
+            sys.stderr.write(f"{path}: CHANGED {line}\n")
+        if result["created"]:
+            sys.stderr.write(f"{path}: created\n")
+        elif result["added"]:
+            sys.stderr.write(
+                f"{path}: added {len(result['added'])} directive(s): "
+                + ", ".join(result["added"]) + "\n")
+        elif not result["changed"]:
+            sys.stderr.write(f"{path}: up to date\n")
     return 0
 
 

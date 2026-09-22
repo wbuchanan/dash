@@ -191,6 +191,25 @@
 *!                                    with nothing garbled (the old form
 *!                                    quoted the name in single quotes and
 *!                                    a trailing " ended the compound quote)
+*! S1 -- the WP-16 adversarial review (DESIGN.md section 6.3), measured
+*! 22sep2026 (scratchpad/wp16/F3/measure_twoway.log): `twoway bar price',
+*! `twoway scatter mpg' and every other two-variable type say "too few
+*! variables specified" r(102); histogram and kdensity take one variable.
+*! dash used to register such a segment with rc 0 and die at build with a
+*! Python KeyError on the empty x column, r(7102).  The refusal names the
+*! PLOT TYPE, not an option, so these cases go through _ov_refused:
+*!   OV-135 bar price                 rc 102, one error line saying
+*!                                    "bar requires a y and an x variable
+*!                                    (got: price)", nothing registered
+*!   OV-136 bar price mpg             rc 0 (the control)
+*!   OV-137 scatter mpg               rc 102 likewise, naming scatter
+*!   OV-138 (scatter mpg weight) (bar price)
+*!                                    rc 102 naming bar: one short segment
+*!                                    refuses the whole command
+*!   OV-139 line price if foreign     rc 102 naming line: an if-clause is
+*!                                    not a variable
+*!   OV-140 histogram mpg             rc 0 (the one-variable types are
+*!   OV-141 kdensity mpg              rc 0  untouched)
 *! The corpus arbiter:
 *!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
 *!          with rc 0 and no refusal -- the table accepts every value the
@@ -432,6 +451,51 @@ program define _ov_assert
     }
 end
 
+// A command refused at registration for its VARLIST rather than an
+// option: rc must equal `expected'; the captured log must say `needle'
+// (the message names the plot type and the variables given); it must
+// not be the ignoring note; and nothing may be registered under the
+// case's name -- the refusal comes before any JSON is written.
+capture program drop _ov_refused
+program define _ov_refused
+    version 16.0
+    args id cmdtext expected needle
+    local logfile "`c(tmpdir)'dash_ov.log"
+    local nm = "ov" + subinstr("`id'", "OV-", "", 1)
+    set linesize 80
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ovlog
+    local bad = 0
+    if `rc' != `expected' {
+        display as error `"`id' FAIL: expected rc `expected', got rc `rc': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    _ov_count "`logfile'" `"`macval(needle)'"'
+    if r(n) == 0 {
+        display as error `"`id' FAIL: the log does not say `macval(needle)'"'
+        local bad = 1
+    }
+    _ov_count "`logfile'" "unsupported option"
+    if r(n) > 0 {
+        display as error `"`id' FAIL: the refusal was reported as an unsupported option: `r(line)'"'
+        local bad = 1
+    }
+    if `"${dash_json_`nm'}"' != "" {
+        display as error `"`id' FAIL: the refused command still registered `nm'"'
+        local bad = 1
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+end
+
 // ----------------------------------------------------------------
 // OV-01 .. OV-21: style kinds
 // ----------------------------------------------------------------
@@ -653,6 +717,17 @@ _ov_case OV-133 `"dash scatter mpg weight, jitter(`_ov_tab'5`_ov_tab') name(ov13
 // trailing double quote cannot end the compound quote early.
 _ov_case OV-134 `"dash scatter mpg weight, by("foreign") name(ov134)"' 111 by
 _ov_said OV-134m `"variable "foreign" not found"'
+
+// S1 -- a two-variable plot type given ONE variable is refused at
+// registration with twoway's own rc 102, before any JSON is written.
+// The one-variable types keep registering.
+_ov_refused OV-135 `"dash bar price, name(ov135)"' 102 "dash: bar requires a y and an x variable (got: price)"
+_ov_case    OV-136 `"dash bar price mpg, name(ov136)"' 0 ""
+_ov_refused OV-137 `"dash scatter mpg, name(ov137)"' 102 "dash: scatter requires a y and an x variable (got: mpg)"
+_ov_refused OV-138 `"dash (scatter mpg weight) (bar price), name(ov138)"' 102 "dash: bar requires a y and an x variable (got: price)"
+_ov_refused OV-139 `"dash line price if foreign, name(ov139)"' 102 "dash: line requires a y and an x variable (got: price)"
+_ov_case    OV-140 `"dash histogram mpg, name(ov140)"' 0 ""
+_ov_case    OV-141 `"dash kdensity mpg, name(ov141)"' 0 ""
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

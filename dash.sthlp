@@ -1205,10 +1205,75 @@ draw without your asking.
 {synoptline}
 
 {pstd}
-The scheme sets the background and plot-region colours, the series colour,
-symbol, line-pattern and line-width cycles, the marker size, the font sizes,
-the grid, the legend and the figure proportions.  An explicit graph option
-always wins: {cmd:bgcolor()}, {cmd:plotregion()}, {cmd:mcolor()} and the rest
+A scheme directive that Stata's {cmd:graph} consumes is consumed by
+{cmd:dash}, in the place Stata consumes it, and where Stata draws nothing
+{cmd:dash} draws nothing.  The scheme sets:
+
+{phang2}{ul:Regions.}  The background and plot-region colours
+    ({cmd:color background}, {cmd:color plotregion}) and the figure
+    proportions ({cmd:graphsize x}, {cmd:graphsize y}; see
+    {help dash##geometry:Figure proportions}).{p_end}
+
+{phang2}{ul:Series.}  The colour, symbol, line-pattern and line-width
+    cycles ({cmd:p1} to {cmd:p15}), the marker colour where a scheme
+    declares a {cmd:color p}{it:#}{cmd:mark} apart from {cmd:p}{it:#}, the
+    marker size ({cmd:symbolsize p}) and the fill intensities.{p_end}
+
+{phang2}{ul:Grids.}  A major grid is drawn on an axis only where the
+    scheme says so ({cmd:yesno draw_major_hgrid} for the x axis,
+    {cmd:draw_major_vgrid} for the y axis), in {cmd:color major_grid} at
+    {cmd:linewidth major_grid}; a minor grid only where
+    {cmd:draw_minor_hgrid} or {cmd:draw_minor_vgrid} says so, which no
+    shipped scheme does.  So {cmd:s1color}, {cmd:s1mono}, {cmd:s1rcolor}
+    and {cmd:stmono1} draw no grid at all, as in Stata.  A grid that
+    {cmd:xlabel(, grid)} or {cmd:ylabel(, grid)} turns on is drawn in the
+    scheme's grid colour.{p_end}
+
+{phang2}{ul:Text.}  Each piece of text takes the size and colour of the
+    Stata textbox style that draws it: {cmd:title()} is {cmd:heading},
+    {cmd:subtitle()} is {cmd:subheading}, {cmd:caption()} is {cmd:body},
+    {cmd:note()} is {cmd:small_body} (Stata's note textbox does not use
+    {cmd:gsize note}, and neither does {cmd:dash}), axis titles are
+    {cmd:axis_title}, tick labels {cmd:tick_label} and legend entries
+    {cmd:key_label}.  The dashboard's own title and subtitle use
+    {cmd:heading} and {cmd:subheading}.  Under {cmd:s1rcolor} every one of
+    them is white on black; under {cmd:economist} the title is drawn
+    larger than the subtitle, as its {cmd:gsize heading 6.0} asks.{p_end}
+
+{phang2}{ul:Legend.}  Its background and border ({cmd:color legend},
+    {cmd:color legend_line}), its text ({cmd:key_label}) and, when the
+    graph gives no {cmd:legend(}{it:position}{cmd:)},
+    {cmd:legend(position())} or {cmd:legend(ring())}, its placement and
+    columns from {cmd:clockdir legend_position} and
+    {cmd:numstyle legend_cols}: below the plot in two columns under
+    {cmd:s2color}, to the right in one under {cmd:stcolor}, above in three
+    under {cmd:economist}.  {cmd:legend(cols())} and {cmd:legend(rows())}
+    still win.{p_end}
+
+{phang2}{ul:KPI cards.}  A card is drawn as the scheme's legend box: its
+    background is {cmd:color legend}, its border {cmd:color legend_line}
+    and its text {cmd:color text}, so a card under {cmd:economist} is the
+    scheme's {cmd:#c6d3df} and a card under {cmd:s1rcolor} is black with
+    white text.  A KPI's own {cmd:bgcolor()} and {cmd:color()} still
+    win.{p_end}
+
+{pstd}
+{ul:Units.}  Sizes are converted on Stata's own scale.  A {cmd:gsize} or
+{cmd:symbolsize} number is a relative size, 100 being the smaller dimension
+of the graph, and is drawn as it would be on Stata's four-inch reference
+graph: {cmd:medium} text is 3.8194, which is 11 point, so one unit is 2.88
+point, and {cmd:economist}'s {cmd:gsize heading 6.0} is 17.28 point.
+Marker sizes follow Stata's {cmd:symbolsize} ladder, which is not the text
+ladder: a {cmd:large} marker is 7 point against {cmd:medium}'s 4.4.  A
+{cmd:linewidth} number is Stata's own unit, {cmd:medium} being 0.30, so
+{cmd:economist}'s {cmd:linewidth p 1.2} draws four times as wide as
+{cmd:s2color}'s lines.
+
+{pstd}
+An explicit graph option always wins.  The scheme is applied first and your
+options after it, so {cmd:bgcolor()}, {cmd:plotregion()}, {cmd:mcolor()},
+{cmd:msize()}, {cmd:lwidth()}, {cmd:title(}{it:text}{cmd:, size() color())},
+{cmd:legend()}, {cmd:xlabel(, grid)}, {cmd:xlabel(, nogrid)} and the rest
 take precedence over whatever the scheme asks for.
 
 {pstd}
@@ -1224,6 +1289,21 @@ reported and {cmd:s2color} is used -- {cmd:dash} does not silently draw
 something other than what you asked for.  To use a scheme {cmd:dash} does not
 ship, put its Stata-format {cmd:.scheme} file in the working directory and
 give its base name without the extension.
+
+{pstd}
+{ul:A scheme file of your own, and what it may include.}  StataCorp's
+schemes are written as edits on top of an {cmd:#include}d parent, and
+{cmd:dash} resolves that chain once, when it extracts its fourteen
+translations, so each shipped file already carries every directive it needs
+with every colour written as hex.  A file of yours is read the same way: an
+{cmd:#include} is resolved as {cmd:scheme()} itself is -- a {cmd:.scheme}
+file of that name in the working directory first, then one of the fourteen
+translations {cmd:dash} ships -- never Stata's own
+{cmd:scheme-}{it:name}{cmd:.scheme}.  An {cmd:#include} that resolves to
+neither (a StataCorp scheme {cmd:dash} does not ship, such as
+{cmd:s2color8}) is skipped in silence, so a scheme built on one has to
+state every directive it wants itself.  Colours may be Stata colour names
+or {cmd:#rrggbb}.
 
 {pstd}
 {it:Example:}

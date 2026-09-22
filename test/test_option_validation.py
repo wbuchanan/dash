@@ -922,21 +922,52 @@ class TestTheRemainingSilentSites:
         assert line == ("dash: legend(size(abc)) is not a recognised size; "
                         "using the scheme's default."), line
 
-    @pytest.mark.parametrize("option", ["color", "bgcolor"])
-    def test_a_kpi_colour(self, option):
-        r, doc, std_w, srv_w = _both([plot_for("scatter")],
-                                     kpis=[tp._kpi(**{option: "notacolour"})])
-        line = _the_one_reading(std_w, srv_w, f"{option}(notacolour)")
-        assert line == (f"dash kpi: {option}(notacolour) is not a recognised "
-                        f"colour; using the default."), line
-        # The default, sanitised, in both cards.
-        default = "#212529" if option == "color" else "#f8f9fa"
+    @staticmethod
+    def _kpi_texts(r, doc):
         std_text = "\n".join(getattr(v, "text", "") for v in r.kpi_divs.values())
-        assert f"{'background' if option == 'bgcolor' else 'color'}:{default}" in std_text
         srv_text = "\n".join(getattr(m, "text", "") for m in tp._walk_models(doc)
                              if type(m).__name__ == "Div" and "kpi_val_" in
                              str(getattr(m, "text", "")))
-        assert f"{'background' if option == 'bgcolor' else 'color'}:{default}" in srv_text
+        return std_text, srv_text
+
+    def test_a_kpi_colour(self):
+        """The default a refused color() falls back to is the scheme's
+        ``color text`` (WP-16: the card is Stata's legend box), in both
+        modes.  This used to pin the ``#212529`` literal."""
+        r, doc, std_w, srv_w = _both([plot_for("scatter")],
+                                     kpis=[tp._kpi(color="notacolour")])
+        line = _the_one_reading(std_w, srv_w, "color(notacolour)")
+        assert line == ("dash kpi: color(notacolour) is not a recognised "
+                        "colour; using the default."), line
+        # The default, sanitised, in both cards.
+        want = r.scheme.text_color.lower()
+        for text in self._kpi_texts(r, doc):
+            value = re.search(r'id="kpi_val_k1"\s+style="([^"]*)"', text)
+            assert value, text[:300]
+            colour = re.search(r"(?:^|[;\s])color\s*:\s*([^;]+)",
+                               value.group(1))
+            assert colour and colour.group(1).strip().lower() == want, (
+                value.group(1))
+
+    def test_a_kpi_bgcolour_falls_back_to_the_schemes_card(self):
+        """WP-16: a refused bgcolor() is reported and then NOT replaced by
+        an inline default.  The card carries no inline background at all;
+        the scheme's legend box colours reach it through the .db-kpi-card
+        class rule.  This used to assert ``background:#f8f9fa`` inline in
+        both modes, which is the literal that drew a light card on
+        s1rcolor's black page."""
+        r, doc, std_w, srv_w = _both([plot_for("scatter")],
+                                     kpis=[tp._kpi(bgcolor="notacolour")])
+        line = _the_one_reading(std_w, srv_w, "bgcolor(notacolour)")
+        assert line == ("dash kpi: bgcolor(notacolour) is not a recognised "
+                        "colour; using the default."), line
+        for text in self._kpi_texts(r, doc):
+            outer = re.search(r"<div\b([^>]*)>", text)
+            assert outer and 'class="db-kpi-card"' in outer.group(1), text[:300]
+            style = re.search(r'style="([^"]*)"', outer.group(1))
+            inline = style.group(1) if style else ""
+            assert not re.search(r"(?:^|[;\s])background(?:-color)?\s*:",
+                                 inline), inline
 
     def test_a_good_kpi_colour_is_silent(self):
         _, _, std_w, srv_w = _both([plot_for("scatter")],

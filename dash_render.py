@@ -82,6 +82,7 @@ from bokeh.models import (
     Div,
     HoverTool,
     IndexFilter,
+    InlineStyleSheet,
     LassoSelectTool,
     NormalHead,
     OpenHead,
@@ -1687,6 +1688,31 @@ class SchemeParser:
         "yesno draw_major_grid":  "no",
         "yesno draw_major_hgrid": "no",
         "yesno draw_major_vgrid": "yes",
+
+        # The directives Stata reads for the text boxes, the minor grid and
+        # the legend grid, at s2color's values (scheme-s2color.scheme lines
+        # 38, 136-158, 307-322, 1204-1205, 2114-2122).  Parsed since WP-16;
+        # test_scheme_fallback_provenance holds this dict to the shipped
+        # s2color attribute by attribute, so a directive the parser reads
+        # has to be here too.
+        "color text":             "black",
+        "color body":             "black",
+        "color small_body":       "black",
+        "color subheading":       "black",
+        "color axis_title":       "black",
+        "color tick_label":       "black",
+        "color key_label":        "black",
+        "color foreground":       "black",
+        "gsize subheading":       "medium",
+        "gsize body":             "medsmall",
+        "gsize small_body":       "small",
+        "gsize key_label":        "medsmall",
+        "linewidth minor_grid":   "thin",
+        "linewidth axisline":     "thin",
+        "numstyle legend_rows":   "0",
+        "yesno draw_minor_grid":  "no",
+        "yesno draw_minor_hgrid": "no",
+        "yesno draw_minor_vgrid": "no",
     }
 
     @classmethod
@@ -1758,10 +1784,12 @@ class SchemeParser:
     # them -- tiny was 7pt against Stata's 4, vsmall 8 against 6, small 9
     # against 8, large 13 against 14, vlarge 15 against 16, huge 18 against
     # 20 -- so a scheme asking for small text got a size Stata never
-    # specifies.
+    # specifies.  Two more were corrected under WP-16: minuscule is
+    # gsize-minuscule.style's 1pt (relative 0.3472, not half_tiny's
+    # 0.6944), and vhuge is gsize-vhuge.style's 28pt, not 24.
     _GSIZE_PT: dict[str, str] = {
         "zero":        "0pt",
-        "minuscule":   "2pt",    # relative 0.6944
+        "minuscule":   "1pt",    # relative 0.3472
         "quarter_tiny": "1pt",   # relative 0.3472
         "third_tiny":  "1pt",    # relative 0.4630
         "half_tiny":   "2pt",    # relative 0.6944
@@ -1774,19 +1802,61 @@ class SchemeParser:
         "large":       "14pt",
         "vlarge":      "16pt",
         "huge":        "20pt",
-        "vhuge":       "24pt",
+        "vhuge":       "28pt",
         "ehuge":       "32pt",
     }
 
-    # Marker diameter in Bokeh screen pixels for each Stata markersize
-    # keyword.  The RATIOS are Stata's, from _GSIZE_PT above; the anchor is
-    # dash's own -- medium, which is what s2color asks for, keeps the size
-    # dash has always drawn, so the default dashboard is unchanged and a
-    # scheme that asks for something else now gets something else.  Stata
-    # sizes a marker relative to a 4-inch-high graph, which no browser has,
-    # so a claim of absolute pixel fidelity here would be a fabrication.
+    # A bare number in a `gsize' directive is a Stata relative size: 100 =
+    # the graph's smaller dimension.  The keyword table above is stated at
+    # Stata's 4-inch reference (medium 3.8194 = 11pt), so the numeric
+    # branch uses the same reference: 4in * 72pt / 100 = 2.88pt per unit.
+    _GSIZE_NUMERIC_PT_PER_UNIT: float = 2.88
+    #: The largest text size a numeric gsize may ask for.  Bokeh's FontSize
+    #: property takes any CSS length, so the bound is dash's: a 1000pt
+    #: glyph is taller than the graph.
+    _GSIZE_MAX_PT: float = 1000.0
+    #: The most rows or columns a scheme's legend grid may ask for.  Stata
+    #: draws at most one key per plot and dash has no limit of its own, so
+    #: the bound only refuses the absurd (`numstyle legend_rows 1000').
+    _LEGEND_GRID_MAX: int = 100
+
+    # A bare number in a `linewidth' directive is a Stata linewidth unit
+    # (style/linewidth-medium.style: .30).  dash anchors the `medium'
+    # keyword at 1.5px through _LWIDTH_MAP, so one unit is 5.0px.
+    _LWIDTH_PX_PER_UNIT: float = 5.0
+
+    # Stata symbolsize keyword -> points at Stata's 4-inch reference, from
+    # /Applications/StataNow/ado/base/style/symbolsize-<name>.style (a
+    # relative size, 100 = the graph's smaller dimension, times 2.88pt).
+    # This is NOT the gsize ladder: `symbolsize medium' is 1.52778 relative
+    # (4.4pt), where `gsize medium' is 3.8194 (11pt).  _markersize_px used
+    # to read the keyword through _GSIZE_PT, so stcolor's `small' and
+    # economist's `large' kept the text ratios rather than the marker ones.
+    _SYMBOLSIZE_PT: dict[str, float] = {
+        "zero":     0.0,
+        "vtiny":    0.29,
+        "tiny":     1.0,
+        "vsmall":   1.5,
+        "small":    3.0,
+        "medsmall": 3.6,
+        "medium":   4.4,
+        "medlarge": 5.6,
+        "large":    7.0,
+        "vlarge":   9.0,
+        "huge":     14.0,
+        "vhuge":    16.0,
+        "ehuge":    32.0,
+    }
+
+    # Marker diameter in Bokeh screen pixels.  The RATIOS are Stata's, from
+    # _SYMBOLSIZE_PT above; the anchor is dash's own -- medium (4.4pt),
+    # which is what s2color asks for, keeps the 8px dash has always drawn,
+    # so the default dashboard is unchanged and a scheme that asks for
+    # something else gets something else.  Stata sizes a marker relative
+    # to a 4-inch-high graph, which no browser has, so a claim of absolute
+    # pixel fidelity here would be a fabrication.
     _MARKER_PX_ANCHOR: float = 8.0
-    _MARKER_PX_ANCHOR_PT: float = 11.0
+    _MARKER_PX_ANCHOR_PT: float = 4.4
 
     # Stata intensity keyword → float 0–1
     _INTENSITY: dict[str, float] = {
@@ -2025,12 +2095,35 @@ class SchemeParser:
         raw = self._props.get(key, "").strip().lower()
         if raw in self._GSIZE_PT:
             return self._GSIZE_PT[raw]
-        # Numeric value like "3.0" → assume Stata points → rough CSS approximation
+        # A bare number is a Stata relative size, 2.88pt per unit at the
+        # 4-inch reference the keyword table is stated at.  This used to be
+        # int(val * 1.2) floored at 6, dash's own invention: economist's
+        # `gsize heading 6.0' drew 7pt where Stata draws 17.28pt, below its
+        # own 11pt subtitle.  No floor: Stata has none.
         try:
             val = float(raw)
-            return f"{max(6, int(val * 1.2))}pt"
         except (ValueError, TypeError):
             return default
+        if not math.isfinite(val):
+            return default
+        # Fixed decimals, never `:g': that switched to scientific notation
+        # below 1e-4, and Bokeh's FontSize validator rejects `2.88e-05pt',
+        # which aborted the whole figure on `gsize body 0.00001'.  Three
+        # decimals of a point is finer than anything on screen; trailing
+        # zeros go so that 11.0 reads "11pt".  A size that rounds to
+        # nothing, or is over 1000pt, is not a size a graph can use: the
+        # default, said aloud in the shape `_color' uses.
+        pt = round(val * self._GSIZE_NUMERIC_PT_PER_UNIT, 3)
+        if not 0 < pt <= self._GSIZE_MAX_PT:
+            warnings.warn(
+                f"dash scheme: size '{raw}' (from '{key}') is "
+                f"{pt:g}pt, outside the (0, {self._GSIZE_MAX_PT:g}]pt a "
+                f"graph can draw; falling back to {default}.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return default
+        return f"{pt:.3f}".rstrip("0").rstrip(".") + "pt"
 
     def _intensity(self, key: str, default: float = 0.8) -> float:
         raw = self._props.get(key, "").strip().lower()
@@ -2081,16 +2174,40 @@ class SchemeParser:
         return []
 
     def _lwidth(self, key: str, default: float = 1.5) -> float:
+        """A scheme line width in Bokeh pixels.
+
+        A keyword goes through ``OptionTranslator.translate_lwidth`` (the
+        _LWIDTH_MAP ladder, medium = 1.5px).  A bare number is a Stata
+        linewidth UNIT -- medium is .30 -- scaled by _LWIDTH_PX_PER_UNIT so
+        it lands on the same ladder.  A number used to go straight to Bokeh
+        as pixels, which drew economist's ``linewidth p 1.2`` (four Stata
+        mediums) at 1.2px, thinner than every keyword scheme's 1.5px.
+        """
         raw = self._props.get(key, "").strip().lower()
         if not raw:
             return default
         try:
-            return float(raw)
+            val = float(raw)
         except ValueError:
             try:
                 return OptionTranslator.translate_lwidth(raw)
             except ValueError:
                 return default
+        if not math.isfinite(val):
+            return default
+        if val < 0:
+            # This was max(0.0, ...): `linewidth major_grid -4' drew an
+            # invisible grid and said nothing, where a colour the scheme
+            # cannot use is refused aloud.  A zero width is a legitimate
+            # request (Stata's `none'); a negative one is not.
+            warnings.warn(
+                f"dash scheme: line width '{raw}' (from '{key}') is "
+                f"negative; falling back to {default:g}px.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return default
+        return val * self._LWIDTH_PX_PER_UNIT
 
     def _float(self, key: str, default: "float | None") -> "float | None":
         """Return a scheme value as a float, or *default* if absent/unparseable."""
@@ -2121,6 +2238,33 @@ class SchemeParser:
         except ValueError:
             return default
 
+    def _bounded_int(self, key: str, default: "int | None", lo: int,
+                     hi: int, what: str) -> "int | None":
+        """``_int`` with a range, refused aloud when the value is outside it.
+
+        A user scheme's `clockdir legend_position 99' used to become
+        "right" through ``_DASH_CLOCK_SIDE.get(clock, "right")`` and
+        `numstyle legend_rows 1e3' a thousand-row legend, without a word,
+        where a colour the scheme cannot use is refused with a warning.
+        An absent or unparseable value is ordinary inheritance and stays
+        silent, as it is for a colour.
+        """
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default
+        val = self._int(key, None)
+        if val is None:
+            return default
+        if lo <= val <= hi:
+            return val
+        warnings.warn(
+            f"dash scheme: {what} '{raw}' (from '{key}') is outside "
+            f"{lo}-{hi}; falling back to {default!r}.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return default
+
     def _symbol(self, key: str, default: str = "circle") -> str:
         raw = self._props.get(key, "").strip()
         if not raw:
@@ -2144,6 +2288,23 @@ class SchemeParser:
         self.minor_grid_color: str = self._color("color minor_grid", "#cccccc")
         self.title_color: str = self._color("color heading", "#000000")
         self.axis_line_color: str = self._color("color axisline", "#000000")
+        # The text boxes Stata draws each element with (scheme-s2color
+        # .scheme and style/textboxstyle-*.style): subtitle() is the
+        # subheading box, caption() the body box, note() the small_body box
+        # in the BODY colour, legend keys key_label, axis titles axis_title,
+        # tick labels tick_label; `color text' is the KPI card's text (the
+        # card is drawn as Stata's legend box).  Every shipped scheme
+        # declares these; the default is s2color's black.
+        self.subheading_color: str = self._color("color subheading", "#000000")
+        self.body_color: str = self._color("color body", "#000000")
+        # Stata's note textbox (textboxstyle-small_body.style) takes its
+        # colour from `color small_body', equal to `color body' in every
+        # shipped scheme; read the key Stata reads.
+        self.small_body_color: str = self._color("color small_body", "#000000")
+        self.text_color: str = self._color("color text", "#000000")
+        self.axis_title_color: str = self._color("color axis_title", "#000000")
+        self.tick_label_color: str = self._color("color tick_label", "#000000")
+        self.key_label_color: str = self._color("color key_label", "#000000")
 
         # Per-plot color cycles (15 entries)
         self.p_colors: list[str] = [
@@ -2213,6 +2374,17 @@ class SchemeParser:
         # Default line/grid widths
         self.default_line_width: float = self._lwidth("linewidth p", 1.5)
         self.grid_line_width: float = self._lwidth("linewidth major_grid", 0.8)
+        # `linewidth minor_grid' is `thin' in every shipped scheme.
+        self.minor_grid_line_width: float = self._lwidth(
+            "linewidth minor_grid", OptionTranslator.translate_lwidth("thin"))
+        # `linewidth axisline', `thin' in every shipped scheme.  It was
+        # extracted, shipped in all fourteen files and the fallback dict,
+        # and read by nothing: every axis line was Bokeh's 1px.  Applied
+        # in apply_to_figure.  (`color foreground' is carried alongside
+        # it in the same files and has no consumer here by design: Stata
+        # reads it for elements dash does not draw.)
+        self.axis_line_width: float = self._lwidth(
+            "linewidth axisline", OptionTranslator.translate_lwidth("thin"))
 
         # Fill intensities
         self.fill_alpha: float = self._intensity("intensity p", 0.8)
@@ -2224,7 +2396,15 @@ class SchemeParser:
         self.heading_font_size: str = self._gsize("gsize heading", "13pt")
         self.axis_title_font_size: str = self._gsize("gsize axis_title", "10pt")
         self.tick_label_font_size: str = self._gsize("gsize tick_label", "10pt")
+        # `gsize note' exists in every scheme, but Stata's note textbox does
+        # not read it (textboxstyle-small_body.style is what note() uses),
+        # so this is parsed for the fidelity fixture and drawn from nowhere.
         self.note_font_size: str = self._gsize("gsize note", "9pt")
+        # The text-box sizes Stata does read; defaults are s2color's.
+        self.subheading_font_size: str = self._gsize("gsize subheading", "11pt")
+        self.body_font_size: str = self._gsize("gsize body", "10pt")
+        self.small_body_font_size: str = self._gsize("gsize small_body", "8pt")
+        self.key_label_font_size: str = self._gsize("gsize key_label", "10pt")
 
         # Graph dimensions, in inches, as Stata schemes declare them.
         # Parsed here only; section 10 consumes them for figure proportions.
@@ -2253,6 +2433,13 @@ class SchemeParser:
         # Stata's real answer for ten of the fourteen is `yes'.
         self.draw_major_hgrid: bool = self._yesno("yesno draw_major_hgrid", False)
         self.draw_major_vgrid: bool = self._yesno("yesno draw_major_vgrid", False)
+        # The minor grid, by the same per-axis rule (axisstyle-horizontal_
+        # default.style: `set draw_minor_grid scheme draw_minor_hgrid').
+        # Every shipped scheme says no on both axes; `color minor_grid' was
+        # applied unconditionally, and Bokeh's five minor ticks per
+        # interval then drew four lines Stata never draws.
+        self.draw_minor_hgrid: bool = self._yesno("yesno draw_minor_hgrid", False)
+        self.draw_minor_vgrid: bool = self._yesno("yesno draw_minor_vgrid", False)
 
         # Default marker size for the p cycle, and legend placement.
         # Parsed only; consumers land in sections 10 and 11.
@@ -2263,21 +2450,47 @@ class SchemeParser:
         self.marker_size: float = self._markersize_px(self.symbolsize)
         # Stata's clockdir is a numeric clock position (1-12), so expose it as
         # a number rather than the raw string — consumers compare it as one.
-        self.legend_position: "int | None" = self._int(
-            "clockdir legend_position", None)
-        self.legend_cols: "int | None" = self._int("numstyle legend_cols", None)
+        # Range-checked: a hostile 99 used to reach _DASH_CLOCK_SIDE.get(
+        # clock, "right") and place the legend without a word.
+        self.legend_position: "int | None" = self._bounded_int(
+            "clockdir legend_position", None, 1, 12, "clock position")
+        self.legend_cols: "int | None" = self._bounded_int(
+            "numstyle legend_cols", None, 0, self._LEGEND_GRID_MAX,
+            "legend column count")
+        # `numstyle legend_rows': 0 in every shipped scheme, meaning "as
+        # many as the columns need".
+        self.legend_rows: int = self._bounded_int(
+            "numstyle legend_rows", 0, 0, self._LEGEND_GRID_MAX,
+            "legend row count") or 0
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    #: The plot types whose colour is a MARKER colour: `color p#mark'.
+    #: The mapper asks for one of these for the MARKER glyph only: dot asks
+    #: for "scatter", dropline's dot for "dropline", rcapsym's symbols for
+    #: "rscatter".  A Segment -- spike, rspike, rcap, pcspike, pcarrow,
+    #: pcbarrow, the drop of a dropline, the spine and caps of an rcapsym
+    #: -- asks with its own type name and falls through to `color p#':
+    #: Stata's pstyle keeps p#mark apart from the p# its "other" plots
+    #: draw with, and every one of those mappers used to ask for "scatter".
+    _MARKER_PLOT_TYPES: frozenset = frozenset({
+        "scatter", "scatteri", "dot", "dropline", "rscatter", "pcscatter",
+    })
 
     def default_color(self, index: int, plot_type: str = "scatter") -> str:
         """Return the default CSS hex color for the plot at *index*.
 
         Args:
             index:     Zero-based plot index within the figure.
-            plot_type: One of ``"scatter"``, ``"line"``, ``"connected"``,
-                       ``"bar"``, ``"area"``, ``"rbar"``, ``"rarea"``.
+            plot_type: The plot type, or the glyph's own class of it: a
+                       marker type (``_MARKER_PLOT_TYPES``) reads ``color
+                       p#mark``; ``"line"`` and its kin ``color
+                       p#lineplot``; ``"connected"`` ``color p#line``;
+                       ``"bar"``/``"area"`` ``color p#bar``; anything else
+                       (``"spike"``, ``"rcap"``, ``"pcarrow"``, ...) the
+                       plain ``color p#``.
         """
         idx = index % 15
         # `color p#line' is the CONNECTING line of twoway connected.  A plain
@@ -2289,6 +2502,13 @@ class SchemeParser:
             return self.p_line_colors[idx]
         if plot_type in {"bar", "rbar", "area", "rarea", "histogram"}:
             return self.p_bar_colors[idx]
+        # A MARKER reads `color p#mark' (style/markerstyle-p#.style), which
+        # falls back to `color p#' at parse time.  Equal in every shipped
+        # scheme, so nothing rendered changes; a user scheme declaring
+        # `color p1mark' used to be read into p_mark_colors and drawn from
+        # nowhere.
+        if plot_type in self._MARKER_PLOT_TYPES:
+            return self.p_mark_colors[idx]
         return self.p_colors[idx]
 
     def _markersize_px(self, keyword: str) -> float:
@@ -2296,23 +2516,27 @@ class SchemeParser:
 
         Args:
             keyword: The scheme's ``symbolsize p`` value, e.g. ``"medium"``.
-                     A bare number is taken as points.
+                     A bare number is a Stata relative size (2.88pt per
+                     unit at the 4-inch reference, like ``gsize``).
 
         Returns:
             A diameter in pixels; the anchor is dash's own 8px at Stata's
-            ``medium``, and everything else keeps Stata's ratio to it.
+            ``medium`` (4.4pt), and everything else keeps Stata's ratio to
+            it: stcolor's ``small`` is 5.45px, economist's ``large`` 12.73px.
         """
         kw = (keyword or "").strip().lower()
         if not kw:
             return self._MARKER_PX_ANCHOR
-        pt_str = self._GSIZE_PT.get(kw, "")
-        if not pt_str:
+        if kw in self._SYMBOLSIZE_PT:
+            pt = self._SYMBOLSIZE_PT[kw]
+        else:
             try:
-                pt = float(kw.lstrip("*"))
+                val = float(kw.lstrip("*"))
             except ValueError:
                 return self._MARKER_PX_ANCHOR
-        else:
-            pt = float(pt_str[:-2])
+            if not math.isfinite(val):
+                return self._MARKER_PX_ANCHOR
+            pt = val * self._GSIZE_NUMERIC_PT_PER_UNIT
         px = self._MARKER_PX_ANCHOR * pt / self._MARKER_PX_ANCHOR_PT
         # A zero-size marker is invisible, which is a legitimate request; a
         # negative one is not expressible.
@@ -2354,20 +2578,38 @@ class SchemeParser:
         # grid" (see the xlabel(, nogrid) path), so an explicit nogrid and a
         # scheme-level no stay indistinguishable, which is what lets an
         # explicit option override the scheme without special-casing.
-        for grids, draw in ((fig.xgrid, self.draw_major_hgrid),
-                            (fig.ygrid, self.draw_major_vgrid)):
+        for grids, draw, draw_minor in (
+                (fig.xgrid, self.draw_major_hgrid, self.draw_minor_hgrid),
+                (fig.ygrid, self.draw_major_vgrid, self.draw_minor_vgrid)):
             for grid in grids:
                 grid.grid_line_color = self.grid_color if draw else None
                 grid.grid_line_width = self.grid_line_width
-                # `color minor_grid' was parsed and never read; Bokeh draws
-                # no minor grid by default, so the scheme's choice never
-                # appeared.
-                grid.minor_grid_line_color = self.minor_grid_color
+                # The minor grid by the same rule.  `color minor_grid' was
+                # set unconditionally here, and with Bokeh's five minor
+                # ticks per interval that drew four lines per major
+                # interval on both axes under every scheme, when no shipped
+                # scheme draws a minor grid at all.
+                grid.minor_grid_line_color = (self.minor_grid_color
+                                              if draw_minor else None)
+                grid.minor_grid_line_width = self.minor_grid_line_width
+
+        # The figure title is Stata's heading box: `color heading' and
+        # `gsize heading'.  Both were parsed and reached only the dashboard
+        # header's CSS; the Bokeh title stayed #444444 / 13px under every
+        # scheme, s1rcolor's white-on-black included.  _dash_figure_title
+        # runs after this, so an explicit title(, size() color()) wins.
+        if fig.title is not None:
+            fig.title.text_color = self.title_color
+            fig.title.text_font_size = self.heading_font_size
 
         for axis in list(fig.xaxis) + list(fig.yaxis):
             axis.axis_line_color = self.axis_line_color
+            axis.axis_line_width = self.axis_line_width
             axis.axis_label_text_font_size = self.axis_title_font_size
             axis.major_label_text_font_size = self.tick_label_font_size
+            # The axis_title and tick_label boxes' colours.
+            axis.axis_label_text_color = self.axis_title_color
+            axis.major_label_text_color = self.tick_label_color
 
     def css_block(self) -> str:
         """Return the scheme's CSS rules for the dashboard outer chrome.
@@ -2388,15 +2630,24 @@ class SchemeParser:
         bg = html.escape(self.background_color)
         tc = html.escape(self.title_color)
         hs = html.escape(self.heading_font_size)
-        ts = html.escape(self.text_font_size)
+        # The dashboard subtitle is Stata's subheading box, not `gsize
+        # text' in the heading colour.
+        sc = html.escape(self.subheading_color)
+        ss = html.escape(self.subheading_font_size)
+        # The KPI card is drawn as Stata's legend box: `color legend' fills
+        # it, `color legend_line' borders it, `color text' is its text.  A
+        # full `border' shorthand, because the card used to carry an inline
+        # `border:1px solid #dee2e6' and a `border-color' alone never won
+        # against it.
         lbg = html.escape(self.legend_bg_color)
         lbc = html.escape(self.legend_border_color)
+        txt = html.escape(self.text_color)
         return (
             f"  body {{ background-color: {bg}; }}\n"
             f"  .db-title {{ color: {tc}; font-size: {hs}; }}\n"
-            f"  .db-subtitle {{ color: {tc}; font-size: {ts}; }}\n"
+            f"  .db-subtitle {{ color: {sc}; font-size: {ss}; }}\n"
             f"  .db-kpi-card {{ background-color: {lbg}; "
-            f"border-color: {lbc}; }}\n"
+            f"border: 1px solid {lbc}; color: {txt}; }}\n"
         )
 
     def css_style_element(self) -> str:
@@ -4160,7 +4411,7 @@ class GlyphMapper:
         }, _spike_sel))
         _seg_kwargs: dict = dict(x0="x0", y0="y0", x1="x1", y1="y1",
                                   source=seg_source,
-                                  line_color=self.scheme.default_color(color_idx, "scatter"),
+                                  line_color=self.scheme.default_color(color_idx, "spike"),
                                   line_width=self.scheme.default_line_width,
                                   legend_label=yvar)
         # No view here: seg_source already holds only the selected rows.
@@ -5566,7 +5817,7 @@ class GlyphMapper:
             empty_src = ColumnDataSource({xvar: [], y1var: [], y2var: []})
             return [fig.segment(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=empty_src)]
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
-                                   line_color=self.scheme.default_color(color_idx, "scatter"),
+                                   line_color=self.scheme.default_color(color_idx, "rspike"),
                                    line_width=self.scheme.default_line_width,
                                    legend_label=y1var)
         if view is not None:
@@ -5631,7 +5882,7 @@ class GlyphMapper:
             _x0_col: x_arr - cap_hw, _x1_col: x_arr + cap_hw,
         }))
 
-        _rcap_color = self.scheme.default_color(color_idx, "scatter")
+        _rcap_color = self.scheme.default_color(color_idx, "rcap")
         _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
                                     source=cap_source,
                                     line_color=_rcap_color, line_width=self.scheme.default_line_width,
@@ -5834,21 +6085,27 @@ class GlyphMapper:
         # taking it -- and hover() was dropped.
         dl_source = ColumnDataSource(
             self._carry_cols(source, _dl_cols, mask))
-        color = self.scheme.default_color(color_idx, "scatter")
+        # Two defaults: the drop is a spike and takes `color p#'; the dot
+        # is a marker and takes `color p#mark'.  Both asked for "scatter"
+        # once, so a user scheme declaring p1mark recoloured the line.
+        seg_color = self.scheme.default_color(color_idx, "spike")
+        dot_color = self.scheme.default_color(color_idx, "dropline")
         try:
             if "mcolor" in options:
-                color = self.tr.translate_mcolor(options["mcolor"])
+                seg_color = dot_color = self.tr.translate_mcolor(
+                    options["mcolor"])
             elif "color" in options:
-                color = self.tr.translate_mcolor(options["color"])
+                seg_color = dot_color = self.tr.translate_mcolor(
+                    options["color"])
         except ValueError:
             pass
 
         _dl_seg_kwargs: dict = dict(
             x0="x", y0="y0", x1="x", y1="y", source=dl_source,
-            line_color=color, line_width=self.scheme.default_line_width)
+            line_color=seg_color, line_width=self.scheme.default_line_width)
         _dl_dot_kwargs: dict = dict(
             x="x", y="y", source=dl_source,
-            fill_color=color, line_color=color,
+            fill_color=dot_color, line_color=dot_color,
             size=self.scheme.default_marker_size(color_idx),
             legend_label=yvar)
         if view is not None:
@@ -5918,12 +6175,15 @@ class GlyphMapper:
             "x0_cap": x_arr - cap_hw, "x1_cap": x_arr + cap_hw,
         })
 
-        color = self.scheme.default_color(color_idx, "scatter")
+        # Two defaults: the spine and caps are an rcap and take `color
+        # p#'; the symbols are markers and take `color p#mark'.
+        color = self.scheme.default_color(color_idx, "rcap")
+        mark_color = self.scheme.default_color(color_idx, "rscatter")
         try:
             if "mcolor" in options:
-                color = self.tr.translate_mcolor(options["mcolor"])
+                color = mark_color = self.tr.translate_mcolor(options["mcolor"])
             elif "color" in options:
-                color = self.tr.translate_mcolor(options["color"])
+                color = mark_color = self.tr.translate_mcolor(options["color"])
         except ValueError:
             pass
 
@@ -5935,9 +6195,9 @@ class GlyphMapper:
         _rcs_tcap_kw: dict  = dict(x0="x0_cap", y0="y2", x1="x1_cap", y1="y2",
                                     source=cap_source, line_color=color, line_width=1.5)
         _rcs_bdot_kw: dict  = dict(x="x", y="y1", source=cap_source,
-                                    fill_color=color, line_color=color, size=7)
+                                    fill_color=mark_color, line_color=mark_color, size=7)
         _rcs_tdot_kw: dict  = dict(x="x", y="y2", source=cap_source,
-                                    fill_color=color, line_color=color, size=7)
+                                    fill_color=mark_color, line_color=mark_color, size=7)
         if view is not None:
             for _kw in (_rcs_spine_kw, _rcs_bcap_kw, _rcs_tcap_kw, _rcs_bdot_kw, _rcs_tdot_kw):
                 _kw["view"] = view
@@ -6111,7 +6371,7 @@ class GlyphMapper:
         source_clean = ColumnDataSource(clean)
         _pcseg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                     source=source_clean,
-                                    line_color=self.scheme.default_color(color_idx, "scatter"),
+                                    line_color=self.scheme.default_color(color_idx, "pcspike"),
                                     line_width=1.5,
                                     legend_label=y1var)
         # No view here: source_clean already holds only the selected rows.
@@ -6317,7 +6577,7 @@ class GlyphMapper:
         clean = clean.dropna()
         pc_source = ColumnDataSource(clean)
 
-        color = self.scheme.default_color(color_idx, "scatter")
+        color = self.scheme.default_color(color_idx, "pcarrow")
         try:
             if "lcolor" in options:
                 color = self.tr.translate_lcolor(options["lcolor"])
@@ -6397,7 +6657,7 @@ class GlyphMapper:
         clean = clean.dropna()
         pc_source = ColumnDataSource(clean)
 
-        color = self.scheme.default_color(color_idx, "scatter")
+        color = self.scheme.default_color(color_idx, "pcbarrow")
         try:
             if "lcolor" in options:
                 color = self.tr.translate_lcolor(options["lcolor"])
@@ -7750,6 +8010,62 @@ def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
     return True
 
 
+def _dash_kpi_card_html(title, value, subtitle, color, bgcolor, name,
+                        scheme):
+    """One KPI card's markup, for the saved page, the served app and the
+    JS rebuild alike.
+
+    The card is Stata's legend box, so its background, border and text
+    colour come from the scheme's ``color legend``, ``color legend_line``
+    and ``color text`` -- as the ``.db-kpi-card`` rule of
+    ``scheme.css_block()``, which the caller attaches to the Div as an
+    InlineStyleSheet (a Bokeh 3 Div renders in a shadow root, so a page
+    stylesheet never reaches it).  Only the layout is inline; the card
+    used to carry ``background:#f8f9fa`` and ``border:1px solid #dee2e6``
+    inline under every scheme, and no scheme rule could win against that.
+
+    An explicit ``bgcolor()`` IS inline, so the option beats the scheme;
+    the value's colour is ``color()`` when given, else ``color text``.
+
+    Args:
+        title, value, subtitle: Raw text; escaped here.
+        color, bgcolor:         The KPI's ``color()`` / ``bgcolor()``, ''
+                                when not given.
+        name:                   The KPI's name, for the value div's id.
+        scheme:                 The dashboard's SchemeParser, or None for
+                                a spec-JSON caller with no scheme.
+
+    Returns:
+        The card's HTML.
+    """
+    text_color = _sanitize_css_color(
+        getattr(scheme, "text_color", "") or "#000000", "#000000")
+    # Sanitised, not merely escaped -- see _resolve_kpi_color.  These are
+    # interpolated into a style attribute, where html.escape does not stop
+    # a CSS property injection.
+    _c = _resolve_kpi_color(color, text_color, "color")
+    # No default: an absent (or refused) bgcolor() leaves the class rule
+    # to colour the card.
+    _bg = _resolve_kpi_color(bgcolor, "", "bgcolor")
+    _t = html.escape(title or "")
+    _s = html.escape(subtitle or "")
+    _v = html.escape(str(value))
+    _n = html.escape(name or "kpi")
+    _bg_decl = f"background:{_bg}; " if _bg else ""
+    return (
+        f'<div class="db-kpi-card" style="{_bg_decl}border-radius:8px; '
+        f'padding:20px; text-align:center; min-width:160px; '
+        f'min-height:110px;">'
+        f'<div style="font-size:13px; color:{text_color}; '
+        f'margin-bottom:6px;">{_t}</div>'
+        f'<div id="kpi_val_{_n}" style="font-size:36px; font-weight:bold; '
+        f'color:{_c};">{_v}</div>'
+        f'<div style="font-size:11px; color:{text_color}; '
+        f'margin-top:4px;">{_s}</div>'
+        f'</div>'
+    )
+
+
 def _resolve_kpi_color(val: str, default: str, option: str = "") -> str:
     """Resolve a KPI colour to something safe to put in a style attribute.
 
@@ -8159,13 +8475,21 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
         // Rebuild the complete Div HTML and assign to the Bokeh model property.
         // Using template literals here is fine — the JS is embedded via CustomJS
         // args (never interpolated from user input).
+        // The same markup _dash_kpi_card_html builds: the scheme's card
+        // colours are the .db-kpi-card rule on the Div, so no background
+        // is written unless the KPI has an explicit bgcolor().  The value
+        // div keeps its id (the name travels HTML-escaped as name_html):
+        // the rebuild used to drop it, so the card changed shape on the
+        // first filter move.  test_scheme_review_fixes diffs this
+        // template against the Python card.
         kpi_div.text = (
-            '<div class="db-kpi-card" style="background:' + k.bgcolor +
-            '; border-radius:8px; padding:20px; ' +
-            'text-align:center; border:1px solid #dee2e6; min-width:160px; min-height:110px;">' +
-            '<div style="font-size:13px; color:#6c757d; margin-bottom:6px;">' + k.title + '</div>' +
-            '<div style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
-            '<div style="font-size:11px; color:#6c757d; margin-top:4px;">' + k.subtitle + '</div>' +
+            '<div class="db-kpi-card" style="' +
+            (k.bgcolor ? 'background:' + k.bgcolor + '; ' : '') +
+            'border-radius:8px; padding:20px; ' +
+            'text-align:center; min-width:160px; min-height:110px;">' +
+            '<div style="font-size:13px; color:' + k.text_color + '; margin-bottom:6px;">' + k.title + '</div>' +
+            '<div id="kpi_val_' + k.name_html + '" style="font-size:36px; font-weight:bold; color:' + k.color + ';">' + fmt + '</div>' +
+            '<div style="font-size:11px; color:' + k.text_color + '; margin-top:4px;">' + k.subtitle + '</div>' +
             '</div>'
         );
     }
@@ -8944,14 +9268,63 @@ _DASH_LEGEND_KEYWORD_LOC = {
 
 
 def _dash_move_legend(fig, legend, side):
-    """Move an attached Legend into one of the figure's side panels."""
+    """Move an attached Legend into one of the figure's side panels, as
+    Stata's ring 3: nearest the plot, and centred.
+
+    Bokeh lays a side panel out in list order, the first item nearest the
+    plot (``above`` and ``left`` are reversed on the way, to the same
+    effect).  ``add_layout`` appends, so the legend went OUTSIDE whatever
+    was already there: under s2color ``fig.below`` was ``[axis, note,
+    caption, legend]`` and the note and caption sat between the plot and
+    the legend; under economist the legend sat between the title and the
+    subtitle.  Stata's rings are the other way round -- legend 3, note 4,
+    caption 5, subtitle 6, title 7 (scheme-s2color.scheme:1946-1951) --
+    so the legend goes in after the panel's axes and before everything
+    else.  After the axes, not at index 0: the axis is ring 1-2 and a
+    legend between the frame and the tick labels is what no scheme asks
+    for.
+
+    A side-panel legend is positioned by its ``location`` within the
+    panel, and Bokeh's default ``top_right`` drew it flush right under
+    the plot where Stata centres a 6 o'clock legend (and centres a 3
+    o'clock one vertically).  Both modes come through here, so they
+    cannot disagree.
+    """
+    from bokeh.models import Axis
     for container in (fig.center, fig.above, fig.below, fig.left, fig.right):
         try:
             if legend in container:
                 container.remove(legend)
         except (TypeError, ValueError):
             pass
-    fig.add_layout(legend, side)
+    panel = list(getattr(fig, side))
+    at = next((i for i, m in enumerate(panel) if not isinstance(m, Axis)),
+              len(panel))
+    panel.insert(at, legend)
+    setattr(fig, side, panel)
+    legend.location = "center"
+
+
+def _dash_scheme_chrome(scheme):
+    """The legend's chrome and default placement from *scheme*, for both
+    modes: the saved renderer's ``_rebuild_legend`` and the served app
+    pass this dict to ``_dash_apply_legend``.
+
+    The keys are Stata's legend box: ``color legend`` and ``color
+    legend_line`` for the box, the ``key_label`` textbox's size and colour
+    for the labels (not ``gsize text``, which the box used to take), and
+    ``clockdir legend_position`` / ``numstyle legend_cols`` /
+    ``numstyle legend_rows`` for where it sits when the user says nothing.
+    """
+    return {
+        "legend_bg_color": scheme.legend_bg_color,
+        "legend_border_color": scheme.legend_border_color,
+        "label_text_font_size": scheme.key_label_font_size,
+        "label_text_color": scheme.key_label_color,
+        "legend_position": getattr(scheme, "legend_position", None),
+        "legend_cols": getattr(scheme, "legend_cols", None) or 0,
+        "legend_rows": getattr(scheme, "legend_rows", 0) or 0,
+    }
 
 
 def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
@@ -8978,8 +9351,11 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         legend_opt:     The graph's legend() text, '' when absent.
         var_labels:     ``{varname: label}`` for the series keys.
         default_level:  The dashboard's level(), for a band's key.
-        chrome:         The scheme's ``legend_bg_color``,
-                        ``legend_border_color`` and ``text_font_size``.
+        chrome:         ``_dash_scheme_chrome(scheme)``: the box colours,
+                        the key_label size and colour, and the scheme's
+                        default placement (clock, cols, rows), which
+                        applies only when the user gave no position(),
+                        ring() or bare keyword.
     """
     from bokeh.models import LegendItem
     legend_opt = str(legend_opt or "")
@@ -9028,16 +9404,28 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             lg.background_fill_color = chrome["legend_bg_color"]
         if chrome.get("legend_border_color"):
             lg.border_line_color = chrome["legend_border_color"]
-        if chrome.get("text_font_size"):
-            lg.label_text_font_size = chrome["text_font_size"]
+        # The key_label textbox's size and colour ("text_font_size" is the
+        # older name of the same slot, kept for a caller-built dict).
+        _lsize = (chrome.get("label_text_font_size")
+                  or chrome.get("text_font_size"))
+        if _lsize:
+            lg.label_text_font_size = _lsize
+        if chrome.get("label_text_color"):
+            lg.label_text_color = chrome["label_text_color"]
 
     # 4. Placement: position()/ring(0) first; a bare keyword only when
-    #    neither is given, because the clock is the more specific form.
+    #    neither is given, because the clock is the more specific form;
+    #    and the SCHEME's clock only when the user gave none of the three.
+    #    `clockdir legend_position' and `numstyle legend_cols' were parsed
+    #    and read by nothing, so every legend sat at Bokeh's top_right
+    #    inside the plot where s2color puts it below in two columns.
     m_pos = re.search(r"\b(?:position|pos)\s*\(\s*(\d+)\s*\)", legend_opt)
     m_ring = re.search(r"\bring\s*\(\s*(\d+)\s*\)", legend_opt)
     inside = bool(m_ring) and m_ring.group(1) == "0"
     if legend is not None:
+        placed = False
         if m_pos:
+            placed = True
             clock = int(m_pos.group(1))
             if inside:
                 legend.location = _DASH_CLOCK_INSIDE.get(clock, "top_right")
@@ -9050,9 +9438,32 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         elif not m_ring:
             for kw, loc in _DASH_LEGEND_KEYWORD_LOC.items():
                 if re.search(r"\b" + re.escape(kw) + r"\b", legend_opt):
+                    placed = True
                     for lg in fig.legend:
                         lg.location = loc
                     break
+        if not placed and not m_ring and chrome.get("legend_position"):
+            try:
+                clock = int(chrome["legend_position"])
+            except (TypeError, ValueError):
+                clock = None
+            if clock is not None:
+                side = _DASH_CLOCK_SIDE.get(clock, "right")
+                _dash_move_legend(fig, legend, side)
+                horizontal = side in ("above", "below")
+                legend.orientation = "horizontal" if horizontal else "vertical"
+                # Stata's legend_cols is a maximum: 6 o'clock under
+                # s2color is two columns, economist's 12 o'clock three; a
+                # side legend takes it only when it asks for more than one.
+                try:
+                    cols = int(chrome.get("legend_cols") or 0)
+                    rows = int(chrome.get("legend_rows") or 0)
+                except (TypeError, ValueError):
+                    cols, rows = 0, 0
+                if cols > 0 and (horizontal or cols > 1):
+                    legend.ncols = cols
+                if rows > 0:
+                    legend.nrows = rows
 
     # 5. label(N "text") overrides.  Escaped: this text is the user's and
     #    the rule is pinned by test_legend_label_xss_escaped.
@@ -9062,7 +9473,11 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             if 0 <= idx < len(legend.items):
                 legend.items[idx].label = {"value": html.escape(lm.group(2))}
 
-    # 6. cols()/rows() on every legend.
+    # 6. cols()/rows() on every legend.  Stata treats the two as
+    #    alternatives, so the one the user did not give goes back to
+    #    "auto": the scheme's ncols (2 under s2color, 3 under economist)
+    #    used to survive a user rows(1), and Bokeh then laid out ncols=2,
+    #    nrows=1 and wrapped the third key onto a second row.
     m_cols = re.search(r"\bcols\s*\(\s*(\d+)\s*\)", legend_opt)
     m_rows = re.search(r"\brows\s*\(\s*(\d+)\s*\)", legend_opt)
     for lg in fig.legend:
@@ -9071,6 +9486,10 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                 lg.ncols = int(m_cols.group(1))
             if m_rows:
                 lg.nrows = int(m_rows.group(1))
+            if m_cols and not m_rows:
+                lg.nrows = "auto"
+            elif m_rows and not m_cols:
+                lg.ncols = "auto"
         except (ValueError, AttributeError):
             pass
 
@@ -9304,7 +9723,7 @@ def _dash_parse_axis_spec(raw):
 
 
 def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
-                          fmt_fallback=""):
+                          fmt_fallback="", grid_color=None):
     """Apply a parsed ``axis_label`` spec to one axis.
 
     Args:
@@ -9316,6 +9735,12 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                       extremes it draws.
         fmt_fallback: The variable's Stata display format, used when the
                       spec names no format() of its own.
+        grid_color:   The scheme's ``color major_grid``, drawn by an
+                      explicit ``grid`` on an axis the scheme leaves bare.
+                      It was a hard-coded #e5e5e5 in both modes, so
+                      ``xlabel(, grid)`` under s1color drew a grid in no
+                      scheme's colour.  None keeps that literal for a
+                      caller with no scheme.
     """
     from bokeh.models.tickers import FixedTicker, BasicTicker
     from bokeh.models.formatters import (CustomJSTickFormatter,
@@ -9376,15 +9801,18 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
         for g in grid_obj:
             if spec["grid"]:
                 if g.grid_line_color is None:
-                    g.grid_line_color = "#e5e5e5"
+                    g.grid_line_color = grid_color or "#e5e5e5"
             else:
                 g.grid_line_color = None
 
 
 def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
-                             numeric_formats, seen=None, key=""):
+                             numeric_formats, seen=None, key="",
+                             grid_color=None):
     """xlabel()/ylabel(), with xtick()/ytick() as the fallback, on a figure;
-    the sub-options the grammar does not honour are named."""
+    the sub-options the grammar does not honour are named.  *grid_color*
+    is the scheme's grid colour for an explicit ``grid``; both modes pass
+    their scheme's."""
     cols = getattr(frame, "columns", [])
     for ax_key, tick_key, axis_obj, grid_obj, var in (
             ("xlabel", "xtick", fig.xaxis, fig.xgrid, xvar),
@@ -9397,7 +9825,8 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                                 spec.get("unsupported", []), seen, key)
         col = frame[var] if var and var in cols else None
         _dash_apply_axis_spec(axis_obj, grid_obj, spec,
-                              col, (numeric_formats or {}).get(var, ""))
+                              col, (numeric_formats or {}).get(var, ""),
+                              grid_color)
 
 
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame):
@@ -10022,12 +10451,21 @@ _DASH_TEXTBOX_DEFAULTS = {
 }
 
 
-def _dash_text_annotations(fig, graph_opts, seen=None, key=""):
+def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
     """note(), caption() and subtitle() as Labels, in both modes.
 
     The generated app carried its own copy of this loop, with its own
     size and colour helpers; one text now, with the unimplemented
     sub-options named.
+
+    With *scheme* given, the defaults are Stata's text boxes: subtitle()
+    is the subheading box (``gsize subheading``, ``color subheading``),
+    caption() the body box, and note() the small_body box in its own
+    colour (``gsize note`` exists in every scheme and Stata's note
+    reads nothing from it).  The sizes reach Bokeh as the scheme's own pt
+    strings.  ``_DASH_TEXTBOX_DEFAULTS`` were literal px and #555555 under
+    every scheme; they remain the defaults for a caller with no scheme.
+    An explicit size() or color() sub-option still wins.
     """
     from bokeh.models import Label
     for ann_key in ("note", "caption", "subtitle"):
@@ -10038,10 +10476,23 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key=""):
         if not text:
             continue
         d = _DASH_TEXTBOX_DEFAULTS[ann_key]
+        if scheme is not None:
+            size_default, color_default = {
+                "subtitle": (scheme.subheading_font_size,
+                             scheme.subheading_color),
+                "caption": (scheme.body_font_size, scheme.body_color),
+                "note": (scheme.small_body_font_size, scheme.small_body_color),
+            }[ann_key]
+        else:
+            size_default, color_default = f"{d['size']:g}px", d["color"]
+        # None from either helper means "not given, or refused (and
+        # named)": the default applies either way.
+        px = _textbox_size(opts, None)
+        colour = _textbox_color(opts, None)
         fig.add_layout(Label(
             x=0, y=d["y"], x_units="screen", y_units="screen", text=text,
-            text_font_size=f"{_textbox_size(opts, d['size']):g}px",
-            text_color=_textbox_color(opts, d["color"]),
+            text_font_size=(f"{px:g}px" if px is not None else size_default),
+            text_color=colour if colour is not None else color_default,
         ), d["side"])
 
 
@@ -11733,9 +12184,7 @@ class DashRenderer:
             fig, plot_renderers, graph_opts.get("legend", ""),
             getattr(self, "variable_labels", {}),
             getattr(self, "default_level", _DEFAULT_LEVEL),
-            {"legend_bg_color": self.scheme.legend_bg_color,
-             "legend_border_color": self.scheme.legend_border_color,
-             "text_font_size": self.scheme.text_font_size},
+            _dash_scheme_chrome(self.scheme),
             getattr(self, "_reported_subopts", None),
             graph_opts.get("name", ""))
 
@@ -12051,8 +12500,8 @@ class DashRenderer:
         _dash_reference_lines(fig, graph_opts, _seen, _gkey)
 
         # note(), caption(), subtitle(), through the helper the generated
-        # app runs as well.
-        _dash_text_annotations(fig, graph_opts, _seen, _gkey)
+        # app runs as well, at the scheme's text-box sizes and colours.
+        _dash_text_annotations(fig, graph_opts, _seen, _gkey, self.scheme)
 
         # xlabel()/ylabel(), xtick()/ytick(): Stata's full grammar, through
         # the helper the generated app runs as well.  Its own parser read a
@@ -12060,7 +12509,8 @@ class DashRenderer:
         _dash_apply_axis_options(fig, graph_opts, xvar, yvar,
                                  _source_frame(source, self.df),
                                  getattr(self, "numeric_formats", {}),
-                                 _seen, _gkey)
+                                 _seen, _gkey,
+                                 grid_color=self.scheme.grid_color)
 
         # Plot categories that use non-standard JSON variable keys.  Defined
         # at module level so the generated server app shares them rather than
@@ -12345,29 +12795,18 @@ class DashRenderer:
                      bgcolor, update.
 
         Returns:
-            A Bokeh Div widget with inline-styled HTML.
+            A Bokeh Div carrying the card (``_dash_kpi_card_html``, the
+            builder the served app runs as well) and the scheme's CSS as
+            an InlineStyleSheet, so the ``.db-kpi-card`` rule reaches the
+            Div's shadow root.
         """
-        title    = html.escape(kpi_def.get("title", ""))
-        value    = html.escape(str(kpi_def.get("value", "")))
-        subtitle = html.escape(kpi_def.get("subtitle", ""))
-        # Sanitised, not merely escaped -- see _resolve_kpi_color.  These
-        # are interpolated into a style attribute, where html.escape does not
-        # stop a CSS property injection.
-        color    = _resolve_kpi_color(kpi_def.get("color", ""), "#212529",
-                                      "color")
-        bgcolor  = _resolve_kpi_color(kpi_def.get("bgcolor", ""), "#f8f9fa",
-                                      "bgcolor")
-
-        html_content = f"""
-<div class="db-kpi-card" style="background:{bgcolor}; border-radius:8px;
-            padding:20px; text-align:center; border:1px solid #dee2e6;
-            min-width:160px; min-height:110px;">
-  <div style="font-size:13px; color:#6c757d; margin-bottom:6px;">{title}</div>
-  <div id="kpi_val_{html.escape(kpi_def.get('name','kpi'))}"
-       style="font-size:36px; font-weight:bold; color:{color};">{value}</div>
-  <div style="font-size:11px; color:#6c757d; margin-top:4px;">{subtitle}</div>
-</div>"""
-        return Div(text=html_content, sizing_mode="stretch_width")
+        html_content = _dash_kpi_card_html(
+            kpi_def.get("title", ""), str(kpi_def.get("value", "")),
+            kpi_def.get("subtitle", ""), kpi_def.get("color", ""),
+            kpi_def.get("bgcolor", ""), kpi_def.get("name", "kpi"),
+            self.scheme)
+        return Div(text=html_content, sizing_mode="stretch_width",
+                   stylesheets=[InlineStyleSheet(css=self.scheme.css_block())])
 
     # ------------------------------------------------------------------
     # Bootstrap layout helpers
@@ -12530,6 +12969,41 @@ class DashRenderer:
 
         return rows if rows else DashRenderer._auto_bs_layout(all_names, kpi_names, figures)
 
+    @staticmethod
+    def _head_of_file_html(page: str) -> str:
+        """The contents of the ``<head>`` of a ``file_html`` page.
+
+        This was ``re.search(r"(?s)<head>(.*?)</head>", page)``.  Bokeh
+        3.9's inlined bokeh-widgets.min.js contains the literal string
+        ``<head></head>`` (DOMPurify's parser setup), so the non-greedy
+        match stopped 189,588 characters into a 378,283-character bundle:
+        the widgets script was never closed, dash's own ``</head><body>
+        <script>`` landed inside it, and every layout(bs) page whose
+        document needs that bundle -- a KPI Div, a filter widget -- was a
+        blank page with ``Uncaught SyntaxError`` in the console.  The
+        checked-in sample pages were made with a bundle that lacked the
+        string, so no test noticed.
+
+        The real ``</head>`` is the LAST one before the page's ``<body``:
+        ``file_html`` puts every bundle in the head and HTML-escapes the
+        document JSON it writes into the body, so nothing after the real
+        head can contain either tag.  When the page has no recognisable
+        head at all, the full INLINE bundle is returned rather than an
+        empty string, so the page can never come out without its scripts.
+
+        Args:
+            page: What ``file_html(..., INLINE)`` returned.
+
+        Returns:
+            The text between ``<head>`` and its closing tag.
+        """
+        start = page.find("<head>")
+        body_at = page.rfind("<body")
+        end = page.rfind("</head>", 0, body_at if body_at >= 0 else None)
+        if start < 0 or end < 0 or end < start:
+            return INLINE.render_css() + "\n" + INLINE.render_js()
+        return page[start + len("<head>"):end]
+
     def _render_bootstrap_html(
         self,
         layout_opt: str,
@@ -12662,8 +13136,7 @@ class DashRenderer:
         # Must be called BEFORE components() to avoid document-ownership errors.
         _dummy_col = column(*all_models, sizing_mode="stretch_width")
         _dummy_html = file_html(_dummy_col, INLINE, title=title_text or "dash")
-        _head_m = re.search(r"(?s)<head>(.*?)</head>", _dummy_html)
-        _extracted_head = _head_m.group(1) if _head_m else ""
+        _extracted_head = self._head_of_file_html(_dummy_html)
 
         # ---- Get individual Bokeh component divs ----
         script_tag, div_list = components(all_models)
@@ -13408,8 +13881,13 @@ class DashRenderer:
         # rows it selects rather than as an expression -- no evaluator in the
         # browser, nothing to inject into.  Only a qualified KPI pays for it.
         qual_ids = self._kpi_qualifier_row_ids(kdef)
+        _kpi_text_color = _sanitize_css_color(
+            getattr(self.scheme, "text_color", "") or "#000000", "#000000")
         return {
             "name": kname,
+            # The value div's id, as _dash_kpi_card_html escapes it, so the
+            # JS rebuild can emit the same `id="kpi_val_<name>"'.
+            "name_html": html.escape(kname or "kpi"),
             "stat": kstat,
             "varname": kvar,
             "decimals": dec,
@@ -13432,11 +13910,15 @@ class DashRenderer:
             "subtitle": html.escape(kdef.get("subtitle", "") or ""),
             # Sanitised, not merely escaped: these are interpolated into a
             # style attribute, where html.escape does not stop a CSS property
-            # injection.  The SAME resolver as the initial render.
+            # injection.  The SAME resolver and the SAME defaults as the
+            # initial render (_dash_kpi_card_html): the value falls back to
+            # the scheme's `color text', and an absent bgcolor() is '' so
+            # the rebuild writes no background and the class rule applies.
+            "text_color": _kpi_text_color,
             "color": _resolve_kpi_color(kdef.get("color", "") or "",
-                                        "#212529", "color"),
+                                        _kpi_text_color, "color"),
             "bgcolor": _resolve_kpi_color(kdef.get("bgcolor", "") or "",
-                                          "#f8f9fa", "bgcolor"),
+                                          "", "bgcolor"),
         }
 
     def _wire_brush_callbacks(self, kpis: list) -> int:
@@ -14255,8 +14737,10 @@ class ServerAppBuilder:
                          "_dash_facet_label",
                          # The plot-type name set the parity guard reads.
                          "_dash_plot_type_names",
-                         # The legend, whole: keys, rule, every sub-option.
-                         "_dash_move_legend", "_dash_apply_legend",
+                         # The legend, whole: keys, rule, every sub-option,
+                         # and the scheme's chrome for it.
+                         "_dash_move_legend", "_dash_scheme_chrome",
+                         "_dash_apply_legend",
                          # Axis titles, Stata's tick grammar, second axes.
                          "_parse_axis_angle", "_stata_date_kind",
                          "_parse_scale_opt", "_source_frame",
@@ -14296,6 +14780,7 @@ class ServerAppBuilder:
                          # honoured and an unknown colour is named here too.
                          "_extract_region_lwidth",
                          "_resolve_kpi_color", "_sanitize_css_color",
+                         "_dash_kpi_card_html",
                          "_dash_warn_filter_missing", "_dash_warn_filter_type",
                          "_dash_parse_filter_raw"):
             if _fn_name in _emitted_names:
@@ -14493,36 +14978,26 @@ class ServerAppBuilder:
         return out
 
     def _scheme_lines(self) -> "list[str]":
-        """Emit the resolved scheme as data the generated app can read.
+        """Emit the build-time constants the generated app reads.
 
-        The scheme is resolved here, in-process, where ``SchemeParser`` is
-        available; the app receives the answers rather than the machinery, so
-        it stays runnable without ``dash_render.py`` on the path.
-
-        The 15 entries are Stata's ``p1``-``p15``; ``default_color`` wraps
-        with ``index % 15`` and so does the generated lookup.
+        The scheme itself travels as ``_SCHEME_PROPS`` (see
+        ``_glyph_layer_lines``), from which the app rebuilds a real
+        ``SchemeParser`` as ``_DASH_SCHEME``; every figure, legend, label
+        and KPI card is styled through that object by the same methods the
+        saved renderer runs.  This used to emit a second, hand-copied
+        rendering of the scheme -- ``_SCHEME_COLORS``, ``_SCHEME_SYMBOLS``,
+        ``_SCHEME_LINE_WIDTH``, ``_SCHEME_CHROME`` and an
+        ``_dash_apply_scheme`` that re-implemented ``apply_to_figure`` --
+        none of which anything read once ``_DASH_MAPPER`` existed, and
+        whose one live copy drifted from the method it shadowed.
         """
         sch = self.scheme
-        kinds = ("scatter", "line", "connected", "bar", "area", "histogram",
-                 "rbar", "rarea", "rline", "rconnected", "tsline", "mspline",
-                 "mband")
-        colors = {k: [sch.default_color(i, k) for i in range(15)]
-                  for k in kinds}
         return [
-            "# ---- Scheme, resolved at build time ----",
+            "# ---- Build-time constants ----",
             "#",
-            "# scheme() / theme() / c(scheme) used to reach nothing here, so a",
-            "# served dashboard was Bokeh's default blue whatever the user had",
-            "# set.  These are the same values SchemeParser gives the",
-            "# standalone renderer, written out as data so this file still",
-            "# runs without dash_render.py on the path.",
-            "_SCHEME_NAME = %r" % sch.name,
-            "_SCHEME_COLORS = %r" % (colors,),
-            "_SCHEME_SYMBOLS = %r" % ([sch.default_symbol(i)
-                                       for i in range(15)],),
-            "_SCHEME_MARKER_SIZE = %r" % (sch.default_marker_size(0),),
-            # The scheme's graphsize, for xsize() or ysize() given alone:
-            # the other dimension is the scheme's, as in the saved figure.
+            "# The scheme's graphsize, for xsize() or ysize() given alone (the",
+            "# other dimension is the scheme's) and for the default",
+            "# proportions when neither is given, as in the saved figure.",
             "_SCHEME_GRAPHSIZE_X = %r" % (getattr(sch, "graphsize_x", None),),
             "_SCHEME_GRAPHSIZE_Y = %r" % (getattr(sch, "graphsize_y", None),),
             # Same crossover the standalone renderer uses. It was written
@@ -14538,87 +15013,7 @@ class ServerAppBuilder:
                 for _k, _v in (self.spec.get("build_options", {})
                                .get("formats", {}) or {}).items()
                 if _stata_numeric_pattern(str(_v))},),
-            # The generated app used to hold its own literals for these --
-            # alpha=0.7 on every scatter, fill_alpha=0.4 on every area,
-            # 0.8 on every histogram, line_width=1.5 on every line -- so a
-            # served figure ignored `intensity p', `intensity area',
-            # `intensity bar' and `linewidth p' whatever the scheme said.
-            "_SCHEME_FILL_ALPHA = %r" % (sch.fill_alpha,),
-            "_SCHEME_BAR_ALPHA = %r" % (sch.bar_alpha,),
-            "_SCHEME_AREA_ALPHA = %r" % (sch.area_alpha,),
-            "_SCHEME_LINE_WIDTH = %r" % (sch.default_line_width,),
             "_CI_BAND_ALPHA = %r" % (_CI_BAND_ALPHA,),
-            "_SCHEME_LINE_PATTERNS = %r" % ([sch.default_line_pattern(i)
-                                             for i in range(15)],),
-            "_SCHEME_CONNECT_PATTERNS = %r" % ([sch.default_connect_pattern(i)
-                                                for i in range(15)],),
-            "_SCHEME_CHROME = %r" % ({
-                "plotregion_color": sch.plotregion_color,
-                "background_color": sch.background_color,
-                "axis_line_color": sch.axis_line_color,
-                "grid_color": sch.grid_color,
-                "grid_line_width": sch.grid_line_width,
-                "minor_grid_color": sch.minor_grid_color,
-                "draw_major_hgrid": bool(sch.draw_major_hgrid),
-                "draw_major_vgrid": bool(sch.draw_major_vgrid),
-                "axis_title_font_size": sch.axis_title_font_size,
-                "tick_label_font_size": sch.tick_label_font_size,
-                # The legend takes `gsize text', not `gsize tick_label'.
-                # These differ for 13 of the 14 shipped schemes, so a served
-                # legend was 10pt where the saved one is 11pt.
-                "text_font_size": sch.text_font_size,
-                "legend_bg_color": sch.legend_bg_color,
-                "legend_border_color": sch.legend_border_color,
-                "legend_position": getattr(sch, "legend_position", "") or "",
-                "legend_cols": getattr(sch, "legend_cols", 0) or 0,
-            },),
-            "",
-            "",
-            "def _dash_scheme_color(index, plot_type='scatter'):",
-            "    # The scheme's colour for plot *index* of this type.",
-            "    _seq = _SCHEME_COLORS.get(plot_type) or _SCHEME_COLORS['scatter']",
-            "    return _seq[index % len(_seq)]",
-            "",
-            "",
-            "def _dash_scheme_symbol(index):",
-            "    # The scheme's marker for plot *index*.  Every scatter used to",
-            "    # be a circle regardless of the scheme, and regardless of how",
-            "    # many series shared the figure.",
-            "    return _SCHEME_SYMBOLS[index % len(_SCHEME_SYMBOLS)]",
-            "",
-            "",
-            "def _dash_scheme_dash(index, plot_type):",
-            "    # The scheme's dash pattern, for the plot types that have one.",
-            "    # `color p#line' is the CONNECTING line of twoway connected; a",
-            "    # plain line reads p#lineplot.  Same split as the standalone",
-            "    # renderer, so the two modes dash the same series alike.",
-            "    if plot_type in ('line', 'tsline', 'tsrline', 'mspline',",
-            "                     'mband', 'rline'):",
-            "        return _SCHEME_LINE_PATTERNS[index % len(_SCHEME_LINE_PATTERNS)]",
-            "    if plot_type in ('connected', 'rconnected'):",
-            "        return _SCHEME_CONNECT_PATTERNS[index % len(_SCHEME_CONNECT_PATTERNS)]",
-            "    return []",
-            "",
-            "",
-            "def _dash_apply_scheme(fig):",
-            "    # Scheme chrome, applied before any explicit graph option, in",
-            "    # the same order the standalone renderer uses -- so an explicit",
-            "    # option still overrides the scheme in both modes.",
-            "    _c = _SCHEME_CHROME",
-            "    fig.background_fill_color = _c['plotregion_color']",
-            "    fig.border_fill_color = _c['background_color']",
-            "    if _c['axis_line_color']:",
-            "        fig.outline_line_color = _c['axis_line_color']",
-            "    for _grids, _draw in ((fig.xgrid, _c['draw_major_hgrid']),",
-            "                          (fig.ygrid, _c['draw_major_vgrid'])):",
-            "        for _g in _grids:",
-            "            _g.grid_line_color = _c['grid_color'] if _draw else None",
-            "            _g.grid_line_width = _c['grid_line_width']",
-            "            _g.minor_grid_line_color = _c['minor_grid_color']",
-            "    for _ax in list(fig.xaxis) + list(fig.yaxis):",
-            "        _ax.axis_line_color = _c['axis_line_color']",
-            "        _ax.axis_label_text_font_size = _c['axis_title_font_size']",
-            "        _ax.major_label_text_font_size = _c['tick_label_font_size']",
         ]
 
     def build(self, output_path: str, port: int = 5006) -> None:
@@ -14812,6 +15207,7 @@ class ServerAppBuilder:
             "    Div,",
             "    HoverTool,",
             "    IndexFilter,",
+            "    InlineStyleSheet,",
             "    LabelSet,",
             "    LassoSelectTool,",
             "    NormalHead,",
@@ -14889,33 +15285,21 @@ class ServerAppBuilder:
             "_CSS_COLOR_RE = _CSS_COLOR_RE_APP",
             "",
             "",
-            "def _dash_kpi_color(val, default, option=''):",
-            "    # The saved renderer's own resolver, copied by name: translate",
-            "    # the Stata name, note one the translator does not know (this",
-            "    # used to fall to the default without a word), then sanitise.",
-            "    return _resolve_kpi_color(val, default, option)",
-            "",
-            "",
             "def _dash_kpi_card(title, value, subtitle, color, bgcolor, name=''):",
-            "    # One card, the standalone one.  There were five builders and",
-            "    # the server's drew the value at 28px where standalone drew it",
-            "    # at 36px, with different padding, border and label colours.",
-            "    _c = _dash_kpi_color(color, '#212529', 'color')",
-            "    _bg = _dash_kpi_color(bgcolor, '#f8f9fa', 'bgcolor')",
-            "    _t = html.escape(title or '')",
-            "    _s = html.escape(subtitle or '')",
-            "    _v = html.escape(str(value))",
-            "    _n = html.escape(name or 'kpi')",
-            "    return (",
-            "        f'<div class=\"db-kpi-card\" style=\"background:{_bg}; border-radius:8px;'",
-            "        f' padding:20px; text-align:center; border:1px solid #dee2e6;'",
-            "        f' min-width:160px; min-height:110px;\">'",
-            "        f'<div style=\"font-size:13px; color:#6c757d; margin-bottom:6px;\">{_t}</div>'",
-            "        f'<div id=\"kpi_val_{_n}\" style=\"font-size:36px; font-weight:bold;'",
-            "        f' color:{_c};\">{_v}</div>'",
-            "        f'<div style=\"font-size:11px; color:#6c757d; margin-top:4px;\">{_s}</div>'",
-            "        f'</div>'",
-            "    )",
+            "    # One card, the standalone one, through the builder the saved",
+            "    # renderer runs (copied by name), with this dashboard's scheme:",
+            "    # the card is the scheme's legend box.  There were five",
+            "    # builders and the server's drew the value at 28px where",
+            "    # standalone drew it at 36px, with different padding, border",
+            "    # and label colours.",
+            "    return _dash_kpi_card_html(title, value, subtitle, color, bgcolor,",
+            "                               name, _DASH_SCHEME)",
+            "",
+            "",
+            "def _dash_kpi_stylesheets():",
+            "    # The scheme's CSS for a KPI Div: a Bokeh 3 Div renders in a",
+            "    # shadow root, so the .db-kpi-card rule has to travel on the Div.",
+            "    return [InlineStyleSheet(css=_DASH_SCHEME.css_block())]",
             "",
         ] + self._scheme_lines() + self._shared_stat_lines() \
           + self._glyph_layer_lines() + [
@@ -15816,7 +16200,7 @@ class ServerAppBuilder:
             "            return [_s for _s in _srcs if _s is not _ly]",
             "        return _redraw",
             "",
-            "    def _dash_figure_for(g, gname, g_df, _fac_title=None):",
+            "    def _dash_figure_for(g, gname, g_df, _fac_label=None):",
             '        """Build one figure: a graph, or one by() panel of it.',
 
             "        This is the body of what used to be the per-graph loop.",
@@ -15865,15 +16249,26 @@ class ServerAppBuilder:
             "        # xsize()/ysize()/aspectratio(): the helper the saved",
             "        # renderer runs.  This read aspectratio() alone, uninverted,",
             "        # and said nothing for a bad value the saved renderer named.",
+            "        # With none given, the scheme's own graphsize ratio, as the",
+            "        # saved figure (_resolve_aspect_ratio) -- a served figure",
+            "        # used to ignore the scheme's proportions entirely -- held",
+            "        # to the same height bounds so a wide page stays scrollable.",
             "        _ar = _dash_figure_aspect(go, _SCHEME_GRAPHSIZE_X, _SCHEME_GRAPHSIZE_Y)",
-            "        if _ar is not None: _fig_kw['aspect_ratio'] = _ar",
+            "        if _ar is None and _SCHEME_GRAPHSIZE_X and _SCHEME_GRAPHSIZE_Y:",
+            "            _ar = float(_SCHEME_GRAPHSIZE_X) / float(_SCHEME_GRAPHSIZE_Y)",
+            "        if _ar is not None:",
+            "            _fig_kw['aspect_ratio'] = _ar",
+            "            _fig_kw['max_height'] = _MAX_FIGURE_HEIGHT",
+            "            _fig_kw['min_height'] = _MIN_FIGURE_HEIGHT",
             "        _xsc = _dash_scale_spec(go.get('xscale', ''), 'xscale', _reported_subopts, gname)",
             "        _ysc = _dash_scale_spec(go.get('yscale', ''), 'yscale', _reported_subopts, gname)",
             "        if _xsc['log']: _fig_kw['x_axis_type'] = 'log'",
             "        if _ysc['log']: _fig_kw['y_axis_type'] = 'log'",
             "        fig = bokeh_figure(**_fig_kw)",
-            "        # Scheme first, so an explicit graph option still wins.",
-            "        _dash_apply_scheme(fig)",
+            "        # Scheme first, so an explicit graph option still wins --",
+            "        # through the SchemeParser method the saved figure uses,",
+            "        # not a hand-copied rendering of it.",
+            "        _DASH_SCHEME.apply_to_figure(fig)",
             "        # yaxis(2)/xaxis(2): the second axis, from the rows this",
             "        # figure draws.  There used to be none when served.",
             "        _dash_add_secondary_axes(fig, plots, go, g_df)",
@@ -15930,8 +16325,9 @@ class ServerAppBuilder:
             "                _c = _dash_graph_color('graphregion(color)', _gr_bg)",
             "                if _c: fig.border_fill_color = _c",
             "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv)",
-            "        # note(), caption(), subtitle(): the helper the saved renderer runs.",
-            "        _dash_text_annotations(fig, go, _reported_subopts, gname)",
+            "        # note(), caption(), subtitle(): the helper the saved renderer",
+            "        # runs, at the scheme's text-box sizes and colours.",
+            "        _dash_text_annotations(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
             "        # xline()/yline(): the helper the saved renderer runs.",
             "        _dash_reference_lines(fig, go, _reported_subopts, gname)",
             "        # xlabel()/ylabel()/xtick()/ytick(): Stata's full grammar,",
@@ -15939,7 +16335,8 @@ class ServerAppBuilder:
             "        # parser here read a bare numlist and angle() and nothing",
             "        # else, so xlabel(2000(1000)4000) was ignored when served.",
             "        _dash_apply_axis_options(fig, go, xv, yv, g_df, _num_formats,",
-            "                                 _reported_subopts, gname)",
+            "                                 _reported_subopts, gname,",
+            "                                 grid_color=_DASH_SCHEME.grid_color)",
             "",
             '        # Legend boundaries.  NOT ONE of the 44 glyph calls in this loop',
             '        # passed legend_label, so a served figure had no legend at all --',
@@ -16086,7 +16483,8 @@ class ServerAppBuilder:
             "        # clickable where the saved one is not.",
             "        _dash_apply_legend(fig, _plot_rends, go.get('legend', ''),",
             "                           var_labels, _DASH_MAPPER.default_level,",
-            "                           _SCHEME_CHROME, _reported_subopts, gname)",
+            "                           _dash_scheme_chrome(_DASH_SCHEME),",
+            "                           _reported_subopts, gname)",
             "",
             '        # ---- The figure\'s one HoverTool ----',
             '        # GAPS.md D2: HoverTool was imported into this file and',
@@ -16109,8 +16507,14 @@ class ServerAppBuilder:
             "            univar=_p0.get('var', ''),",
             '        )',
             '',
-            "        if _fac_title is not None:",
-            "            fig.title.text = _fac_title",
+            "        if _fac_label is not None:",
+            "            # The panel title is the figure's OWN title text -- the",
+            "            # parsed title() the saved renderer joins with the label --",
+            "            # not html.escape(go['title']): a Title is drawn on the",
+            "            # canvas, and title(\"By\") was served as &quot;By&quot;.",
+            "            _own = fig.title.text if fig.title is not None else ''",
+            "            fig.title.text = (f'{_own} \u2014 {_fac_label}' if _own",
+            "                              else _fac_label)",
             "        return fig",
 
             "    # ---- Build figures: one call per graph, or per by() panel ----",
@@ -16149,7 +16553,6 @@ class ServerAppBuilder:
             "                _v = _pp.get(_k, '')",
             "                if _v and _v in df.columns and _v not in _gvars:",
             "                    _gvars.append(_v)",
-            "        _title = html.escape(go.get('title', '') or '')",
             "        _panels = []",
             "        _groupby = by_vars[0] if len(by_vars) == 1 else by_vars",
             "        for _key, _gdf in work_df.groupby(_groupby, sort=True, dropna=False):",
@@ -16172,8 +16575,7 @@ class ServerAppBuilder:
             "                graph_sources[_fname] = [ColumnDataSource(",
             "                    {_v: _gdf[_v].tolist() for _v in _gvars})]",
             "            figures[_fname] = _dash_figure_for(",
-            "                g, _fname, _gdf,",
-            "                _fac_title=(f'{_title} \u2014 {_label}' if _title else _label))",
+            "                g, _fname, _gdf, _fac_label=_label)",
             "            _entries.append((_fname, _label))",
             "            _facet_group_vals[_fname] = (by_vars, _key)",
             "        _facet_map[gname] = _entries",
@@ -16213,7 +16615,8 @@ class ServerAppBuilder:
             "        val = _compute_kpi(_k_df, kstat, kvar)",
             "        disp = _format_kpi(val, kfmt, kvar, kstat)",
             "        div_html = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
-            "        kpi_divs[kname] = Div(text=div_html, sizing_mode='stretch_width')",
+            "        kpi_divs[kname] = Div(text=div_html, sizing_mode='stretch_width',",
+            "                              stylesheets=_dash_kpi_stylesheets())",
             "",
             "    # Reverse map: faceted gname → original gname (for qualifier lookup).",
             "    # Faceted graph names (e.g. 'g1 — 0') are children of original names;",

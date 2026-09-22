@@ -1858,6 +1858,18 @@ program define _dash_process_segment, rclass
                         exit(111)
                     }
                 }
+                else {
+                    // Every other type on this path takes a y AND an x.
+                    // Measured 22sep2026 with the console binary: `twoway
+                    // bar price', `twoway scatter mpg', and spike, area,
+                    // line, dropline, connected, dot, the fit and the
+                    // smoother types all say "too few variables specified"
+                    // r(102).  dash registered such a segment with rc 0 and
+                    // the build then died in Python on the empty x column,
+                    // r(7102).  Refused here, before any JSON is written.
+                    display as error "dash: `ptype' requires a y and an x variable (got: `vl')"
+                    exit(102)
+                }
             }
             local if_cl `"`s(if_clause)'"'
             local in_cl `"`s(in_clause)'"'
