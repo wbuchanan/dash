@@ -520,10 +520,30 @@ def test_xss_title_escaped(dr_module, auto_df):
         app_spec_obj.loader.exec_module(app_mod)
         doc = Document()
         app_mod.make_document(doc)
-        # doc.title is set to html.escape(title) inside make_document
-        assert "<script>" not in doc.title, (
-            f"XSS Layer 2: raw <script> found in doc.title: {doc.title!r}"
+        # --- Layer 2: the PAGE.  doc.title used to be set to the already
+        # escaped text, and this asserted on the model; but Bokeh's page
+        # template escapes the title itself (measured: a raw "R&D <b>" is
+        # rendered as "R&amp;D &lt;b&gt;", a pre-escaped one as
+        # "R&amp;amp;D &amp;lt;b&amp;gt;"), so the double escape showed
+        # in the browser tab as "&amp;".  The title is raw on the model
+        # and the rendered <title> is what must carry no tag.
+        import re as _re
+        from bokeh.embed import file_html as _file_html
+        from bokeh.resources import INLINE as _INLINE
+        _page = _file_html(doc, _INLINE)
+        _m = _re.search(r"<title>(.*?)</title>", _page, _re.S)
+        assert _m is not None, "the rendered page has no <title>"
+        assert "<script>" not in _m.group(1), (
+            f"XSS Layer 2: raw <script> in the rendered <title>: {_m.group(1)!r}"
         )
+        assert "&amp;lt;" not in _m.group(1), (
+            f"the title is escaped twice: {_m.group(1)!r}"
+        )
+        # The header Div escapes once, too.
+        from bokeh.models import Div as _Div
+        _divs = [m for m in doc.select({"type": _Div}) if "db-title" in m.text]
+        assert _divs and "<script>" not in _divs[0].text.replace(
+            "&lt;script&gt;", "")
     finally:
         os.unlink(spec_path)
         os.unlink(data_path)
@@ -4495,8 +4515,31 @@ def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
             ms.loader.exec_module(mod)
             doc = Document()
             mod.make_document(doc)
-            served_rows = _rows([m for m in doc.select({"type": object})
-                                 if type(m).__name__ == "figure"])
+            # In DOCUMENT order, walking the layout.  doc.select() yields
+            # models in an order that depends on their ids, so the panels
+            # came back as [2, 3] in one run and [3, 2] in another and the
+            # comparison with the saved renderer's insertion order flaked.
+            _figs, _seen = [], set()
+
+            def _visit(m):
+                if isinstance(m, (list, tuple)):
+                    for x in m:
+                        if x is not None and not isinstance(x, (int, float, str)):
+                            _visit(x)
+                    return
+                if m is None or id(m) in _seen:
+                    return
+                _seen.add(id(m))
+                if type(m).__name__ == "figure":
+                    _figs.append(m)
+                for _attr in ("children", "tabs", "child"):
+                    _k = getattr(m, _attr, None)
+                    if _k is not None:
+                        _visit(_k)
+
+            for _root in doc.roots:
+                _visit(_root)
+            served_rows = _rows(_figs)
             r = dr_module.DashRenderer(spec_path, data_path)
             r.render()
             saved_rows = _rows(r.figures.values())
@@ -8179,26 +8222,58 @@ class TestDropdownSentinelCollision:
     # BUG-37-1d: generated source uses computed sentinel in Select
     # ------------------------------------------------------------------
 
-    def test_server_dropdown_uses_computed_sentinel(self, dr_module, auto_df):
-        """BUG-37-1d: generated server source must compute _sent before Select creation."""
+    def test_server_dropdown_uses_computed_sentinel(self, dr_module):
+        """BUG-37-1d: the served widget's sentinel is absent from the data.
+
+        Stated as behaviour: this used to assert the NAMES of the
+        generated app's own sentinel loop (`_sent', `_uniq_strs'), which
+        went away when the widget builder became the one the saved
+        renderer runs.  The served widget must do what BUG-37-1a requires
+        of the saved one -- a data value equal to the literal string
+        "__all__" does not collide with the "All" option.
+        """
+        import importlib.util
+        import tempfile
+        import pandas as pd, numpy as np
+        from bokeh.document import Document
+        from bokeh.models import Select
+        df = pd.DataFrame({
+            "mpg":    np.linspace(15, 35, 6),
+            "weight": np.linspace(2000, 4000, 6),
+            "cat":    ["__all__", "A", "B", "__all__", "A", "B"],
+        })
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1"},
         }], build_options={
-            "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
+            "layout": "auto", "link": "", "filter": "cat, type(dropdown)",
             "theme": "default", "title": "T", "subtitle": "",
             "registry": "g1", "mode": "server", "port": "5006",
         })
-        source = _build_app(dr_module, auto_df, spec)
-        assert "_sent" in source, (
-            "Generated server code must compute '_sent' sentinel variable"
-        )
-        assert "_uniq_strs" in source, (
-            "Generated server code must build '_uniq_strs' to check for collision"
-        )
-        assert "while _sent in _uniq_strs" in source, (
-            "Generated server code must loop until sentinel is unique"
-        )
+        spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name, port=5006)
+            app_spec = importlib.util.spec_from_file_location("_bug37_app", out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            selects = [m for m in doc.select({"type": Select})]
+            assert selects, "the served document must carry the dropdown"
+            w = selects[0]
+            sentinel = getattr(w, "_dash_sentinel", "__all__")
+            raw_values = {str(v) for v in df["cat"].unique()}
+            assert sentinel not in raw_values, (
+                f"served sentinel {sentinel!r} collides with the data {raw_values}")
+            assert w.value == sentinel
+            assert "__all__" in [v for v, _ in w.options], (
+                "the data's own '__all__' must stay selectable as a category")
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
 
     # ------------------------------------------------------------------
     # BUG-37-1e: generated server uses per-widget sentinel in callback

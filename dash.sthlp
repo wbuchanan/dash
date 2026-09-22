@@ -338,7 +338,8 @@ in the dashboard grid.
 
 {phang2}{cmd:layout(auto)} — {cmd:dash} chooses a square-ish grid
     automatically based on the number of registered items.  This is
-    the default.
+    the default.  Items fill the grid in the order they were registered,
+    graphs and KPI cards alike, in both render modes.
 
 {phang2}{cmd:layout(}{it:rows} {it:cols}{cmd:)} — explicit grid dimensions.
     Example: {cmd:layout(2 3)} creates a grid with 2 rows and 3 columns.

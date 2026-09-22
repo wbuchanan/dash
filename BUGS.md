@@ -773,3 +773,93 @@
   - Description: The probe that asks the renderer whether it can read a .scheme file ran `warnings.simplefilter("ignore")' in Stata's embedded Python, to hide the probe's own fallback warning, and never removed it. Python's warning filters are interpreter-wide and the interpreter lives as long as the Stata session, so after `dash_setup' -- the first thing a new user is told to run -- no warning dash raises was printed again: not the empty-layer report, not the by() sub-option report, not the unknown-scheme report. Measured in one session: a render printed two warning lines before the filter and zero after. Found because test_setup_honesty.cscript calls the probe and test_by_suboptions.cscript, four scripts later in the same session, could not see the warning it was written to read.
   - Suggested fix: Silence the probe only.
   - Resolution: Fixed. The filter list is saved before the probe and restored after it, on the same line (a `with' block cannot follow `;' in the one-line `python:' form the ado-path loader requires). Regression: test_by_suboptions.cscript BYS-06 runs the probe and then a by(rows(2)) render in the same session and reads the warning back out of the log.
+
+- [x] Title: The parity guard covered 17 of 38 plot types, no cross-cutting feature, and seven style properties
+  - File Names and Line Numbers: test/test_mode_parity.py (CORPUS, _glyph_profile, _annotations)
+  - Description: GAPS.md D8. The standing guard between the two render modes rendered 17 plot types, set none of by(), link(), filter(), tabs() or a KPI, and compared seven glyph style properties and a few annotation fields -- not the rows a glyph draws, not its coordinates, not the tools, not the tooltips, not the legend, not the axes, not the widgets, not the KPI cards, not where anything sits in the document. Every divergence GAPS.md D2-D6 records was invisible to it.
+  - Suggested fix: ROADMAP WP-12.
+  - Resolution: Fixed. The corpus covers every plot type the code dispatches -- the list is derived from the dispatch tables by `_dash_plot_type_names', cross-checked against dash.ado's Supported: text and the Mata abbreviation table, so a type cannot be added without a parity entry -- and every cross-cutting feature: by() with its sub-options, link(), all three filter() types, tabs(), KPIs with their qualifiers and formats, layout() placement, graph and per-plot qualifiers, mlabel(), hover(), colorvar(), legend() sub-options, xlabel()/ylabel(), yaxis(2)/xaxis(2), level(), schemes, title and subtitle. The profile is the whole document: the layout tree, every widget's title/options/bounds/step, every KPI card's value, and for every figure its glyphs with rows and coordinates drawn, annotations, legend (items, size, visibility, placement, orientation, click policy), tools with tooltips and scope, axes and chrome, plus the warnings each mode raises. A second class fires a filter widget in the served document and compares the result to the saved renderer given the equivalent qualifier, for eleven layer types, facets, KPIs and a linked pair. The legitimate differences are three, each looked up by name where it is tolerated, and the two known date gaps are asserted to STILL fail so closing them is noticed. Twelve divergences the wider profile found on the day it was written are the entries below.
+
+- [x] Title: The served legend hid a layer on click; the saved one did not
+  - File Names and Line Numbers: dash_render.py (the emitted legend block set `_lg.click_policy = 'hide''; DashRenderer._rebuild_legend left Bokeh's default)
+  - Description: Found by the widened parity profile on 36 of 38 plot types. Nothing in dash.sthlp promises a clickable legend and Stata's legend is static. The same block also knew only `off', the four bare keywords, label() and cols()/rows(): measured, legend(position(6) rows(1)) was below the plot and horizontal when saved, top-right and vertical when served; order(2 1) did nothing served; size(small) was 7px saved and 11pt served; legend(on) on a one-series graph was visible saved and hidden served; and the served keys were HTML-escaped where the saved ones are the raw text Bokeh draws on the canvas.
+  - Suggested fix: One legend implementation.
+  - Resolution: Fixed. `_dash_apply_legend' (with `_dash_move_legend' and the clock tables) is module-level, copied into the app, and is the body of DashRenderer._rebuild_legend; the saved renderer's second keyword/label/cols block and the app's own block are deleted. click_policy is Bokeh's default in both modes.
+
+- [x] Title: A served histogram titled its y axis with the variable; the saved one titled it nothing; Stata writes "Density"
+  - File Names and Line Numbers: dash_render.py DashRenderer._make_figure (axis titles), the emitted figure body (its own y fallback to plots[0]['var'] and html.escape of xtitle())
+  - Description: Measured by exporting Stata's own graphs to SVG: `twoway histogram mpg' titles y "Density" and x with the variable's label; percent/frequency/fraction give "Percent"/"Frequency"/"Fraction"; `twoway kdensity mpg' titles y "kdensity mpg" and x "x". Neither mode did any of that, and they disagreed with each other. The served path also html.escape'd a user's xtitle(), so xtitle("R&D spend") read "R&amp;D spend" -- Bokeh draws an axis title on the canvas.
+  - Suggested fix: One axis-title rule, with Stata's defaults.
+  - Resolution: Fixed. `_dash_axis_labels' is the rule for both modes; `_dash_histogram_ymode' is the one place the histogram scale is decided, for the bars and the title alike.
+
+- [x] Title: xlabel()/ylabel() were Stata's full grammar when saved and a bare numlist when served
+  - File Names and Line Numbers: dash_render.py (the emitted `_parse_axlabel'/`_parse_axangle', 14 lines)
+  - Description: The saved renderer parsed a(b)c, #N, minmax, none, value "label" pairs, format(), labsize(), angle(), grid/nogrid and the xtick()/ytick() fallback; the app read a bare numlist and angle(). Measured: xlabel(2000(1000)4000) fixed the ticks when saved and left BasicTicker when served, silently.
+  - Suggested fix: One parser, one applier.
+  - Resolution: Fixed. `_dash_parse_axis_spec', `_dash_parse_axis_label_opt', `_dash_apply_axis_spec' and `_dash_apply_axis_options' are module-level and run by both; the DashRenderer staticmethods are aliases. minmax now labels the extremes of the rows the graph draws in both modes.
+
+- [x] Title: yaxis(2)/xaxis(2) built a second axis when saved and none when served
+  - File Names and Line Numbers: dash_render.py (the generated app contained no `extra_y_ranges' or `y_range_name' at all)
+  - Description: A layer asking for the secondary axis was served on the primary range. dash.sthlp documents yaxis(2) with ytitle2(), ylabel2() and yscale2().
+  - Suggested fix: Share the saved renderer's secondary-axis setup.
+  - Resolution: Fixed. `_dash_add_secondary_axes' builds the range and axis from the rows the figure draws and `_dash_assign_axis_ranges' puts a layer's renderers on it, in both modes and for every by() panel.
+
+- [x] Title: colorvar() coloured by the variable when saved and by the scheme when served
+  - File Names and Line Numbers: dash_render.py (the emitted `_dash_draw_layer' carried mlabel() and hover() columns into the layer source and nothing else; the emitted `_DASH_MAPPER' was built with no variable or value labels)
+  - Description: `_apply_colorvar' is a mapper method and ran in both modes, but returns when its column is absent from the source -- and the served layer source never carried it. A served discrete colour key would also have read "0"/"1" where the saved one reads the value labels, because the app's mapper had no metadata. A latent third defect: the invisible swatch renderers a discrete key is built from were about to be registered for redraw, and a filter move that emptied a category would have raised.
+  - Suggested fix: Carry the option's columns; attach the metadata; skip the swatches.
+  - Resolution: Fixed. `_DASH_OPT_VAR_KEYS'/`_dash_option_columns' name the columns a layer's options need (the saved `_collect_plot_vars' reads the same tuple); `_dash_attach_labels' gives either mode's mapper the dataset's labels and formats; `_dash_is_swatch' keeps a colour key's swatches out of the legend keys and the redraw registry. The served shared source for link() carries those columns and the hover() columns too, which is what a linked hover(price) and a linked mlabel(rep) were missing.
+
+- [x] Title: A served confidence band ignored the session's level and was labelled with it anyway
+  - File Names and Line Numbers: dash_render.py (DashRenderer._make_figure_body injected the level into the layer's options; the emitted `_dash_draw_layer' passed the options through untouched; the emitted legend read bo['level'])
+  - Description: Under `set level 90' a served lfitci, qfitci, lpolyci or fpfitci drew a 95% band keyed "90% CI". Measured: the served band was identical to the 95% baseline while the saved one was narrower.
+  - Suggested fix: Let the mapper own the default, so both callers resolve it in one place.
+  - Resolution: Fixed. `_dash_session_level' validates c(level) for both modes; GlyphMapper takes `default_level' and the four band mappers resolve `level()' against it; the saved injection is gone and the served app sets the mapper's level from the spec.
+
+- [x] Title: A dropdown's option values were 0/1 when saved and 0.0/1.0 when served; a threshold slider lost its title's inequality
+  - File Names and Line Numbers: dash_render.py FilterBuilder.build_dropdown/build_slider/build_range and the emitted widget blocks, two implementations of one widget
+  - Description: The saved page normalises a whole-number float to its integer text because its JavaScript compares String(v); the app used str(v). The served slider was titled "price" where dash.sthlp says "varname >= slider value" and the saved widget says so. The served range/slider guard also warned and skipped an all-missing column where the saved renderer builds a disabled widget.
+  - Suggested fix: One widget builder, one match rule.
+  - Resolution: Fixed. `_dash_filter_widget', `_dash_filter_title', `_dash_option_value' and `_dash_dropdown_mask' are module-level and run by both; the served callback dispatches on the widget's own kind rather than on isinstance, so a date widget (not a Slider subclass) is no longer silently ignored once the app can build one. test_server.py's BUG-37-1d, which asserted the names of the app's old sentinel loop, is restated as the behaviour it was protecting.
+
+- [x] Title: The saved renderer's filter widgets and snapshot read the FIRST graph's source, not the dataset
+  - File Names and Line Numbers: dash_render.py DashRenderer._build_filter_widgets (`fsource' = the first graph source; `_orig_data' built from it)
+  - Description: Under by() the first source is one facet; under a graph-level `if' it is the qualified rows. Measured with by(foreign) on ten rows: the range slider's bounds came from five rows, the dropdown offered "Domestic" and nothing else, and the snapshot the JavaScript filters and recomputes KPIs from held five rows -- so a KPI recomputed after a move was a statistic of half the data. The served app read the whole frame for all three, which is how the parity guard's widget comparison found it.
+  - Suggested fix: Read the dataset.
+  - Resolution: Fixed. The builders take the variable over the whole frame and the snapshot is the whole frame with its row identities; the JavaScript already masks every source by identity, so nothing else changes. Regression tests in test/test_filters.py::TestTheFilterReadsTheWholeDataset.
+
+- [x] Title: A KPI card sat before its graph when saved and after it when served
+  - File Names and Line Numbers: dash_render.py DashRenderer.render() (`all_names' = KPIs then graphs, whatever the registry); the emitted app used registry order
+  - Description: dash.ado appends every name() -- graph or KPI -- to ONE registry in the order the user issued it, and dash.sthlp describes layout(auto) in terms of registered items. The KPIs-first rule was a Bootstrap hero-row policy that had leaked into every saved layout.
+  - Suggested fix: The registry, as typed, in both modes.
+  - Resolution: Fixed. `_dash_layout_order' is the rule for both; `_dash_kpi_keys' resolves a registered KPI to its card or its per-facet cards. dash.sthlp's layout(auto) now says so. A do-file that registers its KPIs after its graphs will see the cards move below them in the saved dashboard.
+
+- [x] Title: The dashboard header was two classed Divs when saved and one classless Div when served
+  - File Names and Line Numbers: dash_render.py (the emitted header: one Div, hard-coded sans-serif and #666, and doc.title set to already-escaped text)
+  - Description: The saved plain grid emits an h2.db-title and a p.db-subtitle so the scheme's CSS styles them; the app emitted neither class and escaped the document title twice.
+  - Suggested fix: One header builder.
+  - Resolution: Fixed. `_dash_header_fragments' (also used by the Bootstrap page) and `_dash_header_models' build the same two Divs in both modes, with the scheme's css_block() attached to the Divs as an InlineStyleSheet -- a Bokeh 3 Div renders inside a shadow root, so a stylesheet in the page head would not reach it. Not verified in a browser in this work package: the models are compared, not the rendering.
+
+- [x] Title: A faceted graph inside tabs() was two panels when saved and one nested grid when served
+  - File Names and Line Numbers: dash_render.py DashRenderer._build_tabs_widget (flattened `_facet_map' into the tab's own grid, ignoring by(, cols(#))); the emitted `_dash_cell' nested them
+  - Description: Under the plain grid both modes already nested a faceted graph's panels in a sub-grid that honours cols(); the saved tabs path did not.
+  - Suggested fix: One cell resolver for the grid and the tabs.
+  - Resolution: Fixed. `_dash_layout_cell', `_dash_tab_panels' and `_dash_parse_tabs' are module-level and run by both; the app's own tabs parser is deleted.
+
+- [x] Title: An immediate render saved a dashboard with no figure and rc 0, for one commit of this branch
+  - File Names and Line Numbers: dash_render.py `_dash_layout_order' (introduced in WP-12); dash.ado's immediate master_json (line ~2070)
+  - Description: `dash scatter mpg weight, saving(x.html)' writes ONE graph with no name key and no registry; the saved renderer keys its figure ''. The ordering helper that replaced the KPIs-first rule dropped an empty name, so all_names was empty, no cell was placed, and the file was written with the dataset embedded and nothing drawn -- rc 0. The Python suite, whose every spec is named, passed; the certification suite failed test_e2e_single (P1C-17, "Mileage (mpg)" absent from the HTML) and test_varlist_expansion (V2-01/V2-03, whose colour census found no series). Never committed: found and fixed before this work package's commit.
+  - Suggested fix: Keep the empty name.
+  - Resolution: Fixed; a graph with no name is placed under '' as before. The parity corpus now carries the immediate path's own spec shape verbatim (no name, no registry, no kpis key, layout "1 1"), so both modes are compared on the JSON dash.ado actually writes and the completeness check requires that entry to exist.
+
+- [x] Title: The served document title was escaped twice
+  - File Names and Line Numbers: dash_render.py (the emitted `doc.title = html.escape(title)'); test/test_server.py test_xss_title_escaped
+  - Description: Bokeh's page template escapes the document title itself. Measured: a raw "R&D <b>" renders as "R&amp;D &lt;b&gt;" in the page's <title>, and the pre-escaped text the app set renders as "R&amp;amp;D &amp;lt;b&amp;gt;" -- the browser tab showed "&amp;". The XSS test pinned the model-level escape ("Layer 2") rather than the page.
+  - Suggested fix: Set the raw title and assert on the rendered page.
+  - Resolution: Fixed with the header work: the title is raw on the model, the header builder escapes it once for the Div, and the test now reads the rendered <title> and requires no tag and no double escape.
+
+- [ ] Title: Under layout(bs) the served app draws the auto grid, without a word
+  - File Names and Line Numbers: dash_render.py ServerAppBuilder (no Bootstrap path); DashRenderer._render_bootstrap_html
+  - Description: dash.sthlp's server-mode table says "Bootstrap layout(bs) ... No (falls back to a grid)", so this is documented, and the parity guard records it as a legitimate difference (no Bokeh layout root to compare; per-figure toolbars kept on the Bootstrap page and merged into the grid's when served). Nothing warns the user who builds a server app from a bs spec. ROADMAP WP-21 TR-21.4 decides what the served page should do.
+  - Suggested fix: A warning from ServerAppBuilder, or the layout.
+  - Resolution: Not fixed; recorded.

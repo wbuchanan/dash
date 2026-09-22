@@ -249,8 +249,13 @@ def test_a_graph_option_reported_unsupported_really_is(tmp_path, opt):
 
 
 def _ymode_flags() -> "list[str]":
-    """The y-axis flags `_histogram_grid' reads, read out of its own source."""
-    src = inspect.getsource(dr.GlyphMapper._histogram_grid)
+    """The y-axis flags the renderer reads, read out of its own source.
+
+    The loop lives in `_dash_histogram_ymode' now -- the one place the
+    histogram's scale is decided, for the bars and for the y-axis title,
+    in both render modes -- and `_histogram_grid' calls it.
+    """
+    src = inspect.getsource(dr._dash_histogram_ymode)
     m = re.search(r"for flag in \(([^)]*)\):", src)
     if not m:
         return []

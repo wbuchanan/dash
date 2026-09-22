@@ -1094,47 +1094,160 @@ Covered by WP-12's expanded parity corpus plus targeted regression tests in
 
 ---
 
-## WP-12 · The parity guard earns its name
+## WP-12 · The parity guard earns its name — DONE
 
 **Gaps closed:** D8 · **Severity:** S2 · **Effort:** M · **Depends on:** WP-09, WP-10, WP-11
 
 > **User story.** As a maintainer, I want the next divergence between the two
 > renderers to fail a test rather than reach a user.
 
-### Business requirements
+### What was measured before any code changed
 
-- **BR-12.1** The guard covers every plot type and every cross-cutting
-  feature.
-- **BR-12.2** Legitimate differences are enumerated, never tolerated by a
-  loose comparison.
+The plan's premise was that the corpus covered 17 of 38 types. On this
+branch it covered 21 (WP-11 had added six `by()` entries); the 17 missing
+were `fpfit fpfitci lowess pcarrow pcbarrow pci pcscatter qfit qfitci rbar
+rcap rconnected rline rscatter rspike tsline tsrline`. No entry set
+`link()`, `filter()`, `tabs()` or a KPI. The profile collected seven glyph
+style properties, a few annotation fields and the figure chrome -- not the
+rows a glyph draws, its coordinates, the tools, the tooltips, the legend,
+the axes, the widgets, the KPI cards, or where anything sits.
 
-### Technical requirements
+A profile that collects all of that, run over all 38 types bare and over
+every cross-cutting feature, found **twelve divergences the four earlier
+packages had not**, on the day it was written:
 
-- **TR-12.1** Extend `CORPUS` (`test/test_mode_parity.py:186-274`) from 17 to
-  all 38 plot types. The 21 missing: `function pci pcspike pcarrow pcbarrow
-  pcscatter lfitci qfit qfitci fpfit fpfitci lowess rarea rbar rspike rcap
-  rline rconnected rscatter tsline tsrline`.
-- **TR-12.2** Add corpus entries for `by()`, `link()`, `filter()`, `tabs()`
-  and KPIs — no entry sets any of them today.
-- **TR-12.3** Extend `_glyph_profile` (`:128-147`) and `_annotations`
-  (`:150-174`) to collect tools and tooltips. Every D2 hover finding was
-  invisible because they do not.
-- **TR-12.4** Add a completeness assertion: the corpus must cover every name
-  in the dispatch table, so a new plot type cannot be added without a parity
-  entry.
+| Divergence | Saved | Served |
+|---|---|---|
+| Legend click policy (36 of 38 types) | Bokeh default | `hide` |
+| `legend(position(6) rows(1))` | below, horizontal | top-right, vertical; `order()`, `size()`, `ring(0)`, one-series `on` ignored |
+| Histogram / kdensity y-axis title | none | the variable (Stata: "Density" / "kdensity mpg") |
+| `xlabel(2000(1000)4000)` | FixedTicker | ignored (a 14-line parser) |
+| `yaxis(2)` | second axis | none |
+| `colorvar(foreign)` | coloured by the variable | scheme colour |
+| `lfitci` under `set level 90` | 90% band | 95% band keyed "90% CI" |
+| Dropdown option values | `0`, `1` | `0.0`, `1.0` |
+| Threshold slider title | `price ≥` | `price` |
+| Filter widget bounds under `by()` | first facet's five rows | whole dataset |
+| KPI card position | before every graph | registry order |
+| Title header | two classed Divs | one classless Div |
+| Faceted graph in `tabs()` | panels flattened | nested, honouring `cols()` |
 
-### Acceptance criteria
+Every one was fixed as one implementation with two callers (BUGS.md has an
+entry per row). The saved renderer was wrong in four of them: the widget
+bounds and categories and the JavaScript snapshot came from the first
+graph's source (one facet under `by()`), KPIs were forced before graphs
+whatever the registry said, facets in tabs ignored `cols()`, and neither
+mode titled a histogram's axes as Stata does (measured by SVG export:
+"Density"/"Percent"/"Frequency"/"Fraction" and the variable's label).
 
-- **AC-12.1** The corpus covers 38/38 types and the five cross-cutting
-  features.
-- **AC-12.2** Reverting any WP-10 or WP-11 fix makes this file fail.
-- **AC-12.3** Adding a plot type without a corpus entry fails TR-12.4's
-  assertion.
+### Technical requirements, as delivered
 
-### Test plan
+- **TR-12.1** The corpus has a bare entry for every plot type, and
+  `TestTheCorpusIsComplete` derives the list from the code
+  (`_dash_plot_type_names`, over the dispatch tables and the new
+  `_DASH_LITERAL_TYPES`) and cross-checks it against `dash.ado`'s
+  Supported: text and the Mata abbreviation table. `ALL_TYPES` in
+  `test_server_layer_defects.py` is derived from the same function.
+- **TR-12.2** Entries for `by()` (total, cols, two variables, an unimplemented
+  sub-option, a graph-level `if`, mlabel and hover per panel), `link()` (a
+  pair, `_all`, a faceted member, hover and mlabel on a linked graph),
+  `filter()` (all three types, `label()`, `filterposition(left)`, on a
+  linked pair, on a faceted graph), `tabs()` (two tabs, an unassigned item, a
+  faceted graph, a KPI), KPIs (fmt, no fmt, `if`, `in`, brush, a percentile,
+  a styled count, on a facet, registered before or between graphs), plus
+  `layout()` placement in both index bases, `layout(bs)`, qualifiers at
+  every level, `legend()` sub-options, `xlabel()` grammar, `yaxis(2)` and
+  `xaxis(2)`, `colorvar()`, `level()`, schemes, titles, and the immediate
+  path's own unnamed-graph spec written exactly as `dash.ado` writes it.
+- **TR-12.3** The profile is the document: layout tree (figures, KPI cards,
+  widgets, tabs, containers), every widget's title/options/bounds/step, every
+  KPI card's value, and per figure the glyphs (type, style, visibility,
+  rows drawn through any view, every coordinate drawn), annotations
+  (LabelSet, Label, Span, Legend items/font/visibility/location/
+  orientation/click policy, BoxAnnotation), tools with tooltips, formatters
+  and renderer scope, axes (type, label, ticker, ticks, formatter, fonts,
+  ranges, extra ranges, scales) and chrome; and the warnings each mode
+  raises. A second class, `TestAFilterMoveAgrees`, fires a widget in the
+  served document and compares glyphs, labels and KPI cards to the saved
+  renderer given the equivalent qualifier: eleven layer types × three
+  widget types, facets, KPIs with their own `if`, a linked pair, a graph
+  with its own `if`.
+- **TR-12.4** `TestTheCorpusIsComplete` fails naming the type when a
+  dispatched type has no bare entry, and `test_every_cross_cutting_feature_
+  has_an_entry` names the feature when none exercises it.
 
-This package *is* a test plan. Its own acceptance is verified by mutation:
-revert each WP-10/WP-11 fix in a scratch branch and confirm the guard fails.
+### Legitimate differences
+
+Three, each looked up by name with `_allowed()` where it is tolerated, and a
+test that the list and the code agree: live recompute (initial values
+compared, and the move class compares the rest), one source per dashboard
+versus per graph (rows through the view are compared, identity is not), and
+`layout(bs)`, which the help documents as falling back to a grid when served
+(figures compared in registry order; the tree and the per-figure toolbar
+location are not). The two date entries are in their own class and are
+asserted to STILL fail on the comparisons the gap breaks, by hand rather
+than with an `xfail` mark, so the day they pass the class fails and the
+entries move into the corpus.
+
+### Acceptance
+
+- **AC-12.1** 38/38 types; every cross-cutting feature the package has.
+- **AC-12.2** Verified by mutation. Each WP-10, WP-11 and WP-12 fix was
+  reintroduced, one at a time, in a copy of the final tree, and the guard
+  run in full (1966 cases). Every mutation fails it; the count and the
+  comparison that caught it:
+
+  | Defect reintroduced | Failures | Caught by |
+  |---|---|---|
+  | WP-10: served mlabel drawn twice | 8 | annotations, labels after a move |
+  | WP-10: served per-plot `if` not read | 4 | glyphs, tools |
+  | WP-10: served KPI `if` not read | 4 | KPI cards, tree |
+  | WP-10: served empty layer says nothing | 1 | warnings |
+  | WP-10: served no hover tool | 46 | tools |
+  | WP-10: served legend keys not rebuilt | 48 | annotations |
+  | WP-10: served zero-index placement dropped | 3 | glyphs, annotations, tools (the figures pair differently) |
+  | WP-10: served KPI fmt drops the `c` suffix | 2 | KPI cards, tree |
+  | WP-11: served by() panels empty | 21 | glyphs |
+  | WP-11: saved by() groups the unqualified frame | 3 | glyphs, glyphs after a move |
+  | WP-11: served computed layer not refit after a move | 56 | glyphs after a move |
+  | WP-11: served histogram ignores its qualifier | 14 | glyphs after a move |
+  | WP-11: served by() sub-option not named | 1 | warnings |
+  | WP-11: served by(cols()) ignored | 0, then 1 | **not caught on the first run**: the layout tree recorded a grid's children without their positions, so 3×1 and 2×2 compared equal. The tree now records `(row, col)`; re-run, the mutation fails the tree comparison |
+  | WP-12: served legend clickable | 156 | annotations |
+  | WP-12: served histogram y titled with the variable | 9 | axes |
+  | WP-12: served session level ignored | 8 | glyphs, annotations |
+  | WP-12: served dropdown carries 0.0 | 8 | widgets, tree |
+  | WP-12: served slider title without the inequality | 2 | widgets, tree |
+  | WP-12: served KPIs first whatever the registry | 11 | tree |
+  | WP-12: served header as one classless Div | 3 | tree |
+  | WP-12: served faceted graph not nested in its cell | 121 | tree, figure count |
+  | WP-12: served colorvar column not carried | 8 | glyphs, annotations |
+  | WP-12: served no second axis | 4 | axes |
+  | WP-12: served xlabel() ticks ignored | 6 | axes |
+  | WP-12: served shared source without hover columns | 2 | tools |
+  | WP-12: saved widget reads the first graph's source | 2 | widgets, tree |
+
+  Two WP-10/WP-11 fixes are outside this file's reach and are pinned
+  elsewhere: the `layout(bs)` tabs order (Bootstrap markup, no Bokeh tree;
+  `test_server_layer_defects.py::TestTabsAreWhereTheHelpSaysTheyAre`) and
+  `dash_setup`'s warning silencing (Stata-side; `test_by_suboptions.cscript`
+  BYS-06).
+- **AC-12.3** Removing any bare entry fails `test_every_dispatched_type_has_a_bare_entry` naming it.
+
+### Found and not fixed
+
+- The served app has no date handling (BUGS.md, open since WP-10). The port
+  is scoped: seven consumers of `date_vars` in the saved renderer, all
+  liftable into `_dash_*` helpers; one measured trap, that the saved
+  renderer converts BEFORE it qualifies, so `if when > 15345` on a date
+  variable selects Stata's rows served and every row saved -- the shared
+  qualifier must translate the literal before the port lands.
+- `layout(bs)` served draws the auto grid without a warning (WP-21).
+- `scheme` legend_position/legend_cols are parsed and consumed by nothing in
+  either mode; not activated here, since that would move every s2color
+  legend in both modes without a Stata measurement.
+
+**Verification.** Certification 37/37 passed, 0 failed, 0 skipped.  pytest 6102 passed, 58 skipped, 6 xfailed -- five of the six are the date-gap comparisons this package pins so their fix is noticed, the sixth predates it.
 
 ---
 

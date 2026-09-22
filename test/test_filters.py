@@ -1375,3 +1375,79 @@ class TestFilterReachesTheRenderedSource:
             "the filter callback updates no source that any glyph renders "
             "from — the filter is inert on screen"
         )
+
+
+class TestTheFilterReadsTheWholeDataset:
+    """A widget describes the DATA, not the first graph.
+
+    The saved renderer built every widget, and the snapshot its JavaScript
+    filters and recomputes KPIs from, out of the first graph's source.
+    Under by() that source is one facet; under a graph-level `if' it is
+    the qualified rows.  Measured with by(foreign) on ten rows: the range
+    slider's bounds came from five, the dropdown offered one category, and
+    the snapshot held five rows, so a KPI recomputed after a move was a
+    statistic of half the data.  The served app read the whole frame for
+    all three, which is how the parity guard found it.
+    """
+
+    _DF = pd.DataFrame({
+        "mpg": [22.0, 17.0, 25.0, 30.0, 21.0, 19.0, 14.0, 28.0, 16.0, 23.0],
+        "weight": [2930.0, 3350.0, 2200.0, 1800.0, 3000.0, 3100.0, 4080.0,
+                   2010.0, 3600.0, 2650.0],
+        "foreign": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        "price": [4099.0, 4749.0, 3799.0, 4816.0, 5788.0, 4453.0, 5189.0,
+                  10372.0, 4082.0, 11385.0],
+    })
+
+    def _render(self, filter_raw, graph_options=None, if_expr=""):
+        import tempfile
+        _HERE = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, _HERE)
+        from conftest import make_data_json
+        go = {"name": "g1"}
+        go.update(graph_options or {})
+        spec = {"graphs": [{"name": "g1", "graph_options": go,
+                            "options": dict(go), "if_expr": if_expr,
+                            "in_expr": "",
+                            "plots": [{"type": "scatter", "yvar": "mpg",
+                                       "xvar": "weight", "options": {}}]}],
+                "kpis": [], "build_options": {
+                    "layout": "auto", "link": "", "filter": filter_raw,
+                    "theme": "", "scheme": "", "session_scheme": "",
+                    "title": "", "subtitle": "", "registry": "g1",
+                    "tabs": "", "filter_position": "top", "level": "95",
+                    "formats": {}}}
+        sp = tempfile.mkstemp(".json")[1]
+        dp = tempfile.mkstemp(".json")[1]
+        op = tempfile.mkstemp(".html")[1]
+        with open(sp, "w") as f:
+            json.dump(spec, f)
+        with open(dp, "w") as f:
+            json.dump(make_data_json(
+                self._DF, {"origin": {"0": "Domestic", "1": "Foreign"}},
+                {"foreign": "origin"}), f)
+        r = DashRenderer(sp, dp, op)
+        r.render()
+        return r
+
+    def test_a_range_under_by_spans_every_row(self):
+        r = self._render("price, type(range)", {"by": "foreign"})
+        w = r.filter_widgets[0]
+        assert (w.start, w.end) == (3799.0, 11385.0), (w.start, w.end)
+
+    def test_a_dropdown_under_by_offers_every_category(self):
+        r = self._render("foreign, type(dropdown)", {"by": "foreign"})
+        labels = [lab for _, lab in r.filter_widgets[0].options]
+        assert labels == ["All", "Domestic", "Foreign"], labels
+
+    def test_a_range_under_a_graph_if_still_spans_every_row(self):
+        r = self._render("price, type(range)", if_expr="price > 4500")
+        w = r.filter_widgets[0]
+        assert (w.start, w.end) == (3799.0, 11385.0), (w.start, w.end)
+
+    def test_the_snapshot_holds_every_row_under_by(self):
+        r = self._render("foreign, type(dropdown)", {"by": "foreign"})
+        orig = r.filter_callbacks[0].args["orig_source"].data
+        assert len(orig["__dash_row__"]) == 10
+        assert sorted(orig["__dash_row__"]) == list(range(10))
+        assert "price" in orig and "mpg" in orig

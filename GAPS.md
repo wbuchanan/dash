@@ -617,7 +617,7 @@ report cannot be worded differently in one of them.
 - No CSP in server mode: `_CSP_META` (`:660-668`) is injected at `:10897` and
   `:12139`, both standalone.
 
-### D8. The parity guard covers less than half the surface — S2, READ
+### D8. The parity guard covers less than half the surface — S2, CLOSED by WP-12
 
 `test/test_mode_parity.py` `CORPUS` (`:186-274`) covers **17 of 38** plot
 types: scatter, line, area, bar, histogram, kdensity, mband, dropline, spike,
@@ -630,6 +630,22 @@ rscatter tsline tsrline`.
 No corpus entry sets `by()`, `link()`, `filter()`, `tabs()` or a KPI, and
 `_glyph_profile` (`:128-147`) collects neither tools nor tooltips. **Every
 finding in D2–D6 would have been caught by a corpus that did.**
+
+
+**Closed by WP-12.** The corpus covers every plot type the code dispatches
+(the list is derived from the dispatch tables and cross-checked against
+`dash.ado`'s Supported: text and the Mata table, so a type cannot be added
+without an entry) and every cross-cutting feature; the profile is the whole
+document -- layout tree, widgets, KPI cards, and per figure the glyphs with
+the rows and coordinates they draw, annotations, legend, tools with
+tooltips, axes and chrome -- plus a filter move compared against the saved
+renderer given the equivalent qualifier. Measured the day it was widened:
+twelve further divergences (legend click policy and sub-options, univariate
+axis titles, xlabel() grammar, yaxis(2), colorvar(), the session level,
+dropdown values, slider titles, the saved widgets' data source, KPI order,
+the header, facets in tabs), every one fixed as one implementation; see
+BUGS.md. The one open server gap the guard now names is dates, asserted to
+still fail so its fix is noticed.
 
 ---
 

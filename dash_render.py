@@ -1037,18 +1037,7 @@ def _extract_finite(
     sel = GlyphMapper._view_mask(view, len(col))
     if sel is not None:
         col = list(np.asarray(col, dtype=object)[sel])
-    if allow_datetime:
-        series = pd.Series(col)
-        if pd.api.types.is_datetime64_any_dtype(series):
-            # Cast to an explicit millisecond unit first.  pandas 3 preserves
-            # the resolution it inferred, so this column can be
-            # datetime64[us] or [ns]; dividing a raw astype("int64") by a
-            # fixed constant silently yields seconds for one and
-            # milliseconds for the other.
-            ms = series.dropna().astype("datetime64[ms]").astype("int64")
-            return ms.to_numpy(dtype=float)
-    arr = np.array([v for v in col if v is not None], dtype=float)
-    return arr[~np.isnan(arr)]
+    return _dash_finite_column(col, allow_datetime)
 
 
 # ===========================================================================
@@ -2665,9 +2654,18 @@ class GlyphMapper:
         self,
         translator: OptionTranslator | None = None,
         scheme: "SchemeParser | None" = None,
+        default_level: float = _DEFAULT_LEVEL,
     ) -> None:
-        """Initialise the mapper with an optional OptionTranslator and scheme."""
+        """Initialise the mapper with an optional OptionTranslator and scheme.
+
+        ``default_level`` is the dashboard's c(level), which a confidence
+        band draws at when its layer names no level() of its own.  The
+        mapper owns it so both render modes resolve it in one place.
+        """
         self.tr = translator or OptionTranslator()
+        self.default_level: float = float(default_level)
+        self.date_vars: dict[str, str] = {}
+        self.numeric_formats: dict[str, str] = {}
         # Defer scheme import to avoid circular dependency; default to s2color.
         # Must not raise: on an install missing schemes/ this is reached before
         # any user-facing error handling exists.
@@ -3440,14 +3438,14 @@ class GlyphMapper:
                 _r = fig.scatter(
                     x=[float("nan")], y=[float("nan")],
                     color=color, size=0,
-                    visible=False, name=f"_clegend_{factor}",
+                    visible=False, name=f"{_DASH_SWATCH_PREFIX}{factor}",
                 )
                 legend_items.append(LegendItem(label=factor, renderers=[_r]))
             if "__missing__" in factors:
                 _rm = fig.scatter(
                     x=[float("nan")], y=[float("nan")],
                     color=missing_color, size=0,
-                    visible=False, name="_clegend___missing__",
+                    visible=False, name=f"{_DASH_SWATCH_PREFIX}__missing__",
                 )
                 legend_items.append(LegendItem(label="(missing)", renderers=[_rm]))
             # Tagged, so _rebuild_legend can tell a colour key from a plot
@@ -4355,7 +4353,7 @@ class GlyphMapper:
         x_ss = np.sum((x - x_mean) ** 2)  # guaranteed > 0 after np.std check
         se_resid = se * np.sqrt(x_ss)
         se_fit = se_resid * np.sqrt(1 / n + (x_fit - x_mean) ** 2 / x_ss)
-        _lvl = _resolve_level(options)
+        _lvl = _resolve_level(options, self.default_level)
         t_crit = _t_ppf(0.5 + _lvl / 200.0, df=n - 2)
 
         y_lower = y_fit - t_crit * se_fit
@@ -4425,7 +4423,7 @@ class GlyphMapper:
         # regression, exactly as lfitci does for the linear one -- not a
         # bootstrap.  A bootstrap gave a band that was close in shape but
         # never equal, and that moved between runs unless the seed was fixed.
-        _lvl = _resolve_level(options)
+        _lvl = _resolve_level(options, self.default_level)
         # The design is CENTRED AND SCALED before the Gram matrix is formed.
         # On raw x the columns are 1, ~3e3 and ~1e7, giving a condition number
         # around 2.6e16 -- at which point the pseudo-inverse discards a real
@@ -4812,7 +4810,8 @@ class GlyphMapper:
 
         y_lower, y_upper = GlyphMapper._bootstrap_ci(
             x, y, x_grid, _lpoly_fn, fallback=y_fit,
-            level=_resolve_level(options), seed=_resolve_seed(options),
+            level=_resolve_level(options, self.default_level),
+            seed=_resolve_seed(options),
         )
 
         valid = ~np.isnan(y_fit)
@@ -5011,7 +5010,8 @@ class GlyphMapper:
         valid = ~np.isnan(y_fit)
         y_lower, y_upper = GlyphMapper._bootstrap_ci(
             x, y, x_grid, _fp_fn, fallback=y_fit,
-            level=_resolve_level(options), seed=_resolve_seed(options),
+            level=_resolve_level(options, self.default_level),
+            seed=_resolve_seed(options),
         )
 
         ci_src = ColumnDataSource({
@@ -5188,12 +5188,7 @@ class GlyphMapper:
         if edges[-1] < a_max - _edge_tol:
             edges = np.append(edges, a_max)
 
-        ymode = "density"
-        for flag in ("frequency", "percent", "fraction", "density"):
-            if str(options.get(flag, "")).strip():
-                ymode = flag
-                break
-        return edges, ymode
+        return edges, _dash_histogram_ymode(options)
 
     def map_kdensity(
         self,
@@ -8109,6 +8104,7 @@ class FilterBuilder:
         figure_renderer_map: "dict | None" = None,
         kpi_divs: "dict | None" = None,
         label: str = "",
+        column: "Any | None" = None,
     ) -> "tuple[Select, CustomJS]":
         """Build a categorical dropdown filter widget with CustomJS callback.
 
@@ -8136,71 +8132,20 @@ class FilterBuilder:
         if exclude_names is None:
             exclude_names = []
 
-        safe_var = FilterBuilder._safe(varname)
-
         # Resolve nested {varname: {code: label}} or flat {code: label}
         if varname in value_labels and isinstance(value_labels[varname], dict):
             vlabels: dict = value_labels[varname]
         else:
             vlabels = value_labels
 
-        # Normalize float-integer option values ("0.0" → "0") for JS match
-        def _int_normalized(v) -> str:
-            s = str(v)
-            try:
-                f = float(s)
-                i = int(f)
-                if f == i:
-                    return str(i)
-            except (ValueError, TypeError, OverflowError):
-                pass
-            return s
-
-        raw_values = list(set(
-            _int_normalized(v) for v in source.data[varname]
-            if v is not None and str(v) not in ("nan", "None")
-        ))
-
-        def _sort_key(v: str):
-            try:
-                return (0, float(v))
-            except (ValueError, TypeError):
-                return (1, v)
-        raw_values.sort(key=_sort_key)
-
-        def _resolve_label(rv: str) -> str:
-            if rv in vlabels:
-                return vlabels[rv]
-            try:
-                int_key = str(int(float(rv)))
-                if int_key in vlabels:
-                    return vlabels[int_key]
-            except (ValueError, OverflowError):
-                pass
-            return rv
-
-        # Compute a per-widget sentinel that is guaranteed absent from the
-        # observed raw values to prevent collision when real data contains
-        # the literal string "__all__".
-        _sentinel = "__all__"
-        while _sentinel in raw_values:
-            _sentinel += "_"
-
-        options = [(_sentinel, "All")]
-        for rv in raw_values:
-            options.append((rv, FilterBuilder._safe(_resolve_label(rv))))
-
-        # NOT html.escape'd.  Bokeh renders a widget title as text and
-        # escapes it itself, so escaping here escaped it twice:
-        # label(R&D spend) displayed as "R&amp;D spend" on a dropdown while
-        # the two slider paths, which do not escape, showed it correctly.
-        # Same shape as the figure-title double-escape this file already
-        # fixed.  Measured: the raw payload reaches the document in neither
-        # path.
-        _widget_title = label.strip() if label.strip() else safe_var
-        widget = Select(title=_widget_title, value=_sentinel,
-                        options=[(v, l) for v, l in options])
-        widget._dash_sentinel = _sentinel  # store for filter_specs_json inclusion
+        # The widget itself comes from the builder the generated app runs
+        # as well; `column' is the variable over the WHOLE dataset, so the
+        # categories are the data's and not the first graph's.
+        _values = column if column is not None else source.data.get(varname, [])
+        widget, _sentinel = _dash_filter_widget(
+            "dropdown", varname, _values,
+            _dash_filter_title(label, FilterBuilder._safe(varname), "dropdown"),
+            vlabels)
 
         callback = CustomJS(
             args={
@@ -8243,6 +8188,7 @@ class FilterBuilder:
         all_figure_names: "list[str] | None" = None,
         label: str = "",
         date_kind: str = "",
+        column: "Any | None" = None,
     ) -> "tuple[Slider, CustomJS]":
         """Build a numeric threshold slider filter widget.
 
@@ -8255,47 +8201,16 @@ class FilterBuilder:
         if exclude_names is None:
             exclude_names = []
         safe_var = FilterBuilder._safe(varname)
-        # Build a title that makes the ≥ inequality explicit to end users.
-        _raw_lbl = label.strip() if label.strip() else safe_var
-        _slider_title = _raw_lbl if _raw_lbl.endswith(("\u2265", ">=", "≥")) \
-            else _raw_lbl + " \u2265"
-        arr = _extract_finite(source, varname, allow_datetime=True)
-        if len(arr) == 0:
-            widget = Slider(title=_slider_title, start=0, end=1, value=0, step=1,
-                            disabled=True)
+        _values = column if column is not None else source.data.get(varname, [])
+        widget, _ = _dash_filter_widget(
+            "slider", varname, _values,
+            _dash_filter_title(label, safe_var, "slider"), None, date_kind)
+        if widget is None:
+            widget = Slider(title=_dash_filter_title(label, safe_var, "slider"),
+                            start=0, end=1, value=0, step=1, disabled=True)
+        if getattr(widget, "disabled", False):
             callback = CustomJS(args={}, code="")
             return widget, callback
-        vmin, vmax = float(arr.min()), float(arr.max())
-        if vmin == vmax:
-            vmax = vmin + 1.0
-        # A range of whole numbers steps by 1.  (vmax - vmin) / 100.0 gave
-        # rep78, which takes the values 1..5, a step of 0.04, so the handle
-        # stopped at 1.04, 1.08, ... and a user could not select `2'.
-        vstep = _whole_number_step(arr, vmax - vmin)
-
-        if _is_datetime_column(source, varname):
-            if _is_clock_kind(date_kind):
-                # Bokeh has no DatetimeSlider, and DateSlider's step is a
-                # whole number of DAYS, so a clock series spanning a day had
-                # one reachable notch.  A numeric Slider over epoch
-                # milliseconds can step finely; the formatter makes the
-                # handle read as a time rather than as a big integer.
-                from bokeh.models import DatetimeTickFormatter
-                widget = Slider(
-                    title=_slider_title, start=vmin, end=vmax, value=vmin,
-                    step=_clock_slider_step_ms(vmin, vmax),
-                    format=DatetimeTickFormatter(),
-                )
-            else:
-                from bokeh.models import DateSlider
-                # Bokeh's date step is in DAYS and defaults to 1; the step
-                # computed above was never passed.
-                widget = DateSlider(
-                    title=_slider_title, start=vmin, end=vmax, value=vmin,
-                    step=_date_slider_step_days(vmin, vmax))
-        else:
-            widget = Slider(title=_slider_title, start=vmin, end=vmax,
-                            value=vmin, step=vstep)
 
         callback = CustomJS(
             args={
@@ -8324,6 +8239,7 @@ class FilterBuilder:
         all_figure_names: "list[str] | None" = None,
         label: str = "",
         date_kind: str = "",
+        column: "Any | None" = None,
     ) -> "tuple[RangeSlider, CustomJS]":
         """Build a numeric range filter widget.
 
@@ -8336,48 +8252,17 @@ class FilterBuilder:
         if exclude_names is None:
             exclude_names = []
         safe_var = FilterBuilder._safe(varname)
-        is_date = _is_datetime_column(source, varname)
-        arr = _extract_finite(source, varname, allow_datetime=True)
-        _raw_range_lbl = label.strip() if label.strip() else safe_var
-        if len(arr) == 0:
-            widget = RangeSlider(title=_raw_range_lbl, start=0, end=1,
-                                 value=(0, 1), step=1, disabled=True)
+        _values = column if column is not None else source.data.get(varname, [])
+        widget, _ = _dash_filter_widget(
+            "range", varname, _values,
+            _dash_filter_title(label, safe_var, "range"), None, date_kind)
+        if widget is None:
+            widget = RangeSlider(title=_dash_filter_title(label, safe_var, "range"),
+                                 start=0, end=1, value=(0, 1), step=1,
+                                 disabled=True)
+        if getattr(widget, "disabled", False):
             callback = CustomJS(args={}, code="")
             return widget, callback
-        vmin, vmax = float(arr.min()), float(arr.max())
-        if vmin == vmax:
-            vmax = vmin + 1.0
-        # A range of whole numbers steps by 1.  (vmax - vmin) / 100.0 gave
-        # rep78, which takes the values 1..5, a step of 0.04, so the handle
-        # stopped at 1.04, 1.08, ... and a user could not select `2'.
-        vstep = _whole_number_step(arr, vmax - vmin)
-
-        if is_date:
-            # Bokeh transports datetimes as epoch milliseconds, which is the
-            # same number the filter JS compares against, so the existing
-            # comparison works unchanged -- verified by the round-trip test.
-            if _is_clock_kind(date_kind):
-                # DateRangeSlider's step is a whole number of DAYS, so a
-                # clock series spanning one day had a single reachable
-                # notch.  DatetimeRangeSlider steps in milliseconds.
-                from bokeh.models import DatetimeRangeSlider
-                widget = DatetimeRangeSlider(
-                    title=_raw_range_lbl, start=vmin, end=vmax,
-                    value=(vmin, vmax),
-                    step=_clock_slider_step_ms(vmin, vmax))
-            else:
-                from bokeh.models import DateRangeSlider
-                # The step computed above is in the transported unit (epoch
-                # ms) and was never passed, so this kept Bokeh's default of
-                # one day whatever the span.
-                widget = DateRangeSlider(
-                    title=_raw_range_lbl, start=vmin, end=vmax,
-                    value=(vmin, vmax),
-                    step=_date_slider_step_days(vmin, vmax))
-        else:
-            widget = RangeSlider(title=_raw_range_lbl,
-                                 start=vmin, end=vmax,
-                                 value=(vmin, vmax), step=vstep)
 
         callback = CustomJS(
             args={
@@ -8543,6 +8428,12 @@ _DASH_UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
 # plot region with rc 0 and no warning.
 _DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter"})
 
+#: Plot types that carry no variable names -- an inline coordinate list or
+#: an expression.  Both renderers branch on these by name BEFORE the
+#: dispatch tables, so this is the one place they are listed; the parity
+#: guard derives the full set of plot types from it and the tables.
+_DASH_LITERAL_TYPES = frozenset({"scatteri", "pci", "function"})
+
 
 #: Injection patterns a by() string may not carry.  One copy: the saved
 #: renderer and the generated app each used to hold their own.
@@ -8704,6 +8595,941 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
         label = vlabels.get(str_val) or vlabels.get(int_str) or str_val
         parts.append(html.escape(label))
     return " / ".join(parts)
+
+
+
+# ===========================================================================
+# One implementation, two callers
+#
+# Everything below runs in BOTH render modes: the saved renderer calls it
+# directly and the generated server app copies it in by name (see
+# ServerAppBuilder._glyph_layer_lines).  Each helper closes a place where
+# test/test_mode_parity.py measured the two renderers drawing the same
+# spec two ways.
+# ===========================================================================
+
+# ---- The legend -----------------------------------------------------------
+
+#: Stata's clock positions grouped into Bokeh's four side panels.  12 is
+#: straight up, 3 right, 6 down, 9 left; ring(0) keeps the legend inside
+#: the plot region at the matching inside location instead.
+_DASH_CLOCK_SIDE = {
+    11: "above", 12: "above", 1: "above",
+    2: "right", 3: "right", 4: "right",
+    5: "below", 6: "below", 7: "below",
+    8: "left", 9: "left", 10: "left",
+}
+_DASH_CLOCK_INSIDE = {
+    11: "top_left", 12: "top_center", 1: "top_right",
+    2: "top_right", 3: "center_right", 4: "bottom_right",
+    5: "bottom_right", 6: "bottom_center", 7: "bottom_left",
+    8: "bottom_left", 9: "center_left", 10: "top_left",
+}
+#: The bare direction keywords, aliases for a clock position.  "on" and
+#: "ring" are NOT placements and must never be in this map: `ring' matched
+#: the word inside ring(0) once, and overwrote every inside placement.
+_DASH_LEGEND_KEYWORD_LOC = {
+    "top": "top_center", "bottom": "bottom_center",
+    "left": "center_left", "right": "center_right",
+}
+
+
+def _dash_move_legend(fig, legend, side):
+    """Move an attached Legend into one of the figure's side panels."""
+    for container in (fig.center, fig.above, fig.below, fig.left, fig.right):
+        try:
+            if legend in container:
+                container.remove(legend)
+        except (TypeError, ValueError):
+            pass
+    fig.add_layout(legend, side)
+
+
+def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
+                       default_level=None, chrome=None):
+    """Stata's keys, Stata's drawing rule, and every legend() sub-option.
+
+    ``twoway`` draws a legend if and only if the graph has two or more keys;
+    ``legend(on)`` forces one, ``legend(off)`` removes it, and position(),
+    ring(0), order(), size(), label(), cols() and rows() are all documented
+    in dash.sthlp.  The saved renderer honoured all of them; the generated
+    app had its own block that knew off, the four bare keywords, label()
+    and cols()/rows(), hard-coded a clickable legend and escaped the keys
+    as HTML.  Measured: position(6) was below and horizontal when saved,
+    top-right and vertical when served; order(2 1) did nothing served;
+    size(small) was 7px saved and 11pt served; a one-series legend(on) was
+    visible saved and hidden served.
+
+    click_policy is deliberately left at Bokeh's default: nothing in the
+    help promises a clickable legend, and Stata's legend is static.
+
+    Args:
+        fig:            The figure, every glyph already added.
+        plot_renderers: ``[(plot_spec, [renderer, ...]), ...]`` in draw order.
+        legend_opt:     The graph's legend() text, '' when absent.
+        var_labels:     ``{varname: label}`` for the series keys.
+        default_level:  The dashboard's level(), for a band's key.
+        chrome:         The scheme's ``legend_bg_color``,
+                        ``legend_border_color`` and ``text_font_size``.
+    """
+    from bokeh.models import LegendItem
+    legend_opt = str(legend_opt or "")
+    chrome = chrome or {}
+    if default_level is None:
+        default_level = _DEFAULT_LEVEL
+    if not fig.legend:
+        # The mapper made none (pci, scatteri, lowess): twoway draws none.
+        return
+
+    # A discrete colorvar() builds its colour key as a Legend too.  It is
+    # not a series key -- Stata suppresses it with clegend(), not legend()
+    # -- so it is kept out of the rebuild and stays visible.
+    cv_legends = [lg for lg in fig.legend
+                  if str(getattr(lg, "name", "") or "") == _COLORVAR_LEGEND_NAME]
+    plot_legends = [lg for lg in fig.legend if lg not in cv_legends]
+    legend = plot_legends[0] if plot_legends else None
+
+    # 1. The keys, rebuilt IN PLACE on the mapper's own legend.  Raw text:
+    #    Bokeh draws a legend label on the canvas, not in the DOM.
+    if legend is not None and plot_renderers:
+        live = [(plot, [r for r in rends if r in fig.renderers])
+                for plot, rends in plot_renderers]
+        items = [LegendItem(label={"value": lbl}, renderers=rends)
+                 for lbl, rends in _dash_legend_entries(
+                     live, var_labels or {}, default_level)]
+        if items:
+            legend.items = items
+
+    # 2. order() -- 1-based, and it may also DROP keys.
+    m_order = re.search(r"\border\s*\(([^)]*)\)", legend_opt)
+    if m_order and legend is not None:
+        wanted = [int(t) for t in re.findall(r"\d+", m_order.group(1))]
+        current = list(legend.items)
+        legend.items = [current[i - 1] for i in wanted
+                        if 1 <= i <= len(current)]
+
+    # 3. The scheme's chrome on EVERY legend, before the user's options so
+    #    an explicit size() still wins.
+    for lg in fig.legend:
+        if chrome.get("legend_bg_color"):
+            lg.background_fill_color = chrome["legend_bg_color"]
+        if chrome.get("legend_border_color"):
+            lg.border_line_color = chrome["legend_border_color"]
+        if chrome.get("text_font_size"):
+            lg.label_text_font_size = chrome["text_font_size"]
+
+    # 4. Placement: position()/ring(0) first; a bare keyword only when
+    #    neither is given, because the clock is the more specific form.
+    m_pos = re.search(r"\b(?:position|pos)\s*\(\s*(\d+)\s*\)", legend_opt)
+    m_ring = re.search(r"\bring\s*\(\s*(\d+)\s*\)", legend_opt)
+    inside = bool(m_ring) and m_ring.group(1) == "0"
+    if legend is not None:
+        if m_pos:
+            clock = int(m_pos.group(1))
+            if inside:
+                legend.location = _DASH_CLOCK_INSIDE.get(clock, "top_right")
+            else:
+                side = _DASH_CLOCK_SIDE.get(clock, "right")
+                _dash_move_legend(fig, legend, side)
+                legend.orientation = ("horizontal"
+                                      if side in ("above", "below")
+                                      else "vertical")
+        elif not m_ring:
+            for kw, loc in _DASH_LEGEND_KEYWORD_LOC.items():
+                if re.search(r"\b" + re.escape(kw) + r"\b", legend_opt):
+                    for lg in fig.legend:
+                        lg.location = loc
+                    break
+
+    # 5. label(N "text") overrides.  Escaped: this text is the user's and
+    #    the rule is pinned by test_legend_label_xss_escaped.
+    if legend is not None:
+        for lm in re.finditer(r'label\(\s*(\d+)\s+"([^"]*)"\s*\)', legend_opt):
+            idx = int(lm.group(1)) - 1
+            if 0 <= idx < len(legend.items):
+                legend.items[idx].label = {"value": html.escape(lm.group(2))}
+
+    # 6. cols()/rows() on every legend.
+    m_cols = re.search(r"\bcols\s*\(\s*(\d+)\s*\)", legend_opt)
+    m_rows = re.search(r"\brows\s*\(\s*(\d+)\s*\)", legend_opt)
+    for lg in fig.legend:
+        try:
+            if m_cols:
+                lg.ncols = int(m_cols.group(1))
+            if m_rows:
+                lg.nrows = int(m_rows.group(1))
+        except (ValueError, AttributeError):
+            pass
+
+    # 7. size() on every legend, including a colour key: the user asked
+    #    for a legend text size, not a plot-legend text size.
+    m_size = re.search(r"\bsize\s*\(\s*([^)]+?)\s*\)", legend_opt)
+    if m_size:
+        try:
+            px = f"{OptionTranslator.translate_msize(m_size.group(1)):g}px"
+            for lg in fig.legend:
+                lg.label_text_font_size = px
+        except (ValueError, TypeError):
+            pass
+
+    # 8. Stata's rule governs the SERIES key; `off' is a word match so
+    #    legend(pos(6) off) hides it.  A colour key stays visible.
+    forced_on = bool(re.search(r"\bon\b", legend_opt))
+    turned_off = bool(re.search(r"\boff\b", legend_opt))
+    n_keys = len(legend.items) if legend is not None else 0
+    show = not (turned_off or (n_keys < 2 and not forced_on))
+    for lg in plot_legends:
+        lg.visible = show
+    for lg in cv_legends:
+        lg.visible = True
+
+
+# ---- Axis titles, ticks and secondary axes -----------------------------------
+
+#: Stata's y-axis title for each histogram scale, measured by exporting
+#: `twoway histogram mpg[, percent|frequency|fraction]' to SVG.
+_DASH_HIST_YTITLES = {"density": "Density", "fraction": "Fraction",
+                      "frequency": "Frequency", "percent": "Percent"}
+
+
+def _dash_histogram_ymode(options):
+    """The scale a histogram draws on: the first of Stata's four flags set,
+    density when none is.  One rule for the bars AND the y title."""
+    for flag in ("frequency", "percent", "fraction", "density"):
+        if str((options or {}).get(flag, "")).strip():
+            return flag
+    return "density"
+
+
+def _dash_axis_labels(plots, graph_opts, var_labels):
+    """``(x_label, y_label)``: xtitle()/ytitle() first, else Stata's default.
+
+    The default is the FIRST layer's variable label.  For the univariate
+    types Stata's own titles, measured by SVG export, are: histogram y
+    "Density"/"Percent"/"Frequency"/"Fraction" and x the variable's label;
+    kdensity y "kdensity <var>" and x "x".  Both renderers used to title a
+    histogram's y axis differently (nothing saved, the variable served),
+    and neither as Stata does.
+
+    Canvas text, never html.escape'd: Bokeh draws an axis title as a glyph,
+    so escaping made xtitle("R&D spend") read "R&amp;D spend" when served.
+    """
+    go, vl = graph_opts or {}, var_labels or {}
+    p0 = plots[0] if plots else {}
+    ptype = str(p0.get("type", "") or "").lower()
+    if ptype == "hist":
+        ptype = "histogram"
+    if ptype in _DASH_UNIVARIATE_TYPES:
+        var = p0.get("var", "") or p0.get("yvar", "")
+        if ptype == "kdensity":
+            x_default = "x"
+            y_default = ("kdensity %s" % var) if var else ""
+        else:
+            x_default = vl.get(var, var)
+            y_default = _DASH_HIST_YTITLES[
+                _dash_histogram_ymode(p0.get("options"))]
+    else:
+        xvar, yvar = p0.get("xvar", ""), p0.get("yvar", "")
+        x_default, y_default = vl.get(xvar, xvar), vl.get(yvar, yvar)
+    x_label = str(go.get("xtitle", "") or "") or x_default
+    y_label = str(go.get("ytitle", "") or "") or y_default
+    return x_label, y_label
+
+
+def _dash_parse_axis_label_opt(raw):
+    """Parse the numlist form of xlabel()/ylabel().
+
+    Supports a pure numeric list, ``"0 2 4 6"``, and a labelled list,
+    ``'0 "Zero" 5 "Five"'``.  Invalid tokens are dropped.
+
+    Returns:
+        ``(ticks, labels)``: a sorted list of floats and a dict mapping
+        ``str(float)`` to its label (empty when none were given).
+    """
+    ticks = []
+    labels = {}
+    tokens = re.findall(r'"([^"]*)"'  # double-quoted label
+                        r"|'([^']*)'"  # single-quoted label
+                        r"|([^\s,\"']+)",  # bare token (number or keyword)
+                        str(raw or ""))
+    flat = [dq or sq or bare for dq, sq, bare in tokens]
+    i = 0
+    while i < len(flat):
+        tok = flat[i]
+        try:
+            val = float(tok)
+            ticks.append(val)
+            if i + 1 < len(flat):
+                next_tok = flat[i + 1]
+                try:
+                    float(next_tok)
+                except ValueError:
+                    labels[str(val)] = next_tok
+                    i += 1
+            i += 1
+        except ValueError:
+            i += 1
+    return sorted(ticks), labels
+
+
+def _dash_parse_axis_spec(raw):
+    """Parse Stata's full ``axis_label`` grammar.
+
+    Handles a numlist (including the ``a(b)c`` increment form), ``#N``,
+    ``minmax``, ``none``, explicit ``value "label"`` pairs, and the
+    sub-options ``format()``, ``labsize()``, ``angle()``, ``grid`` and
+    ``nogrid``.  The generated app used to carry a 14-line parser that read
+    a bare numlist and angle() and nothing else, so ``xlabel(2000(1000)4000)``
+    fixed the ticks when saved and was ignored when served.
+
+    Returns:
+        A dict with keys ``mode`` (``"default"``, ``"explicit"``, ``"count"``,
+        ``"minmax"`` or ``"none"``), ``ticks``, ``count``, ``labels``,
+        ``format``, ``labsize``, ``angle`` and ``grid``.
+    """
+    out = {"mode": "default", "ticks": [], "count": None,
+           "labels": {}, "format": None, "labsize": None,
+           "angle": None, "grid": None}
+    if not raw or not str(raw).strip():
+        return out
+    text = str(raw)
+
+    out["angle"] = _parse_axis_angle(text)
+    m = re.search(r"\bformat\s*\(\s*([^)]+?)\s*\)", text, re.I)
+    if m:
+        out["format"] = m.group(1).strip()
+    m = re.search(r"\blabsize\s*\(\s*([^)]+?)\s*\)", text, re.I)
+    if m:
+        out["labsize"] = m.group(1).strip()
+    if re.search(r"\bnogrid\b", text, re.I):
+        out["grid"] = False
+    elif re.search(r"\bgrid\b", text, re.I):
+        out["grid"] = True
+
+    # Strip every recognised sub-option so only the numlist remains.
+    head = re.sub(r"\b(?:format|labsize|angle|labcolor|labgap|tlength|"
+                  r"labstyle|tstyle|tposition)\s*\([^)]*\)", " ",
+                  text, flags=re.I)
+    head = re.sub(r"\b(?:no)?grid\b", " ", head, flags=re.I)
+    # Only a comma that INTRODUCES SUB-OPTIONS separates; Stata also
+    # accepts a comma-separated numlist, so xlabel(1,3,5) must survive.
+    m_sub = re.search(r",\s*(?=[A-Za-z_])", head)
+    if m_sub:
+        head = head[:m_sub.start()]
+    head = head.strip()
+
+    if re.fullmatch(r"none", head, re.I):
+        out["mode"] = "none"
+        return out
+    if re.fullmatch(r"minmax", head, re.I):
+        out["mode"] = "minmax"
+        return out
+    m = re.fullmatch(r"#\s*(\d+)", head)
+    if m:
+        out["mode"] = "count"
+        out["count"] = max(1, int(m.group(1)))
+        return out
+
+    # a(b)c increment form, possibly repeated and mixed with bare values.
+    ticks = []
+    rest = head
+    for m in re.finditer(
+            r"(-?[\d.eE+]+)\s*\(\s*(-?[\d.eE+]+)\s*\)\s*(-?[\d.eE+]+)",
+            head):
+        try:
+            a, b, c = (float(m.group(1)), float(m.group(2)),
+                       float(m.group(3)))
+        except ValueError:
+            continue
+        if b == 0:
+            continue
+        n_steps = int(math.floor((c - a) / b + 1e-9))
+        ticks.extend(a + b * i for i in range(max(0, n_steps) + 1))
+        rest = rest.replace(m.group(0), " ")
+
+    bare_ticks, labels = _dash_parse_axis_label_opt(rest)
+    ticks.extend(bare_ticks)
+    if ticks:
+        out["mode"] = "explicit"
+        out["ticks"] = sorted(set(ticks))
+        out["labels"] = labels
+    return out
+
+
+def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
+                          fmt_fallback=""):
+    """Apply a parsed ``axis_label`` spec to one axis.
+
+    Args:
+        axis_obj:     ``fig.xaxis`` or ``fig.yaxis``.
+        grid_obj:     The matching grid, for ``grid``/``nogrid``.
+        spec:         The output of :func:`_dash_parse_axis_spec`.
+        values:       The variable's values on this axis, for ``minmax``;
+                      the graph's own rows, so a qualified graph labels the
+                      extremes it draws.
+        fmt_fallback: The variable's Stata display format, used when the
+                      spec names no format() of its own.
+    """
+    from bokeh.models.tickers import FixedTicker, BasicTicker
+    from bokeh.models.formatters import (CustomJSTickFormatter,
+                                         NumeralTickFormatter)
+
+    mode = spec["mode"]
+    if mode == "none":
+        # Zero ticks BY INTENT.  Measured: Stata's xlabel(none) also
+        # removes the gridlines.
+        axis_obj.ticker = FixedTicker(ticks=[])
+        for g in grid_obj:
+            g.grid_line_color = None
+    elif mode == "minmax":
+        if values is not None:
+            vals = pd.to_numeric(pd.Series(values), errors="coerce").dropna()
+            if len(vals):
+                axis_obj.ticker = FixedTicker(
+                    ticks=[float(vals.min()), float(vals.max())])
+    elif mode == "count":
+        # Stata's #N is a SUGGESTION -- measured, xlabel(#10) on weight
+        # yields eight ticks.  Bokeh's desired_num_ticks means the same.
+        axis_obj.ticker = BasicTicker(desired_num_ticks=spec["count"])
+    elif mode == "explicit" and spec["ticks"]:
+        axis_obj.ticker = FixedTicker(ticks=spec["ticks"])
+        if spec["labels"]:
+            safe = {str(k): html.escape(str(v))
+                    for k, v in spec["labels"].items()}
+            axis_obj.formatter = CustomJSTickFormatter(
+                code=f"const m = {json.dumps(safe)}; "
+                     "return m[String(tick)] || String(tick);")
+            axis_obj.major_label_overrides = {
+                float(k): v for k, v in spec["labels"].items()}
+
+    fmt = spec["format"] or fmt_fallback
+    if fmt:
+        pattern = _stata_numeric_pattern(fmt)
+        if pattern is not None:
+            axis_obj.formatter = NumeralTickFormatter(format=pattern)
+        elif spec["format"] and _stata_date_kind(fmt) is None:
+            warnings.warn(
+                f"dash: axis format({spec['format']}) is not a numeric "
+                f"display format dash reproduces; the ticks are "
+                f"unformatted.", UserWarning,
+            )
+
+    if spec["labsize"]:
+        try:
+            axis_obj.major_label_text_font_size = (
+                f"{OptionTranslator.translate_msize(spec['labsize']):g}px")
+        except (ValueError, TypeError):
+            warnings.warn(
+                f"dash: labsize({spec['labsize']}) is not a recognised "
+                f"text size; ignoring it.", UserWarning,
+            )
+    if spec["angle"] is not None:
+        axis_obj.major_label_orientation = spec["angle"]
+    if spec["grid"] is not None:
+        for g in grid_obj:
+            if spec["grid"]:
+                if g.grid_line_color is None:
+                    g.grid_line_color = "#e5e5e5"
+            else:
+                g.grid_line_color = None
+
+
+def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
+                             numeric_formats):
+    """xlabel()/ylabel(), with xtick()/ytick() as the fallback, on a figure."""
+    cols = getattr(frame, "columns", [])
+    for ax_key, tick_key, axis_obj, grid_obj, var in (
+            ("xlabel", "xtick", fig.xaxis, fig.xgrid, xvar),
+            ("ylabel", "ytick", fig.yaxis, fig.ygrid, yvar)):
+        raw = graph_opts.get(ax_key, "") or graph_opts.get(tick_key, "")
+        if not raw:
+            continue
+        col = frame[var] if var and var in cols else None
+        _dash_apply_axis_spec(axis_obj, grid_obj, _dash_parse_axis_spec(raw),
+                              col, (numeric_formats or {}).get(var, ""))
+
+
+def _dash_add_secondary_axes(fig, plots, graph_opts, frame):
+    """Build ``extra_y_ranges['y2']`` / ``extra_x_ranges['x2']`` and their axes.
+
+    A layer with yaxis(2) or xaxis(2) asks for a second axis whose range is
+    computed from the rows the graph draws.  The generated app had no
+    second axis at all, so the layer was served on the primary range.
+
+    Returns ``(has_y2, has_x2)``.
+    """
+    from bokeh.models import LinearAxis, LogAxis, Range1d
+    from bokeh.models.tickers import FixedTicker
+    from bokeh.models.formatters import CustomJSTickFormatter
+    has = {}
+    for axis_key, var_key, rng_attr, name, side, kw in (
+            ("yaxis", "yvar", "extra_y_ranges", "y2", "right", "y_range_name"),
+            ("xaxis", "xvar", "extra_x_ranges", "x2", "above", "x_range_name")):
+        wanted = any(str(p.get("options", {}).get(axis_key, "1")).strip() == "2"
+                     for p in plots)
+        has[name] = wanted
+        if not wanted:
+            continue
+        lo, hi = _compute_secondary_range(frame, plots, axis_key, var_key, 2)
+        getattr(fig, rng_attr)[name] = Range1d(lo, hi)
+        n = name[0]
+        is_log, is_rev = _parse_scale_opt(graph_opts.get(f"{n}scale2", ""))
+        ax = (LogAxis if is_log else LinearAxis)(
+            **{kw: name}, axis_label=graph_opts.get(f"{n}title2", ""))
+        fig.add_layout(ax, side)
+        if is_rev:
+            try:
+                getattr(fig, rng_attr)[name].flipped = True
+            except AttributeError:
+                pass
+        raw = graph_opts.get(f"{n}label2", "")
+        if raw:
+            ticks, labels = _dash_parse_axis_label_opt(raw)
+            if ticks:
+                ax.ticker = FixedTicker(ticks=ticks)
+                if labels:
+                    safe = {str(k): html.escape(str(v))
+                            for k, v in labels.items()}
+                    ax.formatter = CustomJSTickFormatter(
+                        code=f"const m = {json.dumps(safe)}; "
+                             "return m[String(tick)] || String(tick);")
+            ang = _parse_axis_angle(raw)
+            if ang is not None:
+                ax.major_label_orientation = ang
+    return has["y2"], has["x2"]
+
+
+def _dash_assign_axis_ranges(fig, renderers, options):
+    """Put one layer's renderers on the secondary range(s) its yaxis()/xaxis()
+    name -- if the figure has them.  A throwaway redraw figure has none."""
+    use_y2 = (str((options or {}).get("yaxis", "1")).strip() == "2"
+              and "y2" in fig.extra_y_ranges)
+    use_x2 = (str((options or {}).get("xaxis", "1")).strip() == "2"
+              and "x2" in fig.extra_x_ranges)
+    if not (use_y2 or use_x2):
+        return
+    for r in renderers:
+        try:
+            if use_y2:
+                r.y_range_name = "y2"
+            if use_x2:
+                r.x_range_name = "x2"
+        except AttributeError:
+            pass
+
+
+# ---- Filter widgets -----------------------------------------------------------
+
+def _dash_option_value(v):
+    """The one string a dropdown carries for a data value, in both modes.
+
+    ``0.0`` becomes ``'0'`` because the saved page compares ``String(v)`` in
+    JavaScript, where ``String(0.0)`` is ``"0"``; the served app used
+    ``str(v)`` and carried ``'0.0'``, so the two documents held different
+    option values for the same category.
+    """
+    s = str(v)
+    try:
+        f = float(s)
+        i = int(f)
+        if f == i:
+            return str(i)
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return s
+
+
+def _dash_option_sort_key(rv):
+    try:
+        return (0, float(rv))
+    except (ValueError, TypeError):
+        return (1, rv)
+
+
+def _dash_filter_title(label, fallback, ftype):
+    """A widget's title: the resolved label, plus the documented inequality
+    on a threshold slider (dash.sthlp: "varname >= slider value")."""
+    raw = str(label or "").strip() or str(fallback)
+    if ftype == "slider" and not raw.endswith(("≥", ">=")):
+        raw += " ≥"
+    return raw
+
+
+def _dash_finite_column(col, allow_datetime=False):
+    """A float array of the non-missing values of one column.
+
+    A datetime64 column is converted to epoch milliseconds -- the unit Bokeh
+    transports datetimes in -- when *allow_datetime* is set.
+    """
+    if allow_datetime:
+        series = pd.Series(col)
+        if pd.api.types.is_datetime64_any_dtype(series):
+            # Cast to an explicit millisecond unit first.  pandas 3 preserves
+            # the resolution it inferred, so this column can be
+            # datetime64[us] or [ns]; dividing a raw astype("int64") by a
+            # fixed constant silently yields seconds for one and
+            # milliseconds for the other.
+            ms = series.dropna().astype("datetime64[ms]").astype("int64")
+            return ms.to_numpy(dtype=float)
+    arr = np.array([v for v in col if v is not None], dtype=float)
+    return arr[~np.isnan(arr)]
+
+
+def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
+                        date_kind=""):
+    """The one filter widget both modes show for ``filter(varname, type())``.
+
+    Args:
+        ftype:        ``"dropdown"``, ``"slider"`` or ``"range"``.
+        varname:      The variable.
+        column:       Its values over the WHOLE dataset -- a widget's
+                      categories and bounds describe the data, not whatever
+                      the first graph happens to draw.
+        title:        The resolved widget title.
+        value_labels: ``{code: label}`` for the dropdown's display text.
+        date_kind:    The variable's Stata date kind, for a clock series.
+
+    Returns:
+        ``(widget, sentinel)``.  The widget is None when the column cannot
+        carry a slider or range (a string variable); the caller reports
+        that.  An all-missing numeric column gives a disabled widget.
+    """
+    from bokeh.models import (DateRangeSlider, DateSlider, DatetimeRangeSlider,
+                              DatetimeTickFormatter, RangeSlider, Select,
+                              Slider)
+    series = pd.Series(column)
+    is_date = bool(pd.api.types.is_datetime64_any_dtype(series))
+    if ftype == "dropdown":
+        vlabels = value_labels or {}
+        raw_values = sorted(
+            {_dash_option_value(v) for v in series.tolist()
+             if v is not None and str(v) not in ("nan", "None", "NaT")},
+            key=_dash_option_sort_key)
+        # A per-widget sentinel absent from the data, so a real category
+        # equal to the literal string "__all__" stays selectable.
+        sentinel = "__all__"
+        while sentinel in raw_values:
+            sentinel += "_"
+
+        def _label(rv):
+            if rv in vlabels:
+                return vlabels[rv]
+            try:
+                k = str(int(float(rv)))
+                if k in vlabels:
+                    return vlabels[k]
+            except (ValueError, OverflowError):
+                pass
+            return rv
+
+        options = [(sentinel, "All")] + [
+            (rv, html.escape(str(_label(rv)), quote=True)) for rv in raw_values]
+        w = Select(title=title, value=sentinel, options=options)
+        w._dash_sentinel = sentinel
+        w._dash_ftype = "dropdown"
+        return w, sentinel
+    if ftype not in ("slider", "range"):
+        return None, None
+    if not (pd.api.types.is_numeric_dtype(series) or is_date):
+        return None, None
+    arr = _dash_finite_column(series, allow_datetime=True)
+    if len(arr) == 0:
+        w = (RangeSlider(title=title, start=0, end=1, value=(0, 1), step=1,
+                         disabled=True)
+             if ftype == "range" else
+             Slider(title=title, start=0, end=1, value=0, step=1,
+                    disabled=True))
+        w._dash_ftype = ftype
+        w._dash_is_date = is_date
+        return w, None
+    vmin, vmax = float(arr.min()), float(arr.max())
+    if vmin == vmax:
+        vmax = vmin + 1.0
+    if is_date and _is_clock_kind(date_kind):
+        # DateRangeSlider's step is a whole number of DAYS, so a clock
+        # series spanning one day had a single reachable notch.
+        step = _clock_slider_step_ms(vmin, vmax)
+        w = (DatetimeRangeSlider(title=title, start=vmin, end=vmax,
+                                 value=(vmin, vmax), step=step)
+             if ftype == "range" else
+             Slider(title=title, start=vmin, end=vmax, value=vmin, step=step,
+                    format=DatetimeTickFormatter()))
+    elif is_date:
+        step = _date_slider_step_days(vmin, vmax)
+        w = (DateRangeSlider(title=title, start=vmin, end=vmax,
+                             value=(vmin, vmax), step=step)
+             if ftype == "range" else
+             DateSlider(title=title, start=vmin, end=vmax, value=vmin,
+                        step=step))
+    else:
+        # A range of whole numbers steps by 1: (vmax - vmin) / 100 gave
+        # rep78, which takes the values 1..5, a step of 0.04.
+        step = _whole_number_step(arr, vmax - vmin)
+        w = (RangeSlider(title=title, start=vmin, end=vmax,
+                         value=(vmin, vmax), step=step)
+             if ftype == "range" else
+             Slider(title=title, start=vmin, end=vmax, value=vmin, step=step))
+    w._dash_ftype = ftype
+    w._dash_is_date = is_date
+    return w, None
+
+
+def _dash_dropdown_mask(column, value):
+    """The rows a dropdown set to *value* keeps: the Python twin of the
+    ``String(orig[fvar][i]) !== val`` test in the saved page's JavaScript.
+    Both sides go through ``_dash_option_value``, so ``'1'`` and ``'1.0'``
+    select the same rows."""
+    want = _dash_option_value(value)
+    return pd.Series(column).map(_dash_option_value).to_numpy() == want
+
+
+# ---- The document: order, cells, tabs, header ----------------------------------
+
+def _dash_layout_order(registry, graphs, kpis):
+    """Display order of the registered items: the registry, as typed.
+
+    ``dash.ado`` appends every name() -- graph or KPI -- to ONE registry in
+    the order the user issued it, so that order is the user's.  A spec with
+    no registry (hand-built) falls back to graphs then KPIs in spec order.
+    A registered name that is neither is dropped; a graph or KPI the
+    registry omits is appended, so nothing vanishes.
+
+    The saved renderer used to put every KPI first whatever the registry
+    said -- a Bootstrap hero-row policy that had leaked into every layout
+    -- so the same spec placed a card above its graph when saved and below
+    it when served.
+    """
+    gnames = [str((g.get("graph_options") or {}).get("name")
+                  or g.get("name") or "") for g in graphs]
+    knames = [str(k.get("name") or "") for k in kpis if k.get("name")]
+    # An immediate render -- `dash scatter mpg weight, saving()' -- writes
+    # ONE graph with no name and no registry; its figure is keyed '' and
+    # must still be placed.  Dropping the empty name here produced a
+    # saved dashboard with no figure and rc 0, which the certification
+    # suite caught and the Python suite, whose every spec is named, did not.
+    known = gnames + knames
+    order = [n for n in str(registry or "").split() if n in known]
+    seen = set(order)
+    for n in known:
+        if n not in seen:
+            order.append(n)
+            seen.add(n)
+    return order
+
+
+def _dash_kpi_keys(name, kpi_divs):
+    """The ``kpi_divs`` keys one registered KPI owns: itself, or its
+    per-facet cards ``name__by__0``, ``name__by__1`` ... in index order."""
+    if name in kpi_divs:
+        return [name]
+    pre = name + "__by__"
+    return sorted((k for k in kpi_divs if k.startswith(pre)),
+                  key=lambda k: int(k[len(pre):]) if k[len(pre):].isdigit()
+                  else 0)
+
+
+def _dash_facet_cols(gopts, n_panels):
+    """cols(#) from by() first, then the by_cols key, then ceil(sqrt(n))."""
+    n_by = _dash_parse_by((gopts.get("by") or ""), warn=False)[1]
+    try:
+        n_key = int(gopts.get("by_cols", "0") or 0)
+    except (ValueError, TypeError):
+        n_key = 0
+    n = n_by or n_key
+    if n <= 0:
+        n = min(n_panels, max(1, math.ceil(math.sqrt(n_panels))))
+    return n
+
+
+def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
+    """The ONE renderable a registered name owns, or None.
+
+    A faceted graph is one cell: its panels in a sub-grid that honours
+    by(, cols(#)).  A plain graph is its figure.  A KPI is its card, or a
+    column of its per-facet cards.  The grid AND the tab panels call this,
+    in both modes -- the saved tabs used to flatten a faceted graph's
+    panels into the tab's own grid, ignoring cols(), while the saved grid
+    and the served app nested them.
+    """
+    if name in facet_map:
+        figs = [figures[fk] for fk, _ in facet_map[name] if fk in figures]
+        if not figs:
+            return None
+        cn = _dash_facet_cols(gopts_of(name) or {}, len(figs))
+        rows = [figs[i:i + cn] for i in range(0, len(figs), cn)]
+        while len(rows[-1]) < cn:
+            rows[-1].append(None)
+        return gridplot(rows, sizing_mode="stretch_width")
+    if name in figures:
+        return figures[name]
+    keys = _dash_kpi_keys(name, kpi_divs)
+    if len(keys) == 1:
+        return kpi_divs[keys[0]]
+    if keys:
+        return column(*[kpi_divs[k] for k in keys], sizing_mode="stretch_width")
+    return None
+
+
+def _dash_parse_tabs(tabs_str, all_names):
+    """``'Title: a b / Title2: c'`` -> ``[(title, [names])]``, or None.
+
+    Tab titles are the user's text, verbatim.  Only registered names are
+    accepted, so a tabs() option cannot place something that was never
+    registered.
+    """
+    if not tabs_str or not str(tabs_str).strip():
+        return None
+    valid = set(all_names)
+    result = []
+    for i, segment in enumerate(str(tabs_str).split("/")):
+        segment = segment.strip()
+        if not segment:
+            continue
+        if ":" in segment:
+            raw_title, _, items_str = segment.partition(":")
+            title = raw_title.strip()
+            items = [x.strip() for x in items_str.split() if x.strip()]
+        else:
+            items = [x.strip() for x in segment.split() if x.strip()]
+            title = "Tab %d" % (i + 1)
+        safe = [x for x in items if x in valid]
+        if safe:
+            result.append((title, safe))
+    return result or None
+
+
+def _dash_tab_panels(tabs_spec, cell_of):
+    """``(Tabs or None, registered names placed)`` from ``[(title, [names])]``.
+    Each tab is a ceil(sqrt(n)) grid of the cells its names own."""
+    from bokeh.models import TabPanel, Tabs
+    panels, placed = [], set()
+    for title, names in (tabs_spec or []):
+        items = [c for c in (cell_of(n) for n in names) if c is not None]
+        if not items:
+            continue
+        placed.update(names)
+        cn = max(1, math.ceil(math.sqrt(len(items))))
+        rows = [items[i:i + cn] for i in range(0, len(items), cn)]
+        while len(rows[-1]) < cn:
+            rows[-1].append(None)
+        panels.append(TabPanel(child=gridplot(rows, sizing_mode="stretch_width"),
+                               title=title))
+    if not panels:
+        return None, placed
+    return Tabs(tabs=panels, sizing_mode="stretch_width"), placed
+
+
+def _dash_header_fragments(title_text, subtitle_text):
+    """The dashboard header as two HTML fragments, either possibly empty.
+
+    Escaped exactly once here: callers pass RAW text.  The classes are the
+    ones the scheme's ``css_block()`` styles; the served app used to emit
+    one classless Div with a hard-coded grey subtitle.
+    """
+    t = (f'<h2 class="db-title" style="margin-bottom:2px;">'
+         f'{html.escape(title_text)}</h2>' if title_text else "")
+    s = (f'<p class="db-subtitle" style="margin-top:0;margin-bottom:8px;">'
+         f'{html.escape(subtitle_text)}</p>' if subtitle_text else "")
+    return t, s
+
+
+def _dash_header_models(title_text, subtitle_text, css=""):
+    """The header as Bokeh Divs, for the plain grid and the served app.
+
+    *css* is the scheme's ``css_block()``; a Bokeh 3 Div renders inside a
+    shadow root, so the rules are attached to the Div itself rather than
+    relied on from the page head.
+    """
+    from bokeh.models import Div, InlineStyleSheet
+    sheets = [InlineStyleSheet(css=css)] if css else []
+    return [Div(text=frag, sizing_mode="stretch_width",
+                stylesheets=list(sheets))
+            for frag in _dash_header_fragments(title_text, subtitle_text)
+            if frag]
+
+
+# ---- Columns a layer's options name, and the mapper's metadata -------------------
+
+#: Plot OPTIONS that name a dataset column the layer's source must carry.
+#: The served app carried mlabel() and hover() and nothing else, so
+#: `colorvar(foreign)' served drew the scheme colour: _apply_colorvar
+#: returns when its column is absent from the source.
+_DASH_OPT_VAR_KEYS = ("colorvar", "mlabel")
+#: The invisible swatch renderers a discrete colorvar() legend is built from.
+_DASH_SWATCH_PREFIX = "_clegend_"
+
+
+def _dash_option_columns(options, columns=None):
+    """The columns a layer's options name -- colorvar() and mlabel() -- in
+    ``_DASH_OPT_VAR_KEYS`` order, de-duplicated, restricted to *columns*
+    when one is given."""
+    out = []
+    for key in _DASH_OPT_VAR_KEYS:
+        v = str((options or {}).get(key, "") or "").strip()
+        if not v or v in out:
+            continue
+        if columns is not None and v not in columns:
+            continue
+        out.append(v)
+    return out
+
+
+def _dash_attach_labels(mapper, variable_labels=None, value_labels=None,
+                        value_label_names=None, date_vars=None,
+                        numeric_formats=None):
+    """Give *mapper* the dataset's Stata metadata, in either render mode.
+
+    ``_apply_colorvar`` reads value labels for the colour key and the
+    variable label for its title; ``_apply_mlabel_opts`` reads date and
+    numeric formats.  The served app built its mapper at module level and
+    attached none of these, so a served colour key would have read "0"/"1"
+    where the saved one reads "Domestic"/"Foreign".
+    """
+    mapper.variable_labels = (variable_labels if variable_labels is not None
+                              else {})
+    mapper.value_labels = value_labels if value_labels is not None else {}
+    mapper.value_label_names = (value_label_names
+                                if value_label_names is not None else {})
+    mapper.date_vars = dict(date_vars or {})
+    mapper.numeric_formats = dict(numeric_formats or {})
+    return mapper
+
+
+def _dash_is_swatch(renderer):
+    """Is *renderer* one of a discrete colorvar() legend's invisible swatches?
+    They are on the figure so the Legend can show a colour; they are not a
+    series key and not a source to refresh or redraw on a filter move."""
+    return str(getattr(renderer, "name", "") or "").startswith(
+        _DASH_SWATCH_PREFIX)
+
+
+# ---- The dashboard's confidence level ------------------------------------------
+
+def _dash_session_level(build_options, default=_DEFAULT_LEVEL):
+    """The dashboard's confidence level: c(level) as dash.ado serialised it.
+
+    A per-plot level() overrides this in ``_resolve_level``; an absent,
+    blank, non-numeric or out-of-range value falls back to Stata's factory
+    95 with a warning, in BOTH modes.  The served app used to read it,
+    unvalidated, for the legend key and not at all for the band -- so a
+    served lfitci under `set level 90' drew a 95% band labelled "90% CI".
+    """
+    raw = str((build_options or {}).get("level", "") or "").strip()
+    if not raw:
+        return float(default)
+    try:
+        val = float(raw)
+    except ValueError:
+        warnings.warn(
+            f"dash: could not read the confidence level {raw!r}; "
+            f"using {default}.", UserWarning, stacklevel=2)
+        return float(default)
+    if not (0.0 < val < 100.0):
+        warnings.warn(
+            f"dash: c(level) of {raw} is outside (0, 100); using {default}.",
+            UserWarning, stacklevel=2)
+        return float(default)
+    return val
 
 
 def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
@@ -8986,9 +9812,7 @@ def _dash_legend_entries(plot_renderers, var_labels=None,
     """
     out = []
     for plot, rends in plot_renderers:
-        rends = [r for r in rends
-                 if not str(getattr(r, "name", "") or "")
-                 .startswith("_clegend_")]
+        rends = [r for r in rends if not _dash_is_swatch(r)]
         if not rends:
             continue
         ptype = str(plot.get("type", "")).lower()
@@ -9326,6 +10150,35 @@ def _dash_pc_dispatch(mapper):
     }
 
 
+def _dash_plot_type_names(mapper=None):
+    """Every canonical plot-type name dash draws, derived from the tables.
+
+    The dispatch tables carry aliases (``sc``, ``li``, ``hist``) that
+    ``dash.ado`` never writes, because its Mata expander emits the full name
+    before a spec is written; an alias maps to a method named for the full
+    name, so keeping only the keys whose method carries their own name drops
+    the aliases.  The literal types are added from ``_DASH_LITERAL_TYPES``.
+    Both renderers and the parity guard read this, so a plot type cannot be
+    added to the code without the guard asking for a corpus entry.
+    """
+    class _Probe:
+        def __getattr__(self, name):
+            if name.startswith("map_"):
+                return name
+            raise AttributeError(name)
+
+    probe = mapper if mapper is not None else _Probe()
+    std, rng = _dash_glyph_dispatch(probe)
+    pc = _dash_pc_dispatch(probe)
+    names = set()
+    for table in (std, rng, pc):
+        for key, fn in table.items():
+            method = fn if isinstance(fn, str) else getattr(fn, "__name__", "")
+            if method == "map_" + key:
+                names.add(key)
+    return frozenset(names | _DASH_LITERAL_TYPES)
+
+
 def _dash_function_args(options):
     """``range()`` and ``n()`` for a twoway function layer.
 
@@ -9435,7 +10288,7 @@ class DashRenderer:
     _VAR_KEYS: "tuple[str, ...]" = (
         "yvar", "xvar", "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var"
     )
-    _OPT_VAR_KEYS: "tuple[str, ...]" = ("colorvar", "mlabel")
+    _OPT_VAR_KEYS: "tuple[str, ...]" = _DASH_OPT_VAR_KEYS
 
     @staticmethod
     def _collect_plot_vars(plots_list: list) -> list:
@@ -9446,9 +10299,8 @@ class DashRenderer:
                 v = plot.get(key)
                 if v and v not in seen:
                     seen.append(v)
-            for key in DashRenderer._OPT_VAR_KEYS:
-                v = plot.get("options", {}).get(key, "").strip()
-                if v and v not in seen:
+            for v in _dash_option_columns(plot.get("options", {})):
+                if v not in seen:
                     seen.append(v)
         return seen
 
@@ -9501,30 +10353,15 @@ class DashRenderer:
         # Session confidence level, serialized from c(level) by dash.ado.  A
         # per-plot level() overrides it.  Absent (an older dash.ado against a
         # newer renderer) it falls back to Stata's factory default.
-        self.default_level: float = _DEFAULT_LEVEL
-        _raw_level = str(_build_opts.get("level", "")).strip()
-        if _raw_level:
-            try:
-                _lv = float(_raw_level)
-                if 0.0 < _lv < 100.0:
-                    self.default_level = _lv
-                else:
-                    warnings.warn(
-                        f"dash: c(level) of {_raw_level} is outside (0, 100); "
-                        f"using {_DEFAULT_LEVEL}.", UserWarning,
-                    )
-            except ValueError:
-                warnings.warn(
-                    f"dash: could not read the confidence level {_raw_level!r}; "
-                    f"using {_DEFAULT_LEVEL}.", UserWarning,
-                )
+        self.default_level: float = _dash_session_level(_build_opts)
 
         _scheme_name: str = _resolve_scheme_name(self.master_spec)
         self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
             _scheme_name, "the dashboard",
         )
 
-        self.mapper = GlyphMapper(scheme=self.scheme)
+        self.mapper = GlyphMapper(scheme=self.scheme,
+                                  default_level=self.default_level)
 
         # Populated during _load_data()
         self.df: pd.DataFrame = pd.DataFrame()
@@ -9562,11 +10399,10 @@ class DashRenderer:
         # and human-readable display names in legends/labels.
         # Display-format context, so marker labels can render a date as a
         # date rather than as the underlying Stata value.
-        self.mapper.date_vars         = dict(getattr(self, "date_vars", {}))
-        self.mapper.numeric_formats   = dict(getattr(self, "numeric_formats", {}))
-        self.mapper.variable_labels   = self.variable_labels
-        self.mapper.value_labels      = self.value_labels
-        self.mapper.value_label_names = self.value_label_names
+        _dash_attach_labels(self.mapper, self.variable_labels,
+                            self.value_labels, self.value_label_names,
+                            getattr(self, "date_vars", {}),
+                            getattr(self, "numeric_formats", {}))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -10232,236 +11068,21 @@ class DashRenderer:
 
     def _rebuild_legend(self, fig, plot_renderers: list, graph_opts: dict
                         ) -> None:
-        """Give the figure Stata's legend keys, and Stata's rule for drawing one.
-
-        ``twoway`` draws a legend **if and only if the graph has two or more
-        keys**.  One key, no legend, whatever else is passed:
-        ``legend(position(6))`` on a one-key plot draws nothing, and only
-        ``legend(on)`` forces one.  Measured over 55 probes; see
-        ``findings.legend_rule`` in test/fixtures/axis_truth.json.
-
-        dash passed ``legend_label=<yvar>`` from every glyph, so a
-        single-series plot always got a legend ``twoway`` would not draw --
-        and two layers of the same y variable merged into one key.
-
-        Args:
-            fig:             The figure, with every glyph already added.
-            plot_renderers:  ``[(plot_spec, [renderer, ...]), ...]``.
-            graph_opts:      Graph-level options.
-        """
-        from bokeh.models import Legend, LegendItem
-
-        legend_opt = str(graph_opts.get("legend", "") or "")
-        if not fig.legend:
-            return
-
-        # A discrete colorvar() builds its colour key as a Legend too, and on
-        # a single-plot figure it is fig.legend[0].  This method used to take
-        # that one, overwrite its per-category items with a single key
-        # labelled with the y variable, and then hide it under Stata's
-        # fewer-than-two-keys rule -- coloured points and no way to read
-        # them.  A colour key is not a series key, so it is kept out of the
-        # rebuild entirely.
-        #
-        # The chrome loop below still runs over EVERY legend: skipping it
-        # when the colour key is the only legend would silently reinstate a
-        # Bokeh-default legend on a themed plot region, which is a bug this
-        # file already fixed once.
-        _cv_legends = [l for l in fig.legend
-                       if str(getattr(l, "name", "") or "")
-                       == _COLORVAR_LEGEND_NAME]
-        _plot_legends = [l for l in fig.legend if l not in _cv_legends]
-
-        legend = _plot_legends[0] if _plot_legends else None
-        if legend is not None and plot_renderers:
-            # The dummy swatch renderers a colorvar() builds are not plot
-            # layers and must not become series keys; nor may a renderer
-            # that is no longer on the figure.
-            _live = [(plot, [r for r in rends if r in fig.renderers])
-                     for plot, rends in plot_renderers]
-            items = [LegendItem(label={"value": _lbl}, renderers=_rends)
-                     for _lbl, _rends in _dash_legend_entries(
-                         _live, getattr(self, "variable_labels", {}),
-                         getattr(self, "default_level", _DEFAULT_LEVEL))]
-            if items:
-                legend.items = items
-
-        # order() -- 1-based, and it may also DROP keys.
-        m_order = re.search(r"\border\s*\(([^)]*)\)", legend_opt)
-        if m_order:
-            wanted = [int(t) for t in re.findall(r"\d+", m_order.group(1))]
-            src = list(legend.items)
-            legend.items = [src[i - 1] for i in wanted
-                            if 1 <= i <= len(src)]
-
-        # ---- Stata's clock positions -------------------------------
-        # 12 o'clock is straight up, 3 is right, 6 is down, 9 is left.  The
-        # measured placements group into the four sides; ring(0) keeps the
-        # legend inside the plot region instead of in a side panel.
-        _CLOCK_SIDE = {
-            11: "above", 12: "above", 1: "above",
-            2: "right", 3: "right", 4: "right",
-            5: "below", 6: "below", 7: "below",
-            8: "left", 9: "left", 10: "left",
-        }
-        _CLOCK_INSIDE = {
-            11: "top_left", 12: "top_center", 1: "top_right",
-            2: "top_right", 3: "center_right", 4: "bottom_right",
-            5: "bottom_right", 6: "bottom_center", 7: "bottom_left",
-            8: "bottom_left", 9: "center_left", 10: "top_left",
-        }
-        # The scheme's own legend chrome, applied BEFORE the user's
-        # legend() options so an explicit size() still wins.
-        # legend_bg_color and legend_border_color were parsed and had zero
-        # consumers, so an economist dashboard drew a Bokeh-default legend
-        # on top of an economist plot region.
-        for leg in fig.legend:
-            if self.scheme.legend_bg_color:
-                leg.background_fill_color = self.scheme.legend_bg_color
-            if self.scheme.legend_border_color:
-                leg.border_line_color = self.scheme.legend_border_color
-            if self.scheme.text_font_size:
-                leg.label_text_font_size = self.scheme.text_font_size
-
-        m_pos = re.search(r"\b(?:position|pos)\s*\(\s*(\d+)\s*\)",
-                          legend_opt)
-        m_ring = re.search(r"\bring\s*\(\s*(\d+)\s*\)", legend_opt)
-        inside = bool(m_ring) and m_ring.group(1) == "0"
-        if m_pos and legend is not None:
-            clock = int(m_pos.group(1))
-            if inside:
-                legend.location = _CLOCK_INSIDE.get(clock, "top_right")
-            else:
-                side = _CLOCK_SIDE.get(clock, "right")
-                self._move_legend(fig, legend, side)
-                legend.orientation = ("horizontal"
-                                      if side in ("above", "below")
-                                      else "vertical")
-
-        m_size = re.search(r"\bsize\s*\(\s*([^)]+?)\s*\)", legend_opt)
-        if m_size:
-            try:
-                _px = (f"{OptionTranslator.translate_msize(m_size.group(1)):g}"
-                       "px")
-                # Every legend on the figure, including a colour key: the
-                # user asked for a legend text size, not for a plot-legend
-                # text size.
-                for leg in fig.legend:
-                    leg.label_text_font_size = _px
-            except (ValueError, TypeError):
-                pass
-
-        forced_on = bool(re.search(r"\bon\b", legend_opt))
-        turned_off = bool(re.search(r"\boff\b", legend_opt))
-        n_keys = len(legend.items) if legend is not None else 0
-
-        # Stata's rule governs the SERIES key.  A colour key is separate --
-        # Stata suppresses it with clegend(), not legend() -- so it stays
-        # visible, and a one-series colorvar plot keeps the only legend that
-        # tells the reader what the colours mean.
-        _show = not (turned_off or (n_keys < 2 and not forced_on))
-        for leg in _plot_legends:
-            leg.visible = _show
-        for leg in _cv_legends:
-            leg.visible = True
-
-    def _apply_axis_spec(self, fig, axis_obj, grid_obj, spec: dict,
-                         varname: str = "") -> None:
-        """Apply a parsed ``axis_label`` spec to one axis.
-
-        Args:
-            fig:       The figure (for its data ranges).
-            axis_obj:  ``fig.xaxis`` or ``fig.yaxis``.
-            grid_obj:  The matching grid, for ``grid``/``nogrid``.
-            spec:      The output of :meth:`_parse_axis_spec`.
-            varname:   The variable on this axis, so a tick format can fall
-                       back to its Stata display format.
-        """
-        from bokeh.models.tickers import FixedTicker, BasicTicker
-        from bokeh.models.formatters import (CustomJSTickFormatter,
-                                             NumeralTickFormatter)
-
-        mode = spec["mode"]
-        if mode == "none":
-            # Zero ticks BY INTENT.  It used to produce zero by accident,
-            # because every token was dropped.  Measured: Stata's
-            # xlabel(none) also removes the gridlines.
-            axis_obj.ticker = FixedTicker(ticks=[])
-            for g in grid_obj:
-                g.grid_line_color = None
-        elif mode == "minmax":
-            col = self.df[varname] if varname in getattr(
-                self.df, "columns", []) else None
-            if col is not None:
-                vals = pd.to_numeric(col, errors="coerce").dropna()
-                if len(vals):
-                    axis_obj.ticker = FixedTicker(
-                        ticks=[float(vals.min()), float(vals.max())])
-        elif mode == "count":
-            # Stata's #N is a SUGGESTION -- measured, xlabel(#10) on weight
-            # yields eight ticks.  Bokeh's desired_num_ticks means the same
-            # thing, so the option maps onto it rather than onto a fixed list.
-            axis_obj.ticker = BasicTicker(desired_num_ticks=spec["count"])
-        elif mode == "explicit" and spec["ticks"]:
-            axis_obj.ticker = FixedTicker(ticks=spec["ticks"])
-            if spec["labels"]:
-                safe = {str(k): html.escape(str(v))
-                        for k, v in spec["labels"].items()}
-                axis_obj.formatter = CustomJSTickFormatter(
-                    code=f"const m = {json.dumps(safe)}; "
-                         "return m[String(tick)] || String(tick);")
-                axis_obj.major_label_overrides = {
-                    float(k): v for k, v in spec["labels"].items()}
-
-        fmt = spec["format"] or getattr(self, "numeric_formats", {}).get(
-            varname, "")
-        if fmt:
-            pattern = _stata_numeric_pattern(fmt)
-            if pattern is not None:
-                axis_obj.formatter = NumeralTickFormatter(format=pattern)
-            elif spec["format"] and _stata_date_kind(fmt) is None:
-                warnings.warn(
-                    f"dash: axis format({spec['format']}) is not a numeric "
-                    f"display format dash reproduces; the ticks are "
-                    f"unformatted.", UserWarning,
-                )
-
-        if spec["labsize"]:
-            try:
-                axis_obj.major_label_text_font_size = (
-                    f"{OptionTranslator.translate_msize(spec['labsize']):g}px")
-            except (ValueError, TypeError):
-                warnings.warn(
-                    f"dash: labsize({spec['labsize']}) is not a recognised "
-                    f"text size; ignoring it.", UserWarning,
-                )
-        if spec["angle"] is not None:
-            axis_obj.major_label_orientation = spec["angle"]
-        if spec["grid"] is not None:
-            for g in grid_obj:
-                if spec["grid"]:
-                    if g.grid_line_color is None:
-                        g.grid_line_color = "#e5e5e5"
-                else:
-                    g.grid_line_color = None
+        """Stata's legend keys, Stata's rule for drawing one, and every
+        legend() sub-option -- through ``_dash_apply_legend``, which the
+        generated server app runs as well."""
+        _dash_apply_legend(
+            fig, plot_renderers, graph_opts.get("legend", ""),
+            getattr(self, "variable_labels", {}),
+            getattr(self, "default_level", _DEFAULT_LEVEL),
+            {"legend_bg_color": self.scheme.legend_bg_color,
+             "legend_border_color": self.scheme.legend_border_color,
+             "text_font_size": self.scheme.text_font_size})
 
     @staticmethod
     def _move_legend(fig, legend, side: str) -> None:
-        """Move an existing Legend into one of the figure's side panels.
-
-        Args:
-            fig:    The figure.
-            legend: The Legend model already attached to it.
-            side:   ``"above"``, ``"below"``, ``"left"`` or ``"right"``.
-        """
-        for container in (fig.center, fig.above, fig.below, fig.left,
-                          fig.right):
-            try:
-                if legend in container:
-                    container.remove(legend)
-            except (TypeError, ValueError):
-                pass
-        fig.add_layout(legend, side)
+        """Move an existing Legend into a side panel; see _dash_move_legend."""
+        _dash_move_legend(fig, legend, side)
 
     def _resolve_aspect_ratio(self, graph_opts: dict) -> "float | None":
         """Return Bokeh's width/height ratio for this figure.
@@ -10559,137 +11180,15 @@ class DashRenderer:
 
     @staticmethod
     def _parse_axis_spec(raw: str) -> dict:
-        """Parse Stata's full ``axis_label`` grammar.
-
-        Handles a numlist (including the ``a(b)c`` increment form), ``#N``,
-        ``minmax``, ``none``, explicit ``value "label"`` pairs, and the
-        sub-options ``format()``, ``labsize()``, ``angle()``, ``grid`` and
-        ``nogrid``.  Everything but the quoted-label handling and ``angle()``
-        used to be discarded: ``xlabel(#10)``, ``xlabel(minmax)``,
-        ``xlabel(1990(5)2020)`` and ``ylabel(, format(%9.0fc))`` were all
-        ACCEPTED and all produced zero ticks.
-
-        Args:
-            raw: The raw option value.
-
-        Returns:
-            A dict with keys ``mode`` (one of ``"default"``, ``"explicit"``,
-            ``"count"``, ``"minmax"``, ``"none"``), ``ticks``, ``count``,
-            ``labels``, ``format``, ``labsize``, ``angle`` and ``grid``.
-        """
-        out: dict = {"mode": "default", "ticks": [], "count": None,
-                     "labels": {}, "format": None, "labsize": None,
-                     "angle": None, "grid": None}
-        if not raw or not str(raw).strip():
-            return out
-        text = str(raw)
-
-        out["angle"] = _parse_axis_angle(text)
-        m = re.search(r"\bformat\s*\(\s*([^)]+?)\s*\)", text, re.I)
-        if m:
-            out["format"] = m.group(1).strip()
-        m = re.search(r"\blabsize\s*\(\s*([^)]+?)\s*\)", text, re.I)
-        if m:
-            out["labsize"] = m.group(1).strip()
-        if re.search(r"\bnogrid\b", text, re.I):
-            out["grid"] = False
-        elif re.search(r"\bgrid\b", text, re.I):
-            out["grid"] = True
-
-        # Strip every recognised sub-option so only the numlist remains.
-        head = re.sub(r"\b(?:format|labsize|angle|labcolor|labgap|tlength|"
-                      r"labstyle|tstyle|tposition)\s*\([^)]*\)", " ",
-                      text, flags=re.I)
-        head = re.sub(r"\b(?:no)?grid\b", " ", head, flags=re.I)
-        # Only a comma that INTRODUCES SUB-OPTIONS separates; Stata also
-        # accepts a comma-separated numlist, so xlabel(1,3,5) must survive.
-        m_sub = re.search(r",\s*(?=[A-Za-z_])", head)
-        if m_sub:
-            head = head[:m_sub.start()]
-        head = head.strip()
-
-        if re.fullmatch(r"none", head, re.I):
-            out["mode"] = "none"
-            return out
-        if re.fullmatch(r"minmax", head, re.I):
-            out["mode"] = "minmax"
-            return out
-        m = re.fullmatch(r"#\s*(\d+)", head)
-        if m:
-            out["mode"] = "count"
-            out["count"] = max(1, int(m.group(1)))
-            return out
-
-        # a(b)c increment form, possibly repeated and mixed with bare values.
-        ticks: list[float] = []
-        rest = head
-        for m in re.finditer(
-                r"(-?[\d.eE+]+)\s*\(\s*(-?[\d.eE+]+)\s*\)\s*(-?[\d.eE+]+)",
-                head):
-            try:
-                a, b, c = (float(m.group(1)), float(m.group(2)),
-                           float(m.group(3)))
-            except ValueError:
-                continue
-            if b == 0:
-                continue
-            n_steps = int(math.floor((c - a) / b + 1e-9))
-            ticks.extend(a + b * i for i in range(max(0, n_steps) + 1))
-            rest = rest.replace(m.group(0), " ")
-
-        bare_ticks, labels = DashRenderer._parse_axis_label_opt(rest)
-        ticks.extend(bare_ticks)
-        if ticks:
-            out["mode"] = "explicit"
-            out["ticks"] = sorted(set(ticks))
-            out["labels"] = labels
-        return out
+        """Parse Stata's full ``axis_label`` grammar; see
+        ``_dash_parse_axis_spec``, which both render modes run."""
+        return _dash_parse_axis_spec(raw)
 
     @staticmethod
     def _parse_axis_label_opt(raw: str) -> "tuple[list[float], dict[str, str]]":
-        """Parse a Stata xlabel()/ylabel() option string.
-
-        Supports two forms:
-          - Pure numeric list:  "0 2 4 6 8"  →  ticks=[0,2,4,6,8], labels={}
-          - Labeled list:       '0 "Zero" 5 "Five"'  →  ticks=[0,5], labels={0.0:"Zero",…}
-
-        Invalid tokens are silently dropped.
-
-        Returns:
-            (ticks, labels) where ticks is a sorted list of floats and labels
-            is a dict mapping str(float) → label string (empty when no labels given).
-        """
-        import re
-        ticks: list[float] = []
-        labels: dict[str, str] = {}
-        # Tokenise: quoted strings or whitespace/comma-delimited tokens
-        tokens = re.findall(r'"([^"]*)"'  # double-quoted label
-                            r"|'([^']*)'"  # single-quoted label
-                            r"|([^\s,\"']+)",  # bare token (number or keyword)
-                            raw)
-        i = 0
-        flat: list[str] = []
-        for dq, sq, bare in tokens:
-            flat.append(dq or sq or bare)
-
-        while i < len(flat):
-            tok = flat[i]
-            try:
-                val = float(tok)
-                ticks.append(val)
-                # Peek ahead: if next token is a quoted label, consume it
-                if i + 1 < len(flat):
-                    next_tok = flat[i + 1]
-                    try:
-                        float(next_tok)   # also a number → no label
-                    except ValueError:
-                        labels[str(val)] = next_tok
-                        i += 1
-                i += 1
-            except ValueError:
-                i += 1  # skip non-numeric bare token
-
-        return sorted(ticks), labels
+        """Parse the numlist form of xlabel()/ylabel(); see
+        ``_dash_parse_axis_label_opt``."""
+        return _dash_parse_axis_label_opt(raw)
 
     def _apply_nonselection_dimming(self, fig) -> None:
         """Dim a linked figure's non-selected points to dash's own alpha.
@@ -10762,17 +11261,12 @@ class DashRenderer:
         xvar = plots[0].get("xvar", "") if plots else ""
         yvar = plots[0].get("yvar", "") if plots else ""
 
-        # Resolve axis labels: user-specified xtitle/ytitle take priority
-        raw_xtitle = graph_opts.get("xtitle", "")
-        raw_ytitle = graph_opts.get("ytitle", "")
-        # Canvas text, NOT html: Bokeh draws a figure title and axis labels
-        # as glyphs, so escaping made title("R&D spend") display as
-        # "R&amp;D spend".  _axis_label() never escaped the variable labels it
-        # returns and was already correct -- that is the evidence that the
-        # escaping here was the bug rather than the protection.  Everything
-        # that genuinely reaches the DOM is still escaped.
-        x_label = raw_xtitle if raw_xtitle else self._axis_label(xvar)
-        y_label = raw_ytitle if raw_ytitle else self._axis_label(yvar)
+        # xtitle()/ytitle() first, else Stata's own default, through the
+        # helper the generated app runs as well.  Canvas text, NOT html:
+        # Bokeh draws a figure title and axis labels as glyphs, so escaping
+        # made title("R&D spend") display as "R&amp;D spend".
+        x_label, y_label = _dash_axis_labels(plots, graph_opts,
+                                             self.variable_labels)
 
         # Enable WebGL for large datasets
         n_rows = len(self.df)
@@ -10914,91 +11408,13 @@ class DashRenderer:
                 except (ValueError, TypeError):
                     pass
 
-        # Secondary axes (yaxis(2) / xaxis(2))
-        # Detect whether any plot layers request a secondary axis
-        from bokeh.models import LinearAxis, LogAxis
-        _has_y2 = any(
-            str(p.get("options", {}).get("yaxis", "1")).strip() == "2"
-            for p in plots
-        )
-        _has_x2 = any(
-            str(p.get("options", {}).get("xaxis", "1")).strip() == "2"
-            for p in plots
-        )
-        if _has_y2:
-            from bokeh.models import Range1d as _Range1d
-            # From the ACTIVE view, not self.df: a graph-level if/in
-            # qualifier already narrowed the source, so computing the
-            # right-hand axis from the full frame left it spanning data the
-            # graph does not show.
-            _y2_lo, _y2_hi = _compute_secondary_range(
-                _source_frame(source, self.df), plots, "yaxis", "yvar", 2
-            )
-            fig.extra_y_ranges["y2"] = _Range1d(_y2_lo, _y2_hi)
-            _y2_scale_raw = graph_opts.get("yscale2", "")
-            _y2_log, _y2_rev = _parse_scale_opt(_y2_scale_raw)
-            _y2_ax = (LogAxis if _y2_log else LinearAxis)(
-                y_range_name="y2",
-                axis_label=graph_opts.get("ytitle2", ""),
-            )
-            fig.add_layout(_y2_ax, "right")
-            if _y2_rev:
-                try:
-                    fig.extra_y_ranges["y2"].flipped = True
-                except AttributeError:
-                    pass
-            # Custom ticks for secondary y-axis
-            _raw_yla2 = graph_opts.get("ylabel2", "")
-            if _raw_yla2:
-                from bokeh.models.tickers import FixedTicker
-                from bokeh.models.formatters import CustomJSTickFormatter
-                _ticks2, _labels2 = self._parse_axis_label_opt(_raw_yla2)
-                if _ticks2:
-                    _y2_ax.ticker = FixedTicker(ticks=_ticks2)
-                    if _labels2:
-                        _safe2 = {str(k): html.escape(str(v)) for k, v in _labels2.items()}
-                        _y2_ax.formatter = CustomJSTickFormatter(
-                            code=f"const m = {json.dumps(_safe2)}; "
-                                 "return m[String(tick)] || String(tick);"
-                        )
-                _ang2 = _parse_axis_angle(_raw_yla2)
-                if _ang2 is not None:
-                    _y2_ax.major_label_orientation = _ang2
-        if _has_x2:
-            from bokeh.models import Range1d as _Range1d
-            _x2_lo, _x2_hi = _compute_secondary_range(
-                _source_frame(source, self.df), plots, "xaxis", "xvar", 2
-            )
-            fig.extra_x_ranges["x2"] = _Range1d(_x2_lo, _x2_hi)
-            _x2_scale_raw = graph_opts.get("xscale2", "")
-            _x2_log, _x2_rev = _parse_scale_opt(_x2_scale_raw)
-            _x2_ax = (LogAxis if _x2_log else LinearAxis)(
-                x_range_name="x2",
-                axis_label=graph_opts.get("xtitle2", ""),
-            )
-            fig.add_layout(_x2_ax, "above")
-            if _x2_rev:
-                try:
-                    fig.extra_x_ranges["x2"].flipped = True
-                except AttributeError:
-                    pass
-            # Custom ticks for secondary x-axis
-            _raw_xla2 = graph_opts.get("xlabel2", "")
-            if _raw_xla2:
-                from bokeh.models.tickers import FixedTicker
-                from bokeh.models.formatters import CustomJSTickFormatter
-                _ticks2, _labels2 = self._parse_axis_label_opt(_raw_xla2)
-                if _ticks2:
-                    _x2_ax.ticker = FixedTicker(ticks=_ticks2)
-                    if _labels2:
-                        _safe2 = {str(k): html.escape(str(v)) for k, v in _labels2.items()}
-                        _x2_ax.formatter = CustomJSTickFormatter(
-                            code=f"const m = {json.dumps(_safe2)}; "
-                                 "return m[String(tick)] || String(tick);"
-                        )
-                _ang2 = _parse_axis_angle(_raw_xla2)
-                if _ang2 is not None:
-                    _x2_ax.major_label_orientation = _ang2
+        # Secondary axes (yaxis(2) / xaxis(2)), through the helper the
+        # generated app runs as well -- it used to build no second axis.
+        # From the ACTIVE view, not self.df: a graph-level if/in qualifier
+        # already narrowed the source, so a right-hand axis computed from
+        # the full frame spanned data the graph does not show.
+        _has_y2, _has_x2 = _dash_add_secondary_axes(
+            fig, plots, graph_opts, _source_frame(source, self.df))
 
         # Axis range limits, from Stata's xscale(range())/yscale(range()).
         # The previous implementation read graph_opts["xrange"]/["yrange"],
@@ -11163,20 +11579,12 @@ class DashRenderer:
             )
             fig.add_layout(subtitle_lbl, "above")
 
-        # Custom axis tick values (xlabel / ylabel) and label rotation
-        from bokeh.models.tickers import FixedTicker
-        from bokeh.models.formatters import CustomJSTickFormatter
-        for ax_key, axis_obj, grid_obj, var in (
-            ("xlabel", fig.xaxis, fig.xgrid, xvar),
-            ("ylabel", fig.yaxis, fig.ygrid, yvar),
-        ):
-            raw_ax = graph_opts.get(ax_key, "")
-            tick_key = "xtick" if ax_key == "xlabel" else "ytick"
-            raw_tick = graph_opts.get(tick_key, "")
-            if not raw_ax and not raw_tick:
-                continue
-            spec = self._parse_axis_spec(raw_ax or raw_tick)
-            self._apply_axis_spec(fig, axis_obj, grid_obj, spec, var)
+        # xlabel()/ylabel(), xtick()/ytick(): Stata's full grammar, through
+        # the helper the generated app runs as well.  Its own parser read a
+        # bare numlist and angle() and nothing else.
+        _dash_apply_axis_options(fig, graph_opts, xvar, yvar,
+                                 _source_frame(source, self.df),
+                                 getattr(self, "numeric_formats", {}))
 
         # Plot categories that use non-standard JSON variable keys.  Defined
         # at module level so the generated server app shares them rather than
@@ -11190,9 +11598,6 @@ class DashRenderer:
             ptype = plot.get("type", "scatter")
             pxvar = plot.get("xvar", xvar)
             popts = plot.get("options", {})
-            # A CI layer with no level() of its own inherits the session's.
-            if "level" not in popts and self.default_level != _DEFAULT_LEVEL:
-                popts = dict(popts, level=str(self.default_level))
 
             # A qualifier written on THIS layer applies to THIS layer only.
             #   dash (scatter y x) (scatter y x if foreign)
@@ -11258,12 +11663,6 @@ class DashRenderer:
                         f"be applied ({_pexc}); the layer is drawn unfiltered.",
                         stacklevel=2,
                     )
-
-            # Determine secondary axis assignments for this plot layer
-            _plot_yaxis = str(popts.get("yaxis", "1")).strip()
-            _plot_xaxis = str(popts.get("xaxis", "1")).strip()
-            _use_y2 = _has_y2 and _plot_yaxis == "2"
-            _use_x2 = _has_x2 and _plot_xaxis == "2"
 
             # Snapshot renderer list so new glyphs can be identified
             _r_before = len(fig.renderers)
@@ -11333,16 +11732,8 @@ class DashRenderer:
                     graph_opts.get("name", "") or graph_spec.get("name", "?"),
                     pi + 1, ptype, _rows_here)
 
-            # Assign secondary axis range names to newly added renderers
-            if _use_y2 or _use_x2:
-                for _r in fig.renderers[_r_before:]:
-                    try:
-                        if _use_y2:
-                            _r.y_range_name = "y2"
-                        if _use_x2:
-                            _r.x_range_name = "x2"
-                    except AttributeError:
-                        pass
+            # A yaxis(2)/xaxis(2) layer draws on the secondary range.
+            _dash_assign_axis_ranges(fig, _layer_renderers, popts)
 
         # ---- Legend: Stata's keys, and Stata's rule for showing one ----
         self._rebuild_legend(fig, locals().get("_plot_renderers", []),
@@ -11365,71 +11756,6 @@ class DashRenderer:
                 fig.x_range.renderers = _primary_renderers
             if isinstance(fig.y_range, DataRange1d):
                 fig.y_range.renderers = _primary_renderers
-
-        # Legend placement and label overrides — must run after glyphs are added
-        # so that legend items exist and can be manipulated.
-        legend_opt = graph_opts.get("legend", "")
-        if legend_opt:
-            # The bare direction keywords, as aliases for the clock
-            # positions.  "on" and "ring" are NOT placements and must not be
-            # in this map: `ring` matched the word inside `ring(0)`, so every
-            # inside placement _rebuild_legend had just computed was
-            # overwritten with top_right, and `on` would clobber a position
-            # given alongside it.  Visibility and clock positions are decided
-            # in _rebuild_legend; this block only handles the keyword aliases
-            # and the label() overrides.
-            loc_map = {
-                "top": "top_center",
-                "bottom": "bottom_center",
-                "left": "center_left",
-                "right": "center_right",
-            }
-            if legend_opt.strip() == "off":
-                for leg in fig.legend:
-                    leg.visible = False
-            else:
-                # A clock position or ring() has already been resolved, and
-                # is more specific than a bare keyword.
-                _has_explicit_placement = re.search(
-                    r"\b(?:position|pos|ring)\s*\(", legend_opt)
-                if not _has_explicit_placement:
-                    for kw, loc in loc_map.items():
-                        if re.search(r'\b' + re.escape(kw) + r'\b', legend_opt):
-                            for leg in fig.legend:
-                                leg.location = loc
-                            break
-
-                # Parse label(N "text") overrides — e.g. label(1 "First") label(2 "Second")
-                # Security: HTML-escape label text to prevent XSS
-                label_overrides: dict[int, str] = {}
-                for m in re.finditer(r'label\(\s*(\d+)\s+"([^"]*)"\s*\)', legend_opt):
-                    idx = int(m.group(1))
-                    text = html.escape(m.group(2))
-                    label_overrides[idx] = text
-                if label_overrides and fig.legend:
-                    items = fig.legend[0].items
-                    for n, text in label_overrides.items():
-                        item_idx = n - 1  # Stata uses 1-based indexing
-                        if 0 <= item_idx < len(items):
-                            items[item_idx].label = {"value": text}
-
-                # cols(#) / rows(#) — multi-column/row legend layout
-                m_cols = re.search(r'\bcols\s*\(\s*(\d+)\s*\)', legend_opt)
-                m_rows = re.search(r'\brows\s*\(\s*(\d+)\s*\)', legend_opt)
-                if m_cols:
-                    try:
-                        ncols = int(m_cols.group(1))
-                        for leg in fig.legend:
-                            leg.ncols = ncols
-                    except (ValueError, AttributeError):
-                        pass
-                if m_rows:
-                    try:
-                        nrows = int(m_rows.group(1))
-                        for leg in fig.legend:
-                            leg.nrows = nrows
-                    except (ValueError, AttributeError):
-                        pass
 
         # ---- The figure's one HoverTool ----
         # Built by _dash_build_hover, which the generated server app runs
@@ -11811,8 +12137,14 @@ class DashRenderer:
             for name, _ in row_spec:
                 if name in _added:
                     continue
-                if name in self.kpi_divs:
-                    all_models.append(self.kpi_divs[name])
+                _kk = _dash_kpi_keys(name, self.kpi_divs)
+                if _kk:
+                    # A KPI registered under one name may own several
+                    # per-facet cards; they travel as one column.
+                    all_models.append(
+                        self.kpi_divs[_kk[0]] if len(_kk) == 1 else
+                        column(*[self.kpi_divs[k] for k in _kk],
+                               sizing_mode="stretch_width"))
                     model_keys.append(name)
                     _added.add(name)
                     continue
@@ -11863,15 +12195,9 @@ class DashRenderer:
         self._assert_every_graph_was_placed(_placed_figs)
 
         # ---- Build common HTML sections ----
-        header_html = ""
-        if title_text:
-            header_html += (
-                f'<h2 class="db-title">{_html.escape(title_text)}</h2>\n'
-            )
-        if subtitle_text:
-            header_html += (
-                f'<p class="db-subtitle">{_html.escape(subtitle_text)}</p>\n'
-            )
+        _t_frag, _s_frag = _dash_header_fragments(title_text, subtitle_text)
+        header_html = ((_t_frag + "\n") if _t_frag else "") + \
+            ((_s_frag + "\n") if _s_frag else "")
 
         # Bootstrap grid for KPI cards and non-tabbed graphs
         grid_parts: list[str] = []
@@ -11989,46 +12315,9 @@ class DashRenderer:
         tabs_str: str,
         all_names: "list[str]",
     ) -> "list[tuple[str, list[str]]] | None":
-        """Parse a ``tabs()`` option string into ``(tab_title, [names])`` pairs.
-
-        Syntax::
-
-            tabname: name1 name2 ... / tabname2: name3 name4 ...
-
-        Tab names are title-cased.  Names absent from *all_names* are silently
-        dropped (security: only registered dashboard element names are accepted).
-
-        Args:
-            tabs_str:   Raw ``tabs()`` option string from ``build_options``.
-            all_names:  All registered dashboard element names.
-
-        Returns:
-            List of ``(title, [names])`` tuples, or ``None`` when *tabs_str*
-            is empty or produces no valid entries.
-        """
-        if not tabs_str or not tabs_str.strip():
-            return None
-        valid = set(all_names)
-        result: list[tuple[str, list[str]]] = []
-        for i, segment in enumerate(tabs_str.split("/")):
-            segment = segment.strip()
-            if not segment:
-                continue
-            if ":" in segment:
-                tab_name_raw, items_str = segment.split(":", 1)
-                # The user's text, verbatim.  This was .title()-cased, so
-                # tabs(MPG stuff: u1) rendered "Mpg Stuff" and an acronym
-                # could not survive.
-                tab_name = tab_name_raw.strip()
-                items = [n.strip() for n in items_str.split() if n.strip()]
-            else:
-                items = [n.strip() for n in segment.split() if n.strip()]
-                tab_name = f"Tab {i + 1}"
-            # Security: only accept names present in the registry
-            safe_items = [n for n in items if n in valid]
-            if safe_items:
-                result.append((tab_name, safe_items))
-        return result if result else None
+        """Parse a ``tabs()`` option string; see ``_dash_parse_tabs``, the
+        one parser both render modes run."""
+        return _dash_parse_tabs(tabs_str, all_names)
 
     def _resolve_layout_names(self, name: str) -> "list[str]":
         """Return the figure keys a registered graph name owns.
@@ -12090,72 +12379,34 @@ class DashRenderer:
     ) -> "tuple[Any, set[str], set[str]]":
         """Build a Bokeh ``Tabs`` widget from a parsed tab specification.
 
-        Each tab's content is laid out as a ``gridplot`` (``ceil(sqrt(N))``
-        columns, ``sizing_mode="stretch_width"``) so figures scale to fill the
-        available width when the tab is selected.
-
-        Args:
-            tabs_spec: List of ``(tab_title, [name, ...])`` from
-                       :meth:`_parse_tabs_option`.
+        Through ``_dash_tab_panels`` and ``_dash_layout_cell``, which the
+        generated app runs as well and which the plain grid uses for its
+        cells -- so a faceted graph inside a tab is laid out exactly as it
+        is in the grid, in a sub-grid that honours by(, cols(#)).  This
+        used to flatten the panels into the tab's own grid, ignoring
+        cols(), while the served app nested them.
 
         Returns:
-            A ``(Tabs, placed_names, placed_keys)`` triple.
-
-            *placed_names* are the REGISTERED names consumed, which is what
-            the caller needs to decide which elements to leave out of the
-            Bootstrap grid.  *placed_keys* are the FIGURE KEYS consumed,
-            which is what the caller needs to record as placed.
-
-            They differ for a faceted graph -- registered ``g``, figures
-            ``g__by__0``, ``g__by__1`` -- and returning only the first made
-            the Bootstrap caller use registered names in figure-key space.
-            A faceted graph inside a tab was therefore placed in the widget
-            and recorded nowhere, and vanished from the dashboard with rc 0
-            until the "no graph vanishes" guard started catching it.
+            A ``(Tabs, placed_names, placed_keys)`` triple.  *placed_names*
+            are the REGISTERED names consumed; *placed_keys* the FIGURE
+            KEYS, which a faceted graph has several of.
         """
-        placed: set[str] = set()
+        _graphs = self.master_spec.get("graphs", [])
+
+        def _gopts_of(name):
+            return next((g.get("graph_options", {}) for g in _graphs
+                         if g.get("graph_options", {}).get("name") == name),
+                        {})
+
+        def _cell_of(name):
+            return _dash_layout_cell(name, self.figures, self._facet_map,
+                                     self.kpi_divs, _gopts_of)
+
+        tabs_widget, placed = _dash_tab_panels(tabs_spec, _cell_of)
         placed_keys: set[str] = set()
-        tab_panels: list[Any] = []
-
-        for tab_title, names in tabs_spec:
-            items: list[Any] = []
-            for name in names:
-                if name in self._facet_map:
-                    for fkey, _label in self._facet_map[name]:
-                        fig = self.figures.get(fkey)
-                        if fig is not None:
-                            items.append(fig)
-                            placed_keys.add(fkey)
-                    placed.add(name)
-                elif name in self.figures:
-                    items.append(self.figures[name])
-                    placed.add(name)
-                    placed_keys.add(name)
-                elif name in self.kpi_divs:
-                    items.append(self.kpi_divs[name])
-                    placed.add(name)
-                    placed_keys.add(name)
-
-            if not items:
-                continue
-
-            n = len(items)
-            cols_per_row = max(1, math.ceil(math.sqrt(n)))
-            rows = [
-                items[i : i + cols_per_row]
-                for i in range(0, n, cols_per_row)
-            ]
-            # Pad the last row so gridplot doesn't error on ragged rows
-            while len(rows[-1]) < cols_per_row:
-                rows[-1].append(None)
-
-            tab_content = gridplot(rows, sizing_mode="stretch_width")
-            tab_panels.append(TabPanel(child=tab_content, title=tab_title))
-
-        if not tab_panels:
-            return None, placed, placed_keys
-
-        tabs_widget = Tabs(tabs=tab_panels, sizing_mode="stretch_width")
+        for name in placed:
+            placed_keys.update(self._resolve_layout_names(name))
+            placed_keys.update(_dash_kpi_keys(name, self.kpi_divs))
         return tabs_widget, placed, placed_keys
 
     # ------------------------------------------------------------------
@@ -12829,6 +13080,7 @@ class DashRenderer:
                     fvar, fsource, None, vlabels,
                     exclude_names=excludes,
                     label=flabel,
+                    column=self.df[fvar] if fvar in self.df.columns else None,
                 )
             elif ftype == "slider":
                 # Guard: slider requires numeric data.  Mirror the server-side
@@ -12849,6 +13101,7 @@ class DashRenderer:
                     fvar, fsource, None, exclude_names=excludes,
                     label=flabel,
                     date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
+                    column=self.df[fvar] if fvar in self.df.columns else None,
                 )
             elif ftype == "range":
                 # Same guard for range slider.
@@ -12868,6 +13121,7 @@ class DashRenderer:
                     fvar, fsource, None, exclude_names=excludes,
                     label=flabel,
                     date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
+                    column=self.df[fvar] if fvar in self.df.columns else None,
                 )
             else:
                 continue
@@ -12893,8 +13147,17 @@ class DashRenderer:
         # and refers to it by id, so a shared source appears once.
         _orig_data: dict = {}
         if fsource is not None:
-            for _col, _arr in fsource.data.items():
-                _orig_data[_col] = [DashRenderer._to_serialisable(v) for v in _arr]
+            # The WHOLE frame, not the first graph's source.  Under by()
+            # that source is one facet and under a graph-level `if' it is
+            # the qualified rows; the widgets' categories and bounds and the
+            # KPI recompute all read this snapshot.  Measured: by(foreign)
+            # left it with five of ten rows.  Every source is masked by row
+            # identity against it, so the full frame is what the masking
+            # expects.
+            for _col in self.df.columns:
+                _orig_data[str(_col)] = [DashRenderer._to_serialisable(v)
+                                         for v in self.df[_col]]
+            _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(self.df))
         _orig_snapshot = ColumnDataSource(_orig_data)
 
         # One snapshot model per graph source, shared by every callback that
@@ -13025,6 +13288,10 @@ class DashRenderer:
                  tabbed_keys) = self._build_tabs_widget(_tabs_spec)
 
         if DashRenderer._is_bootstrap_layout(layout_opt):
+            # A Bootstrap page embeds its components one by one; there is
+            # no single Bokeh layout root, which the parity guard records
+            # as a legitimate difference.
+            self._last_layout_root = None
             return self._render_bootstrap_html(
                 layout_opt=layout_opt,
                 all_names=all_names,
@@ -13053,49 +13320,18 @@ class DashRenderer:
             if n_items and n_items > rows_n * cols_n:
                 rows_n = math.ceil(n_items / cols_n)
 
-        cells: list[Any] = []
-        for name in _grid_names:
-            if name in self._facet_map:
-                facet_figs = [
-                    self.figures[fkey]
-                    for fkey, _ in self._facet_map[name]
-                    if fkey in self.figures
-                ]
-                if facet_figs:
-                    gopts = next(
-                        (g.get("graph_options", {})
-                         for g in graphs
+        def _gopts_of(name):
+            return next((g.get("graph_options", {}) for g in graphs
                          if g.get("graph_options", {}).get("name") == name),
-                        {},
-                    )
-                    # Silent: the grouping parse has already reported any
-                    # sub-option this by() carries that dash ignores.
-                    by_cols_from_raw = _dash_parse_by(
-                        (gopts.get("by") or ""), warn=False)[1]
-                    by_cols_key_raw = gopts.get("by_cols", "0")
-                    try:
-                        by_cols_key = int(by_cols_key_raw) if by_cols_key_raw else 0
-                    except (ValueError, TypeError):
-                        by_cols_key = 0
-                    by_cols_n = by_cols_from_raw or by_cols_key
-                    if by_cols_n <= 0:
-                        by_cols_n = min(
-                            len(facet_figs),
-                            max(1, math.ceil(math.sqrt(len(facet_figs)))),
-                        )
-                    sub_rows = [
-                        facet_figs[i : i + by_cols_n]
-                        for i in range(0, len(facet_figs), by_cols_n)
-                    ]
-                    while len(sub_rows[-1]) < by_cols_n:
-                        sub_rows[-1].append(None)
-                    cells.append(gridplot(sub_rows, sizing_mode="stretch_width"))
-                else:
-                    cells.append(None)
-            elif name in self.figures:
-                cells.append(self.figures[name])
-            elif name in self.kpi_divs:
-                cells.append(self.kpi_divs[name])
+                        {})
+
+        # One cell per registered name, through the resolver the tab
+        # panels and the generated app use as well.
+        cells: list[Any] = [
+            _dash_layout_cell(name, self.figures, self._facet_map,
+                              self.kpi_divs, _gopts_of)
+            for name in _grid_names
+        ]
 
         # layout(name:row,col) decides WHERE each element goes, not merely how
         # big the grid is.  _placement_map was consulted by _compute_grid and
@@ -13165,31 +13401,14 @@ class DashRenderer:
             layout_root = _content
 
         if title_text or subtitle_text:
-            header_items = []
-            # The same classes the Bootstrap layout uses, so the scheme's
-            # title colour and heading size reach both.  These carried a
-            # hardcoded colour and no class, so `dash build, scheme(economist)
-            # layout(auto)' drew an economist dashboard with a #555 subtitle
-            # under a default-coloured heading.
-            if title_text:
-                header_items.append(Div(
-                    text=(
-                        f'<h2 class="db-title" style="margin-bottom:2px;">'
-                        f'{html.escape(title_text)}</h2>'
-                    ),
-                    sizing_mode="stretch_width",
-                ))
-            if subtitle_text:
-                header_items.append(Div(
-                    text=(
-                        f'<p class="db-subtitle" '
-                        f'style="margin-top:0;margin-bottom:8px;">'
-                        f'{html.escape(subtitle_text)}</p>'
-                    ),
-                    sizing_mode="stretch_width",
-                ))
-            layout_root = column(*header_items, layout_root,
-                                 sizing_mode="stretch_width")
+            # The same two classed Divs the generated app builds, with the
+            # scheme's CSS attached to them: the served page has no head
+            # to splice a stylesheet into, and a Bokeh 3 Div renders inside
+            # a shadow root anyway.
+            layout_root = column(
+                *_dash_header_models(title_text, subtitle_text,
+                                     self.scheme.css_block()),
+                layout_root, sizing_mode="stretch_width")
 
         # Kept so tests can inspect the models the browser will build,
         # rather than the serialised document -- Bokeh escapes model text
@@ -13292,10 +13511,14 @@ class DashRenderer:
         self._n_brush_callbacks = self._wire_brush_callbacks(kpis)
 
         # ---- 6. Assemble layout and render to HTML ----
-        all_names:  list[str] = list(self.kpi_divs.keys())
-        kpi_names:  list[str] = list(self.kpi_divs.keys())
-        for g in graphs:
-            all_names.append(g.get("graph_options", {}).get("name", ""))
+        # The registry, as typed.  This put every KPI first whatever the
+        # registry said -- a Bootstrap hero-row policy that had leaked into
+        # every layout -- so the same spec placed a card above its graph
+        # when saved and below it when served.
+        all_names: list[str] = _dash_layout_order(
+            build.get("registry", ""), graphs, kpis)
+        kpi_names: list[str] = [n for n in all_names
+                                if _dash_kpi_keys(n, self.kpi_divs)]
 
         # Every registered graph must have become a figure. A graph that is
         # dropped between the registry and the dashboard leaves no trace at
@@ -13457,7 +13680,13 @@ class ServerAppBuilder:
                       # own copies inside an if/elif chain, which is how the
                       # two modes came to disagree about which types exist.
                       "_DASH_RANGE_TYPES", "_DASH_UNIVARIATE_TYPES",
-                      "_DASH_PC_TYPES"):
+                      "_DASH_PC_TYPES", "_DASH_LITERAL_TYPES",
+                      # The shared legend, axis, column and swatch tables.
+                      "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
+                      "_DASH_LEGEND_KEYWORD_LOC", "_DASH_HIST_YTITLES",
+                      "_DASH_OPT_VAR_KEYS", "_DASH_SWATCH_PREFIX",
+                      # _stata_date_kind's own pattern, for an axis format().
+                      "_MS_PER_DAY", "_DATE_FMT_RE"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -13533,7 +13762,35 @@ class ServerAppBuilder:
                          "_dash_format_kpi_value",
                          # by(): one parser, one panel-label rule.
                          "_dash_by_tokens", "_dash_parse_by",
-                         "_dash_facet_label"):
+                         "_dash_facet_label",
+                         # The plot-type name set the parity guard reads.
+                         "_dash_plot_type_names",
+                         # The legend, whole: keys, rule, every sub-option.
+                         "_dash_move_legend", "_dash_apply_legend",
+                         # Axis titles, Stata's tick grammar, second axes.
+                         "_parse_axis_angle", "_stata_date_kind",
+                         "_parse_scale_opt", "_source_frame",
+                         "_compute_secondary_range",
+                         "_dash_axis_labels",
+                         "_dash_parse_axis_label_opt",
+                         "_dash_parse_axis_spec", "_dash_apply_axis_spec",
+                         "_dash_apply_axis_options",
+                         "_dash_add_secondary_axes",
+                         "_dash_assign_axis_ranges",
+                         # The filter widgets and the rows they select.
+                         "_whole_number_step", "_is_clock_kind",
+                         "_date_slider_step_days", "_clock_slider_step_ms",
+                         "_dash_option_value", "_dash_option_sort_key",
+                         "_dash_filter_title", "_dash_finite_column",
+                         "_dash_filter_widget", "_dash_dropdown_mask",
+                         # The document: order, cells, tabs, header.
+                         "_dash_layout_order", "_dash_kpi_keys",
+                         "_dash_facet_cols", "_dash_layout_cell",
+                         "_dash_parse_tabs", "_dash_tab_panels",
+                         "_dash_header_fragments", "_dash_header_models",
+                         # The columns a layer's options name.
+                         "_dash_option_columns", "_dash_attach_labels",
+                         "_dash_is_swatch"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -13643,7 +13900,8 @@ class ServerAppBuilder:
         for _fn in (_stat_option_float, _fit_grid,
                     # lpolyci's band is a bootstrap; without these the served
                     # branch was a verbatim copy of lpoly and drew no band.
-                    _resolve_level, _resolve_seed, _jitter_seed,
+                    _resolve_level, _dash_session_level,
+                    _dash_histogram_ymode, _resolve_seed, _jitter_seed,
                     _stata_percentile, _stata_kde_bandwidth, _kde_curve,
                     _mband_default_bands, _stata_bin_count,
                     _histogram_heights,
@@ -13819,23 +14077,6 @@ class ServerAppBuilder:
             "    if plot_type in ('connected', 'rconnected'):",
             "        return _SCHEME_CONNECT_PATTERNS[index % len(_SCHEME_CONNECT_PATTERNS)]",
             "    return []",
-            "",
-            "",
-            "def _dash_style_legend(lg):",
-            "    # The scheme's legend chrome, so a served legend matches the",
-            "    # one the standalone renderer draws.",
-            "    _c = _SCHEME_CHROME",
-            "    try:",
-            "        lg.background_fill_color = _c['legend_bg_color']",
-            "        lg.border_line_color = _c['legend_border_color']",
-            "        if _c.get('text_font_size'):",
-            "            lg.label_text_font_size = _c['text_font_size']",
-            "        if _c.get('legend_position'):",
-            "            lg.location = _c['legend_position']",
-            "        if _c.get('legend_cols'):",
-            "            lg.ncols = int(_c['legend_cols'])",
-            "    except (AttributeError, KeyError, TypeError, ValueError):",
-            "        pass",
             "",
             "",
             "def _dash_apply_scheme(fig):",
@@ -14345,22 +14586,6 @@ class ServerAppBuilder:
             "",
             "",
             "# ---- Aggregate compute helpers ----",
-            "def _dash_slider_step(vmin, vmax, values):",
-            "    # A range of whole numbers steps by 1.  (vmax - vmin) / 100",
-            "    # gave rep78, which takes the values 1..5, a step of 0.04 --",
-            "    # so the handle stopped at 1.04, 1.08, ... and a user could",
-            "    # not select `2'.",
-            "    _span = float(vmax) - float(vmin)",
-            "    try:",
-            "        _arr = np.asarray(values, dtype=float)",
-            "        _arr = _arr[np.isfinite(_arr)]",
-            "        if _arr.size and np.all(_arr == np.floor(_arr)):",
-            "            return 1.0",
-            "    except (TypeError, ValueError):",
-            "        pass",
-            "    return (_span / 100.0) or 1.0",
-            "",
-            "",
             'def _compute_histogram(df, varname, options=None):',
             "    # The renderer's own grid and height rules.  This used to be",
             '    # np.histogram(data, bins=<int>) returning RAW COUNTS, so start() and',
@@ -14883,7 +15108,8 @@ class ServerAppBuilder:
             "    kpi_defs = spec.get('kpis', [])",
             "    bo = spec.get('build_options', {})",
             "    link_opt = bo.get('link', '') or ''",
-            "    title_text = html.escape(bo.get('title', '') or '')",
+            "    # Raw: the header builder escapes it exactly once.",
+            "    title_text = bo.get('title', '') or ''",
             "",
             "    var_labels = meta['var_labels']",
             "    # The dataset's Stata display formats, for the tooltip's",
@@ -14893,6 +15119,15 @@ class ServerAppBuilder:
             "    _num_formats = _NUM_FORMATS",
             "    val_label_names = meta['val_label_names']",
             "    val_labels = meta['val_labels']",
+            "    # The dataset's Stata metadata reaches the mapper, as it does",
+            "    # when the saved renderer builds one: a served colour key used",
+            "    # to read '0'/'1' where the saved one reads the value labels.",
+            "    _dash_attach_labels(_DASH_MAPPER, var_labels, val_labels,",
+            "                        val_label_names, numeric_formats=_NUM_FORMATS)",
+            "    # The session's c(level): a band with no level() of its own",
+            "    # draws at it.  It used to reach the legend key and never",
+            "    # the band, so `set level 90' served a 95% band labelled 90%.",
+            "    _DASH_MAPPER.default_level = _dash_session_level(bo)",
             "",
             "    # ---- Determine linked graphs ----",
             "    linked_names = set()",
@@ -14910,6 +15145,14 @@ class ServerAppBuilder:
             "            for k in ('yvar', 'xvar', 'var', 'yvar1', 'yvar2', 'y1var', 'x1var', 'y2var', 'x2var'):",
             "                v = p.get(k, '')",
             "                if v and v in df.columns: all_vars.add(v)",
+            "            # colorvar() and mlabel() name columns too, and so does",
+            "            # hover(): a linked graph draws from the shared source,",
+            "            # which must carry them.  Measured without this: a linked",
+            "            # hover(price) had no price and a linked mlabel(rep) no labels.",
+            "            for _cv in _dash_option_columns(p.get('options', {}), df.columns):",
+            "                all_vars.add(_cv)",
+            "        for _hc in (g.get('graph_options', {}).get('hover', '') or '').split():",
+            "            if _hc in df.columns: all_vars.add(_hc)",
             "    for kpi in kpi_defs:",
             "        v = kpi.get('var', '')",
             "        if v and v in df.columns: all_vars.add(v)",
@@ -15002,7 +15245,7 @@ class ServerAppBuilder:
             "            y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
             "            _ly_src, _ok = _dash_range_source(",
             "                g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                extra_cols=_hv)",
+            "                extra_cols=_hv + _dash_option_columns(opts, df.columns))",
             "            if _ok:",
             "                _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, y1var, xvar,",
@@ -15011,13 +15254,19 @@ class ServerAppBuilder:
             "            _ly_src, _ly_view = _dash_layer_source(",
             "                g_df, df, xvar, yvar, opts.get('mlabel', ''),",
             "                gname, _ln, _shared, _shared_pos, _fallback,",
-            "                extra_cols=_hv)",
+            "                extra_cols=_hv + _dash_option_columns(opts, df.columns))",
             "            if _ly_src is not None:",
             "                _dash_add_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
             "                    view=_ly_view, color_idx=pi)",
+            "        # A yaxis(2)/xaxis(2) layer draws on the secondary range.",
+            "        _dash_assign_axis_ranges(fig, fig.renderers[_before:], opts)",
             "        _srcs = []",
             "        for _rr in fig.renderers[_before:]:",
+            "            # A colour key's invisible swatches are not a layer",
+            "            # source: not refreshed, not redrawn.",
+            "            if _dash_is_swatch(_rr):",
+            "                continue",
             "            _rs = getattr(_rr, 'data_source', None)",
             "            if _rs is not None and all(_rs is not _s for _s in _srcs):",
             "                _srcs.append(_rs)",
@@ -15087,21 +15336,19 @@ class ServerAppBuilder:
             "        # narrows them further.  Each layer starts from here.",
             "        _g_df_graph = g_df",
             "",
-            "        x_label = ''",
-            "        y_label = ''",
             "        plots = g.get('plots', [])",
-            "        if plots:",
-            "            xv = plots[0].get('xvar', '')",
-            "            yv = plots[0].get('yvar', '') or plots[0].get('var', '')",
-            "            raw_xt = go.get('xtitle', '')",
-            "            raw_yt = go.get('ytitle', '')",
-            "            x_label = html.escape(raw_xt) if raw_xt else var_labels.get(xv, xv)",
-            "            y_label = html.escape(raw_yt) if raw_yt else var_labels.get(yv, yv)",
+            "        xv = plots[0].get('xvar', '') if plots else ''",
+            "        yv = plots[0].get('yvar', '') if plots else ''",
+            "        # Canvas text, through the helper the saved renderer runs:",
+            "        # this used to html.escape the user's title and to title a",
+            "        # histogram's y axis with the variable, where the saved",
+            "        # figure titled it nothing and Stata writes 'Density'.",
+            "        x_label, y_label = _dash_axis_labels(plots, go, var_labels)",
             "",
             "        n_rows = len(df)",
             "        backend = 'webgl' if n_rows > _WEBGL_THRESHOLD else 'canvas'",
             "        _fig_kw = dict(",
-            "            title=html.escape(go.get('title', '') or ''),",
+            "            title=_parse_textbox_opt(go.get('title', '') or '')[0],",
             "            x_axis_label=x_label,",
             "            y_axis_label=y_label,",
             "            tools=TOOLS,",
@@ -15119,6 +15366,9 @@ class ServerAppBuilder:
             "        fig = bokeh_figure(**_fig_kw)",
             "        # Scheme first, so an explicit graph option still wins.",
             "        _dash_apply_scheme(fig)",
+            "        # yaxis(2)/xaxis(2): the second axis, from the rows this",
+            "        # figure draws.  There used to be none when served.",
+            "        _dash_add_secondary_axes(fig, plots, go, g_df)",
             "        # Initialised with the figure, not with the plot loop: a",
             "        # faceted graph never enters that loop and would reach the",
             "        # legend block with the name unbound.",
@@ -15211,10 +15461,11 @@ class ServerAppBuilder:
             "                text_color=_textbox_color_of(_ann_opts, _d['color'])),",
             "                'below')",
             "        # subtitle annotation",
-            "        _sub_txt = go.get('subtitle', '')",
+            "        _sub_txt, _sub_opts = _parse_textbox_opt(go.get('subtitle', '') or '')",
             "        if _sub_txt:",
             "            fig.add_layout(_Label(x=0, y=0, x_units='screen', y_units='screen',",
-            "                text=html.escape(_sub_txt), text_font_size='13px', text_color='#444444'), 'above')",
+            "                text=_sub_txt, text_font_size=_textbox_size_px(_sub_opts, 13.0),",
+            "                text_color=_textbox_color_of(_sub_opts, '#444444')), 'above')",
             "        # xline / yline reference lines",
             "        #",
             "        # This used to float-cast every whitespace token and",
@@ -15247,42 +15498,11 @@ class ServerAppBuilder:
             "                                        dimension=_dim, **_refkw))",
             "                except (ValueError, TypeError):",
             "                    pass",
-            "        from bokeh.models.tickers import FixedTicker as _FT",
-            "        from bokeh.models.formatters import CustomJSTickFormatter as _CJSF",
-            "        import re as _re, json as _json",
-            "        def _parse_axlabel(raw):",
-            "            tks, labs = [], {}",
-            "            toks = _re.findall(r'\"([^\"]*)\"|\\'([^\\']*)\\'|([^\\s,\"\\']+)', raw)",
-            "            flat = [d or s or b for d,s,b in toks]",
-            "            i = 0",
-            "            while i < len(flat):",
-            "                try:",
-            "                    v = float(flat[i]); tks.append(v)",
-            "                    if i+1 < len(flat):",
-            "                        try: float(flat[i+1])",
-            "                        except ValueError: labs[str(v)] = flat[i+1]; i += 1",
-            "                except ValueError: pass",
-            "                i += 1",
-            "            return sorted(tks), labs",
-            "        def _parse_axangle(raw):",
-            "            import re as _re_ang, math as _math_ang",
-            "            _m = _re_ang.search(r'\\bangle\\s*\\(\\s*([^)]+)\\s*\\)', raw, _re_ang.IGNORECASE)",
-            "            if not _m: return None",
-            "            _v = _m.group(1).strip().lower()",
-            "            if _v == 'horizontal': return 0.0",
-            "            if _v == 'vertical': return _math_ang.pi / 2",
-            "            try: return _math_ang.radians(float(_v))",
-            "            except ValueError: return None",
-            "        for _axk, _axobj in (('xlabel', fig.xaxis), ('ylabel', fig.yaxis)):",
-            "            _raw_ax = go.get(_axk, '')",
-            "            if not _raw_ax: continue",
-            "            _tks, _labs = _parse_axlabel(_raw_ax)",
-            "            if _tks:",
-            "                _axobj.ticker = _FT(ticks=_tks)",
-            "                if _labs:",
-            "                    _axobj.formatter = _CJSF(code=f'const m={_json.dumps(_labs)};return m[String(tick)]||String(tick);')",
-            "            _ang = _parse_axangle(_raw_ax)",
-            "            if _ang is not None: _axobj.major_label_orientation = _ang",
+            "        # xlabel()/ylabel()/xtick()/ytick(): Stata's full grammar,",
+            "        # through the helper the saved renderer runs.  A 14-line",
+            "        # parser here read a bare numlist and angle() and nothing",
+            "        # else, so xlabel(2000(1000)4000) was ignored when served.",
+            "        _dash_apply_axis_options(fig, go, xv, yv, g_df, _num_formats)",
             "",
             '        # Legend boundaries.  NOT ONE of the 44 glyph calls in this loop',
             '        # passed legend_label, so a served figure had no legend at all --',
@@ -15414,76 +15634,23 @@ class ServerAppBuilder:
             "        # when there is none.  lowess, scatteri and pci pass no",
             "        # label, and a served figure used to carry a Legend model",
             "        # for them where the saved one carries nothing.",
-            "        _had_legend = bool([m for m in fig.center",
-            "                            if isinstance(m, Legend)])",
-            '        if _leg_bounds and fig.renderers and _had_legend:',
-            "            # The mapper's own legend is replaced, not added to:",
-            "            # leaving it in place and adding this one gave the",
-            "            # served figure TWO legends where the saved one has",
-            "            # one.",
-            "            for _old_lg in [m for m in fig.center",
-            "                            if isinstance(m, Legend)]:",
-            "                fig.center.remove(_old_lg)",
-            '            _plot_rends = []',
-            '            for _bi, (_start, _lplot) in enumerate(_leg_bounds):',
-            '                _end = (_leg_bounds[_bi + 1][0]',
-            '                        if _bi + 1 < len(_leg_bounds) else len(fig.renderers))',
-            '                _plot_rends.append((_lplot, [',
-            '                    fig.renderers[_ri] for _ri in range(_start, _end)',
-            '                    if 0 <= _ri < len(fig.renderers)]))',
-            '            _items = [',
-            "                LegendItem(label={'value': html.escape(_lbl)},",
-            '                           renderers=_rends)',
-            '                for _lbl, _rends in _dash_legend_entries(',
-            "                    _plot_rends, var_labels, float(bo.get('level', 95) or 95))]",
-            '            if _items:',
-            "                _lg = Legend(items=_items, location='top_right')",
-            "                _lg.click_policy = 'hide'",
-            '                # twoway draws no legend for a single series; the standalone',
-            '                # renderer builds one and hides it, so both documents carry',
-            '                # the same models.',
-            '                _lg.visible = len(_items) > 1',
-            '                fig.add_layout(_lg)',
-            '                _dash_style_legend(_lg)',
-            '',
-            '        # legend() is applied AFTER the legend exists.  This block used to',
-            '        # be emitted before the plot loop, where fig.legend was empty, so',
-            '        # legend(position(6)), legend(order()), legend(cols()) and',
-            '        # legend(off) all acted on nothing.',
-            "        _leg_opt = go.get('legend', '')",
-            '        if _leg_opt and fig.legend:',
-            '            import re as _re_leg',
-            '            # A WORD, not the whole option string: this was compared for',
-            "            # exact equality with 'off', so legend(pos(6) off) did nothing.",
-            "            if _re_leg.search(r'\\boff\\b', _leg_opt):",
-            '                for _lg0 in fig.legend:',
-            '                    _lg0.visible = False',
-            '            else:',
-            "                # 'on' is NOT a placement; the standalone renderer removed",
-            '                # it from this map as a bug.',
-            "                _leg_pos_map = {'top': 'top_center', 'bottom': 'bottom_center',",
-            "                                'left': 'center_left', 'right': 'center_right'}",
-            '                for _kw, _loc in _leg_pos_map.items():',
-            "                    if _re_leg.search(r'\\b' + _kw + r'\\b', _leg_opt):",
-            '                        for _lg0 in fig.legend:',
-            '                            _lg0.location = _loc',
-            '                        break',
-            '                for _lm in _re_leg.finditer(r\'label\\(\\s*(\\d+)\\s+"([^"]*)"\\s*\\)\', _leg_opt):',
-            '                    _li = int(_lm.group(1)) - 1',
-            '                    _lt = html.escape(_lm.group(2))',
-            '                    if fig.legend and 0 <= _li < len(fig.legend[0].items):',
-            "                        fig.legend[0].items[_li].label = {'value': _lt}",
-            "                _mc = _re_leg.search(r'\\bcols\\s*\\(\\s*(\\d+)\\s*\\)', _leg_opt)",
-            "                _mr = _re_leg.search(r'\\brows\\s*\\(\\s*(\\d+)\\s*\\)', _leg_opt)",
-            '                for _lg0 in fig.legend:',
-            '                    try:',
-            '                        if _mc: _lg0.ncols = int(_mc.group(1))',
-            '                        if _mr: _lg0.nrows = int(_mr.group(1))',
-            '                    except (ValueError, AttributeError):',
-            '                        pass',
-            '',
-            '        # xlabel / ylabel custom tick values',
-            '',
+            "        _plot_rends = []",
+            "        for _bi, (_start, _lplot) in enumerate(_leg_bounds):",
+            "            _end = (_leg_bounds[_bi + 1][0]",
+            "                    if _bi + 1 < len(_leg_bounds) else len(fig.renderers))",
+            "            _plot_rends.append((_lplot, [",
+            "                fig.renderers[_ri] for _ri in range(_start, _end)",
+            "                if 0 <= _ri < len(fig.renderers)]))",
+            "        # Keys, Stata's drawing rule and every legend() sub-option,",
+            "        # through the helper the saved renderer runs.  This file's",
+            "        # own block knew off, four keywords, label() and cols()/rows();",
+            "        # position(), ring(0), size(), order() and legend(on) were",
+            "        # ignored, the keys were HTML-escaped, and every legend was",
+            "        # clickable where the saved one is not.",
+            "        _dash_apply_legend(fig, _plot_rends, go.get('legend', ''),",
+            "                           var_labels, _DASH_MAPPER.default_level,",
+            "                           _SCHEME_CHROME)",
+            "",
             '        # ---- The figure\'s one HoverTool ----',
             '        # GAPS.md D2: HoverTool was imported into this file and',
             '        # never instantiated, so the only tooltips a served',
@@ -15512,7 +15679,6 @@ class ServerAppBuilder:
             "    # ---- Build figures: one call per graph, or per by() panel ----",
             "    _facet_map = {}         # gname -> [(panel_key, label)]",
             "    _facet_group_vals = {}  # panel_key -> (by_vars, group_key)",
-            "    _facet_cols = {}        # gname -> cols(#) from by()",
             "    for g in graphs:",
             "        go = g.get('graph_options', {})",
             "        gname = go.get('name', '')",
@@ -15538,7 +15704,6 @@ class ServerAppBuilder:
             "            # Every by() value is missing: one empty panel, as saved.",
             "            figures[gname] = _dash_figure_for(g, gname, work_df)",
             "            continue",
-            "        _facet_cols[gname] = _bcols",
             "        if gname not in linked_names:",
             "            graph_sources.pop(gname, None)",
             "        _gvars = []",
@@ -15651,96 +15816,29 @@ class ServerAppBuilder:
             "        # file read only the last two, so",
             "        # filter(rep78, label(\"Repair record\")) showed up",
             "        # titled `rep78'.",
-            "        _ftitle = (str(fspec.get('label', '') or '').strip()",
-            "                   or var_labels.get(fvar, fvar))",
+            "        _ftitle = _dash_filter_title(fspec.get('label', ''),",
+            "                                     var_labels.get(fvar, fvar), ftype)",
             "        if fvar not in df.columns:",
             "            continue",
-            "        if ftype == 'dropdown':",
-            "            uniq = sorted(df[fvar].dropna().unique())",
-            "            # Apply value labels if available",
-            "            lset = meta['val_label_names'].get(fvar, '')",
-            "            vlabels = meta['val_labels'].get(lset, {})",
-            "            # Build (raw_value, display_label) tuples for Select options.",
-            "            # Using raw values as option keys avoids label-collision bugs where",
-            "            # two categories share the same display label and one becomes",
-            "            # Compute a per-widget sentinel absent from actual data values",
-            "            # so that real categories equal to '__all__' remain selectable.",
-            "            _uniq_strs = set(str(v) for v in uniq)",
-            "            _sent = '__all__'",
-            "            while _sent in _uniq_strs: _sent += '_'",
-            "            opts = [(_sent, 'All')] + [",
-            "                (str(v), html.escape(str(vlabels.get(str(int(v)) if isinstance(v, float) and v == int(v) else str(v), v))))",
-            "                for v in uniq",
-            "            ]",
-            "            widget = Select(",
-            "                title=_ftitle,",
-            "                value=_sent,",
-            "                options=opts,",
-            "            )",
-            "            widget._dash_var = fvar",
-            "            widget._dash_exclude = fexcl",
-            "            widget._dash_sentinel = _sent",
-            "        elif ftype == 'range':",
-            "            # Guard: slider/range require a numeric column; fall back gracefully.",
-            "            if not pd.api.types.is_numeric_dtype(df[fvar]):",
-            "                import warnings",
+            "        # Value labels, by label set or directly by variable name.",
+            "        lset = meta['val_label_names'].get(fvar, '')",
+            "        vlabels = meta['val_labels'].get(lset, {}) if lset else {}",
+            "        if not vlabels and isinstance(meta['val_labels'].get(fvar), dict):",
+            "            vlabels = meta['val_labels'][fvar]",
+            "        # The widget itself comes from the builder the saved renderer",
+            "        # runs: option values, titles, steps and bounds are one rule.",
+            "        widget, _sent = _dash_filter_widget(ftype, fvar, df[fvar], _ftitle, vlabels)",
+            "        if widget is None:",
+            "            if ftype in ('range', 'slider'):",
             "                warnings.warn(",
-            "                    f'dash: filter {fvar!r} type \\'range\\' requires numeric data; '",
-            "                    f'skipping widget (use type(dropdown) for string columns).',",
-            "                    UserWarning, stacklevel=2,",
+            "                    f\"dash: filter '{fvar}' type '{ftype}' requires numeric \"",
+            "                    f\"data; skipping widget (use type(dropdown) for string \"",
+            "                    f\"columns).\",",
+            "                    stacklevel=2,",
             "                )",
-            "                continue",
-            "            vmin = float(df[fvar].min())",
-            "            vmax = float(df[fvar].max())",
-            "            # Guard: all-missing numeric column produces NaN bounds — skip.",
-            "            if not (math.isfinite(vmin) and math.isfinite(vmax)):",
-            "                import warnings",
-            "                warnings.warn(",
-            "                    f'dash: filter {fvar!r} type \\'range\\' has no finite values; '",
-            "                    f'skipping widget.',",
-            "                    UserWarning, stacklevel=2,",
-            "                )",
-            "                continue",
-            "            if vmin == vmax: vmax = vmin + 1.0",
-            "            widget = RangeSlider(",
-            "                title=_ftitle,",
-            "                start=vmin, end=vmax,",
-            "                value=(vmin, vmax),",
-            "                step=_dash_slider_step(vmin, vmax, df[fvar].values),",
-            "            )",
-            "            widget._dash_var = fvar",
-            "            widget._dash_exclude = fexcl",
-            "        elif ftype == 'slider':",
-            "            # Guard: slider/range require a numeric column; fall back gracefully.",
-            "            if not pd.api.types.is_numeric_dtype(df[fvar]):",
-            "                import warnings",
-            "                warnings.warn(",
-            "                    f'dash: filter {fvar!r} type \\'slider\\' requires numeric data; '",
-            "                    f'skipping widget (use type(dropdown) for string columns).',",
-            "                    UserWarning, stacklevel=2,",
-            "                )",
-            "                continue",
-            "            vmin = float(df[fvar].min())",
-            "            vmax = float(df[fvar].max())",
-            "            # Guard: all-missing numeric column produces NaN bounds — skip.",
-            "            if not (math.isfinite(vmin) and math.isfinite(vmax)):",
-            "                import warnings",
-            "                warnings.warn(",
-            "                    f'dash: filter {fvar!r} type \\'slider\\' has no finite values; '",
-            "                    f'skipping widget.',",
-            "                    UserWarning, stacklevel=2,",
-            "                )",
-            "                continue",
-            "            if vmin == vmax: vmax = vmin + 1.0",
-            "            widget = Slider(",
-            "                title=_ftitle,",
-            "                start=vmin, end=vmax, value=vmin,",
-            "                step=_dash_slider_step(vmin, vmax, df[fvar].values),",
-            "            )",
-            "            widget._dash_var = fvar",
-            "            widget._dash_exclude = fexcl",
-            "        else:",
             "            continue",
+            "        widget._dash_var = fvar",
+            "        widget._dash_exclude = fexcl",
             "        filter_widgets.append(widget)",
             "        filter_var_widgets[fvar] = widget",
             "",
@@ -15762,20 +15860,20 @@ class ServerAppBuilder:
             "                wvar = getattr(w, '_dash_var', None)",
             "                if wvar is None or wvar not in _df_ref.columns:",
             "                    continue",
-            "                if isinstance(w, Select):",
+            "                _w_kind = getattr(w, '_dash_ftype', '')",
+            "                if _w_kind == 'dropdown':",
             "                    # Use per-widget sentinel (may differ from '__all__' when data",
             "                    # contains the literal string '__all__').",
             "                    _w_sentinel = getattr(w, '_dash_sentinel', '__all__')",
             "                    if w.value != _w_sentinel:",
-            "                        # w.value is the raw value (Select uses (value, label) tuples)",
-            "                        try:",
-            "                            mask &= (_df_ref[wvar].astype(str) == str(w.value))",
-            "                        except Exception:",
-            "                            pass",
-            "                elif isinstance(w, RangeSlider):",
+            "                        # The saved page's own match rule: both the",
+            "                        # option value and the column go through",
+            "                        # _dash_option_value, so '1' and '1.0' agree.",
+            "                        mask &= _dash_dropdown_mask(_df_ref[wvar], w.value)",
+            "                elif _w_kind == 'range':",
             "                    lo, hi = w.value",
             "                    mask &= (_df_ref[wvar] >= lo) & (_df_ref[wvar] <= hi)",
-            "                elif isinstance(w, Slider):",
+            "                elif _w_kind == 'slider':",
             "                    mask &= (_df_ref[wvar] >= w.value)",
             "            fdf = _df_ref[mask]",
             "            # 2. Replace raw source data (facet-aware)",
@@ -15933,9 +16031,9 @@ class ServerAppBuilder:
             "            _facet_map, _facet_group_vals, _orig_src_data,",
             "            _graph_qualifiers, _facet_to_orig, _redrawn_ids",
             "        )",
-            "        if isinstance(w, Select):",
-            "            w.on_change('value', _cb_for_w)",
-            "        elif isinstance(w, (Slider, RangeSlider)):",
+            "        # Every widget the builder made, whatever its class: a date",
+            "        # slider is not a Slider subclass.",
+            "        if hasattr(w, '_dash_var'):",
             "            w.on_change('value', _cb_for_w)",
             "",
             "    # ---- Wire brush selection callbacks ----",
@@ -16024,45 +16122,24 @@ class ServerAppBuilder:
             "    layout_opt = (bo.get('layout', '') or 'auto').strip()",
             "    tabs_opt = bo.get('tabs', '') or ''",
             "    filter_position = (bo.get('filter_position', '') or 'top').strip().lower()",
-            "    subtitle_text = html.escape(bo.get('subtitle', '') or '')",
+            "    # Raw: the header builder escapes it exactly once.",
+            "    subtitle_text = bo.get('subtitle', '') or ''",
             '',
             "    registry = bo.get('registry', '') or ''",
-            '    all_names = registry.split() if registry else (',
-            "        [g.get('graph_options', {}).get('name', '') for g in graphs]",
-            "        + [k.get('name', '') for k in kpi_defs]",
-            '    )',
+            "    # The registry as typed, graphs and KPI cards alike -- the",
+            "    # saved renderer's rule as well now.",
+            "    all_names = _dash_layout_order(registry, graphs, kpi_defs)",
+            '',
+            '    def _gopts_of(name):',
+            '        for _gx in graphs:',
+            "            if _gx.get('graph_options', {}).get('name') == name:",
+            "                return _gx.get('graph_options', {})",
+            '        return {}',
             '',
             '    def _dash_cell(name):',
-            '        """The renderable for one registered name, or None."""',
-            '        if name in _facet_map:',
-            '            _fac_figs = [figures[fk] for fk, _ in _facet_map[name] if fk in figures]',
-            '            if not _fac_figs:',
-            '                return None',
-            '            _go = {}',
-            '            for _gx in graphs:',
-            "                if _gx.get('graph_options', {}).get('name') == name:",
-            "                    _go = _gx.get('graph_options', {})",
-            '                    break',
-            "            # cols(#) parsed from by() first, then the by_cols key,",
-            "            # then the square-root default -- the saved renderer's rule.",
-            "            # The parsed value used to be computed and never read.",
-            "            _by_cols_raw = _go.get('by_cols', '0')",
-            "            try:",
-            "                _by_cn = _facet_cols.get(name, 0) or (int(_by_cols_raw) if _by_cols_raw else 0)",
-            "            except (ValueError, TypeError):",
-            "                _by_cn = _facet_cols.get(name, 0)",
-            '            if _by_cn <= 0:',
-            '                _by_cn = min(len(_fac_figs), max(1, math.ceil(math.sqrt(len(_fac_figs)))))',
-            '            _sub_rows = [_fac_figs[_si:_si + _by_cn]',
-            '                         for _si in range(0, len(_fac_figs), _by_cn)]',
-            '            while len(_sub_rows[-1]) < _by_cn:',
-            '                _sub_rows[-1].append(None)',
-            "            return gridplot(_sub_rows, sizing_mode='stretch_width')",
-            '        if name in figures:',
-            '            return figures[name]',
-            '        if name in kpi_divs:',
-            '            return kpi_divs[name]',
-            '        return None',
+            '        """The renderable for one registered name, or None -- the',
+            '        resolver the saved grid and tabs use as well."""',
+            '        return _dash_layout_cell(name, figures, _facet_map, kpi_divs, _gopts_of)',
             '',
             '    def _dash_placements(spec_str):',
             '        """Placements, through the saved renderer\'s own parser.',
@@ -16081,54 +16158,9 @@ class ServerAppBuilder:
             '            return n',
             '        return math.ceil(math.sqrt(n))',
             '',
-            '    def _dash_parse_tabs(tabs_str, names):',
-            '        """\'Title: a b / Title2: c\' -> [(title, [names])], or None.',
-            '',
-            '        Only names in the registry are accepted, so a tabs() option cannot',
-            '        place something that was never registered.  Same rule, and the same',
-            '        separator, as the standalone path.',
-            '        """',
-            '        if not tabs_str or not tabs_str.strip():',
-            '            return None',
-            '        valid = set(names)',
-            '        result = []',
-            "        for i, segment in enumerate(tabs_str.split('/')):",
-            '            segment = segment.strip()',
-            '            if not segment:',
-            '                continue',
-            "            if ':' in segment:",
-            "                raw_title, _, items_str = segment.partition(':')",
-            '                title = raw_title.strip()',
-            '                items = [x.strip() for x in items_str.split() if x.strip()]',
-            '            else:',
-            '                items = [x.strip() for x in segment.split() if x.strip()]',
-            "                title = 'Tab %d' % (i + 1)",
-            '            safe = [x for x in items if x in valid]',
-            '            if safe:',
-            '                result.append((title, safe))',
-            '        return result or None',
-            '',
             '    # ---- tabs() first: a tabbed element is not also in the grid ----',
             '    tabs_spec = _dash_parse_tabs(tabs_opt, all_names)',
-            '    tabs_widget = None',
-            '    placed_in_tabs = set()',
-            '    if tabs_spec:',
-            '        _panels = []',
-            '        for _title, _names in tabs_spec:',
-            '            _items = [c for c in (_dash_cell(n) for n in _names) if c is not None]',
-            '            if not _items:',
-            '                continue',
-            '            placed_in_tabs.update(_names)',
-            '            _tc = max(1, math.ceil(math.sqrt(len(_items))))',
-            '            _trows = [_items[_i:_i + _tc] for _i in range(0, len(_items), _tc)]',
-            '            while len(_trows[-1]) < _tc:',
-            '                _trows[-1].append(None)',
-            '            _panels.append(TabPanel(',
-            "                child=gridplot(_trows, sizing_mode='stretch_width'),",
-            '                title=_title,',
-            '            ))',
-            '        if _panels:',
-            "            tabs_widget = Tabs(tabs=_panels, sizing_mode='stretch_width')",
+            '    tabs_widget, placed_in_tabs = _dash_tab_panels(tabs_spec, _dash_cell)',
             '',
             '    grid_names = [n for n in all_names if n not in placed_in_tabs]',
             '',
@@ -16205,14 +16237,11 @@ class ServerAppBuilder:
             '        layout = content',
             '',
             '    if title_text or subtitle_text:',
-            "        _head = ''",
-            '        if title_text:',
-            '            _head += f\'<h2 style="font-family:sans-serif;margin-bottom:2px;">{title_text}</h2>\'',
-            '        if subtitle_text:',
-            '            _head += (f\'<div style="font-family:sans-serif;font-size:14px;\'',
-            '                      f\'color:#666;margin-top:0;">{subtitle_text}</div>\')',
-            "        title_div = Div(text=_head, sizing_mode='stretch_width')",
-            "        layout = column(title_div, layout, sizing_mode='stretch_width')",
+            "        # The same two classed Divs the saved renderer builds, with",
+            "        # the scheme's CSS attached to them.",
+            "        layout = column(*_dash_header_models(title_text, subtitle_text,",
+            "                                             _DASH_SCHEME.css_block()),",
+            "                        layout, sizing_mode='stretch_width')",
             '',
             '    doc.add_root(layout)',
             "    doc.title = title_text or 'dash'",

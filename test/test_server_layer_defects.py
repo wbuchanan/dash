@@ -72,13 +72,10 @@ _RANGE = {"rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
           "rcapsym", "rscatter", "tsrline"}
 _PC = {"pcspike", "pcarrow", "pcbarrow", "pcscatter"}
 
-ALL_TYPES = ["scatter", "line", "connected", "area", "bar", "spike", "lfit",
-             "qfit", "lfitci", "qfitci", "lowess", "lpoly", "lpolyci",
-             "fpfit", "fpfitci", "histogram", "kdensity", "rarea", "rbar",
-             "rspike", "rcap", "rline", "rconnected", "dot", "dropline",
-             "rcapsym", "scatteri", "pcspike", "pcarrow", "pcbarrow", "pci",
-             "pcscatter", "tsline", "tsrline", "mspline", "mband",
-             "rscatter", "function"]
+#: Derived from the dispatch tables, not written by hand: a plot type added
+#: to the code is in every sweep here and in test_server_facets.py the same
+#: day, and test_mode_parity.py cross-checks the same set against dash.ado.
+ALL_TYPES = sorted(dr._dash_plot_type_names())
 
 
 def plot_for(ptype, options=None, **extra):
