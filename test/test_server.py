@@ -9803,3 +9803,143 @@ class TestDashSetupPackagingOrder:
                '"packaging"' in pre_loop, (
             "packaging guard must include a pip install step before the loop"
         )
+
+
+class TestTheServerDispatchesThroughTheSharedTable:
+    """The generated app must call GlyphMapper, not re-implement it.
+
+    The whole ``GlyphMapper`` class has always been embedded in the generated
+    app via ``inspect.getsource``, and ``_DASH_MAPPER`` constructed from it --
+    so all 39 ``map_*`` methods were available there. Measured before this
+    work, ``grep -oE '_DASH_MAPPER\\.map_[a-z_]+' dash_render.py`` returned
+    exactly one name: ``map_scatter``. The other 38 plot types were
+    reimplemented inline as an ``if/elif ptype == '...'`` chain of emitted
+    string literals, and the two implementations disagreed in 132
+    non-cosmetic ways across 37 types (28 of them S1) -- see the BUGS.md
+    entry and ROADMAP WP-09.
+
+    These tests pin the machinery that makes one implementation possible:
+    the dispatch tables and the layer-source helper are copied into the app
+    verbatim, the way the statistical helpers already were, so a plot type
+    added to the table is added to both modes at once.
+    """
+
+    def _app_source(self, tmp_path, dr_module, auto_df, plots=None):
+        # _make_spec_json() defaults to NO graphs, so a spec built from it
+        # has to carry its own; indexing graphs[0] is an IndexError.
+        if plots is None:
+            plots = [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                      "options": {}}]
+        spec = _make_spec_json(graphs=[{
+            "name": "g1", "plots": plots, "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }])
+        spec_path, data_path = _write_temp_files(auto_df, spec)
+        out = str(tmp_path / "app.py")
+        dr_module.ServerAppBuilder(spec_path, data_path).build(out)
+        with open(out, encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_the_dispatch_tables_are_copied_into_the_app(self, tmp_path,
+                                                         dr_module, auto_df):
+        src = self._app_source(tmp_path, dr_module, auto_df)
+        for name in ("_dash_glyph_dispatch", "_dash_pc_dispatch",
+                     "_dash_add_glyph", "_dash_add_pc_glyph",
+                     "_dash_layer_source"):
+            assert ("def %s(" % name) in src, (
+                "%s is not emitted into the generated app, so the app cannot "
+                "share the renderer's dispatch" % name
+            )
+
+    def test_the_type_categories_are_shared_not_recopied(self, tmp_path,
+                                                         dr_module, auto_df):
+        """The app used to carry its own copies inside the chain."""
+        src = self._app_source(tmp_path, dr_module, auto_df)
+        for name in ("_DASH_RANGE_TYPES", "_DASH_UNIVARIATE_TYPES",
+                     "_DASH_PC_TYPES"):
+            assert ("%s =" % name) in src, name
+
+    def test_the_emitted_table_is_the_renderers_own(self, dr_module):
+        """Not a transcription: the same function object, read by source."""
+        import inspect
+        for name in ("_dash_add_glyph", "_dash_add_pc_glyph",
+                     "_dash_layer_source"):
+            fn = getattr(dr_module, name)
+            assert inspect.isfunction(fn), name
+            # It must take the mapper as a parameter rather than reaching for
+            # `self`, or it could not be copied into the app at all.
+            assert "self" not in inspect.signature(fn).parameters, name
+
+    def test_every_shipped_plot_type_has_a_mapper(self, dr_module):
+        """AC-09.1's precondition, asserted directly.
+
+        Every ``map_*`` method must be reachable from a table, and every
+        table entry must name a real method. A type in neither is a type one
+        render mode cannot draw.
+        """
+        class _Probe:
+            def __getattr__(self, name):
+                if not name.startswith("map_"):
+                    raise AttributeError(name)
+                return name
+
+        probe = _Probe()
+        std, rng = dr_module._dash_glyph_dispatch(probe)
+        pc = dr_module._dash_pc_dispatch(probe)
+        named = set(std.values()) | set(rng.values()) | set(pc.values())
+
+        import inspect
+        defined = {
+            n for n, _ in inspect.getmembers(dr_module.GlyphMapper,
+                                             inspect.isfunction)
+            if n.startswith("map_")
+        }
+        # Three are reached by the CALLER rather than the table, because
+        # they do not take (yvar, xvar) from a shared source: pci and
+        # scatteri take an inline coordinate list, and function takes an
+        # expression and a range.  The standalone caller special-cases all
+        # three before it reaches _add_glyph, and the server must too.
+        for _caller_dispatched in ("map_pci_literal", "map_scatteri",
+                                   "map_function"):
+            defined.discard(_caller_dispatched)
+        assert named == defined, (
+            "table and GlyphMapper disagree; only in the table: %s; only on "
+            "the class: %s" % (sorted(named - defined), sorted(defined - named))
+        )
+
+    def test_an_unknown_plot_type_warns_rather_than_drawing_nothing(
+            self, dr_module):
+        """AC-09.3. Silence here is how 38 types went missing unnoticed."""
+        import warnings as _w
+
+        class _Mapper:
+            def _check_vars(self, *a, **k):
+                return True
+
+            def __getattr__(self, name):
+                # Building the dispatch table looks up every map_* method,
+                # so the stub has to answer all of them.
+                if name.startswith("map_"):
+                    return lambda *a, **k: None
+                raise AttributeError(name)
+
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            out = dr_module._dash_add_glyph(
+                _Mapper(), None, None, "no_such_plot_type", "y", "x", {})
+        assert out is None
+        assert any("no glyph mapper" in str(c.message) for c in caught), (
+            [str(c.message) for c in caught]
+        )
+
+    def test_the_swapped_types_call_the_mapper_in_the_app(self, tmp_path,
+                                                          dr_module, auto_df):
+        """The six types moved onto the shared dispatch in this change."""
+        plots = [{"type": t, "yvar": "mpg", "xvar": "weight", "options": {}}
+                 for t in ("dot", "qfit", "lfitci", "qfitci", "fpfit",
+                           "fpfitci")]
+        src = self._app_source(tmp_path, dr_module, auto_df, plots)
+        for t in ("dot", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci"):
+            assert ("elif ptype == '%s':" % t) in src, t
+        # Each of those branches now dispatches instead of re-implementing.
+        assert src.count("_r = _dash_add_glyph(") >= 6

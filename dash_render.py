@@ -8333,6 +8333,180 @@ def _resolve_scheme_name(master_spec: dict) -> str:
     return _scheme_name
 
 
+# ---------------------------------------------------------------------------
+# Plot-type dispatch, shared by both render modes
+# ---------------------------------------------------------------------------
+# These live at module level, and the glyph dispatch below is written as
+# plain functions taking the mapper as a parameter, for one reason: the
+# generated Bokeh Server app copies them into itself with
+# ``inspect.getsource``.  That is the same mechanism
+# ``ServerAppBuilder._shared_stat_lines`` already uses for the statistical
+# helpers, and for the same stated reason -- it copies the SAME source text
+# both modes run, so the two cannot drift.
+#
+# Before this, the server reimplemented every plot type inline as an
+# ``if/elif ptype == '...'`` chain of emitted string literals.  Measured:
+# ``grep -oE '_DASH_MAPPER\.map_[a-z_]+'`` over this file returned exactly
+# one name, ``map_scatter``.  The whole GlyphMapper class was already
+# embedded in the app and 38 of its 39 methods were simply never called.
+
+#: Plot categories that use non-standard JSON variable keys.
+_DASH_RANGE_TYPES = frozenset({
+    "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
+    "rcapsym", "tsrline", "rscatter",
+})
+_DASH_UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
+# pcscatter belongs here: it takes four variables, exactly as the other
+# three do.  Left out, it fell through to no branch at all and drew an empty
+# plot region with rc 0 and no warning.
+_DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter"})
+
+
+def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
+                       shared_source, shared_pos, fallback_src):
+    """Build the ColumnDataSource, and any view, for one ordinary plot layer.
+
+    Written once because the generated server app repeated this step in every
+    one of its per-type branches, and the repetition is where the column-list
+    defects lived: a branch that forgot ``dict.fromkeys`` crashes on
+    ``scatter mpg mpg`` (``g_df[[c, c]]`` is not a legal selection), and one
+    that forgot the linked-source case rendered two linked graphs from two
+    distinct sources, so a selection in one never appeared in the other.
+
+    Returns ``(source, view)``.  The view is not None only for a linked graph
+    carrying its own if()/in() qualifier: such a graph cannot simply be
+    pointed at the shared source, because that would draw rows the qualifier
+    excluded, so it gets a CDSView over it instead -- which is how the
+    standalone renderer has always done it.
+    """
+    cols = [c for c in [xvar, yvar, label_var] if c and c in g_df.columns]
+    cols = list(dict.fromkeys(cols))
+    clean = g_df[cols].dropna() if xvar and yvar else g_df
+
+    view = None
+    if gname in linked_names and xvar and yvar:
+        csrc = shared_source
+        if len(clean) != len(df):
+            pos = [shared_pos[_l] for _l in clean.index if _l in shared_pos]
+            view = CDSView(filter=IndexFilter(pos))
+    else:
+        csrc = ColumnDataSource(clean) if xvar and yvar else fallback_src
+    return csrc, view
+
+
+def _dash_glyph_dispatch(mapper):
+    """The one mapping from plot-type name to GlyphMapper method.
+
+    Returns ``(dispatch, range_dispatch)``.  Adding a plot type means adding
+    a line here and nothing else: both render modes read this table.
+    """
+    dispatch = {
+        "scatter":    mapper.map_scatter,
+        "sc":         mapper.map_scatter,
+        "line":       mapper.map_line,
+        "li":         mapper.map_line,
+        "connected":  mapper.map_connected,
+        "area":       mapper.map_area,
+        "bar":        mapper.map_bar,
+        "spike":      mapper.map_spike,
+        "lfit":       mapper.map_lfit,
+        "qfit":       mapper.map_qfit,
+        "lfitci":     mapper.map_lfitci,
+        "qfitci":     mapper.map_qfitci,
+        "lowess":     mapper.map_lowess,
+        "lpoly":      mapper.map_lpoly,
+        "lpolyci":    mapper.map_lpolyci,
+        "fpfit":      mapper.map_fpfit,
+        "fpfitci":    mapper.map_fpfitci,
+        "histogram":  mapper.map_histogram,
+        "hist":       mapper.map_histogram,
+        "kdensity":   mapper.map_kdensity,
+        "dot":        mapper.map_dot,
+        "dropline":   mapper.map_dropline,
+        "tsline":     mapper.map_tsline,
+        "mspline":    mapper.map_mspline,
+        "mband":      mapper.map_mband,
+    }
+    range_dispatch = {
+        "rarea":      mapper.map_rarea,
+        "rbar":       mapper.map_rbar,
+        "rspike":     mapper.map_rspike,
+        "rcap":       mapper.map_rcap,
+        "rline":      mapper.map_rline,
+        "rconnected": mapper.map_rconnected,
+        "rcapsym":    mapper.map_rcapsym,
+        "tsrline":    mapper.map_tsrline,
+        "rscatter":   mapper.map_rscatter,
+    }
+    return dispatch, range_dispatch
+
+
+def _dash_pc_dispatch(mapper):
+    """Plot-type name to GlyphMapper method, for paired-coordinate plots."""
+    return {
+        "pcspike":   mapper.map_pcspike,
+        "pcarrow":   mapper.map_pcarrow,
+        "pcbarrow":  mapper.map_pcbarrow,
+        "pci":       mapper.map_pci,
+        "pcscatter": mapper.map_pcscatter,
+    }
+
+
+def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
+                    y2var="", view=None, color_idx=0):
+    """Dispatch one plot layer to the GlyphMapper method that draws it."""
+    dispatch, range_dispatch = _dash_glyph_dispatch(mapper)
+    pt = (plot_type or "").lower()
+
+    # Guard: skip the glyph if a required variable is missing from the CDS.
+    if pt not in _DASH_PC_TYPES and pt != "pci":
+        _vars_needed = [v for v in [yvar, xvar, y2var] if v]
+        if _vars_needed and not mapper._check_vars(source, *_vars_needed):
+            return None
+
+    # Range plots take (fig, source, y1var, y2var, xvar, options).
+    rfn = range_dispatch.get(pt)
+    if rfn is not None and y2var:
+        return rfn(fig, source, yvar, y2var, xvar, options,
+                   view=view, color_idx=color_idx)
+
+    fn = dispatch.get(pt)
+    if fn is None:
+        # Loud, because silence here is how 38 plot types came to be missing
+        # from one render mode without anything noticing.
+        warnings.warn(
+            "dash: no glyph mapper for plot type %r; nothing was drawn for "
+            "that layer." % (plot_type,),
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
+
+    # histogram and kdensity are univariate -- no xvar positional argument.
+    if pt in _DASH_UNIVARIATE_TYPES:
+        return fn(fig, source, yvar, options, view=view, color_idx=color_idx)
+    return fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
+
+
+def _dash_add_pc_glyph(mapper, fig, source, plot_type, y1var, x1var, y2var,
+                       x2var, options, view=None, color_idx=0):
+    """Dispatch one paired-coordinate layer to its GlyphMapper method."""
+    fn = _dash_pc_dispatch(mapper).get((plot_type or "").lower())
+    if fn is None:
+        warnings.warn(
+            "dash: no glyph mapper for paired-coordinate plot type %r; "
+            "nothing was drawn for that layer." % (plot_type,),
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
+    _pc_needed = [v for v in [y1var, x1var, y2var, x2var] if v]
+    if _pc_needed and not mapper._check_vars(source, *_pc_needed):
+        return None
+    return fn(fig, source, y1var, x1var, y2var, x2var, options,
+              view=view, color_idx=color_idx)
+
+
 class DashRenderer:
     """Orchestrates the full Bokeh dashboard build from a master spec JSON.
 
@@ -10271,16 +10445,12 @@ class DashRenderer:
             spec = self._parse_axis_spec(raw_ax or raw_tick)
             self._apply_axis_spec(fig, axis_obj, grid_obj, spec, var)
 
-        # Plot categories that use non-standard JSON variable keys
-        _RANGE_TYPES = frozenset({
-            "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
-            "rcapsym", "tsrline", "rscatter",
-        })
-        _UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
-        # pcscatter belongs here: it takes four variables, exactly as the
-        # other three do.  Left out, it fell through to no branch at all and
-        # drew an empty plot region with rc 0 and no warning.
-        _PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter"})
+        # Plot categories that use non-standard JSON variable keys.  Defined
+        # at module level so the generated server app shares them rather than
+        # carrying its own copy, which is how the two drifted before.
+        _RANGE_TYPES = _DASH_RANGE_TYPES
+        _UNIVARIATE_TYPES = _DASH_UNIVARIATE_TYPES
+        _PC_TYPES = _DASH_PC_TYPES
 
         # Add glyphs for each plot layer
         for pi, plot in enumerate(plots):
@@ -10715,69 +10885,8 @@ class DashRenderer:
                         non-range plots).
             color_idx:  Zero-based plot index for scheme color cycling.
         """
-        # Standard (yvar, xvar) dispatch
-        dispatch = {
-            "scatter":    self.mapper.map_scatter,
-            "sc":         self.mapper.map_scatter,
-            "line":       self.mapper.map_line,
-            "li":         self.mapper.map_line,
-            "connected":  self.mapper.map_connected,
-            "area":       self.mapper.map_area,
-            "bar":        self.mapper.map_bar,
-            "spike":      self.mapper.map_spike,
-            "lfit":       self.mapper.map_lfit,
-            "qfit":       self.mapper.map_qfit,
-            "lfitci":     self.mapper.map_lfitci,
-            "qfitci":     self.mapper.map_qfitci,
-            "lowess":     self.mapper.map_lowess,
-            "lpoly":      self.mapper.map_lpoly,
-            "lpolyci":    self.mapper.map_lpolyci,
-            "fpfit":      self.mapper.map_fpfit,
-            "fpfitci":    self.mapper.map_fpfitci,
-            "histogram":  self.mapper.map_histogram,
-            "hist":       self.mapper.map_histogram,
-            "kdensity":   self.mapper.map_kdensity,
-            "dot":        self.mapper.map_dot,
-            "dropline":   self.mapper.map_dropline,
-            "tsline":     self.mapper.map_tsline,
-            "mspline":    self.mapper.map_mspline,
-            "mband":      self.mapper.map_mband,
-        }
-        # Range plot (y1var, y2var, xvar) dispatch
-        range_dispatch = {
-            "rarea":      self.mapper.map_rarea,
-            "rbar":       self.mapper.map_rbar,
-            "rspike":     self.mapper.map_rspike,
-            "rcap":       self.mapper.map_rcap,
-            "rline":      self.mapper.map_rline,
-            "rconnected": self.mapper.map_rconnected,
-            "rcapsym":    self.mapper.map_rcapsym,
-            "tsrline":    self.mapper.map_tsrline,
-            "rscatter":   self.mapper.map_rscatter,
-        }
-
-        pt = plot_type.lower()
-
-        # Guard: skip glyph if required variables are missing from the CDS
-        _pc_types = frozenset({"pcspike", "pcarrow", "pcbarrow", "pci", "pcscatter"})
-        if pt not in _pc_types:
-            _vars_needed = [v for v in [yvar, xvar, y2var] if v]
-            if _vars_needed and not self.mapper._check_vars(source, *_vars_needed):
-                return
-
-        # Range plots: (fig, source, y1var, y2var, xvar, options)
-        rfn = range_dispatch.get(pt)
-        if rfn is not None and y2var:
-            rfn(fig, source, yvar, y2var, xvar, options, view=view, color_idx=color_idx)
-            return
-
-        fn = dispatch.get(pt)
-        if fn is not None:
-            # histogram and kdensity are univariate — no xvar positional arg
-            if pt in ("histogram", "hist", "kdensity"):
-                fn(fig, source, yvar, options, view=view, color_idx=color_idx)
-            else:
-                fn(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
+        _dash_add_glyph(self.mapper, fig, source, plot_type, yvar, xvar,
+                        options, y2var=y2var, view=view, color_idx=color_idx)
 
     def _add_pc_glyph(
         self,
@@ -10806,19 +10915,9 @@ class DashRenderer:
             options:    Plot-level options dict.
             color_idx:  Zero-based plot index for scheme color cycling.
         """
-        pc_dispatch = {
-            "pcspike":   self.mapper.map_pcspike,
-            "pcarrow":   self.mapper.map_pcarrow,
-            "pcbarrow":  self.mapper.map_pcbarrow,
-            "pci":       self.mapper.map_pci,
-            "pcscatter": self.mapper.map_pcscatter,
-        }
-        fn = pc_dispatch.get(plot_type.lower())
-        if fn is not None:
-            _pc_needed = [v for v in [y1var, x1var, y2var, x2var] if v]
-            if _pc_needed and not self.mapper._check_vars(source, *_pc_needed):
-                return
-            fn(fig, source, y1var, x1var, y2var, x2var, options, view=view, color_idx=color_idx)
+        _dash_add_pc_glyph(self.mapper, fig, source, plot_type, y1var, x1var,
+                           y2var, x2var, options, view=view,
+                           color_idx=color_idx)
 
     # ------------------------------------------------------------------
     # KPI card construction
@@ -12731,7 +12830,12 @@ class ServerAppBuilder:
                       "_COLORVAR_LEGEND_NAME", "_KDE_BANDWIDTH_RULE",
                       "_LPOLY_ROT_C", "_FP_GRID_MAX", "_MAX_MBANDS",
                       "_MIN_BAR_WIDTH", "_MAX_EXPR_CHARS", "_CI_BAND_ALPHA",
-                      "_NONSELECTION_ALPHA", "_ROW_ID_COLUMN"):
+                      "_NONSELECTION_ALPHA", "_ROW_ID_COLUMN",
+                      # The plot-type categories.  The app used to carry its
+                      # own copies inside an if/elif chain, which is how the
+                      # two modes came to disagree about which types exist.
+                      "_DASH_RANGE_TYPES", "_DASH_UNIVARIATE_TYPES",
+                      "_DASH_PC_TYPES"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -12759,7 +12863,14 @@ class ServerAppBuilder:
                          "_parse_stata_numeric_fmt", "_format_stata_numeric",
                          "_format_date_value_standalone", "_fp_grid",
                          "_fp_report_unsupported", "_betacf", "_betainc",
-                         "_t_cdf", "_t_ppf"):
+                         "_t_cdf", "_t_ppf",
+                         # The shared dispatch.  Copied verbatim, like the
+                         # statistical helpers above and for the same reason:
+                         # both modes then run the SAME table, so a plot type
+                         # added to one is added to both.
+                         "_dash_layer_source", "_dash_glyph_dispatch",
+                         "_dash_pc_dispatch", "_dash_add_glyph",
+                         "_dash_add_pc_glyph"):
             if _fn_name in _emitted_names:
                 continue
             _fn = getattr(_mod, _fn_name, None)
@@ -14502,17 +14613,16 @@ class ServerAppBuilder:
             "                fig.line(x='x', y='y', source=fit_src, **_lfit_kw)",
             "",
             "            elif ptype == 'qfit':",
-            "                fit_data = _compute_qfit(g_df, yvar, xvar, opts)",
-            "                fit_src = ColumnDataSource(fit_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': fit_src,",
-            "                    'type': 'qfit',",
-            "                    'yvar': yvar, 'xvar': xvar,",
-            "                }",
-            "                _qfit_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _qfit_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x', y='y', source=fit_src, **_qfit_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_qfit.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                graph_sources[gname].append(",
+            "                    getattr(_r, 'data_source', None) or _ly_src)",
             "",
             "            elif ptype == 'histogram':",
             "                hvar = yvar or xvar",
@@ -14623,28 +14733,28 @@ class ServerAppBuilder:
             "                fig.line(x='x_lp', y='y_lp', source=lpci_src, **_lp_kw)",
             "",
             "            elif ptype == 'fpfit':",
-            "                fp_data = _compute_fpfit(g_df, yvar, xvar)",
-            "                fp_src = ColumnDataSource(fp_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': fp_src, 'type': 'fpfit',",
-            "                    'yvar': yvar, 'xvar': xvar,",
-            "                }",
-            "                _fp_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _fp_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x_fp', y='y_fp', source=fp_src, **_fp_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_fpfit.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                graph_sources[gname].append(",
+            "                    getattr(_r, 'data_source', None) or _ly_src)",
             "",
             "            elif ptype == 'fpfitci':",
-            "                fp_data = _compute_fpfit(g_df, yvar, xvar)",
-            "                fp_src = ColumnDataSource(fp_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': fp_src, 'type': 'fpfit',",
-            "                    'yvar': yvar, 'xvar': xvar,",
-            "                }",
-            "                _fp_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _fp_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x_fp', y='y_fp', source=fp_src, **_fp_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_fpfitci.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                graph_sources[gname].append(",
+            "                    getattr(_r, 'data_source', None) or _ly_src)",
             "",
             "            elif ptype in ('area',):",
             "                clean = g_df[[xvar, yvar]].dropna().sort_values(xvar) if xvar and yvar else g_df",
@@ -14738,77 +14848,40 @@ class ServerAppBuilder:
             "                graph_sources[gname].append(csrc)",
             "",
             "            elif ptype == 'dot':",
-            "                _dot_mlab = opts.get('mlabel', '')",
-            "                _dot_cols = [c for c in [xvar, yvar, _dot_mlab] if c and c in g_df.columns]",
-            "                _dot_cols = list(dict.fromkeys(_dot_cols))  # `scatter mpg mpg' is legal; g_df[[c, c]] is not",
-            "                clean = g_df[_dot_cols].dropna() if xvar and yvar else g_df",
-            "                dsrc = ColumnDataSource(clean)",
-            "                _dot_ms_map = dict(_SIZE_MAP)",
-            "                _dot_sz = _dot_ms_map.get(opts.get('msize',''), _SCHEME_MARKER_SIZE)",
-            "                _dot_sym_map = {'circle':'circle','square':'square','triangle':'triangle','diamond':'diamond','x':'x','plus':'plus','circle_cross':'circle_cross','circle_dot':'circle_dot','hex':'hex'}",
-            "                _dot_sym = _dot_sym_map.get(opts.get('msymbol',''), 'circle')",
-            "                _dot_mfc = color",
-            "                _dot_mfc_raw = opts.get('mfcolor', '')",
-            "                if _dot_mfc_raw:",
-            "                    _dmfc_r = _resolve_color(_dot_mfc_raw)",
-            "                    if _dmfc_r: _dot_mfc = _dmfc_r",
-            "                fig.scatter(x=xvar, y=yvar, source=dsrc, marker=_dot_sym,",
-            "                            fill_color=_dot_mfc, line_color=color, size=_dot_sz, alpha=_SCHEME_FILL_ALPHA)",
-            "                graph_sources[gname].append(dsrc)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_dot.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                graph_sources[gname].append(",
+            "                    getattr(_r, 'data_source', None) or _ly_src)",
             "",
             "            elif ptype == 'lfitci':",
-            "                ci_data = _compute_lfitci(g_df, yvar, xvar, opts.get('level'))",
-            "                fit_src = ColumnDataSource(ci_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': fit_src,",
-            "                    'type': 'lfitci',",
-            "                    'yvar': yvar, 'xvar': xvar,",
-            "                }",
-            "                _lfci_fill = color",
-            "                _lfci_fc = opts.get('fcolor', '')",
-            "                if _lfci_fc:",
-            "                    _lfci_fc_r = _resolve_color(_lfci_fc)",
-            "                    if _lfci_fc_r: _lfci_fill = _lfci_fc_r",
-            "                _lfci_alpha = 0.2",
-            "                _lfci_fi = opts.get('fintensity', '')",
-            "                if _lfci_fi:",
-            "                    try:",
-            "                        _v = _lfci_fi.strip()",
-            "                        _lfci_alpha = min(1.0, max(0.0, float(_v[5:])/100.0 if _v.startswith('inten') else float(_v)/100.0))",
-            "                    except (ValueError, AttributeError): pass",
-            "                fig.varea(x='x_fit', y1='y_lower', y2='y_upper',",
-            "                          source=fit_src, fill_color=_lfci_fill, alpha=_lfci_alpha)",
-            "                _lfci_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _lfci_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x_fit', y='y_fit', source=fit_src, **_lfci_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_lfitci.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                graph_sources[gname].append(",
+            "                    getattr(_r, 'data_source', None) or _ly_src)",
             "",
             "            elif ptype == 'qfitci':",
-            "                ci_data = _compute_qfitci(g_df, yvar, xvar, opts.get('level'))",
-            "                fit_src = ColumnDataSource(ci_data)",
-            "                agg_sources[(gname, pi)] = {",
-            "                    'opts': opts,",
-            "                    'source': fit_src,",
-            "                    'type': 'qfitci',",
-            "                    'yvar': yvar, 'xvar': xvar,",
-            "                }",
-            "                _qfci_fill = color",
-            "                _qfci_fc = opts.get('fcolor', '')",
-            "                if _qfci_fc:",
-            "                    _qfci_fc_r = _resolve_color(_qfci_fc)",
-            "                    if _qfci_fc_r: _qfci_fill = _qfci_fc_r",
-            "                _qfci_alpha = 0.2",
-            "                _qfci_fi = opts.get('fintensity', '')",
-            "                if _qfci_fi:",
-            "                    try:",
-            "                        _v = _qfci_fi.strip()",
-            "                        _qfci_alpha = min(1.0, max(0.0, float(_v[5:])/100.0 if _v.startswith('inten') else float(_v)/100.0))",
-            "                    except (ValueError, AttributeError): pass",
-            "                fig.varea(x='x_fit', y1='y_lower', y2='y_upper',",
-            "                          source=fit_src, fill_color=_qfci_fill, alpha=_qfci_alpha)",
-            "                _qfci_kw = dict(line_color=color, line_width=_line_width)",
-            "                if _line_dash: _qfci_kw['line_dash'] = _line_dash",
-            "                fig.line(x='x_fit', y='y_fit', source=fit_src, **_qfci_kw)",
+            "                # One dispatch, into the renderer's own GlyphMapper.",
+            "                # This branch used to re-implement map_qfitci.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
+            "                    gname, linked_names, shared_source, _shared_pos, src)",
+            "                _r = _dash_add_glyph(",
+            "                    _DASH_MAPPER, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                    view=_ly_view, color_idx=pi)",
+            "                graph_sources[gname].append(",
+            "                    getattr(_r, 'data_source', None) or _ly_src)",
             "",
             "            elif ptype == 'rarea':",
             "                if y1var and y2var and xvar:",

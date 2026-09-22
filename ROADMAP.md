@@ -744,6 +744,90 @@ should land:
 
 **Gaps closed:** D1, D7 · **Severity:** S1 · **Effort:** L · **Depends on:** WP-02
 
+> **PARTLY DONE — and TR-09.1's premise is measurably wrong.**
+>
+> This plan says "This is cheaper than it looks ... The server simply does not
+> call 37 of them." The second half is exactly right: `grep -oE
+> '_DASH_MAPPER\.map_[a-z_]+'` returns one name, `map_scatter`. The first
+> half is not. Calling the mappers is not a substitution. Every server branch
+> was compared against its mapper counterpart, and each claimed difference
+> adversarially re-checked: **132 non-cosmetic differences across 37 types,
+> 28 of them S1.** Only `scatter`, which already delegates, had none.
+>
+> Most are `mapper_does_more`, where unification is a pure gain — a bar chart
+> with a string x variable takes the served app down with an uncaught
+> `TypeError` today; `lcolor(none)` draws opaque black where Stata draws
+> nothing; the branch's 9-name `msymbol` table against the translator's 50
+> makes two overlaid series identical under a mono scheme. But several are
+> `server_does_more`, and a straight swap would **lose** behaviour: `map_area`
+> does not sort by x before drawing its polygon and the server does (a
+> standalone bug this comparison surfaced); `map_spike` builds its own
+> `x0/y0/x1/y1` source where the server keeps the original columns plus
+> `index`, which the filter callback and the brush-to-KPI wiring read by
+> name; and the pc branches register their source for live recomputation,
+> which is caller plumbing and must stay in the caller.
+>
+> **Landed:** the machinery, and the seven types that carry no risk.
+> `_dash_glyph_dispatch`, `_dash_pc_dispatch`, `_dash_add_glyph`,
+> `_dash_add_pc_glyph` and `_dash_layer_source` (TR-09.2) are module-level
+> functions taking the mapper as a parameter, copied into the app with
+> `inspect.getsource` — the mechanism `_shared_stat_lines` already used, for
+> the same stated reason. `DashRenderer` delegates to them, so there is one
+> dispatch rather than two, and the three type categories moved to module
+> level. TR-09.4 done: an unknown type warns. `dot`, `qfit`, `lfitci`,
+> `qfitci`, `fpfit` and `fpfitci` now go through it, joining `scatter`.
+>
+> **Not landed:** the other 30 types, TR-09.3 (lower-casing, which only
+> matters once a branch is gone) and TR-09.5 (the style literals, likewise).
+> AC-09.2 is therefore not met. The order of work is: close each
+> `server_does_more` gap in the mapper — they are standalone bugs too — then
+> swap that type with `test_mode_parity.py` as the gate.
+>
+> **The inventory**, which is the work list. `mapper+` = the mapper does more
+> (swapping gains); `server+` = the server does more (swapping would lose).
+>
+| type | diffs | direction | severity | state |
+|---|---|---|---|---|
+| `scatter` | 0 | - | - | done |
+| `line` | 6 | both_differ,mapper+ | S2,S3 |  |
+| `connected` | 11 | both_differ,mapper+,server+ | S2,S3 |  |
+| `area` | 6 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `bar` | 10 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `spike` | 6 | both_differ,mapper+,server+ | S1,S2 |  |
+| `dot` | 8 | mapper+ | S2,S3 | done |
+| `dropline` | 10 | both_differ,mapper+,server+ | S2 |  |
+| `lfit` | 7 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `qfit` | 1 | mapper+ | S1 | done |
+| `lfitci` | 3 | mapper+ | S1,S2 | done |
+| `qfitci` | 2 | mapper+ | S1,S2 | done |
+| `lowess` | 9 | both_differ,mapper+,server+ | S2,S3 |  |
+| `lpoly` | 8 | both_differ,mapper+ | S1,S2,S3 |  |
+| `lpolyci` | 11 | both_differ,mapper+ | S1,S2,S3 |  |
+| `fpfit` | 2 | mapper+ | S2,S3 | done |
+| `fpfitci` | 1 | mapper+ | S1 | done |
+| `histogram` | 8 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `kdensity` | 7 | both_differ,mapper+ | S1,S2 |  |
+| `mspline` | 9 | both_differ,mapper+ | S1,S2,S3 |  |
+| `mband` | 13 | both_differ,mapper+,server+ | S2,S3 |  |
+| `tsline` | 6 | both_differ,mapper+,server+ | S2,S3 |  |
+| `tsrline` | 6 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `rarea` | 7 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `rbar` | 9 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `rspike` | 8 | both_differ,mapper+ | S1,S2,S3 |  |
+| `rcap` | 10 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `rline` | 10 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `rconnected` | 12 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `rcapsym` | 12 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `rscatter` | 3 | both_differ,mapper+ | S1,S2 |  |
+| `pcspike` | 9 | both_differ,mapper+,server+ | S1,S2,S3 |  |
+| `pcarrow` | 1 | both_differ | S2 |  |
+| `pcbarrow` | 1 | mapper+ | S2 |  |
+| `pci` | 3 | both_differ,mapper+ | S1,S3 |  |
+| `pcscatter` | 4 | both_differ,mapper+,server+ | S1,S2 |  |
+| `scatteri` | 6 | both_differ,mapper+ | S2,S3 |  |
+| `function` | 3 | mapper+,server+ | S1,S2,S3 |  |
+
+
 > **User story.** As a maintainer, I want one implementation of each plot
 > type, so that a fix lands in both render modes at once.
 
