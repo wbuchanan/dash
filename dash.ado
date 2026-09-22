@@ -640,11 +640,17 @@ program define _dash_parse_graph_opts, sclass
     local _dash_pending ""
     if `"`b1title'"' != "" local _dash_pending `"`_dash_pending' b1title"'
     if `"`b2title'"' != "" local _dash_pending `"`_dash_pending' b2title"'
+    // link() and filter() belong to `dash build' and `dash serve', where
+    // the link group and the filter widgets are made.  Written on a graph
+    // they were stored in graph_options and read by nothing -- measured
+    // 22sep2026: name(g1) link(g1) registered, built one source, said
+    // nothing.  Named here, so nothing is dropped in silence.
+    if `"`filter'"' != "" local _dash_pending `"`_dash_pending' filter"'
     if `"`fxsize'"' != "" local _dash_pending `"`_dash_pending' fxsize"'
     if `"`fysize'"' != "" local _dash_pending `"`_dash_pending' fysize"'
     if `"`l1title'"' != "" local _dash_pending `"`_dash_pending' l1title"'
     if `"`l2title'"' != "" local _dash_pending `"`_dash_pending' l2title"'
-    if `"`nodraw'"' != "" local _dash_pending `"`_dash_pending' nodraw"'
+    if `"`link'"' != "" local _dash_pending `"`_dash_pending' link"'
     if `"`play'"' != "" local _dash_pending `"`_dash_pending' play"'
     if `"`r1title'"' != "" local _dash_pending `"`_dash_pending' r1title"'
     if `"`r2title'"' != "" local _dash_pending `"`_dash_pending' r2title"'
@@ -835,7 +841,13 @@ program define _dash_parse_plot_opts, sclass
         }
     }
 
-    if `"`bw'"' != "" & `"`barwidth'"' == "" local barwidth `"`bw'"'
+    // bw() is NOT folded here: what it means depends on the plot type,
+    // which this parser does not know.  twoway reads bw() as bwidth() on
+    // the bandwidth types and rejects it everywhere else; _dash_fold_bw,
+    // called by _dash_process_segment once the type is known, resolves
+    // it.  It used to become barwidth() on every type, so
+    // `dash (lpoly mpg weight, bw(400))' drew the rule-of-thumb bandwidth
+    // and said nothing.
     if `"`mlg'"' != "" & `"`mlabgap'"' == "" local mlabgap `"`mlg'"'
     if `"`cv'"' != "" & `"`colorvar'"' == "" local colorvar `"`cv'"'
     if `"`colv'"' != "" & `"`colorvar'"' == "" local colorvar `"`colv'"'
@@ -876,19 +888,21 @@ program define _dash_parse_plot_opts, sclass
     if `"`colorlist'"' != "" local _dash_pending `"`_dash_pending' colorlist"'
     if `"`coloruseplegend'"' != "" local _dash_pending `"`_dash_pending' coloruseplegend"'
     if `"`connect'"' != "" local _dash_pending `"`_dash_pending' connect"'
+    // As in the graph-level block: build-time options written on a graph.
+    if `"`filter'"' != "" local _dash_pending `"`_dash_pending' filter"'
     if `"`fitopts'"' != "" local _dash_pending `"`_dash_pending' fitopts"'
     if `"`fxsize'"' != "" local _dash_pending `"`_dash_pending' fxsize"'
     if `"`fysize'"' != "" local _dash_pending `"`_dash_pending' fysize"'
     if `"`horizontal'"' != "" local _dash_pending `"`_dash_pending' horizontal"'
     if `"`l1title'"' != "" local _dash_pending `"`_dash_pending' l1title"'
     if `"`l2title'"' != "" local _dash_pending `"`_dash_pending' l2title"'
+    if `"`link'"' != "" local _dash_pending `"`_dash_pending' link"'
     if `"`lineopts'"' != "" local _dash_pending `"`_dash_pending' lineopts"'
     if `"`lstyle'"' != "" local _dash_pending `"`_dash_pending' lstyle"'
     if `"`mlabwidth'"' != "" local _dash_pending `"`_dash_pending' mlabwidth"'
     if `"`mlpattern'"' != "" local _dash_pending `"`_dash_pending' mlpattern"'
     if `"`mlstyle'"' != "" local _dash_pending `"`_dash_pending' mlstyle"'
     if `"`mstyle'"' != "" local _dash_pending `"`_dash_pending' mstyle"'
-    if `"`nodraw'"' != "" local _dash_pending `"`_dash_pending' nodraw"'
     if `"`play'"' != "" local _dash_pending `"`_dash_pending' play"'
     if `"`pstyle'"' != "" local _dash_pending `"`_dash_pending' pstyle"'
     if `"`r1title'"' != "" local _dash_pending `"`_dash_pending' r1title"'
@@ -954,6 +968,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local colorcuts        `"`colorcuts'"'
     sreturn local colormissing     `"`colormissing'"'
     sreturn local bwidth           `"`bwidth'"'
+    sreturn local bw               `"`bw'"'
     sreturn local degree           `"`degree'"'
     sreturn local pstyle           `"`pstyle'"'
     sreturn local cmissing         `"`cmissing'"'
@@ -1120,6 +1135,43 @@ program define _dash_parse_varpart_any, sclass
     sreturn local in_clause  `"`in'"'
 end
 
+
+// ================================================================
+// _dash_fold_bw  -- resolve the bw() alias once the plot type is known.
+//
+// twoway accepts bw() only as an abbreviation of bwidth(), and only on the
+// bandwidth plot types (measured rc 0: lpoly, lpolyci, lowess, kdensity);
+// on bar, rbar, histogram, dot, spike, scatter, line and fpfit it is
+// r(198) "option bw() not allowed".  dash keeps its documented reading of
+// bw() as barwidth() on the bar family, where twoway takes barwidth() --
+// a superset that cannot change the meaning of a valid twoway command --
+// and names bw() in the note everywhere else, as an option it has no
+// reading for.  Called after _dash_parse_plot_opts, whose s() survives
+// this second sclass call.
+// ================================================================
+program define _dash_fold_bw, sclass
+    version 16.0
+    args ptype
+    local bw `"`s(bw)'"'
+    if `"`bw'"' == "" exit
+    local bandwidth_types "lpoly lpolyci lowess kdensity"
+    local bar_types       "bar rbar histogram dot spike"
+    if `: list ptype in bandwidth_types' {
+        if `"`s(bwidth)'"' != "" {
+            // twoway: the same option twice.  Measured r(198).
+            display as error "option bwidth() may not be repeated: bw() is its abbreviation"
+            exit 198
+        }
+        sreturn local bwidth `"`bw'"'
+    }
+    else if `: list ptype in bar_types' {
+        if `"`s(barwidth)'"' == "" sreturn local barwidth `"`bw'"'
+    }
+    else {
+        sreturn local _unknown `"`s(_unknown)' bw(`bw')"'
+    }
+    sreturn local bw ""
+end
 
 // ================================================================
 // _dash_plot_opts_to_json
@@ -1385,16 +1437,26 @@ program define _dash_process_segment, rclass
     }
 
     // ---- parse options (clear stale sreturn values first) ----
+    // The varpart parsers sreturn the weight TYPE in s(_weight).  Saved
+    // before the clear below destroys it: it is appended to this segment's
+    // ignored list so the note names it.  The comment beside those parsers
+    // said it was reported; measured 22sep2026, `[aw=price]' registered
+    // with rc 0 and no note.
+    local _seg_weight `"`s(_weight)'"'
     sreturn clear
     if `"`opts_exp'"' != "" {
         _dash_parse_plot_opts , `opts_exp'
+        _dash_fold_bw "`ptype'"
     }
 
     // Accumulate this segment's unsupported options so _dash_plot can report
     // them once for the whole command rather than once per plot segment.
     // c_local cannot read the caller's local, so hand back only THIS
     // segment's list and let _dash_plot append it.
-    c_local _seg_ignored_out `"`s(_pending)' `s(_unknown)'"'
+    // A weight is named by TYPE, in brackets, never by variable: [aweight].
+    local _seg_wtok ""
+    if `"`_seg_weight'"' != "" local _seg_wtok `" [`_seg_weight']"'
+    c_local _seg_ignored_out `"`s(_pending)' `s(_unknown)'`_seg_wtok'"'
 
     // Accumulate graph-level options found in this segment into g_* locals
     // (these live in _dash_plot's frame, not here — use c_local to propagate)
@@ -1644,7 +1706,10 @@ program define _dash_report_ignored
         if `dup' continue
 
         local seen `"`seen' `tok'"'
-        local out  `"`out' `tok'()"'
+        // A weight is not an option and takes no argument: [aweight], not
+        // aweight().
+        if substr("`tok'", 1, 1) == "[" local out `"`out' `tok'"'
+        else                            local out `"`out' `tok'()"'
     }
     if `"`out'"' == "" exit
 
@@ -1756,6 +1821,14 @@ program define _dash_plot
     // dash accepts every twoway option so a pasted command never aborts; an
     // option it cannot honour is named here instead of vanishing.  One note
     // per command listing all of them.
+    // saving() is honoured on the immediate route only: a named graph is
+    // written by `dash build, saving()'.  Measured 22sep2026: name(g3)
+    // saving(x.html) registered g3, wrote nothing and said nothing.  Named
+    // here rather than on a pending list, because the immediate route
+    // honours it and the note must not say otherwise there.
+    if `"`g_name'"' != "" & `"`g_saving'"' != "" {
+        local _dash_ignored_acc `"`_dash_ignored_acc' saving"'
+    }
     if `"`_dash_ignored_acc'"' != "" {
         _dash_report_ignored `"`_dash_ignored_acc'"'
     }
@@ -1818,6 +1891,41 @@ program define _dash_plot
     }
 end
 
+
+// ================================================================
+// _dash_browser_wanted  — should this render open a browser window?
+//
+// r(open) is 1 only when no saving() was given, $dash_nobrowser is empty,
+// and the spec does not carry Stata's own nodraw.  nodraw means "build it
+// but do not display it", and opening a window is displaying it; it is a
+// flag, so its serialised value is the word itself, and an unset flag
+// serialises as an empty string, which must NOT suppress.
+// ================================================================
+program define _dash_browser_wanted, rclass
+    version 16.0
+    syntax , SPEC(string asis) [SAVing(string)]
+    local open = 1
+    if `"`saving'"' != "" local open = 0
+    if "${dash_nobrowser}" != "" local open = 0
+    if strpos(`"`spec'"', `""nodraw":"nodraw""') > 0 local open = 0
+    return scalar open = `open'
+end
+
+// ================================================================
+// _dash_registry_nodraw  — does any registered graph carry nodraw?
+//
+// dash.sthlp says a graph's nodraw keeps the browser shut on `dash build'
+// as nobrowser does; measured 22sep2026 it did not -- the registry's
+// graph_options were never read for it.  r(nodraw) is 1 when one is.
+// ================================================================
+program define _dash_registry_nodraw, rclass
+    version 16.0
+    local hit = 0
+    foreach _rn in ${dash_graph_registry} {
+        if strpos(`"${dash_json_`_rn'}"', `""nodraw":"nodraw""') > 0 local hit = 1
+    }
+    return scalar nodraw = `hit'
+end
 
 // ================================================================
 // _dash_register_graph  — store named graph in global registry
@@ -2089,12 +2197,16 @@ program define _dash_render_immediate
     // The same suppression as `dash build'.  This path sets open_browser
     // only when no saving() was given, but a do-file run in batch still does
     // not want a browser window.
-    if "${dash_nobrowser}" != "" local open_browser = 0
-    // Stata's own nodraw, which this path already parses, means "build it but
-    // do not display it".  Opening a browser window is displaying it.
-    // nodraw is a flag, so its serialised value is the word itself; an
-    // unset flag serialises as an empty string, which must NOT suppress.
-    if strpos(`"`json_spec'"', `""nodraw":"nodraw""') > 0 local open_browser = 0
+    // One decision, in a program a certification script can call without
+    // launching anything: saving() given, $dash_nobrowser set, or the
+    // graph's own nodraw each keep the window shut.  nodraw is honoured
+    // here, and is therefore NOT on either _dash_pending list: the note
+    // used to say "ignoring unsupported option(s): nodraw()" for an option
+    // this line had just applied.
+    if "`open_browser'" == "1" {
+        _dash_browser_wanted, spec(`"`json_spec'"')
+        local open_browser = r(open)
+    }
     if "`open_browser'" == "1" {
         // On Windows, `start` treats its first quoted argument as the window
         // title, not the file path.  Supply an empty title ("") so the second
@@ -2936,7 +3048,10 @@ program define _dash_build
         // There was no way to suppress this at all: a suite that builds
         // twenty dashboards opened twenty browser tabs, and so did any
         // do-file run in batch.
-        if "`nobrowser'" == "" & "${dash_nobrowser}" == "" {
+        // A registered graph's nodraw keeps the window shut too, as the
+        // help has always said it does.
+        _dash_registry_nodraw
+        if "`nobrowser'" == "" & "${dash_nobrowser}" == "" & r(nodraw) == 0 {
             if "`c(os)'" == "MacOSX"  shell open        "`saving'"
             if "`c(os)'" == "Windows" shell start "" "`saving'"
             if "`c(os)'" == "Unix"    shell xdg-open "`saving'"

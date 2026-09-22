@@ -1,0 +1,139 @@
+*! test_nodraw_honoured.cscript
+*! Certification script: nodraw is honoured, and therefore never reported.
+*!
+*! ROADMAP WP-13 TR-13.3 / GAPS.md E1.  nodraw sat on both _dash_pending
+*! lists while dash.ado honoured it at the browser-launch decision, so
+*!
+*!     . dash scatter mpg weight, nodraw
+*!     dash: ignoring unsupported option(s): nodraw()
+*!
+*! reported ignoring an option it had just applied -- exactly the stale-list
+*! failure the note exists to prevent, and invisible to
+*! test_unsupported_report_is_true.py, which diffs rendered output and
+*! cannot see an ado-side shell call.
+*!
+*!   ND-01  an immediate render with nodraw emits no ignoring note and still
+*!          writes the file.
+*!   ND-02  a real unsupported option beside it is still named; nodraw is not.
+*!   ND-03  paren mode: the plot-level list does not name it either.
+*!   ND-04  the launch decision itself, through its seam: nodraw keeps the
+*!          browser shut, so does saving(), so does $dash_nobrowser; with
+*!          none of them the window would open.  Nothing is launched: the
+*!          seam only decides.
+*!   ND-05  dash build honours a registered graph's nodraw, as dash.sthlp
+*!          says it does.
+*!
+*! Usage:  do test/test_nodraw_honoured.cscript   (or via run_all_cscripts.do)
+
+cscript "dash nodraw is honoured, not reported" adodir ".."
+
+clear all
+set more off
+
+// The immediate renders need the render pipeline.
+capture which jsonio
+if _rc {
+    display as text "SKIP: jsonio is not installed."
+    exit 222
+}
+if `"`c(python_exec)'"' == "" {
+    display as text "SKIP: no Python is linked to this Stata."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+global dash_nobrowser 1
+sysuse auto, clear
+
+local logfile "`c(tmpdir)'dash_nodraw_honoured.log"
+
+capture program drop _nd_note_for
+program define _nd_note_for, rclass
+    args cmdtext logpath
+    capture log close _ndlog
+    capture erase "`logpath'"
+    log using "`logpath'", name(_ndlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ndlog
+    return scalar rc = `rc'
+end
+
+// ----------------------------------------------------------------
+// ND-01
+// ----------------------------------------------------------------
+local out1 "`c(tmpdir)'nd_01.html"
+capture erase "`out1'"
+_nd_note_for `"dash scatter mpg weight, nodraw saving("`out1'")"' "`logfile'"
+assert r(rc) == 0
+cert_file_has "`logfile'", needle("ignoring unsupported")
+assert r(found) == 0
+cert_file_has "`logfile'", needle("nodraw()")
+assert r(found) == 0
+confirm file "`out1'"
+display as text "ND-01 PASS: nodraw emits no note and the file is written"
+
+// ----------------------------------------------------------------
+// ND-02
+// ----------------------------------------------------------------
+_nd_note_for `"dash scatter mpg weight, play(x) nodraw saving("`out1'")"' "`logfile'"
+assert r(rc) == 0
+cert_file_has "`logfile'", needle("play()")
+assert r(found) == 1
+cert_file_has "`logfile'", needle("nodraw()")
+assert r(found) == 0
+display as text "ND-02 PASS: play() is named, nodraw is not"
+
+// ----------------------------------------------------------------
+// ND-03
+// ----------------------------------------------------------------
+_nd_note_for `"dash (scatter mpg weight, nodraw), saving("`out1'")"' "`logfile'"
+assert r(rc) == 0
+cert_file_has "`logfile'", needle("nodraw()")
+assert r(found) == 0
+display as text "ND-03 PASS: paren mode does not name nodraw either"
+
+// ----------------------------------------------------------------
+// ND-04 -- the launch decision, through _dash_browser_wanted.  The global
+// is dropped inside this block and restored on every path.
+// ----------------------------------------------------------------
+macro drop dash_nobrowser
+capture noisily {
+    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{"nodraw":"nodraw"}}"')
+    assert r(open) == 0
+    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"')
+    assert r(open) == 1
+    _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') saving("x.html")
+    assert r(open) == 0
+}
+local rc4 = _rc
+global dash_nobrowser 1
+if `rc4' != 0 {
+    display as error "ND-04 FAIL: the launch decision does not honour nodraw/saving()/the global as documented (rc=`rc4')"
+    exit `rc4'
+}
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"')
+assert r(open) == 0
+display as text "ND-04 PASS: nodraw, saving() and \$dash_nobrowser each keep the window shut"
+
+// ----------------------------------------------------------------
+// ND-05 -- dash build reads a registered graph's nodraw.
+// ----------------------------------------------------------------
+dash clear
+dash scatter mpg weight, name(nd5) nodraw
+_dash_registry_nodraw
+assert r(nodraw) == 1
+dash clear
+dash scatter mpg weight, name(nd5b)
+_dash_registry_nodraw
+assert r(nodraw) == 0
+display as text "ND-05 PASS: dash build sees a registered graph's nodraw"
+
+capture dash clear
+capture erase "`out1'"
+capture erase "`logfile'"
+display as text ""
+display as text "test_nodraw_honoured: ALL CHECKS PASSED"

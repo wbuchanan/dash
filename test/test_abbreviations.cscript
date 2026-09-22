@@ -459,6 +459,15 @@ for ab in sorted(MATA_OPT_ALIAS):
         allowed = tgt if not sr else (tgt + " " + sr)
         if ab in D["dash_abbrev_unresolved"]:
             allowed = "barwidth bwidth"
+        if ab == "bw":
+            # bw() is resolved by plot type since WP-13: barwidth on the
+            # bar family, bwidth on the bandwidth types, named elsewhere.
+            # test_alias_semantics.cscript certifies every type; here the
+            # bar context keeps the historical fold observable.
+            add("R3", ab + "() -> barwidth() on bar",
+                "bar mpg weight, bw(100) name(zqab)",
+                keys="barwidth", optname=ab, mode="nosilent")
+            continue
         add("R3", ab + "() must never land anywhere but [" + allowed + "]",
             opt_cmd(ab, sr or tgt),
             keys=("" if (sr or tgt) == "name" else allowed),

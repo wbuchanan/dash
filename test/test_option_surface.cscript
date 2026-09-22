@@ -74,6 +74,15 @@
 *!   O2-06             unsupported options spread across TWO plot segments are
 *!                     BOTH reported, in that one note.
 *!   O2-07             a command whose options are all supported emits NO note.
+*!   O2-08             link() and filter() written on a graph belong to
+*!                     dash build; each is named in the note, once.
+*!   O2-09             saving() on a NAMED graph is named once and writes
+*!                     nothing (dash build writes a named graph).
+*!   O2-10             the immediate render still honours saving() and is
+*!                     not told otherwise.
+*!   AC-13.1           a weight expression is accepted and reported by TYPE,
+*!                     [aweight], never naming the weight variable; once per
+*!                     distinct type per command (AC-13.1b/c).
 *!
 *! ---------------------------------------------------------------------------
 *! MEASURED STATUS WHEN THIS FILE WAS WRITTEN (pre-fix, branch
@@ -426,10 +435,16 @@ while r(eof) == 0 {
             }
 
             // ---- O2-02: a zero-option command must emit no note ----
-            gettoken junk r2 : rest
-            gettoken junk r3 : r2
-            gettoken popts   : r3
-            if `"`macval(popts)'"' == "" {
+            //
+            // A weight expression is not an option, but it IS something
+            // dash drops, and since WP-13 the note names it by type
+            // (AC-13.1 below).  The corpus control ctl_aweight carries
+            // one with no options, so "no options" here means no options
+            // and no weight.
+            gettoken junk  r2 : rest
+            gettoken pspec r3 : r2
+            gettoken popts    : r3
+            if `"`macval(popts)'"' == "" & strpos(`"`macval(pspec)'"', "weight=") == 0 {
                 local nzeroopt = `nzeroopt' + 1
                 if `pnotes' != 0 {
                     local nnotefail = `nnotefail' + 1
@@ -727,6 +742,240 @@ if `bad' == 1 {
     local faillist `"`faillist' O2-07"'
 }
 else display as text "O2-07 PASS: a fully supported command emits no note"
+
+// ================================================================
+// O2-08 -- link() and filter() written on a graph are named, once each.
+//
+// ROADMAP WP-13 TR-13.1 / GAPS.md E2.  Both belong to dash build; written
+// on a graph they were stored in graph_options and read by nothing, and
+// the note did not name them.  Measured 22sep2026: rc 0, no note.
+// ================================================================
+display as text ""
+_dsp_probe "gl_link_filter" "scatter mpg weight" `"mcolor(red) link(g1) filter(foreign, type(dropdown))"'
+local prc    = r(rc)
+local pnotes = r(nnotes)
+local pnote  `"`r(note)'"'
+local pcmd   `"`r(cmd)'"'
+local bad = 0
+if `prc' != 0 {
+    display as error `"O2-08 FAIL: rc=`prc' from  `macval(pcmd)'"'
+    local bad = 1
+}
+else if `pnotes' != 1 {
+    display as error `"O2-08 FAIL: expected exactly 1 note, got `pnotes'"'
+    local bad = 1
+}
+else {
+    foreach k in link filter {
+        _dsp_names `"`macval(pnote)'"' "`k'"
+        if r(found) != 1 {
+            display as error `"O2-08 FAIL: the note does not name `k'(): `macval(pnote)'"'
+            local bad = 1
+        }
+        local once = subinstr(`"`macval(pnote)'"', "`k'()", "", 1)
+        _dsp_names `"`macval(once)'"' "`k'"
+        if r(found) != 0 {
+            display as error `"O2-08 FAIL: `k'() is named more than once: `macval(pnote)'"'
+            local bad = 1
+        }
+    }
+    foreach k in mcolor name {
+        _dsp_names `"`macval(pnote)'"' "`k'"
+        if r(found) != 0 {
+            display as error `"O2-08 FAIL: the note names the supported option `k'(): `macval(pnote)'"'
+            local bad = 1
+        }
+    }
+}
+if `bad' == 1 {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' O2-08"'
+}
+else display as text "O2-08 PASS: graph-level link() and filter() are each named once"
+
+// ================================================================
+// O2-09 -- saving() on a NAMED graph is named, once, and writes nothing.
+// A named graph is written by `dash build, saving()'; measured 22sep2026:
+// name(g3) saving(x.html) registered g3, wrote nothing and said nothing.
+// ================================================================
+local o2_named "`c(tmpdir)'o2_named_saving.html"
+capture erase "`o2_named'"
+_dsp_probe "named_saving" "scatter mpg weight" `"saving("`o2_named'")"'
+local prc    = r(rc)
+local pnotes = r(nnotes)
+local pnote  `"`r(note)'"'
+local pcmd   `"`r(cmd)'"'
+local bad = 0
+if `prc' != 0 {
+    display as error `"O2-09 FAIL: rc=`prc' from  `macval(pcmd)'"'
+    local bad = 1
+}
+else if `pnotes' != 1 {
+    display as error `"O2-09 FAIL: expected exactly 1 note, got `pnotes'"'
+    local bad = 1
+}
+else {
+    _dsp_names `"`macval(pnote)'"' "saving"
+    if r(found) != 1 {
+        display as error `"O2-09 FAIL: the note does not name saving(): `macval(pnote)'"'
+        local bad = 1
+    }
+    local once = subinstr(`"`macval(pnote)'"', "saving()", "", 1)
+    _dsp_names `"`macval(once)'"' "saving"
+    if r(found) != 0 {
+        display as error `"O2-09 FAIL: saving() is named more than once: `macval(pnote)'"'
+        local bad = 1
+    }
+}
+capture confirm file "`o2_named'"
+if _rc == 0 {
+    display as error "O2-09 FAIL: saving() on a named graph wrote a file"
+    capture erase "`o2_named'"
+    local bad = 1
+}
+if `bad' == 1 {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' O2-09"'
+}
+else display as text "O2-09 PASS: saving() on a named graph is named once and writes nothing"
+
+// ================================================================
+// O2-10 -- the immediate route still honours saving() and is not told
+// otherwise: the guard against reporting saving() from a static list.
+// ================================================================
+capture which jsonio
+if _rc == 0 & `"`c(python_exec)'"' != "" {
+    local o2_imm "`c(tmpdir)'o2_imm_saving.html"
+    capture erase "`o2_imm'"
+    tempfile immlg
+    capture log close _dspimm
+    quietly log using `"`immlg'"', replace text name(_dspimm)
+    capture noisily dash scatter mpg weight, saving("`o2_imm'")
+    local prc = _rc
+    capture quietly log close _dspimm
+    mata: _dsp_scan_notes(st_local("immlg"))
+    local bad = 0
+    if `prc' != 0 {
+        display as error "O2-10 FAIL: rc=`prc' from an immediate render with saving()"
+        local bad = 1
+    }
+    if `dsp_nnotes' != 0 {
+        display as error `"O2-10 FAIL: the immediate render emitted a note: `macval(dsp_notes_all)'"'
+        local bad = 1
+    }
+    capture confirm file "`o2_imm'"
+    if _rc != 0 {
+        display as error "O2-10 FAIL: the immediate render did not write its file"
+        local bad = 1
+    }
+    capture erase "`o2_imm'"
+    if `bad' == 1 {
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' O2-10"'
+    }
+    else display as text "O2-10 PASS: the immediate render honours saving() with no note"
+}
+else display as text "O2-10 SKIP: the immediate render needs jsonio and Python"
+
+// ================================================================
+// AC-13.1 -- a weight expression is accepted and reported, by type.
+//
+// ROADMAP WP-13 TR-13.2 / GAPS.md A3.  The varpart parsers stored the
+// weight type in s(_weight) and `sreturn clear' destroyed it before the
+// report; the comment beside them said it was reported.  Measured
+// 22sep2026: `dash scatter mpg weight [aw=price], name(w1)' -> rc 0,
+// registered, no note.  The note names the TYPE, in brackets, never the
+// weight variable, and once per distinct type per command.
+// ================================================================
+display as text ""
+_dsp_probe "weight" "scatter mpg weight [aw=price]" ""
+local prc    = r(rc)
+local pnotes = r(nnotes)
+local pnote  `"`r(note)'"'
+local pcmd   `"`r(cmd)'"'
+local bad = 0
+if `prc' != 0 {
+    display as error `"AC-13.1 FAIL: rc=`prc' from  `macval(pcmd)'"'
+    local bad = 1
+}
+else if `pnotes' != 1 {
+    display as error `"AC-13.1 FAIL: expected exactly 1 note for [aw=price], got `pnotes'"'
+    local bad = 1
+}
+else {
+    _dsp_names `"`macval(pnote)'"' "aweight"
+    if r(found) != 1 {
+        display as error `"AC-13.1 FAIL: the note does not name the weight type: `macval(pnote)'"'
+        local bad = 1
+    }
+    _dsp_names `"`macval(pnote)'"' "price"
+    if r(found) != 0 {
+        display as error `"AC-13.1 FAIL: the note names the weight variable: `macval(pnote)'"'
+        local bad = 1
+    }
+}
+if `bad' == 1 {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' AC-13.1"'
+}
+else display as text "AC-13.1 PASS: [aw=price] is reported as [aweight], never naming price"
+
+// AC-13.1b -- a weight on ONE layer of a two-layer command, and the same
+// type on two layers, are each one note naming the type once.
+foreach case in "(lfit mpg weight [aw=price]) (scatter mpg weight)" ///
+                "(lfit mpg weight [aw=price]) (scatter mpg weight [aw=price])" {
+    _dsp_probe "weight2" `"`case'"' ""
+    local prc    = r(rc)
+    local pnotes = r(nnotes)
+    local pnote  `"`r(note)'"'
+    local bad = 0
+    if `prc' != 0 | `pnotes' != 1 {
+        display as error `"AC-13.1b FAIL: rc=`prc' notes=`pnotes' for  `case'"'
+        local bad = 1
+    }
+    else {
+        _dsp_names `"`macval(pnote)'"' "aweight"
+        if r(found) != 1 {
+            display as error `"AC-13.1b FAIL: the note does not name aweight: `macval(pnote)'"'
+            local bad = 1
+        }
+        local once = subinstr(`"`macval(pnote)'"', "[aweight]", "", 1)
+        if strpos(`"`macval(once)'"', "[aweight]") > 0 {
+            display as error `"AC-13.1b FAIL: [aweight] is named more than once: `macval(pnote)'"'
+            local bad = 1
+        }
+    }
+    if `bad' == 1 {
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' AC-13.1b"'
+    }
+    else display as text `"AC-13.1b PASS: one note, [aweight] once, for  `case'"'
+}
+
+// AC-13.1c -- two weight types on two layers: both named.
+_dsp_probe "weight3" "(lfit mpg weight [aw=price]) (scatter mpg weight [fw=rep78])" ""
+local prc    = r(rc)
+local pnotes = r(nnotes)
+local pnote  `"`r(note)'"'
+local bad = 0
+if `prc' != 0 | `pnotes' != 1 {
+    display as error `"AC-13.1c FAIL: rc=`prc' notes=`pnotes'"'
+    local bad = 1
+}
+else {
+    foreach k in aweight fweight {
+        _dsp_names `"`macval(pnote)'"' "`k'"
+        if r(found) != 1 {
+            display as error `"AC-13.1c FAIL: the note does not name `k': `macval(pnote)'"'
+            local bad = 1
+        }
+    }
+}
+if `bad' == 1 {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' AC-13.1c"'
+}
+else display as text "AC-13.1c PASS: [aweight] and [fweight] are both named"
 
 // ----------------------------------------------------------------
 // Summary

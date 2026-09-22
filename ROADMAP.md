@@ -1253,58 +1253,80 @@ entries move into the corpus.
 
 # Milestone 3 — An honest surface
 
-## WP-13 · Options: honour or report, never silence
+## WP-13 · Options: honour or report, never silence — DONE
 
-**Gaps closed:** A3, E1, E2, E4 · **Severity:** S2 · **Effort:** M · **Depends on:** —
+**Gaps closed:** A3, E1 (nodraw), E2, E4 · **Severity:** S2 · **Effort:** M · **Depends on:** —
 
 > **User story.** As a user, I want to be told when `dash` ignores something
 > I wrote — and never to be told it ignored something it actually used.
 
-### Business requirements
+### What was measured before any code changed
 
-- **BR-13.1** Every accepted option is either honoured or named in the
-  ignored-options report.
-- **BR-13.2** The report never names an option that was honoured.
+Every premise held, at the process boundary in Stata:
 
-### Technical requirements
+| Command | Before |
+|---|---|
+| `dash scatter mpg weight [aw=price], name(w1)` | rc 0, registered, no note |
+| `dash scatter mpg weight, name(g1) link(g1)` then `dash build` | rc 0, one source, no widget, no note; `build_options.link` empty |
+| `dash scatter mpg weight, name(g2) filter(foreign, type(dropdown))` then `dash build` | no widget, the variable not even serialised, no note |
+| `dash scatter mpg weight, name(g3) saving(named.html)` | registered, file not written (rc 601), no note |
+| `dash scatter mpg weight, nodraw saving(x.html)` | `ignoring unsupported option(s): nodraw()`, and the browser kept shut |
+| `dash (lpoly mpg weight, bw(400))` | spec `{"barwidth":"400"}`, the same 193-point default curve as with no bandwidth, no note; `bwidth(400)` gives a different 200-point curve |
+| `twoway lpoly mpg weight, bw(400)` / `twoway bar mpg weight, bw(100)` | rc 0 / r(198) |
 
-- **TR-13.1** Report the silently-dropped set (E2): plot/graph-level `link()`
-  and `filter()` (written to `graph_options` at `dash.ado:1465` but read only
-  from `build_options` by the renderer), and `saving()` on a named graph
-  (`_dash_plot` routes to `_dash_register_graph` at `:1487` and never reaches
-  the extraction at `:1602`). Decide per option whether to honour or report;
-  report is acceptable, silence is not.
-- **TR-13.2** Weights (A3): feed `s(_weight)` to `_dash_report_ignored` so the
-  comment at `dash.ado:782-783` becomes true. Note `sreturn clear` at `:1112`
-  destroys it before the option parse — the value must be carried across.
-  Honouring weights in the computed layers is WP-18.
-- **TR-13.3** Remove `nodraw` from both `_dash_pending` blocks
-  (`dash.ado:371, 615`) — it is honoured at `:1765`, so dash currently reports
-  ignoring an option it just applied. Fix the contradiction between
-  `dash.sthlp:296` and `:1149-1152` in WP-23.
-- **TR-13.4** Make the `bw` alias plot-type-aware (E4). `dash.ado:560` folds
-  `bw` → `barwidth` unconditionally; real `twoway` accepts `bw()` on `lpoly`
-  (meaning `bwidth`) and rejects it on `bar`. Fold to `bwidth` for
-  `lpoly`/`lowess`/`kdensity` and `barwidth` for `bar`, or drop the alias.
-- **TR-13.5** Keep `test_unsupported_report_is_true.py` authoritative and
-  extend it to assert the *converse*: no option on the pending list has any
-  effect, **and** no option off the list is silently dropped.
+Two things the plan did not know. `nodraw` on a registered graph was also
+ignored by `dash build`, although the help said it had nobrowser's effect
+there. And the help's own Unsupported entry for `nodraw` argued, in six
+lines, for naming it in the note while admitting it was honoured -- the
+contradiction was documented, not accidental.
 
-### Acceptance criteria
+### Technical requirements, as delivered
 
-- **AC-13.1** `dash scatter mpg weight [aw=price]` reports weights as ignored.
-- **AC-13.2** `dash scatter y x, link(g1)` reports `link()` or honours it.
-- **AC-13.3** `dash scatter mpg weight, nodraw` prints no ignored-option note.
-- **AC-13.4** `dash (lpoly mpg weight, bw(400))` sets `bwidth`, not
-  `barwidth`.
+- **TR-13.1** `link()` and `filter()` written on a graph are on both pending
+  lists and named in the note; the help's Unsupported section says they
+  belong to `dash build`. `saving()` on a named graph is named at the route
+  decision in `_dash_plot`, not from a list, because the immediate route
+  honours it and the note must not say otherwise there. Reported, not
+  honoured: `twoway` rejects both `link()` and `filter()`, and a per-graph
+  filter would be a feature with an `exclude()` semantics to decide.
+- **TR-13.2** The weight type is saved before the `sreturn clear` that
+  destroyed it and appended to the segment's ignored list; the reporter
+  prints a bracketed token without the `()` suffix, so the note reads
+  `dash: ignoring unsupported option(s): [aweight]` -- by type, never by
+  variable, once per distinct type per command.
+- **TR-13.3** `nodraw` is off both pending lists. The launch decision is
+  `_dash_browser_wanted`, a program a certification script can call without
+  launching anything, and `dash build` now reads the registry for a graph's
+  `nodraw` (`_dash_registry_nodraw`), which makes the help's claim true. The
+  fixture disposition and the generator's inventory follow, so neither can
+  reinstate the lines.
+- **TR-13.4** `_dash_fold_bw` resolves `bw()` once the plot type is known:
+  `bwidth()` on the bandwidth types, `barwidth()` on the bar family (dash's
+  documented superset), named in the note elsewhere, and twoway's r(198)
+  when written beside `bwidth()`.
+- **TR-13.5** `test_unsupported_report_is_true.py` now classifies every
+  option the two syntax blocks declare -- pending, alias, route, or live --
+  and renders every live option twice to prove it changes the document.
+  Measured on the day: 86 live options, all live; the only unclassified
+  names were `link` and `filter`, which the run named.
 
-### Test plan
+### Acceptance
 
-| Kind | Test | Asserts |
-|---|---|---|
-| Cert | `test_option_surface.cscript` — extend | Each newly-reported option appears in the note exactly once |
-| Unit | `test_unsupported_report_is_true.py` | Bidirectional: pending ⇒ inert, and non-pending ⇒ has an effect |
-| Cert | new `test_alias_semantics.cscript` | `bw()` resolves per plot type, measured against `twoway`'s own rc |
+- **AC-13.1** `[aw=price]` reports `[aweight]`, once; `test_option_surface.cscript` AC-13.1a-c.
+- **AC-13.2** graph-level `link()` and `filter()` are named once each; O2-08.
+- **AC-13.3** `nodraw` prints no note, keeps the window shut on both routes; `test_nodraw_honoured.cscript` ND-01 to ND-05.
+- **AC-13.4** `bw(400)` on lpoly sets `bwidth`; `test_alias_semantics.cscript` measures twoway's rc per type in the same run.
+
+### Found on the way
+
+- `test_option_surface.cscript`'s O2-02 ("no options, no note") counted the
+  corpus control `scatter mpg weight [aweight=price]` as a zero-option
+  command; its premise is now "no options and no weight".
+- The standalone run of a certification script that renders needs the
+  dash directory on the ado-path (`cscript ... adodir ".."` is not enough
+  for `findfile dash_render.py`); the runner sets it. Pre-existing.
+
+**Verification.** Certification 39/39 passed, 0 failed, 0 skipped (two new scripts).  pytest 6199 passed, 62 skipped, 6 xfailed, 0 failed; the four new skips are the cscript-hygiene checks the two new scripts do not need, as for the 37 before them.
 
 ---
 

@@ -23,7 +23,8 @@
     "rejected_syntax_constructs": 3,
     "accepted_but_discarded": 9,
     "by_disposition": {
-      "accept-and-report": 4,
+      "accept-and-report": 3,
+      "honoured-nobrowser": 1,
       "implement-S06": 3,
       "implement-S07": 25,
       "implement-S09-axes-text": 28,
@@ -1644,8 +1645,8 @@
       "twoway_rc": 0,
       "dash_rc": 198,
       "dash_message": "option nodraw not allowed",
-      "disposition": "accept-and-report",
-      "reason": "suppresses the Stata graph window. A dash graph is HTML; there is nothing to suppress, but a do-file that says nodraw must not die.",
+      "disposition": "honoured-nobrowser",
+      "reason": "suppresses the Stata graph window. dash honours it by not opening the browser window, on an immediate render and on dash build (WP-13); it is not named in the note.",
       "probes": [
         {
           "id": "nodraw",

@@ -858,6 +858,30 @@
   - Suggested fix: Set the raw title and assert on the rendered page.
   - Resolution: Fixed with the header work: the title is raw on the model, the header builder escapes it once for the Div, and the test now reads the rendered <title> and requires no tag and no double escape.
 
+- [x] Title: A weight expression was accepted and dropped without a word
+  - File Names and Line Numbers: dash.ado _dash_parse_varpart_std/_1v/_3v/_4v (the weight clause and its `sreturn local _weight'); _dash_process_segment (`sreturn clear' before the option parse); _dash_report_ignored
+  - Description: GAPS.md A3. The parsers stored the weight type in s(_weight) and the comment beside them said it was reported as ignored; `sreturn clear' destroyed it before the report was assembled. Measured: `dash scatter mpg weight [aw=price], name(w1)' -> rc 0, registered, no note. Nothing in dash weights anything, so a user pasting a weighted twoway command got an unweighted picture and no warning.
+  - Suggested fix: Carry the type across the clear and name it.
+  - Resolution: Fixed. The type is saved before the clear and appended to the segment's ignored list as a bracketed token; the reporter prints `[aweight]' without the `()' it gives options. One note per command names each distinct type once, never the variable. Certified by test_option_surface.cscript AC-13.1a-c; dash.sthlp says so. Honouring weights in the computed layers is WP-18.
+
+- [x] Title: link() and filter() written on a graph were stored and read by nothing; saving() on a named graph wrote nothing
+  - File Names and Line Numbers: dash.ado _dash_parse_graph_opts/_dash_parse_plot_opts pending blocks; _dash_plot (the route decision)
+  - Description: GAPS.md E2. All three were accepted with rc 0 and named nowhere. The renderer reads link() and filter() only from build_options; a named graph never reaches the saving() extraction. Measured: name(g1) link(g1) then dash build gave one source and no note; name(g2) filter(foreign, type(dropdown)) gave no widget and did not serialise the variable; name(g3) saving(named.html) registered g3 and wrote nothing.
+  - Suggested fix: Report; honouring is a feature with semantics to decide.
+  - Resolution: Fixed. link() and filter() are on both pending lists and named in the note, with an Unsupported entry in the help explaining that they belong to dash build; saving() on a named graph is named at the route decision, because the immediate route honours it. Certified by test_option_surface.cscript O2-08 (each named once), O2-09 (named, nothing written) and O2-10 (the immediate route still honours it, no note), and by the converse test in test_unsupported_report_is_true.py.
+
+- [x] Title: nodraw was reported as ignored while it was honoured, and dash build ignored it while the help said it did not
+  - File Names and Line Numbers: dash.ado (the two `_dash_pending' nodraw lines; _dash_render_immediate's launch decision; _dash_build's launch); dash.sthlp (the Unsupported entry for nodraw, the overview example); test/fixtures/rejected_options.json (the nodraw disposition)
+  - Description: GAPS.md E1. `dash scatter mpg weight, nodraw' printed "ignoring unsupported option(s): nodraw()" and then kept the browser shut, which is nodraw honoured. The help's Unsupported entry admitted as much and argued for naming it anyway. On dash build a registered graph's nodraw was never read, while the help's nobrowser row said it had the same effect there. test_unsupported_report_is_true.py could not see either: it diffs rendered output, and nodraw's effect is an ado-side shell call.
+  - Suggested fix: Take it off the lists; make the help's claim true; give the launch decision a seam a script can call.
+  - Resolution: Fixed. nodraw is off both lists; `_dash_browser_wanted' decides the launch from saving(), $dash_nobrowser and the spec's nodraw and returns r(open) without launching; `_dash_registry_nodraw' lets dash build honour a registered graph's nodraw. The help entry is gone, the overview example uses play() and text(), the fixture disposition is "honoured-nobrowser", and the generator's inventory no longer classifies nodraw as IGNORE. Certified by test_nodraw_honoured.cscript ND-01 to ND-05; pinned in test_unsupported_report_is_true.py (never pending; the launch decision still reads it).
+
+- [x] Title: bw() meant barwidth() on every plot type, so `lpoly ..., bw(400)' silently drew the default bandwidth
+  - File Names and Line Numbers: dash.ado _dash_parse_plot_opts (the unconditional fold), now _dash_fold_bw
+  - Description: GAPS.md E4. twoway accepts bw() only as an abbreviation of bwidth(), and only on lpoly, lpolyci, lowess and kdensity (rc 0); everywhere else it is r(198). dash folded bw() to barwidth() before the plot type was known. Measured: `dash (lpoly mpg weight, bw(400))' wrote {"barwidth":"400"}, drew the same 193-point rule-of-thumb curve as with no bandwidth at all, and said nothing; bwidth(400) drew a different 200-point curve.
+  - Suggested fix: Resolve the alias by plot type.
+  - Resolution: Fixed. The parser sreturns bw() untouched and `_dash_fold_bw', called once the type is known, gives it twoway's meaning on the bandwidth types, dash's documented barwidth() reading on the bar family, names it in the note elsewhere, and returns twoway's r(198) beside bwidth(). test_alias_semantics.cscript runs twoway first for every type and certifies dash against its rc; test_abbreviations.cscript's R3 case for bw moved to a bar context.
+
 - [ ] Title: Under layout(bs) the served app draws the auto grid, without a word
   - File Names and Line Numbers: dash_render.py ServerAppBuilder (no Bootstrap path); DashRenderer._render_bootstrap_html
   - Description: dash.sthlp's server-mode table says "Bootstrap layout(bs) ... No (falls back to a grid)", so this is documented, and the parity guard records it as a legitimate difference (no Bokeh layout root to compare; per-figure toolbars kept on the Bootstrap page and merged into the grid's when served). Nothing warns the user who builds a server app from a bs spec. ROADMAP WP-21 TR-21.4 decides what the served page should do.

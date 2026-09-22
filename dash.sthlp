@@ -147,7 +147,9 @@ This help file documents only the features that differ from or extend
     In {cmd:twoway}, {cmd:name()} stores the graph in Stata's named graph
     memory.  In {cmd:dash}, {cmd:name()} registers the graph specification
     in the dashboard registry for use with {cmd:dash build}.
-    It does NOT interact with Stata's graph memory.
+    It does NOT interact with Stata's graph memory.  A named graph is
+    written by {cmd:dash build}; {cmd:saving()} on a named graph is
+    accepted, named in the note, and writes nothing.
 
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
@@ -191,8 +193,8 @@ This help file documents only the features that differ from or extend
     an error, so a command copy-pasted from a do-file always runs.  Anything
     {cmd:dash} cannot honour is named once per command, in a single note:
 
-{p 12 12 2}{cmd:. dash scatter mpg weight, play(x) nodraw}{p_end}
-{p 12 12 2}{cmd:dash: ignoring unsupported option(s): play() nodraw()}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, play(x) text(20 3000 "hi")}{p_end}
+{p 12 12 2}{cmd:dash: ignoring unsupported option(s): play() text()}{p_end}
 
 {phang2}
     The note names option {it:names}, never the values supplied.  Because
@@ -201,6 +203,10 @@ This help file documents only the features that differ from or extend
     is abbreviated {cmd:title()} and works, but {cmd:titel(x)} appears in
     the note.  Nothing is ever dropped without being named.  The full list
     is in {help dash##unsupported:Unsupported Stata twoway options}.
+    A weight expression -- {cmd:[aweight=}{it:exp}{cmd:]}, {cmd:[fweight=]},
+    {cmd:[pweight=]} or {cmd:[iweight=]} -- is accepted on any plot, so a
+    pasted command still runs, but nothing is weighted; the weight is named
+    in the same note by type and never by variable, as {cmd:[aweight]}.
     Note: {cmd:scheme()} is fully supported — see
     {help dash##scheme:Stata scheme support} below.
 
@@ -761,7 +767,11 @@ see below.
 {synopt:{opt bwidth(#)}}half-width of the smoothing kernel, as an
     {bf:absolute bandwidth in the units of x}, exactly as in
     {helpb twoway lpoly}.  With no {cmd:bwidth()} a rule-of-thumb bandwidth
-    is computed from the data{p_end}
+    is computed from the data.  {cmd:bw()} abbreviates it here, on
+    {cmd:lpolyci}, {cmd:lowess} and {cmd:kdensity}, as in {cmd:twoway};
+    on {cmd:bar}, {cmd:rbar}, {cmd:histogram}, {cmd:dot} and {cmd:spike}
+    {cmd:dash} reads {cmd:bw()} as {cmd:barwidth()}, and on any other
+    plot type names it in the note{p_end}
 {synopt:{opt degree(#)}}polynomial degree, 0-3; 0 = Nadaraya–Watson kernel
     estimator (default), 1 = local linear, 2 = local quadratic,
     3 = local cubic.  A degree outside 0-3 is reported and the default
@@ -1199,17 +1209,20 @@ disagree in either direction.
     {opt sort} — bars are drawn vertically at the x variable's values, and
     {cmd:line} plots are already sorted by x, as in {cmd:twoway}.
 
+{phang2}{ul:Build-time options written on a graph.}
+    {opt link(namelist)}, {opt filter(varname, ...)} — these belong to
+    {cmd:dash build} and {cmd:dash serve}, where the link group and the
+    filter widgets are made.  Written on a graph they are stored and read
+    by nothing, so they are named in the note; give them to
+    {cmd:dash build}.  Stata's {cmd:nodraw} is not in this list: it is
+    honoured, on an immediate render and on {cmd:dash build} alike, by
+    keeping the browser window shut.
+
 {phang2}{ul:No Bokeh equivalent.}
     {opt connect(list)} — use the {cmd:connected} plot type.
     {opt cmissing(y|n)} — missing observations are always dropped before
     rendering.
     {opt recast(plottype)} — name the plot type you want directly.
-    {opt nodraw} — there is no graph window to suppress: {cmd:dash} always
-    writes a file or starts a server.  On a single immediate render it does
-    keep the browser window shut, which is the one thing it can still mean;
-    on {cmd:dash build} use {cmd:nobrowser}, or set {cmd:$dash_nobrowser} for
-    a whole session.  It is named in the note because nothing else it means
-    in {cmd:twoway} survives.
     {opt play(recordingname)} — there is no graph editor to replay.
     {opt text(# # "string")} — use {cmd:note()} or {cmd:caption()}.
 

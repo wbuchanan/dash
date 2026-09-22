@@ -1,0 +1,234 @@
+*! test_alias_semantics.cscript
+*! Certification script: the bw() alias means what twoway means by it.
+*!
+*! ROADMAP WP-13 TR-13.4 / GAPS.md E4.  dash.ado folded bw() to barwidth()
+*! unconditionally, before the plot type was known.  Measured (22sep2026,
+*! this script's own twoway probes): twoway accepts bw() ONLY as an
+*! abbreviation of bwidth(), and only on the bandwidth plot types -- lpoly,
+*! lpolyci, lowess, kdensity (rc 0) -- and rejects it everywhere else with
+*! r(198) "option bw() not allowed".  So
+*!
+*!     . dash (lpoly mpg weight, bw(400))
+*!
+*! wrote {"barwidth":"400"} into the spec, drew the rule-of-thumb bandwidth
+*! and said nothing: a valid twoway command whose meaning changed silently.
+*!
+*! The contract certified here, per plot type, is measured against twoway
+*! in the same run rather than written down:
+*!
+*!   AS-01  a bandwidth type (twoway rc 0):  dash records bwidth, not
+*!          barwidth, and emits no note.
+*!   AS-02  the bar family (twoway r(198), but barwidth() is the option
+*!          twoway does take there):  dash keeps its documented superset and
+*!          records barwidth, with no note.
+*!   AS-03  every other type (twoway r(198)):  dash accepts the command,
+*!          records neither key, and names bw() in its one note.
+*!   AS-04  bw() together with bwidth() on a bandwidth type is the repeated
+*!          option twoway rejects; dash returns twoway's own rc.
+*!   AS-05  the other folds still land on their targets: t("top") records
+*!          t1title, bins(5) records bin, bw(100) on bar records barwidth.
+*!
+*! No dashboard is rendered: every probe registers with name(), so the spec
+*! JSON can be read back out of the registry global.
+*!
+*! Usage:  do test/test_alias_semantics.cscript   (or via run_all_cscripts.do)
+
+cscript "dash alias semantics: bw() per plot type" adodir ".."
+
+clear all
+set more off
+set graphics off
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+global dash_nobrowser 1
+sysuse auto, clear
+
+local logfile "`c(tmpdir)'dash_alias_semantics.log"
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+capture mata: mata drop _zas_has()
+mata:
+// Does the registered spec for graph `g' carry the quoted key `key'?
+real scalar _zas_has(string scalar g, string scalar key)
+{
+    string scalar js
+    js = st_global("dash_json_" + g)
+    return(strpos(js, char(34) + key + char(34) + ":") > 0)
+}
+end
+
+capture program drop _zas_has
+program define _zas_has, rclass
+    args g key
+    mata: st_local("_zh", strofreal(_zas_has(st_local("g"), st_local("key"))))
+    return scalar found = `_zh'
+end
+
+// Run one dash command under a named log; return its rc and whether the
+// log carries the ignoring note naming bw().
+capture program drop _zas_probe
+program define _zas_probe, rclass
+    args cmdtext logpath
+    capture log close _zaslog
+    capture erase "`logpath'"
+    capture dash clear
+    log using "`logpath'", name(_zaslog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zaslog
+    cert_file_has "`logpath'", needle("ignoring unsupported")
+    local nnote = r(found)
+    cert_file_has "`logpath'", needle("bw()")
+    local named = r(found)
+    return scalar rc    = `rc'
+    return scalar nnote = `nnote'
+    return scalar named = `named'
+end
+
+local nfail = 0
+local faillist ""
+
+// ----------------------------------------------------------------
+// The probe table: type | varlist | bw value.  twoway is asked first,
+// in this run, so the expectation is measured rather than assumed.
+// ----------------------------------------------------------------
+local types  "lpoly lpolyci lowess kdensity bar rbar histogram dot spike scatter line fpfit"
+local vars_lpoly     "mpg weight"
+local vars_lpolyci   "mpg weight"
+local vars_lowess    "mpg weight"
+local vars_kdensity  "mpg"
+local vars_bar       "mpg weight"
+local vars_rbar      "mpg price weight"
+local vars_histogram "mpg"
+local vars_dot       "mpg weight"
+local vars_spike     "mpg weight"
+local vars_scatter   "mpg weight"
+local vars_line      "mpg weight"
+local vars_fpfit     "mpg weight"
+local bw_lpoly     400
+local bw_lpolyci   400
+local bw_lowess    0.3
+local bw_kdensity  2
+local bw_bar       100
+local bw_rbar      100
+local bw_histogram 2
+local bw_dot       100
+local bw_spike     100
+local bw_scatter   100
+local bw_line      100
+local bw_fpfit     400
+local barfamily "bar rbar histogram dot spike"
+
+foreach t of local types {
+    local v  `vars_`t''
+    local bw `bw_`t''
+    capture twoway `t' `v', bw(`bw')
+    local tw_rc = _rc
+    _zas_probe `"dash (`t' `v', bw(`bw')), name(zqas)"' "`logfile'"
+    local drc    = r(rc)
+    local nnote  = r(nnote)
+    local named  = r(named)
+    _zas_has zqas bwidth
+    local has_bwidth = r(found)
+    _zas_has zqas barwidth
+    local has_barwidth = r(found)
+
+    local bad = 0
+    if `drc' != 0 {
+        display as error "AS FAIL `t': dash rc=`drc'"
+        local bad = 1
+    }
+    else if `tw_rc' == 0 {
+        // AS-01: twoway takes bw() here as bwidth().
+        if `has_bwidth' != 1 | `has_barwidth' != 0 | `nnote' != 0 {
+            display as error "AS-01 FAIL `t': twoway rc 0 (bw means bwidth) but dash recorded bwidth=`has_bwidth' barwidth=`has_barwidth' note=`nnote'"
+            local bad = 1
+        }
+        else display as text "AS-01 PASS `t': bw(`bw') is bwidth, no note"
+    }
+    else if `: list t in barfamily' {
+        // AS-02: twoway rejects bw() on the bar family; dash's documented
+        // superset reads it as barwidth() there.
+        if `has_barwidth' != 1 | `has_bwidth' != 0 | `nnote' != 0 {
+            display as error "AS-02 FAIL `t': twoway r(`tw_rc') but dash recorded barwidth=`has_barwidth' bwidth=`has_bwidth' note=`nnote'"
+            local bad = 1
+        }
+        else display as text "AS-02 PASS `t': bw(`bw') is barwidth, no note"
+    }
+    else {
+        // AS-03: twoway rejects it and dash has no reading for it: named.
+        if `has_barwidth' != 0 | `has_bwidth' != 0 | `nnote' != 1 | `named' != 1 {
+            display as error "AS-03 FAIL `t': twoway r(`tw_rc'); dash recorded barwidth=`has_barwidth' bwidth=`has_bwidth' note=`nnote' named_bw=`named'"
+            local bad = 1
+        }
+        else display as text "AS-03 PASS `t': bw(`bw') named in the note, recorded nowhere"
+    }
+    if `bad' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' AS(`t')"
+    }
+}
+
+// ----------------------------------------------------------------
+// AS-04 -- bw() and bwidth() together on a bandwidth type: twoway's own rc.
+// ----------------------------------------------------------------
+capture twoway lpoly mpg weight, bw(400) bwidth(500)
+local tw_rc = _rc
+_zas_probe `"dash (lpoly mpg weight, bw(400) bwidth(500)), name(zqas)"' "`logfile'"
+if r(rc) != `tw_rc' {
+    display as error "AS-04 FAIL: twoway r(`tw_rc') for bw() with bwidth(); dash rc=`r(rc)'"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AS-04"
+}
+else display as text "AS-04 PASS: bw() with bwidth() gives twoway's rc `tw_rc'"
+
+// ----------------------------------------------------------------
+// AS-05 -- the other folds are unchanged.
+// ----------------------------------------------------------------
+local bad = 0
+_zas_probe `"dash scatter mpg weight, t("top") name(zqas)"' "`logfile'"
+_zas_has zqas t1title
+if r(found) != 1 {
+    display as error "AS-05 FAIL: t(\"top\") did not record t1title"
+    local bad = 1
+}
+_zas_probe `"dash histogram mpg, bins(5) name(zqas)"' "`logfile'"
+_zas_has zqas bin
+if r(found) != 1 {
+    display as error "AS-05 FAIL: bins(5) did not record bin"
+    local bad = 1
+}
+_zas_probe `"dash bar mpg weight, bw(100) name(zqas)"' "`logfile'"
+_zas_has zqas barwidth
+if r(found) != 1 {
+    display as error "AS-05 FAIL: bw(100) on bar did not record barwidth"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AS-05"
+}
+else display as text "AS-05 PASS: t(), bins() and bar bw() still fold to their targets"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+capture dash clear
+capture erase "`logfile'"
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_alias_semantics: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_alias_semantics: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

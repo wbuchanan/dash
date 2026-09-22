@@ -126,7 +126,7 @@ panels (`tops=[0.075, 0.0563, 0.0562]`). Unlinked `by()` is correct, because
 `:11455` builds a genuinely separate source per facet — so the same command
 gives different answers depending on whether `link()` is present.
 
-### A3. Weights are parsed and silently discarded — S2, MEASURED
+### A3. Weights are parsed and silently discarded — S2, CLOSED by WP-13
 
 `_dash_parse_varpart_*` declares `[aweight fweight pweight iweight]`
 (`dash.ado:781, 795, 809, 823`) and stores the type in `s(_weight)`
@@ -139,6 +139,12 @@ The code comment at `dash.ado:782-783` claims "it is reported as ignored".
 It is not. Measured: `dash scatter mpg weight [aw=price], name(w1)` → `rc=0`,
 "graph 'w1' registered", **no note**. Stata's `lfit`, `qfit`, `lowess`,
 `lpoly`, `fpfit`, `histogram` and `kdensity` all honour weights.
+
+**Closed by WP-13.** The weight TYPE is carried across the `sreturn clear`
+and appended to the segment's ignored list, so the note reads
+`dash: ignoring unsupported option(s): [aweight]` -- by type, never by
+variable, once per distinct type per command. The weight is still not
+applied (WP-18). Certified by `test_option_surface.cscript` AC-13.1a-c.
 
 ### A4. Estimator divergences from Stata — S2, READ
 
@@ -651,7 +657,7 @@ still fail so its fix is noticed.
 
 ## E. The option surface
 
-### E1. 39 options are accepted, reported, and inert — S2, READ
+### E1. 39 options are accepted, reported, and inert — S2, READ; nodraw CLOSED by WP-13
 
 Two `_dash_pending` blocks: graph-level at `dash.ado:364-384` (20 entries)
 and plot-level at `:593-632` (39, a strict superset).
@@ -686,7 +692,15 @@ Two nuances:
   written to prevent. It slips past the enforcing test because `nodraw`
   changes browser behaviour, not file output.
 
-### E2. Options dropped with *no* report — S2, MEASURED
+**nodraw closed by WP-13.** It is off both pending lists and honoured on
+`dash build` as well as on an immediate render (the help had claimed the
+former and the registry's graph_options were never read for it). The
+launch decision is `_dash_browser_wanted`, a program a script can call
+without launching anything; `test_nodraw_honoured.cscript` certifies both
+halves, and `test_unsupported_report_is_true.py` pins that nodraw is never
+on a pending list and that the launch decision still reads it.
+
+### E2. Options dropped with *no* report — S2, CLOSED by WP-13
 
 These are not on either pending list, so `_dash_report_ignored` never names
 them:
@@ -697,6 +711,17 @@ them:
 | `filter()` at plot/graph level | `dash.ado:289, 507` | Same path; renderer reads only `build_options["filter"]` (`:11295, 12764, 8726`). |
 | `saving()` on a **named** graph | `dash.ado:283, 506` | `_dash_plot` routes to `_dash_register_graph` (`:1487`) and never reaches the `saving` extraction at `:1602`. `dash build`'s own `saving()` wins. |
 | weights | `dash.ado:781-826` | See A3. |
+
+**Closed by WP-13.** `link()` and `filter()` written on a graph are on both
+pending lists and named in the note (they belong to `dash build`; the help
+says so under Unsupported); `saving()` on a named graph is named at the
+route decision in `_dash_plot`, since the immediate route honours it;
+weights are A3. The converse of the inertness guard now exists:
+`test_unsupported_report_is_true.py` classifies every option the two syntax
+blocks declare as pending, alias, route, or live, and renders every live
+one twice to prove it changes the document -- 86 options, all live.
+`test_option_surface.cscript` O2-08 to O2-10 certify the three from Stata.
+The `_dash_prepare_spec` row is unchanged.
 | `saving()`, `replace`, `server` in `_dash_prepare_spec` | `:2009, 2019, 2020` | Declared and never referenced in the body. Harmless for `dash build`; `dash serve` forwards them through its `*`, so they would be accepted-and-ignored if C1 were fixed. |
 
 ### E3. Sub-options vanish without a note — S2, MEASURED
@@ -729,13 +754,21 @@ is discarded **whole**, with `rc=0` and no message. A legitimate
 unrecognised `type()` is likewise skipped silently (`:11804-11805`, server
 `:15462-15463`).
 
-### E4. `bw()` silently changes meaning — S2, MEASURED
+### E4. `bw()` silently changes meaning — S2, CLOSED by WP-13
 
 `dash.ado:560` folds `bw` → `barwidth` unconditionally. Real Stata accepts
 `bw(400)` on `twoway lpoly` (measured `rc=0`) and rejects it on `twoway bar`
 (`r(198)`). So `dash (lpoly mpg weight, bw(400))` sets `barwidth`, not
 `bwidth`, with no note — a valid twoway command whose meaning changes. This
 directly undercuts the drop-in claim at `dash.sthlp:123, 162`.
+
+**Closed by WP-13.** `_dash_fold_bw` resolves `bw()` once the plot type is
+known: `bwidth()` on lpoly, lpolyci, lowess and kdensity (twoway rc 0);
+`barwidth()` on bar, rbar, histogram, dot and spike (dash's documented
+superset, where twoway rejects `bw()` but takes `barwidth()`); named in the
+note on every other type; and `bw()` beside `bwidth()` is twoway's r(198).
+`test_alias_semantics.cscript` measures twoway's own rc for each type in
+the same run and certifies dash against it.
 
 ### E5. Validation is applied to exactly one option — S2, READ
 

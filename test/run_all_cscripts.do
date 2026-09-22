@@ -1014,6 +1014,56 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 38. test_nodraw_honoured.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_nodraw_honoured.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_nodraw_honoured.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_nodraw_honoured.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_nodraw_honoured.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_nodraw_honoured.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 39. test_alias_semantics.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_alias_semantics.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_alias_semantics.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_alias_semantics.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_alias_semantics.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_alias_semantics.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

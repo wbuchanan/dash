@@ -59,6 +59,20 @@ _DF = pd.DataFrame({
             20.0, 18.0, 26.0, 15.0, 24.0],
     "weight": [2930.0, 3350.0, 2200.0, 1800.0, 3000.0, 3100.0, 4080.0,
                2010.0, 3600.0, 2650.0, 2800.0, 3200.0, 2400.0, 3900.0, 2500.0],
+    # For the converse tests: a category, a second numeric, an integer code
+    # and a column with a missing value (colorvar, by, hover, mlabel,
+    # colormissing).  Both renders of a pair share the data, so the
+    # comparisons above are unaffected.
+    "foreign": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
+                0.0, 1.0, 0.0, 1.0, 0.0],
+    "price": [4099.0, 4749.0, 3799.0, 4816.0, 5788.0, 4453.0, 5189.0,
+              10372.0, 4082.0, 11385.0, 6165.0, 3955.0, 7140.0, 4425.0,
+              5079.0],
+    "rep78": [3.0, 4.0, 3.0, 5.0, 4.0, 3.0, 5.0, 4.0, 3.0, 4.0,
+              2.0, 3.0, 4.0, 5.0, 3.0],
+    "pricemiss": [4099.0, None, 3799.0, 4816.0, 5788.0, 4453.0, 5189.0,
+                  10372.0, None, 11385.0, 6165.0, 3955.0, 7140.0, 4425.0,
+                  5079.0],
 })
 
 # Two DIFFERENT non-default values per option, and the plot type the option
@@ -82,8 +96,12 @@ PLOT_VALUES = {
     "fitopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
     "fraction": ("fraction", "frequency", "histogram"),
     "frequency": ("frequency", "percent", "histogram"),
+    # link() and filter() belong to dash build; written on a graph they
+    # are stored, read by nothing, and named in the note (WP-13 TR-13.1).
+    "filter": ("foreign, type(dropdown)", "weight, type(range)", "scatter"),
     "fxsize": ("50", "80", "scatter"),
     "fysize": ("50", "80", "scatter"),
+    "link": ("g1", "g2", "scatter"),
     "horizontal": ("horizontal", "", "bar"),
     "jitterseed": ("7", "99", "scatter"),
     "kernel": ("epan2", "gaussian", "kdensity"),
@@ -276,3 +294,277 @@ def test_a_histogram_y_axis_flag_is_never_reported_unsupported(flag):
         f"_histogram_grid reads {flag}() and sets the y axis from it, but "
         f"dash.ado still names {flag}() in the ignoring-unsupported note"
     )
+
+
+# ===========================================================================
+# The converse: an option NOT on the pending list must do something.
+#
+# ROADMAP WP-13 TR-13.5.  The tests above certify "pending => inert".  The
+# other half of the contract -- "nothing is ever dropped without being named"
+# (dash.sthlp) -- had no guard at all, and GAPS.md E2 lists what that
+# allowed: link(), filter() and saving() written on a graph were stored,
+# read by nothing, and named nowhere.  Every option the two syntax blocks
+# declare is now classified: PENDING (reported, and inert by the tests
+# above), an ALIAS (folded onto its target in dash.ado before the spec is
+# written, so never a spec key; pinned in test_alias_semantics.cscript), one
+# of the two options that choose a route or a path rather than a rendering
+# (NOT_IN_FILE, pinned by reading the ado), or LIVE -- in which case
+# rendering with two different values must give two different documents.
+# A declared option in none of those is the failure that tells the next
+# maintainer to decide: honour it, or put it on the list.
+# ===========================================================================
+
+from test_abbreviations import _program_body, _syntax_options  # noqa: E402
+
+
+def _declared(prog):
+    with open(_ADO, encoding="utf-8") as fh:
+        src = fh.read()
+    return [full for _, full in _syntax_options(_program_body(src, prog))]
+
+
+def _declared_plot():
+    return _declared("_dash_parse_plot_opts")
+
+
+def _declared_graph():
+    return _declared("_dash_parse_graph_opts")
+
+
+#: Short forms dash.ado folds onto their target before the spec is written
+#: (the t/b/l/r titles, bins(), bw(), mlg(), cv()/colv(), pbgc() and the
+#: *2 axis abbreviations).  They never appear as a spec key, so neither
+#: direction here can see them; test_alias_semantics.cscript pins them.
+ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
+           "xla2", "xsc2", "xti2", "yla2", "ysc2", "yti2"}
+
+#: Options that decide where a command goes rather than what it draws.
+NOT_IN_FILE = {
+    "name": "routes the spec to the registry instead of the renderer",
+    "saving": "chooses the output path on the immediate route; on a named "
+              "graph it is named in the note (dash.ado, the route decision)",
+    "nodraw": "keeps the browser window shut, at the launch decision; the "
+              "file is the same with or without it, so it is pinned by "
+              "reading the ado (test_nodraw_is_still_read_by_the_launch_"
+              "decision) and certified by test_nodraw_honoured.cscript",
+}
+
+#: option -> (options A, options B, plot type, extra graph options).  Two
+#: renders that must DIFFER.  Both sides carry the same extra options, so
+#: an option that only means something in context (colpalette without
+#: colorvar, xlabel2 without a layer on the second axis) is probed in it.
+_CV = {"colorvar": "price"}
+_ML = {"mlabel": "foreign"}
+LIVE_VALUES = {
+    # ---- plot-level -------------------------------------------------------
+    "bands": ({"bands": "3"}, {"bands": "6"}, "mband", {}),
+    "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
+    "base": ({"base": "10"}, {"base": "15"}, "bar", {}),
+    "bfcolor": ({"bfcolor": "red"}, {"bfcolor": "blue"}, "bar", {}),
+    "bin": ({"bin": "4"}, {"bin": "8"}, "histogram", {}),
+    "blcolor": ({"blcolor": "red"}, {"blcolor": "blue"}, "bar", {}),
+    "bwidth": ({"bwidth": "300"}, {"bwidth": "700"}, "lpoly", {}),
+    "color": ({"color": "red"}, {"color": "blue"}, "scatter", {}),
+    "colorcuts": ({**_CV, "colorcuts": "4000 6000"},
+                  {**_CV, "colorcuts": "5000 9000"}, "scatter", {}),
+    "colordiscrete": ({"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+                      {"colorvar": "foreign"}, "scatter", {}),
+    "colormissing": ({"colorvar": "pricemiss", "colormissing": "red"},
+                     {"colorvar": "pricemiss", "colormissing": "blue"},
+                     "scatter", {}),
+    "colornlevels": ({**_CV, "colornlevels": "3"}, {**_CV, "colornlevels": "7"},
+                     "scatter", {}),
+    "colorvar": ({"colorvar": "foreign"}, {"colorvar": "price"}, "scatter", {}),
+    "colpalette": ({**_CV, "colpalette": "viridis"},
+                   {**_CV, "colpalette": "magma"}, "scatter", {}),
+    "degree": ({"degree": "0"}, {"degree": "2"}, "lpoly", {}),
+    # The histogram scale flags: each against a DIFFERENT flag, because
+    # density names the default and present-against-absent cannot see it.
+    "density": ({"density": "density"}, {"frequency": "frequency"},
+                "histogram", {}),
+    "fraction": ({"fraction": "fraction"}, {"density": "density"},
+                 "histogram", {}),
+    "frequency": ({"frequency": "frequency"}, {"percent": "percent"},
+                  "histogram", {}),
+    "percent": ({"percent": "percent"}, {"fraction": "fraction"},
+                "histogram", {}),
+    "falpha": ({"falpha": "30"}, {"falpha": "80"}, "area", {}),
+    "fcolor": ({"fcolor": "red"}, {"fcolor": "blue"}, "area", {}),
+    "fintensity": ({"fintensity": "20"}, {"fintensity": "80"}, "area", {}),
+    "jitter": ({"jitter": "3"}, {"jitter": "7"}, "scatter", {}),
+    "jitterseed": ({"jitter": "5", "jitterseed": "7"},
+                   {"jitter": "5", "jitterseed": "99"}, "scatter", {}),
+    "jseed": ({"jitter": "5", "jseed": "7"}, {"jitter": "5", "jseed": "99"},
+              "scatter", {}),
+    "kernel": ({"kernel": "epan2"}, {"kernel": "gaussian"}, "kdensity", {}),
+    "lalpha": ({"lalpha": "20"}, {"lalpha": "80"}, "line", {}),
+    "lcolor": ({"lcolor": "red"}, {"lcolor": "blue"}, "line", {}),
+    "level": ({"level": "80"}, {"level": "99"}, "lfitci", {}),
+    "lpattern": ({"lpattern": "dash"}, {"lpattern": "dot"}, "line", {}),
+    "lwidth": ({"lwidth": "vthin"}, {"lwidth": "vthick"}, "line", {}),
+    "malpha": ({"malpha": "20"}, {"malpha": "80"}, "scatter", {}),
+    "marker": ({"marker": "O"}, {"marker": "T"}, "scatter", {}),
+    "mcolor": ({"mcolor": "red"}, {"mcolor": "blue"}, "scatter", {}),
+    "mfcolor": ({"mfcolor": "red"}, {"mfcolor": "blue"}, "scatter", {}),
+    "mlabcolor": ({**_ML, "mlabcolor": "red"}, {**_ML, "mlabcolor": "blue"},
+                  "scatter", {}),
+    "mlabel": ({"mlabel": "foreign"}, {"mlabel": "rep78"}, "scatter", {}),
+    "mlabgap": ({**_ML, "mlabgap": "tiny"}, {**_ML, "mlabgap": "vlarge"},
+                "scatter", {}),
+    "mlabposition": ({**_ML, "mlabposition": "3"},
+                     {**_ML, "mlabposition": "9"}, "scatter", {}),
+    "mlabsize": ({**_ML, "mlabsize": "tiny"}, {**_ML, "mlabsize": "vlarge"},
+                 "scatter", {}),
+    "mlcolor": ({"mlcolor": "navy"}, {"mlcolor": "maroon"}, "scatter", {}),
+    "mlwidth": ({"mlwidth": "thick"}, {"mlwidth": "vthin"}, "scatter", {}),
+    "msangle": ({"msymbol": "T", "msangle": "0"},
+                {"msymbol": "T", "msangle": "45"}, "scatter", {}),
+    "msize": ({"msize": "tiny"}, {"msize": "vlarge"}, "scatter", {}),
+    "msymbol": ({"msymbol": "O"}, {"msymbol": "T"}, "scatter", {}),
+    "n": ({"n": "30"}, {"n": "70"}, "kdensity", {}),
+    "range": ({"range": "10 30"}, {"range": "12 28"}, "kdensity", {}),
+    "start": ({"start": "8"}, {"start": "11"}, "histogram", {}),
+    "width": ({"width": "2"}, {"width": "4"}, "histogram", {}),
+    "xaxis": ({"xaxis": "1"}, {"xaxis": "2"}, "line", {}),
+    "yaxis": ({"yaxis": "1"}, {"yaxis": "2"}, "line", {}),
+    # ---- graph-level --------------------------------------------------------
+    "aspectratio": ({}, {}, "scatter", ("aspectratio", "0.5", "2")),
+    "bgcolor": ({}, {}, "scatter", ("bgcolor", "red", "blue")),
+    "by": ({}, {}, "scatter", ("by", "foreign", "rep78")),
+    "caption": ({}, {}, "scatter", ("caption", "A", "B")),
+    "graphregion": ({}, {}, "scatter", ("graphregion", "color(red)",
+                                         "color(blue)")),
+    "hover": ({}, {}, "scatter", ("hover", "price", "rep78")),
+    # One key: position() alone stays hidden under Stata's rule, so the
+    # pair is on/off.
+    "legend": ({}, {}, "scatter", ("legend", "on", "off")),
+    "note": ({}, {}, "scatter", ("note", "A", "B")),
+    "plotbgcolor": ({}, {}, "scatter", ("plotbgcolor", "red", "blue")),
+    "plotregion": ({}, {}, "scatter", ("plotregion", "color(red)",
+                                        "color(blue)")),
+    "scheme": ({}, {}, "scatter", ("scheme", "economist", "s1mono")),
+    "subtitle": ({}, {}, "scatter", ("subtitle", "A", "B")),
+    "title": ({}, {}, "scatter", ("title", "A", "B")),
+    "xlabel": ({}, {}, "scatter", ("xlabel", "2000(1000)4000",
+                                    "1800 2400 3000")),
+    "xlabel2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
+                ("xlabel2", "2000 3000", "2500 3500")),
+    "xline": ({}, {}, "scatter", ("xline", "3000", "3500")),
+    "xscale": ({}, {}, "scatter", ("xscale", "log", "reverse")),
+    "xscale2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
+                ("xscale2", "log", "reverse")),
+    "xsize": ({}, {}, "scatter", ("xsize", "3", "9")),
+    "xtick": ({}, {}, "scatter", ("xtick", "2000 3000", "2500 3500")),
+    "xtitle": ({}, {}, "scatter", ("xtitle", "A", "B")),
+    "xtitle2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
+                ("xtitle2", "A", "B")),
+    "ylabel": ({}, {}, "scatter", ("ylabel", "10(10)30", "15 25")),
+    "ylabel2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
+                ("ylabel2", "15 25", "18 28")),
+    "yline": ({}, {}, "scatter", ("yline", "20", "25")),
+    "yscale": ({}, {}, "scatter", ("yscale", "log", "reverse")),
+    "yscale2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
+                ("yscale2", "log", "reverse")),
+    "ysize": ({}, {}, "scatter", ("ysize", "3", "9")),
+    "ytick": ({}, {}, "scatter", ("ytick", "15 25", "18 28")),
+    "ytitle": ({}, {}, "scatter", ("ytitle", "A", "B")),
+    "ytitle2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
+                ("ytitle2", "A", "B")),
+}
+
+
+def _live_pair(opt):
+    """``(popts_a, gopts_a, popts_b, gopts_b, ptype)`` for one live option."""
+    pa, pb, ptype, g = LIVE_VALUES[opt]
+    if isinstance(g, tuple):
+        key, a, b = g
+        return dict(pa), {key: a}, dict(pb), {key: b}, ptype
+    return dict(pa), dict(g), dict(pb), dict(g), ptype
+
+
+def _plot_live():
+    return sorted(set(_declared_plot()) - set(_plot_pending()) - ALIASES
+                  - set(NOT_IN_FILE) - set(_declared_graph()))
+
+
+def _graph_live():
+    return sorted(set(_declared_graph()) - set(_graph_pending()) - ALIASES
+                  - set(NOT_IN_FILE))
+
+
+class TestEveryDeclaredOptionIsClassified:
+    def test_the_syntax_blocks_were_actually_found(self):
+        assert len(_declared_plot()) >= 130
+        assert len(_declared_graph()) >= 60
+
+    def test_every_declared_option_is_classified(self):
+        """Pending, alias, route, or live -- a declared option with no
+        classification is one the next maintainer must decide about."""
+        declared = set(_declared_plot()) | set(_declared_graph())
+        unclassified = sorted(declared - set(_plot_pending())
+                              - set(_graph_pending()) - ALIASES
+                              - set(NOT_IN_FILE) - set(LIVE_VALUES))
+        assert not unclassified, (
+            f"dash.ado declares {unclassified} and nothing here says whether "
+            f"each is honoured (add LIVE_VALUES) or reported (add it to a "
+            f"_dash_pending block and PLOT_VALUES)")
+
+    def test_no_option_is_both_pending_and_live(self):
+        both = sorted(set(LIVE_VALUES)
+                      & (set(_plot_pending()) | set(_graph_pending())))
+        assert not both, f"reported as ignored AND expected to work: {both}"
+
+    def test_every_live_option_is_still_declared(self):
+        declared = set(_declared_plot()) | set(_declared_graph())
+        gone = sorted(set(LIVE_VALUES) - declared)
+        assert not gone, f"LIVE_VALUES names options dash.ado no longer declares: {gone}"
+
+
+@pytest.mark.parametrize("opt", _plot_live())
+def test_a_plot_option_not_reported_unsupported_really_works(tmp_path, opt):
+    pa, ga, pb, gb, ptype = _live_pair(opt)
+    first = _render(tmp_path, ptype, pa, ga, f"live_{opt}_a")
+    second = _render(tmp_path, ptype, pb, gb, f"live_{opt}_b")
+    assert first != second, (
+        f"dash accepts plot-level {opt}() without naming it in the "
+        f"ignored-option note, but {pa} and {pb} render byte-identical "
+        f"dashboards -- it is silently dropped (or the probe values collide)")
+
+
+@pytest.mark.parametrize("opt", _graph_live())
+def test_a_graph_option_not_reported_unsupported_really_works(tmp_path, opt):
+    pa, ga, pb, gb, ptype = _live_pair(opt)
+    first = _render(tmp_path, ptype, pa, ga, f"glive_{opt}_a")
+    second = _render(tmp_path, ptype, pb, gb, f"glive_{opt}_b")
+    assert first != second, (
+        f"dash accepts graph-level {opt}() without naming it in the "
+        f"ignored-option note, but {ga} and {gb} render byte-identical "
+        f"dashboards -- it is silently dropped (or the probe values collide)")
+
+
+# ---------------------------------------------------------------------------
+# The two route options, pinned by reading the ado, since no rendering can
+# see them.  nodraw is the third: honoured at the browser-launch decision,
+# so it must NOT be on the pending list -- it was, and the note said
+# "ignoring unsupported option(s): nodraw()" for an option it had applied.
+# ---------------------------------------------------------------------------
+
+def _ado_program(name):
+    with open(_ADO, encoding="utf-8") as fh:
+        return _program_body(fh.read(), name) or ""
+
+
+def test_nodraw_is_never_reported_unsupported():
+    assert "nodraw" not in _plot_pending() and "nodraw" not in _graph_pending(), (
+        "dash.ado honours nodraw at the browser-launch decision and must not "
+        "name it in the ignoring-unsupported note")
+
+
+def test_nodraw_is_still_read_by_the_launch_decision():
+    assert '"nodraw":"nodraw"' in _ado_program("_dash_browser_wanted"), (
+        "the browser-launch decision no longer reads the graph's nodraw")
+
+
+def test_saving_is_still_extracted_by_the_immediate_render():
+    assert '_dash_json_get_str(st_local("json_spec"), "saving"' in \
+        _ado_program("_dash_render_immediate")

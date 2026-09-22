@@ -62,7 +62,7 @@ GRAPH = [
     ("legend", None), ("by", None), ("xscale", None), ("yscale", None),
     ("aspectratio", None), ("scheme", "S11"), ("plotregion", None),
     ("graphregion", None), ("bgcolor", None), ("plotbgcolor", None),
-    ("link", None), ("filter", None),
+    ("link", "IGNORE"), ("filter", "IGNORE")  # build-time; inert on a graph (WP-13),
     ("ytitle2", None), ("xtitle2", None), ("ylabel2", None), ("xlabel2", None),
     ("yscale2", None), ("xscale2", None),
     # --- accepted here, honoured by a later section ---
@@ -75,7 +75,7 @@ GRAPH = [
     ("r1title", "S09"), ("r2title", "S09"), ("title2", "S09"),
     ("subtitle2", "S09"),
     # --- accepted and reported as ignored, permanently ---
-    ("nodraw", "IGNORE"), ("play", "IGNORE"),
+    ("nodraw", None)  # honoured at the browser-launch decision (WP-13), ("play", "IGNORE"),
 ]
 
 PLOT = [
