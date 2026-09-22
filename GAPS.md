@@ -1038,6 +1038,20 @@ dash_setup complete. All dependencies are satisfied.
 
 `exit` appears only at `:37, 141, 185, 190, 309` — never on this branch.
 
+**RESOLVED (WP-06), and the branch was never even reached.** The fall-through
+is real and is fixed by a failure accumulator plus `_dash_setup_summary`. But
+measuring it turned up something worse: `_dash_pyver_ok` is correct when
+called from a certification script and returned **1 for every input** when
+called from `dash_setup`, which declares `version 16.0` — `return scalar`
+followed by `exit` inside its `forvalues` took effect under neither, so every
+comparison fell through to the closing `ok = 1`. Measured: `3.7.9 >= 3.8`
+gave 1, `0.9 >= 1.5` gave 1. So this branch never ran at all and the user was
+told "Python ............. OK (version 3.7.9)". The comparator now decides
+once and returns after the loop, and `test_setup_python_gate.cscript` gained
+seven cases that call it through a `version 16.0` program — the calling
+context none of its fourteen existing cases covered, which is why it passed
+throughout. See the BUGS.md entries.
+
 ### J2. Version minimums are declared but never enforced by pip — S2, READ
 
 Minimums are declared (`:106-110`) and compared with
@@ -1050,6 +1064,15 @@ Worse, if `packaging` itself failed to install, the `else` at `:169-171`
 prints "OK (version unknown)" for *every* package, although
 `_dash_pkg_version` already retrieved the real version. A below-minimum bokeh
 is then reported as OK.
+
+**RESOLVED (WP-06), partly, and one part corrected.** The bare pip name is
+fixed: pip now receives `<pkg>>=<min>` built from the minimum declared beside
+it. The "below minimum is never upgraded" half is deliberate rather than
+fixed — an importable package below its minimum is now *reported as unmet*,
+with the exact upgrade command printed, rather than upgraded behind the
+user's back, because something else in their environment may depend on the
+version they have. AC-06.2 accepts either. The `packaging`-unavailable
+masking is fixed by `_dash_setup_gate` (see J6 and BUGS.md).
 
 ### J3. Python availability is probed by running Python — S2, MEASURED
 
@@ -1077,6 +1100,16 @@ code**. A failed Mata compile therefore surfaces much later as
 function and gives the user nothing to act on.
 
 ### J6. Smaller gaps — S3, READ
+
+**RESOLVED (WP-06)** for: the missing `syntax` line (added; measured, a bare
+`syntax` gives r(101), not r(198)); the uncaptured `Version(...)` (now
+captured, with a fallback); the missing `--user` retry (added, tried once
+after a failed install); pip output discarded on the `packaging` install (now
+printed, as the package loop already did); no check that `dash_render.py` and
+the schemes are reachable (added as `_dash_setup_check_files`, which asks the
+RENDERER rather than `findfile`, because `findfile s2color.scheme` succeeds
+on the very install where the renderer could read none); and the two sections
+both numbered 3 (now 1-6). Rollback is NOT addressed and remains open.
 
 - **`dash_setup` has no `syntax` line at all** (`:15-17`), so
   `dash_setup, garbage(1)` runs normally, silently ignoring the input.

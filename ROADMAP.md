@@ -471,6 +471,38 @@ should land:
 
 **Gaps closed:** J1, J2, J6 · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
+> **DONE**, and the plan understated it. TR-06.1's premise — "prints an error
+> and does not exit" — is true, but the branch was never reached:
+> `_dash_pyver_ok` returned 1 for every input when called under the
+> `version 16.0` that `dash_setup` declares, because `return scalar` plus
+> `exit` inside its `forvalues` took effect there. The comparator was correct
+> from a cscript, which is why fourteen existing cases passed while the
+> production path was broken. Fixed by deciding once and returning after the
+> loop, plus seven cases in the calling context the tests were missing.
+>
+> * **TR-06.1** landed as a failure/warning accumulator and a separate
+>   `_dash_setup_summary`. Separate on purpose: while the banner was four
+>   inline `display` lines the requirement could not be tested without
+>   pip-installing into the user's environment.
+> * **TR-06.2** landed for the install path. The upgrade path was declined on
+>   purpose — an importable package below its minimum is reported as unmet
+>   with the exact command, not upgraded behind the user's back. AC-06.2
+>   allows either.
+> * **TR-06.3** landed as `_dash_setup_gate`, four verdicts instead of two.
+>   `_dash_pyver_ok` is the fallback, not a replacement: measured against
+>   `packaging` it disagrees on every pre/post-release form, so it may report
+>   `below` but never `ok`.
+> * **TR-06.4..TR-06.7, TR-06.9** landed. Measured: a bare `syntax` gives
+>   r(101), not r(198).
+> * **TR-06.8** landed, and asks the RENDERER rather than `findfile` —
+>   `findfile s2color.scheme` succeeds on exactly the install where the
+>   renderer can read none, so a findfile check would have passed on the tree
+>   it exists to catch.
+> * **Not addressed:** rollback (J6). Still open.
+>
+> New: `test/test_setup_honesty.cscript` (HON-01..18, runner #33), plus seven
+> version-context cases in `test_setup_python_gate.cscript`.
+
 > **User story.** As a new user, if setup did not fully succeed I want to be
 > told that — not to see "All dependencies are satisfied" and discover the
 > problem later inside a Python traceback.

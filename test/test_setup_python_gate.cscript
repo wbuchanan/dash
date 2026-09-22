@@ -92,6 +92,47 @@ while r(eof) == 0 {
 file close `fh'
 _chk "dash_setup.sthlp states the same minimum (`pymin')" "`found'" "1"
 
+// ---- the version the CALLER declares must not change the answer ----
+//
+// Every case above calls _dash_pyver_ok from this script's own scope, where
+// `version' is the session's.  dash_setup calls it from a program that
+// declares `version 16.0', and under that setting the comparator answered
+// "at or above" for EVERYTHING:
+//
+//     3.7.9 >= 3.8   ->  1        0.9 >= 1.5  ->  1
+//
+// `return scalar' followed by `exit' inside the forvalues loop took effect
+// under neither, so every input fell through to the final `ok = 1'.  The
+// Python minimum this script exists to protect therefore never fired in
+// production, while all of the cases above passed.  The comparator now
+// decides once and returns after the loop.
+//
+// These cases call it the way dash_setup does.
+capture program drop _gate16
+program define _gate16, rclass
+    version 16.0
+    args got want
+    _dash_pyver_ok "`got'" "`want'"
+    return scalar ok = r(ok)
+end
+
+_gate16 "3.8.0"  "3.8"
+_chk "v16: 3.8.0 >= 3.8"   "`r(ok)'" "1"
+_gate16 "3.7.9"  "3.8"
+_chk "v16: 3.7.9 < 3.8"    "`r(ok)'" "0"
+_gate16 "2.7.18" "3.8"
+_chk "v16: 2.7.18 < 3.8"   "`r(ok)'" "0"
+_gate16 "3.10.0" "3.9"
+_chk "v16: 3.10.0 >= 3.9"  "`r(ok)'" "1"
+_gate16 "3.9"    "3.10"
+_chk "v16: 3.9 < 3.10"     "`r(ok)'" "0"
+_gate16 ""       "3.8"
+_chk "v16: empty is unknown"  "`r(ok)'" "-1"
+_gate16 "abc"    "3.8"
+_chk "v16: non-numeric is unknown" "`r(ok)'" "-1"
+
+capture program drop _gate16
+
 if `fail' {
     display as error "SOME TESTS FAILED"
     exit 9

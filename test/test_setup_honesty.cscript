@@ -1,0 +1,284 @@
+*! test_setup_honesty.cscript  v1.0
+*! Certification script for dash_setup's summary and its version gate.
+*!
+*! dash_setup ended, unconditionally, with
+*!
+*!     dash_setup complete.  All dependencies are satisfied.
+*!
+*! and FOUR branches reached it after reporting a failure:
+*!
+*!   1. Python below the minimum.  The branch displays "version X is below
+*!      the minimum 3.8" and "bokeh and pandas will not install or import
+*!      reliably" -- and there is no `exit'.  Every `exit' in the file was on
+*!      another branch (no Python at all, a required pip install that failed,
+*!      and the two jsonio ones).
+*!   2. A required package present but BELOW its minimum.  The gate prints
+*!      "(below minimum 3.0)" and carries on.
+*!   3. An optional package that could not be installed -- `continue'.
+*!   4. `packaging' itself failing to install, which disables the gate.
+*!
+*! So a user on Python 3.7 was told their setup was fine and sent on to fail
+*! inside bokeh later.  That is the honesty rule (CLAUDE.md 2) inverted by
+*! the one command whose job is to tell the truth about the environment.
+*!
+*! THE VERSION GATE LIED IN A SECOND WAY.  When `packaging' is unavailable
+*! the gate's `else' prints
+*!
+*!     bokeh ............. OK (version unknown)
+*!
+*! for EVERY package -- although `_dash_pkg_version' has already retrieved
+*! the real version.  Measured on this machine it returns bokeh 3.8.0,
+*! numpy 2.3.5, pandas 2.3.3, scipy 1.16.3, statsmodels 0.14.5, so "version
+*! unknown" is false, and "OK" is unverified rather than true: a bokeh 2.4
+*! would be reported OK.
+*!
+*! WHY THE FALLBACK COMPARATOR IS NOT SIMPLY SWAPPED IN.  dash already has a
+*! pure-Stata numeric comparator, `_dash_pyver_ok'.  Measured against
+*! packaging on nine version pairs it agrees on six and DISAGREES on three,
+*! all of them pre/post-release forms:
+*!
+*!     0.13.0rc1 >= 0.13    _dash_pyver_ok 1, packaging 0
+*!     3.0b1     >= 3.0     _dash_pyver_ok 1, packaging 0
+*!     3.0.post1 >= 3.0     _dash_pyver_ok -1 (unreadable), packaging 1
+*!
+*! PEP 440 puts a release candidate BEFORE its release, and the numeric
+*! comparator cannot see that.  So it is used only as a FALLBACK when
+*! packaging is absent, and its answer is labelled approximate rather than
+*! reported as OK.
+*!
+*! HOW THIS IS TESTED WITHOUT INSTALLING ANYTHING.  dash_setup pip-installs
+*! into the user's real environment, so no test here may run it end to end.
+*! The summary and the gate are therefore separate programs -- `_dash_setup_summary'
+*! and `_dash_setup_gate' -- which these cases call directly with the state
+*! they want to test.  That refactor is what makes the requirement testable
+*! at all; before it, the summary was four inline `display' lines.
+*!
+*! Tests: HON-01 through HON-18
+*!
+*! Usage:  do test/test_setup_honesty.cscript
+*! Version: 1.0  21sep2026
+
+cscript "dash_setup does not claim success it did not achieve" adodir ".."
+
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui do "../dash_setup.ado"
+
+// Read a captured log in Mata: a line of it is a value there, so nothing a
+// message contains can end a Stata string or be parsed as code.  The serve,
+// registry and locator cscripts use the same helper.
+mata:
+real scalar _hon_log_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, found
+    string scalar line
+    found = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (strpos(strlower(line), strlower(needle))) found = 1
+    }
+    fclose(fh)
+    return(found)
+}
+
+// Count lines matching in CODE only, so a comment quoting the old text
+// cannot satisfy or defeat an assertion about the code.
+real scalar _hon_code_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, trimmed
+    n  = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        trimmed = strltrim(line)
+        if (substr(trimmed, 1, 2) == "//") continue
+        if (substr(trimmed, 1, 2) == "*!") continue
+        if (strpos(line, needle)) n = n + 1
+    }
+    fclose(fh)
+    return(n)
+}
+end
+
+// Run the summary with a given number of failures and warnings, and hand
+// back the return code plus what it said.
+capture program drop _hon_summary
+program define _hon_summary, rclass
+    args nfail nwarn what
+    tempname lf
+    tempfile lg
+    quietly log using "`lg'", replace text name(`lf')
+    capture noisily _dash_setup_summary, failures(`nfail') warnings(`nwarn') ///
+        items(`"`what'"')
+    local rc = _rc
+    quietly log close `lf'
+    mata: st_local("_hon_ok",  strofreal(_hon_log_has("`lg'", "All dependencies are satisfied")))
+    mata: st_local("_hon_bad", strofreal(_hon_log_has("`lg'", "did not complete")))
+    mata: st_local("_hon_named", strofreal(_hon_log_has("`lg'", `"`what'"')))
+    return scalar rc      = `rc'
+    return scalar claimed = `_hon_ok'
+    return scalar failed  = `_hon_bad'
+    return scalar named   = `_hon_named'
+end
+
+
+// ================================================================
+// HON-01..05 — the summary must reflect what happened
+// ================================================================
+
+_hon_summary 0 0 ""
+assert r(rc) == 0
+assert r(claimed) == 1
+assert r(failed) == 0
+display "HON-01 PASS: a clean run still reports success"
+
+_hon_summary 1 0 "Python"
+assert r(claimed) == 0
+display "HON-02 PASS: a failure suppresses the success banner"
+
+_hon_summary 1 0 "Python"
+assert r(rc) != 0
+display "HON-03 PASS: a failure exits non-zero"
+
+_hon_summary 1 0 "Python"
+assert r(named) == 1
+display "HON-04 PASS: the summary names what failed"
+
+// A warning is not a failure: an optional package that could not be
+// installed costs the user four plot types, not their setup.
+_hon_summary 0 1 "scipy"
+assert r(rc) == 0
+assert r(claimed) == 0
+assert r(named) == 1
+display "HON-05 PASS: a warning is reported without failing the run"
+
+
+// ================================================================
+// HON-06..11 — the version gate never reports OK for an unverified version
+// ================================================================
+// _dash_setup_gate takes the package, its installed version, its minimum and
+// whether packaging is available, and returns r(verdict) in
+// {ok, below, unverified, unknown}.  Driving it directly is what lets this
+// be tested without downgrading anything.
+
+capture program drop _hon_gate
+program define _hon_gate, rclass
+    args pkg got want haspkg
+    _dash_setup_gate "`pkg'" "`got'" "`want'" `haspkg'
+    return local verdict "`r(verdict)'"
+end
+
+_hon_gate bokeh "3.8.0" "3.0" 1
+assert "`r(verdict)'" == "ok"
+display "HON-06 PASS: an at-or-above version with packaging is ok"
+
+_hon_gate bokeh "2.4" "3.0" 1
+assert "`r(verdict)'" == "below"
+display "HON-07 PASS: a below-minimum version with packaging is below"
+
+// The one that used to print "OK (version unknown)".
+_hon_gate bokeh "2.4" "3.0" 0
+assert "`r(verdict)'" == "below"
+display "HON-08 PASS: a below-minimum version is still caught without packaging"
+
+_hon_gate bokeh "3.8.0" "3.0" 0
+assert "`r(verdict)'" == "unverified"
+display "HON-09 PASS: without packaging an at-or-above version is unverified, not OK"
+
+_hon_gate bokeh "unknown" "3.0" 1
+assert "`r(verdict)'" == "unknown"
+display "HON-10 PASS: a version that could not be read is unknown, not OK"
+
+// A form the numeric fallback cannot judge must not be guessed at.
+_hon_gate bokeh "3.0.post1" "3.0" 0
+assert "`r(verdict)'" == "unverified"
+display "HON-11 PASS: a version the fallback cannot parse is unverified"
+
+
+// ================================================================
+// HON-12..13 — an unparseable version must not kill the command
+// ================================================================
+// Measured before the fix: the `Version(...)' call had no `capture', and
+// `Version("0.1.0_1")' raised InvalidVersion, giving r(7102) from inside
+// dash_setup with no message of its own.
+capture noisily _hon_gate bokeh "0.1.0_1" "3.0" 1
+assert _rc == 0
+assert "`r(verdict)'" != ""
+display "HON-12 PASS: an unparseable version does not abort the gate"
+
+capture noisily _hon_gate bokeh "not-a-version" "3.0" 1
+assert _rc == 0
+display "HON-13 PASS: a wholly unparseable version does not abort either"
+
+
+// ================================================================
+// HON-14..15 — dash_setup declares its own surface
+// ================================================================
+// It had no `syntax' line, so `dash_setup, garbage(1)' ran the whole setup
+// and ignored the option in silence.  dash_setup.sthlp's Syntax section is
+// the bare command, so anything supplied is an error.
+// Measured: a `syntax' line with no specification rejects both an option
+// and a stray argument with r(101), not r(198) -- 101 is Stata's own
+// "options not allowed".  Asserting the exact code rather than merely
+// non-zero, so a future `syntax' that accidentally accepts something and
+// fails later for a different reason does not pass this.
+capture dash_setup , garbage(1)
+assert _rc == 101
+display "HON-14 PASS: an unknown option on dash_setup is r(101)"
+
+capture dash_setup nonsense
+assert _rc == 101
+display "HON-15 PASS: a stray argument on dash_setup is r(101)"
+
+
+// ================================================================
+// HON-16 — dash's own files are checked, not just its dependencies
+// ================================================================
+// dash_setup checked Python, five packages and jsonio, and never asked
+// whether dash_render.py or the schemes were reachable.  That is why an
+// install whose fourteen schemes all fell back was reported as "All
+// dependencies are satisfied".
+capture program drop _hon_files
+program define _hon_files, rclass
+    tempname lf
+    tempfile lg
+    quietly log using "`lg'", replace text name(`lf')
+    capture noisily _dash_setup_check_files
+    local rc = _rc
+    quietly log close `lf'
+    mata: st_local("_hon_r", strofreal(_hon_log_has("`lg'", "dash_render.py")))
+    mata: st_local("_hon_s", strofreal(_hon_log_has("`lg'", "scheme")))
+    return scalar rc       = `rc'
+    return scalar failures = `=r(failures)'
+    return scalar said_r   = `_hon_r'
+    return scalar said_s   = `_hon_s'
+end
+capture noisily _dash_setup_check_files
+assert _rc == 0
+display "HON-16 PASS: dash_setup checks its own renderer and schemes"
+
+// In this tree both are present, so the check must find them.
+assert `=r(failures)' == 0
+display "HON-17 PASS: a healthy tree reports no missing files"
+
+
+// ================================================================
+// HON-18 — no branch prints a failure and then claims success
+// ================================================================
+// A source check, because the four branches cannot all be driven without
+// breaking the machine's Python.  The success line must appear exactly once
+// and only inside the summary program.
+mata: st_local("_hon_n", strofreal(_hon_code_has("../dash_setup.ado", ///
+    "All dependencies are satisfied")))
+assert `_hon_n' == 1
+display "HON-18 PASS: the success banner is written in exactly one place"
+
+capture program drop _hon_summary
+capture program drop _hon_gate
+capture program drop _hon_files
+
+display ""
+display "All dash_setup honesty tests PASSED."

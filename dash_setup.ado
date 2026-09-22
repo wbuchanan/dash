@@ -14,6 +14,19 @@
 
 program define dash_setup
     version 16.0
+    // dash_setup.sthlp's Syntax section is the bare command, and there was
+    // no `syntax' line at all -- so `dash_setup, garbage(1)' ran the whole
+    // setup and ignored the option in silence.
+    syntax
+
+    // Everything that went wrong, counted rather than merely displayed.
+    // The summary below branches on these; it used to say "All dependencies
+    // are satisfied" whatever had happened.  A FAILURE means dash cannot
+    // work; a WARNING means an optional layer will render empty.
+    local n_fail 0
+    local n_warn 0
+    local fail_items ""
+    local warn_items ""
 
     // ----------------------------------------------------------------
     // 1. Check Python availability
@@ -54,6 +67,11 @@ program define dash_setup
         display as error "  Python ............. version `pyver' is below the minimum `c_pymin'."
         display as error "    bokeh and pandas will not install or import reliably."
         display as error "    Link Stata to Python `c_pymin' or later: {help python}"
+        // Counted, not just printed.  This branch has never had an `exit',
+        // so before this the run continued, installed against the too-old
+        // interpreter, and ended by declaring success.
+        local n_fail = `n_fail' + 1
+        local fail_items `"`fail_items' Python `pyver' (needs `c_pymin')"'
     }
     else {
         display as text "  Python ............. {res}OK{txt} (version `pyver'; could not be compared to `c_pymin')"
@@ -67,16 +85,25 @@ program define dash_setup
     capture python: import packaging
     if _rc != 0 {
         display as text "  packaging .......... {res}missing{txt} — installing via pip..."
+        // Its output was discarded, so a failure here gave no reason at
+        // all.  The package loop below already prints pip's tail; this site
+        // was the one that did not.
         python: ///
             import subprocess, sys; ///
-            subprocess.run([sys.executable, "-m", "pip", "install", "packaging"], ///
-                capture_output=True)
+            r = subprocess.run( ///
+                [sys.executable, "-m", "pip", "install", "packaging"], ///
+                capture_output=True, text=True ///
+            ); ///
+            print(r.stdout[-500:] if r.stdout else ""); ///
+            print(r.stderr[-200:] if r.stderr else "")
         // Mark whether packaging is now available
         capture python: import packaging
         if _rc != 0 {
             display as text "  packaging .......... {err}could not install{txt} — " ///
-                "version comparison will be skipped"
+                "versions will be compared approximately"
             local pkg_has_packaging 0
+            local n_warn = `n_warn' + 1
+            local warn_items `"`warn_items' packaging (version checks approximate)"'
         }
         else {
             local pkg_has_packaging 1
@@ -117,14 +144,37 @@ program define dash_setup
         capture python: import `pkg'
         if _rc != 0 {
             display as text "  `pkg' ............. {res}missing{txt} — installing via pip..."
+            // The minimum reaches pip.  It was declared just above and only
+            // ever used AFTER the install, to grumble at what pip had
+            // chosen; the command itself was a bare name, so a fresh
+            // install could land below the minimum dash requires and then
+            // be reported as being below it.
+            local _spec "`pkg'"
+            if "`min_`pkg''" != "" local _spec "`pkg'>=`min_`pkg''"
             python: ///
                 import subprocess, sys; ///
                 r = subprocess.run( ///
-                    [sys.executable, "-m", "pip", "install", "`pkg'"], ///
+                    [sys.executable, "-m", "pip", "install", "`_spec'"], ///
                     capture_output=True, text=True ///
                 ); ///
                 print(r.stdout[-500:] if r.stdout else ""); ///
                 print(r.stderr[-200:] if r.stderr else "")
+            // A system Python the user cannot write to is the ordinary
+            // reason this fails, and --user is the ordinary answer.  Tried
+            // only when the import still fails, so a successful install
+            // never triggers a second pip run.
+            capture python: import `pkg'
+            if _rc != 0 {
+                display as text "      retrying with --user..."
+                python: ///
+                    import subprocess, sys; ///
+                    r = subprocess.run( ///
+                        [sys.executable, "-m", "pip", "install", "--user", "`_spec'"], ///
+                        capture_output=True, text=True ///
+                    ); ///
+                    print(r.stdout[-500:] if r.stdout else ""); ///
+                    print(r.stderr[-200:] if r.stderr else "")
+            }
             // Re-check after install
             capture python: import `pkg'
             if _rc != 0 {
@@ -134,10 +184,19 @@ program define dash_setup
                         " — `feat_`pkg'' will render empty."
                     display as text "      To enable them later:" ///
                         " python -m pip install `pkg'"
+                    local n_warn = `n_warn' + 1
+                    local warn_items `"`warn_items' `pkg' (`feat_`pkg'')"'
                     continue
                 }
                 display as error "  Failed to install `pkg'. Please install manually:"
-                display as error "    python -m pip install `pkg'"
+                display as error "    python -m pip install `_spec'"
+                // Still fatal -- nothing renders without bokeh, numpy and
+                // pandas -- but routed through the summary so the exit code
+                // and the message come from one place.
+                local n_fail = `n_fail' + 1
+                local fail_items `"`fail_items' `pkg' (could not install)"'
+                _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                    items(`"`fail_items'`warn_items'"')
                 exit 198
             }
         }
@@ -147,32 +206,48 @@ program define dash_setup
         local pkgver ""
         _dash_pkg_version "`pkg'" pkgver
 
-        // Version gate: warn if below minimum (non-fatal — user may have
-        // patched versions that still work).  Only run when packaging is
-        // available (guaranteed by the guard above, but check the flag as
-        // a defence-in-depth measure).
-        if "`pkgver'" != "unknown" & `pkg_has_packaging' {
-            python: ///
-                from packaging.version import Version; ///
-                import sfi; ///
-                ok = Version("`pkgver'") >= Version("`minver'"); ///
-                sfi.Macro.setLocal("ver_ok", "1" if ok else "0")
-            if "`ver_ok'" == "0" {
-                display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
-                    " {err}(below minimum `minver'){txt}"
+        // Version gate.  The four outcomes used to collapse into two, and
+        // the `else' printed "OK (version unknown)" for every package
+        // whenever `packaging' was missing -- although _dash_pkg_version had
+        // already returned the real version.  A bokeh 2.4 was reported OK.
+        _dash_setup_gate "`pkg'" "`pkgver'" "`minver'" `pkg_has_packaging'
+        local verdict "`r(verdict)'"
+
+        if "`verdict'" == "ok" {
+            display as text "  `pkg' ............. {res}OK{txt}" ///
+                " (version `pkgver')"
+        }
+        else if "`verdict'" == "below" {
+            display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
+                " {err}(below minimum `minver'){txt}"
+            display as text "      To upgrade: python -m pip install" ///
+                " --upgrade '`pkg'>=`minver''"
+            // Reported as unmet rather than upgraded behind the user's
+            // back: this package is already importable, so something else
+            // in their environment may depend on the version they have.
+            // AC-06.2 accepts either; reporting is the one that cannot
+            // break unrelated work.
+            if `pkg_is_optional' {
+                local n_warn = `n_warn' + 1
+                local warn_items `"`warn_items' `pkg' `pkgver' (needs `minver')"'
             }
             else {
-                display as text "  `pkg' ............. {res}OK{txt}" ///
-                    " (version `pkgver')"
+                local n_fail = `n_fail' + 1
+                local fail_items `"`fail_items' `pkg' `pkgver' (needs `minver')"'
             }
         }
+        else if "`verdict'" == "unverified" {
+            display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
+                " {txt}(not verified against `minver')"
+        }
         else {
-            display as text "  `pkg' ............. {res}OK{txt} (version unknown)"
+            display as text "  `pkg' ............. {res}installed{txt}" ///
+                " (version could not be read)"
         }
     }
 
     // ----------------------------------------------------------------
-    // 3. Check and install jsonio
+    // 4. Check and install jsonio
     // ----------------------------------------------------------------
     capture which jsonio
     if _rc != 0 {
@@ -182,23 +257,42 @@ program define dash_setup
             display as error "  Failed to install jsonio from SSC."
             display as error "  Ensure you have an internet connection and try:"
             display as error "    ssc install jsonio"
+            local n_fail = `n_fail' + 1
+            local fail_items `"`fail_items' jsonio (could not install)"'
+            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                items(`"`fail_items'`warn_items'"')
             exit 198
         }
         capture which jsonio
         if _rc != 0 {
             display as error "  jsonio installed but not found on adopath. Restart Stata."
+            local n_fail = `n_fail' + 1
+            local fail_items `"`fail_items' jsonio (not on the ado-path)"'
+            _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                items(`"`fail_items'`warn_items'"')
             exit 198
         }
     }
     display as text "  jsonio ............. {res}OK{txt}"
 
     // ----------------------------------------------------------------
-    // 4. Summary
+    // 5. Check dash's own files
     // ----------------------------------------------------------------
-    display as text "{hline 60}"
-    display as text "{res}dash_setup complete.{txt} All dependencies are satisfied."
-    display as text "You can now use {cmd:dash} to create interactive dashboards."
-    display as text "Type {cmd:help dash} to get started."
+    // Setup checked Python, five packages and jsonio, and never asked
+    // whether dash itself was reachable -- which is how an install whose
+    // fourteen schemes all fell back to built-in defaults was reported as
+    // "All dependencies are satisfied".
+    _dash_setup_check_files
+    if `=r(failures)' > 0 {
+        local n_fail = `n_fail' + `=r(failures)'
+        local fail_items `"`fail_items' dash's own files"'
+    }
+
+    // ----------------------------------------------------------------
+    // 6. Summary
+    // ----------------------------------------------------------------
+    _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+        items(`"`fail_items'`warn_items'"')
 
 end
 
@@ -237,6 +331,7 @@ program define _dash_pymin, rclass
 end
 
 program define _dash_pyver_ok, rclass
+    version 16.0
     /*
         Is a dotted version string at or above a minimum?
 
@@ -251,6 +346,20 @@ program define _dash_pyver_ok, rclass
 
         An unreadable version returns -1 rather than 0: refusing to set up
         on a version dash merely failed to parse is worse than proceeding.
+
+        THE ANSWER IS DECIDED ONCE AND RETURNED AFTER THE LOOP.  Written the
+        obvious way -- `return scalar ok = 0' followed by `exit' inside the
+        forvalues -- neither took effect under `version 16.0', which is the
+        version dash_setup declares and therefore the version this runs
+        under in production.  Measured, with the loop body tracing itself:
+        at i=1 for "2.4" against "3.0" it computed gnum=2, wnum=3, did not
+        take either branch, and carried on to i=2; every input then fell
+        through to the final `ok = 1'.  So the comparator answered "at or
+        above" for EVERYTHING -- 3.7.9 >= 3.8 -> 1, 0.9 >= 1.5 -> 1 -- and
+        the Python minimum dash_setup.sthlp advertises never fired at all.
+        Called from a certification script, which runs under the session's
+        own version rather than 16.0, the same program answered correctly,
+        which is why test_setup_python_gate.cscript passed throughout.
     */
     args got want
 
@@ -267,35 +376,42 @@ program define _dash_pyver_ok, rclass
     local nw : word count `wparts'
     local n = max(`ng', `nw')
 
+    local decided 0
+    local answer  1
     forvalues i = 1/`n' {
-        local g : word `i' of `gparts'
-        local w : word `i' of `wparts'
-        if "`g'" == "" local g "0"
-        if "`w'" == "" local w "0"
+        if `decided' == 0 {
+            local g : word `i' of `gparts'
+            local w : word `i' of `wparts'
+            if "`g'" == "" local g "0"
+            if "`w'" == "" local w "0"
 
-        // A component may carry a suffix -- "0rc1" -- so take its leading
-        // digits and ignore the rest.
-        if !regexm("`g'", "^([0-9]+)") {
-            return scalar ok = -1
-            exit
-        }
-        local gnum = real(regexs(1))
-        if !regexm("`w'", "^([0-9]+)") {
-            return scalar ok = -1
-            exit
-        }
-        local wnum = real(regexs(1))
-
-        if `gnum' > `wnum' {
-            return scalar ok = 1
-            exit
-        }
-        if `gnum' < `wnum' {
-            return scalar ok = 0
-            exit
+            // A component may carry a suffix -- "0rc1" -- so take its
+            // leading digits and ignore the rest.
+            if !regexm("`g'", "^([0-9]+)") {
+                local decided 1
+                local answer -1
+            }
+            else {
+                local gnum = real(regexs(1))
+                if !regexm("`w'", "^([0-9]+)") {
+                    local decided 1
+                    local answer -1
+                }
+                else {
+                    local wnum = real(regexs(1))
+                    if `gnum' > `wnum' {
+                        local decided 1
+                        local answer 1
+                    }
+                    else if `gnum' < `wnum' {
+                        local decided 1
+                        local answer 0
+                    }
+                }
+            }
         }
     }
-    return scalar ok = 1
+    return scalar ok = `answer'
 end
 
 program define _dash_pkg_version
@@ -314,4 +430,201 @@ program define _dash_pkg_version
     if _rc != 0 local _pv "unknown"
     if "`_pv'" == "" local _pv "unknown"
     c_local `outmac' "`_pv'"
+end
+
+
+// ================================================================
+// _dash_setup_summary  — the closing banner, told the truth
+// ================================================================
+// dash_setup used to end with four unconditional `display' lines saying
+// "All dependencies are satisfied", and FOUR branches reached them after
+// reporting a failure: Python below the minimum (which has no `exit'), a
+// required package below its minimum, an optional package that could not be
+// installed, and `packaging' itself failing.  A user on Python 3.7 was told
+// their setup was fine and sent on to fail inside bokeh.
+//
+// It is a separate program so a certification script can drive it with the
+// state it wants to report.  While the banner was four inline lines, the
+// requirement "the summary must reflect what actually happened" could not
+// be tested at all without pip-installing into the user's environment.
+//
+// Syntax:
+//   _dash_setup_summary , FAILures(int) WARNings(int) [ITEMS(string)]
+// ================================================================
+program define _dash_setup_summary
+    version 16.0
+    syntax , FAILures(integer) WARNings(integer) [ITEMS(string)]
+
+    display as text "{hline 60}"
+
+    if `failures' > 0 {
+        display as error "dash_setup did not complete: `failures' unmet " ///
+            "requirement(s)."
+        if `"`items'"' != "" {
+            display as error "  Unmet: `items'"
+        }
+        display as error "  dash will not work until these are resolved."
+        display as error "  Fix them and run {cmd:dash_setup} again."
+        // Non-zero, so a do-file or CI step that runs dash_setup stops here
+        // rather than carrying on to use a dash that cannot work.  198 is
+        // what the other failing branches of this command already use.
+        exit 198
+    }
+
+    if `warnings' > 0 {
+        display as text "{res}dash_setup complete{txt}, with `warnings' " ///
+            "optional item(s) unavailable."
+        if `"`items'"' != "" {
+            display as text "  Unavailable: `items'"
+        }
+        display as text "  Everything else works; the layers above will " ///
+            "render empty."
+    }
+    else {
+        display as text "{res}dash_setup complete.{txt} All dependencies are satisfied."
+    }
+    display as text "You can now use {cmd:dash} to create interactive dashboards."
+    display as text "Type {cmd:help dash} to get started."
+end
+
+
+// ================================================================
+// _dash_setup_gate  — is an installed version good enough?
+// ================================================================
+// Returns r(verdict), one of:
+//   ok          at or above the minimum, established by `packaging'
+//   below       under the minimum
+//   unverified  a real version that could not be compared authoritatively
+//   unknown     no version could be read at all
+//
+// The old gate collapsed the last three into
+//     bokeh ............. OK (version unknown)
+// whenever `packaging' was missing -- although _dash_pkg_version had
+// already returned the real version (measured: bokeh 3.8.0, numpy 2.3.5,
+// pandas 2.3.3, scipy 1.16.3, statsmodels 0.14.5).  So a bokeh 2.4 was
+// reported OK.
+//
+// dash's own _dash_pyver_ok is used as the fallback, NOT as a replacement.
+// Measured against packaging on nine pairs it agrees on six and disagrees
+// on three, all pre/post-release forms:
+//     0.13.0rc1 >= 0.13   _dash_pyver_ok 1, packaging 0
+//     3.0b1     >= 3.0    _dash_pyver_ok 1, packaging 0
+//     3.0.post1 >= 3.0    _dash_pyver_ok -1, packaging 1
+// PEP 440 puts a release candidate before its release and the numeric
+// comparator cannot see that.  So the fallback may report `below' (where it
+// is conservative and safe) but never `ok' -- an at-or-above answer it
+// produced alone is reported as `unverified'.
+//
+// Syntax:
+//   _dash_setup_gate pkg got want has_packaging
+// ================================================================
+program define _dash_setup_gate, rclass
+    version 16.0
+    args pkg got want haspkg
+
+    if `"`got'"' == "" | `"`got'"' == "unknown" {
+        return local verdict "unknown"
+        exit
+    }
+
+    // The fallback answer is computed FIRST, before anything that could
+    // disturb r(), and the authoritative one overwrites it.  Written the
+    // other way round -- try packaging, fall through on failure -- the
+    // fallback's `r(ok)' read came after a `capture' and measured as
+    // missing, so a bokeh 2.4 scored 0 by _dash_pyver_ok still came back
+    // "unverified" instead of "below".  There is no fall-through here: the
+    // verdict is always set before any branch runs.
+    _dash_pyver_ok "`got'" "`want'"
+    local n = r(ok)
+    local verdict "unverified"
+    if `n' == 0 local verdict "below"
+
+    if "`haspkg'" == "1" {
+        // `capture' because Version() raises InvalidVersion on a string it
+        // cannot parse, and without it the whole of dash_setup ended at
+        // r(7102) with no message of its own.  Measured on "0.1.0_1".
+        local ver_ok ""
+        capture python: ///
+            from packaging.version import Version; ///
+            import sfi; ///
+            sfi.Macro.setLocal("ver_ok", ///
+                "1" if Version("`got'") >= Version("`want'") else "0")
+        if _rc == 0 {
+            if "`ver_ok'" == "1" local verdict "ok"
+            if "`ver_ok'" == "0" local verdict "below"
+        }
+    }
+
+    return local verdict "`verdict'"
+end
+
+
+// ================================================================
+// _dash_setup_check_files  — is dash itself installed and reachable?
+// ================================================================
+// dash_setup checked Python, five Python packages and jsonio, and never
+// asked whether dash's OWN files were reachable.  That is why a `net
+// install' whose fourteen schemes all fell back to built-in defaults was
+// reported as "All dependencies are satisfied" (see the BUGS.md entry).
+//
+// The schemes are checked by asking the RENDERER, not by `findfile'.
+// findfile locates PLUS/s/s2color.scheme perfectly well on the very install
+// where the renderer could not read a single scheme, so a findfile check
+// would have passed on the broken tree it exists to catch.
+//
+// Returns r(failures), the number of things that are missing.
+// ================================================================
+program define _dash_setup_check_files, rclass
+    version 16.0
+
+    local nfail 0
+
+    capture findfile dash_render.py
+    if _rc != 0 {
+        capture findfile dash.ado
+        if _rc == 0 {
+            local _ado `"`r(fn)'"'
+            local _beside = substr(`"`_ado'"', 1, ///
+                strlen(`"`_ado'"') - strlen("dash.ado")) + "dash_render.py"
+            capture confirm file `"`_beside'"'
+            if _rc == 0 local render_py `"`_beside'"'
+        }
+    }
+    else {
+        local render_py `"`r(fn)'"'
+    }
+
+    if `"`render_py'"' == "" {
+        display as error "  dash_render.py ..... {err}not found{txt}"
+        display as error "    dash cannot render without it. Reinstall dash," ///
+            " or put its directory on the ado-path."
+        local nfail = `nfail' + 1
+        return scalar failures = `nfail'
+        exit 0
+    }
+    display as text "  dash_render.py ..... {res}OK{txt}"
+
+    // Ask the renderer whether it can actually read a scheme file.
+    local _sch_ok "0"
+    capture python: ///
+        import importlib.util as _iu, sfi, warnings; ///
+        _sp = _iu.spec_from_file_location("_dash_setup_probe", r"`render_py'"); ///
+        _m = _iu.module_from_spec(_sp); ///
+        _sp.loader.exec_module(_m); ///
+        warnings.simplefilter("ignore"); ///
+        sfi.Macro.setLocal("_sch_ok", ///
+            "0" if _m.SchemeParser.resolve_or_fallback("s2color", "dash_setup").is_fallback else "1")
+    if _rc != 0 | "`_sch_ok'" != "1" {
+        display as error "  schemes ............ {err}unreachable{txt}"
+        display as error "    dash found its renderer but the renderer could" ///
+            " not read a .scheme file,"
+        display as error "    so every dashboard would be drawn with built-in" ///
+            " defaults. Reinstall dash."
+        local nfail = `nfail' + 1
+    }
+    else {
+        display as text "  schemes ............ {res}OK{txt}"
+    }
+
+    return scalar failures = `nfail'
 end
