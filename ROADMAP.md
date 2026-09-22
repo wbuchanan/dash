@@ -1419,52 +1419,268 @@ and pinned in `test_suboption_warnings.py`.
 
 ---
 
-## WP-15 · Systematic option validation
+## WP-15 · Systematic option validation — DONE
 
 **Gaps closed:** E5 · **Severity:** S2 · **Effort:** M · **Depends on:** WP-13
 
 > **User story.** As a user who typed a bad value, I want a clear `dash` error
 > naming the option — the way `level()` already does.
 
-### Business requirements
+### What was measured before any code changed
 
-- **BR-15.1** An invalid option value produces a `dash` error naming the
-  option, before it reaches Python.
-- **BR-15.2** Validation is declarative and uniform, not per-option
-  hand-written exceptions.
+The E5 premise held: `level()` was the only value dash checked
+(`dash.ado:830-842`, not the 549-558 the gap cited), and every other plot
+and graph value went to JSON verbatim. Forty probes through Stata,
+22sep2026: two hard errors, both `level()`; two `r(111)` from `fmt()`
+(`fmt(bogus)`, `fmt("HACKED" %9.2f)`, the `HACKED not found` case);
+thirteen Python warnings then rc 0 with a substituted value (`degree(x)`,
+`bwidth(-1)`, `bin(0|abc)`, `width(-1)`, `kernel(bogus)`, `n(-5)`,
+`xsize(abc)`, `ysize(-2)`, `aspectratio(abc)`, `scheme(nonsense)`,
+`xscale(bogus)`, `barwidth(abc)`); one note (`connect(bogus)`, pending);
+twenty-one silent rc 0, four of them good values rightly silent
+(`msize(huge)`, `malpha(2)`, `fmt(%9.2f)`, `fmt(%-12.0gc)`) and seventeen
+bad (`msize(abc)`, `msymbol(nonsense)`, `mcolor(notacolour)`,
+`jitter(-3|abc)`, `lwidth(abc)`, `lpattern(bogus)`, `mlabposition(99)`,
+`yaxis(3)`, `colornlevels(0)`, `bgcolor(notacolour)`, `hover(bogus)`,
+`fintensity(abc)`, `mlabsize(abc)`, `msangle(abc)`, `bands(0)`,
+`jitterseed(abc)`); and one silent and wrong (`fmt(%tc)` on `mpg` prints `01jan1960 00:00:00`).
+Read, not run: `map_scatteri` called `translate_msize` and
+`translate_msymbol` bare, so `scatteri ..., msize(abc)` aborted the render;
+`map_dropline` did the same with a bare `float()` on `jitter()`; a negative
+`jitterseed()` reached `numpy.random.default_rng` and aborted in both modes.
 
-### Technical requirements
+The oracle, twoway itself, 248 probes: 60 refused, 188 accepted, 36 of the
+accepted with `(note: named style X not found in class Y, default
+attributes used)`. twoway never refuses a style name. It refuses a number
+outside a range it has: `msangle(400)`, `lwidth(-1)`, `yaxis(0|10|abc|1.5)`,
+`xsize(0|101)`, `bin(0|abc|2.5)`, `bands(0|abc|2000)`, `degree(-1|x|1.5)`,
+`n(0|abc|2.5)`, `bwidth(0|-1)` on lpoly and `bwidth(-1|abc)` on kdensity
+(kdensity accepts `bwidth(0)` itself; dash's positive rule is its own
+there), `kernel(bogus)`, `aspectratio(abc)`, `barwidth(abc)`, lfitci
+`level(abc)`; and it answers
+`mlabel(nosuchvar)` and `by(nosuchvar)` with r(111). It silently accepts
+what dash cannot use: `jitter(abc|-3|31)`, `jitterseed(abc|-1|2.5)`,
+`level(150|0|-5)`, lowess `bwidth(5|0|-0.5)`, `msize(-1|0)`, `degree(5)`,
+`n(1)`, `yaxis(3..9)`. `confirm numeric format`, 26 probes: rc 0 for
+`%9.2f %9.0gc %-12.3e %09.2f %9,2fc %12.0fc %tdCCYY-NN-DD %tcHH:MM:SS %21x
+%16H %tc %td %tm %9.2fc %-9.2f %10.0g %8.0e`, rc 7 for `%12s bogus 9.2f
+%9.2 %9.2f_n %9.2f%9.2f %c % %%9.2f`; and two `strofreal()` probes showing
+it returns "" for `bogus` with rc 0, which is why it is not the validator.
 
-- **TR-15.1** Build a declarative validation table (option → kind: number,
-  range, colour, symbol, enum, numlist) and apply it in
-  `_dash_parse_plot_opts` / `_dash_parse_graph_opts`. `level()`
-  (`dash.ado:549-558`) is the model and the only validated option today; the
-  other 69 plot-level and 54 graph-level values go to JSON verbatim.
-- **TR-15.2** Validate KPI `fmt()`. It is interpolated into an *evaluating*
-  context at `dash.ado:1918` (`local kpi_display : display `fmt' `kpi_value'`).
-  **It is not an injection vector** — measured: `fmt("HACKED" %9.2f)` returns
-  `r(111)` because `syntax` strips the quotes and the token resolves as an
-  identifier — but the failure is confusing. Validate it as a Stata format and
-  error clearly.
-- **TR-15.3** Where validation must stay renderer-side, make it consistent:
-  `_stat_option_float` (`dash_render.py:9228-9254`) and `_resolve_kpi_color`
-  (`:10484-10485`) are the existing good examples.
+The corpus inventory (`twoway_corpus.do`, 299 commands;
+`conformance_corpus.txt`; the help examples; `examples/*.do`; every cert
+script): 1015 values across 205 options and 70 sub-option keys, every one a
+plain number, keyword, variable or quoted RGB triplet. The table below was
+checked against all of them before it was written down.
 
-### Acceptance criteria
+### Technical requirements, as delivered
 
-- **AC-15.1** A bad value for any validated option exits 198 naming the option.
-- **AC-15.2** `dash kpi mean(mpg), name(k) title(T) fmt(bogus)` gives a
-  format error, not `r(111)`.
-- **AC-15.3** No documented example regresses (the F5 baseline: all parse
-  clean today).
+- **TR-15.1** One declarative table, `_dash_option_rules`, between
+  `_dash_fold_bw` and `_dash_plot_opts_to_json` under sentinel comments.
+  Token grammar `option=kind[,p1[,p2[,p3]]][@type1|type2]`; a token with
+  `@` applies to those plot types only, one without to every type that has
+  no `@` token for that option. Kinds: `num` (finite; optional inclusive
+  bounds, `x` makes both exclusive), `int`, `pos`, `style` (a name passes
+  untouched, a number must lie in the range if the token has one;
+  `mlabposition()` and `fintensity()` have none, as `msize()` has none,
+  and a token that only looks like a number, `msize(1e400)`, is refused
+  rather than passed as a name), `istyle` (a name or an integer in the
+  range), `enum` (case-insensitive, normalised to lower case), `numlist`
+  (a count range), `var`, `varlist`, `byvarlist` (the head before the
+  first top-level comma is a varlist, expanded with `unab` and normalised;
+  the rest kept verbatim) and `format`. The variable kinds use `unab`
+  alone: `tsunab` and `fvunab` are sclass and their `sreturn clear` wiped
+  the segment's s() from inside the validator; a head `unab` cannot expand
+  but `capture tsrevar ..., list` (rclass) can is a time-series expression
+  dash cannot draw and is refused, `dash: colorvar() must name a variable,
+  not a time-series expression (got: L.price)`, r(198), and otherwise the
+  first token failing `confirm variable` is `dash: colorvar(): variable X
+  not found`, r(111). `_dash_validate_opts` also snapshots every s() macro
+  before each value and restores any that came back empty. A value that
+  passes is written back normalised: `int` as `string(x, "%21.0f")`
+  (`yaxis(2.0)`, `yaxis(02)`, `yaxis(+2)`, `n(1E3)` reach the renderer as
+  2, 2, 2, 1000); `num` as written when Python can parse it, else as
+  `%21.0g`; `numlist` as `r(numlist)` (`colorcuts(1(1)5)` as `1 2 3 4 5`,
+  `range(0,10)` as `0 10`); every value `ustrtrim()`ed first, so a
+  tab-padded `jitter(5)` passes as it does in twoway.
+  `_dash_validate_value` (`prefix opt spec value ptype`) judges one value
+  and c_locals the normalised form; `_dash_validate_opts` (sclass) applies
+  the plot rules once per segment, right after `_dash_fold_bw`, reading
+  `s()` and sreturning the normalised values, and the graph rules against
+  the segment's own `s(g_<opt>)`, so `(scatter mpg weight, xsize(500)) ,
+  xsize(5)` and `(scatter, by(nosuch)) , by(foreign)` are refused as
+  twoway refuses them (the first cut checked only the after-comma winner);
+  `_dash_plot` applies the graph rules (`xsize`, `ysize`, `aspectratio`,
+  `hover`, `by`) once per graph, after the after-comma restore loop and
+  before the saving()/report block. The hand-written `level()` block left
+  `_dash_parse_plot_opts` for the row `level=num,0,100,x`. A refusal is
+  one `display as error` line in the house shape, `dash: opt() must be
+  ... (got: V)`, then `exit 198` (`exit 111` for a variable that does not
+  exist); the value is echoed through `macval()`; for five bounds that are
+  dash's own a second sentence says so, `yaxis()`/`xaxis()` (`dash draws
+  two axes.`), `degree()`, `bin()`, `n()` and the lowess `bwidth()`; the
+  other dash-own bounds (`colornlevels()`, `jitter()`, `level()`,
+  `barwidth()`, `aspectratio()`, `jitterseed()`/`jseed()`, kdensity
+  `bwidth()`) carry none. Two deliberate supersets stay: `kernel(GAUSSIAN)`
+  is normalised where twoway refuses it, and `lwidth(())` passes as a name
+  that the renderer then reports.
+- **TR-15.2** KPI `fmt()`, in `_dash_kpi` beside the `update()` check,
+  both of them above the `name(k, replace)` block and before any
+  computation, so nothing is destroyed until every value is proven (as
+  first placed, `name(k, replace) fmt(bogus)` refused correctly but had
+  already dropped the old KPI's globals while the registry still listed
+  the name, and the next `dash build` died in a JSON traceback): a
+  character gate (a single leading `%`, then only `[A-Za-z0-9_.,:!/+-]`,
+  at most 60 characters) then `confirm numeric format`; failure is `dash
+  kpi: fmt() must be a numeric display format such as %9.2f or %12.0fc
+  (got: V)`, r(198). `: display` stays the formatter, on a proven token,
+  and its `if` is compound-quoted.
+- **TR-15.3** The renderer, both modes: `_dash_style_note(option, value,
+  what)` is module-level and copied into the served app beside
+  `_stat_option_float`, and says each thing once: a module-level
+  `_DASH_NOTED` set keyed on (option, value, what), cleared by
+  `_dash_reset_notes()` at the start of `DashRenderer.render()` and of
+  the served `make_document` (both names are emitted into the app), so
+  `connected`'s line and marker border, `rcapsym`'s spine and dot and
+  every `by()` panel print one note, not two or four; `parse_color_alpha`
+  takes the option name and notes an unknown colour; every `except
+  ValueError: pass` around
+  `translate_msymbol`/`translate_msize`/`translate_lwidth`/
+  `translate_lpattern` in `_apply_line_opts`, `_apply_marker_opts`,
+  `_apply_fill_opts` and `_apply_mlabel_opts` notes and then defaults;
+  `msangle`, `fintensity` and `mlabposition` note a value they cannot read
+  (`mlabposition(13)` draws at 3 o'clock with the note, as twoway does);
+  `translate_msize` and `translate_lwidth` raise `ValueError` on a
+  non-finite number (`msize(1e400)` reached `int(inf)` and aborted both
+  modes with `OverflowError`); `_extract_region_lwidth` notes
+  `plotregion(lwidth(abc))` and returns None where it raised out of the
+  standalone figure body and was silent when served; `map_area`'s
+  `color()`, `map_bar`/`map_histogram`'s `color()` beside `blcolor()`,
+  `bgcolor()`, `plotbgcolor()`, `plotregion(color|lcolor)`,
+  `graphregion(color)`, `xline()`/`yline()` `lpattern()` and `lwidth()`,
+  `legend(size())` and the KPI `color()` (prefix `dash kpi`) all note the
+  option as written; `map_scatteri` warns and defaults instead of raising;
+  `map_dropline`, `map_scatter` and `map_scatteri` read `jitter` through
+  `_stat_option_float(..., lo=0.0, hi=100.0)`; the served figure strings
+  read `aspectratio`, `xsize` and `ysize` through the same
+  `_stat_option_float(..., "graph")` as the standalone body, which emits
+  one aspectratio message rather than two; `_jitter_seed` warns and draws
+  unseeded on a negative or non-integer seed; an `mlabel()` with several
+  names uses the first and names the extras once, and one naming a column
+  the source lacks notes once; every echoed value goes through
+  `_dash_display`. `_stat_option_float`'s signature and the raising
+  `translate_*` are unchanged (`test_options.py` pins them).
 
-### Test plan
+### Acceptance
 
-| Kind | Test | Asserts |
-|---|---|---|
-| Cert | new `test_option_validation.cscript` | One good and one bad value per validated option |
-| Cert | `test_conformance.cscript` | All documented examples still rc 0 with empty pending/unknown |
-| Adversarial | `test_adversarial.cscript` | Hostile values for each validated option |
+- **AC-15.1** every table option, one good and one bad value, through
+  Stata: `test/test_option_validation.cscript` (OV-nn); the table's
+  structure, every rule against a declared option, the renderer notes in
+  both modes and the three abort fixes: `test/test_option_validation.py`;
+  hostile values per option: `test/test_adversarial.cscript` P9-nn.
+- **AC-15.2** `dash kpi mean(mpg), name(k) title(T) fmt(bogus)` is the
+  `fmt()` message with r(198), not r(111): OV-nn and P9-nn.
+- **AC-15.3** no documented example regresses: `test/test_conformance.cscript`
+  C-05 runs `test/fixtures/help_examples.txt`, and
+  `test/fixtures/value_truth.json` (curated from the oracle) records
+  twoway's own rc per value; `test/test_option_validation.py` checks each
+  rule's kind against it (a style kind rests on a twoway note, a refusing
+  kind on a twoway refusal, the format verdicts on the confirm probes),
+  not each bound against each value.
+
+### Found on the way
+
+- `scatteri ..., msize(abc)` and `msymbol(nonsense)` raised out of the
+  mapper and lost the whole render; `dropline ..., jitter(abc)` the same
+  through a bare `float()`; `jitterseed(-1)` the same through
+  `numpy.random.default_rng`. The `ValueError` is pinned by
+  `test_option_validation.py`; the r(7102) it would have ended in is read
+  off dash.ado's bare `runpy` call, not run. Fixed in both modes; the
+  Stata table refuses `jitter(abc)` and the negative seed before Python
+  runs, and the `scatteri` names take the note-and-default path every
+  other layer had.
+- `mlabel(make foreign)` named no column and labelled nothing; `by(for)`
+  reached the renderer unexpanded and took the measured `by(nosuchvar)`
+  path, one unfaceted panel with no message; `hover(bogus)` was split on
+  whitespace and every unknown name dropped without a word. The `var`,
+  `byvarlist` and `varlist` kinds expand and confirm them in Stata, as
+  twoway does.
+- A style name twoway notes was silent in dash on every marker layer
+  (`mcolor(notacolour)`, `msymbol(nonsense)`, `msize(abc)`, `lwidth(abc)`,
+  `lpattern(bogus)`, `msangle(abc)`, `fintensity(abc)`,
+  `mlabposition(99)`). One note each now, in both modes.
+- The old `level()` pair and the bwidth()-repeated message
+  (`dash.ado:1151`, `option bwidth() may not be repeated`) were the only
+  unprefixed errors in `dash.ado`; the table's messages carry the `dash:`
+  prefix like every other (the bwidth one still does not).
+- Stale line references, in E5 and in this package as first written, at
+  the WP-15 baseline (cc3c4ac): `level()` was at `dash.ado:830-842` (not
+  549-558), the `: display` at `:2410` (not 1918), `_stat_option_float`
+  at `dash_render.py:7050` (not 9228) and `_resolve_kpi_color` at `:7486`
+  (not 10484). The table moved them again.
+- Found by the adversarial review of the first cut and closed in the same
+  package. `tsunab`, tried after `unab` for a time-series name, is sclass
+  and its `sreturn clear` wiped every option of the segment, so `(scatter
+  mpg weight, colorvar(L.price) jitter(5) msize(large))` on tsset data
+  registered with an empty options object and rc 0 (the same through
+  `mlabel(L.mpg)`); the validator now uses `unab` alone, refuses a
+  time-series expression by name (`must name a variable, not a
+  time-series expression`), and `_dash_validate_opts` restores any s()
+  macro a value check emptied. `dash kpi ..., name(k, replace) fmt(bogus)`
+  refused correctly but had already destroyed the old KPI's globals with
+  the name still in the registry, and the next `dash build` died in a
+  JSON traceback (`update(bogus)` did the same before WP-15); both checks
+  now run before the replace. A graph option inside a layer escaped the
+  check whenever a later value won (`(scatter mpg weight, xsize(500)) ,
+  xsize(5)` rc 0 where twoway is r(198); `(scatter, by(nosuch)) ,
+  by(foreign)` rc 0 where twoway is r(111)); the graph rules now run per
+  segment too. `colorcuts(1(1)5)`, `range(0,10)`, `yaxis(2.0)`,
+  `yaxis(02)`, `yaxis(+2)` and `n(1E3)` reached the renderer as written;
+  numlists are expanded and integers made canonical. A tab-padded
+  `jitter(5)` was refused where twoway takes it; values are
+  `ustrtrim()`ed. `mlabposition(13)` and `fintensity(150)` were refused
+  where twoway draws (with a note, and in silence); both are unbounded
+  style kinds now and the renderer notes them.
+- On the renderer side the same review found `plotregion(lwidth(abc))`
+  aborting the standalone render (bare `translate_lwidth` in
+  `_extract_region_lwidth`) while the served app was silent;
+  `msize(1e400)` aborting both modes with `OverflowError`
+  (`int(float("1e400"))`); one bad option noted twice per layer and again
+  per panel (`connected lcolor(notacolour) by(foreign)` printed four
+  lines, `rcapsym mcolor(notacolour)` two); `area color()`,
+  `bar`/`histogram` `color()` beside `blcolor()`, `bgcolor()`,
+  `plotbgcolor()`, `plotregion(color)`, `graphregion(color)`,
+  `xline(lpattern())`, `legend(size())` and the KPI `color()` replaced in
+  silence; and the served figure reading `aspectratio`/`xsize`/`ysize`
+  with a bare `float()` where the standalone body warned, twice for
+  aspectratio. All closed as TR-15.3 says.
+- Not fixed here, follow-ups: `dash (scatter mpg weight, level(95))` is
+  accepted and `level` lands in the JSON where twoway's `scatter` refuses
+  `level()` as not allowed; the table judges values, not which plot type
+  takes the option, which is E1's territory. `by(a) by(b)` prints
+  `dash: ignoring unsupported option(s): by()`, a misleading note for a
+  repeated option twoway accepts with rc 0.
+
+### Verification, measured 22sep2026
+
+| Suite | Result |
+|---|---|
+| `test_option_validation.cscript` OV-01 to OV-134 plus the 58-line corpus arbiter | ALL CHECKS PASSED (203 checks) |
+| `test_option_validation.py` (table vs parsers vs twoway fixture; every style note in both modes; the abort fixes) | 218 passed |
+| `test_adversarial.cscript` P9-01 to P9-14 (injection and exhaustion payloads, KPI fmt payloads) | all pass (P9-05 is a note: a `$` payload cannot reach dash) |
+| `test_conformance.cscript` C-05, 27 documented examples | rc 0, no drop note |
+| Parity guard `test_mode_parity.py` | 2048 passed, 1 skipped (layout(bs), stated), 5 xfailed |
+| Full Python suite (`-n auto`) | 6580 passed, 56 skipped (stated reasons), 6 xfailed, 0 failed |
+| Full certification suite | 41 passed, 0 failed, 0 skipped |
+
+An adversarial review between the first implementation and this commit
+found and fixed: a helper (`tsunab`) that cleared every parsed option of
+a segment; the KPI replace path destroying the old KPI before the new
+value was proven; a graph option inside a layer escaping validation
+when a later value won; two pre-existing render aborts
+(`plotregion(lwidth(abc))`, `msize(1e400)`); repeated notes on
+`connected`, `rcapsym` and by() panels; and silent graph-level colours,
+reference-line and legend sub-options.
 
 ---
 

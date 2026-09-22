@@ -827,19 +827,8 @@ program define _dash_parse_plot_opts, sclass
     // measured -- and they mean the same thing.
     if `"`bins'"' != "" & `"`bin'"' == "" local bin `"`bins'"'
 
-    // level() is validated HERE, where the user can see the error,
-    // rather than becoming a Python exception inside the renderer.
-    if `"`level'"' != "" {
-        capture confirm number `level'
-        if _rc {
-            display as error "level() must be a number between 0 and 100"
-            exit 198
-        }
-        if `level' <= 0 | `level' >= 100 {
-            display as error "level() must be between 0 and 100 (exclusive)"
-            exit 198
-        }
-    }
+    // level() is no longer checked here: its rule (level=num,0,100,x) lives
+    // in _dash_option_rules and runs in _dash_validate_opts, once per segment.
 
     // bw() is NOT folded here: what it means depends on the plot type,
     // which this parser does not know.  twoway reads bw() as bwidth() on
@@ -1173,6 +1162,458 @@ program define _dash_fold_bw, sclass
     sreturn local bw ""
 end
 
+// BEGIN option-validation table (WP-15)
+// ================================================================
+// Option-value validation.
+//
+// Principle: dash refuses a value where twoway refuses it, refuses a
+// non-number where a number-only option got a word twoway would silently
+// ignore, and -- like twoway's own "(note: named style X not found in
+// class Y, default attributes used)" -- reports and falls back on the
+// scheme where a STYLE NAME (colour, symbol, size, line width, pattern,
+// angle, clock position, intensity) is unknown.  Every bound below was
+// measured against twoway (22sep2026, StataNow 19.5).  Five bounds are
+// dash's own rather than twoway's AND say so in a second sentence of the
+// refusal: yaxis/xaxis 1..2, degree 0..3, bin 1..1000, n 2..10000 and the
+// lowess bwidth (0,1].  The other dash-own bounds -- colornlevels 2..256,
+// jitter 0..100, level strictly inside 0..100, barwidth > 0, aspectratio
+// >= 0, jitterseed()/jseed() >= 0, kdensity bwidth > 0 -- are refused with
+// the one sentence only.
+//
+// Token grammar: option=kind[,p1[,p2[,p3]]][@type1|type2].  Tokens are
+// whitespace-separated.  A token with @ applies only to the plot types it
+// names; a token without @ applies to every type that has no @ token for
+// the same option.  Kinds -- num: a finite number, p1/p2 inclusive bounds
+// (either may be empty), p3 = x makes both exclusive; int: an integer,
+// p1/p2 bounds; pos: a number > 0, p1 an inclusive ceiling; style: a name
+// passes untouched, a number must lie in [p1,p2] where bounds are given
+// (mlabposition and fintensity have none: twoway accepts 13, 2.5, 150 and
+// -5 with a note or silently, and the renderer notes and defaults), and a
+// token that looks numeric but overflows real() (1e400) is refused, not
+// passed as a name; istyle: a name, or an integer in [p1,p2] (no token
+// uses it today); enum: one of the |-separated words, case-insensitive,
+// normalised to lower case; numlist: a Stata numlist of between p1 and p2
+// numbers (p2 empty = no ceiling), normalised to the expanded,
+// blank-separated list (1(1)5 -> 1 2 3 4 5; 0,10 -> 0 10); var: exactly
+// one existing variable, abbreviations expanded (unab) and normalised to
+// the full name, a time-series expression (L.price on tsset data)
+// refused, since dash cannot draw one; varlist: one or more, likewise;
+// byvarlist: the text before the first top-level comma is a varlist, the
+// rest is kept verbatim; format: a numeric display format (the gate is
+// spelled out in _dash_validate_value).  A number that passes a num, int
+// or pos rule reaches the renderer in one canonical spelling: an int as
+// %21.0f (2.0, 02, +2 and 1E3 -> 2, 2, 2, 1000); a num or pos as written
+// when it is a plain decimal or e-notation Python parses, else as %21.0g
+// (1d3 -> 1000).  Tabs around a value are trimmed before it is read.
+//
+// test/test_option_validation.py reads this table out of dash.ado and
+// test/test_option_validation.cscript exercises every token against Stata.
+// ================================================================
+program define _dash_option_rules
+    version 16.0
+    // Plot rules: validated once per segment, after _dash_fold_bw, from s().
+    local plot ///
+        msize=style  mlabsize=style  mlabgap=style ///
+        lwidth=style,0,10000  mlwidth=style,0,10000 ///
+        msangle=style,-360,360  mlabposition=style  fintensity=style ///
+        jitter=num,0,100  jitterseed=int,0  jseed=int,0 ///
+        yaxis=int,1,2  xaxis=int,1,2 ///
+        malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100 ///
+        base=num  barwidth=pos  level=num,0,100,x ///
+        degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos ///
+        kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
+        n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        colornlevels=int,2,256 ///
+        colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
+        colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2
+    // Graph rules: validated once per segment in _dash_validate_opts, from
+    // s(g_<opt>) -- so a value inside a segment is refused as twoway refuses
+    // it even when a later segment or the after-comma part outranks it --
+    // and once per graph in _dash_plot, from the g_<opt> accumulators,
+    // after an after-comma option has outranked a segment's.
+    local graph ///
+        xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist
+    c_local _dash_rules_plot  `"`plot'"'
+    c_local _dash_rules_graph `"`graph'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_validate_value  prefix opt spec value ptype
+//
+// Checks ONE value against ONE spec (the part of a table token after "="
+// and before any "@").  On refusal it prints one line, as error, and
+// exits 198 -- or 111 for a variable that does not exist, twoway's own
+// code for that.  It hands the value back in the caller's local
+// _dash_vnorm, normalised where the kind says so (an expanded variable
+// name, a lower-cased keyword) and otherwise exactly as it came in.
+// The value is only ever expanded through macval(), so a backtick inside
+// it cannot become a macro reference when it is tested or echoed.
+// rclass, so numlist's and tsrevar's r() stay in here; it never touches
+// s(), and it calls no sclass command: tsunab and fvunab clear s(), and
+// measured 22sep2026 that wiped every option of the segment being
+// validated (colorvar(L.price) jitter(5) msize(large) registered with
+// options {}).
+// ----------------------------------------------------------------
+program define _dash_validate_value, rclass
+    version 16.0
+    args prefix opt spec value ptype
+
+    local kind ""
+    local p1 ""
+    local p2 ""
+    local p3 ""
+    if regexm("`spec'", "^([^,]*),?([^,]*),?([^,]*),?([^,]*)$") {
+        local kind = regexs(1)
+        local p1   = regexs(2)
+        local p2   = regexs(3)
+        local p3   = regexs(4)
+    }
+    local norm `"`macval(value)'"'
+
+    // The numeric reading of the value, with tabs and blanks trimmed off
+    // first (syntax strips blanks but keeps tabs, and twoway accepts a
+    // tab-padded jitter()).  real() is missing for a word, for "." and for
+    // a magnitude beyond c(maxdouble) such as 1e308, and every one of those
+    // is "not a number" here.  A scalar keeps full precision for the
+    // comparisons below.  `plain' says the text is a decimal or e-notation
+    // spelling Python's float() reads back; `numlike' says it is made of
+    // digits, signs, dots and exponent letters only (1e400, 1d3), so that a
+    // style kind can tell an overflow from a name.
+    local tv = ustrtrim(`"`macval(value)'"')
+    tempname R
+    scalar `R' = .
+    capture scalar `R' = real(`"`macval(tv)'"')
+    if _rc scalar `R' = .
+    local isnum = (`R' < .)
+    local plain   = regexm(`"`macval(tv)'"', "^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?$")
+    local numlike = regexm(`"`macval(tv)'"', "^[-+.0-9eEdD]*[0-9][-+.0-9eEdD]*$")
+
+    // Where the bound is dash's own and not twoway's, the message says so.
+    local extra ""
+    if inlist("`opt'", "yaxis", "xaxis") {
+        local extra ". dash draws two axes."
+    }
+    else if "`opt'" == "degree" {
+        local extra ". dash fits local polynomials up to degree 3."
+    }
+    else if "`opt'" == "bin" {
+        local extra ". dash draws up to 1000 bins."
+    }
+    else if "`opt'" == "n" {
+        local extra ". dash evaluates up to 10000 points."
+    }
+    else if "`opt'" == "bwidth" & "`ptype'" == "lowess" {
+        local extra ". lowess bwidth() is the fraction of the sample."
+    }
+
+    local bad ""
+    if "`kind'" == "num" {
+        if "`p3'" == "x"                     local bad "a number strictly between `p1' and `p2'"
+        else if "`p1'" != "" & "`p2'" != ""  local bad "a number between `p1' and `p2'"
+        else if "`p1'" != ""                 local bad "a number of at least `p1'"
+        else if "`p2'" != ""                 local bad "a number no greater than `p2'"
+        else                                 local bad "a number"
+        local ok = `isnum'
+        if `ok' {
+            if "`p3'" == "x" {
+                if `R' <= `p1' | `R' >= `p2' local ok = 0
+            }
+            else {
+                if "`p1'" != "" {
+                    if `R' < `p1' local ok = 0
+                }
+                if "`p2'" != "" {
+                    if `R' > `p2' local ok = 0
+                }
+            }
+        }
+        if `ok' {
+            local bad ""
+            // As written when Python parses it; a Stata-only spelling
+            // such as 1d3 goes out as the number it read.
+            if `plain' local norm `"`macval(tv)'"'
+            else       local norm = strtrim(string(`R', "%21.0g"))
+        }
+    }
+    else if "`kind'" == "int" {
+        if "`p1'" != "" & "`p2'" != ""       local bad "an integer between `p1' and `p2'"
+        else if "`p1'" != ""                 local bad "an integer of at least `p1'"
+        else if "`p2'" != ""                 local bad "an integer no greater than `p2'"
+        else                                 local bad "an integer"
+        local ok = `isnum'
+        if `ok' {
+            if `R' != int(`R') local ok = 0
+            if "`p1'" != "" {
+                if `R' < `p1' local ok = 0
+            }
+            if "`p2'" != "" {
+                if `R' > `p2' local ok = 0
+            }
+        }
+        if `ok' {
+            local bad ""
+            // One canonical spelling: yaxis(2.0), yaxis(02), yaxis(+2) and
+            // n(1E3) reach the renderer as 2, 2, 2 and 1000, where it
+            // compares the text or calls int() on it.
+            local norm = strtrim(string(`R', "%21.0f"))
+        }
+    }
+    else if "`kind'" == "pos" {
+        if "`p1'" != ""                      local bad "a positive number no greater than `p1'"
+        else                                 local bad "a positive number"
+        local ok = `isnum'
+        if `ok' {
+            if `R' <= 0 local ok = 0
+            if "`p1'" != "" {
+                if `R' > `p1' local ok = 0
+            }
+        }
+        if `ok' {
+            local bad ""
+            if `plain' local norm `"`macval(tv)'"'
+            else       local norm = strtrim(string(`R', "%21.0g"))
+        }
+    }
+    else if "`kind'" == "style" {
+        // A name is a style name and passes untouched: the renderer falls
+        // back on the scheme, with a note, if it turns out to be unknown.
+        // Only a NUMBER is held to the bounds, which are twoway's own.
+        // A token made of digits and exponent letters whose real() is
+        // missing (1e400, 1e308) is an overflow, not a name: refused, as
+        // twoway's "invalid syntax", so the renderer never sees inf.
+        if "`p1'" != "" & "`p2'" != "" {
+            if `isnum' {
+                if `R' < `p1' | `R' > `p2' local bad "a name or a number between `p1' and `p2'"
+            }
+            else if `numlike' local bad "a name or a number between `p1' and `p2'"
+        }
+        else if !`isnum' & `numlike' local bad "a name or a number"
+    }
+    else if "`kind'" == "istyle" {
+        if `isnum' {
+            if `R' != int(`R') | `R' < `p1' | `R' > `p2' {
+                local bad "a name or an integer between `p1' and `p2'"
+            }
+        }
+        else if `numlike' local bad "a name or an integer between `p1' and `p2'"
+    }
+    else if "`kind'" == "enum" {
+        local lv = lower(`"`macval(tv)'"')
+        local choices : subinstr local p1 "|" " ", all
+        local hit = 0
+        foreach c of local choices {
+            if `"`macval(lv)'"' == "`c'" local hit = 1
+        }
+        if `hit' local norm `"`macval(lv)'"'
+        else {
+            local pretty : subinstr local p1 "|" ", ", all
+            local bad "one of `pretty'"
+        }
+    }
+    else if "`kind'" == "numlist" {
+        if "`p2'" == ""                      local bad "a list of at least `p1' numbers"
+        else if "`p1'" == "`p2'"             local bad "a list of exactly `p1' numbers"
+        else                                 local bad "a list of between `p1' and `p2' numbers"
+        capture numlist `"`macval(value)'"'
+        if !_rc {
+            local cnt : word count `r(numlist)'
+            local ok = (`cnt' >= `p1')
+            if "`p2'" != "" {
+                if `cnt' > `p2' local ok = 0
+            }
+            if `ok' {
+                local bad ""
+                // The expanded, blank-separated list: the renderer splits
+                // on blanks and reads floats, so 1(1)5 and 0,10 go out as
+                // "1 2 3 4 5" and "0 10".
+                local norm `"`r(numlist)'"'
+            }
+        }
+    }
+    else if inlist("`kind'", "var", "varlist", "byvarlist") {
+        local head `"`macval(value)'"'
+        local tail ""
+        local hastail = 0
+        if "`kind'" == "byvarlist" {
+            // Split at the first comma outside parentheses: the by-variables
+            // come before it, the sub-options (kept verbatim) after it.
+            local len = strlen(`"`macval(value)'"')
+            local depth = 0
+            local cut = 0
+            forvalues i = 1/`len' {
+                if substr(`"`macval(value)'"', `i', 1) == "(" {
+                    local depth = `depth' + 1
+                }
+                else if substr(`"`macval(value)'"', `i', 1) == ")" {
+                    local depth = `depth' - 1
+                }
+                else if substr(`"`macval(value)'"', `i', 1) == "," & `depth' == 0 {
+                    local cut = `i'
+                    continue, break
+                }
+            }
+            if `cut' > 0 {
+                local head = substr(`"`macval(value)'"', 1, `cut' - 1)
+                local tail = strltrim(substr(`"`macval(value)'"', `cut' + 1, .))
+                local hastail = 1
+            }
+            if strtrim(`"`macval(head)'"') == "" {
+                display as error `"dash: by() must name at least one variable (got: `macval(value)')"'
+                exit 198
+            }
+        }
+        // unab expands abbreviations and ranges.  When it refuses, tsrevar
+        // (rclass: it leaves s() alone, where tsunab and fvunab clear it)
+        // says whether the head is a valid time-series varlist -- one dash
+        // cannot draw, so a token carrying an operator (L.price) is refused
+        // as such.  tsrevar also passes `mpg if foreign', so the operator
+        // itself is required before that refusal.  Otherwise the first
+        // token that is not a variable is the one named -- twoway's own
+        // "variable X not found" -- without quotes around it: a value that
+        // ends in a double quote (by("foreign")) used to close the message's
+        // compound quote early and garble it.
+        local vv ""
+        capture unab vv : `macval(head)'
+        if _rc {
+            capture tsrevar `macval(head)', list
+            local ists = (_rc == 0)
+            local badvar = strtrim(`"`macval(head)'"')
+            local tsop = 0
+            foreach tok of local head {
+                capture confirm variable `macval(tok)'
+                if _rc {
+                    local badvar `"`macval(tok)'"'
+                    if regexm(`"`macval(tok)'"', "^[LlFfDdSs][LlFfDdSs0-9()/]*\.[A-Za-z_]") local tsop = 1
+                    continue, break
+                }
+            }
+            if `ists' & `tsop' {
+                display as error `"`prefix': `opt'() must name a variable, not a time-series expression (got: `macval(value)')"'
+                exit 198
+            }
+            display as error `"`prefix': `opt'(): variable `macval(badvar)' not found"'
+            exit 111
+        }
+        if "`kind'" == "var" & `: word count `vv'' > 1 {
+            display as error `"`prefix': `opt'() must name one variable (got: `macval(value)')"'
+            exit 198
+        }
+        local norm `"`vv'"'
+        if `hastail' local norm `"`vv', `macval(tail)'"'
+    }
+    else if "`kind'" == "format" {
+        // 1. Character gate: one leading %, then only the characters a
+        //    display format can contain -- no quote, blank, backtick, dollar
+        //    or parenthesis -- and at most 60 of them.
+        // 2. Stata's own judgement: `confirm numeric format' is rc 0 for
+        //    %9.2f %12.0fc %-12.3e %9,2fc %tdCCYY-NN-DD %tcHH:MM:SS %21x
+        //    %16H and rc 7 for %12s, bogus, 9.2f, %9.2, %9.2f_n, %c, %.
+        // The token is then a single proven numeric %fmt, so `: display'
+        // can stay the formatter (strofreal() returns "" for a bad format
+        // without a word, so it is NOT a validator).
+        local ok = 0
+        if regexm(`"`macval(value)'"', "^%[A-Za-z0-9_.,:!/+-]+$") & strlen(`"`macval(value)'"') <= 60 {
+            capture confirm numeric format `macval(value)'
+            if !_rc local ok = 1
+        }
+        if !`ok' {
+            display as error `"`prefix': `opt'() must be a numeric display format such as %9.2f or %12.0fc (got: `macval(value)')"'
+            exit 198
+        }
+    }
+
+    if `"`bad'"' != "" {
+        display as error `"`prefix': `opt'() must be `bad' (got: `macval(value)')`extra'"'
+        exit 198
+    }
+    c_local _dash_vnorm `"`macval(norm)'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_validate_opts ptype
+//
+// Runs every plot rule against this segment's s() values, once the plot
+// type is known and bw() has been folded, and then every graph rule
+// against the segment's s(g_<opt>) -- so `(scatter mpg weight,
+// xsize(500)) , xsize(5)' is refused as twoway refuses it, although the
+// after-comma value would have outranked the segment's.  A rule that
+// names plot types applies only to them and displaces the untyped rule
+// for the same option.  A normalised value is written back with sreturn
+// local; nothing else in s() is touched, and s() is never cleared here.
+// Defence in depth: every s() macro is snapshotted first, and one that
+// comes back empty from a validation is put back, so a helper that
+// clears s() can never again empty the segment's options in silence.
+// ----------------------------------------------------------------
+program define _dash_validate_opts, sclass
+    version 16.0
+    args ptype
+    _dash_option_rules
+
+    local _keys : s(macros)
+    foreach _k of local _keys {
+        local _snap_`_k' `"`s(`_k')'"'
+    }
+
+    // Options that have a type-specific rule for THIS type: their untyped
+    // rule is skipped below, so the specific one wins.
+    local typed ""
+    foreach tok of local _dash_rules_plot {
+        local at = strpos("`tok'", "@")
+        if `at' {
+            local types = substr("`tok'", `at' + 1, .)
+            local types : subinstr local types "|" " ", all
+            local o = substr("`tok'", 1, strpos("`tok'", "=") - 1)
+            if `: list ptype in types' local typed "`typed' `o'"
+        }
+    }
+    foreach tok of local _dash_rules_plot {
+        local body "`tok'"
+        local at = strpos("`tok'", "@")
+        if `at' {
+            local body  = substr("`tok'", 1, `at' - 1)
+            local types = substr("`tok'", `at' + 1, .)
+            local types : subinstr local types "|" " ", all
+            if !`: list ptype in types' continue
+        }
+        local eq   = strpos("`body'", "=")
+        local o    = substr("`body'", 1, `eq' - 1)
+        local spec = substr("`body'", `eq' + 1, .)
+        if !`at' & `: list o in typed' continue
+        local v `"`s(`o')'"'
+        if `"`macval(v)'"' == "" continue
+        _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'"
+        foreach _k of local _keys {
+            if `"`s(`_k')'"' == "" & `"`macval(_snap_`_k')'"' != "" {
+                sreturn local `_k' `"`macval(_snap_`_k')'"'
+            }
+        }
+        if `"`macval(_dash_vnorm)'"' != `"`macval(v)'"' {
+            sreturn local `o' `"`macval(_dash_vnorm)'"'
+        }
+    }
+
+    // The graph rules, against what this segment wrote in parentheses.
+    // _dash_plot validates the after-comma winners again; a value refused
+    // here never gets that far.
+    foreach tok of local _dash_rules_graph {
+        local eq   = strpos("`tok'", "=")
+        local o    = substr("`tok'", 1, `eq' - 1)
+        local spec = substr("`tok'", `eq' + 1, .)
+        local v `"`s(g_`o')'"'
+        if `"`macval(v)'"' == "" continue
+        _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' ""
+        foreach _k of local _keys {
+            if `"`s(`_k')'"' == "" & `"`macval(_snap_`_k')'"' != "" {
+                sreturn local `_k' `"`macval(_snap_`_k')'"'
+            }
+        }
+        if `"`macval(_dash_vnorm)'"' != `"`macval(v)'"' {
+            sreturn local g_`o' `"`macval(_dash_vnorm)'"'
+        }
+    }
+end
+// END option-validation table (WP-15)
+
 // ================================================================
 // _dash_plot_opts_to_json
 //
@@ -1447,6 +1888,7 @@ program define _dash_process_segment, rclass
     if `"`opts_exp'"' != "" {
         _dash_parse_plot_opts , `opts_exp'
         _dash_fold_bw "`ptype'"
+        _dash_validate_opts "`ptype'"
     }
 
     // Accumulate this segment's unsupported options so _dash_plot can report
@@ -1815,6 +2257,22 @@ program define _dash_plot
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 nodraw play {
         if `"`_gafter_`gk''"' != "" local g_`gk' `"`_gafter_`gk''"'
+    }
+
+    // ---- Validate the graph-level values (WP-15) ----
+    // After the restore above, so the value checked is the one that will
+    // be written, and before the report below, so a refused value is never
+    // half-reported.  The rules live in _dash_option_rules; a normalised
+    // value (an expanded variable name) is written back to its g_ local.
+    _dash_option_rules
+    foreach _vrule of local _dash_rules_graph {
+        local _veq   = strpos("`_vrule'", "=")
+        local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
+        local _vspec = substr("`_vrule'", `_veq' + 1, .)
+        local _vval `"`g_`_vopt''"'
+        if `"`macval(_vval)'"' == "" continue
+        _dash_validate_value "dash" "`_vopt'" "`_vspec'" `"`macval(_vval)'"' ""
+        local g_`_vopt' `"`macval(_dash_vnorm)'"'
     }
 
     // ---- Report unsupported options, once, naming every one ----
@@ -2328,6 +2786,20 @@ program define _dash_kpi
         exit(198)
     }
 
+    // Every option is proven BEFORE anything is retired: measured
+    // 22sep2026, `name(k, replace) fmt(bogus)' was refused correctly but
+    // had already dropped the old KPI's globals while the registry still
+    // listed k, and the next `dash build' died on the corrupt registry
+    // with a JSON traceback (update(bogus) did the same).
+    if "`update'" == "" local update "filter"
+    if !inlist("`update'", "filter", "brush", "both") {
+        display as error "dash kpi: update() must be filter, brush, or both."
+        exit(198)
+    }
+    // fmt() is proven a single numeric display format here, before any
+    // computation, so `: display' below can stay the formatter (WP-15).
+    if `"`fmt'"' != "" _dash_validate_value "dash kpi" "fmt" "format" `"`fmt'"' ""
+
     // Graphs and KPIs share ONE registry and one namespace.
     // _dash_register_graph has always refused a duplicate unless replace was
     // given; this program checked nothing, so a KPI could quietly take a
@@ -2354,12 +2826,6 @@ program define _dash_kpi
     // carrying a graph's JSON and a KPI's marker at the same time.
     if `_kpi_already' == 1 {
         _dash_drop_item "`name'"
-    }
-
-    if "`update'" == "" local update "filter"
-    if !inlist("`update'", "filter", "brush", "both") {
-        display as error "dash kpi: update() must be filter, brush, or both."
-        exit(198)
     }
 
     local kpi_value ""
@@ -2406,7 +2872,7 @@ program define _dash_kpi
     }
 
     local kpi_display = "`kpi_value'"
-    if "`fmt'" != "" {
+    if `"`fmt'"' != "" {
         local kpi_display : display `fmt' `kpi_value'
         local kpi_display = strtrim("`kpi_display'")
     }

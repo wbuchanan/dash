@@ -787,7 +787,7 @@ note on every other type; and `bw()` beside `bwidth()` is twoway's r(198).
 `test_alias_semantics.cscript` measures twoway's own rc for each type in
 the same run and certifies dash against it.
 
-### E5. Validation is applied to exactly one option — S2, READ
+### E5. Validation is applied to exactly one option — S2, CLOSED by WP-15
 
 `level()` is validated in the ado (`dash.ado:549-558`) with a clear message.
 All 69 other plot-level values and all 54 graph-level values are emitted
@@ -804,6 +804,124 @@ is `fmt()`, which is unvalidated and interpolated into an evaluating context:
 `fmt("HACKED" %9.2f)` → `r(111) HACKED not found`. **Not an injection
 vector** — the quotes are stripped by `syntax` and the token is then resolved
 as an identifier — but a confusing failure where `level()` gets a clear one.
+
+**Closed by WP-15.** Measured first, against twoway itself, 22sep2026: 248
+probes, 60 refused, 188 accepted, 36 of the accepted with `(note: named
+style X not found in class Y, default attributes used)`. twoway never
+refuses a style name -- `mcolor(notacolour)`, `msymbol(nonsense)`,
+`msize(abc)`, `lwidth(abc)`, `lpattern(bogus)`, `msangle(abc)`,
+`mlabposition(13)`, `xsize(abc)` all draw with that note, and
+`scheme(nonsense)` with its own `(note: scheme nonsense not found, using
+s2color)` -- but it does refuse a number outside a range it has
+(`msangle(400)`, `lwidth(-1)`, `yaxis(0|10|abc|1.5)`, `xsize(0|101)`,
+`bin(0|abc|2.5)`, `bands(0|abc|2000)`, `degree(-1|x|1.5)`, `bwidth(0|-1)`
+on lpoly and `bwidth(-1|abc)` on kdensity (kdensity accepts `bwidth(0)`
+itself; dash's positive rule is its own there), `n(0|abc|2.5)`,
+`kernel(bogus)`, `aspectratio(abc)`,
+`barwidth(abc)`, lfitci `level(abc)`) and answers `mlabel(nosuchvar)` and
+`by(nosuchvar)` with r(111); and it silently accepts values dash cannot
+use: `jitter(abc|-3|31)`, `jitterseed(abc|-1|2.5)`, `level(150|0|-5)`,
+lowess `bwidth(5|0|-0.5)`, `msize(-1|0)`, `degree(5)`, `n(1)`,
+`yaxis(3..9)`. Every value in every corpus (the 299-command
+`twoway_corpus.do`, `conformance_corpus.txt`, the help examples,
+`examples/*.do`, every cert script: 1015 values across 205 options and 70
+sub-option keys) is a plain number, keyword, variable or quoted RGB
+triplet, and the rules were checked against all of them before they were
+written down.
+
+The rule: dash refuses a value where twoway refuses it, refuses a word
+where a number-only option got one twoway would have swallowed, and, like
+twoway's own note, reports and falls back on the scheme where a style name
+(colour, symbol, size, line width, pattern, angle, clock position,
+intensity) is unknown. One declarative table, `_dash_option_rules`
+(`option=kind[,p1[,p2[,p3]]][@type1|type2]`; kinds `num`, `int`, `pos`,
+`style`, `istyle`, `enum`, `numlist`, `var`, `varlist`, `byvarlist`,
+`format`), read by `_dash_validate_value` and applied once per segment by
+`_dash_validate_opts` right after `_dash_fold_bw` -- the graph rules too,
+against the segment's own `xsize`, `ysize`, `aspectratio`, `hover` and
+`by`, so `(scatter mpg weight, xsize(500)) , xsize(5)` is refused as
+twoway refuses it -- and once per graph in `_dash_plot` for the
+after-comma winners; the hand-written `level()` block is now a row of it.
+A refusal is one `display as error` line, `dash: opt() must be ... (got:
+V)`, then r(198), or r(111) for a variable that does not exist (`dash:
+by(): variable X not found`), with a second sentence for the five bounds
+named below. A value that passes is written back normalised: an enum in
+lower case, an integer as an integer (`yaxis(2.0)`, `yaxis(02)`,
+`yaxis(+2)` and `n(1E3)` reach the renderer as 2, 2, 2 and 1000), a
+numlist expanded (`colorcuts(1(1)5)` as `1 2 3 4 5`, `range(0,10)` as
+`0 10`), a variable list as full names, and every value `ustrtrim()`ed
+first so a tab-padded `jitter(5)` passes as it does in twoway. The `var`,
+`varlist` and `byvarlist` kinds use `unab` alone: a head it cannot expand
+but `tsrevar ..., list` can is a time-series expression dash cannot draw
+and is refused, `dash: colorvar() must name a variable, not a time-series
+expression (got: L.price)`, r(198); `tsunab`, tried first in the first
+cut, is sclass and its `sreturn clear` wiped every option of the segment,
+so `_dash_validate_opts` now also restores any s() macro a value check
+emptied. In `_dash_kpi` the `update()` check and the `fmt()` gate both
+run before the `name(k, replace)` block destroys the old KPI, so `name(k,
+replace) fmt(bogus)` leaves the registry as it was and the next `dash
+build` runs. KPI `fmt()` is a character gate (a single leading `%`, then
+only `[A-Za-z0-9_.,:!/+-]`, at most 60 characters) followed by `confirm
+numeric format`, measured over 26 probes to return 0 for
+`%9.2f %9.0gc %-12.3e %09.2f %9,2fc %12.0fc %tdCCYY-NN-DD %tcHH:MM:SS %21x
+%16H %tc %td %tm %9.2fc %-9.2f %10.0g %8.0e` and 7 for `%12s bogus 9.2f
+%9.2 %9.2f_n %9.2f%9.2f %c % %%9.2f`; `: display` stays the formatter, on a
+token proven to be one numeric format (two further probes: `strofreal(x,
+"bogus")` returns "" with rc 0, in silence, so it is no validator).
+
+Deliberately not gated: `scheme()`, every colour option, `msymbol()` and
+`marker()`, `lpattern()`, the structured options (legend, the axis grammar,
+`xline()`, by()'s sub-options, `plotregion()`, `graphregion()`, `filter()`,
+the title family) and `name()`/`saving()`, which keep their existing
+checks. An unknown style inside one of them (`title(T, size(bogus))`,
+`plotregion(lwidth(abc))`, `graphregion(color(notacolour))`) gets a note
+and the default in twoway and in dash alike; an unknown sub-option word,
+which twoway refuses (`legend(garbage)`, `xscale(bogus)`: r(198)), dash
+names in its sub-option note and draws without. The renderer's note is one
+helper in both modes, `_dash_style_note` (`dash: lwidth(abc) is not a
+recognised line width; using the scheme's default.`), printed once per
+option, value and kind per render (`_DASH_NOTED`, cleared by
+`_dash_reset_notes()` at the start of `DashRenderer.render()` and of the
+served `make_document`, so `connected`'s line and marker border,
+`rcapsym`'s spine and dot and every `by()` panel say it once), where it
+was silent on every marker layer, aborted the whole render on `scatteri`,
+on `plotregion(lwidth(abc))` and on `msize(1e400)`, and swallowed the bad
+value in silence for `area color()`, `bar`/`histogram` `color()` beside
+`blcolor()`, `bgcolor()`, `plotbgcolor()`, `plotregion(color)`,
+`graphregion(color)`, `xline(lpattern())`, `legend(size())` and the KPI
+`color()`.
+
+Deliberate deviations from twoway, which accepts each of these values with
+rc 0. Five say so in a second sentence of the message: `yaxis()` and
+`xaxis()` 1..2 (`dash draws two axes.`; twoway allows nine); `degree()`
+0..3 (dash fits up to cubic; twoway any nonnegative integer); `n()`
+2..10000 and `bin()` 1..1000 (the renderer already capped them there with
+a warning; the cap is the resource guard CLAUDE.md rule 18 asks for);
+lowess `bwidth()` in (0, 1] (a fraction of the sample; twoway accepts 5
+silently and computes nonsense). The rest are dash's own rules too, but
+their message carries no second sentence: `colornlevels()` 2..256 (a
+dash-only option); `jitter()` 0..100 (documented as a percent of the axis
+range); `level()` strictly inside 0 and 100 (dash's existing rule; twoway
+does not check); `barwidth()` > 0 (twoway draws `barwidth(0|-1)`);
+`aspectratio()` >= 0 (twoway draws `aspectratio(-1)`); `jitterseed()` and
+`jseed()` >= 0 (twoway accepts `jitterseed(abc|-1|2.5)`); kdensity
+`bwidth()` > 0 (kdensity accepts `bwidth(0)`). `bands()` 1..200 is
+twoway's own bound. `mlabposition()` and `fintensity()` are not bounded
+in Stata: like `msize()`, a name or any number passes, and the renderer
+notes `mlabposition(13)` or `fintensity(150)` and draws the default, as
+twoway does (with a note for the first, in silence for the second). Two
+deliberate supersets, where dash accepts what twoway refuses with r(198):
+`kernel(GAUSSIAN)` is normalised to `gaussian`, and `lwidth(())` passes
+as a name, which the renderer then reports. Not fixed here, follow-ups:
+`dash (scatter mpg weight, level(95))` is accepted and `level` lands in
+the JSON where twoway's `scatter` refuses `level()` as not allowed -- the
+table judges values, not which plot type takes an option, which is E1's
+territory; and `by(a) by(b)` prints `dash: ignoring unsupported
+option(s): by()`, a misleading note for a repeated option twoway accepts
+with rc 0. The line references in the body above were measured at the
+WP-15 baseline (cc3c4ac): `level()` was at `dash.ado:830-842`, the
+`: display` at `:2410`, `_stat_option_float` at `dash_render.py:7050` and
+`_resolve_kpi_color` at `:7486`; the table moved them.
 
 ### E6. Escaping and encoding holes — S2, READ
 

@@ -1,0 +1,709 @@
+*! test_option_validation.cscript
+*! Certification script: the value of every gated option is refused where
+*! twoway refuses it, refused where a number-only option got a word twoway
+*! would silently ignore, and passed through where it is a style NAME.
+*!
+*! ROADMAP WP-15 / GAPS.md E5.  Measured 22sep2026 (scratchpad/wp15): twoway
+*! never rejects a bad style name (mcolor(notacolour), msize(abc),
+*! lwidth(abc), msangle(abc) ... rc 0 plus a note), rejects out-of-range
+*! numbers (msangle(400), lwidth(-1), xsize(0), bin(0), bands(201) ...) and
+*! silently ACCEPTS values dash cannot use (jitter(abc|-3|101),
+*! jitterseed(-1|2.5), level(0|100), lowess bwidth(5), barwidth(0), n(1)).
+*! dash's declarative table (`_dash_option_rules' in dash.ado) draws the
+*! line: refuse with ONE `display as error' line naming the option, exit 198
+*! (111 for a variable that does not exist), never through the
+*! "ignoring unsupported option(s)" note; normalise what it accepts
+*! (variable abbreviations expanded, enum words lower-cased).
+*!
+*! Every probe registers with name(ovN): the refusal is raised before any
+*! JSON is written, and the normalised value is read back out of the
+*! registry global dash_json_ovN.  Each case is one line: the command, the
+*! expected rc, the option the refusal must name, and (where the table
+*! normalises) the JSON pair the registry must carry.  Only OV-125 renders
+*! (a `dash build' after a refused replace), so Python is needed once.
+*!
+*! Style kinds -- a NAME is never refused, a number must sit in the range
+*! where the range is twoway's own; mlabposition() and fintensity() have no
+*! range (twoway accepts 13, 2.5, 150, -5 with a note or silently, and the
+*! renderer notes and defaults):
+*!   OV-01  msize(large)              rc 0
+*!   OV-02  msize(abc)                rc 0   (a name: the renderer notes it)
+*!   OV-03  mlabsize(small)           rc 0
+*!   OV-04  mlabsize(abc)             rc 0
+*!   OV-05  mlabgap(2)                rc 0
+*!   OV-06  mlabgap(abc)              rc 0
+*!   OV-07  lwidth(thick)             rc 0
+*!   OV-08  lwidth(0)                 rc 0   (the corpus writes lw(0))
+*!   OV-09  lwidth(-1)                rc 198 naming lwidth()
+*!   OV-10  lwidth(abc)               rc 0
+*!   OV-11  mlwidth(0.5)              rc 0
+*!   OV-12  mlwidth(-1)               rc 198 naming mlwidth()
+*!   OV-13  msangle(30)               rc 0
+*!   OV-14  msangle(abc)              rc 0
+*!   OV-15  msangle(400)              rc 198 naming msangle()
+*!   OV-16  mlabposition(12)          rc 0
+*!   OV-17  mlabposition(13)          rc 0   (unbounded: the renderer notes it)
+*!   OV-18  mlabposition(2.5)         rc 0
+*!   OV-19  fintensity(50)            rc 0
+*!   OV-20  fintensity(inten50)       rc 0   (a name)
+*!   OV-21  fintensity(150)           rc 0   (unbounded: the renderer notes it)
+*! Numeric kinds -- a word is refused, a number must sit in the range:
+*!   OV-22  jitter(5)                 rc 0
+*!   OV-23  jitter(abc)               rc 198 naming jitter()
+*!   OV-24  jitter(-3)                rc 198 naming jitter()
+*!   OV-25  jitter(101)               rc 198 naming jitter()
+*!   OV-26  jitterseed(20260920)      rc 0
+*!   OV-27  jitterseed(-1)            rc 198 naming jitterseed()
+*!   OV-28  jitterseed(2.5)           rc 198 naming jitterseed()
+*!   OV-29  jseed(7)                  rc 0
+*!   OV-30  jseed(abc)                rc 198 naming jseed()
+*!   OV-31  yaxis(2)                  rc 0
+*!   OV-32  yaxis(3)                  rc 198 naming yaxis()   (dash's own limit)
+*!   OV-33  xaxis(1)                  rc 0
+*!   OV-34  xaxis(abc)                rc 198 naming xaxis()
+*!   OV-35  malpha(60)                rc 0
+*!   OV-36  malpha(150)               rc 198 naming malpha()
+*!   OV-37  lalpha(50)                rc 0
+*!   OV-38  lalpha(abc)               rc 198 naming lalpha()
+*!   OV-39  falpha(40)                rc 0
+*!   OV-40  falpha(-1)                rc 198 naming falpha()
+*!   OV-41  base(5)                   rc 0
+*!   OV-42  base(abc)                 rc 198 naming base()
+*!   OV-43  barwidth(20)              rc 0
+*!   OV-44  barwidth(0)               rc 198 naming barwidth()
+*!   OV-45  barwidth(abc)             rc 198 naming barwidth()
+*! level() -- the rule moved from _dash_parse_plot_opts into the table:
+*!   OV-46  level(90)                 rc 0
+*!   OV-47  level(abc)                rc 198 naming level()
+*!   OV-48  level(100)                rc 198 naming level()
+*!   OV-49  level(0)                  rc 198 naming level()
+*! Statistical options, by plot type:
+*!   OV-50  lpoly degree(1)           rc 0
+*!   OV-51  lpoly degree(5)           rc 198 naming degree()  (dash's own limit)
+*!   OV-52  lpoly degree(1.5)         rc 198 naming degree()
+*!   OV-53  lowess bwidth(0.3)        rc 0
+*!   OV-54  lowess bwidth(5)          rc 198 naming bwidth()  (a fraction of the sample)
+*!   OV-55  lowess bwidth(0)          rc 198 naming bwidth()
+*!   OV-56  lpoly bwidth(400)         rc 0
+*!   OV-57  lpoly bwidth(5)           rc 0   (only lowess is bounded above)
+*!   OV-58  lpoly bwidth(0)           rc 198 naming bwidth()
+*!   OV-59  kdensity bwidth(2)        rc 0
+*!   OV-60  kdensity bwidth(abc)      rc 198 naming bwidth()
+*!   OV-61  lowess bw(0.3)            rc 0   (the fold lands on bwidth first)
+*!   OV-62  histogram bw(2)           rc 0   (the fold lands on barwidth first)
+*!   OV-63  kdensity kernel(gaussian) rc 0
+*!   OV-64  kdensity kernel(Epan2)    rc 0, registry carries "kernel":"epan2"
+*!   OV-65  kdensity kernel(bogus)    rc 198 naming kernel()
+*!   OV-66  kdensity n(50)            rc 0
+*!   OV-67  kdensity n(1)             rc 198 naming n()
+*!   OV-68  kdensity n(abc)           rc 198 naming n()
+*!   OV-69  kdensity n(20000)         rc 198 naming n()      (dash's own limit)
+*!   OV-70  histogram bin(12)         rc 0
+*!   OV-71  histogram bin(0)          rc 198 naming bin()
+*!   OV-72  histogram bin(2.5)        rc 198 naming bin()
+*!   OV-73  histogram bin(abc)        rc 198 naming bin()
+*!   OV-74  histogram bin(5000)       rc 198 naming bin()    (dash's own limit)
+*!   OV-75  histogram width(3)        rc 0
+*!   OV-76  histogram width(0)        rc 198 naming width()
+*!   OV-77  histogram width(abc)      rc 198 naming width()
+*!   OV-78  histogram start(10)       rc 0
+*!   OV-79  histogram start(abc)      rc 198 naming start()
+*!   OV-80  mband bands(6)            rc 0
+*!   OV-81  mband bands(0)            rc 198 naming bands()
+*!   OV-82  mband bands(2.5)          rc 198 naming bands()
+*!   OV-83  mband bands(abc)          rc 198 naming bands()
+*!   OV-84  mband bands(201)          rc 198 naming bands()
+*!   OV-85  function range(0 10)      rc 0
+*!   OV-86  function range(10)        rc 198 naming range()
+*!   OV-87  function range(0 5 10)    rc 198 naming range()
+*!   OV-88  function range(abc)       rc 198 naming range()
+*! Colour mapping and variables:
+*!   OV-89  colornlevels(6)           rc 0
+*!   OV-90  colornlevels(1)           rc 198 naming colornlevels()
+*!   OV-91  colornlevels(abc)         rc 198 naming colornlevels()
+*!   OV-92  colpalette(magma)         rc 0
+*!   OV-93  colpalette(Viridis)       rc 0, registry carries "colpalette":"viridis"
+*!   OV-94  colpalette(bogus)         rc 198 naming colpalette()
+*!   OV-95  colorcuts(20 30)          rc 0
+*!   OV-96  colorcuts(abc)            rc 198 naming colorcuts()
+*!   OV-97  colorvar(for)             rc 0, registry carries "colorvar":"foreign"
+*!   OV-98  colorvar(nosuchvar)       rc 111 naming colorvar()
+*!   OV-99  colorvar(mpg weight)      rc 198 naming colorvar()
+*!   OV-100 mlabel(mak)               rc 0, registry carries "mlabel":"make"
+*!   OV-101 mlabel(nosuchvar)         rc 111 naming mlabel()
+*! Graph rules:
+*!   OV-102 xsize(9)                  rc 0
+*!   OV-103 xsize(abc)                rc 0   (a name)
+*!   OV-104 xsize(0)                  rc 198 naming xsize()
+*!   OV-105 ysize(3)                  rc 0
+*!   OV-106 ysize(101)                rc 198 naming ysize()
+*!   OV-107 aspectratio(0.75)         rc 0
+*!   OV-108 aspectratio(-1)           rc 198 naming aspectratio()
+*!   OV-109 aspectratio(abc)          rc 198 naming aspectratio()
+*!   OV-110 hover(pri wei)            rc 0, registry carries "hover":"price weight"
+*!   OV-111 hover(nosuchvar)          rc 111 naming hover()
+*!   OV-112 by(for, total)            rc 0, registry carries "by":"foreign, total"
+*!   OV-113 by(nosuchvar)             rc 111 naming by()
+*!   OV-114 by(, total)               rc 198 naming by()
+*! KPI fmt() (AC-15.2):
+*!   OV-115 fmt(bogus)                rc 198 naming fmt()
+*!   OV-116 fmt("HACKED" %9.2f)       rc 198 naming fmt()
+*!   OV-117 fmt(%9.2f)                rc 0
+*!   OV-118 fmt(%12s)                 rc 198 naming fmt()
+*!   OV-119 fmt(%tdCCYY-NN-DD)        rc 0
+*!   OV-120 fmt(%9.0fc)               rc 0
+*! The adversarial review's findings (DESIGN.md section 7.1, 22sep2026):
+*!   OV-121 colorvar(L.price) jitter(5), data tsset
+*!                                    rc 198 naming colorvar(), and the
+*!                                    message says "time-series" (A1: the
+*!                                    old tsunab fallback cleared s() and
+*!                                    registered the segment with no options)
+*!   OV-122 colorvar(price) jitter(5) rc 0, registry carries "jitter":"5"
+*!                                    AND "colorvar":"price" (the control)
+*!   OV-123 colorvar(L.price) jitter(5), data NOT tsset
+*!                                    rc 111 naming colorvar()
+*!   OV-124 mlabel(L.mpg) jitter(5), data tsset
+*!                                    rc 198 naming mlabel(), "time-series"
+*!   OV-125 a graph and a KPI k registered, then
+*!          kpi name(k, replace) fmt(bogus)   rc 198 naming fmt(), the old
+*!          KPI's globals dash_kpi_k and dash_kpi_k_fmt intact, the registry
+*!          still listing k once; kpi name(k, replace) update(bogus) rc 198
+*!          likewise; then `dash build, saving() replace' rc 0 and the file
+*!          exists (A2: the replace used to drop the old KPI BEFORE the
+*!          checks, and the next build died on a corrupt registry)
+*!   OV-126 (scatter mpg weight, xsize(500)) , xsize(5)
+*!                                    rc 198 naming xsize() (A3: a graph
+*!                                    option inside a segment is validated
+*!                                    even when a later value outranks it)
+*!   OV-127 (scatter mpg weight, by(nosuch)) , by(foreign)
+*!                                    rc 111 naming by()
+*!   OV-128 colorcuts(1(1)5)          rc 0, registry carries
+*!                                    "colorcuts":"1 2 3 4 5" (A4)
+*!   OV-129 kdensity range(0,10)      rc 0, registry carries "range":"0 10"
+*!   OV-130 yaxis(2.0)                rc 0, registry carries "yaxis":"2" (A5)
+*!   OV-131 kdensity n(1E3)           rc 0, registry carries "n":"1000"
+*!   OV-132 msize(1e400)              rc 198 naming msize() (A7: a token
+*!                                    that looks numeric but overflows)
+*!   OV-133 jitter(<tab>5<tab>)       rc 0, registry carries "jitter":"5"
+*!                                    (A8: tabs are trimmed; twoway rc 0)
+*!   OV-134 by("foreign")             rc 111 naming by(), and the message
+*!                                    reads `variable "foreign" not found'
+*!                                    with nothing garbled (the old form
+*!                                    quoted the name in single quotes and
+*!                                    a trailing " ended the compound quote)
+*! The corpus arbiter:
+*!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
+*!          with rc 0 and no refusal -- the table accepts every value the
+*!          documented corpus writes.
+*!
+*! Every refusal is read back out of a captured log with Stata's wrapped
+*! lines re-joined, as test_suboption_reporting.cscript does.
+*!
+*! Usage:  via run_all_cscripts.do (the dash directory must be on the
+*!         ado-path).
+
+cscript "dash option validation" adodir ".."
+
+clear all
+set more off
+
+capture which jsonio
+if _rc {
+    display as text "SKIP: jsonio is not installed."
+    exit 222
+}
+if `"`c(python_exec)'"' == "" {
+    display as text "SKIP: no Python is linked to this Stata."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+global dash_nobrowser 1
+sysuse auto, clear
+
+// The conformance corpus draws range plots, paired coordinates and a time
+// series against these; test_conformance.cscript builds the same set.
+quietly generate double lo = mpg - 3
+quietly generate double hi = mpg + 3
+quietly generate double w2 = weight + 250
+quietly generate double m2 = mpg + 4
+quietly generate int    t  = _n
+quietly tsset t
+
+// The tally lives in two globals rather than the do-file's locals: with
+// one line per case a helper program does the counting, and a program
+// cannot read its caller's locals.  Both are dropped in the summary.
+// (A global's name cannot start with an underscore -- measured, r(198) --
+// so these two carry the script prefix without it.)
+global ov_nfail    = 0
+global ov_faillist ""
+
+// ----------------------------------------------------------------
+// Log scanner: re-join "> " continuations, then count the logical lines
+// that carry `needle' and hand back the first.
+// ----------------------------------------------------------------
+capture mata: mata drop _ov_scan()
+capture mata: mata drop _ov_json_has()
+capture mata: mata drop _ov_tlc()
+mata:
+void _ov_scan(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full, first
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    first = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle)) {
+            n = n + 1
+            if (first == "") first = full
+        }
+        full = line
+    }
+    if (strpos(full, needle)) {
+        n = n + 1
+        if (first == "") first = full
+    }
+    fclose(fh)
+    st_local("_ov_n", strofreal(n))
+    st_local("_ov_line", first)
+}
+
+// Does the registered spec for graph `g' carry the text `needle'?
+real scalar _ov_json_has(string scalar g, string scalar needle)
+{
+    return(strpos(st_global("dash_json_" + g), needle) > 0)
+}
+
+// Does the command text carry a comma outside every parenthesis?  A
+// segment's own comma (inside its parentheses) does not count: name() is
+// then still the first graph-level option and needs the comma written.
+real scalar _ov_tlc(string scalar s)
+{
+    real scalar   i, depth
+    string scalar c
+    depth = 0
+    for (i = 1; i <= strlen(s); i++) {
+        c = substr(s, i, 1)
+        if (c == "(") depth = depth + 1
+        else if (c == ")") depth = depth - 1
+        else if (c == "," & depth == 0) return(1)
+    }
+    return(0)
+}
+end
+
+capture program drop _ov_count
+program define _ov_count, rclass
+    version 16.0
+    args logfile needle
+    mata: _ov_scan(st_local("logfile"), st_local("needle"))
+    return scalar n = `_ov_n'
+    return local line `"`macval(_ov_line)'"'
+end
+
+capture program drop _ov_has
+program define _ov_has, rclass
+    version 16.0
+    args g needle
+    mata: st_local("_oh", strofreal(_ov_json_has(st_local("g"), st_local("needle"))))
+    return scalar found = `_oh'
+end
+
+// Run one command with the log captured and judge it:
+//   rc must equal `expected';
+//   a refusal (expected != 0) must name `opt'() and must NOT be the
+//   ignoring note;
+//   an acceptance (expected == 0) must print no refusal at all.
+// Every probe starts from an empty registry.
+capture program drop _ov_probe
+program define _ov_probe, rclass
+    version 16.0
+    args id cmdtext expected opt
+    local logfile "`c(tmpdir)'dash_ov.log"
+    set linesize 80
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ovlog
+    local bad = 0
+    if `rc' != `expected' {
+        display as error `"`id' FAIL: expected rc `expected', got rc `rc': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `expected' != 0 {
+        _ov_count "`logfile'" "`opt'()"
+        if r(n) == 0 {
+            display as error `"`id' FAIL: the refusal does not name `opt'()"'
+            local bad = 1
+        }
+        _ov_count "`logfile'" "unsupported option"
+        if r(n) > 0 {
+            display as error `"`id' FAIL: a refused value was reported as an unsupported option: `r(line)'"'
+            local bad = 1
+        }
+    }
+    else {
+        _ov_count "`logfile'" "must be"
+        if r(n) > 0 {
+            display as error `"`id' FAIL: an accepted value was refused: `r(line)'"'
+            local bad = 1
+        }
+        _ov_count "`logfile'" "not found"
+        if r(n) > 0 {
+            display as error `"`id' FAIL: an accepted value was refused: `r(line)'"'
+            local bad = 1
+        }
+    }
+    return scalar bad = `bad'
+    return scalar rc  = `rc'
+end
+
+// One case: probe, then (when a needle is given) assert the registry
+// carries the normalised pair -- two needles where two pairs must survive
+// together.  Tallies into the two globals.
+capture program drop _ov_case
+program define _ov_case
+    version 16.0
+    args id cmdtext expected opt needle needle2
+    _ov_probe "`id'" `"`macval(cmdtext)'"' `expected' "`opt'"
+    local bad = r(bad)
+    local rc  = r(rc)
+    local nm = "ov" + subinstr("`id'", "OV-", "", 1)
+    foreach nd in needle needle2 {
+        if `"`macval(`nd')'"' != "" & `bad' == 0 {
+            _ov_has "`nm'" `"`macval(`nd')'"'
+            if r(found) != 1 {
+                display as error `"`id' FAIL: the registered spec does not carry `macval(`nd')':"'
+                mata: st_global("dash_json_" + st_local("nm"))
+                local bad = 1
+            }
+        }
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else {
+        display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+    }
+end
+
+// The log of the case just probed must carry `needle' (the wording of a
+// refusal, beyond the option it names).  Its own id, so a case that fails
+// on both counts is tallied twice, once per assertion.
+capture program drop _ov_said
+program define _ov_said
+    version 16.0
+    args id needle
+    _ov_count "`c(tmpdir)'dash_ov.log" `"`macval(needle)'"'
+    if r(n) == 0 {
+        display as error `"`id' FAIL: the log does not say `macval(needle)'"'
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: the log says `macval(needle)'"'
+end
+
+// One hand-rolled assertion outside _ov_case (OV-125 keeps a registry
+// across several commands, which _ov_probe would clear).
+capture program drop _ov_assert
+program define _ov_assert
+    version 16.0
+    args id cond what
+    if `cond' {
+        display as text `"`id' PASS: `macval(what)'"'
+    }
+    else {
+        display as error `"`id' FAIL: `macval(what)'"'
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+end
+
+// ----------------------------------------------------------------
+// OV-01 .. OV-21: style kinds
+// ----------------------------------------------------------------
+_ov_case OV-01 `"dash scatter mpg weight, msize(large) name(ov1)"' 0 ""
+_ov_case OV-02 `"dash scatter mpg weight, msize(abc) name(ov2)"' 0 ""
+_ov_case OV-03 `"dash scatter mpg weight, mlabel(make) mlabsize(small) name(ov3)"' 0 ""
+_ov_case OV-04 `"dash scatter mpg weight, mlabel(make) mlabsize(abc) name(ov4)"' 0 ""
+_ov_case OV-05 `"dash scatter mpg weight, mlabel(make) mlabgap(2) name(ov5)"' 0 ""
+_ov_case OV-06 `"dash scatter mpg weight, mlabel(make) mlabgap(abc) name(ov6)"' 0 ""
+_ov_case OV-07 `"dash line mpg weight, sort lwidth(thick) name(ov7)"' 0 ""
+_ov_case OV-08 `"dash line mpg weight, sort lwidth(0) name(ov8)"' 0 ""
+_ov_case OV-09 `"dash line mpg weight, sort lwidth(-1) name(ov9)"' 198 lwidth
+_ov_case OV-10 `"dash line mpg weight, sort lwidth(abc) name(ov10)"' 0 ""
+_ov_case OV-11 `"dash scatter mpg weight, mlwidth(0.5) name(ov11)"' 0 ""
+_ov_case OV-12 `"dash scatter mpg weight, mlwidth(-1) name(ov12)"' 198 mlwidth
+_ov_case OV-13 `"dash scatter mpg weight, msangle(30) name(ov13)"' 0 ""
+_ov_case OV-14 `"dash scatter mpg weight, msangle(abc) name(ov14)"' 0 ""
+_ov_case OV-15 `"dash scatter mpg weight, msangle(400) name(ov15)"' 198 msangle
+_ov_case OV-16 `"dash scatter mpg weight, mlabel(make) mlabposition(12) name(ov16)"' 0 ""
+_ov_case OV-17 `"dash scatter mpg weight, mlabel(make) mlabposition(13) name(ov17)"' 0 ""
+_ov_case OV-18 `"dash scatter mpg weight, mlabel(make) mlabposition(2.5) name(ov18)"' 0 ""
+_ov_case OV-19 `"dash area mpg weight, sort fintensity(50) name(ov19)"' 0 ""
+_ov_case OV-20 `"dash area mpg weight, sort fintensity(inten50) name(ov20)"' 0 ""
+_ov_case OV-21 `"dash area mpg weight, sort fintensity(150) name(ov21)"' 0 ""
+
+// ----------------------------------------------------------------
+// OV-22 .. OV-45: numeric kinds
+// ----------------------------------------------------------------
+_ov_case OV-22 `"dash scatter mpg weight, jitter(5) name(ov22)"' 0 ""
+_ov_case OV-23 `"dash scatter mpg weight, jitter(abc) name(ov23)"' 198 jitter
+_ov_case OV-24 `"dash scatter mpg weight, jitter(-3) name(ov24)"' 198 jitter
+_ov_case OV-25 `"dash scatter mpg weight, jitter(101) name(ov25)"' 198 jitter
+_ov_case OV-26 `"dash scatter mpg weight, jitter(5) jitterseed(20260920) name(ov26)"' 0 ""
+_ov_case OV-27 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(ov27)"' 198 jitterseed
+_ov_case OV-28 `"dash scatter mpg weight, jitter(5) jitterseed(2.5) name(ov28)"' 198 jitterseed
+_ov_case OV-29 `"dash scatter mpg weight, jitter(5) jseed(7) name(ov29)"' 0 ""
+_ov_case OV-30 `"dash scatter mpg weight, jitter(5) jseed(abc) name(ov30)"' 198 jseed
+_ov_case OV-31 `"dash scatter mpg weight, yaxis(2) name(ov31)"' 0 ""
+_ov_case OV-32 `"dash scatter mpg weight, yaxis(3) name(ov32)"' 198 yaxis
+_ov_case OV-33 `"dash scatter mpg weight, xaxis(1) name(ov33)"' 0 ""
+_ov_case OV-34 `"dash scatter mpg weight, xaxis(abc) name(ov34)"' 198 xaxis
+_ov_case OV-35 `"dash scatter mpg weight, malpha(60) name(ov35)"' 0 ""
+_ov_case OV-36 `"dash scatter mpg weight, malpha(150) name(ov36)"' 198 malpha
+_ov_case OV-37 `"dash line mpg weight, sort lalpha(50) name(ov37)"' 0 ""
+_ov_case OV-38 `"dash line mpg weight, sort lalpha(abc) name(ov38)"' 198 lalpha
+_ov_case OV-39 `"dash area mpg weight, sort falpha(40) name(ov39)"' 0 ""
+_ov_case OV-40 `"dash area mpg weight, sort falpha(-1) name(ov40)"' 198 falpha
+_ov_case OV-41 `"dash area mpg weight, sort base(5) name(ov41)"' 0 ""
+_ov_case OV-42 `"dash area mpg weight, sort base(abc) name(ov42)"' 198 base
+_ov_case OV-43 `"dash bar mpg weight, barwidth(20) name(ov43)"' 0 ""
+_ov_case OV-44 `"dash bar mpg weight, barwidth(0) name(ov44)"' 198 barwidth
+_ov_case OV-45 `"dash bar mpg weight, barwidth(abc) name(ov45)"' 198 barwidth
+
+// ----------------------------------------------------------------
+// OV-46 .. OV-49: level(), now a table rule
+// ----------------------------------------------------------------
+_ov_case OV-46 `"dash lfitci mpg weight, level(90) name(ov46)"' 0 ""
+_ov_case OV-47 `"dash lfitci mpg weight, level(abc) name(ov47)"' 198 level
+_ov_case OV-48 `"dash lfitci mpg weight, level(100) name(ov48)"' 198 level
+_ov_case OV-49 `"dash lfitci mpg weight, level(0) name(ov49)"' 198 level
+
+// ----------------------------------------------------------------
+// OV-50 .. OV-88: statistical options, by plot type
+// ----------------------------------------------------------------
+_ov_case OV-50 `"dash lpoly mpg weight, degree(1) name(ov50)"' 0 ""
+_ov_case OV-51 `"dash lpoly mpg weight, degree(5) name(ov51)"' 198 degree
+_ov_case OV-52 `"dash lpoly mpg weight, degree(1.5) name(ov52)"' 198 degree
+_ov_case OV-53 `"dash lowess mpg weight, bwidth(0.3) name(ov53)"' 0 ""
+_ov_case OV-54 `"dash lowess mpg weight, bwidth(5) name(ov54)"' 198 bwidth
+_ov_case OV-55 `"dash lowess mpg weight, bwidth(0) name(ov55)"' 198 bwidth
+_ov_case OV-56 `"dash lpoly mpg weight, bwidth(400) name(ov56)"' 0 ""
+_ov_case OV-57 `"dash lpoly mpg weight, bwidth(5) name(ov57)"' 0 ""
+_ov_case OV-58 `"dash lpoly mpg weight, bwidth(0) name(ov58)"' 198 bwidth
+_ov_case OV-59 `"dash kdensity mpg, bwidth(2) name(ov59)"' 0 ""
+_ov_case OV-60 `"dash kdensity mpg, bwidth(abc) name(ov60)"' 198 bwidth
+_ov_case OV-61 `"dash lowess mpg weight, bw(0.3) name(ov61)"' 0 ""
+_ov_case OV-62 `"dash histogram mpg, bw(2) name(ov62)"' 0 ""
+_ov_case OV-63 `"dash kdensity mpg, kernel(gaussian) name(ov63)"' 0 ""
+_ov_case OV-64 `"dash kdensity mpg, kernel(Epan2) name(ov64)"' 0 "" `""kernel":"epan2""'
+_ov_case OV-65 `"dash kdensity mpg, kernel(bogus) name(ov65)"' 198 kernel
+_ov_case OV-66 `"dash kdensity mpg, n(50) name(ov66)"' 0 ""
+_ov_case OV-67 `"dash kdensity mpg, n(1) name(ov67)"' 198 n
+_ov_case OV-68 `"dash kdensity mpg, n(abc) name(ov68)"' 198 n
+_ov_case OV-69 `"dash kdensity mpg, n(20000) name(ov69)"' 198 n
+_ov_case OV-70 `"dash histogram mpg, bin(12) name(ov70)"' 0 ""
+_ov_case OV-71 `"dash histogram mpg, bin(0) name(ov71)"' 198 bin
+_ov_case OV-72 `"dash histogram mpg, bin(2.5) name(ov72)"' 198 bin
+_ov_case OV-73 `"dash histogram mpg, bin(abc) name(ov73)"' 198 bin
+_ov_case OV-74 `"dash histogram mpg, bin(5000) name(ov74)"' 198 bin
+_ov_case OV-75 `"dash histogram mpg, width(3) name(ov75)"' 0 ""
+_ov_case OV-76 `"dash histogram mpg, width(0) name(ov76)"' 198 width
+_ov_case OV-77 `"dash histogram mpg, width(abc) name(ov77)"' 198 width
+_ov_case OV-78 `"dash histogram mpg, width(3) start(10) name(ov78)"' 0 ""
+_ov_case OV-79 `"dash histogram mpg, width(3) start(abc) name(ov79)"' 198 start
+_ov_case OV-80 `"dash mband mpg weight, bands(6) name(ov80)"' 0 ""
+_ov_case OV-81 `"dash mband mpg weight, bands(0) name(ov81)"' 198 bands
+_ov_case OV-82 `"dash mband mpg weight, bands(2.5) name(ov82)"' 198 bands
+_ov_case OV-83 `"dash mband mpg weight, bands(abc) name(ov83)"' 198 bands
+_ov_case OV-84 `"dash mband mpg weight, bands(201) name(ov84)"' 198 bands
+_ov_case OV-85 `"dash function y = x^2, range(0 10) name(ov85)"' 0 ""
+_ov_case OV-86 `"dash function y = x^2, range(10) name(ov86)"' 198 range
+_ov_case OV-87 `"dash function y = x^2, range(0 5 10) name(ov87)"' 198 range
+_ov_case OV-88 `"dash function y = x^2, range(abc) name(ov88)"' 198 range
+
+// ----------------------------------------------------------------
+// OV-89 .. OV-101: colour mapping and variables
+// ----------------------------------------------------------------
+_ov_case OV-89  `"dash scatter mpg weight, colorvar(price) colornlevels(6) name(ov89)"' 0 ""
+_ov_case OV-90  `"dash scatter mpg weight, colorvar(price) colornlevels(1) name(ov90)"' 198 colornlevels
+_ov_case OV-91  `"dash scatter mpg weight, colorvar(price) colornlevels(abc) name(ov91)"' 198 colornlevels
+_ov_case OV-92  `"dash scatter mpg weight, colorvar(price) colpalette(magma) name(ov92)"' 0 ""
+_ov_case OV-93  `"dash scatter mpg weight, colorvar(price) colpalette(Viridis) name(ov93)"' 0 "" `""colpalette":"viridis""'
+_ov_case OV-94  `"dash scatter mpg weight, colorvar(price) colpalette(bogus) name(ov94)"' 198 colpalette
+_ov_case OV-95  `"dash scatter mpg weight, colorvar(price) colorcuts(20 30) name(ov95)"' 0 ""
+_ov_case OV-96  `"dash scatter mpg weight, colorvar(price) colorcuts(abc) name(ov96)"' 198 colorcuts
+_ov_case OV-97  `"dash scatter mpg weight, colorvar(for) name(ov97)"' 0 "" `""colorvar":"foreign""'
+_ov_case OV-98  `"dash scatter mpg weight, colorvar(nosuchvar) name(ov98)"' 111 colorvar
+_ov_case OV-99  `"dash scatter mpg weight, colorvar(mpg weight) name(ov99)"' 198 colorvar
+_ov_case OV-100 `"dash scatter mpg weight, mlabel(mak) name(ov100)"' 0 "" `""mlabel":"make""'
+_ov_case OV-101 `"dash scatter mpg weight, mlabel(nosuchvar) name(ov101)"' 111 mlabel
+
+// ----------------------------------------------------------------
+// OV-102 .. OV-114: graph rules
+// ----------------------------------------------------------------
+_ov_case OV-102 `"dash scatter mpg weight, xsize(9) name(ov102)"' 0 ""
+_ov_case OV-103 `"dash scatter mpg weight, xsize(abc) name(ov103)"' 0 ""
+_ov_case OV-104 `"dash scatter mpg weight, xsize(0) name(ov104)"' 198 xsize
+_ov_case OV-105 `"dash scatter mpg weight, ysize(3) name(ov105)"' 0 ""
+_ov_case OV-106 `"dash scatter mpg weight, ysize(101) name(ov106)"' 198 ysize
+_ov_case OV-107 `"dash scatter mpg weight, aspectratio(0.75) name(ov107)"' 0 ""
+_ov_case OV-108 `"dash scatter mpg weight, aspectratio(-1) name(ov108)"' 198 aspectratio
+_ov_case OV-109 `"dash scatter mpg weight, aspectratio(abc) name(ov109)"' 198 aspectratio
+_ov_case OV-110 `"dash scatter mpg weight, hover(pri wei) name(ov110)"' 0 "" `""hover":"price weight""'
+_ov_case OV-111 `"dash scatter mpg weight, hover(nosuchvar) name(ov111)"' 111 hover
+_ov_case OV-112 `"dash scatter mpg weight, by(for, total) name(ov112)"' 0 "" `""by":"foreign, total""'
+_ov_case OV-113 `"dash scatter mpg weight, by(nosuchvar) name(ov113)"' 111 by
+_ov_case OV-114 `"dash scatter mpg weight, by(, total) name(ov114)"' 198 by
+
+// ----------------------------------------------------------------
+// OV-115 .. OV-120: KPI fmt() (AC-15.2)
+// ----------------------------------------------------------------
+_ov_case OV-115 `"dash kpi mean(mpg), name(k) title(T) fmt(bogus)"' 198 fmt
+_ov_case OV-116 `"dash kpi mean(mpg), name(k) title(T) fmt("HACKED" %9.2f)"' 198 fmt
+_ov_case OV-117 `"dash kpi mean(mpg), name(k) title(T) fmt(%9.2f)"' 0 ""
+_ov_case OV-118 `"dash kpi mean(mpg), name(k) title(T) fmt(%12s)"' 198 fmt
+_ov_case OV-119 `"dash kpi mean(mpg), name(k) title(T) fmt(%tdCCYY-NN-DD)"' 0 ""
+_ov_case OV-120 `"dash kpi mean(mpg), name(k) title(T) fmt(%9.0fc)"' 0 ""
+
+// ----------------------------------------------------------------
+// OV-121 .. OV-134: the adversarial review's findings (DESIGN.md 7.1)
+// ----------------------------------------------------------------
+// A1 -- a time-series expression in a var kind.  The data are tsset on t
+// (above), so L.price is a valid twoway varlist; dash cannot draw it and
+// says so, naming the option, without clearing the segment's s().
+_ov_case OV-121 `"dash scatter mpg weight, colorvar(L.price) jitter(5) name(ov121)"' 198 colorvar
+_ov_said OV-121m "time-series"
+_ov_case OV-122 `"dash scatter mpg weight, colorvar(price) jitter(5) name(ov122)"' 0 "" `""jitter":"5""' `""colorvar":"price""'
+quietly tsset, clear
+_ov_case OV-123 `"dash scatter mpg weight, colorvar(L.price) jitter(5) name(ov123)"' 111 colorvar
+quietly tsset t
+_ov_case OV-124 `"dash scatter mpg weight, mlabel(L.mpg) jitter(5) name(ov124)"' 198 mlabel
+_ov_said OV-124m "time-series"
+
+// A2 -- a refused replace leaves the old KPI whole, and the registry
+// still builds.  Hand-rolled: _ov_probe clears the registry first.
+capture dash clear
+dash scatter mpg weight, name(ov125g)
+dash kpi mean(mpg), title(T) name(ov125k) fmt(%9.2f)
+local _ov_log "`c(tmpdir)'dash_ov.log"
+capture log close _ovlog
+capture erase "`_ov_log'"
+log using "`_ov_log'", name(_ovlog) text replace
+capture noisily dash kpi mean(mpg), title(T) name(ov125k, replace) fmt(bogus)
+local _ov_rc = _rc
+log close _ovlog
+_ov_assert OV-125 "(`_ov_rc' == 198)" "name(ov125k, replace) fmt(bogus): rc `_ov_rc' (expected 198)"
+_ov_said OV-125m "fmt()"
+_ov_assert OV-125a `"("${dash_kpi_ov125k}" == "1")"' `"the old KPI's marker global survives (dash_kpi_ov125k = [${dash_kpi_ov125k}])"'
+_ov_assert OV-125b `"("${dash_kpi_ov125k_fmt}" == "%9.2f")"' `"the old KPI's fmt global survives (dash_kpi_ov125k_fmt = [${dash_kpi_ov125k_fmt}])"'
+local _ov_nk  = 0
+local _ov_reg "${dash_graph_registry}"
+foreach _r of local _ov_reg {
+    if "`_r'" == "ov125k" local ++_ov_nk
+}
+_ov_assert OV-125c "(`_ov_nk' == 1)" "the registry lists ov125k once (registry = [${dash_graph_registry}])"
+capture noisily dash kpi mean(mpg), title(T) name(ov125k, replace) update(bogus)
+local _ov_rc = _rc
+_ov_assert OV-125u `"(`_ov_rc' == 198 & "${dash_kpi_ov125k_fmt}" == "%9.2f")"' "name(ov125k, replace) update(bogus): rc `_ov_rc' (expected 198), fmt global = [${dash_kpi_ov125k_fmt}]"
+tempfile _ov_tf
+local _ov_html "`_ov_tf'.html"
+capture erase "`_ov_html'"
+capture noisily dash build, saving("`_ov_html'") replace
+local _ov_rc = _rc
+_ov_assert OV-125d "(`_ov_rc' == 0)" "dash build after the refused replace: rc `_ov_rc' (expected 0)"
+capture confirm file "`_ov_html'"
+local _ov_rc = _rc
+_ov_assert OV-125e "(`_ov_rc' == 0)" "dash build wrote the dashboard"
+capture erase "`_ov_html'"
+
+// A3 -- a graph-level option inside a segment is validated even when a
+// later value outranks it, as twoway refuses the whole command.
+_ov_case OV-126 `"dash (scatter mpg weight, xsize(500)) , xsize(5) name(ov126)"' 198 xsize
+_ov_case OV-127 `"dash (scatter mpg weight, by(nosuch)) , by(foreign) name(ov127)"' 111 by
+
+// A4, A5 -- what the table accepts reaches the renderer in one spelling.
+_ov_case OV-128 `"dash scatter mpg weight, colorvar(price) colorcuts(1(1)5) name(ov128)"' 0 "" `""colorcuts":"1 2 3 4 5""'
+_ov_case OV-129 `"dash kdensity mpg, range(0,10) name(ov129)"' 0 "" `""range":"0 10""'
+_ov_case OV-130 `"dash scatter mpg weight, yaxis(2.0) name(ov130)"' 0 "" `""yaxis":"2""'
+_ov_case OV-131 `"dash kdensity mpg, n(1E3) name(ov131)"' 0 "" `""n":"1000""'
+
+// A7 -- a token that looks numeric but overflows real() is not a name.
+_ov_case OV-132 `"dash scatter mpg weight, msize(1e400) name(ov132)"' 198 msize
+
+// A8 -- tabs around a number are trimmed (twoway rc 0 for this one).
+local _ov_tab = char(9)
+_ov_case OV-133 `"dash scatter mpg weight, jitter(`_ov_tab'5`_ov_tab') name(ov133)"' 0 "" `""jitter":"5""'
+
+// The not-found message echoes the name without single quotes, so a
+// trailing double quote cannot end the compound quote early.
+_ov_case OV-134 `"dash scatter mpg weight, by("foreign") name(ov134)"' 111 by
+_ov_said OV-134m `"variable "foreign" not found"'
+
+// ----------------------------------------------------------------
+// CV-nn: the corpus arbiter.  Every line of the conformance corpus must
+// register with rc 0 and no refusal: the table accepts every value the
+// documented corpus writes.  Read with `file read' as
+// test_conformance.cscript does; a line with no top-level comma needs
+// the comma before name().
+// ----------------------------------------------------------------
+tempname fh
+file open `fh' using "fixtures/conformance_corpus.txt", read text
+file read `fh' line
+local ncv = 0
+while r(eof) == 0 {
+    if `"`macval(line)'"' != "" {
+        local ++ncv
+        mata: st_local("_tlc", strofreal(_ov_tlc(st_local("line"))))
+        if `_tlc' == 0 {
+            local cmd `"dash `macval(line)', name(cv`ncv')"'
+        }
+        else {
+            local cmd `"dash `macval(line)' name(cv`ncv')"'
+        }
+        _ov_case "CV-`ncv'" `"`macval(cmd)'"' 0 ""
+    }
+    file read `fh' line
+}
+file close `fh'
+if `ncv' < 55 {
+    display as error "CV FAIL: only `ncv' corpus lines were read; the corpus holds at least 55"
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} CV-count"
+}
+else display as text "CV: `ncv' corpus lines probed"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+local nfail    = ${ov_nfail}
+local faillist "${ov_faillist}"
+macro drop ov_nfail ov_faillist
+capture dash clear
+capture erase "`c(tmpdir)'dash_ov.log"
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_option_validation: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_option_validation: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

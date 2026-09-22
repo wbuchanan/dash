@@ -417,6 +417,149 @@ assert _rc == 0
 display "P8-89 PASS: a control byte in title() builds, escaped, not r(7102)"
 
 // ================================================================
+// P9-01..P9-14 — option VALUES as an attack surface (WP-15)
+// ================================================================
+// Before WP-15 a number-only option carried whatever text it was given
+// into the spec JSON and on to the renderer, where float() raised or --
+// for the KPI fmt() -- Stata's own `: display' ran the text as a display
+// directive.  The option-validation table in dash.ado now refuses such a
+// value with ONE `display as error' line naming the option, exit 198,
+// before anything is registered.  Each probe below is read back from a
+// captured log so the refusal can be checked to name its option and to be
+// a refusal, not the "ignoring unsupported option(s)" note.
+//
+// Style kinds (msize, lwidth ...) are deliberately NOT a surface here:
+// twoway passes an unknown style NAME through with a note, and so does
+// dash, so the injection strings go into the number-only options.
+capture program drop _adv_p9_probe
+program define _adv_p9_probe, rclass
+    version 16.0
+    args cmdtext opt
+    local logfile "`c(tmpdir)'dash_adv_p9.log"
+    set linesize 80
+    capture log close _p9log
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_p9log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _p9log
+    cert_file_has "`logfile'", needle("`opt'()")
+    local named = r(found)
+    cert_file_has "`logfile'", needle("unsupported option")
+    local ignored = r(found)
+    return scalar rc      = `rc'
+    return scalar named   = `named'
+    return scalar ignored = `ignored'
+end
+
+qui sysuse auto, clear
+global dash_nobrowser 1
+
+// P9-01 — code after a number in jitter() → rc 198 naming jitter()
+_adv_p9_probe `"dash scatter mpg weight, jitter(5; import os) name(p901)"' jitter
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-01 PASS: jitter(5; import os) → rc=198 naming jitter(), nothing registered"
+
+// P9-02 — code after a number in level() → rc 198 naming level()
+_adv_p9_probe `"dash lfitci mpg weight, level(95; sysuse auto) name(p902)"' level
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-02 PASS: level(95; sysuse auto) → rc=198 naming level(), nothing registered"
+
+// P9-03 — a word after a number in bin() → rc 198 naming bin()
+_adv_p9_probe `"dash histogram mpg, bin(5 or 1) name(p903)"' bin
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-03 PASS: bin(5 or 1) → rc=198 naming bin(), nothing registered"
+
+// P9-04 — a backtick in n().  Built with char(96) and handed to Stata
+// through _stata(), so no macro expands it on the way.  Measured: Stata's
+// own line parser refuses an unbalanced backtick with r(132) "too few
+// quotes" before any program runs, whichever route delivers it (a macro,
+// a literal line, stata(), _stata()), so the validator's macval() echo of
+// the value cannot be reached from a command line.  What is asserted is
+// what can be: the command fails and registers nothing.
+local _p9_cmd = "dash kdensity mpg, n(" + char(96) + "x" + char(96) + ") name(p904)"
+capture dash clear
+mata: st_local("_p9_rc", strofreal(_stata(st_local("_p9_cmd"), 0)))
+assert `_p9_rc' != 0
+assert "${dash_graph_registry}" == ""
+display "P9-04 PASS: a backtick in n() → rc=`_p9_rc' at Stata's own parser, nothing registered"
+
+// P9-05 — a $ payload is not deliverable: "`x'" and _stata() alike expand
+// $name as a global-macro reference before dash sees the text (measured in
+// P2-85b for saving()), and a value with no $ left in it is not the test.
+// Skipped, and said so.
+display "P9-05 NOTE: a $ payload in an option value cannot reach dash from a command line; not probed"
+
+// P9-06..P9-10 — resource exhaustion through a count or a size → rc 198
+_adv_p9_probe `"dash histogram mpg, bin(999999999) name(p906)"' bin
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-06 PASS: bin(999999999) → rc=198 naming bin()"
+
+_adv_p9_probe `"dash kdensity mpg, n(1000000000) name(p907)"' n
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-07 PASS: n(1000000000) → rc=198 naming n()"
+
+_adv_p9_probe `"dash mband mpg weight, bands(1e9) name(p908)"' bands
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-08 PASS: bands(1e9) → rc=198 naming bands()"
+
+_adv_p9_probe `"dash scatter mpg weight, colorvar(price) colornlevels(1e9) name(p909)"' colornlevels
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-09 PASS: colornlevels(1e9) → rc=198 naming colornlevels()"
+
+_adv_p9_probe `"dash scatter mpg weight, xsize(1e9) name(p910)"' xsize
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_graph_registry}" == ""
+display "P9-10 PASS: xsize(1e9) → rc=198 naming xsize()"
+
+// P9-11..P9-14 — code in the KPI fmt().  Before the gate, `: display'
+// ran the text: _request(x) asked for input, c(username) printed it, a
+// quoted word became display output.  Now: rc 198 naming fmt(), and no
+// KPI registered under the name.
+_adv_p9_probe `"dash kpi mean(mpg), name(p9k) title(T) fmt(%9.2f _request(x))"' fmt
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_kpi_p9k}" == "" & "${dash_graph_registry}" == ""
+display "P9-11 PASS: fmt(%9.2f _request(x)) → rc=198 naming fmt(), no KPI registered"
+
+_adv_p9_probe `"dash kpi mean(mpg), name(p9k) title(T) fmt(c(username))"' fmt
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_kpi_p9k}" == "" & "${dash_graph_registry}" == ""
+display "P9-12 PASS: fmt(c(username)) → rc=198 naming fmt(), no KPI registered"
+
+_adv_p9_probe `"dash kpi mean(mpg), name(p9k) title(T) fmt("HACKED" %9.2f)"' fmt
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_kpi_p9k}" == "" & "${dash_graph_registry}" == ""
+display `"P9-13 PASS: fmt("HACKED" %9.2f) → rc=198 naming fmt(), no KPI registered"'
+
+_adv_p9_probe `"dash kpi mean(mpg), name(p9k) title(T) fmt(%9.2f;)"' fmt
+assert r(rc) == 198
+assert r(named) == 1 & r(ignored) == 0
+assert "${dash_kpi_p9k}" == "" & "${dash_graph_registry}" == ""
+display "P9-14 PASS: fmt(%9.2f;) → rc=198 naming fmt(), no KPI registered"
+
+capture dash clear
+capture erase "`c(tmpdir)'dash_adv_p9.log"
+
+// ================================================================
 // Final summary
 // ================================================================
 display ""
@@ -433,3 +576,7 @@ display "  P4-85: XSS in KPI title (server mode) → HTML-escaped in .py"
 display "  P4-86: Data/label with injection chars → .py compiles"
 display "  P8-86..88: Malformed UTF-8 in build/KPI/tabs titles → rc=198"
 display "  P8-89: Control byte in title() → escaped and built, not r(7102)"
+display "  P9-01..03: Code in a number-only option value → rc=198 naming it"
+display "  P9-04: Backtick in n() → refused by Stata's own line parser, nothing registered"
+display "  P9-06..10: Resource-exhaustion counts and sizes → rc=198 naming the option"
+display "  P9-11..14: Code in KPI fmt() → rc=198 naming fmt(), no KPI registered"

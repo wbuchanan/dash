@@ -992,10 +992,17 @@ def _extract_region_lwidth(val: str) -> float | None:
     if not m:
         return None
     raw = m.group(1).strip()
+    if not raw:
+        return None
+    # A word that is neither a number nor a width keyword raised out of
+    # here and aborted the whole standalone render (the served app was
+    # silent for the same value).  Named, and the default kept, in both.
     try:
-        return float(raw)
-    except ValueError:
-        return OptionTranslator.translate_lwidth(raw) if raw else None
+        return OptionTranslator.translate_lwidth(raw)
+    except (ValueError, TypeError):
+        _dash_style_note("plotregion(lwidth)", raw, "line width",
+                         "the default")
+        return None
 
 
 def _extract_finite(
@@ -1307,7 +1314,9 @@ class OptionTranslator:
     }
 
     @staticmethod
-    def parse_color_alpha(value: str) -> "tuple[str | None, float | None]":
+    def parse_color_alpha(
+        value: str, option: str = "",
+    ) -> "tuple[str | None, float | None]":
         """Parse a Stata color+alpha spec such as ``'red%50'`` or ``'%30'``.
 
         Stata allows an optional ``%N`` suffix on any color spec where *N* is
@@ -1316,8 +1325,13 @@ class OptionTranslator:
         alpha only".
 
         Args:
-            value: Raw option value from a Stata mcolor()/fcolor()/lcolor()
-                   call, e.g. ``"navy%80"`` or ``"%50"`` or ``"navy"``.
+            value:  Raw option value from a Stata mcolor()/fcolor()/lcolor()
+                    call, e.g. ``"navy%80"`` or ``"%50"`` or ``"navy"``.
+            option: The option the value came from.  When given, a colour
+                    that cannot be resolved is reported through
+                    ``_dash_style_note`` before ``None`` is returned; every
+                    option applier passes it, so an unknown colour name is
+                    never dropped in silence.
 
         Returns:
             A ``(hex_color_or_None, alpha_0_to_1_or_None)`` tuple.  Either
@@ -1345,7 +1359,10 @@ class OptionTranslator:
             try:
                 hex_color = OptionTranslator.translate_mcolor(v)
             except ValueError:
-                pass   # unrecognised — return None
+                # Unrecognised: the caller keeps its default.  Named when
+                # the caller said which option it is reading.
+                if option:
+                    _dash_style_note(option, value, "colour")
 
         return hex_color, alpha
 
@@ -1475,11 +1492,16 @@ class OptionTranslator:
         v = value.strip().lower()
         if v in OptionTranslator._SIZE_MAP:
             return OptionTranslator._SIZE_MAP[v]
-        # Numeric passthrough (Stata also accepts raw numbers)
+        # Numeric passthrough (Stata also accepts raw numbers).  A finite
+        # one: float('1e400') is inf, and int(inf) is an OverflowError no
+        # caller's `except ValueError' caught, so msize(1e400) aborted the
+        # render in both modes.
         try:
-            return max(1, int(float(v)))
+            f = float(v)
         except ValueError:
-            pass
+            f = float("nan")
+        if math.isfinite(f):
+            return max(1, int(f))
         raise ValueError(
             f"Unrecognised Stata size value: '{value}'. "
             "Use a keyword (tiny … huge) or a positive number."
@@ -1506,10 +1528,14 @@ class OptionTranslator:
         v = value.strip().lower()
         if v in OptionTranslator._LWIDTH_MAP:
             return OptionTranslator._LWIDTH_MAP[v]
+        # A finite number only: lwidth(1e400) used to come back as inf and
+        # be handed to Bokeh as a line width.
         try:
-            return max(0.1, float(v))
+            f = float(v)
         except ValueError:
-            pass
+            f = float("nan")
+        if math.isfinite(f):
+            return max(0.1, f)
         raise ValueError(
             f"Unrecognised Stata line width: '{value}'. "
             "Use a keyword (vvthin … vvthick) or a positive number."
@@ -2511,15 +2537,29 @@ def _jitter_seed(options: dict) -> "int | None":
         options: Translated plot-level options.
 
     Returns:
-        The seed, or ``None`` when none was given or it was not a number.
+        The seed, or ``None`` when none was given or it is not a
+        non-negative integer -- which is reported: numpy's Generator takes
+        nothing else, so ``default_rng(-1)`` raised out of the mapper and
+        took the render down, and ``2.5`` was quietly truncated to 2.
     """
     for key in ("jseed", "jitterseed"):
         raw = str(options.get(key, "") or "").strip()
         if raw:
+            # The same rule as dash.ado's table (jitterseed=int,0): any
+            # spelling of a non-negative integer, 123, 123.0 or 1e6 alike.
             try:
-                return int(float(raw))
-            except (TypeError, ValueError):
-                return None
+                val = float(raw)
+            except ValueError:
+                val = float("nan")
+            if np.isfinite(val) and val >= 0 and val == int(val):
+                return int(val)
+            # Once per render: every by() panel read it and said so again.
+            _dash_warn_once(
+                (key, raw, "seed"),
+                f"dash: {key}({_dash_display(raw)}) must be a non-negative "
+                f"integer; drawing unseeded.",
+            )
+            return None
     return None
 
 
@@ -2686,6 +2726,7 @@ class GlyphMapper:
         xvar: str,
         yvar: str,
         options: dict[str, str],
+        layer: str = "scatter",
     ) -> "tuple[ColumnDataSource, str, str]":
         """Return a (possibly jittered) source and effective x/y column names.
 
@@ -2701,12 +2742,14 @@ class GlyphMapper:
         if not jitter_raw:
             return source, xvar, yvar
 
-        try:
-            jitter_pct = float(jitter_raw)
-        except (ValueError, TypeError):
-            return source, xvar, yvar
-
-        if jitter_pct <= 0:
+        # Through _stat_option_float, as dropline's is: a word or a
+        # negative number from a hand-written spec was dropped in silence
+        # here while dropline named it.  (dash.ado refuses both before a
+        # command gets this far.)  A value above 100 is clamped, as it
+        # always was.
+        jitter_pct = _stat_option_float(options, "jitter", 0.0, layer,
+                                        lo=0.0)
+        if jitter_pct is None or jitter_pct <= 0:
             return source, xvar, yvar
 
         # Clamp to [1, 100]
@@ -2913,6 +2956,11 @@ class GlyphMapper:
     ) -> None:
         """Apply lcolor/lwidth/lpattern/lalpha options to a line-type glyph renderer."""
         glyph = renderer.glyph
+        # The name the user wrote, for the note: color() is folded onto
+        # lcolor() below, and a note reading lcolor(x) for a color(x) the
+        # user never typed would send them to the wrong option.
+        _lc_name = ("lcolor" if str(options.get("lcolor", "") or "").strip()
+                    else "color")
         # A bar's own blcolor() is applied by map_bar just before this call,
         # so color() must not stand in for lcolor() and overwrite it.
         if not str(options.get("blcolor", "") or "").strip():
@@ -2926,23 +2974,26 @@ class GlyphMapper:
             else:
                 try:
                     color, alpha = self.tr.parse_color_alpha(
-                        options["lcolor"])
+                        options["lcolor"], _lc_name)
                     if color:
                         glyph.line_color = color
                     if alpha is not None and hasattr(glyph, "line_alpha"):
                         glyph.line_alpha = alpha
-                except (ValueError, AttributeError):
+                except AttributeError:
                     pass
+        # An unknown width or pattern used to be dropped without a word
+        # (`except ValueError: pass'); it is named, and the scheme's kept.
         if "lwidth" in options:
             try:
                 glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
             except ValueError:
-                pass
+                _dash_style_note("lwidth", options["lwidth"], "line width")
         if "lpattern" in options:
             try:
                 glyph.line_dash = self.tr.translate_lpattern(options["lpattern"])
             except ValueError:
-                pass
+                _dash_style_note("lpattern", options["lpattern"],
+                                 "line pattern")
         # lalpha: standalone line opacity, 0-100%
         if "lalpha" in options:
             try:
@@ -2970,12 +3021,25 @@ class GlyphMapper:
         because it is applied last.
         """
         glyph = renderer.glyph
+        # The name the user wrote, for the note: color() is folded onto
+        # mcolor() below, and a note reading mcolor(x) for a color(x) the
+        # user never typed would send them to the wrong option.
+        _mc_name = ("mcolor" if str(options.get("mcolor", "") or "").strip()
+                    else "color")
         options = _with_color_alias(options, "mcolor")
+        # Every unknown style name below is NAMED through _dash_style_note
+        # and the scheme's value kept.  These were `except ValueError:
+        # pass' -- msymbol(nonsense) drew a circle and said nothing, where
+        # twoway prints its `named style not found' note.  AttributeError
+        # stays silent: it means the glyph has no such property, which is
+        # the mapper's business, not the user's.
         # Handle generic 'm → marker' abbreviation as msymbol alias
         if "marker" in options and "msymbol" not in options:
             try:
                 glyph.marker = self.tr.translate_msymbol(options["marker"])
-            except (ValueError, AttributeError):
+            except ValueError:
+                _dash_style_note("marker", options["marker"], "marker symbol")
+            except AttributeError:
                 pass
         if "mcolor" in options:
             if OptionTranslator._means_no_color(options["mcolor"]):
@@ -2986,7 +3050,8 @@ class GlyphMapper:
                         setattr(glyph, _attr, 0.0)
             else:
                 try:
-                    color, alpha = self.tr.parse_color_alpha(options["mcolor"])
+                    color, alpha = self.tr.parse_color_alpha(
+                        options["mcolor"], _mc_name)
                     if color:
                         glyph.fill_color = color
                         glyph.line_color = color
@@ -2995,18 +3060,21 @@ class GlyphMapper:
                             glyph.fill_alpha = alpha
                         if hasattr(glyph, "line_alpha"):
                             glyph.line_alpha = alpha
-                except (ValueError, AttributeError):
+                except AttributeError:
                     pass
         if "msymbol" in options:
             try:
                 glyph.marker = self.tr.translate_msymbol(options["msymbol"])
-            except (ValueError, AttributeError):
+            except ValueError:
+                _dash_style_note("msymbol", options["msymbol"],
+                                 "marker symbol")
+            except AttributeError:
                 pass
         if "msize" in options:
             try:
                 glyph.size = self.tr.translate_msize(options["msize"])
             except ValueError:
-                pass
+                _dash_style_note("msize", options["msize"], "size")
         # mfcolor sets the fill color independently of the line/outline color.
         # Supports color%alpha notation; applied after mcolor so it wins.
         if "mfcolor" in options:
@@ -3016,12 +3084,12 @@ class GlyphMapper:
             else:
                 try:
                     color, alpha = self.tr.parse_color_alpha(
-                        options["mfcolor"])
+                        options["mfcolor"], "mfcolor")
                     if color:
                         glyph.fill_color = color
                     if alpha is not None and hasattr(glyph, "fill_alpha"):
                         glyph.fill_alpha = alpha
-                except (ValueError, AttributeError):
+                except AttributeError:
                     pass
         # lcolor sets the marker border (outline) color independently of fill.
         if "lcolor" in options:
@@ -3031,18 +3099,20 @@ class GlyphMapper:
             else:
                 try:
                     color, alpha = self.tr.parse_color_alpha(
-                        options["lcolor"])
+                        options["lcolor"], "lcolor")
                     if color and hasattr(glyph, "line_color"):
                         glyph.line_color = color
                     if alpha is not None and hasattr(glyph, "line_alpha"):
                         glyph.line_alpha = alpha
-                except (ValueError, AttributeError):
+                except AttributeError:
                     pass
         # lwidth sets the marker border width.
         if "lwidth" in options:
             try:
                 glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
-            except (ValueError, AttributeError):
+            except ValueError:
+                _dash_style_note("lwidth", options["lwidth"], "line width")
+            except AttributeError:
                 pass
         # mlcolor()/mlwidth() are the marker's OWN border options.  The
         # border used to be taken from lcolor(), the CONNECTING LINE colour,
@@ -3055,24 +3125,21 @@ class GlyphMapper:
                     glyph.line_alpha = 0.0
             else:
                 try:
-                    color, alpha = self.tr.parse_color_alpha(options["mlcolor"])
+                    color, alpha = self.tr.parse_color_alpha(
+                        options["mlcolor"], "mlcolor")
                     if color and hasattr(glyph, "line_color"):
                         glyph.line_color = color
                     if alpha is not None and hasattr(glyph, "line_alpha"):
                         glyph.line_alpha = alpha
-                except (ValueError, AttributeError):
-                    warnings.warn(
-                        f"dash: mlcolor({options['mlcolor']}) is not a "
-                        f"recognised colour; ignoring it.", UserWarning,
-                    )
+                except AttributeError:
+                    pass
         if "mlwidth" in options:
             try:
                 glyph.line_width = self.tr.translate_lwidth(options["mlwidth"])
-            except (ValueError, AttributeError):
-                warnings.warn(
-                    f"dash: mlwidth({options['mlwidth']}) is not a recognised "
-                    f"line width; ignoring it.", UserWarning,
-                )
+            except ValueError:
+                _dash_style_note("mlwidth", options["mlwidth"], "line width")
+            except AttributeError:
+                pass
         # fcolor(none)/mfcolor(none) mean TRANSPARENT.  "none" resolved to
         # #ffffff, which paints an opaque white blob over whatever is behind.
         for _fk in ("mfcolor", "fcolor"):
@@ -3115,13 +3182,16 @@ class GlyphMapper:
         # Bokeh scatter glyphs support a scalar angle property.
         if "msangle" in options:
             try:
-                angle_deg = float(options["msangle"].strip())
+                angle_deg = float(str(options["msangle"]).strip())
+                if not math.isfinite(angle_deg):
+                    raise ValueError(angle_deg)
+            except (TypeError, ValueError):
+                _dash_style_note("msangle", options["msangle"], "angle")
+            else:
                 if hasattr(glyph, "angle"):
                     glyph.angle = math.radians(angle_deg)
                     if hasattr(glyph, "angle_units"):
                         glyph.angle_units = "rad"
-            except (ValueError, AttributeError):
-                pass
 
     def _apply_fill_opts(self, renderer: Any, options: dict[str, str]) -> None:
         """Apply fcolor/fintensity options to a filled glyph renderer.
@@ -3143,12 +3213,13 @@ class GlyphMapper:
                     glyph.fill_alpha = 0.0
             else:
                 try:
-                    color, alpha = self.tr.parse_color_alpha(options["fcolor"])
+                    color, alpha = self.tr.parse_color_alpha(
+                        options["fcolor"], "fcolor")
                     if color:
                         glyph.fill_color = color
                     if alpha is not None and hasattr(glyph, "fill_alpha"):
                         glyph.fill_alpha = alpha
-                except (ValueError, AttributeError):
+                except AttributeError:
                     pass
         # falpha()/fa() -- used nine times in examples/comprehensive_demo.do
         # and never read.
@@ -3161,17 +3232,21 @@ class GlyphMapper:
                 break
         if "fintensity" in options:
             try:
-                val = options["fintensity"].strip()
+                val = str(options["fintensity"]).strip()
                 # Stata fintensity: 0-100 (percentage) or keywords inten0-inten100
                 if val.startswith("inten"):
                     pct = float(val[5:]) / 100.0
                 else:
                     pct = float(val) / 100.0
+                if not math.isfinite(pct):
+                    raise ValueError(val)
+            except (TypeError, ValueError):
+                _dash_style_note("fintensity", options["fintensity"],
+                                 "fill intensity")
+            else:
                 pct = max(0.0, min(1.0, pct))
                 if hasattr(glyph, "fill_alpha"):
                     glyph.fill_alpha = pct
-            except (ValueError, AttributeError):
-                pass
 
     # Supported palette names → Bokeh palette identifiers
     _PALETTE_MAP: "dict[str, str]" = {
@@ -3526,8 +3601,30 @@ class GlyphMapper:
         """
         from bokeh.models import LabelSet
 
-        mlabel_var = options.get("mlabel", "")
-        if not mlabel_var or mlabel_var not in source.data:
+        mlabel_var, _extras = _dash_mlabel_names(options)
+        if _extras:
+            # dash.ado validates mlabel() as one variable; a spec written by
+            # hand may still carry several.  The first labels, the rest are
+            # named -- once per render, whatever the source carries.
+            _dash_warn_once(
+                ("mlabel", str(options["mlabel"]), "extras"),
+                f"dash: mlabel({_dash_display(options['mlabel'])}) takes one "
+                f"variable; labelling with {_dash_display(mlabel_var)} and "
+                f"ignoring {_dash_display(' '.join(_extras))}.",
+            )
+        if not mlabel_var:
+            return
+        if mlabel_var not in source.data:
+            # Every source that reaches here carries the label column when
+            # the data has it (map_line's is the frame, map_dropline's is
+            # built with it), so its absence means the data lacks the
+            # variable.  A hand-written spec's mistake -- dash.ado refuses
+            # it from a command -- used to draw nothing without a word.
+            _dash_warn_once(
+                ("mlabel", mlabel_var, "missing"),
+                f"dash: mlabel({_dash_display(mlabel_var)}): the variable is "
+                f"not in the data; drawing no labels.",
+            )
             return
 
         # mlabel(datevar) labelled points with the raw Stata value.  Bokeh
@@ -3558,33 +3655,40 @@ class GlyphMapper:
             y_offset=4,
         )
 
+        # An unknown colour, size, position or gap is NAMED and the default
+        # kept; each of these was an `except ValueError: pass'.
         if "mlabcolor" in options:
             try:
                 kwargs["text_color"] = self.tr.translate_mcolor(options["mlabcolor"])
             except ValueError:
-                pass
+                _dash_style_note("mlabcolor", options["mlabcolor"], "colour")
 
         if "mlabsize" in options:
             try:
                 size_px = self.tr.translate_msize(options["mlabsize"])
                 kwargs["text_font_size"] = f"{size_px}px"
             except ValueError:
-                pass
+                _dash_style_note("mlabsize", options["mlabsize"], "size")
 
         # mlabposition: Stata clock positions 0-12
-        pos = options.get("mlabposition", "3")
+        # Clock positions: 3=right (default), 9=left, 12=above, 6=below
+        offset_map = {
+            0: (0, 0), 1: (3, 3), 2: (3, 2), 3: (4, 0),
+            4: (3, -2), 5: (3, -3), 6: (0, -4), 7: (-3, -3),
+            8: (-3, -2), 9: (-4, 0), 10: (-3, 2), 11: (-3, 3), 12: (0, 4),
+        }
+        pos = str(options.get("mlabposition", "3") or "3").strip()
         try:
             p = int(pos)
-            # Clock positions: 3=right (default), 9=left, 12=above, 6=below
-            offset_map = {
-                0: (0, 0), 1: (3, 3), 2: (3, 2), 3: (4, 0),
-                4: (3, -2), 5: (3, -3), 6: (0, -4), 7: (-3, -3),
-                8: (-3, -2), 9: (-4, 0), 10: (-3, 2), 11: (-3, 3), 12: (0, 4),
-            }
-            if p in offset_map:
-                kwargs["x_offset"], kwargs["y_offset"] = offset_map[p]
         except (ValueError, TypeError):
-            pass
+            p = -1
+        if p not in offset_map:
+            # twoway: mlabposition(13) and (2.5) draw at 3 o'clock with a
+            # `named style not found' note; dash used to draw there silently.
+            _dash_style_note("mlabposition", pos, "clock position",
+                             "3 (right)")
+            p = 3
+        kwargs["x_offset"], kwargs["y_offset"] = offset_map[p]
 
         if "mlabgap" in options:
             try:
@@ -3592,10 +3696,11 @@ class GlyphMapper:
                 # takes a text size OR a number, and int(float()) accepts
                 # only the number.
                 gap = int(float(self.tr.translate_msize(options["mlabgap"])))
+            except (ValueError, TypeError):
+                _dash_style_note("mlabgap", options["mlabgap"], "size")
+            else:
                 kwargs["x_offset"] = kwargs.get("x_offset", 4) + gap
                 kwargs["y_offset"] = kwargs.get("y_offset", 4) + gap
-            except (ValueError, TypeError):
-                pass
 
         # mlabwidth: Stata label width in character units.  Bokeh's LabelSet
         # does not support text wrapping, so this option is accepted but has
@@ -3725,7 +3830,7 @@ class GlyphMapper:
         # behind, so mlabel() on a line plot had to fall back to the
         # unsorted source, which still holds the rows dropped here.
         _cols = {xvar: source.data[xvar], yvar: source.data[yvar]}
-        _mlab = (options or {}).get("mlabel", "")
+        _mlab = _dash_mlabel_names(options)[0]
         if _mlab and _mlab in source.data and _mlab not in _cols:
             _cols[_mlab] = source.data[_mlab]
         df = pd.DataFrame(_cols)
@@ -3854,12 +3959,13 @@ class GlyphMapper:
                       # area was half-transparent whatever the scheme said.
                       fill_alpha=self.scheme.area_alpha, legend_label=yvar)
 
-        # Honour fill color option
+        # Honour fill color option.  An unknown name was dropped in silence
+        # here, and nothing downstream reads color() for an area.
         if "color" in options:
             try:
                 r.glyph.fill_color = self.tr.translate_mcolor(options["color"])
             except ValueError:
-                pass
+                _dash_style_note("color", options["color"], "colour")
 
         self._apply_fill_opts(r, options)
 
@@ -3985,18 +4091,22 @@ class GlyphMapper:
                 r.glyph.fill_color = c
                 r.glyph.line_color = c
             except ValueError:
-                pass
-        # bfcolor / blcolor — bar-specific fill / line color overrides
+                # _apply_line_opts names color() too, when it folds it onto
+                # lcolor() -- which it does not when blcolor() is given, so
+                # the note is raised here; once per render either way.
+                _dash_style_note("color", options["color"], "colour")
+        # bfcolor / blcolor — bar-specific fill / line color overrides.
+        # An unknown name is noted, as every other colour option's is.
         if "bfcolor" in options:
             try:
                 r.glyph.fill_color = self.tr.translate_mcolor(options["bfcolor"])
             except ValueError:
-                pass
+                _dash_style_note("bfcolor", options["bfcolor"], "colour")
         if "blcolor" in options:
             try:
                 r.glyph.line_color = self.tr.translate_mcolor(options["blcolor"])
             except ValueError:
-                pass
+                _dash_style_note("blcolor", options["blcolor"], "colour")
         self._apply_fill_opts(r, options)
         # VBar supports line_width/line_dash/line_color natively; lcolor/lwidth/lpattern
         # are applied after bfcolor/blcolor so blcolor retains priority for line color.
@@ -5068,7 +5178,9 @@ class GlyphMapper:
                 c = self.tr.translate_mcolor(options["color"])
                 r.glyph.fill_color = c
             except ValueError:
-                pass
+                # As map_bar: named here because the lcolor() fold that
+                # would name it is skipped when blcolor() is given.
+                _dash_style_note("color", options["color"], "colour")
         self._apply_fill_opts(r, options)
         # Quad supports line_width/line_dash/line_color for bin border styling
         self._apply_line_opts(r, options)
@@ -5330,7 +5442,7 @@ class GlyphMapper:
             v: np.asarray(source.data[v], dtype=float)[_ord]
             for v in (xvar, y1var, y2var)
         }
-        for _extra in (options.get("mlabel", ""),):
+        for _extra in (_dash_mlabel_names(options)[0],):
             if _extra and _extra in source.data and _extra not in _cols:
                 _cols[_extra] = [source.data[_extra][_i] for _i in _ord]
         source = ColumnDataSource(_cols)
@@ -5409,12 +5521,16 @@ class GlyphMapper:
         if "bfcolor" in options:
             try:
                 r.glyph.fill_color = self.tr.translate_mcolor(options["bfcolor"])
-            except (ValueError, AttributeError):
+            except ValueError:
+                _dash_style_note("bfcolor", options["bfcolor"], "colour")
+            except AttributeError:
                 pass
         if "blcolor" in options:
             try:
                 r.glyph.line_color = self.tr.translate_mcolor(options["blcolor"])
-            except (ValueError, AttributeError):
+            except ValueError:
+                _dash_style_note("blcolor", options["blcolor"], "colour")
+            except AttributeError:
                 pass
         self._apply_fill_opts(r, options)
         # After bfcolor/blcolor, so blcolor keeps priority for the line.
@@ -5577,7 +5693,7 @@ class GlyphMapper:
         }
         # Any other column the layer needs -- an mlabel is not numeric, so it
         # rides the same row order rather than going through _masked.
-        for _extra in (options.get("mlabel", ""),):
+        for _extra in (_dash_mlabel_names(options)[0],):
             if _extra and _extra in source.data and _extra not in _cols:
                 _cols[_extra] = [source.data[_extra][_i] for _i in _ord]
         source = ColumnDataSource(_cols)
@@ -5696,12 +5812,16 @@ class GlyphMapper:
         x_arr, y_arr = x_arr[mask], y_arr[mask]
         zeros = np.zeros_like(x_arr)
 
-        # Apply jitter if requested (jitters x and y)
-        x_plot, y_plot = _apply_jitter(
-            x_arr, y_arr,
-            float(options.get("jitter", 0) or 0),
-            _jitter_seed(options),
-        ) if options.get("jitter") else (x_arr, y_arr)
+        # Apply jitter if requested (jitters x and y).  Read through
+        # _stat_option_float: a bare float() here raised out of the mapper
+        # on jitter(abc) and took the whole render down.
+        _jit = _stat_option_float(options, "jitter", 0.0, "dropline",
+                                  lo=0.0, hi=100.0)
+        if _jit:
+            x_plot, y_plot = _apply_jitter(x_arr, y_arr, _jit,
+                                           _jitter_seed(options))
+        else:
+            x_plot, y_plot = x_arr, y_arr
 
         _dl_cols: dict = {
             "x": x_plot, "y": y_plot, "y0": zeros,
@@ -5879,16 +5999,15 @@ class GlyphMapper:
         ]
         _has_labels = any(_labels)
 
-        # Apply jitter if requested
-        jitter_raw = options.get("jitter", "")
-        if jitter_raw:
-            try:
-                jitter_pct = float(jitter_raw)
-            except (ValueError, TypeError):
-                jitter_pct = 0.0
-            if jitter_pct > 0:
+        # Apply jitter if requested -- through the reader every jitter()
+        # goes through, so a word is named rather than dropped.
+        if str(options.get("jitter", "") or "").strip():
+            jitter_pct = _stat_option_float(options, "jitter", 0.0,
+                                            "scatteri", lo=0.0)
+            if jitter_pct is not None and jitter_pct > 0:
                 x_vals, y_vals = _apply_jitter(
-                    x_vals, y_vals, jitter_pct, _jitter_seed(options))
+                    x_vals, y_vals, min(100.0, jitter_pct),
+                    _jitter_seed(options))
 
         si_source = ColumnDataSource({"x": x_vals.tolist(), "y": y_vals.tolist()})
 
@@ -5905,10 +6024,23 @@ class GlyphMapper:
         # marker-drawing mapper takes its default from the scheme, and
         # scatteri taking "medium" made it 11px under s2color where a
         # scatter beside it is 8.
-        size = (self.tr.translate_msize(options["msize"])
-                if str(options.get("msize", "")).strip()
-                else self.scheme.default_marker_size(color_idx))
-        marker = self.tr.translate_msymbol(options.get("msymbol", "circle"))
+        #
+        # A bad msize()/msymbol() used to raise out of here and abort the
+        # whole render -- the one place a style name was fatal.  The
+        # default is taken silently: _apply_marker_opts re-reads both
+        # options below and raises the one note, as map_scatter's does.
+        size = self.scheme.default_marker_size(color_idx)
+        if str(options.get("msize", "")).strip():
+            try:
+                size = self.tr.translate_msize(options["msize"])
+            except ValueError:
+                pass
+        marker = "circle"
+        if str(options.get("msymbol", "")).strip():
+            try:
+                marker = self.tr.translate_msymbol(options["msymbol"])
+            except ValueError:
+                pass
 
         r = fig.scatter(x="x", y="y", source=si_source,
                         marker=marker, size=size,
@@ -7047,6 +7179,141 @@ def _resolve_seed(options: dict, default: int = 42) -> int:
     return default if seed is None else seed
 
 
+#: The notes already raised this render, keyed ``(option, value, what)``.
+#: One bad option is read by more than one site -- ``connected``'s
+#: lcolor() by the line and by the marker border, ``rcapsym``'s mcolor()
+#: by two dot renderers, everything by every by() panel -- and each said
+#: so again: four lines for one mistake, where twoway prints its note
+#: once.  Module state, cleared by ``_dash_reset_notes`` at the start of
+#: every render in both modes.  The generated app gets its own
+#: ``_DASH_NOTED = set()`` written out beside these helpers.
+_DASH_NOTED: set = set()
+
+
+def _dash_reset_notes():
+    """Forget the notes of the previous render.
+
+    Called at the top of ``DashRenderer.render()`` and of the served app's
+    ``make_document``.  ``clear()``, not a rebinding, so the copy of this
+    function in the generated app works on that module's own set.
+    """
+    _DASH_NOTED.clear()
+
+
+def _dash_warn_once(key, message, stacklevel=4):
+    """``warnings.warn(message)`` unless *key* was already raised this render."""
+    if key in _DASH_NOTED:
+        return
+    _DASH_NOTED.add(key)
+    warnings.warn(message, UserWarning, stacklevel=stacklevel)
+
+
+def _dash_style_note(option, value, what, using="the scheme's default",
+                     prefix="dash"):
+    """Report a style name dash does not recognise, before the default is used.
+
+    twoway never rejects a bad style name: ``mcolor(notacolour)`` draws with
+    ``(note: named style notacolour not found in class color, default
+    attributes used)``.  dash does the same, in one wording, from one place,
+    once per render.  Before this helper existed the same mistake was
+    silently dropped in the option appliers, worded three different ways
+    in three others, and an abort of the whole render in ``map_scatteri``.
+
+    Copied into the served app by name beside ``_stat_option_float``, so
+    ``GlyphMapper`` and ``OptionTranslator`` -- which the app copies by
+    source -- find it there too.
+
+    Args:
+        option: The option as the user wrote it (``mcolor``, ``msize``).  A
+                sub-option is written as ``plotregion(lcolor)`` and shown
+                nested, ``plotregion(lcolor(x))``, as the user typed it.
+        value:  Its value, echoed through ``_dash_display`` (printable
+                characters only, 80 at most): colour and symbol names are
+                not gated by dash.ado, so this may be anything.
+        what:   colour / marker symbol / size / line width / line pattern /
+                angle / clock position / fill intensity.
+        using:  What is drawn instead.
+        prefix: ``dash``, or ``dash kpi`` for a KPI's colour.
+    """
+    shown = _dash_display(value)
+    head = (f"{option[:-1]}({shown}))" if option.endswith(")")
+            else f"{option}({shown})")
+    _dash_warn_once(
+        (prefix, option, str(value), what),
+        f"{prefix}: {head} is not a recognised {what}; using {using}.",
+    )
+
+
+def _dash_graph_color(option, raw):
+    """A graph-level colour as CSS, or ``""`` with a note.
+
+    bgcolor(), plotbgcolor(), plotregion(color()/lcolor()) and
+    graphregion(color()) were each an ``except ...: pass`` in the saved
+    figure body, and the served app's own resolver returned ``""`` without
+    a word, so an unknown colour name at graph level was silent in both
+    modes.  One reader for both, through the same translator the plot
+    options use, so the two modes accept exactly the same spellings.
+
+    Args:
+        option: As written, e.g. ``plotregion(lcolor)``.
+        raw:    The colour text.
+    """
+    try:
+        return OptionTranslator.translate_mcolor(raw)
+    except (ValueError, TypeError):
+        _dash_style_note(option, raw, "colour")
+        return ""
+
+
+def _dash_figure_aspect(graph_opts, scheme_x=None, scheme_y=None):
+    """Bokeh's width/height ratio from xsize()/ysize(), else aspectratio().
+
+    Stata's ``aspectratio()`` is height/width and Bokeh's ``aspect_ratio`` is
+    width/height, so the value is inverted; the served figure used to pass
+    it straight through.  Either of xsize()/ysize() alone keeps the
+    scheme's value for the other, exactly as Stata does: xsize(9) under
+    stcolor gives 4.5 x 9.  All three are read through ``_stat_option_float``
+    so a word or a negative number is named once, in one wording, in both
+    modes -- the saved renderer used to name a bad aspectratio() twice and
+    the served app not at all.
+
+    Returns:
+        The ratio, or None when neither option is usable; the caller may
+        then fall back on the scheme's own proportions.
+    """
+    xs = _stat_option_float(graph_opts, "xsize", None, "graph", lo=0.0)
+    ys = _stat_option_float(graph_opts, "ysize", None, "graph", lo=0.0)
+    for name, val in (("xsize", xs), ("ysize", ys)):
+        if val is not None and val <= 0:
+            # Stata returns r(198) for xsize(0) and xsize(-3).
+            warnings.warn(
+                f"dash: {name}({_dash_display(graph_opts.get(name))}) must "
+                f"be a positive number of inches; ignoring it.", UserWarning,
+            )
+            if name == "xsize":
+                xs = None
+            else:
+                ys = None
+    if xs is not None or ys is not None:
+        w = xs if xs is not None else scheme_x
+        h = ys if ys is not None else scheme_y
+        if w and h:
+            return float(w) / float(h)
+
+    raw_ar = str(graph_opts.get("aspectratio", "") or "").strip()
+    if raw_ar:
+        ar = _stat_option_float(graph_opts, "aspectratio", None, "graph",
+                                lo=0.0)
+        if ar is not None and ar <= 0:
+            warnings.warn(
+                f"dash: aspectratio({_dash_display(raw_ar)}) must be a "
+                f"positive number; ignoring it.", UserWarning,
+            )
+        elif ar is not None:
+            return 1.0 / float(ar)
+    return None
+
+
 def _stat_option_float(
     options: dict,
     key: str,
@@ -7483,7 +7750,7 @@ def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
     return True
 
 
-def _resolve_kpi_color(val: str, default: str) -> str:
+def _resolve_kpi_color(val: str, default: str, option: str = "") -> str:
     """Resolve a KPI colour to something safe to put in a style attribute.
 
     Two bugs met here.
@@ -7512,6 +7779,10 @@ def _resolve_kpi_color(val: str, default: str) -> str:
     Args:
         val:     The raw ``color()``/``bgcolor()`` value.
         default: A trusted fallback.
+        option:  ``color`` or ``bgcolor``; when given, a name the translator
+                 does not know is reported (``dash kpi: color(x) is not a
+                 recognised colour; using the default.``) -- it used to fall
+                 to the default without a word in both modes.
 
     Returns:
         A CSS colour that is safe to interpolate.
@@ -7520,10 +7791,58 @@ def _resolve_kpi_color(val: str, default: str) -> str:
     if not raw:
         return default
     try:
-        translated = OptionTranslator.translate_mcolor(raw)
+        return _sanitize_css_color(OptionTranslator.translate_mcolor(raw),
+                                   default)
     except (ValueError, TypeError):
-        translated = raw
-    return _sanitize_css_color(translated, default)
+        pass
+    # Not a Stata colour.  A CSS one the browser can draw -- a name it
+    # knows, or a hex or functional form the sanitiser accepts -- passes
+    # through, as it always has.  The sanitiser's letters-only branch alone
+    # let ANY word through, so an unknown name reached the stylesheet as an
+    # invalid declaration the browser drops, and no note said so.
+    safe = _sanitize_css_color(raw, "")
+    if safe and (not raw.isalpha() or raw.lower() in _CSS_NAMED_COLORS):
+        return safe
+    if option:
+        _dash_style_note(option, raw, "colour", "the default", "dash kpi")
+    return default
+
+
+#: The colour names CSS defines (Color Module Level 4's 148, plus the two
+#: keywords), for _resolve_kpi_color: a KPI colour that is not a Stata name
+#: is honoured when a browser can draw it and named otherwise.  A tuple, so
+#: the generated app's copy is written in one order.
+_CSS_NAMED_COLORS: tuple = (
+    "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige",
+    "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown",
+    "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
+    "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue", "darkcyan",
+    "darkgoldenrod", "darkgray", "darkgreen", "darkgrey", "darkkhaki",
+    "darkmagenta", "darkolivegreen", "darkorange", "darkorchid", "darkred",
+    "darksalmon", "darkseagreen", "darkslateblue", "darkslategray",
+    "darkslategrey", "darkturquoise", "darkviolet", "deeppink",
+    "deepskyblue", "dimgray", "dimgrey", "dodgerblue", "firebrick",
+    "floralwhite", "forestgreen", "fuchsia", "gainsboro", "ghostwhite",
+    "gold", "goldenrod", "gray", "green", "greenyellow", "grey", "honeydew",
+    "hotpink", "indianred", "indigo", "ivory", "khaki", "lavender",
+    "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcoral",
+    "lightcyan", "lightgoldenrodyellow", "lightgray", "lightgreen",
+    "lightgrey", "lightpink", "lightsalmon", "lightseagreen", "lightskyblue",
+    "lightslategray", "lightslategrey", "lightsteelblue", "lightyellow",
+    "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine",
+    "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen",
+    "mediumslateblue", "mediumspringgreen", "mediumturquoise",
+    "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin",
+    "navajowhite", "navy", "oldlace", "olive", "olivedrab", "orange",
+    "orangered", "orchid", "palegoldenrod", "palegreen", "paleturquoise",
+    "palevioletred", "papayawhip", "peachpuff", "peru", "pink", "plum",
+    "powderblue", "purple", "rebeccapurple", "red", "rosybrown", "royalblue",
+    "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna",
+    "silver", "skyblue", "slateblue", "slategray", "slategrey", "snow",
+    "springgreen", "steelblue", "tan", "teal", "thistle", "tomato",
+    "turquoise", "violet", "wheat", "white", "whitesmoke", "yellow",
+    "yellowgreen", "transparent", "currentcolor",
+)
 
 
 def _sanitize_css_color(val: str, default: str) -> str:
@@ -8764,7 +9083,8 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             for lg in fig.legend:
                 lg.label_text_font_size = px
         except (ValueError, TypeError):
-            pass
+            # Was dropped in silence; the scheme's legend size stays.
+            _dash_style_note("legend(size)", m_size.group(1), "size")
 
     # 8. Stata's rule governs the SERIES key; `off' is a word match so
     #    legend(pos(6) off) hides it.  A colour key stays visible.
@@ -9490,13 +9810,32 @@ _DASH_OPT_VAR_KEYS = ("colorvar", "mlabel")
 _DASH_SWATCH_PREFIX = "_clegend_"
 
 
+def _dash_mlabel_names(options):
+    """``(first, extras)`` from a layer's mlabel() option.
+
+    ``dash.ado`` validates mlabel() as one variable, so from a command it is
+    always a single name.  A spec written by hand may carry several; the
+    first is the label and the rest are named by ``_apply_mlabel_opts`` so
+    that nothing is dropped in silence.  Read here, once, so that the
+    column lists, the mappers that rebuild their source and the label
+    applier agree on which name that is -- a source built for
+    ``"make foreign"`` carried no column of that name, and the label
+    applier then found nothing to draw.
+    """
+    names = str((options or {}).get("mlabel", "") or "").split()
+    return (names[0] if names else ""), names[1:]
+
+
 def _dash_option_columns(options, columns=None):
     """The columns a layer's options name -- colorvar() and mlabel() -- in
     ``_DASH_OPT_VAR_KEYS`` order, de-duplicated, restricted to *columns*
     when one is given."""
     out = []
     for key in _DASH_OPT_VAR_KEYS:
-        v = str((options or {}).get(key, "") or "").strip()
+        if key == "mlabel":
+            v = _dash_mlabel_names(options)[0]
+        else:
+            v = str((options or {}).get(key, "") or "").strip()
         if not v or v in out:
             continue
         if columns is not None and v not in columns:
@@ -9795,23 +10134,22 @@ def _dash_reference_lines(fig, graph_opts, seen=None, key=""):
                 bad.append(tok)
         _dash_report_suboptions(opt, bad, seen, key)
         kw = {"line_color": "#000000", "line_dash": "dashed", "line_width": 1.0}
-        if style.get("lcolor"):
-            try:
-                kw["line_color"] = OptionTranslator.translate_mcolor(style["lcolor"])
-            except (ValueError, TypeError):
-                warnings.warn(
-                    f"dash: lcolor({style['lcolor']}) on a reference line is "
-                    f"not a recognised colour; ignoring it.", UserWarning)
-        if style.get("lpattern"):
-            try:
-                kw["line_dash"] = OptionTranslator.translate_lpattern(style["lpattern"])
-            except (ValueError, TypeError):
-                pass
-        if style.get("lwidth"):
-            try:
-                kw["line_width"] = OptionTranslator.translate_lwidth(style["lwidth"])
-            except (ValueError, TypeError):
-                pass
+        # An unknown style inside xline()/yline() is named through the one
+        # helper, as a plot option's is: lpattern() and lwidth() were
+        # dropped in silence, and lcolor() had a wording of its own.
+        for sub, what, fn, attr in (
+                ("lcolor", "colour", OptionTranslator.translate_mcolor,
+                 "line_color"),
+                ("lpattern", "line pattern", OptionTranslator.translate_lpattern,
+                 "line_dash"),
+                ("lwidth", "line width", OptionTranslator.translate_lwidth,
+                 "line_width")):
+            if style.get(sub):
+                try:
+                    kw[attr] = fn(style[sub])
+                except (ValueError, TypeError):
+                    _dash_style_note(f"{opt}({sub})", style[sub], what,
+                                     "the default")
         for v in values:
             fig.add_layout(Span(location=v, dimension=dim, **kw))
 
@@ -11424,42 +11762,12 @@ class DashRenderer:
         Returns:
             A width/height ratio, or None to leave Bokeh's default.
         """
-        xs = _stat_option_float(graph_opts, "xsize", None, "graph", lo=0.0)
-        ys = _stat_option_float(graph_opts, "ysize", None, "graph", lo=0.0)
-        for name, val in (("xsize", xs), ("ysize", ys)):
-            if val is not None and val <= 0:
-                # Stata returns r(198) for xsize(0) and xsize(-3).
-                warnings.warn(
-                    f"dash: {name}({graph_opts.get(name)}) must be a positive "
-                    f"number of inches; ignoring it.", UserWarning,
-                )
-                if name == "xsize":
-                    xs = None
-                else:
-                    ys = None
-
-        # Either one alone keeps the scheme's value for the other, exactly as
-        # Stata does: xsize(9) under stcolor gives 4.5 x 9.
+        # The options, through the helper the generated app runs as well.
         sx = getattr(self.scheme, "graphsize_x", None)
         sy = getattr(self.scheme, "graphsize_y", None)
-        if xs is not None or ys is not None:
-            w = xs if xs is not None else sx
-            h = ys if ys is not None else sy
-            if w and h:
-                return float(w) / float(h)
-
-        raw_ar = str(graph_opts.get("aspectratio", "") or "").strip()
-        if raw_ar:
-            ar = _stat_option_float(graph_opts, "aspectratio", None, "graph",
-                                    lo=0.0)
-            if ar is None or ar <= 0:
-                warnings.warn(
-                    f"dash: aspectratio({raw_ar}) must be a positive number; "
-                    f"ignoring it.", UserWarning,
-                )
-            else:
-                return 1.0 / float(ar)
-
+        ar = _dash_figure_aspect(graph_opts, sx, sy)
+        if ar is not None:
+            return ar
         if sx and sy:
             return float(sx) / float(sy)
         return None
@@ -11680,19 +11988,20 @@ class DashRenderer:
         # Figure background colors
         # bgcolor  → border_fill_color  (outer area around the plot)
         # plotbgcolor → background_fill_color (inner plot canvas)
+        # Every colour through _dash_graph_color, the helper the generated
+        # app runs as well: an unknown name is named, and the scheme's
+        # chrome kept.  Each of these was an `except ...: pass'.
         raw_bgcolor = graph_opts.get("bgcolor", "")
         if raw_bgcolor:
-            try:
-                fig.border_fill_color = OptionTranslator.translate_mcolor(raw_bgcolor)
-            except (ValueError, TypeError):
-                pass
+            _c = _dash_graph_color("bgcolor", raw_bgcolor)
+            if _c:
+                fig.border_fill_color = _c
 
         raw_plotbgcolor = graph_opts.get("plotbgcolor", "")
         if raw_plotbgcolor:
-            try:
-                fig.background_fill_color = OptionTranslator.translate_mcolor(raw_plotbgcolor)
-            except (ValueError, TypeError):
-                pass
+            _c = _dash_graph_color("plotbgcolor", raw_plotbgcolor)
+            if _c:
+                fig.background_fill_color = _c
 
         # plotregion() — inner plot canvas background/border
         # Accepts sub-options: color(X)/fcolor(X) → background_fill_color
@@ -11702,22 +12011,17 @@ class DashRenderer:
         if raw_plotregion:
             _pr_bg = _extract_region_color(raw_plotregion)
             if _pr_bg:
-                try:
-                    fig.background_fill_color = OptionTranslator.translate_mcolor(_pr_bg)
-                except (ValueError, TypeError):
-                    pass
+                _c = _dash_graph_color("plotregion(color)", _pr_bg)
+                if _c:
+                    fig.background_fill_color = _c
             _pr_lc = _extract_region_lcolor(raw_plotregion)
             if _pr_lc:
-                try:
-                    fig.outline_line_color = OptionTranslator.translate_mcolor(_pr_lc)
-                except (ValueError, TypeError):
-                    pass
+                _c = _dash_graph_color("plotregion(lcolor)", _pr_lc)
+                if _c:
+                    fig.outline_line_color = _c
             _pr_lw = _extract_region_lwidth(raw_plotregion)
             if _pr_lw is not None:
-                try:
-                    fig.outline_line_width = _pr_lw
-                except (ValueError, TypeError):
-                    pass
+                fig.outline_line_width = _pr_lw
 
         # graphregion() — outer graph border / margin area background
         # Accepts sub-options: color(X)/fcolor(X) → border_fill_color
@@ -11725,10 +12029,9 @@ class DashRenderer:
         if raw_graphregion:
             _gr_bg = _extract_region_color(raw_graphregion)
             if _gr_bg:
-                try:
-                    fig.border_fill_color = OptionTranslator.translate_mcolor(_gr_bg)
-                except (ValueError, TypeError):
-                    pass
+                _c = _dash_graph_color("graphregion(color)", _gr_bg)
+                if _c:
+                    fig.border_fill_color = _c
 
         # Secondary axes (yaxis(2) / xaxis(2)), through the helper the
         # generated app runs as well -- it used to build no second axis.
@@ -12050,8 +12353,10 @@ class DashRenderer:
         # Sanitised, not merely escaped -- see _resolve_kpi_color.  These
         # are interpolated into a style attribute, where html.escape does not
         # stop a CSS property injection.
-        color    = _resolve_kpi_color(kpi_def.get("color", ""), "#212529")
-        bgcolor  = _resolve_kpi_color(kpi_def.get("bgcolor", ""), "#f8f9fa")
+        color    = _resolve_kpi_color(kpi_def.get("color", ""), "#212529",
+                                      "color")
+        bgcolor  = _resolve_kpi_color(kpi_def.get("bgcolor", ""), "#f8f9fa",
+                                      "bgcolor")
 
         html_content = f"""
 <div class="db-kpi-card" style="background:{bgcolor}; border-radius:8px;
@@ -13129,9 +13434,9 @@ class DashRenderer:
             # style attribute, where html.escape does not stop a CSS property
             # injection.  The SAME resolver as the initial render.
             "color": _resolve_kpi_color(kdef.get("color", "") or "",
-                                        "#212529"),
+                                        "#212529", "color"),
             "bgcolor": _resolve_kpi_color(kdef.get("bgcolor", "") or "",
-                                          "#f8f9fa"),
+                                          "#f8f9fa", "bgcolor"),
         }
 
     def _wire_brush_callbacks(self, kpis: list) -> int:
@@ -13631,6 +13936,8 @@ class DashRenderer:
         # Sub-option reports already made this render, so a by() panel does
         # not repeat its graph's.
         self._reported_subopts = set()
+        # Likewise the style notes: one per (option, value) per render.
+        _dash_reset_notes()
 
         # ---- Parse build options ----
         link_names, filters_cfg = self._parse_link_and_filters(build)
@@ -13972,7 +14279,8 @@ class ServerAppBuilder:
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # The columns a layer's options name.
-                         "_dash_option_columns", "_dash_attach_labels",
+                         "_dash_mlabel_names", "_dash_option_columns",
+                         "_dash_attach_labels",
                          "_dash_is_swatch",
                          # Sub-options: honoured or named, in one text.
                          "_textbox_size", "_textbox_color",
@@ -13983,6 +14291,11 @@ class ServerAppBuilder:
                          "_dash_text_annotations", "_dash_scale_spec",
                          "_dash_apply_scale_ranges", "_dash_reference_lines",
                          "_dash_display",
+                         # plotregion(lwidth()) and the KPI colour: the
+                         # saved renderer's readers, so a keyword width is
+                         # honoured and an unknown colour is named here too.
+                         "_extract_region_lwidth",
+                         "_resolve_kpi_color", "_sanitize_css_color",
                          "_dash_warn_filter_missing", "_dash_warn_filter_type",
                          "_dash_parse_filter_raw"):
             if _fn_name in _emitted_names:
@@ -14089,9 +14402,19 @@ class ServerAppBuilder:
         out += _src_lines[_start:_end + 1]
         out += ["", ""]
 
-        out += ["_FIT_GRID = %d" % _FIT_GRID, "", ""]
+        out += ["_FIT_GRID = %d" % _FIT_GRID, "",
+                "# The style notes already raised this document, keyed",
+                "# (option, value, what); _dash_reset_notes clears it at the",
+                "# top of make_document, as DashRenderer.render() does.",
+                "_DASH_NOTED = set()", "", ""]
 
-        for _fn in (_stat_option_float, _fit_grid,
+        for _fn in (_stat_option_float,
+                    # The style note: GlyphMapper and OptionTranslator are
+                    # copied by source and call it by name.  With it the
+                    # once-per-render set's helpers, and the graph-level
+                    # colour and proportion readers the figure block calls.
+                    _dash_style_note, _dash_warn_once, _dash_reset_notes,
+                    _dash_graph_color, _dash_figure_aspect, _fit_grid,
                     # lpolyci's band is a bootstrap; without these the served
                     # branch was a verbatim copy of lpoly and drew no band.
                     _resolve_level, _dash_session_level,
@@ -14198,6 +14521,10 @@ class ServerAppBuilder:
             "_SCHEME_SYMBOLS = %r" % ([sch.default_symbol(i)
                                        for i in range(15)],),
             "_SCHEME_MARKER_SIZE = %r" % (sch.default_marker_size(0),),
+            # The scheme's graphsize, for xsize() or ysize() given alone:
+            # the other dimension is the scheme's, as in the saved figure.
+            "_SCHEME_GRAPHSIZE_X = %r" % (getattr(sch, "graphsize_x", None),),
+            "_SCHEME_GRAPHSIZE_Y = %r" % (getattr(sch, "graphsize_y", None),),
             # Same crossover the standalone renderer uses. It was written
             # here as a bare 10000 in three places, so changing it in one
             # mode changed it in one mode.
@@ -14557,24 +14884,24 @@ class ServerAppBuilder:
             "_CSS_COLOR_RE_SRC = %r" % (_CSS_COLOR_RE.pattern,),
             "import re as _re_kpi",
             "_CSS_COLOR_RE_APP = _re_kpi.compile(_CSS_COLOR_RE_SRC)",
+            "# _sanitize_css_color, copied by name below, reads it under the",
+            "# saved renderer's name.",
+            "_CSS_COLOR_RE = _CSS_COLOR_RE_APP",
             "",
             "",
-            "def _dash_kpi_color(val, default):",
-            "    raw = (val or '').strip()",
-            "    if not raw:",
-            "        return default",
-            "    translated = _resolve_color(raw) or raw",
-            "    if isinstance(translated, str) and _CSS_COLOR_RE_APP.match(translated):",
-            "        return translated.strip()",
-            "    return default",
+            "def _dash_kpi_color(val, default, option=''):",
+            "    # The saved renderer's own resolver, copied by name: translate",
+            "    # the Stata name, note one the translator does not know (this",
+            "    # used to fall to the default without a word), then sanitise.",
+            "    return _resolve_kpi_color(val, default, option)",
             "",
             "",
             "def _dash_kpi_card(title, value, subtitle, color, bgcolor, name=''):",
             "    # One card, the standalone one.  There were five builders and",
             "    # the server's drew the value at 28px where standalone drew it",
             "    # at 36px, with different padding, border and label colours.",
-            "    _c = _dash_kpi_color(color, '#212529')",
-            "    _bg = _dash_kpi_color(bgcolor, '#f8f9fa')",
+            "    _c = _dash_kpi_color(color, '#212529', 'color')",
+            "    _bg = _dash_kpi_color(bgcolor, '#f8f9fa', 'bgcolor')",
             "    _t = html.escape(title or '')",
             "    _s = html.escape(subtitle or '')",
             "    _v = html.escape(str(value))",
@@ -15260,6 +15587,9 @@ class ServerAppBuilder:
             "    Builds the full dashboard layout including figures, KPI cards,",
             "    filter widgets, and wires all Python callbacks.",
             '    """',
+            "    # The previous document's style notes, forgotten: one note per",
+            "    # (option, value) per render, as DashRenderer.render() does.",
+            "    _dash_reset_notes()",
             "    # ---- Rate-limit enforcement at session creation ----",
             "    # Extract client IP via the shared helper which prefers",
             "    # X-Forwarded-For (reverse-proxy client) over remote_ip (proxy IP).",
@@ -15532,10 +15862,11 @@ class ServerAppBuilder:
             "            sizing_mode='stretch_width',",
             "            output_backend=backend,",
             "        )",
-            "        _raw_ar = go.get('aspectratio', '')",
-            "        if _raw_ar:",
-            "            try: _fig_kw['aspect_ratio'] = float(_raw_ar)",
-            "            except (ValueError, TypeError): pass",
+            "        # xsize()/ysize()/aspectratio(): the helper the saved",
+            "        # renderer runs.  This read aspectratio() alone, uninverted,",
+            "        # and said nothing for a bad value the saved renderer named.",
+            "        _ar = _dash_figure_aspect(go, _SCHEME_GRAPHSIZE_X, _SCHEME_GRAPHSIZE_Y)",
+            "        if _ar is not None: _fig_kw['aspect_ratio'] = _ar",
             "        _xsc = _dash_scale_spec(go.get('xscale', ''), 'xscale', _reported_subopts, gname)",
             "        _ysc = _dash_scale_spec(go.get('yscale', ''), 'yscale', _reported_subopts, gname)",
             "        if _xsc['log']: _fig_kw['x_axis_type'] = 'log'",
@@ -15557,13 +15888,16 @@ class ServerAppBuilder:
             "        # range() and reverse are applied by _dash_apply_scale_ranges,",
             "        # after the region colours below, as the saved figure does.",
             "        # bgcolor / plotbgcolor — figure background colors",
+            "        # Every colour through _dash_graph_color, the reader the saved",
+            "        # figure uses: an unknown name is named, the scheme's kept.",
+            "        # _resolve_color returned '' for it without a word.",
             "        _raw_bgc = go.get('bgcolor', '')",
             "        if _raw_bgc:",
-            "            _bgc_resolved = _resolve_color(_raw_bgc)",
+            "            _bgc_resolved = _dash_graph_color('bgcolor', _raw_bgc)",
             "            if _bgc_resolved: fig.border_fill_color = _bgc_resolved",
             "        _raw_pbgc = go.get('plotbgcolor', '')",
             "        if _raw_pbgc:",
-            "            _pbgc_resolved = _resolve_color(_raw_pbgc)",
+            "            _pbgc_resolved = _dash_graph_color('plotbgcolor', _raw_pbgc)",
             "            if _pbgc_resolved: fig.background_fill_color = _pbgc_resolved",
             "        # plotregion() / graphregion() — Stata-standard region styling",
             "        def _region_color(val):",
@@ -15578,22 +15912,22 @@ class ServerAppBuilder:
             "        if _raw_pr:",
             "            _pr_bg = _region_color(_raw_pr)",
             "            if _pr_bg:",
-            "                _c = _resolve_color(_pr_bg)",
+            "                _c = _dash_graph_color('plotregion(color)', _pr_bg)",
             "                if _c: fig.background_fill_color = _c",
             "            _pr_lc = _region_lcolor(_raw_pr)",
             "            if _pr_lc:",
-            "                _c = _resolve_color(_pr_lc)",
+            "                _c = _dash_graph_color('plotregion(lcolor)', _pr_lc)",
             "                if _c: fig.outline_line_color = _c",
-            "            import re as _re_lw",
-            "            _pr_lw_m = _re_lw.search(r'\\blwidth\\s*\\(([^)]+)\\)', _raw_pr, _re_lw.IGNORECASE)",
-            "            if _pr_lw_m:",
-            "                try: fig.outline_line_width = float(_pr_lw_m.group(1).strip())",
-            "                except (ValueError, TypeError): pass",
+            "            # lwidth(): the saved renderer's reader, so a keyword",
+            "            # (thick) is honoured and a word is named; a bare float()",
+            "            # here took neither.",
+            "            _pr_lw = _extract_region_lwidth(_raw_pr)",
+            "            if _pr_lw is not None: fig.outline_line_width = _pr_lw",
             "        _raw_gr = go.get('graphregion', '')",
             "        if _raw_gr:",
             "            _gr_bg = _region_color(_raw_gr)",
             "            if _gr_bg:",
-            "                _c = _resolve_color(_gr_bg)",
+            "                _c = _dash_graph_color('graphregion(color)', _gr_bg)",
             "                if _c: fig.border_fill_color = _c",
             "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv)",
             "        # note(), caption(), subtitle(): the helper the saved renderer runs.",

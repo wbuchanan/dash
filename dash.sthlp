@@ -217,6 +217,76 @@ This help file documents only the features that differ from or extend
     Note: {cmd:scheme()} is fully supported — see
     {help dash##scheme:Stata scheme support} below.
 
+{marker validation}
+{phang2}    {ul:Option values.}  A value is refused where {cmd:twoway}
+    refuses it, and a word is refused where a number-only option was given
+    one that {cmd:twoway} would have swallowed in silence.  A style name
+    that {cmd:dash} does not recognise (a colour, a marker symbol, a size,
+    a line width, a line pattern, an angle, a clock position or a fill
+    intensity) is reported once per render and the scheme's default drawn,
+    as {cmd:twoway} does with its own "named style not found" note.  A
+    refusal is one line naming the option and the value, printed before
+    any Python runs, with r(198), or r(111) for a variable that does not
+    exist:
+
+{phang3}{cmd:. dash (scatter mpg weight, yaxis(3))}{p_end}
+{phang3}{cmd:dash: yaxis() must be an integer between 1 and 2 (got: 3). dash draws two axes.}{p_end}
+
+{phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} 0 to 100;
+    {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
+    {cmd:level()} strictly between 0 and 100; {cmd:aspectratio()} 0 or
+    more; {cmd:base()} and {cmd:start()} any number; {cmd:barwidth()},
+    {cmd:width()} and {cmd:bwidth()} positive, and on {cmd:lowess}
+    {cmd:bwidth()} is a fraction of the sample, so at most 1.  Integers:
+    {cmd:yaxis()} and {cmd:xaxis()} 1 or 2; {cmd:degree()} 0 to 3;
+    {cmd:n()} 2 to 10000; {cmd:bin()} 1 to 1000; {cmd:bands()} 1 to 200;
+    {cmd:colornlevels()} 2 to 256; {cmd:jitterseed()} and {cmd:jseed()}
+    0 or more; an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
+    {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
+    1000.  A name or a number: {cmd:msize()}, {cmd:mlabsize()},
+    {cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} any
+    number; {cmd:lwidth()} and {cmd:mlwidth()} 0 to 10000;
+    {cmd:msangle()} -360 to 360; {cmd:xsize()} and {cmd:ysize()} 1 to
+    100; a word that only looks like a number, such as
+    {cmd:msize(1e400)}, is refused as {cmd:twoway} refuses it.  A word
+    from a list, matched without regard to case: {cmd:kernel()} and
+    {cmd:colpalette()}.  A list of numbers, written as any Stata
+    {it:numlist}: {cmd:colorcuts()} one or more, {cmd:range()} exactly
+    two; {cmd:colorcuts(1(1)5)} reaches the renderer as 1 2 3 4 5.
+    Variables: {cmd:mlabel()} and {cmd:colorvar()} name one, {cmd:hover()}
+    one or more, and {cmd:by()} one or more before its comma; each is
+    expanded as {cmd:twoway} expands it, so {cmd:by(for)} means
+    {cmd:by(foreign)}; a variable that does not exist is r(111), and a
+    time-series expression such as {cmd:mlabel(L.mpg)}, which
+    {cmd:twoway} draws and {cmd:dash} cannot, is refused.  {cmd:xsize()},
+    {cmd:ysize()}, {cmd:aspectratio()}, {cmd:hover()} and {cmd:by()} are
+    checked wherever they are written, inside a layer's parentheses or
+    after the graph's comma.
+
+{phang2}    Some of those bounds are {cmd:dash}'s own: {cmd:twoway} accepts
+    the value, and {cmd:dash} refuses it because it could not draw it.
+    Five say so in a second sentence of the message: {cmd:yaxis()} and
+    {cmd:xaxis()} 1 or 2 ({cmd:dash} draws two axes; {cmd:twoway} allows
+    nine), {cmd:degree()} 0 to 3, {cmd:bin()} up to 1000, {cmd:n()} 2 to
+    10000, and the {cmd:lowess} {cmd:bwidth()} fraction.  The others carry
+    no second sentence: {cmd:colornlevels()} 2 to 256, {cmd:jitter()} 0 to
+    100, {cmd:level()} strictly inside 0 and 100, {cmd:barwidth()}
+    positive, {cmd:aspectratio()} 0 or more, {cmd:jitterseed()} and
+    {cmd:jseed()} 0 or more, and {cmd:kdensity} {cmd:bwidth()} positive
+    ({cmd:kdensity} itself accepts {cmd:bwidth(0)}).  {cmd:bands()} 1 to
+    200 is {cmd:twoway}'s own limit.  Two values {cmd:twoway} refuses,
+    {cmd:dash} accepts: {cmd:kernel(GAUSSIAN)} is read as
+    {cmd:kernel(gaussian)}, and {cmd:lwidth(())} passes as a name that
+    the renderer then reports.
+
+{phang2}    Colours, {cmd:msymbol()}, {cmd:lpattern()}, {cmd:scheme()} and
+    the sub-options of the structured options are not checked in Stata.
+    An unknown style inside one ({cmd:title(T, size(bogus))}) gets a note
+    and the default in {cmd:twoway} and in {cmd:dash} alike; an unknown
+    sub-option word, which {cmd:twoway} refuses ({cmd:legend(garbage)},
+    {cmd:xscale(bogus)}: r(198)), {cmd:dash} names in its sub-option note
+    and draws without.
+
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (for axis titles) and value labels
     (for categorical tick labels, filter dropdowns, and legend entries)
@@ -530,8 +600,9 @@ Stata's biased m3/m2^1.5 -- again, the values {cmd:summarize, detail} gives.
     above the statistic value{p_end}
 {synopt:{cmdab:nam:e}{cmd:(}{it:id}{cmd:)}}required; identifier for
     placement and filter exclusion{p_end}
-{synopt:{cmdab:fmt:}{cmd:(}{it:format}{cmd:)}}Stata display format string
-    (e.g., {cmd:%9.1f}, {cmd:%12.0fc}){p_end}
+{synopt:{cmdab:fmt:}{cmd:(}{it:format}{cmd:)}}a numeric Stata display
+    format such as {cmd:%9.2f} or {cmd:%12.0fc}; anything else, including
+    a string format such as {cmd:%12s}, is refused with an error{p_end}
 {synopt:{cmdab:sub:title}{cmd:(}{it:string}{cmd:)}}smaller label displayed
     below the value{p_end}
 {synopt:{cmd:color(}{it:color}{cmd:)}}text color of the value (Stata color
@@ -755,9 +826,11 @@ annotations.  These options apply to the per-plot specification (not to
 {synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text{p_end}
 {synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}size keyword or number; e.g.
     {cmd:small}, {cmd:medium}, {cmd:large}{p_end}
-{synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position (0–12) for label
-    placement relative to the data point; 3 = right (default), 12 = above,
-    6 = below, 9 = left{p_end}
+{synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position for label
+    placement relative to the data point, an integer from 0 to 12;
+    3 = right (default), 12 = above, 6 = below, 9 = left.  A value
+    outside 0 to 12, or a name {cmd:dash} does not recognise, is
+    reported and 3 used, as {cmd:twoway} notes it{p_end}
 {synopt:{cmdab:mlabg:ap(}{it:#}{cmd:)}}additional offset in pixels added to
     the clock-position offset{p_end}
 {synoptline}
@@ -787,13 +860,16 @@ see below.
     on {cmd:bar}, {cmd:rbar}, {cmd:histogram}, {cmd:dot} and {cmd:spike}
     {cmd:dash} reads {cmd:bw()} as {cmd:barwidth()}, and on any other
     plot type names it in the note{p_end}
-{synopt:{opt degree(#)}}polynomial degree, 0-3; 0 = Nadaraya–Watson kernel
-    estimator (default), 1 = local linear, 2 = local quadratic,
-    3 = local cubic.  A degree outside 0-3 is reported and the default
-    used{p_end}
+{synopt:{opt degree(#)}}polynomial degree, an integer from 0 to 3; 0 =
+    Nadaraya–Watson kernel estimator (default), 1 = local linear,
+    2 = local quadratic, 3 = local cubic.  Anything else is refused:
+    {cmd:dash} fits local polynomials up to degree 3{p_end}
 {synopt:{opt kernel(name)}}{cmd:epanechnikov} (default), {cmd:epan2},
     {cmd:biweight}, {cmd:cosine}, {cmd:gaussian}, {cmd:parzen},
-    {cmd:rectangle} or {cmd:triangle}{p_end}
+    {cmd:rectangle} or {cmd:triangle}; any other word is refused{p_end}
+{synopt:{opt n(#)}}number of points at which {cmd:lpoly}, {cmd:lpolyci}
+    and {cmd:kdensity} evaluate; an integer from 2 to 10000, since
+    {cmd:dash} evaluates up to 10000 points{p_end}
 {synoptline}
 
 {pstd}
@@ -835,6 +911,9 @@ command still runs, and reports that they were ignored.
 {cmd:fpfitci}, {cmd:lpolyci}, {cmd:lfitci} and {cmd:qfitci} draw a
 confidence band at {cmd:level()}, defaulting to the session's
 {cmd:c(level)} — so {cmd:set level 90} is honoured.
+{cmd:level(}{it:#}{cmd:)} must be a number strictly between 0 and 100 and
+is refused otherwise, with r(198).  The bound of every checked option is
+listed under {help dash##validation:Option values}.
 
 {pstd}
 {it:Example:}
@@ -955,7 +1034,9 @@ itself is set with {cmd:xscale(range(}{it:a b}{cmd:))} /
 {ul:Secondary axes.}  Write {opt yaxis(2)} on any plot layer to put it on a
 right-hand y axis scaled to that layer's own data, or {opt xaxis(2)} for a
 top x axis.  The secondary range is computed from the data on that axis.
-Both are plot-level options, given inside the layer's parentheses.
+Both are plot-level options, given inside the layer's parentheses.  Either
+takes 1 or 2 only: {cmd:dash} draws two axes where {cmd:twoway} allows
+nine, and any other value is refused.
 
 {synoptset 38}{...}
 {synopt:{opt ytitle2(string)}}title for the right-hand y axis.
@@ -996,7 +1077,7 @@ as it does there; the four that configure it are specific to {cmd:dash}.
     {cmd:viridis} (the default), {cmd:magma}, {cmd:inferno}, {cmd:plasma},
     {cmd:cividis}, {cmd:turbo}, {cmd:greys}, {cmd:blues} or {cmd:reds}{p_end}
 {synopt:{cmdab:colorn:levels(}{it:#}{cmd:)}}number of colour levels for a
-    continuous {it:varname}{p_end}
+    continuous {it:varname}; an integer from 2 to 256{p_end}
 {synopt:{cmdab:colorm:issing(}{it:color}{cmd:)}}colour drawn for observations
     where {it:varname} is missing{p_end}
 {synoptline}
@@ -1069,14 +1150,16 @@ has never named them.
 
 {synoptset 28}{...}
 {synopt:{opt jitter(#)}}add uniform noise scaled to {it:#}% of the axis range
-    to both coordinates.  Supported on {cmd:scatter}, {cmd:dot},
-    {cmd:dropline} and {cmd:scatteri}{p_end}
+    to both coordinates; {it:#} must be a number from 0 to 100.  Supported
+    on {cmd:scatter}, {cmd:dot}, {cmd:dropline} and {cmd:scatteri}{p_end}
 {synopt:{opt jitterseed(#)}}random-number seed for {cmd:jitter()}, spelled as
-    in Stata.  With no seed the noise differs on every render{p_end}
-{synopt:{opt jseed(#)}}a {cmd:dash} synonym for {cmd:jitterseed()}; if both
-    are given, {cmd:jseed()} wins{p_end}
+    in Stata; {it:#} must be a non-negative integer.  With no seed the noise
+    differs on every render{p_end}
+{synopt:{opt jseed(#)}}a {cmd:dash} synonym for {cmd:jitterseed()}, with the
+    same bound; if both are given, {cmd:jseed()} wins{p_end}
 {synopt:{cmdab:msa:ngle(}{it:#}{cmd:)}}rotate every marker in the layer
-    {it:#} degrees clockwise.  Valid for {cmd:scatter}, {cmd:dot},
+    {it:#} degrees clockwise; {it:#} must lie between -360 and 360, as in
+    {cmd:twoway}.  Valid for {cmd:scatter}, {cmd:dot},
     {cmd:dropline}, {cmd:connected} and {cmd:scatteri}{p_end}
 {synopt:{cmdab:mal:pha(}{it:#}{cmd:)}}opacity of the markers, 0-100{p_end}
 {synopt:{cmdab:lal:pha(}{it:#}{cmd:)}}opacity of the lines, 0-100{p_end}
