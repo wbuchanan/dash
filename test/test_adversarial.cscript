@@ -356,6 +356,67 @@ assert _rc == 198
 display "P2-85c PASS: pipe in saving() path → rc=198"
 
 // ================================================================
+// P8-86..89 — malformed UTF-8 and control bytes through every text input
+// ================================================================
+// The UTF-8 gate ran at exactly one entry point, so KPI titles, build
+// titles and subtitles, tabs() and filter labels had none at all.  These
+// drive each of them with a UTF-16 surrogate -- ED A0 80, which the old
+// validator accepted and which then ended the render with r(7102).
+
+mata:
+string scalar _adv_bytes(string scalar spec)
+{
+    string scalar    s
+    string rowvector parts
+    real scalar      i
+    parts = tokens(subinstr(spec, ",", " ", .))
+    s = ""
+    for (i = 1; i <= length(parts); i++) s = s + char(strtoreal(parts[i]))
+    return(s)
+}
+end
+mata: st_local("_adv_surr", _adv_bytes("237,160,128"))
+
+qui sysuse auto, clear
+global dash_nobrowser 1
+
+// A surrogate in a build title must be refused by dash, not by Python.
+capture dash clear
+dash scatter mpg weight, name(adv8a)
+tempfile advout
+capture dash build, saving("`advout'.html") replace nobrowser ///
+    title(`"bad`_adv_surr'title"')
+assert _rc == 198
+display "P8-86 PASS: malformed UTF-8 in build title() → rc=198, not r(7102)"
+
+// And in a KPI title.
+capture dash clear
+capture dash kpi mean(mpg), name(advk) title(`"bad`_adv_surr'kpi"')
+assert _rc == 198
+display "P8-87 PASS: malformed UTF-8 in KPI title() → rc=198"
+
+// And in tabs().
+capture dash clear
+dash scatter mpg weight, name(adv8b)
+tempfile advout2
+capture dash build, saving("`advout2'.html") replace nobrowser ///
+    tabs(`"bad`_adv_surr'tab"')
+assert _rc == 198
+display "P8-88 PASS: malformed UTF-8 in tabs() → rc=198"
+
+// A CONTROL byte, by contrast, is well-formed UTF-8 and must BUILD -- the
+// escaper carries it into the document as \u00XX.  Rejecting it would
+// refuse a title with a stray control character pasted from a web page.
+capture dash clear
+dash scatter mpg weight, name(adv8c)
+tempfile advout3
+local _adv_c1 = "bad" + char(1) + "title"
+capture noisily dash build, saving("`advout3'.html") replace nobrowser ///
+    title(`"`_adv_c1'"')
+assert _rc == 0
+display "P8-89 PASS: a control byte in title() builds, escaped, not r(7102)"
+
+// ================================================================
 // Final summary
 // ================================================================
 display ""
@@ -370,3 +431,5 @@ display "  P2-84: JS injection in filter varname → invalid varname rejected"
 display "  P4-84: Port value with semicolon → rejected by integer regex"
 display "  P4-85: XSS in KPI title (server mode) → HTML-escaped in .py"
 display "  P4-86: Data/label with injection chars → .py compiles"
+display "  P8-86..88: Malformed UTF-8 in build/KPI/tabs titles → rc=198"
+display "  P8-89: Control byte in title() → escaped and built, not r(7102)"

@@ -16502,6 +16502,57 @@ class ServerAppBuilder:
 # Updated CLI entry point — uses argparse for --spec/--data/--output/--mode
 # ===========================================================================
 
+def _validate_output_path(output_path: str, mode: str) -> str:
+    """Refuse an output path this renderer should not write to.
+
+    ``dash.ado`` validates ``saving()`` before it ever gets here, but this
+    module is also a command-line program -- the ``--output`` argument below
+    reaches ``main()`` with nothing checked at all. The checks mirror
+    ``_dash_validate_path`` so the two routes agree about what is
+    acceptable; a path that Stata refuses must not be writable by invoking
+    the renderer directly.
+
+    Returns the path unchanged, so it can be used inline.
+    """
+    if not isinstance(output_path, str) or not output_path.strip():
+        raise ValueError("dash_render: --output must be a non-empty path.")
+
+    path = output_path
+
+    # A `..` SEGMENT, not the two characters anywhere: `my..report.html` is
+    # an ordinary file name and is accepted, as it is on the Stata side.
+    parts = re.split(r"[/\\]", path)
+    if any(p == ".." for p in parts):
+        raise ValueError(
+            "dash_render: --output may not contain a '..' path segment "
+            "(path traversal not allowed): %r" % (output_path,)
+        )
+
+    base = parts[-1] if parts else path
+    if base.startswith("-"):
+        raise ValueError(
+            "dash_render: --output file name may not start with '-'; a shell "
+            "would read it as an option: %r" % (output_path,)
+        )
+
+    # Control characters have no place in a path and are the usual way a
+    # crafted value smuggles a newline into a log or a shell.
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in path):
+        raise ValueError(
+            "dash_render: --output contains control characters: %r"
+            % (output_path,)
+        )
+
+    expected = ".py" if mode == "server" else ".html"
+    if not base.lower().endswith(expected):
+        raise ValueError(
+            "dash_render: --output must end in %s for mode %r (got %r)"
+            % (expected, mode, output_path)
+        )
+
+    return output_path
+
+
 def main(
     master_spec_path: str,
     data_json_path: str,
@@ -16526,6 +16577,18 @@ def main(
     Raises:
         ValueError: If *mode* is not a recognised value.
     """
+    # The mode is checked BEFORE the path: the expected extension depends on
+    # it, so an unknown mode validated against a guessed extension reports
+    # the wrong thing. test_server.py::test_main_raises_on_serve_mode caught
+    # exactly that -- mode "serve" with a .py output complained about the
+    # extension instead of the mode.
+    if mode not in ("standalone", "server"):
+        raise ValueError(
+            f"dash_render: unknown mode '{mode}'. Expected 'standalone' or 'server'."
+        )
+
+    _validate_output_path(output_path, mode)
+
     if mode == "server":
         # --port used to stop here: this call passed three arguments and no
         # port, so every generated app embedded _port = 5006 whatever the
@@ -16535,13 +16598,11 @@ def main(
         # route -- served on 5006 regardless.
         builder = ServerAppBuilder(master_spec_path, data_json_path)
         builder.build(output_path, port=max(1024, min(int(port), 65535)))
-    elif mode == "standalone":
+    else:
         renderer = DashRenderer(master_spec_path, data_json_path)
         html_content = renderer.render()
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
-    else:
-        raise ValueError(f"dash_render: unknown mode '{mode}'. Expected 'standalone' or 'server'.")
 
 
 if __name__ == "__main__":

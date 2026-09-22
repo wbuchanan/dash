@@ -88,21 +88,92 @@ void _dash_html_esc(string scalar s, string scalar out_macro) {
 
 // UTF-8 byte validation
 real scalar _is_utf8(string scalar s) {
-    real scalar i, len, b, expect, j
+    real scalar i, len, b, b2, expect, lo, hi, j
+
+    /*
+        Well-formed UTF-8 as RFC 3629 defines it, which is NOT "a lead byte
+        in range followed by continuation bytes".  That weaker rule is what
+        this used to apply, and measured, it accepted every one of these:
+
+            E0 80 AF        overlong encoding of U+002F
+            E0 9F BF        overlong encoding of U+07FF
+            F0 80 80 80     overlong encoding of U+0000
+            F0 8F BF BF     overlong encoding of U+FFFF
+            ED A0 80        UTF-16 surrogate U+D800
+            ED BF BF        UTF-16 surrogate U+DFFF
+            F4 90 80 80     U+110000, above the Unicode maximum
+
+        Each then reached Python and ended the render with r(7102).  An
+        overlong encoding is a classic filter bypass: it spells a character
+        the validator upstream did not recognise as that character.
+
+        The second byte is what distinguishes them, so its range depends on
+        the lead byte.  The table below is RFC 3629 section 4 verbatim:
+
+            00-7F
+            C2-DF  80-BF
+            E0     A0-BF  80-BF
+            E1-EC  80-BF  80-BF
+            ED     80-9F  80-BF      (excludes the surrogates)
+            EE-EF  80-BF  80-BF
+            F0     90-BF  80-BF 80-BF
+            F1-F3  80-BF  80-BF 80-BF
+            F4     80-8F  80-BF 80-BF  (stops at U+10FFFF)
+
+        C0 and C1 are excluded already: every two-byte sequence they could
+        lead is an overlong encoding of ASCII.
+    */
+
     len = strlen(s)
     i   = 1
     while (i <= len) {
         b = ascii(substr(s, i, 1))
-        if      (b < 128)              expect = 0
-        else if (b >= 194 & b <= 223)  expect = 1
-        else if (b >= 224 & b <= 239)  expect = 2
-        else if (b >= 240 & b <= 244)  expect = 3
-        else                           return(0)
-        for (j = 1; j <= expect; j++) {
-            if (i + j > len) return(0)
+
+        if (b < 128) {
+            i = i + 1
+            continue
+        }
+
+        if (b >= 194 & b <= 223) {
+            expect = 1; lo = 128; hi = 191
+        }
+        else if (b == 224) {
+            expect = 2; lo = 160; hi = 191
+        }
+        else if (b >= 225 & b <= 236) {
+            expect = 2; lo = 128; hi = 191
+        }
+        else if (b == 237) {
+            expect = 2; lo = 128; hi = 159
+        }
+        else if (b >= 238 & b <= 239) {
+            expect = 2; lo = 128; hi = 191
+        }
+        else if (b == 240) {
+            expect = 3; lo = 144; hi = 191
+        }
+        else if (b >= 241 & b <= 243) {
+            expect = 3; lo = 128; hi = 191
+        }
+        else if (b == 244) {
+            expect = 3; lo = 128; hi = 143
+        }
+        else {
+            return(0)
+        }
+
+        if (i + expect > len) return(0)
+
+        /* The second byte carries the restricted range. */
+        b2 = ascii(substr(s, i + 1, 1))
+        if (b2 < lo | b2 > hi) return(0)
+
+        /* Every byte after it is an ordinary continuation. */
+        for (j = 2; j <= expect; j++) {
             b = ascii(substr(s, i + j, 1))
             if (b < 128 | b > 191) return(0)
         }
+
         i = i + expect + 1
     }
     return(1)

@@ -148,5 +148,79 @@ assert _rc == 198
 capture dash clear
 display "PV-12 PASS: dash build, server rejects a hostile saving() path"
 
+// ----------------------------------------------------------------
+// PV-13 — `..' is a path SEGMENT, not two characters anywhere
+// ----------------------------------------------------------------
+// The rule was regexm("\.\."), which rejected an ordinary file name --
+// measured, saving("my..report.html") gave r(198) -- while catching nothing
+// the segment rule does not.
+capture _dash_validate_path "my..report.html"
+assert _rc == 0
+capture _dash_validate_path "/tmp/quarterly..2026.html"
+assert _rc == 0
+display "PV-13 PASS: a file name containing '..' is accepted"
+
+// And every real traversal is still refused.
+capture _dash_validate_path "../out.html"
+assert _rc == 198
+capture _dash_validate_path "/tmp/../etc/x.html"
+assert _rc == 198
+capture _dash_validate_path "a/../../b.html"
+assert _rc == 198
+capture _dash_validate_path "..\\out.html"
+assert _rc == 198
+display "PV-14 PASS: a '..' path segment is still rejected, both separators"
+
+// ----------------------------------------------------------------
+// PV-15 — a leading `-' would be read by the shell as an option
+// ----------------------------------------------------------------
+// dash opens the file it wrote with `shell open "<path>"'.  A name starting
+// with `-' is parsed as a flag -- `open -e.html' opens the argument in
+// TextEdit.  Measured, saving("-e.html") was accepted.
+capture _dash_validate_path "-e.html"
+assert _rc == 198
+capture _dash_validate_path "/tmp/-e.html"
+assert _rc == 198
+display "PV-15 PASS: a file name starting with '-' is rejected"
+
+// A `-' anywhere else is an ordinary character and must stay allowed.
+capture _dash_validate_path "my-report.html"
+assert _rc == 0
+capture _dash_validate_path "/tmp/q-1/my-report.html"
+assert _rc == 0
+display "PV-16 PASS: a hyphen elsewhere in the name is still accepted"
+
+// ----------------------------------------------------------------
+// PV-17 — `~/' is expanded, not handed to Python
+// ----------------------------------------------------------------
+// Measured before this: saving("~/dashtilde.html") ended in r(7102), a
+// Python traceback, because nothing expands `~' on the way through.
+local _pv_home : environment HOME
+if `"`_pv_home'"' != "" {
+    capture _dash_validate_path "~/dashtilde.html"
+    assert _rc == 0
+    assert `"`_dash_vpath'"' == `"`_pv_home'/dashtilde.html"'
+    display "PV-17 PASS: a leading '~/' is expanded to \$HOME"
+}
+else {
+    display "PV-17 SKIP: HOME is not set"
+}
+
+// A `~' that is not a leading `~/' is an ordinary character.
+capture _dash_validate_path "/tmp/a~b.html"
+assert _rc == 0
+assert `"`_dash_vpath'"' == "/tmp/a~b.html"
+display "PV-18 PASS: a tilde elsewhere in the path is left alone"
+
+// ----------------------------------------------------------------
+// PV-19 — the normalised path is always published
+// ----------------------------------------------------------------
+// The callers read it back from `_dash_vpath'; a path that needed no
+// expansion must still come back unchanged, or they would blank it.
+capture _dash_validate_path "/tmp/plain.html"
+assert _rc == 0
+assert `"`_dash_vpath'"' == "/tmp/plain.html"
+display "PV-19 PASS: an unchanged path is published unchanged"
+
 display ""
 display "test_path_validation.cscript: ALL CHECKS PASSED"

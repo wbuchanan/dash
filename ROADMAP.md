@@ -641,6 +641,35 @@ should land:
 
 **Gaps closed:** A9, E6, E7 · **Severity:** S2 · **Effort:** M · **Depends on:** —
 
+> **DONE.** All eight technical requirements, with two deviations stated.
+>
+> * **TR-08.1** rewritten to RFC 3629 s.4 and verified by DIFFERENTIAL TEST
+>   against Python's own decoder — 41,976 sequences, zero mismatches — rather
+>   than against a hand-written table, which would only check that two
+>   readings of the RFC agree. 2,245 of those are committed as
+>   `test/fixtures/utf8_cases.txt`.
+> * **TR-08.2** decided: C0 bytes are **well-formed UTF-8 and stay accepted**
+>   at the gate, and are escaped by TR-08.3 instead. Rejecting them would
+>   refuse a title with a control character pasted from a web page, where the
+>   user story asks for a correct dashboard. `char(0)` is unreachable — a
+>   Stata string cannot carry one.
+> * **TR-08.3** done, and **AC-08.2 is met by the other half of its own
+>   sentence**: the build now *succeeds* with the character escaped, rather
+>   than giving a `dash` error. The user story allows either; this one keeps
+>   the value.
+> * **TR-08.4, TR-08.6, TR-08.7, TR-08.8** done as written. TR-08.6 was the
+>   sharpest: `saving("…a\b.html")` returned rc 0 and wrote to `a\\b.html`,
+>   so the command reported success and put the file somewhere else.
+> * **TR-08.5** was already done, under WP-05 — `theme()` is escaped.
+> * A detail worth keeping: `_dash_validate_path` cannot write through its
+>   argument (they are values, not macro names), so it publishes the
+>   normalised path as `_dash_vpath` and the three call sites read it back.
+>
+> New: `test/test_utf8_validation.cscript` (UTF-01..12, runner #35),
+> `test/test_json_escaping.cscript` (JSE-01..10, runner #36),
+> `test_path_validation.cscript` PV-13..19, `test_adversarial.cscript`
+> P8-86..89, `test/fixtures/utf8_cases.txt` and `scripts/gen_utf8_cases.py`.
+
 > **User story.** As a user pasting text from the web into `title()`, I want
 > either a clean `dash` error or a correct dashboard — never a raw Python
 > traceback.

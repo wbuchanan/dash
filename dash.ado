@@ -389,8 +389,41 @@ program define _dash_validate_path
         exit(198)
     }
 
-    if regexm("`fpath'", "\.\.") {
-        display as error "dash: saving() path may not contain '..' (path traversal not allowed)."
+    // `~' is not expanded by Stata, and an unexpanded one reached Python and
+    // ended in r(7102) -- measured on saving("~/dashtilde.html").  Expanding
+    // it is friendlier than rejecting it and is what every other tool does.
+    // Only a leading `~/' is expanded: `~user/' would need a password-file
+    // lookup dash has no business doing, and a `~' anywhere else in a path
+    // is an ordinary character.
+    // The caller reads the result back from `_dash_vpath', which this
+    // program always sets.  It cannot write through the argument: the
+    // arguments are VALUES, not macro names.
+    if substr(`"`fpath'"', 1, 2) == "~/" {
+        local _home : environment HOME
+        if `"`_home'"' == "" {
+            display as error "dash: saving() path starts with '~' but HOME is not set; give a full path."
+            exit(198)
+        }
+        local fpath `"`_home'/`=substr(`"`fpath'"', 3, .)'"'
+    }
+
+    // Path traversal is a `..' SEGMENT, not the two characters appearing
+    // anywhere.  The old rule was `regexm("\.\.")', which rejected the
+    // perfectly ordinary my..report.html -- measured, r(198) -- while
+    // catching nothing the segment rule does not.
+    if regexm(`"`fpath'"', "(^|[/\\])\.\.($|[/\\])") {
+        display as error "dash: saving() path may not contain a '..' path segment (path traversal not allowed)."
+        exit(198)
+    }
+
+    // A leading `-' on the file name makes the shell read the path as a
+    // flag: `open -e.html' opens the argument in TextEdit rather than
+    // treating it as a file.  Measured, saving("-e.html") was accepted.
+    local _base `"`fpath'"'
+    if regexm(`"`_base'"', "([^/\\]+)$") local _base = regexs(1)
+    if substr(`"`_base'"', 1, 1) == "-" {
+        display as error "dash: saving() file name may not start with '-'; the shell would read it as an option."
+        display as error "      Write ./`_base' if that is really the name you want."
         exit(198)
     }
     if !regexm(lower("`fpath'"), "\.`ext'$") {
@@ -421,6 +454,10 @@ program define _dash_validate_path
             exit(198)
         }
     }
+
+    // Always set, so a caller can use it unconditionally.  It differs from
+    // what was passed in only when a leading `~/' was expanded.
+    c_local _dash_vpath `"`fpath'"'
 end
 
 
@@ -432,12 +469,43 @@ end
 program define _dash_json_str
     version 16.0
     args raw_val out_macro
-    // Escape backslash first (must be first)
+
+    // JSON forbids EVERY unescaped byte below 0x20 inside a string, not just
+    // the three that have short forms.  This escaped backslash, quote, TAB,
+    // LF and CR and left the other twenty-seven raw, so
+    //     dash build, title("bad" + char(1) + "title")
+    // produced invalid JSON and ended in a Python JSONDecodeError with
+    // r(7102) -- measured, on both the build and the immediate route.
+    //
+    // Escaping rather than rejecting is deliberate: the user story asks for
+    // "either a clean dash error or a correct dashboard", and a correct
+    // dashboard is the better of the two.  A stray control character pasted
+    // in from a web page now survives into the title intact.
+    //
+    // Backslash first, always: every escape below introduces one.
     local v = subinstr(`"`raw_val'"', `"\"', `"\\"', .)
     local v = subinstr(`"`v'"', `"""', `"\""', .)
+
+    // The five with short forms, which are what a reader expects to see.
+    local v = subinstr(`"`v'"', char(8),  `"\b"', .)
     local v = subinstr(`"`v'"', char(9),  `"\t"', .)
     local v = subinstr(`"`v'"', char(10), `"\n"', .)
+    local v = subinstr(`"`v'"', char(12), `"\f"', .)
     local v = subinstr(`"`v'"', char(13), `"\r"', .)
+
+    // Everything else below 0x20, as \u00XX.  char(0) is not reachable: a
+    // Stata string cannot carry a NUL, so it can never appear in `raw_val'.
+    // Stata has no hex display format -- `: display %02x' is r(120) -- so
+    // the two digits are taken from a digit string.
+    local _hexdigits "0123456789abcdef"
+    foreach _c of numlist 1/7 11 14/31 {
+        if strpos(`"`v'"', char(`_c')) > 0 {
+            local _hi = substr("`_hexdigits'", int(`_c'/16) + 1, 1)
+            local _lo = substr("`_hexdigits'", mod(`_c', 16) + 1, 1)
+            local v = subinstr(`"`v'"', char(`_c'), "\u00`_hi'`_lo'", .)
+        }
+    }
+
     c_local `out_macro' `"`v'"'
 end
 
@@ -1860,11 +1928,19 @@ program define _dash_render_immediate
     local saving_path ""
     local open_browser = 0
 
-    local spos = strpos(`"`json_spec'"', `""saving":"')
-    if `spos' > 0 {
-        local after_sav = substr(`"`json_spec'"', `spos' + 10, .)
-        local saving_path = substr(`"`after_sav'"', 1, strpos(`"`after_sav'"', `"""') - 1)
-    }
+    // Read it as JSON, not as text.  This used to slice the raw document at
+    // the first quote after "saving":" -- but the value had been written by
+    // _dash_json_str, so every backslash in it was doubled and the result was
+    // then used as a FILESYSTEM PATH.  Measured: saving("<dir>a\b.html")
+    // returned rc 0 and wrote "<dir>a\\b.html"; the file the user asked for
+    // did not exist.  Every Windows saving() path on this route landed
+    // somewhere other than where it was meant to.  Slicing at the first quote
+    // also truncated any path containing one, since \" is a quote in the
+    // document but not in the value.
+    //
+    // _dash_json_get_str already does this correctly, escapes and all -- it
+    // is the same reader dash uses for every other spec value.
+    mata: _dash_json_get_str(st_local("json_spec"), "saving", "saving_path")
 
     if `"`saving_path'"' != "" {
         // twoway accepts saving(name), saving(name.gph) and
@@ -1884,7 +1960,8 @@ program define _dash_render_immediate
         }
         if !regexm(lower(`"`_sv'"'), "\.html$") local _sv `"`_sv'.html"'
         local saving_path `"`_sv'"'
-        _dash_validate_path "`saving_path'"
+        _dash_validate_path `"`saving_path'"'
+        local saving_path `"`_dash_vpath'"'   // `~/' expanded, if it was there
     }
     else {
         tempfile saving_path_tmp
@@ -2076,6 +2153,13 @@ end
 // ================================================================
 program define _dash_kpi
     version 16.0
+
+    // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
+    // leaves Stata.  The gate was applied at exactly one entry point --
+    // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
+    // filter labels had no gate at all, and a malformed sequence in any of
+    // them went straight to Python.
+    mata: _dash_check_utf8(strtrim(`"`0'"'))
 
     syntax anything(name=statspec) [if] [in] , ///
         TItle(string)           ///
@@ -2290,6 +2374,13 @@ end
 // ================================================================
 program define _dash_prepare_spec, rclass
     version 16.0
+
+    // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
+    // leaves Stata.  The gate was applied at exactly one entry point --
+    // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
+    // filter labels had no gate at all, and a malformed sequence in any of
+    // them went straight to Python.
+    mata: _dash_check_utf8(strtrim(`"`0'"'))
 
     syntax [, ///
         CMDname(string)         ///
@@ -2701,6 +2792,13 @@ end
 program define _dash_build
     version 16.0
 
+    // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
+    // leaves Stata.  The gate was applied at exactly one entry point --
+    // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
+    // filter labels had no gate at all, and a malformed sequence in any of
+    // them went straight to Python.
+    mata: _dash_check_utf8(strtrim(`"`0'"'))
+
     // Pre-extract ALL filter() options from `0' before -syntax- runs.
     // Stata's -syntax- only accepts one option of a given name; using two
     // filter() options (as in full_dashboard.do) would trigger an error.
@@ -2746,10 +2844,12 @@ program define _dash_build
         // The same validator, asked for .py.  This branch used to check the
         // extension and nothing else, so a server-mode path skipped the
         // traversal, metacharacter and quote checks entirely.
-        _dash_validate_path "`saving'" "py"
+        _dash_validate_path `"`saving'"' "py"
+        local saving `"`_dash_vpath'"'
     }
     else {
-        _dash_validate_path "`saving'" "html"
+        _dash_validate_path `"`saving'"' "html"
+        local saving `"`_dash_vpath'"'
     }
 
     if "`replace'" == "" {
@@ -2856,6 +2956,13 @@ end
 program define _dash_serve_spec, rclass
     version 16.0
 
+    // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
+    // leaves Stata.  The gate was applied at exactly one entry point --
+    // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
+    // filter labels had no gate at all, and a malformed sequence in any of
+    // them went straight to Python.
+    mata: _dash_check_utf8(strtrim(`"`0'"'))
+
     // Pre-extract every filter() group before -syntax- runs, exactly as
     // `dash build' does: -syntax- accepts one option of a given name, and
     // a dashboard may legitimately have several filters.
@@ -2921,6 +3028,13 @@ end
 // ================================================================
 program define _dash_serve
     version 16.0
+
+    // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
+    // leaves Stata.  The gate was applied at exactly one entry point --
+    // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
+    // filter labels had no gate at all, and a malformed sequence in any of
+    // them went straight to Python.
+    mata: _dash_check_utf8(strtrim(`"`0'"'))
 
     tempfile data_json_path master_json_path
 

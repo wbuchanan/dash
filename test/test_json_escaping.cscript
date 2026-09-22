@@ -1,0 +1,170 @@
+*! test_json_escaping.cscript  v1.0
+*! Certification script for _dash_json_str, and for the saving() path that
+*! was read back out of the document it writes.
+*!
+*! JSON forbids EVERY unescaped byte below 0x20 inside a string.
+*! _dash_json_str escaped five of them -- backslash, quote, TAB, LF, CR --
+*! and left the other twenty-seven raw.  Measured:
+*!
+*!     dash build, title("bad" + char(1) + "title")   -> r(7102)
+*!     dash scatter ..., title("bad" + char(1) + ...) -> r(7102)
+*!
+*! both a Python JSONDecodeError, with no message from dash.  \b (8) and \f
+*! (12) were missing too, although both have short forms in the grammar.
+*!
+*! ESCAPING, NOT REJECTING.  The user story asks for "either a clean dash
+*! error or a correct dashboard".  A correct dashboard is the better of the
+*! two, so a control character pasted in from a web page now survives into
+*! the title rather than stopping the build.  ROADMAP AC-08.2 asks for an
+*! error; this delivers the other half of the same sentence, and the value is
+*! preserved instead of lost.
+*!
+*! THE PATH THAT CAME BACK OUT WRONG.  _dash_plot writes saving() into the
+*! spec through _dash_json_str, and _dash_render_immediate read it back by
+*! slicing the raw document at the first quote after "saving":" -- so it got
+*! the ESCAPED text and used it as a filesystem path.  Measured:
+*!
+*!     dash scatter mpg weight, saving("<dir>a\b.html") replace
+*!         rc 0, and the file written was "<dir>a\\b.html"
+*!         confirm file "<dir>a\b.html"  -> r(601), it is not there
+*!
+*! Every Windows saving() path on the immediate route landed somewhere other
+*! than where it was asked to.  Slicing at the first quote also truncated any
+*! path containing one, since \" is a quote in the document but not in the
+*! value.  It now goes through _dash_json_get_str, the same reader dash uses
+*! for every other spec value.
+*!
+*! Tests: JSE-01 through JSE-10
+*!
+*! Usage:  do test/test_json_escaping.cscript
+*! Version: 1.0  22sep2026
+
+cscript "every spec string is valid JSON on the way out" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+mata:
+// Does the escaped text still carry a raw byte below 0x20?
+real scalar _jse_has_raw_c0(string scalar s)
+{
+    real scalar i, b
+    for (i = 1; i <= strlen(s); i++) {
+        b = ascii(substr(s, i, 1))
+        if (b < 32) return(1)
+    }
+    return(0)
+}
+end
+
+
+// ================================================================
+// JSE-01..02 — every C0 byte leaves as an escape, none of them raw
+// ================================================================
+local nbad = 0
+local badlist ""
+forvalues c = 1/31 {
+    local raw = "a" + char(`c') + "b"
+    _dash_json_str `"`raw'"' _esc
+    mata: st_local("_jse_raw", strofreal(_jse_has_raw_c0(st_local("_esc"))))
+    if `_jse_raw' != 0 {
+        local nbad = `nbad' + 1
+        local badlist "`badlist' `c'"
+    }
+}
+if `nbad' > 0 display as error "raw control byte(s) survived escaping:`badlist'"
+assert `nbad' == 0
+display "JSE-01 PASS: no C0 byte 1-31 survives _dash_json_str raw"
+
+// The five with short forms must use them, because that is what a reader of
+// the document expects to see.
+_dash_json_str `"a`=char(8)'b"'  _e8
+assert strpos(`"`_e8'"',  "\b") > 0
+_dash_json_str `"a`=char(9)'b"'  _e9
+assert strpos(`"`_e9'"',  "\t") > 0
+_dash_json_str `"a`=char(10)'b"' _e10
+assert strpos(`"`_e10'"', "\n") > 0
+_dash_json_str `"a`=char(12)'b"' _e12
+assert strpos(`"`_e12'"', "\f") > 0
+_dash_json_str `"a`=char(13)'b"' _e13
+assert strpos(`"`_e13'"', "\r") > 0
+display "JSE-02 PASS: backspace, tab, newline, formfeed and CR use short forms"
+
+
+// ================================================================
+// JSE-03..04 — the two that were never escaped at all
+// ================================================================
+_dash_json_str `"a`=char(1)'b"' _e1
+assert strpos(`"`_e1'"', "") > 0
+display "JSE-03 PASS: 0x01 becomes "
+
+_dash_json_str `"a`=char(31)'b"' _e31
+assert strpos(`"`_e31'"', "") > 0
+display "JSE-04 PASS: 0x1f becomes "
+
+
+// ================================================================
+// JSE-05..06 — the ordinary escapes are unchanged
+// ================================================================
+_dash_json_str `"a\b"' _eb
+assert `"`_eb'"' == `"a\\b"'
+display "JSE-05 PASS: a backslash is still doubled, and first"
+
+_dash_json_str `"say "hi""' _eq
+assert strpos(`"`_eq'"', `"\""') > 0
+display "JSE-06 PASS: a double quote is still escaped"
+
+
+// ================================================================
+// JSE-07 — a control character in title() builds, it does not abort
+// ================================================================
+// This is the r(7102) the whole exercise is about.
+dash clear
+dash scatter mpg weight, name(j1)
+tempfile jout
+local badtitle = "bad" + char(1) + "title"
+capture noisily dash build, saving("`jout'.html") replace nobrowser ///
+    title(`"`badtitle'"')
+assert _rc == 0
+display "JSE-07 PASS: a control byte in title() builds cleanly"
+
+// And on the immediate route, which assembles its own spec.
+dash clear
+tempfile jout2
+capture noisily dash scatter mpg weight, title(`"`badtitle'"') ///
+    saving("`jout2'.html") replace
+assert _rc == 0
+display "JSE-08 PASS: and on the immediate route too"
+
+
+// ================================================================
+// JSE-09..10 — the saving() path survives its own escaping
+// ================================================================
+// A backslash in the path used to be doubled on the way in and never undone
+// on the way out, so the file was written somewhere else entirely.
+tempfile jbase
+local jdir = substr("`jbase'", 1, strlen("`jbase'") - 9)
+dash clear
+capture noisily dash scatter mpg weight, saving(`"`jdir'js_a\b.html"') replace
+assert _rc == 0
+capture confirm file `"`jdir'js_a\b.html"'
+assert _rc == 0
+display "JSE-09 PASS: a backslash in saving() writes the path the user gave"
+
+capture confirm file `"`jdir'js_a\\b.html"'
+assert _rc != 0
+display "JSE-10 PASS: and does not write the doubled one"
+
+display ""
+display "All JSON escaping tests PASSED."

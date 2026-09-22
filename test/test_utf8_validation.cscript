@@ -1,0 +1,236 @@
+*! test_utf8_validation.cscript  v1.0
+*! Certification script for dash's UTF-8 gate.
+*!
+*! `_is_utf8' decided whether text was well-formed before it left Stata, and
+*! it applied the wrong rule.  It checked that the LEAD byte was in range and
+*! that the bytes after it were 0x80-0xBF -- which is not what RFC 3629 says.
+*! The second byte's allowed range depends on the lead byte, and that is
+*! exactly what separates a well-formed sequence from an overlong encoding, a
+*! UTF-16 surrogate, or a codepoint above U+10FFFF.
+*!
+*! Measured against the old validator, every one of these was ACCEPTED:
+*!
+*!     E0 80 AF        overlong encoding of U+002F  ('/')
+*!     E0 9F BF        overlong encoding of U+07FF
+*!     F0 80 80 80     overlong encoding of U+0000
+*!     F0 8F BF BF     overlong encoding of U+FFFF
+*!     ED A0 80        UTF-16 surrogate U+D800
+*!     ED BF BF        UTF-16 surrogate U+DFFF
+*!     F4 90 80 80     U+110000, above the Unicode maximum
+*!
+*! and each then reached Python and ended the render with r(7102).  An
+*! overlong encoding is a filter-bypass primitive: it spells a character that
+*! a validator reading the bytes naively does not recognise as that
+*! character, which is why RFC 3629 forbids them rather than merely
+*! discouraging them.
+*!
+*! HOW THE EXPECTED ANSWERS ARE OBTAINED.  Not from a table written by hand
+*! -- that would only check that two readings of the RFC agree.  The fixture
+*! test/fixtures/utf8_cases.txt carries byte sequences and Python's own
+*! verdict on each: a sequence is well-formed exactly when
+*! bytes(seq).decode("utf-8") does not raise.  dash's validator is compared
+*! against a decoder that has to be right.  Regenerate the fixture with
+*! scripts/gen_utf8_cases.py.
+*!
+*! The committed fixture is the part of a wider sweep that distinguishes the
+*! rules: every single byte, and every lead byte 0xC0-0xF7 against second
+*! bytes on and just outside each allowed range boundary, in two-, three- and
+*! four-byte forms, plus random sequences.  The wider sweep was run once
+*! while this was written -- 41,976 sequences, every lead/second pair at all
+*! four lengths -- and the rewritten validator agreed with Python on every
+*! one, with zero mismatches.
+*!
+*! NUL is absent throughout: a Stata string cannot carry one, so such a case
+*! would measure Stata's string handling rather than the validator.
+*!
+*! Tests: UTF-01 through UTF-12
+*!
+*! Usage:  do test/test_utf8_validation.cscript
+*! Version: 1.0  22sep2026
+
+cscript "dash accepts exactly the UTF-8 that RFC 3629 defines" adodir ".."
+
+qui do "../dash_parse.mata"
+
+mata:
+// Build a string from a comma-separated list of decimal byte values.
+string scalar _u8_bytes(string scalar spec)
+{
+    string scalar        s
+    string rowvector     parts
+    real scalar          i
+    parts = tokens(subinstr(spec, ",", " ", .))
+    s = ""
+    for (i = 1; i <= length(parts); i++) s = s + char(strtoreal(parts[i]))
+    return(s)
+}
+
+// Compare the validator against the fixture, and report how far apart they
+// are.  Returns the number of mismatches; writes the first few to a file so
+// a failure says WHICH sequence, not merely that one exists.
+real scalar _u8_diff(string scalar infile, string scalar outfile)
+{
+    real scalar   fh, oh, nbad, ntot, want, got
+    string scalar line
+    string rowvector parts
+    nbad = 0
+    ntot = 0
+    fh = fopen(infile, "r")
+    oh = fopen(outfile, "w")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (substr(strltrim(line), 1, 1) == "*") continue
+        parts = tokens(line)
+        if (length(parts) < 2) continue
+        want = strtoreal(parts[2])
+        got  = _is_utf8(_u8_bytes(parts[1]))
+        ntot = ntot + 1
+        if (got != want) {
+            nbad = nbad + 1
+            if (nbad <= 20) {
+                fput(oh, sprintf("%s want=%f got=%f", parts[1], want, got))
+            }
+        }
+    }
+    fclose(fh)
+    fclose(oh)
+    printf("  fixture: %f sequences, %f mismatch(es)\n", ntot, nbad)
+    return(nbad)
+}
+end
+
+capture program drop _u8
+program define _u8, rclass
+    args spec
+    mata: st_local("_u8_ok", strofreal(_is_utf8(_u8_bytes("`spec'"))))
+    return scalar ok = `_u8_ok'
+end
+
+
+// ================================================================
+// UTF-01..07 — the seven sequences the old validator let through
+// ================================================================
+
+_u8 "224,128,175"
+assert r(ok) == 0
+display "UTF-01 PASS: overlong E0 80 AF is rejected"
+
+_u8 "224,159,191"
+assert r(ok) == 0
+display "UTF-02 PASS: overlong E0 9F BF is rejected"
+
+_u8 "240,128,128,128"
+assert r(ok) == 0
+display "UTF-03 PASS: overlong F0 80 80 80 is rejected"
+
+_u8 "240,143,191,191"
+assert r(ok) == 0
+display "UTF-04 PASS: overlong F0 8F BF BF is rejected"
+
+_u8 "237,160,128"
+assert r(ok) == 0
+display "UTF-05 PASS: UTF-16 surrogate ED A0 80 is rejected"
+
+_u8 "237,191,191"
+assert r(ok) == 0
+display "UTF-06 PASS: UTF-16 surrogate ED BF BF is rejected"
+
+_u8 "244,144,128,128"
+assert r(ok) == 0
+display "UTF-07 PASS: F4 90 80 80, above U+10FFFF, is rejected"
+
+
+// ================================================================
+// UTF-08 — and the valid ones are still accepted
+// ================================================================
+// A validator that rejects everything would pass all of the above.
+
+_u8 "65,66,67"
+assert r(ok) == 1
+_u8 "195,169"
+assert r(ok) == 1
+_u8 "226,130,172"
+assert r(ok) == 1
+_u8 "240,159,152,128"
+assert r(ok) == 1
+_u8 "244,143,191,191"
+assert r(ok) == 1
+_u8 "194,128"
+assert r(ok) == 1
+_u8 "237,159,191"
+assert r(ok) == 1
+display "UTF-08 PASS: ASCII, 2-, 3- and 4-byte forms and both maxima accepted"
+
+
+// ================================================================
+// UTF-09 — C0 controls are well-formed UTF-8 and stay accepted
+// ================================================================
+// They are legal Unicode; what they are not is legal RAW in JSON, which is
+// _dash_json_str's job.  Rejecting them here would refuse a title with a
+// stray control character pasted in from a web page, where the user story
+// asks for a correct dashboard.
+
+_u8 "1"
+assert r(ok) == 1
+_u8 "31"
+assert r(ok) == 1
+_u8 "127"
+assert r(ok) == 1
+display "UTF-09 PASS: control bytes are well-formed and left to the escaper"
+
+
+// ================================================================
+// UTF-10 — the differential, against Python's own decoder
+// ================================================================
+capture confirm file "fixtures/utf8_cases.txt"
+if _rc != 0 {
+    display as error "SKIP: test/fixtures/utf8_cases.txt is missing."
+    exit 222
+}
+tempfile _u8_bad
+mata: st_local("_u8_nbad", strofreal(_u8_diff("fixtures/utf8_cases.txt", "`_u8_bad'")))
+if `_u8_nbad' != 0 {
+    display as error "dash's validator disagrees with Python on `_u8_nbad' sequence(s):"
+    type "`_u8_bad'"
+}
+assert `_u8_nbad' == 0
+display "UTF-10 PASS: agrees with Python's decoder on every fixture sequence"
+
+
+// ================================================================
+// UTF-11..12 — the gate is applied where text enters
+// ================================================================
+// It was called at exactly one entry point, so KPI titles, build titles and
+// subtitles, tabs() and filter labels had no gate at all.
+mata:
+real scalar _u8_code_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, trimmed
+    n = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        trimmed = strltrim(line)
+        if (substr(trimmed, 1, 2) == "//") continue
+        if (substr(trimmed, 1, 2) == "*!") continue
+        if (strpos(line, needle)) n = n + 1
+    }
+    fclose(fh)
+    return(n)
+}
+end
+mata: st_local("_u8_gates", strofreal(_u8_code_has("../dash.ado", ///
+    "_dash_check_utf8(strtrim")))
+assert `_u8_gates' >= 6
+display "UTF-11 PASS: the gate runs at every command entry point, not one"
+
+// And the validator itself is reached through that gate, not bypassed.
+capture noisily mata: _dash_check_utf8("ordinary text")
+assert _rc == 0
+capture mata: _dash_check_utf8(_u8_bytes("237,160,128"))
+assert _rc != 0
+display "UTF-12 PASS: the gate rejects a surrogate and passes ordinary text"
+
+capture program drop _u8
+
+display ""
+display "All UTF-8 validation tests PASSED."

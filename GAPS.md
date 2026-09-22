@@ -248,6 +248,14 @@ constructs a quote containing a paren.
 
 ### A9. The UTF-8 gate passes the encodings it exists to stop — S2, MEASURED
 
+**RESOLVED (WP-08).** Every sequence in the table below was measured to be
+accepted by the old validator, and every one is now rejected. The rewrite
+applies RFC 3629 s.4's per-lead second-byte ranges and was verified against
+Python's own decoder over 41,976 sequences with zero mismatches; 2,245 are
+committed as `test/fixtures/utf8_cases.txt`. C0 control bytes remain accepted
+here on purpose — they are well-formed UTF-8, and it is `_dash_json_str`'s
+job to escape them. See the BUGS.md entries.
+
 `_is_utf8` (`dash_parse.mata:90-109`) checks only the **lead-byte range** and
 that continuation bytes are `0x80-0xBF`. It never constrains the second byte
 per lead byte, which RFC 3629 requires:

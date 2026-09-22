@@ -939,6 +939,56 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 35. test_utf8_validation.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_utf8_validation.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_utf8_validation.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_utf8_validation.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_utf8_validation.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_utf8_validation.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 36. test_json_escaping.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_json_escaping.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_json_escaping.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_json_escaping.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_json_escaping.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_json_escaping.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'
