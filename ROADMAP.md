@@ -744,141 +744,65 @@ should land:
 
 **Gaps closed:** D1, D7 · **Severity:** S1 · **Effort:** L · **Depends on:** WP-02
 
-> **PARTLY DONE — and TR-09.1's premise is measurably wrong.**
+> **DONE.** All 38 plot types now dispatch through `GlyphMapper`; the
+> `if/elif ptype` chain no longer draws anything itself.
 >
-> This plan says "This is cheaper than it looks ... The server simply does not
-> call 37 of them." The second half is exactly right: `grep -oE
-> '_DASH_MAPPER\.map_[a-z_]+'` returns one name, `map_scatter`. The first
-> half is not. Calling the mappers is not a substitution. Every server branch
-> was compared against its mapper counterpart, and each claimed difference
-> adversarially re-checked: **132 non-cosmetic differences across 37 types,
-> 28 of them S1.** Only `scatter`, which already delegates, had none.
+> **TR-09.1's premise was measurably wrong**, and that shaped the work. This
+> plan calls the job "cheaper than it looks ... the server simply does not
+> call 37 of them". The second half was right — `grep` returned one name,
+> `map_scatter`. The first was not. Comparing every branch against its mapper,
+> and adversarially re-checking each claimed difference, found **132
+> non-cosmetic differences across 37 types, 28 of them S1**. Calling the
+> mappers was not a substitution: in several types the SERVER did something
+> the mapper did not, and swapping would have lost it.
 >
-> Most are `mapper_does_more`, where unification is a pure gain — a bar chart
-> with a string x variable takes the served app down with an uncaught
-> `TypeError` today; `lcolor(none)` draws opaque black where Stata draws
-> nothing; the branch's 9-name `msymbol` table against the translator's 50
-> makes two overlaid series identical under a mono scheme. But several are
-> `server_does_more`, and a straight swap would **lose** behaviour: `map_area`
-> does not sort by x before drawing its polygon and the server does (a
-> standalone bug this comparison surfaced); `map_spike` builds its own
-> `x0/y0/x1/y1` source where the server keeps the original columns plus
-> `index`, which the filter callback and the brush-to-KPI wiring read by
-> name; and the pc branches register their source for live recomputation,
-> which is caller plumbing and must stay in the caller.
+> Those became mapper fixes, which is the point — each is a bug in the SAVED
+> dashboard that the comparison surfaced:
 >
-> **Landed:** the machinery, and the seven types that carry no risk.
-> `_dash_glyph_dispatch`, `_dash_pc_dispatch`, `_dash_add_glyph`,
-> `_dash_add_pc_glyph` and `_dash_layer_source` (TR-09.2) are module-level
-> functions taking the mapper as a parameter, copied into the app with
-> `inspect.getsource` — the mechanism `_shared_stat_lines` already used, for
-> the same stated reason. `DashRenderer` delegates to them, so there is one
-> dispatch rather than two, and the three type categories moved to module
-> level. TR-09.4 done: an unknown type warns. `dot`, `qfit`, `lfitci`,
-> `qfitci`, `fpfit` and `fpfitci` now go through it, joining `scatter`.
+> * `map_area`, `map_rline`, `map_rarea` and `map_tsrline` joined their
+>   points in dataset order. Bokeh connects points as given and Stata draws
+>   along x, so every one of them drew a self-intersecting shape on unsorted
+>   data. `map_line` and `map_connected` had always sorted.
+> * `map_lowess`, `map_mspline`, `map_mband` and `map_fpfit` dropped the
+>   plot's line options on their bail-out path, so `lwidth(thick)` was lost
+>   whenever the curve could not be computed — which, with `statsmodels`
+>   optional, is EVERY lowess layer on a machine without it.
+> * `map_rbar` never called `_apply_line_opts` and ignored `bfcolor()`,
+>   `blcolor()`, `lwidth()` and `lcolor()` entirely.
+> * Server-mode `pci` read four variable names that `pci 20 3000 30 4000`
+>   never sets, so it drew nothing at all. It now uses `map_pci_literal`,
+>   as standalone always has.
 >
-> **Not landed:** the other 30 types, TR-09.3 (lower-casing, which only
-> matters once a branch is gone) and TR-09.5 (the style literals, likewise).
-> AC-09.2 is therefore not met. The order of work is: close each
-> `server_does_more` gap in the mapper — they are standalone bugs too — then
-> swap that type with `test_mode_parity.py` as the gate.
+> **TR-09.2** landed as three source builders — `_dash_layer_source`,
+> `_dash_range_source`, `_dash_pc_source` — each de-duplicating its column
+> list in the helper, so the `pc*` crash and the `pcscatter` no-draw are
+> structurally impossible. **TR-09.3** and **TR-09.5** come free: the chain
+> lower-cases through `_dash_add_glyph`, and the per-branch style literals
+> went with the branches. **TR-09.4** warns on an unknown type.
+> **AC-09.1**, **AC-09.2** and **AC-09.3** are met.
 >
-> **The inventory**, which is the work list. `mapper+` = the mapper does more
-> (swapping gains); `server+` = the server does more (swapping would lose).
+> Two things worth knowing for the next change here:
 >
-| type | diffs | direction | severity | state |
-|---|---|---|---|---|
-| `scatter` | 0 | - | - | done |
-| `line` | 6 | both_differ,mapper+ | S2,S3 |  |
-| `connected` | 11 | both_differ,mapper+,server+ | S2,S3 |  |
-| `area` | 6 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `bar` | 10 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `spike` | 6 | both_differ,mapper+,server+ | S1,S2 |  |
-| `dot` | 8 | mapper+ | S2,S3 | done |
-| `dropline` | 10 | both_differ,mapper+,server+ | S2 |  |
-| `lfit` | 7 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `qfit` | 1 | mapper+ | S1 | done |
-| `lfitci` | 3 | mapper+ | S1,S2 | done |
-| `qfitci` | 2 | mapper+ | S1,S2 | done |
-| `lowess` | 9 | both_differ,mapper+,server+ | S2,S3 |  |
-| `lpoly` | 8 | both_differ,mapper+ | S1,S2,S3 |  |
-| `lpolyci` | 11 | both_differ,mapper+ | S1,S2,S3 |  |
-| `fpfit` | 2 | mapper+ | S2,S3 | done |
-| `fpfitci` | 1 | mapper+ | S1 | done |
-| `histogram` | 8 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `kdensity` | 7 | both_differ,mapper+ | S1,S2 |  |
-| `mspline` | 9 | both_differ,mapper+ | S1,S2,S3 |  |
-| `mband` | 13 | both_differ,mapper+,server+ | S2,S3 |  |
-| `tsline` | 6 | both_differ,mapper+,server+ | S2,S3 |  |
-| `tsrline` | 6 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `rarea` | 7 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `rbar` | 9 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `rspike` | 8 | both_differ,mapper+ | S1,S2,S3 |  |
-| `rcap` | 10 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `rline` | 10 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `rconnected` | 12 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `rcapsym` | 12 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `rscatter` | 3 | both_differ,mapper+ | S1,S2 |  |
-| `pcspike` | 9 | both_differ,mapper+,server+ | S1,S2,S3 |  |
-| `pcarrow` | 1 | both_differ | S2 |  |
-| `pcbarrow` | 1 | mapper+ | S2 |  |
-| `pci` | 3 | both_differ,mapper+ | S1,S3 |  |
-| `pcscatter` | 4 | both_differ,mapper+,server+ | S1,S2 |  |
-| `scatteri` | 6 | both_differ,mapper+ | S2,S3 |  |
-| `function` | 3 | mapper+,server+ | S1,S2,S3 |  |
-
-
-> **User story.** As a maintainer, I want one implementation of each plot
-> type, so that a fix lands in both render modes at once.
-
-### Business requirements
-
-- **BR-09.1** Every plot type is implemented exactly once.
-- **BR-09.2** A new plot type requires no server-specific code.
-
-### Technical requirements
-
-This is cheaper than it looks, and the audit established why: **the whole
-`GlyphMapper` class source is already embedded in the generated app** via
-`_inspect.getsource(GlyphMapper)` at `dash_render.py:12405-12409`, and
-`_DASH_MAPPER` is constructed at `:12432`. All 39 `map_*` methods are
-available in the served app today. The server simply does not call 37 of them.
-`scatter` already delegates correctly at `:14090` and is the working
-reference.
-
-- **TR-09.1** Replace the `if/elif ptype == …` chain at
-  `dash_render.py:14058-14890` with a table-driven dispatch mirroring the
-  standalone one at `:10360-10398` — a plain dict, a `range_dispatch` dict and
-  a `pc_dispatch` dict, emitted into the app as source.
-- **TR-09.2** Factor the per-type column preparation (the
-  `g_df[cols].dropna()` → `ColumnDataSource` step) into one helper. Every
-  branch repeats it, and the repetition is where D2's defects live. De-dup
-  column lists with `dict.fromkeys` **in the helper**, so the `pc*` crash and
-  the `pcscatter` silent no-draw are structurally impossible.
-- **TR-09.3** Lower-case `ptype` at `:14031`. The main chain does not; the
-  facet chains at `:15137, 15237` do; and the main chain lacks the `'hist'`
-  alias the facet chains have. Three tables, three behaviours.
-- **TR-09.4** Add an `else` branch that warns on an unrecognised type, so a
-  future gap is loud.
-- **TR-09.5** Retire the now-unreachable per-branch style literals — `size=6`
-  at `:15145, 15200, 15246` and `width=0.8` at `:15150`.
-
-### Acceptance criteria
-
-- **AC-09.1** All 38 plot types render in server mode through `GlyphMapper`.
-- **AC-09.2** `grep -c "elif ptype ==" dash_render.py` falls to 0 in the main
-  chain.
-- **AC-09.3** An unknown plot type warns rather than drawing nothing.
-
-### Test plan
-
-| Kind | Test | Asserts |
-|---|---|---|
-| Unit | `test_server.py` | The generated app contains a dispatch table, not a chain; every type maps to a `_DASH_MAPPER` call |
-| Parity | `test_mode_parity.py` | See WP-12 — the corpus expansion is the real gate |
-| Integration | `test_server_serves.py` | The generated app still compiles and serves |
-
----
+> * `graph_sources` feeds the filter snapshot AND the brush-to-KPI wiring,
+>   and the latter skips any source without an `index` column — which a
+>   mapper-built one has not got. Each swapped branch registers the layer
+>   source as well as the mapper's, or those layers stop driving a brush.
+>   `rscatter` and `pcscatter` additionally keep their `agg_sources` entry,
+>   or their points freeze at the unfiltered values.
+> * The three security tests that guarded the served `function` validator
+>   read `ServerAppBuilder`'s own source, because the validator used to be
+>   written there as string literals. It now lives in `map_function` and is
+>   copied into the app whole, so those assertions found nothing and failed
+>   on a change that removed no protection. They were repointed at the shared
+>   implementation and at behaviour: six integer-power-bomb forms were
+>   measured returning in under a second and drawing nothing, and the
+>   keyword-argument escape test — which writes a marker file if the sandbox
+>   is breached — still passes.
+>
+> Still divergent, pre-existing and unchanged by this work: `mlabel()` draws
+> in the saved dashboard and not the served one for the common plot types.
+> Measured identical at the previous commit and at this one, so it is not a
+> regression; it stays on the inventory for WP-12's parity corpus.
 
 ## WP-10 · Server layer defects
 

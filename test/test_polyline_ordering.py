@@ -226,3 +226,59 @@ def test_a_range_path_keeps_its_pairing(name):
             return
     if not checked:
         pytest.skip("%s exposes no comparable x/y columns" % name)
+
+
+# ==========================================================================
+# A layer that could not be computed must still carry the user's styling
+# ==========================================================================
+
+#: Mappers that compute a curve and fall back to an empty renderer when they
+#: cannot -- no statsmodels, too few points, an x that does not vary.
+_DEGRADING_MAPPERS = ["map_lowess", "map_lpoly", "map_mspline", "map_mband",
+                      "map_lfit", "map_qfit", "map_fpfit"]
+
+
+def _degenerate_source():
+    """x does not vary, so every smoother and fit takes its bail-out path."""
+    return ColumnDataSource({
+        "x": [1.0, 1.0, 1.0],
+        "y": [1.0, 2.0, 3.0],
+        dr._ROW_ID_COLUMN: [0, 1, 2],
+    })
+
+
+@pytest.mark.parametrize("name", _DEGRADING_MAPPERS)
+def test_a_degraded_layer_still_applies_lwidth(name):
+    """The empty renderer must be styled like the real one.
+
+    Each of these returns an empty ColumnDataSource when it cannot compute
+    its curve, and several returned it WITHOUT applying the plot's line
+    options -- so ``lwidth(thick)`` was silently dropped for that layer.
+    Measured with a constant x, which makes every one of them bail:
+
+        map_lowess   line_width 1    (should be 2.5)
+        map_mspline  line_width 1    (should be 2.5)
+        map_mband    line_width 1    (should be 2.5)
+        map_fpfit    line_width 1    (should be 2.5)
+        map_lpoly, map_lfit, map_qfit  2.5   -- already correct
+
+    It matters beyond tidiness: ``statsmodels`` is an OPTIONAL dependency,
+    and on a machine without it EVERY lowess layer takes this path. The
+    generated server app applied the width regardless, which is how
+    ``test_server.py::TestServerLineWidthAllTypes::test_lowess_applies_lwidth``
+    caught this the moment lowess started going through the mapper.
+    """
+    mapper = dr.GlyphMapper()
+    fig = figure()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = getattr(mapper, name)(fig, _degenerate_source(), "y", "x",
+                                       {"lwidth": "thick"}, view=None,
+                                       color_idx=0)
+    renderers = result if isinstance(result, (list, tuple)) else [result]
+    widths = [getattr(getattr(r, "glyph", None), "line_width", None)
+              for r in renderers if r is not None]
+    assert any(w == pytest.approx(2.5) for w in widths), (
+        "%s dropped lwidth(thick) on its bail-out path; got %r. A layer that "
+        "could not be computed is still the user's layer." % (name, widths)
+    )

@@ -4133,13 +4133,38 @@ class TestServerFunctionExpressionOperators:
     They count glyph renderers now, which is what the bug destroyed.
     """
 
-    # BUG-FE-1a: generated source must contain the operator-skip guard
-    def test_val_node_source_skips_operator_nodes(self, dr_module, auto_df):
-        """BUG-FE-1a: generated server source must skip ast.operator/ast.unaryop nodes."""
+    # BUG-FE-1a: the generated app still validates the expression, and still
+    # permits arithmetic.
+    def test_the_generated_app_validates_the_expression(self, dr_module,
+                                                        auto_df):
+        """BUG-FE-1a, restated against behaviour rather than a spelling.
+
+        This used to assert that the string ``_ast.operator`` appeared in the
+        generated source, because the app carried its own inline ``_val_node``
+        which skipped operator nodes via that base class. The app now calls
+        ``GlyphMapper.map_function``, whose ``_validate_expr_node`` whitelists
+        the operator classes individually (``_ast.Add``, ``_ast.Sub``, ...)
+        instead. That is the same guarantee -- arguably a tighter one, being
+        an explicit list rather than a skipped base class -- but it does not
+        contain the old string, so the old assertion failed on a change that
+        removed nothing.
+
+        What must remain true is that the app still validates before it
+        evaluates. The seven behavioural cases below check the other half:
+        that ordinary arithmetic is permitted.
+        """
         source = _build_function_app(dr_module, "x + 1")
-        assert "_ast.operator" in source or "ast.operator" in source, (
-            "generated _val_node must skip _ast.operator nodes; "
-            "fix: add elif isinstance(node, (_ast.operator, _ast.unaryop)): pass"
+        assert "_validate_expr_node" in source, (
+            "the generated app evaluates a user-supplied expression with no "
+            "AST whitelist in sight"
+        )
+        assert "_SAFE_FUNCS" in source and "_SAFE_NAMES" in source, (
+            "the expression validator's name and function whitelists are "
+            "not in the generated app"
+        )
+        # And nothing still calls the retired inline validator.
+        assert "_val_node(" not in source, (
+            "the app calls _val_node, which is no longer emitted"
         )
 
     # BUG-FE-1b: addition (BinOp with Add)

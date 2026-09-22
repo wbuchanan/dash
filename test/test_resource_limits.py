@@ -187,21 +187,85 @@ class TestTheServedAppHasTheSameBounds:
 
     @staticmethod
     def _emitted():
+        """The builder's own source.
+
+        Kept for any check that is genuinely about the BUILDER. It is no
+        longer where the expression validator lives: the served app used to
+        carry its own copy, written here as string literals, and now calls
+        ``GlyphMapper.map_function``, which is copied into the app whole. A
+        test that reads this source to check the validator is reading the
+        wrong artifact and fails on a change that removed nothing.
+        """
         import inspect
         return inspect.getsource(dr.ServerAppBuilder)
 
     def test_the_served_validator_bounds_the_expression_length(self):
-        assert "Expression too long" in self._emitted(), (
-            "the served expression validator has no length bound, so a long "
-            "expression exhausts the stack on every session"
+        """The bound, asserted where it now lives and by what it does.
+
+        Both modes run the same ``map_function``, so the bound is checked
+        once, on the shared implementation. Over the limit the layer is
+        drawn empty with a warning rather than recursing one frame per term.
+        """
+        assert dr._MAX_EXPR_CHARS > 0
+        long_expr = "+".join(["x"] * (dr._MAX_EXPR_CHARS // 2 + 20))
+        assert len(long_expr) > dr._MAX_EXPR_CHARS
+
+        from bokeh.plotting import figure as _figure
+        import warnings as _w
+        mapper = dr.GlyphMapper()
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            result = mapper.map_function(_figure(), long_expr, (0.0, 1.0), 5, {})
+        rend = result[0] if isinstance(result, (list, tuple)) else result
+        data = getattr(getattr(rend, "data_source", None), "data", {})
+        assert len(data.get("x_fn", [])) == 0, (
+            "an over-long expression was evaluated; the length bound is the "
+            "only thing standing between a crafted expression and a "
+            "recursion one frame deep per term"
+        )
+        assert any("over the" in str(c.message) for c in caught), (
+            "the layer was dropped without saying why: %r"
+            % [str(c.message) for c in caught]
         )
 
-    def test_the_served_evaluator_uses_float_arithmetic(self):
-        src = self._emitted()
-        assert "fix_missing_locations" in src, (
-            "the served evaluator still computes integer powers exactly, so "
-            "`function 9^9^9^9' never returns"
-        )
+    def test_the_served_evaluator_does_not_compute_integer_powers(self):
+        """`function 9^9^9^9' must not be computed exactly.
+
+        The served app used to guarantee this by rewriting integer constants
+        to floats before evaluating -- hence the old assertion on
+        ``fix_missing_locations``. ``map_function`` reaches the same end
+        another way, so the guarantee is asserted by BEHAVIOUR rather than by
+        the spelling of one implementation of it. Every form below returned
+        in well under a second and drew nothing; the sibling test above
+        covers the served app end to end.
+        """
+        from bokeh.plotting import figure as _figure
+        import time as _time
+        import warnings as _w
+        mapper = dr.GlyphMapper()
+        for expr in ("9**9**9**9", "x**9**9**9", "x*9**9**9",
+                     "2**10000000", "2**200000"):
+            started = _time.time()
+            with _w.catch_warnings():
+                _w.simplefilter("ignore")
+                result = mapper.map_function(_figure(), expr, (1.0, 2.0), 5, {})
+            elapsed = _time.time() - started
+            rend = result[0] if isinstance(result, (list, tuple)) else result
+            data = getattr(getattr(rend, "data_source", None), "data", {})
+            assert elapsed < 5.0, (
+                "%r took %.1fs; an integer power bomb reached the evaluator"
+                % (expr, elapsed)
+            )
+            assert len(data.get("x_fn", [])) == 0, (
+                "%r produced points; it should have been refused" % expr
+            )
+        # And an ordinary power still works, so the guard is not a blanket ban.
+        with _w.catch_warnings():
+            _w.simplefilter("ignore")
+            ok = mapper.map_function(_figure(), "x**2", (1.0, 2.0), 5, {})
+        ok_r = ok[0] if isinstance(ok, (list, tuple)) else ok
+        assert len(getattr(getattr(ok_r, "data_source", None), "data", {})
+                   .get("x_fn", [])) == 5
 
     def test_a_power_tower_does_not_hang_the_served_app(self, tmp_path):
         import importlib.util

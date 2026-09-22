@@ -139,12 +139,25 @@ class TestAKeywordArgumentCannotExecute:
         )
 
     def test_the_emitted_validator_names_keywords(self):
-        """Source-level guard: the branch must exist, not just happen to fail."""
+        """Source-level guard: the branch must exist, not just happen to fail.
+
+        It is checked on ``GlyphMapper.map_function``, which is where the
+        validator now lives and which BOTH modes run. It used to be written
+        as string literals inside ``ServerAppBuilder``, and reading that
+        source for it now finds nothing -- not because the guard went away,
+        but because the served app calls the shared implementation instead of
+        carrying a second copy of it.
+        """
         import inspect
-        src = inspect.getsource(dr.ServerAppBuilder)
+        src = inspect.getsource(dr.GlyphMapper.map_function)
         assert "node.keywords" in src, (
-            "the emitted function validator does not inspect node.keywords, "
-            "so a keyword argument's value is never walked"
+            "the function validator does not inspect node.keywords, so a "
+            "keyword argument's value is never walked"
+        )
+        # And the guard reaches the generated app, not just this module.
+        assert "node.keywords" in inspect.getsource(dr.GlyphMapper), (
+            "map_function's validator is not part of the GlyphMapper source "
+            "the server app copies"
         )
 
 
