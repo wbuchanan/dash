@@ -503,7 +503,7 @@ tables, independently maintained.
 The comment at `:12318-12327` claims the server branches call the shared
 mapper. They do not.
 
-### D2. Confirmed divergences — S1, MEASURED
+### D2. Confirmed divergences — S1, CLOSED by WP-09 and WP-10
 
 | Plot / feature | Standalone | Server |
 |---|---|---|
@@ -518,7 +518,15 @@ mapper. They do not.
 hovers that appear come indirectly from the three mappers the server does
 delegate to.
 
-### D3. Qualifiers are not read at all in server mode — S1, READ
+
+**Closed.** WP-09 closed `pci`, `fpfitci` and the `pc*` repeated-variable
+cases; WP-10 closed hover. Measured after: all 38 plot types, bare and with
+`hover(foreign)`, produce identical tooltips in both modes, and the saved
+renderer's own duplicate HoverTool is gone with them. The one hover fact
+this entry did not record: `dash line mpg weight, hover(foreign)` drew NO
+tooltip at all when saved.
+
+### D3. Qualifiers are not read at all in server mode — S1, CLOSED by WP-10
 
 There is no `plot.get('if_expr')` anywhere past `dash_render.py:12700`; the
 server reads only graph-level qualifiers (`:13812/13819`, `:15011-15012`,
@@ -528,6 +536,12 @@ server reads only graph-level qualifiers (`:13812/13819`, `:15011-15012`,
 
 `dash.ado:1484`'s comment ("per-plot qualifiers are not read in build/server
 flows") is now stale for standalone and accurate for server.
+
+
+**Closed by WP-10.** One `_dash_qualified_frame` reads every qualifier in
+both modes -- graph, plot and KPI -- through `_validate_if_expr`'s whitelist.
+The app's own `_safe_g` is an alias of it now. `dash.ado:1787` and `:2023`
+were corrected.
 
 ### D4. `by()` drops 20 plot types in server mode — S1, READ
 
@@ -541,7 +555,7 @@ the full dispatch.
 Those blocks also hardcode the style the parity test exists to catch:
 `size=6` at `:15145, 15200, 15246`; `width=0.8` at `:15150`.
 
-### D5. `mlabel()` excludes all range types in server mode — S2, READ
+### D5. `mlabel()` excludes all range types in server mode — S2, CLOSED by WP-10
 
 `dash.sthlp:698-700` says `mlabel()` applies to "scatter, line, connected,
 bar, spike, dot, dropline, and all range plot types". Standalone honours
@@ -550,11 +564,29 @@ every one (`_apply_mlabel_opts:3301`, wired at 13 call sites).
 for `scatteri`, the `pc*` family, `lfit`, `qfit`, `lfitci`, `qfitci`,
 `lowess`, `mspline`, `function`, `histogram` and `kdensity`.
 
-### D6. No "drew nothing" warning in server mode — S2, READ
+
+**Closed by WP-10, in the opposite direction to the one recorded here.** By
+the time WP-09 had routed every type through `GlyphMapper`, the mapper drew
+each layer's labels and the app's own "common mlabel block" drew a SECOND
+set over them: `line`, `connected`, `dot`, `dropline` and `tsline` carried
+two LabelSets when served, and `lpoly`, `lpolyci`, `fpfit`, `fpfitci` and
+`mband` carried one where the saved dashboard carries none. The block is
+deleted. Measured after: identical labels for all 38 types.
+
+`rscatter` carries no marker labels in EITHER mode, although `dash.sthlp`
+lists every range type as taking `mlabel()`. That is a coverage gap, not a
+divergence; it belongs to WP-13.
+
+### D6. No "drew nothing" warning in server mode — S2, CLOSED by WP-10
 
 Standalone warns at `:10078-10091` when a layer adds no data from a non-empty
 source. The generated app has no equivalent, which is why D2's silent
 failures are silent.
+
+
+**Closed by WP-10.** `_dash_layer_drew_anything` and
+`_dash_report_empty_layer` are module-level and run by both modes, so the
+report cannot be worded differently in one of them.
 
 ### D7. Smaller divergences — S3, READ
 

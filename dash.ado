@@ -1784,7 +1784,10 @@ program define _dash_plot
     // ---- Assemble full single-graph JSON ----
     // Promote if_expr / in_expr from the first plot segment to the graph level.
     // The renderer looks for graph-level "if_expr"/"in_expr" in graph_options or
-    // at the top level; per-plot qualifiers are not read in build/server flows.
+    // at the top level.  BOTH renderers also read each plot's own qualifier and
+    // apply it to that layer alone -- the saved dashboard has always done so,
+    // and the served one does since WP-10 -- so the promotion below exists only
+    // to give a single-segment command a graph-level qualifier as well.
     // We use _dash_json_get_str to extract the first occurrence from plots_json —
     // this correctly handles \" escape sequences inside the value.
     local if_expr ""
@@ -2019,9 +2022,10 @@ program define _dash_render_immediate
     // Always export ALL rows for the needed variables.  Do NOT pre-filter with
     // if/in qualifiers here: multiple plots in the same graph can have different
     // qualifiers, and applying only the first plot's qualifier would silently
-    // discard rows needed by other plots.  The Python renderer applies per-graph
-    // filtering via _apply_graph_filter() using the graph-level "if_expr" /
-    // "in_expr" fields that were promoted to the graph JSON by _dash_plot.
+    // discard rows needed by other plots.  Both renderers apply the qualifiers
+    // themselves, through _dash_qualified_frame: the graph-level "if_expr" /
+    // "in_expr" promoted to the graph JSON by _dash_plot, and then each plot's
+    // own, to that layer alone.
 
     // Check jsonio
     capture which jsonio

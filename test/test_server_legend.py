@@ -99,9 +99,34 @@ class TestAServedFigureHasALegend:
                 == (1, [1], [False]))
 
     def test_the_labels_name_the_series(self, tmp_path):
+        """Stata's keys, which are not the y variable twice.
+
+        This asserted that EVERY key contained "mpg", which was true only
+        because the generated app labelled all 38 plot types with the y
+        variable -- the very thing that left "no way to tell the fit from
+        the points", as this file's own opening paragraph puts it.  Stata
+        keys a computed layer "Fitted values"; the saved dashboard has done
+        so since WP-02 and the served one does since WP-10.
+        """
         f = _figs(tmp_path, _TWO)[0]
         labels = [getattr(i.label, "value", i.label) for i in f.legend[0].items]
-        assert all("mpg" in str(x) for x in labels), labels
+        assert labels == ["mpg", "Fitted values"], labels
+
+    def test_the_labels_are_the_ones_the_saved_dashboard_draws(self, tmp_path):
+        """The control: one keying rule, not two."""
+        def _labels(server):
+            f = _figs(tmp_path, _TWO, server=server)[0]
+            return [getattr(i.label, "value", i.label)
+                    for i in f.legend[0].items]
+        assert _labels(True) == _labels(False)
+
+    def test_a_confidence_band_is_keyed_apart_from_its_line(self, tmp_path):
+        """One layer, two keys -- and the band's carries the level."""
+        plots = [{"type": "lfitci", "yvar": "mpg", "xvar": "weight",
+                  "options": {}}]
+        f = _figs(tmp_path, plots)[0]
+        labels = [getattr(i.label, "value", i.label) for i in f.legend[0].items]
+        assert labels == ["95% CI", "Fitted values"], labels
 
     def test_a_faceted_graph_still_has_one(self, tmp_path):
         figs = _figs(tmp_path, _TWO, {"by": "foreign"})

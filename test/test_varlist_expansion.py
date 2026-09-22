@@ -273,8 +273,18 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               for ten of them.  s2color, the baseline's scheme, therefore
 #               loses its vertical grid lines and keeps its horizontal ones.
 #               Intended; see .ultraplan/CHANGELOG.md.
+#   2bf51dc0  WP-10.  A figure carried TWO HoverTools with identical
+#               tooltips: the mapper adds one for a scatter and the figure
+#               builder added a comprehensive one, which cleared the
+#               mapper's only when hover() was given.  Both renderers now
+#               build the figure's hover in one place and clear first.  The
+#               whole normalised difference from 98d50ff6 is the removal of
+#               one HoverTool object and its id from the figure's tools
+#               list -- diffed token by token against HEAD before
+#               re-baselining, 38 chunks, all of them that one object.
+#               Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "98d50ff6d0039702ea790766354c73f9f58a3a7615c10eeaa4821228151e0dd1"
+    "2bf51dc0452f30c142bc91fad12a77ea48c09747f4eb77ad703d33176da19645"
 )
 
 

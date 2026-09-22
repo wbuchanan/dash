@@ -808,6 +808,115 @@ should land:
 
 **Gaps closed:** D2, D3, D5, D6 · **Severity:** S1 · **Effort:** M · **Depends on:** WP-09
 
+> **DONE.** A sweep of all 38 plot types — bare, with `mlabel(foreign)` and
+> with `hover(foreign)`, 114 comparisons — now reports **zero** differences
+> between the two modes in glyphs, tooltips, marker labels and legend keys.
+> It reported 114 before this work, and the roadmap's own account of which
+> ones was out of date in both directions.
+>
+> **Four of the eight technical requirements were already met by WP-09.**
+> Measured, not assumed: `pci` draws `[Segment]` in both modes (TR-10.1),
+> `fpfitci` draws `[VArea, Line]` in both (TR-10.2), all four `pc*` types
+> agree with a repeated y or x variable (TR-10.3), and `_MAX_EXPR_CHARS` is
+> a single module constant (part of TR-10.8). They are pinned by
+> `TestTheUnificationKeepsD2Closed`, so the next hand-written branch fails
+> there rather than on a user's page.
+>
+> **WP-09 left a regression this found.** Once every type went through the
+> mapper, the mapper drew each layer's `mlabel()` itself — and the generated
+> app still ran its own "common mlabel block" over the top. Measured:
+> `line`, `connected`, `dot`, `dropline` and `tsline` carried TWO LabelSets
+> at the same coordinates when served; `lpoly`, `lpolyci`, `fpfit`,
+> `fpfitci` and `mband` carried one where the saved dashboard carries none.
+> The block is deleted, not narrowed. **This also corrects WP-09's closing
+> note**, which carried forward an inventory item reading "`mlabel()` draws
+> in the saved dashboard and not the served one". At WP-09's final commit
+> the served dashboard drew MORE labels than the saved one, not fewer.
+>
+> **The defects that were real, and what each cost.**
+>
+> * **D3 — per-plot qualifiers (TR-10.5).** `plot.get('if_expr')` appeared
+>   nowhere in the generated app. `dash.ado` promotes only a single
+>   segment's qualifier to the graph level, so in
+>   `dash (scatter mpg weight) (scatter mpg weight if foreign==1)` the
+>   second layer's `if` was discarded: ten points served where five are
+>   saved, no warning, nothing visibly wrong. A served KPI's own `if`/`in`
+>   was ignored at all three computation sites — the initial build and both
+>   recompute paths — so the card showed the unconditional number.
+> * **D6 — the silent failures (TR-10.7).** The served app had no
+>   equivalent of the saved renderer's empty-layer report. That is why every
+>   D2 divergence was silent.
+> * **D2 — hover (TR-10.4).** `HoverTool` was imported into the app and
+>   never instantiated: the only tooltips a served figure had were the two
+>   that `map_scatter` and `map_line` add for themselves. Bar, histogram,
+>   area, dropline, every fit and every range type had none, and `hover()`
+>   was ignored entirely. **The saved renderer had its own defect at the
+>   same spot**: it built a comprehensive tool but cleared the per-layer
+>   ones only when `hover()` was given, so a plain `dash scatter mpg weight`
+>   carried two HoverTools with identical tooltips — and
+>   `dash line mpg weight, hover(foreign)` carried NONE, because clearing
+>   them then failed to find a renderer whose source held `foreign`.
+> * **The legend, which the plan does not mention.** The served app keyed
+>   every layer with the y-variable name. A served `lfitci` read "mpg"
+>   twice where the saved one reads "95% CI" and "Fitted values" — there was
+>   no way to tell the band from the line. It also built a Legend model for
+>   `lowess`, `scatteri` and `pci` where the saved dashboard builds none.
+>   Both now run `_dash_legend_key` / `_dash_legend_entries`.
+> * **TR-10.8's remainder.** `layout(g1:0,0)` placed when saved and was
+>   discarded when served — one spec, two parsers, one of which rejected a
+>   zero index. A KPI's `fmt(%12.0fc)` was identical to `fmt(%12.0f)` when
+>   served, and a card with no `fmt()` showed a different number of digits.
+>   The legend used the scheme's tick-label size, 10pt, against the saved
+>   dashboard's text size, 11pt; those differ for 13 of the 14 shipped
+>   schemes. Under `layout(bs)` an item `tabs()` does not name was drawn
+>   ABOVE the tabs, where `dash.sthlp` says below and where the other two
+>   layouts put it.
+>
+> **Every fix is one implementation, not two.** Eleven module-level helpers
+> are now copied into the generated app and called by the saved renderer as
+> well: `_dash_qualified_frame`, `_validate_if_expr` (which replaces the
+> app's own `_safe_g` whitelist), `_dash_layer_drew_anything`,
+> `_dash_report_empty_layer`, `_dash_build_hover`, `_dash_hover_row`,
+> `_dash_legend_key`, `_dash_legend_entries`, `_dash_placement_map`,
+> `_dash_effective_kpi_fmt` and `_dash_format_kpi_value`. `GlyphMapper`
+> gained `_carry_cols` and `_masked_index` so `map_bar`, `map_spike`,
+> `map_dropline` and `map_rcap` carry the caller's other columns through
+> their derived sources — which is what lets `hover()` reach them, in both
+> modes.
+>
+> **AC-10.1 through AC-10.5 are met.** `test/test_server_layer_defects.py`
+> holds 378 cases: 306 comparing the two modes, most parametrised over all
+> 38 plot types, and 72 exercising the shared helpers directly, so a failure
+> says which helper rather than which plot type.
+>
+> Two existing tests asserted the defects rather than the behaviour, and
+> were corrected with the reason recorded in place:
+> `test_server_legend.py::test_the_labels_name_the_series` required every
+> legend key to contain "mpg" — true only while the app keyed all 38 types
+> with the y variable, which is the very thing that file's opening
+> paragraph calls "no way to tell the fit from the points"; and
+> `test_varlist_expansion.py`'s golden hash for the saved dashboard moved,
+> because the duplicate HoverTool is gone. That second change was diffed
+> token by token against HEAD before re-baselining: the whole normalised
+> difference is one `HoverTool` object and its id in the figure's tools
+> list, and nothing else.
+>
+> **Found and NOT fixed here, because it is a feature and not a divergence
+> in this package's sense:** the generated server app has no date handling
+> at all. `_load_spec_and_data` coerces every non-string column with
+> `pd.to_numeric`, so a `%td` variable is served as a raw Stata day number
+> on a linear axis where the saved dashboard draws a `DatetimeAxis` and
+> formats the tooltip as a date. Measured on a four-row `%td` fixture. It is
+> in no GAPS.md entry; `REMAINING.md` has it under "08-04 ... Remaining,
+> item 1", whose companion complaint — `numeric_formats 0` — WP-10 DID
+> close: the dataset's numeric display formats are resolved into the app as
+> `_NUM_FORMATS` and the served tooltip uses them. The date half is
+> recorded in `BUGS.md` and belongs to a package of its own.
+>
+> **One behaviour change outside the server:** routing
+> `_apply_graph_filter` through the shared reader means the saved renderer
+> now accepts Stata's `~=` in a qualifier, which the served one always did.
+>
 > **User story.** As a user of `dash serve`, I want the served dashboard to be
 > the dashboard I would have got from `dash build`.
 
