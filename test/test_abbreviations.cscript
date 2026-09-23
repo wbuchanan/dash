@@ -631,7 +631,7 @@ local rc_nam = _rc
 capture {
     assert `rc_nam' == 0
     assert "${dash_kpi_zqk1}" == "1"
-    assert "${dash_kpi_zqk1_stat}" == "mean"
+    assert "${dash_kpi_zqk1__sta}" == "mean"
 }
 if _rc {
     display as error "A8 FAIL: -dash kpi mean(mpg), ti() nam(zqk1)- rc=`rc_nam'; " ///
@@ -646,11 +646,11 @@ capture noisily dash kpi mean(mpg), title(Average) name(zqk2) upd(both)
 local rc_upd = _rc
 capture {
     assert `rc_upd' == 0
-    assert "${dash_kpi_zqk2_upd}" == "both"
+    assert "${dash_kpi_zqk2__upd}" == "both"
 }
 if _rc {
     display as error "A8 FAIL: -dash kpi ..., upd(both)- rc=`rc_upd', " ///
-        "update recorded as '${dash_kpi_zqk2_upd}'; dash.sthlp:66 documents " ///
+        "update recorded as '${dash_kpi_zqk2__upd}'; dash.sthlp:66 documents " ///
         "upd(), dash.ado:1070 declares UPDATE() in full capitals."
     local nfail = `nfail' + 1
     local faillist `"`faillist' A8(upd)"'
@@ -664,9 +664,9 @@ capture noisily dash kpi mean(mpg), title(Average) name(zqk3) ///
 local rc_kfull = _rc
 capture {
     assert `rc_kfull' == 0
-    assert "${dash_kpi_zqk3_upd}" == "brush"
-    assert "${dash_kpi_zqk3_fmt}" == "%9.2f"
-    assert "${dash_kpi_zqk3_sub}" == "sub"
+    assert "${dash_kpi_zqk3__upd}" == "brush"
+    assert "${dash_kpi_zqk3__fmt}" == "%9.2f"
+    assert "${dash_kpi_zqk3__sub}" == "sub"
 }
 if _rc {
     display as error "A8 FAIL (guard): the full KPI option names regressed, rc=`rc_kfull'."

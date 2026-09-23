@@ -24,7 +24,8 @@
 *!
 *! Writing this test found a second defect in the same check.  It allowed 32
 *! characters, but the name becomes part of Stata globals -- dash_json_<name>,
-*! dash_spec_<name>, dash_kpi_<name>_stat -- and a global's name is at most 32
+*! dash_spec_<name>, and a KPI's field globals, then dash_kpi_<name>_stat and
+*! since 23sep2026 dash_kpi_<name>__sta -- and a global's name is at most 32
 *! characters.  A 23-character graph name passed the check and then failed on
 *! the global with Stata's bare "dash_spec_<name> invalid name".  The limits
 *! are now what the globals allow: 22 for a graph, 18 for a KPI.
@@ -95,7 +96,8 @@ display "CV-03 PASS: a KPI name is accepted under version 16"
 // CV-04..05 — the length limits are what Stata's globals allow
 // ================================================================
 // A graph's globals are dash_json_<name> and dash_spec_<name>: 22 characters
-// fit.  A KPI's longest is dash_kpi_<name>_stat: 18 fit.
+// fit.  A KPI's longest are its fields, dash_kpi_<name>__<field> with a
+// field of three letters, such as dash_kpi_<name>__sta: 18 fit.
 local g22 "g234567890123456789012"
 local g23 "g2345678901234567890123"
 local k18 "k23456789012345678"
@@ -123,7 +125,8 @@ display "CV-04 PASS: a 22-character graph name registers, 23 is refused"
 
 capture noisily dash kpi mean(mpg), name(`k18') title("eighteen")
 assert _rc == 0
-assert "${dash_kpi_`k18'_stat}" == "mean"
+assert "${dash_kpi_`k18'__sta}" == "mean"
+assert strlen("dash_kpi_`k18'__sta") == 32
 tempfile lg5
 quietly log using "`lg5'", replace text name(_cvlog)
 capture noisily dash kpi mean(mpg), name(`k19') title("x")

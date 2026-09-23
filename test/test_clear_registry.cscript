@@ -26,6 +26,12 @@
 *!     left the qualifier in place and the second, UNQUALIFIED KPI displayed
 *!     the conditional mean.  A stale qualifier is worse than a stale label:
 *!     the number is wrong and looks plausible.
+*!
+*! A KPI's fields were then dash_kpi_<name>_<field>.  Since 23sep2026 they
+*! are dash_kpi_<name>__<field> -- __sta, __var, __val, __dsp, __fmt, __tit,
+*! __sub, __col, __bg, __upd, __if, __in -- so that no other name reaches
+*! them (test_registry_collision.cscript REG-17..27); the checks below use
+*! those names.
 
 cscript "dash clear registry" adodir ".."
 
@@ -42,13 +48,15 @@ dash kpi mean(mpg), name(k1) title("Mean")
 dash clear
 
 foreach g in g1 k1 {
-    foreach suffix in "" _stat _var _val _disp _fmt _tit _sub _col _bg _upd {
+    foreach suffix in "" __sta __var __val __dsp __fmt __tit __sub __col __bg __upd __if __in {
         assert "${dash_spec_`g'}"      == ""
         assert "${dash_json_`g'}"      == ""
         assert "${dash_opts_`g'}"      == ""
         assert "${dash_kpi_`g'`suffix'}" == ""
     }
 }
+local clr01 : all globals "dash_kpi_*"
+assert "`clr01'" == ""
 assert "${dash_graph_registry}" == ""
 display "CLR-01 PASS: the enumerated per-graph globals are dropped"
 
@@ -56,11 +64,12 @@ display "CLR-01 PASS: the enumerated per-graph globals are dropped"
 // CLR-02 — a KPI's own if/in qualifier is dropped too
 // ----------------------------------------------------------------
 // These two globals are newer than the enumerated list and were not in it.
-dash kpi mean(mpg) if foreign==1, name(k2) title("Foreign")
-assert "${dash_kpi_k2_if}" != ""
+dash kpi mean(mpg) if foreign==1 in 1/70, name(k2) title("Foreign")
+assert "${dash_kpi_k2__if}" != ""
+assert "${dash_kpi_k2__in}" != ""
 dash clear
-assert "${dash_kpi_k2_if}" == ""
-assert "${dash_kpi_k2_in}" == ""
+assert "${dash_kpi_k2__if}" == ""
+assert "${dash_kpi_k2__in}" == ""
 display "CLR-02 PASS: a KPI's if/in qualifier does not survive dash clear"
 
 // ----------------------------------------------------------------
@@ -76,8 +85,8 @@ assert reldif(`conditional', `unconditional') > 0.01
 dash kpi mean(mpg) if foreign==1, name(k3) title("First")
 dash clear
 dash kpi mean(mpg), name(k3) title("Second")
-assert "${dash_kpi_k3_if}" == ""
-assert reldif(real("${dash_kpi_k3_val}"), `unconditional') < 1e-6
+assert "${dash_kpi_k3__if}" == ""
+assert reldif(real("${dash_kpi_k3__val}"), `unconditional') < 1e-6
 display "CLR-03 PASS: an unqualified KPI is unqualified after a clear"
 dash clear
 
@@ -89,11 +98,11 @@ dash clear
 // to catch and never did, because dash's globals carry no leading
 // underscore.
 global dash_json_orphan "{}"
-global dash_kpi_orphan_stat "mean"
+global dash_kpi_orphan__sta "mean"
 dash scatter mpg weight, name(g9)
 dash clear
-assert "${dash_json_orphan}"     == ""
-assert "${dash_kpi_orphan_stat}" == ""
+assert "${dash_json_orphan}"      == ""
+assert "${dash_kpi_orphan__sta}" == ""
 display "CLR-04 PASS: globals orphaned from the registry are swept"
 
 // ----------------------------------------------------------------

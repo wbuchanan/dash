@@ -51,6 +51,14 @@
 *!       Extract a JSON string field value by key, correctly handling \"
 *!       escape sequences inside the value.  Used by _dash_render_immediate.
 *!
+*!   _dash_item_globals(name, out_macro)
+*!       The globals one registry item owns that Stata holds, by exact name:
+*!       dash_json_<name>, dash_spec_<name>, dash_kpi_<name> and
+*!       dash_kpi_<name>__<field> for each of _dash_kpi_fields().
+*!
+*!   _dash_kpi_fields()
+*!       The fields a KPI keeps in dash_kpi_<name>__<field>.
+*!
 *! Version: 2.0  27mar2026
 
 // ============================================================
@@ -1587,6 +1595,94 @@ string scalar _dash_option_names_scan(string scalar raw,
     return(strtrim(out))
 }
 
+// ============================================================
+// _dash_kpi_fields -- the fields a KPI keeps, one global each
+// ============================================================
+//
+// A KPI is a marker global, dash_kpi_<name> = "1", and one global per
+// field, dash_kpi_<name>__<field>, for these fields: its statistic,
+// variable, value, displayed value, fmt(), title(), subtitle(), color(),
+// bgcolor(), update(), and its own if and in.  dash.ado's _dash_kpi writes
+// them, _dash_prepare_spec reads them and _dash_item_globals retires them;
+// test_registry_collision.cscript (REG-25) holds the writer to this list.
+//
+// The separator is two underscores because no registered name may hold
+// two underscores in a row -- _dash_register_graph and _dash_kpi refuse
+// one -- so the field globals of KPI a, dash_kpi_a__sta and the rest, are
+// no other name's marker or field.  With one underscore they were: a graph
+// or a KPI named a_stat took KPI a's statistic (measured 23sep2026 at
+// 9f48cf7; see _dash_item_globals).
+//
+// A field is one to three lower-case letters and never begins with an
+// underscore.  A global's name is at most 32 characters: dash_kpi_ (9), an
+// 18-character name (the longest _dash_kpi accepts), __ (2) and three
+// letters make 32.
+//
+string rowvector _dash_kpi_fields()
+{
+    return(("sta", "var", "val", "dsp", "fmt", "tit", "sub", "col",
+            "bg", "upd", "if", "in"))
+}
+
+
+// ============================================================
+// _dash_item_globals — every global belonging to one registry item
+// ============================================================
+//
+// Graphs and KPIs share one registry and one namespace, and replacing an
+// item of one kind with the other has to take the loser's globals with it --
+// a name left carrying both a `dash_json_' and a `dash_kpi_' marker is drawn
+// as the KPI, so the graph the user just registered would vanish.
+//
+// An item's globals are these EXACT names and no others: a graph's
+// dash_json_<name> and dash_spec_<name>, and a KPI's marker dash_kpi_<name>
+// and its fields dash_kpi_<name>__<field> (_dash_kpi_fields).  Only the
+// ones Stata holds are returned; an empty field is no global at all.
+//
+// No prefix is safe.  `macro drop dash_kpi_g1*' also takes g10's globals,
+// and g1 and g10 may be registered at once.  This matched dash_kpi_<name>_*
+// while a KPI's fields were dash_kpi_<name>_stat, ..., and those were other
+// names' globals too: measured 23sep2026 at 9f48cf7, replacing KPI a
+// deleted all seven of KPI a_b's globals while the registry still named
+// a_b, so the next dash build drew no AB card -- and died with r(7102) on a
+// spec whose graphs began "[, {" once a graph was registered after a_b.  A
+// prefix on the separator, dash_kpi_<name>__*, is no better: KPI a_'s
+// fields, dash_kpi_a___sta and the rest, begin dash_kpi_a__.
+//
+// The names are compared as strings against what Stata holds, never read
+// with st_global(): a name one character past a limit builds a global name
+// of 33 characters, and st_global() refuses one with r(3300) (measured
+// 23sep2026) -- test_caller_version.cscript asks this about such names.
+//
+// Returns the names, space separated, in out_macro.
+//
+void _dash_item_globals(string scalar nm, string scalar out_macro)
+{
+    string colvector all
+    string rowvector own, fld
+    string scalar    hit
+    real scalar      i, j
+
+    fld = _dash_kpi_fields()
+    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_kpi_" + nm)
+    for (j = 1; j <= length(fld); j++) {
+        own = own, "dash_kpi_" + nm + "__" + fld[j]
+    }
+
+    hit = ""
+    all = st_dir("global", "macro", "dash_*")
+    for (i = 1; i <= length(all); i++) {
+        for (j = 1; j <= length(own); j++) {
+            if (all[i] == own[j]) {
+                hit = hit + " " + all[i]
+                break
+            }
+        }
+    }
+    st_local(out_macro, strtrim(hit))
+}
+
+
 // Reduce raw option text to bare option names, walking with paren depth
 // so an option's multi-word argument is consumed with its key.
 //
@@ -1599,47 +1695,6 @@ string scalar _dash_option_names_scan(string scalar raw,
 // When the quote-aware pass ends mid-quote the input cannot be honestly
 // quoted, so a second pass reads '"' as an ordinary character.  That
 // recovers the remaining option names instead of dropping them.
-// ============================================================
-// _dash_item_globals — every global belonging to one registry item
-// ============================================================
-//
-// Graphs and KPIs share one registry and one namespace, and replacing an
-// item of one kind with the other has to take the loser's globals with it --
-// a name left carrying both a `dash_json_' and a `dash_kpi_' is skipped at
-// build time, so the graph the user just registered would vanish.
-//
-// The match has to be EXACT rather than a prefix sweep.  `macro drop
-// dash_kpi_g1*' also matches dash_kpi_g10 and every one of its suffixes, and
-// the name grammar -- [a-zA-Z_][a-zA-Z0-9_]{0,31} -- lets g1 and g10 be
-// registered at the same time.  Enumerating the suffixes instead would go
-// stale the moment one is added, which is the failure `_dash_clear' records
-// in its own comment.  Asking Stata what it actually holds has neither
-// problem.
-//
-// Returns the matching global names, space separated, in out_macro.
-//
-void _dash_item_globals(string scalar nm, string scalar out_macro)
-{
-    string colvector all
-    string scalar    hit, kpi_prefix
-    real scalar      i
-
-    hit        = ""
-    kpi_prefix = "dash_kpi_" + nm + "_"
-    all        = st_dir("global", "macro", "dash_*")
-
-    for (i = 1; i <= length(all); i++) {
-        if (all[i] == "dash_json_" + nm |
-            all[i] == "dash_spec_" + nm |
-            all[i] == "dash_kpi_"  + nm |
-            substr(all[i], 1, strlen(kpi_prefix)) == kpi_prefix) {
-            hit = hit + " " + all[i]
-        }
-    }
-    st_local(out_macro, strtrim(hit))
-}
-
-
 void _dash_option_names(string scalar in_macro, string scalar out_macro)
 {
     string scalar raw, out

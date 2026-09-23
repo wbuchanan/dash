@@ -166,7 +166,7 @@
 *!                                    rc 198 naming mlabel(), "time-series"
 *!   OV-125 a graph and a KPI k registered, then
 *!          kpi name(k, replace) fmt(bogus)   rc 198 naming fmt(), the old
-*!          KPI's globals dash_kpi_k and dash_kpi_k_fmt intact, the registry
+*!          KPI's globals dash_kpi_k and dash_kpi_k__fmt intact, the registry
 *!          still listing k once; kpi name(k, replace) update(bogus) rc 198
 *!          likewise; then `dash build, saving() replace' rc 0 and the file
 *!          exists (A2: the replace used to drop the old KPI BEFORE the
@@ -691,7 +691,7 @@ log close _ovlog
 _ov_assert OV-125 "(`_ov_rc' == 198)" "name(ov125k, replace) fmt(bogus): rc `_ov_rc' (expected 198)"
 _ov_said OV-125m "fmt()"
 _ov_assert OV-125a `"("${dash_kpi_ov125k}" == "1")"' `"the old KPI's marker global survives (dash_kpi_ov125k = [${dash_kpi_ov125k}])"'
-_ov_assert OV-125b `"("${dash_kpi_ov125k_fmt}" == "%9.2f")"' `"the old KPI's fmt global survives (dash_kpi_ov125k_fmt = [${dash_kpi_ov125k_fmt}])"'
+_ov_assert OV-125b `"("${dash_kpi_ov125k__fmt}" == "%9.2f")"' `"the old KPI's fmt global survives (dash_kpi_ov125k__fmt = [${dash_kpi_ov125k__fmt}])"'
 local _ov_nk  = 0
 local _ov_reg "${dash_graph_registry}"
 foreach _r of local _ov_reg {
@@ -700,7 +700,7 @@ foreach _r of local _ov_reg {
 _ov_assert OV-125c "(`_ov_nk' == 1)" "the registry lists ov125k once (registry = [${dash_graph_registry}])"
 capture noisily dash kpi mean(mpg), title(T) name(ov125k, replace) update(bogus)
 local _ov_rc = _rc
-_ov_assert OV-125u `"(`_ov_rc' == 198 & "${dash_kpi_ov125k_fmt}" == "%9.2f")"' "name(ov125k, replace) update(bogus): rc `_ov_rc' (expected 198), fmt global = [${dash_kpi_ov125k_fmt}]"
+_ov_assert OV-125u `"(`_ov_rc' == 198 & "${dash_kpi_ov125k__fmt}" == "%9.2f")"' "name(ov125k, replace) update(bogus): rc `_ov_rc' (expected 198), fmt global = [${dash_kpi_ov125k__fmt}]"
 tempfile _ov_tf
 local _ov_html "`_ov_tf'.html"
 capture erase "`_ov_html'"

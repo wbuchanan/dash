@@ -3077,13 +3077,16 @@ end
 // Graphs and KPIs share one registry and one namespace, so replacing an
 // item of one kind with the other has to take the loser's globals with it.
 // A name left carrying both a `dash_json_' and a `dash_kpi_' marker is
-// skipped at build time -- _dash_prepare_spec's graph loop passes over any
+// drawn as the KPI -- _dash_prepare_spec's graph loop passes over any
 // entry with a KPI marker -- so the item the user just registered would
-// vanish from the dashboard without a word.
+// vanish from the dashboard.
 //
-// The names are resolved in Mata against what Stata actually holds, because
-// `macro drop dash_kpi_g1*' would also take g10's, and g1 and g10 can both
-// be registered at once.  See _dash_item_globals in dash_parse.mata.
+// Only the item's own globals, by EXACT name: dash_json_<name> and
+// dash_spec_<name>, the marker dash_kpi_<name> and the fields
+// dash_kpi_<name>__<field>.  `macro drop dash_kpi_g1*' would also take
+// g10's, and a prefix took other names' globals: replacing KPI a deleted
+// KPI a_b's (measured 23sep2026 at 9f48cf7).  See _dash_item_globals and
+// _dash_kpi_fields in dash_parse.mata.
 // ================================================================
 program define _dash_drop_item
     version 16.0
@@ -3585,8 +3588,9 @@ program define _dash_kpi
     local name `"`_nm'"'
 
     // The graph registrar's rule, without bounded repetition (see there).
-    // A KPI's longest global is dash_kpi_<name>_stat, 14 characters around
-    // the name, so its limit is 18.
+    // A KPI's longest globals are its fields, dash_kpi_<name>__<field> with
+    // a field of three letters (_dash_kpi_fields in dash_parse.mata): 14
+    // characters around the name, so its limit is 18.
     if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]*$") | strlen("`name'") > 18 {
         // Echoed as text, as the graph registrar does (see there).
         mata: st_local("_name_safe", ustrregexra(usubstr( ///
@@ -3709,25 +3713,34 @@ program define _dash_kpi
     // Store each KPI field in its own global so multi-word titles/subtitles
     // are preserved.  A marker global (value "1") allows the registry to
     // detect that this name is a KPI rather than a graph.
+    //
+    // The fields are dash_kpi_<name>__<field>, two underscores, and are the
+    // fields _dash_kpi_fields() in dash_parse.mata lists -- the list
+    // _dash_item_globals retires.  With one underscore, dash_kpi_a_stat,
+    // KPI a's statistic was the marker of any item named a_stat: measured
+    // 23sep2026 at 9f48cf7, a graph a_stat beside KPI a was drawn as a
+    // blank KPI card and no figure, and a KPI a_stat set KPI a's statistic
+    // to "1".  No name may hold two underscores in a row (above), so no
+    // name reaches these.
     global dash_kpi_`name'       "1"
-    global dash_kpi_`name'_stat  "`stat'"
-    global dash_kpi_`name'_var   "`kpi_var'"
-    global dash_kpi_`name'_val   "`kpi_value'"
-    global dash_kpi_`name'_disp  "`kpi_display'"
-    global dash_kpi_`name'_fmt   "`fmt'"
-    global dash_kpi_`name'_tit   "`title'"
-    global dash_kpi_`name'_sub   "`subtitle'"
-    global dash_kpi_`name'_col   "`color'"
-    global dash_kpi_`name'_bg    "`bgcolor'"
-    global dash_kpi_`name'_upd   "`update'"
+    global dash_kpi_`name'__sta  "`stat'"
+    global dash_kpi_`name'__var  "`kpi_var'"
+    global dash_kpi_`name'__val  "`kpi_value'"
+    global dash_kpi_`name'__dsp  "`kpi_display'"
+    global dash_kpi_`name'__fmt  "`fmt'"
+    global dash_kpi_`name'__tit  "`title'"
+    global dash_kpi_`name'__sub  "`subtitle'"
+    global dash_kpi_`name'__col  "`color'"
+    global dash_kpi_`name'__bg   "`bgcolor'"
+    global dash_kpi_`name'__upd  "`update'"
     // The KPI's own if/in.  Stata computes the right value above and
     // stores it, but the renderer recomputes from the full frame, so
     // without these `dash kpi mean(mpg) if foreign==1` displayed the
     // UNCONDITIONAL mean.
     local _kif = strtrim(regexr(`"`if'"', "^[ ]*if[ ]+", ""))
     local _kin = strtrim(regexr(`"`in'"', "^[ ]*in[ ]+", ""))
-    global dash_kpi_`name'_if    `"`_kif'"'
-    global dash_kpi_`name'_in    `"`_kin'"'
+    global dash_kpi_`name'__if   `"`_kif'"'
+    global dash_kpi_`name'__in   `"`_kin'"'
 
     local registry = "${dash_graph_registry}"
     local already  = 0
@@ -4030,13 +4043,35 @@ program define _dash_prepare_spec, rclass
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
 
-        if "${dash_kpi_`gname'}" != "" {
-            local kpi_var = "${dash_kpi_`gname'_var}"
+        // A KPI is exactly its marker: the global dash_kpi_<name> holding
+        // "1", the one global _dash_kpi writes under that name -- here and
+        // in the two loops that assemble the spec.  No other item's global
+        // has that name: a KPI's fields are dash_kpi_<name>__<field>, and
+        // no name holds two underscores in a row.  While they were
+        // dash_kpi_<name>_stat, ..., a graph a_stat beside KPI a found KPI
+        // a's statistic here, "mean", and was drawn as a blank KPI card
+        // (measured 23sep2026 at 9f48cf7).
+        if "${dash_kpi_`gname'}" == "1" {
+            // _dash_kpi always stores a statistic and a variable.  A KPI
+            // without them was not registered by this dash -- its marker
+            // set by hand, or a KPI an older dash left in the session under
+            // the one-underscore names, which are no longer read -- and it
+            // was drawn as a blank card, in silence.  Measured by length,
+            // so a hand-set value is never expanded.
+            local _ksl : strlen global dash_kpi_`gname'__sta
+            local _kvl : strlen global dash_kpi_`gname'__var
+            if `_ksl' == 0 | `_kvl' == 0 {
+                mata: _dash_say("err", "`cmdname': registry entry '", ///
+                    st_local("gname"), "' holds a KPI with no statistic " + ///
+                    "or variable. Run dash clear and register it again.")
+                exit(198)
+            }
+            local kpi_var = "${dash_kpi_`gname'__var}"
             if !`: list kpi_var in all_vars' local all_vars "`all_vars' `kpi_var'"
             // A KPI qualifier may name variables that appear nowhere else
             // (dash kpi mean(mpg) if foreign==1 needs foreign serialised, or
             // the renderer cannot reproduce the conditional value).
-            local _kifx = "${dash_kpi_`gname'_if}"
+            local _kifx = "${dash_kpi_`gname'__if}"
             if `"`_kifx'"' != "" {
                 _dash_json_str `"`_kifx'"' _kifx_esc
                 local kqvars ""
@@ -4054,6 +4089,21 @@ program define _dash_prepare_spec, rclass
         // Use strlen to check if JSON global is set WITHOUT embedding JSON in a
         // double-quoted expression (which would break when JSON contains " chars)
         local _chk : strlen global dash_json_`gname'
+
+        // Neither a KPI nor a graph: the registry names an item dash does
+        // not hold.  No registrar leaves one -- each retires exactly the
+        // item it replaces -- but the registry is ordinary globals.  Such
+        // an entry went into the spec as an empty graph and the renderer
+        // died on the JSON: measured 23sep2026 at 9f48cf7, r(7102) and a
+        // Python JSONDecodeError on "[, {" or on a trailing comma.  Refused
+        // here, by name, before anything is exported; the name is echoed
+        // as text, since a hand-set registry may hold anything.
+        if `_chk' == 0 {
+            mata: _dash_say("err", "`cmdname': registry entry '", ///
+                st_local("gname"), "' holds neither a graph nor a KPI. " + ///
+                "Run dash clear and register it again.")
+            exit(198)
+        }
         if `_chk' > 0 {
             local gvars ""
             mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
@@ -4193,7 +4243,7 @@ program define _dash_prepare_spec, rclass
 
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
-        if "${dash_kpi_`gname'}" != "" {
+        if "${dash_kpi_`gname'}" == "1" {
             // An entry should never hold a graph AND a KPI: both registrars
             // retire whatever held the name before.  If one does, this loop
             // would drop the graph from the dashboard in silence, which is
@@ -4220,22 +4270,23 @@ program define _dash_prepare_spec, rclass
     local n_kpis = 0
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
-        if "${dash_kpi_`gname'}" == "" continue
+        if "${dash_kpi_`gname'}" != "1" continue
 
         // Read each KPI field from its dedicated global (preserves multi-word values)
-        // then JSON-escape the string fields before insertion.
-        local kstat   = "${dash_kpi_`gname'_stat}"
-        local kvar    = "${dash_kpi_`gname'_var}"
-        local kval    = "${dash_kpi_`gname'_val}"
-        local kdisp   = "${dash_kpi_`gname'_disp}"
-        local kfmt    = "${dash_kpi_`gname'_fmt}"
-        _dash_json_str `"${dash_kpi_`gname'_tit}"' _ktitle_esc
-        _dash_json_str `"${dash_kpi_`gname'_sub}"' _ksub_esc
-        _dash_json_str `"${dash_kpi_`gname'_col}"' _kcol_esc
-        _dash_json_str `"${dash_kpi_`gname'_bg}"'  _kbg_esc
-        local kupdate = "${dash_kpi_`gname'_upd}"
-        _dash_json_str `"${dash_kpi_`gname'_if}"' _kif_esc
-        _dash_json_str `"${dash_kpi_`gname'_in}"' _kin_esc
+        // then JSON-escape the string fields before insertion.  The fields
+        // are dash_kpi_<name>__<field> (_dash_kpi_fields in dash_parse.mata).
+        local kstat   = "${dash_kpi_`gname'__sta}"
+        local kvar    = "${dash_kpi_`gname'__var}"
+        local kval    = "${dash_kpi_`gname'__val}"
+        local kdisp   = "${dash_kpi_`gname'__dsp}"
+        local kfmt    = "${dash_kpi_`gname'__fmt}"
+        _dash_json_str `"${dash_kpi_`gname'__tit}"' _ktitle_esc
+        _dash_json_str `"${dash_kpi_`gname'__sub}"' _ksub_esc
+        _dash_json_str `"${dash_kpi_`gname'__col}"' _kcol_esc
+        _dash_json_str `"${dash_kpi_`gname'__bg}"'  _kbg_esc
+        local kupdate = "${dash_kpi_`gname'__upd}"
+        _dash_json_str `"${dash_kpi_`gname'__if}"' _kif_esc
+        _dash_json_str `"${dash_kpi_`gname'__in}"' _kin_esc
         _dash_json_str `"`kdisp'"' _kdisp_esc
         _dash_json_str `"`kfmt'"'  _kfmt_esc
 

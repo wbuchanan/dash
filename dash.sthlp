@@ -166,15 +166,20 @@ This help file documents only the features that differ from or extend
 {phang2}    {ul:What a name may be.}  A name starts with a letter or an
     underscore and holds only letters, digits and underscores: at most 22
     characters for a graph and 18 for a KPI card.  {cmd:dash} keeps each
-    item in Stata globals whose names carry it ({cmd:$dash_json_}{it:name},
-    {cmd:$dash_kpi_}{it:name}{cmd:_stat}), and a global's name is at most
-    32 characters.  A name may not hold two underscores in a row:
-    {cmd:dash} names what it generates with them -- the panels of a
-    {cmd:by()} graph {cmd:g1} are {cmd:g1__by__0}, {cmd:g1__by__1}, ...
-    -- and a name of that form would take one of their places, so it is
-    refused with {cmd:r(198)}.  So is {cmd:_all}, the word
-    {cmd:link(_all)} uses for every graph.  The registry holds at most 100
-    items; see
+    item in Stata globals named after it: a graph in
+    {cmd:$dash_json_}{it:name} and {cmd:$dash_spec_}{it:name}, a KPI card
+    in {cmd:$dash_kpi_}{it:name} and in one global for each of its fields,
+    {cmd:$dash_kpi_}{it:name}{cmd:__}{it:field}, a field being at most three
+    letters (the card's statistic is {cmd:$dash_kpi_}{it:name}{cmd:__sta}).
+    A global's name is at most 32 characters, which is what sets the two
+    limits.  A name may not hold two underscores in a row: {cmd:dash}
+    names what it generates with them -- the panels of a {cmd:by()} graph
+    {cmd:g1} are {cmd:g1__by__0}, {cmd:g1__by__1}, ... -- and a name of
+    that form would take one of their places; they also separate a KPI
+    card's name from its fields, so that no name reaches the globals of
+    another item.  Such a name is refused with {cmd:r(198)}.  So is
+    {cmd:_all}, the word {cmd:link(_all)} uses for every graph.  The
+    registry holds at most 100 items; see
     {help dash##limits:Resource limits}.
 
 {phang2}    {ul:The registry lives in Stata globals.}  It is kept in

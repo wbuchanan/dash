@@ -227,11 +227,19 @@ SURFACES = {
             "test/test_keyword_names.py::TestLinkAll::test_a_graph_named_all_is_refused_in_both_modes",
             "test_adversarial.cscript:P20-33",
             "test_registry_collision.cscript:REG-17",
+            "test_registry_collision.cscript:REG-18",
+            "test_registry_collision.cscript:REG-20",
+            "test_registry_collision.cscript:REG-21",
+            "test_registry_collision.cscript:REG-23",
+            "test_registry_collision.cscript:REG-24",
+            "test_registry_collision.cscript:REG-25",
+            "test_registry_collision.cscript:REG-26",
         ],
         "injection": [
             "test_adversarial.cscript:P19-25",
             "test_adversarial.cscript:P19-26",
             "test_registry_collision.cscript:REG-17",
+            "test_registry_collision.cscript:REG-22",
             "test/test_reserved_names.py::TestAdversarialReservedNames::test_injection_a_refused_name_is_inert_text",
         ],
         "exhaustion": [
@@ -430,9 +438,11 @@ SURFACES = {
             "test/test_resource_limits.py::TestTheLimitsTable::test_the_ceiling_cannot_be_lifted_by_the_spec",
             _M + "TestHostileSpec::test_limits_written_in_other_digits_are_refused",
             _M + "TestHostileSpec::test_an_infinite_point_count_is_clamped_not_raised",
+            "test_registry_collision.cscript:REG-28",
         ],
         "injection": [
             _M + "TestHostileSpec::test_a_nul_inside_a_title_does_not_split_the_escaping",
+            "test_registry_collision.cscript:REG-27",
             "test/test_server_function_security.py::TestAKeywordArgumentCannotExecute::test_the_standalone_renderer_does_not_either",
             # A graph name reaching the save button's file name (WP-21).
             "test/test_toolbar.py::TestTheBootstrapPage::test_only_a_stata_name_reaches_the_page",

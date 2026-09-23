@@ -759,7 +759,7 @@ assert _rc == 0
 assert strpos("${dash_spec_g1}", "turn") > 0
 capture noisily dash kpi mean(price), name(k1, replace) title("Mean price")
 assert _rc == 0
-assert "${dash_kpi_k1_var}" == "price"
+assert "${dash_kpi_k1__var}" == "price"
 assert "${dash_graph_registry}" == "g1 g2 k1"
 display "P19-02 PASS: name(g1, replace) and a KPI replace succeed at the cap"
 
