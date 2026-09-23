@@ -225,10 +225,13 @@ SURFACES = {
             "test/test_reserved_names.py::TestAdversarialReservedNames::test_bypass_no_spelling_takes_a_panel_s_place",
             "test_registry_collision.cscript:REG-16",
             "test/test_keyword_names.py::TestLinkAll::test_a_graph_named_all_is_refused_in_both_modes",
+            "test_adversarial.cscript:P20-33",
+            "test_registry_collision.cscript:REG-17",
         ],
         "injection": [
             "test_adversarial.cscript:P19-25",
             "test_adversarial.cscript:P19-26",
+            "test_registry_collision.cscript:REG-17",
             "test/test_reserved_names.py::TestAdversarialReservedNames::test_injection_a_refused_name_is_inert_text",
         ],
         "exhaustion": [

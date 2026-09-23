@@ -1773,6 +1773,314 @@ capture erase "`p2032f'"
 capture dash clear
 display "P20-32 PASS: a graph or KPI name holding two underscores in a row is refused, and nothing is registered"
 
+// P20-33 -- name(g1, replace) stored the graph under the name "g1, replace".
+// Stata's name(string) captures the whole of "g1, replace".  _dash_plot
+// wrote that text into the graph's JSON as graph_options "name", and
+// _dash_register_graph then split ", replace" off and registered g1 -- so
+// the registry said g1 while the stored spec, which both renderers key
+// every item by, said "g1, replace".  Measured 23sep2026 at 9f48cf7, both
+// registrations rc 0 and the registry "g1": layout(g2:1,1 g1:1,2) warned
+// that g1 "is not a registered graph or KPI card" and drew it below g2;
+// layout(bs: g1=6 g2=6) drew it alone on a row at width 12 and saved its
+// PNG as "dashboard", not g1; tabs(A: g1)
+// built no tabs and tabs(A: g1 / B: g2) only tab B; link(g1 g2) left two
+// sources; exclude(g1) did not protect it; a plain build drew it after g2.
+// A by() graph did the same under panel keys "g1, replace__by__0", and so
+// did a replace naming a new name.  The stored name must be exactly the
+// registered one, in every spelling twoway allows around the comma (spaces
+// only: rep, REPLACE and a tab before replace are refused by twoway), and
+// the build is read back from each page's own Bokeh document: where the
+// graph is drawn, which tab holds it, which source it draws from, and
+// which sources the filter reaches.  Every verdict is collected before the
+// one assert, so a failing run names each check that failed.
+capture dash clear
+local p2033bad ""
+dash scatter mpg weight, name(g1) title("Old G1")
+dash scatter price weight, name(g1, replace) title("New G1")
+dash scatter mpg turn, name(g2) title("G2")
+assert "${dash_graph_registry}" == "g1 g2"
+mata: st_global("P2033_J_g1", st_global("dash_json_g1"))
+local p2033o_plain ""
+local p2033o_place "layout(g2:1,1 g1:1,2)"
+local p2033o_bs    "layout(bs: g1=6 g2=6)"
+local p2033o_tabs1 "tabs(A: g1)"
+local p2033o_tabs2 "tabs(A: g1 / B: g2)"
+local p2033o_link  "link(g1 g2)"
+local p2033o_excl  "filter(foreign, type(dropdown) exclude(g1))"
+local p2033o_byplace "layout(g2:1,1 g1:1,2)"
+local p2033o_byexcl  "filter(foreign, type(dropdown) exclude(g1))"
+foreach p2033c in plain place bs tabs1 tabs2 link excl byplace byexcl {
+    // The by() half: the same g1, replaced once more, now faceted.
+    if "`p2033c'" == "byplace" {
+        dash scatter price weight, by(foreign) name(g1, replace) title("New G1")
+        assert "${dash_graph_registry}" == "g1 g2"
+        mata: st_global("P2033_J_by", st_global("dash_json_g1"))
+    }
+    local p2033f "`c(tmpdir)'p2033_`p2033c'.html"
+    capture erase "`p2033f'"
+    _adv_p19_run `"dash build, saving("`p2033f'") replace nobrowser `p2033o_`p2033c''"'
+    local p2033rc = r(rc)
+    local p2033lg "`r(log)'"
+    if `p2033rc' != 0 local p2033bad "`p2033bad' `p2033c':rc=`p2033rc'"
+    capture confirm file "`p2033f'"
+    if _rc local p2033bad "`p2033bad' `p2033c':no-page"
+    cert_file_has "`p2033lg'", needle("is not a registered graph or KPI card")
+    if r(found) != 0 local p2033bad "`p2033bad' `p2033c':log-says-g1-is-not-registered"
+}
+// A replace naming a new name, the spellings twoway allows, the paren
+// forms (after the comma and inside a segment), and by() on a new name.
+foreach p2033s in "p2033n, replace" "p2033s1 ,replace" "p2033s2,replace" " p2033s3 ,  replace " "a_stat, replace" {
+    dash scatter mpg weight, name(`p2033s')
+}
+dash (scatter mpg weight) (line mpg weight), name(p2033p1, replace)
+dash (scatter mpg weight, name(p2033p2, replace)) (line mpg weight)
+dash scatter mpg weight, by(foreign) name(p2033nb, replace)
+assert "${dash_graph_registry}" == "g1 g2 p2033n p2033s1 p2033s2 p2033s3 a_stat p2033p1 p2033p2 p2033nb"
+foreach p2033n in p2033n p2033s1 p2033s2 p2033s3 a_stat p2033p1 p2033p2 p2033nb {
+    mata: st_global("P2033_J_" + "`p2033n'", st_global("dash_json_" + "`p2033n'"))
+}
+// Replace itself is unchanged: a spelled replace replaces in place, and a
+// bare reuse is still refused.
+_adv_p19_run "dash scatter price weight, name(p2033s1 , replace)"
+if r(rc) != 0 local p2033bad "`p2033bad' respelled-replace:rc=`r(rc)'"
+mata: st_global("P2033_J_s1again", st_global("dash_json_p2033s1"))
+_adv_p19_run "dash scatter price weight, name(g2)"
+local p2033rc = r(rc)
+local p2033lg "`r(log)'"
+if `p2033rc' != 198 local p2033bad "`p2033bad' bare-reuse:rc=`p2033rc'"
+cert_file_has "`p2033lg'", needle("dash: graph name 'g2' already exists. Use name(g2, replace) to overwrite.")
+if r(found) != 1 local p2033bad "`p2033bad' bare-reuse:message"
+if "${dash_graph_registry}" != "g1 g2 p2033n p2033s1 p2033s2 p2033s3 a_stat p2033p1 p2033p2 p2033nb" {
+    local p2033bad "`p2033bad' registry-changed"
+}
+global P2033_DIR "`c(tmpdir)'"
+global P2033_FAIL ""
+python:
+import html as _p2033_html
+import json as _p2033_json
+import os as _p2033_os
+import re as _p2033_re
+from sfi import Macro as _p2033_M
+
+def _p2033_load(fname):
+    # The page and its Bokeh document as an id -> model map.  file_html
+    # pages embed the document HTML-escaped in <script type=
+    # "application/json">; the layout(bs) page embeds components()'s
+    # docs_json, a JS string literal HTML-escaped with a single quote as
+    # &#x27; and every backslash doubled.  No backslash is written in this
+    # block: Stata reads a do-file's python lines for macros first, and a
+    # backslash can escape one.  chr(92) is the backslash.
+    with open(_p2033_os.path.join(_p2033_M.getGlobal("P2033_DIR"), fname), encoding="utf-8") as fh:
+        page = fh.read()
+    m = _p2033_re.search(r'<script type="application/json"[^>]*>(.*?)</script>', page, _p2033_re.S)
+    if m:
+        blob = _p2033_html.unescape(m.group(1))
+    else:
+        m = _p2033_re.search(r"const docs_json = '(.*?)';", page, _p2033_re.S)
+        blob = _p2033_html.unescape(m.group(1).replace(chr(92) * 2, chr(92)))
+    docs = _p2033_json.loads(blob)
+    objs = {}
+    stack = [docs]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    roots = []
+    for d in docs.values():
+        roots.extend(d.get("roots") or [])
+    return page, objs, roots
+
+def _p2033_ref(objs, v):
+    if isinstance(v, dict) and "id" in v:
+        return objs.get(v["id"], v)
+    return v
+
+def _p2033_kids(objs, node):
+    a = node.get("attributes", {})
+    out = []
+    for key in ("children", "tabs", "child"):
+        ch = a.get(key)
+        if ch is None:
+            continue
+        for c in (ch if isinstance(ch, list) else [ch]):
+            out.append(_p2033_ref(objs, c[0] if isinstance(c, list) else c))
+    return out
+
+def _p2033_title(objs, fig):
+    t = _p2033_ref(objs, fig.get("attributes", {}).get("title"))
+    return t.get("attributes", {}).get("text") if isinstance(t, dict) else None
+
+def _p2033_under(objs, node):
+    # The titles of every figure in node's subtree, sorted.
+    out = []
+    stack = [_p2033_ref(objs, node)]
+    while stack:
+        n = stack.pop()
+        if not isinstance(n, dict):
+            continue
+        if n.get("name") == "Figure":
+            out.append(str(_p2033_title(objs, n)))
+        stack.extend(_p2033_kids(objs, n))
+    return sorted(out)
+
+def _p2033_cells(objs, roots):
+    # {figure title: (row, col)} over the outermost GridPlot: a figure is
+    # keyed by the cell of that grid which holds it, so a by() graph's panels
+    # share their graph's cell.
+    queue = [_p2033_ref(objs, r) for r in roots]
+    while queue:
+        n = queue.pop(0)
+        if not isinstance(n, dict):
+            continue
+        if n.get("name") == "GridPlot":
+            out = {}
+            for c in n.get("attributes", {}).get("children", []):
+                for t in _p2033_under(objs, c[0]):
+                    out[t] = (c[1], c[2])
+            return out
+        queue.extend(_p2033_kids(objs, n))
+    return {}
+
+def _p2033_tabs(objs):
+    # [(tab title, figure titles)] for every tab of every Tabs model.
+    out = []
+    for o in objs.values():
+        if o.get("name") == "Tabs":
+            for p in o.get("attributes", {}).get("tabs", []):
+                p = _p2033_ref(objs, p)
+                out.append((p.get("attributes", {}).get("title"), _p2033_under(objs, p)))
+    return out
+
+def _p2033_srcs(objs, prefix):
+    # The data sources of every figure whose title begins with prefix.
+    out = set()
+    for o in objs.values():
+        if o.get("name") == "Figure" and str(_p2033_title(objs, o)).startswith(prefix):
+            for r in o.get("attributes", {}).get("renderers", []):
+                r = _p2033_ref(objs, r)
+                if r.get("name") == "GlyphRenderer":
+                    out.add(_p2033_ref(objs, r["attributes"]["data_source"])["id"])
+    return out
+
+def _p2033_filtered(objs):
+    # For each filter callback, the set of sources it filters.
+    out = []
+    for o in objs.values():
+        if o.get("name") == "CustomJS":
+            args = o.get("attributes", {}).get("args", {})
+            args = dict(args.get("entries", [])) if "entries" in args else args
+            if "all_graph_sources" in args:
+                out.append({_p2033_ref(objs, s)["id"] for s in args["all_graph_sources"]})
+    return out
+
+def _p2033_bs_rows(page, objs):
+    # The saved layout(bs) page's rows that hold an item: [[(title, span)]].
+    rows = []
+    span = None
+    for m in _p2033_re.finditer(r'class="db-row[^"]*"|class="([^"]*db-col-lg-([0-9]+)[^"]*)"|data-root-id="([^"]+)"', page):
+        if m.group(0).startswith('class="db-row'):
+            rows.append([])
+        elif m.group(2):
+            span = int(m.group(2))
+        elif rows:
+            rows[-1].append((" ".join(_p2033_under(objs, {"id": m.group(3)})), span))
+    return [r for r in rows if r]
+
+def _p2033_verdict(case, page, objs, roots):
+    # None when the page draws what its build asked for, else what it drew.
+    # g1 is the figure titled "New G1" -- by(foreign) makes it two panels,
+    # "New G1" then an em dash and the group -- and g2 the one titled "G2".
+    new, g2 = "New G1", "G2"
+    cells = _p2033_cells(objs, roots)
+    panels = sorted(t for t in cells if t.startswith(new))
+    if case == "plain":
+        want = {new: (0, 0), g2: (0, 1)}
+        return None if cells == want else "cells %r" % sorted(cells.items())
+    if case == "place":
+        want = {g2: (0, 0), new: (0, 1)}
+        return None if cells == want else "cells %r" % sorted(cells.items())
+    if case == "byplace":
+        ok = (len(panels) == 2 and len(cells) == 3 and cells.get(g2) == (0, 0)
+              and all(cells[t] == (0, 1) for t in panels))
+        return None if ok else "cells %r" % sorted(cells.items())
+    if case == "bs":
+        # An item layout(bs) embeds on its own saves its PNG under its
+        # stored name; "g1, replace" is not a Stata name, so it was saved
+        # as "dashboard".
+        rows = _p2033_bs_rows(page, objs)
+        saves = sorted(str(o.get("attributes", {}).get("filename")) for o in objs.values() if o.get("name") == "SaveTool")
+        ok = rows == [[(new, 6), (g2, 6)]] and saves == ["g1", "g2"]
+        return None if ok else "rows %r, PNG names %r" % (rows, saves)
+    if case in ("tabs1", "tabs2"):
+        want = [("A", [new])] + ([("B", [g2])] if case == "tabs2" else [])
+        tabs = _p2033_tabs(objs)
+        return None if tabs == want else "tabs %r" % tabs
+    s_new, s_g2 = _p2033_srcs(objs, new), _p2033_srcs(objs, g2)
+    if case == "link":
+        ok = len(s_new) > 0 and s_new == s_g2
+        return None if ok else "sources g1 %r g2 %r" % (sorted(s_new), sorted(s_g2))
+    if case in ("excl", "byexcl"):
+        fl = _p2033_filtered(objs)
+        ok = (len(fl) > 0 and len(s_new) > 0 and len(s_g2) > 0
+              and all(not (s_new & s) and s_g2 <= s for s in fl))
+        if case == "byexcl":
+            fig_new = [o for o in objs.values() if o.get("name") == "Figure" and str(_p2033_title(objs, o)).startswith(new)]
+            ok = ok and len(fig_new) == 2
+        return None if ok else "sources g1 %r g2 %r, filtered %r" % (sorted(s_new), sorted(s_g2), [sorted(s) for s in fl])
+    return "no check for %s" % case
+
+def _p2033_run():
+    bad = []
+    names = [("P2033_J_g1", "g1"), ("P2033_J_by", "g1"), ("P2033_J_p2033n", "p2033n"),
+             ("P2033_J_p2033s1", "p2033s1"), ("P2033_J_p2033s2", "p2033s2"),
+             ("P2033_J_p2033s3", "p2033s3"), ("P2033_J_a_stat", "a_stat"),
+             ("P2033_J_p2033p1", "p2033p1"), ("P2033_J_p2033p2", "p2033p2"),
+             ("P2033_J_p2033nb", "p2033nb"), ("P2033_J_s1again", "p2033s1")]
+    for key, want in names:
+        try:
+            got = _p2033_json.loads(_p2033_M.getGlobal(key))["graph_options"].get("name")
+        except Exception as e:
+            got = "unreadable (%s)" % type(e).__name__
+        if got != want:
+            bad.append("%s stores name %r, not %r" % (key, got, want))
+    try:
+        if _p2033_json.loads(_p2033_M.getGlobal("P2033_J_by"))["graph_options"].get("by") != "foreign":
+            bad.append("P2033_J_by is not the by(foreign) graph")
+        if '"yvar":"price"' not in _p2033_M.getGlobal("P2033_J_s1again"):
+            bad.append("the respelled replace did not replace p2033s1")
+    except Exception as e:
+        bad.append("stored spec unreadable (%s)" % type(e).__name__)
+    for case in ("plain", "place", "bs", "tabs1", "tabs2", "link", "excl", "byplace", "byexcl"):
+        try:
+            page, objs, roots = _p2033_load("p2033_%s.html" % case)
+            why = _p2033_verdict(case, page, objs, roots)
+        except Exception as e:
+            why = "unreadable (%s: %s)" % (type(e).__name__, e)
+        if why is not None:
+            bad.append("%s page: %s" % (case, why))
+    return bad
+
+_p2033_M.setGlobal("P2033_FAIL", " | ".join(_p2033_run()).replace("{", "(").replace("}", ")"))
+end
+mata: st_local("p2033pyn", strofreal(strlen(st_global("P2033_FAIL"))))
+if `p2033pyn' > 0 {
+    mata: printf("{err}P20-33 spec/page checks failed: %s\n", st_global("P2033_FAIL"))
+}
+if "`p2033bad'" != "" {
+    display as error "P20-33 build checks failed:`p2033bad'"
+}
+foreach p2033c in plain place bs tabs1 tabs2 link excl byplace byexcl {
+    capture erase "`c(tmpdir)'p2033_`p2033c'.html"
+}
+macro drop P2033_*
+capture dash clear
+assert "`p2033bad'" == "" & `p2033pyn' == 0
+display "P20-33 PASS: name(g1, replace) stores the graph as g1 -- with by(), on a new name, in every spelling -- and layout(), tabs(), link() and exclude() reach it"
+
 capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p19.log"
 
@@ -1819,3 +2127,4 @@ display "  P20-29: A scatteri coordinate and the .gph note → shown as text; th
 display "  P20-30: layout() not one of its forms whole, an unregistered name, a Bootstrap span outside 1..12 → rc=198"
 display "  P20-31: layout() placing a name twice (bs or name:row,col) → rc=198"
 display "  P20-32: A graph or KPI name holding __ (dash's own, as in g1__by__0) → rc=198"
+display "  P20-33: name(g1, replace) in any spelling, with by(), on a new name -> stored as g1, placed, tabbed, linked and excluded as g1"

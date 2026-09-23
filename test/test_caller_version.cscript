@@ -76,7 +76,11 @@ display "CV-01 PASS: name(g1) is accepted under version 16"
 capture noisily dash line mpg weight, name(g1, replace)
 assert _rc == 0
 assert "${dash_graph_registry}" == "g1"
-display "CV-02 PASS: name(g1, replace) is accepted under version 16"
+// And stored as g1, not "g1, replace": the split is a regexm(), which runs
+// the engine this caller's version selects (test_adversarial.cscript
+// P20-33 checks the same under the running version).
+assert strpos(`"${dash_json_g1}"', `""name":"g1""') > 0
+display "CV-02 PASS: name(g1, replace) is accepted under version 16, and the graph is stored as g1"
 
 // ================================================================
 // CV-03 — a KPI can be named under user version 16

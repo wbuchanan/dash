@@ -22,7 +22,7 @@
 *! The reverse direction was already safe: a graph cannot take a KPI's name,
 *! because _dash_register_graph looks at the registry and the KPI is in it.
 *!
-*! Tests: REG-01 through REG-15
+*! Tests: REG-01 through REG-17
 *!
 *! Usage:  do test/test_registry_collision.cscript
 *! Version: 1.0  21sep2026
@@ -279,6 +279,54 @@ assert `_reg_l' == 1
 capture noisily dash build, saving("`out4'.html") replace nobrowser link(_all)
 assert _rc == 0
 display "REG-16 PASS: _all is refused as a graph or KPI name, and link(_all) beside names is refused for what it is"
+
+// ================================================================
+// REG-17 -- the one rule that reads name()'s ", replace"
+// ================================================================
+// _dash_name_split turns name()'s text into the name and a replace flag.
+// _dash_plot writes that name into the stored graph and
+// _dash_register_graph registers it; they read name() separately before,
+// and the stored graph kept "g1, replace" as its name while the registry
+// said g1 (test_adversarial.cscript P20-33).  Spaces around the comma are
+// allowed, as twoway allows them; anything else after the comma stays in
+// the name for the name check to refuse, as twoway refuses rep, REPLACE,
+// replace x and a missing comma (measured 23sep2026).
+capture program list _dash_name_split
+if _rc != 0 {
+    display as error "REG-17 FAIL: _dash_name_split is not defined"
+    exit 9
+}
+capture program drop _reg_split
+program define _reg_split
+    args raw want_name want_flag
+    _dash_name_split `"`raw'"' _r17n _r17f
+    if `"`_r17n'"' != `"`want_name'"' | "`_r17f'" != "`want_flag'" {
+        mata: printf("{err}REG-17 FAIL: [%s] split as [%s] flag %s, not [%s] flag %s\n", ///
+            st_local("raw"), st_local("_r17n"), st_local("_r17f"), ///
+            st_local("want_name"), st_local("want_flag"))
+        exit 9
+    }
+end
+_reg_split "g1, replace"        "g1" 1
+_reg_split "g1,replace"         "g1" 1
+_reg_split "g1 ,replace"        "g1" 1
+_reg_split "g1 , replace"       "g1" 1
+_reg_split " g1 ,  replace "    "g1" 1
+_reg_split "a_stat, replace"    "a_stat" 1
+_reg_split "g1"                 "g1" 0
+_reg_split " g1 "               "g1" 0
+_reg_split ""                   "" 0
+_reg_split "g1, rep"            "g1, rep" 0
+_reg_split "g1, REPLACE"        "g1, REPLACE" 0
+_reg_split "g1, replace x"      "g1, replace x" 0
+_reg_split "g1 replace"         "g1 replace" 0
+_reg_split ", replace"          ", replace" 0
+_reg_split "a, b, replace"      "a, b, replace" 0
+// Hostile text is split, never run: the name check refuses it afterwards.
+_reg_split `"a"b, replace"'     `"a"b"' 1
+_reg_split "{bf:x}, replace"    "{bf:x}" 1
+capture program drop _reg_split
+display "REG-17 PASS: name()'s text splits into the name and a replace flag by one rule"
 
 capture program drop _reg_count
 

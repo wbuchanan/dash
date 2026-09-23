@@ -2930,6 +2930,19 @@ program define _dash_plot
         _dash_report_ignored `"`_dash_ignored_acc'"'
     }
 
+    // ---- The graph's name, as it will be registered ----
+    // name()'s text may end in ", replace", which tells the registry to
+    // overwrite; it is not part of the name.  The stored graph carries the
+    // name alone, split by the rule _dash_register_graph applies, because
+    // both renderers key every item by the stored name: written as
+    // "g1, replace" it matched nothing layout(), tabs(), link() or exclude()
+    // named (P20-33).  _dash_register_graph is still handed name()'s own
+    // text, below, and decides replace from it as it always has.
+    local _g_name_text `"`g_name'"'
+    if `"`g_name'"' != "" {
+        _dash_name_split `"`g_name'"' g_name _g_name_replace
+    }
+
     // ---- Assemble graph_options JSON ----
     // Build JSON from the accumulated g_* locals
     local gopts_json "{"
@@ -2978,7 +2991,10 @@ program define _dash_plot
     local graph_json `"{"plots":[`plots_json'],"graph_options":`gopts_json',"if_expr":"`_jif_top'","in_expr":"`_jin_top'"}"'
 
     // ---- Route: named or immediate ----
-    local graph_name `"`g_name'"'
+    // name()'s own text, ", replace" and all: _dash_register_graph splits
+    // it by the same rule and needs the sub-option to decide whether an
+    // existing name may be overwritten.
+    local graph_name `"`_g_name_text'"'
 
     if `"`graph_name'"' != "" {
         _dash_register_graph `"`graph_name'"' `"`0'"' `"`graph_json'"'
@@ -3080,6 +3096,51 @@ program define _dash_drop_item
 end
 
 
+// ================================================================
+// _dash_name_split  -- a graph's name() text as a name and a replace flag
+//
+// Usage:  _dash_name_split `"`raw'"' <name_macro> <flag_macro>
+// After:  <name_macro> holds the name; <flag_macro> is 1 when the text
+//         ended in ", replace", else 0.  Both are set in the caller.
+//
+// twoway's name(name[, replace]).  Stata's name(string) captures the whole
+// of "g1, replace", so the sub-option has to be split off before the text
+// is used as a name -- and every place that uses it must split it the same
+// way.  _dash_register_graph did, and registered g1; _dash_plot did not,
+// and wrote "g1, replace" into the stored graph as its name.  Both renderers
+// key every item by that stored name, so the registry said g1 while the
+// dashboard knew only "g1, replace" (measured 23sep2026 at 9f48cf7):
+// layout(g2:1,1 g1:1,2) warned that g1 was not registered and drew it
+// below g2, tabs(A: g1) built no tabs, link(g1 g2) left two sources,
+// exclude(g1) did not protect it, and a plain build drew it last.  Both
+// programs now read the name here (test_adversarial.cscript P20-33,
+// test_registry_collision.cscript REG-17).
+//
+// Spaces around the comma are allowed, as twoway allows them: name(g1
+// ,replace) and name( g1 , replace ) are g1 and a replace.  Anything else
+// after the comma -- rep, REPLACE, replace x -- is left in the name, where
+// the name check refuses it, as twoway refuses it.  The regex is the one
+// _dash_register_graph always used, unchanged.  regexm() follows the
+// CALLER's user version; the pattern has no bounded repetition, so both
+// engines read it, but below 18 the class [ \t] is a space, a backslash or
+// a t rather than a space or a tab (measured 23sep2026).  Spaces work under
+// both (test_caller_version.cscript CV-02).
+// ================================================================
+program define _dash_name_split
+    version 16.0
+    args raw name_macro flag_macro
+
+    local _nm = strtrim(`"`raw'"')
+    local _rep = 0
+    if regexm(`"`_nm'"', "^([^,]+)[ \t]*,[ \t]*replace[ \t]*$") {
+        local _nm = strtrim(regexs(1))
+        local _rep = 1
+    }
+    c_local `name_macro' `"`_nm'"'
+    c_local `flag_macro' `_rep'
+end
+
+
 program define _dash_register_graph
     version 16.0
     args name raw_spec json_spec
@@ -3088,13 +3149,9 @@ program define _dash_register_graph
     // name(string) captures the whole of "g1, replace", which then failed the
     // name regex below -- so name(g1, replace) was impossible, and the error
     // message further down told the user to type the very syntax that could
-    // not work.
-    local replace_flag = 0
-    local _nm = strtrim(`"`name'"')
-    if regexm(`"`_nm'"', "^([^,]+)[ \t]*,[ \t]*replace[ \t]*$") {
-        local _nm = strtrim(regexs(1))
-        local replace_flag = 1
-    }
+    // not work.  _dash_plot splits the stored graph's name by the same rule,
+    // so the name registered here is the name the stored JSON carries.
+    _dash_name_split `"`name'"' _nm replace_flag
     local name `"`_nm'"'
 
     // Validate name format.  No bounded repetition such as {0,31}: regexm()
