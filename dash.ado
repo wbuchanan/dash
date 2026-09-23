@@ -208,7 +208,8 @@ program define _dash_require_mata
     local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_is_digits _dash_item_globals _dash_json_get_str ///
-        _dash_layout_cells _dash_option_names _dash_say _dash_split_segs
+        _dash_layout_cells _dash_layout_refusal _dash_option_names ///
+        _dash_say _dash_split_segs
 
     // The common case, and the cheap one.
     quietly capture mata: mata describe _dash_check_utf8()
@@ -3777,7 +3778,23 @@ program define _dash_prepare_spec, rclass
         if !regexm(`"`layout'"', "^[1-9][0-9]* [1-9][0-9]*$") & ///
            !regexm(`"`layout'"', "^[a-zA-Z_][a-zA-Z0-9_]*:[0-9]+,[0-9]+") & ///
            !regexm(lower(`"`layout'"'), "^bs") {
-            display as error "`cmdname': layout() must be 'auto', 'N M' grid (N and M >= 1), 'name:row,col' placement, or 'bs[: spec]' Bootstrap layout."
+            display as error "`cmdname': layout() must be 'auto', 'N M' grid (N and M >= 1), 'name:row,col' placement, or 'bs[: name=span ...]' Bootstrap layout."
+            exit(198)
+        }
+
+        // The whole value, not only its start.  A placement or Bootstrap
+        // spec the renderer could not read, and a name the registry does
+        // not hold, were handed on and drawn some other way, in silence:
+        // measured at f2ecdd4, layout(p:1,1 junk) and layout(bs\) were
+        // drawn as auto, layout(nosuch:1,1) was a 3 x 1 grid saved and
+        // 1 x 2 served, and a Bootstrap span of 13 was clamped to 12
+        // (P20-30).  A name must be in the registry, as link() and
+        // exclude() require.  Read in Mata, by value; the refusal is
+        // echoed through _dash_say.
+        mata: st_local("_lref", _dash_layout_refusal(st_local("layout"), st_local("registry")))
+        local _lreflen : length local _lref
+        if `_lreflen' > 0 {
+            mata: _dash_say("err", "`cmdname': ", st_local("_lref"), "")
             exit(198)
         }
 

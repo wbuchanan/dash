@@ -478,13 +478,21 @@ in the dashboard grid.
     explicit placement.  Each registered item is placed at the specified
     {it:row},{it:col} position (1-indexed).  Example:
     {cmd:layout(s1:1,1 s2:1,2 k1:2,1)}.  The largest row times the largest
-    column is held to the same limit as a {it:rows} {it:cols} grid.
+    column is held to the same limit as a {it:rows} {it:cols} grid.  Every
+    name must be a registered graph or KPI card, as in {cmd:link()}.
 
 {phang2}{cmd:layout(bs}[{cmd::} {it:name}{cmd:=}{it:span} ...]{cmd:)} —
     a responsive Bootstrap-style 12-column grid, which reflows as the
     browser window narrows.  With no specification {cmd:dash} chooses the
     spans; otherwise each named item takes the given number of columns out
-    of 12.  Example: {cmd:layout(bs: k1=3 k2=3 s1=6)}.
+    of 12, and {cmd:/} starts a new row.  Each name must be registered, and
+    each {it:span} a whole number from 1 to 12; a name written without one
+    takes 6.  Example: {cmd:layout(bs: k1=3 k2=3 s1=6)}.
+
+{pstd}
+A {cmd:layout()} that is not one of these forms as a whole, that names an
+item the registry does not hold, or that gives a span outside 1 to 12 is
+refused with {cmd:r(198)}; nothing is drawn some other way in silence.
 
 
 {marker tabs}

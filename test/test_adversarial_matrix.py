@@ -285,11 +285,15 @@ SURFACES = {
             "test_adversarial.cscript:P4-85",
             "test/test_kpi_security.py::TestKpiColourIsSanitisedOnTheInitialRender::test_color_payload_does_not_reach_the_document",
             "test/test_server_kpi_card.py::TestTheCardLooksTheSameInBothModes::test_html_in_a_title_is_still_escaped",
+            "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_the_saved_card_and_its_rebuild",
+            "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_the_served_card_before_and_after_a_filter_moves",
+            "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_a_hostile_name_stays_inside_its_attribute",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P19-01",
             "test/test_resource_limits.py::TestTheGraphAndPlotLimits::test_graphs_and_kpis_past_the_limit_are_dropped_in_registry_order",
             _M + "TestNumericFormatBounds::test_a_hand_edited_kpi_format_is_bounded",
+            "test/test_kpi_security.py::TestAKpiFormatCannotBuildAHugeCard::test_both_modes_before_and_after_a_filter_moves",
         ],
     },
     # dash build: title(), subtitle(), layout(), link(), filter() (its
@@ -306,6 +310,10 @@ SURFACES = {
             "test_adversarial.cscript:P20-24",
             "test_filter_label.cscript:FL-06",
             _M + "TestLayoutGridBound::test_a_grid_only_int_can_read_is_no_grid",
+            _M + "TestALayoutThatCannotBeReadIsReported::test_an_unknown_placement_is_left_out_and_named",
+            _M + "TestALayoutThatCannotBeReadIsReported::test_a_bootstrap_spec_is_read_whole_or_said",
+            "test_adversarial.cscript:P20-30",
+            "test_echo_text.cscript:ECH-11",
         ],
         "injection": [
             "test_adversarial.cscript:P2-84",
@@ -1315,6 +1323,136 @@ class TestLayoutGridBound:
         assert saved.master_spec["build_options"]["layout"] == "auto"
         assert served.spec["build_options"]["layout"] == "auto"
         assert json.loads(served._spec_str)["build_options"]["layout"] == "auto"
+
+
+class TestALayoutThatCannotBeReadIsReported:
+    """layout() was accepted or dropped in silence.  Measured at f2ecdd4 in
+    both modes: layout(g1:1,1\\), layout(g1:1,1 junk), layout(3 4 5) and
+    layout(g1:1,1,g2:1,2) were drawn as layout(auto) with no word; a
+    placement naming no registered item made the modes disagree --
+    layout(nosuch:1,1) was a 3 x 1 grid, the two graphs stacked above an
+    empty cell, when saved and 1 x 2 when served; and layout(bs: ...)
+    dropped an unknown
+    name and clamped a span of 99 to 12 without saying so.  dash.ado now
+    refuses each of these (P20-30); for a spec that did not come through it,
+    ``_dash_cap_spec`` -- which both modes apply first -- reports each
+    problem once, draws an unreadable layout as auto, and leaves an unknown
+    placement out, so both modes draw the same grid."""
+
+    @staticmethod
+    def _capped(layout):
+        spec = _two_graph_spec(layout)
+        limits = dr._dash_limits(spec["build_options"])
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            out = dr._dash_cap_spec(spec, limits)
+        msgs = [str(x.message) for x in w if "layout(" in str(x.message)]
+        return out["build_options"]["layout"], msgs
+
+    @pytest.mark.parametrize("layout", [
+        "g1:1,1\\", "g1:1,1 junk", "3 4 5", "g1:1,1,g2:1,2", "2",
+        "g1:1,", "１ ２", "g1 : 1 , 1 ;"])
+    def test_an_unreadable_layout_is_drawn_as_auto_and_said(self, layout):
+        got, msgs = self._capped(layout)
+        assert got == "auto"
+        assert len(msgs) == 1, msgs
+        assert "drawn as layout(auto)" in msgs[0], msgs
+
+    @pytest.mark.parametrize("layout,kept,unknown", [
+        ("nosuch:1,1", "auto", "nosuch"),
+        ("g1:1,1 nosuch:2,2", "g1:1,1", "nosuch"),
+        ("g1:2,1 k9:1,1 g2:1,1", "g1:2,1 g2:1,1", "k9"),
+    ])
+    def test_an_unknown_placement_is_left_out_and_named(self, layout, kept,
+                                                        unknown):
+        got, msgs = self._capped(layout)
+        assert got == kept
+        assert len(msgs) == 1 and unknown in msgs[0], msgs
+        assert "not a registered graph or KPI card" in msgs[0], msgs
+
+    @pytest.mark.parametrize("layout,needle", [
+        ("bs: g1=6 nosuch=6", "nosuch"),
+        ("bs: g1=99 g2=6", "99"),
+        ("bs: g1=x g2=6", "'x'"),
+        ("bs: g1= g2=6", "g1="),
+        ("bs\\", "drawn as layout(bs)"),
+        ("bsx", "drawn as layout(bs)"),
+        ("bs:", "drawn as layout(bs)"),
+    ])
+    def test_a_bootstrap_spec_is_read_whole_or_said(self, layout, needle):
+        got, msgs = self._capped(layout)
+        assert len(msgs) == 1 and needle in msgs[0], msgs
+        assert dr.DashRenderer._is_bootstrap_layout(got)
+
+    @pytest.mark.parametrize("layout", [
+        "auto", "", "2 1", " 2  1 ", "g1:1,2 g2:1,1", "g1:0,0 g2:0,1",
+        "bs", "bs: g1=6 g2=6", "bs: g1 / g2=12", "BS: g1=12"])
+    def test_a_readable_layout_is_kept_without_a_word(self, layout):
+        got, msgs = self._capped(layout)
+        assert got == layout
+        assert msgs == []
+
+    def test_an_item_the_graphs_limit_dropped_is_left_out_quietly(self):
+        """The limit has already said it dropped the item; the layout must
+        not call a registered item unregistered."""
+        assert dr._dash_layout_check("g1:1,1 g2:1,2", {"g1"},
+                                     {"g1", "g2"}) == ("g1:1,1", None)
+        assert dr._dash_layout_check("g2:1,1", {"g1"},
+                                     {"g1", "g2"}) == ("auto", None)
+        got, problem = dr._dash_layout_check("g2:1,1 zz:1,2", {"g1"},
+                                             {"g1", "g2"})
+        assert got == "auto"
+        assert "zz is not a registered" in problem, problem
+        assert "g2 is not" not in problem and "g2, zz" not in problem, problem
+        spec = _two_graph_spec("g1:1,1 g2:1,2", {"graphs": 1})
+        limits = dr._dash_limits(spec["build_options"])
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            out = dr._dash_cap_spec(spec, limits)
+        msgs = [str(x.message) for x in w]
+        assert out["build_options"]["layout"] == "g1:1,1"
+        assert any("dash_max_graphs" in m for m in msgs), msgs
+        assert not any("not a registered" in m for m in msgs), msgs
+
+    def test_the_checks_read_what_their_readers_read(self):
+        """Each form's check and its reader agree on the same values."""
+        for layout in ("g1:1,1 g2:1,2", "g1:0,0", " 2  3 ", "bs",
+                       "bs: g1=6 / g2"):
+            assert dr._dash_layout_check(layout, {"g1", "g2"})[1] is None
+        assert dr._dash_bs_layout_check("bs: g1=12", "bs: g1=12", {"g1"},
+                                        "bs: g1=12") == ("bs: g1=12", None)
+        got, problem = dr._dash_bs_layout_check(
+            "bs: g1=12 g9", "bs: g1=12 g9", {"g1"}, "x")
+        assert got == "bs: g1=12 g9" and "g9 is not a registered" in problem
+
+    @pytest.mark.parametrize("layout", ["nosuch:1,1", "g1:1,1 nosuch:2,2",
+                                        "g1:1,1 junk"])
+    def test_both_modes_draw_the_same_grid(self, layout, tmp_path):
+        spec = _two_graph_spec(layout)
+        sp, dp = _write_inputs(tmp_path, spec)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            saved = dr.DashRenderer(sp, dp)
+            saved.render()
+            src = _app_source(tmp_path, spec)
+        rows, cols = saved._compute_grid(
+            ["g1", "g2"], saved.master_spec["build_options"]["layout"])
+        placed = dr._dash_placement_map(
+            saved.master_spec["build_options"]["layout"], {"g1", "g2"})
+        doc = _session(_load_app(src, "layout_parity"))
+        from bokeh.models import GridPlot
+        grids = list(doc.select({"type": GridPlot}))
+        assert grids, "the served app drew no grid"
+        served_cells = sorted((r, c) for _m, r, c in grids[0].children)
+        # The saved page fills its grid in reading order after placing any
+        # named item: the served app must put the two figures in the same
+        # cells.
+        free = [(r, c) for r in range(rows) for c in range(cols)
+                if (r, c) not in placed.values()]
+        saved_cells = sorted(list(placed.values())
+                             + free[:2 - len(placed)])
+        assert served_cells == saved_cells, (served_cells, saved_cells,
+                                             (rows, cols))
 
 
 # ===========================================================================

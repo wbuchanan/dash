@@ -293,3 +293,190 @@ class TestBothPathsAgree:
             f"the value div is {_kpi_value_color(dr)!r}, the callback would "
             f"set {js_colour!r}"
         )
+
+
+# ======================================================================
+# WP-20: a KPI's text is never markup or maths, in either mode, before or
+# after a filter moves
+# ======================================================================
+# The card is HTML (a Bokeh Div), so its title, subtitle and name are
+# html-escaped by the one builder every path uses, _dash_kpi_card_html, and
+# the Div sets disable_math: a Div otherwise runs its text through MathJax,
+# where $$\href{javascript:...}{x}$$ is a live link (BUGS.md, WP-20).  The
+# card is also rebuilt after the first render -- by the saved page's
+# CustomJS, from the config it is handed, and by the served app's recompute,
+# through the same builder -- so each mode is checked after a filter moves
+# too.  The colour defect this file was written for was safe on one path and
+# not on the other.
+
+import html as _html  # noqa: E402
+import warnings  # noqa: E402
+
+from bokeh.document import Document  # noqa: E402
+from bokeh.models import Div, Select  # noqa: E402
+
+_KPI_TEXT_PAYLOADS = [
+    '<img src=x onerror="document.title=1">',
+    "<script>document.title=2</script>",
+    r"$$\href{javascript:document.title=3}{click}$$",
+    r"\(x\)<img src=x onerror=4>",
+]
+
+_FDF = pd.DataFrame({
+    "mpg": [22.0, 17.0, 25.0, 30.0, 21.0, 19.0, 14.0, 28.0, 16.0, 23.0],
+    "weight": [2930.0, 3350.0, 2200.0, 1800.0, 3000.0, 3100.0, 4080.0,
+               2010.0, 3600.0, 2650.0],
+    "foreign": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+})
+# The mean of mpg over the foreign == 1 rows, as the card formats it.
+_FOREIGN_MEAN = f"{_FDF.loc[_FDF.foreign == 1, 'mpg'].mean():.1f}"
+_CURDOC_ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
+
+
+def _tags(text):
+    """The tag names in *text*.  A card has its own divs and nothing else."""
+    return {t.lower() for t in
+            re.findall(r"<\s*/?\s*([A-Za-z][A-Za-z0-9]*)", text or "")}
+
+
+def _kpi_spec(**kpi_extra):
+    kpi = {"name": "k1", "stat": "mean", "var": "mpg", "title": "T",
+           "subtitle": "", "fmt": "%9.1f", "color": "", "bgcolor": "",
+           "update": "both", "if_expr": "", "in_expr": ""}
+    kpi.update(kpi_extra)
+    return make_spec(_PLOTS, filters=[{"varname": "foreign",
+                                       "type": "dropdown"}], kpis=[kpi])
+
+
+def _inputs(tmp_path, spec):
+    sp = os.path.join(str(tmp_path), "spec.json")
+    dp = os.path.join(str(tmp_path), "data.json")
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    with open(dp, "w", encoding="utf-8") as fh:
+        json.dump(make_data_json(_FDF), fh)
+    return sp, dp
+
+
+def _saved(tmp_path, spec):
+    sp, dp = _inputs(tmp_path, spec)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = DashRenderer(sp, dp)
+        r.render()
+    return r
+
+
+def _served_doc(tmp_path, spec):
+    """A session of the generated app: (document, the app's namespace)."""
+    sp, dp = _inputs(tmp_path, spec)
+    op = os.path.join(str(tmp_path), "app.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dash_render.ServerAppBuilder(sp, dp).build(op)
+        with open(op, encoding="utf-8") as fh:
+            src = fh.read()
+        assert _CURDOC_ATTACH in src, "the generated app's curdoc attach moved"
+        ns = {"__name__": "kpi_security_app"}
+        exec(compile(src.replace(_CURDOC_ATTACH, "pass"), op, "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return doc
+
+
+def _cards(doc):
+    return [d for d in doc.select({"type": Div})
+            if "db-kpi-card" in (d.text or "")]
+
+
+def _pick_foreign_one(doc):
+    """Move the served dropdown to foreign == 1 and run its recompute, as a
+    browser's change would (unwrapped from the event throttle)."""
+    sel = next(iter(doc.select({"type": Select})))
+    value = None
+    for opt in sel.options:
+        v, label = (opt if isinstance(opt, (list, tuple)) else (opt, opt))
+        if str(label).strip() in ("1", "1.0") or str(v).strip() in ("1", "1.0"):
+            value = v
+    assert value is not None, f"no foreign == 1 option in {sel.options}"
+    cbs = sel._callbacks.get("value", [])
+    assert cbs, "the served dropdown has no recompute callback"
+    old = sel.value
+    sel.value = value
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cbs[0]("value", old, value)
+
+
+class TestKpiTextIsNeverMarkupOrMaths:
+
+    def test_the_detector_sees_a_tag_that_is_not_the_cards(self):
+        assert _tags('<div a="1"><IMG src=x></div>') == {"div", "img"}
+        assert _tags("&lt;img src=x&gt;") == set()
+
+    @pytest.mark.parametrize("field", ["title", "subtitle"])
+    @pytest.mark.parametrize("payload", _KPI_TEXT_PAYLOADS)
+    def test_the_saved_card_and_its_rebuild(self, tmp_path, field, payload):
+        r = _saved(tmp_path, _kpi_spec(**{field: payload}))
+        assert r.kpi_divs, "no KPI card was built"
+        for div in r.kpi_divs.values():
+            assert div.disable_math is True, "the card is read as maths"
+            assert _tags(div.text) == {"div"}, div.text
+            assert _html.escape(payload) in div.text
+        # The saved page rebuilds the card in the browser from this config,
+        # with no escaping of its own: it must arrive escaped.
+        assert r.filter_callbacks, "no filter callback was built"
+        cfg = json.loads(r.filter_callbacks[0].args["kpi_config_json"])
+        assert cfg and cfg[0][field] == _html.escape(payload), cfg
+
+    @pytest.mark.parametrize("field", ["title", "subtitle"])
+    @pytest.mark.parametrize("payload", _KPI_TEXT_PAYLOADS)
+    def test_the_served_card_before_and_after_a_filter_moves(
+            self, tmp_path, field, payload):
+        doc = _served_doc(tmp_path, _kpi_spec(**{field: payload}))
+        cards = _cards(doc)
+        assert cards, "no KPI card in the served document"
+        _pick_foreign_one(doc)
+        after = _cards(doc)
+        assert _FOREIGN_MEAN in " ".join(d.text for d in after), (
+            "the recompute did not run, so the check after it would be "
+            "vacuous")
+        for div in cards + after:
+            assert div.disable_math is True, "the card is read as maths"
+            assert _tags(div.text) == {"div"}, div.text
+            assert _html.escape(payload) in div.text
+
+    def test_a_hostile_name_stays_inside_its_attribute(self, tmp_path):
+        """A hand-written spec's KPI name goes into the value div's id."""
+        name = 'k1"><img src=x onerror=5>'
+        r = _saved(tmp_path, _kpi_spec(name=name))
+        text = "\n".join(d.text for d in r.kpi_divs.values())
+        assert _tags(text) == {"div"}, text
+        cfg = json.loads(r.filter_callbacks[0].args["kpi_config_json"])
+        assert cfg[0]["name_html"] == _html.escape(name)
+        doc = _served_doc(tmp_path, _kpi_spec(name=name))
+        _pick_foreign_one(doc)
+        for div in _cards(doc):
+            assert _tags(div.text) == {"div"}, div.text
+
+
+class TestAKpiFormatCannotBuildAHugeCard:
+    """dash.ado checks fmt() with `confirm numeric format'; a hand-edited
+    spec is held by the renderer to Stata's own bounds (width 1 to 2,045,
+    fewer decimals than the width).  Measured before WP-20: a fmt of
+    %9.999999999f made a 1,000,000,001-character card."""
+
+    @pytest.mark.parametrize("fmt", ["%9.999999999f", "%2046.2f",
+                                     "%99999999999.1f", "%9.30fc"])
+    def test_both_modes_before_and_after_a_filter_moves(self, tmp_path, fmt):
+        r = _saved(tmp_path, _kpi_spec(fmt=fmt))
+        assert all(len(d.text) < 5000 for d in r.kpi_divs.values())
+        doc = _served_doc(tmp_path, _kpi_spec(fmt=fmt))
+        _pick_foreign_one(doc)
+        cards = _cards(doc)
+        assert cards and all(len(d.text) < 5000 for d in cards)
+
+    def test_an_ordinary_format_is_still_applied(self, tmp_path):
+        doc = _served_doc(tmp_path, _kpi_spec(fmt="%9.1f"))
+        _pick_foreign_one(doc)
+        assert _FOREIGN_MEAN in " ".join(d.text for d in _cards(doc))

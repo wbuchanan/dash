@@ -1356,25 +1356,37 @@ assert _rc != 0
 display "P20-16 PASS: sav(), a /// continuation and SAVING() cannot carry a traversal"
 
 // P20-17 — layout() was the one build option written into the spec raw.
-// Its check reads only the start of the value (bs..., or name:r,c...), so
+// Its check read only the start of the value (bs..., or name:r,c...), so
 // layout("bs\") passed and its backslash escaped the closing quote of the
-// JSON string: measured, r(7102) and a JSONDecodeError traceback.  Now
-// escaped like every other string, it builds.
+// JSON string: measured, r(7102) and a JSONDecodeError traceback.  The
+// spec now escapes layout() like every other string (pinned in
+// test_security_surface.py), and the value never gets that far: a layout()
+// that is not one of its forms whole is refused (P20-30), and no value that
+// is one can hold a backslash or a quote.
 capture dash clear
 dash scatter mpg weight, name(p2017)
 local p2017f "`c(tmpdir)'p2017.html"
 capture erase "`p2017f'"
 _adv_p19_run `"dash build, saving("`p2017f'") replace nobrowser layout("bs\")"'
-assert r(rc) == 0
-confirm file "`p2017f'"
-cert_file_has "`r(log)'", needle("JSONDecodeError")
+local p20lg "`r(log)'"
+assert r(rc) == 198
+cert_file_has "`p20lg'", needle("layout() must be")
+assert r(found) == 1
+cert_file_has "`p20lg'", needle("JSONDecodeError")
 assert r(found) == 0
-capture erase "`p2017f'"
+capture confirm file "`p2017f'"
+assert _rc != 0
+// A placement with a backslash after it used to build too -- drawn as
+// layout(auto), in silence, because the renderer could not read it.  It is
+// now refused as a layout() dash cannot read (P20-30); either way it never
+// reaches the spec unescaped.
 _adv_p19_run `"dash build, saving("`p2017f'") replace nobrowser layout("p2017:1,1\")"'
-assert r(rc) == 0
-confirm file "`p2017f'"
-capture erase "`p2017f'"
-display "P20-17 PASS: a backslash in layout() is escaped into the spec, not a JSON breakout"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("layout() must be")
+assert r(found) == 1
+capture confirm file "`p2017f'"
+assert _rc != 0
+display "P20-17 PASS: a backslash in layout() never reaches the spec: refused, not a JSON breakout"
 
 // P20-18 — a compound-quote breakout inside an option value.  If "' could
 // end the quotes a value is expanded in, what followed would be read as
@@ -1652,6 +1664,59 @@ capture erase "`p2029lg'"
 assert "${dash_graph_registry}" == ""
 display "P20-29 PASS: a scatteri coordinate and the .gph note are echoed as text, and the note runs no directive"
 
+// P20-30 — a layout() dash cannot read whole, or that names something
+// the registry does not hold.  The check read only the START of the value
+// (bs..., or name:r,c...), so the renderer was handed what it could not
+// read and drew it some other way, in silence: measured at f2ecdd4,
+// layout(p:1,1 junk) and layout(bs\) were drawn as auto, layout(nosuch:1,1)
+// was a 3 x 1 grid saved and 1 x 2 served, and layout(bs: ...) dropped an
+// unknown name and clamped a span of 13 to 12.  link() and exclude() have
+// always refused a name the registry does not hold; layout() now does too,
+// and refuses a value that is not one of its forms whole.
+capture dash clear
+dash scatter mpg weight, name(p2030a)
+dash scatter price weight, name(p2030b)
+dash kpi mean(mpg), name(p2030k) title(T)
+local p2030f "`c(tmpdir)'p2030.html"
+foreach p2030l in "p2030a:1,1 junk" "p2030a:1,1,p2030b:1,2" "bs\" "bsx" "bs:" "bs: p2030a = 6" {
+    capture erase "`p2030f'"
+    _adv_p19_run `"dash build, saving("`p2030f'") replace nobrowser layout(`p2030l')"'
+    assert r(rc) == 198
+    cert_file_has "`r(log)'", needle("layout() must be")
+    assert r(found) == 1
+    capture confirm file "`p2030f'"
+    assert _rc != 0
+}
+foreach p2030l in "nosuch:1,1" "p2030a:1,1 nosuch:2,2" "bs: p2030a=6 nosuch=6" "bs: nosuch" {
+    capture erase "`p2030f'"
+    _adv_p19_run `"dash build, saving("`p2030f'") replace nobrowser layout(`p2030l')"'
+    assert r(rc) == 198
+    cert_file_has "`r(log)'", needle("layout() name 'nosuch' not found in registry.")
+    assert r(found) == 1
+    capture confirm file "`p2030f'"
+    assert _rc != 0
+}
+foreach p2030l in "bs: p2030a=13" "bs: p2030a=0" "bs: p2030a=x" "bs: p2030a=" "bs: p2030a=0012" {
+    capture erase "`p2030f'"
+    _adv_p19_run `"dash build, saving("`p2030f'") replace nobrowser layout(`p2030l')"'
+    assert r(rc) == 198
+    cert_file_has "`r(log)'", needle("must be a whole number from 1 to 12")
+    assert r(found) == 1
+    capture confirm file "`p2030f'"
+    assert _rc != 0
+}
+foreach p2030l in "p2030a:1,1 p2030b:1,2" "p2030b:1,1 p2030k:2,1 p2030a:1,2" "p2030a:0,0" "bs" "BS" "bs: p2030a=6 p2030b=6" "bs: p2030k=3 p2030a=9 / p2030b" "1 3" {
+    capture erase "`p2030f'"
+    _adv_p19_run `"dash build, saving("`p2030f'") replace nobrowser layout(`p2030l')"'
+    assert r(rc) == 0
+    confirm file "`p2030f'"
+    cert_file_has "`r(log)'", needle("layout(")
+    assert r(found) == 0
+}
+capture erase "`p2030f'"
+capture dash clear
+display "P20-30 PASS: a layout() that is not one of its forms whole, names an unregistered item, or gives a Bootstrap span outside 1..12 is refused"
+
 capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p19.log"
 
@@ -1695,3 +1760,4 @@ display "  P20-26: port() bounds and spellings (sign, decimal, hex, full-width d
 display "  P20-27: KPI stat(var) outside its allow-list (case, p0, p100, p97.5, trailing text) → refused"
 display "  P20-28: Malformed UTF-8 inside the data (string value, variable and value labels) → rendered"
 display "  P20-29: A scatteri coordinate and the .gph note → shown as text; the note runs no directive"
+display "  P20-30: layout() not one of its forms whole, an unregistered name, a Bootstrap span outside 1..12 → rc=198"

@@ -987,7 +987,8 @@ class TestUserTextIsEchoedAsText:
             mata = fh.read()
         with open(_ADO, encoding="utf-8") as fh:
             ado = fh.read()
-        for fn in ("_dash_say", "_dash_is_digits", "_dash_layout_cells"):
+        for fn in ("_dash_say", "_dash_is_digits", "_dash_layout_cells",
+                   "_dash_layout_refusal"):
             assert re.search(r"^\S.*\b%s\(" % fn, mata, re.M), fn
             block = ado[ado.index("local _needed"):ado.index("quietly capture mata: mata describe _dash_check_utf8()")]
             assert fn in block, f"{fn} is not in _dash_require_mata's list"
@@ -1009,3 +1010,28 @@ class TestUserTextIsEchoedAsText:
         body = body[:body.index("\nend\n")]
         assert 'fullmatch(r"[A-Za-z0-9.+!_-]{1,64}"' in body
         assert 'sfi.Macro.setLocal("_pv", _dash_pv if' in body
+
+    def test_the_spec_line_escapes_every_build_option(self):
+        """No valid layout() can hold a backslash or a quote any more
+        (P20-30 refuses what is not one of its forms), so P20-17 can no
+        longer show the escaping through the command; this pins it.  The
+        master spec line wrote layout(), link() and filterposition() raw,
+        and layout("bs\\") broke the JSON (r(7102))."""
+        with open(_ADO, encoding="utf-8") as fh:
+            ado = fh.read()
+        line = next(l for l in ado.splitlines()
+                    if l.lstrip().startswith("local master_json")
+                    and '"kpis"' in l)
+        for key, local in (("layout", "_layout_esc"), ("link", "_link_esc"),
+                           ("filter_position", "_fpos_esc"),
+                           ("theme", "_theme_esc"), ("title", "_title_esc"),
+                           ("subtitle", "_subtitle_esc"),
+                           ("tabs", "_tabs_esc")):
+            assert f'"{key}":"`{local}\'"' in line, key
+        body = ado[ado.index("program define _dash_prepare_spec"):]
+        body = body[:body.index("\nend\n")]
+        for raw, local in (("layout", "_layout_esc"), ("link", "_link_esc"),
+                           ("filterposition", "_fpos_esc")):
+            assert (f"_dash_json_str `\"`{raw}\'\"\'" in body
+                    and local in body), raw
+

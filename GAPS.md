@@ -1661,8 +1661,10 @@ name that closed the brace left markup behind.  `dash_setup`'s version gate
 and scheme probe ran a crafted version string and a crafted renderer path as
 Python, which created a marker file.
 
-Now both pages carry a `default-src 'none'` policy as the first element of
-`<head>` -- scripts and styles inline only, images and fonts from `data:`,
+Now both pages carry a `default-src 'none'` policy ahead of every script and
+style in `<head>` -- the first element of both saved pages', and after only
+`<meta charset>` and `<title>` on the served page -- scripts and styles
+inline only, images and fonts from `data:`,
 `connect-src 'none'`, `object-src 'none'`, `base-uri 'none'`,
 `form-action 'none'`; the served policy adds `'self'` and `connect-src
 'self'` for the websocket -- and the served app's own launcher sends the

@@ -763,6 +763,90 @@ def _dash_layout_cells(layout):
     return (max(r for r, _c in cells) + 1) * (max(c for _r, c in cells) + 1)
 
 
+#: The forms layout() takes, as a report names them.
+_DASH_LAYOUT_FORMS = ("auto, rows cols, name:row,col placements or "
+                      "bs[: name=span ...]")
+
+
+def _dash_bs_layout_check(layout, text, names, shown):
+    """``(layout to draw, problem or None)`` for a ``bs`` layout; see
+    ``_dash_layout_check``.  The spec's reader (``_parse_bs_layout``) keeps
+    what it can read -- it drops an unknown name and clamps a span -- so the
+    layout is kept and the problem said; a value that is neither ``bs`` nor
+    ``bs: spec`` is drawn as ``bs``, as the reader drew it."""
+    if re.fullmatch(r"bs", text, re.IGNORECASE):
+        return layout, None
+    m = re.fullmatch(r"bs\s*:\s*(.+)", text, re.IGNORECASE | re.DOTALL | re.ASCII)
+    if not m:
+        return "bs", (f"dash: layout({shown}) is not bs or bs: name=span "
+                      f"...; it is drawn as layout(bs).")
+    problems = []
+    for tok in re.split(r"[\s/]+", m.group(1)):
+        if not tok:
+            continue
+        name, eq, span = tok.partition("=")
+        if name not in names:
+            problems.append(f"{_dash_display(name) or '(no name)'} is not a "
+                            f"registered graph or KPI card")
+        if eq and not (span.isascii() and span.isdigit() and len(span) <= 2
+                       and 1 <= int(span) <= 12):
+            problems.append(f"{_dash_display(tok)}: the span must be a whole "
+                            f"number from 1 to 12 (got '{_dash_display(span)}')")
+    if not problems:
+        return layout, None
+    return layout, f"dash: layout({shown}): {'; '.join(problems)}."
+
+
+def _dash_layout_check(layout, names, registered=None):
+    """``(layout to draw, problem or None)`` for a spec's ``layout()``.
+
+    dash.ado refuses a layout it cannot read whole, and a name its registry
+    does not hold (P20-30); this is the renderer's reading of a spec that did
+    not come through it, run by ``_dash_cap_spec`` so that both modes draw
+    what it returns.  Measured at f2ecdd4, all in silence: layout(g1:1,1\\)
+    and layout(3 4 5) were drawn as auto, and layout(nosuch:1,1) was a
+    3 x 1 grid when saved -- ``_compute_grid`` sized the grid for the
+    unknown name -- and 1 x 2 when served, whose reader drops it.
+
+    A layout that is none of the forms is drawn as ``auto``.  A placement of
+    a name not in *names* (the items left after the limits) is left out, and
+    the layout is ``auto`` when none is left; a name not in *registered*
+    (every item the spec has, before the limits; *names* when not given) is
+    the problem reported -- one the graphs limit dropped has been reported
+    by it.  A ``bs`` layout goes to ``_dash_bs_layout_check``.  Readings are
+    ASCII, as ``_dash_grid_dims`` and ``_dash_placement_map`` read.
+    """
+    registered = set(names) if registered is None else set(registered)
+    text = str(layout or "").strip(_DASH_ASCII_BLANKS)
+    if text == "" or text.lower() == "auto":
+        return layout, None
+    shown = _dash_display(str(layout))
+    if text[:2].lower() == "bs":
+        return _dash_bs_layout_check(layout, text, registered, shown)
+    if re.fullmatch(r"\d+\s+\d+", text, re.ASCII):
+        return layout, None
+    pairs = re.findall(r"([A-Za-z_]\w*)\s*:\s*(\d+)\s*,\s*(\d+)", text,
+                       re.ASCII)
+    if not pairs or re.sub(r"[A-Za-z_]\w*\s*:\s*\d+\s*,\s*\d+", "", text,
+                           flags=re.ASCII).strip(_DASH_ASCII_BLANKS):
+        return "auto", (f"dash: layout({shown}) is not "
+                        f"{_DASH_LAYOUT_FORMS}; it is drawn as "
+                        f"layout(auto).")
+    if all(n in names for n, _r, _c in pairs):
+        return layout, None
+    kept = " ".join(f"{n}:{r},{c}" for n, r, c in pairs if n in names)
+    unknown = list(dict.fromkeys(n for n, _r, _c in pairs
+                                 if n not in registered))
+    if not unknown:
+        return kept or "auto", None
+    listed = ", ".join(_dash_display(n) for n in unknown)
+    verb = "is" if len(unknown) == 1 else "are"
+    return kept or "auto", (
+        f"dash: layout({shown}): {listed} {verb} not a registered graph or "
+        f"KPI card, so {'it is' if len(unknown) == 1 else 'they are'} not "
+        f"placed.")
+
+
 def _dash_cap_spec(spec, limits):
     """The spec with at most ``graphs`` items and ``plots`` plots a graph.
 
@@ -811,12 +895,28 @@ def _dash_cap_spec(spec, limits):
     out["graphs"] = capped
     out["kpis"] = kpis
 
+    # What the layout says, read whole (_dash_layout_check): a layout the
+    # renderer cannot read, and a placement of an item the spec does not
+    # have, were drawn some other way in silence -- and the second one
+    # differently in each mode.
+    def _item_names(gs, ks):
+        return ({str((g.get("graph_options") or {}).get("name")
+                     or g.get("name") or "") for g in gs}
+                | {str(k.get("name") or "") for k in ks}) - {""}
+    _layout, _problem = _dash_layout_check(
+        bo.get("layout", ""), _item_names(capped, kpis),
+        _item_names(spec.get("graphs") or [], spec.get("kpis") or []))
+    if _problem:
+        warnings.warn(_problem, UserWarning, stacklevel=2)
+    if _layout != bo.get("layout", ""):
+        bo = dict(bo, layout=_layout)
+        out["build_options"] = bo
+
     # The layout grid.  The saved page pads its grid to rows x cols cells,
     # and the served template does the same on every session: layout(4000
     # 4000) of two graphs peaked at 1.5 GB, and layout(99999 99999) never
     # finished (measured 23sep2026, WP-20).  No grid needs more cells than a
     # dashboard holds items, so a larger one is drawn as layout(auto).
-    _layout = bo.get("layout", "")
     _cells = _dash_layout_cells(_layout)
     if _cells is not None and _cells > limits["graphs"]:
         _shown = (f"{_cells:,}" if _cells < 10 ** 18 else "too many")

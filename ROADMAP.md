@@ -2910,10 +2910,11 @@ dash's own classes, with bokeh 3.9.0 (the test suite's Python) and 3.8.0
   from `data:`, `connect-src 'none'`, `object-src 'none'`, `base-uri 'none'`,
   `form-action 'none'`) and `_DASH_CSP_SERVED` (the same with `'self'` and
   `connect-src 'self'` for the websocket).  `_dash_csp_meta` refuses any
-  character a policy does not need.  The meta is the first element of
-  `<head>` on both saved pages (the `layout(bs)` page had it after the
-  inlined BokehJS -- `BUGS.md`) and on the served page, through a Bokeh
-  document template (`_dash_served_template`, set in `make_document`).  The
+  character a policy does not need.  The meta comes before every script
+  and style in `<head>`: first on both saved pages (the `layout(bs)` page
+  had it after the inlined BokehJS -- `BUGS.md`), and on the served page,
+  through a Bokeh document template (`_dash_served_template`, set in
+  `make_document`), after only `<meta charset>` and `<title>`.  The
   served app's own launcher adds a Tornado transform (`_DashSecurityHeaders`
   through `_dash_server_transforms`, which keeps Tornado's gzip rule) that
   sends the policy with `frame-ancestors 'none'`, `X-Content-Type-Options:
@@ -2972,18 +2973,27 @@ dash's own classes, with bokeh 3.9.0 (the test suite's Python) and 3.8.0
 ### Acceptance
 
 - **AC-20.1** `test_csp.py` (65 tests): both policies and their placement,
-  the meta first in `<head>` on every page, and nine against a live served
-  app on a free port -- the headers on `/` and `/health`, the meta in the
-  document, a session and its websocket.  Checked in Chromium on the real
-  served app: headers and meta present, websocket open, no violation.
+  the meta ahead of every script and style on every page, and nine against
+  a live served app on a free port -- the headers on `/` and `/health`, the
+  meta in the document, a session and its websocket.  Checked in Chromium on
+  a served app launched by its own launcher: headers and meta present, the
+  websocket open, and both filters round-tripping through the server under
+  `connect-src 'self'` -- the dropdown moved the KPI card from -0.07 to
+  -0.01, 0.04 and back, the range slider to -0.21 and back -- with no
+  violation and no console error.
 - **AC-20.2** `test_label_sinks.py` (918 tests): a hostile label through
   every sink in both modes, the TeX and MathJax paths, the tooltip field,
   the served app's source; checked in Chromium in both modes (text shown, no
-  `<img>`).
-- **AC-20.3** `test_adversarial_matrix.py` (202 tests: the registry and its
-  gap tests), `test_adversarial.cscript` P20-01..29,
+  `<img>`), and again in the served app after the filter round trips (no
+  `<img>` in the document or its 60 shadow roots).  `test_kpi_security.py`,
+  as the test plan asked, pins the KPI card's title, subtitle and name as
+  inert HTML with maths off in both modes -- in the saved page's rebuild
+  config and in the served card after a filter moves -- and a hand-edited
+  `fmt` as bounded there too (23 new tests; 58 in the file).
+- **AC-20.3** `test_adversarial_matrix.py` (233 tests: the registry and its
+  gap tests), `test_adversarial.cscript` P20-01..30,
   `test_setup_injection.cscript` INJ-01..11, `test_echo_text.cscript`
-  ECH-01..09.
+  ECH-01..11.
 
 ### Standing note: CLAUDE.md rule 19 is not applicable, by design
 
@@ -3002,6 +3012,17 @@ accounts or an administrative surface, it does.
   cases keep the log path in a local and erase first.
 - Stata's own parser refuses a brace in a weight expression, so that echo
   cannot carry SMCL; it goes through `_dash_say` all the same.
+- Closing WP-20's last gaps (a second commit): `layout()` was checked only
+  at its start, so a value the renderer could not read -- `layout(g1:1,1
+  junk)`, `layout(bs\)` -- was drawn as auto in silence, a placement naming
+  no registered item made the modes disagree (`layout(nosuch:1,1)` was
+  3 x 1 saved and 1 x 2 served), and a Bootstrap spec dropped an unknown
+  name and clamped a span of 13 without a word.  dash build now refuses
+  each (P20-30, `_dash_layout_refusal`), and the renderer's
+  `_dash_layout_check` reports and corrects it for a spec that did not come
+  through dash.ado, identically in both modes.  P20-17's first case, which
+  built `layout("bs\")`, is restated to the refusal; the spec's escaping of
+  `layout()` is pinned statically instead.
 
 ### Verification, measured
 
@@ -3037,6 +3058,24 @@ the commit's own tree was then run on its own, last below.
   not rerun there: every WP-20 file in that tree is byte-identical to the
   one they ran, and the files left out are pytest infrastructure and
   documents, which no script reads.
+
+The second commit (closing WP-20's gaps), 23sep2026, the same way:
+
+- `test/run_all_cscripts.do` with the console binary: **48 passed, 0
+  failed, 0 skipped**, in 45 s -- `test_adversarial.cscript` with P20-30
+  and the restated P20-17, `test_echo_text.cscript` with ECH-10..11.  P20-30
+  was first run against the committed code (`f2ecdd4`): all 15 refused
+  values built with rc 0 there, and the 8 valid ones passed.
+- `python3 -m pytest test/ -q`: **10,468 passed, 0 failed**, 61 skipped,
+  6 xfailed, 2:11.  Two tests were written after that run had started
+  (`TestALayoutThatCannotBeReadIsReported::test_an_item_the_graphs_limit_dropped_is_left_out_quietly`
+  and `::test_the_checks_read_what_their_readers_read`) and were run on
+  their own: both pass, after the first had its own assertion corrected (the
+  report quotes the whole layout, which holds the name it looked for).
+- The commit's own tree -- the first commit with only this diff applied, in
+  a separate worktree, with `HEAD`'s `conftest.py` and no `pyproject.toml`
+  -- ran the three test files this commit changes and the 22 that read or
+  set `layout()`, with `-n auto`: **5,104 passed, 0 failed**.
 
 ---
 

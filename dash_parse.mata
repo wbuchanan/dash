@@ -22,6 +22,9 @@
 *!   _dash_layout_cells(layout)
 *!       Cells an explicit layout() grid asks for, or missing.
 *!
+*!   _dash_layout_refusal(layout, registry)
+*!       "" when dash build can draw layout() as written, else the refusal.
+*!
 *!   _dash_split_segs(input)
 *!       Split the raw command line into plot segments + graph-opts string.
 *!       Sets in the *caller's* local-macro environment:
@@ -311,18 +314,24 @@ real scalar _dash_ascii_in(string scalar ch, real scalar lo, real scalar hi) {
 //
 // How many cells an explicit layout() grid asks for: rows x cols (each at
 // least 1) for layout(rows cols), and for layout(name:row,col ...) the
-// rectangle the
-// placements span, read 1-based unless an index is 0.  An index longer
-// than nine digits counts as 1e18, larger than any limit.  Missing when
-// the layout has no size of its own (auto, bs, bs: ...) or is not one of
-// the two forms.  dash_render.py's _dash_layout_cells() is the same rule;
-// this one reads ASCII only, and what it cannot read it leaves to the
-// renderer's, which then keeps the page to the automatic layout.
+// rectangle the placements span, read 1-based unless an index is 0.  An
+// index longer than nine digits counts as 1e18, larger than any limit.
+// Missing when the layout has no size of its own (auto, bs, bs: ...) or is
+// not one of the two forms.  dash_render.py's _dash_layout_cells() is the
+// same rule, read in ASCII as this one is (test_echo_text.cscript checks
+// that the two agree); a layout neither can read, dash build refuses
+// (_dash_layout_refusal).
+//
+// _dash_layout_scan(layout, names) is the reading itself, and also sets
+// names to the placement form's names, blank-separated in the order
+// written.  Each is an ASCII Stata name; names is meaningful only when the
+// count is not missing.
 // ============================================================
-real scalar _dash_layout_cells(string scalar layout) {
+real scalar _dash_layout_scan(string scalar layout, string scalar names) {
     string scalar s, ch, d1, d2
-    real scalar   n, i, j, k, npair, big, allpos, maxr, maxc, r, c
+    real scalar   n, i, j, k, npair, big, allpos, maxr, maxc, r, c, st
 
+    names = ""
     s = layout
     for (i = 9; i <= 13; i++) s = subinstr(s, char(i), " ")
     s = strtrim(s)
@@ -357,7 +366,11 @@ real scalar _dash_layout_cells(string scalar layout) {
         while (i <= n & substr(s, i, 1) == " ") i++
         if (i > n) break
         ch = substr(s, i, 1)
-        if (!(_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) | ch == "_")) return(.)
+        if (!(_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) | ch == "_")) {
+            names = ""
+            return(.)
+        }
+        st = i
         i++
         while (i <= n) {
             ch = substr(s, i, 1)
@@ -365,6 +378,7 @@ real scalar _dash_layout_cells(string scalar layout) {
                   _dash_ascii_in(ch, 97, 122) | ch == "_")) break
             i++
         }
+        names = names + (names == "" ? "" : " ") + substr(s, st, i - st)
         while (i <= n & substr(s, i, 1) == " ") i++
         if (i > n) return(.)
         if (substr(s, i, 1) != ":") return(.)
@@ -397,6 +411,95 @@ real scalar _dash_layout_cells(string scalar layout) {
     if (big) return(1e18)
     if (allpos) return(maxr * maxc)
     return((maxr + 1) * (maxc + 1))
+}
+
+real scalar _dash_layout_cells(string scalar layout) {
+    string scalar names
+
+    return(_dash_layout_scan(layout, names))
+}
+
+// 1 when s is an ASCII Stata name: a letter or _, then letters, digits, _.
+real scalar _dash_is_name(string scalar s) {
+    real scalar i, n
+
+    n = strlen(s)
+    if (n == 0) return(0)
+    if (!(_dash_ascii_in(substr(s, 1, 1), 65, 90) | _dash_ascii_in(substr(s, 1, 1), 97, 122) |
+          substr(s, 1, 1) == "_")) return(0)
+    for (i = 2; i <= n; i++) {
+        if (!(_dash_ascii_in(substr(s, i, 1), 48, 57) | _dash_ascii_in(substr(s, i, 1), 65, 90) |
+              _dash_ascii_in(substr(s, i, 1), 97, 122) | substr(s, i, 1) == "_")) return(0)
+    }
+    return(1)
+}
+
+// ============================================================
+// _dash_layout_refusal(layout, registry)
+//
+// "" when dash build can draw layout() as written; otherwise the refusal,
+// without the command's name.  The value's START used to be all that was
+// checked (bs..., or name:r,c...), so the renderer was handed what it could
+// not read and drew it some other way, in silence (P20-30): measured at
+// f2ecdd4, layout(p:1,1 junk) and layout(bs\) were drawn as auto,
+// layout(nosuch:1,1) was a 3 x 1 grid saved and 1 x 2 served, and
+// layout(bs: ...) dropped an unknown name and clamped a span of 13 to 12.
+//
+// The value must be one of the forms whole -- rows cols or name:row,col
+// placements as _dash_layout_scan() reads them; bs; or bs: followed by
+// rows of name or name=span separated by / -- every name must be in
+// registry, as link() and exclude() require, and every span a whole number
+// from 1 to 12 written in at most two digits.  dash_render.py's
+// _dash_layout_check() reports the same problems in a spec that did not
+// come through dash.ado.
+// ============================================================
+string scalar _dash_layout_refusal(string scalar layout, string scalar registry) {
+    string scalar    s, form, names, spec, tok, nm, span
+    string rowvector reg, nms, toks
+    real scalar      i, eq
+
+    form = "layout() must be 'auto', 'N M' grid (N and M >= 1), " +
+           "'name:row,col' placement, or 'bs[: name=span ...]' Bootstrap layout."
+    s = layout
+    for (i = 9; i <= 13; i++) s = subinstr(s, char(i), " ")
+    s = strtrim(s)
+    if (s == "" | s == "auto") return("")
+    reg = tokens(registry)
+
+    if (strlower(substr(s, 1, 2)) == "bs") {
+        spec = strtrim(substr(s, 3, .))
+        if (spec == "") return("")
+        if (substr(spec, 1, 1) != ":") return(form)
+        spec = strtrim(substr(spec, 2, .))
+        if (spec == "") return(form)
+        spec = subinstr(spec, "/", " ")
+        toks = tokens(spec)
+        for (i = 1; i <= cols(toks); i++) {
+            tok = toks[i]
+            eq  = strpos(tok, "=")
+            nm  = (eq ? substr(tok, 1, eq - 1) : tok)
+            if (!_dash_is_name(nm)) return(form)
+            if (!anyof(reg, nm)) return("layout() name '" + nm + "' not found in registry.")
+            if (eq) {
+                span = substr(tok, eq + 1, .)
+                if (!_dash_is_digits(span, 2)) {
+                    return("layout() span in '" + tok + "' must be a whole number from 1 to 12.")
+                }
+                if (strtoreal(span) < 1 | strtoreal(span) > 12) {
+                    return("layout() span in '" + tok + "' must be a whole number from 1 to 12.")
+                }
+            }
+        }
+        return("")
+    }
+
+    names = ""
+    if (missing(_dash_layout_scan(s, names))) return(form)
+    nms = tokens(names)
+    for (i = 1; i <= cols(nms); i++) {
+        if (!anyof(reg, nms[i])) return("layout() name '" + nms[i] + "' not found in registry.")
+    }
+    return("")
 }
 
 
