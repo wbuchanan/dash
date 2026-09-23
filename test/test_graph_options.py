@@ -443,11 +443,16 @@ class TestLegendLabels:
         if fig.legend:
             assert not fig.legend[0].visible
 
-    def test_legend_position_top(self):
-        """P6-14: legend(top) positions legend at top_center."""
+    def test_legend_top_is_not_a_placement(self):
+        """P6-14 read legend(top) as top_center, INSIDE the plot.  twoway
+        refuses legend(top) -- "option top not allowed", r(198) -- and
+        dash.ado refuses it too (WP-23); a spec that carries it is named
+        and not placed."""
+        base = _get_figure({})
         fig = _get_figure({"legend": "top"})
-        if fig.legend:
-            assert fig.legend[0].location == "top_center"
+        assert fig.legend
+        assert fig.legend[0].location != "top_center"
+        assert fig.legend[0].location == base.legend[0].location
 
     def test_no_legend_opt_no_crash(self):
         """P6-14: no legend option — figure builds without error."""
@@ -550,13 +555,14 @@ class TestLegendLabels:
         assert second == "Series B", f"Expected 'Series B', got {second!r}"
 
     def test_legend_label_override_with_position(self):
-        """P6-14: label() and position keywords can coexist."""
+        """P6-14: label() and a placement can coexist -- position(12), the
+        twoway spelling of the legend(top) this test used to write."""
         r = self._make_two_plot_renderer(
-            {"legend": 'top label(1 "Top First")'}
+            {"legend": 'position(12) label(1 "Top First")'}
         )
         fig = r._build_figures()["g1"]
         assert fig.legend
-        assert fig.legend[0].location == "top_center"
+        assert fig.legend[0] in fig.above
         first_label = self._item_label(fig.legend[0].items[0])
         assert first_label == "Top First", f"Expected 'Top First', got {first_label!r}"
 
@@ -1242,11 +1248,12 @@ class TestLegendColsRows:
             assert fig.legend[0].nrows == 3
 
     def test_legend_cols_and_position_combined(self):
-        """legend(top cols(2)) must set both location and ncols."""
-        fig = _get_figure({"legend": "top cols(2)"})
-        if fig.legend:
-            assert fig.legend[0].ncols == 2
-            assert fig.legend[0].location == "top_center"
+        """legend(position(12) cols(2)) must set both placement and ncols
+        (it read legend(top cols(2)), which twoway refuses -- WP-23)."""
+        fig = _get_figure({"legend": "position(12) cols(2)"})
+        assert fig.legend
+        assert fig.legend[0].ncols == 2
+        assert fig.legend[0] in fig.above
 
     def test_legend_rows_and_cols_combined(self):
         """legend(cols(2) rows(4)) must set both ncols and nrows."""
@@ -1264,11 +1271,14 @@ class TestLegendColsRows:
             raise AssertionError(f"legend(cols(0)) raised unexpectedly: {e}")
 
     def test_legend_without_cols_rows_unchanged(self):
-        """Omitting cols()/rows() leaves ncols/nrows at Bokeh default ('auto')."""
-        fig = _get_figure({"legend": "top"})
-        if fig.legend:
-            assert fig.legend[0].ncols == "auto"
-            assert fig.legend[0].nrows == "auto"
+        """Omitting cols()/rows() leaves ncols/nrows at Bokeh default ('auto')
+        on a legend the user placed, where the scheme's columns do not
+        apply -- position(3); this used legend(top), which twoway refuses
+        and which is no placement (WP-23)."""
+        fig = _get_figure({"legend": "position(3)"})
+        assert fig.legend
+        assert fig.legend[0].ncols == "auto"
+        assert fig.legend[0].nrows == "auto"
 
 
 # ================================================================

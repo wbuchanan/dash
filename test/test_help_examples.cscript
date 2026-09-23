@@ -1,0 +1,721 @@
+*! test_help_examples.cscript
+*! Every example command in dash's help runs, and does what the help says.
+*!
+*! Usage:  via run_all_cscripts.do (the dash directory must be on the
+*!         ado-path), or `do test_help_examples.cscript' from test/.
+*!
+*! Requires: dash_setup completed (jsonio), Python and bokeh.
+*! Version: 1.0.0  23sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! GAPS.md F5 ran every numbered example in dash.sthlp by hand, once.
+*! Nothing ran them afterwards, so an example could rot without a word, and
+*! WP-23 (AC-23.1) asks that every claim in the help be verified by a test.
+*! The first run of this script (23sep2026, at 4ede074) found two:
+*!
+*!   * The Weights section's refused `dash lfit mpg weight [aw=price+1]'
+*!     left its weight behind in s(), and the next example's scatter layer,
+*!     which has no weight, was named in the note as "[aweight]" -- after
+*!     `dash clear'.  The same leak weighted a later lfit by price with no
+*!     weight written.  Fixed in _dash_process_segment
+*!     (test_statistical_options.cscript SO-93..96).
+*!   * `(lpoly mpg weight, bwidth(0.4))' drew no curve: bwidth() is in the
+*!     units of x, and a window 0.4 lb wide holds two cars at one grid
+*!     point of 50 (twoway lpoly draws that one point too).  The example
+*!     now reads bwidth(400).
+*!
+*! Every example is now one a user can type into a fresh session: each
+*! group loads its own data (`sysuse auto, clear', `sysuse sp500, clear'
+*! for the secondary axis, which named variables no shipped dataset has),
+*! registers what its `dash build' needs, and the help's prompt-less
+*! commands -- the tabs() and two-filter builds, the KPI per group -- carry
+*! the prompt, so this script runs them too.
+*!
+*! HOW
+*!
+*! The examples are read at run time, from dash.sthlp and dash_setup.sthlp,
+*! by test/help_examples.py -- the reader test_help_examples.py pins -- so a
+*! new or edited example is run the next time this script is.  An example is
+*! a {cmd:. ...} line; `///' continuations are joined and SMCL's escapes
+*! undone.  A group is a run of example lines with nothing between them, so
+*! each heading or paragraph starts one, and a group's setup lines
+*! (`sysuse auto, clear') belong to it.  A plain scan of each file counts
+*! the example lines again, independently, and must agree with the reader.
+*! What else the help shows as a command -- a command line without the
+*! prompt, a dash command written in a sentence -- the reader returns as
+*! shown, not run, and each must carry a `shown' pin (below).  Both files
+*! are rendered with Stata's own translator (smcl2txt): every example line
+*! must come out as a line of its own, no SMCL may be left as text anywhere
+*! in either file, and every heading must render as one -- at 4ede074 a
+*! paragraph left open before the Faceting example made every example
+*! after it render as `. dash ...{p_end}' or run on in prose, and dropped
+*! twelve headings.  A brace the help escapes on purpose ({c -(}) is text,
+*! and is told apart by rendering a copy in which it is a sentinel.
+*!
+*! Each group runs in order, in a directory of its own under c(tmpdir) --
+*! the examples write saving(scatter.html) into the working directory, and
+*! nothing may land in the repository, which is checked at the end -- from
+*! a fresh session's state: `dash clear' and no data in memory, under
+*! stcolor, a new session's scheme.  Each command runs as it would be
+*! typed, at the prompt's version, with its output logged, and is held to:
+*!
+*!   * its return code: 0, or the refusal's (an `expect' pin below);
+*!   * every line the help shows it printing, found whole in the log: a
+*!     note with anything after it is not the note the help shows;
+*!   * nothing else named as ignored, no sub-option note, no Python warning
+*!     or traceback -- GAPS.md F5's standard, nothing pending and nothing
+*!     unknown, for an example the help shows working;
+*!   * with rc 0, the file its saving() names written into the group's
+*!     directory, and the name its name() gives in the registry.
+*!
+*! Nothing else between groups is reset -- dash's own state carries over as
+*! in a user's session, which is how the s() leak above surfaced -- except
+*! the dash_max_* settings a group set, which `dash clear' keeps.
+*!
+*! THE PINNED LISTS  (the `_hx_pin' lines below; test_help_examples.py
+*! reads them and checks them against the reader)
+*!
+*!   special  an example not run as written.  help_examples.must_pin()
+*!            names the commands a test may not run -- dash serve blocks,
+*!            dash_setup installs, python, shell, the network, cd, clear
+*!            all, exit ...  One with no special pin stops this script
+*!            before anything runs, so none can be skipped in silence.
+*!   expect   the return code of an example the help presents as refused.
+*!   check    a claim beyond the return code.
+*!   shown    a command the help shows and does not present as an example
+*!            to type, with the reason it is not run and the check that
+*!            stands in: python (compiled), outside (python app.py, whose
+*!            app an example writes), described (an example runs it),
+*!            placeholder or fragment (accounted for only).  One the reader
+*!            finds with no shown pin fails.
+*!
+*! A pin that names nothing in the help stops the script too.
+
+cscript "dash help examples" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// See test_cscript_hygiene.py: do NOT probe Python by running it.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+// cscript dropped every global, the runner's $dash_nobrowser with them.
+global dash_nobrowser 1
+
+// _dash_serve_spec, _dash_find_render and _dash_do_render are internal to
+// dash.ado; loading the file defines them (test_serve_options does too).
+qui do "../dash.ado"
+
+// A long note must reach the log on one line, and a new session draws in
+// stcolor (cscript set its own scheme).
+set linesize 255
+set scheme stcolor
+
+global hx_testdir  "`c(pwd)'"
+global hx_repo     "`c(pwd)'/.."
+global hx_tmpdir   "`c(tmpdir)'"
+global hx_nfail    = 0
+global hx_faillist ""
+
+// ----------------------------------------------------------------
+// Mata: the pinned lists, the plain scan, and text shown as written
+// ----------------------------------------------------------------
+mata:
+mata set matastrict off
+
+// A text shown through SMCL as written: a brace in a command is the
+// command's, not a directive.
+string scalar _hx_safe(string scalar s)
+{
+    real scalar   i
+    string scalar out, ch
+    out = ""
+    for (i = 1; i <= ustrlen(s); i++) {
+        ch = usubstr(s, i, 1)
+        if (ch == "{")      out = out + "{c -(}"
+        else if (ch == "}") out = out + "{c )-}"
+        else                out = out + ch
+    }
+    return(out)
+}
+
+void _hx_pin_add(string scalar kind, string scalar value, string scalar text)
+{
+    external string matrix hx_pins
+    real scalar i, ok
+    if (rows(hx_pins) == 0 & cols(hx_pins) == 0) hx_pins = J(0, 3, "")
+    ok = 0
+    if (kind == "special") ok = (value == "serve")
+    if (kind == "expect")  ok = ustrregexm(value, "^[1-9][0-9]*$")
+    if (kind == "check")   ok = (value == "titled" | value == "bygroups" | value == "pyapp")
+    if (kind == "shown")   ok = (value == "outside" | value == "python" | value == "placeholder" | value == "fragment" | value == "described")
+    if (!ok) {
+        printf("{err}HX: no handler for the pin %s %s\n", _hx_safe(kind), _hx_safe(value))
+        exit(198)
+    }
+    if (strtrim(text) == "") {
+        printf("{err}HX: an empty pin\n")
+        exit(198)
+    }
+    for (i = 1; i <= rows(hx_pins); i++) {
+        if (hx_pins[i, 1] == kind & hx_pins[i, 3] == text) {
+            printf("{err}HX: %s is pinned twice as %s\n", _hx_safe(text), kind)
+            exit(198)
+        }
+    }
+    hx_pins = hx_pins \ (kind, value, text)
+}
+
+// The value pinned for `text' under `kind', or "".
+string scalar _hx_pinned(string scalar kind, string scalar text)
+{
+    external string matrix hx_pins
+    real scalar i
+    for (i = 1; i <= rows(hx_pins); i++) {
+        if (hx_pins[i, 1] == kind & hx_pins[i, 3] == text) return(hx_pins[i, 2])
+    }
+    return("")
+}
+
+// Every pin names what the help holds: a shown pin, a command the help
+// shows and does not run; any other, an example.  Sets local hx_badpins.
+void _hx_pins_check()
+{
+    external string matrix hx_pins
+    real scalar i, g, c, k, ng, nc, ns, hits, bad
+    string scalar kind, text
+    ng  = strtoreal(st_global("hx_ng"))
+    ns  = strtoreal(st_global("hx_ns"))
+    bad = 0
+    for (i = 1; i <= rows(hx_pins); i++) {
+        kind = hx_pins[i, 1]
+        text = hx_pins[i, 3]
+        hits = 0
+        if (kind == "shown") {
+            for (k = 1; k <= ns; k++) {
+                if (st_global("hx_s" + strofreal(k)) == text) hits++
+            }
+        }
+        else {
+            for (g = 1; g <= ng; g++) {
+                nc = strtoreal(st_global("hx_g" + strofreal(g) + "_n"))
+                for (c = 1; c <= nc; c++) {
+                    if (st_global("hx_g" + strofreal(g) + "_c" + strofreal(c)) == text) hits++
+                }
+            }
+        }
+        if (hits == 0) {
+            printf("{err}HX FAIL: the %s pin names nothing in the help: %s\n", kind, _hx_safe(text))
+            bad++
+        }
+    }
+    st_local("hx_badpins", strofreal(bad))
+}
+
+// Lines of the file holding "{cmd:. " -- a plain scan, independent of the
+// reader, which must have read as many.
+real scalar _hx_count_prompts(string scalar path)
+{
+    real scalar   fh, n
+    string scalar ln
+    fh = fopen(path, "r")
+    n  = 0
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        if (strpos(ln, "{cmd:. ")) n++
+    }
+    fclose(fh)
+    return(n)
+}
+
+// What `dash serve [, options]' hands _dash_serve_spec: the router passes
+// on the text after `serve', and _dash_serve drops its first comma.  Also
+// the port it asks for, port(#) or the default 5006.
+void _hx_serve_opts(string scalar cmd)
+{
+    string scalar t, rest
+    real scalar   p
+    t = strtrim(cmd)
+    if (!ustrregexm(t, "^dash\s+serve(\s|,|$)")) {
+        st_local("hx_sform", "0")
+        return
+    }
+    rest = substr(t, strpos(t, "serve") + 5, .)
+    p = strpos(rest, ",")
+    if (p) rest = substr(rest, 1, p - 1) + substr(rest, p + 1, .)
+    st_local("hx_sform", "1")
+    st_local("hx_sopts", strtrim(rest))
+    if (ustrregexm(rest, "\bport\(\s*([0-9]+)\s*\)")) st_local("hx_sport", ustrregexs(1))
+    else st_local("hx_sport", "5006")
+}
+
+// The spec text a served dashboard carries for the filter the build before
+// it gave ($dash_opts_filter), or "" when that build gave none.
+void _hx_filter_needle()
+{
+    string scalar f
+    f = strtrim(st_global("dash_opts_filter"))
+    if (f == "") {
+        st_local("hx_fneedle", "")
+        return
+    }
+    f = strtrim(tokens(subinstr(f, ",", " "))[1])
+    st_local("hx_fneedle", char(34) + "filter" + char(34) + ":" + char(34) + f)
+}
+end
+
+// ----------------------------------------------------------------
+// Programs
+// ----------------------------------------------------------------
+capture program drop _hx_pin
+program define _hx_pin
+    version 16.0
+    args kind value text
+    mata: _hx_pin_add(st_local("kind"), st_local("value"), st_local("text"))
+end
+
+// The tally lives in globals: the helpers count, and cannot reach their
+// caller's locals.
+capture program drop _hx_tally
+program define _hx_tally
+    version 16.0
+    args id bad
+    if `bad' {
+        global hx_nfail    = ${hx_nfail} + 1
+        global hx_faillist "${hx_faillist} `id'"
+    }
+end
+
+// Run $hx_cmd as typed, its output logged to `logf'.  No `version' line: an
+// example runs at the version it runs at when typed at the prompt, which is
+// the version dash's own version-sensitive code then sees.
+capture program drop _hx_exec
+program define _hx_exec, rclass
+    args logf
+    capture log close _hxlog
+    quietly log using `"`logf'"', name(_hxlog) text replace
+    capture noisily ${hx_cmd}
+    local rc = _rc
+    quietly log close _hxlog
+    return scalar rc = `rc'
+end
+
+// Judge one command's log (help_examples.stata_judge).  r(nbad) problems,
+// each printed.
+capture program drop _hx_judge
+program define _hx_judge, rclass
+    version 16.0
+    args file lno logf rc expect gdir
+    global hx_j_file   "`file'"
+    global hx_j_line   "`lno'"
+    global hx_j_log    "`logf'"
+    global hx_j_rc     "`rc'"
+    global hx_j_expect "`expect'"
+    global hx_j_dir    "`gdir'"
+    python: import help_examples; help_examples.stata_judge()
+    return scalar nbad = ${hx_nbad}
+end
+
+// special serve.  `dash serve' blocks Stata until the server is stopped.
+// _dash_serve_spec is everything it does but the launch -- parse,
+// validate, inherit the previous build's options, write the spec -- which
+// is what dash.ado split it out for and what test_serve_options.cscript
+// certifies.  The check runs the example's own options through it, with
+// the log judged as any command's; asserts the port it would serve on and,
+// after a build with filter(), that the served spec carries that filter
+// ("serves the dashboard you just built, filter and all"); then writes the
+// app it would serve with the renderer's server mode, which does not
+// launch, and compiles it.
+capture program drop _hx_serve
+program define _hx_serve, rclass
+    version 16.0
+    args file lno logf gdir
+    mata: _hx_serve_opts(st_global("hx_cmd"))
+    if "`hx_sform'" != "1" {
+        display as error "HX FAIL `file':`lno': the serve check reads dash serve [, options] only"
+        return scalar nbad = 1
+        exit
+    }
+    tempfile mj dj
+    capture log close _hxlog
+    quietly log using `"`logf'"', name(_hxlog) text replace
+    capture noisily _dash_serve_spec, specpath("`mj'") datapath("`dj'") `hx_sopts'
+    local rc = _rc
+    local port "`r(port)'"
+    quietly log close _hxlog
+    _hx_judge "`file'" "`lno'" "`logf'" `rc' 0 "`gdir'"
+    local bad = r(nbad)
+    if `rc' == 0 {
+        if real("`port'") != real("`hx_sport'") {
+            display as error "HX FAIL `file':`lno': dash serve would listen on `port', not `hx_sport'"
+            local ++bad
+        }
+        mata: _hx_filter_needle()
+        if `"`hx_fneedle'"' != "" {
+            global hx_j_path "`mj'"
+            mata: st_global("hx_j_needle", st_local("hx_fneedle"))
+            python: import help_examples; help_examples.stata_file_has()
+            if "$hx_found" != "1" {
+                display as error "HX FAIL `file':`lno': the served spec lost the filter the build before it gave"
+                local ++bad
+            }
+        }
+        _dash_find_render
+        local rpy `"`r(fn)'"'
+        local app "`gdir'/hx_served_app.py"
+        capture noisily _dash_do_render, spec("`mj'") data("`dj'") ///
+            output("`app'") renderpy(`"`rpy'"') mode("server")
+        if _rc {
+            display as error "HX FAIL `file':`lno': the served app could not be written, rc `=_rc'"
+            local ++bad
+        }
+        else {
+            global hx_j_py "`app'"
+            python: import help_examples; help_examples.stata_check_python_file()
+            local bad = `bad' + ${hx_nbad}
+        }
+    }
+    return scalar nbad = `bad'
+end
+
+// check: a claim beyond the return code.
+capture program drop _hx_check
+program define _hx_check, rclass
+    version 16.0
+    args kind file lno logf gdir
+    local bad 0
+    if "`kind'" == "titled" {
+        // "Both register a titled graph": the spec the name() registers
+        // carries the title() the command writes, wherever it is written.
+        python: import help_examples; help_examples.stata_check_titled()
+        local bad = ${hx_nbad}
+    }
+    else if "`kind'" == "pyapp" {
+        // The server app the example writes is Python that compiles; the
+        // help's next line runs it outside Stata with `python app.py'.
+        python: import help_examples; help_examples.stata_saved_path()
+        python: import help_examples; help_examples.stata_check_python_file()
+        local bad = ${hx_nbad}
+    }
+    else if "`kind'" == "bygroups" {
+        // `global dash_max_by_groups N' "lets one by() graph draw N
+        // panels": over N+1 groups the renderer draws N and says so,
+        // naming N (the default, 100, is named otherwise).
+        local n "${dash_max_by_groups}"
+        capture confirm integer number `n'
+        if _rc {
+            display as error "HX FAIL `file':`lno': dash_max_by_groups is `n', not a number"
+            return scalar nbad = 1
+            exit
+        }
+        preserve
+        clear
+        quietly set obs `=`n' + 1'
+        quietly generate long hx_grp = _n
+        quietly generate byte hx_y = mod(_n, 7)
+        quietly generate long hx_x = _n
+        mata: st_global("hx_cmd", "dash scatter hx_y hx_x, by(hx_grp) saving(hx_bygroups.html)")
+        _hx_exec "`logf'"
+        local rc = r(rc)
+        restore
+        if `rc' {
+            display as error "HX FAIL `file':`lno': a by() graph over `=`n' + 1' groups failed, rc `rc'"
+            local ++bad
+        }
+        local nn = strtrim(string(`n', "%12.0fc"))
+        global hx_j_path   "`logf'"
+        global hx_j_needle "more than the `nn' one graph draws; the first `nn' in sort order are drawn"
+        python: import help_examples; help_examples.stata_file_has()
+        if "$hx_found" != "1" {
+            display as error "HX FAIL `file':`lno': a by() graph over `=`n' + 1' groups did not say it drew `nn'"
+            local ++bad
+        }
+    }
+    return scalar nbad = `bad'
+end
+
+// shown: a command the help shows and does not run, checked without
+// running it (help_examples.check_shown): the Python of a `python:' line
+// compiles; the file `python app.py' runs is one an example writes; an
+// example runs the command a sentence describes.  A placeholder or a
+// fragment is accounted for and nothing more.
+capture program drop _hx_shown
+program define _hx_shown, rclass
+    version 16.0
+    args kind file lno
+    global hx_j_file "`file'"
+    global hx_j_line "`lno'"
+    global hx_j_kind "`kind'"
+    python: import help_examples; help_examples.stata_check_shown()
+    return scalar nbad = ${hx_nbad}
+end
+
+// ----------------------------------------------------------------
+// Read the examples (help_examples.py, the reader the pytest pins)
+// ----------------------------------------------------------------
+python:
+import importlib
+import sys
+from sfi import Macro
+_hx_dir = Macro.getGlobal("hx_testdir")
+if _hx_dir not in sys.path:
+    sys.path.insert(0, _hx_dir)
+import help_examples
+help_examples = importlib.reload(help_examples)
+help_examples.stata_plan()
+end
+
+assert ${hx_ng} > 0
+display as text "HX: ${hx_ng} groups read from the help"
+
+// The reader and a plain scan agree on how many example lines each file has.
+// (A block-opening line may not hold ${...}: Stata takes its brace for the
+// block's, so each count is put in a local first.)
+local hx_ng = $hx_ng
+foreach f in dash dash_setup {
+    mata: st_local("hx_scan", strofreal(_hx_count_prompts(st_global("hx_repo") + "/`f'.sthlp")))
+    local hx_read "${hx_nphys_`f'}"
+    if "`hx_scan'" != "`hx_read'" {
+        display as error "HX FAIL: `f'.sthlp has `hx_scan' example lines by a plain scan; the reader read `hx_read'"
+        exit 9
+    }
+    display as text "HX: `f'.sthlp, `hx_scan' example lines, all read"
+}
+
+// ----------------------------------------------------------------
+// THE PINNED LISTS
+// ----------------------------------------------------------------
+// special -- dash serve blocks Stata until Ctrl+C; see _hx_serve.
+_hx_pin special serve `"dash serve, port(5006)"'
+
+// expect -- the help shows each of these refused, and prints the refusal.
+_hx_pin expect 198 `"dash (scatter mpg weight, yaxis(3))"'
+_hx_pin expect 198 `"dash (scatter mpg weight, discrete)"'
+_hx_pin expect 198 `"dash lfit mpg weight [aw=price+1]"'
+_hx_pin expect 198 `"dash build, saving(d.html) scheme(nosuchthing) replace"'
+
+// check -- see _hx_check.
+_hx_pin check titled `"dash (scatter mpg weight) (line mpg weight), title("G") name(g1)"'
+_hx_pin check titled `"dash (scatter mpg weight, title("A")) (line mpg weight), name(g2)"'
+_hx_pin check bygroups `"global dash_max_by_groups 250"'
+_hx_pin check pyapp `"dash build, saving(app.py) server replace"'
+
+// shown -- commands the help shows and does not present as examples to
+// type, each with the reason it is not run; see _hx_shown.
+//   python run, it installs packages (or is the recipe's first line);
+//          the Python after `python:' is compiled instead
+_hx_pin shown python `"python: import subprocess, sys"'
+_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "bokeh", "numpy", "pandas"])"'
+_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "--index-url", "https://your.mirror/simple", "bokeh"])"'
+_hx_pin shown python `"python: subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "bokeh"])"'
+//   placeholder  a path to fill in, and it changes a setting permanently
+_hx_pin shown placeholder `"python set exec "/path/to/python3", permanently"'
+//   outside  run outside Stata, it starts the server; the app it runs is
+//            the one an example writes, which the pyapp check compiles
+_hx_pin shown outside `"python app.py"'
+//   described  a sentence's subject; an example runs the command itself
+_hx_pin shown described `"dash build, saving(app.py) server"'
+//   fragment  not a command: a subcommand with an option, the start of a
+//             template, a kpi without its required title() and name()
+_hx_pin shown fragment `"dash build, server"'
+_hx_pin shown fragment `"dash scatter"'
+_hx_pin shown fragment `"dash kpi p25(price)"'
+_hx_pin shown fragment `"dash kpi p97.5(price)"'
+
+mata: _hx_pins_check()
+if `hx_badpins' > 0 exit 9
+
+// Nothing that may not run as written runs without its special pin.
+local hx_unpinned 0
+forvalues g = 1/`hx_ng' {
+    local hx_nc = ${hx_g`g'_n}
+    forvalues c = 1/`hx_nc' {
+        if `"${hx_g`g'_c`c'_guard}"' == "" continue
+        mata: st_local("hx_sp", _hx_pinned("special", st_global("hx_g`g'_c`c'")))
+        if "`hx_sp'" == "" {
+            display as error "HX FAIL ${hx_g`g'_file}:${hx_g`g'_c`c'_line}: may not run as written (${hx_g`g'_c`c'_guard}) and has no special pin:"
+            mata: printf("{err}    %s\n", _hx_safe(st_global("hx_g`g'_c`c'")))
+            local ++hx_unpinned
+        }
+    }
+}
+if `hx_unpinned' > 0 exit 9
+
+// ----------------------------------------------------------------
+// Run every group
+// ----------------------------------------------------------------
+python: import help_examples; help_examples.stata_repo_files()
+local hx_repo_before "${hx_repo_has}"
+
+tempfile hx_t
+global hx_root "`hx_t'_hx"
+mkdir "${hx_root}"
+
+// ----------------------------------------------------------------
+// The help renders: every example reads as it is typed, and no SMCL is
+// left as text anywhere
+// ----------------------------------------------------------------
+// Stata's own translator (smcl2txt, rc 0 whatever it makes of the file)
+// turns each file to text.  It renders a copy in which every brace the help
+// escapes on purpose ({c -(}) is drawn as a sentinel instead, so a "{" in
+// the text can only be a directive that did not render.  Checked:
+//   * every example line is a line of its own starting with the prompt,
+//     and holds no "{" -- a paragraph left open before an example made
+//     everything after it render as raw SMCL, measured at 4ede074 from the
+//     Faceting example to the end of dash.sthlp;
+//   * no line anywhere holds a "{", and every {title:} heading is a line
+//     of its own, in order -- a failure can drop text rather than show it;
+//   * render_problems(), the Python twin test_help_examples.py runs,
+//     predicts exactly those leftovers and lost headings.
+foreach f in dash dash_setup {
+    global hx_j_src  "${hx_repo}/`f'.sthlp"
+    global hx_j_path "${hx_root}/`f'_marked.sthlp"
+    python: import help_examples; help_examples.stata_marked_copy()
+    local hx_txt "${hx_root}/`f'_help.txt"
+    quietly translate "${hx_j_path}" "`hx_txt'", translator(smcl2txt) replace
+    global hx_j_path "`hx_txt'"
+    global hx_j_nexp "${hx_nphys_`f'}"
+    python: import help_examples; help_examples.stata_rendered_ok()
+    local bad = ${hx_nbad}
+    local verdict = cond(`bad', "FAIL", "ok")
+    display as text "HX   `f'.sthlp renders its examples  `verdict'"
+    _hx_tally `f'.sthlp:render-examples `bad'
+    python: import help_examples; help_examples.stata_whole_file_ok()
+    local bad = ${hx_nbad}
+    local verdict = cond(`bad', "FAIL", "ok")
+    display as text "HX   `f'.sthlp renders whole, no SMCL left as text  `verdict'"
+    _hx_tally `f'.sthlp:render-all `bad'
+}
+
+local hx_nrun 0
+local hx_nspecial 0
+forvalues g = 1/`hx_ng' {
+    local gdir "${hx_root}/g`g'"
+    mkdir "`gdir'"
+    quietly cd "`gdir'"
+    mata: printf("{txt}\nHX group %s  %s:%s  %s\n", "`g'", st_global("hx_g`g'_file"), st_global("hx_g`g'_line"), _hx_safe(st_global("hx_g`g'_label")))
+    // A fresh session's: an empty registry and no data in memory.  Each
+    // group loads the data it uses, as a user typing it would have to.
+    capture dash clear
+    clear
+    local hx_nc = ${hx_g`g'_n}
+    forvalues c = 1/`hx_nc' {
+        local file "${hx_g`g'_file}"
+        local lno  "${hx_g`g'_c`c'_line}"
+        mata: st_global("hx_cmd", st_global("hx_g`g'_c`c'"))
+        mata: st_global("hx_example", st_global("hx_cmd"))
+        mata: st_local("hx_sp", _hx_pinned("special", st_global("hx_cmd")))
+        mata: st_local("hx_ex", _hx_pinned("expect", st_global("hx_cmd")))
+        mata: st_local("hx_ck", _hx_pinned("check", st_global("hx_cmd")))
+        if "`hx_ex'" == "" local hx_ex 0
+        local logf "${hx_root}/cmd.log"
+        if "`hx_sp'" == "serve" {
+            _hx_serve "`file'" "`lno'" "`logf'" "`gdir'"
+            local bad = r(nbad)
+            local how "special serve"
+            local ++hx_nspecial
+        }
+        else {
+            _hx_exec "`logf'"
+            local rc = r(rc)
+            quietly cd "`gdir'"
+            _hx_judge "`file'" "`lno'" "`logf'" `rc' `hx_ex' "`gdir'"
+            local bad = r(nbad)
+            local how "rc `rc'"
+            if "`hx_ck'" != "" & `rc' == `hx_ex' {
+                _hx_check `hx_ck' "`file'" "`lno'" "`logf'" "`gdir'"
+                local bad = `bad' + r(nbad)
+                local how "`how', check `hx_ck'"
+            }
+            local ++hx_nrun
+        }
+        quietly cd "`gdir'"
+        local verdict = cond(`bad', "FAIL", "ok")
+        mata: printf("{txt}HX   %s:%s  [%s]  %s  %s\n", st_local("file"), st_local("lno"), st_local("how"), st_local("verdict"), _hx_safe(st_global("hx_example")))
+        _hx_tally `file':`lno' `bad'
+    }
+    // What `dash clear' keeps and a group may have set.
+    capture macro drop dash_max_*
+    global dash_nobrowser 1
+}
+quietly cd "${hx_testdir}"
+
+// ----------------------------------------------------------------
+// Everything shown and not run is accounted for
+// ----------------------------------------------------------------
+local hx_ns = $hx_ns
+local hx_nshown 0
+forvalues k = 1/`hx_ns' {
+    local file "${hx_s`k'_file}"
+    local lno  "${hx_s`k'_line}"
+    mata: st_local("hx_sk", _hx_pinned("shown", st_global("hx_s`k'")))
+    if "`hx_sk'" == "" {
+        display as error "HX FAIL `file':`lno': shown as a command, and neither run as an example nor pinned:"
+        local bad 1
+        local hx_sk "unpinned"
+    }
+    else {
+        _hx_shown `hx_sk' "`file'" "`lno'"
+        local bad = r(nbad)
+    }
+    local ++hx_nshown
+    local verdict = cond(`bad', "FAIL", "ok")
+    mata: printf("{txt}HX   %s:%s  [shown %s, %s]  %s  %s\n", st_local("file"), st_local("lno"), st_local("hx_sk"), st_global("hx_s`k'_form"), st_local("verdict"), _hx_safe(st_global("hx_s`k'")))
+    _hx_tally `file':`lno' `bad'
+}
+
+// ----------------------------------------------------------------
+// Nothing was written into the repository
+// ----------------------------------------------------------------
+python: import help_examples; help_examples.stata_repo_files()
+if "$hx_repo_has" != "`hx_repo_before'" {
+    display as error "HX FAIL: the run left files in the repository: ${hx_repo_has} (before: `hx_repo_before')"
+    _hx_tally repository 1
+}
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+local hx_want 0
+forvalues g = 1/`hx_ng' {
+    local hx_want = `hx_want' + ${hx_g`g'_n}
+}
+local hx_total = `hx_nrun' + `hx_nspecial'
+display as text ""
+display as text "HX: ${hx_ng} groups, `hx_total' commands: `hx_nrun' run as written, `hx_nspecial' through a special check"
+display as text "HX: `hx_nshown' commands shown and not run, each pinned with its reason"
+assert `hx_total' == `hx_want'
+assert `hx_nshown' == `hx_ns'
+assert `hx_nrun' > 0
+
+local nfail = ${hx_nfail}
+local faillist "${hx_faillist}"
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    python: import help_examples; help_examples.stata_remove_tree()
+    macro drop hx_*
+    display as text "  test_help_examples: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_help_examples: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "  the groups' directories are kept: ${hx_root}"
+    display as text "============================================================"
+    exit 9
+}

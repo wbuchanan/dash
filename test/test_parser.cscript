@@ -405,10 +405,24 @@ sysuse auto, clear
 quietly generate double lo = mpg - 3
 quietly generate double hi = mpg + 3
 local fam_var   "histogram kdensity"
-local fam_yvar1 "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
+local fam_yvar1 "rarea rbar rspike rcap rline rconnected rcapsym rscatter"
 local fam_y1var "pcspike pcarrow pcbarrow pcscatter pccapsym"
-local fam_yvar  "scatter line connected area bar spike lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci dot dropline tsline mspline mband"
+local fam_yvar  "scatter line connected area bar spike lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci dot dropline mspline mband"
 local n56 = 0
+// tsline and tsrline, of the standard and the range family, draw against
+// the time variable tsset set and take no x of their own, as twoway does
+// (test_help_claims_1.cscript HC1-09): the x written is the time variable.
+quietly generate int zt56 = _n
+quietly tsset zt56
+_dash_process_segment "tsline mpg" _pt56 _js56
+assert "`_pt56'" == "tsline"
+assert strpos(`"`_js56'"', `""type":"tsline","yvar":"mpg","xvar":"zt56""') > 0
+_dash_process_segment "tsrline lo hi" _pt56 _js56
+assert "`_pt56'" == "tsrline"
+assert strpos(`"`_js56'"', `""type":"tsrline","yvar1":"lo","yvar2":"hi","xvar":"zt56""') > 0
+local n56 = `n56' + 2
+quietly tsset, clear
+drop zt56
 foreach t of local fam_var {
     _dash_process_segment "`t' mpg" _pt56 _js56
     assert "`_pt56'" == "`t'"

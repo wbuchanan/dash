@@ -268,17 +268,20 @@ display "P1B-18e PASS: paren groups joined by '||' still accepted"
 // P1B-18f — a top-level if/in qualifier in paren mode
 // ----------------------------------------------------------------
 // twoway accepts all four of these with rc 0 and dash.sthlp documents the
-// form.  This scanner has never captured the qualifier, but it must not
-// start rejecting it either -- a silent drop is a separate defect, and
-// turning it into an abort would be a regression on documented syntax.
+// form.  The scanner used to walk past the qualifier and drop it -- every
+// observation drawn, in silence; it hands the qualifier on now, in
+// _graph_qual_raw, and _dash_plot makes it the graph's own
+// (test_help_claims_1.cscript HC1-01 to HC1-05).
 capture mata: _dash_split_segs("(scatter mpg weight) if foreign==1")
 assert _rc == 0
 assert "`_n_segs'" == "1"
+assert `"`_graph_qual_raw'"' == "if foreign==1"
 display "P1B-18f PASS: a top-level if qualifier is accepted in paren mode"
 
 capture mata: _dash_split_segs("(scatter mpg weight) in 1/10")
 assert _rc == 0
 assert "`_n_segs'" == "1"
+assert `"`_graph_qual_raw'"' == "in 1/10"
 display "P1B-18g PASS: a top-level in qualifier is accepted in paren mode"
 
 // The qualifier must not hide the graph-option comma that follows it.
@@ -286,6 +289,7 @@ capture mata: _dash_split_segs(`"(scatter mpg weight) if foreign==1, title("T")"
 assert _rc == 0
 assert "`_n_segs'" == "1"
 assert strpos(`"`_graph_opts_raw'"', "title") > 0
+assert `"`_graph_qual_raw'"' == "if foreign==1"
 display "P1B-18h PASS: graph options after an if qualifier are still found"
 
 

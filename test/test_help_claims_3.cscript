@@ -1,0 +1,415 @@
+*! test_help_claims_3.cscript
+*! Certification script for dash.sthlp's Layout, Tabs, Linking and
+*! Brushing, toolbar and Filters sections (WP-23; lines 586-797 at
+*! 4ede074): the claims made of Stata -- what dash build refuses and with
+*! which return code, what it carries, what reaches the saved page and the
+*! server app -- held to the code.  test_help_claims_3.py holds the same
+*! sections to both render modes.
+*!
+*! Usage:  cd test
+*!         do test_help_claims_3.cscript
+*!
+*! Requires: dash_setup completed, Python + bokeh installed.
+*! Version: 1.0.0  23sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! The help said repeated filter() options are joined "with a semicolon
+*! internally" (they are joined with ||), that Stata's syntax "keeps only
+*! the last of a repeated option" (it refuses the second: r(198), "option
+*! filter() not allowed"), that a filter's label may be "anything but a
+*! semicolon", and that a variable not in the data is refused with a
+*! warning (dash build stops with r(111)).  Behind the label claim were
+*! defects, measured at 4ede074:
+*!
+*!     label("A;B"), label("A||B")      too few quotes          r(132)
+*!     label(A;B)                       names 'B?' ... variable r(198)
+*!     label("exclude(nosuch) me")      exclude() name 'nosuch' r(198)
+*!     label(Bob's cars) exclude(g2)    rc 0, exclude() dropped, the widget
+*!                                      titled "Bob's cars) exclude(g2"
+*!     filter(fore, ...)                rc 0, no widget: "the variable is
+*!                                      not in the data"
+*!
+*! dash.ado split the joined groups at every "||" and ";" and took every
+*! "exclude(" as the sub-option, wherever it stood; the renderer did the
+*! same, and read an apostrophe as a quote.
+
+cscript "dash help claims: layout, tabs, linking, toolbar, filters" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// See test_cscript_hygiene.py: do NOT probe Python by running it.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+do "cert_helpers.do"
+global dash_nobrowser 1
+
+qui sysuse auto, clear
+
+// A command run with its output logged, for the messages it prints.
+capture program drop _hc3_run
+program define _hc3_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_hc3.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _hc3log
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_hc3log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _hc3log
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+local hc3 "`c(tmpdir)'hc3_"
+
+dash clear
+dash scatter mpg weight, name(g1)
+dash scatter price weight, name(g2)
+dash kpi mean(mpg), name(k1) title("Mean mpg")
+
+// ----------------------------------------------------------------
+// HC3-01 -- repeated filter() options are joined with ||, not ;
+// ----------------------------------------------------------------
+dash build, saving("`hc3'01.html") replace ///
+    filter(foreign, type(dropdown)) filter(weight, type(range))
+assert `"$dash_opts_filter"' == "foreign, type(dropdown) || weight, type(range)"
+display "HC3-01 PASS: repeated filter() options are carried joined with ||"
+
+// ----------------------------------------------------------------
+// HC3-02 -- Stata's syntax refuses an option given twice; so a second
+// link() is refused, and a dashboard has one link group
+// ----------------------------------------------------------------
+capture program drop _hc3_twice
+program define _hc3_twice
+    version 16.0
+    syntax [, FILTer(string) LINK(string)]
+end
+_hc3_run `"_hc3_twice, filter(a) filter(b)"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("option filter() not allowed")
+assert r(found) == 1
+_hc3_run `"dash build, saving("`hc3'02.html") replace link(g1) link(g2)"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("option link() not allowed")
+assert r(found) == 1
+display "HC3-02 PASS: syntax refuses a repeated option; a second link() is r(198)"
+
+// ----------------------------------------------------------------
+// HC3-03 -- a semicolon in a quoted label
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'03.html") replace filter(foreign, type(dropdown) label("Origin; or not"))"'
+assert r(rc) == 0
+cert_file_has "`hc3'03.html", needle(`""title":"Origin; or not","options":[["__all__","All"]"')
+assert r(found) == 1
+display "HC3-03 PASS: a label holding a semicolon reaches the widget whole"
+
+// ----------------------------------------------------------------
+// HC3-04 -- || and | in a quoted label
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'04.html") replace filter(foreign, type(dropdown) label("A || B"))"'
+assert r(rc) == 0
+cert_file_has "`hc3'04.html", needle(`""title":"A || B","options""')
+assert r(found) == 1
+_hc3_run `"dash build, saving("`hc3'04b.html") replace filter(foreign, type(dropdown) label("A | B"))"'
+assert r(rc) == 0
+cert_file_has "`hc3'04b.html", needle(`""title":"A | B","options""')
+assert r(found) == 1
+display "HC3-04 PASS: a label holding || or | reaches the widget whole"
+
+// ----------------------------------------------------------------
+// HC3-05 -- a semicolon in an unquoted label
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'05.html") replace filter(foreign, type(dropdown) label(A;B))"'
+assert r(rc) == 0
+cert_file_has "`hc3'05.html", needle(`""title":"A;B","options""')
+assert r(found) == 1
+display "HC3-05 PASS: an unquoted label holding a semicolon reaches the widget"
+
+// ----------------------------------------------------------------
+// HC3-06 -- the word exclude( in a label is text, not an exclude()
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'06.html") replace filter(foreign, type(dropdown) label("exclude(nosuch) of"))"'
+assert r(rc) == 0
+cert_file_has "`hc3'06.html", needle(`""title":"exclude(nosuch) of","options""')
+assert r(found) == 1
+display "HC3-06 PASS: exclude( inside a label is not read as an exclude()"
+
+// ----------------------------------------------------------------
+// HC3-07 -- two filters: the first label holds ; and ||, the second group
+// keeps its own exclude(), saved and in the server app
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'07.html") replace filter(foreign, type(dropdown) label("x;y || z")) filter(price, type(range) exclude(g2) label("Price"))"'
+assert r(rc) == 0
+cert_file_has "`hc3'07.html", needle(`""title":"x;y || z","options""')
+assert r(found) == 1
+cert_file_has "`hc3'07.html", needle(`""title":"Price""')
+assert r(found) == 1
+_hc3_run `"dash build, server saving("`hc3'07.py") replace filter(foreign, type(dropdown) label("x;y || z")) filter(price, type(range) exclude(g2) label("Price"))"'
+assert r(rc) == 0
+cert_file_has "`hc3'07.py", needle(`"{'var': 'foreign', 'type': 'dropdown', 'exclude': [], 'label': 'x;y || z'}"')
+assert r(found) == 1
+cert_file_has "`hc3'07.py", needle(`"{'var': 'price', 'type': 'range', 'exclude': ['g2'], 'label': 'Price'}"')
+assert r(found) == 1
+display "HC3-07 PASS: each group keeps its text and its exclude(), saved and served"
+
+// ----------------------------------------------------------------
+// HC3-08 -- what is refused, and how: an exclude() name that is not
+// registered and a variable that is not a name are r(198), a variable
+// not in the data r(111) -- errors, not warnings -- whatever the other
+// groups' labels hold
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'08.html") replace filter(foreign, label("a;b")) filter(weight, type(range) exclude(nosuch))"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash build: filter exclude() name 'nosuch' not found in registry.")
+assert r(found) == 1
+_hc3_run `"dash build, saving("`hc3'08.html") replace filter(foreign, label("a;b")) filter(1bad, type(range))"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash build: filter() names '1bad', which is not a valid Stata variable name.")
+assert r(found) == 1
+_hc3_run `"dash build, saving("`hc3'08.html") replace filter(foreign, label("a;b")) filter(nosuchvar, type(range))"'
+assert r(rc) == 111
+cert_file_has "`r(log)'", needle("dash build: filter() variable nosuchvar not found.")
+assert r(found) == 1
+display "HC3-08 PASS: an unregistered exclude() or a bad name is r(198); a variable not in the data r(111)"
+
+// ----------------------------------------------------------------
+// HC3-09 -- an apostrophe in an unquoted label leaves exclude() alone
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'09.html") replace filter(price, type(range) label(Bob's cars) exclude(g2))"'
+assert r(rc) == 0
+cert_file_has "`hc3'09.html", needle(`""title":"Bob's cars","value""')
+assert r(found) == 1
+_hc3_run `"dash build, server saving("`hc3'09.py") replace filter(price, type(range) label(Bob's cars) exclude(g2))"'
+assert r(rc) == 0
+cert_file_has "`hc3'09.py", needle(`"'exclude': ['g2'], 'label': "Bob's cars"}"')
+assert r(found) == 1
+display "HC3-09 PASS: an apostrophe in a label does not swallow exclude()"
+
+// ----------------------------------------------------------------
+// HC3-10 -- a compound-quoted label loses its quotes, as a title does
+// ----------------------------------------------------------------
+_hc3_run `"dash build, server saving("`hc3'10.py") replace filter(foreign, type(dropdown) label(`"The "best" cars"'))"'
+assert r(rc) == 0
+cert_file_has "`hc3'10.py", needle(`"'label': 'The "best" cars'}"')
+assert r(found) == 1
+display "HC3-10 PASS: a compound-quoted label reaches the widget without its quotes"
+
+// ----------------------------------------------------------------
+// HC3-11 -- a semicolon outside every sub-option still separates, as
+// older specs wrote several filters in one filter()
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'11.html") replace filter(foreign, type(dropdown) label(Origin); weight, type(range) label(Weight))"'
+assert r(rc) == 0
+cert_file_has "`hc3'11.html", needle(`""title":"Origin","options""')
+assert r(found) == 1
+cert_file_has "`hc3'11.html", needle(`""title":"Weight","value""')
+assert r(found) == 1
+display "HC3-11 PASS: a top-level semicolon still separates two filters"
+
+// ----------------------------------------------------------------
+// HC3-12 -- type() may be left out: the widget is a dropdown
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'12.html") replace filter(foreign)"'
+assert r(rc) == 0
+cert_file_has "`hc3'12.html", needle(`""title":"Car origin","options":[["__all__","All"]"')
+assert r(found) == 1
+display "HC3-12 PASS: filter(varname) with no type() is a dropdown, titled by the variable label"
+
+// ----------------------------------------------------------------
+// HC3-13 -- a type() outside the three is named in a warning, and no
+// widget is built
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'13.html") replace filter(foreign, type(checkbox))"'
+assert r(rc) == 0
+// Two needles: the warning follows the renderer's path, and on a long
+// path the log wraps the line before its end.  cert_file_has replaces
+// r(), so the log's name is kept first.
+local hc3log "`r(log)'"
+cert_file_has "`hc3log'", needle("filter(foreign, type(checkbox)): type() must be one of")
+assert r(found) == 1
+cert_file_has "`hc3log'", needle("no widget was built.")
+assert r(found) == 1
+cert_file_has "`hc3'13.html", needle(`""options":[["__all__","All"]"')
+assert r(found) == 0
+display "HC3-13 PASS: an unknown type() is named in a warning and builds no widget"
+
+// ----------------------------------------------------------------
+// HC3-14 -- any other sub-option is named in a warning and ignored
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'14.html") replace filter(foreign, type(dropdown) bogus(1) width(3))"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("filter() sub-option(s) not implemented and ignored: bogus(1) width(3)")
+assert r(found) == 1
+cert_file_has "`hc3'14.html", needle(`""title":"Car origin","options":[["__all__","All"]"')
+assert r(found) == 1
+display "HC3-14 PASS: an unknown sub-option is named and the widget still built"
+
+// ----------------------------------------------------------------
+// HC3-15 -- up to 20 filters; the 21st is dropped with a note.  A
+// slider's title is its label, a blank and a "greater than or equal to"
+// sign (U+2265, JSON-escaped in the page; the needle stops at the blank).
+// ----------------------------------------------------------------
+local f21 ""
+forvalues i = 1/21 {
+    local f21 `"`f21' filter(mpg, type(slider) label("F`i'"))"'
+}
+_hc3_run `"dash build, saving("`hc3'15.html") replace `f21'"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("21 filters, more than the 20 a dashboard builds; the first 20 are built.")
+assert r(found) == 1
+cert_file_has "`hc3'15.html", needle(`""title":"F20 "')
+assert r(found) == 1
+cert_file_has "`hc3'15.html", needle(`""title":"F21 "')
+assert r(found) == 0
+display "HC3-15 PASS: twenty filters are built and the rest named in a note"
+
+// ----------------------------------------------------------------
+// HC3-16 -- an abbreviated variable is the variable, as varname is in Stata
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'16.html") replace filter(fore, type(dropdown))"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("not in the data")
+assert r(found) == 0
+cert_file_has "`hc3'16.html", needle(`""title":"Car origin","options":[["__all__","All"]"')
+assert r(found) == 1
+display "HC3-16 PASS: filter(fore) filters on foreign"
+
+// ----------------------------------------------------------------
+// HC3-17 -- link() takes a KPI card's name; tabs() ignores a name the
+// registry does not hold, without a word; layout() defaults to auto
+// ----------------------------------------------------------------
+_hc3_run `"dash build, saving("`hc3'17.html") replace link(k1 g1)"'
+assert r(rc) == 0
+_hc3_run `"dash build, saving("`hc3'17b.html") replace tabs(A: g1 nosuch / B: g2 / C: nosuch2)"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("nosuch")
+assert r(found) == 0
+cert_file_has "`hc3'17b.html", needle(`""title":"C""')
+assert r(found) == 0
+dash build, saving("`hc3'17c.html") replace
+assert "$dash_opts_layout" == "auto"
+display "HC3-17 PASS: link() takes a KPI name, tabs() skips unknown names, layout() is auto by default"
+
+// ----------------------------------------------------------------
+// HC3-18 -- the help's own examples of layout(), tabs() and filter()
+// ----------------------------------------------------------------
+dash clear
+dash scatter mpg weight, name(s1)
+dash scatter price weight, name(s2)
+dash scatter mpg length, name(s3)
+dash kpi mean(mpg), name(k1) title("Mean")
+dash kpi max(mpg), name(k2) title("Max")
+foreach ex in "layout(2 3)" "layout(s1:1,1 s2:1,2 k1:2,1)" ///
+    "layout(bs: k1=3 k2=3 s1=6)" "tabs(Overview: k1 s1 / Detail: s2 s3)" ///
+    "filter(foreign, type(dropdown)) filter(weight, type(range) exclude(k1))" {
+    _hc3_run `"dash build, saving("`hc3'18.html") replace `ex'"'
+    assert r(rc) == 0
+}
+display "HC3-18 PASS: the help's layout(), tabs() and filter() examples build"
+
+// ----------------------------------------------------------------
+// HC3-19 -- dash_parse.mata and dash_render.py split filter() text by one
+// rule: the groups, and a group's sub-options
+// ----------------------------------------------------------------
+local dashdir = substr("`c(pwd)'", 1, strlen("`c(pwd)'") - strlen("/test"))
+capture python: pass
+capture python: import sys, sfi; sys.path.insert(0, sfi.Macro.getLocal("dashdir"))
+if _rc != 0 capture python: import sys, sfi; sys.path.insert(0, sfi.Macro.getLocal("dashdir"))
+capture python: import dash_render
+if _rc != 0 capture python: import dash_render
+if _rc != 0 {
+    display as error "HC3-19: dash_render.py could not be imported."
+    exit 198
+}
+mata:
+_hc3c = (
+    `"foreign, type(dropdown) label("A;B") || price, type(range)"' \
+    `"foreign, type(dropdown) label(A;B)"' \
+    `"a, label(`"q "w;x" e"') ; b"' \
+    `"a, label("x || y")||b,type(range) exclude(g1 g2)"' \
+    `"a, label(Bob's (cars); here) exclude(g1)"' \
+    `"a, label("unbalanced ( paren") exclude(g1)"' \
+    `" || ;  ; a"' \
+    `""' \
+    `"type(range),exclude(g1)   label("a, b") x"'
+)
+_hc3m = J(rows(_hc3c), 2, "")
+for (_i = 1; _i <= rows(_hc3c); _i++) {
+    _hc3m[_i, 1] = invtokens(_dash_filter_split(_hc3c[_i], 1), char(10))
+    _hc3m[_i, 2] = invtokens(_dash_filter_split(_hc3c[_i], 0), char(10))
+}
+st_local("hc3n", strofreal(rows(_hc3c)))
+end
+local hc3bad ""
+forvalues i = 1/`hc3n' {
+    mata: st_local("s", _hc3c[`i'])
+    mata: st_local("mg", _hc3m[`i', 1])
+    mata: st_local("mt", _hc3m[`i', 2])
+    python: import sfi, dash_render as _dr; _hc3s = sfi.Macro.getLocal("s"); sfi.Macro.setLocal("pg", "\n".join(_dr._dash_filter_split(_hc3s, True))); sfi.Macro.setLocal("pt", "\n".join(_dr._dash_filter_split(_hc3s, False)))
+    mata: st_local("same", strofreal(st_local("mg") == st_local("pg") & st_local("mt") == st_local("pt")))
+    if !`same' local hc3bad "`hc3bad' `i'"
+}
+if "`hc3bad'" != "" display as error "HC3-19: Mata and Python split differently:`hc3bad'"
+assert "`hc3bad'" == ""
+display "HC3-19 PASS: dash_parse.mata and dash_render.py split all `hc3n' filter texts alike"
+
+// ----------------------------------------------------------------
+// HC3-20 -- adversarial filter() text, read by dash_parse.mata:
+//   bypass     a label cannot add a group that escapes the checks
+//   injection  a label cannot add an exclude() the registry lacks
+//   exhaustion a 160,000-character label is read in bounded time
+// ----------------------------------------------------------------
+mata:
+_hc3r = "g1 g2 k1"
+_hc3e = J(0, 1, .)
+_hc3e = _hc3e \ (_dash_filter_refusal(`"foreign, label("x || 1bad, type(range); nosuchvar") type(dropdown)"', _hc3r, "_hc3v") == "")
+_hc3e = _hc3e \ (st_local("_hc3v") == "foreign")
+_hc3e = _hc3e \ (_dash_filter_refusal(`"price, type(range) label("a) exclude(nosuch) label(b")"', _hc3r, "_hc3v") == "")
+_hc3e = _hc3e \ (st_local("_hc3v") == "price")
+_hc3e = _hc3e \ (_dash_filter_refusal(`"price, type(range) exclude(g2 nosuch)"', _hc3r, "_hc3v") == "filter exclude() name 'nosuch' not found in registry.")
+_hc3l = "foreign, type(dropdown) label(" + char(34)
+for (_i = 1; _i <= 8000; _i++) _hc3l = _hc3l + "a;b||c(d)e f;g||(i) "
+_hc3l = _hc3l + char(34) + ") || price, exclude(g1)"
+st_local("hc3len", strofreal(strlen(_hc3l)))
+end
+timer clear 20
+timer on 20
+mata: st_local("hc3ref", _dash_filter_refusal(_hc3l, _hc3r, "_hc3v"))
+mata: st_local("hc3ng", strofreal(cols(_dash_filter_split(_hc3l, 1))))
+timer off 20
+quietly timer list 20
+mata: st_local("hc3ok", strofreal(all(_hc3e)))
+assert `hc3ok' == 1
+assert `"`hc3ref'"' == ""
+assert "`_hc3v'" == "foreign price"
+assert `hc3ng' == 2
+assert `hc3len' > 160000
+assert r(t20) < 30
+display "HC3-20 PASS: a label cannot add a group or an exclude(), and 160,000 characters are read in bounded time"
+
+capture erase "`c(tmpdir)'dash_hc3.log"
+dash clear
+display ""
+display "test_help_claims_3.cscript: ALL CHECKS PASSED"

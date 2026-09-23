@@ -1,0 +1,675 @@
+{
+ "_meta": {
+  "dataset": "sysuse auto, clear; generate int t = _n; tsset t",
+  "generated_by": "scripts/extract_alias_spelling_truth.do",
+  "method": "Each probe is run as twoway <command> nodraw saving(); rc is recorded, and where rc is 0 the live-format .gph, with the *! header lines, the .command/.date/.time lines and the K<hex> object ids normalised away, is compared with the reference's.  twoway_accepts is true when rc is 0 and the two are identical -- for a full-name probe, whose reference is the plot without the option, when rc is 0 and the two differ -- false when rc is not 0, and null when rc is 0 but the reference drawn twice did not normalise to identical text, so resolution could not be verified.",
+  "run_date": "23 Sep 2026",
+  "stata_born_date": "12 Aug 2026",
+  "stata_edition": "MP",
+  "stata_version": "19.5"
+ },
+ "options": {
+  "bins": [
+   {
+    "command": "twoway histogram mpg, bins(5)",
+    "context": "bin_hist",
+    "rc": 0,
+    "reference": "twoway histogram mpg, bin(5)",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": true,
+    "target": "bin",
+    "twoway_accepts": true
+   }
+  ],
+  "bw": [
+   {
+    "command": "twoway lpoly mpg weight, bw(400)",
+    "context": "bwidth_lpoly",
+    "rc": 0,
+    "reference": "twoway lpoly mpg weight, bwidth(400)",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": true,
+    "target": "bwidth",
+    "twoway_accepts": true
+   },
+   {
+    "command": "twoway kdensity mpg, bw(2)",
+    "context": "bwidth_kdens",
+    "rc": 0,
+    "reference": "twoway kdensity mpg, bwidth(2)",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": true,
+    "target": "bwidth",
+    "twoway_accepts": true
+   },
+   {
+    "command": "twoway lowess mpg weight, bw(0.3)",
+    "context": "bwidth_lowess",
+    "rc": 0,
+    "reference": "twoway lowess mpg weight, bwidth(0.3)",
+    "reference_rc": 0,
+    "reference_stable": false,
+    "resolves_to_target": null,
+    "target": "bwidth",
+    "twoway_accepts": null
+   },
+   {
+    "command": "twoway bar mpg weight, bw(100)",
+    "context": "barwidth_bar",
+    "rc": 198,
+    "reference": "twoway bar mpg weight, barwidth(100)",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": null,
+    "target": "barwidth",
+    "twoway_accepts": false
+   },
+   {
+    "command": "twoway rbar mpg price weight, bw(100)",
+    "context": "barwidth_rbar",
+    "rc": 198,
+    "reference": "twoway rbar mpg price weight, barwidth(100)",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": null,
+    "target": "barwidth",
+    "twoway_accepts": false
+   },
+   {
+    "command": "twoway spike mpg weight, bw(100)",
+    "context": "barwidth_spike",
+    "rc": 198,
+    "reference": "twoway spike mpg weight",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": null,
+    "target": "barwidth",
+    "twoway_accepts": false
+   },
+   {
+    "command": "twoway dot mpg weight, bw(100)",
+    "context": "barwidth_dot",
+    "rc": 198,
+    "reference": "twoway dot mpg weight",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": null,
+    "target": "barwidth",
+    "twoway_accepts": false
+   },
+   {
+    "command": "twoway histogram mpg, bw(2)",
+    "context": "barwidth_hist",
+    "rc": 198,
+    "reference": "twoway histogram mpg",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": null,
+    "target": "barwidth",
+    "twoway_accepts": false
+   }
+  ],
+  "clcolor": [
+   {
+    "command": "twoway line mpg weight, clcolor(red)",
+    "context": "line_plain",
+    "differs_from_reference": true,
+    "rc": 0,
+    "reference": "twoway line mpg weight",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "target": "clcolor",
+    "twoway_accepts": true
+   }
+  ],
+  "clpattern": [
+   {
+    "command": "twoway line mpg weight, clpattern(dash)",
+    "context": "line_plain",
+    "differs_from_reference": true,
+    "rc": 0,
+    "reference": "twoway line mpg weight",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "target": "clpattern",
+    "twoway_accepts": true
+   }
+  ],
+  "clwidth": [
+   {
+    "command": "twoway line mpg weight, clwidth(thick)",
+    "context": "line_plain",
+    "differs_from_reference": true,
+    "rc": 0,
+    "reference": "twoway line mpg weight",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "target": "clwidth",
+    "twoway_accepts": true
+   }
+  ],
+  "sort1": [
+   {
+    "command": "twoway line mpg weight, sort1(t)",
+    "context": "sort_line",
+    "rc": 0,
+    "reference": "twoway line mpg weight, sort(t)",
+    "reference_rc": 0,
+    "reference_stable": true,
+    "resolves_to_target": true,
+    "target": "sort",
+    "twoway_accepts": true
+   }
+  ]
+ },
+ "plottypes": {
+  "area": {
+   "probes": {
+    "ar": {
+     "command": "twoway ar mpg weight",
+     "context": "pt_area",
+     "rc": 198,
+     "reference": "twoway area mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "area",
+     "twoway_accepts": false
+    },
+    "are": {
+     "command": "twoway are mpg weight",
+     "context": "pt_area",
+     "rc": 198,
+     "reference": "twoway area mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "area",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "bar": {
+   "probes": {
+    "ba": {
+     "command": "twoway ba mpg weight",
+     "context": "pt_bar",
+     "rc": 198,
+     "reference": "twoway bar mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "bar",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "dropline": {
+   "probes": {
+    "dr": {
+     "command": "twoway dr mpg weight",
+     "context": "pt_dropline",
+     "rc": 198,
+     "reference": "twoway dropline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "dropline",
+     "twoway_accepts": false
+    },
+    "dro": {
+     "command": "twoway dro mpg weight",
+     "context": "pt_dropline",
+     "rc": 198,
+     "reference": "twoway dropline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "dropline",
+     "twoway_accepts": false
+    },
+    "drop": {
+     "command": "twoway drop mpg weight",
+     "context": "pt_dropline",
+     "rc": 198,
+     "reference": "twoway dropline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "dropline",
+     "twoway_accepts": false
+    },
+    "dropl": {
+     "command": "twoway dropl mpg weight",
+     "context": "pt_dropline",
+     "rc": 198,
+     "reference": "twoway dropline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "dropline",
+     "twoway_accepts": false
+    },
+    "dropli": {
+     "command": "twoway dropli mpg weight",
+     "context": "pt_dropline",
+     "rc": 198,
+     "reference": "twoway dropline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "dropline",
+     "twoway_accepts": false
+    },
+    "droplin": {
+     "command": "twoway droplin mpg weight",
+     "context": "pt_dropline",
+     "rc": 198,
+     "reference": "twoway dropline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "dropline",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "fpfit": {
+   "probes": {
+    "fp": {
+     "command": "twoway fp mpg weight",
+     "context": "pt_fpfit",
+     "rc": 198,
+     "reference": "twoway fpfit mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "fpfit",
+     "twoway_accepts": false
+    },
+    "fpf": {
+     "command": "twoway fpf mpg weight",
+     "context": "pt_fpfit",
+     "rc": 198,
+     "reference": "twoway fpfit mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "fpfit",
+     "twoway_accepts": false
+    },
+    "fpfi": {
+     "command": "twoway fpfi mpg weight",
+     "context": "pt_fpfit",
+     "rc": 198,
+     "reference": "twoway fpfit mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "fpfit",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "kdensity": {
+   "probes": {
+    "kde": {
+     "command": "twoway kde mpg",
+     "context": "pt_kdensity",
+     "rc": 198,
+     "reference": "twoway kdensity mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "kdensity",
+     "twoway_accepts": false
+    },
+    "kden": {
+     "command": "twoway kden mpg",
+     "context": "pt_kdensity",
+     "rc": 198,
+     "reference": "twoway kdensity mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "kdensity",
+     "twoway_accepts": false
+    },
+    "kdens": {
+     "command": "twoway kdens mpg",
+     "context": "pt_kdensity",
+     "rc": 198,
+     "reference": "twoway kdensity mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "kdensity",
+     "twoway_accepts": false
+    },
+    "kdensi": {
+     "command": "twoway kdensi mpg",
+     "context": "pt_kdensity",
+     "rc": 198,
+     "reference": "twoway kdensity mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "kdensity",
+     "twoway_accepts": false
+    },
+    "kdensit": {
+     "command": "twoway kdensit mpg",
+     "context": "pt_kdensity",
+     "rc": 198,
+     "reference": "twoway kdensity mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "kdensity",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "lfit": {
+   "probes": {
+    "lfi": {
+     "command": "twoway lfi mpg weight",
+     "context": "pt_lfit",
+     "rc": 198,
+     "reference": "twoway lfit mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "lfit",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "lowess": {
+   "probes": {
+    "low": {
+     "command": "twoway low mpg weight",
+     "context": "pt_lowess",
+     "rc": 198,
+     "reference": "twoway lowess mpg weight",
+     "reference_rc": 0,
+     "reference_stable": false,
+     "resolves_to_target": null,
+     "target": "lowess",
+     "twoway_accepts": false
+    },
+    "lowe": {
+     "command": "twoway lowe mpg weight",
+     "context": "pt_lowess",
+     "rc": 198,
+     "reference": "twoway lowess mpg weight",
+     "reference_rc": 0,
+     "reference_stable": false,
+     "resolves_to_target": null,
+     "target": "lowess",
+     "twoway_accepts": false
+    },
+    "lowes": {
+     "command": "twoway lowes mpg weight",
+     "context": "pt_lowess",
+     "rc": 198,
+     "reference": "twoway lowess mpg weight",
+     "reference_rc": 0,
+     "reference_stable": false,
+     "resolves_to_target": null,
+     "target": "lowess",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "lpoly": {
+   "probes": {
+    "lpo": {
+     "command": "twoway lpo mpg weight",
+     "context": "pt_lpoly",
+     "rc": 198,
+     "reference": "twoway lpoly mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "lpoly",
+     "twoway_accepts": false
+    },
+    "lpol": {
+     "command": "twoway lpol mpg weight",
+     "context": "pt_lpoly",
+     "rc": 198,
+     "reference": "twoway lpoly mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "lpoly",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "mspline": {
+   "probes": {
+    "msp": {
+     "command": "twoway msp mpg weight",
+     "context": "pt_mspline",
+     "rc": 198,
+     "reference": "twoway mspline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "mspline",
+     "twoway_accepts": false
+    },
+    "mspl": {
+     "command": "twoway mspl mpg weight",
+     "context": "pt_mspline",
+     "rc": 198,
+     "reference": "twoway mspline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "mspline",
+     "twoway_accepts": false
+    },
+    "mspli": {
+     "command": "twoway mspli mpg weight",
+     "context": "pt_mspline",
+     "rc": 198,
+     "reference": "twoway mspline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "mspline",
+     "twoway_accepts": false
+    },
+    "msplin": {
+     "command": "twoway msplin mpg weight",
+     "context": "pt_mspline",
+     "rc": 198,
+     "reference": "twoway mspline mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "mspline",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "qfit": {
+   "probes": {
+    "qfi": {
+     "command": "twoway qfi mpg weight",
+     "context": "pt_qfit",
+     "rc": 198,
+     "reference": "twoway qfit mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "qfit",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "spike": {
+   "probes": {
+    "sp": {
+     "command": "twoway sp mpg weight",
+     "context": "pt_spike",
+     "rc": 198,
+     "reference": "twoway spike mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "spike",
+     "twoway_accepts": false
+    },
+    "spi": {
+     "command": "twoway spi mpg weight",
+     "context": "pt_spike",
+     "rc": 198,
+     "reference": "twoway spike mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "spike",
+     "twoway_accepts": false
+    },
+    "spik": {
+     "command": "twoway spik mpg weight",
+     "context": "pt_spike",
+     "rc": 198,
+     "reference": "twoway spike mpg weight",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "spike",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "tsline": {
+   "probes": {
+    "tsl": {
+     "command": "twoway tsl mpg",
+     "context": "pt_tsline",
+     "rc": 198,
+     "reference": "twoway tsline mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsline",
+     "twoway_accepts": false
+    },
+    "tsli": {
+     "command": "twoway tsli mpg",
+     "context": "pt_tsline",
+     "rc": 198,
+     "reference": "twoway tsline mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsline",
+     "twoway_accepts": false
+    },
+    "tslin": {
+     "command": "twoway tslin mpg",
+     "context": "pt_tsline",
+     "rc": 198,
+     "reference": "twoway tsline mpg",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsline",
+     "twoway_accepts": false
+    }
+   },
+   "shortest_accepted": null
+  },
+  "tsrline": {
+   "probes": {
+    "ts": {
+     "command": "twoway ts mpg turn",
+     "context": "pt_tsrline",
+     "rc": 198,
+     "reference": "twoway tsrline mpg turn",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsrline",
+     "twoway_accepts": false
+    },
+    "tsr": {
+     "command": "twoway tsr mpg turn",
+     "context": "pt_tsrline",
+     "rc": 198,
+     "reference": "twoway tsrline mpg turn",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsrline",
+     "twoway_accepts": false
+    },
+    "tsrl": {
+     "command": "twoway tsrl mpg turn",
+     "context": "pt_tsrline",
+     "rc": 198,
+     "reference": "twoway tsrline mpg turn",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsrline",
+     "twoway_accepts": false
+    },
+    "tsrli": {
+     "command": "twoway tsrli mpg turn",
+     "context": "pt_tsrline",
+     "rc": 198,
+     "reference": "twoway tsrline mpg turn",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsrline",
+     "twoway_accepts": false
+    },
+    "tsrlin": {
+     "command": "twoway tsrlin mpg turn",
+     "context": "pt_tsrline",
+     "rc": 198,
+     "reference": "twoway tsrline mpg turn",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": null,
+     "target": "tsrline",
+     "twoway_accepts": false
+    },
+    "tsrline": {
+     "command": "twoway tsrline mpg turn",
+     "context": "pt_tsrline",
+     "rc": 0,
+     "reference": "twoway tsrline mpg turn",
+     "reference_rc": 0,
+     "reference_stable": true,
+     "resolves_to_target": true,
+     "target": "tsrline",
+     "twoway_accepts": true
+    }
+   },
+   "shortest_accepted": "tsrline"
+  }
+ }
+}

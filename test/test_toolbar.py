@@ -742,10 +742,13 @@ class TestTheHelpDocumentsTheToolbar:
         assert "no crosshair" in " ".join(_toolbar_section().split())
 
     def test_the_mode_table_lists_the_toolbar_in_both_modes(self):
+        # The comparison table is laid out in {col #} columns (WP-23: as
+        # {synopt} rows Stata collapsed the spacing that separated the two
+        # modes' cells), so a row is its feature, then one cell per mode.
         h = _help()
         sec = h[h.index("{marker server_mode}"):h.index("{marker limits}")]
-        row = [ln for ln in sec.split("\n") if ln.startswith(
-            "{synopt:Toolbar, save as PNG}")]
+        row = [ln for ln in sec.split("\n")
+               if re.match(r"\{col \d+\}Toolbar, save as PNG\{col ", ln)]
         assert len(row) == 1, row
-        cells = row[0].split("}", 1)[1].replace("{p_end}", "").split()
+        cells = [c.strip() for c in re.split(r"\{col \d+\}", row[0])[2:]]
         assert cells == ["Yes", "Yes"], row

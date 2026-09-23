@@ -1,0 +1,1241 @@
+*! test_help_claims_1.cscript
+*! Certification script: the claims of dash.sthlp's Title, Syntax,
+*! Description, Plot types and "Differences from twoway" sections
+*! (ROADMAP WP-23, AC-23.1), measured against twoway in the same run
+*! wherever the claim is about twoway.
+*!
+*! Every case below was measured before it was written (23sep2026, console
+*! binary, at 4ede074).  What was measured false is marked MEASURED FALSE,
+*! with what the help said and what was done about it.
+*!
+*!   HC1-01  An if qualifier after the parenthesised plot groups applies to
+*!           every plot, as twoway applies it.  MEASURED FALSE: the Syntax
+*!           section shows `dash plot_specs [if] [in]', and
+*!           `dash (scatter mpg weight) (line mpg weight) if foreign==1'
+*!           registered rc 0 with no qualifier anywhere in the spec -- every
+*!           observation drawn, in silence (twoway draws the 22 foreign
+*!           cars).  The splitter walked past the qualifier and threw it
+*!           away.  Now the graph's own qualifier.
+*!   HC1-02  An in qualifier there likewise, if and in together in either
+*!           order, and a qualifier written before a || between groups, as
+*!           twoway takes them (one serset for every plot).
+*!   HC1-03  A qualifier holding parentheses or a quoted comma is read
+*!           whole.  MEASURED FALSE: `if inlist(rep78,3,4)' and
+*!           `if foreign==1 & (mpg>20)' were refused, r(198), "unrecognised
+*!           plot type 'rep78,3,4'" -- the parenthesis was taken for a new
+*!           plot group; twoway draws both.
+*!   HC1-04  What twoway refuses after the plot groups is refused: a plot
+*!           group after the qualifier (twoway: invalid '('), two if
+*!           qualifiers, two in qualifiers, a word after the qualifier.
+*!           `(scatter) if foreign==1 (line)' was rc 0, qualifier dropped.
+*!   HC1-05  The graph's qualifier and a plot's own are both kept: the plot
+*!           keeps its own, and the graph carries the one written after the
+*!           plot groups, which twoway applies on top of it (measured: 7 of
+*!           the 22 foreign cars for `(scatter ... if mpg>25) (line ...) if
+*!           foreign==1').
+*!   HC1-06  A weight written after the plot groups is refused, r(198), as
+*!           twoway refuses it ("[ is not a twoway plot type").  The Syntax
+*!           section showed a {weight} there; a weight belongs to a plot.
+*!           On a layer that honours it, it is one variable (an expression,
+*!           which twoway evaluates, is r(198)); on scatter it is named.
+*!   HC1-07  Every spelling twoway takes for a plot type, dash takes, and
+*!           reads as the same type.  MEASURED FALSE: twoway takes mbands
+*!           for mband and fn for function (twowaygraph_g.class, _unab_cmd:
+*!           `syntax [, SCatter LIne CONnected HISTogram RSCatter RLine
+*!           RCONnected MBANDs FN FUNction *]'); dash refused both, r(198).
+*!   HC1-08  The shorter spellings only dash takes -- the Plot types
+*!           section's synonyms -- and a name in capitals: dash reads each
+*!           as the type named, twoway refuses each.
+*!   HC1-09  tsline and tsrline draw against the time variable tsset set,
+*!           as twoway does.  MEASURED FALSE: `tsline mpg turn' on tsset
+*!           data drew mpg against turn; twoway draws two series, mpg and
+*!           turn, against the time variable (read from its saved .gph).
+*!           `tsrline lo hi turn' drew against turn where twoway refuses it,
+*!           r(103).  Without tsset both are r(111), as in twoway.
+*!   HC1-10  dash kpi's syntax: ti() nam() fmt() sub() color() bgcolor()
+*!           upd() as abbreviated there, title() and name() required, and
+*!           name(k, replace), which the diagram did not show.
+*!   HC1-11  dash build's syntax: every option the diagram lists, as
+*!           abbreviated there, csv (missing from the diagram), saving()
+*!           required, filterposition() top or left, and server writing a
+*!           .py file and returning.
+*!   HC1-12  name() leaves Stata's graph memory alone; twoway's name()
+*!           stores a graph there.
+*!   HC1-13  An unknown option is accepted and named without its value.
+*!   HC1-14  titl() is title(); titel() is named in the note.
+*!   HC1-15  twoway refuses legend(garbage) and xscale(bogus), r(198); dash
+*!           draws the graph and names both in its sub-option warnings.
+*!   HC1-16  Values twoway accepts and dash cannot draw -- yaxis(3),
+*!           degree(4), bin(2000) -- are refused.  MEASURED FALSE: the help
+*!           said a command copied from a do-file "runs whenever dash draws
+*!           its plot type".
+*!   HC1-17  The registry holds 100 graphs and KPI cards unless
+*!           $dash_max_graphs moves it, to at most 1,000.
+*!   HC1-18  link(), filter(), layout() and theme() are dash's own: twoway
+*!           refuses each, dash build takes each.
+*!   HC1-19  A word that is no plot type is refused, r(198), with a list of
+*!           the plot types; the five twoway types dash does not draw are
+*!           refused by name, each r(198).
+*!   HC1-20  A graph-level option is honoured inside a segment or after the
+*!           comma, in both forms, and the one that wins is twoway's: after
+*!           the comma beats a segment, the last segment beats an earlier
+*!           one, an empty value clears -- twoway's title read from its
+*!           saved .gph in the same run (test_graph_option_scope.cscript
+*!           GOS-01..10 pin dash's half with twoway's values recorded).
+*!   HC1-21  Adversarial (CLAUDE.md rule 18), bypass: IF in capitals, the
+*!           words of a qualifier inside a quoted option, a || inside a
+*!           quoted string and an unbalanced parenthesis cannot pass as, or
+*!           past, the graph's qualifier.
+*!   HC1-22  Adversarial, injection: markup in the qualifier never reaches
+*!           the saved page raw, and Python in it is refused by Stata's own
+*!           expression parser, r(133), before any Python runs.
+*!   HC1-23  Adversarial, exhaustion: a qualifier 200 parentheses deep
+*!           draws, one of 501 terms is r(130) ("expression too long"), and
+*!           both finish in bounded time.
+*!   HC1-24  The sections render: translated by Stata's smcl2txt, the text
+*!           from the Title to the Option values item holds no brace.
+*!           MEASURED FALSE: the Description's `{it:if}/{in}' printed
+*!           "if/{in}", {in} being no SMCL directive.
+*!
+*! Usage:  from test/, with the dash directory and jsonio on the ado-path:
+*!         do "test_help_claims_1.cscript"
+
+cscript "dash help claims: Title to Differences from twoway" adodir ".."
+
+clear all
+set more off
+set graphics off
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+// cscript drops every global; cert_helpers.do set it again, and so does this.
+global dash_nobrowser 1
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if `"`c(python_exec)'"' == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+local nfail 0
+local faillist ""
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+// One string key of a registered graph's JSON, read in Mata by value.
+// _hc_key g key         -> r(value) the first "key":"..." in the JSON
+capture program drop _hc_key
+program define _hc_key, rclass
+    args g key
+    mata: _dash_json_get_str(st_global("dash_json_" + st_local("g")), ///
+                             st_local("key"), "_hc_v")
+    return local value `"`_hc_v'"'
+end
+
+// The graph-level qualifier: the LAST "if_expr"/"in_expr" pair of the
+// JSON, which dash writes after the plots array and the graph options.
+capture mata: mata drop _hc_graph_q()
+mata:
+void _hc_graph_q(string scalar g)
+{
+    string scalar js, tail
+    real scalar p
+    js = st_global("dash_json_" + g)
+    // The graph's keys follow the plots array: `],"graph_options":'.
+    p = strpos(js, char(93) + "," + char(34) + "graph_options" + char(34))
+    tail = (p > 0 ? substr(js, p, .) : "")
+    st_local("_hc_gtail", tail)
+}
+real scalar _hc_count(string scalar hay, string scalar needle)
+{
+    real scalar n, p
+    n = 0
+    while ((p = strpos(hay, needle)) > 0) {
+        n++
+        hay = substr(hay, p + strlen(needle), .)
+    }
+    return(n)
+}
+end
+
+// The type of each plot object of a registered graph, space separated.
+capture mata: mata drop _hc_types()
+mata:
+void _hc_types(string scalar g)
+{
+    string scalar js, out, t
+    real scalar p, q
+    js = st_global("dash_json_" + g)
+    out = ""
+    while ((p = strpos(js, char(34) + "type" + char(34) + ":" + char(34))) > 0) {
+        js = substr(js, p + 8, .)
+        q = strpos(js, char(34))
+        t = substr(js, 1, q - 1)
+        out = out + (out == "" ? "" : " ") + t
+        js = substr(js, q + 1, .)
+    }
+    st_local("_hc_t", out)
+}
+end
+
+// The plot types an "unrecognised plot type" message lists: the words
+// after "Supported:" up to the next command line of the log.
+capture mata: mata drop _hc_supported()
+mata:
+void _hc_supported(string scalar fn)
+{
+    real scalar   fh, on
+    string scalar line, words
+    fh = fopen(fn, "r")
+    on = 0
+    words = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (!on & substr(line, 1, 10) == "Supported:") {
+            on = 1
+            words = substr(line, 11, .)
+            continue
+        }
+        if (on) {
+            if (substr(line, 1, 1) == "." | strtrim(line) == "") break
+            words = words + " " + line
+        }
+    }
+    fclose(fh)
+    st_local("_hc_sup", strtrim(stritrim(words)))
+}
+end
+
+// Run a command with the log captured to `c(tmpdir)'<tag>.log.
+capture program drop _hc_logged
+program define _hc_logged, rclass
+    version 16.0
+    gettoken tag 0 : 0
+    local logfile "`c(tmpdir)'dash_hc1_`tag'.log"
+    set linesize 255
+    capture log close _hclog
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_hclog) text replace
+    capture noisily `0'
+    local rc = _rc
+    quietly log close _hclog
+    return scalar rc = `rc'
+    return local logfile "`logfile'"
+end
+
+sysuse auto, clear
+generate lo = mpg - 2
+generate hi = mpg + 2
+
+// ================================================================
+// HC1-01 -- an if after the plot groups applies to every plot
+// ================================================================
+graph drop _all
+twoway (scatter mpg weight) (line mpg weight) if foreign==1, nodraw name(zhc01)
+serset set 0
+local tw_n = r(N)
+graph drop _all
+dash clear
+capture noisily dash (scatter mpg weight) (line mpg weight) if foreign==1, name(hc01)
+local rc = _rc
+local gif ""
+local nplotif = -1
+if `rc' == 0 {
+    mata: _hc_graph_q("hc01")
+    mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gif")
+    mata: st_local("nplotif", strofreal(_hc_count(st_global("dash_json_hc01"), char(34) + "if_expr" + char(34) + ":" + char(34) + "foreign==1")))
+}
+capture {
+    assert `tw_n' == 22
+    assert `rc' == 0
+    assert `"`gif'"' == "foreign==1"
+    // written once, as the graph's qualifier, not copied onto each plot
+    assert `nplotif' == 1
+}
+if _rc {
+    display as error `"HC1-01 FAIL: rc=`rc' graph if_expr=[`gif'] (twoway drew `tw_n' of 74)"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-01"'
+}
+else display as text "HC1-01 PASS: an if after the plot groups is the graph's qualifier, as twoway applies it to every plot"
+
+// ================================================================
+// HC1-02 -- in, and if with in in either order
+// ================================================================
+graph drop _all
+twoway (scatter mpg weight) in 1/10, nodraw name(zhc02a)
+serset set 0
+local tw_a = r(N)
+graph drop _all
+twoway (scatter mpg weight) in 1/10 if foreign==0, nodraw name(zhc02b)
+serset set 0
+local tw_b = r(N)
+graph drop _all
+twoway (scatter mpg weight) if foreign==1 in 1/60, nodraw name(zhc02c)
+serset set 0
+local tw_c = r(N)
+graph drop _all
+dash clear
+capture noisily dash (scatter mpg weight) in 1/10, name(hc02a)
+local rca = _rc
+capture noisily dash (scatter mpg weight) in 1/10 if foreign==0, name(hc02b)
+local rcb = _rc
+capture noisily dash (scatter mpg weight) if foreign==1 in 1/60, name(hc02c)
+local rcc = _rc
+foreach s in a b c {
+    local gif_`s' ""
+    local gin_`s' ""
+    if `rc`s'' == 0 {
+        mata: _hc_graph_q("hc02`s'")
+        mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gif_`s'")
+        mata: _dash_json_get_str(st_local("_hc_gtail"), "in_expr", "gin_`s'")
+    }
+}
+// Written before a `||' between parenthesised groups, a qualifier is the
+// graph's too: twoway draws `(scatter) if foreign==1 || (line)' from one
+// serset of the 22 foreign cars, and `(scatter) in 1/30 || (line) if
+// foreign==1' from one of none (the first 52 cars are domestic).
+graph drop _all
+twoway (scatter mpg weight) if foreign==1 || (line mpg weight), nodraw name(zhc02d)
+serset set 0
+local tw_d = r(N)
+graph drop _all
+twoway (scatter mpg weight) in 1/30 || (line mpg weight) if foreign==1, nodraw name(zhc02e)
+serset set 0
+local tw_e = r(N)
+graph drop _all
+capture noisily dash (scatter mpg weight) if foreign==1 || (line mpg weight), name(hc02d)
+local rcd = _rc
+capture noisily dash (scatter mpg weight) in 1/30 || (line mpg weight) if foreign==1, name(hc02e)
+local rce = _rc
+foreach s in d e {
+    local gif_`s' ""
+    local gin_`s' ""
+    if `rc`s'' == 0 {
+        mata: _hc_graph_q("hc02`s'")
+        mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gif_`s'")
+        mata: _dash_json_get_str(st_local("_hc_gtail"), "in_expr", "gin_`s'")
+    }
+}
+capture {
+    assert `tw_a' == 10 & `tw_b' == 10 & `tw_c' == 8
+    assert `tw_d' == 22 & `tw_e' == 0
+    assert `rca' == 0 & `rcb' == 0 & `rcc' == 0 & `rcd' == 0 & `rce' == 0
+    assert `"`gin_a'"' == "1/10" & `"`gif_a'"' == ""
+    assert `"`gin_b'"' == "1/10" & `"`gif_b'"' == "foreign==0"
+    assert `"`gin_c'"' == "1/60" & `"`gif_c'"' == "foreign==1"
+    assert `"`gin_d'"' == "" & `"`gif_d'"' == "foreign==1"
+    assert `"`gin_e'"' == "1/30" & `"`gif_e'"' == "foreign==1"
+}
+if _rc {
+    display as error `"HC1-02 FAIL: rc=`rca' `rcb' `rcc' `rcd' `rce'; in=[`gin_a'][`gin_b'][`gin_c'][`gin_d'][`gin_e'] if=[`gif_a'][`gif_b'][`gif_c'][`gif_d'][`gif_e']"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-02"'
+}
+else display as text "HC1-02 PASS: in, if with in in either order, and a qualifier before a ||, are the graph's qualifier, as in twoway"
+
+// ================================================================
+// HC1-03 -- parentheses and a quoted comma inside the qualifier
+// ================================================================
+graph drop _all
+capture twoway (scatter mpg weight) if inlist(rep78,3,4), nodraw name(zhc03a)
+local twa = _rc
+graph drop _all
+capture twoway (scatter mpg weight) if foreign==1 & (mpg>20), title("X") nodraw name(zhc03b)
+local twb = _rc
+graph drop _all
+capture twoway (scatter mpg weight) if make=="AMC Pacer, x", nodraw name(zhc03c)
+local twc = _rc
+graph drop _all
+dash clear
+capture noisily dash (scatter mpg weight) if inlist(rep78,3,4), name(hc03a)
+local rca = _rc
+capture noisily dash (scatter mpg weight) if foreign==1 & (mpg>20), title("X") name(hc03b)
+local rcb = _rc
+capture noisily dash (scatter mpg weight) if make=="AMC Pacer, x", name(hc03c)
+local rcc = _rc
+foreach s in a b c {
+    local gif_`s' ""
+    if `rc`s'' == 0 {
+        mata: _hc_graph_q("hc03`s'")
+        mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gif_`s'")
+    }
+}
+local ttl ""
+if `rcb' == 0 {
+    _hc_key hc03b title
+    local ttl `"`r(value)'"'
+}
+local want_c = `"make=="AMC Pacer, x""'
+capture {
+    assert `twa' == 0 & `twb' == 0 & `twc' == 0
+    assert `rca' == 0 & `rcb' == 0 & `rcc' == 0
+    assert `"`gif_a'"' == "inlist(rep78,3,4)"
+    assert `"`gif_b'"' == "foreign==1 & (mpg>20)"
+    assert `"`macval(gif_c)'"' == `"`macval(want_c)'"'
+    // the option after the qualifier's comma is still a graph option
+    assert strpos(`"`ttl'"', "X") > 0
+}
+if _rc {
+    display as error `"HC1-03 FAIL: rc=`rca' `rcb' `rcc'; if=[`gif_a'][`gif_b'] title=[`ttl']"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-03"'
+}
+else display as text "HC1-03 PASS: a qualifier holding parentheses or a quoted comma is read whole, as twoway reads it"
+
+// ================================================================
+// HC1-04 -- what twoway refuses after the plot groups, dash refuses
+// ================================================================
+local bad4 ""
+local cmds4 `"`"(scatter mpg weight) if foreign==1 (line mpg weight)"'"'
+local cmds4 `"`cmds4' `"(scatter mpg weight) if foreign==1 if mpg>20"'"'
+local cmds4 `"`cmds4' `"(scatter mpg weight) in 1/10 in 2/5"'"'
+local cmds4 `"`cmds4' `"(scatter mpg weight) if foreign==1 foo"'"'
+local cmds4 `"`cmds4' `"(scatter mpg weight) if"'"'
+foreach c of local cmds4 {
+    graph drop _all
+    capture twoway `c', nodraw
+    local twrc = _rc
+    dash clear
+    capture noisily dash `c', name(hc04)
+    local drc = _rc
+    local reg `"${dash_graph_registry}"'
+    if `twrc' != 198 | `drc' != 198 | `"`reg'"' != "" {
+        local bad4 `"`bad4' [`c': twoway `twrc' dash `drc']"'
+    }
+}
+if `"`bad4'"' != "" {
+    display as error `"HC1-04 FAIL:`bad4'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-04"'
+}
+else display as text "HC1-04 PASS: a plot group, a second if or in, or a stray word after the qualifier is r(198), as in twoway"
+
+// ================================================================
+// HC1-05 -- the graph's qualifier and a plot's own are both kept
+// ================================================================
+graph drop _all
+twoway (scatter mpg weight if mpg>25) (line mpg weight) if foreign==1, nodraw name(zhc05)
+serset set 0
+local tw_s = r(N)
+serset set 1
+local tw_l = r(N)
+graph drop _all
+dash clear
+capture noisily dash (scatter mpg weight if mpg>25) (line mpg weight) if foreign==1, name(hc05)
+local rc = _rc
+local pif ""
+local gif ""
+if `rc' == 0 {
+    _hc_key hc05 if_expr
+    local pif `"`r(value)'"'
+    mata: _hc_graph_q("hc05")
+    mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gif")
+}
+// a single plot group: the plot keeps its own, the graph takes the one
+// written after it
+dash clear
+capture noisily dash (scatter mpg weight if mpg>25) if foreign==1, name(hc05b)
+local rcb = _rc
+local pifb ""
+local gifb ""
+if `rcb' == 0 {
+    _hc_key hc05b if_expr
+    local pifb `"`r(value)'"'
+    mata: _hc_graph_q("hc05b")
+    mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gifb")
+}
+capture {
+    assert `tw_s' == 7 & `tw_l' == 22
+    assert `rc' == 0 & `rcb' == 0
+    assert `"`pif'"' == "mpg>25" & `"`gif'"' == "foreign==1"
+    assert `"`pifb'"' == "mpg>25" & `"`gifb'"' == "foreign==1"
+}
+if _rc {
+    display as error `"HC1-05 FAIL: rc=`rc' `rcb'; plot if=[`pif'][`pifb'] graph if=[`gif'][`gifb']"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-05"'
+}
+else display as text "HC1-05 PASS: a plot keeps its own qualifier and the graph takes the one after the plot groups, as twoway applies both"
+
+// ================================================================
+// HC1-06 -- a weight after the plot groups is r(198), as in twoway
+// ================================================================
+graph drop _all
+capture twoway (lfit mpg weight) [aw=displacement], nodraw
+local twrc = _rc
+dash clear
+capture noisily dash (lfit mpg weight) [aw=displacement], name(hc06)
+local drc = _rc
+// ... and inside the plot's parentheses it is the plot's weight
+dash clear
+capture noisily dash (lfit mpg weight [aw=displacement]), name(hc06b)
+local drcb = _rc
+local wt ""
+if `drcb' == 0 {
+    _hc_key hc06b weight
+    local wt `"`r(value)'"'
+}
+// one variable, not an expression, on a layer that honours it (twoway
+// evaluates the expression); on a glyph layer, which draws no weight, the
+// weight is named in the note by type
+graph drop _all
+capture twoway lfit mpg weight [aw=displacement/2], nodraw
+local twrcx = _rc
+capture noisily dash (lfit mpg weight [aw=displacement/2]), name(hc06c)
+local drcx = _rc
+capture noisily dash (scatter mpg weight [aw=displacement/2]), name(hc06d)
+local drcy = _rc
+capture {
+    assert `twrc' == 198 & `drc' == 198
+    assert `drcb' == 0 & `"`wt'"' == "aweight"
+    assert `twrcx' == 0 & `drcx' == 198 & `drcy' == 0
+    assert "${dash_graph_registry}" == "hc06b hc06d"
+}
+if _rc {
+    display as error `"HC1-06 FAIL: twoway `twrc' dash `drc'; in the plot rc=`drcb' weight=[`wt']; expression: twoway `twrcx' lfit `drcx' scatter `drcy'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-06"'
+}
+else display as text "HC1-06 PASS: a weight after the plot groups is r(198), as in twoway; inside a plot it is that plot's, one variable where it is honoured"
+
+// ================================================================
+// HC1-07 -- every spelling twoway takes, dash takes as the same type
+// ================================================================
+tsset, clear
+generate t = _n
+tsset t
+// twowaygraph_g.class, _unab_cmd: SCatter LIne CONnected HISTogram
+// RSCatter RLine RCONnected MBANDs FN FUNction; every other plot type is
+// its full name only.
+local spell ""
+foreach pair in scatter:sc line:li connected:con histogram:hist ///
+        rscatter:rsc rline:rl rconnected:rcon function:fun {
+    gettoken full minab : pair, parse(":")
+    local minab = substr("`minab'", 2, .)
+    forvalues k = `=strlen("`minab'")'/`=strlen("`full'")' {
+        local spell "`spell' `=substr("`full'", 1, `k')':`full'"
+    }
+}
+local spell "`spell' mbands:mband fn:function"
+foreach full in area bar spike dropline dot rarea rbar rspike rcap rcapsym ///
+        pcspike pccapsym pcarrow pcbarrow pcscatter scatteri pci pcarrowi ///
+        tsline tsrline lfit qfit fpfit lfitci qfitci fpfitci lowess lpoly ///
+        lpolyci mspline mband kdensity {
+    local spell "`spell' `full':`full'"
+}
+local bad7 ""
+local n7 0
+foreach pair of local spell {
+    gettoken sp full : pair, parse(":")
+    local full = substr("`full'", 2, .)
+    local a "mpg weight"
+    if inlist("`full'", "rarea", "rbar", "rspike", "rcap", "rcapsym", "rscatter", "rline", "rconnected") local a "lo hi weight"
+    if inlist("`full'", "pcspike", "pccapsym", "pcarrow", "pcbarrow", "pcscatter") local a "mpg weight turn length"
+    if "`full'" == "scatteri" local a "20 3000"
+    if inlist("`full'", "pci", "pcarrowi") local a "20 3000 25 3500"
+    if "`full'" == "tsline" local a "mpg"
+    if "`full'" == "tsrline" local a "lo hi"
+    if inlist("`full'", "histogram", "kdensity") local a "mpg"
+    if "`full'" == "function" local a "y=x"
+    graph drop _all
+    capture twoway `sp' `a', nodraw
+    local twrc = _rc
+    dash clear
+    capture dash `sp' `a', name(hc07)
+    local drc = _rc
+    local _hc_t ""
+    if `drc' == 0 mata: _hc_types("hc07")
+    local n7 = `n7' + 1
+    if `twrc' != 0 | `drc' != 0 | "`_hc_t'" != "`full'" {
+        local bad7 `"`bad7' [`sp': twoway `twrc' dash `drc' `_hc_t']"'
+    }
+}
+dash clear
+if `"`bad7'"' != "" | `n7' < 70 {
+    display as error `"HC1-07 FAIL (`n7' spellings):`bad7'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-07"'
+}
+else display as text "HC1-07 PASS: all `n7' plot-type spellings twoway takes, mbands and fn among them, are taken by dash as the same type"
+
+// ================================================================
+// HC1-08 -- the synonyms only dash takes
+// ================================================================
+local syn "ar:area are:area ba:bar sp:spike spi:spike spik:spike"
+local syn "`syn' dr:dropline dro:dropline drop:dropline dropl:dropline dropli:dropline droplin:dropline"
+local syn "`syn' lfi:lfit qfi:qfit fp:fpfit fpf:fpfit fpfi:fpfit"
+local syn "`syn' low:lowess lowe:lowess lowes:lowess lpo:lpoly lpol:lpoly"
+local syn "`syn' msp:mspline mspl:mspline mspli:mspline msplin:mspline"
+local syn "`syn' kde:kdensity kden:kdensity kdens:kdensity kdensi:kdensity kdensit:kdensity"
+local syn "`syn' tsl:tsline tsli:tsline tslin:tsline tsrl:tsrline tsrli:tsrline tsrlin:tsrline"
+local syn "`syn' SC:scatter Hist:histogram"
+local bad8 ""
+foreach pair of local syn {
+    gettoken sp full : pair, parse(":")
+    local full = substr("`full'", 2, .)
+    local a "mpg weight"
+    if "`full'" == "tsline" local a "mpg"
+    if "`full'" == "tsrline" local a "lo hi"
+    if inlist("`full'", "histogram", "kdensity") local a "mpg"
+    graph drop _all
+    capture twoway `sp' `a', nodraw
+    local twrc = _rc
+    dash clear
+    capture dash `sp' `a', name(hc08)
+    local drc = _rc
+    local _hc_t ""
+    if `drc' == 0 mata: _hc_types("hc08")
+    if `twrc' != 198 | `drc' != 0 | "`_hc_t'" != "`full'" {
+        local bad8 `"`bad8' [`sp': twoway `twrc' dash `drc' `_hc_t']"'
+    }
+}
+dash clear
+if `"`bad8'"' != "" {
+    display as error `"HC1-08 FAIL:`bad8'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-08"'
+}
+else display as text "HC1-08 PASS: the synonyms the help lists, and SC and Hist, are dash's own: dash takes each, twoway refuses each"
+
+// ================================================================
+// HC1-09 -- tsline and tsrline draw against the tsset time variable
+// ================================================================
+graph drop _all
+twoway tsline mpg turn, nodraw name(zhc09)
+// twoway's picture, read from its saved .gph: two plots, each a line
+// whose x variable is t -- `plot2 = .yxview.new , type(line) ...
+// yvariable(...seriesof turn') xvariable(...seriesof t')'.  turn is a y
+// variable there, never the x.  (The needles hold no backquote, which
+// Stata would expand.)
+local g09 "`c(tmpdir)'dash_hc1_09.gph"
+graph save zhc09 "`g09'", replace
+cert_file_has "`g09'", needle("seriesof turn') xvariable(")
+local tw_turn_y = r(found)
+cert_file_has "`g09'", needle("Declare plot2 = .yxview.new , type(line)")
+local tw_two = r(found)
+local twts = (`tw_turn_y' == 1 & `tw_two' == 1)
+graph drop _all
+capture twoway tsrline lo hi turn, nodraw
+local twrc3 = _rc
+dash clear
+capture noisily dash tsline mpg turn, name(hc09a)
+local rca = _rc
+local ty ""
+local _hc_t ""
+if `rca' == 0 {
+    mata: _hc_types("hc09a")
+    local ty "`_hc_t'"
+}
+mata: st_local("n_t", strofreal(_hc_count(st_global("dash_json_hc09a"), char(34) + "xvar" + char(34) + ":" + char(34) + "t" + char(34))))
+mata: st_local("n_turn", strofreal(_hc_count(st_global("dash_json_hc09a"), char(34) + "yvar" + char(34) + ":" + char(34) + "turn" + char(34))))
+capture noisily dash tsrline lo hi turn, name(hc09b)
+local rcb = _rc
+capture noisily dash tsrline lo hi, name(hc09c)
+local rcc = _rc
+_hc_key hc09c xvar
+local xc `"`r(value)'"'
+tsset, clear
+capture noisily dash tsline mpg t, name(hc09d)
+local rcd = _rc
+capture twoway tsline mpg t, nodraw
+local twrcd = _rc
+capture noisily dash tsrline lo hi t, name(hc09e)
+local rce = _rc
+tsset t
+capture {
+    assert `twts' == 1 & `twrc3' == 103 & `twrcd' == 111
+    assert `rca' == 0 & "`ty'" == "tsline tsline"
+    assert `n_t' == 2 & `n_turn' == 1
+    assert `rcb' == 103
+    assert `rcc' == 0 & `"`xc'"' == "t"
+    assert `rcd' == 111 & `rce' == 111
+    assert !strpos("${dash_graph_registry}", "hc09b")
+    assert !strpos("${dash_graph_registry}", "hc09d")
+}
+if _rc {
+    display as error `"HC1-09 FAIL: twoway `twts' `twrc3' `twrcd'; tsline rc=`rca' types=[`ty'] x=t `n_t' y=turn `n_turn'; tsrline 3 vars rc=`rcb'; 2 vars rc=`rcc' x=[`xc']; untsset `rcd' `rce'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-09"'
+}
+else display as text "HC1-09 PASS: tsline draws each variable against the tsset time variable and tsrline takes two, as twoway; untsset is r(111)"
+dash clear
+
+// ================================================================
+// HC1-10 -- dash kpi's syntax
+// ================================================================
+dash clear
+capture noisily dash kpi mean(mpg), ti("T") nam(k10) fmt(%9.2f) sub("S") color(red) bgcolor(blue) upd(both)
+local rca = _rc
+capture noisily dash kpi mean(mpg), name(k10b)
+local rcb = _rc
+capture noisily dash kpi mean(mpg), title("T")
+local rcc = _rc
+capture noisily dash kpi max(mpg), ti("T2") nam(k10, replace)
+local rcd = _rc
+local ktit `"${dash_kpi_k10__tit}"'
+local ksta `"${dash_kpi_k10__sta}"'
+capture {
+    assert `rca' == 0 & `rcb' == 198 & `rcc' == 198 & `rcd' == 0
+    assert `"`ktit'"' == "T2" & `"`ksta'"' == "max"
+    assert "${dash_graph_registry}" == "k10"
+}
+if _rc {
+    display as error `"HC1-10 FAIL: rc=`rca' `rcb' `rcc' `rcd' title=[`ktit'] stat=[`ksta']"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-10"'
+}
+else display as text "HC1-10 PASS: dash kpi takes ti() nam() fmt() sub() color() bgcolor() upd() and name(k, replace); title() and name() are required"
+
+// ================================================================
+// HC1-11 -- dash build's syntax
+// ================================================================
+dash clear
+quietly dash scatter mpg weight, name(g11)
+quietly dash kpi mean(mpg), title("M") name(k11)
+local out11 "`c(tmpdir)'dash_hc1_11.html"
+local py11  "`c(tmpdir)'dash_hc1_11.py"
+capture erase "`out11'"
+capture erase "`py11'"
+capture noisily dash build, ti("T")
+local rca = _rc
+capture noisily dash build, sav("`out11'") ti("T") sub("S") lay(auto) link(_all) filter(foreign, type(dropdown) exclude(k11) label("F")) tabs(One: g11 / Two: k11) filterpos(left) theme(dark) nobr replace csv
+local rcb = _rc
+capture confirm file "`out11'"
+local fb = _rc
+capture noisily dash build, sav("`out11'") sch(s1mono) nobr
+local rcc = _rc
+capture noisily dash build, sav("`out11'") filterpos(middle) nobr replace
+local rcd = _rc
+capture noisily dash build, saving("`py11'") server replace
+local rce = _rc
+capture confirm file "`py11'"
+local fe = _rc
+capture {
+    assert `rca' == 198
+    assert `rcb' == 0 & `fb' == 0
+    assert `rcc' == 198
+    assert `rcd' == 198
+    assert `rce' == 0 & `fe' == 0
+}
+if _rc {
+    display as error "HC1-11 FAIL: no saving `rca'; all options `rcb' (file `fb'); no replace `rcc'; filterpos(middle) `rcd'; server `rce' (file `fe')"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-11"'
+}
+else display as text "HC1-11 PASS: dash build takes every option its diagram lists and csv, needs saving(), and with server writes a .py file and returns"
+dash clear
+
+// ================================================================
+// HC1-12 -- name() leaves Stata's graph memory alone
+// ================================================================
+graph drop _all
+twoway scatter mpg weight, nodraw name(zhc12)
+quietly graph dir, memory
+local twmem "`r(list)'"
+graph drop _all
+dash clear
+quietly dash scatter mpg weight, name(Graph)
+quietly dash scatter mpg weight, name(hc12)
+quietly graph dir, memory
+local dmem "`r(list)'"
+capture {
+    assert strtrim("`twmem'") == "zhc12"
+    assert strtrim("`dmem'") == ""
+    assert "${dash_graph_registry}" == "Graph hc12"
+}
+if _rc {
+    display as error "HC1-12 FAIL: twoway left [`twmem'], dash left [`dmem'] in graph memory"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-12"'
+}
+else display as text "HC1-12 PASS: dash's name() registers the graph and leaves Stata's graph memory alone; twoway's stores it"
+dash clear
+
+// ================================================================
+// HC1-13 -- an unknown option is named without its value
+// ================================================================
+_hc_logged 13 dash scatter mpg weight, zqunknownopt(zq_secret_value_13) name(hc13)
+local rc = r(rc)
+local lf "`r(logfile)'"
+cert_file_has "`lf'", needle("dash: ignoring unsupported option(s): zqunknownopt()")
+local named = r(found)
+cert_file_has "`lf'", needle("zq_secret_value_13)")
+local echoed_cmd = r(found)
+// the note line is the only place the name appears besides the command
+// echo; the value must not be in any line that is not the echoed command
+tempname fh
+local leak 0
+file open `fh' using "`lf'", read text
+file read `fh' ln
+while r(eof) == 0 {
+    mata: st_local("_l13", strofreal(strpos(st_local("ln"), "zq_secret_value_13") > 0 & strpos(st_local("ln"), "dash scatter") == 0))
+    if `_l13' local leak 1
+    file read `fh' ln
+}
+file close `fh'
+capture {
+    assert `rc' == 0 & `named' == 1 & `leak' == 0
+}
+if _rc {
+    display as error "HC1-13 FAIL: rc=`rc' named=`named' value shown outside the command=`leak'"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-13"'
+}
+else display as text "HC1-13 PASS: an unknown option is accepted and named in the note, without its value"
+dash clear
+
+// ================================================================
+// HC1-14 -- titl() is title(); titel() is named
+// ================================================================
+dash clear
+capture noisily dash scatter mpg weight, titl(zqT14) name(hc14a)
+local rca = _rc
+_hc_key hc14a title
+local t14 `"`r(value)'"'
+_hc_logged 14 dash scatter mpg weight, titel(zqT14) name(hc14b)
+local rcb = r(rc)
+cert_file_has "`r(logfile)'", needle("dash: ignoring unsupported option(s): titel()")
+local named = r(found)
+_hc_key hc14b title
+local t14b `"`r(value)'"'
+capture {
+    assert `rca' == 0 & `"`t14'"' == "zqT14"
+    assert `rcb' == 0 & `named' == 1 & `"`t14b'"' == ""
+}
+if _rc {
+    display as error `"HC1-14 FAIL: titl rc=`rca' title=[`t14']; titel rc=`rcb' named=`named' title=[`t14b']"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-14"'
+}
+else display as text "HC1-14 PASS: titl() abbreviates title(); titel() is not an option and is named in the note"
+dash clear
+
+// ================================================================
+// HC1-15 -- legend(garbage), xscale(bogus): twoway r(198), dash names them
+// ================================================================
+graph drop _all
+capture twoway scatter mpg weight, legend(garbage) nodraw
+local twl = _rc
+capture twoway scatter mpg weight, xscale(bogus) nodraw
+local twx = _rc
+local out15 "`c(tmpdir)'dash_hc1_15.html"
+capture erase "`out15'"
+_hc_logged 15 dash scatter mpg weight, legend(garbage) xscale(bogus) saving("`out15'")
+local rc = r(rc)
+local lf "`r(logfile)'"
+cert_file_has "`lf'", needle("dash: legend() sub-option(s) not implemented and ignored: garbage")
+local nl = r(found)
+cert_file_has "`lf'", needle("dash: xscale() sub-option(s) not implemented and ignored: bogus")
+local nx = r(found)
+capture confirm file "`out15'"
+local fx = _rc
+capture {
+    assert `twl' == 198 & `twx' == 198
+    assert `rc' == 0 & `fx' == 0 & `nl' == 1 & `nx' == 1
+}
+if _rc {
+    display as error "HC1-15 FAIL: twoway `twl' `twx'; dash rc=`rc' file=`fx' legend named=`nl' xscale named=`nx'"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-15"'
+}
+else display as text "HC1-15 PASS: twoway refuses legend(garbage) and xscale(bogus); dash draws and names both in its sub-option warnings"
+dash clear
+
+// ================================================================
+// HC1-16 -- values twoway accepts that dash cannot draw are refused
+// ================================================================
+local bad16 ""
+foreach c in "scatter mpg weight, yaxis(3)" "lpoly mpg weight, degree(4)" "histogram mpg, bin(2000)" {
+    graph drop _all
+    capture twoway `c' nodraw
+    local twrc = _rc
+    dash clear
+    capture noisily dash `c' name(hc16)
+    local drc = _rc
+    if `twrc' != 0 | `drc' != 198 | "${dash_graph_registry}" != "" {
+        local bad16 `"`bad16' [`c': twoway `twrc' dash `drc']"'
+    }
+}
+if `"`bad16'"' != "" {
+    display as error `"HC1-16 FAIL:`bad16'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-16"'
+}
+else display as text "HC1-16 PASS: yaxis(3), degree(4) and bin(2000) run in twoway and are refused by dash, r(198)"
+dash clear
+
+// ================================================================
+// HC1-17 -- the registry holds 100 items unless $dash_max_graphs moves it
+// ================================================================
+global dash_max_graphs ""
+_dash_limit, name(graphs)
+local v17 = r(value)
+local c17 = r(ceiling)
+global dash_max_graphs 2
+dash clear
+quietly dash scatter mpg weight, name(g17a)
+quietly dash kpi mean(mpg), title("K") name(k17b)
+capture noisily dash scatter mpg weight, name(g17c)
+local rc17 = _rc
+global dash_max_graphs ""
+capture {
+    assert `v17' == 100 & `c17' == 1000
+    assert `rc17' == 134
+    assert "${dash_graph_registry}" == "g17a k17b"
+}
+if _rc {
+    display as error "HC1-17 FAIL: default `v17' ceiling `c17'; a third item at 2 rc=`rc17'"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-17"'
+}
+else display as text "HC1-17 PASS: the registry holds 100 graphs and KPI cards, 1,000 at most, and \$dash_max_graphs moves the limit"
+dash clear
+
+// ================================================================
+// HC1-18 -- link(), filter(), layout(), theme() are dash's own
+// ================================================================
+local bad18 ""
+foreach o in "link(g1)" "filter(foreign)" "layout(auto)" "theme(dark)" {
+    graph drop _all
+    capture twoway scatter mpg weight, `o' nodraw
+    if _rc != 198 local bad18 `"`bad18' [twoway `o' `=_rc']"'
+}
+// ... and so are dash's subcommands: "kpi is not a twoway plot type".
+foreach s in "kpi mean(mpg)" "build" "serve" "clear" {
+    graph drop _all
+    capture twoway `s', nodraw
+    if _rc != 198 local bad18 `"`bad18' [twoway `s' `=_rc']"'
+}
+dash clear
+quietly dash scatter mpg weight, name(g1)
+local out18 "`c(tmpdir)'dash_hc1_18.html"
+capture noisily dash build, saving("`out18'") link(g1) filter(foreign, type(dropdown)) layout(auto) theme(dark) nobrowser replace
+if _rc local bad18 `"`bad18' [dash build `=_rc']"'
+if `"`bad18'"' != "" {
+    display as error `"HC1-18 FAIL:`bad18'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-18"'
+}
+else display as text "HC1-18 PASS: twoway refuses link(), filter(), layout(), theme() and dash's subcommands; dash build takes the options"
+dash clear
+
+// ================================================================
+// HC1-19 -- no plot type: r(198) with the list; the five by name
+// ================================================================
+_hc_logged 19 dash zqnotaplottype mpg weight, name(hc19)
+local rc = r(rc)
+local lf "`r(logfile)'"
+// The words of the message from "Supported:" to the next command line,
+// read in Mata by value.
+mata: _hc_supported(st_local("lf"))
+local want19 scatter line connected area bar spike dropline dot scatteri pci ///
+        pcarrowi rarea rbar rspike rcap rcapsym rscatter rline rconnected ///
+        pcspike pccapsym pcarrow pcbarrow pcscatter tsline tsrline lfit qfit ///
+        fpfit lfitci qfitci fpfitci lowess lpoly lpolyci mspline mband ///
+        histogram kdensity function
+local miss19 : list want19 - _hc_sup
+local extra19 : list _hc_sup - want19
+local miss19 "`miss19' `extra19'"
+local miss19 = strtrim("`miss19'")
+local bad19 ""
+foreach t in contour contourline heatmap rpcap rpspike {
+    local a "mpg weight turn"
+    if inlist("`t'", "rpcap", "rpspike") local a "mpg lo hi weight"
+    graph drop _all
+    capture twoway `t' `a', nodraw
+    local twrc = _rc
+    dash clear
+    _hc_logged 19b dash `t' `a', name(hc19)
+    local drc = r(rc)
+    cert_file_has "`r(logfile)'", needle("'`t'' is a twoway plot type dash does not draw")
+    if `twrc' != 0 | `drc' != 198 | !r(found) local bad19 `"`bad19' [`t': twoway `twrc' dash `drc']"'
+}
+capture {
+    assert `rc' == 198 & "`miss19'" == "" & `"`bad19'"' == ""
+}
+if _rc {
+    display as error `"HC1-19 FAIL: rc=`rc' missing from the list:[`miss19'] undrawn:`bad19'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-19"'
+}
+else display as text "HC1-19 PASS: a word that is no plot type is r(198) with all 40 plot types listed; the five undrawn twoway types are refused by name"
+dash clear
+
+// ================================================================
+// HC1-20 -- where a graph-level option is written, and which one wins
+// ================================================================
+// twoway's title, read from its saved .gph: the line
+//   .insert (title = .sized_textbox.new, mtextq(`""ZQB""') style(scheme title) ...
+// holds the title text; which of the ZQ tokens it holds is compared with
+// the title dash registers for the same command.
+capture mata: mata drop _hc_ztokens()
+capture mata: mata drop _hc_gph_title()
+mata:
+// The ZQ tokens a title text holds, in a fixed order; read by value, so
+// the text's quotes and backquotes are never Stata syntax.
+string scalar _hc_ztokens(string scalar s)
+{
+    string scalar r
+    real scalar   k
+    string vector z
+    z = ("ZQA", "ZQB", "ZQI", "ZQF")
+    r = ""
+    for (k = 1; k <= 4; k++) {
+        if (strpos(s, z[k])) r = r + " " + z[k]
+    }
+    return(strtrim(r))
+}
+void _hc_gph_title(string scalar fn)
+{
+    real scalar   fh
+    string scalar line, t
+    fh = fopen(fn, "r")
+    t = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strpos(line, ".insert (title = .sized_textbox.new, mtextq(") == 1) {
+            t = line
+            break
+        }
+    }
+    fclose(fh)
+    st_local("twz", _hc_ztokens(t))
+}
+end
+local g20 "`c(tmpdir)'dash_hc1_20.gph"
+local bad20 ""
+forvalues c = 1/5 {
+    graph drop _all
+    dash clear
+    if `c' == 1 {
+        twoway (scatter mpg weight, title("ZQA")) (line mpg weight, title("ZQB")), nodraw name(zhc20)
+        quietly dash (scatter mpg weight, title("ZQA")) (line mpg weight, title("ZQB")), name(hc20)
+        local want "ZQB"
+    }
+    if `c' == 2 {
+        twoway (scatter mpg weight, title("ZQA")) (line mpg weight), nodraw name(zhc20)
+        quietly dash (scatter mpg weight, title("ZQA")) (line mpg weight), name(hc20)
+        local want "ZQA"
+    }
+    if `c' == 3 {
+        twoway (scatter mpg weight, title("ZQI")) (line mpg weight), title("ZQF") nodraw name(zhc20)
+        quietly dash (scatter mpg weight, title("ZQI")) (line mpg weight), title("ZQF") name(hc20)
+        local want "ZQF"
+    }
+    if `c' == 4 {
+        twoway (scatter mpg weight, title("ZQA")) (line mpg weight, title("")), nodraw name(zhc20)
+        quietly dash (scatter mpg weight, title("ZQA")) (line mpg weight, title("")), name(hc20)
+        local want ""
+    }
+    if `c' == 5 {
+        twoway scatter mpg weight, title("ZQA") || line mpg weight, title("ZQB") nodraw name(zhc20)
+        quietly dash scatter mpg weight, title("ZQA") || line mpg weight, title("ZQB") name(hc20)
+        local want "ZQB"
+    }
+    graph save zhc20 "`g20'", replace
+    local twz ""
+    mata: _hc_gph_title(st_local("g20"))
+    mata: _dash_json_get_str(st_global("dash_json_hc20"), "title", "_hc_dt")
+    mata: st_local("dsz", _hc_ztokens(st_local("_hc_dt")))
+    if "`twz'" != "`want'" | "`dsz'" != "`want'" {
+        local bad20 `"`bad20' [case `c': twoway `twz' dash `dsz' want `want']"'
+    }
+}
+graph drop _all
+dash clear
+if `"`bad20'"' != "" {
+    display as error `"HC1-20 FAIL:`bad20'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-20"'
+}
+else display as text "HC1-20 PASS: a graph option inside a segment or after the comma, and which one wins, as twoway reads them"
+
+// ================================================================
+// HC1-21 -- adversarial, bypass: the qualifier reader cannot be walked
+// past, nor handed text that is not a qualifier
+// ================================================================
+local bad21 ""
+dash clear
+// the keyword is lower case, as -syntax- and twoway read it
+capture noisily dash (scatter mpg weight) IF foreign==1, name(hc21a)
+if _rc != 198 local bad21 "`bad21' [IF rc=`=_rc']"
+// qualifier words inside a quoted option are text, not a qualifier
+capture noisily dash (scatter mpg weight, title("x) if foreign==1 (y")), name(hc21b)
+local rcb = _rc
+local gifb "unset"
+local tb ""
+if `rcb' == 0 {
+    mata: _hc_graph_q("hc21b")
+    mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gifb")
+    _hc_key hc21b title
+    local tb `"`r(value)'"'
+}
+if `rcb' != 0 | `"`gifb'"' != "" | !strpos(`"`tb'"', "x) if foreign==1 (y") {
+    local bad21 `"`bad21' [quoted: rc=`rcb' if=`gifb']"'
+}
+// a || inside a quoted string does not end the qualifier
+capture noisily dash (scatter mpg weight) if make=="a || b", name(hc21c)
+local rcc = _rc
+local gifc ""
+if `rcc' == 0 {
+    mata: _hc_graph_q("hc21c")
+    mata: _dash_json_get_str(st_local("_hc_gtail"), "if_expr", "gifc")
+}
+local wantc = `"make=="a || b""'
+if `rcc' != 0 | `"`macval(gifc)'"' != `"`macval(wantc)'"' {
+    local bad21 `"`bad21' [quoted ||: rc=`rcc']"'
+}
+// an unbalanced or unmatched parenthesis in it is refused, not drawn
+capture noisily dash (scatter mpg weight) if (foreign==1, name(hc21d)
+if _rc != 198 local bad21 "`bad21' [unbalanced rc=`=_rc']"
+capture noisily dash (scatter mpg weight) if foreign==1), name(hc21e)
+if _rc != 198 local bad21 "`bad21' [unmatched rc=`=_rc']"
+local reg `"${dash_graph_registry}"'
+if `"`reg'"' != "hc21b hc21c" local bad21 `"`bad21' [registry: `reg']"'
+dash clear
+if `"`bad21'"' != "" {
+    display as error `"HC1-21 FAIL:`bad21'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-21"'
+}
+else display as text "HC1-21 PASS: IF, a quoted if, a quoted ||, and an unbalanced qualifier cannot pass as, or past, the graph's qualifier"
+
+// ================================================================
+// HC1-22 -- adversarial, injection: the qualifier reaches the page only
+// through the renderer's whitelist, and Stata refuses code in it
+// ================================================================
+local bad22 ""
+local out22 "`c(tmpdir)'dash_hc1_22.html"
+capture erase "`out22'"
+dash clear
+capture noisily dash (scatter mpg weight) (line mpg weight) if make=="</script><script>alert(1)</script>", saving("`out22'")
+local rca = _rc
+capture confirm file "`out22'"
+local fa = _rc
+local raw = -1
+if `fa' == 0 {
+    cert_file_has "`out22'", needle("<script>alert(1)")
+    local raw = r(found)
+}
+if `rca' != 0 | `fa' != 0 | `raw' != 0 {
+    local bad22 "`bad22' [markup: rc=`rca' file=`fa' raw=`raw']"
+}
+// Python in the qualifier: -syntax- parses the expression and refuses the
+// function, r(133), before anything reaches Python; nothing is run
+capture erase "zq_hc22_pwned"
+capture noisily dash (scatter mpg weight) (line mpg weight) if __import__("os").system("touch zq_hc22_pwned")==0, name(hc22b)
+local rcb = _rc
+capture confirm file "zq_hc22_pwned"
+local fb = _rc
+if `rcb' != 133 | `fb' == 0 | `"${dash_graph_registry}"' != "" {
+    local bad22 "`bad22' [python: rc=`rcb' file=`fb']"
+}
+dash clear
+if `"`bad22'"' != "" {
+    display as error `"HC1-22 FAIL:`bad22'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-22"'
+}
+else display as text "HC1-22 PASS: markup in the qualifier never reaches the page raw, and code in it is refused before Python, r(133)"
+
+// ================================================================
+// HC1-23 -- adversarial, exhaustion: deep and long qualifiers are
+// bounded
+// ================================================================
+local bad23 ""
+local deep = 200*"(" + "foreign==1" + 200*")"
+local terms = "foreign==1" + 500*" | foreign==1"
+local out23 "`c(tmpdir)'dash_hc1_23.html"
+capture erase "`out23'"
+dash clear
+timer clear 23
+timer on 23
+capture noisily dash (scatter mpg weight) (line mpg weight) if `deep', saving("`out23'")
+local rca = _rc
+capture noisily dash (scatter mpg weight) if `terms', name(hc23b)
+local rcb = _rc
+timer off 23
+quietly timer list 23
+local t23 = r(t23)
+capture confirm file "`out23'"
+local fa = _rc
+if `rca' != 0 | `fa' != 0 | `rcb' != 130 | `t23' > 120 {
+    local bad23 "`bad23' [deep rc=`rca' file=`fa'; long rc=`rcb'; `t23's]"
+}
+dash clear
+if `"`bad23'"' != "" {
+    display as error `"HC1-23 FAIL:`bad23'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-23"'
+}
+else display as text "HC1-23 PASS: a qualifier 200 parentheses deep draws, and one of 501 terms is r(130), in bounded time"
+
+// ================================================================
+// HC1-24 -- the sections render: no SMCL directive survives as text
+// ================================================================
+// Stata's own renderer, smcl2txt.  From the Title to the Option values
+// item -- the sections this script certifies -- the text holds no brace:
+// an unknown or broken directive is printed literally.  Measured at
+// 4ede074: `{it:if}/{in} qualifiers' printed "if/{in} qualifiers" in the
+// Description, {in} being no directive.
+local txt24 "`c(tmpdir)'dash_hc1_24.txt"
+capture erase "`txt24'"
+quietly translate "../dash.sthlp" "`txt24'", translator(smcl2txt) replace
+capture mata: mata drop _hc_rendered_braces()
+mata:
+void _hc_rendered_braces(string scalar fn)
+{
+    real scalar   fh, on, n
+    string scalar line, bad
+    fh = fopen(fn, "r")
+    on = 0
+    n = 0
+    bad = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (!on & strtrim(line) == "Title") on = 1
+        if (on & strpos(line, "Option values.  A value is refused")) break
+        if (on) {
+            n++
+            if (strpos(line, "{") | strpos(line, "}")) {
+                bad = bad + " [" + strtrim(line) + "]"
+            }
+        }
+    }
+    fclose(fh)
+    st_local("_hc_rb", bad)
+    st_local("_hc_rn", strofreal(n))
+}
+end
+mata: _hc_rendered_braces(st_local("txt24"))
+capture {
+    assert `_hc_rn' > 200
+    assert `"`macval(_hc_rb)'"' == ""
+}
+if _rc {
+    display as error `"HC1-24 FAIL (`_hc_rn' lines):`macval(_hc_rb)'"'
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' HC1-24"'
+}
+else display as text "HC1-24 PASS: the Title to Differences sections render with no directive left as text (`_hc_rn' lines)"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_help_claims_1: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_help_claims_1: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

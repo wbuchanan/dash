@@ -211,9 +211,17 @@ class TestAxisLabelGrammar:
         assert _fixed_ticks(fig, "y") == [10.0, 20.0, 30.0, 40.0]
 
     def test_xtick_is_honoured(self):
+        """xtick() draws ticks WITHOUT labels beside the axis's own labels
+        (WP-23).  This asserted a FixedTicker at the xtick() positions,
+        which is what xtick() used to draw: LABELLED ticks, in place of the
+        axis's labels.  The tick-only positions are now the minor ticks of a
+        CustomJSTicker whose major, labelled ticks are the old ticker's."""
         fig, _ = _fig_with_gopts(_SCATTER, {"xtick": "2000 3000 4000"})
-        from bokeh.models import FixedTicker
-        assert isinstance(_ticker_of(fig), FixedTicker)
+        from bokeh.models import BasicTicker, CustomJSTicker
+        t = _ticker_of(fig)
+        assert isinstance(t, CustomJSTicker)
+        assert t.args["extra"] == [2000.0, 3000.0, 4000.0]
+        assert isinstance(t.args["base"], BasicTicker)
 
     def test_a_date_axis_ignores_a_numeric_format_gracefully(self):
         """Regression guard for the S08 work: no exception, no silent mangle."""

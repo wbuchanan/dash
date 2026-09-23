@@ -1,0 +1,724 @@
+*! test_help_claims_5.cscript
+*! Certification script: dash.sthlp's Resource limits, Faceting with by() and
+*! Marker Label Options, as the Stata user meets them -- ROADMAP WP-23,
+*! AC-23.1 (every claim verified by a test or corrected).
+*!
+*! Every claim the help makes about twoway is measured here against twoway
+*! itself, in the same run: twoway draws the picture, the picture is
+*! exported to SVG, and the SVG's <text> and <circle> elements are read.
+*! test_help_claims_5.py holds both render modes to what is measured here.
+*!
+*! Groups:
+*!   HC5-01  mlg(): twoway refuses it, r(198); dash takes it as mlabgap(),
+*!           as it takes mlabg(), and says nothing (TR-23.3).
+*!   HC5-02  the marker label options belong to a plot: dash build refuses
+*!           mlabel(), r(198).
+*!   HC5-03  a clock position twoway does not recognise -- 13, 2.5, 03,
+*!           abc -- is noted and drawn at 12 o'clock by twoway; dash takes
+*!           it, rc 0, and names it "using 12 (above)".
+*!   HC5-04  twoway anchors a label at each clock position: 12, 6 and 0 at
+*!           its middle, 1 to 5 at its start, 7 to 11 at its end; above the
+*!           point at 10 to 2, below it at 4 to 8, level with it at 3, 9, 0.
+*!   HC5-05  twoway's mlabgap() widens the gap along the clock direction,
+*!           by that percentage of the graph's smaller side, and does
+*!           nothing at 0.
+*!   HC5-06  twoway's by(, total) panel draws every group's observations
+*!           (auto: 69 of 74), and with missing every observation.
+*!   HC5-07  by() panel titles: twoway writes a value label, else the number
+*!           whatever its display format (Domestic, 3; Three; 4, not 4.00;
+*!           14610 for a %td date); dash's saved page titles them
+*!           Domestic / 3, Three, 4 and a date.
+*!   HC5-08  the by() sub-options dash does not implement are named in the
+*!           Stata log, on a saved and on a served build.
+*!   HC5-09  headlabel: twoway moves the labels to the arrow's head; dash
+*!           names it in the note and builds.
+*!   HC5-10  pcarrow and pcbarrow with mlabangle(400): twoway prints the
+*!           range, returns rc 0, draws the arrows and no labels; dash rc 0
+*!           and names the angle.
+*!   HC5-11  twoway, a paired-coordinate observation missing its second
+*!           point: pcscatter and pccapsym mark and label the first point,
+*!           pcarrow labels it.
+*!   HC5-12  twoway labels the end of a range that is there: rscatter with
+*!           one high end missing labels that observation once.
+*!   HC5-13  the cell limit counts every observation whatever the qualifier.
+*!   HC5-14  dash serve's spec is refused at the cell limit before anything
+*!           is exported.
+*!   HC5-15  a layout() grid larger than dash_max_graphs is refused, r(198).
+*!   HC5-16  jsonio writes ., .a and .b alike, so dash cannot tell them
+*!           apart; twoway draws .a as its value label or its name.
+*!   HC5-17  global dash_max_by_groups 250 is a limit of 250.
+*!   HC5-18  twoway's mlabformat(): %9.1fc draws 4099 as 4,099.0, and a
+*!           format changes nothing on a string or value-labelled variable.
+*!   HC5-19  twoway labels a %td variable with its dates, and a date
+*!           variable with a value label with the label and the numbers.
+*!   HC5-20  twoway notes an unknown mlabangle() name and draws horizontal.
+*!   HC5-21  mlabgap(-2), (2.5), (small) and (0) reach the renderer as
+*!           written (the help: a negative gap, a fraction, a keyword).
+*!
+*! Not in run_all_cscripts.do (WP-23: the runner is another agent's file).
+*! Usage:  cd test, then  do test_help_claims_5.cscript
+
+cscript "dash help claims 5 (WP-23: limits, by(), marker labels)" adodir ".."
+
+clear all
+set more off
+set graphics off
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+// cscript drops every global; cert_helpers.do set it again, and so does this.
+global dash_nobrowser 1
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+// Notes are read back from logs; at 80 columns Stata wraps them.
+set linesize 255
+capture macro drop dash_max_*
+
+local logfile "`c(tmpdir)'dash_hc5.log"
+local svg     "`c(tmpdir)'dash_hc5.svg"
+local svg2    "`c(tmpdir)'dash_hc5_b.svg"
+local page    "`c(tmpdir)'dash_hc5.html"
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+capture mata: mata drop _hc5_read()
+capture mata: mata drop _hc5_count()
+capture mata: mata drop _hc5_text()
+capture mata: mata drop _hc5_num()
+capture mata: mata drop _hc5_anchor()
+mata:
+// The whole file as one string ("" when it cannot be read), so a needle
+// never straddles a line break the reader introduced.
+string scalar _hc5_read(string scalar path)
+{
+    real scalar   fh, n
+    string scalar s
+    fh = _fopen(path, "r")
+    if (fh < 0) return("")
+    fseek(fh, 0, 1)
+    n = ftell(fh)
+    fseek(fh, 0, -1)
+    s = (n > 0 ? fread(fh, n) : "")
+    fclose(fh)
+    return(s)
+}
+// How many times `needle' occurs in the file; -1 when it cannot be read.
+real scalar _hc5_count(string scalar path, string scalar needle)
+{
+    string scalar s
+    s = _hc5_read(path)
+    if (s == "" | strlen(needle) == 0) return(-1)
+    return((strlen(s) - strlen(subinstr(s, needle, "", .))) / strlen(needle))
+}
+// The <text ...>label</text> element of an SVG that holds `label', whole,
+// or "" when there is none.
+string scalar _hc5_text(string scalar path, string scalar label)
+{
+    string scalar s, rest, el
+    real scalar   p, q
+    s    = _hc5_read(path)
+    rest = s
+    while ((p = strpos(rest, "<text ")) > 0) {
+        rest = substr(rest, p, .)
+        q    = strpos(rest, "</text>")
+        if (q == 0) return("")
+        el   = substr(rest, 1, q + 6)
+        if (strpos(el, ">" + label + "</text>") > 0) return(el)
+        rest = substr(rest, q + 7, .)
+    }
+    return("")
+}
+// A numeric attribute of an element: name="..." (or name:...px in a style).
+real scalar _hc5_num(string scalar el, string scalar name)
+{
+    real scalar   p, q
+    string scalar rest
+    p = strpos(el, name + "=" + char(34))
+    if (p > 0) {
+        rest = substr(el, p + strlen(name) + 2, .)
+        q    = strpos(rest, char(34))
+        return(strtoreal(substr(rest, 1, q - 1)))
+    }
+    p = strpos(el, name + ":")
+    if (p > 0) {
+        rest = substr(el, p + strlen(name) + 1, .)
+        q    = strpos(rest, "px")
+        return(strtoreal(substr(rest, 1, q - 1)))
+    }
+    return(.)
+}
+// A <text> element's text-anchor: start (SVG's default), middle or end.
+string scalar _hc5_anchor(string scalar el)
+{
+    if (strpos(el, "text-anchor=" + char(34) + "middle") > 0) return("middle")
+    if (strpos(el, "text-anchor=" + char(34) + "end") > 0)    return("end")
+    return("start")
+}
+end
+
+capture program drop _hc5_count
+program define _hc5_count, rclass
+    args path needle
+    mata: st_local("_n", strofreal(_hc5_count(st_local("path"), st_local("needle"))))
+    return scalar n = `_n'
+end
+
+// The label ZQAB's element in `path', and the first marker's centre:
+// r(anchor), r(x), r(y), r(fs) (the font size), r(cx), r(cy).
+capture program drop _hc5_place
+program define _hc5_place, rclass
+    args path
+    mata: _hc5_el = _hc5_text(st_local("path"), "ZQAB")
+    mata: st_local("_anc", _hc5_anchor(_hc5_el))
+    mata: st_local("_x",  strofreal(_hc5_num(_hc5_el, "x"), "%12.4f"))
+    mata: st_local("_y",  strofreal(_hc5_num(_hc5_el, "y"), "%12.4f"))
+    mata: st_local("_fs", strofreal(_hc5_num(_hc5_el, "font-size"), "%12.4f"))
+    mata: _hc5_c = _hc5_read(st_local("path"))
+    mata: _hc5_c = substr(_hc5_c, strpos(_hc5_c, "<circle "), .)
+    mata: _hc5_c = substr(_hc5_c, 1, strpos(_hc5_c, ">"))
+    mata: st_local("_cx", strofreal(_hc5_num(_hc5_c, "cx"), "%12.4f"))
+    mata: st_local("_cy", strofreal(_hc5_num(_hc5_c, "cy"), "%12.4f"))
+    return local anchor "`_anc'"
+    return scalar x  = `_x'
+    return scalar y  = `_y'
+    return scalar fs = `_fs'
+    return scalar cx = `_cx'
+    return scalar cy = `_cy'
+end
+
+// Run one command under a named log: r(rc).
+capture program drop _hc5_run
+program define _hc5_run, rclass
+    args cmdtext logpath
+    capture log close _hc5log
+    capture erase "`logpath'"
+    quietly log using "`logpath'", name(_hc5log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _hc5log
+    return scalar rc = `rc'
+end
+
+// Export the twoway command's picture to `path': r(rc).
+capture program drop _hc5_svg
+program define _hc5_svg, rclass
+    args cmdtext path
+    capture erase "`path'"
+    capture graph drop _all
+    capture `cmdtext'
+    local rc = _rc
+    if `rc' == 0 quietly graph export "`path'", replace
+    capture graph drop _all
+    return scalar rc = `rc'
+end
+
+// ================================================================
+// HC5-01 -- mlg(): twoway refuses it; dash folds it into mlabgap()
+// ================================================================
+sysuse auto, clear
+capture twoway scatter mpg weight, mlabel(make) mlg(5) nodraw
+assert _rc == 198
+capture twoway scatter mpg weight, mlabel(make) mlabg(5) nodraw
+assert _rc == 0
+foreach o in mlg mlabg mlabgap {
+    capture dash clear
+    _hc5_run `"dash scatter mpg weight, mlabel(make) `o'(5) name(hc1)"' "`logfile'"
+    assert r(rc) == 0
+    // The registered spec, read as a value in Mata: "mlabgap":"5", no mlg.
+    mata: st_local("_gap", strofreal(strpos(st_global("dash_json_hc1"), ///
+        char(34) + "mlabgap" + char(34) + ":" + char(34) + "5" + char(34)) > 0))
+    mata: st_local("_mlg", strofreal(strpos(st_global("dash_json_hc1"), ///
+        char(34) + "mlg" + char(34)) > 0))
+    assert `_gap' == 1 & `_mlg' == 0
+    cert_file_has "`logfile'", needle("ignoring unsupported")
+    assert r(found) == 0
+}
+capture dash clear
+display "HC5-01 PASS: twoway refuses mlg() r(198); dash takes mlg(), mlabg() and mlabgap() alike as mlabgap(), with no note"
+
+// ================================================================
+// HC5-02 -- a marker label option is a plot's, not dash build's
+// ================================================================
+dash scatter mpg weight, name(hc2)
+capture erase "`page'"
+_hc5_run `"dash build, saving("`page'") replace nobrowser mlabel(make)"' "`logfile'"
+assert r(rc) == 198
+cert_file_has "`logfile'", needle("option mlabel() not allowed")
+assert r(found) == 1
+capture confirm file "`page'"
+assert _rc != 0
+capture dash clear
+display "HC5-02 PASS: dash build refuses mlabel() with r(198), as a plot option"
+
+// ================================================================
+// HC5-03 -- a clock position twoway does not know: noted, drawn at 12
+// ================================================================
+clear
+set obs 1
+generate x = 0
+generate y = 0
+generate str4 lab = "ZQAB"
+local frame "xscale(range(-1 1)) yscale(range(-1 1)) legend(off)"
+_hc5_svg `"twoway scatter y x, mlabel(lab) mlabposition(12) `frame'"' "`svg2'"
+assert r(rc) == 0
+_hc5_place "`svg2'"
+local y12 = r(y)
+foreach v in 13 2.5 03 abc {
+    _hc5_run `"twoway scatter y x, mlabel(lab) mlabposition(`v') `frame' nodraw"' "`logfile'"
+    assert r(rc) == 0
+    cert_file_has "`logfile'", needle("named style `v' not found in class clockdir")
+    assert r(found) == 1
+    _hc5_svg `"twoway scatter y x, mlabel(lab) mlabposition(`v') `frame'"' "`svg'"
+    assert r(rc) == 0
+    _hc5_place "`svg'"
+    assert "`r(anchor)'" == "middle"
+    assert r(x) == r(cx)
+    assert abs(r(y) - `y12') < 0.01
+    capture erase "`page'"
+    _hc5_run `"dash scatter y x, mlabel(lab) mlabposition(`v') saving("`page'")"' "`logfile'"
+    assert r(rc) == 0
+    cert_file_has "`logfile'", needle("mlabposition(`v') is not a recognised clock position; using 12 (above).")
+    assert r(found) == 1
+}
+display "HC5-03 PASS: twoway notes 13, 2.5, 03 and abc and draws each at 12 o'clock; dash builds each and names it, using 12"
+
+// ================================================================
+// HC5-04 -- twoway's anchor at each clock position
+// ================================================================
+forvalues p = 0/12 {
+    _hc5_svg `"twoway scatter y x, mlabel(lab) mlabposition(`p') `frame'"' "`svg'"
+    assert r(rc) == 0
+    _hc5_place "`svg'"
+    local anc "`r(anchor)'"
+    local dx = r(x) - r(cx)
+    local by = r(y) - r(cy)
+    local fs = r(fs)
+    // The horizontal anchor.
+    if inlist(`p', 0, 6, 12) {
+        assert "`anc'" == "middle"
+        assert abs(`dx') < 0.01
+    }
+    else if inrange(`p', 1, 5) {
+        assert "`anc'" == "start"
+        assert `dx' > 0
+    }
+    else {
+        assert "`anc'" == "end"
+        assert `dx' < 0
+    }
+    // The vertical anchor (SVG y grows downward; y is the baseline): the
+    // text sits above the point at 10 to 2, below it at 4 to 8, and level
+    // with it -- its baseline within a font size below the centre -- at
+    // 3, 9 and 0.
+    if inlist(`p', 10, 11, 12, 1, 2) assert `by' < 0
+    else if inrange(`p', 4, 8)       assert `by' > 0.5 * `fs'
+    else                             assert `by' > 0 & `by' < `fs'
+}
+display "HC5-04 PASS: twoway anchors the label at 12, 6 and 0 in the middle, 1-5 at its start, 7-11 at its end; above at 10-2, below at 4-8, level at 3, 9, 0"
+
+// ================================================================
+// HC5-05 -- twoway's mlabgap() works along the clock direction
+// ================================================================
+// The graph's smaller side, from the SVG's viewBox="0 0 W H": twoway's
+// mlabgap(10) is ten percent of it.
+_hc5_svg `"twoway scatter y x, mlabel(lab) `frame'"' "`svg'"
+mata: _hc5_v = _hc5_read(st_local("svg"))
+mata: _hc5_v = substr(_hc5_v, strpos(_hc5_v, "viewBox=" + char(34)) + 9, .)
+mata: _hc5_v = tokens(substr(_hc5_v, 1, strpos(_hc5_v, char(34)) - 1))
+mata: st_local("_side", strofreal(min((strtoreal(_hc5_v[3]), strtoreal(_hc5_v[4]))), "%12.4f"))
+assert `_side' > 0
+foreach p in 9 12 0 {
+    _hc5_svg `"twoway scatter y x, mlabel(lab) mlabposition(`p') mlabgap(0) `frame'"' "`svg'"
+    _hc5_place "`svg'"
+    local x0 = r(x)
+    local y0 = r(y)
+    _hc5_svg `"twoway scatter y x, mlabel(lab) mlabposition(`p') mlabgap(10) `frame'"' "`svg'"
+    _hc5_place "`svg'"
+    if `p' == 9 {
+        assert abs((`x0' - r(x)) - 0.10 * `_side') < 0.01 * `_side'
+        assert abs(r(y) - `y0') < 0.01
+    }
+    if `p' == 12 {
+        assert abs((`y0' - r(y)) - 0.10 * `_side') < 0.01 * `_side'
+        assert abs(r(x) - `x0') < 0.01
+    }
+    if `p' == 0 {
+        assert abs(r(x) - `x0') < 0.01 & abs(r(y) - `y0') < 0.01
+    }
+}
+_hc5_run `"twoway scatter y x, mlabel(lab) mlabposition(3) mlabgap(-5) `frame' nodraw"' "`logfile'"
+assert r(rc) == 0
+display "HC5-05 PASS: twoway's mlabgap(10) moves a 9 o'clock label left and a 12 o'clock label up by 10% of the graph's smaller side, does nothing at 0; mlabgap(-5) is accepted"
+
+// ================================================================
+// HC5-06 -- twoway's Total panel
+// ================================================================
+sysuse auto, clear
+_hc5_svg "twoway scatter mpg weight in 1, scheme(s2color)" "`svg'"
+_hc5_count "`svg'" "<circle"
+local per = r(n)
+assert `per' >= 1
+_hc5_svg "twoway scatter mpg weight, by(rep78) scheme(s2color)" "`svg'"
+_hc5_count "`svg'" "<circle"
+local groups = r(n) / `per'
+assert `groups' == 69
+_hc5_svg "twoway scatter mpg weight, by(rep78, total) scheme(s2color)" "`svg'"
+_hc5_count "`svg'" "<circle"
+assert r(n) / `per' == 2 * 69
+_hc5_svg "twoway scatter mpg weight, by(rep78, missing total) scheme(s2color)" "`svg'"
+_hc5_count "`svg'" "<circle"
+assert r(n) / `per' == 2 * 74
+_hc5_count "`svg'" ">(missing)<"
+assert r(n) == 1
+display "HC5-06 PASS: twoway's Total panel draws the 69 observations of the groups, all 74 with missing; the missing panel is titled (missing)"
+
+// ================================================================
+// HC5-07 -- by() panel titles, twoway's and the saved page's
+// ================================================================
+generate double r2 = rep78
+format r2 %9.2f
+label define hc5rl 3 "Three"
+label values r2 hc5rl
+generate double d = mdy(1, 1, 2000) + mod(_n, 3)
+format d %td
+_hc5_svg "twoway scatter mpg weight, by(foreign rep78) scheme(s2color)" "`svg'"
+_hc5_count "`svg'" ">Domestic, 3<"
+assert r(n) == 1
+_hc5_svg "twoway scatter mpg weight, by(r2) scheme(s2color)" "`svg'"
+_hc5_count "`svg'" ">Three<"
+assert r(n) == 1
+_hc5_count "`svg'" ">4<"
+assert r(n) == 1
+_hc5_count "`svg'" ">4.00<"
+assert r(n) == 0
+_hc5_svg "twoway scatter mpg weight, by(d) scheme(s2color)" "`svg'"
+_hc5_count "`svg'" ">14610<"
+assert r(n) == 1
+capture dash clear
+local q = char(34)
+foreach sc in "foreign rep78|Domestic / 3|Domestic / 3.0" "r2|Three|3.00" "r2|4|4.00" "d|01 Jan 2000|14610.0" {
+    gettoken byv rest : sc, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken want rest : rest, parse("|")
+    gettoken bar rest : rest, parse("|")
+    local nowant "`rest'"
+    capture erase "`page'"
+    _hc5_run `"dash scatter mpg weight, by(`byv') saving("`page'")"' "`logfile'"
+    assert r(rc) == 0
+    cert_file_has "`page'", needle(`"`q'text`q':`q'`want'`q'"')
+    assert r(found) == 1
+    cert_file_has "`page'", needle(`"`q'text`q':`q'`nowant'`q'"')
+    assert r(found) == 0
+}
+display "HC5-07 PASS: twoway titles Domestic, 3 / Three / 4 (not 4.00) / 14610; the saved page titles Domestic / 3, Three, 4 and 01 Jan 2000"
+
+// ================================================================
+// HC5-08 -- the by() sub-options dash does not implement are named
+// ================================================================
+capture erase "`page'"
+_hc5_run `"dash scatter mpg weight, by(foreign, rows(2) holes(1) compact cols(2) total) saving("`page'")"' "`logfile'"
+assert r(rc) == 0
+cert_file_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
+assert r(found) == 1
+cert_file_has "`logfile'", needle("ignored: rows(2) holes(1) compact cols")
+assert r(found) == 0
+capture dash clear
+dash scatter mpg weight, by(foreign, rows(2) holes(1) compact) name(hc8)
+local app "`c(tmpdir)'dash_hc5_app.py"
+capture erase "`app'"
+_hc5_run `"dash build, saving("`app'") replace server"' "`logfile'"
+assert r(rc) == 0
+cert_file_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
+assert r(found) == 1
+capture erase "`app'"
+capture dash clear
+display "HC5-08 PASS: rows(), holes() and compact are named in the Stata log on a saved and a served build; cols() and total are not"
+
+// ================================================================
+// HC5-09 -- headlabel
+// ================================================================
+clear
+set obs 1
+generate y1 = 1
+generate x1 = 1
+generate y2 = 9
+generate x2 = 9
+generate str4 lab = "ZQAB"
+local pcframe "xscale(range(0 10)) yscale(range(0 10)) legend(off)"
+_hc5_svg `"twoway pcarrow y1 x1 y2 x2, mlabel(lab) `pcframe'"' "`svg'"
+assert r(rc) == 0
+_hc5_place "`svg'"
+local tail_x = r(x)
+_hc5_svg `"twoway pcarrow y1 x1 y2 x2, mlabel(lab) headlabel `pcframe'"' "`svg'"
+assert r(rc) == 0
+_hc5_place "`svg'"
+assert r(x) > `tail_x' + 500
+capture erase "`page'"
+_hc5_run `"dash pcarrow y1 x1 y2 x2, mlabel(lab) headlabel saving("`page'")"' "`logfile'"
+assert r(rc) == 0
+cert_file_has "`logfile'", needle("ignoring unsupported option(s): headlabel()")
+assert r(found) == 1
+cert_file_has "`page'", needle(`""name":"LabelSet""')
+assert r(found) == 1
+display "HC5-09 PASS: twoway's headlabel moves the label to the head; dash names headlabel in the note and draws its labels"
+
+// ================================================================
+// HC5-10 -- mlabangle(400) on pcarrow and pcbarrow
+// ================================================================
+sysuse auto, clear
+keep in 1/10
+generate str12 zq = "ZQLAB" + string(_n)
+foreach tt in pcarrow pcbarrow {
+    // The picture with no labels at all: the same lines, paths and
+    // polygons means the arrows are drawn and nothing else.
+    _hc5_svg `"twoway `tt' mpg weight turn length, legend(off)"' "`svg2'"
+    foreach el in line path polygon {
+        _hc5_count "`svg2'" "<`el'"
+        local n0_`el' = r(n)
+    }
+    assert `n0_line' + `n0_path' + `n0_polygon' > 0
+    // Drawn, not nodraw: twoway evaluates the angle only when it draws.
+    _hc5_run `"twoway `tt' mpg weight turn length, mlabel(zq) mlabangle(400)"' "`logfile'"
+    capture graph drop _all
+    assert r(rc) == 0
+    cert_file_has "`logfile'", needle("textangle must be between -360.000 and 360.000")
+    assert r(found) == 1
+    _hc5_svg `"twoway `tt' mpg weight turn length, mlabel(zq) mlabangle(400) legend(off)"' "`svg'"
+    assert r(rc) == 0
+    _hc5_count "`svg'" "ZQLAB"
+    assert r(n) == 0
+    foreach el in line path polygon {
+        _hc5_count "`svg'" "<`el'"
+        assert r(n) == `n0_`el''
+    }
+    capture erase "`page'"
+    _hc5_run `"dash `tt' mpg weight turn length, mlabel(zq) mlabangle(400) saving("`page'")"' "`logfile'"
+    assert r(rc) == 0
+    cert_file_has "`logfile'", needle("mlabangle(400) is not a recognised angle; using horizontal.")
+    assert r(found) == 1
+}
+display "HC5-10 PASS: twoway prints the range, returns rc 0 and draws the arrows without labels; dash builds and names the angle"
+
+// ================================================================
+// HC5-11 -- twoway, a paired-coordinate observation missing its second
+// point
+// ================================================================
+replace turn = . in 1
+foreach tt in pcscatter pccapsym pcarrow {
+    _hc5_svg `"twoway `tt' mpg weight turn length, mlabel(zq) scheme(s2color) legend(off)"' "`svg'"
+    assert r(rc) == 0
+    _hc5_count "`svg'" ">ZQLAB1<"
+    assert r(n) == 1
+}
+_hc5_svg "twoway scatter mpg weight in 1, scheme(s2color) legend(off)" "`svg2'"
+_hc5_count "`svg2'" "<circle"
+local per = r(n)
+foreach tt in pcscatter pccapsym {
+    _hc5_svg `"twoway `tt' mpg weight turn length, scheme(s2color) legend(off)"' "`svg'"
+    _hc5_count "`svg'" "<circle"
+    assert r(n) / `per' == 2 * 9 + 1
+}
+display "HC5-11 PASS: twoway labels the first point of an observation missing its second on pcscatter, pccapsym and pcarrow, and marks it on pcscatter and pccapsym"
+
+// ================================================================
+// HC5-12 -- twoway labels the end of a range that is there
+// ================================================================
+sysuse auto, clear
+keep in 1/10
+generate str12 zq = "ZQLAB" + string(_n)
+generate lo = mpg - 2
+generate hi = mpg + 2
+replace hi = . in 1
+_hc5_svg `"twoway rscatter lo hi weight, mlabel(zq) legend(off)"' "`svg'"
+assert r(rc) == 0
+_hc5_count "`svg'" ">ZQLAB1<"
+assert r(n) == 1
+_hc5_count "`svg'" ">ZQLAB2<"
+assert r(n) == 2
+display "HC5-12 PASS: twoway rscatter labels observation 1's low end alone and observation 2's two ends"
+
+// ================================================================
+// HC5-13 -- the cell limit counts every observation, whatever the if
+// ================================================================
+sysuse auto, clear
+global dash_max_cells 100
+capture erase "`page'"
+_hc5_run `"dash scatter mpg weight if foreign == 1, saving("`page'")"' "`logfile'"
+assert r(rc) == 134
+// Every observation of mpg, weight and the qualifier's own foreign.
+cert_file_has "`logfile'", needle("would embed 222 values (74 observations x 3 variables)")
+assert r(found) == 1
+capture confirm file "`page'"
+assert _rc != 0
+// Reducing the data first is what the help advises, and it works.
+preserve
+quietly keep if foreign == 1
+_hc5_run `"dash scatter mpg weight, saving("`page'")"' "`logfile'"
+assert r(rc) == 0
+restore
+display "HC5-13 PASS: if foreign == 1 embeds all 74 observations and is refused at 100 values; keep if foreign == 1 builds"
+
+// ================================================================
+// HC5-14 -- dash serve's spec is refused before anything is exported
+// ================================================================
+capture dash clear
+dash scatter mpg weight, name(hc14)
+tempfile hc14s hc14d
+_hc5_run `"_dash_serve_spec, specpath("`hc14s'") datapath("`hc14d'")"' "`logfile'"
+assert r(rc) == 134
+cert_file_has "`logfile'", needle("set global dash_max_cells to a higher value (at most 20,000,000)")
+assert r(found) == 1
+capture confirm file "`hc14d'"
+assert _rc != 0
+macro drop dash_max_cells
+capture dash clear
+display "HC5-14 PASS: the spec dash serve launches from is refused at the cell limit, and no data file is written"
+
+// ================================================================
+// HC5-15 -- a layout() grid past dash_max_graphs is refused
+// ================================================================
+dash scatter mpg weight, name(hc15)
+capture erase "`page'"
+_hc5_run `"dash build, saving("`page'") replace nobrowser layout(11 11)"' "`logfile'"
+assert r(rc) == 198
+cert_file_has "`logfile'", needle("layout() asks for a grid of 121 cells, more than the 100 graphs and KPI cards one dashboard draws.")
+assert r(found) == 1
+cert_file_has "`logfile'", needle("set global dash_max_graphs to a higher value (at most 1,000)")
+assert r(found) == 1
+global dash_max_graphs 121
+_hc5_run `"dash build, saving("`page'") replace nobrowser layout(11 11)"' "`logfile'"
+assert r(rc) == 0
+macro drop dash_max_graphs
+capture dash clear
+display "HC5-15 PASS: layout(11 11) is refused with r(198) at the default 100 and builds at dash_max_graphs 121"
+
+// ================================================================
+// HC5-16 -- ., .a and .b reach dash alike; twoway tells them apart
+// ================================================================
+sysuse auto, clear
+keep in 1/6
+generate double em = _n
+replace em = .a in 1
+replace em = .b in 2
+replace em = . in 3
+label define hc5eml 1 "ONE" .a "REFUSED"
+label values em hc5eml
+dash scatter mpg weight, mlabel(em) name(hc16)
+tempfile hc16s hc16d
+_dash_serve_spec, specpath("`hc16s'") datapath("`hc16d'")
+_hc5_count "`hc16d'" `""em" : "null""'
+assert r(n) == 3
+_hc5_svg "twoway scatter mpg weight, mlabel(em) legend(off)" "`svg'"
+_hc5_count "`svg'" ">REFUSED<"
+assert r(n) == 1
+_hc5_count "`svg'" ">.b<"
+assert r(n) == 1
+label values em
+_hc5_svg "twoway scatter mpg weight, mlabel(em) legend(off)" "`svg'"
+_hc5_count "`svg'" ">.a<"
+assert r(n) == 1
+capture dash clear
+display "HC5-16 PASS: jsonio writes ., .a and .b as the same null; twoway draws .a as REFUSED or .a and .b as .b"
+
+// ================================================================
+// HC5-17 -- the help's example global
+// ================================================================
+global dash_max_by_groups 250
+_dash_limit, name(by_groups)
+assert r(value) == 250
+_dash_limits_json
+assert `"`r(json)'"' == `"{"by_groups":250}"'
+macro drop dash_max_by_groups
+display "HC5-17 PASS: global dash_max_by_groups 250 is a limit of 250, carried to the renderer"
+
+// ================================================================
+// HC5-18 -- twoway's mlabformat()
+// ================================================================
+sysuse auto, clear
+keep in 1/6
+_hc5_svg "twoway scatter mpg weight, mlabel(price) mlabformat(%9.1fc) legend(off)" "`svg'"
+_hc5_count "`svg'" ">4,099.0<"
+assert r(n) == 1
+_hc5_svg "twoway scatter mpg weight, mlabel(make) mlabformat(%9.2f) legend(off)" "`svg'"
+_hc5_count "`svg'" ">AMC Concord<"
+assert r(n) == 1
+_hc5_svg "twoway scatter mpg weight, mlabel(foreign) mlabformat(%9.2f) legend(off)" "`svg'"
+_hc5_count "`svg'" ">Domestic<"
+assert r(n) == 6
+display "HC5-18 PASS: twoway's mlabformat(%9.1fc) draws 4,099.0 and changes nothing on make or foreign"
+
+// ================================================================
+// HC5-19 -- twoway labels a date variable
+// ================================================================
+generate double d = mdy(1, 2, 2000) + _n
+format d %td
+_hc5_svg "twoway scatter mpg weight, mlabel(d) legend(off)" "`svg'"
+_hc5_count "`svg'" ">03jan2000<"
+assert r(n) == 1
+label define hc5dl 14612 "LABELLED"
+label values d hc5dl
+_hc5_svg "twoway scatter mpg weight, mlabel(d) legend(off)" "`svg'"
+_hc5_count "`svg'" ">LABELLED<"
+assert r(n) == 1
+_hc5_count "`svg'" ">14613<"
+assert r(n) == 1
+display "HC5-19 PASS: twoway labels a %td variable with its dates, and with a value label its label and the numbers"
+
+// ================================================================
+// HC5-20 -- twoway notes an unknown mlabangle() name, draws horizontal
+// ================================================================
+clear
+set obs 1
+generate x = 0
+generate y = 0
+generate str4 lab = "ZQAB"
+_hc5_run `"twoway scatter y x, mlabel(lab) mlabangle(abc) `frame'"' "`logfile'"
+capture graph drop _all
+assert r(rc) == 0
+cert_file_has "`logfile'", needle("named style abc not found in class anglestyle")
+assert r(found) == 1
+_hc5_svg `"twoway scatter y x, mlabel(lab) mlabangle(abc) `frame'"' "`svg'"
+mata: st_local("_rot", strofreal(strpos(_hc5_text(st_local("svg"), "ZQAB"), "rotate(") > 0))
+assert `_rot' == 0
+_hc5_svg `"twoway scatter y x, mlabel(lab) mlabangle(45) `frame'"' "`svg'"
+mata: st_local("_rot", strofreal(strpos(_hc5_text(st_local("svg"), "ZQAB"), "rotate(-45") > 0))
+assert `_rot' == 1
+display "HC5-20 PASS: twoway notes mlabangle(abc) and draws horizontal; mlabangle(45) rotates counter-clockwise"
+
+// ================================================================
+// HC5-21 -- the gaps the help describes reach the renderer from Stata
+// ================================================================
+sysuse auto, clear
+foreach g in -2 2.5 small 0 {
+    capture dash clear
+    _hc5_run `"dash scatter mpg weight, mlabel(make) mlabgap(`g') name(hc21)"' "`logfile'"
+    assert r(rc) == 0
+    mata: st_local("_gap", strofreal(strpos(st_global("dash_json_hc21"), ///
+        char(34) + "mlabgap" + char(34) + ":" + char(34) + "`g'" + char(34)) > 0))
+    assert `_gap' == 1
+}
+capture dash clear
+display "HC5-21 PASS: mlabgap(-2), mlabgap(2.5), mlabgap(small) and mlabgap(0) are taken and carried to the renderer as written"
+
+// ----------------------------------------------------------------
+// Cleanup
+// ----------------------------------------------------------------
+capture dash clear
+capture macro drop dash_max_*
+foreach f in "`logfile'" "`svg'" "`svg2'" "`page'" {
+    capture erase `"`f'"'
+}
+display ""
+display "All help-claims-5 certification tests PASSED."

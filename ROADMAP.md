@@ -469,7 +469,7 @@ should land:
 
 ## WP-06 · `dash_setup` tells the truth
 
-**Gaps closed:** J1, J2, J6 · **Severity:** S1 · **Effort:** S · **Depends on:** —
+**Gaps closed:** J1, J2, J6 (all but rollback) · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
 > **DONE**, and the plan understated it. TR-06.1's premise — "prints an error
 > and does not exit" — is true, but the branch was never reached:
@@ -669,6 +669,11 @@ should land:
 > `test/test_json_escaping.cscript` (JSE-01..10, runner #36),
 > `test_path_validation.cscript` PV-13..19, `test_adversarial.cscript`
 > P8-86..89, `test/fixtures/utf8_cases.txt` and `scripts/gen_utf8_cases.py`.
+>
+> *Correction, found by WP-23:* TR-08.8's `.py` requirement for server-mode
+> output (7ddbc08) also caught `_dash_serve`'s deliberately extension-less
+> tempfile, so every `dash serve` aborted with r(7102) until WP-23 fixed the
+> launch route (GAPS.md C1, C2; BUGS.md).
 
 > **User story.** As a user pasting text from the web into `title()`, I want
 > either a clean `dash` error or a correct dashboard — never a raw Python
@@ -1243,9 +1248,14 @@ entries move into the corpus.
   variable selects Stata's rows served and every row saved -- the shared
   qualifier must translate the literal before the port lands.
 - `layout(bs)` served draws the auto grid without a warning (WP-21).
+  *Since fixed by 31e76e0: the served app draws the saved page's 12-column
+  grid (test_served_bs_layout.py), as WP-23's reconciliation measured.*
 - `scheme` legend_position/legend_cols are parsed and consumed by nothing in
   either mode; not activated here, since that would move every s2color
-  legend in both modes without a Stata measurement.
+  legend in both modes without a Stata measurement.  *Since consumed: both
+  modes place and wrap the legend by the scheme when the user gives
+  neither (dash_render.py's legend chrome; test_scheme_rendered_output.py
+  `TestTheLegend`, `TestNamedLegendPlacements`), as WP-23 measured.*
 
 **Verification.** Certification 37/37 passed, 0 failed, 0 skipped.  pytest 6102 passed, 58 skipped, 6 xfailed -- five of the six are the date-gap comparisons this package pins so their fix is noticed, the sixth predates it.
 
@@ -2667,7 +2677,11 @@ date-time or offset x, Stata's choice between two nearly equal FP models
 rests on its own rounding and can differ from dash's (on the offset x
 the residual sums of squares, to 60 digits, rank dash's choice first);
 the curves then agree to 5e-4 of their span, and the fixture test carries
-that tolerance.
+that tolerance.  *Since then (WP-23's reconciliation): the linked by()
+filter move is fixed by 7c2c918; function and the immediate types answer a
+weight as twoway does (WP-23), while kernel() abbreviations are still
+refused; the served recompute is throttled (WP-19), and lowess and fpfit
+still cost what they did -- both open in BUGS.md.*
 
 ### Verification, measured
 
@@ -3378,9 +3392,9 @@ checks failed on the merged code without them (r(3498)).
 
 ---
 
-## WP-23 · Documentation reconciliation
+## WP-23 · Documentation reconciliation — DONE
 
-**Gaps closed:** F4, M1, M4, M5 · **Severity:** S2/S3 · **Effort:** M · **Depends on:** all feature packages
+**Gaps closed:** F4, F5, M1, M4, M5, C1, C2 · **Severity:** S2/S3 · **Effort:** M (delivered as L) · **Depends on:** all feature packages
 
 > **User story.** As a user, I want the help file to describe the command I
 > actually have.
@@ -3392,47 +3406,124 @@ checks failed on the merged code without them (r(3498)).
 - **BR-23.3** No tracking document in the repository claims work that is not
   done.
 
-### Technical requirements
+### What was measured before any code changed
 
-- **TR-23.1** Correct every F4 claim: fractional percentiles
-  (`dash.sthlp:466-467` — `p97.5` is documented and cannot be entered; both
-  renderers already accept it, so fix `dash.ado:1839, 1849` instead of the
-  help); `nodraw` on `dash build` (`:296` contradicts `:1149-1152`); bare-name
-  custom schemes (`:1084-1086`, fixed in WP-17); the semicolon joiner claim
-  (`:408` — it is `" || "`); the scipy attribution (`:1182-1183` and
-  `dash_setup.sthlp:76-77` — `qfitci` and `kdensity` do not use scipy);
-  `xtick()`/`ytick()` semantics (`:866-869`, fixed in WP-14/WP-15);
-  `colorvar()`'s scatter-only scope (`:926-948`); `legend()` keyword geometry
-  (`:853`); `ylabel2()`/`xlabel2()` grammar (`:905-912`).
-- **TR-23.2** Add a supported-plot-types section (WP-22's TR-22.2).
-- **TR-23.3** Document the undocumented-but-honoured options: `hover()`,
-  `bands()`, `mlg()`, `range()`, `n()`, `base()`, `marker()`, `color()`, and
-  the `$dash_nobrowser` global.
-- **TR-23.4** Add a "server mode limitations" block, or delete it once WP-09
-  through WP-12 make it unnecessary.
-- **TR-23.5** (M1) Reconcile `TODO.md` (555 items, all checked) and `BUGS.md`
-  (73 entries, all closed) against reality, or retire them in favour of
-  `GAPS.md`, `REMAINING.md` and `phases/`. Documents that claim completion
-  while 39 options are inert are worse than absent.
-- **TR-23.6** (M4) Remove the duplicated generator NOTE comment
-  (`dash.ado:266-275`, `:459-469`) and the duplicated T/B/L/R folding block
-  (`:316-319`, `:340-343`). Correct the rationale those comments give: it is
-  measurably wrong — `T1title` yields minimum abbreviation `t`, not `t1`, so
-  the explicit `T B L R` declarations at `:301-302` are redundant.
-- **TR-23.7** (M5) Fix the `inlist()` ceiling — tracked in TR-22.4.
+23sep2026 at `4ede074`, StataNow 19.5 with the console binary, `twoway` as
+the oracle for every claim about `twoway`, both render modes for every
+claim about a dashboard:
 
-### Acceptance criteria
+| Question | Measured |
+|---|---|
+| F4's nine rows | Two had been fixed (the bare-name scheme, WP-17; the scipy text, WP-18) and one was true (`nodraw` on `dash build`).  Six were still false: `dash kpi p97.5(price)` was r(198); repeated `filter()` groups were joined with `\|\|`, not a semicolon, and a label holding `;`, `\|\|`, `exclude(` or an apostrophe broke the build or dropped an `exclude()`; `xtick()`, recorded as fixed by WP-14/15, still replaced the labels when alone and was dropped beside `xlabel()`; `colorvar()` was drawn on four plot types and dropped in silence on the other thirty-six; `legend(top)` and its three siblings were drawn inside the plot where `twoway` refuses them; `ylabel2()`/`xlabel2()` drew no ticks for anything but a numlist |
+| The rest of the help | Eight parallel audits read every claim of every section against the code, each keeping a ledger of the claim, the test that holds it and any correction: 56 claims were false because of a code defect, and the others that were false or imprecise were corrected in the help |
+| TR-23.3's names | `hover()`, `marker()` and `mlg()` had no entry at all -- the old conformance test passed `hover()` on the words "hover tooltips" and `marker()` on SMCL's own `{marker}` tags; `bands()`, `n()`, `range()` and `base()` named some of their plot types; `$dash_nobrowser` was a mention in two rows; 37 plot-type spellings and a dozen option spellings dash accepts and `twoway` refuses were written nowhere |
+| TR-23.4, Server Mode | the comparison table did not render as a table (Stata collapsed its spaces), several rows were false, and `dash serve` aborted on every launch with r(7102) -- 7ddbc08 (WP-08's TR-08.8) had made the renderer refuse the extension-less tempfile `_dash_serve` hands it on purpose, and no test ran a real launch (GAPS C1, C2) |
+| TR-23.5 | `TODO.md` (555 items, all checked) and `PLAN.md` described the plan overtaken in September; `BUGS.md` held 260 entries, 7 open -- 2 of them already fixed -- and 26 closed entries named no test that exists; 28 gaps that a finished work package or a commit had closed were still marked open in GAPS.md |
+| TR-23.6, TR-23.7 | the generator NOTE was there four times and the t/b/l/r fold three times; the explicit `T() B() L() R()` were reached only by a third spelling after `t1title()` and `t2title()`, which the fold then dropped without a word at graph level; the `inlist()` ceiling was gone (WP-22) |
+| The rendered help | from the Faceting example to the end of the file, Stata's own renderer showed raw SMCL: a paragraph left open before an example cascades; beside it a directive split over two lines, five `{opt name(` rows in the Region table and an `{in}` |
+| The help's examples | nothing ran them: an `lpoly` example drew one point of its curve (a bandwidth written as a fraction), a refused weighted command left its weight in `s()` for the next command to use, three `dash build` examples needed graphs no earlier line registered, and one used variables no shipped dataset has |
 
-- **AC-23.1** Every claim in `dash.sthlp` is verified by a test or corrected.
-- **AC-23.2** Every supported plot type and honoured option is documented.
-- **AC-23.3** No tracking document claims work that is not done.
+### Technical requirements, as delivered
 
-### Test plan
+- **TR-23.1** Every F4 claim is true, by making the code do what the help
+  says where that is `twoway`'s behaviour or an intended feature, and
+  otherwise by correcting the help: a KPI percentile is any p strictly
+  between 0 and 100 with `_pctile`'s value in both modes -- and both
+  renderers' percentile rule, which disagreed with Stata at large n, is
+  Stata's; filter groups are split only outside quotes and parentheses, in
+  Mata and in the renderer, so a label may hold any character; `xtick()`
+  draws ticks without labels beside the labels, and `grid` as `twoway`
+  draws it; `colorvar()` is named in the note where it is not drawn;
+  `legend(top|bottom|left|right)` is refused with r(198), naming the
+  `position()` meant; `ylabel2()`/`xlabel2()` take `ylabel()`'s grammar;
+  `nodraw` and the scipy text are pinned.  The whole help was audited the
+  same way, section by section: 56 defects fixed test-first, each with a
+  BUGS.md entry -- among them `dash serve`, a second axis drawn on a
+  0-to-1 range for eighteen plot types, a qualifier after the plot groups
+  dropped in silence, `tsline` drawn against a variable where `twoway`
+  draws against the time, seventeen plot types with no tooltip, a saved
+  page's brush that never updated a KPI card, and marker labels anchored at
+  their corner at every clock position.  One false claim is corrected
+  rather than fixed: an option dash honours on some plot types, given on
+  one that does not take it, is ignored where `twoway` refuses it -- the
+  help now says so, and a test pins it.
+- **TR-23.2** The Plot types section (WP-22) gains a Synonyms table: the
+  37 spellings only dash accepts, beside `twoway`'s own abbreviations
+  (`sc`, `li`, `con`, `hist`, `rsc`, `rl`, `rcon`, `fun`, `mbands`, `fn` --
+  the last two refused by dash until now).
+- **TR-23.3** `hover()`, `marker()`, `color()`, `bands()`, `n()`,
+  `range()` and `base()` have definition entries naming the plot types that
+  take them; `mlg()`, `bw()`, `bins()`, `colv()`, `cv()`, `pbgc()`, the
+  twelve second-axis synonyms and `jit()` are written beside their options;
+  `$dash_nobrowser` is defined under Dashboard Options
+  (`{marker nobrowser_global}`).
+- **TR-23.4** The Server Mode section is rewritten against both modes: the
+  comparison table renders, every row is measured, and a limitations block
+  says what the served app does not do (dates, a phone viewport, the
+  dimming of an unselected point).  `dash serve` launches again: on the
+  `--launch` route the renderer takes a `.py` name or one no file holds
+  yet, never overwriting another file, and the app stays a Stata tempfile
+  erased on exit, error or Ctrl+C (C1); a real launch runs in the
+  certification suite (C2).
+- **TR-23.5** Retired rather than reconciled: `TODO.md` and `PLAN.md` are
+  deleted (the last commit that holds them is `4ede074`).  `BUGS.md` is
+  reconciled: every open entry is measured and says why it is open, the two
+  already fixed are closed with their commits, and every closed entry names
+  a test that exists -- three name none and say so (WP-24).  GAPS.md and
+  ROADMAP.md agree both ways on every gap a DONE package closes (WP-06's J6
+  is qualified to what it did).  `test/test_tracking_documents.py` holds the
+  three documents to all of it.  `.ultraplan/`, `REMAINING.md` and
+  `phases/` are the user's records and are left to them.
+- **TR-23.6** Every duplicate is gone, and with `T() B() L() R()` goes the
+  one thing they did: a third t(), b(), l() or r() at graph level is named
+  like any other unsupported spelling (BUGS.md).  The helper the
+  abbreviation tests share uses the measured rule (a digit ends the run of
+  capitals).
+- **TR-23.7** Verified: no string `inlist()` of ten or more arguments is
+  left (WP-22's TR-22.4).
 
-Extend `test_help_conformance.py` — already strong — to assert the
-plot-type list matches the dispatch table, and that every documented option
-appears in a `syntax` block. Make it fail when the help and code diverge in
-either direction.
+### Acceptance
+
+- **AC-23.1** Every claim in `dash.sthlp` is verified by a test or
+  corrected: each audit kept a claims ledger, and the claims are pinned by
+  `test/test_help_claims_1.py` to `_8.py` and their `.cscript` twins (by
+  section), `test/test_help_examples.cscript` (every example command run
+  from a fresh session and held to the return code and output the help
+  shows; both help files rendered by Stata and held to no SMCL left as
+  text) and `test/test_help_examples.py`.
+- **AC-23.2** Every supported plot type and honoured option is documented:
+  `test_help_plot_types.py`, and `test_help_conformance.py`, which now
+  derives dash's alias spellings from `dash.ado`'s own folds and its
+  plot-type expander, measures them against `twoway`
+  (`test/fixtures/alias_spelling_truth.json`), and requires every spelling
+  `twoway` refuses to be written in the help and every dash-only option to
+  have a definition entry.
+- **AC-23.3** No tracking document claims work that is not done:
+  `test_tracking_documents.py`.
+
+### Found on the way, not fixed
+
+Each measured; follow-up tasks carry them.  An option given on a plot type
+that does not take it is ignored where `twoway` refuses it (documented);
+after a served filter move a raw layer of an unlinked graph loses its own
+`in` and draws every row the filter keeps (its fit and a KPI card's `in`
+are counted over observations since WP-23);
+`exclude()` holds only while its own filter moves; a per-graph `scheme()`
+is drawn differently by the two modes; a title or qualifier that opens with
+an apostrophe is refused; user text is macro-expanded a second time; the
+renderer refuses `~x` on a numeric column; a repeated option lands in its
+`*2` twin; `bwi()` is ignored; `xline()` positions and `colordiscrete`
+levels are unbounded and cost quadratic time; Bokeh's minor ticks are drawn
+by default (documented).  WP-01, WP-02 and WP-04 meet their acceptance
+criteria (measured by this package; WP-01's and WP-04's re-run on the
+WP-23 tree), but several of the tests their plans name were written under
+other names or not at all, so heading them DONE waits on WP-24's
+AC-to-test mapping; WP-03's C1 and C2 are closed here, and its AC-03.4 has
+no regression test (BUGS.md, the "file not found" entry).
+
+### Verification, measured
+
+Certification 59/59 passed, 0 failed, 0 skipped (nine new scripts: test_help_claims_1 to _8 and test_help_examples, among them a real `dash serve` of one minute).  pytest 14173 passed, 72 skipped, 6 xfailed, 0 failed -- the six xfails are the served date gap this package narrows (five) and one that predates it.  Each part ran its new tests against `4ede074` first; every test that pins a fix failed there.
 
 ---
 
@@ -3693,8 +3784,8 @@ Every finding in `GAPS.md`, and the package that closes it.
 | B2 | Hardcoded renderer fallback path wrong | S3 | WP-05 |
 | B3 | Schemes install under invisible/colliding names | S3 | WP-05 |
 | B4 | No `adoupdate` metadata; version skew | S3 | WP-05, WP-27 |
-| C1 | `dash serve` aborts on every option | S1 | WP-03 |
-| C2 | Serve happy path untested | S2 | WP-03 |
+| C1 | `dash serve` aborts on every option | S1 | WP-03; closed by WP-23 (broken again by 7ddbc08) |
+| C2 | Serve happy path untested | S2 | WP-03; closed by WP-23 (a real launch in the cert suite) |
 | C3 | Unexplained "file not found" diagnostic | S3 | WP-03 |
 | D1 | Server re-implements 37 of 38 types | S1 | WP-09 |
 | D2 | `pci`, `fpfitci`, `pc*`, hover divergences | S1 | WP-10 |
@@ -3715,7 +3806,7 @@ Every finding in `GAPS.md`, and the package that closes it.
 | F2 | Eleven supported types undocumented | S3 | WP-22, WP-23 |
 | F3 | Common twoway options surprise the user | S3 | WP-22 |
 | F4 | Documented capabilities that do not work | S2 | WP-23 (+ WP-17, WP-15) |
-| F5 | *(no gap — examples parse clean)* | — | — |
+| F5 | Examples run as the help says (parsing alone hid two failures) | S3 | WP-23 |
 | G1 | Twelve Stata schemes not translated | S3 | WP-17 |
 | G2 | Translations are not Stata scheme files | S3 | WP-17 |
 | G3 | Dark minor grid on every figure | S1 | WP-16 |
@@ -3753,7 +3844,7 @@ Every finding in `GAPS.md`, and the package that closes it.
 | M2 | Branch state unmerged | S3 | WP-27 |
 | M3 | Dev artefacts in the package root | S3 | WP-26 |
 | M4 | Duplicated source blocks | S3 | WP-23 |
-| M5 | Latent `inlist()` ceiling | S3 | WP-22 |
+| M5 | Latent `inlist()` ceiling | S3 | WP-23 (the work was WP-22's, ad13a0f) |
 | N | Dead code table | S3 | WP-26 |
 | N1 | Stale file headers | S3 | WP-26 |
 

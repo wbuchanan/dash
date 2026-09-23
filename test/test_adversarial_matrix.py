@@ -135,6 +135,7 @@ SURFACES = {
             "test/test_immediate_values.py::TestScatteriDrawsItsRecords::test_a_malformed_record_is_named",
             "test/test_immediate_values.py::TestPciDrawsItsRecords::test_a_malformed_record_is_named",
             "test/test_immediate_values.py::TestPciDrawsItsRecords::test_the_old_two_point_shape_is_named_not_redrawn",
+            "test_help_claims_6.cscript:HC6-48",
         ],
         "injection": [
             "test_adversarial.cscript:P20-35",
@@ -160,6 +161,8 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-22",
             "test_json_escaping.cscript:JSE-33",
             "test_json_escaping.cscript:JSE-35",
+            "test_help_claims_1.cscript:HC1-21",
+            "test_help_claims_1.cscript:HC1-04",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
@@ -168,6 +171,7 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-13",
             "test_json_escaping.cscript:JSE-32",
             "test_json_escaping.cscript:JSE-34",
+            "test_help_claims_1.cscript:HC1-22",
         ],
         "exhaustion": [
             _M + "TestIfQualifierExhaustion::test_a_run_of_negations_is_skipped_not_raised",
@@ -175,6 +179,7 @@ SURFACES = {
             "test_adversarial.cscript:P20-20",
             "test_json_escaping.cscript:JSE-18",
             "test_json_escaping.cscript:JSE-36",
+            "test_help_claims_1.cscript:HC1-23",
         ],
     },
     # jitter(), level(), bin(), n(), bwidth(), bands(), xsize() ...
@@ -183,11 +188,15 @@ SURFACES = {
             "test_adversarial.cscript:P20-02",
             "test_adversarial.cscript:P9-04",
             "test_adversarial.cscript:P20-18",
+            "test/test_help_claims_6.py::TestTheFitRangeIsReadSafely::test_an_unreadable_range_draws_the_observed_range",
+            "test/test_help_claims_6.py::TestKdensityRangeAndWidth::test_an_unusable_width_draws_the_default_bandwidth",
+            "test/test_help_claims_6.py::TestDroplineBase::test_an_unusable_base_draws_from_zero",
         ],
         "injection": [
             "test_adversarial.cscript:P9-01",
             "test_adversarial.cscript:P9-02",
             "test_adversarial.cscript:P9-03",
+            "test/test_help_claims_6.py::TestTheFitRangeIsReadSafely::test_an_unreadable_range_draws_the_observed_range",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P9-06",
@@ -195,6 +204,8 @@ SURFACES = {
             "test_adversarial.cscript:P9-08",
             "test_adversarial.cscript:P9-09",
             "test_adversarial.cscript:P9-10",
+            "test/test_help_claims_6.py::TestTheFitRangeIsReadSafely::test_a_huge_range_keeps_the_point_count",
+            "test/test_help_claims_6.py::TestTheFitRangeIsReadSafely::test_n_past_its_bound_is_not_honoured",
         ],
     },
     # mcolor(), msymbol(), lcolor(), lpattern(), msize(), kernel() ...
@@ -204,18 +215,27 @@ SURFACES = {
             "test_adversarial.cscript:P20-03",
             "test/test_option_validation.py::TestUserTextIsEchoedThroughDashDisplay::test_the_style_note",
             _TW + "test_an_angle_in_another_scripts_digits_is_not_an_angle",
+            "test/test_help_claims_2.py::TestAStyleOptionGivenEmptyParenthesesIsReported::test_one_note_naming_it_identical_in_both_modes",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_position_in_another_spelling_is_not_a_position",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_gap_in_another_spelling_is_not_a_gap",
+            "test/test_help_claims_5.py::TestTheClockHelpers::test_the_gap_reader_refuses_what_is_not_a_gap",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_quotes_that_are_not_a_pair_are_not_stripped",
         ],
         "injection": [
             "test_adversarial.cscript:P2-81",
             "test/test_html_output.py::TestAdversarialPlotOptions::test_injection_in_mcolor_produces_valid_html",
             _TW + "test_markup_in_a_value_is_named_as_text_and_never_drawn",
             _TW + "test_a_colour_that_is_code_is_refused_by_the_colour_reader",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_markup_in_either_option_is_named_as_text",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_hostile_colour_is_refused_not_passed_through",
         ],
         "exhaustion": [
             "test/test_option_validation.py::TestABadStyleValueNeverAborts::test_a_non_finite_size_or_width",
             _M + "TestStyleOptionBounds::test_a_megabyte_colour_is_judged_in_linear_time",
             _TW + "test_a_megabyte_angle_is_judged_at_once",
             _TW + "test_a_non_finite_clwidth_is_named_not_drawn",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_megabyte_value_is_judged_at_once",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_hundred_thousand_character_colour_is_named_quickly",
         ],
     },
     # mlabel(varname) and the legend's label() and order() text.
@@ -246,15 +266,19 @@ SURFACES = {
             "test_adversarial.cscript:P20-15",
             "test_json_escaping.cscript:JSE-08",
             "test_json_escaping.cscript:JSE-29",
+            "test/test_help_claims_2.py::TestAnUnknownStyleInsideAStructuredOption::test_one_note_and_the_schemes_default_in_both_modes",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_direction_word_in_any_spelling_is_not_a_placement",
         ],
         "injection": [
             "test_adversarial.cscript:P2-78",
             "test/test_html_output.py::TestXssInHtmlOutput::test_script_tag_in_title_is_escaped",
             "test/test_html_output.py::TestAdversarialPlotOptions::test_xss_in_note_option_escaped",
             "test_json_escaping.cscript:JSE-27",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_label_text_is_a_label_and_never_read",
         ],
         "exhaustion": [
             _M + "TestGraphTextBounds::test_a_long_title_is_drawn_once_in_bounded_time",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_ten_thousand_word_legend_is_read_in_bounded_time",
         ],
     },
     # xlabel() / ylabel(): numlists, a(b)c, #N, value "label" pairs, format().
@@ -262,14 +286,20 @@ SURFACES = {
         "bypass": [
             _M + "TestAxisLabelInjection::test_pre_escaped_markup_is_carried_as_written_not_decoded",
             _M + "TestAxisLabelBounds::test_a_non_finite_endpoint_does_not_raise",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_tick_positions_are_numbers_only",
         ],
         "injection": [
             _M + "TestAxisLabelInjection::test_a_tick_label_cannot_break_out_of_the_formatter_code",
+            "test/test_help_claims_8.py::TestTheTickMarkCodeCarriesNoUserText::test_a_hostile_label_in_xtick_reaches_no_model",
+            "test/test_help_claims_8.py::TestTheTickMarkCodeCarriesNoUserText::test_the_code_is_the_same_for_any_positions",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_axis_label_text_is_data_never_code",
         ],
         "exhaustion": [
             _M + "TestAxisLabelBounds::test_an_increment_past_the_tick_limit_keeps_the_default_ticks",
             _M + "TestAxisLabelBounds::test_a_huge_count_is_clamped",
             _M + "TestNumericFormatBounds::test_an_axis_format_with_a_billion_decimals_is_bounded",
+            "test/test_help_claims_8.py::TestTheTickMarkCodeCarriesNoUserText::test_a_huge_request_is_bounded",
+            "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_huge_increment_on_a_second_axis_or_a_tick_is_bounded",
         ],
     },
     # by(varlist, suboptions).
@@ -278,16 +308,21 @@ SURFACES = {
             "test_adversarial.cscript:P20-05",
             "test/test_phase5.py::TestByFacetingSecurity::test_by_shell_injection_blocked",
             "test_json_escaping.cscript:JSE-29",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_title_label_keyed_by_another_spelling_is_not_matched",
+            "test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_the_tokens",
         ],
         "injection": [
             "test/test_phase5.py::TestByFacetingSecurity::test_by_import_injection_blocked",
             "test/test_phase5.py::TestByFacetingSecurity::test_by_xss_in_facet_label_is_canvas_text",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_markup_in_a_title_label_is_carried_as_text",
         ],
         "exhaustion": [
             "test/test_resource_limits.py::TestByOnAHighCardinalityVariable::test_the_first_groups_in_sort_order_are_kept",
             "test_resource_limits.cscript:RL-06",
             "test/test_resource_limits.py::TestByColsCannotOutgrowThePanels::test_the_saved_page_hands_gridplot_the_panels_alone",
             "test/test_resource_limits.py::TestByColsCannotOutgrowThePanels::test_the_served_app_hands_gridplot_the_panels_alone",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_huge_label_set_titles_at_once",
+            "test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_a_megabyte_of_quotes_is_split_at_once",
         ],
     },
     # name(name[, replace]) on a graph or a KPI.
@@ -379,6 +414,7 @@ SURFACES = {
             "test_adversarial.cscript:P20-12",
             "test_adversarial.cscript:P20-27",
             "test/test_kpi_security.py::TestKpiColourIsSanitisedOnTheInitialRender::test_the_rendered_value_is_what_the_sanitiser_would_give",
+            "test_help_claims_4.cscript:HC4-06",
         ],
         "injection": [
             "test_adversarial.cscript:P9-11",
@@ -392,12 +428,14 @@ SURFACES = {
             "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_the_served_card_before_and_after_a_filter_moves",
             "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_a_hostile_name_stays_inside_its_attribute",
             "test_json_escaping.cscript:JSE-32",
+            "test_help_claims_4.cscript:HC4-06",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P19-01",
             "test/test_resource_limits.py::TestTheGraphAndPlotLimits::test_graphs_and_kpis_past_the_limit_are_dropped_in_registry_order",
             _M + "TestNumericFormatBounds::test_a_hand_edited_kpi_format_is_bounded",
             "test/test_kpi_security.py::TestAKpiFormatCannotBuildAHugeCard::test_both_modes_before_and_after_a_filter_moves",
+            "test_help_claims_4.cscript:HC4-06",
         ],
     },
     # dash build: title(), subtitle(), layout(), link(), filter() (its
@@ -426,6 +464,9 @@ SURFACES = {
             "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_numeric_variable",
             "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_string_variable_is_refused_by_both",
             "test_json_escaping.cscript:JSE-37",
+            "test/test_help_claims_3.py::TestAdversarialFilterText::test_bypass_a_label_cannot_add_a_group",
+            "test_help_claims_3.cscript:HC3-20",
+            "test_help_claims_3.cscript:HC3-08",
         ],
         "injection": [
             "test_adversarial.cscript:P2-84",
@@ -433,6 +474,11 @@ SURFACES = {
             "test/test_html_output.py::TestBuildSubtitleInHtml::test_build_subtitle_escaped",
             "test_path_validation.cscript:PV-12",
             _BS + "test_injection_no_spec_text_reaches_the_document",
+            "test/test_help_claims_3.py::TestAdversarialFilterText::test_injection_a_label_cannot_exclude_a_graph",
+            "test/test_help_claims_3.py::TestAnApostropheInALabelLeavesExcludeAlone::test_saved",
+            "test/test_help_claims_3.py::TestAnApostropheInALabelLeavesExcludeAlone::test_served",
+            "test_help_claims_3.cscript:HC3-06",
+            "test_help_claims_3.cscript:HC3-09",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P20-25",
@@ -446,6 +492,7 @@ SURFACES = {
             "test_resource_limits.cscript:RL-09",
             "test_resource_limits.cscript:RL-10",
             _BS + "test_exhaustion_repeats_cannot_grow_the_served_grid",
+            "test/test_help_claims_3.py::TestAdversarialFilterText::test_exhaustion_a_huge_label_is_read_in_linear_time",
         ],
     },
     # dash serve: port(), timeout(), nobrowser.
@@ -520,6 +567,7 @@ SURFACES = {
             "test/test_resource_limits.py::TestADropdownOnAContinuousVariable::test_the_widget_lists_at_most_the_limit",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_huge_label_set_is_read_at_once",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_number_stata_would_write_long_is_bounded",
+            "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_date_no_calendar_holds_is_a_dot_not_a_crash",
         ],
     },
     # The spec JSON and data JSON dash_render.py reads -- written by
@@ -530,6 +578,7 @@ SURFACES = {
             _M + "TestHostileSpec::test_limits_written_in_other_digits_are_refused",
             _M + "TestHostileSpec::test_an_infinite_point_count_is_clamped_not_raised",
             "test_registry_collision.cscript:REG-28",
+            "test/test_help_claims_4.py::TestAHandEditedStatistic::test_other_digits_are_no_percentile_in_either_mode",
         ],
         "injection": [
             _M + "TestHostileSpec::test_a_nul_inside_a_title_does_not_split_the_escaping",
@@ -538,12 +587,14 @@ SURFACES = {
             # A graph name reaching the save button's file name (WP-21).
             "test/test_toolbar.py::TestTheBootstrapPage::test_only_a_stata_name_reaches_the_page",
             "test/test_toolbar.py::TestSaveFilename::test_anything_else_is_dashboard",
+            "test/test_help_claims_1.py::TestTheFallbackTooltipIsSafe::test_no_field_holds_the_name",
         ],
         "exhaustion": [
             _M + "TestHostileSpec::test_a_deeply_nested_spec_fails_before_anything_is_written",
             "test/test_toolbar.py::TestSaveFilename::test_a_huge_name_is_refused_without_being_scanned",
             _M + "TestLayoutGridBound::test_an_oversized_grid_is_drawn_as_auto",
             "test/test_resource_limits.py::TestAnOversizedDatasetIsRefused::test_the_saved_renderer_refuses_before_drawing",
+            "test/test_help_claims_4.py::TestAHandEditedStatistic::test_a_huge_digit_run_is_cheap_in_both_modes",
         ],
     },
     # A `function y = <expr>' plot: an expression the renderer evaluates.
@@ -629,6 +680,9 @@ SURFACES = {
     "renderer_cli": {
         "bypass": [
             _M + "TestRendererOutputPath::test_a_hostile_output_path_is_refused",
+            "test/test_help_claims_4.py::TestTheOutputPathRule::test_the_launch_route_never_overwrites_a_file_that_is_not_py",
+            "test/test_help_claims_4.py::TestTheOutputPathRule::test_the_other_checks_hold_on_the_launch_route",
+            "test/test_help_claims_4.py::TestTheOutputPathRule::test_building_a_server_app_still_needs_a_py",
         ],
         "injection": [
             _M + "TestRendererOutputPath::test_the_launcher_runs_the_app_without_a_shell",
@@ -647,6 +701,7 @@ SURFACES = {
             "test/test_export.py::TestTheButtonIsThereWhenAsked::test_the_served_app_has_it_only_with_csv",
             "test/test_export.py::TestTheFileHoldsTheFilteredRows::test_the_modes_agree_on_every_filter_state",
             "test_export.cscript:EXP-06",
+            "test/test_help_claims_2.py::TestTheCsvCarriesEveryVariableTheDashboardUses::test_a_served_page_sends_only_what_it_draws",
         ],
         "injection": [
             "test/test_export.py::TestTheCsvFormatter::test_a_text_cell_that_a_spreadsheet_would_run_is_defused",
@@ -655,6 +710,7 @@ SURFACES = {
         ],
         "exhaustion": [
             "test/test_export.py::TestTheServedDownload::test_a_burst_of_clicks_is_held_to_the_bucket",
+            "test/test_help_claims_2.py::TestTheServedDownloadRate::test_the_bucket_with_a_clock",
         ],
     },
 }

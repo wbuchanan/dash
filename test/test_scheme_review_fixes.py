@@ -303,17 +303,28 @@ class TestSidePanelLegendIsCentred:
         assert str(lg.location) == "center"
 
     @pytest.mark.parametrize("legend, loc", [
-        ("top", "top_center"), ("bottom", "bottom_center"),
-        ("left", "center_left"), ("right", "center_right"),
         ("position(6) ring(0)", "bottom_center"),
         ("position(1) ring(0)", "top_right"),
     ])
-    def test_keyword_and_inside_placements_are_unchanged(self, legend, loc,
-                                                         mode):
+    def test_inside_placements_are_unchanged(self, legend, loc, mode):
         fig = _fig(_two_series("s2color", legend), mode)
         lg = _legend(fig)
         assert _side_of(fig, lg) == "center"
         assert str(lg.location) == loc
+
+    @pytest.mark.parametrize("legend", ["top", "bottom", "left", "right"])
+    def test_a_bare_direction_word_leaves_the_schemes_placement(self, legend,
+                                                                mode):
+        """legend(top) and its siblings are not twoway's: it refuses them,
+        r(198), and so does dash.ado (WP-23).  They were placed INSIDE the
+        plot (top_center, ...), which this test pinned; a spec that carries
+        one now keeps the scheme's own placement, below and centred under
+        s2color, and the word is named as a sub-option dash does not
+        implement."""
+        fig = _fig(_two_series("s2color", legend), mode)
+        lg = _legend(fig)
+        assert _side_of(fig, lg) == "below"
+        assert str(lg.location) == "center"
 
 
 # ---------------------------------------------------------------------------

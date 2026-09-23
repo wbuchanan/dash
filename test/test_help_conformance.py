@@ -28,6 +28,20 @@ all, because this file uses the space form throughout, which is the entire
 Unsupported section; and "first token of a synopt row" sweeps in the eleven
 KPI statistic names, the thirteen server-mode comparison rows and an empty
 label. Each rule below exists because one of those failures was measured.
+
+WP-23 closed three gaps the rule above left open.  An option dash invented
+passed when it was merely MENTIONED in prose; it now needs a definition
+entry -- a {synopt} row, a {phang}/{phang2} entry or the Syntax block.  An
+ALIAS passed whenever its full option was documented, so `mlg()` was
+honoured with no word of it in the help; now every spelling dash accepts and
+twoway does not -- the aliases dash.ado folds into another option, the plot
+types dash's expander abbreviates further than twoway, and the options it
+declares with a shorter minimum -- must be named in the help beside the
+option it stands for.  "twoway does not" is measured, never assumed:
+`abbrev_truth.json`, or `alias_spelling_truth.json`
+(scripts/extract_alias_spelling_truth.do) for what that file does not
+probe, and a spelling neither measured fails until it is.  And in the other
+direction, every synonym the help states must be one dash takes.
 """
 import json
 import os
@@ -39,11 +53,14 @@ import pytest
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 
-from test_abbreviations import _program_body, _syntax_options   # noqa: E402
+from test_abbreviations import (_folds, _program_body,  # noqa: E402
+                                _resolves_to, _syntax_options)
 
 _ADO = os.path.join(_HERE, "..", "dash.ado")
+_MATA = os.path.join(_HERE, "..", "dash_parse.mata")
 _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 _TRUTH = os.path.join(_HERE, "fixtures", "abbrev_truth.json")
+_SPELLINGS = os.path.join(_HERE, "fixtures", "alias_spelling_truth.json")
 
 
 # ---------------------------------------------------------------------------
@@ -135,16 +152,142 @@ def _help_options():
             if not _NOT_OPTIONS.match(name):
                 out.setdefault(name.lower(), set())
         # {cmd:name(} and {cmd:, name(} -- a leading comma introduces a
-        # sub-option, which is still a documented name.
-        for name in re.findall(r"\{cmd:\s*,?\s*([A-Za-z_][A-Za-z0-9_]*)\(", ln):
+        # sub-option, which is still a documented name.  {cmd:r(198)} is a
+        # return code, not r(): it passed as "accepted" only while dash.ado
+        # declared an R() of its own, which WP-23 TR-23.6 removed.
+        for name in re.findall(
+                r"\{cmd:\s*,?\s*(?!r\(\d+\)\})([A-Za-z_][A-Za-z0-9_]*)\(", ln):
             if not _NOT_OPTIONS.match(name):
                 out.setdefault(name.lower(), set())
     return out
 
 
-def _help_mentions(name):
-    """A weaker tier: the name appears in the help at all, anywhere."""
-    return re.search(r"\b%s\b" % re.escape(name), _help_text()) is not None
+#: The SMCL forms that name an option or a plot type, each capturing the
+#: name: {cmdab:head:tail}, {opt name}/{opth name} in the colon and the space
+#: form, and {cmd:name(} or a bare {cmd:name}, which is how the help writes
+#: an alias ({cmd:pbgc()}) and a plot type ({cmd:sc}).
+_TOKEN = re.compile(
+    r"\{cmdab:(?P<head>[A-Za-z0-9_]+):(?P<tail>[^}]*)"
+    r"|\{opth?[: ]\s*,?\s*(?P<opt>[A-Za-z_][A-Za-z0-9_]*)"
+    r"|\{cmd:\s*,?\s*(?!r\(\d+\)\})(?P<cmd>[A-Za-z_][A-Za-z0-9_]*)\s*(?=[(}])")
+
+
+def _option_tokens(text):
+    """The option and plot-type names `text' writes in SMCL, in order."""
+    out = []
+    for m in _TOKEN.finditer(text):
+        if m.group("head") is not None:
+            out.append(_name_from_cmdab(m.group("head"), m.group("tail")))
+        else:
+            out.append((m.group("opt") or m.group("cmd")).lower())
+    return out
+
+
+def _help_entries():
+    """The help cut into the blocks a synonym must share with its option.
+
+    Returns ``[(kind, section, text)]``.  An entry starts at a blank line, a
+    {synopt} row, a {phang}/{phang2} line, a {pstd} or {p ...} paragraph, a
+    {title} or a {marker}, and a {synopt} row ends at its {p_end}.  ``kind``
+    is "definition" for a {synopt} row, for a {phang}/{phang2} entry that
+    opens with an option or a {ul:} heading (the rule _help_options uses)
+    and for anything in the Syntax section, and "prose" otherwise.  The KPI
+    statistic and server-mode comparison rows are left out, as _help_options
+    leaves them out.
+    """
+    starts = ("{synopt:", "{phang", "{pstd}", "{p ", "{title:", "{marker",
+              "{synoptline", "{synoptset")
+    excluded = {"kpi", "server_mode"}
+    entries, cur, kind, section, where = [], [], None, "", ""
+
+    def flush():
+        if cur and not (kind == "synopt" and where in excluded):
+            entries.append(("definition" if kind == "synopt"
+                            else kind or "prose", where, "\n".join(cur)))
+
+    for ln in _help_text().split("\n"):
+        s = ln.lstrip()
+        m = re.match(r"\{marker ([a-z_]+)\}", s)
+        if m:
+            section = m.group(1)
+        if not s or s.startswith(starts):
+            flush()
+            cur, kind, where = [], None, section
+            if not s:
+                continue
+            if section == "syntax":
+                kind = "definition"
+            elif s.startswith("{synopt:"):
+                kind = "synopt"
+            elif re.match(r"\{phang2?\}\s*(\{(opt|opth|cmdab|cmd)[: ]|\{ul:)",
+                          s):
+                kind = "definition"
+            else:
+                kind = "prose"
+        cur.append(ln)
+        if kind == "synopt" and "{p_end}" in ln:
+            flush()
+            cur, kind = [], None
+    flush()
+    return entries
+
+
+def _defined_names():
+    """Every option name a definition entry writes -- a whole {synopt} row,
+    a {phang}/{phang2} entry, the Syntax block."""
+    out = set()
+    for kind, _, text in _help_entries():
+        if kind == "definition":
+            out.update(_option_tokens(text))
+    return out
+
+
+def _named_together(spelling, name, sections=()):
+    """Does the help name `spelling' as a spelling of `name'?
+
+    Either with {cmdab:spelling:rest}, where spelling+rest is `name', or by
+    naming both in one definition entry -- or in any entry of `sections'."""
+    for m in _TOKEN.finditer(_help_text()):
+        if (m.group("head") and m.group("head").lower() == spelling
+                and _name_from_cmdab(m.group("head"), m.group("tail")) == name):
+            return True
+    for kind, where, text in _help_entries():
+        if kind == "definition" or where in sections:
+            toks = _option_tokens(text)
+            if spelling in toks and name in toks:
+                return True
+    return False
+
+
+def _help_synonym_claims():
+    """``[(spelling, option, entry)]`` for every synonym the help states.
+
+    An "Abbreviation:" or "Abbreviations:" names spellings of its {synopt}
+    row's own option -- the first option the row writes -- unless it pairs
+    them, "{cmd:x()} for {cmd:y()}", which it may do anywhere.  A spelling
+    that is no abbreviation of its option (pbgc() of plotbgcolor(), mlg()
+    of mlabgap()) is written as a synonym -- "Synonym:", "Synonyms, dash's
+    own:" or "a synonym, {cmd:mlg()}" -- and read the same way, taking only
+    the names written as options, with their parentheses, so that a word
+    of the sentence around them ({cmd:twoway}) is not claimed."""
+    out = []
+    for kind, where, text in _help_entries():
+        m = re.search(r"(Abbreviations?:|Synonyms?\b[^:]*?:|a synonym,)"
+                      r"(.*?)(?:\{p_end\}|\.\s|\.$|$)", text, re.S)
+        if not m:
+            continue
+        synonym = not m.group(1).startswith("Abbreviation")
+        claim = m.group(2)
+        pairs = re.findall(r"\{cmd:([a-z0-9_]+)(?:\(\))?\}\s+for\s+"
+                           r"\{cmd:([a-z0-9_]+)(?:\(\))?\}", claim)
+        if pairs:
+            out += [(a, b, text) for a, b in pairs]
+        elif text.lstrip().startswith("{synopt:"):
+            owner = _option_tokens(text)[0]
+            name_rx = (r"\{cmd:([a-z0-9_]+)\(\)\}" if synonym
+                       else r"\{cmd:([a-z0-9_]+)(?:\(\))?\}")
+            out += [(a, owner, text) for a in re.findall(name_rx, claim)]
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -154,9 +297,28 @@ def _help_mentions(name):
 _PROGRAMS = ("_dash_parse_plot_opts", "_dash_parse_graph_opts", "_dash_build",
              "_dash_kpi", "_dash_prepare_spec", "_dash_serve_spec")
 
-# Declared by `syntax' for internal plumbing; never typed by a user.
-_INTERNAL = {"specpath", "datapath", "cmdname", "inherit", "renderpy",
-             "spec", "data", "output", "mode"}
+# Declared by `syntax' for internal plumbing; never typed by a user.  The
+# only exceptions to "every spelling dash accepts is documented", each with
+# the reason it is not a user's option.  sort1() is not here: it is how
+# -syntax- names the argument form of sort(), but twoway's own class file
+# declares it the same way and takes sort1(t) as sort(t) (measured,
+# alias_spelling_truth.json), so the redirect to twoway covers it.
+_INTERNAL = {
+    "specpath": "_dash_prepare_spec and _dash_serve_spec: the spec file "
+                "path _dash_build and _dash_serve hand them",
+    "datapath": "_dash_prepare_spec and _dash_serve_spec: the data file "
+                "path _dash_build and _dash_serve hand them",
+    "cmdname":  "_dash_prepare_spec: the subcommand (build or serve) that "
+                "called it, for its messages",
+    "inherit":  "_dash_prepare_spec: set by _dash_serve_spec so the options "
+                "of an earlier dash build carry over",
+    "renderpy": "_dash_do_render: the path of dash_render.py",
+    "spec":     "_dash_do_render and _dash_browser_wanted: the spec path "
+                "or text",
+    "data":     "_dash_do_render: the data file path",
+    "output":   "_dash_do_render: the HTML or .py path to write",
+    "mode":     "_dash_do_render: standalone or server",
+}
 
 
 def _ado_text():
@@ -217,6 +379,113 @@ def _twoway_options():
         return set(json.load(fh)["options"])
 
 
+def _abbrev_truth():
+    with open(_TRUTH, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _spelling_truth():
+    """twoway's verdict on the spellings abbrev_truth.json does not probe;
+    written by scripts/extract_alias_spelling_truth.do."""
+    with open(_SPELLINGS, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _fold_aliases():
+    """``{alias: {target, ...}}`` for every option dash.ado folds into another.
+
+    Two shapes, both read from the code rather than listed here: the
+    ``if "`a'" != "" & "`t'" == "" local t "`a'"`` folds of the two option
+    parsers, and the s() folds of the _dash_fold_* programs, which read an
+    option's value out of s() and write it back under another name once the
+    plot type is known -- bw() into bwidth() or barwidth()."""
+    src = _ado_text()
+    out = {}
+    for prog in ("_dash_parse_plot_opts", "_dash_parse_graph_opts"):
+        for alias, target in _folds(_program_body(src, prog)):
+            out.setdefault(alias, set()).add(target)
+    for prog in re.findall(r"^program define (_dash_fold_\w+)", src, re.M):
+        body = _program_body(src, prog)
+        for loc, opt in re.findall(r"""^\s*local (\w+) `"`s\((\w+)\)'"'""",
+                                   body, re.M):
+            for target in re.findall(r"""\bsreturn local (\w+)\s+`"`%s'"'"""
+                                     % re.escape(loc), body):
+                if target != opt:
+                    out.setdefault(opt, set()).add(target)
+    return out
+
+
+def _plottype_minimums():
+    """``{plot type: shortest spelling dash takes}``, from the table in
+    dash_parse.mata's _expand_plottype_str."""
+    with open(_MATA, encoding="utf-8") as fh:
+        src = fh.read()
+    i = src.index("string scalar _expand_plottype_str(")
+    j = src.index("\n}\n", i)
+    return dict(re.findall(r'\("([a-z]+)",\s*"([a-z]+)"\)', src[i:j]))
+
+
+def _twoway_takes(spelling, option):
+    """True if twoway takes `spelling' as `option', False if it measurably
+    does not, None if neither fixture measured it.
+
+    abbrev_truth.json's min_abbrev is the shortest prefix twoway accepts AND
+    resolves to the option, so a shorter prefix is not the option in twoway;
+    alias_spelling_truth.json holds the rest, per plot-type context (a
+    spelling twoway takes in one context, as bw() is bwidth() on lpoly, is
+    twoway's)."""
+    truth = _abbrev_truth()
+    e = truth["options"].get(option)
+    if e and option.startswith(spelling):
+        return len(spelling) >= len(e["min_abbrev"])
+    rows = [r for r in _spelling_truth()["options"].get(spelling, [])
+            if r["target"] == option]
+    if any(r["twoway_accepts"] for r in rows):
+        return True
+    if rows and all(r["twoway_accepts"] is False for r in rows):
+        return False
+    r = truth["abbrev_resolution"].get(spelling) or {}
+    if r.get("stata_resolves_to"):
+        return r["stata_resolves_to"] == option
+    if "rejects" in (r.get("status") or ""):
+        return False
+    return None
+
+
+def _twoway_takes_plottype(spelling, ptype):
+    """The same for a plot type."""
+    probe = _spelling_truth()["plottypes"].get(ptype, {}).get(
+        "probes", {}).get(spelling)
+    if probe is not None:
+        return probe["twoway_accepts"]
+    e = _abbrev_truth()["plottypes"].get(ptype)
+    if e and ptype.startswith(spelling):
+        return len(spelling) >= len(e["min_abbrev"])
+    return None
+
+
+def _twoway_spelling(name):
+    """Does twoway take `name' as an option, or as an abbreviation of one,
+    in any context a fixture measured?  Then the help's redirect covers it."""
+    truth = _abbrev_truth()
+    if any(o.startswith(name) and len(name) >= len(e["min_abbrev"])
+           for o, e in truth["options"].items()):
+        return True
+    return any(r["twoway_accepts"]
+               for r in _spelling_truth()["options"].get(name, []))
+
+
+def _dash_takes(spelling, option):
+    """Does dash take `spelling' as `option' -- a fold, or the option the
+    plot or graph parser binds the spelling to on first use?"""
+    if option in _fold_aliases().get(spelling, ()):
+        return True
+    src = _ado_text()
+    return any(
+        _resolves_to(spelling, _syntax_options(_program_body(src, p))) == option
+        for p in ("_dash_parse_plot_opts", "_dash_parse_graph_opts"))
+
+
 # ---------------------------------------------------------------------------
 # Guards on the parsers themselves
 # ---------------------------------------------------------------------------
@@ -260,6 +529,52 @@ class TestTheParsersFoundSomething:
 
     def test_the_unsupported_section_was_found(self):
         assert len(_unsupported_section()) >= 3
+
+    def test_the_token_reader_reads_every_form(self):
+        assert _option_tokens(
+            "{cmdab:ml:abel(} {opt jitter(#)} {opt:colordiscrete} "
+            "{opth by(varlist)} {cmd:pbgc()} {cmd:sc}, {cmd:. dash}") == [
+            "mlabel", "jitter", "colordiscrete", "by", "pbgc", "sc"]
+
+    def test_the_entry_parser_cuts_the_help_into_entries(self):
+        entries = _help_entries()
+        defs = [t for k, _, t in entries if k == "definition"]
+        assert len(defs) >= 150, (
+            f"only {len(defs)} definition entries cut out of dash.sthlp")
+        assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
+                   for t in defs), "no entry holds plotbgcolor() and pbgc()"
+        assert not any("dcount" in _option_tokens(t) for t in defs), (
+            "the KPI statistic table was read as option entries")
+        assert any(k == "prose" for k, _, _ in entries)
+
+    def test_the_fold_scan_finds_the_aliases(self):
+        aliases = _fold_aliases()
+        assert len(aliases) >= 10, f"only {len(aliases)} folds found"
+        assert aliases.get("mlg") == {"mlabgap"}
+        assert aliases.get("bins") == {"bin"}
+        assert {"bwidth", "barwidth"} <= aliases.get("bw", set()), (
+            "the s() fold of _dash_fold_bw was not read")
+
+    def test_the_plot_type_table_was_found(self):
+        mins = _plottype_minimums()
+        assert len(mins) >= 38, f"only {len(mins)} plot types read"
+        assert mins.get("scatter") == "sc" and mins.get("pcarrowi") == "pcarrowi"
+
+    def test_the_spelling_fixture_was_found(self):
+        st = _spelling_truth()
+        assert {"bins", "bw", "sort1"} <= set(st["options"])
+        assert "tsrline" in st["plottypes"] and "area" in st["plottypes"]
+        assert _twoway_takes("mlg", "mlabgap") is False       # abbrev_truth
+        assert _twoway_takes("t", "t1title") is True          # abbrev_truth
+        assert _twoway_takes("bw", "barwidth") is False       # the new file
+        assert _twoway_takes_plottype("ar", "area") is False
+        assert _twoway_takes_plottype("sc", "scatter") is True
+
+    def test_the_synonym_claims_were_found(self):
+        claims = {(a, b) for a, b, _ in _help_synonym_claims()}
+        assert len(claims) >= 8, f"only {len(claims)} synonym claims read"
+        assert ("pbgc", "plotbgcolor") in claims
+        assert ("plotr", "plotregion") in claims
 
 
 # ---------------------------------------------------------------------------
@@ -317,35 +632,111 @@ class TestAbbreviationsAgree:
 
 class TestEveryDashOnlyOptionIsDocumented:
     def test_an_option_twoway_does_not_have_is_documented(self):
-        twoway = _twoway_options()
-        documented = set(_help_options())
-        # Alias spellings of an option documented under its full name.
-        aliases = {"bw": "bwidth", "mlg": "mlabgap", "colv": "colorvar",
-                   "cv": "colorvar", "pbgc": "plotbgcolor",
-                   "xla2": "xlabel2", "xsc2": "xscale2", "xti2": "xtitle2",
-                   "yla2": "ylabel2", "ysc2": "yscale2", "yti2": "ytitle2",
-                   "t": "t1title", "b": "b1title", "l": "l1title",
-                   "r": "r1title", "bins": "bin", "sc": "scatter",
-                   "li": "line", "hist": "histogram",
-                   # How Stata's -syntax- spells the argument form of an
-                   # option that may also be written bare: SORT SORT1() is
-                   # sort and sort(varlist), as twoway declares them.
-                   "sort1": "sort"}
-        undocumented = []
-        for name in sorted(_ado_declarations()):
-            if name in twoway or name in documented:
-                continue
-            if aliases.get(name) in documented:
-                continue
-            if _help_mentions(name):
-                continue                     # named in prose: weaker, allowed
-            undocumented.append(name)
+        """Documented means DEFINED: a {synopt} row, a {phang}/{phang2} entry
+        or the Syntax block.  It used to be enough for the name to appear in
+        prose anywhere, or for an alias's full option to be documented --
+        which is how mlg() went unmentioned while dash honoured it, and how
+        marker() passed on the word "marker" in SMCL's own {marker} tags."""
+        documented = set(_help_options()) | _defined_names()
+        undocumented = sorted(name for name in _ado_declarations()
+                              if not _twoway_spelling(name)
+                              and name not in documented)
         assert not undocumented, (
             f"{len(undocumented)} options exist only in dash -- twoway has no "
             f"such option, so the help's redirect to the twoway manual cannot "
-            f"cover them -- and they appear nowhere in dash.sthlp: "
-            f"{undocumented}"
+            f"cover them -- and no {{synopt}}, {{phang}} entry or Syntax line "
+            f"of dash.sthlp defines them: {undocumented}"
         )
+
+
+# ---------------------------------------------------------------------------
+# 3b. Every spelling dash takes and twoway does not must be named
+# ---------------------------------------------------------------------------
+
+class TestEveryDashOnlySpellingIsNamed:
+    """A spelling twoway does not take is not covered by the redirect to the
+    twoway manual either, whatever its option is: the help has to say it is
+    a spelling of that option, in the option's entry or in {cmdab:}."""
+
+    def test_every_fold_twoway_does_not_take_is_named_beside_its_option(self):
+        bad, unmeasured = [], []
+        for alias, targets in sorted(_fold_aliases().items()):
+            for target in sorted(targets):
+                verdict = _twoway_takes(alias, target)
+                if verdict is None:
+                    unmeasured.append(f"{alias}() as {target}()")
+                elif verdict is False and not _named_together(alias, target):
+                    bad.append(f"{alias}() for {target}()")
+        assert not unmeasured, (
+            f"dash.ado folds these into another option, and neither fixture "
+            f"says whether twoway takes them; measure them with "
+            f"scripts/extract_alias_spelling_truth.do: {unmeasured}")
+        assert not bad, (
+            f"dash.ado folds {len(bad)} spelling(s) twoway does not take into "
+            f"another option, and no definition entry of dash.sthlp names "
+            f"them beside it: {bad}")
+
+    def test_every_plot_type_abbreviation_twoway_does_not_take_is_named(self):
+        bad, unmeasured = [], []
+        for ptype, dmin in sorted(_plottype_minimums().items()):
+            extra = []
+            for L in range(len(dmin), len(ptype) + 1):
+                s = ptype[:L]
+                verdict = _twoway_takes_plottype(s, ptype)
+                if verdict is None and s != ptype:
+                    unmeasured.append(f"{s} for {ptype}")
+                elif verdict is False:
+                    extra.append(s)
+            if extra and not _named_together(extra[0], ptype,
+                                             sections=("plottypes",)):
+                bad.append(f"{extra[0]} for {ptype} ({', '.join(extra)})")
+        assert not unmeasured, (
+            f"dash's expander takes these and neither fixture says whether "
+            f"twoway does; measure them with "
+            f"scripts/extract_alias_spelling_truth.do: {unmeasured}")
+        assert not bad, (
+            f"dash abbreviates {len(bad)} plot type(s) further than twoway "
+            f"(measured: 'is not a twoway plot type', r(198)), and dash.sthlp "
+            f"does not name the shortest spelling beside the type -- in the "
+            f"Plot types section, a definition entry or {{cmdab:}} -- so "
+            f"'abbreviated as twoway allows' is not the whole truth: {bad}")
+
+    def test_every_option_abbreviation_twoway_does_not_take_is_named(self):
+        """Options both declare, which dash abbreviates further than twoway
+        (the minimum twoway accepts, measured in abbrev_truth.json)."""
+        src = _ado_text()
+        truth = _abbrev_truth()["options"]
+        extra = {}
+        for prog in ("_dash_parse_plot_opts", "_dash_parse_graph_opts"):
+            decls = _syntax_options(_program_body(src, prog))
+            for mn, full in decls:
+                if full not in truth:
+                    continue
+                for L in range(len(mn), len(full) + 1):
+                    s = full[:L]
+                    if (_resolves_to(s, decls) == full
+                            and _twoway_takes(s, full) is False):
+                        extra.setdefault(full, set()).add(s)
+        bad = [f"{min(v, key=len)}() for {full}() ({', '.join(sorted(v))})"
+               for full, v in sorted(extra.items())
+               if not _named_together(min(v, key=len), full)]
+        assert not bad, (
+            f"dash abbreviates {len(bad)} option(s) further than twoway, and "
+            f"dash.sthlp does not name the shortest spelling beside the "
+            f"option: {bad}")
+
+
+# ---------------------------------------------------------------------------
+# 3c. Every synonym the help states must be one dash takes
+# ---------------------------------------------------------------------------
+
+class TestEverySynonymTheHelpStatesIsTaken:
+    def test_every_stated_synonym_is_a_spelling_dash_takes(self):
+        bad = sorted({f"{a}() for {b}()" for a, b, _ in _help_synonym_claims()
+                      if not _dash_takes(a, b)})
+        assert not bad, (
+            f"dash.sthlp names these as spellings of an option, and dash "
+            f"takes them as no such thing: {bad}")
 
 
 # ---------------------------------------------------------------------------

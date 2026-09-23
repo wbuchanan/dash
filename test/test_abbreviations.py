@@ -79,6 +79,18 @@ def _syntax_options(body):
     leading run of the declared name is the minimum abbreviation; a name with
     no lowercase tail (FMT, UPDATE) or no capitals at all (name, title)
     admits no abbreviation, so its minimum is the full name.
+
+    The run is of capital LETTERS: a digit ends it.  Measured 23sep2026 with
+    the console binary (StataNow 19.5), one `syntax' per probe:
+
+        T1title(string)          t(A) t1(A) t1t(A) t1title(A)  -> t1title
+        T1title() T2title()      t(A) -> t1title,  t2(A) -> t2title
+        YTITLE2(string)          ytitle(A) -> ytitle2,  yt(A) -> r(198)
+        X1y(string)              x(A) x1(A) x1y(A)             -> x1y
+
+    This helper used to count the digit into the run, which made T1title's
+    minimum t1 and YTITLE2's the whole name -- the wrong rule the old
+    comment in dash.ado gave for declaring T(), B(), L() and R() separately.
     """
     lines = body.split("\n")
     start = None
@@ -129,7 +141,7 @@ def _syntax_options(body):
         if t in SKIP or t in seen:
             continue
         seen.add(t)
-        head = re.match(r"^[A-Z0-9_]*", t).group(0)
+        head = re.match(r"^[A-Z]*", t).group(0)
         full = t.lower()
         mn = head.lower() if head and head.lower() != full else full
         res.append((mn, full))
@@ -178,7 +190,9 @@ def _resolves_to(abbrev, decls):
         syntax [, MLABColor(string) MLABCuts(string) ]
     the call `mlabc(red)` fills mlabcolor, and swapping the declaration order
     makes the same call fill mlabcuts.  First match in declaration order wins,
-    with no error.
+    with no error.  Strictly, the first match that is still EMPTY: measured
+    23sep2026, with T1title() T2title() declared, `t1title(B) t(A)' fills
+    t2title with A.  This helper answers for a spelling's first use.
     """
     for mn, full in decls:
         if full.startswith(abbrev) and len(abbrev) >= len(mn):
@@ -225,17 +239,10 @@ def test_declared_minimums_cover_stata_minimums(truth, plot_decls):
         if name not in declared:
             continue                       # option dash does not have: S05
         want, got = e["min_abbrev"], declared[name]
+        # No exception for t(), b(), l() and r(): a digit ends the run of
+        # capitals, so T1title's minimum is t itself (see _syntax_options),
+        # and the *1title declarations cover twoway's single letters.
         if want.startswith(got) and len(got) <= len(want):
-            continue
-        # Stata derives the minimum from the LEADING RUN OF CAPITALS, and a
-        # digit ends that run -- so "T1title" yields a minimum of "t1", and
-        # there is no capitalisation of "t1title" that yields "t".  twoway
-        # nevertheless accepts t(), b(), l() and r() for the *1title options.
-        # dash covers those by declaring the single letter as its own option
-        # and folding it into the *1title local after -syntax- (see dash.ado).
-        # Accept that as covering the gap; the runtime behaviour is asserted
-        # end to end by test_abbreviations.cscript.
-        if want in declared:
             continue
         bad.append("%s(): dash needs %r, declaration only allows %r"
                    % (name, want, got))
@@ -265,24 +272,104 @@ def test_declarations_resolve_abbreviations_like_twoway(truth, plot_decls):
 
 
 # ============================================================
-# 4. No prefix may be claimed by two options
+# 4. No prefix may be claimed by two options -- beyond the ones that are
 #
-# Passes today (nothing is abbreviated, so nothing can collide) and guards
-# task 04-03: Stata's `syntax` does not report an ambiguous abbreviation, it
-# silently binds the first declaration, so a collision introduced while
-# capitalising the minimums would be invisible at run time.
+# Stata's `syntax` does not report an ambiguous abbreviation, it silently
+# binds the first declaration that admits the spelling, so a collision
+# introduced while capitalising the minimums would be invisible at run time.
+#
+# This test passed while _syntax_options counted a digit into the run of
+# capitals, which made every name with a digit unabbreviable.  A digit ends
+# the run (measured 23sep2026, see _syntax_options), so T1title and T2title
+# both admit t, YTitle and YTITLE2 both admit ytitle, XLabel and XLA2 both
+# admit xla, and SORT and SORT1 both admit sort.  Those are the spellings in
+# _SHARED_SPELLINGS.  On first use each binds where the user means it to
+# (the next test holds that).  A SECOND use does not: -syntax- moves on to
+# the next declaration that admits the spelling and is still empty.
+# Measured 23sep2026 on dash itself, at plot and at graph level alike:
+#
+#     ytitle(A) ytitle(B)    records ytitle "A" and ytitle2 "B"
+#     title(A) title(B)      records title "A" and title2 "B"
+#     t(A) t(B)              records t1title "A" and t2title "B"
+#
+# where twoway, measured from the saved .gph, applies both and draws the
+# last, B, as the y title, the title and the t1title.  (For plot options its
+# class files merge a repeat before -syntax- sees it: twoway_yxview_parse.
+# class runs `_parse combop 0 : 0, option(SORT1) rightmost'.)  That is an
+# open defect, not a licence, so the list is pinned and can only shrink: a
+# new shared spelling fails here, and one that stops being shared must be
+# taken off the list.
 # ============================================================
-def test_no_prefix_is_claimed_by_two_options(plot_decls):
+_SHARED_SPELLINGS = {
+    "t": ("t1title", "t2title"),          "b": ("b1title", "b2title"),
+    "l": ("l1title", "l2title"),          "r": ("r1title", "r2title"),
+    "title": ("title", "title2"),         "subtitle": ("subtitle", "subtitle2"),
+    "xtitle": ("xtitle", "xtitle2"),      "ytitle": ("ytitle", "ytitle2"),
+    "xlabel": ("xlabel", "xlabel2"),      "ylabel": ("ylabel", "ylabel2"),
+    "xscale": ("xscale", "xscale2"),      "yscale": ("yscale", "yscale2"),
+    "xti": ("xtitle", "xti2"),            "yti": ("ytitle", "yti2"),
+    "xla": ("xlabel", "xla2"),            "yla": ("ylabel", "yla2"),
+    "xsc": ("xscale", "xsc2"),            "ysc": ("yscale", "ysc2"),
+    "sort": ("sort", "sort1"),
+}
+
+
+def _shared_spellings(decls):
+    """{spelling: (every option admitting it, in declaration order)} for the
+    spellings more than one declaration admits."""
     claims = {}
-    for mn, full in plot_decls:
+    for mn, full in decls:
         for L in range(len(mn), len(full) + 1):
             claims.setdefault(full[:L], []).append(full)
-    clashes = ["%s() -> %s" % (p, ", ".join(v))
-               for p, v in sorted(claims.items()) if len(set(v)) > 1]
-    assert not clashes, (
-        "%d prefix(es) are legal abbreviations of more than one option; "
-        "Stata binds the first declared one without warning.\n  "
-        % len(clashes)) + "\n  ".join(clashes)
+    return {p: tuple(v) for p, v in claims.items() if len(set(v)) > 1}
+
+
+def _twoway_binding(spelling, truth):
+    """The option twoway binds `spelling' to, per abbrev_truth.json, or None
+    when the fixture does not settle it."""
+    r = truth["abbrev_resolution"].get(spelling)
+    if r and r.get("stata_resolves_to"):
+        return r["stata_resolves_to"]
+    hits = [n for n, e in truth["options"].items()
+            if n.startswith(spelling) and len(spelling) >= len(e["min_abbrev"])]
+    return hits[0] if len(hits) == 1 else None
+
+
+def test_no_prefix_is_claimed_by_two_options(plot_decls):
+    shared = _shared_spellings(plot_decls)
+    new = ["%s() -> %s" % (p, ", ".join(v)) for p, v in sorted(shared.items())
+           if _SHARED_SPELLINGS.get(p) != v]
+    assert not new, (
+        "%d spelling(s) are legal abbreviations of more than one option "
+        "beyond the pinned list; Stata binds the first declared one without "
+        "warning, and a repeated option falls through to the next.\n  "
+        % len(new)) + "\n  ".join(new)
+    gone = sorted(set(_SHARED_SPELLINGS) - set(shared))
+    assert not gone, (
+        "no longer shared by two declarations -- take them off "
+        "_SHARED_SPELLINGS: %s" % gone)
+
+
+def test_a_shared_spelling_binds_where_the_user_means_it(truth, plot_decls):
+    """First use: the option the spelling is the full name of, else the one
+    twoway binds it to.  A spelling neither settles is an ambiguity nobody
+    measured, and fails."""
+    bad = []
+    for p, owners in sorted(_shared_spellings(plot_decls).items()):
+        got = _resolves_to(p, plot_decls)
+        if p in owners:
+            if got != p:
+                bad.append("%s() binds to %s(), not to the option of that "
+                           "name" % (p, got))
+            continue
+        want = _twoway_binding(p, truth)
+        if want is None:
+            bad.append("%s() is admitted by %s and twoway's binding of it is "
+                       "not measured" % (p, ", ".join(owners)))
+        elif got != want:
+            bad.append("%s() binds to %s(), twoway binds it to %s()"
+                       % (p, got, want))
+    assert not bad, "\n  ".join(bad)
 
 
 # ============================================================
@@ -364,3 +451,112 @@ def test_mata_option_key_table_is_removed():
         "is not just redundant, it rewrites option keys before -syntax- sees "
         "them and is the source of the seven mis-mappings."
         % " and ".join(leftovers))
+
+
+# ============================================================
+# 8. TR-23.6 (GAPS.md M4) -- each parser comment and fold once, none dead
+#
+# dash.ado carried the generator NOTE twice at the head of both option
+# parsers, and the t()/b()/l()/r() fold twice in _dash_parse_graph_opts.  The
+# reason both folds gave -- that T1title's minimum is t1, so t(), b(), l()
+# and r() had to be declared on their own -- was wrong: a digit ends the run
+# of capitals (see _syntax_options), so T1title() takes t() itself.  T(),
+# B(), L() and R() were declared after T1title() .. R2title(), which admit
+# their only spelling first, so -syntax- reached them only for a THIRD t()
+# written after t1title() and t2title() -- and the fold then dropped that
+# value without naming it.  The plot-level parser never declared them at
+# all and folded locals -syntax- never set.
+# ============================================================
+_PARSERS = ("_dash_parse_plot_opts", "_dash_parse_graph_opts")
+
+#: `if `"`a'"' != "" & `"`t'"' == "" local t `"`a'"'` -- alias a folded into t.
+_FOLD = re.compile(r"""if `"`(\w+)'"' != "" & `"`(\w+)'"' == "" local \2 `"`\1'"'""")
+
+
+def _folds(body):
+    """[(alias, target), ...], one per fold statement in `body', in order."""
+    return _FOLD.findall(body)
+
+
+def _bodies(programs=None):
+    """{program: body} for `programs', or for every program with a syntax
+    statement when None."""
+    src = _read(ADO_PATH)
+    if programs is None:
+        programs = re.findall(r"^program define (\w+)", src, re.M)
+    out = {}
+    for prog in programs:
+        body = _program_body(src, prog)
+        assert body is not None, "program %s not found in dash.ado" % prog
+        out[prog] = body
+    return out
+
+
+def test_the_tr_23_6_scans_see_what_they_look_for():
+    """Every check below is vacuous if its scan finds nothing."""
+    bodies = _bodies(_PARSERS)
+    folds = _folds(bodies["_dash_parse_plot_opts"])
+    assert ("mlg", "mlabgap") in folds and ("pbgc", "plotbgcolor") in folds
+    assert ("pbgc", "plotbgcolor") in _folds(bodies["_dash_parse_graph_opts"])
+    assert sum(1 for b in _bodies().values() if _syntax_options(b)) >= 6
+    lines = [ln.strip() for ln in bodies["_dash_parse_plot_opts"].split("\n")]
+    assert sum(1 for ln in lines if ln.startswith("//")) >= 20
+
+
+def test_no_comment_block_is_repeated_in_a_parser():
+    """Three or more comment lines appearing twice in one parser is a pasted
+    duplicate (the generator NOTE was, in both)."""
+    bad = []
+    for prog, body in _bodies(_PARSERS).items():
+        lines = [ln.strip() for ln in body.split("\n")]
+        first = {}
+        for i in range(len(lines) - 2):
+            win = tuple(lines[i:i + 3])
+            if not all(w.startswith("//") and len(w) > 3 for w in win):
+                continue
+            if win in first and i >= first[win] + 3:
+                bad.append("%s repeats the comment block starting %r"
+                           % (prog, win[0]))
+            first.setdefault(win, i)
+    assert not bad, "\n  ".join(sorted(set(bad)))
+
+
+def test_no_fold_is_repeated_in_a_parser():
+    bad = []
+    for prog, body in _bodies(_PARSERS).items():
+        folds = _folds(body)
+        for f in sorted(set(folds)):
+            if folds.count(f) > 1:
+                bad.append("%s folds %s() into %s() %d times"
+                           % (prog, f[0], f[1], folds.count(f)))
+    assert not bad, "\n  ".join(bad)
+
+
+def test_every_fold_reads_an_option_its_parser_declares():
+    """A fold whose alias the parser's own -syntax- never declares reads a
+    local that is always empty: dead code."""
+    bad = []
+    for prog, body in _bodies(_PARSERS).items():
+        declared = {full for _, full in _syntax_options(body)}
+        bad += ["%s folds %s() into %s(), and declares no %s()"
+                % (prog, a, t, a) for a, t in _folds(body) if a not in declared]
+    assert not bad, "\n  ".join(bad)
+
+
+def test_no_declaration_is_shadowed_by_an_earlier_one():
+    """An option every spelling of which an earlier declaration admits is
+    never bound by its own name: -syntax- reaches it only when a repeated
+    option finds the earlier ones already filled."""
+    bad = []
+    for prog, body in sorted(_bodies().items()):
+        decls = _syntax_options(body)
+        for i, (mn, full) in enumerate(decls):
+            spellings = [full[:L] for L in range(len(mn), len(full) + 1)]
+            takers = [_resolves_to(s, decls[:i]) for s in spellings]
+            if all(takers):
+                bad.append("%s: %s() -- %s" % (prog, full, ", ".join(
+                    "%s() binds to %s()" % (s, t)
+                    for s, t in zip(spellings, takers))))
+    assert not bad, (
+        "declared options -syntax- never binds by their own name:\n  "
+        + "\n  ".join(bad))

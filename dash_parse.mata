@@ -25,6 +25,13 @@
 *!   _dash_layout_refusal(layout, registry)
 *!       "" when dash build can draw layout() as written, else the refusal.
 *!
+*!   _dash_filter_refusal(filter, registry, vars_out)
+*!       "" when every filter() group names a variable and only registered
+*!       exclude() names, the variables then in vars_out; else the refusal.
+*!
+*!   _dash_filter_setvars(filter, names)
+*!       filter with each group's variable replaced by the next of names.
+*!
 *!   _dash_split_segs(input)
 *!       Split the raw command line into plot segments + graph-opts string.
 *!       Sets in the *caller's* local-macro environment:
@@ -405,6 +412,84 @@ real scalar _dash_ascii_in(string scalar ch, real scalar lo, real scalar hi) {
 }
 
 // ============================================================
+// _dash_kpi_pctile(stat, numname, whyname)
+//
+// Reads a KPI statistic as a percentile, p#, and sets two locals of the
+// caller.  <whyname> is
+//   "none"    stat is not p followed by digits and points alone, so it is
+//             no percentile at all -- mean, pnan, p1e2, P97.5 -- and the
+//             caller's list of statistics decides;
+//   "form"    p followed by digits and points that make no decimal number:
+//             two points (p97.5.5) or no digit (p.);
+//   "digits"  more than 15 digits as typed.  A double carries 15 decimal
+//             digits faithfully, so every number of 15 digits or fewer is
+//             one double to Stata, to Python and to JavaScript -- the three
+//             places a card is computed -- and a run of digits too long to
+//             be a percentile is refused before anything is done with it;
+//   "range"   not greater than 0 and less than 100, the range _pctile
+//             accepts: it refuses 0 and 100 with "percentiles must be
+//             between 0 and 100", r(198);
+//   "ok"      a percentile, and <numname> is its number written once: no
+//             leading zero but the one before a point, no trailing zero
+//             after it and no point with nothing after it -- p097.50 is
+//             97.5, p.5 is 0.5, p5. is 5 -- so the global, the console and
+//             both renderers name one percentile one way, and the
+//             renderers' p<one or two digits>[.<digits>] reads every one.
+// Byte by byte, for _dash_is_digits' reasons: no regular expression says
+// this under every caller.
+// ============================================================
+void _dash_kpi_pctile(string scalar stat, string scalar numname,
+                      string scalar whyname)
+{
+    string scalar body, ip, fp
+    real scalar   i, n, b, dots, dotat, v
+
+    st_local(numname, "")
+    st_local(whyname, "none")
+    if (substr(stat, 1, 1) != "p") return
+    body = substr(stat, 2, .)
+    n = strlen(body)
+    if (n == 0) return
+    dots = 0
+    dotat = 0
+    for (i = 1; i <= n; i++) {
+        b = ascii(substr(body, i, 1))
+        if (b == 46) {
+            dots++
+            dotat = i
+        }
+        else if (b < 48 | b > 57) return
+    }
+    if (dots > 1 | dots == n) {
+        st_local(whyname, "form")
+        return
+    }
+    if (n - dots > 15) {
+        st_local(whyname, "digits")
+        return
+    }
+    ip = body
+    fp = ""
+    if (dots) {
+        ip = substr(body, 1, dotat - 1)
+        fp = substr(body, dotat + 1, .)
+    }
+    while (strlen(ip) > 0 & substr(ip, 1, 1) == "0") ip = substr(ip, 2, .)
+    while (strlen(fp) > 0 & substr(fp, strlen(fp), 1) == "0") {
+        fp = substr(fp, 1, strlen(fp) - 1)
+    }
+    if (ip == "") ip = "0"
+    if (fp != "") ip = ip + "." + fp
+    v = strtoreal(ip)
+    if (missing(v) | v <= 0 | v >= 100) {
+        st_local(whyname, "range")
+        return
+    }
+    st_local(numname, ip)
+    st_local(whyname, "ok")
+}
+
+// ============================================================
 // _dash_layout_cells(layout)
 //
 // How many cells an explicit layout() grid asks for: rows x cols (each at
@@ -678,6 +763,17 @@ string scalar _expand_plottype_str(string scalar name) {
     // a twoway plot type", and pcarrow is its own type -- so the minimum
     // is the full name.  pcarrow still wins "pcarrow": pcarrowi's
     // minimum is eight letters.
+
+    // twoway's two spellings that are no prefix of the name, from the
+    // declaration its plot types are read by (twowaygraph_g.class, program
+    // _unab_cmd): `syntax [, SCatter LIne CONnected HISTogram RSCatter
+    // RLine RCONnected MBANDs FN FUNction *]'.  MBANDs takes mband and
+    // mbands; FN is function.  Measured 23sep2026: `twoway mbands mpg
+    // weight' and `twoway fn y=x' are rc 0, and dash refused both, r(198),
+    // where dash.sthlp says a plot type is "abbreviated as twoway allows"
+    // (test_help_claims_1.cscript HC1-07).
+    if (name == "mbands") return("mband")
+    if (name == "fn") return("function")
 
     nhits = 0
     hit   = ""
@@ -1427,15 +1523,16 @@ void _dash_split_segs(string scalar input) {
     real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt
     real   scalar  seg_start, n_segs
     string scalar  seg_text, trimmed, stray, qword
-    real   scalar  qual_seen, qnext
+    real   scalar  qual_seen, qnext, qual_start, qdepth
     string vector  segs
-    string scalar  graph_opts_raw
+    string scalar  graph_opts_raw, graph_qual
 
     trimmed        = strtrim(input)
     len            = strlen(trimmed)
     n_segs         = 0
     segs           = J(1, 0, "")
     graph_opts_raw = ""
+    graph_qual     = ""
 
     if (len == 0) {
         errprintf("dash: empty plot specification.\n")
@@ -1463,6 +1560,8 @@ void _dash_split_segs(string scalar input) {
         in_cq    = 0
         seg_start = 0
         qual_seen = 0
+        qual_start = 0
+        qdepth    = 0
         i         = 1
 
         while (i <= len) {
@@ -1474,6 +1573,61 @@ void _dash_split_segs(string scalar input) {
             }
 
             c_code = ascii(substr(trimmed, i, 1))
+
+            // ---- inside an if/in qualifier written between or after the
+            // plot groups ----
+            // twoway applies such a qualifier to every plot (measured:
+            // `(scatter y x) (line y x) if foreign==1' draws the 22 foreign
+            // cars in both), wherever it stands at the top level -- after
+            // the last group, or before a `||' -- and allows one `if' and
+            // one `in' in all ("multiple global if's not allowed").  It is
+            // collected here, whole, into graph_qual, and _dash_plot reads
+            // it with -syntax- as the graph's own qualifier.  This scanner
+            // used to walk past it and throw it away, so every observation
+            // was drawn, in silence -- and a parenthesis in it,
+            // `if inlist(rep78,3,4)', opened a plot group.  Inside the
+            // qualifier a parenthesis is the expression's; it ends at a
+            // comma or a `||' outside its parentheses (and outside quotes,
+            // which the step above skips), or at the end.  A plot group
+            // written after it without `||' stays part of its text, where
+            // -syntax- refuses it with twoway's own "invalid '('".
+            if (qual_seen) {
+                if (c_code == 40) {
+                    qdepth++
+                }
+                else if (c_code == 41) {
+                    if (qdepth == 0) {
+                        errprintf("dash: unmatched ')' in the plot specification.\n")
+                        exit(198)
+                    }
+                    qdepth--
+                }
+                else if (qdepth == 0 & c_code == 124 & i + 1 <= len &
+                         ascii(substr(trimmed, i + 1, 1)) == 124) {
+                    graph_qual = graph_qual + " " +
+                                 strtrim(substr(trimmed, qual_start, i - qual_start))
+                    qual_seen = 0
+                    i = i + 2
+                    continue
+                }
+                else if (qdepth == 0 & c_code == 44) {
+                    graph_qual = graph_qual + " " +
+                                 strtrim(substr(trimmed, qual_start, i - qual_start))
+                    qual_seen = 0
+                    graph_opts_raw = strtrim(substr(trimmed, i + 1, .))
+                    if (graph_opts_raw != "" &
+                        ascii(substr(graph_opts_raw, 1, 1)) == 40) {
+                        errprintf(
+                          "dash: a plot group may not follow the graph-option comma.\n")
+                        errprintf(
+                          "      Write every plot before the comma: (plot1) (plot2), <options>\n")
+                        exit(198)
+                    }
+                    break
+                }
+                i++
+                continue
+            }
 
             if (c_code == 40 & depth == 0) {
                 seg_start = i + 1
@@ -1525,26 +1679,23 @@ void _dash_split_segs(string scalar input) {
                     continue
                 }
 
-                // A top-level if/in qualifier may follow the plot groups:
+                // A top-level if/in qualifier may follow a plot group:
                 //     (scatter y x) if foreign==1, title("T")
-                // twoway accepts all four shapes of this (measured rc 0)
-                // and dash.sthlp documents them.  This scanner has always
-                // walked past such a qualifier without capturing it,
-                // leaving the top-level comma to be found as usual; that
-                // is preserved exactly.  Policing stray text stops here so
-                // the qualifier's own words are not mistaken for it.
-                if (!qual_seen) {
-                    qword = strlower(substr(trimmed, i, 2))
-                    qnext = (i + 2 <= len ? ascii(substr(trimmed, i+2, 1)) : 32)
-                    if ((qword == "if" | qword == "in") &
-                        (qnext == 32 | qnext == 9)) {
-                        qual_seen = 1
-                        i = i + 2
-                        continue
-                    }
-                }
-                if (qual_seen) {
-                    i++
+                // twoway accepts it after the last group and before a
+                // `||', with a blank or, for `if', a parenthesis after the
+                // word (measured rc 0: `(scatter mpg weight) if(foreign==1)'
+                // draws the 22 foreign cars); the word is lower case, as
+                // Stata's own -syntax- reads it (`IF foreign==1' is
+                // r(198) in twoway).  It is read by the branch above, from
+                // the word on.
+                qword = substr(trimmed, i, 2)
+                qnext = (i + 2 <= len ? ascii(substr(trimmed, i+2, 1)) : 32)
+                if ((qword == "if" & (qnext == 32 | qnext == 9 | qnext == 40)) |
+                    (qword == "in" & (qnext == 32 | qnext == 9))) {
+                    qual_seen  = 1
+                    qual_start = i
+                    qdepth     = 0
+                    i = i + 2
                     continue
                 }
 
@@ -1578,9 +1729,13 @@ void _dash_split_segs(string scalar input) {
             errprintf("dash: unterminated quotation in the plot specification.\n")
             exit(198)
         }
-        if (depth != 0) {
+        if (depth != 0 | (qual_seen & qdepth != 0)) {
             errprintf("dash: unbalanced parentheses in the plot specification.\n")
             exit(198)
+        }
+        // A qualifier that runs to the end of the command.
+        if (qual_seen) {
+            graph_qual = graph_qual + " " + strtrim(substr(trimmed, qual_start, .))
         }
     }
     // ================================================================
@@ -1683,6 +1838,11 @@ void _dash_split_segs(string scalar input) {
         st_local("_seg_" + strofreal(i), segs[i])
     }
     st_local("_graph_opts_raw", graph_opts_raw)
+    // The qualifier written between or after the parenthesised groups,
+    // every piece of it, "" in flat mode, where a qualifier belongs to the
+    // plot it is written in (twoway draws `scatter y x || line y x if
+    // foreign==1' as 74 points and a line through 22).
+    st_local("_graph_qual_raw", strtrim(graph_qual))
 }
 
 
@@ -2059,6 +2219,194 @@ void _dash_extract_filters(string scalar filter_out,
 
     st_local(filter_out, result)
     st_local(cmd_out,    strtrim(remaining))
+}
+
+
+// ============================================================
+// 6b. FILTER GROUPS
+//     _dash_filter_split(s, groups)
+//     _dash_filter_items(group)
+//     _dash_filter_refusal(filter, registry, vars_out)
+//     _dash_filter_setvars(filter, names)
+//
+// _dash_extract_filters joins the filter() groups with " || ", and a
+// group's own text may hold "||", ";" or the word "exclude(" -- in its
+// label().  dash.ado split the joined string at every "||" and ";" and
+// took every "exclude(" for the sub-option, wherever it stood; measured at
+// 4ede074, label("A;B") and label("A||B") stopped dash build with "too few
+// quotes" r(132), label(A;B) was refused as naming a variable 'B)', and
+// label("exclude(nosuch) me") as an exclude() of a graph named nosuch.  A
+// group ends only at a "||" or ";" outside quotes and parentheses, and
+// exclude() is read only where a sub-option stands.  dash_render.py's
+// _dash_filter_split is the same rule (test_help_claims_3.cscript
+// checks that the two agree).
+// ============================================================
+
+// 1 when ch is one of the six ASCII blanks: space, tab, LF, VT, FF, CR.
+real scalar _dash_is_blank(string scalar ch) {
+    real scalar b
+
+    if (strlen(ch) != 1) return(0)
+    b = ascii(ch)
+    return(b == 32 | (b >= 9 & b <= 13))
+}
+
+// s without the ASCII blanks at either end.
+string scalar _dash_blank_trim(string scalar s) {
+    real scalar i, j
+
+    i = 1
+    j = strlen(s)
+    while (i <= j & _dash_is_blank(substr(s, i, 1))) i++
+    while (j >= i & _dash_is_blank(substr(s, j, 1))) j--
+    return(substr(s, i, j - i + 1))
+}
+
+// The pieces of s between its separators, each trimmed, empty ones left
+// out.  A separator counts only outside quotes -- "..." and `"..."', read
+// by _dash_quote_step -- and outside parentheses.  With groups != 0 the
+// separators are "||" and ";", which part the filter() groups; otherwise
+// the ASCII blanks and ",", which part one group's sub-options.
+string rowvector _dash_filter_split(string scalar s, real scalar groups) {
+    string rowvector out
+    string scalar    ch, piece
+    real scalar      n, i, st, depth, in_dq, in_cq, nxt, w
+
+    out   = J(1, 0, "")
+    n     = strlen(s)
+    depth = 0
+    in_dq = 0
+    in_cq = 0
+    st    = 1
+    i     = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(s, n, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+        ch = substr(s, i, 1)
+        w  = 0
+        if (ch == "(") depth++
+        else if (ch == ")") {
+            if (depth > 0) depth--
+        }
+        else if (depth == 0) {
+            if (groups) {
+                if (ch == ";") w = 1
+                else if (ch == "|" & substr(s, i + 1, 1) == "|") w = 2
+            }
+            else if (ch == "," | _dash_is_blank(ch)) w = 1
+        }
+        if (w) {
+            piece = _dash_blank_trim(substr(s, st, i - st))
+            if (piece != "") out = out, piece
+            i  = i + w
+            st = i
+            continue
+        }
+        i++
+    }
+    piece = _dash_blank_trim(substr(s, st, .))
+    if (piece != "") out = out, piece
+    return(out)
+}
+
+// A group's variable, then its sub-options.  The variable is the text up
+// to the group's first comma outside quotes and parentheses, trimmed --
+// its first word when it has no such comma -- as dash.ado has always read
+// it, so a name with a blank in it is refused whole rather than cut.
+string rowvector _dash_filter_items(string scalar group) {
+    string rowvector words
+    real scalar      c
+
+    c = _first_comma_pos(group)
+    if (c > 0) {
+        return(_dash_blank_trim(substr(group, 1, c - 1)),
+               _dash_filter_split(substr(group, c + 1, .), 0))
+    }
+    words = _dash_filter_split(group, 0)
+    if (cols(words) == 0) return("")
+    return(words)
+}
+
+// "" when every exclude() name of every group is in registry and every
+// group names a variable that is an ASCII Stata name, and vars_out is then
+// set to those variables, blank-separated; otherwise the refusal, without
+// the command's name -- the exclude() names first, as dash build has always
+// checked them first.  A sub-option is exclude() when its name, in any case,
+// is exclude and a parenthesis follows (dash_render.py's _dash_subopt_name).
+string scalar _dash_filter_refusal(string scalar filter,
+                                   string scalar registry,
+                                   string scalar vars_out) {
+    string rowvector groups, items, reg, names, vars
+    string scalar    tok, inner, v
+    real scalar      g, t, k, p
+
+    st_local(vars_out, "")
+    groups = _dash_filter_split(filter, 1)
+    reg    = tokens(registry)
+    for (g = 1; g <= cols(groups); g++) {
+        items = _dash_filter_items(groups[g])
+        for (t = 2; t <= cols(items); t++) {
+            tok = items[t]
+            p   = strpos(tok, "(")
+            if (!p) continue
+            inner = strlower(_dash_blank_trim(substr(tok, 1, p - 1)))
+            if (inner != "exclude") continue
+            inner = substr(tok, p + 1, .)
+            if (substr(inner, strlen(inner), 1) == ")") {
+                inner = substr(inner, 1, strlen(inner) - 1)
+            }
+            names = tokens(inner)
+            for (k = 1; k <= cols(names); k++) {
+                if (!anyof(reg, names[k])) {
+                    return("filter exclude() name '" + names[k] +
+                           "' not found in registry.")
+                }
+            }
+        }
+    }
+    vars = J(1, 0, "")
+    for (g = 1; g <= cols(groups); g++) {
+        items = _dash_filter_items(groups[g])
+        v     = items[1]
+        if (!_dash_is_name(v)) {
+            // Every character a name cannot hold, and at most 40 of them:
+            // this text is by definition not a variable name, and is shown.
+            return("filter() names '" +
+                   ustrregexra(usubstr(v, 1, 40), "[^A-Za-z0-9_.\-]", "?") +
+                   "', which is not a valid Stata variable name.")
+        }
+        vars = vars, v
+    }
+    st_local(vars_out, invtokens(vars))
+    return("")
+}
+
+// filter with each group's variable replaced by the next of names -- the
+// full names of the variables _dash_filter_refusal read, which may have
+// been abbreviated -- and the groups joined with " || ".
+string scalar _dash_filter_setvars(string scalar filter, string scalar names) {
+    string rowvector groups, full, items
+    string scalar    out, grp, v
+    real scalar      g, c
+
+    groups = _dash_filter_split(filter, 1)
+    full   = tokens(names)
+    out    = ""
+    for (g = 1; g <= cols(groups); g++) {
+        grp = groups[g]
+        if (g <= cols(full)) {
+            items = _dash_filter_items(grp)
+            v     = items[1]
+            c     = _first_comma_pos(grp)
+            if (c > 0) grp = full[g] + substr(grp, c, .)
+            else       grp = full[g] + substr(grp, strlen(v) + 1, .)
+        }
+        out = out + (g > 1 ? " || " : "") + grp
+    }
+    return(out)
 }
 
 

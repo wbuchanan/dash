@@ -1,0 +1,606 @@
+*! test_help_claims_7.cscript
+*! Certification script: dash.sthlp's Region Styling Options, Axis and
+*! Display Options, Mapping a Variable to Colour, Figure proportions and
+*! Marker and Transparency Options -- the Stata side of their claims
+*! (ROADMAP WP-23, AC-23.1; GAPS.md F4).  test/test_help_claims_7.py
+*! certifies what the saved page and the served app draw from the specs
+*! this script shows dash.ado writing.
+*!
+*! Every claim about twoway is measured against twoway in the same run:
+*! twoway is asked first and dash must do what twoway did.
+*!
+*! Cases:
+*!   HC7-01  legend(top), legend(bottom), legend(left) and legend(right)
+*!           are refused as twoway refuses them ("option top not allowed",
+*!           r(198)) -- after the graph's comma, inside a segment, in comma
+*!           mode and beside another sub-option -- and nothing registers;
+*!           a label that reads "left" or "top", and legend(on), (off),
+*!           position(), ring(0), order(), cols(), rows() and size(), are
+*!           accepted by both.
+*!   HC7-02  colorvar() on every plot type: twoway accepts it on all of
+*!           them; dash draws it on scatter, connected, rconnected and
+*!           dot, where it is in the spec and not in the note, and on
+*!           every other type names it in the note.  Its companions are
+*!           named with it there, and wherever colorvar() is not given;
+*!           twoway's other colorvar options are named; a variable that
+*!           does not exist is still r(111), as in twoway.
+*!   HC7-03  jitter() (and its seed) named in the note on rscatter,
+*!           rcapsym, pcscatter and pccapsym -- whose markers twoway
+*!           jitters and dash does not -- and kept, unnamed, on the six
+*!           types dash jitters.
+*!   HC7-04  plotregion(color("255 0 0")) and graphregion(fcolor("0 0
+*!           255")) reach the spec with their quotes and the saved page
+*!           with the colour, and the render names no unknown colour.
+*!   HC7-05  the dash-only options and alias spellings of these sections
+*!           are refused by twoway (r(198)) and accepted by dash, which
+*!           writes the full option; bgcolor() and bgc(), colorv(),
+*!           plotr() and graphr() are twoway's own and accepted by both.
+*!   HC7-06  a string colorvar(): twoway refuses it (r(7)); dash draws one
+*!           colour per value on the saved page.
+*!   HC7-07  jitter(), jitterseed(), jseed(), msangle(), malpha(),
+*!           lalpha() and falpha() are never named in the note on the
+*!           types that draw them.
+*!   HC7-08  ylabel2(), yscale2(), xtick() beside xlabel() reach the spec
+*!           exactly as written, for the renderer's grammar.
+*!   HC7-09  adversarial (CLAUDE.md rule 18) for the legend() check: SMCL
+*!           in a label beside a refused keyword is not rendered, a legend()
+*!           of three thousand words is judged in bounded time, and a
+*!           keyword inside a quoted label or another sub-option's
+*!           parentheses is never refused.
+*!
+*! Every dash probe registers with name() and the spec is read back out of
+*! the registry, except HC7-04 and HC7-06, which save a page.
+*!
+*! Usage:  do test/test_help_claims_7.cscript
+
+cscript "dash help claims 7: region, axes, colorvar, markers (WP-23)" adodir ".."
+
+clear all
+set more off
+set graphics off
+// The note is searched in a text log: at 80 columns a long note wraps
+// mid-name ("co" / "> lpalette()") and the search finds nothing.
+set linesize 255
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+// cscript drops every global; cert_helpers.do set it again, and so does this.
+global dash_nobrowser 1
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+sysuse auto, clear
+generate lo = mpg - 2
+generate hi = mpg + 2
+generate t  = _n
+generate str10 sv = cond(foreign, "F", "D")
+
+local logfile  "`c(tmpdir)'dash_help_claims_7.log"
+local htmlfile "`c(tmpdir)'dash_help_claims_7.html"
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+capture mata: mata drop _zh7_has()
+mata:
+// Does the registered spec for graph `g' carry the quoted key `key'?
+real scalar _zh7_has(string scalar g, string scalar key)
+{
+    string scalar js
+    js = st_global("dash_json_" + g)
+    return(strpos(js, char(34) + key + char(34) + ":") > 0)
+}
+// Does it carry the key with exactly this value (JSON-escaped)?
+real scalar _zh7_value(string scalar g, string scalar key, string scalar v)
+{
+    string scalar js
+    js = st_global("dash_json_" + g)
+    return(strpos(js, char(34) + key + char(34) + ":" + char(34) + v + char(34)) > 0)
+}
+end
+
+capture program drop _zh7_has
+program define _zh7_has, rclass
+    args g key
+    mata: st_local("_zh", strofreal(_zh7_has(st_local("g"), st_local("key"))))
+    return scalar found = `_zh'
+end
+
+// Run one dash command under a named log; r(rc) is its return code and
+// r(note) whether the log carries the ignoring note at all.
+capture program drop _zh7_run
+program define _zh7_run, rclass
+    args cmdtext logpath
+    capture log close _zh7log
+    capture erase "`logpath'"
+    capture dash clear
+    log using "`logpath'", name(_zh7log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zh7log
+    cert_file_has "`logpath'", needle("ignoring unsupported")
+    return scalar note = r(found)
+    return scalar rc   = `rc'
+end
+
+// Is `needle' in the last probe's log?
+capture program drop _zh7_logged
+program define _zh7_logged, rclass
+    args logpath needle
+    cert_file_has "`logpath'", needle(`"`needle'"')
+    return scalar found = r(found)
+end
+
+local nfail = 0
+local faillist ""
+
+// ----------------------------------------------------------------
+// HC7-01 -- legend()'s direction words, refused as twoway refuses them.
+// ----------------------------------------------------------------
+local bad = 0
+foreach kw in top bottom left right {
+    capture twoway (scatter mpg weight) (lfit mpg weight), legend(`kw') nodraw
+    local tw = _rc
+    _zh7_run `"dash (scatter mpg weight) (lfit mpg weight), legend(`kw') name(zq7)"' "`logfile'"
+    local drc = r(rc)
+    _zh7_logged "`logfile'" "option `kw' not allowed"
+    local said = r(found)
+    if `tw' != 198 | `drc' != 198 | `said' != 1 | "${dash_graph_registry}" != "" {
+        display as error "HC7-01 FAIL legend(`kw'): twoway r(`tw'), dash rc `drc', message `said', registry ${dash_graph_registry}"
+        local bad = 1
+    }
+}
+// The other places a legend() may be written, and a keyword beside a
+// sub-option: comma mode, inside a segment, beside position(), beside off.
+// Each command ends in its options, so twoway takes nodraw and dash
+// name() after them.
+local k = 0
+foreach cmd in ///
+    `"scatter mpg weight, legend(bottom)"' ///
+    `"(scatter mpg weight, legend(left)) (lfit mpg weight),"' ///
+    `"(scatter mpg weight) (lfit mpg weight), legend(pos(6) right)"' ///
+    `"(scatter mpg weight) (lfit mpg weight), legend(top off)"' {
+    local ++k
+    capture twoway `cmd' nodraw
+    local tw = _rc
+    _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
+    local drc = r(rc)
+    if `tw' != 198 | `drc' != 198 | "${dash_graph_registry}" != "" {
+        display as error `"HC7-01 FAIL variant `k' (`cmd'): twoway r(`tw'), dash rc `drc'"'
+        local bad = 1
+    }
+}
+// Accepted by both, and registered: a label reading "left", and the
+// sub-options twoway has.
+foreach lg in `"label(1 "left") label(2 "top")"' "on" "off" "position(12)" ///
+        "position(3) ring(0)" "order(2 1) cols(1) size(small)" "rows(2) pos(6) off" {
+    capture twoway (scatter mpg weight) (lfit mpg weight), legend(`lg') nodraw
+    local tw = _rc
+    _zh7_run `"dash (scatter mpg weight) (lfit mpg weight), legend(`lg') name(zq7)"' "`logfile'"
+    local drc = r(rc)
+    _zh7_logged "`logfile'" "not allowed"
+    if `tw' != 0 | `drc' != 0 | r(found) != 0 | "${dash_graph_registry}" != "zq7" {
+        display as error `"HC7-01 FAIL legend(`lg'): twoway r(`tw'), dash rc `drc', registry ${dash_graph_registry}"'
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-01"
+}
+else display as text "HC7-01 PASS: legend(top|bottom|left|right) refused as twoway refuses them; labels and twoway's sub-options accepted"
+
+// ----------------------------------------------------------------
+// The plot types and a varlist that makes each legal in twoway and dash.
+// ----------------------------------------------------------------
+quietly tsset t
+local types "scatter line connected area bar spike lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci dot dropline mspline mband tsline histogram kdensity rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline pcspike pcarrow pcbarrow pcscatter pccapsym scatteri pci pcarrowi function"
+foreach tt of local types {
+    local v_`tt' "mpg weight"
+}
+foreach tt in rarea rbar rspike rcap rline rconnected rcapsym rscatter {
+    local v_`tt' "lo hi weight"
+}
+foreach tt in pcspike pcarrow pcbarrow pcscatter pccapsym {
+    local v_`tt' "mpg weight turn length"
+}
+local v_histogram "mpg"
+local v_kdensity  "mpg"
+local v_tsline    "mpg"
+local v_tsrline   "lo hi"
+local v_function  "y=x, range(0 1)"
+local v_scatteri  "20 3000 30 4000"
+local v_pci       "20 3000 30 4000"
+local v_pcarrowi  "20 3000 30 4000"
+
+// ----------------------------------------------------------------
+// HC7-02 -- colorvar(), per plot type, and its companions.
+// ----------------------------------------------------------------
+local bad = 0
+local cv_drawn "scatter connected rconnected dot"
+foreach tt of local types {
+    local v `v_`tt''
+    local sep ","
+    if strpos("`v'", ",") local sep ""
+    capture twoway `tt' `v'`sep' colorvar(price) nodraw
+    local tw = _rc
+    _zh7_run `"dash (`tt' `v'`sep' colorvar(price)), name(zq7)"' "`logfile'"
+    local drc = r(rc)
+    _zh7_logged "`logfile'" "colorvar()"
+    local named = r(found)
+    _zh7_has zq7 colorvar
+    local kept = r(found)
+    if `tw' != 0 | `drc' != 0 {
+        display as error "HC7-02 FAIL `tt': twoway r(`tw'), dash rc `drc'"
+        local bad = 1
+    }
+    else if `: list tt in cv_drawn' & (`named' | !`kept') {
+        display as error "HC7-02 FAIL `tt': dash draws colorvar() here, but named=`named' kept=`kept'"
+        local bad = 1
+    }
+    else if !`: list tt in cv_drawn' & !`named' {
+        display as error "HC7-02 FAIL `tt': dash does not draw colorvar() here, but it is not named in the note"
+        local bad = 1
+    }
+}
+quietly tsset, clear
+// The companions, named with colorvar() where it is not drawn ...
+_zh7_run `"dash line mpg weight, colorvar(price) colordiscrete colorcuts(5000 10000) colpalette(magma) colornlevels(4) colormissing(red) name(zq7)"' "`logfile'"
+if r(rc) != 0 {
+    display as error "HC7-02 FAIL: the companions on line, rc `r(rc)'"
+    local bad = 1
+}
+foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing {
+    _zh7_logged "`logfile'" "`o'()"
+    if !r(found) {
+        display as error "HC7-02 FAIL: `o'() on line is not named in the note"
+        local bad = 1
+    }
+}
+// ... and wherever colorvar() is not given ...
+_zh7_run `"dash scatter mpg weight, colpalette(magma) colornlevels(4) name(zq7)"' "`logfile'"
+_zh7_logged "`logfile'" "colpalette() colornlevels()"
+if r(found) != 1 {
+    display as error "HC7-02 FAIL: companions without colorvar() are not named"
+    local bad = 1
+}
+// ... and kept, unnamed, beside colorvar() where it is drawn.
+_zh7_run `"dash scatter mpg weight, colorvar(price) colpalette(magma) colornlevels(4) name(zq7)"' "`logfile'"
+local rnote = r(note)
+local nk = 0
+foreach o in colorvar colpalette colornlevels {
+    _zh7_has zq7 `o'
+    local nk = `nk' + r(found)
+}
+if `rnote' | `nk' != 3 {
+    display as error "HC7-02 FAIL: colorvar() and companions on scatter -- note `rnote', kept `nk' of 3"
+    local bad = 1
+}
+// twoway's other colorvar options, which dash does not read, are named.
+capture twoway scatter mpg weight, colorvar(price) colorlevels(4) colorrule(hue) colorformissing(red) nodraw
+local tw = _rc
+_zh7_run `"dash scatter mpg weight, colorvar(price) colorlevels(4) colorrule(hue) colorformissing(red) name(zq7)"' "`logfile'"
+local drc = r(rc)
+_zh7_logged "`logfile'" "colorlevels() colorrule() colorformissing()"
+if `tw' != 0 | `drc' != 0 | r(found) != 1 {
+    display as error "HC7-02 FAIL: twoway's colorlevels()/colorrule()/colorformissing(): twoway r(`tw'), dash rc `drc', named `r(found)'"
+    local bad = 1
+}
+// A variable that does not exist is refused on every type, as twoway does.
+capture twoway line mpg weight, colorvar(nosuchvar) nodraw
+local tw = _rc
+_zh7_run `"dash line mpg weight, colorvar(nosuchvar) name(zq7)"' "`logfile'"
+if `tw' != 111 | r(rc) != 111 | "${dash_graph_registry}" != "" {
+    display as error "HC7-02 FAIL: colorvar(nosuchvar) on line: twoway r(`tw'), dash rc `r(rc)'"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-02"
+}
+else display as text "HC7-02 PASS: colorvar() kept on scatter, connected, rconnected and dot, named everywhere else; companions named with it"
+
+// ----------------------------------------------------------------
+// HC7-03 -- jitter() where twoway jitters and dash does not.
+// ----------------------------------------------------------------
+local bad = 0
+foreach tt in rscatter rcapsym pcscatter pccapsym {
+    local v `v_`tt''
+    capture twoway `tt' `v', jitter(5) jitterseed(3) nodraw
+    local tw = _rc
+    _zh7_run `"dash `tt' `v', jitter(5) jitterseed(3) name(zq7)"' "`logfile'"
+    local drc = r(rc)
+    _zh7_logged "`logfile'" "jitter() jitterseed()"
+    local named = r(found)
+    if `tw' != 0 | `drc' != 0 | !`named' {
+        display as error "HC7-03 FAIL `tt': twoway r(`tw'), dash rc `drc', named `named'"
+        local bad = 1
+    }
+}
+foreach tt in scatter connected rconnected dot dropline scatteri {
+    local v `v_`tt''
+    _zh7_run `"dash `tt' `v', jitter(5) jitterseed(3) name(zq7)"' "`logfile'"
+    local rnote = r(note)
+    _zh7_has zq7 jitter
+    if r(found) != 1 | `rnote' {
+        display as error "HC7-03 FAIL `tt': jitter() not kept (`r(found)') or named (`rnote')"
+        local bad = 1
+    }
+}
+_zh7_run `"dash line mpg weight, jitter(5) name(zq7)"' "`logfile'"
+if r(note) {
+    display as error "HC7-03 FAIL: jitter() named on line, where twoway draws no marker either"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-03"
+}
+else display as text "HC7-03 PASS: jitter() named on rscatter, rcapsym, pcscatter and pccapsym only"
+
+// ----------------------------------------------------------------
+// HC7-04 -- an RGB triplet in quotes inside plotregion()/graphregion().
+// ----------------------------------------------------------------
+local bad = 0
+_zh7_run `"dash scatter mpg weight, plotregion(color("255 0 0")) graphregion(fcolor("0 0 255")) name(zq7)"' "`logfile'"
+local drc = r(rc)
+// The spec holds color(\"255 0 0\"): the quotes JSON-escaped, not dropped.
+mata: st_local("_q1", strofreal(_zh7_value("zq7", "plotregion", "color(\" + char(34) + "255 0 0\" + char(34) + ")")))
+if `drc' != 0 | `_q1' != 1 {
+    display as error `"HC7-04 FAIL: plotregion(color("255 0 0")) did not reach the spec with its quotes (rc `drc', found `_q1')"'
+    local bad = 1
+}
+capture erase "`htmlfile'"
+_zh7_run `"dash scatter mpg weight, plotregion(color("255 0 0")) graphregion(fcolor("0 0 255")) saving("`htmlfile'")"' "`logfile'"
+if r(rc) != 0 {
+    display as error "HC7-04 FAIL: the page was not saved, rc `r(rc)'"
+    local bad = 1
+}
+else {
+    cert_file_has "`htmlfile'", needle(`""background_fill_color":"#ff0000""')
+    local pr = r(found)
+    cert_file_has "`htmlfile'", needle(`""border_fill_color":"#0000ff""')
+    local gr = r(found)
+    _zh7_logged "`logfile'" "not a recognised"
+    if `pr' != 1 | `gr' != 1 | r(found) != 0 {
+        display as error "HC7-04 FAIL: the page's plot region `pr', graph region `gr', unknown-colour note `r(found)'"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-04"
+}
+else display as text "HC7-04 PASS: a quoted RGB triplet colours the plot and graph regions"
+
+// ----------------------------------------------------------------
+// HC7-05 -- dash-only options and spellings, and twoway's own.
+// ----------------------------------------------------------------
+local bad = 0
+local y2 "(line mpg weight) (line price weight, yaxis(2)),"
+local x2 "(line mpg weight) (line mpg price, xaxis(2)),"
+local k = 0
+// the command up to and including its options' comma, the option as
+// written, the key dash writes
+foreach case in ///
+    "scatter mpg weight,|colv(price)|colorvar" ///
+    "scatter mpg weight,|cv(price)|colorvar" ///
+    "scatter mpg weight,|pbgc(navy)|plotbgcolor" ///
+    "scatter mpg weight,|plotbgcolor(navy)|plotbgcolor" ///
+    "Y2|yti2(Margin)|ytitle2" ///
+    "Y2|ytitle2(Margin)|ytitle2" ///
+    "Y2|yla2(5000 10000)|ylabel2" ///
+    "Y2|ylabel2(5000 10000)|ylabel2" ///
+    "Y2|ysc2(log)|yscale2" ///
+    "Y2|yscale2(log)|yscale2" ///
+    "X2|xti2(Top)|xtitle2" ///
+    "X2|xtitle2(Top)|xtitle2" ///
+    "X2|xla2(5000 10000)|xlabel2" ///
+    "X2|xlabel2(5000 10000)|xlabel2" ///
+    "X2|xsc2(log)|xscale2" ///
+    "X2|xscale2(log)|xscale2" ///
+    "scatter mpg weight, colorvar(price)|colpalette(magma)|colpalette" ///
+    "scatter mpg weight, colorvar(price)|colornlevels(4)|colornlevels" ///
+    "scatter mpg weight, colorvar(price)|colormissing(red)|colormissing" ///
+    "scatter mpg weight,|malpha(50)|malpha" ///
+    "line mpg weight,|lalpha(50)|lalpha" ///
+    "area mpg weight,|falpha(50)|falpha" ///
+    "scatter mpg weight, jitter(5)|jseed(3)|jseed" ///
+    "scatter mpg weight,|marker(D)|marker" ///
+    "scatter mpg weight,|hover(price)|hover" ///
+    "scatter mpg weight,|hov(price)|hover" ///
+    "scatter mpg weight,|jit(5)|jitter" ///
+    "scatter mpg weight, jitter(5)|jse(3)|jseed" {
+    local ++k
+    gettoken plot rest : case, parse("|")
+    gettoken bar  rest : rest, parse("|")
+    gettoken opt  rest : rest, parse("|")
+    gettoken bar  key  : rest, parse("|")
+    if "`plot'" == "Y2" local plot "`y2'"
+    if "`plot'" == "X2" local plot "`x2'"
+    capture twoway `plot' `opt' nodraw
+    local tw = _rc
+    _zh7_run `"dash `plot' `opt' name(zq7)"' "`logfile'"
+    local drc = r(rc)
+    local rnote = r(note)
+    _zh7_has zq7 `key'
+    if `tw' != 198 | `drc' != 0 | `rnote' | r(found) != 1 {
+        display as error "HC7-05 FAIL `opt': twoway r(`tw') (want 198), dash rc `drc', noted `rnote', `key' in spec `r(found)'"
+        local bad = 1
+    }
+}
+// twoway's own, accepted by both.
+foreach case in "bgcolor(navy)|bgcolor" "bgc(navy)|bgcolor" "colorv(price)|colorvar" ///
+        "plotr(color(navy))|plotregion" "graphr(color(navy))|graphregion" "color(red)|color" {
+    gettoken opt rest : case, parse("|")
+    gettoken bar key  : rest, parse("|")
+    capture twoway scatter mpg weight, `opt' nodraw
+    local tw = _rc
+    _zh7_run `"dash scatter mpg weight, `opt' name(zq7)"' "`logfile'"
+    local drc = r(rc)
+    local rnote = r(note)
+    _zh7_has zq7 `key'
+    if `tw' != 0 | `drc' != 0 | `rnote' | r(found) != 1 {
+        display as error "HC7-05 FAIL `opt': twoway r(`tw') (want 0), dash rc `drc', noted `rnote', `key' in spec `r(found)'"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-05"
+}
+else display as text "HC7-05 PASS: `k' dash-only spellings refused by twoway and written in full by dash; twoway's own accepted by both"
+
+// ----------------------------------------------------------------
+// HC7-06 -- a string colorvar().
+// ----------------------------------------------------------------
+local bad = 0
+capture twoway scatter mpg weight, colorvar(sv) nodraw
+local tw = _rc
+capture erase "`htmlfile'"
+_zh7_run `"dash scatter mpg weight, colorvar(sv) saving("`htmlfile'")"' "`logfile'"
+local drc = r(rc)
+if `tw' != 7 | `drc' != 0 {
+    display as error "HC7-06 FAIL: colorvar(sv): twoway r(`tw') (want 7), dash rc `drc'"
+    local bad = 1
+}
+else {
+    // One factor per value -- D and F -- not one per observation.
+    cert_file_has "`htmlfile'", needle(`""factors":["D","F"]"')
+    if r(found) != 1 {
+        display as error "HC7-06 FAIL: the saved page's colour key does not map D and F, one level each"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-06"
+}
+else display as text "HC7-06 PASS: twoway refuses a string colorvar(); dash draws one colour per value"
+
+// ----------------------------------------------------------------
+// HC7-07 -- the marker and transparency options are never in the note.
+// ----------------------------------------------------------------
+local bad = 0
+foreach cmd in ///
+    "scatter mpg weight, jitter(5) jitterseed(1) msangle(45) malpha(50)" ///
+    "scatter mpg weight, jitter(5) jseed(1) msa(30) mal(40)" ///
+    "connected mpg weight, msangle(45) lalpha(50)" ///
+    "line mpg weight, lal(40)" ///
+    "area mpg weight, falpha(50)" "bar mpg weight, fa(50)" ///
+    "rscatter lo hi weight, msangle(45) malpha(20)" ///
+    "pccapsym mpg weight turn length, msangle(45)" {
+    _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
+    if r(rc) != 0 | r(note) != 0 {
+        display as error "HC7-07 FAIL `cmd': rc `r(rc)', noted `r(note)'"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-07"
+}
+else display as text "HC7-07 PASS: jitter, jitterseed, jseed, msangle, malpha, lalpha and falpha are never named"
+
+// ----------------------------------------------------------------
+// HC7-08 -- the axis options reach the spec as written.
+// ----------------------------------------------------------------
+local bad = 0
+_zh7_run `"dash `y2' ylabel2(#5, format(%9.0fc) grid) yscale2(reverse range(0 20000)) name(zq7)"' "`logfile'"
+mata: st_local("_a", strofreal(_zh7_value("zq7", "ylabel2", "#5, format(%9.0fc) grid")))
+mata: st_local("_b", strofreal(_zh7_value("zq7", "yscale2", "reverse range(0 20000)")))
+if r(rc) != 0 | r(note) | `_a' != 1 | `_b' != 1 {
+    display as error "HC7-08 FAIL: ylabel2()/yscale2() rc `r(rc)', ylabel2 `_a', yscale2 `_b'"
+    local bad = 1
+}
+_zh7_run `"dash scatter mpg weight, xlabel(2000 4000) xtick(3000) ytick(20, grid) name(zq7)"' "`logfile'"
+mata: st_local("_a", strofreal(_zh7_value("zq7", "xtick", "3000")))
+mata: st_local("_b", strofreal(_zh7_value("zq7", "xlabel", "2000 4000")))
+mata: st_local("_c", strofreal(_zh7_value("zq7", "ytick", "20, grid")))
+if r(rc) != 0 | r(note) | `_a' != 1 | `_b' != 1 | `_c' != 1 {
+    display as error "HC7-08 FAIL: xtick() beside xlabel(): rc `r(rc)', xtick `_a', xlabel `_b', ytick `_c'"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-08"
+}
+else display as text "HC7-08 PASS: ylabel2(), yscale2(), xtick() and ytick() reach the spec as written"
+
+// ----------------------------------------------------------------
+// HC7-09 -- adversarial: the legend() check.
+// ----------------------------------------------------------------
+local bad = 0
+// Injection: SMCL in a label beside a refused keyword is never rendered;
+// the refusal prints only fixed words.
+_zh7_run `"dash (scatter mpg weight) (lfit mpg weight), legend(label(1 "{bf:ZQ7INJ}") top) name(zq7)"' "`logfile'"
+local drc = r(rc)
+_zh7_logged "`logfile'" "ZQ7INJ"
+local echoed = r(found)
+if `drc' != 198 | `echoed' != 0 | "${dash_graph_registry}" != "" {
+    display as error "HC7-09 FAIL injection: rc `drc', user text echoed `echoed'"
+    local bad = 1
+}
+// Bypass: a keyword inside a quoted label, or inside another sub-option's
+// parentheses, is never taken for the keyword.
+_zh7_run `"dash (scatter mpg weight) (lfit mpg weight), legend(label(1 "top") label(2 "right left")) name(zq7)"' "`logfile'"
+if r(rc) != 0 | "${dash_graph_registry}" != "zq7" {
+    display as error "HC7-09 FAIL bypass: a label reading top was refused, rc `r(rc)'"
+    local bad = 1
+}
+// Exhaustion: three thousand words are judged in bounded time.
+local many ""
+forvalues i = 1/3000 {
+    local many "`many' on"
+}
+timer clear 97
+timer on 97
+_zh7_run `"dash (scatter mpg weight) (lfit mpg weight), legend(`many' top) name(zq7)"' "`logfile'"
+local drc = r(rc)
+timer off 97
+quietly timer list 97
+if `drc' != 198 | r(t97) > 30 {
+    display as error "HC7-09 FAIL exhaustion: rc `drc' in `r(t97)' seconds"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-09"
+}
+else display as text "HC7-09 PASS: legend() check -- no SMCL echoed, no keyword read out of a label, 3,000 words judged quickly"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+capture dash clear
+capture erase "`logfile'"
+capture erase "`htmlfile'"
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_help_claims_7: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_help_claims_7: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

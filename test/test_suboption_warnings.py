@@ -150,11 +150,13 @@ class TestAFilterIsRefusedAloud:
         srv = [w.title for w in tp._widgets_of(doc)]
         return std, srv
 
-    # Not "a; b": the semicolon separates filter() groups, on the Stata
-    # side as well as here, and the help says so.
+    # "a; b" and "a || b" too: a ";" or "||" separates filter() groups only
+    # outside quotes and parentheses, on the Stata side as well as here
+    # (_dash_filter_split), and the help says a label may hold either.
     @pytest.mark.parametrize("label", [
         "R&D __ spend", "open the door", "import duties", "eval sheet",
-        "exec summary", "cost ($)", "back\\slash", "Size (in)",
+        "exec summary", "cost ($)", "back\\slash", "Size (in)", "a; b",
+        "a || b",
     ])
     def test_a_benign_label_produces_the_widget(self, label):
         r, doc, std_w, srv_w = _both(

@@ -629,6 +629,36 @@ _so_case SO-91 `"dash histogram mpg, start(12) name(so91)"' 0 "" `""start":"12""
 _so_case SO-92 `"dash histogram mpg if mpg >= 20, start(15) name(so92)"' 0 "" `""start":"15""'
 
 // ================================================================
+// A refused weighted command leaves no weight behind (found by
+// test_help_examples.cscript, 23sep2026).
+//
+// s() is not cleared when an sclass program starts.  The varpart parsers
+// sreturn a segment's weight in s(_weight) and s(_wexp), and
+// _dash_process_segment cleared s() only after its weight checks, so a
+// command refused between the two -- lowess or histogram refusing the
+// weight, a weight expression, a non-integer or negative fweight, tsline
+// with no time variable -- left its weight in s(), and the NEXT dash
+// command, written with no weight at all, read it as its own.  `dash
+// clear' does not reach s().  Measured at 4ede074:
+//     . dash lowess mpg weight [aw=price]     r(101) weights not allowed
+//     . dash lfit mpg weight, name(g1)        rc 0, and the registered
+//       spec carried "weight":"aweight","wexp":"price"
+// -- an lfit silently weighted by price.  After a refused [aw=price+1]
+// every weighted type was refused with that expression's message, and a
+// scatter's note named [aweight].  Each pair below is a refusal and then
+// a command with no weight; _so_probe's `dash clear' between them is the
+// user's own, and did not help.
+// ================================================================
+_so_case SO-93a `"dash lowess mpg weight [aw=price], name(so93a)"' 101
+_so_case SO-93 `"dash lfit mpg weight, name(so93)"' 0 "" `"!"weight":"' `"!"wexp":"'
+_so_case SO-94a `"dash lfit mpg weight [aw=price+1], name(so94a)"' 198
+_so_case SO-94 `"dash lfit mpg weight, name(so94)"' 0 "" `"!"wexp":"'
+_so_case SO-95a `"dash histogram mpg [aw=price], name(so95a)"' 101
+_so_case SO-95 `"dash scatter mpg weight, name(so95)"' 0 ""
+_so_case SO-96a `"dash lfit mpg weight [fw=gear_ratio], name(so96a)"' 401
+_so_case SO-96 `"dash (qfit mpg weight) (scatter mpg weight), name(so96)"' 0 "" `"!"weight":"' `"!"wexp":"'
+
+// ================================================================
 // The data export: the weight column is a plot variable on both routes.
 // ================================================================
 capture dash clear

@@ -82,7 +82,7 @@ from the wrong input: the computed layers ignore the rows they were given
 (A1–A5), and the Mata parser discards or edits the command text before
 anything downstream sees it (A6–A9).
 
-### A1. Per-plot `if`/`in` is dropped before every statistical computation — S1, MEASURED
+### A1. Per-plot `if`/`in` is dropped before every statistical computation — S1, MEASURED, CLOSED by 8efee0b (WP-02)
 
 `dash.ado` does its part: the qualifier is parsed, stripped and written into
 each plot object as `if_expr` (`dash.ado:1098-1109`, emitted at `:1240`).
@@ -117,7 +117,21 @@ warning was emitted.
 So `dash (scatter mpg weight) (lfit mpg weight if foreign==1)` draws the
 all-cars regression line labelled as the foreign-cars one.
 
-### A2. The same defect makes linked `by()` facets identical — S1, MEASURED
+**Closed by 8efee0b (WP-02)**, with 9179359 and 7c6a2fe for the mappers
+that attached a mask sized to the original source to one they had rebuilt,
+or took a derived width from every row.  The fourteen mappers (the thirteen
+above and `map_area`) mask their input arrays before computing
+(`GlyphMapper._view_mask`, `_masked`).  Measured 23sep2026 at `4ede074`,
+with the console binary on `sysuse auto`: `dash (scatter mpg weight) (lfit
+mpg weight if foreign==1)` draws a 100-point line over weights 1760 to 3420
+whose slope and intercept are -0.0104259575877988 and 48.9182972317432,
+exactly what `regress mpg weight if foreign==1` reports.  Tests:
+`test/test_computed_layer_rows.py` (every one of the fourteen, qualified
+equals the same mapper on the pre-filtered rows) and
+`test/test_view_alignment.py`.  ROADMAP.md does not yet head WP-02 DONE;
+its planned `test_qualified_layers.cscript` was never written.
+
+### A2. The same defect makes linked `by()` facets identical — S1, MEASURED, CLOSED by 8efee0b (WP-02)
 
 `_linked_graph_views` builds a per-panel `BooleanFilter`/`CDSView`
 (`dash_render.py:11466-11480`) which the computed mappers then discard.
@@ -125,6 +139,11 @@ all-cars regression line labelled as the foreign-cars one.
 panels (`tops=[0.075, 0.0563, 0.0562]`). Unlinked `by()` is correct, because
 `:11455` builds a genuinely separate source per facet — so the same command
 gives different answers depending on whether `link()` is present.
+
+**Closed by 8efee0b (WP-02)**, the same change as A1: the linked panels'
+views reach the computation, and linked and unlinked `by()` give the same
+numbers (`test/test_computed_layer_rows.py::TestLinkedFacetsComputeSeparately`,
+passing at `4ede074`).
 
 ### A3. Weights are parsed and silently discarded — S2, CLOSED by WP-13 (reported) and WP-18 (honoured)
 
@@ -285,7 +304,7 @@ stdp names the default), the parity corpus (`lfitci stdf`, `qfitci stdr`,
 `test_statistical_options.cscript`. The verification tally is ROADMAP.md
 WP-18's.
 
-### A6. A paren inside a quoted option value deletes every later `||` segment — S1, MEASURED
+### A6. A paren inside a quoted option value deletes every later `||` segment — S1, MEASURED, CLOSED by 9c7dbf7 (WP-01)
 
 `_dash_split_segs` gates its double-quote and compound-quote checks on
 `depth == 0` (`dash_parse.mata:468, 473`). Paren mode (`:410, 415`) has **no
@@ -314,7 +333,16 @@ user writes without thinking about it.
 **Fix:** drop `& depth == 0` at `dash_parse.mata:468, 473, 303, 308` so flat
 mode matches paren mode.
 
-### A7. `filter(` inside a quoted title becomes a real filter and is cut from the text — S1, MEASURED
+**Closed by 9c7dbf7 (WP-01).** Every scanner in `dash_parse.mata` now steps
+through quotes with one shared `_dash_quote_step`, so a quoted value is
+opaque at any paren depth.  Measured 23sep2026 at `4ede074` with the console
+binary: `dash scatter mpg weight, title("a ( b") name(g) || line mpg weight`
+registers one graph whose JSON holds both the scatter and the line, and
+prints no "ignoring unsupported option(s)" note.  Certified by
+`test/test_parser_integrity.cscript` P1B-01 to P1B-12 (re-run at `4ede074`:
+passed).  ROADMAP.md does not yet head WP-01 DONE.
+
+### A7. `filter(` inside a quoted title becomes a real filter and is cut from the text — S1, MEASURED, CLOSED by 9c7dbf7 (WP-01)
 
 `_dash_extract_filters` (`dash_parse.mata:752-828`) scans the raw `0` for
 `filt|filte|filter` with only a preceding-character word-boundary test
@@ -337,7 +365,14 @@ way.
 This fires on `dash build` and `dash serve` (`dash.ado:2368, 2536`);
 `_dash_plot` does not call it. No test covers it.
 
-### A8. The splitter accepts malformed input that `twoway` rejects — S2, MEASURED
+**Closed by 9c7dbf7 (WP-01).** `_dash_extract_filters` skips a match inside
+a quote and matches only at paren depth 0.  Measured 23sep2026 at `4ede074`:
+`dash build, title("Q1 filter(foreign) report")` writes a page whose title
+is `Q1 filter(foreign) report` and which holds no Select or RangeSlider
+widget.  Certified by `test/test_parser_integrity.cscript` P1B-19 to P1B-22
+(passed at `4ede074`).
+
+### A8. The splitter accepts malformed input that `twoway` rejects — S2, MEASURED, CLOSED by 9c7dbf7 (WP-01)
 
 Paren mode `break`s at the first top-level comma (`dash_parse.mata:439`), so
 anything after it is treated as graph options regardless of shape:
@@ -360,7 +395,20 @@ Empty groups `()` are dropped silently at `:428`.
 `test/test_tokenizer.cscript` passes 20/20 with all of the above live. No test
 constructs a quote containing a paren.
 
-### A9. The UTF-8 gate passes the encodings it exists to stop — S2, MEASURED
+**Closed by 9c7dbf7 (WP-01).** Both modes check quote and paren state at
+the end of the scan, and paren mode refuses an unmatched `)`, stray text
+between groups and a group after the graph-option comma.  Measured
+23sep2026 at `4ede074`, each against `twoway` in the same run:
+`(scatter mpg weight) junk (line price weight)`, `(scatter mpg weight))
+(line mpg weight)` and `(scatter mpg weight), (line mpg weight)` are r(198)
+in both; `scatter mpg weight, legend(off || line price weight` is r(198)
+"unbalanced parentheses in the plot specification", and an unterminated
+quote r(198).  An empty group `()` is dropped by both (`twoway () (scatter
+mpg weight)` rc 0; dash rc 0 with one plot), so that line is not a gap.
+Certified by `test/test_parser_integrity.cscript` P1B-13 to P1B-18 and
+`test/test_tokenizer.cscript` (both passed at `4ede074`).
+
+### A9. The UTF-8 gate passes the encodings it exists to stop — S2, MEASURED, CLOSED by WP-08
 
 **RESOLVED (WP-08).** Every sequence in the table below was measured to be
 accepted by the old validator, and every one is now rejected. The rewrite
@@ -406,11 +454,16 @@ flag on every `"` with no compound-quote handling, so an odd quote count
 drops trailing options — measured, `title("unbalanced quote) xlabel(1)`
 reports only `title`.
 
+That related defect was fixed by 9c7dbf7 (WP-01): an unbalanced quote no
+longer drops trailing option names (`test/test_parser_integrity.cscript`
+P1B-23 to P1B-25).  The gate itself: `test/test_utf8_validation.cscript`
+UTF-01 to UTF-12, re-run 23sep2026 at `4ede074`: passed.
+
 ---
 
 ## B. Packaging — `net install` makes every scheme unreachable
 
-### B1. The scheme search path does not survive installation — S1, MEASURED
+### B1. The scheme search path does not survive installation — S1, MEASURED, CLOSED by WP-05
 
 `dash_render.py:1524-1532` searches exactly two directories, both derived
 from `__file__`:
@@ -471,7 +524,7 @@ linewidth, symbolsize and intensity values, held there by
 `test_scheme_fallback_provenance.py`. Tests: `test/test_installed_layout.py`
 (INST-01..16).
 
-### B2. The hardcoded fallback renderer path points at the wrong directory — S3, READ
+### B2. The hardcoded fallback renderer path points at the wrong directory — S3, READ, CLOSED by WP-05
 
 `dash.ado:1747`, `:2480`, `:2621` all fall back to
 `` `c(sysdir_plus)'d/dash_render.py ``. The installer puts it in `py/`. Masked
@@ -489,7 +542,7 @@ three copies are replaced by one `_dash_find_render` holding only the two
 candidates that can succeed, exiting 601 with a dash-authored message
 otherwise. Tests: `test/test_render_locate.cscript` (LOC-01..09).
 
-### B3. Schemes install under names Stata cannot see, and may collide — S3, READ
+### B3. Schemes install under names Stata cannot see, and may collide — S3, READ, CLOSED by WP-05 (a documented limitation)
 
 They install as bare `s2color.scheme`, not `scheme-s2color.scheme`, so they
 are invisible to Stata's own `set scheme`. `plus/s/sj.scheme` and friends also
@@ -518,7 +571,7 @@ duplicated name rather than anything specific to schemes. Renaming to
 way to name a file, so the names are kept and the limitation is now stated in
 `dash.sthlp` rather than left implicit.
 
-### B4. `dash.pkg` cannot be updated by `adoupdate`, and states the wrong version — S3, READ
+### B4. `dash.pkg` cannot be updated by `adoupdate`, and states the wrong version — S3, READ, CLOSED by WP-05 (WP-27 verifies it at release)
 
 The manifest carries its version only as prose (`dash.pkg:25`,
 `d Version: 1.0.0 25mar2026`). There is no `v` line and no
@@ -546,7 +599,7 @@ correct and minimal.
 
 ## C. `dash serve` — every documented option aborts the command
 
-### C1. The option string is forwarded with its leading comma — S1, MEASURED
+### C1. The option string is forwarded with its leading comma — S1, CLOSED by WP-23 (fixed by 81ebbc5, broken again by 7ddbc08)
 
 `_dash_serve` forwards `` `0' `` verbatim at `dash.ado:2601`:
 
@@ -580,7 +633,31 @@ documented example at `dash.sthlp`.
 range, the timeout, and inherits the build options. The defect is one line
 above it.
 
-### C2. Nothing could catch it — S2, READ
+**Fixed by 81ebbc5 (WP-03), then broken again by 7ddbc08, so still open.**
+81ebbc5 strips the comma, and `test/test_serve_launch.cscript` SRV-01 to
+SRV-16 drive `dash serve` itself through option parsing (passed at
+`4ede074`).  But measured 23sep2026 at `4ede074` with the console binary
+(`sysuse auto`, one registered scatter, a `dash build` with a filter first):
+`dash serve, port(5487) timeout(1) nobrowser` prints "starting Bokeh Server
+on port 5487" and then a Python traceback ending `ValueError: dash_render:
+--output must end in .py for mode 'server'`, r(7102), and nothing listens on
+the port.  `_dash_serve` hands the renderer an extension-less `tempfile`
+path on purpose, and 7ddbc08 (WP-08's TR-08.8) made `main()` refuse any
+server-mode output not ending in `.py`, so every launch aborts, the bare
+form included.  The documented example fails again, for a new reason;
+recorded in BUGS.md ("`dash serve` aborts with r(7102) on every launch").
+
+**Closed by WP-23.**  On the `--launch` route the renderer now accepts a
+`.py` name or a name no file holds yet, so `_dash_serve`'s extension-less
+tempfile is taken while no existing file that is not a `.py` can be
+overwritten; `dash build, server` still needs `.py`, and the other path
+checks hold on every route.  Measured on the WP-23 tree: `dash serve,
+timeout(1)` answers `/health` with 200 while it blocks, returns rc 0 after
+61 s and leaves no copy of the app; Ctrl+C stops it in under a second
+(test/test_help_claims_4.cscript HC4-19 to HC4-21, test/test_help_claims_4.py
+`TestTheOutputPathRule` and `TestTheRealHandoffServes`).
+
+### C2. Nothing could catch it — S2, CLOSED by WP-23
 
 `test_serve_options.cscript` deliberately calls `_dash_serve_spec` *directly*
 (`:55, 99, 113, 137-146`), bypassing the only line where the defect lives.
@@ -590,13 +667,36 @@ of them runs `dash serve`. The other five Stata-level `dash serve`
 invocations in the suite are all `capture` + `assert _rc == 198` error-path
 tests. **The happy path has zero coverage.**
 
-### C3. An unexplained diagnostic on the bare form — S3, MEASURED
+**Still open, measured 23sep2026 at `4ede074`.** `test_serve_launch.cscript`
+(81ebbc5) now runs `dash serve` as a command, which is what would have
+caught C1, but it stops at the empty-registry check so as not to hold the
+suite for the sixty seconds a launch costs; `test_serve_browser.cscript`
+launches a stub renderer; `test_server_serves.py` runs the generated app,
+not the command.  No test runs the real launch, and the regression now
+recorded under C1 went unnoticed for exactly that reason.
+
+**Closed by WP-23.**  test/test_help_claims_4.cscript HC4-19 to HC4-21 run
+the real `dash serve, timeout(1)` in the certification suite -- a server
+that must answer `/health` while Stata blocks, the command's return code
+after the timeout, and no app file left behind -- at the cost of the
+minute a launch takes; test/test_help_claims_4.py `TestTheRealHandoffServes`
+runs the renderer exactly as `_dash_serve` does and stops it with SIGINT.
+
+### C3. An unexplained diagnostic on the bare form — S3, MEASURED, CLOSED by 81ebbc5 (WP-03)
 
 Bare `dash serve` prints `(file /var/…/S_26952.000002 not found)` before
 starting the server, and starts it anyway. The same message appears on a
 plain `dash build`. It is suppressed in normal use and surfaces only under
 `capture noisily`; the cause was not isolated. Worth tracing — it indicates a
 `capture confirm file` failing somewhere in the spec path.
+
+**Closed by 81ebbc5 (WP-03).** Traced with `set trace`: the note came from
+the two spec writers' `file open ..., write replace` on a freshly declared
+tempfile, never from a `capture confirm file`; both write quietly now.
+Measured 23sep2026 at `4ede074`: `capture noisily dash build` prints only
+"dash: dashboard saved to ...".  No regression test reads a build log for
+the note (BUGS.md, "Every successful `dash build' prints an unexplained
+'file not found'", records that).
 
 ---
 
@@ -605,7 +705,7 @@ plain `dash build`. It is suppressed in normal use and surfaces only under
 `dash.sthlp:516-533` carries a Server Mode comparison table. Every one of its
 13 rows is accurate. The gap is everything the table does not list.
 
-### D1. The unification never happened — S1, READ
+### D1. The unification never happened — S1, READ, CLOSED by WP-09
 
 `ServerAppBuilder` emits `_DASH_MAPPER = GlyphMapper(...)` at
 `dash_render.py:12432` and calls it **once**, for `scatter` (`:14090`). The
@@ -617,7 +717,17 @@ tables, independently maintained.
 The comment at `:12318-12327` claims the server branches call the shared
 mapper. They do not.
 
-### D2. Confirmed divergences — S1, CLOSED by WP-09 and WP-10
+**Closed by WP-09** (cf7094c, 878529c, 5422974), with WP-11's 151c6cb
+removing the two facet chains.  Every plot type the code dispatches draws
+through `GlyphMapper` in both modes, from one family dispatch
+(`_dash_draw_layer`) copied into the app.  Pinned by
+`test/test_server.py::TestTheServerDispatchesThroughTheSharedTable`,
+`test/test_server_facets.py::TestTheGeneratedAppHasOneDispatch`,
+`test/test_server_layer_defects.py::TestTheUnificationKeepsD2Closed` and the
+parity corpus of `test/test_mode_parity.py`, which carries a bare entry for
+every dispatched type (all passing at `4ede074`).
+
+### D2. Confirmed divergences — S1, CLOSED by WP-10 (with WP-09's dispatch, which closed the pci, fpfitci and pc* rows)
 
 | Plot / feature | Standalone | Server |
 |---|---|---|
@@ -711,7 +821,7 @@ failures are silent.
 `_dash_report_empty_layer` are module-level and run by both modes, so the
 report cannot be worded differently in one of them.
 
-### D7. Smaller divergences — S3, READ
+### D7. Smaller divergences — S3, READ, CLOSED by WP-09 (with WP-10's TR-10.8 and WP-20's served policy)
 
 - Server `ptype` is not lower-cased (`:14031`) while the facet chains are
   (`:15137, 15237`); the main chain lacks the `'hist'` alias the facet chains
@@ -730,6 +840,20 @@ report cannot be worded differently in one of them.
   `5000` in the server copy (`:14872`).
 - No CSP in server mode: `_CSP_META` (`:660-668`) is injected at `:10897` and
   `:12139`, both standalone.
+
+**Closed by WP-09**, which put every type through one dispatch that
+lower-cases the type (TR-09.3), with the rest done by WP-10's TR-10.8 and
+the last row by WP-20.  Each row, at `4ede074`: one dispatch table, copied
+into the app (`test/test_server.py::TestTheServerDispatchesThroughTheSharedTable`);
+`layout()` placement reads both index bases in both modes
+(`test/test_server_layer_defects.py::TestLayoutPlacementMeansOneThing`);
+an unassigned item sits below the tabs under every layout
+(`::TestTabsAreWhereTheHelpSaysTheyAre`); one KPI formatter
+(`::TestTheKpiCardIsFormattedTheSameWay`); one legend text size
+(`::TestTheLegendSaysTheSameThing`); one `_MAX_EXPR_CHARS`
+(`test/test_resource_limits.py::TestTheBoundsThatAlreadyWorkedAreKept`);
+and the served app sends and embeds a content security policy
+(`test/test_csp.py::TestTheServedTemplate`, `::TestTheServedApp`).
 
 ### D8. The parity guard covers less than half the surface — S2, CLOSED by WP-12
 
@@ -1031,7 +1155,7 @@ WP-15 baseline (cc3c4ac): `level()` was at `dash.ado:830-842`, the
 `: display` at `:2410`, `_stat_option_float` at `dash_render.py:7050` and
 `_resolve_kpi_color` at `:7486`; the table moved them.
 
-### E6. Escaping and encoding holes — S2, READ
+### E6. Escaping and encoding holes — S2, READ, CLOSED by WP-08
 
 - **`_dash_json_str` (`dash.ado:224-232`) handles `\`, `"`, TAB, LF, CR and
   nothing else.** `\b` (8), `\f` (12) and every other C0 control byte are
@@ -1052,7 +1176,17 @@ WP-15 baseline (cc3c4ac): `level()` was at `dash.ado:830-842`, the
   build `title()`/`subtitle()`/`tabs()` and `filter(… label("…"))` reach the
   JSON with no UTF-8 gate — contrary to CLAUDE.md rule 16.
 
-### E7. `_dash_validate_path` — what slips through — S3, MEASURED
+**Closed by WP-08** (7ddbc08), row by row: `_dash_json_str` writes `\b` and
+`\f` in their short forms and every other C0 byte as `\u00XX`
+(`test/test_json_escaping.cscript` JSE-01 to JSE-08); `theme()` was escaped
+by WP-05 and is now refused unless it names one of the six themes, WP-17
+(`test/test_theme_escaping.cscript` THM-01 to THM-09); `saving()` is read
+back through `_dash_json_get_str`, so a backslash reaches the path the user
+gave (JSE-09, JSE-10); and `_dash_check_utf8` runs at every command entry
+point (`test/test_utf8_validation.cscript` UTF-11).  All three scripts
+re-run 23sep2026 at `4ede074`: passed.
+
+### E7. `_dash_validate_path` — what slips through — S3, MEASURED, CLOSED by WP-08
 
 `dash.ado:157` rejects `" \` $ ; & | < >`, TAB/LF/CR, a literal `..` anywhere,
 and enforces the extension. Measured to pass with `rc=0`:
@@ -1068,6 +1202,18 @@ Conversely a legitimate `my..report.html` is refused.
 `main()` in `dash_render.py:16121-16157` does not validate `output_path` at
 all — the protection is real via the Stata entry point and absent if the
 renderer is invoked directly.
+
+**Closed by WP-08** (7ddbc08): `..` is a path-segment rule, so
+`my..report.html` is accepted and a `..` segment still refused; a leading
+`-` on the file name is refused with the `./name` remedy; a leading `~/` is
+expanded from `$HOME`; and `main()` validates `--output` itself
+(`_validate_output_path`).  Certified by `test/test_path_validation.cscript`
+PV-13 to PV-19 (re-run at `4ede074`: passed) and the output-path cases of
+`test/test_adversarial_matrix.py`.  Directory confinement was left out, as
+TR-08.7 allowed ("consider"): an absolute path the user names is still
+written, as `twoway`'s own `saving()` writes it.  One consequence belongs
+elsewhere: `_validate_output_path` requires `.py` in server mode, which the
+extension-less path `dash serve` passes never has -- see C1.
 
 ---
 
@@ -1129,7 +1275,7 @@ triple), `addplot()`, `margin()`, `region()`, `bargap()`, `xreverse`
 declares `SORT` as a flag, so the twoway `sort(x)` form is *unknown* rather
 than merely ignored.
 
-### F4. Documented capabilities that do not work as described — S2, MEASURED
+### F4. Documented capabilities that do not work as described — S2, CLOSED by WP-23; bare-name row CLOSED by WP-17
 
 | Claim | `dash.sthlp` | Reality |
 |---|---|---|
@@ -1143,7 +1289,24 @@ than merely ignored.
 | `legend(top\|bottom\|left\|right)` | 853 | Honoured but with wrong geometry — mapped to `leg.location="top_center"` etc. (`:10139-10157`), i.e. *inside* the plot. Stata places these outside. `_move_legend` (`:9193`) exists and is used for `position(#)` but not the bare keywords. |
 | `ylabel2()`/`xlabel2()` | 905-912 | Plain numlists only. `#5`, `10(5)40`, `minmax`, `none`, `format()`, `labsize()`, `grid` all yield **zero ticks, silently** — it uses the bare `_parse_axis_label_opt` (`:9393`), which keeps only `float()`-able tokens, not `_parse_axis_spec` (`:9304`). |
 
-### F5. Every documented example parses clean — no gap
+**Closed by WP-23** (23sep2026), each row measured again at `4ede074`:
+fractional percentiles are read by dash.ado as any p strictly between 0
+and 100 and give Stata's `_pctile` value in both modes (and both renderers'
+percentile rule, which disagreed with Stata at large n, is Stata's); `nodraw`
+on a registered graph keeps `dash build`'s window shut, as does
+`$dash_nobrowser` (already true, now pinned); filter groups are joined with
+`||`, a label may hold any character, and the reader is quote- and
+paren-aware in both languages; no layer imports scipy or statsmodels
+(tested with both unimportable); `xtick()`/`ytick()` -- recorded above as
+fixed by WP-14/15, which they were not -- draw ticks without labels beside
+the labels, and `grid` as twoway draws it; `colorvar()` is drawn on
+scatter, connected, rconnected and dot and named in the note elsewhere;
+`legend(top|bottom|left|right)` is refused as twoway refuses it; and
+`ylabel2()`/`xlabel2()` take `ylabel()`'s grammar.  The whole help was
+audited with them: test/test_help_claims_1.py to _8.py and .cscript, and
+test/test_help_examples.cscript.
+
+### F5. Every documented example runs as the help says — S3, CLOSED by WP-23
 
 All numbered examples in `dash.sthlp:613-1000` were executed through the real
 `syntax` declarations: **all `rc=0`, empty `_pending`, empty `_unknown`** —
@@ -1154,6 +1317,19 @@ form. The negative examples behave as documented. `dash kpi` values match
 `summarize, detail` exactly (p25 = 4195, skewness = 1.6534335,
 mean if foreign==1 = 24.772727), confirming the Hyndman-Fan type 2
 percentile claim at `:467-471`.
+
+That was a one-time check of parsing, and it was not enough: run as a
+user runs them, one after another, the examples at `4ede074` held an
+`lpoly` example that drew one point of its curve (a bandwidth written as a
+fraction) and exposed a weight left behind in `s()` by a refused command
+that the next command used; three `dash build` examples needed graphs no
+earlier line registered, one needed variables no shipped dataset has, and
+the help rendered as raw SMCL from the Faceting example to its end.
+**Closed by WP-23**: test/test_help_examples.cscript reads every example
+out of the help at run time and runs each group from a fresh session,
+holding it to the return code and output the help shows, and renders both
+help files, holding them to no SMCL left as text; test/test_help_examples.py
+pins the reader.
 
 ---
 
@@ -1742,7 +1918,7 @@ function.  Tests: `test_csp.py`, `test_label_sinks.py`,
 
 ## J. `dash_setup` and environment verification
 
-### J1. It reports failure and then declares success — S1, READ
+### J1. It reports failure and then declares success — S1, READ, CLOSED by WP-06
 
 `dash_setup.ado:53-57` prints "Python … version X is below the minimum" — and
 there is **no `exit`**. Execution continues, installs packages against the
@@ -1768,7 +1944,7 @@ seven cases that call it through a `version 16.0` program — the calling
 context none of its fourteen existing cases covered, which is why it passed
 throughout. See the BUGS.md entries.
 
-### J2. Version minimums are declared but never enforced by pip — S2, READ
+### J2. Version minimums are declared but never enforced by pip — S2, READ, CLOSED by WP-06
 
 Minimums are declared (`:106-110`) and compared with
 `packaging.version.Version` (`:155-159`), but pip gets a **bare name, no
@@ -1790,7 +1966,7 @@ user's back, because something else in their environment may depend on the
 version they have. AC-06.2 accepts either. The `packaging`-unavailable
 masking is fixed by `_dash_setup_gate` (see J6 and BUGS.md).
 
-### J3. Python availability is probed by running Python — S2, MEASURED
+### J3. Python availability is probed by running Python — S2, MEASURED, CLOSED by WP-07
 
 `c(python_exec)` appears **nowhere** in `dash.ado` or `dash_setup.ado`.
 `dash_setup.ado:32` probes with `capture python query`, and package presence
@@ -1810,14 +1986,20 @@ r(601)). `dash_setup`'s `capture python query` is replaced by the same probe;
 now applies its rule to `dash.ado` and `dash_setup.ado` — enforcing it for
 `.cscript` files only is how `dash_setup` kept that probe.
 
-### J4. `dash` itself never checks that Python is available — S2, READ
+### J4. `dash` itself never checks that Python is available — S2, READ, CLOSED by WP-07
 
 `_dash_do_render` goes straight to `python:`. A user without a linked Python
 gets a raw Stata Python error rather than the "run dash_setup" message the
 `jsonio` check (`dash.ado:1683-1687`) gives for the other dependency.
 CLAUDE.md rule 15 asks for environment verification at startup.
 
-### J5. The Mata library's compile status is never checked — S2, READ
+**Closed by WP-07** (a4e6522): `_dash_require_python` probes
+`c(python_exec)` before every path that reaches `python:` and exits 198 with
+a message naming `dash_setup`, modelled on the `jsonio` one.  Certified by
+`test/test_env_guards.cscript` ENV-05 to ENV-07 (re-run 23sep2026 at
+`4ede074`: passed).
+
+### J5. The Mata library's compile status is never checked — S2, READ, CLOSED by WP-07
 
 **RESOLVED (WP-07), and this section's account is wrong twice over.** It names
 `_dash_split_segs()`; the function actually reached first is
@@ -1842,7 +2024,7 @@ code**. A failed Mata compile therefore surfaces much later as
 `_dash_split_segs() not found`, r(3499) — a message that names an internal
 function and gives the user nothing to act on.
 
-### J6. Smaller gaps — S3, READ
+### J6. Smaller gaps — S3, READ; all but rollback CLOSED by WP-06
 
 **RESOLVED (WP-06)** for: the missing `syntax` line (added; measured, a bare
 `syntax` gives r(101), not r(198)); the uncaptured `Version(...)` (now
@@ -1853,6 +2035,14 @@ the schemes are reachable (added as `_dash_setup_check_files`, which asks the
 RENDERER rather than `findfile`, because `findfile s2color.scheme` succeeds
 on the very install where the renderer could read none); and the two sections
 both numbered 3 (now 1-6). Rollback is NOT addressed and remains open.
+
+Re-measured 23sep2026 at `4ede074`: `dash_setup.ado` and its help still
+contain no rollback or uninstall path, so the heading marks this gap closed
+except for rollback.  ROADMAP.md WP-06 lists J6 under "Gaps closed" without
+that exception, although its own DONE note says rollback is not addressed;
+the two documents disagree there until ROADMAP.md says which it is.  The
+closed rows are certified by `test/test_setup_honesty.cscript` HON-01 to
+HON-18 (re-run at `4ede074`: passed).
 
 - **`dash_setup` has no `syntax` line at all** (`:15-17`), so
   `dash_setup, garbage(1)` runs normally, silently ignoring the input.
@@ -1879,7 +2069,7 @@ both numbered 3 (now 1-6). Rollback is NOT addressed and remains open.
 
 ## K. State management
 
-### K1. A KPI silently erases a graph of the same name — S1, MEASURED
+### K1. A KPI silently erases a graph of the same name — S1, MEASURED, CLOSED by ab19c74 (WP-04)
 
 `_dash_register_graph` (`dash.ado:1556-1575`) refuses a duplicate name unless
 `name(g1, replace)` is given. **`_dash_kpi` has no such check** — it writes
@@ -1903,7 +2093,18 @@ dash: dashboard saved to collide_out.html
 0 Scatter models** — the scatter plot is gone. The graph's JSON is still in
 `${dash_json_g1}`; it is simply never read.
 
-### K2. The registry lives in user-writable globals, read back unvalidated — S3, READ
+**Closed by ab19c74 (WP-04).** `_dash_kpi` refuses a registered name unless
+`name(x, replace)` is given, both registrars retire the item they replace
+(`_dash_drop_item`), and a build names an entry that holds both.  Measured
+23sep2026 at `4ede074` with the console binary: after `dash scatter mpg
+weight, name(g1)`, `dash kpi mean(mpg), name(g1) title("Avg")` is r(198)
+"name 'g1' already exists. Use name(g1, replace) to overwrite."; with
+`name(g1, replace)` the graph's `$dash_json_g1` is empty, the registry holds
+`g1` once, and the build writes the KPI card and no Scatter.  Certified by
+`test/test_registry_collision.cscript` REG-01 to REG-15 (re-run at
+`4ede074`: passed).  ROADMAP.md does not yet head WP-04 DONE.
+
+### K2. The registry lives in user-writable globals, read back unvalidated — S3, READ, CLOSED by ab19c74 (WP-04, a documented limitation)
 
 `dash_json_*`, `dash_opts_*`, `dash_graph_registry` and `dash_kpi_*` are
 ordinary Stata globals, read back at `dash.ado:2038, 2159, 2167` and flowed
@@ -1913,7 +2114,15 @@ design consequence of using globals for session state rather than an
 exploitable hole, but it is the one place where spec content bypasses every
 input check the command applies at entry.
 
-### K3. Graph-level option precedence across segments — RESOLVED, MEASURED
+**Closed by ab19c74 (WP-04), as a documented limitation (TR-04.5).**
+`dash.sthlp` says so under "The registry lives in Stata globals": setting
+those macros by hand is not supported, and dash validates what it
+registers, not what is assigned afterwards.  A hand-made entry holding both
+a graph and a KPI is named at build time rather than skipped
+(`test/test_registry_collision.cscript` REG-15).  Moving session state out
+of globals stays out of scope, as TR-04.5 records.
+
+### K3. Graph-level option precedence across segments — S3, MEASURED, CLOSED by ce65324 (WP-04's TR-04.4)
 
 Was: "`dash.ado:1125-1133` propagates only non-empty values, so a later segment
 can override an earlier one but never clear it, silently." Half right, and it
@@ -1933,6 +2142,9 @@ Measured, and against `twoway`'s own answer read out of a saved `.gph`:
 
 Fixed: after-comma values are held in `_gafter_<key>` and restored once the
 segment loop has run. `test/test_graph_option_scope.cscript` (GOS-01..08).
+
+**Closed by ce65324** (ROADMAP.md TR-04.4, marked done there); the
+certification script re-run 23sep2026 at `4ede074`: passed.
 
 A separate claim — that a graph-level option inside a segment is dropped
 entirely — was raised against this entry and is FALSE; it came from a probe
@@ -1965,7 +2177,7 @@ Stata's `c(python_exec)` is `/opt/anaconda3/bin/python3` (bokeh 3.8.0, pandas
 **A green pytest run does not prove the Stata path works against the libraries
 it actually loads.**
 
-### L3. The UTF-8 guard's rejection branch has never executed — S1, READ
+### L3. The UTF-8 guard's rejection branch has never executed — S1, READ, CLOSED by 7ddbc08 (WP-08's test_utf8_validation.cscript)
 
 `_dash_check_utf8` is called by exactly two tests
 (`test_ado_loads.cscript:94`, `test_mata_autoload.cscript:52`) and **both pass
@@ -1974,6 +2186,13 @@ and all of `_is_utf8` (`:90-133`) are unproven. No test feeds invalid UTF-8,
 overlong encodings, or surrogate halves — precisely the "string encoding to
 bypass standard injection vectors" case CLAUDE.md rule 16 names, at the rule's
 designated enforcement point.
+
+**Closed by 7ddbc08**, WP-08's test plan row written for this gap:
+`test/test_utf8_validation.cscript` feeds `_is_utf8` every sequence of
+`test/fixtures/utf8_cases.txt` against Python's own decoder (UTF-01 to
+UTF-10) and runs `_dash_check_utf8` itself on a UTF-16 surrogate, which it
+rejects (UTF-12).  Re-run 23sep2026 at `4ede074`: passed.  The traceability
+matrix gives L3 to WP-24 (with WP-08); nothing is left for WP-24 here.
 
 ### L4. Tests that assert a name exists rather than a behaviour — S2, READ
 
@@ -2055,6 +2274,21 @@ auditor re-reports 25 resolved items as live gaps.
 Resolution; **six do not** (`BUGS.md:341, 359, 383, 395, 413, 431`), two of
 which are security fixes. CLAUDE.md rule 8 asks for a test per fixed defect.
 
+Re-measured 23sep2026 at `4ede074` (WP-23, TR-23.5): of 253 closed
+entries, 26 named no test that exists -- 23 named none, and 3 named a test
+class that 0591142 had deleted.  Of the six above, one names a test by
+`4ede074` (the sixteen glyph properties, `test_mode_parity.py`), four had a
+test all along that was never named (the long `function()` expression, the
+`mband` clamp, `pci`, the custom scheme's bare name) and now name it, and
+one has none.  With 19 others, 23 entries now point at the test that covers
+them.  Three closed entries have no covering test at all and say so:
+`comprehensive_demo.do`'s fills, the "file not found" note on every
+`dash build`, and `ylabel(#5, grid)`.
+`test/test_tracking_documents.py` now fails any closed entry that names no
+existing test, except those three, which it lists by name
+(`CLOSED_WITHOUT_A_TEST`).  L9 stays open, and WP-24's, until those three
+have tests.
+
 ### L10. Auth bypass — not a gap — standing note (WP-20)
 
 `dash` has no auth model, and `test_security_surface.py:95` establishes that
@@ -2078,7 +2312,7 @@ applies.
 
 ## M. Documentation and repository hygiene
 
-### M1. The tracking documents no longer describe reality — S2, MEASURED
+### M1. The tracking documents no longer describe reality — S2, CLOSED by WP-23
 
 `TODO.md` holds 555 items, **all checked**. `BUGS.md` holds 73, **all
 closed**. Yet 39 options are inert, `dash serve` aborts on every option, and
@@ -2089,11 +2323,59 @@ disagree.
 and `phases/` (31 phase documents, 249 work items) are the current record;
 the older two describe an overtaken roadmap.
 
+The two paragraphs above are the audit of 2026-09-21 at `187a786`.  What
+is true at `4ede074`, measured 23sep2026 by WP-23's TR-23.5:
+
+- **`TODO.md` and `PLAN.md` are retired**: deleted from the tree, not
+  reconciled.  Their last change is `5f857fc` and they are unchanged
+  through `4ede074`, the last commit that holds them (`git show
+  4ede074:TODO.md`).  ROADMAP.md, this document and BUGS.md are the record,
+  with `REMAINING.md` and `phases/` beside them.
+- **`BUGS.md`** held 260 entries at `4ede074`, 253 closed and 7 open.  Two
+  of the open ones were already fixed (the served `layout(bs)`, 31e76e0;
+  the linked `by()` filter move, 7c2c918) and are closed with the commit
+  and the test that fails without it; the other five are open with a
+  measurement of 23sep2026 and the reason.  Two defects found while
+  measuring are added, open: `dash serve` aborting on every launch (C1) and
+  a served `by()` title that ignores the variable's format.  Of the closed
+  entries, 26 named no test that exists -- 23 named none, and 3 named a
+  test class 0591142 had deleted; 23 of them now point at the test that
+  covers them, and 3 have no covering test (L9, WP-24).  Two closed entries
+  that left part of their fix open now record the commit that finished
+  it.
+- **This document**: every gap a DONE work package lists is marked closed
+  and every closed gap names the work package or commit that closed it,
+  except J6, whose rollback no package has done (ROADMAP.md WP-06 lists J6
+  unqualified).  The gaps of WP-01, WP-02 and WP-04, whose work is
+  committed but which ROADMAP.md does not head DONE, are closed by commit;
+  WP-03's were not all closed at `4ede074`, because `dash serve` aborted
+  again (C1) -- WP-23 fixed it and closes C1 and C2.
+- `test/test_tracking_documents.py` holds all of this mechanically.
+
+**Closed by WP-23.**  With its other parts integrated, BUGS.md holds every
+defect WP-23 found and fixed, with the test that fails without the fix, and
+the open entries it changed record what is still open and why; GAPS.md
+and ROADMAP.md agree on every gap a DONE work package closes; and
+test/test_tracking_documents.py holds the three to it.  `.ultraplan/`,
+`REMAINING.md` and `phases/` are the user's own records, with uncommitted
+changes in the user's checkout, and are left to them.
+
 ### M2. Branch state — S3, MEASURED
 
 62 commits ahead of `main`, with 53 uncommitted working-tree entries
 (a `.ultraplan` reorganisation, an archive directory, and a modified
 `REMAINING.md`). None of this has been merged or released.
+
+Those two numbers are a snapshot of 2026-09-21 at `187a786`.  Re-measured
+23sep2026 at `4ede074`: the branch is 107 commits ahead of `main` and none
+behind (`git rev-list --count main..4ede074` and `4ede074..main`); `main`
+(`3948ce8`) is an ancestor, so nothing has been merged into it or released.
+The uncommitted entries live in the user's main checkout and were not
+re-counted: they are the user's own work, which WP-27's TR-27.6 commits or
+discards, and this measurement did not touch them.  The status of that
+checkout at the start of the 23sep2026 session still listed the
+`.ultraplan` reorganisation, the archive directory and a modified
+`REMAINING.md`, `CLAUDE.md` and `test/conftest.py`.
 
 ### M3. Development artefacts in the package root — S3, READ
 
@@ -2102,7 +2384,7 @@ and eight generated `*.html` files (1.2–2.0 MB each, ~13 MB total) sit
 alongside the shippable sources. They are not in `dash.pkg`, so they do not
 ship, but they dominate the repository.
 
-### M4. Duplicated source blocks — S3, READ
+### M4. Duplicated source blocks — S3, CLOSED by WP-23
 
 The generator NOTE comment appears twice back-to-back at `dash.ado:266-275`
 and again at `:459-469`. The T/B/L/R folding block is duplicated verbatim
@@ -2112,15 +2394,37 @@ abbreviation `t`, not `t1` — measured, `_dash_parse_plot_opts , t("Top")`
 resolves to `t1title` without any `T(string)` declaration, so the explicit
 `T B L R` declarations at `:301-302` are redundant.
 
-### M5. Latent `inlist()` ceiling — S3, READ
+**Closed by WP-23.**  All four copies of the generator NOTE (two in each
+option parser) and three copies of the t/b/l/r fold (two in
+`_dash_parse_graph_opts`, one dead in `_dash_parse_plot_opts`) were still
+there at `4ede074`; each is gone, and the one NOTE left says truthfully that
+the block is no longer generated.  The rationale was re-measured with
+Stata's `syntax` and is as recorded: `T1title()` admits `t`, so the
+explicit `T() B() L() R()` were reached only by a third spelling after
+`t1title()` and `t2title()`, which the fold then dropped without a word at
+graph level -- a bug the removal fixes (BUGS.md; test/test_alias_semantics.cscript
+AS-06b and test/test_abbreviations.py's fold checks).
+
+### M5. Latent `inlist()` ceiling — S3, CLOSED by WP-23 (the ceiling went with WP-22's ad13a0f, which WP-23 verified)
 
 `dash.ado:1004-1005` and `:1146-1147` carry exactly 9 literals plus `ptype` —
 Stata's 10-argument `inlist()` limit. **A tenth range plot type will fail to
 compile.**
 
+The ceiling itself is gone at `4ede074`: ad13a0f (WP-22's TR-22.4) made
+every plot-type test in `dash.ado` a `: list ptype in <family>` over family
+lists defined once, and no `inlist()` on a plot type is left
+(`test/test_plottype_families.py`; `test/test_parser.cscript` P1A-56, where
+a tenth range member is found while `inlist()` of the same list is r(130)).
+**Closed by WP-23**, which lists it: re-measured on the WP-23 tree, no
+string `inlist()` of ten or more arguments is left in dash.ado (the largest
+holds seven) and dash_setup.ado has none; in Stata a value and nine
+literals run, a value and ten are r(130), and a ten-member `: list ... in`
+finds its tenth member.
+
 ---
 
-## N. Dead code
+## N. Dead code — S3, READ
 
 | Item | Location | Evidence |
 |---|---|---|

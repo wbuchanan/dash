@@ -507,11 +507,21 @@ class TestAnUnimplementedBySuboptionIsNamed:
                == ("foreign", 2, True, False)
 
     def test_the_served_app_warns_the_same_way(self, tmp_path):
+        """Named when the app is BUILT, where `dash build, server' shows it
+        in the Stata log, and not again when a session opens (WP-23: the
+        note came only from a session, whose output the Stata user never
+        sees -- test_help_claims_5.cscript HC5-08)."""
         spec = by_spec("scatter", by="foreign, rows(2) compact")
+        tag, sp, dp = _write(tmp_path, spec, _DF)
+        with warnings.catch_warnings(record=True) as built:
+            warnings.simplefilter("always")
+            dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"b_{tag}.py"))
+        hits = [str(w.message) for w in built if "by()" in str(w.message)
+                and "rows(2)" in str(w.message)
+                and "compact" in str(w.message)]
+        assert len(hits) == 1, [str(w.message) for w in built]
         _, _, warns = served(tmp_path, spec)
-        hits = [w for w in warns if "by()" in w and "rows(2)" in w
-                and "compact" in w]
-        assert hits, warns
+        assert not [w for w in warns if "by()" in w and "rows(2)" in w], warns
 
     def test_an_unsafe_by_string_still_facets_nothing(self, tmp_path):
         spec = by_spec("scatter", by='__import__("os")')

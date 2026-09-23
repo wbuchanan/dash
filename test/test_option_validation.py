@@ -499,13 +499,19 @@ class TestTheDefaultIsWhatTheSchemeGives:
         assert fig.renderers[0].glyph.fill_color == \
             r.mapper.scheme.default_color(0, "scatter")
 
-    def test_a_bad_clock_position_labels_at_three_oclock(self):
+    def test_a_bad_clock_position_labels_at_twelve_oclock(self):
+        """Where twoway draws it: measured (test_help_claims_5.cscript
+        HC5-03), mlabposition(13) is noted and drawn at 12 o'clock under
+        every scheme measured.  This asserted 3 o'clock, where dash drew
+        it."""
         r, _, _, _ = _both([plot_for("scatter", {"mlabel": "make",
                                                  "mlabposition": "13"})])
         fig = list(r.figures.values())[0]
         ls = [x for x in fig.center if isinstance(x, LabelSet)]
         assert len(ls) == 1
-        assert (ls[0].x_offset, ls[0].y_offset) == (4, 0)
+        assert (ls[0].x_offset, ls[0].y_offset) == (0, 4)
+        assert (ls[0].text_align, ls[0].text_baseline) == ("center",
+                                                           "bottom")
 
 
 class TestAGoodValueIsSilent:
@@ -663,12 +669,12 @@ class TestTheNoteHelper:
             warnings.simplefilter("always")
             dr._dash_style_note("mcolor", "notacolour", "colour")
             dr._dash_style_note("mlabposition", "13", "clock position",
-                                "3 (right)")
+                                "12 (above)")
         assert [str(w.message) for w in caught] == [
             "dash: mcolor(notacolour) is not a recognised colour; using "
             "the scheme's default.",
             "dash: mlabposition(13) is not a recognised clock position; "
-            "using 3 (right).",
+            "using 12 (above).",
         ]
 
     def test_parse_color_alpha_notes_only_when_told_the_option(self):

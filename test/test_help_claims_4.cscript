@@ -1,0 +1,559 @@
+*! test_help_claims_4.cscript  v1.0
+*! Certification script: dash.sthlp's KPI Cards and Server Mode sections
+*! (WP-23, AC-23.1) -- the claims only Stata can check.
+*!
+*! Every expected value is Stata's own, computed here by the command the
+*! help names (summarize, summarize detail, _pctile, count, egen group), so
+*! a KPI is held to Stata and not to a number copied into this file.  The
+*! render modes' side of the same claims is test/test_help_claims_4.py.
+*!
+*! Measured at 4ede074 before this script was written:
+*!   dash kpi p97.5(price), name(k1) title("P")
+*!     -> "dash kpi: syntax is stat(varname), e.g. mean(mpg)."  r(198)
+*!   dash kpi p100(price) ...
+*!     -> "dash kpi: percentile must be between 1 and 99"  r(198)
+*! although the help says p10, p90 and p97.5 are all accepted.  Stata's
+*! _pctile takes any percentile greater than 0 and less than 100 (0 and 100
+*! themselves are "percentiles must be between 0 and 100", r(198)).
+*!   dash kpi count(make) stored 0 (summarize skips a string variable) and
+*!   the card showed 74 (it counted empty strings); Stata's count of the
+*!   non-missing values is 71 when three makes are blank.
+*!
+*! Tests: HC4-01 through HC4-18
+*!
+*! Usage:  do test/test_help_claims_4.cscript  (from test/, dash's directory
+*!         on the ado-path, as the runner arranges)
+*! Version: 1.0  23sep2026
+
+cscript "dash help claims 4: KPI cards and server mode" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+// cert_helpers.do sets $dash_nobrowser, which cscript dropped.
+do "cert_helpers.do"
+global dash_nobrowser 1
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// Runs a command with its output logged, so a check can read what dash
+// printed; r(rc) and r(log).
+capture program drop _hc4_run
+program define _hc4_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_hc4.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _hc4log
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_hc4log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _hc4log
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// The longest line of a file, in bytes: an echo of a refused statistic
+// must be bounded, whatever its length.
+capture mata: mata drop _hc4_longest()
+mata:
+real scalar _hc4_longest(string scalar path)
+{
+    real scalar fh, n
+    string scalar line
+
+    fh = _fopen(path, "r")
+    if (fh < 0) return(-1)
+    n = 0
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strlen(line) > n) n = strlen(line)
+    }
+    _fclose(fh)
+    return(n)
+}
+end
+
+// ================================================================
+// HC4-01 -- p97.5 is accepted, stored as p97.5, and is _pctile's value
+// ================================================================
+dash clear
+capture noisily dash kpi p97.5(price), name(k1) title("P")
+assert _rc == 0
+assert "${dash_kpi_k1__sta}" == "p97.5"
+assert "${dash_kpi_k1__var}" == "price"
+assert "${dash_graph_registry}" == "k1"
+quietly _pctile price, p(97.5)
+assert ${dash_kpi_k1__val} == r(r1)
+display "HC4-01 PASS: dash kpi p97.5(price) is accepted and is _pctile's p(97.5), " r(r1)
+
+// ================================================================
+// HC4-02 -- the console says what was registered
+// ================================================================
+dash clear
+quietly _pctile price, p(97.5)
+local hc402 = r(r1)
+_hc4_run `"dash kpi p97.5(price), name(k2) title("P")"'
+assert r(rc) == 0
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: KPI 'k2' registered (p97.5(price) = `hc402').")
+assert r(found) == 1
+display "HC4-02 PASS: the console reads p97.5(price) = `hc402'"
+
+// ================================================================
+// HC4-03 -- the help's p10 and p90, and other fractional percentiles,
+// each equal to Stata's
+// ================================================================
+quietly summarize price, detail
+local hc403_p10 = r(p10)
+local hc403_p90 = r(p90)
+foreach p in 10 90 0.5 2.5 12.5 33.3 66.7 99.5 99.9 0.001 99.99999 {
+    dash clear
+    capture noisily dash kpi p`p'(price), name(k1) title("P")
+    assert _rc == 0
+    assert "${dash_kpi_k1__sta}" == "p`p'"
+    quietly _pctile price, p(`p')
+    assert ${dash_kpi_k1__val} == r(r1)
+}
+dash clear
+dash kpi p10(price), name(k1) title("P")
+assert ${dash_kpi_k1__val} == `hc403_p10'
+dash kpi p90(price), name(k2) title("P")
+assert ${dash_kpi_k2__val} == `hc403_p90'
+display "HC4-03 PASS: p10 and p90 are summarize, detail's; p0.5 .. p99.99999 are _pctile's"
+
+// ================================================================
+// HC4-04 -- one percentile, one name: leading zeros, trailing zeros and a
+// bare point are dropped, a leading point gains its zero
+// ================================================================
+local hc404_in  "p097.50 p.5 p5. p050 p0.10 p00.001 p010 p99.990"
+local hc404_out "p97.5 p0.5 p5 p50 p0.1 p0.001 p10 p99.99"
+local n : word count `hc404_in'
+forvalues j = 1/`n' {
+    local s : word `j' of `hc404_in'
+    local c : word `j' of `hc404_out'
+    dash clear
+    capture noisily dash kpi `s'(price), name(k1) title("P")
+    assert _rc == 0
+    assert "${dash_kpi_k1__sta}" == "`c'"
+    quietly _pctile price, p(`=substr("`c'", 2, .)')
+    assert ${dash_kpi_k1__val} == r(r1)
+}
+display "HC4-04 PASS: p097.50, p.5, p5., p050 ... are stored as p97.5, p0.5, p5, p50 ..."
+
+// ================================================================
+// HC4-05 -- a fractional percentile with the KPI's own if and in
+// ================================================================
+dash clear
+dash kpi p97.5(price) if foreign == 0, name(k1) title("P")
+quietly _pctile price if foreign == 0, p(97.5)
+assert ${dash_kpi_k1__val} == r(r1)
+assert `"${dash_kpi_k1__if}"' == "foreign == 0"
+dash kpi p2.5(mpg) in 1/50, name(k2) title("P")
+quietly _pctile mpg in 1/50, p(2.5)
+assert ${dash_kpi_k2__val} == r(r1)
+assert "${dash_kpi_k2__in}" == "1/50"
+dash kpi p33.3(weight) if foreign == 1 in 20/74, name(k3) title("P")
+quietly _pctile weight if foreign == 1 in 20/74, p(33.3)
+assert ${dash_kpi_k3__val} == r(r1)
+display "HC4-05 PASS: p97.5 if, p2.5 in and p33.3 if in are _pctile's"
+
+// ================================================================
+// HC4-06 -- what is not a percentile is refused and registers nothing
+// ================================================================
+// The bounds _pctile refuses, an exponent (p1e2 is 100), a second point,
+// a sign, a blank, words, other digits (Arabic-Indic and full-width), a
+// comma, a percentile that parses to 100 (p99.999999999999999), and runs
+// of digits too long to be one.
+mata: st_local("hc406_ar", "p" + char(217) + char(161) + char(217) + char(160))
+mata: st_local("hc406_fw", "p" + char(239) + char(188) + char(145) + char(239) + char(188) + char(144))
+mata: st_local("hc406_l1", "p" + 5000 * "9")
+mata: st_local("hc406_l2", "p0." + 3000 * "0" + "1")
+mata: st_local("hc406_l3", "p50." + 2000 * "0")
+mata: st_local("hc406_l4", "p" + 300 * "0" + "5")
+local hc406 `"p0 p100 p1e2 p1e1 p97.5.5 p-1 p+5 "p 97.5" pnan pinf p. p.. p0.0 p00 p-0 p100.0 p99.999999999999999 p99.99999999999999 p0.000000000000001 p0x10 P97.5 p97,5 p97.5e0 p12345678901234567890 {bf:p97.5} <b>p97.5</b> `hc406_ar' `hc406_fw' `hc406_l1' `hc406_l2' `hc406_l3' `hc406_l4'"'
+local nbad = 0
+foreach s of local hc406 {
+    dash clear
+    capture dash kpi `s'(price), name(k1) title("P")
+    if _rc != 198 {
+        display as error `"HC4-06: `=usubstr(`"`s'"', 1, 30)' gave rc "' _rc
+        local ++nbad
+    }
+    assert "${dash_kpi_k1}" == ""
+    assert "${dash_kpi_k1__sta}" == ""
+    assert "${dash_graph_registry}" == ""
+}
+assert `nbad' == 0
+display "HC4-06 PASS: p0, p100, p1e2, p97.5.5, p-1, p 97.5, pnan, other digits and long runs are refused, nothing registered"
+
+// ================================================================
+// HC4-07 -- the refusals say why, and never echo a long run whole
+// ================================================================
+_hc4_run "dash kpi p100(price), name(k1) title(P)"
+assert r(rc) == 198
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("percentile must be greater than 0 and less than 100")
+assert r(found) == 1
+_hc4_run "dash kpi p97.5.5(price), name(k1) title(P)"
+assert r(rc) == 198
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("is not a percentile")
+assert r(found) == 1
+_hc4_run "dash kpi p0.000000000000001(price), name(k1) title(P)"
+assert r(rc) == 198
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("more than 15 digits")
+assert r(found) == 1
+_hc4_run `"dash kpi `hc406_l1'(price), name(k1) title(P)"'
+assert r(rc) == 198
+local lg "`r(log)'"
+mata: st_local("hc407n", strofreal(_hc4_longest(st_local("lg"))))
+assert `hc407n' > 0 & `hc407n' < 400
+display "HC4-07 PASS: each refusal names its rule; a 5,000-digit statistic is echoed in `hc407n' bytes at most"
+
+// ================================================================
+// HC4-08 -- a built page's card shows Stata's p97.5 and a qualified p2.5
+// ================================================================
+dash clear
+quietly _pctile price, p(97.5)
+local hc408a : display %12.3f r(r1)
+local hc408a = strtrim("`hc408a'")
+quietly _pctile mpg if foreign == 1, p(2.5)
+local hc408b : display %12.3f r(r1)
+local hc408b = strtrim("`hc408b'")
+dash scatter mpg weight, name(g1)
+dash kpi p97.5(price), name(k1) title("P") fmt(%12.3f)
+dash kpi p2.5(mpg) if foreign == 1, name(k2) title("Q") fmt(%12.3f)
+tempfile hc408
+local hc408f "`hc408'.html"
+capture erase "`hc408f'"
+capture noisily dash build, saving("`hc408f'") replace nobrowser
+assert _rc == 0
+cert_file_has "`hc408f'", needle("`hc408a'")
+assert r(found) == 1
+cert_file_has "`hc408f'", needle("`hc408b'")
+assert r(found) == 1
+cert_file_has "`hc408f'", needle("kpi_val_k1")
+assert r(found) == 1
+capture erase "`hc408f'"
+display "HC4-08 PASS: the saved page's cards read `hc408a' (p97.5) and `hc408b' (p2.5 if foreign == 1)"
+
+// ================================================================
+// HC4-09 -- every statistic in the table is Stata's, with and without if
+// ================================================================
+// price is whole numbers; rep78 has five missing values, which is what
+// makes count "non-missing" and dcount "distinct".
+foreach v in price rep78 {
+    foreach q in "" "if foreign == 1" {
+        dash clear
+        quietly summarize `v' `q', detail
+        local N = r(N)
+        local mean = r(mean)
+        local sum = r(sum)
+        local min = r(min)
+        local max = r(max)
+        local sd = r(sd)
+        local var = r(Var)
+        local skew = r(skewness)
+        local p25 = r(p25)
+        local p50 = r(p50)
+        local p75 = r(p75)
+        tempvar grp
+        quietly egen `grp' = group(`v') `q'
+        quietly summarize `grp', meanonly
+        local dcount = cond(r(N) == 0, 0, r(max))
+        drop `grp'
+        foreach s in mean sum count dcount min max median sd var cv iqr skewness p25 p50 p75 {
+            dash kpi `s'(`v') `q', name(k_`s') title("T")
+        }
+        assert ${dash_kpi_k_mean__val} == `mean'
+        assert ${dash_kpi_k_sum__val} == `sum'
+        assert ${dash_kpi_k_count__val} == `N'
+        assert ${dash_kpi_k_dcount__val} == `dcount'
+        assert ${dash_kpi_k_min__val} == `min'
+        assert ${dash_kpi_k_max__val} == `max'
+        assert ${dash_kpi_k_median__val} == `p50'
+        assert reldif(${dash_kpi_k_sd__val}, `sd') < 1e-14
+        assert reldif(${dash_kpi_k_var__val}, `var') < 1e-14
+        assert reldif(${dash_kpi_k_cv__val}, `sd'/`mean') < 1e-14
+        assert ${dash_kpi_k_iqr__val} == `p75' - `p25'
+        assert reldif(${dash_kpi_k_skewness__val}, `skew') < 1e-14
+        assert ${dash_kpi_k_p25__val} == `p25'
+        assert ${dash_kpi_k_p50__val} == `p50'
+        assert ${dash_kpi_k_p75__val} == `p75'
+    }
+}
+display "HC4-09 PASS: all fifteen statistics of price and rep78, with and without if, are summarize, detail's and egen group's"
+
+// ================================================================
+// HC4-10 -- the help's own example
+// ================================================================
+dash clear
+capture noisily dash kpi mean(mpg) if foreign == 0, title("Domestic") name(kdom)
+assert _rc == 0
+quietly summarize mpg if foreign == 0
+// The global holds the value as a macro does, to 16 digits.
+assert reldif(${dash_kpi_kdom__val}, r(mean)) < 1e-15
+display "HC4-10 PASS: dash kpi mean(mpg) if foreign == 0, title(Domestic) name(kdom) is " r(mean)
+
+// ================================================================
+// HC4-11 -- title() and name() are required
+// ================================================================
+dash clear
+capture dash kpi mean(mpg), name(k1)
+assert _rc == 198
+capture dash kpi mean(mpg), title("T")
+assert _rc == 198
+assert "${dash_graph_registry}" == ""
+display "HC4-11 PASS: a KPI without title() or without name() is refused"
+
+// ================================================================
+// HC4-12 -- the options are stored as given; fmt() formats the echo
+// ================================================================
+dash clear
+quietly summarize price
+local hc412 : display %12.0fc r(mean)
+local hc412 = strtrim("`hc412'")
+_hc4_run `"dash kpi mean(price), ti("Average") nam(k1) fmt(%12.0fc) sub("dollars") color(navy) bgcolor(#eeeeee) upd(brush)"'
+assert r(rc) == 0
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("(mean(price) = `hc412').")
+assert r(found) == 1
+assert `"${dash_kpi_k1__tit}"' == "Average"
+assert `"${dash_kpi_k1__sub}"' == "dollars"
+assert "${dash_kpi_k1__fmt}" == "%12.0fc"
+assert "${dash_kpi_k1__col}" == "navy"
+assert "${dash_kpi_k1__bg}" == "#eeeeee"
+assert "${dash_kpi_k1__upd}" == "brush"
+dash kpi mean(price), title("T") name(k2)
+assert "${dash_kpi_k2__upd}" == "filter"
+capture dash kpi mean(price), title("T") name(k3) update(sometimes)
+assert _rc == 198
+capture dash kpi mean(price), title("T") name(k4) fmt(%12s)
+assert _rc == 198
+display "HC4-12 PASS: ti() nam() fmt() sub() color() bgcolor() upd() are stored, update() defaults to filter, update(sometimes) and fmt(%12s) are refused"
+
+// ================================================================
+// HC4-13 -- count and dcount of a string variable count what Stata counts
+// ================================================================
+preserve
+replace make = "" in 1/3
+quietly count if !missing(make)
+local hc413n = r(N)
+quietly tabulate make
+local hc413d = r(r)
+dash clear
+capture noisily dash kpi count(make), name(k1) title("T")
+assert _rc == 0
+assert ${dash_kpi_k1__val} == `hc413n'
+capture noisily dash kpi dcount(make), name(k2) title("T")
+assert _rc == 0
+assert ${dash_kpi_k2__val} == `hc413d'
+quietly count if !missing(make) & foreign == 1
+local hc413f = r(N)
+dash kpi count(make) if foreign == 1, name(k3) title("T")
+assert ${dash_kpi_k3__val} == `hc413f'
+display "HC4-13 PASS: count(make) is `hc413n' and dcount(make) `hc413d' with three makes blank"
+
+// ================================================================
+// HC4-14 -- every other statistic of a string variable is refused
+// ================================================================
+foreach s in mean sum min max median sd var cv iqr skewness p25 p97.5 {
+    capture dash kpi `s'(make), name(k9) title("T")
+    assert _rc == 109
+    assert "${dash_kpi_k9}" == ""
+}
+_hc4_run "dash kpi mean(make), name(k9) title(T)"
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("needs a numeric variable")
+assert r(found) == 1
+restore
+display "HC4-14 PASS: mean(make) and the other numeric statistics refuse a string variable, r(109)"
+
+// ================================================================
+// HC4-15 -- a served app built from the dashboard embeds every
+// observation of the variables it uses, and only those
+// ================================================================
+dash clear
+dash scatter mpg weight, name(g1)
+dash kpi p97.5(price), name(k1) title("P")
+tempfile hc415
+local hc415f "`hc415'_app.py"
+capture erase "`hc415f'"
+capture noisily dash build, saving("`hc415f'") server replace
+assert _rc == 0
+global hc415_app "`hc415f'"
+python:
+import base64, json, re
+from sfi import Macro
+_src = open(Macro.getGlobal("hc415_app"), encoding="utf-8").read()
+_m = re.search(r'^_DATA_B64 = "([A-Za-z0-9+/=]*)"$', _src, re.M)
+_doc = json.loads(base64.b64decode(_m.group(1)).decode("utf-8")) if _m else {}
+_sj = _doc.get("StataJSON", _doc)
+_vars = sorted(_sj.get("variableNames", []))
+_nobs = len(_sj.get("values", []))
+Macro.setGlobal("hc415_vars", " ".join(_vars))
+Macro.setGlobal("hc415_nobs", str(_nobs))
+end
+display "embedded: ${hc415_vars} (${hc415_nobs} observations)"
+assert "${hc415_vars}" == "mpg price weight"
+assert ${hc415_nobs} == _N
+capture erase "`hc415f'"
+macro drop hc415_*
+display "HC4-15 PASS: the served app embeds mpg, price and weight -- all `=_N' observations -- and no other variable"
+
+// ================================================================
+// HC4-16..18 -- `dash serve' writes its app to a Stata temporary file and
+// Stata erases it when the command ends
+// ================================================================
+// dash serve is run against a STUB dash_render.py placed first on the
+// ado-path (the method of test_serve_browser.cscript): the stub writes a
+// file where the renderer would write the app, records the path it was
+// given, and exits, so no server starts.
+tempfile hc416base
+local stubdir "`hc416base'_hc4_stub"
+capture mkdir "`stubdir'"
+local stub "`stubdir'/dash_render.py"
+local rec "`stubdir'/output_path.txt"
+tempname fh
+file open `fh' using "`stub'", write text replace
+file write `fh' `"import os, sys"' _n
+file write `fh' `"_a = sys.argv[1:]"' _n
+file write `fh' `"_o = _a[_a.index("--output") + 1]"' _n
+file write `fh' `"open(_o, "w", encoding="utf-8").write("# app")"' _n
+file write `fh' `"_r = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output_path.txt")"' _n
+file write `fh' `"open(_r, "w", encoding="utf-8").write(_o + chr(10) + str(int(os.path.exists(_o))))"' _n
+file close `fh'
+adopath ++ "`stubdir'"
+capture noisily {
+    _dash_find_render
+    assert strpos(`"`r(fn)'"', "_hc4_stub") > 0
+    display "HC4-16 PASS: dash serve resolves the stub renderer, not the real one"
+
+    dash clear
+    dash scatter mpg weight, name(sv1)
+    capture erase "`rec'"
+    capture noisily dash serve, port(5098) timeout(1) nobrowser
+    assert _rc == 0
+    tempname rh
+    file open `rh' using "`rec'", read text
+    file read `rh' hc4_app
+    file read `rh' hc4_existed
+    file close `rh'
+    assert "`hc4_existed'" == "1"
+    display "HC4-17 PASS: the app was written to `hc4_app' while dash serve ran"
+    capture confirm file "`hc4_app'"
+    assert _rc != 0
+    assert strpos("`hc4_app'", "`c(tmpdir)'") == 1
+    display "HC4-18 PASS: that file, in c(tmpdir), is gone once dash serve returns"
+}
+local rc_hc4 = _rc
+adopath - "`stubdir'"
+capture erase "`rec'"
+capture erase "`stub'"
+capture rmdir "`stubdir'"
+capture dash clear
+global dash_nobrowser 1
+if `rc_hc4' {
+    display as error "test_help_claims_4: a serve check above failed (rc=`rc_hc4')"
+    exit `rc_hc4'
+}
+_dash_find_render
+assert strpos(`"`r(fn)'"', "_hc4_stub") == 0
+
+// ================================================================
+// HC4-19..21 -- a real `dash serve': a server comes up, timeout() ends
+// it, and no copy of the app outlives the command
+// ================================================================
+// Measured at 4ede074: every `dash serve' stopped with "ValueError:
+// dash_render: --output must end in .py for mode 'server'", r(7102) --
+// _dash_serve names its app with a Stata tempfile, which has no .py, and
+// the renderer's output check asked every server path for one.  Nothing
+// ran the real handoff.  Here the real renderer runs; a thread started in
+// Stata's Python beforehand asks /health on the port given until it
+// answers, while `dash serve' blocks.  timeout(1) ends the run after a
+// minute, so this case takes about 62 seconds.
+dash clear
+dash scatter mpg weight, name(g1)
+dash kpi p97.5(price), name(k1) title("P")
+global hc4_tmpdir "`c(tmpdir)'"
+python:
+import json, os, socket, threading, time, urllib.request
+from sfi import Macro
+_hc4_s = socket.socket()
+_hc4_s.bind(("127.0.0.1", 0))
+_hc4_port = _hc4_s.getsockname()[1]
+_hc4_s.close()
+Macro.setGlobal("hc4_port", str(_hc4_port))
+_hc4_seen = {"status": None, "body": ""}
+_hc4_t0 = time.time()
+def _hc4_poll():
+    deadline = time.time() + 150
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(
+                    "http://127.0.0.1:%d/health" % _hc4_port, timeout=2) as r:
+                _hc4_seen["status"] = r.status
+                _hc4_seen["body"] = r.read().decode("utf-8", "replace")
+                return
+        except Exception:
+            time.sleep(0.25)
+_hc4_thread = threading.Thread(target=_hc4_poll, daemon=True)
+_hc4_thread.start()
+end
+timer clear 91
+timer on 91
+capture noisily dash serve, port(${hc4_port}) timeout(1) nobrowser
+local hc419rc = _rc
+timer off 91
+quietly timer list 91
+local hc419s = r(t91)
+python:
+_hc4_thread.join(5)
+Macro.setGlobal("hc4_status", str(_hc4_seen["status"]))
+Macro.setGlobal("hc4_ok", "1" if '"status": "ok"' in _hc4_seen["body"] else "0")
+_hc4_left = []
+for _f in os.listdir(Macro.getGlobal("hc4_tmpdir")):
+    _p = os.path.join(Macro.getGlobal("hc4_tmpdir"), _f)
+    try:
+        if os.path.isfile(_p) and os.path.getmtime(_p) >= _hc4_t0 - 1:
+            with open(_p, encoding="utf-8", errors="replace") as _fh:
+                if "_DATA_B64 = " in _fh.read():
+                    _hc4_left.append(_f)
+    except OSError:
+        pass
+Macro.setGlobal("hc4_left", " ".join(_hc4_left))
+end
+assert `hc419rc' == 0
+assert `hc419s' >= 50
+display "HC4-19 PASS: dash serve ran the real app and returned rc 0 when timeout(1) ended it, after `hc419s' s"
+assert "${hc4_status}" == "200"
+assert ${hc4_ok} == 1
+display "HC4-20 PASS: while dash serve blocked, /health on port ${hc4_port} answered 200 {status: ok}"
+assert `"${hc4_left}"' == ""
+display "HC4-21 PASS: no file holding the app's data is left in c(tmpdir)"
+macro drop hc4_*
+
+// ----------------------------------------------------------------
+// Cleanup
+// ----------------------------------------------------------------
+capture dash clear
+capture program drop _hc4_run
+capture mata: mata drop _hc4_longest()
+
+display ""
+display "All help-claims-4 tests PASSED."

@@ -9357,9 +9357,10 @@ class TestStandaloneSliderStringColumn:
 # The filter-variable extraction loop in dash.ado only split on "||", so
 # "foreign; weight" contributed only "foreign" to all_vars.  The Python
 # renderer's _parse_filter_raw already normalizes ";" -> "||".  The Stata
-# side now does the same before iterating.
+# side now does the same -- outside quotes and parentheses, as the renderer
+# now does too (_dash_filter_split on both sides).
 #
-# BUG-45-1a  dash.ado filter extraction loop normalizes semicolons to "||"
+# BUG-45-1a  dash.ado's filter groups end at a ";" as at a "||"
 # BUG-45-1b  Standalone render with semicolon filter builds both widgets
 # BUG-45-1c  "||"-separated filter still works (regression)
 # BUG-45-1d  Single filter (no separator) still works (regression)
@@ -9373,26 +9374,43 @@ class TestSemicolonFilterSerialization:
     # ------------------------------------------------------------------
 
     def test_ado_contains_semicolon_normalization(self):
-        """BUG-45-1a: dash.ado's filter loop normalises semicolons to '||'.
+        """BUG-45-1a: on the Stata side a ';' separates filter groups as
+        '||' does, so every group's variable is serialised.
 
         This used to AND three substrings -- 'subinstr', '";"' and '"||"' --
         matched anywhere in a 2,600-line file. `subinstr' occurs nine times
         and `"||"' occurs again on the very next line, in the loop that
         CONSUMES the normalised string, so deleting the normalisation left
-        all three present and the test green. It reads the one statement
-        now.
+        all three present and the test green. It then read the one statement
+        that converted ';' to '||' -- everywhere, so a ';' or '||' inside a
+        label() split the group too (label("A;B") stopped dash build with
+        "too few quotes" r(132), measured at 4ede074).  That loop is gone:
+        dash build reads the groups through _dash_filter_refusal, whose
+        _dash_filter_split ends a group at a ';' or '||' outside quotes and
+        parentheses.  These are the statements that make it so; the
+        behaviour is built end to end by test_help_claims_3.cscript HC3-11
+        (a top-level ';' builds both widgets) and HC3-03 (a label keeps its
+        ';').
         """
         import re as _re
         with open(os.path.join(_DASH_DIR, "dash.ado"), encoding="utf-8") as f:
             ado_text = f.read()
-        i = ado_text.index("local _filt_work")
-        j = ado_text.index("local _filt_done", i)
-        block = ado_text[i:j]
-        assert _re.search(r'subinstr\([^)]*";"\s*,\s*"\|\|"', block), (
-            "the filter loop no longer converts ';' to '||' before "
-            "splitting, so only the first of several semicolon-separated "
-            "filters is built:\n" + block
-        )
+        body = ado_text[ado_text.index("program define _dash_prepare_spec"):]
+        body = body[:body.index("\nend\n")]
+        assert '_dash_filter_refusal(st_local("filter")' in body, (
+            "dash build no longer reads the filter() groups through "
+            "_dash_filter_refusal")
+        assert "foreach _fvar of local _fvars" in body, (
+            "dash build no longer serialises every group's variable")
+        with open(os.path.join(_DASH_DIR, "dash_parse.mata"),
+                  encoding="utf-8") as f:
+            mata = f.read()
+        fn = mata[mata.index("string rowvector _dash_filter_split("):]
+        fn = fn[:fn.index("\n}\n")]
+        assert _re.search(r'if \(ch == ";"\) w = 1', fn), (
+            "_dash_filter_split no longer ends a filter group at ';', so "
+            "only the first of several semicolon-separated filters is "
+            "built:\n" + fn)
 
     # ------------------------------------------------------------------
     # BUG-45-1b: standalone render with semicolon filter builds both widgets

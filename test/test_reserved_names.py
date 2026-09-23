@@ -154,7 +154,8 @@ def _one_refusal(msgs, kind, name):
 _LAYOUTS = [("auto", ""), ("bs", ""), ("bs", "A: g1"), ("auto", "A: g1")]
 
 #: g1 by(foreign)'s two panels, by title.
-_PANELS = ["g1 \u2014 0.0", "g1 \u2014 1.0"]
+#: Titled as twoway writes the values, 0 and 1 (dash wrote 0.0 and 1.0).
+_PANELS = ["g1 \u2014 0", "g1 \u2014 1"]
 
 
 class TestAGraphNamedLikeAPanel:

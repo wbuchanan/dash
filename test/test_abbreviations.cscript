@@ -297,21 +297,22 @@ PT_VARS = {
     "rcapsym": "turn mpg weight", "pcbarrow": "mpg weight turn length",
     "pccapsym": "mpg weight turn length", "pcarrowi": "20 3000 25 3500",
     "pci": "20 3000 25 3500", "pcscatter": "mpg weight turn length",
-    "tsrline": "mpg price turn", "rconnected": "turn mpg weight",
+    "tsrline": "mpg price", "rconnected": "turn mpg weight",
     "rline": "turn mpg weight", "rscatter": "turn mpg weight",
     "function": "y=x", "scatteri": "20 3000", "qfit": "mpg weight",
     "qfitci": "mpg weight", "fpfit": "mpg weight", "fpfitci": "mpg weight",
-    # tsline with NO x needs tsset; twoway itself returns r(111) there, so a
-    # bare "mpg" would probe tsset behaviour instead of the abbreviation.
-    "tsline": "mpg turn", "mband": "mpg weight", "mspline": "mpg weight",
+    "tsline": "mpg", "mband": "mpg weight", "mspline": "mpg weight",
     "lowess": "mpg weight", "dot": "mpg weight",
 }
 for _n, _m in PTS.items():
     PT_VARS[_n] = _m["varlist"]
-# tsline/tsrline with NO x variable need the data tsset, and twoway ITSELF
-# returns r(111) there (verified by probe).  Probe with an explicit x so these
-# checks test the ABBREVIATION rather than tsset behaviour.
-PT_VARS["tsline"] = "mpg turn"
+# tsline and tsrline draw against the time variable tsset set, as twoway
+# does, and take no x of their own: `tsline mpg turn' is two series, and
+# `tsrline mpg price turn' is r(103) in twoway and in dash
+# (test_help_claims_1.cscript HC1-09).  The data are tsset below, before any
+# case runs, so these probe the ABBREVIATION rather than tsset behaviour.
+PT_VARS["tsline"] = "mpg"
+PT_VARS["tsrline"] = "mpg price"
 
 # a usable value for every option dash declares but the fixture cannot probe
 EXTRA_VALUES = {
@@ -325,6 +326,9 @@ EXTRA_VALUES = {
     "xscale2": "log", "yscale2": "log",
     "mlcolor": "red", "mlpattern": "dash", "mlstyle": "p2",
     "mlwidth": "thick",
+    # hover() takes a varlist: dash.sthlp documents hov() for it (WP-23),
+    # and the default value "1" names no variable, r(111).
+    "hover": "mpg",
 }
 
 CAND = sorted((set(OPTS) | set(DASH_PLOT_KEYS) | set(DASH_GRAPH_KEYS) |
@@ -533,6 +537,9 @@ end
 // Fixtures
 // ----------------------------------------------------------------
 qui sysuse auto, clear
+// tsline and tsrline read their time variable from tsset, as twoway does.
+qui generate int zqa_t = _n
+qui tsset zqa_t
 
 display as text ""
 display as text "============================================================"

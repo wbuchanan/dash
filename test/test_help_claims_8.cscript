@@ -1,0 +1,776 @@
+*! test_help_claims_8.cscript
+*! Certification script: the Stata-side claims of dash.sthlp's last four
+*! sections -- Stata scheme support, Unsupported Stata twoway options,
+*! Dependencies, Also see -- and of dash_setup.sthlp, each held to dash.ado
+*! and, where the help says what twoway does, to twoway itself.
+*!
+*! ROADMAP WP-23 (AC-23.1: every claim in dash.sthlp is verified by a test or
+*! corrected).  The renderer-side claims of the same sections are pinned in
+*! test_help_claims_8.py.  Measured 23sep2026 in console Stata 19.5; a twoway
+*! claim is measured here, not recalled: `set graphics off', and what twoway
+*! DRAWS is read from `graph export' SVG.
+*!
+*!   HC8-01  the note the help prints for `dash scatter mpg weight,
+*!           pstyle(p3) t1title("hi")' is, word for word, "dash: ignoring
+*!           unsupported option(s): pstyle() t1title()".
+*!   HC8-02  every option on the Unsupported list is accepted (rc 0) and
+*!           named in the note, the plot-level list in comma mode and the
+*!           graph-level list after the paren-mode comma.  Most of them had
+*!           never been sent through dash.ado by any script.
+*!   HC8-03  twoway's own verdict on each option the rewritten prose names:
+*!           title2(), subtitle2(), mlabwidth(), at(), blabel() (twoway
+*!           bar), ciopts(), lineopts(), fitopts() (lfitci, kdensity),
+*!           link() and filter() are r(198); the rest are accepted; play()
+*!           looks for a recording, r(601); and horizontal turns twoway's
+*!           bars on their side (a different picture).
+*!   HC8-04  twoway: scale() resizes a graph's text on its own, and fxsize()
+*!           changes a graph that is not combined -- neither is a graph
+*!           combine option only, as the help used to say.
+*!   HC8-05  bargap(): twoway bar draws the same picture with it, and dash
+*!           names it; xscale(alt)'s alt is named as a sub-option dash does
+*!           not implement; xscale(reverse) is honoured, not named.
+*!   HC8-06  titl(x) abbreviates title() and is honoured; titel(x) is named.
+*!   HC8-07  the note names option names, never the values supplied.
+*!   HC8-08  the scheme() and theme() refusals are r(198) with the help's
+*!           exact wording.
+*!   HC8-09  twoway draws an unknown scheme as s2color with a note, rc 0;
+*!           `set scheme' refuses it, r(111).
+*!   HC8-10  an inherited session scheme dash cannot translate: rc 0, one
+*!           warning in the help's words, the page drawn in s2color.
+*!   HC8-11  a working-directory scheme, by bare name and by file name,
+*!           inside a layer's parentheses and on dash serve's spec path; the
+*!           served app built from that spec carries it.
+*!   HC8-12  a scheme name carrying a directory separator is refused.
+*!   HC8-13  `set scheme NAME' takes scheme-NAME.scheme over NAME.scheme,
+*!           and dash's translations beside it change nothing twoway draws.
+*!   HC8-14  clwidth(): twoway refuses 10001 and -1 where it draws the line
+*!           and takes 10000; dash refuses and takes the same.
+*!   HC8-15  twoway joins line points in data order, in x order with sort,
+*!           and with sort(varlist) on a variable with ties in an order that
+*!           changes from one draw to the next.
+*!   HC8-16  dash build takes nobrowser, not nodraw.
+*!   HC8-17  jsonio is required: with it off the ado-path dash refuses,
+*!           r(198), naming it.
+*!   HC8-18  every Also see target resolves to a help file.
+*!   HC8-19  dash_setup's summary: an unmet requirement is r(198) and says
+*!           dash_setup did not complete; a warning completes; a clean run
+*!           says every dependency is satisfied.
+*!   HC8-20  twoway joins a line across a missing y by default and breaks
+*!           it with cmissing(n).
+*!
+*! Every command runs with its log captured and read back with Stata's
+*! wrapped lines re-joined, as test_custom_scheme.cscript does.  The cases
+*! run in a temporary working directory; the session scheme and the
+*! ado-path are restored at the end.
+*!
+*! Usage:  via a wrapper that puts the dash directory and jsonio on the
+*!         ado-path and does `cd <dash>/test', then `do test_help_claims_8.cscript'.
+
+cscript "dash help claims 8" adodir ".."
+
+clear all
+set more off
+set graphics off
+
+capture which jsonio
+if _rc {
+    display as text "SKIP: jsonio is not installed."
+    exit 222
+}
+if `"`c(python_exec)'"' == "" {
+    display as text "SKIP: no Python is linked to this Stata."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+qui do "../dash_setup.ado"
+
+global dash_nobrowser 1
+sysuse auto, clear
+
+local hc_home    "`c(pwd)'"
+local hc_scheme0 "`c(scheme)'"
+local hc_dir     "`c(tmpdir)'dash_hc8_wd"
+capture mkdir "`hc_dir'"
+capture mkdir "`hc_dir'/sub"
+
+capture mata: mata drop _hc_theme()
+capture mata: mata drop _hc_scan()
+capture mata: mata drop _hc_svg_same()
+capture mata: mata drop _hc_svg_path()
+capture mata: mata drop _hc_svg_moves()
+capture mata: mata drop _hc_ndiff3()
+capture mata: mata drop _hc_svg_x_sorted()
+capture mata: mata drop _hc_svg_maxfont()
+mata:
+// Copy `src' to `dst' with `color background' replaced by `bg'.  Returns
+// the number of lines replaced.
+real scalar _hc_theme(string scalar src, string scalar dst, string scalar bg)
+{
+    string colvector L
+    real scalar      i, fh, n
+    L = cat(src)
+    n = 0
+    for (i = 1; i <= rows(L); i++) {
+        if (regexm(L[i], "^color background[ \t]")) {
+            L[i] = "color background      " + bg
+            n = n + 1
+        }
+    }
+    _unlink(dst)
+    fh = fopen(dst, "w")
+    for (i = 1; i <= rows(L); i++) fput(fh, L[i])
+    fclose(fh)
+    return(n)
+}
+
+// Re-join "> " continuations, count the logical lines that carry
+// `needle' (exact = 1: that ARE `needle'), and hand back the first.
+void _hc_scan(string scalar fn, string scalar needle, real scalar exact)
+{
+    real scalar   fh, n, hit
+    string scalar line, full, first
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    first = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        hit = exact ? (strtrim(full) == needle) : (strpos(full, needle) > 0)
+        if (hit) {
+            n = n + 1
+            if (first == "") first = full
+        }
+        full = line
+    }
+    hit = exact ? (strtrim(full) == needle) : (strpos(full, needle) > 0)
+    if (hit) {
+        n = n + 1
+        if (first == "") first = full
+    }
+    fclose(fh)
+    st_local("_hc_n", strofreal(n))
+    st_local("_hc_line", first)
+}
+
+// Do two exported SVGs draw the same picture?  The <desc> line names the
+// graph and is the one line that must differ.
+real scalar _hc_svg_same(string scalar a, string scalar b)
+{
+    string colvector A, B
+    A = cat(a)
+    B = cat(b)
+    A = select(A, !strmatch(strtrim(A), "<desc>*"))
+    B = select(B, !strmatch(strtrim(B), "<desc>*"))
+    if (rows(A) != rows(B)) return(0)
+    return(all(A :== B))
+}
+
+// The longest <path> of an SVG -- the data line of a one-line plot.
+string scalar _hc_svg_path(string scalar f)
+{
+    string colvector L
+    string scalar    best
+    real scalar      i
+    L = cat(f)
+    best = ""
+    for (i = 1; i <= rows(L); i++) {
+        if (strpos(L[i], "<path") & strlen(L[i]) > strlen(best)) best = L[i]
+    }
+    return(best)
+}
+
+// How many subpaths (M commands) the data path of an SVG draws.
+real scalar _hc_svg_moves(string scalar f)
+{
+    string scalar p, d
+    p = _hc_svg_path(f)
+    if (!regexm(p, "d=" + char(34) + "([^" + char(34) + "]*)" + char(34))) return(0)
+    d = regexs(1)
+    return(strlen(d) - strlen(subinstr(d, "M", "", .)))
+}
+
+// Are the x coordinates of an SVG's data path non-decreasing, point to
+// point -- is the line joined in the order of x?
+real scalar _hc_svg_x_sorted(string scalar f)
+{
+    string scalar    p, d
+    string rowvector T
+    real scalar      i, last, x, k
+    p = _hc_svg_path(f)
+    if (!regexm(p, "d=" + char(34) + "([^" + char(34) + "]*)" + char(34))) return(-1)
+    d = subinstr(subinstr(regexs(1), "M", " "), "L", " ")
+    T = tokens(d)
+    last = .
+    k = 0
+    for (i = 1; i <= cols(T); i = i + 2) {
+        x = strtoreal(T[i])
+        if (k & x < last) return(0)
+        last = x
+        k = 1
+    }
+    return(1)
+}
+
+// How many of the three pairs among three SVGs' data paths differ.
+real scalar _hc_ndiff3(string scalar a, string scalar b, string scalar c)
+{
+    string scalar pa, pb, pc
+    pa = _hc_svg_path(a)
+    pb = _hc_svg_path(b)
+    pc = _hc_svg_path(c)
+    return((pa != pb) + (pb != pc) + (pa != pc))
+}
+
+// The largest font-size, in px, any <text> of an SVG is drawn at.
+real scalar _hc_svg_maxfont(string scalar f)
+{
+    string colvector L
+    real scalar      i, best, v
+    L = cat(f)
+    best = 0
+    for (i = 1; i <= rows(L); i++) {
+        if (regexm(L[i], "font-size:([0-9.]+)px")) {
+            v = strtoreal(regexs(1))
+            if (v > best) best = v
+        }
+    }
+    return(best)
+}
+end
+
+local hc_src "`hc_home'/../schemes/s1rcolor.scheme"
+mata: st_local("hc_nsub", strofreal(_hc_theme(st_local("hc_src"), ///
+    st_local("hc_dir") + "/mytheme.scheme", "#123456")))
+if `hc_nsub' != 1 {
+    display as error "SETUP FAIL: expected one `color background' line in `hc_src'"
+    exit 9
+}
+mata: st_local("hc_nsub", strofreal(_hc_theme(st_local("hc_src"), ///
+    st_local("hc_dir") + "/sub/mytheme.scheme", "#123456")))
+tempname fh
+file open `fh' using "`hc_dir'/scheme-zzdashtest.scheme", write text replace
+file write `fh' "#include s2color" _n
+file close `fh'
+
+cd "`hc_dir'"
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+capture program drop _hc_run
+program define _hc_run, rclass
+    version 16.0
+    args prep main
+    local logfile "`c(tmpdir)'dash_hc8.log"
+    set linesize 255
+    capture log close _hclog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_hclog) text replace
+    local prc = 0
+    if `"`macval(prep)'"' != "" {
+        capture noisily `macval(prep)'
+        local prc = _rc
+    }
+    capture noisily `macval(main)'
+    local rc = _rc
+    log close _hclog
+    set linesize 80
+    return scalar rc  = `rc'
+    return scalar prc = `prc'
+    return local logfile "`logfile'"
+end
+
+capture program drop _hc_count
+program define _hc_count, rclass
+    version 16.0
+    args logfile needle exact
+    if "`exact'" == "" local exact 0
+    mata: _hc_scan(st_local("logfile"), st_local("needle"), `exact')
+    return scalar n = `_hc_n'
+    return local line `"`macval(_hc_line)'"'
+end
+
+global hc_nfail    = 0
+global hc_faillist ""
+global hc_bad      = 0
+
+capture program drop _hc_expect
+program define _hc_expect
+    version 16.0
+    args id cond msg
+    if !(`cond') {
+        display as error `"`id' FAIL: `macval(msg)'"'
+        global hc_bad = 1
+    }
+end
+
+capture program drop _hc_done
+program define _hc_done
+    version 16.0
+    args id msg
+    if ${hc_bad} {
+        global hc_nfail    = ${hc_nfail} + 1
+        global hc_faillist "${hc_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `macval(msg)'"'
+    global hc_bad = 0
+end
+
+// The log of the case just run must carry `needle' exactly `want' times
+// (`want' = -1: at least once).  `exact' = 1 matches whole lines.
+capture program drop _hc_log
+program define _hc_log
+    version 16.0
+    args id logfile needle want exact
+    _hc_count "`logfile'" `"`macval(needle)'"' `exact'
+    local n = r(n)
+    local line `"`r(line)'"'
+    if `want' == -1 {
+        _hc_expect "`id'" "(`n' > 0)" `"the log does not say `macval(needle)'"'
+    }
+    else {
+        _hc_expect "`id'" "(`n' == `want')" `"expected `want' log line(s) with `macval(needle)', found `n': `macval(line)'"'
+    }
+end
+
+// twoway's rc for one command, graphs dropped either side.
+capture program drop _hc_tw
+program define _hc_tw, rclass
+    version 16.0
+    args cmdtext
+    capture graph drop _all
+    capture `cmdtext'
+    local rc = _rc
+    capture graph drop _all
+    return scalar rc = `rc'
+end
+
+// Export one twoway command's picture to `file'.
+capture program drop _hc_svg
+program define _hc_svg, rclass
+    version 16.0
+    args cmdtext file
+    capture graph drop _all
+    capture erase "`file'"
+    capture `cmdtext' name(_hcg, replace)
+    local rc = _rc
+    if `rc' == 0 capture graph export "`file'", name(_hcg) replace
+    if `rc' == 0 local rc = _rc
+    capture graph drop _all
+    return scalar rc = `rc'
+end
+
+generate pos = mod(_n, 12) + 1
+
+// ================================================================
+// HC8-01 -- the note, word for word
+// ================================================================
+_hc_run "" `"dash scatter mpg weight, pstyle(p3) t1title("hi")"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
+_hc_log "HC8-01" "`lf'" "dash: ignoring unsupported option(s): pstyle() t1title()" 1 1
+_hc_done "HC8-01" "the note is the help's, word for word"
+
+// ================================================================
+// HC8-02 -- every option on the list: accepted, and named
+// ================================================================
+// Plot level, comma mode: the 44 names of _dash_parse_plot_opts' list.
+local p_opts `"at(mpg) b1title(b) b2title(b) blabel(total) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) horizontal l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) lstyle(p3) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) mlstyle(p3) mstyle(p3) play(x) pstyle(p3) r1title(r) r2title(r) recast(line) scale(1.5) sort subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) vertical xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local p_names "at b1title b2title blabel ciopts cmissing colorlist coloruseplegend connect filter fitopts fxsize fysize horizontal l1title l2title link lineopts lstyle mlabtextstyle mlabvposition mlabwidth mlpattern mlstyle mstyle play pstyle r1title r2title recast scale sort subtitle2 t1title t2title text title2 vertical xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+_hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-02" "(`rc' == 0)" "plot level: rc `rc'"
+_hc_count "`lf'" "dash: ignoring unsupported option(s):"
+local note `"`r(line)'"'
+_hc_expect "HC8-02" "(`r(n)' == 1)" "plot level: `r(n)' notes"
+local nmiss 0
+foreach nm of local p_names {
+    if !strpos(`" `macval(note)' "', " `nm'() ") {
+        display as error "HC8-02: plot-level `nm'() is not in the note"
+        local nmiss = `nmiss' + 1
+    }
+}
+_hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' plot-level option(s) not named"
+// Graph level, after the paren-mode comma: the 23 of _dash_parse_graph_opts.
+local g_opts `"b1title(b) b2title(b) filter(foreign) fxsize(50) fysize(50) l1title(l) l2title(l) link(g9) play(x) r1title(r) r2title(r) scale(1.5) subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
+local g_names "b1title b2title filter fxsize fysize l1title l2title link play r1title r2title scale subtitle2 t1title t2title text title2 xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+_hc_run "" `"dash (scatter mpg weight), `g_opts' name(hc02g, replace)"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-02" "(`rc' == 0)" "graph level: rc `rc'"
+_hc_count "`lf'" "dash: ignoring unsupported option(s):"
+local note `"`r(line)'"'
+local nmiss 0
+foreach nm of local g_names {
+    if !strpos(`" `macval(note)' "', " `nm'() ") {
+        display as error "HC8-02: graph-level `nm'() is not in the note"
+        local nmiss = `nmiss' + 1
+    }
+}
+_hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' graph-level option(s) not named"
+_hc_done "HC8-02" "all 44 plot-level and 23 graph-level options accepted and named"
+
+// ================================================================
+// HC8-03 -- twoway's own verdict on each option the prose names
+// ================================================================
+local refused `" "scatter mpg weight, title2(t)" "scatter mpg weight, subtitle2(t)" "scatter mpg weight, mlabel(make) mlabwidth(thick)" "bar mpg weight, at(mpg)" "bar mpg weight, blabel(total)" "lfitci mpg weight, ciopts(color(red))" "lfitci mpg weight, lineopts(lcolor(red))" "lfitci mpg weight, fitopts(lcolor(red))" "kdensity mpg, lineopts(lcolor(red))" "scatter mpg weight, link(g1)" "scatter mpg weight, filter(foreign)" "'
+foreach c of local refused {
+    _hc_tw "twoway `c' nodraw"
+    _hc_expect "HC8-03" "(`r(rc)' == 198)" "twoway `c' is r(`r(rc)'), not r(198)"
+}
+local taken `" "scatter mpg weight, t1title(t) t2title(t) b1title(b) b2title(b) l1title(l) l2title(l) r1title(r) r2title(r)" "scatter mpg weight, xmtick(2500 3500) ymtick(15 25) xmlabel(2500 3500) ymlabel(15 25)" "scatter mpg weight, fxsize(50) fysize(50) scale(1.5)" "scatter mpg weight, pstyle(p3) mstyle(p3) mlstyle(p3) mlpattern(dash)" "line mpg weight, sort lstyle(p3)" "scatter mpg weight, colorvar(rep78) colorlist(red blue green orange navy)" "scatter mpg weight, colorvar(rep78) colordiscrete coloruseplegend" "bar mpg weight, horizontal" "bar mpg weight, vertical" "spike mpg weight, horizontal" "dropline mpg weight, horizontal" "line mpg weight, sort(price)" "scatter mpg weight, mlabel(make) mlabvposition(pos) mlabtextstyle(heading)" "scatter mpg weight, xoverhangs yoverhangs" "scatter mpg weight, connect(l) sort" "line mpg weight, cmissing(n)" "scatter mpg weight, recast(line)" "bar mpg weight, bargap(10)" "'
+foreach c of local taken {
+    _hc_tw `"twoway `c' nodraw"'
+    _hc_expect "HC8-03" "(`r(rc)' == 0)" `"twoway `c' is r(`r(rc)'), not accepted"'
+}
+_hc_tw `"twoway scatter mpg weight, text(20 3000 "hi") nodraw"'
+_hc_expect "HC8-03" "(`r(rc)' == 0)" "twoway text() is r(`r(rc)'), not accepted"
+_hc_tw "twoway scatter mpg weight, play(hc8_no_such_recording) nodraw"
+_hc_expect "HC8-03" "(`r(rc)' == 601)" "play() is r(`r(rc)'), not r(601) (recording not found)"
+// horizontal is drawn, not just accepted: the bars turn on their side.
+_hc_svg "twoway bar mpg weight," "`hc_dir'/hc03v.svg"
+_hc_svg "twoway bar mpg weight, horizontal" "`hc_dir'/hc03h.svg"
+mata: st_local("same", strofreal(_hc_svg_same(st_local("hc_dir") + "/hc03v.svg", st_local("hc_dir") + "/hc03h.svg")))
+_hc_expect "HC8-03" "(`same' == 0)" "twoway bar drew the same picture with horizontal"
+_hc_done "HC8-03" "11 refusals, 19 acceptances and play()'s r(601) are twoway's"
+
+// ================================================================
+// HC8-04 -- scale() and fxsize() are not graph combine options only
+// ================================================================
+_hc_svg "twoway scatter mpg weight," "`hc_dir'/hc04a.svg"
+local r1 = r(rc)
+_hc_svg "twoway scatter mpg weight, scale(1.5)" "`hc_dir'/hc04b.svg"
+local r2 = r(rc)
+_hc_svg "twoway scatter mpg weight, fxsize(50)" "`hc_dir'/hc04c.svg"
+local r3 = r(rc)
+_hc_expect "HC8-04" "(`r1' == 0 & `r2' == 0 & `r3' == 0)" "exports rc `r1' `r2' `r3'"
+mata: st_local("f1", strofreal(_hc_svg_maxfont(st_local("hc_dir") + "/hc04a.svg")))
+mata: st_local("f2", strofreal(_hc_svg_maxfont(st_local("hc_dir") + "/hc04b.svg")))
+_hc_expect "HC8-04" "(`f2' > 1.4 * `f1')" "scale(1.5) text `f2'px against `f1'px"
+mata: st_local("same", strofreal(_hc_svg_same(st_local("hc_dir") + "/hc04a.svg", st_local("hc_dir") + "/hc04c.svg")))
+_hc_expect "HC8-04" "(`same' == 0)" "fxsize(50) drew the same picture as no option"
+_hc_done "HC8-04" "scale(1.5) draws text 1.5 times larger, fxsize(50) changes an uncombined graph"
+
+// ================================================================
+// HC8-05 -- bargap(), xscale(alt), xscale(reverse)
+// ================================================================
+_hc_svg "twoway bar mpg weight," "`hc_dir'/hc05a.svg"
+local r1 = r(rc)
+_hc_svg "twoway bar mpg weight, bargap(50)" "`hc_dir'/hc05b.svg"
+local r2 = r(rc)
+mata: st_local("same", strofreal(_hc_svg_same(st_local("hc_dir") + "/hc05a.svg", st_local("hc_dir") + "/hc05b.svg")))
+_hc_expect "HC8-05" "(`r1' == 0 & `r2' == 0 & `same' == 1)" "twoway bar with bargap(50): rc `r1' `r2', same picture `same'"
+_hc_run "" "dash bar mpg weight, bargap(50) name(hc05, replace)"
+_hc_expect "HC8-05" "(`r(rc)' == 0)" "dash bar, bargap(): rc `r(rc)'"
+_hc_log "HC8-05" "`r(logfile)'" "bargap()" 1
+_hc_run "" `"dash scatter mpg weight, xscale(alt) saving("`hc_dir'/hc05.html", replace)"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-05" "(`rc' == 0)" "xscale(alt): rc `rc'"
+_hc_log "HC8-05" "`lf'" "xscale() sub-option(s) not implemented and ignored: alt" 1
+_hc_run "" `"dash scatter mpg weight, xscale(reverse) saving("`hc_dir'/hc05r.html", replace)"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-05" "(`rc' == 0)" "xscale(reverse): rc `rc'"
+_hc_log "HC8-05" "`lf'" "not implemented" 0
+_hc_log "HC8-05" "`lf'" "ignoring unsupported" 0
+_hc_done "HC8-05" "twoway bar ignores bargap() and dash names it; alt named; reverse honoured"
+
+// ================================================================
+// HC8-06 -- titl(x) is title(); titel(x) is named
+// ================================================================
+_hc_run "" "dash scatter mpg weight, titl(HCTITLE) name(hc06, replace)"
+_hc_expect "HC8-06" "(`r(rc)' == 0)" "titl(): rc `r(rc)'"
+_hc_log "HC8-06" "`r(logfile)'" "ignoring unsupported" 0
+mata: st_local("ok", strofreal(strpos(st_global("dash_json_hc06"), char(34) + "title" + char(34) + ":" + char(34) + "HCTITLE" + char(34)) > 0))
+_hc_expect "HC8-06" "(`ok' == 1)" "titl(HCTITLE) did not reach the spec as title"
+_hc_run "" "dash scatter mpg weight, titel(HCTITLE) name(hc06b, replace)"
+_hc_expect "HC8-06" "(`r(rc)' == 0)" "titel(): rc `r(rc)'"
+_hc_log "HC8-06" "`r(logfile)'" "dash: ignoring unsupported option(s): titel()" 1 1
+_hc_done "HC8-06" "an abbreviation works; a misspelling is named, not refused"
+
+// ================================================================
+// HC8-07 -- names, never values
+// ================================================================
+_hc_run "" "dash scatter mpg weight, pstyle(HC8SECRETVALUE) nosuchopt(HC8OTHERVALUE) name(hc07, replace)"
+local lf "`r(logfile)'"
+_hc_expect "HC8-07" "(`r(rc)' == 0)" "rc `r(rc)'"
+_hc_log "HC8-07" "`lf'" "dash: ignoring unsupported option(s): pstyle() nosuchopt()" 1 1
+_hc_log "HC8-07" "`lf'" "HC8SECRETVALUE" 0
+_hc_log "HC8-07" "`lf'" "HC8OTHERVALUE" 0
+_hc_done "HC8-07" "the note carries the names and neither value"
+
+// ================================================================
+// HC8-08 -- the refusals, word for word
+// ================================================================
+_hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc08.html") scheme(nosuchthing) replace"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-08" "(`rc' == 198)" "scheme(): rc `rc'"
+_hc_log "HC8-08" "`lf'" "dash build: scheme() must be a shipped scheme, a theme, or a .scheme file in the working directory (got: nosuchthing)" 1 1
+_hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc08.html") theme(nosuchtheme) replace"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-08" "(`rc' == 198)" "theme(): rc `rc'"
+_hc_log "HC8-08" "`lf'" "dash build: theme() must be one of clean, dark, default, economist, mono, sj (got: nosuchtheme)" 1 1
+_hc_done "HC8-08" "r(198), in the help's words"
+
+// ================================================================
+// HC8-09 -- what twoway and set scheme do with an unknown scheme
+// ================================================================
+_hc_run "" "twoway scatter mpg weight, scheme(hc8nosuchscheme) nodraw"
+local rc = r(rc)
+local lf "`r(logfile)'"
+_hc_expect "HC8-09" "(`rc' == 0)" "twoway: rc `rc'"
+_hc_log "HC8-09" "`lf'" "(note: scheme hc8nosuchscheme not found, using s2color)" 1 1
+_hc_run "" "set scheme hc8nosuchscheme"
+_hc_expect "HC8-09" "(`r(rc)' == 111)" "set scheme: rc `r(rc)'"
+_hc_done "HC8-09" "twoway draws s2color with a note; set scheme is r(111)"
+
+// ================================================================
+// HC8-10 -- an inherited scheme dash cannot translate
+// ================================================================
+set scheme zzdashtest
+_hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc10.html") replace"'
+local rc = r(rc)
+local lf "`r(logfile)'"
+set scheme `hc_scheme0'
+_hc_expect "HC8-10" "(`rc' == 0)" "rc `rc'"
+_hc_log "HC8-10" "`lf'" "dash: 'zzdashtest' is not a known theme or scheme; it was inherited from the session (c(scheme)) because no scheme() or theme() was given" 1
+_hc_log "HC8-10" "`lf'" "; using s2color" 1
+cert_file_has "`hc_dir'/hc10.html", needle("#1e2d53")
+_hc_expect "HC8-10" "(`r(found)' == 1)" "the page is not s2color's"
+_hc_done "HC8-10" "rc 0, one warning in the help's words, s2color drawn"
+
+// ================================================================
+// HC8-11 -- a working-directory scheme inside a layer's parentheses and on
+//           dash serve's spec path
+// ================================================================
+foreach nm in mytheme mytheme.scheme {
+    _hc_run "" `"dash (scatter mpg weight, scheme(`nm')), saving("`hc_dir'/hc11.html", replace)"'
+    local rc = r(rc)
+    local lf "`r(logfile)'"
+    _hc_expect "HC8-11" "(`rc' == 0)" "paren layer scheme(`nm'): rc `rc'"
+    _hc_log "HC8-11" "`lf'" "not a known theme or scheme" 0
+    cert_file_has "`hc_dir'/hc11.html", needle("#123456")
+    _hc_expect "HC8-11" "(`r(found)' == 1)" "paren layer scheme(`nm'): the page does not carry #123456"
+}
+tempfile hc_sp hc_dp
+foreach nm in mytheme mytheme.scheme {
+    capture dash clear
+    quietly dash scatter mpg weight, name(g1)
+    capture noisily _dash_serve_spec, specpath("`hc_sp'") datapath("`hc_dp'") scheme(`nm')
+    local rc = _rc
+    _hc_expect "HC8-11" "(`rc' == 0)" "_dash_serve_spec scheme(`nm'): rc `rc'"
+    if `rc' == 0 {
+        cert_file_has "`hc_sp'", needle(`""scheme": "`nm'""')
+        local f1 = r(found)
+        cert_file_has "`hc_sp'", needle(`""scheme":"`nm'""')
+        _hc_expect "HC8-11" "(`f1' + `r(found)' == 1)" "the served spec does not carry scheme `nm'"
+        local hc_app "`hc_dir'/hc11_app.py"
+        capture erase "`hc_app'"
+        local hc_render "`hc_home'/../dash_render.py"
+        // Loaded by path under a name of its own, and registered, as the
+        // builder reads its own module's source through sys.modules.
+        python: import importlib.util as _hc_iu, sys as _hc_sys, sfi as _hc_sfi
+        python: _hc_s = _hc_iu.spec_from_file_location("_hc8_dash_render", _hc_sfi.Macro.getLocal("hc_render")); _hc_m = _hc_iu.module_from_spec(_hc_s); _hc_sys.modules["_hc8_dash_render"] = _hc_m; _hc_s.loader.exec_module(_hc_m)
+        python: _hc_m.ServerAppBuilder(_hc_sfi.Macro.getLocal("hc_sp"), _hc_sfi.Macro.getLocal("hc_dp")).build(_hc_sfi.Macro.getLocal("hc_app"))
+        cert_file_has "`hc_app'", needle("#123456")
+        _hc_expect "HC8-11" "(`r(found)' == 1)" "the served app built from scheme(`nm') does not carry #123456"
+    }
+}
+_hc_done "HC8-11" "bare and file names work in a layer and on dash serve; the app carries the file"
+
+// ================================================================
+// HC8-12 -- a directory separator is refused
+// ================================================================
+_hc_run "" `"dash scatter mpg weight, scheme(sub/mytheme) saving("`hc_dir'/hc12.html", replace)"'
+_hc_expect "HC8-12" "(`r(rc)' == 198)" "scheme(sub/mytheme) on scatter: rc `r(rc)'"
+_hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc12.html") scheme(sub/mytheme) replace"'
+_hc_expect "HC8-12" "(`r(rc)' == 198)" "scheme(sub/mytheme) on build: rc `r(rc)'"
+_hc_done "HC8-12" "a name with a directory separator is r(198), although sub/mytheme.scheme exists"
+
+// ================================================================
+// HC8-13 -- set scheme's lookup, and twoway beside dash's translations
+// ================================================================
+file open `fh' using "`hc_dir'/zzq.scheme", write text replace
+file write `fh' "#include s2color" _n "color background red" _n
+file close `fh'
+file open `fh' using "`hc_dir'/scheme-zzq.scheme", write text replace
+file write `fh' "#include s2color" _n "color background blue" _n
+file close `fh'
+capture noisily set scheme zzq
+local rc = _rc
+_hc_svg "twoway scatter mpg weight," "`hc_dir'/hc13a.svg"
+set scheme `hc_scheme0'
+cert_file_has "`hc_dir'/hc13a.svg", needle("fill:#0000FF")
+local blue = r(found)
+cert_file_has "`hc_dir'/hc13a.svg", needle("fill:#FF0000")
+local red = r(found)
+_hc_expect "HC8-13" "(`rc' == 0 & `blue' == 1 & `red' == 0)" "set scheme zzq: rc `rc', blue `blue', red `red' -- scheme-zzq.scheme did not win"
+// A name with no scheme- file at all (a fresh one: Stata keeps a scheme it
+// has loaded, so erasing scheme-zzq.scheme would not show the fallback).
+file open `fh' using "`hc_dir'/zzr.scheme", write text replace
+file write `fh' "#include s2color" _n "color background red" _n
+file close `fh'
+capture noisily set scheme zzr
+local rc = _rc
+_hc_svg "twoway scatter mpg weight," "`hc_dir'/hc13b.svg"
+set scheme `hc_scheme0'
+cert_file_has "`hc_dir'/hc13b.svg", needle("fill:#FF0000")
+_hc_expect "HC8-13" "(`rc' == 0 & `r(found)' == 1)" "set scheme zzr with only zzr.scheme: rc `rc', red `r(found)'"
+// dash's s2color translation in the working directory, where set scheme
+// could find it as s2color.scheme: twoway draws exactly what it draws
+// without it.
+set scheme s2color
+_hc_svg "twoway scatter mpg weight," "`hc_dir'/hc13c.svg"
+copy "`hc_home'/../schemes/s2color.scheme" "`hc_dir'/s2color.scheme", replace
+set scheme s2color
+_hc_svg "twoway scatter mpg weight," "`hc_dir'/hc13d.svg"
+erase "`hc_dir'/s2color.scheme"
+set scheme `hc_scheme0'
+mata: st_local("same", strofreal(_hc_svg_same(st_local("hc_dir") + "/hc13c.svg", st_local("hc_dir") + "/hc13d.svg")))
+_hc_expect "HC8-13" "(`same' == 1)" "twoway drew differently beside dash's s2color.scheme"
+_hc_done "HC8-13" "scheme-NAME.scheme first, then NAME.scheme; dash's files change nothing twoway draws"
+
+// ================================================================
+// HC8-14 -- clwidth()'s range, twoway against dash
+// ================================================================
+foreach w in 10001 -1 {
+    _hc_tw "twoway line mpg weight, sort clwidth(`w') name(_hcg, replace)"
+    local tw = r(rc)
+    _hc_run "" "dash line mpg weight, clwidth(`w') name(hc14, replace)"
+    _hc_expect "HC8-14" "(`tw' == 198 & `r(rc)' == 198)" "line clwidth(`w'): twoway r(`tw'), dash r(`r(rc)')"
+}
+_hc_tw "twoway line mpg weight, sort clwidth(10000) name(_hcg, replace)"
+local tw = r(rc)
+_hc_run "" "dash line mpg weight, clwidth(10000) name(hc14, replace)"
+_hc_expect "HC8-14" "(`tw' == 0 & `r(rc)' == 0)" "line clwidth(10000): twoway r(`tw'), dash r(`r(rc)')"
+_hc_tw "twoway scatter mpg weight, clwidth(10001) name(_hcg, replace)"
+local tw = r(rc)
+_hc_run "" "dash scatter mpg weight, clwidth(10001) name(hc14, replace)"
+_hc_expect "HC8-14" "(`tw' == 0 & `r(rc)' == 0)" "scatter clwidth(10001): twoway r(`tw'), dash r(`r(rc)')"
+_hc_done "HC8-14" "0 to 10000 where the line is drawn, in both; nothing refused on scatter"
+
+// ================================================================
+// HC8-15 -- the order twoway joins line points in
+// ================================================================
+forvalues k = 1/3 {
+    _hc_svg "twoway line mpg weight, sort(rep78)" "`hc_dir'/hc15_`k'.svg"
+}
+mata: st_local("ndiff", strofreal(_hc_ndiff3(st_local("hc_dir") + "/hc15_1.svg", st_local("hc_dir") + "/hc15_2.svg", st_local("hc_dir") + "/hc15_3.svg")))
+_hc_expect "HC8-15" "(`ndiff' >= 2)" "three draws of sort(rep78) joined the points the same way `=3-`ndiff'' time(s)"
+_hc_svg "twoway line mpg weight," "`hc_dir'/hc15_d.svg"
+_hc_svg "twoway line mpg weight, sort" "`hc_dir'/hc15_s.svg"
+mata: st_local("sx", strofreal(_hc_svg_x_sorted(st_local("hc_dir") + "/hc15_s.svg")))
+mata: st_local("dx", strofreal(_hc_svg_x_sorted(st_local("hc_dir") + "/hc15_d.svg")))
+_hc_expect "HC8-15" "(`sx' == 1 & `dx' == 0)" "sort joins in x order: `sx'; no sort joins in x order: `dx'"
+_hc_done "HC8-15" "data order by default, x order with sort, a changing order among sort(varlist)'s ties"
+
+// ================================================================
+// HC8-16 -- dash build takes nobrowser, not nodraw
+// ================================================================
+_hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc16.html") nodraw replace"'
+_hc_expect "HC8-16" "(`r(rc)' == 198)" "dash build, nodraw: rc `r(rc)'"
+_hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc16.html") nobrowser replace"'
+_hc_expect "HC8-16" "(`r(rc)' == 0)" "dash build, nobrowser: rc `r(rc)'"
+_hc_done "HC8-16" "nodraw is a graph's option; dash build's own is nobrowser"
+
+// ================================================================
+// HC8-17 -- jsonio is required
+// ================================================================
+// jsonio may sit in more than one directory (a source checkout and PLUS
+// both, on this machine), so the ado-path is cut down to Stata's own
+// directories and the working directory for the one command, and put back
+// whole: S_ADO is the ado-path.  dash's own programs are already loaded.
+local hc_ado `"$S_ADO"'
+global S_ADO "BASE;SITE;."
+capture which jsonio
+local hidden = (_rc != 0)
+if `hidden' {
+    _hc_run "" `"dash scatter mpg weight, saving("`hc_dir'/hc17.html", replace)"'
+    local rc = r(rc)
+    local lf "`r(logfile)'"
+}
+global S_ADO `"`hc_ado'"'
+if !`hidden' {
+    display as text "HC8-17 SKIP: jsonio is still found on BASE;SITE;."
+}
+else {
+    _hc_expect "HC8-17" "(`rc' == 198)" "rc `rc'"
+    _hc_log "HC8-17" "`lf'" "dash: jsonio is required but not found. Run dash_setup first." 1 1
+    _hc_done "HC8-17" "without jsonio dash refuses, r(198), and names it"
+}
+
+// ================================================================
+// HC8-18 -- every Also see target resolves
+// ================================================================
+// help twoway is graph_twoway.sthlp and help python is
+// pystata_integration.sthlp, by Stata's own aliases (thelp_alias.maint and
+// phelp_alias.maint).
+foreach f in dash_setup.sthlp graph_twoway.sthlp pystata_integration.sthlp jsonio.sthlp {
+    capture findfile `f'
+    _hc_expect "HC8-18" "(_rc == 0)" "`f' is not on the ado-path"
+}
+foreach pair in "t/thelp_alias.maint twoway graph_twoway" "p/phelp_alias.maint python pystata_integration" {
+    tokenize `pair'
+    capture findfile `1'
+    if _rc == 0 {
+        capture mata: st_local("amatch", strofreal(any(regexm(cat(st_global("r(fn)")), "^`2'[ \t]+`3'[ \t]*$"))))
+        if _rc == 0 _hc_expect "HC8-18" "(`amatch' == 1)" "`1' does not map `2' to `3'"
+    }
+}
+_hc_done "HC8-18" "dash_setup, twoway, jsonio and python all resolve"
+
+// ================================================================
+// HC8-19 -- dash_setup's summary
+// ================================================================
+_hc_run "" "_dash_setup_summary, failures(1) warnings(0) items(bokeh 2.4 (needs 3.0))"
+_hc_expect "HC8-19" "(`r(rc)' == 198)" "one unmet requirement: rc `r(rc)'"
+_hc_log "HC8-19" "`r(logfile)'" "dash_setup did not complete: 1 unmet requirement(s)." 1
+_hc_run "" "_dash_setup_summary, failures(0) warnings(1) items(packaging)"
+_hc_expect "HC8-19" "(`r(rc)' == 0)" "one warning: rc `r(rc)'"
+_hc_log "HC8-19" "`r(logfile)'" "dash_setup complete, with 1 warning(s)." 1
+_hc_run "" "_dash_setup_summary, failures(0) warnings(0)"
+_hc_expect "HC8-19" "(`r(rc)' == 0)" "clean: rc `r(rc)'"
+_hc_log "HC8-19" "`r(logfile)'" "dash_setup complete. All dependencies are satisfied." 1
+_hc_done "HC8-19" "unmet is r(198); a warning completes; clean says satisfied"
+
+// ================================================================
+// HC8-20 -- cmissing: twoway joins across a missing y by default
+// ================================================================
+preserve
+clear
+input x y
+1 1
+2 2
+3 .
+4 4
+5 5
+end
+_hc_svg "twoway line y x," "`hc_dir'/hc20a.svg"
+_hc_svg "twoway line y x, cmissing(n)" "`hc_dir'/hc20b.svg"
+restore
+mata: st_local("m1", strofreal(_hc_svg_moves(st_local("hc_dir") + "/hc20a.svg")))
+mata: st_local("m2", strofreal(_hc_svg_moves(st_local("hc_dir") + "/hc20b.svg")))
+_hc_expect "HC8-20" "(`m1' == 1 & `m2' == 2)" "default drew `m1' piece(s), cmissing(n) `m2'"
+_hc_done "HC8-20" "one unbroken line by default, two pieces with cmissing(n)"
+
+// ----------------------------------------------------------------
+cd "`hc_home'"
+set scheme `hc_scheme0'
+capture dash clear
+if ${hc_nfail} {
+    display as error "SOME TESTS FAILED: ${hc_faillist}"
+    exit 9
+}
+display as text "ALL TESTS PASSED"

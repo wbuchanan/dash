@@ -348,8 +348,13 @@ class TestKpisUnderFiltering:
         lo = js.index("    let fmt;")
         hi = js.index("    // Rebuild the complete Div HTML", lo)
         block = js[lo:hi]
+        # The number writers the branch calls (dash_numfmt and its helpers,
+        # WP-23), which sit beside dash_apply_kpis.
+        writers = js[js.index("// ---- A number written as the card's"):
+                     js.index("function dash_apply_kpis(")]
         harness = (
-            "const k = " + json.dumps(cfg_entry) + ";"
+            writers
+            + "\nconst k = " + json.dumps(cfg_entry) + ";"
             + "\nconst result = " + json.dumps(float(value)) + ";\n"
             + block
             + "\nprocess.stdout.write(JSON.stringify(fmt));"

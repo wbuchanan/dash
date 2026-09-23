@@ -319,8 +319,10 @@ class TestTheSavedPageLeavesAnExcludedGraphAlone:
         spec = _spec([_graph("g1", by="foreign"), _graph("g2")], "range",
                      ["g2"])
         before, after, _, _ = _saved(tmp_path, spec, _MOVES["range"][1])
-        # A panel is titled "<title> <em dash> <group>", in both modes.
-        p0, p1 = ("g1 %s %s" % (chr(0x2014), grp) for grp in ("0.0", "1.0"))
+        # A panel is titled "<title> <em dash> <group>", in both modes, the
+        # group written as twoway writes it: 0 and 1 (dash wrote 0.0 and
+        # 1.0 until WP-23).
+        p0, p1 = ("g1 %s %s" % (chr(0x2014), grp) for grp in ("0", "1"))
         assert before == {p0: 5, p1: 5, "g2": _ALL}
         assert after == {p0: 2, p1: 3, "g2": _ALL}
 

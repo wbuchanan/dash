@@ -1,0 +1,1144 @@
+*! test_help_claims_6.cscript
+*! Certification script: WP-23, dash.sthlp's "Statistical Layer Options"
+*! and "Weights" sections, claim by claim -- the Stata side, with twoway
+*! measured in the same run.
+*!
+*! ROADMAP WP-23 AC-23.1 ("every claim in dash.sthlp is verified by a test
+*! or corrected") and TR-23.3 (bands(), n(), range() and base() each get an
+*! entry naming the plot types that honour them, the default and the
+*! bounds, measured against twoway).  Every case asks twoway first -- its
+*! return code, its words, or the serset of the saved .gph (`graph use',
+*! `serset use') -- and then dash.ado, so an expectation is measured rather
+*! than written down.  The renderer's half of each claim is
+*! test/test_help_claims_6.py, in both render modes.
+*!
+*! MEASURED STATUS WHEN THIS FILE WAS WRITTEN (4ede074's dash.ado, 23sep2026,
+*! StataNow 19.5): every twoway case passed; the dash.ado cases of three
+*! defects failed --
+*!   HC6-26  `dash fpfitci mpg weight, stdp' was r(198) "option stdp not
+*!           allowed", where twoway accepts it (rc 0) and the help says
+*!           fpfitci takes stdp.  HC6-27, 28 pin twoway's refusals beside it.
+*!   HC6-06  `dash kdensity mpg, width(2)' registered "width":"2", which the
+*!           renderer read as nothing: twoway reads width() as the bandwidth
+*!           (the serset equals bwidth(2)'s).  HC6-07: width() with bwidth()
+*!           was rc 0; twoway refuses it, r(198).
+*!   HC6-48  a weight on function, scatteri, pci or pcarrowi was r(101)
+*!           "weights not allowed" whatever it was; twoway accepts aw, fw and
+*!           pw on function, refuses them on the three immediate types with
+*!           r(198) "weights not allowed", and refuses an iweight on all four
+*!           with r(101) "iweights not allowed".
+*!
+*! CASES (HC6-nn; every case is tallied, the script exits 9 on any failure)
+*!   Aliases:     01 bins() is twoway histogram's own name (bin() its
+*!                abbreviation); 02 bins() bounds.
+*!   bwidth():    03 kdensity bwidth(0); 04 lowess bwidth(1) is 0.8;
+*!                05 lowess bwidth(1.5) and bwidth(0); 06-07 kdensity width().
+*!   degree():    08.   kernel(): 09 abbreviations and case; 10 old syntax.
+*!   n():         11-12 lpoly; 13 kdensity; 14 the fits; 15 mspline;
+*!                16 lpoly's grid under if, by() and a 30-row dataset;
+*!                17 fpfitci and mband ignore n(); 18 function.
+*!   bands():     19.   range(): 20-22.
+*!   base():      23 where twoway takes it; 23b twoway's default base.
+*!   level():     24 bounds; 25 c(level).
+*!   fpfitci/fpfit std: 26-29.   fpfit's smoothing options: 30-31.
+*!   histogram:   32-34.   lowess: 35-36.
+*!   Weights:     40-50, 53 (twoway sizes scatter markers by the weight),
+*!                54 (a pweight: the aweight fit, a robust band).
+*!   Misc:        51 _lpoly_work is compiled; 52 stdf stdr; 55 the options
+*!                dash names in the note (area() boundary atobs ...).
+*!
+*! Not in run_all_cscripts.do yet (WP-23 hands the wiring to the
+*! coordinator).  Usage:  cd test, then do "test_help_claims_6.cscript"
+*! (the dash directory and jsonio on the ado-path).
+
+cscript "dash help claims 6: statistical options and weights" adodir ".."
+
+clear all
+set more off
+set graphics off
+
+capture which jsonio
+if _rc {
+    display as error "FAIL: jsonio is not installed; nothing was certified."
+    exit 9
+}
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+global dash_nobrowser 1
+
+global hc6_nfail    = 0
+global hc6_faillist ""
+
+// ----------------------------------------------------------------
+// Log scanner: re-join Stata's "> " continuation lines, then count the
+// logical lines that carry `needle' and hand back the first.  Mata reads
+// the log by value, so nothing in it is ever expanded as a macro.
+// ----------------------------------------------------------------
+capture mata: mata drop _hc6_scan()
+capture mata: mata drop _hc6_json_has()
+mata:
+void _hc6_scan(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full, first
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    first = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle) & !strpos(full, "capture noisily")) {
+            n = n + 1
+            if (first == "") first = full
+        }
+        full = line
+    }
+    if (strpos(full, needle) & !strpos(full, "capture noisily")) {
+        n = n + 1
+        if (first == "") first = full
+    }
+    fclose(fh)
+    st_local("_hc6_n", strofreal(n))
+    st_local("_hc6_line", first)
+}
+
+real scalar _hc6_json_has(string scalar needle)
+{
+    return(strpos(st_global("dash_json_hc6"), needle) > 0)
+}
+end
+
+capture program drop _hc6_tally
+program define _hc6_tally
+    version 16.0
+    args id bad what
+    if `bad' {
+        global hc6_nfail    = ${hc6_nfail} + 1
+        global hc6_faillist "${hc6_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `macval(what)'"'
+end
+
+// Run a dash command under its own log, from an empty registry; r(rc).
+capture program drop _hc6_dash
+program define _hc6_dash, rclass
+    version 16.0
+    args cmdtext
+    local lg "`c(tmpdir)'hc6_run.log"
+    capture log close _hc6log
+    capture erase "`lg'"
+    capture dash clear
+    set linesize 80
+    quietly log using "`lg'", name(_hc6log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _hc6log
+    return scalar rc = `rc'
+end
+
+// Does the last run's log say `needle'?  r(n) lines, r(line) the first.
+capture program drop _hc6_said
+program define _hc6_said, rclass
+    version 16.0
+    args needle
+    mata: _hc6_scan("`c(tmpdir)'hc6_run.log", st_local("needle"))
+    return scalar n = `_hc6_n'
+    return local line `"`macval(_hc6_line)'"'
+end
+
+// twoway <plot>, nodraw under its own log, the data preserved and restored:
+// `twoway lfit ..., n(0)' leaves the x variable renamed when it fails
+// (measured: every later command then says "variable weight not found").
+// r(rc).  A plot with no options gets its comma here.
+capture program drop _hc6_tw
+program define _hc6_tw, rclass
+    version 16.0
+    args cmdtext
+    local lg "`c(tmpdir)'hc6_run.log"
+    capture log close _hc6log
+    capture erase "`lg'"
+    if strpos(`"`cmdtext'"', ",") local twcmd `"twoway `cmdtext' nodraw"'
+    else                          local twcmd `"twoway `cmdtext', nodraw"'
+    quietly log using "`lg'", name(_hc6log) text replace
+    preserve
+    capture noisily `twcmd'
+    local rc = _rc
+    restore
+    quietly log close _hc6log
+    return scalar rc = `rc'
+end
+
+// _hc6_ss <key> <serset#> <twoway plot ...>: draw it (nodraw), save the
+// graph, load serset #, name its columns c1..ck and save them to
+// c(tmpdir)hc6_<key>.dta.  r(rc), r(N) rows, r(ny) rows with a first
+// column, r(xmin)/r(xmax) of the last column over those rows (the x of a
+// fit, a band or a histogram), r(c2min)/r(c2max) of the second (the grid
+// of a kdensity, whose serset also carries the raw variable last).  The
+// data in memory are restored whatever happens.
+capture program drop _hc6_ss
+program define _hc6_ss, rclass
+    version 16.0
+    gettoken key 0 : 0
+    gettoken set 0 : 0
+    local p "`c(tmpdir)'hc6_`key'.gph"
+    local d "`c(tmpdir)'hc6_`key'.dta"
+    capture erase "`p'"
+    capture erase "`d'"
+    preserve
+    capture twoway `0' || , nodraw saving("`p'", replace)
+    local rc = _rc
+    restore
+    return scalar rc = `rc'
+    if `rc' exit
+    preserve
+    capture graph drop _all
+    capture serset drop _all
+    quietly graph use "`p'"
+    quietly serset set `set'
+    quietly serset use, clear
+    quietly ds
+    local i = 0
+    foreach v in `r(varlist)' {
+        local ++i
+        rename `v' c`i'
+    }
+    quietly count
+    return scalar N = r(N)
+    quietly count if !missing(c1)
+    return scalar ny = r(N)
+    quietly summarize c`i' if !missing(c1)
+    return scalar xmin = r(min)
+    return scalar xmax = r(max)
+    if `i' >= 2 {
+        quietly summarize c2 if !missing(c1)
+        return scalar c2min = r(min)
+        return scalar c2max = r(max)
+    }
+    return scalar ncol = `i'
+    quietly save "`d'", replace
+    restore
+end
+
+// _hc6_same <keyA> <keyB> <ncols> <tol>: are the first ncols columns of the
+// two saved sersets equal row by row, to tol (0 = exactly), once each is
+// sorted on its last compared column (x) and then the others?  Tied x come
+// out of two graphs in different orders (measured: the lowess bwidth(1) and
+// bwidth(.8) sersets hold the same 74 rows, five tied pairs swapped).
+// r(same), r(maxdiff).
+capture program drop _hc6_same
+program define _hc6_same, rclass
+    version 16.0
+    args a b ncols tol
+    local order "c`ncols'"
+    forvalues j = 1/`=`ncols' - 1' {
+        local order "`order' c`j'"
+    }
+    preserve
+    quietly use "`c(tmpdir)'hc6_`b'.dta", clear
+    local nb = _N
+    sort `order'
+    forvalues j = 1/`ncols' {
+        rename c`j' b`j'
+    }
+    keep b*
+    tempfile tb
+    quietly save `tb'
+    quietly use "`c(tmpdir)'hc6_`a'.dta", clear
+    local na = _N
+    sort `order'
+    quietly merge 1:1 _n using `tb', nogenerate
+    local same = (`na' == `nb')
+    local maxd = 0
+    forvalues j = 1/`ncols' {
+        quietly count if missing(c`j') != missing(b`j')
+        if r(N) local same = 0
+        quietly generate double _d = abs(c`j' - b`j')
+        quietly summarize _d, meanonly
+        if r(N) & r(max) > `maxd' local maxd = r(max)
+        drop _d
+    }
+    if `maxd' > `tol' local same = 0
+    restore
+    return scalar same = `same'
+    return scalar maxdiff = `maxd'
+end
+
+sysuse auto, clear
+quietly generate double negw  = price - 5000
+quietly generate double negfw = round(price / 1000) - 5
+quietly generate double zw    = cond(weight == 4840 | weight == 1760, 0, 1)
+quietly generate double mw    = cond(weight == 4840 | weight == 1760, ., 1)
+quietly generate double cst   = 5
+// The helpers preserve the data themselves, and preserve does not nest:
+// a case that needs other data loads it and reloads these afterwards.
+tempfile hc6_auto
+quietly save `hc6_auto'
+
+// ================================================================
+// HC6-01, 02 -- bins() is twoway histogram's own name for the bin count
+// (twoway_histogram_parse.class: BINs(numlist max=1 >=0 integer)), so
+// bin() is its abbreviation; both draw the same bars, and dash takes both
+// (test_alias_semantics.cscript AS-05 pins dash's fold).
+// ================================================================
+_hc6_ss hbins 0 histogram mpg, bins(5)
+local r1 = r(rc)
+_hc6_ss hbin 0 histogram mpg, bin(5)
+local r2 = r(rc)
+_hc6_same hbins hbin 3 0
+local bad = (`r1' != 0 | `r2' != 0 | r(same) != 1)
+_hc6_tally HC6-01 `bad' "twoway histogram takes bins() and bin() alike, the same five bars"
+
+_hc6_tw "histogram mpg, bins(0)"
+local t0 = r(rc)
+_hc6_tw "histogram mpg, bins(2000)"
+local t1 = r(rc)
+_hc6_dash "dash histogram mpg, bins(1001) name(hc6)"
+local d1 = r(rc)
+local bad = (`t0' == 0 | `t1' != 0 | `d1' != 198)
+_hc6_tally HC6-02 `bad' "bins(): twoway refuses 0 (r(`t0')) and takes 2000; dash refuses 1001, r(198), its own bound"
+
+// ================================================================
+// HC6-03 .. 07 -- bwidth()
+// ================================================================
+_hc6_ss kbw0 0 kdensity mpg, bwidth(0)
+local t = r(rc)
+_hc6_ss kbwd 0 kdensity mpg
+_hc6_same kbw0 kbwd 2 0
+local s = r(same)
+_hc6_dash "dash kdensity mpg, bwidth(0) name(hc6)"
+local bad = (`t' != 0 | `s' != 1 | r(rc) != 198)
+_hc6_tally HC6-03 `bad' "kdensity bwidth(0): twoway draws the default bandwidth's curve; dash refuses it, r(198)"
+
+// lowess.ado:75-78: a bandwidth outside (0, 1) is reset to .8.
+_hc6_ss lw1 0 lowess mpg weight, bwidth(1)
+local r1 = r(rc)
+_hc6_ss lw8 0 lowess mpg weight
+_hc6_same lw1 lw8 2 0
+local s1 = r(same)
+_hc6_dash "dash lowess mpg weight, bwidth(1) name(hc6)"
+local d = r(rc)
+mata: st_local("j", strofreal(_hc6_json_has(char(34) + "bwidth" + char(34) + ":" + char(34) + "1" + char(34))))
+local bad = (`r1' != 0 | `s1' != 1 | `d' != 0 | `j' != 1)
+_hc6_tally HC6-04 `bad' "lowess bwidth(1): twoway plots the bwidth(.8) serset; dash takes it (the renderer resets it to .8)"
+
+_hc6_ss lw15 0 lowess mpg weight, bwidth(1.5)
+_hc6_same lw15 lw8 2 0
+local s = r(same)
+_hc6_ss lw0 0 lowess mpg weight, bwidth(0)
+_hc6_same lw0 lw8 2 0
+local s0 = r(same)
+_hc6_dash "dash lowess mpg weight, bwidth(1.5) name(hc6)"
+local d = r(rc)
+_hc6_dash "dash lowess mpg weight, bwidth(0) name(hc6)"
+local bad = (`s' != 1 | `s0' != 1 | `d' != 198 | r(rc) != 198)
+_hc6_tally HC6-05 `bad' "lowess bwidth(1.5) and bwidth(0): twoway resets both to .8; dash refuses both, r(198), its own bound"
+
+// twoway kdensity reads width() as the bandwidth.
+_hc6_ss kdw 0 kdensity mpg, width(2)
+_hc6_ss kdbw 0 kdensity mpg, bwidth(2)
+_hc6_same kdw kdbw 2 0
+local s = r(same)
+_hc6_dash "dash kdensity mpg, width(2) name(hc6)"
+local d = r(rc)
+_hc6_said "unsupported option"
+local nn = r(n)
+mata: st_local("jb", strofreal(_hc6_json_has(char(34) + "bwidth" + char(34) + ":" + char(34) + "2" + char(34))))
+mata: st_local("jw", strofreal(_hc6_json_has(char(34) + "width" + char(34) + ":")))
+local bad = (`s' != 1 | `d' != 0 | `nn' != 0 | `jb' != 1 | `jw' != 0)
+if `bad' display as error "HC6-06 FAIL: twoway same=`s'; dash rc=`d' note=`nn' bwidth=`jb' width=`jw'"
+_hc6_tally HC6-06 `bad' "kdensity width(2): twoway draws bwidth(2)'s curve; dash registers it as bwidth(2), no note"
+
+_hc6_tw "kdensity mpg, width(2) bwidth(2)"
+local t = r(rc)
+_hc6_said "options width() and bwidth() may not be combined"
+local tw = r(n)
+_hc6_dash "dash kdensity mpg, width(2) bwidth(2) name(hc6)"
+local d = r(rc)
+_hc6_said "options width() and bwidth() may not be combined"
+local dw = r(n)
+_hc6_dash "dash kdensity mpg, width(2) bw(2) name(hc6)"
+local d2 = r(rc)
+local bad = (`t' != 198 | `tw' < 1 | `d' != 198 | `dw' < 1 | `d2' != 198)
+if `bad' display as error "HC6-07 FAIL: twoway rc=`t' said=`tw'; dash rc=`d' said=`dw'; with bw() rc=`d2'"
+_hc6_tally HC6-07 `bad' "width() with bwidth() on kdensity: r(198), twoway's words, in both"
+
+// ================================================================
+// HC6-08 -- degree(): twoway takes any whole number from 0 up; dash 0-3
+// ================================================================
+_hc6_tw "lpoly mpg weight, bwidth(400) degree(4)"
+local t4 = r(rc)
+_hc6_tw "lpoly mpg weight, bwidth(400) degree(-1)"
+local tm = r(rc)
+_hc6_dash "dash lpoly mpg weight, degree(4) name(hc6)"
+local d4 = r(rc)
+_hc6_said "dash fits local polynomials up to degree 3"
+local dw = r(n)
+local bad = (`t4' != 0 | `tm' != 198 | `d4' != 198 | `dw' != 1)
+_hc6_tally HC6-08 `bad' "degree(4): twoway rc 0, degree(-1) r(198); dash refuses 4 and says why"
+
+// ================================================================
+// HC6-09, 10 -- kernel()
+// ================================================================
+_hc6_tw "lpoly mpg weight, bwidth(400) kernel(gau)"
+local ta = r(rc)
+_hc6_tw "kdensity mpg, kernel(epan)"
+local tb = r(rc)
+_hc6_tw "lpoly mpg weight, bwidth(400) kernel(GAUSSIAN)"
+local tc = r(rc)
+_hc6_dash "dash lpoly mpg weight, kernel(gau) name(hc6)"
+local da = r(rc)
+_hc6_dash "dash lpoly mpg weight, kernel(GAUSSIAN) name(hc6)"
+local dc = r(rc)
+mata: st_local("j", strofreal(_hc6_json_has(char(34) + "kernel" + char(34) + ":" + char(34) + "gaussian" + char(34))))
+local bad = (`ta' != 0 | `tb' != 0 | `tc' != 198 | `da' != 198 | `dc' != 0 | `j' != 1)
+_hc6_tally HC6-09 `bad' "kernel(): twoway takes gau and epan and refuses GAUSSIAN; dash refuses gau, reads GAUSSIAN as gaussian"
+
+_hc6_tw "lpoly mpg weight, bwidth(400) gaussian"
+local t = r(rc)
+_hc6_dash "dash lpoly mpg weight, gaussian name(hc6)"
+local d = r(rc)
+_hc6_said "unsupported option(s): gaussian()"
+local nn = r(n)
+mata: st_local("j", strofreal(_hc6_json_has(char(34) + "kernel" + char(34))))
+local bad = (`t' != 0 | `d' != 0 | `nn' != 1 | `j' != 0)
+_hc6_tally HC6-10 `bad' "a bare gaussian: twoway's old kernel syntax; dash names it in the note and registers no kernel (the default is drawn)"
+
+// ================================================================
+// HC6-11 .. 18 -- n()
+// ================================================================
+// lpoly.ado: n() <= 0 is "n() must be a positive number", r(198); n() <= 1
+// is read as 50; n() is capped at _N.
+_hc6_ss lpn1 0 lpoly mpg weight, bwidth(400) n(1)
+local r1 = r(rc)
+local n1 = r(ny)
+_hc6_dash "dash lpoly mpg weight, n(1) name(hc6)"
+local d1 = r(rc)
+local bad = (`r1' != 0 | `n1' != 50 | `d1' != 198)
+_hc6_tally HC6-11 `bad' "lpoly n(1): twoway draws 50 points; dash refuses it, r(198)"
+
+_hc6_tw "lpoly mpg weight, bwidth(400) n(0)"
+local t0 = r(rc)
+_hc6_said "n() must be a positive number"
+local tw = r(n)
+_hc6_ss lpn2 0 lpoly mpg weight, bwidth(400) n(20000)
+local r2 = r(rc)
+local n2 = r(ny)
+_hc6_dash "dash lpoly mpg weight, n(10001) name(hc6)"
+local d2 = r(rc)
+local bad = (`t0' != 198 | `tw' < 1 | `r2' != 0 | `n2' != 74 | `d2' != 198)
+_hc6_tally HC6-12 `bad' "lpoly n(0) r(198); n(20000) drawn at the dataset's 74 rows; dash refuses n(10001)"
+
+_hc6_ss kdn1 0 kdensity mpg, n(1)
+local r1 = r(rc)
+local n1 = r(ny)
+_hc6_ss kdn1000 0 kdensity mpg, n(1000)
+local r2 = r(rc)
+local n2 = r(ny)
+_hc6_ss kddef 0 kdensity mpg
+local n3 = r(ny)
+local x0 = r(c2min)
+local x1 = r(c2max)
+_hc6_ss kdif 0 kdensity mpg if foreign
+local x2 = r(c2min)
+local bad = (`r1' != 0 | `n1' != 1 | `r2' != 0 | `n2' != 1000 | `n3' != 300 | `x0' != 12 | reldif(`x1', 41) > 1e-12 | `x2' != 14)
+if `bad' display as error "HC6-13 FAIL: n(1) rc=`r1' pts=`n1'; n(1000) rc=`r2' pts=`n2'; default pts=`n3' `x0'..`x1'; if foreign from `x2'"
+_hc6_tally HC6-13 `bad' "kdensity: n(1) and n(1000) drawn as given (not capped at _N); 300 by default, min to max of the plot's sample"
+
+_hc6_ss lf3 0 lfit mpg weight
+local a = r(ny)
+_hc6_ss qf100 0 qfit mpg weight
+local b = r(ny)
+_hc6_ss lfci100 0 lfitci mpg weight
+local c = r(ny)
+_hc6_ss lf7 0 lfit mpg weight, n(7)
+local d = r(ny)
+_hc6_dash "dash lfit mpg weight, n(7) name(hc6)"
+local dd = r(rc)
+mata: st_local("j", strofreal(_hc6_json_has(char(34) + "n" + char(34) + ":" + char(34) + "7" + char(34))))
+local bad = (`a' != 3 | `b' != 100 | `c' != 100 | `d' != 7 | `dd' != 0 | `j' != 1)
+_hc6_tally HC6-14 `bad' "fits: twoway lfit draws 3 points, qfit and lfitci 100, n(7) 7; dash registers n()"
+
+_hc6_tw "mspline mpg weight, n(0)"
+local t0 = r(rc)
+_hc6_tw "mspline mpg weight, n(301)"
+local t3 = r(rc)
+_hc6_said "n must be between 1 and 300"
+local tw = r(n)
+_hc6_tw "mspline mpg weight, n(1)"
+local t1 = r(rc)
+_hc6_tw "mspline mpg weight, n(300)"
+local t2 = r(rc)
+local bad = (`t0' != 198 | `t3' != 198 | `tw' < 1 | `t1' != 0 | `t2' != 0)
+_hc6_tally HC6-15 `bad' "mspline n(): 1 to 300 in twoway, n(0) and n(301) r(198) (dash: SO-67/68/87/88)"
+
+// twoway_lpoly_parse.class:56 and lpoly.ado count the dataset's _N, not
+// the sample: an if, or each by() panel, keeps the 50-point grid.
+_hc6_ss lpif 0 lpoly mpg weight if foreign, bwidth(400)
+local a = r(ny)
+local ax = r(xmin)
+_hc6_ss lpby0 0 lpoly mpg weight, bwidth(400) by(foreign)
+local b = r(ny)
+local bx0 = r(xmin)
+local bx1 = r(xmax)
+_hc6_ss lpby1 1 lpoly mpg weight, bwidth(400) by(foreign)
+local c = r(ny)
+local cx1 = r(xmax)
+// A dataset of fewer than 50 rows: one point per row, whatever n() says.
+quietly keep in 1/30
+_hc6_ss lp30 0 lpoly mpg weight, bwidth(2000) n(10)
+local d = r(ny)
+quietly use `hc6_auto', clear
+local bad = (`a' != 50 | `ax' != 1760 | `b' != 50 | `bx0' != 1800 | `bx1' != 4840 | `c' != 50 | `cx1' != 3420 | `d' != 30)
+if `bad' display as error "HC6-16 FAIL: if foreign `a' from `ax'; by panel 0 `b' `bx0'..`bx1'; panel 1 `c' to `cx1'; 30 rows n(10): `d'"
+_hc6_tally HC6-16 `bad' "lpoly: 50 points under if foreign and in each by(foreign) panel; 30 on a 30-row dataset whatever n() says"
+
+_hc6_ss fpn5 0 fpfitci mpg weight, n(5)
+_hc6_ss fpdef 0 fpfitci mpg weight
+_hc6_same fpn5 fpdef 4 0
+local s1 = r(same)
+_hc6_ss mbn 1 mband mpg weight, n(301)
+_hc6_ss mbdef 1 mband mpg weight
+_hc6_same mbn mbdef 2 0
+local s2 = r(same)
+_hc6_dash "dash fpfitci mpg weight, n(5) name(hc6)"
+local d1 = r(rc)
+_hc6_dash "dash mband mpg weight, n(5) name(hc6)"
+local d2 = r(rc)
+local bad = (`s1' != 1 | `s2' != 1 | `d1' != 0 | `d2' != 0)
+_hc6_tally HC6-17 `bad' "twoway fpfitci and mband accept n() and draw the same points without it; dash accepts it"
+
+_hc6_ss fn1 0 function y = x, range(0 1) n(1)
+local r1 = r(rc)
+local n1 = r(ny)
+_hc6_ss fndef 0 function y = x, range(0 1)
+local n2 = r(ny)
+_hc6_dash "dash function y = x, range(0 1) n(1) name(hc6)"
+local bad = (`r1' != 0 | `n1' != 1 | `n2' != 300 | r(rc) != 198)
+_hc6_tally HC6-18 `bad' "function: twoway draws n(1) as one point and 300 by default; dash refuses n(1)"
+
+// ================================================================
+// HC6-19 -- bands(): 1 to 200 in twoway, refused elsewhere
+// ================================================================
+local bad = 0
+foreach t in mspline mband {
+    foreach v in 0 201 {
+        _hc6_tw "`t' mpg weight, bands(`v')"
+        if r(rc) != 198 local bad = 1
+        _hc6_said "bands must be between 1 and 200"
+        if r(n) < 1 local bad = 1
+    }
+    foreach v in 1 200 {
+        _hc6_tw "`t' mpg weight, bands(`v')"
+        if r(rc) != 0 local bad = 1
+    }
+}
+_hc6_tw "scatter mpg weight, bands(5)"
+if r(rc) != 198 local bad = 1
+_hc6_tally HC6-19 `bad' "bands(): twoway takes 1 to 200 on mspline and mband and refuses it on scatter"
+
+// ================================================================
+// HC6-20 .. 22 -- range()
+// ================================================================
+local bad = 0
+foreach t in lfit qfit lfitci qfitci {
+    _hc6_ss r_`t' 0 `t' mpg weight, range(1000 6000)
+    if r(rc) != 0 | r(xmin) != 1000 | r(xmax) != 6000 {
+        display as error "HC6-20 FAIL: twoway `t' range(1000 6000): rc=`r(rc)' `r(xmin)'..`r(xmax)'"
+        local bad = 1
+    }
+}
+foreach t in fpfit fpfitci lpoly lpolyci mspline mband lowess scatter line {
+    _hc6_tw "`t' mpg weight, range(1000 6000)"
+    if r(rc) != 198 {
+        display as error "HC6-20 FAIL: twoway `t' range() rc=`r(rc)', expected 198"
+        local bad = 1
+    }
+}
+_hc6_tw "histogram mpg, range(0 50)"
+if r(rc) != 198 local bad = 1
+_hc6_dash "dash lfit mpg weight, range(1000 6000) name(hc6)"
+if r(rc) != 0 local bad = 1
+_hc6_said "unsupported option"
+if r(n) != 0 local bad = 1
+mata: st_local("j", strofreal(_hc6_json_has(char(34) + "range" + char(34) + ":" + char(34) + "1000 6000" + char(34))))
+if `j' != 1 local bad = 1
+_hc6_tally HC6-20 `bad' "range(): twoway draws lfit/qfit/lfitci/qfitci over it and refuses it on nine other types; dash registers it"
+
+_hc6_ss rmiss 0 lfit mpg weight, range(. 6000)
+local r1 = r(rc)
+local x0 = r(xmin)
+_hc6_dash "dash lfit mpg weight, range(. 6000) name(hc6)"
+local d1 = r(rc)
+_hc6_ss rvar 0 kdensity mpg, range(price)
+local r2 = r(rc)
+local x2 = r(c2min)
+_hc6_dash "dash kdensity mpg, range(price) name(hc6)"
+local d2 = r(rc)
+_hc6_tw "function y = x, range(weight)"
+local r3 = r(rc)
+_hc6_dash "dash function y = x, range(weight) name(hc6)"
+local d3 = r(rc)
+local bad = (`r1' != 0 | `x0' != 1760 | `d1' != 198 | `r2' != 0 | `x2' != 3291 | `d2' != 198 | `r3' != 0 | `d3' != 198)
+if `bad' display as error "HC6-21 FAIL: range(. 6000) tw=`r1' from `x0' dash=`d1'; kdensity range(price) tw=`r2' from `x2' dash=`d2'; function range(weight) tw=`r3' dash=`d3'"
+_hc6_tally HC6-21 `bad' "a missing end and a variable in range(): twoway takes both; dash refuses them, r(198)"
+
+_hc6_ss krr 0 kdensity mpg, range(50 0)
+_hc6_ss kr 0 kdensity mpg, range(0 50)
+_hc6_same krr kr 2 1e-9
+local s = r(same)
+_hc6_ss lrr 0 lfit mpg weight, range(6000 1000)
+_hc6_ss lr 0 lfit mpg weight, range(1000 6000)
+_hc6_same lrr lr 2 0
+local s2 = r(same)
+_hc6_ss frr 0 function y = x^2, range(1 0)
+_hc6_ss fr 0 function y = x^2, range(0 1)
+_hc6_same frr fr 2 1e-12
+local s3 = r(same)
+_hc6_dash "dash kdensity mpg, range(50 0) name(hc6)"
+local bad = (`s' != 1 | `s2' != 1 | `s3' != 1 | r(rc) != 0)
+if `bad' display as error "HC6-22 FAIL: kdensity same=`s' lfit same=`s2' function same=`s3'"
+_hc6_tally HC6-22 `bad' "range() high-then-low: twoway draws kdensity, lfit and function as over low-then-high; dash takes it"
+
+// ================================================================
+// HC6-23 -- base()
+// ================================================================
+local bad = 0
+foreach t in bar spike dropline area dot {
+    _hc6_tw "`t' mpg weight, base(10)"
+    if r(rc) != 0 {
+        display as error "HC6-23 FAIL: twoway `t' base(10) rc=`r(rc)'"
+        local bad = 1
+    }
+}
+_hc6_tw "function y = x, range(0 1) base(0.5)"
+if r(rc) != 0 local bad = 1
+foreach t in scatter line connected lfit {
+    _hc6_tw "`t' mpg weight, base(10)"
+    if r(rc) != 198 local bad = 1
+}
+foreach c in "histogram mpg, base(0.01)" "kdensity mpg, base(0.01)" "rbar mpg price weight, base(10)" "rspike mpg price weight, base(10)" "rarea mpg price weight, base(10)" {
+    _hc6_tw "`c'"
+    if r(rc) != 198 local bad = 1
+}
+// what twoway keeps on the dropline view it draws
+preserve
+quietly twoway dropline mpg weight in 1/3, base(10) nodraw
+local vb "`.Graph.plotregion1.plot1.base'"
+restore
+if "`vb'" != "10" local bad = 1
+foreach t in bar spike dropline area {
+    _hc6_dash "dash `t' mpg weight, base(10) name(hc6)"
+    if r(rc) != 0 local bad = 1
+    mata: st_local("j", strofreal(_hc6_json_has(char(34) + "base" + char(34) + ":" + char(34) + "10" + char(34))))
+    if `j' != 1 local bad = 1
+}
+_hc6_tally HC6-23 `bad' "base(): twoway takes it on bar spike dropline area dot function, refuses it on nine others; dash registers it"
+
+// With no base(), when 0 lies outside y's range (mpg 17 to 22 on the first
+// three cars), twoway's y axis stops at 17 and the bars, spikes, drops and
+// area are drawn from the plot region's edge -- read off its SVG export
+// too -- where base(0) takes the axis to 0.  dash draws them from 0.
+local bad = 0
+foreach t in bar spike dropline area {
+    quietly twoway `t' mpg weight in 1/3, name(hc6b, replace)
+    local m0 "`.hc6b.plotregion1.yscale.curmin'"
+    quietly twoway `t' mpg weight in 1/3, base(0) name(hc6b, replace)
+    local m1 "`.hc6b.plotregion1.yscale.curmin'"
+    if "`m0'" != "17" | "`m1'" != "0" {
+        display as error "HC6-23b FAIL: twoway `t': y axis from `m0' by default, `m1' with base(0)"
+        local bad = 1
+    }
+}
+capture graph drop hc6b
+_hc6_tally HC6-23b `bad' "twoway's default base: the axis stops at the data (17), not 0, on bar spike dropline area"
+
+// ================================================================
+// HC6-24, 25 -- level()
+// ================================================================
+local bad = 0
+foreach v in 5 0 100 150 {
+    _hc6_tw "lfitci mpg weight, level(`v')"
+    if r(rc) != 0 local bad = 1
+}
+_hc6_tw "lpolyci mpg weight, bwidth(400) level(5)"
+if r(rc) != 198 local bad = 1
+_hc6_said "level() must be between 10 and 99.99 inclusive"
+if r(n) < 1 local bad = 1
+foreach v in 10 99.99 {
+    _hc6_tw "lpolyci mpg weight, bwidth(400) level(`v')"
+    if r(rc) != 0 local bad = 1
+}
+_hc6_dash "dash lpolyci mpg weight, level(5) name(hc6)"
+if r(rc) != 0 local bad = 1
+foreach v in 0 100 {
+    _hc6_dash "dash lfitci mpg weight, level(`v') name(hc6)"
+    if r(rc) != 198 local bad = 1
+}
+_hc6_tally HC6-24 `bad' "level(): twoway lfitci takes any number, lpolyci 10 to 99.99; dash takes strictly inside 0 and 100"
+
+_hc6_ss l90 0 lfitci mpg weight, level(90)
+set level 90
+_hc6_ss sl90 0 lfitci mpg weight
+set level 95
+_hc6_same l90 sl90 4 0
+local bad = (r(same) != 1)
+_hc6_tally HC6-25 `bad' "twoway lfitci under set level 90 draws the level(90) band"
+
+// ================================================================
+// HC6-26 .. 29 -- stdp, stdf and stdr on fpfitci and fpfit
+// ================================================================
+_hc6_tw "fpfitci mpg weight, stdp"
+local t = r(rc)
+_hc6_dash "dash fpfitci mpg weight, stdp name(hc6)"
+local d = r(rc)
+_hc6_said "unsupported option"
+local nn = r(n)
+mata: st_local("j", strofreal(_hc6_json_has(char(34) + "stdp" + char(34) + ":" + char(34) + "stdp" + char(34))))
+local bad = (`t' != 0 | `d' != 0 | `nn' != 0 | `j' != 1)
+if `bad' display as error "HC6-26 FAIL: twoway rc=`t'; dash rc=`d' note=`nn' stdp=`j'"
+_hc6_tally HC6-26 `bad' "fpfitci stdp: twoway rc 0; dash rc 0, stdp registered, no note"
+
+local bad = 0
+foreach f in stdf stdr {
+    _hc6_tw "fpfitci mpg weight, `f'"
+    if r(rc) != 198 local bad = 1
+    _hc6_said "`f' not allowed"
+    local tw = r(n)
+    _hc6_dash "dash fpfitci mpg weight, `f' name(hc6)"
+    if r(rc) != 198 local bad = 1
+    _hc6_said "`f' not allowed"
+    if r(n) < 1 | `tw' < 1 local bad = 1
+}
+_hc6_tally HC6-27 `bad' "fpfitci stdf and stdr: r(198), twoway's words, in both"
+
+_hc6_tw "fpfitci mpg weight, stdp stdf"
+local t = r(rc)
+_hc6_said "may not combine stdp stdf"
+local tw = r(n)
+_hc6_dash "dash fpfitci mpg weight, stdp stdf name(hc6)"
+local d = r(rc)
+_hc6_said "may not combine stdp stdf"
+local bad = (`t' != 198 | `tw' < 1 | `d' != 198 | r(n) < 1)
+_hc6_tally HC6-28 `bad' "fpfitci stdp stdf: may not combine, r(198), in both"
+
+_hc6_tw "fpfit mpg weight, stdp"
+local t = r(rc)
+_hc6_dash "dash fpfit mpg weight, stdp name(hc6)"
+local d = r(rc)
+_hc6_said "option stdp not allowed"
+local bad = (`t' != 198 | `d' != 198 | r(n) < 1)
+_hc6_tally HC6-29 `bad' "fpfit stdp: r(198) option stdp not allowed, in both"
+
+// ================================================================
+// HC6-30, 31 -- fpfit takes no smoothing option
+// ================================================================
+local bad = 0
+foreach o in "bwidth(1)" "degree(2)" "kernel(gaussian)" {
+    _hc6_tw "fpfit mpg weight, `o'"
+    if r(rc) != 198 local bad = 1
+    _hc6_tw "fpfitci mpg weight, `o'"
+    if r(rc) != 198 local bad = 1
+}
+_hc6_tw "fpfit mpg weight, estopts(degree(1))"
+if r(rc) != 0 local bad = 1
+_hc6_tally HC6-30 `bad' "fpfit and fpfitci: twoway refuses bwidth() degree() kernel(); estopts(degree(1)) is its spelling"
+
+_hc6_dash "dash fpfit mpg weight, estopts(degree(1)) name(hc6)"
+local d = r(rc)
+_hc6_said "unsupported option(s): estopts()"
+local bad = (`d' != 0 | r(n) != 1)
+_hc6_tally HC6-31 `bad' "dash names fpfit's estopts() in the note: it does not honour it"
+
+// The estimate-changing options dash cannot compute, which the help lists:
+// twoway takes each (rc 0); dash names each in the note, and registers
+// nothing for it.  With them dotextend() and droplines(), which the base()
+// entry says dash does not draw.
+local bad = 0
+local pairs `""kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "lfit mpg weight|atobs|atobs" "lfit mpg weight|estopts(noconstant)|estopts" "lfit mpg weight|predopts(residuals)|predopts" "fpfit mpg weight|estcmd(regress)|estcmd" "lpolyci mpg weight|pwidth(500)|pwidth" "lpolyci mpg weight|var(2)|var" "dot mpg weight|dotextend(no)|dotextend" "function y = x|range(0 5) droplines(1 2)|droplines""'
+foreach p of local pairs {
+    local b1 = strpos(`"`p'"', "|")
+    local spec = substr(`"`p'"', 1, `b1' - 1)
+    local rest = substr(`"`p'"', `b1' + 1, .)
+    local b2 = strpos(`"`rest'"', "|")
+    local opt   = substr(`"`rest'"', 1, `b2' - 1)
+    local oname = substr(`"`rest'"', `b2' + 1, .)
+    _hc6_tw `"`spec', `opt'"'
+    if r(rc) != 0 {
+        display as error `"HC6-55 FAIL: twoway `spec', `opt' rc=`r(rc)'"'
+        local bad = 1
+    }
+    _hc6_dash `"dash `spec', `opt' name(hc6)"'
+    local d = r(rc)
+    _hc6_said "unsupported option(s): `oname'()"
+    if `d' != 0 | r(n) != 1 {
+        display as error `"HC6-55 FAIL: dash `spec', `opt': rc=`d', note naming `oname'() `r(n)' time(s)"'
+        local bad = 1
+    }
+}
+_hc6_tally HC6-55 `bad' "area() boundary atobs estopts() predopts() estcmd() pwidth() var() dotextend() droplines(): twoway takes them; dash names each in the note"
+
+// ================================================================
+// HC6-32 .. 34 -- histogram
+// ================================================================
+_hc6_tw "histogram rep78, discrete bin(5)"
+local t = r(rc)
+_hc6_said "options discrete and bins() may not be combined"
+local bad = (`t' != 198 | r(n) < 1)
+_hc6_tally HC6-32 `bad' "twoway refuses discrete with bin(), r(198), in the words dash uses (SO-64)"
+
+_hc6_ss hd 0 histogram rep78, discrete
+_hc6_ss hd0 0 histogram rep78, discrete start(0)
+// start(0)'s serset carries one more row, with no bar in it: compare the
+// bars only.
+preserve
+quietly use "`c(tmpdir)'hc6_hd0.dta", clear
+quietly drop if missing(c1)
+quietly save "`c(tmpdir)'hc6_hd0b.dta", replace
+restore
+_hc6_same hd hd0b 3 0
+local s = r(same)
+_hc6_tw "histogram mpg, start(15)"
+local t = r(rc)
+_hc6_said "option start() may not be larger than minimum of mpg"
+local bad = (`s' != 1 | `t' != 198 | r(n) < 1)
+_hc6_tally HC6-33 `bad' "discrete bars do not move with start(); start() above the minimum is r(198), twoway's words"
+
+_hc6_ss hc 0 histogram cst
+local a = r(xmin)
+_hc6_ss hcd 0 histogram cst, discrete
+local b = r(xmin)
+_hc6_ss hcw 0 histogram cst, width(3)
+local c = r(xmin)
+local bad = (`a' != 5.5 | `b' != 5 | `c' != 6.5)
+_hc6_tally HC6-34 `bad' "one value: one bar centred at v + .5 (width 1), at v with discrete, at v + 1.5 with width(3)"
+
+// ================================================================
+// HC6-35, 36 -- lowess
+// ================================================================
+clear
+quietly set obs 20
+quietly generate double x = _n
+quietly generate double y = 0.3
+quietly replace y = 0.005 in 3
+quietly replace y = 0.00005 in 7
+_hc6_ss lwl 0 lowess y x, mean noweight bwidth(.05) logit
+quietly use "`c(tmpdir)'hc6_lwl.dta", clear
+local v3 = c1[3]
+local v7 = c1[7]
+quietly use `hc6_auto', clear
+local bad = (abs(`v3' - ln(.005/.995)) > 1e-9 | abs(`v7' - ln(.05/.95)) > 1e-9)
+_hc6_tally HC6-35 `bad' "lowess logit: a smooth of .005 is kept (ln(.005/.995)), one below .0001 becomes 1/N"
+
+local bad = 0
+foreach w in aw fw pw {
+    _hc6_tw "lowess mpg weight [`w'=rep78]"
+    if r(rc) != 101 local bad = 1
+    _hc6_said "weights not allowed"
+    if r(n) < 1 local bad = 1
+}
+_hc6_tally HC6-36 `bad' "twoway lowess takes no weight, r(101) weights not allowed (dash: SO-19..22)"
+
+// ================================================================
+// HC6-40 .. 50 -- weights
+// ================================================================
+local bad = 0
+foreach f in lfitci lpolyci {
+    _hc6_tw "`f' mpg weight [fw=gear_ratio]"
+    if r(rc) != 401 local bad = 1
+    _hc6_dash "dash `f' mpg weight [fw=gear_ratio], name(hc6)"
+    if r(rc) != 401 local bad = 1
+    _hc6_said "may not use noninteger frequency weights"
+    if r(n) < 1 local bad = 1
+}
+_hc6_tally HC6-40 `bad' "a non-integer fweight on lfitci and lpolyci: r(401), in both"
+
+_hc6_tw "lpolyci mpg weight [fw=negfw]"
+local t = r(rc)
+_hc6_dash "dash lpolyci mpg weight [fw=negfw], name(hc6)"
+local d = r(rc)
+_hc6_said "negative weights encountered"
+local bad = (`t' != 402 | `d' != 402 | r(n) < 1)
+_hc6_tally HC6-41 `bad' "a negative fweight on lpolyci: r(402), in both"
+
+local bad = 0
+foreach f in qfit qfitci fpfit {
+    _hc6_ss ni_`f' 0 `f' mpg weight [fw=gear_ratio]
+    if r(rc) != 0 | r(ny) != 0 {
+        display as error "HC6-42 FAIL: twoway `f' [fw=gear_ratio]: rc=`r(rc)' points=`r(ny)'"
+        local bad = 1
+    }
+    _hc6_dash "dash `f' mpg weight [fw=gear_ratio], name(hc6)"
+    if r(rc) != 0 local bad = 1
+}
+_hc6_tally HC6-42 `bad' "a non-integer fweight: twoway qfit, qfitci and fpfit accept it and draw nothing; dash accepts it"
+
+local bad = 0
+foreach f in fpfit fpfitci {
+    _hc6_ss neg_`f' 0 `f' mpg weight [aw=negw]
+    if r(rc) != 0 | r(ny) != 0 local bad = 1
+}
+_hc6_tally HC6-43 `bad' "a negative weight: twoway fpfit and fpfitci accept it and draw nothing (dash: SO-86)"
+
+local bad = 0
+foreach t in lfit qfit lfitci qfitci {
+    foreach w in aw pw {
+        _hc6_ss n1 0 `t' mpg weight [`w'=negw]
+        _hc6_ss n2 0 `t' mpg weight [`w'=negw] if negw > 0
+        local nc = cond(inlist("`t'", "lfitci", "qfitci"), 4, 2)
+        _hc6_same n1 n2 `nc' 0
+        if r(same) != 1 {
+            display as error "HC6-44 FAIL: twoway `t' [`w'=negw] differs from the fit on negw > 0"
+            local bad = 1
+        }
+    }
+    _hc6_ss n1 0 `t' mpg weight [fw=negfw]
+    _hc6_ss n2 0 `t' mpg weight [fw=negfw] if negfw > 0
+    local nc = cond(inlist("`t'", "lfitci", "qfitci"), 4, 2)
+    _hc6_same n1 n2 `nc' 0
+    if r(same) != 1 local bad = 1
+}
+_hc6_tally HC6-44 `bad' "a negative weight on lfit qfit lfitci qfitci: twoway draws the weighted fit on w > 0"
+
+local bad = 0
+foreach t in mband mspline {
+    local s = cond("`t'" == "mband", 1, 2)
+    _hc6_ss w0 `s' `t' mpg weight
+    foreach w in zw mw {
+        _hc6_ss w1 `s' `t' mpg weight [aw=`w']
+        _hc6_same w1 w0 2 0
+        if r(same) != 1 {
+            display as error "HC6-45 FAIL: twoway `t' [aw=`w'] differs from the unweighted curve"
+            local bad = 1
+        }
+    }
+}
+_hc6_tally HC6-45 `bad' "mband and mspline: a zero or missing weight changes nothing, not even the row count"
+
+_hc6_ss zl 0 lfit mpg weight [aw=zw]
+local a = r(xmin)
+local b = r(xmax)
+_hc6_ss zk 0 kdensity weight [aw=zw]
+local c = r(c2min)
+local bad = (`a' != 1800 | `b' != 4720 | `c' != 1800)
+_hc6_tally HC6-46 `bad' "a zero weight leaves its row out of lfit and kdensity: both start at 1800, not 1760"
+
+_hc6_ss sw 0 scatter mpg weight [aw=price]
+local nc = r(ncol)
+_hc6_dash "dash scatter mpg weight [aw=price], name(hc6)"
+local d = r(rc)
+_hc6_said "unsupported option(s): [aweight]"
+local nn = r(n)
+local _v ""
+mata: _dash_extract_vars(st_global("dash_json_hc6"), "_v")
+local ex : list posof "price" in _v
+local bad = (`nc' != 3 | `d' != 0 | `nn' != 1 | `ex' != 0)
+if `bad' display as error "HC6-47 FAIL: twoway serset columns `nc'; dash rc=`d' note=`nn' exported=`_v'"
+_hc6_tally HC6-47 `bad' "scatter [aw]: twoway reads the weight (its serset carries it); dash names [aweight] and does not export price"
+
+// twoway scatter sizes its markers by the weight: the SVG export of the
+// first three cars draws the first marker with radius 31.19 under
+// [aw=price] and 21.74 without (measured).
+capture mata: mata drop _hc6_first_r()
+mata:
+real scalar _hc6_first_r(string scalar fn)
+{
+    real scalar   fh, r
+    string scalar line
+    fh = fopen(fn, "r")
+    r = .
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (regexm(line, `"<circle [^>]*r="([0-9.]+)""')) {
+            r = strtoreal(regexs(1))
+            break
+        }
+    }
+    fclose(fh)
+    return(r)
+}
+end
+local sv1 "`c(tmpdir)'hc6_sw.svg"
+local sv0 "`c(tmpdir)'hc6_s0.svg"
+quietly twoway scatter mpg weight [aw=price] in 1/3, name(hc6s, replace)
+quietly graph export "`sv1'", replace name(hc6s)
+quietly twoway scatter mpg weight in 1/3, name(hc6s, replace)
+quietly graph export "`sv0'", replace name(hc6s)
+capture graph drop hc6s
+mata: st_local("r1", strofreal(_hc6_first_r(st_local("sv1"))))
+mata: st_local("r0", strofreal(_hc6_first_r(st_local("sv0"))))
+local bad = (missing(`r1') | missing(`r0') | `r1' <= `r0')
+if `bad' display as error "HC6-53 FAIL: marker radius `r1' with [aw=price], `r0' without"
+_hc6_tally HC6-53 `bad' "twoway scatter sizes its markers by an aweight (radius `r1' against `r0')"
+
+// A pweight: the aweight's fit, a different (robust) band.  dash's band
+// equals twoway's to float precision (test_help_claims_6.py
+// TestAPweightIsTheAweightFitWithARobustBand); here twoway's own shape.
+local bad = 0
+foreach t in lfitci qfitci fpfitci {
+    _hc6_ss pw 0 `t' mpg weight [pw=price]
+    _hc6_ss aw 0 `t' mpg weight [aw=price]
+    preserve
+    quietly use "`c(tmpdir)'hc6_pw.dta", clear
+    rename (c1 c2 c3) (f_pw lo_pw hi_pw)
+    quietly merge 1:1 _n using "`c(tmpdir)'hc6_aw.dta", nogenerate
+    quietly count if reldif(f_pw, c1) > 1e-6
+    local nf = r(N)
+    quietly count if reldif(lo_pw, c2) > 1e-4
+    local nb = r(N)
+    restore
+    if `nf' != 0 | `nb' == 0 {
+        display as error "HC6-54 FAIL: twoway `t' [pw] fit differs at `nf' points, band at `nb'"
+        local bad = 1
+    }
+}
+_hc6_tally HC6-54 `bad' "a pweight: twoway draws the aweight fit with another band, on lfitci qfitci fpfitci"
+
+// The immediate types and function (HC6-48).
+local bad = 0
+foreach w in aw fw pw {
+    local wv = cond("`w'" == "fw", "rep78", "price")
+    _hc6_tw "function y = x [`w'=`wv'], range(0 1)"
+    if r(rc) != 0 local bad = 1
+    _hc6_dash "dash function y = x [`w'=`wv'], range(0 1) name(hc6)"
+    if r(rc) != 0 {
+        display as error "HC6-48 FAIL: dash function [`w'=`wv'] rc=`r(rc)'"
+        local bad = 1
+    }
+    local wn = cond("`w'" == "aw", "aweight", cond("`w'" == "fw", "fweight", "pweight"))
+    _hc6_said "unsupported option(s): [`wn']"
+    if r(n) != 1 local bad = 1
+    foreach c in "scatteri 1 2" "pci 1 2 3 4" "pcarrowi 1 2 3 4" {
+        _hc6_tw "`c' [`w'=`wv'],"
+        if r(rc) != 198 local bad = 1
+        _hc6_said "weights not allowed"
+        local tw = r(n)
+        _hc6_dash "dash `c' [`w'=`wv'], name(hc6)"
+        if r(rc) != 198 {
+            display as error "HC6-48 FAIL: dash `c' [`w'=`wv'] rc=`r(rc)', twoway r(198)"
+            local bad = 1
+        }
+        _hc6_said "weights not allowed"
+        if r(n) < 1 | `tw' < 1 local bad = 1
+    }
+}
+foreach c in "function y = x [iw=price], range(0 1)" "scatteri 1 2 [iw=price]," "pci 1 2 3 4 [iw=price]," "pcarrowi 1 2 3 4 [iw=price]," {
+    _hc6_tw "`c'"
+    if r(rc) != 101 local bad = 1
+    _hc6_said "iweights not allowed"
+    local tw = r(n)
+    _hc6_dash "dash `c' name(hc6)"
+    if r(rc) != 101 {
+        display as error "HC6-48 FAIL: dash `c' rc=`r(rc)', twoway r(101)"
+        local bad = 1
+    }
+    _hc6_said "iweights not allowed"
+    if r(n) < 1 | `tw' < 1 {
+        display as error "HC6-48 FAIL: `c': not twoway's words (twoway said it `tw' times)"
+        local bad = 1
+    }
+}
+// twoway evaluates the weight before it refuses it: a variable that does
+// not exist is r(111) on every one of them.
+foreach c in "function y = x [aw=nosuch], range(0 1)" "scatteri 1 2 [aw=nosuch]," {
+    _hc6_tw "`c'"
+    if r(rc) != 111 local bad = 1
+    _hc6_dash "dash `c' name(hc6)"
+    if r(rc) != 111 local bad = 1
+}
+// A label that looks like a weight is a label, in twoway (rc 0, measured)
+// and in dash -- declaring the weight clause up front made syntax read it
+// as one.
+foreach lab in "[aw=price]" "[iw=price]" "[x]" "a [x] b" {
+    _hc6_tw `"scatteri 1 2 "`lab'","'
+    if r(rc) != 0 local bad = 1
+    _hc6_dash `"dash scatteri 1 2 "`lab'", name(hc6)"'
+    if r(rc) != 0 {
+        display as error `"HC6-48 FAIL: dash scatteri 1 2 "`lab'" rc=`r(rc)', a label"'
+        local bad = 1
+    }
+    mata: st_local("j", strofreal(_hc6_json_has(st_local("lab"))))
+    if `j' != 1 local bad = 1
+}
+_hc6_dash `"dash pci 1 2 3 4 "[aw=price]", name(hc6)"'
+if r(rc) != 0 local bad = 1
+// Tallied by hand, so the PASS line is a literal the adversarial matrix's
+// case detector can read (test_adversarial_matrix.py).
+if `bad' {
+    global hc6_nfail    = ${hc6_nfail} + 1
+    global hc6_faillist "${hc6_faillist} HC6-48"
+}
+else {
+    display as text "HC6-48 PASS: weights on function, scatteri, pci, pcarrowi: twoway's codes and words; a bracketed label stays a label"
+}
+
+_hc6_tw "lfit mpg weight [aw=price+1]"
+local t = r(rc)
+_hc6_dash "dash lfit mpg weight [aw=price+1], name(hc6)"
+local d = r(rc)
+_hc6_said "dash: [aweight=price+1] must name one variable; dash cannot evaluate a weight expression."
+local s1 = r(n)
+_hc6_said "Generate it first: generate double w = price+1"
+local s2 = r(n)
+local bad = (`t' != 0 | `d' != 198 | `s1' != 1 | `s2' != 1)
+_hc6_tally HC6-49 `bad' "an expression weight: twoway evaluates it; dash refuses it, r(198), with the words the help prints"
+
+local bad = 0
+foreach w in aw fw {
+    local wv = cond("`w'" == "fw", "rep78", "price")
+    _hc6_tw "lpolyci mpg weight [`w'=`wv'], bwidth(400)"
+    if r(rc) != 0 local bad = 1
+    _hc6_dash "dash lpolyci mpg weight [`w'=`wv'], name(hc6)"
+    if r(rc) != 0 local bad = 1
+}
+foreach w in pw iw {
+    _hc6_tw "lpolyci mpg weight [`w'=price], bwidth(400)"
+    if r(rc) != 101 local bad = 1
+    _hc6_dash "dash lpolyci mpg weight [`w'=price], name(hc6)"
+    if r(rc) != 101 local bad = 1
+}
+_hc6_tally HC6-50 `bad' "lpolyci takes aweight and fweight and refuses pweight and iweight, r(101), in both"
+
+// ================================================================
+// HC6-51, 52
+// ================================================================
+local lg "`c(tmpdir)'hc6_run.log"
+capture log close _hc6log
+quietly log using "`lg'", name(_hc6log) text replace
+capture noisily mata: mata which _lpoly_work()
+local rc = _rc
+quietly log close _hc6log
+_hc6_said "_lpoly_work():  lmataado"
+local bad = (`rc' != 0 | r(n) < 1)
+_hc6_tally HC6-51 `bad' "lpoly's rule of thumb is in compiled Mata: _lpoly_work() lives in the library lmataado"
+
+_hc6_tw "lfitci mpg weight, stdf stdr"
+local t = r(rc)
+_hc6_said "may not combine stdf stdr"
+local bad = (`t' != 198 | r(n) < 1)
+_hc6_tally HC6-52 `bad' "twoway refuses two band types, may not combine stdf stdr, r(198) (dash: SO-62)"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+capture dash clear
+capture erase "`c(tmpdir)'hc6_run.log"
+local nfail = ${hc6_nfail}
+local faillist "${hc6_faillist}"
+macro drop hc6_nfail hc6_faillist
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_help_claims_6: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_help_claims_6: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

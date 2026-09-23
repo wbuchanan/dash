@@ -143,9 +143,23 @@ class TestTheLegendOptionsNowReachIt:
         figs = _figs(tmp_path, _TWO, {"legend": "off"})
         assert all(not l.visible for l in figs[0].legend)
 
-    def test_a_position_keyword_is_applied(self, tmp_path):
-        figs = _figs(tmp_path, _TWO, {"legend": "bottom"})
-        assert any(l.location == "bottom_center" for l in figs[0].legend)
+    def test_a_clock_position_is_applied(self, tmp_path):
+        """position(6), twoway's own spelling of "below the plot"."""
+        figs = _figs(tmp_path, _TWO, {"legend": "position(6)"})
+        f = figs[0]
+        assert any(l in f.below for l in f.legend)
+
+    def test_a_bare_direction_word_is_not_a_placement(self, tmp_path):
+        """legend(bottom) is not twoway's -- it refuses it, "option bottom
+        not allowed", r(198), and dash.ado refuses it too (WP-23).  This
+        asserted it was applied, at bottom_center INSIDE the plot, where
+        twoway places nothing; a spec that carries one is now named and the
+        legend left where it would be without it."""
+        plain = _figs(tmp_path, _TWO)[0]
+        f = _figs(tmp_path, _TWO, {"legend": "bottom"})[0]
+        assert [str(l.location) for l in f.legend] == [
+            str(l.location) for l in plain.legend]
+        assert not any(l.location == "bottom_center" for l in f.legend)
 
     def test_cols_is_applied(self, tmp_path):
         figs = _figs(tmp_path, _TWO, {"legend": "cols(2)"})

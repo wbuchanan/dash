@@ -1583,11 +1583,14 @@ capture dash clear
 display "P20-26 PASS: port() refuses 1023, 65536, signs, decimals, hex and full-width digits; accepts 1024 and 65535"
 
 // P20-27 — dash kpi's stat(var), spelled to slip past its allow-list:
-// upper and mixed case, the percentile bounds, a fractional percentile,
-// trailing text, unbalanced or doubled parentheses, a blank inside, and
-// two variables.  Every one is refused and registers nothing.
+// upper and mixed case, the percentile bounds, malformed fractional
+// percentiles (two points, an exponent that makes 100), trailing text,
+// unbalanced or doubled parentheses, a blank inside, and two variables.
+// Every one is refused and registers nothing.  p97.5 itself is a
+// percentile, as dash.sthlp says, and is accepted since WP-23
+// (test_help_claims_4.cscript HC4-01..07).
 capture dash clear
-foreach p2027s in "MEAN(mpg)" "Mean(mpg)" "p0(mpg)" "p100(mpg)" "p97.5(mpg)" "mean(mpg);x" "mean(mpg))" "mean( mpg)" "sum(mpg price)" "mean(mpg)(price)" {
+foreach p2027s in "MEAN(mpg)" "Mean(mpg)" "p0(mpg)" "p100(mpg)" "p97.5.5(mpg)" "p1e2(mpg)" "mean(mpg);x" "mean(mpg))" "mean( mpg)" "sum(mpg price)" "mean(mpg)(price)" {
     capture dash kpi `p2027s', name(p2027) title(T)
     assert _rc != 0
     assert "${dash_kpi_p2027}" == ""
@@ -2416,7 +2419,7 @@ display "  P20-22..23: dash_setup package names and versions → never code, jud
 display "  P20-24: EXCLUDE() in any case → the same registry check as exclude()"
 display "  P20-25: A layout() grid larger than the graphs limit → rc=198, not gigabytes of padding"
 display "  P20-26: port() bounds and spellings (sign, decimal, hex, full-width digits) → rc=198"
-display "  P20-27: KPI stat(var) outside its allow-list (case, p0, p100, p97.5, trailing text) → refused"
+display "  P20-27: KPI stat(var) outside its allow-list (case, p0, p100, p97.5.5, p1e2, trailing text) → refused"
 display "  P20-28: Malformed UTF-8 inside the data (string value, variable and value labels) → rendered"
 display "  P20-29: A scatteri coordinate and the .gph note → shown as text; the note runs no directive"
 display "  P20-30: layout() not one of its forms whole, an unregistered name, a Bootstrap span outside 1..12 → rc=198"

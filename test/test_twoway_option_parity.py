@@ -188,11 +188,15 @@ def _declared(prog):
 #: CLPattern, CLWidth, MLABANGle, MLABFormat, MLABTextstyle, MLABVposition,
 #: SORT SORT1) and advanced_options.sthlp (yoverhangs, xoverhangs), and
 #: measured with a .gph identity ladder (the shortest prefix twoway accepts
-#: whose saved graph is the full name's).
+#: whose saved graph is the full name's).  sort1's is sort: a digit ends
+#: -syntax-'s run of capitals, so SORT1 admits sort(), and twoway takes
+#: sort(t) as sort1(t) -- measured 23sep2026, identical .gph, where so(t)
+#: and sor(t) are r(198).  It read sort1 while test_abbreviations counted
+#: the digit into the run.
 _F3_PLOT = {"clcolor": "clc", "clpattern": "clp", "clwidth": "clw",
             "mlabangle": "mlabang", "mlabformat": "mlabf",
             "mlabtextstyle": "mlabt", "mlabvposition": "mlabv",
-            "sort1": "sort1", "xoverhangs": "xoverhang",
+            "sort1": "sort", "xoverhangs": "xoverhang",
             "yoverhangs": "yoverhang"}
 _F3_GRAPH = {"xoverhangs": "xoverhang", "yoverhangs": "yoverhang"}
 

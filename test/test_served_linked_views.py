@@ -86,6 +86,8 @@ _IN_3_8 = frozenset(range(2, 8))
 
 
 def _panel(group):
+    """A panel's title: the graph's title, then the group as twoway writes
+    it -- foreign 0 is "0", which dash wrote "0.0" until WP-23."""
     return "g1 %s %s" % (_EM, group)
 
 
@@ -119,7 +121,7 @@ def _filter(ftype, exclude=()):
 _CASES = {
     "a by() graph beside a plain one": (
         lambda: [_graph("g1", by="foreign"), _graph("g2")],
-        {_panel("0.0"): _DOMESTIC, _panel("1.0"): _FOREIGN, "g2": _ALL}),
+        {_panel("0"): _DOMESTIC, _panel("1"): _FOREIGN, "g2": _ALL}),
     "a graph with its own if, registered last": (
         lambda: [_graph("g2"), _graph("g1", if_expr="price > 4500")],
         {"g1": _PRICEY, "g2": _ALL}),
@@ -128,13 +130,13 @@ _CASES = {
         {"g1": _IN_3_8, "g2": _ALL}),
     "a by() graph with a total panel": (
         lambda: [_graph("g1", by="foreign, total"), _graph("g2")],
-        {_panel("0.0"): _DOMESTIC, _panel("1.0"): _FOREIGN,
+        {_panel("0"): _DOMESTIC, _panel("1"): _FOREIGN,
          _panel("Total"): _ALL, "g2": _ALL}),
     "a qualified by() graph": (
         lambda: [_graph("g1", if_expr="price > 4500", by="foreign"),
                  _graph("g2")],
-        {_panel("0.0"): _PRICEY & _DOMESTIC,
-         _panel("1.0"): _PRICEY & _FOREIGN, "g2": _ALL}),
+        {_panel("0"): _PRICEY & _DOMESTIC,
+         _panel("1"): _PRICEY & _FOREIGN, "g2": _ALL}),
 }
 
 
@@ -340,9 +342,9 @@ class TestEachServedViewShowsItsOwnRows:
         got = _served(tmp_path, spec, [("price", (4000.0, 6000.0))])
         keep = _rows_of((_DF["price"] >= 4000.0) & (_DF["price"] <= 6000.0))
         assert got == {
-            _panel("0.0"): [sorted(_DOMESTIC & keep),
+            _panel("0"): [sorted(_DOMESTIC & keep),
                             sorted(_DOMESTIC & _PRICEY & keep)],
-            _panel("1.0"): [sorted(_FOREIGN & keep),
+            _panel("1"): [sorted(_FOREIGN & keep),
                             sorted(_FOREIGN & _PRICEY & keep)],
             "g2": [sorted(keep)]}
 
@@ -387,14 +389,14 @@ _SEQUENCES = {
         lambda: [_graph("g1", by="foreign"), _graph("g2")],
         [_filter("range"), _filter("slider")],
         [("price", (4000.0, 6000.0)), ("mpg", 20.0)],
-        {_panel("0.0"): [[0, 4]], _panel("1.0"): [[3]], "g2": [[0, 3, 4]]}),
+        {_panel("0"): [[0, 4]], _panel("1"): [[3]], "g2": [[0, 3, 4]]}),
     "a dropdown, a range, and the dropdown back to All": (
         lambda: [_graph("g1", by="foreign"),
                  _graph("g2", if_expr="price > 4500")],
         [_filter("dropdown"), _filter("range")],
         [("foreign", "1"), ("price", (4000.0, 6000.0)),
          ("foreign", "__all__")],
-        {_panel("0.0"): [[0, 4, 6, 8]], _panel("1.0"): [[1, 3, 5]],
+        {_panel("0"): [[0, 4, 6, 8]], _panel("1"): [[1, 3, 5]],
          "g2": [[1, 3, 4, 6]]}),
 }
 

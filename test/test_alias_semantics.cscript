@@ -25,8 +25,13 @@
 *!          records neither key, and names bw() in its one note.
 *!   AS-04  bw() together with bwidth() on a bandwidth type is the repeated
 *!          option twoway rejects; dash returns twoway's own rc.
-*!   AS-05  the other folds still land on their targets: t("top") records
-*!          t1title, bins(5) records bin, bw(100) on bar records barwidth.
+*!   AS-05  the other short forms still land on their targets: t("top")
+*!          records t1title, bins(5) records bin, bw(100) on bar records
+*!          barwidth.
+*!   AS-06  the side titles: every spelling of t1title() .. r2title(), and
+*!          t(), b(), l() and r(), lands where twoway puts it at plot level,
+*!          inside a plot's parentheses, after them and after ||; and a
+*!          third spelling on one side is named in the note, never dropped.
 *!
 *! No dashboard is rendered: every probe registers with name(), so the spec
 *! JSON can be read back out of the registry global.
@@ -188,7 +193,8 @@ if r(rc) != `tw_rc' {
 else display as text "AS-04 PASS: bw() with bwidth() gives twoway's rc `tw_rc'"
 
 // ----------------------------------------------------------------
-// AS-05 -- the other folds are unchanged.
+// AS-05 -- the other short forms are unchanged.  t() is T1title()'s own
+// minimum abbreviation, no longer a fold (AS-06); bins() and bw() are.
 // ----------------------------------------------------------------
 local bad = 0
 _zas_probe `"dash scatter mpg weight, t("top") name(zqas)"' "`logfile'"
@@ -213,7 +219,155 @@ if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' AS-05"
 }
-else display as text "AS-05 PASS: t(), bins() and bar bw() still fold to their targets"
+else display as text "AS-05 PASS: t(), bins() and bar bw() still land on their targets"
+
+// ----------------------------------------------------------------
+// AS-06 -- the side titles.  t(), b(), l(), r() and every spelling of
+// t1title() .. r2title(), at plot level, inside a plot's parentheses,
+// after them (graph level) and after ||.  twoway is asked first, in this
+// run: each spelling is saved to a live-format .gph and read back, so the
+// key it must land on is measured, not assumed.
+//
+// WP-23 TR-23.6 removed T(), B(), L() and R() from _dash_parse_graph_opts,
+// with the fold that copied them into t1title() .. r1title().  A digit ends
+// -syntax-'s run of capitals, so T1title()'s minimum is t: t() was always
+// T1title()'s, at every level, and nothing here may change without them.
+// What they did do was swallow a THIRD t() written after t1title() and
+// t2title(): the fold dropped it, and at graph level the note never named
+// it, where every other level did.  AS-06b holds all four levels to naming
+// it.
+// ----------------------------------------------------------------
+capture mata: mata drop _zas_val()
+capture mata: mata drop _zas_gphbox()
+mata:
+// The value recorded under the quoted key `key' in graph `g''s spec, or
+// <none>.  The probe values here carry no quote or backslash.
+string scalar _zas_val(string scalar g, string scalar key)
+{
+    string scalar js, pat, rest
+    real scalar p, e
+    js  = st_global("dash_json_" + g)
+    pat = char(34) + key + char(34) + ":" + char(34)
+    p   = strpos(js, pat)
+    if (p == 0) return("<none>")
+    rest = substr(js, p + strlen(pat), .)
+    e = strpos(rest, char(34))
+    return(e ? substr(rest, 1, e - 1) : "<none>")
+}
+
+// Does the live-format .gph at `path' insert the text box `key' holding
+// the text ZQV?  twoway inserts every title box, empty or not, so the box
+// alone says nothing: the line that creates it must carry the value.
+real scalar _zas_gphbox(string scalar path, string scalar key)
+{
+    real scalar fh, found
+    string scalar ln, head
+    fh = _fopen(path, "r")
+    if (fh < 0) return(-1)
+    head  = "(" + key + " = .sized_textbox.new"
+    found = 0
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        if (strpos(ln, head) & strpos(ln, "ZQV")) {
+            found = 1
+            break
+        }
+    }
+    fclose(fh)
+    return(found)
+}
+end
+
+// Run one dash command under a named log; return its rc and whether the
+// log's note names `needle'.
+capture program drop _zas_note
+program define _zas_note, rclass
+    args cmdtext logpath needle
+    capture log close _zaslog
+    capture erase "`logpath'"
+    capture dash clear
+    log using "`logpath'", name(_zaslog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zaslog
+    cert_file_has "`logpath'", needle("ignoring unsupported")
+    local nnote = r(found)
+    cert_file_has "`logpath'", needle("`needle'")
+    return scalar rc    = `rc'
+    return scalar nnote = `nnote'
+    return scalar named = r(found)
+end
+
+local gphfile "`c(tmpdir)'dash_alias_semantics.gph"
+local levels "P Q G V"
+local n06 = 0
+local bad06 = 0
+foreach s in t b l r {
+    foreach k in 1 2 {
+        local key "`s'`k'title"
+        local sib = cond(`k' == 1, "`s'2title", "`s'1title")
+        // The single letter is t1title()'s (twoway's measured minimum);
+        // t2title() starts at t2.
+        local ladder = cond(`k' == 1, "`s'", "")
+        forvalues L = 2/7 {
+            local ladder "`ladder' `=substr("`key'", 1, `L')'"
+        }
+        foreach sp of local ladder {
+            local n06 = `n06' + 1
+            // twoway first: the value lands in the text box named after
+            // the option the spelling resolved to.
+            capture erase "`gphfile'"
+            capture twoway scatter mpg weight, `sp'(ZQV) nodraw saving("`gphfile'", replace)
+            local tw_rc = _rc
+            local tw_key = 0
+            local tw_sib = 1
+            if `tw_rc' == 0 {
+                mata: st_local("tw_key", strofreal(_zas_gphbox(st_local("gphfile"), st_local("key"))))
+                mata: st_local("tw_sib", strofreal(_zas_gphbox(st_local("gphfile"), st_local("sib"))))
+            }
+            if `tw_rc' != 0 | `tw_key' != 1 | `tw_sib' != 0 {
+                display as error "AS-06 FAIL `sp'(): twoway rc=`tw_rc', `key' box=`tw_key', `sib' box=`tw_sib' -- the expectation below is wrong"
+                local bad06 = `bad06' + 1
+                continue
+            }
+            foreach lev of local levels {
+                if "`lev'" == "P" local c `"dash scatter mpg weight, `sp'(ZQV) name(zqas)"'
+                if "`lev'" == "Q" local c `"dash (scatter mpg weight, `sp'(ZQV)), name(zqas)"'
+                if "`lev'" == "G" local c `"dash (scatter mpg weight), `sp'(ZQV) name(zqas)"'
+                if "`lev'" == "V" local c `"dash scatter mpg weight || line mpg weight, `sp'(ZQV) name(zqas)"'
+                _zas_note `"`c'"' "`logfile'" " `key'()"
+                local drc   = r(rc)
+                local named = r(named)
+                mata: st_local("v_key", _zas_val("zqas", "`key'"))
+                mata: st_local("v_sib", _zas_val("zqas", "`sib'"))
+                if `drc' != 0 | "`v_key'" != "ZQV" | "`v_sib'" != "<none>" | `named' != 1 {
+                    display as error "AS-06 FAIL `lev' `sp'(): rc=`drc' `key'=[`v_key'] `sib'=[`v_sib'] note names `key'()=`named'"
+                    local bad06 = `bad06' + 1
+                }
+            }
+        }
+    }
+    // AS-06b: a third spelling on the same side, after the *1title() and
+    // *2title() are filled, is named in the note at every level.
+    foreach lev of local levels {
+        local o `"`s'1title(ZQA) `s'2title(ZQB) `s'(ZQC)"'
+        if "`lev'" == "P" local c `"dash scatter mpg weight, `o' name(zqas)"'
+        if "`lev'" == "Q" local c `"dash (scatter mpg weight, `o'), name(zqas)"'
+        if "`lev'" == "G" local c `"dash (scatter mpg weight), `o' name(zqas)"'
+        if "`lev'" == "V" local c `"dash scatter mpg weight || line mpg weight, `o' name(zqas)"'
+        _zas_note `"`c'"' "`logfile'" " `s'()"
+        if r(rc) != 0 | r(named) != 1 {
+            display as error "AS-06b FAIL `lev' `o': rc=`r(rc)', the note names `s'()=`r(named)' -- dropped in silence"
+            local bad06 = `bad06' + 1
+        }
+    }
+}
+capture erase "`gphfile'"
+if `bad06' {
+    display as error "AS-06 FAIL: `bad06' check(s) over `n06' spellings at `: word count `levels'' levels"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AS-06"
+}
+else display as text "AS-06 PASS: `n06' side-title spellings land where twoway puts them at every level, and a third one is named"
 
 // ----------------------------------------------------------------
 // Summary

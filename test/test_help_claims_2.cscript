@@ -1,0 +1,1034 @@
+*! test_help_claims_2.cscript
+*! Certification script: the claims dash.sthlp makes in its Option values
+*! section, Subcommands, Dashboard Options and Exporting (lines 317-585 at
+*! 4ede074) are true of the shipped code -- and where a claim is about
+*! twoway, true of twoway, measured here in the same session.
+*!
+*! ROADMAP WP-23 (AC-23.1, TR-23.3) / GAPS.md F4.  Each case below pins one
+*! claim of the help, or the corrected form of one the help got wrong.  A
+*! twoway measurement is drawn, not only parsed: with `nodraw' twoway skips
+*! the checks it makes while drawing (lwidth(10001) on a line, xsize(0.5),
+*! msangle(-361) are rc 0 under nodraw and r(198) drawn; measured 23sep2026),
+*! so every probe here draws, with graphics off.
+*!
+*! Option values (dash.sthlp, {marker validation}):
+*!   HC2-01  the refusal the help shows, word for word, as ONE line; twoway
+*!           accepts yaxis(3) and yaxis(9), refuses yaxis(10) ("twoway
+*!           allows nine")
+*!   HC2-02  a refusal comes before any Python: the one-line form refused
+*!           writes no file
+*!   HC2-03  yaxis(02), yaxis(+2), yaxis(2.0) and n(1E3) reach the spec as
+*!           2, 2, 2 and 1000
+*!   HC2-04  the bounds the help lists, at and past each edge
+*!   HC2-05  a word where twoway swallows it (jitter(abc), jitterseed(abc):
+*!           twoway rc 0) is refused
+*!   HC2-06  msize(1e308): twoway refuses it and so does dash;
+*!           msize(1e400): twoway accepts it, dash refuses it
+*!   HC2-07  start(): refused above the variable's minimum on histogram, with
+*!           twoway's own message; any number at or below it
+*!   HC2-08  kernel(), colpalette() and theme() are matched without regard to
+*!           case and normalised to lower case
+*!   HC2-09  scheme() takes a theme name, and an unknown scheme is refused
+*!           wherever it is written: on a graph, inside a segment, on
+*!           dash build and dash serve
+*!   HC2-10  variables: by(for) is by(foreign), as in twoway; a time-series
+*!           expression in mlabel(), colorvar() or by() is refused -- and
+*!           twoway refuses it too (r(111), r(101), r(101))
+*!   HC2-11  aspectratio(), hover(), ysize() are checked inside a segment
+*!   HC2-12  the five dash-own bounds that say so in a second sentence, and
+*!           twoway accepting each value
+*!   HC2-13  mspline n() 1 to 300 is twoway's own bound: no second sentence
+*!   HC2-14  the dash-own bounds with no second sentence, and twoway
+*!           accepting each value; the options twoway does not have
+*!   HC2-15  bands() 1 to 200 is twoway's own bound, twoway's message
+*!   HC2-16  values twoway refuses and dash accepts: kernel(GAUSSIAN),
+*!           a style option given (()), a string colorvar(), and a colour
+*!           written with commas
+*!   HC2-17  an unknown scheme(): twoway draws s2color with a note, dash
+*!           refuses; twoway has no theme() at all
+*!   HC2-18  forms twoway reads and dash refuses: mlabel() with two
+*!           variables, range(varname), a . in range(), and a width or angle
+*!           bound on a plot type that does not draw what it styles
+*!   HC2-19  the statistical switches: refused on every other plot type, as
+*!           twoway refuses them, with twoway's messages
+*!   HC2-20  a weight the plot type does not take is r(101), as in twoway
+*!   HC2-21  colours, msymbol(), lpattern() and the sub-options are not
+*!           checked in Stata; twoway notes an unknown style and refuses an
+*!           unknown sub-option word
+*! Subcommands and Dashboard Options:
+*!   HC2-22  the plot definition: name() registers and renders nothing;
+*!           without it the graph is written at once
+*!   HC2-23  dash build: saving() required, a registry required, server needs
+*!           .py, and server writes the app and returns
+*!   HC2-24  replace: an existing file is refused without it
+*!   HC2-25  dash serve: port 5006, timeout 0 and filterposition(top) by
+*!           default; the dashboard options reach the spec with dash
+*!           build's meaning; saving(), replace and server are named in a
+*!           note and ignored
+*!   HC2-26  dash serve inherits csv from the preceding dash build
+*!   HC2-27  dash clear discards the remembered options
+*!   HC2-28  dash clear empties the registry and keeps the settings
+*!           ($dash_nobrowser and $dash_max_*)
+*! The browser (dash.sthlp's nobrowser rows and the $dash_nobrowser
+*! definition).  `open' is replaced by a stub that records its arguments;
+*! HC2-29 proves the stub is what the shell runs before any case below it
+*! may open a window, and aborts otherwise:
+*!   HC2-29  the guard: open and xdg-open are both the stub
+*!   HC2-30  dash build with nothing said opens the file (the control: the
+*!           stub sees it); HC2-30b with the platform's opener -- open on a
+*!           Mac, whichever binary runs (the console binary reports c(os)
+*!           Unix, and dash ran xdg-open there, which a Mac has not got)
+*!   HC2-31  dash build, nobrowser opens nothing
+*!   HC2-32  $dash_nobrowser, set to 1 or even to 0, keeps dash build shut
+*!   HC2-33  a registered graph's nodraw keeps dash build shut
+*!   HC2-34  the one-line form: opens with nothing said, with the platform's
+*!           opener (34f); nodraw, the global and saving() each keep it
+*!           shut; it has no nobrowser option
+*!   HC2-35  dash clear leaves $dash_nobrowser in force
+*!   HC2-36  dash build, server opens nothing
+*!   (dash serve's routes are test_serve_browser.cscript SB-07..SB-10.)
+*! Exporting:
+*!   HC2-37  what export delimited writes, which the help compares the CSV
+*!           with: line feeds, .5, 1.00000000000e-07, .a, display-format
+*!           dates, labels, RFC 4180 quoting, no byte-order mark
+*!   HC2-38  jsonio hands dash every missing value, extended ones included,
+*!           as null -- so the CSV's field for .a is empty
+*!   HC2-39  the columns dash exports: every variable the dashboard uses,
+*!           a KPI card's included, in the order the dashboard names them
+*!   HC2-40  import delimited reads through a byte-order mark and CR LF
+*! Labels (item 6 of Differences from twoway):
+*!   HC2-41  twoway labels a value-labelled axis with numbers unless told
+*!           valuelabel (dash's own axes are test_help_claims_2.py's)
+*!
+*! Usage:  cd test, then do test_help_claims_2.cscript (the dash directory
+*!         and jsonio on the ado-path).
+
+cscript "dash help claims: option values, subcommands, dashboard options, exporting" adodir ".."
+
+clear all
+set more off
+
+capture which jsonio
+if _rc {
+    display as text "SKIP: jsonio is not installed."
+    exit 222
+}
+if `"`c(python_exec)'"' == "" {
+    display as text "SKIP: no Python is linked to this Stata."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+global dash_nobrowser 1
+set graphics off
+sysuse auto, clear
+quietly generate int t = _n
+quietly tsset t
+
+global hc2_nfail    = 0
+global hc2_faillist ""
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+capture mata: mata drop _hc2_scan()
+capture mata: mata drop _hc2_exact()
+capture mata: mata drop _hc2_rawhas()
+capture mata: mata drop _hc2_firstline()
+mata:
+// Count the logical lines of a log (continuations "> " re-joined) that
+// carry `needle'; hand back the first.
+void _hc2_scan(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full, first
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    first = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle)) {
+            n = n + 1
+            if (first == "") first = full
+        }
+        full = line
+    }
+    if (strpos(full, needle)) {
+        n = n + 1
+        if (first == "") first = full
+    }
+    fclose(fh)
+    st_local("_hc2_n", strofreal(n))
+    st_local("_hc2_line", first)
+}
+
+// 1 if some logical line of the log is exactly `want' (trailing blanks
+// ignored).
+real scalar _hc2_exact(string scalar fn, string scalar want)
+{
+    real scalar   fh, hit
+    string scalar line, full
+    fh = fopen(fn, "r")
+    hit = 0
+    full = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strrtrim(full) == want) hit = 1
+        full = line
+    }
+    if (strrtrim(full) == want) hit = 1
+    fclose(fh)
+    return(hit)
+}
+
+// 1 if the file's raw bytes carry `needle' (a byte search, so a CR or a
+// byte-order mark is seen as written).
+real scalar _hc2_rawhas(string scalar fn, string scalar needle)
+{
+    real scalar   fh
+    string scalar s, chunk
+    fh = fopen(fn, "r")
+    s = ""
+    while ((chunk = fread(fh, 65536)) != J(0, 0, "")) s = s + chunk
+    fclose(fh)
+    return(strpos(s, needle) > 0)
+}
+
+// The first line of a file, or "" when it cannot be read.
+string scalar _hc2_firstline(string scalar fn)
+{
+    real scalar   fh
+    string scalar line
+    fh = _fopen(fn, "r")
+    if (fh < 0) return("")
+    line = fget(fh)
+    fclose(fh)
+    if (line == J(0, 0, "")) return("")
+    return(line)
+}
+end
+
+// Run one command with its output logged; r(rc).  The log is wide, so a
+// message is one line in it.
+capture program drop _hc2_run
+program define _hc2_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'hc2.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _hc2log
+    capture erase "`logfile'"
+    log using "`logfile'", name(_hc2log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _hc2log
+    set linesize `ls'
+    return scalar rc = `rc'
+end
+
+// How many logical lines of the last log carry `needle'; r(n), r(line).
+capture program drop _hc2_said
+program define _hc2_said, rclass
+    version 16.0
+    args needle
+    mata: _hc2_scan(c("tmpdir") + "hc2.log", st_local("needle"))
+    return scalar n = `_hc2_n'
+    return local line `"`macval(_hc2_line)'"'
+end
+
+// Tally one verdict.
+capture program drop _hc2_ok
+program define _hc2_ok
+    version 16.0
+    args id ok what
+    if `ok' {
+        display as text `"`id' PASS: `macval(what)'"'
+    }
+    else {
+        display as error `"`id' FAIL: `macval(what)'"'
+        global hc2_nfail    = ${hc2_nfail} + 1
+        global hc2_faillist "${hc2_faillist} `id'"
+    }
+end
+
+// Run a command and judge its rc and, when given, a line its log must
+// carry.  One verdict.
+capture program drop _hc2_expect
+program define _hc2_expect
+    version 16.0
+    args id want cmdtext needle
+    _hc2_run `"`macval(cmdtext)'"'
+    local rc = r(rc)
+    local ok = (`rc' == `want')
+    local why ""
+    if !`ok' local why " [got rc `rc']"
+    if `ok' & `"`macval(needle)'"' != "" {
+        _hc2_said `"`macval(needle)'"'
+        if r(n) == 0 {
+            local ok = 0
+            local why " [the log does not say: `macval(needle)']"
+        }
+    }
+    _hc2_ok "`id'" `ok' `"rc `want': `macval(cmdtext)'`macval(why)'"'
+end
+
+// The same, from an empty registry (a dash probe).
+capture program drop _hc2_dash
+program define _hc2_dash
+    version 16.0
+    args id want cmdtext needle
+    quietly dash clear
+    _hc2_expect "`id'" `want' `"`macval(cmdtext)'"' `"`macval(needle)'"'
+end
+
+// The last log holds a line exactly `want'.  One verdict.
+capture program drop _hc2_line_is
+program define _hc2_line_is
+    version 16.0
+    args id want
+    mata: st_local("_hit", strofreal(_hc2_exact(c("tmpdir") + "hc2.log", st_local("want"))))
+    _hc2_ok "`id'" `_hit' `"the log carries the line: `macval(want)'"'
+end
+
+// The registered spec of graph `g' carries `needle'.  One verdict.
+capture program drop _hc2_reg
+program define _hc2_reg
+    version 16.0
+    args id g needle
+    mata: st_local("_hit", strofreal(strpos(st_global("dash_json_" + st_local("g")), st_local("needle")) > 0))
+    _hc2_ok "`id'" `_hit' `"the spec of `g' carries `macval(needle)'"'
+end
+
+// A refusal from the value rules ends in "(got: <value>)" and nothing
+// after it -- no second sentence -- or in exactly `tail'.
+capture program drop _hc2_tail
+program define _hc2_tail
+    version 16.0
+    args id opt tail
+    _hc2_said "dash: `opt'() must be"
+    local line `"`r(line)'"'
+    local line = strrtrim(`"`macval(line)'"')
+    if `"`macval(tail)'"' == "" {
+        local ok = (substr(`"`macval(line)'"', -1, 1) == ")" & strpos(`"`macval(line)'"', "(got: ") > 0)
+        _hc2_ok "`id'" `ok' `"`opt'(): the refusal has no second sentence: `macval(line)'"'
+    }
+    else {
+        local n = strlen(`"`macval(tail)'"')
+        local ok = (substr(`"`macval(line)'"', -`n', .) == `"`macval(tail)'"')
+        _hc2_ok "`id'" `ok' `"`opt'(): the refusal ends `macval(tail)': `macval(line)'"'
+    }
+end
+
+// ================================================================
+// Option values
+// ================================================================
+
+// HC2-01 -- the example the help prints, and twoway's nine axes.
+_hc2_dash "HC2-01a" 198 `"dash (scatter mpg weight, yaxis(3))"'
+_hc2_line_is "HC2-01b" "dash: yaxis() must be an integer between 1 and 2 (got: 3). dash draws two axes."
+_hc2_said "yaxis()"
+_hc2_ok "HC2-01c" `=r(n) == 1' "the refusal is one line"
+_hc2_expect "HC2-01d" 0   `"twoway scatter mpg weight, yaxis(3)"'
+_hc2_expect "HC2-01e" 0   `"twoway scatter mpg weight, yaxis(9)"'
+_hc2_expect "HC2-01f" 125 `"twoway scatter mpg weight, yaxis(10)"'
+
+// HC2-02 -- refused before any Python: nothing is written.
+tempfile hc2f
+local hc2out "`hc2f'_02.html"
+capture erase "`hc2out'"
+_hc2_dash "HC2-02a" 198 `"dash scatter mpg weight, yaxis(3) saving("`hc2out'")"'
+capture confirm file "`hc2out'"
+_hc2_ok "HC2-02b" `=_rc != 0' "the refused one-line form wrote no file"
+
+// HC2-03 -- one canonical spelling for an integer.
+_hc2_dash "HC2-03a" 0 `"dash scatter mpg weight, yaxis(02) name(hc)"'
+_hc2_reg  "HC2-03b" hc `""yaxis":"2""'
+_hc2_dash "HC2-03c" 0 `"dash scatter mpg weight, yaxis(+2) name(hc)"'
+_hc2_reg  "HC2-03d" hc `""yaxis":"2""'
+_hc2_dash "HC2-03e" 0 `"dash scatter mpg weight, yaxis(2.0) name(hc)"'
+_hc2_reg  "HC2-03f" hc `""yaxis":"2""'
+_hc2_dash "HC2-03g" 0 `"dash kdensity mpg, n(1E3) name(hc)"'
+_hc2_reg  "HC2-03h" hc `""n":"1000""'
+
+// HC2-04 -- the listed bounds, at and just past each edge.
+_hc2_dash "HC2-04a" 0   `"dash scatter mpg weight, jitter(0) name(hc)"'
+_hc2_dash "HC2-04b" 0   `"dash scatter mpg weight, jitter(100) name(hc)"'
+_hc2_dash "HC2-04c" 198 `"dash scatter mpg weight, jitter(100.5) name(hc)"'
+_hc2_dash "HC2-04d" 0   `"dash scatter mpg weight, malpha(100) lalpha(0) falpha(100) name(hc)"'
+_hc2_dash "HC2-04e" 198 `"dash scatter mpg weight, lalpha(101) name(hc)"'
+_hc2_dash "HC2-04f" 198 `"dash scatter mpg weight, falpha(-1) name(hc)"'
+_hc2_dash "HC2-04g" 198 `"dash scatter mpg weight, malpha(101) name(hc)"'
+_hc2_dash "HC2-04h" 0   `"dash lfitci mpg weight, level(0.5) name(hc)"'
+_hc2_dash "HC2-04i" 198 `"dash lfitci mpg weight, level(0) name(hc)"'
+_hc2_dash "HC2-04j" 0   `"dash scatter mpg weight, aspectratio(0) name(hc)"'
+_hc2_dash "HC2-04k" 0   `"dash bar mpg weight, base(-1e10) name(hc)"'
+_hc2_dash "HC2-04l" 0   `"dash bar mpg weight, barwidth(0.001) name(hc)"'
+_hc2_dash "HC2-04m" 198 `"dash histogram mpg, width(-1) name(hc)"'
+_hc2_dash "HC2-04n" 0   `"dash lowess mpg weight, bwidth(1) name(hc)"'
+_hc2_dash "HC2-04o" 198 `"dash lowess mpg weight, bwidth(1.01) name(hc)"'
+_hc2_dash "HC2-04p" 0   `"dash lpoly mpg weight, degree(0) name(hc)"'
+_hc2_dash "HC2-04q" 0   `"dash lpoly mpg weight, degree(3) name(hc)"'
+_hc2_dash "HC2-04r" 0   `"dash kdensity mpg, n(2) name(hc)"'
+_hc2_dash "HC2-04s" 0   `"dash kdensity mpg, n(10000) name(hc)"'
+_hc2_dash "HC2-04t" 198 `"dash kdensity mpg, n(10001) name(hc)"'
+_hc2_dash "HC2-04u" 0   `"dash mspline mpg weight, n(1) name(hc)"'
+_hc2_dash "HC2-04v" 0   `"dash mspline mpg weight, n(300) name(hc)"'
+_hc2_dash "HC2-04w" 0   `"dash histogram mpg, bin(1) name(hc)"'
+_hc2_dash "HC2-04x" 0   `"dash histogram mpg, bin(1000) name(hc)"'
+_hc2_dash "HC2-04y" 198 `"dash histogram mpg, bin(1001) name(hc)"'
+_hc2_dash "HC2-04z" 0   `"dash mband mpg weight, bands(1) name(hc)"'
+_hc2_dash "HC2-04A" 0   `"dash mband mpg weight, bands(200) name(hc)"'
+_hc2_dash "HC2-04B" 0   `"dash scatter mpg weight, colorvar(rep78) colornlevels(2) name(hc)"'
+_hc2_dash "HC2-04C" 0   `"dash scatter mpg weight, colorvar(rep78) colornlevels(256) name(hc)"'
+_hc2_dash "HC2-04D" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(257) name(hc)"'
+_hc2_dash "HC2-04E" 0   `"dash scatter mpg weight, jitter(1) jitterseed(0) jseed(0) name(hc)"'
+_hc2_dash "HC2-04F" 0   `"dash scatter mpg weight, msize(-5) mlabel(make) mlabsize(-5) mlabgap(-5) mlabposition(-5) name(hc)"'
+_hc2_dash "HC2-04G" 0   `"dash bar mpg weight, fintensity(-5) name(hc)"'
+_hc2_dash "HC2-04H" 0   `"dash line mpg weight, lwidth(10000) name(hc)"'
+_hc2_dash "HC2-04I" 198 `"dash line mpg weight, lwidth(10001) name(hc)"'
+_hc2_dash "HC2-04J" 198 `"dash scatter mpg weight, mlwidth(-0.5) name(hc)"'
+_hc2_dash "HC2-04K" 0   `"dash scatter mpg weight, msangle(-360) name(hc)"'
+_hc2_dash "HC2-04L" 198 `"dash scatter mpg weight, msangle(360.5) name(hc)"'
+_hc2_dash "HC2-04M" 0   `"dash scatter mpg weight, xsize(1) ysize(100) name(hc)"'
+_hc2_dash "HC2-04N" 198 `"dash scatter mpg weight, xsize(0.5) name(hc)"'
+_hc2_dash "HC2-04O" 198 `"dash scatter mpg weight, ysize(100.5) name(hc)"'
+_hc2_dash "HC2-04P" 198 `"dash function y=x, range(1) name(hc)"'
+_hc2_dash "HC2-04Q" 0   `"dash scatter mpg weight, colorvar(rep78) colorcuts(3) name(hc)"'
+
+// HC2-05 -- a word twoway would have swallowed.
+_hc2_expect "HC2-05a" 0   `"twoway scatter mpg weight, jitter(abc)"'
+_hc2_expect "HC2-05b" 0   `"twoway scatter mpg weight, jitter(5) jitterseed(abc)"'
+_hc2_dash   "HC2-05c" 198 `"dash scatter mpg weight, jitter(abc) name(hc)"' "jitter()"
+_hc2_dash   "HC2-05d" 198 `"dash scatter mpg weight, jitter(5) jitterseed(abc) name(hc)"' "jitterseed()"
+
+// HC2-06 -- a word that only looks like a number.
+_hc2_expect "HC2-06a" 198 `"twoway scatter mpg weight, msize(1e308)"' "invalid syntax"
+_hc2_dash   "HC2-06b" 198 `"dash scatter mpg weight, msize(1e308) name(hc)"' "msize()"
+_hc2_expect "HC2-06c" 0   `"twoway scatter mpg weight, msize(1e400)"'
+_hc2_dash   "HC2-06d" 198 `"dash scatter mpg weight, msize(1e400) name(hc)"' "msize()"
+
+// HC2-07 -- start() on histogram, as twoway checks it.
+_hc2_expect "HC2-07a" 198 `"twoway histogram mpg, start(12.5)"' "option start() may not be larger than minimum of mpg"
+_hc2_dash   "HC2-07b" 198 `"dash histogram mpg, start(12.5) name(hc)"' "option start() may not be larger than minimum of mpg"
+_hc2_expect "HC2-07c" 0   `"twoway histogram mpg, start(12)"'
+_hc2_dash   "HC2-07d" 0   `"dash histogram mpg, start(12) name(hc)"'
+_hc2_dash   "HC2-07e" 0   `"dash histogram mpg, start(-1000) name(hc)"'
+
+// HC2-08 -- a word from a list, in any case.
+_hc2_dash "HC2-08a" 0 `"dash kdensity mpg, kernel(Epan2) name(hc)"'
+_hc2_reg  "HC2-08b" hc `""kernel":"epan2""'
+_hc2_dash "HC2-08c" 0 `"dash scatter mpg weight, colorvar(rep78) colpalette(MAGMA) name(hc)"'
+_hc2_reg  "HC2-08d" hc `""colpalette":"magma""'
+quietly dash clear
+quietly dash scatter mpg weight, name(hc)
+tempfile hc2mj hc2dj
+_hc2_run `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") theme(DARK)"'
+_hc2_ok "HC2-08e" `=r(rc) == 0' "dash serve takes theme(DARK)"
+cert_file_has "`hc2mj'", needle(`""theme":"dark""')
+_hc2_ok "HC2-08f" `=r(found) == 1' "theme(DARK) reaches the spec as dark"
+_hc2_expect "HC2-08g" 198 `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") theme(nonsense)"' "theme()"
+
+// HC2-09 -- scheme(): a theme name is a scheme name; an unknown one is
+// refused wherever it is written.
+_hc2_dash "HC2-09a" 0   `"dash scatter mpg weight, scheme(DARK) name(hc)"'
+_hc2_dash "HC2-09b" 198 `"dash (scatter mpg weight, scheme(nonsense)) (line mpg weight), name(hc)"' "scheme()"
+_hc2_dash "HC2-09c" 198 `"dash scatter mpg weight, scheme(nonsense) name(hc)"' "scheme()"
+quietly dash clear
+quietly dash scatter mpg weight, name(hc)
+_hc2_expect "HC2-09d" 198 `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") scheme(nonsense)"' "scheme()"
+
+// HC2-10 -- variables, expanded as twoway expands them; a time-series
+// expression refused, as twoway refuses it.
+_hc2_expect "HC2-10a" 0 `"twoway scatter mpg weight, by(for)"'
+_hc2_dash   "HC2-10b" 0 `"dash scatter mpg weight, by(for) name(hc)"'
+_hc2_reg    "HC2-10c" hc `""by":"foreign""'
+_hc2_expect "HC2-10d" 111 `"twoway scatter mpg weight, mlabel(L.mpg)"' "variable L not found"
+_hc2_dash   "HC2-10e" 198 `"dash scatter mpg weight, mlabel(L.mpg) name(hc)"' "not a time-series expression"
+_hc2_expect "HC2-10f" 101 `"twoway scatter mpg weight, colorvar(L.mpg)"' "time-series operators not allowed"
+_hc2_dash   "HC2-10g" 198 `"dash scatter mpg weight, colorvar(L.mpg) name(hc)"' "not a time-series expression"
+_hc2_expect "HC2-10h" 101 `"twoway scatter mpg weight, by(L.foreign)"' "time-series operators not allowed"
+_hc2_dash   "HC2-10i" 198 `"dash scatter mpg weight, by(L.foreign) name(hc)"' "not a time-series expression"
+_hc2_dash   "HC2-10j" 111 `"dash scatter mpg weight, mlabel(nosuchvar) name(hc)"' "not found"
+
+// HC2-11 -- checked inside a segment as well as after the comma.
+_hc2_dash "HC2-11a" 198 `"dash (scatter mpg weight, aspectratio(-1)) (line mpg weight), name(hc)"' "aspectratio()"
+_hc2_dash "HC2-11b" 111 `"dash (scatter mpg weight, hover(nosuch)) (line mpg weight), name(hc)"' "hover()"
+_hc2_dash "HC2-11c" 198 `"dash (scatter mpg weight, ysize(101)) (line mpg weight), name(hc)"' "ysize()"
+
+// HC2-12 -- dash's own bounds that say so; twoway takes every value.
+_hc2_dash "HC2-12a" 198 `"dash lpoly mpg weight, degree(5) name(hc)"'
+_hc2_tail "HC2-12b" degree ". dash fits local polynomials up to degree 3."
+_hc2_dash "HC2-12c" 198 `"dash histogram mpg, bin(5000) name(hc)"'
+_hc2_tail "HC2-12d" bin ". dash draws up to 1000 bins."
+_hc2_dash "HC2-12e" 198 `"dash kdensity mpg, n(20000) name(hc)"'
+_hc2_tail "HC2-12f" n ". dash evaluates up to 10000 points."
+_hc2_dash "HC2-12g" 198 `"dash lowess mpg weight, bwidth(5) name(hc)"'
+_hc2_tail "HC2-12h" bwidth ". lowess bwidth() is the fraction of the sample."
+_hc2_dash "HC2-12i" 198 `"dash scatter mpg weight, xaxis(3) name(hc)"'
+_hc2_tail "HC2-12j" xaxis ". dash draws two axes."
+_hc2_dash "HC2-12k" 198 `"dash kdensity mpg, n(1) name(hc)"'
+_hc2_tail "HC2-12l" n ". dash evaluates up to 10000 points."
+_hc2_expect "HC2-12m" 0 `"twoway lpoly mpg weight, degree(5)"'
+_hc2_expect "HC2-12n" 0 `"twoway histogram mpg, bin(5000)"'
+_hc2_expect "HC2-12o" 0 `"twoway kdensity mpg, n(20000)"'
+_hc2_expect "HC2-12p" 0 `"twoway kdensity mpg, n(1)"'
+_hc2_expect "HC2-12q" 0 `"twoway lowess mpg weight, bwidth(5)"'
+_hc2_expect "HC2-12r" 0 `"twoway scatter mpg weight, xaxis(9)"'
+_hc2_expect "HC2-12s" 125 `"twoway scatter mpg weight, xaxis(10)"'
+
+// HC2-13 -- mspline's n() bound is twoway's own.
+_hc2_expect "HC2-13a" 198 `"twoway mspline mpg weight, n(301)"' "n must be between 1 and 300"
+_hc2_expect "HC2-13b" 0   `"twoway mspline mpg weight, n(1)"'
+_hc2_dash   "HC2-13c" 198 `"dash mspline mpg weight, n(301) name(hc)"'
+_hc2_tail   "HC2-13d" n ""
+
+// HC2-14 -- dash's own bounds with no second sentence; twoway takes each
+// value, and has no such option at all for the rest.
+_hc2_dash "HC2-14a" 198 `"dash scatter mpg weight, jitter(101) name(hc)"'
+_hc2_tail "HC2-14b" jitter ""
+_hc2_dash "HC2-14c" 198 `"dash lfitci mpg weight, level(100) name(hc)"'
+_hc2_tail "HC2-14d" level ""
+_hc2_dash "HC2-14e" 198 `"dash bar mpg weight, barwidth(0) name(hc)"'
+_hc2_tail "HC2-14f" barwidth ""
+_hc2_dash "HC2-14g" 198 `"dash scatter mpg weight, aspectratio(-1) name(hc)"'
+_hc2_tail "HC2-14h" aspectratio ""
+_hc2_dash "HC2-14i" 198 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(hc)"'
+_hc2_tail "HC2-14j" jitterseed ""
+_hc2_dash "HC2-14k" 198 `"dash kdensity mpg, bwidth(0) name(hc)"'
+_hc2_tail "HC2-14l" bwidth ""
+_hc2_dash "HC2-14m" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(1) name(hc)"'
+_hc2_tail "HC2-14n" colornlevels ""
+_hc2_dash "HC2-14o" 198 `"dash scatter mpg weight, jitter(5) jseed(-1) name(hc)"'
+_hc2_tail "HC2-14p" jseed ""
+_hc2_expect "HC2-14q" 0 `"twoway scatter mpg weight, jitter(101)"'
+_hc2_expect "HC2-14r" 0 `"twoway lfitci mpg weight, level(100)"'
+_hc2_expect "HC2-14s" 0 `"twoway lfitci mpg weight, level(0)"'
+_hc2_expect "HC2-14t" 0 `"twoway bar mpg weight, barwidth(0)"'
+_hc2_expect "HC2-14u" 0 `"twoway scatter mpg weight, aspectratio(-1)"'
+_hc2_expect "HC2-14v" 0 `"twoway scatter mpg weight, jitter(5) jitterseed(-1)"'
+_hc2_expect "HC2-14w" 0 `"twoway kdensity mpg, bwidth(0)"'
+_hc2_expect "HC2-14x" 198 `"twoway kdensity mpg, bwidth(-1)"' "bandwidth must be positive"
+_hc2_expect "HC2-14y" 198 `"twoway scatter mpg weight, colorvar(rep78) colornlevels(5)"' "option colornlevels() not allowed"
+_hc2_expect "HC2-14z" 198 `"twoway scatter mpg weight, jitter(5) jseed(3)"' "option jseed() not allowed"
+_hc2_expect "HC2-14A" 198 `"twoway scatter mpg weight, malpha(50)"' "option malpha() not allowed"
+_hc2_expect "HC2-14B" 198 `"twoway scatter mpg weight, colorvar(rep78) colpalette(magma)"' "option colpalette() not allowed"
+_hc2_expect "HC2-14C" 198 `"twoway scatter mpg weight, hover(price)"' "option hover() not allowed"
+_hc2_expect "HC2-14D" 198 `"twoway lpoly mpg weight, bwidth(0)"' "bwidth() must be a positive number"
+
+// HC2-15 -- bands() is twoway's bound, in twoway's words.
+_hc2_expect "HC2-15a" 198 `"twoway mband mpg weight, bands(201)"' "bands must be between 1 and 200"
+_hc2_expect "HC2-15b" 198 `"twoway mband mpg weight, bands(0)"' "bands must be between 1 and 200"
+_hc2_dash   "HC2-15c" 198 `"dash mband mpg weight, bands(201) name(hc)"'
+_hc2_tail   "HC2-15d" bands ""
+
+// HC2-16 -- values twoway refuses and dash accepts.
+_hc2_expect "HC2-16a" 198 `"twoway kdensity mpg, kernel(GAUSSIAN)"' "invalid kernel function"
+_hc2_dash   "HC2-16b" 0   `"dash kdensity mpg, kernel(GAUSSIAN) name(hc)"'
+_hc2_reg    "HC2-16c" hc `""kernel":"gaussian""'
+_hc2_expect "HC2-16d" 198 `"twoway line mpg weight, lwidth(())"' "option(s) ( ) not allowed"
+_hc2_dash   "HC2-16e" 0   `"dash line mpg weight, lwidth(()) name(hc)"'
+_hc2_reg    "HC2-16f" hc `""lwidth":"()""'
+_hc2_expect "HC2-16g" 198 `"twoway scatter mpg weight, msize(())"' "option(s) ( ) not allowed"
+_hc2_dash   "HC2-16h" 0   `"dash scatter mpg weight, msize(()) name(hc)"'
+_hc2_expect "HC2-16i" 198 `"twoway scatter mpg weight, xsize(())"' "option(s) ( ) not allowed"
+_hc2_dash   "HC2-16j" 0   `"dash scatter mpg weight, xsize(()) name(hc)"'
+_hc2_reg    "HC2-16k" hc `""xsize":"()""'
+_hc2_expect "HC2-16l" 7   `"twoway scatter mpg weight, colorvar(make)"' "found where numeric variable expected"
+_hc2_dash   "HC2-16m" 0   `"dash scatter mpg weight, colorvar(make) name(hc)"'
+_hc2_reg    "HC2-16n" hc `""colorvar":"make""'
+_hc2_expect "HC2-16o" 198 `"twoway scatter mpg weight, mcolor(255,0,0)"'
+_hc2_dash   "HC2-16p" 0   `"dash scatter mpg weight, mcolor(255,0,0) name(hc)"'
+_hc2_reg    "HC2-16q" hc `""mcolor":"255,0,0""'
+
+// HC2-17 -- an unknown scheme: twoway notes and draws s2color, dash
+// refuses; theme() is not a twoway option at all.
+_hc2_expect "HC2-17a" 0   `"twoway scatter mpg weight, scheme(nonsense)"' "(note: scheme nonsense not found, using s2color)"
+_hc2_dash   "HC2-17b" 198 `"dash scatter mpg weight, scheme(nonsense) name(hc)"' "dash: scheme() must be"
+_hc2_expect "HC2-17c" 198 `"twoway scatter mpg weight, theme(dark)"' "option theme() not allowed"
+
+// HC2-18 -- forms twoway reads and dash refuses.
+_hc2_expect "HC2-18a" 0   `"twoway scatter mpg weight, mlabel(make foreign)"'
+_hc2_dash   "HC2-18b" 198 `"dash scatter mpg weight, mlabel(make foreign) name(hc)"' "mlabel() must name one variable"
+_hc2_expect "HC2-18c" 0   `"twoway function y=x, range(mpg)"'
+_hc2_dash   "HC2-18d" 198 `"dash function y=x, range(mpg) name(hc)"' "range()"
+_hc2_expect "HC2-18e" 0   `"twoway kdensity mpg, range(weight)"'
+_hc2_dash   "HC2-18f" 198 `"dash kdensity mpg, range(weight) name(hc)"' "range()"
+_hc2_expect "HC2-18g" 0   `"twoway lfit mpg weight, range(. 5000)"'
+_hc2_dash   "HC2-18h" 198 `"dash lfit mpg weight, range(. 5000) name(hc)"' "range()"
+_hc2_expect "HC2-18i" 0   `"twoway qfitci mpg weight, range(2000 .)"'
+_hc2_dash   "HC2-18j" 198 `"dash qfitci mpg weight, range(2000 .) name(hc)"' "range()"
+_hc2_expect "HC2-18s" 0   `"twoway qfit mpg weight, range(. 5000)"'
+_hc2_dash   "HC2-18t" 198 `"dash qfit mpg weight, range(. 5000) name(hc)"' "range()"
+_hc2_expect "HC2-18u" 0   `"twoway lfitci mpg weight, range(. 5000)"'
+_hc2_dash   "HC2-18v" 198 `"dash lfitci mpg weight, range(. 5000) name(hc)"' "range()"
+_hc2_expect "HC2-18w" 127 `"twoway kdensity mpg, range(. 50)"' "option range() requires two numbers"
+_hc2_expect "HC2-18x" 198 `"twoway bar mpg weight, lwidth(-1)"' "gm_linewidth must be between"
+_hc2_expect "HC2-18y" 198 `"twoway connected mpg weight, mlwidth(-1)"' "gm_linewidth must be between"
+_hc2_expect "HC2-18k" 0   `"twoway scatter mpg weight, lwidth(-1)"'
+_hc2_dash   "HC2-18l" 198 `"dash scatter mpg weight, lwidth(-1) name(hc)"' "lwidth()"
+_hc2_expect "HC2-18m" 198 `"twoway scatter mpg weight, connect(l) lwidth(-1)"' "gm_linewidth must be between"
+_hc2_expect "HC2-18n" 0   `"twoway line mpg weight, mlwidth(-1)"'
+_hc2_dash   "HC2-18o" 198 `"dash line mpg weight, mlwidth(-1) name(hc)"' "mlwidth()"
+_hc2_expect "HC2-18p" 0   `"twoway line mpg weight, msangle(400)"'
+_hc2_dash   "HC2-18q" 198 `"dash line mpg weight, msangle(400) name(hc)"' "msangle()"
+_hc2_expect "HC2-18r" 198 `"twoway connected mpg weight, msangle(400)"' "symbolangle must be between"
+
+// HC2-19 -- a switch belongs to its plot type, as in twoway.
+local hc2_19 = 0
+foreach c in "scatter mpg weight, discrete|option discrete not allowed" ///
+             "kdensity mpg, discrete|option discrete not allowed" ///
+             "lfit mpg weight, stdp|option stdp not allowed" ///
+             "lpolyci mpg weight, stdf|option stdf not allowed" ///
+             "scatter mpg weight, mean|option mean not allowed" ///
+             "lpoly mpg weight, noweight|option noweight not allowed" ///
+             "scatter mpg weight, adjust|option adjust not allowed" ///
+             "scatter mpg weight, logit|option logit not allowed" ///
+             "lfitci mpg weight, stdf stdr|may not combine stdf stdr" ///
+             "qfitci mpg weight, stdp stdf|may not combine stdp stdf" ///
+             "histogram rep78, discrete bin(3)|options discrete and bins() may not be combined" {
+    local at = strpos("`c'", "|")
+    local cmd = substr("`c'", 1, `at' - 1)
+    local msg = substr("`c'", `at' + 1, .)
+    local ++hc2_19
+    _hc2_expect "HC2-19a`hc2_19'" 198 `"twoway `cmd'"' "`msg'"
+    _hc2_dash   "HC2-19b`hc2_19'" 198 `"dash `cmd' name(hc)"' "`msg'"
+}
+_hc2_expect "HC2-19c" 0 `"twoway lowess mpg weight, mean noweight adjust logit"'
+_hc2_dash   "HC2-19d" 0 `"dash lowess mpg weight, mean noweight adjust logit name(hc)"'
+_hc2_expect "HC2-19e" 0 `"twoway qfitci mpg weight, stdr"'
+_hc2_dash   "HC2-19f" 0 `"dash qfitci mpg weight, stdr name(hc)"'
+_hc2_expect "HC2-19g" 0 `"twoway histogram rep78, discrete"'
+_hc2_dash   "HC2-19h" 0 `"dash histogram rep78, discrete name(hc)"'
+
+// HC2-20 -- a weight the plot type does not take.
+_hc2_expect "HC2-20a" 101 `"twoway histogram mpg [aw=weight]"' "aweights not allowed"
+_hc2_dash   "HC2-20b" 101 `"dash histogram mpg [aw=weight], name(hc)"' "aweights not allowed"
+
+// HC2-21 -- what Stata does not check.  twoway notes an unknown style name
+// and refuses an unknown sub-option word; dash registers all of them, and
+// the renderer's notes are test_help_claims_2.py's.
+_hc2_dash   "HC2-21a" 0 `"dash scatter mpg weight, mcolor(bogus) msymbol(bogus) name(hc)"'
+_hc2_reg    "HC2-21b" hc `""msymbol":"bogus""'
+_hc2_dash   "HC2-21c" 0 `"dash line mpg weight, lpattern(bogus) name(hc)"'
+_hc2_reg    "HC2-21d" hc `""lpattern":"bogus""'
+_hc2_expect "HC2-21e" 0 `"twoway scatter mpg weight, msymbol(bogus)"' "named style bogus not found in class symbol"
+_hc2_expect "HC2-21f" 0 `"twoway scatter mpg weight, title(T, size(bogus))"' "named style bogus not found in class gsize"
+_hc2_dash   "HC2-21g" 0 `"dash scatter mpg weight, title(T, size(bogus)) name(hc)"'
+_hc2_expect "HC2-21h" 198 `"twoway scatter mpg weight, legend(garbage)"' "option garbage not allowed"
+_hc2_dash   "HC2-21i" 0 `"dash scatter mpg weight, legend(garbage) name(hc)"'
+_hc2_reg    "HC2-21j" hc `""legend":"garbage""'
+_hc2_expect "HC2-21k" 198 `"twoway scatter mpg weight, xscale(bogus)"' "option bogus not allowed"
+_hc2_dash   "HC2-21l" 0 `"dash scatter mpg weight, xscale(bogus) name(hc)"'
+graph drop _all
+
+// ================================================================
+// Subcommands and Dashboard Options
+// ================================================================
+
+// HC2-22 -- the plot definition.
+quietly dash clear
+_hc2_run `"dash scatter mpg weight, name(p1)"'
+_hc2_ok "HC2-22a" `=r(rc) == 0' "name() registers the graph"
+local reg "${dash_graph_registry}"
+_hc2_ok "HC2-22b" `: list posof "p1" in reg' "p1 is in the registry"
+_hc2_said "dashboard saved"
+_hc2_ok "HC2-22c" `=r(n) == 0' "name() renders nothing"
+local hc2out "`hc2f'_22.html"
+capture erase "`hc2out'"
+_hc2_run `"dash scatter mpg weight, saving("`hc2out'")"'
+capture confirm file "`hc2out'"
+_hc2_ok "HC2-22d" `=_rc == 0' "without name() the graph is written at once"
+
+// HC2-23 -- dash build's own requirements.
+quietly dash clear
+_hc2_expect "HC2-23a" 198 `"dash build, saving("`hc2f'_23.html") replace"' "no graphs registered"
+quietly dash scatter mpg weight, name(b1)
+_hc2_expect "HC2-23b" 198 `"dash build, replace"' "saving() is required"
+_hc2_expect "HC2-23c" 198 `"dash build, saving("`hc2f'_23.html") server replace"'
+local hc2py "`hc2f'_23.py"
+capture erase "`hc2py'"
+_hc2_expect "HC2-23d" 0 `"dash build, saving("`hc2py'") server"' "server app written to"
+capture confirm file "`hc2py'"
+_hc2_ok "HC2-23e" `=_rc == 0' "dash build, server writes the .py app and returns"
+
+// HC2-24 -- replace.
+local hc2out "`hc2f'_24.html"
+capture erase "`hc2out'"
+_hc2_expect "HC2-24a" 0   `"dash build, saving("`hc2out'")"'
+_hc2_expect "HC2-24b" 198 `"dash build, saving("`hc2out'")"' "already exists"
+_hc2_expect "HC2-24c" 0   `"dash build, saving("`hc2out'") replace"'
+
+// HC2-25 -- dash serve's defaults and the options it shares with build.
+quietly dash clear
+quietly dash scatter mpg weight, name(s1)
+capture noisily _dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'")
+_hc2_ok "HC2-25a" `=_rc == 0 & "`r(port)'" == "5006" & "`r(timeout)'" == "0"' "port 5006 and timeout 0 by default"
+cert_file_has "`hc2mj'", needle(`""filter_position":"top""')
+_hc2_ok "HC2-25f" `=r(found) == 1' "filterposition() is top by default"
+_hc2_run `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") csv title("Live") filterposition(left)"'
+cert_file_has "`hc2mj'", needle(`""csv":"1""')
+_hc2_ok "HC2-25b" `=r(found) == 1' "csv reaches the served spec"
+_hc2_expect "HC2-25c" 0 `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") saving("`hc2f'_25.html") replace server"' "ignoring option(s) that only apply to dash build: saving() replace server"
+capture confirm file "`hc2f'_25.html"
+_hc2_ok "HC2-25d" `=_rc != 0' "dash serve writes no file for saving()"
+_hc2_expect "HC2-25e" 198 `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") filterposition(sideways)"'
+
+// HC2-26 -- csv is inherited.
+local hc2out "`hc2f'_26.html"
+_hc2_expect "HC2-26a" 0 `"dash build, saving("`hc2out'") replace csv title("Built")"'
+_hc2_run `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'")"'
+cert_file_has "`hc2mj'", needle(`""csv":"1""')
+_hc2_ok "HC2-26b" `=r(found) == 1' "dash serve inherits csv from the preceding dash build"
+cert_file_has "`hc2mj'", needle(`""title":"Built""')
+_hc2_ok "HC2-26c" `=r(found) == 1' "and its title"
+
+// HC2-27, HC2-28 -- dash clear.
+global dash_max_cells 6000000
+quietly dash kpi mean(price), name(k1) title("K")
+local hc2out "`hc2f'_27.html"
+_hc2_expect "HC2-27a" 0 `"dash build, saving("`hc2out'") replace csv title("Before")"'
+_hc2_ok "HC2-27b" `="${dash_opts_title}" == "Before" & "${dash_opts_csv}" == "csv"' "dash build remembers its options"
+quietly dash clear
+quietly dash scatter mpg weight, name(s2)
+_hc2_run `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'")"'
+cert_file_has "`hc2mj'", needle(`""title":"Before""')
+local t_found = r(found)
+cert_file_has "`hc2mj'", needle(`""csv":"1""')
+_hc2_ok "HC2-27c" `=`t_found' == 0 & r(found) == 0' "after dash clear, dash serve inherits nothing"
+quietly dash clear
+local left ""
+foreach g in dash_graph_registry dash_json_s1 dash_spec_s1 dash_json_s2 dash_kpi_k1 dash_kpi_k1__sta dash_opts_title dash_opts_csv dash_opts_filter {
+    local len : strlen global `g'
+    if `len' > 0 local left "`left' `g'"
+}
+_hc2_ok "HC2-28a" `="`left'" == ""' "dash clear drops the registry's globals and the remembered options`left'"
+_hc2_ok "HC2-28b" `="${dash_nobrowser}" == "1"' "dash clear keeps \$dash_nobrowser"
+_hc2_ok "HC2-28c" `="${dash_max_cells}" == "6000000"' "dash clear keeps \$dash_max_cells"
+macro drop dash_max_cells
+
+// ================================================================
+// The browser
+// ================================================================
+//
+// dash opens a window with `shell open <file>' (MacOSX) or `shell
+// xdg-open <file>' (Unix) -- and the console binary on a Mac reports c(os)
+// as Unix (c(machine_type) "Mac (Apple Silicon)", measured 23sep2026), so
+// there it calls xdg-open.  Here both are a stub that appends its
+// arguments to open.log in its own directory; the stub's directory is put
+// at the front of PATH through Python's os.environ, which the shell Stata
+// starts inherits.  HC2-29 then asks the shell which `open' it runs, and
+// nothing below it that could open a window runs unless the answer is the
+// stub.  The builds that measure the rule are in programs defined here,
+// while $dash_nobrowser is still set; they run with it dropped only after
+// the guard has passed, and the global and PATH are put back on every
+// path.  Windows opens with `start', a cmd builtin that cannot be stubbed,
+// so there the section is skipped -- and says so.
+
+capture program drop _hc2_b_build
+program define _hc2_b_build, rclass
+    version 16.0
+    args path opts
+    capture noisily dash build, saving("`path'") replace `opts'
+    return scalar rc = _rc
+end
+capture program drop _hc2_b_plot
+program define _hc2_b_plot, rclass
+    version 16.0
+    args opts
+    capture noisily dash scatter mpg weight `opts'
+    return scalar rc = _rc
+end
+// How many times the stub was run since the log was last erased; r(n),
+// and r(first), the first argument line.
+capture program drop _hc2_b_opened
+program define _hc2_b_opened, rclass
+    version 16.0
+    args stubdir
+    local n = 0
+    local first ""
+    capture confirm file "`stubdir'/open.log"
+    if !_rc {
+        tempname fh
+        file open `fh' using "`stubdir'/open.log", read text
+        file read `fh' ln
+        while r(eof) == 0 {
+            local ++n
+            if `n' == 1 mata: st_local("first", st_local("ln"))
+            file read `fh' ln
+        }
+        file close `fh'
+    }
+    return scalar n = `n'
+    return local first `"`macval(first)'"'
+end
+
+if "`c(os)'" == "Windows" {
+    display as text "HC2-29..36 SKIP: dash opens a window with start, a cmd builtin that cannot be stubbed"
+}
+else {
+    local stubdir "`c(tmpdir)'hc2_opener_stub"
+    capture mkdir "`stubdir'"
+    // Each stub records its own name and its arguments: "open <file>".
+    foreach f in open xdg-open {
+        tempname sh
+        file open `sh' using "`stubdir'/`f'", write text replace
+        file write `sh' "#!/bin/sh" _n
+        file write `sh' "printf '%s\n' " (char(34)) "`f' " (char(36)) "*" (char(34)) " >> '`stubdir'/open.log'" _n
+        file write `sh' "exit 0" _n
+        file close `sh'
+        shell chmod 755 "`stubdir'/`f'"
+    }
+    // The first python call of a runner session can fail whatever it is;
+    // spend it here, then set PATH, reading the directory with sfi rather
+    // than writing it into the Python source.
+    capture python: pass
+    python: import os, sfi
+    python: _hc2_path0 = os.environ.get("PATH", "")
+    python: os.environ["PATH"] = sfi.Macro.getLocal("stubdir") + os.pathsep + _hc2_path0
+
+    // HC2-29 -- the guard: BOTH openers must be the stubs, whichever one
+    // dash picks.
+    local hc2_guard = 1
+    foreach f in open xdg-open {
+        capture erase "`stubdir'/which.txt"
+        shell command -v `f' > "`stubdir'/which.txt" 2>&1
+        mata: st_local("hc2_which", _hc2_firstline(st_local("stubdir") + "/which.txt"))
+        if `"`hc2_which'"' != "`stubdir'/`f'" local hc2_guard = 0
+    }
+    _hc2_ok "HC2-29" `hc2_guard' `"the shell runs the stub open and the stub xdg-open"'
+
+    if `hc2_guard' {
+        macro drop dash_nobrowser
+        capture noisily {
+            quietly dash clear
+            quietly dash scatter mpg weight, name(w1)
+            local bo "`hc2f'_browser.html"
+
+            // HC2-30 -- the control.
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`bo'" ""
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-30" `=r(n) == 1 & strpos(`"`r(first)'"', "_browser.html") > 0' "with nothing said, the build opens its file (the stub saw: `r(first)')"
+            // HC2-30b -- with the opener the platform has.  A Mac is a Mac
+            // whichever binary runs; the console one reports c(os) Unix, and
+            // xdg-open, which dash used to run there, is not on a Mac.
+            local want = cond("`c(os)'" == "MacOSX" | substr("`c(machine_type)'", 1, 3) == "Mac", "open", "xdg-open")
+            _hc2_ok "HC2-30b" `=word(`"`r(first)'"', 1) == "`want'"' "the file is opened with `want' (`c(os)', `c(machine_type)'; the stub saw: `r(first)')"
+
+            // HC2-31
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`bo'" "nobrowser"
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-31" `=r(n) == 0' "with the nobrowser option the build opens nothing"
+
+            // HC2-32 -- any non-empty value.
+            foreach v in 1 0 {
+                global dash_nobrowser `v'
+                capture erase "`stubdir'/open.log"
+                _hc2_b_build "`bo'" ""
+                _hc2_b_opened "`stubdir'"
+                local lt = cond(`v' == 1, "a", "b")
+                _hc2_ok "HC2-32`lt'" `=r(n) == 0' "global dash_nobrowser `v' keeps dash build shut"
+            }
+            macro drop dash_nobrowser
+
+            // HC2-33 -- a registered graph's nodraw.
+            quietly dash scatter mpg weight, name(w2) nodraw
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`bo'" ""
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-33" `=r(n) == 0' "a registered graph's nodraw keeps dash build shut"
+            quietly dash clear
+            quietly dash scatter mpg weight, name(w1)
+
+            // HC2-34 -- the one-line form.
+            capture erase "`stubdir'/open.log"
+            _hc2_b_plot ""
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-34a" `=r(n) == 1 & strpos(`"`r(first)'"', ".html") > 0' "the one-line form with nothing said opens its file"
+            _hc2_ok "HC2-34f" `=word(`"`r(first)'"', 1) == "`want'"' "the one-line form opens it with `want' too (the stub saw: `r(first)')"
+            capture erase "`stubdir'/open.log"
+            _hc2_b_plot ", nodraw"
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-34b" `=r(n) == 0' "the one-line form with nodraw opens nothing"
+            global dash_nobrowser 1
+            capture erase "`stubdir'/open.log"
+            _hc2_run `"_hc2_b_plot"'
+            _hc2_b_opened "`stubdir'"
+            local n34 = r(n)
+            _hc2_said "dash: dashboard saved to "
+            _hc2_ok "HC2-34c" `=`n34' == 0 & r(n) == 1' "under the global the one-line form writes its file, says where, and opens nothing"
+            macro drop dash_nobrowser
+            capture erase "`stubdir'/open.log"
+            _hc2_b_plot `", saving("`hc2f'_34.html")"'
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-34d" `=r(n) == 0' "the one-line form with saving() opens nothing"
+            capture erase "`stubdir'/open.log"
+            _hc2_run `"_hc2_b_plot ", nobrowser""'
+            _hc2_b_opened "`stubdir'"
+            local n34 = r(n)
+            _hc2_said "ignoring unsupported option(s): nobrowser()"
+            _hc2_ok "HC2-34e" `=`n34' == 1 & r(n) == 1' "the one-line form has no nobrowser option: it is named in the note and the window opens"
+
+            // HC2-35 -- dash clear leaves the global in force.
+            global dash_nobrowser 1
+            quietly dash clear
+            quietly dash scatter mpg weight, name(w3)
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`bo'" ""
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-35" `=r(n) == 0 & "${dash_nobrowser}" == "1"' "after dash clear the global still keeps dash build shut"
+            macro drop dash_nobrowser
+
+            // HC2-36 -- dash build, server.
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`hc2f'_36.py" "server"
+            local rc36 = r(rc)
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "HC2-36" `=`rc36' == 0 & r(n) == 0' "with server the build writes its app and opens nothing"
+        }
+        local rc_b = _rc
+        global dash_nobrowser 1
+        if `rc_b' {
+            _hc2_ok "HC2-3x" 0 "the browser section stopped with rc `rc_b'"
+        }
+    }
+    python: os.environ["PATH"] = _hc2_path0
+    capture erase "`stubdir'/open.log"
+    capture erase "`stubdir'/which.txt"
+    capture erase "`stubdir'/open"
+    capture erase "`stubdir'/xdg-open"
+    capture rmdir "`stubdir'"
+}
+global dash_nobrowser 1
+quietly dash clear
+
+// ================================================================
+// Exporting
+// ================================================================
+
+// HC2-37 -- what export delimited writes.
+preserve
+clear
+input double x str20 s byte f double d
+0.5 "a,b" 0 21930
+-3 `"say "hi""' 1 21931
+1234567.891 "=cmd()" 0 .
+. "" 1 21933
+.a "-5 degrees" . 21934
+1e-7 "plain" 0 21935
+end
+label define hc2_origin 0 "Domestic" 1 "Foreign, imported"
+label values f hc2_origin
+format d %td
+format x %9.2f
+local ed "`hc2f'_37.csv"
+quietly export delimited using "`ed'", replace
+restore
+local hc2_37 = 0
+foreach c in "x,s,f,d|the header row is the variable names" ///
+             ".5,|a number has no leading zero" ///
+             "1234567.891,|a number is written in full, not in its format" ///
+             "1.00000000000e-07,|a small number is written in e-notation" ///
+             ".a,|an extended missing value is written as .a" ///
+             "16jan2020|a date is written in its display format" ///
+             "Domestic|a labelled value is written as its label" ///
+             `""a,b"|a text value with a comma is quoted"' ///
+             `""Foreign, imported"|so is a label with one"' ///
+             "=cmd()|a text value is written as it is" {
+    local at = strpos(`"`c'"', "|")
+    local nd = substr(`"`c'"', 1, `at' - 1)
+    local wh = substr(`"`c'"', `at' + 1, .)
+    local ++hc2_37
+    local lt : word `hc2_37' of a b c d e f g h i j
+    mata: st_local("_hit", strofreal(_hc2_rawhas(st_local("ed"), st_local("nd"))))
+    _hc2_ok "HC2-37`lt'" `_hit' "export delimited: `wh'"
+}
+mata: st_local("_cr", strofreal(_hc2_rawhas(st_local("ed"), char(13))))
+if "`c(os)'" != "Windows" {
+    _hc2_ok "HC2-37k" `=`_cr' == 0' "export delimited ends a line in a line feed alone (`c(os)')"
+}
+else display as text "HC2-37k SKIP: the help's line-feed claim is Stata for Mac's"
+mata: st_local("_bom", strofreal(_hc2_rawhas(st_local("ed"), char(239) + char(187) + char(191))))
+_hc2_ok "HC2-37l" `=`_bom' == 0' "export delimited writes no byte-order mark"
+
+// HC2-38 -- jsonio writes every missing value as null.
+preserve
+clear
+input double x double y
+1 .
+.a 2
+.z 3
+end
+local jj "`hc2f'_38.json"
+quietly jsonio out x y, what(all) filenm("`jj'") metaprint(varnames varlabels vallabs labelnames)
+restore
+cert_file_has "`jj'", needle(`""x" : "null""')
+local n_null = r(found)
+cert_file_has "`jj'", needle(".a")
+_hc2_ok "HC2-38" `=`n_null' == 1 & r(found) == 0' "jsonio hands an extended missing value on as null, never as .a"
+
+// HC2-39 -- the columns: every variable the dashboard uses, a KPI card's
+// included, in the order the dashboard names them.
+sysuse auto, clear
+quietly dash clear
+quietly dash scatter weight mpg, name(e1)
+quietly dash kpi mean(price), name(e2) title("P")
+_hc2_run `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") filter(foreign, type(dropdown)) csv"'
+cert_file_has "`hc2dj'", needle(`""variableNames" : [ "weight", "mpg", "price", "foreign" ]"')
+_hc2_ok "HC2-39" `=r(found) == 1' "the data dash exports is weight mpg price foreign: the graph's, the card's, the filter's -- not the dataset's order (price mpg weight foreign)"
+quietly dash clear
+
+// HC2-40 -- import delimited reads a file written as dash writes one: a
+// byte-order mark and CR LF line ends.
+local bomf "`hc2f'_40.csv"
+mata: _hc2_fh = fopen(st_local("bomf"), "w")
+mata: fwrite(_hc2_fh, char(239) + char(187) + char(191) + "x,s" + char(13) + char(10) + "1,a" + char(13) + char(10) + "2,b" + char(13) + char(10))
+mata: fclose(_hc2_fh)
+mata: mata drop _hc2_fh
+preserve
+quietly import delimited using "`bomf'", clear
+capture confirm variable x s
+local ok40 = (_rc == 0)
+if `ok40' local ok40 = (_N == 2 & x[1] == 1 & s[2] == "b")
+restore
+_hc2_ok "HC2-40" `ok40' "import delimited reads through the byte-order mark and the CR LF line ends"
+
+// HC2-41 -- twoway labels an axis with numbers, not value labels, unless
+// told otherwise (xlabel(, valuelabel)).
+twoway scatter mpg foreign
+local svg "`hc2f'_41.svg"
+quietly graph export "`svg'", replace as(svg)
+mata: st_local("_dom", strofreal(_hc2_rawhas(st_local("svg"), "Domestic")))
+mata: st_local("_one", strofreal(_hc2_rawhas(st_local("svg"), ">1</text>")))
+_hc2_ok "HC2-41a" `=`_dom' == 0 & `_one' == 1' "twoway's axis for a value-labelled foreign reads 0 to 1, not Domestic"
+twoway scatter mpg foreign, xlabel(0 1, valuelabel)
+quietly graph export "`svg'", replace as(svg)
+mata: st_local("_dom", strofreal(_hc2_rawhas(st_local("svg"), "Domestic")))
+_hc2_ok "HC2-41b" `_dom' "with valuelabel twoway draws the labels (the control)"
+graph drop _all
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+local nfail = ${hc2_nfail}
+local flist "${hc2_faillist}"
+macro drop hc2_nfail hc2_faillist
+capture erase "`c(tmpdir)'hc2.log"
+if `nfail' > 0 {
+    display as error "test_help_claims_2: `nfail' check(s) FAILED:`flist'"
+    exit 9
+}
+display as text ""
+display as text "test_help_claims_2: ALL CHECKS PASSED"

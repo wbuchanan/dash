@@ -1339,6 +1339,231 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 51. test_help_claims_1.cscript (WP-23: help lines 1-316, syntax, plot types, differences)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_1.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_1.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_1.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_1.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_1.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 52. test_help_claims_2.cscript (WP-23: option values, subcommands, dashboard options, export)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_2.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_2.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_2.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_2.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_2.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 53. test_help_claims_3.cscript (WP-23: layout, tabs, linking, toolbar, filters)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_3.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_3.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_3.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_3.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_3.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 54. test_help_claims_4.cscript (WP-23: KPI cards and server mode, a real dash serve)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_4.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_4.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_4.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_4.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_4.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 55. test_help_claims_5.cscript (WP-23: resource limits, faceting, marker labels)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_5.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_5.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_5.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_5.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_5.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 56. test_help_claims_6.cscript (WP-23: statistical layers and weights)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_6.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_6.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_6.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_6.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_6.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 57. test_help_claims_7.cscript (WP-23: regions, axes, colour, geometry, markers)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_7.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_7.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_7.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_7.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_7.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 58. test_help_claims_8.cscript (WP-23: schemes, the Unsupported list, dependencies)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_claims_8.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_claims_8.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_claims_8.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_claims_8.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_claims_8.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 59. test_help_examples.cscript (WP-23: every example command in the help, run)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_help_examples.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_help_examples.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_help_examples.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_help_examples.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_help_examples.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'
