@@ -89,8 +89,13 @@ def plot_for(ptype, options=None, **extra):
     elif ptype in _PC:
         p = {"type": ptype, "y1var": "mpg", "x1var": "weight",
              "y2var": "price", "x2var": "foreign", "options": o}
-    elif ptype in ("scatteri", "pci"):
+    elif ptype == "scatteri":
         p = {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
+             "options": o}
+    elif ptype == "pci":
+        # dash.ado writes `pci 20 3000 30 4000' as one record per segment,
+        # y1 x1 y2 x2, as it writes pcarrowi's arrows.
+        p = {"type": ptype, "values": [[20.0, 3000.0, 30.0, 4000.0]],
              "options": o}
     elif ptype == "pcarrowi":
         # dash.ado writes `pcarrowi 20 3000 30 4000 25 2000 22 3500' as one

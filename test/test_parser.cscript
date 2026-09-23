@@ -435,8 +435,10 @@ foreach t of local fam_yvar {
 }
 _dash_process_segment "scatteri 20 3000" _pt56 _js56
 assert strpos(`"`_js56'"', `""type":"scatteri","values":[[20,3000]]"') > 0
+// pci is written one record per segment, as pcarrowi is (P1A-63): it was
+// [[20,3000],[30,4000]], two points the renderer paired up again.
 _dash_process_segment "pci 20 3000 30 4000" _pt56 _js56
-assert strpos(`"`_js56'"', `""type":"pci","values":[[20,3000],[30,4000]]"') > 0
+assert strpos(`"`_js56'"', `""type":"pci","values":[[20,3000,30,4000]]"') > 0
 _dash_process_segment "pcarrowi 20 3000 30 4000" _pt56 _js56
 assert strpos(`"`_js56'"', `""type":"pcarrowi","values":[[20,3000,30,4000]]"') > 0
 _dash_process_segment "function y=x" _pt56 _js56
@@ -505,15 +507,15 @@ assert(_dash_json_number(-.25) == "-0.25")
 assert(_dash_json_number(3000) == "3000")
 assert(_dash_json_number(0) == "0")
 assert(strtoreal(_dash_json_number(1/3)) == 1/3)
-// _dash_imm_number: numbers, the missing literals, and nothing else.
-assert(_dash_imm_number("1e3", 1) == "1000")
-assert(_dash_imm_number(".", 1) == "null")
-assert(_dash_imm_number(".z", 1) == "null")
-assert(_dash_imm_number(".A", 1) == "")
-assert(_dash_imm_number("1+1", 1) == "")
-assert(_dash_imm_number("0x10", 1) == "")
-assert(_dash_imm_number("3", 2) == "")
-assert(_dash_imm_number("3", 3) == "")
+// _dash_imm_number: numbers, the missing literals, and nothing else.  It
+// takes the token as twoway's gettoken hands it over, quotes stripped;
+// which tokens are coordinates is the reader's business (P1A-67).
+assert(_dash_imm_number("1e3") == "1000")
+assert(_dash_imm_number(".") == "null")
+assert(_dash_imm_number(".z") == "null")
+assert(_dash_imm_number(".A") == "")
+assert(_dash_imm_number("1+1") == "")
+assert(_dash_imm_number("0x10") == "")
 // _dash_imm_clock: a number from 0 to 12.
 assert(_dash_imm_clock("0") == "0")
 assert(_dash_imm_clock("012") == "12")
@@ -521,18 +523,10 @@ assert(_dash_imm_clock("3.5") == "3.5")
 assert(_dash_imm_clock("12.000001") == "")
 assert(_dash_imm_clock("-1") == "")
 assert(_dash_imm_clock("") == "")
-// _dash_imm_tokens: bare words, "labels", `"compound"' labels that nest,
-// and (clock positions) that may hold blanks -- each with its raw text.
-raw = J(1, 0, "")
-txt = J(1, 0, "")
-kind = J(1, 0, 0)
-_dash_imm_tokens("1  -2 " + q + "a b" + q + " ( 3 ) " + char(96) + q + "x " + char(96) + q + "y" + q + char(39) + q + char(39) + " 4", raw, txt, kind)
-assert(kind == (1, 1, 2, 3, 2, 1))
-assert(txt == ("1", "-2", "a b", "3", "x " + char(96) + q + "y" + q + char(39), "4"))
-assert(raw[3] == q + "a b" + q)
-assert(raw[4] == "( 3 )")
-_dash_imm_tokens("", raw, txt, kind)
-assert(cols(raw) == 0 & cols(kind) == 0)
+// The tokenizer, _dash_imm_gettoken, reads one token at a time as
+// twoway's gettoken does -- a (group) only where a clock position may
+// stand -- and is tested in P1A-67: _dash_imm_tokens, which split the
+// whole list at once and read every ( as a group, is gone.
 end
 display "P1A-58 PASS: the Mata helpers read, escape and number immediate values as twoway does"
 
@@ -568,6 +562,426 @@ foreach p159 in heatma rpca rpspik {
 }
 assert "${dash_graph_registry}" == ""
 display "P1A-59 PASS: heatmap, rpcap and rpspike are refused, r(198), as twoway plot types dash does not draw; their prefixes stay unrecognised"
+
+// ================================================================
+// P1A-60..67 -- scatteri and pci read their immediate values as twoway
+// reads them, through the reader pcarrowi uses (dash_parse.mata, 2c)
+//
+// Measured 23sep2026 with the console binary, at ad13a0f: dash wrote the
+// tokens of scatteri's and pci's values into the spec as they were typed,
+// checking only that there was an even number of them.  `dash pci 0 0 0
+// abc', `dash pci 0 0 0 1 (3) "A" 0 0 1 0' and `dash scatteri .5 3000'
+// registered with rc 0 -- "values":[[0,0],[0,abc]],
+// [[0,0],[0,1],[(3),"A"],[0,0],[1,0]] and [[.5,3000]] -- and the render
+// stopped on a Python JSONDecodeError, r(7102); so did `scatteri . 3000',
+// `scatteri .a 1', `scatteri 1d3 2' and `scatteri 0x10 1'.  A label was
+// cut at its first blank -- `scatteri 41 2040 "VW Diesel"', the example
+// in twoway_scatteri.sthlp, was labelled "VW" -- `scatteri 1 2 (13)' drew
+// the text "(13)" where twoway refuses the position, and `scatteri 1 2 (9)
+// "A" 3 4', `scatteri 1 2 3', `pci 0 0 0 1 0 0 1' and `pci 0 0 0 1 "A"'
+// were refused where twoway draws them.
+//
+// twoway's parsers (twoway_scatteri_parse.class, and twoway_pci_parse.class,
+// which pcarrowi inherits) read #y #x -- #y1 #x1 #y2 #x2 for pci -- then an
+// optional (#clockpos) and an optional "label", in a loop that ends when a
+// record's last coordinate is empty.  What they take, refuse and draw was
+// measured record by record, by loading the serset each command draws and
+// reading each graph's SVG export.  Every expected backslash is char(92).
+// ================================================================
+local bs = char(92)
+local tb = char(9)
+
+// ================================================================
+// P1A-60 -- scatteri: one record per point, [y,x] or [y,x,"label",clock]
+// ================================================================
+_dash_process_segment "scatteri .5 3000" _pt60 _js60
+assert "`_pt60'" == "scatteri"
+assert strpos(`"`_js60'"', `""type":"scatteri","values":[[0.5,3000]]"') > 0
+// A missing value draws nothing: . and .a to .z; so does a number past a
+// double's range (1e400, -1e400, 1e308) and one past a float's (1e39):
+// twoway stores its immediate values as float.  1.7014117e38 is a float.
+_dash_process_segment "scatteri . 3000 .a 1 .z 2 5 6" _pt60 _js60
+assert strpos(`"`_js60'"', `""values":[[null,3000],[null,1],[null,2],[5,6]]"') > 0
+_dash_process_segment "scatteri 1e400 2 -1e400 3 1e308 4 1e39 5 1.7014117e38 6" _pt60 _js60
+assert strpos(`"`_js60'"', `""values":[[null,2],[null,3],[null,4],[null,5],[1.70141170000000e+38,6]]"') > 0
+// Each spelling of a number twoway takes, written as a JSON number.
+_dash_process_segment "scatteri -.5 +.25 1e3 1d3 1.8X+1 -0 00012 1." _pt60 _js60
+assert strpos(`"`_js60'"', `""values":[[-0.5,0.25],[1000,1000],[3,0],[12,1]]"') > 0
+// A coordinate in quotes is a number where twoway strips the quotes: the
+// first of the list, any but the first of a record, and the first after a
+// label.  Straight after a point, a quoted token is that point's label.
+_dash_process_segment `"scatteri "1" 2 3 "4" "A" " 5 " 6"' _pt60 _js60
+assert strpos(`"`_js60'"', `""values":[[1,2],[3,4,"A",null],[5,6]]"') > 0
+// A clock position and a label, each optional, in that order.
+_dash_process_segment `"scatteri 1 2 (9) "A" 3 4 (3) 5 6 "B" 7 8"' _pt60 _js60
+assert strpos(`"`_js60'"', `""values":[[1,2,"A",9],[3,4,"",3],[5,6,"B",null],[7,8]]"') > 0
+// A clock position is a number from 0 to 12, blanks around it allowed,
+// read as twoway reads it -- 012 is 12, 1e1 is 10 -- and 3.5 is carried as
+// written: the renderer draws it where twoway does, at 12 o'clock.
+_dash_process_segment `"scatteri 1 2 ( 3 ) "A" 3 4 (012) 5 6 (1e1) 7 8 (3.5) 9 9 (0)"' _pt60 _js60
+assert strpos(`"`_js60'"', `""values":[[1,2,"A",3],[3,4,"",12],[5,6,"",10],[7,8,"",3.5],[9,9,"",0]]"') > 0
+// A label in compound quotes may hold double quotes and an apostrophe; an
+// empty label is no label; a label may follow its clock position with no
+// blank between them.
+_dash_process_segment `"scatteri 1 2 `"say "hi" o'k"' 3 4 "" 5 6 (3)"C" 7 8"' _pt60 _js60
+assert strpos(`"`_js60'"', `""values":[[1,2,"say `bs'"hi`bs'" o`bs'u0027k",null],[3,4],[5,6,"C",3],[7,8]]"') > 0
+// A label is whole, blanks, a comma and || included -- it was cut at its
+// first blank -- in the paren syntax too.
+dash clear
+_p1a_logrun `"dash scatteri 41 2040 "VW Diesel" 28 3260 (3) "Plymouth Arrow", name(p1a60)"'
+assert r(rc) == 0
+assert strpos(`"${dash_json_p1a60}"', `""values":[[41,2040,"VW Diesel",null],[28,3260,"Plymouth Arrow",3]]"') > 0
+_p1a_logrun `"dash (scatteri 1 2 (3) "a, b || c") (scatter mpg weight), name(p1a60b)"'
+assert r(rc) == 0
+assert strpos(`"${dash_json_p1a60b}"', `""type":"scatteri","values":[[1,2,"a, b || c",3]]"') > 0
+assert strpos(`"${dash_json_p1a60b}"', `""type":"scatter","yvar":"mpg","xvar":"weight""') > 0
+dash clear
+display "P1A-60 PASS: scatteri's values are written one record per point, numbers as JSON numbers, missing values as null, with labels and clock positions"
+
+// ================================================================
+// P1A-61 -- scatteri refuses what twoway refuses, r(198)
+//
+// twoway: "invalid point," where a coordinate belongs and is not a number
+// (a label or clock position before the first point or inside one, a
+// second label, a clock position after a label with a point after it);
+// "invalid position, 13" for a clock position that is not a number from 0
+// to 12; "'0' invalid observation number" for a list with no whole point.
+// ================================================================
+_p1a_logrun "dash scatteri 1 abc, name(p1a61)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: scatteri takes two numbers for each point, #y #x; 'abc' is not a number.")
+assert r(found) == 1
+_p1a_logrun "dash scatteri (3) 1 2, name(p1a61)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: scatteri takes two numbers for each point, #y #x; '(3)' is not a number.")
+assert r(found) == 1
+_p1a_logrun "dash scatteri 1 2 (13), name(p1a61)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: scatteri: invalid position, 13; a clock position is a number from 0 to 12.")
+assert r(found) == 1
+_p1a_logrun "dash scatteri abc, name(p1a61)"
+assert r(rc) == 198
+local lg61 "`r(log)'"
+cert_file_has "`lg61'", needle("dash: scatteri needs at least one point, two numbers #y #x.")
+assert r(found) == 1
+cert_file_has "`lg61'", needle("'abc' is too little for one.")
+assert r(found) == 1
+// 2/2 is a numlist range twoway takes and then evaluates as a division,
+// drawing 1: an accident of its implementation, which dash refuses as
+// the number it is not (1/2, the same form, is refused by twoway too).
+// 1(1)1 is refused by twoway too, r(133).
+foreach seg in "scatteri 1 2 (-1)" "scatteri 1 2 (.)" "scatteri 1 2 ()" ///
+    `"scatteri 1 2 ("3")"' "scatteri 1 2 (12.000001)" "scatteri 1 2 ((3))" ///
+    `"scatteri 1 2 "A" "B" 3 4"' `"scatteri 1 2 "A" (9) 4"' ///
+    "scatteri 1 2 (3) (4) 5 6" `"scatteri 1 2 "A"(3) 4 5"' ///
+    `"scatteri 1 2 "A" ( 3 )"' "scatteri 1 2 x(3 4) 5" ///
+    "scatteri 0x10 1" "scatteri 1x3 1" "scatteri 1/2 1" "scatteri 2/2 1" ///
+    "scatteri 1(1)1 2" "scatteri 1+1 2" `"scatteri 2"A" 1"' ///
+    `"scatteri "" 2"' `"scatteri 1 """' "scatteri 1`tb'2" ///
+    "scatteri .A 1" "scatteri -. 1" "scatteri .. 1" "scatteri 1.0X+400 1" ///
+    `"scatteri "1 2" 3"' "scatteri 1 2 3 1e3.5" {
+    capture _dash_process_segment `"`seg'"' _ptx _jx
+    if _rc != 198 {
+        display as error `"P1A-61: `seg' gave rc "' _rc
+        exit 9
+    }
+}
+assert "${dash_graph_registry}" == ""
+display "P1A-61 PASS: scatteri refuses a non-number where a coordinate belongs, a clock position outside 0..12, and a list with no whole point"
+
+// ================================================================
+// P1A-62 -- what twoway drops at the end of scatteri's list is dropped,
+// and named
+//
+// twoway's loop ends when a point's last coordinate is empty: at the end
+// of the list (`scatteri 1 2 3' draws one point, rc 0), or at a quoted ""
+// (`scatteri 1 2 3 "" 5 6' draws one point, rc 0).  It says nothing; dash
+// names what it dropped.
+// ================================================================
+dash clear
+_p1a_logrun "dash scatteri 1 2 3, name(p1a62)"
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("dash: scatteri ignored '3' at the end, too little for another point (#y #x), as twoway does.")
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a62}"', `""values":[[1,2]]"') > 0
+_p1a_logrun `"dash scatteri 1 2 3 "" 5 6, name(p1a62b)"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle(`"dash: scatteri ignored '3 "" 5 6' at the end: "" where a point's last number belongs ends the list, as in twoway scatteri."')
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a62b}"', `""values":[[1,2]]"') > 0
+// A needle holding "' -- the characters that close a compound quote --
+// cannot pass through cert_file_has's -syntax-; it is built from char()
+// and searched for from Mata, where it is a value.
+_p1a_logrun `"dash scatteri 1 2 (3) "A" "B", name(p1a62c)"'
+assert r(rc) == 0
+local lg62 "`r(log)'"
+mata: st_local("f62", strofreal(_cert_file_has(st_local("lg62"), "dash: scatteri ignored " + char(39) + char(34) + "B" + char(34) + char(39) + " at the end, too little for another point (#y #x), as twoway does.", 0)))
+assert `f62' == 1
+assert strpos(`"${dash_json_p1a62c}"', `""values":[[1,2,"A",3]]"') > 0
+// A clock position after a label is not read: it is the next point's y.
+_p1a_logrun `"dash scatteri 1 2 "A" (9), name(p1a62d)"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("dash: scatteri ignored '(9)' at the end")
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a62d}"', `""values":[[1,2,"A",null]]"') > 0
+// Quotes inside a word bind its blanks, as gettoken reads them.
+_p1a_logrun `"dash scatteri 1 2 2"A B", name(p1a62e)"'
+assert r(rc) == 0
+local lg62 "`r(log)'"
+mata: st_local("f62", strofreal(_cert_file_has(st_local("lg62"), "dash: scatteri ignored " + char(39) + "2" + char(34) + "A B" + char(34) + char(39) + " at the end", 0)))
+assert `f62' == 1
+assert strpos(`"${dash_json_p1a62e}"', `""values":[[1,2]]"') > 0
+_p1a_logrun "dash scatteri 1 2 3 4 5, name(p1a62f)"
+assert r(rc) == 0
+assert strpos(`"${dash_json_p1a62f}"', `""values":[[1,2],[3,4]]"') > 0
+// Nothing left, nothing said.
+_p1a_logrun "dash scatteri 1 2 3 4, name(p1a62g)"
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("ignored")
+assert r(found) == 0
+dash clear
+display "P1A-62 PASS: what twoway drops at the end of scatteri's list is dropped too, with a note naming it"
+
+// ================================================================
+// P1A-63 -- pci: one record per segment, [y1,x1,y2,x2] or
+// [y1,x1,y2,x2,"label",clock], as pcarrowi's
+// ================================================================
+_dash_process_segment "pci 0 0 0 1" _pt63 _js63
+assert "`_pt63'" == "pci"
+assert strpos(`"`_js63'"', `""type":"pci","values":[[0,0,0,1]]"') > 0
+_dash_process_segment `"pci 0 0 0 1 (3) "A" 0 0 1 0"' _pt63 _js63
+assert strpos(`"`_js63'"', `""values":[[0,0,0,1,"A",3],[0,0,1,0]]"') > 0
+_dash_process_segment "pci . 0 0 1 1 1 2 2 .a .b .c 1 .5 -.5 1e3 1d3" _pt63 _js63
+assert strpos(`"`_js63'"', `""values":[[null,0,0,1],[1,1,2,2],[null,null,null,1],[0.5,-0.5,1000,1000]]"') > 0
+_dash_process_segment `"pci "0" 0 0 1 2 "2" "3" "3" "A" "4" "4" "5" "5""' _pt63 _js63
+assert strpos(`"`_js63'"', `""values":[[0,0,0,1],[2,2,3,3,"A",null],[4,4,5,5]]"') > 0
+_dash_process_segment `"pci 0 0 0 1 (3.5) "A" 1 1 2 2 (7.25) "B" 2 2 3 3 "" 3 3 4 4 (9)"' _pt63 _js63
+assert strpos(`"`_js63'"', `""values":[[0,0,0,1,"A",3.5],[1,1,2,2,"B",7.25],[2,2,3,3],[3,3,4,4,"",9]]"') > 0
+display "P1A-63 PASS: pci's values are written one record per segment, with labels and clock positions, as pcarrowi's"
+
+// ================================================================
+// P1A-64 -- pci refuses what twoway refuses, r(198)
+// ================================================================
+_p1a_logrun "dash pci 0 0 0 abc, name(p1a64)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pci takes four numbers for each segment, #y1 #x1 #y2 #x2; 'abc' is not a number.")
+assert r(found) == 1
+_p1a_logrun "dash pci 0 0 0 1 (13), name(p1a64)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pci: invalid position, 13; a clock position is a number from 0 to 12.")
+assert r(found) == 1
+_p1a_logrun "dash pci 0 0 0, name(p1a64)"
+assert r(rc) == 198
+local lg64 "`r(log)'"
+cert_file_has "`lg64'", needle("dash: pci needs at least one segment, four numbers #y1 #x1 #y2 #x2.")
+assert r(found) == 1
+cert_file_has "`lg64'", needle("'0 0 0' is too little for one.")
+assert r(found) == 1
+foreach seg in `"pci "A" 0 0 1"' `"pci 0 0 "A" 0 1"' ///
+    `"pci 0 0 0 1 "A" "B" 1 1 2 2"' `"pci 0 0 0 1 "A" (3) 1 1 2 2"' ///
+    "pci (3) 0 0 0 1" "pci 0 0 0 1 (-1)" "pci 0 0 0 1 (.)" ///
+    "pci 0 0 0 1 1 1 2 2x" "pci 1+1 0 0 1" "pci 2/2 0 0 1" ///
+    `"pci 0 0 0 """' `"pci 0 "" 0 1"' "pci 0 0 0 1`tb'1 1 2 2" {
+    capture _dash_process_segment `"`seg'"' _ptx _jx
+    if _rc != 198 {
+        display as error `"P1A-64: `seg' gave rc "' _rc
+        exit 9
+    }
+}
+assert "${dash_graph_registry}" == ""
+display "P1A-64 PASS: pci refuses a non-number where a coordinate belongs, a clock position outside 0..12, and a list with no whole segment"
+
+// ================================================================
+// P1A-65 -- pci: what twoway drops at the end is dropped and named, and
+// a label, which twoway pci never draws, is named as not drawn
+//
+// twoway pci is an immediate pcspike: its serset carries the labels
+// (measured), and no label reaches its SVG export, with mlabcolor() or
+// mlabposition() or without.
+// ================================================================
+dash clear
+_p1a_logrun "dash pci 0 0 0 1 0 0 1, name(p1a65)"
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("dash: pci ignored '0 0 1' at the end, too little for another segment (#y1 #x1 #y2 #x2), as twoway does.")
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a65}"', `""values":[[0,0,0,1]]"') > 0
+_p1a_logrun `"dash pci 0 0 0 1 1 1 2 "" 3 3 4 4, name(p1a65b)"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle(`"dash: pci ignored '1 1 2 "" 3 3 4 4' at the end: "" where a segment's last number belongs ends the list, as in twoway pci."')
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a65b}"', `""values":[[0,0,0,1]]"') > 0
+_p1a_logrun `"dash pci 0 0 0 1 (3) "A" 0 0 1 0, name(p1a65c)"'
+assert r(rc) == 0
+local lg65 "`r(log)'"
+cert_file_has "`lg65'", needle("dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point.")
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a65c}"', `""values":[[0,0,0,1,"A",3],[0,0,1,0]]"') > 0
+// A clock position alone, or an empty label, is no label to name.
+_p1a_logrun `"dash pci 0 0 0 1 (9) 1 1 2 2 "", name(p1a65d)"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("draws no labels")
+assert r(found) == 0
+_p1a_logrun `"dash pci 0 0 0 1 "A" (3), name(p1a65e)"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("dash: pci ignored '(3)' at the end")
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a65e}"', `""values":[[0,0,0,1,"A",null]]"') > 0
+dash clear
+display "P1A-65 PASS: pci drops what twoway drops at the end, with a note, and names the labels it does not draw"
+
+// ================================================================
+// P1A-66 -- pcarrowi reads numbers as scatteri and pci now do
+//
+// Measured at ad13a0f: `dash pcarrowi -1e400 0 0 1' registered with rc 0
+// as "values":[[-,0,0,1]] -- strtoreal() reads -1e400 as minus infinity,
+// which is not missing, and strofreal() writes it as "-" -- and the
+// render stopped on a JSONDecodeError, r(7102).  `dash pcarrowi 1e400 0
+// 0 1' was refused, and 1e39 drawn, where twoway takes all three as
+// missing (float storage).  A quoted coordinate is taken where twoway
+// strips the quotes, and a tab separates nothing.
+// ================================================================
+_dash_process_segment "pcarrowi -1e400 0 0 1 1e400 0 0 1 1e39 0 0 1 1 1 2 2" _pt66 _js66
+assert strpos(`"`_js66'"', `""values":[[null,0,0,1],[null,0,0,1],[null,0,0,1],[1,1,2,2]]"') > 0
+_dash_process_segment `"pcarrowi "0" 0 "0" 1 "A" "1" 1 2 2"' _pt66 _js66
+assert strpos(`"`_js66'"', `""values":[[0,0,0,1,"A",null],[1,1,2,2]]"') > 0
+capture _dash_process_segment "pcarrowi 0 0 0 1`tb'1 1 2 2" _ptx _jx
+assert _rc == 198
+display "P1A-66 PASS: pcarrowi reads -1e400, 1e400 and 1e39 as missing, as twoway does, and quoted coordinates where twoway strips the quotes"
+
+// ================================================================
+// P1A-67 -- the Mata helpers behind P1A-60..66, one by one
+// ================================================================
+mata:
+q  = char(34)
+lq = char(96)
+rq = char(39)
+txt = ""
+raw = ""
+// _dash_imm_gettoken: gettoken as twoway's parsers call it -- plain (0)
+// and quotes (1) read "(" as any other character, match (2) reads a
+// (group) -- and only a blank separates two tokens.
+s = "  12 " + q + "a b" + q + "c (3)x ( 4 ) " + lq + q + "x " + lq + q + "y" + q + rq + q + rq + " 2" + q + "A B" + q + " z"
+i = 1
+assert(_dash_imm_gettoken(s, i, 0, txt, raw) == 1)
+assert(txt == "12" & raw == "12")
+assert(_dash_imm_gettoken(s, i, 0, txt, raw) == 2)
+assert(txt == "a b" & raw == q + "a b" + q)
+assert(_dash_imm_gettoken(s, i, 0, txt, raw) == 1)
+assert(txt == "c")
+j = i
+assert(_dash_imm_gettoken(s, j, 0, txt, raw) == 1)
+assert(txt == "(3)x")
+assert(_dash_imm_gettoken(s, i, 2, txt, raw) == 3)
+assert(txt == "3" & raw == "(3)")
+assert(_dash_imm_gettoken(s, i, 2, txt, raw) == 1)
+assert(txt == "x")
+j = i
+assert(_dash_imm_gettoken(s, j, 1, txt, raw) == 1)
+assert(txt == "(")
+assert(_dash_imm_gettoken(s, i, 2, txt, raw) == 3)
+assert(txt == " 4 " & raw == "( 4 )")
+assert(_dash_imm_gettoken(s, i, 1, txt, raw) == 2)
+assert(txt == "x " + lq + q + "y" + q + rq)
+assert(_dash_imm_gettoken(s, i, 0, txt, raw) == 1)
+assert(txt == "2" + q + "A B" + q)
+assert(_dash_imm_gettoken(s, i, 0, txt, raw) == 1)
+assert(txt == "z")
+assert(_dash_imm_gettoken(s, i, 0, txt, raw) == 0)
+assert(txt == "" & raw == "")
+i = 1
+assert(_dash_imm_gettoken("1" + char(9) + "2 3", i, 0, txt, raw) == 1)
+assert(txt == "1" + char(9) + "2")
+i = 1
+assert(_dash_imm_gettoken("((3)) ()", i, 2, txt, raw) == 3)
+assert(txt == "(3)")
+assert(_dash_imm_gettoken("((3)) ()", i, 2, txt, raw) == 3)
+assert(txt == "" & raw == "()")
+// _dash_imm_number: one coordinate as a JSON number, null for a missing
+// value, or "" when twoway would call it an invalid point.
+assert(_dash_imm_number("1e3") == "1000")
+assert(_dash_imm_number(".5") == "0.5")
+assert(_dash_imm_number(" -.5 ") == "-0.5")
+assert(_dash_imm_number("1d3") == "1000")
+assert(_dash_imm_number("1.8X+1") == "3")
+assert(_dash_imm_number("-0") == "0")
+assert(_dash_imm_number(".") == "null")
+assert(_dash_imm_number(".z") == "null")
+assert(_dash_imm_number("1e400") == "null")
+assert(_dash_imm_number("-1e400") == "null")
+assert(_dash_imm_number("1e308") == "null")
+assert(_dash_imm_number("1e39") == "null")
+assert(_dash_imm_number("1.7014117839e38") == "null")
+assert(_dash_imm_number("1.7014117837e38") == "1.70141178370000e+38")
+assert(_dash_imm_number(".A") == "")
+assert(_dash_imm_number("-.") == "")
+assert(_dash_imm_number("") == "")
+assert(_dash_imm_number("1+1") == "")
+assert(_dash_imm_number("0x10") == "")
+assert(_dash_imm_number("2/2") == "")
+assert(_dash_imm_number("1.0X+400") == "")
+assert(_dash_imm_number(char(9) + "1") == "")
+assert(_dash_imm_number("1 2") == "")
+assert(_dash_imm_number(uchar(65297)) == "")
+// _dash_imm_decimal: a decimal number by its grammar, whatever its size.
+assert(_dash_imm_decimal("1e400") == 1)
+assert(_dash_imm_decimal("-1.5D+400") == 1)
+assert(_dash_imm_decimal("1.") == 1)
+assert(_dash_imm_decimal(".5") == 1)
+assert(_dash_imm_decimal(".e3") == 0)
+assert(_dash_imm_decimal("5e") == 0)
+assert(_dash_imm_decimal("1e+") == 0)
+assert(_dash_imm_decimal("1.0X+3") == 0)
+assert(_dash_imm_decimal("") == 0)
+assert(_dash_imm_decimal("+") == 0)
+assert(_dash_imm_decimal(".") == 0)
+assert(_dash_imm_decimal("1e3.5") == 0)
+// _dash_imm_clock: a number from 0 to 12.
+assert(_dash_imm_clock(" 3 ") == "3")
+assert(_dash_imm_clock("-0") == "0")
+assert(_dash_imm_clock("1e1") == "10")
+assert(_dash_imm_clock(".") == "")
+assert(_dash_imm_clock(q + "3" + q) == "")
+assert(_dash_imm_clock("(3)") == "")
+// _dash_imm_records: the loop, for a point (2) and a segment (4).
+err = ""
+bad = ""
+left = ""
+stop = ""
+n = .
+nl = .
+assert(_dash_imm_records("1 2 (9) " + q + "A" + q + " 3 4 5", 2, err, bad, left, stop, n, nl) == "[[1,2," + q + "A" + q + ",9],[3,4]]")
+assert(err == "" & left == "5" & stop == "short" & n == 2 & nl == 1)
+assert(_dash_imm_records("1 2 3 " + q + q + " 5 6", 2, err, bad, left, stop, n, nl) == "[[1,2]]")
+assert(left == "3 " + q + q + " 5 6" & stop == "empty" & n == 1 & nl == 0)
+assert(_dash_imm_records("1 abc", 2, err, bad, left, stop, n, nl) == "")
+assert(err == "point" & bad == "abc")
+assert(_dash_imm_records("1 2 (13)", 2, err, bad, left, stop, n, nl) == "")
+assert(err == "position" & bad == "13")
+assert(_dash_imm_records("abc", 2, err, bad, left, stop, n, nl) == "")
+assert(err == "none" & left == "abc" & stop == "short" & n == 0)
+assert(_dash_imm_records("1 " + q + q, 2, err, bad, left, stop, n, nl) == "")
+assert(err == "none" & stop == "empty")
+assert(_dash_imm_records("", 2, err, bad, left, stop, n, nl) == "")
+assert(err == "none" & left == "")
+assert(_dash_imm_records("0 0 0 1 (3) " + q + "A" + q + " 0 0 1 0", 4, err, bad, left, stop, n, nl) == "[[0,0,0,1," + q + "A" + q + ",3],[0,0,1,0]]")
+assert(err == "" & left == "" & n == 2 & nl == 1)
+// _dash_imm_echo: an echo of the user's text, cut at 80 characters.
+assert(_dash_imm_echo("abc") == "abc")
+assert(_dash_imm_echo(80 * "a") == 80 * "a")
+assert(_dash_imm_echo(81 * "a") == 80 * "a" + "...")
+end
+// _dash_immediate: dash.ado's entry, into the caller's locals;
+// _dash_pc_immediate is the same for four coordinates.
+mata: _dash_immediate("1 2 3", 2)
+assert `"`_pci_json'"' == "[[1,2]]"
+assert "`_pci_err'" == "" & "`_pci_left'" == "3" & `_pci_hasleft' == 1
+assert "`_pci_stop'" == "short" & `_pci_n' == 1 & `_pci_nlab' == 0
+mata: _dash_pc_immediate("0 0 0 1 0")
+assert `"`_pci_json'"' == "[[0,0,0,1]]"
+assert "`_pci_left'" == "0" & `_pci_n' == 1
+mata: _dash_immediate("1 2 " + 100 * "7" + "x", 2)
+assert "`_pci_left'" == 80 * "7" + "..."
+display "P1A-67 PASS: the Mata helpers read immediate values token by token as twoway does"
 
 capture erase "`c(tmpdir)'dash_p1a_run.log"
 

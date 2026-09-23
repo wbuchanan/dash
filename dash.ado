@@ -209,7 +209,7 @@ program define _dash_require_mata
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_is_digits _dash_item_globals _dash_json_get_str ///
         _dash_layout_cells _dash_layout_refusal _dash_option_names ///
-        _dash_pc_immediate _dash_say _dash_split_segs _dash_undrawn_plottype
+        _dash_immediate _dash_say _dash_split_segs _dash_undrawn_plottype
 
     // The common case, and the cheap one.
     quietly capture mata: mata describe _dash_check_utf8()
@@ -2261,7 +2261,8 @@ end
 //   _pt_range    y1 y2 [x]                          the range types
 //   _pt_pc       y1 x1 y2 x2                        the paired-coordinate types
 //   _pt_literal  literal values or an expression    scatteri pci pcarrowi function
-//   _pt_pairs    literal y x pairs                  scatteri pci
+//   _pt_imm      immediate values, read as twoway   scatteri pci pcarrowi
+//                reads them (dash_parse.mata 2c)
 //   _pt_ts       x from tsset when it is not given  tsline tsrline
 // ================================================================
 program define _dash_plottype_families
@@ -2270,7 +2271,7 @@ program define _dash_plottype_families
     c_local _pt_range   "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
     c_local _pt_pc      "pcspike pcarrow pcbarrow pcscatter pccapsym"
     c_local _pt_literal "scatteri pci pcarrowi function"
-    c_local _pt_pairs   "scatteri pci"
+    c_local _pt_imm     "scatteri pci pcarrowi"
     c_local _pt_ts      "tsline tsrline"
 end
 
@@ -2448,20 +2449,46 @@ program define _dash_process_segment, rclass
         }
         local if_cl `"`s(if_clause)'"'
         local in_cl `"`s(in_clause)'"'
-        if "`ptype'" == "pcarrowi" {
-            // twoway pcarrowi's immediate values (WP-22 TR-22.1):
-            //     #y1 #x1 #y2 #x2 [(#clockpos)] ["text for label"] ...
-            // read in Mata, as a value, and written one record per arrow,
-            // [y1,x1,y2,x2] or [y1,x1,y2,x2,"label",clock]; the grammar
-            // and what twoway does with each case are measured in
+        if `: list ptype in _pt_imm' {
+            // twoway's immediate values, one record each:
+            //     scatteri  #y #x            [(#clockpos)] ["text for label"]
+            //     pci       #y1 #x1 #y2 #x2  [(#clockpos)] ["text for label"]
+            //     pcarrowi  #y1 #x1 #y2 #x2  [(#clockpos)] ["text for label"]
+            // read in Mata, as a value, as twoway's own parsers read them,
+            // and written one record per point, segment or arrow: the
+            // coordinates, then "label",clock when either is given.  The
+            // grammar and what twoway does with each case are measured in
             // dash_parse.mata, section 2c.  What twoway refuses is refused
-            // with its return code, r(198), the token shown as written.
-            // What twoway drops at the end, too little for another arrow,
-            // is dropped too -- and named, where twoway says nothing.
-            mata: _dash_pc_immediate(st_local("vals"))
+            // with its return code, r(198), the token shown as written;
+            // what it drops at the end is dropped too -- and named, where
+            // twoway says nothing.
+            //
+            // scatteri and pci used to be written token by token as they
+            // were typed, checked only for an even count: `dash pci 0 0 0
+            // abc' and `dash scatteri .5 3000' registered, rc 0, as
+            // "values":[[0,0],[0,abc]] and [[.5,3000]], which are not JSON,
+            // and the render stopped on a JSONDecodeError, r(7102)
+            // (measured 23sep2026; test_parser.cscript P1A-60..67).
+            if "`ptype'" == "scatteri" {
+                local _imm_w    2
+                local _imm_unit "point"
+                local _imm_nw   "two"
+                local _imm_xy   "#y #x"
+            }
+            else {
+                local _imm_w    4
+                local _imm_unit = cond("`ptype'" == "pci", "segment", "arrow")
+                local _imm_nw   "four"
+                local _imm_xy   "#y1 #x1 #y2 #x2"
+            }
+            mata: _dash_immediate(st_local("vals"), `_imm_w')
+            // What ends twoway's loop early: a quoted "" where a record's
+            // last coordinate belongs.
+            local _imm_q = char(34) + char(34)
+            local _imm_empty `"`_imm_q' where a `_imm_unit''s last number belongs ends the list, as in twoway `ptype'."'
             if "`_pci_err'" == "point" {
-                mata: _dash_say("err", "dash: `ptype' takes four numbers for each arrow, #y1 #x1 #y2 #x2; '", st_local("_pci_bad"), "' is not a number.")
-                display as error `"      Each arrow is #y1 #x1 #y2 #x2 [(#clockpos)] ["text for label"], as in twoway `ptype'."'
+                mata: _dash_say("err", "dash: `ptype' takes `_imm_nw' numbers for each `_imm_unit', `_imm_xy'; '", st_local("_pci_bad"), "' is not a number.")
+                display as error `"      Each `_imm_unit' is `_imm_xy' [(#clockpos)] ["text for label"], as in twoway `ptype'."'
                 exit 198
             }
             if "`_pci_err'" == "position" {
@@ -2469,11 +2496,27 @@ program define _dash_process_segment, rclass
                 exit 198
             }
             if "`_pci_err'" == "none" {
-                display as error "dash: `ptype' needs at least one arrow, four numbers #y1 #x1 #y2 #x2."
+                display as error "dash: `ptype' needs at least one `_imm_unit', `_imm_nw' numbers `_imm_xy'."
+                if "`_pci_stop'" == "empty" {
+                    mata: _dash_say("err", "      '", st_local("_pci_left"), "': " + st_local("_imm_empty"))
+                }
+                else if `_pci_hasleft' {
+                    mata: _dash_say("err", "      '", st_local("_pci_left"), "' is too little for one.")
+                }
                 exit 198
             }
-            if `_pci_hasleft' {
-                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another arrow (#y1 #x1 #y2 #x2), as twoway does.")
+            if "`_pci_stop'" == "empty" {
+                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end: " + st_local("_imm_empty"))
+            }
+            else if `_pci_hasleft' {
+                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another `_imm_unit' (`_imm_xy'), as twoway does.")
+            }
+            // twoway pci is an immediate pcspike: its serset carries the
+            // labels and it draws none of them (measured from its SVG
+            // export, with mlabcolor() and mlabposition() or without).
+            // Neither does dash -- and it says so, where twoway is silent.
+            if "`ptype'" == "pci" & `_pci_nlab' > 0 {
+                display as text "dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point."
             }
         }
     }
@@ -2738,61 +2781,15 @@ program define _dash_process_segment, rclass
         _dash_json_str `"`expr'"' _jex
         local vfields `""expr":"`_jex'""'
     }
-    else if "`ptype'" == "pcarrowi" {
-        // Read and checked with the varlist above.  The array holds no
-        // apostrophe, backtick or dollar sign -- a label carries each as a
-        // JSON unicode escape (u0027, u0060, u0024 after a backslash) -- so
-        // it expands safely inside any quotes.
+    else if `: list ptype in _pt_imm' {
+        // scatteri, pci and pcarrowi: read and checked with the varlist
+        // above, one record per point, segment or arrow, every coordinate
+        // a JSON number or null.  The array holds no apostrophe, backtick
+        // or dollar sign -- a label carries each as a JSON unicode escape
+        // (u0027, u0060, u0024 after a backslash) -- so it expands safely
+        // inside any quotes.  scatteri's was built here token by token, as
+        // typed, a label cut at its first blank (P1A-60).
         local vfields `""values":`_pci_json'"'
-    }
-    else if `: list ptype in _pt_pairs' {
-        // Encode as a JSON array of [y, x] pairs, each optionally followed by a
-        // quoted marker label:   scatteri 20 3000 "A" 30 4000 "B"
-        // This used to pair tokens blindly, checking only that the count was
-        // even, so a labelled list came out sheared -- [[20,3000],["A",30],
-        // [4000,"B"]] -- which is not even the right shape.
-        local words_raw `"`vals'"'
-        local np : word count `words_raw'
-        // A point's label rides on its own pair as an optional third element,
-        // [y, x, "label"], which is the shape map_scatteri reads.
-        local arr "["
-        local nfirst = 1
-        local pi = 1
-        while `pi' <= `np' {
-            local yv `"`=word(`"`words_raw'"', `pi')'"'
-            local xv `"`=word(`"`words_raw'"', `=`pi'+1')'"'
-            if `"`xv'"' == "" {
-                mata: _dash_say("err", "dash: `ptype' needs coordinates in y x pairs; '", st_local("yv"), "' has no matching x value.")
-                exit(198)
-            }
-            local pi = `pi' + 2
-
-            // A following NON-NUMERIC token is this point's marker label --
-            // but ONLY for scatteri.  pci and pcscatter take four values per
-            // record (pcscatter's are variable NAMES, which are non-numeric by
-            // definition), so applying the heuristic there would swallow a
-            // coordinate and shear the whole list.
-            local lab ""
-            if `pi' <= `np' & "`ptype'" == "scatteri" {
-                local nxt `"`=word(`"`words_raw'"', `pi')'"'
-                if missing(real(`"`nxt'"')) & `"`nxt'"' != "" {
-                    local lab = subinstr(`"`nxt'"', `"""', "", .)
-                    local pi = `pi' + 1
-                }
-            }
-
-            if !`nfirst' local arr "`arr',"
-            if `"`lab'"' == "" {
-                local arr "`arr'[`yv',`xv']"
-            }
-            else {
-                _dash_json_str `"`lab'"' _jlab
-                local arr `"`arr'[`yv',`xv',"`_jlab'"]"'
-            }
-            local nfirst = 0
-        }
-        local arr "`arr']"
-        local vfields `""values":`arr'"'
     }
     else {
         _dash_json_str "`yvar'" _jyv

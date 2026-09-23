@@ -919,6 +919,23 @@ CORPUS = [
                     values=[[20.0, 3000.0, 30.0, 4000.0, "A", 3],
                             [25.0, 2000.0, 22.0, 3500.0, "B", None],
                             [24.0, 2500.0, 26.0, 3200.0]])]),
+    # scatteri and pci read their immediate values as twoway does
+    # (test_immediate_values.py): a scatteri label at its own clock
+    # position, at mlabposition()'s, at 12 o'clock for a clock position
+    # that is not a whole number, and none for a point with a missing
+    # coordinate, which is not drawn; pci draws no label at all.
+    _case("scatteri with labels, clock positions and a missing point",
+          [plot_for("scatteri", {"mlabcolor": "navy", "mlabposition": "6"},
+                    values=[[20.0, 3000.0, "A", 9],
+                            [30.0, 4000.0, "B", None],
+                            [25.0, 3500.0, "C", 3.5],
+                            [None, 2000.0, "D", 3],
+                            [24.0, 2500.0]])]),
+    _case("pci with labels, clock positions and a missing coordinate",
+          [plot_for("pci", {"lcolor": "maroon"},
+                    values=[[20.0, 3000.0, 30.0, 4000.0, "A", 3],
+                            [25.0, 2000.0, 22.0, 3500.0],
+                            [None, 2500.0, 26.0, 3200.0, "B", None]])]),
     # ---- schemes and style, the file's original beat ------------------------
     _case("scatter, s1mono", [_sc()], {"scheme": "s1mono"}),
     _case("scatter, economist", [_sc()], {"scheme": "economist"}),

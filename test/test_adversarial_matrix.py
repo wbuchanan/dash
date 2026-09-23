@@ -116,11 +116,35 @@ SURFACES = {
         "injection": [
             "test_adversarial.cscript:P22-02",
             "test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_the_label_is_text_not_markup",
+            "test_adversarial.cscript:P20-35",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P22-03",
             "test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_a_hundred_thousand_records_are_read_in_bounded_time",
             "test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_the_arrow_heads_are_added_in_one_change",
+        ],
+    },
+    # `scatteri #y #x [(#clockpos)] ["label"] ...' and `pci #y1 #x1 #y2 #x2
+    # [(#clockpos)] ["label"] ...': immediate values typed on the command
+    # line -- numbers, clock positions and free text -- read by the same
+    # Mata reader as pcarrowi's into the spec, and drawn by the renderer.
+    # They were written into the spec token by token, unchecked.
+    "immediate_scatteri_pci_values": {
+        "bypass": [
+            "test_adversarial.cscript:P20-34",
+            "test/test_immediate_values.py::TestScatteriDrawsItsRecords::test_a_malformed_record_is_named",
+            "test/test_immediate_values.py::TestPciDrawsItsRecords::test_a_malformed_record_is_named",
+            "test/test_immediate_values.py::TestPciDrawsItsRecords::test_the_old_two_point_shape_is_named_not_redrawn",
+        ],
+        "injection": [
+            "test_adversarial.cscript:P20-35",
+            "test/test_immediate_values.py::TestScatteriDrawsItsRecords::test_the_label_is_text_not_markup",
+            "test/test_immediate_values.py::TestBothModesDrawTheSame::test_a_scatteri_label_reaches_the_served_page_as_text",
+        ],
+        "exhaustion": [
+            "test_adversarial.cscript:P20-36",
+            "test/test_immediate_values.py::TestScatteriDrawsItsRecords::test_a_hundred_thousand_records_are_read_in_bounded_time",
+            "test/test_immediate_values.py::TestPciDrawsItsRecords::test_a_hundred_thousand_records_are_read_in_bounded_time",
         ],
     },
     # `if' and `in' on a plot or a KPI; the renderer re-applies them.

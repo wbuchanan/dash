@@ -22,10 +22,13 @@ which is not even valid JSON: the variable names are bare identifiers inside
 an array. It is now parsed as the four-variable plot it is, alongside
 pcspike, pcarrow and pcbarrow.
 
-`pci` takes literal coordinates -- `pci 20 3000 30 4000' -- and dash.ado
-writes them correctly as `"values":[[20,3000],[30,4000]]'. The renderer had
-no branch that read them: `map_pci' delegated to `map_pcspike', which wants
-variable names, and the render loop did not route `pci' there in any case.
+`pci` takes literal coordinates -- `pci 20 3000 30 4000' -- which dash.ado
+then wrote as `"values":[[20,3000],[30,4000]]'. The renderer had no branch
+that read them: `map_pci' delegated to `map_pcspike', which wants variable
+names, and the render loop did not route `pci' there in any case.  Since
+23sep2026 dash.ado writes one record per segment, `[[20,3000,30,4000]]', the
+record pcarrowi writes, with a label and clock position when they are given
+(test_immediate_values.py; test_parser.cscript P1A-63..65).
 
 The conformance corpus cannot see either defect, because every command in it
 is given `name()', which registers the spec and never renders it.
@@ -89,18 +92,18 @@ class TestEveryPairedCoordinateTypeDraws:
         )
 
     def test_pci_draws_from_literal_coordinates(self):
-        """dash.ado writes `pci 20 3000 30 4000' as [[20,3000],[30,4000]]."""
+        """dash.ado writes `pci 20 3000 30 4000' as [[20,3000,30,4000]]."""
         fig = _render({"type": "pci",
-                       "values": [[20.0, 3000.0], [30.0, 4000.0]],
+                       "values": [[20.0, 3000.0, 30.0, 4000.0]],
                        "options": {}})
         assert len(fig.renderers) >= 1, (
             "`dash pci 20 3000 30 4000' draws nothing and says nothing"
         )
 
     def test_pci_puts_the_segment_where_stata_does(self):
-        """values are (y, x) pairs, as scatteri's are."""
+        """A record is y1 x1 y2 x2, in twoway's order."""
         fig = _render({"type": "pci",
-                       "values": [[20.0, 3000.0], [30.0, 4000.0]],
+                       "values": [[20.0, 3000.0, 30.0, 4000.0]],
                        "options": {}})
         src = fig.renderers[0].data_source.data
         assert [float(v) for v in src["x0"]] == [3000.0]
@@ -108,23 +111,24 @@ class TestEveryPairedCoordinateTypeDraws:
         assert [float(v) for v in src["x1"]] == [4000.0]
         assert [float(v) for v in src["y1"]] == [30.0]
 
-    def test_pci_draws_one_segment_per_pair_of_points(self):
+    def test_pci_draws_one_segment_per_record(self):
         fig = _render({"type": "pci",
-                       "values": [[1.0, 1.0], [2.0, 2.0],
-                                  [3.0, 3.0], [4.0, 4.0]],
+                       "values": [[1.0, 1.0, 2.0, 2.0],
+                                  [3.0, 3.0, 4.0, 4.0]],
                        "options": {}})
         assert len(fig.renderers[0].data_source.data["x0"]) == 2
 
-    def test_an_odd_number_of_points_is_reported_not_fatal(self):
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            fig = _render({"type": "pci",
-                           "values": [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]],
-                           "options": {}}, quiet=False)
-        assert len(fig.renderers) >= 1
-        assert any("pci" in str(w.message) for w in caught), (
-            "an unpaired coordinate is dropped without a word"
-        )
+    def test_a_record_that_is_not_one_is_reported_not_drawn(self):
+        """An incomplete last segment is dropped by dash.ado, with a note
+        (test_parser.cscript P1A-65); a spec that still carries one -- a
+        spec written by hand is an input too -- is refused naming pci
+        rather than drawn wrong: the figure is not built, and the error
+        says which figure and why."""
+        with pytest.raises(RuntimeError,
+                           match=r"figure 'g1'.*pci records are"):
+            _render({"type": "pci",
+                     "values": [[1.0, 1.0, 2.0, 2.0], [3.0, 3.0]],
+                     "options": {}}, quiet=False)
 
     def test_no_values_draws_nothing_without_raising(self):
         fig = _render({"type": "pci", "values": [], "options": {}})

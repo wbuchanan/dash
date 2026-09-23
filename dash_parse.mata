@@ -40,9 +40,14 @@
 *!       "contour" or "contourline" when name is one of the twoway plot
 *!       types dash refuses by name, else "".
 *!
+*!   _dash_immediate(vals, w)
+*!       Read the immediate values of scatteri (w = 2) or of pci and
+*!       pcarrowi (w = 4) as twoway reads them, into the caller's locals
+*!       _pci_json, _pci_err, _pci_bad, _pci_left, _pci_hasleft,
+*!       _pci_stop, _pci_n, _pci_nlab.
+*!
 *!   _dash_pc_immediate(vals)
-*!       Read pcarrowi's immediate values into the caller's locals
-*!       _pci_json, _pci_err, _pci_bad, _pci_left, _pci_hasleft, _pci_n.
+*!       _dash_immediate(vals, 4).
 *!
 *!   _dash_comma_pos(input, out_macro)
 *!       Position (1-based) of the first top-level comma, or "0".
@@ -672,256 +677,467 @@ string scalar _dash_undrawn_plottype(string scalar name) {
 
 
 // ============================================================
-// 2c. IMMEDIATE PAIRED-COORDINATE VALUES   (pcarrowi, WP-22)
+// 2c. IMMEDIATE VALUES   (scatteri, pci, pcarrowi)
 // ============================================================
 //
-// twoway_pcarrowi.sthlp's immediate values, one arrow each:
+// The immediate values of twoway scatteri, pci and pcarrowi, one record
+// each (twoway_scatteri.sthlp, twoway_pci.sthlp, twoway_pcarrowi.sthlp):
 //
-//     #y1 #x1 #y2 #x2 [(#clockposstyle)] ["text for label"]
+//     scatteri   #y #x               [(#clockposstyle)] ["text for label"]
+//     pci        #y1 #x1 #y2 #x2     [(#clockposstyle)] ["text for label"]
+//     pcarrowi   #y1 #x1 #y2 #x2     [(#clockposstyle)] ["text for label"]
 //
-// and what twoway does with them, measured 23sep2026 with the console
-// binary by loading the serset each command draws:
+// read here as twoway's own parsers read them: twoway_scatteri_parse.class
+// and twoway_pci_parse.class, which pcarrowi's inherits unchanged.  Each
+// takes a record's coordinates with gettoken, then gettoken with
+// match(p) quotes for an optional clock position, then gettoken with
+// quotes for an optional label, and loops while the record's LAST
+// coordinate is not empty.  What that does was measured 23sep2026 with
+// the console binary, loading the serset each command draws and reading
+// each graph's SVG export:
 //
-//   * an arrow is four numbers; "." and .a-.z are missing and draw nothing;
-//   * a clock position, if any, comes next and a label after it.  A clock
-//     position written after the label is not read, nor is a second label
-//     or a second clock position;
+//   * a coordinate is a number as numlist reads one; blanks around it are
+//     allowed, a tab or any other character is not.  "." and .a-.z are
+//     missing and draw nothing; so does a number past a double's range
+//     (1e400, 1e308) and one past a float's (1e39): twoway stores the
+//     values as float;
+//   * a coordinate in quotes is a number where gettoken strips the quotes
+//     -- the first of the list, every one but a record's first, and the
+//     first after a label.  Straight after a record, or after its clock
+//     position, a quoted token is that record's label;
+//   * a clock position comes before the label, never after it: one written
+//     after the label is read as the next record's first coordinate.  A
+//     second label is read the same way;
 //   * a token that is not a number where a coordinate belongs is refused,
-//     "invalid point," r(198): a label or clock position before the first
-//     arrow or inside one, and one left over with a whole arrow after it;
+//     "invalid point," r(198);
 //   * a clock position that is not a number from 0 to 12 is refused,
-//     "invalid position, 13" r(198).  3.5 and 012 are taken;
-//   * what is left at the end, too little for another arrow, is dropped
-//     without a word: pcarrowi 0 0 0 1 0 0 1 draws one arrow, rc 0;
-//   * a list with no arrow at all is refused, r(198).
+//     "invalid position, 13" r(198).  3.5, 012 and 1e1 are taken;
+//   * the loop ends where a record's last coordinate is empty: at the end
+//     of the list -- what is left, too little for another record, is
+//     dropped without a word (scatteri 1 2 3 draws one point, rc 0) -- or
+//     at a quoted "" in that place, which drops the rest of the list too;
+//   * a list with no whole record is refused, "'0' invalid observation
+//     number," r(198).
 //
-// The list is read here byte by byte, as a value: nothing in it is ever
-// expanded as Stata.  A label is between double quotes or compound quotes,
-// which nest; a clock position is between parentheses, which may hold
-// blanks.  Every delimiter is ASCII, so a UTF-8 label is never split.
-// Each step is linear in the length of the list: tokens are stored in
-// vectors that double when full, and the JSON is joined once at the end.
+// Two things twoway takes are refused here, because they are accidents of
+// its implementation rather than its syntax: a numlist range that holds
+// one number, which twoway then evaluates as a division (2/2 and -1/-1
+// draw at 1, 0/0 is missing, and (1/1) is taken as a clock position); and
+// a hexadecimal literal at the top of a double's range (1.0X+3ff), missing
+// there.
+//
+// The list is read byte by byte, as a value: nothing in it is ever
+// expanded as Stata.  Only a blank separates two tokens, as in gettoken; a
+// quoted part binds its blanks, inside a word too; double quotes do not
+// nest and compound quotes do; a (group) is read only where a clock
+// position may stand.  Every delimiter is ASCII, so a UTF-8 label is never
+// split.  Each step is linear in the length of the list: the bytes are
+// read once, records are stored in a vector that doubles when full, and
+// the JSON is joined once at the end.
 // ============================================================
 
-// Split an immediate list into tokens.  kind is 1 for a bare word, 2 for a
-// quoted label (txt holds the text between the quotes) and 3 for a clock
-// position in parentheses (txt holds the trimmed text between them).  raw
-// is each token as written, for a message.
-void _dash_imm_tokens(string scalar s, string rowvector raw,
-                      string rowvector txt, real rowvector kind)
+// The position of the double quote that closes the one at i, in the bytes
+// b of a list, or cols(b) + 1 when none does.
+real scalar _dash_imm_dq_end(real rowvector b, real scalar i)
 {
-    real scalar   n, i, j, depth, m, cap
-    string scalar ch, c2
+    real scalar j, n
 
-    n    = strlen(s)
-    cap  = 16
-    raw  = J(1, cap, "")
-    txt  = J(1, cap, "")
-    kind = J(1, cap, 0)
-    m    = 0
-    i    = 1
-    while (i <= n) {
-        ch = substr(s, i, 1)
-        if (ch == " " | ch == char(9) | ch == char(10) | ch == char(13)) {
-            i++
+    n = cols(b)
+    for (j = i + 1; j <= n; j++) {
+        if (b[j] == 34) return(j)
+    }
+    return(n + 1)
+}
+
+// 1 when a compound quote opens at i: a backtick, then a double quote.
+// Mata evaluates both sides of & and &&, so the bound is tested apart.
+real scalar _dash_imm_cq_at(real rowvector b, real scalar i)
+{
+    if (i >= cols(b)) return(0)
+    return(b[i] == 96 & b[i + 1] == 34)
+}
+
+// The position of the " of the "' that closes the `" at i -- compound
+// quotes nest -- or cols(b) + 1 when none does.
+real scalar _dash_imm_cq_end(real rowvector b, real scalar i)
+{
+    real scalar j, n, depth
+
+    n     = cols(b)
+    depth = 1
+    j     = i + 2
+    // j < n, so b[j + 1] is always there.
+    while (j < n) {
+        if (b[j] == 96 & b[j + 1] == 34) {
+            depth++
+            j = j + 2
             continue
         }
-        if (m == cap) {
-            raw  = raw,  J(1, cap, "")
-            txt  = txt,  J(1, cap, "")
-            kind = kind, J(1, cap, 0)
-            cap  = 2 * cap
+        if (b[j] == 34 & b[j + 1] == 39) {
+            depth--
+            if (depth == 0) return(j)
+            j = j + 2
+            continue
         }
-        m++
-        if (ch == char(34)) {
-            // "label": to the next double quote, or to the end.
-            j = i + 1
-            while (j <= n) {
-                if (substr(s, j, 1) == char(34)) break
-                j++
+        j++
+    }
+    return(n + 1)
+}
+
+// The next token of the list s, as twoway's parsers read it with gettoken.
+// b is ascii(s), read once by the caller; i is where to start, and is moved
+// past the token.  mode is how gettoken is called:
+//   0  gettoken tok rest : rest                    (quotes stripped)
+//   1  gettoken tok rest : rest, quotes
+//   2  gettoken tok rest : rest, match(p) quotes   (a clock position)
+// Returns the kind of token: 0 none (the list is spent), 1 a word, 2 a
+// quoted string, 3 a (group), in mode 2 only.  txt is the token without
+// its quotes or outer parentheses -- a group keeps its blanks -- and raw
+// is the token as written, for a message.
+real scalar _dash_imm_next(string scalar s, real rowvector b, real scalar i,
+                           real scalar mode, string scalar txt,
+                           string scalar raw)
+{
+    real scalar n, j, depth
+
+    n = cols(b)
+    while (i <= n) {
+        if (b[i] != 32) break
+        i++
+    }
+    if (i > n) {
+        txt = ""
+        raw = ""
+        return(0)
+    }
+    if (b[i] == 34) {
+        // "quoted": to the next double quote, or to the end.
+        j   = _dash_imm_dq_end(b, i)
+        raw = substr(s, i, j - i + 1)
+        txt = substr(s, i + 1, j - i - 1)
+        i   = j + 1
+        return(2)
+    }
+    if (_dash_imm_cq_at(b, i)) {
+        // `"compound"': to the "' that closes this one.
+        j   = _dash_imm_cq_end(b, i)
+        raw = substr(s, i, j - i + 2)
+        txt = substr(s, i + 2, j - i - 2)
+        i   = j + 2
+        return(2)
+    }
+    if (mode == 2 & b[i] == 40) {
+        // (group): to the parenthesis that closes this one; a quoted string
+        // inside it is passed over whole.
+        depth = 1
+        j     = i + 1
+        while (j <= n) {
+            if (b[j] == 34) {
+                j = _dash_imm_dq_end(b, j) + 1
+                continue
             }
-            raw[m]  = substr(s, i, j - i + 1)
-            txt[m]  = substr(s, i + 1, j - i - 1)
-            kind[m] = 2
-            i = j + 1
+            if (_dash_imm_cq_at(b, j)) {
+                j = _dash_imm_cq_end(b, j) + 2
+                continue
+            }
+            if (b[j] == 40) depth++
+            else if (b[j] == 41) {
+                depth--
+                if (depth == 0) break
+            }
+            j++
         }
-        else if (ch == char(96) & substr(s, i + 1, 1) == char(34)) {
-            // `"label"': to the compound quote that closes this one.
-            depth = 1
-            j     = i + 2
-            while (j <= n) {
-                c2 = substr(s, j, 2)
-                if (c2 == char(96) + char(34)) {
-                    depth++
-                    j = j + 2
-                    continue
-                }
-                if (c2 == char(34) + char(39)) {
-                    depth--
-                    if (depth == 0) break
-                    j = j + 2
-                    continue
-                }
-                j++
-            }
-            raw[m]  = substr(s, i, j - i + 2)
-            txt[m]  = substr(s, i + 2, j - i - 2)
-            kind[m] = 2
-            i = j + 2
+        if (j > n + 1) j = n + 1
+        raw = substr(s, i, j - i + 1)
+        txt = substr(s, i + 1, j - i - 1)
+        i   = j + 1
+        return(3)
+    }
+    // A word: to the next blank.  A quoted part inside it binds its blanks,
+    // as in gettoken -- 2"A B" is one token.
+    j = i
+    while (j <= n) {
+        if (b[j] == 32) break
+        if (b[j] == 34) {
+            j = _dash_imm_dq_end(b, j) + 1
+            continue
         }
-        else if (ch == "(") {
-            // (#clockpos): to the parenthesis that closes this one.
-            depth = 1
-            j     = i + 1
-            while (j <= n) {
-                ch = substr(s, j, 1)
-                if (ch == "(") depth++
-                else if (ch == ")") {
-                    depth--
-                    if (depth == 0) break
-                }
-                j++
-            }
-            raw[m]  = substr(s, i, j - i + 1)
-            txt[m]  = strtrim(substr(s, i + 1, j - i - 1))
-            kind[m] = 3
-            i = j + 1
+        if (_dash_imm_cq_at(b, j)) {
+            j = _dash_imm_cq_end(b, j) + 2
+            continue
         }
-        else {
-            // A bare word: to the next blank.
-            j = i
-            while (j <= n) {
-                ch = substr(s, j, 1)
-                if (ch == " " | ch == char(9) | ch == char(10) | ch == char(13)) break
-                j++
+        j++
+    }
+    if (j > n + 1) j = n + 1
+    raw = substr(s, i, j - i)
+    txt = raw
+    i   = j
+    return(1)
+}
+
+// _dash_imm_next for one call, reading the bytes itself.
+real scalar _dash_imm_gettoken(string scalar s, real scalar i,
+                               real scalar mode, string scalar txt,
+                               string scalar raw)
+{
+    return(_dash_imm_next(s, ascii(s), i, mode, txt, raw))
+}
+
+// s without the blanks (char 32, and nothing else) around it.
+string scalar _dash_imm_trim(string scalar s)
+{
+    real scalar i, j, n
+
+    n = strlen(s)
+    i = 1
+    while (i <= n) {
+        if (substr(s, i, 1) != " ") break
+        i++
+    }
+    j = n
+    while (j >= i) {
+        if (substr(s, j, 1) != " ") break
+        j--
+    }
+    return(substr(s, i, j - i + 1))
+}
+
+// 1 when t is not empty and holds only the bytes a number can be written
+// with -- digits, + - . and the letters of the e, d and x forms -- so that
+// strtoreal() is never handed a tab, a Unicode digit or anything else it
+// might be lenient about.
+real scalar _dash_imm_numchars(string scalar t)
+{
+    real rowvector b
+    real scalar    k, c
+
+    if (t == "") return(0)
+    b = ascii(t)
+    for (k = 1; k <= cols(b); k++) {
+        c = b[k]
+        if (c >= 48 & c <= 57) continue
+        if (c == 43 | c == 45 | c == 46) continue
+        if (c >= 97 & c <= 102) continue
+        if (c >= 65 & c <= 70) continue
+        if (c == 120 | c == 88) continue
+        return(0)
+    }
+    return(1)
+}
+
+// 1 when t is a decimal number by its grammar alone, whatever its size:
+// [+-] then digits with an optional point and more digits, or a point and
+// digits, then optionally e, E, d or D, an optional sign and digits.
+real scalar _dash_imm_decimal(string scalar t)
+{
+    real rowvector b
+    real scalar    n, k, nd, ne
+
+    // Mata evaluates both sides of & and &&: every b[k] below is read only
+    // once k <= n has been tested on its own.
+    b  = ascii(t)
+    n  = cols(b)
+    k  = 1
+    nd = 0
+    ne = 0
+    if (n == 0) return(0)
+    if (b[k] == 43 | b[k] == 45) k++
+    while (k <= n) {
+        if (b[k] < 48 | b[k] > 57) break
+        nd++
+        k++
+    }
+    if (k <= n) {
+        if (b[k] == 46) {
+            k++
+            while (k <= n) {
+                if (b[k] < 48 | b[k] > 57) break
+                nd++
+                k++
             }
-            raw[m]  = substr(s, i, j - i)
-            txt[m]  = raw[m]
-            kind[m] = 1
-            i = j
         }
     }
-    if (m == 0) {
-        raw  = J(1, 0, "")
-        txt  = J(1, 0, "")
-        kind = J(1, 0, 0)
+    if (nd == 0) return(0)
+    if (k > n) return(1)
+    if (!anyof((69, 101, 68, 100), b[k])) return(0)
+    k++
+    if (k <= n) {
+        if (b[k] == 43 | b[k] == 45) k++
     }
-    else {
-        raw  = raw[|1 \ m|]
-        txt  = txt[|1 \ m|]
-        kind = kind[|1 \ m|]
+    while (k <= n) {
+        if (b[k] < 48 | b[k] > 57) break
+        ne++
+        k++
     }
+    return(ne > 0 & k > n)
 }
 
 // A nonmissing real as a JSON number, at full precision.  %21.0g writes .5
 // and -.5, which JSON does not allow, so the zero is put back; its other
 // forms -- 3000, -2.5, 1.00000000000000e+21 -- are JSON numbers as written.
+// Zero is 0, however it was signed.
 string scalar _dash_json_number(real scalar v)
 {
     string scalar s
 
+    if (v == 0) return("0")
     s = strtrim(strofreal(v, "%21.0g"))
     if (substr(s, 1, 1) == ".")  s = "0" + s
     if (substr(s, 1, 2) == "-.") s = "-0" + substr(s, 2, .)
     return(s)
 }
 
-// One coordinate: a JSON number, "null" for a missing value (. or .a-.z),
-// or "" when the token is not a number -- twoway's "invalid point".
-string scalar _dash_imm_number(string scalar tok, real scalar kind)
+// One coordinate, as twoway reads it -- numlist with missingok, then
+// stored as a float: a JSON number; "null" for a missing value (. or .a to
+// .z, a number past a double's range, or one past a float's); or "" when it
+// is no number at all, twoway's "invalid point".  tok is the token as
+// gettoken hands it over, quotes stripped.
+string scalar _dash_imm_number(string scalar tok)
 {
-    real scalar v
+    string scalar t
+    real scalar   v
 
-    if (kind != 1) return("")
-    if (tok == ".") return("null")
-    if (strlen(tok) == 2 & substr(tok, 1, 1) == ".") {
-        if (_dash_ascii_in(substr(tok, 2, 1), 97, 122)) return("null")
+    t = _dash_imm_trim(tok)
+    if (t == ".") return("null")
+    if (strlen(t) == 2 & substr(t, 1, 1) == ".") {
+        if (_dash_ascii_in(substr(t, 2, 1), 97, 122)) return("null")
     }
-    v = strtoreal(tok)
-    if (v >= .) return("")
-    return(_dash_json_number(v))
+    if (!_dash_imm_numchars(t)) return("")
+    v = strtoreal(t)
+    if (v < .) {
+        // Past float's range the value is missing to twoway and draws
+        // nothing.  2^127 - 2^102 is where a double stops rounding to the
+        // largest float: 1.7014117837e38 is drawn, 1.7014117839e38 is not
+        // (measured).  abs() of minus infinity, which is how strtoreal()
+        // reads -1e400, is missing, and so past it too.
+        if (abs(v) >= 2^127 - 2^102) return("null")
+        return(_dash_json_number(v))
+    }
+    // strtoreal() reads a decimal number too big for a double as missing,
+    // as twoway does; anything else it reads as missing is no number.
+    if (_dash_imm_decimal(t)) return("null")
+    return("")
 }
 
 // One clock position: a JSON number, or "" when it is not a number from 0
 // to 12 -- twoway's "invalid position".
 string scalar _dash_imm_clock(string scalar tok)
 {
-    real scalar v
+    string scalar t
+    real scalar   v
 
-    v = strtoreal(tok)
+    t = _dash_imm_trim(tok)
+    if (!_dash_imm_numchars(t)) return("")
+    v = strtoreal(t)
     if (v >= . | v < 0 | v > 12) return("")
     return(_dash_json_number(v))
 }
 
-// The immediate list as the JSON array the renderer reads, one record per
-// arrow in twoway's order: [y1,x1,y2,x2], or [y1,x1,y2,x2,"label",clock]
-// when either is given (clock null when only the label is).  On a refusal
-// it returns "" with err "point", "position" or "none" and bad the token
-// refused; left is what was dropped at the end.  bad and left are as the
-// user wrote them, for a message; nrec is the number of arrows read.
-string scalar _dash_pc_records(string scalar vals, string scalar err,
-                               string scalar bad, string scalar left,
-                               real scalar nrec)
+// An echo of the user's text, cut at 80 characters so that a refusal or a
+// note stays one line however long the text is.
+string scalar _dash_imm_echo(string scalar s)
 {
-    string rowvector raw, txt, recs
-    real rowvector   kind
-    string scalar    rec, num, lab, clk
-    real scalar      ntok, t, k
+    if (ustrlen(s) <= 80) return(s)
+    return(usubstr(s, 1, 80) + "...")
+}
 
-    err  = ""
-    bad  = ""
-    left = ""
-    nrec = 0
-    raw  = J(1, 0, "")
-    txt  = J(1, 0, "")
-    kind = J(1, 0, 0)
-    _dash_imm_tokens(vals, raw, txt, kind)
-    ntok = cols(raw)
-    recs = J(1, max((1, floor(ntok / 4))), "")
-    t    = 1
-    while (t <= ntok) {
-        // Too little left for another arrow: twoway drops it.
-        if (ntok - t + 1 < 4) {
-            left = invtokens(raw[|t \ ntok|], " ")
-            break
-        }
+// The immediate list vals as the JSON array the renderer reads, one record
+// per point (w = 2, scatteri) or segment or arrow (w = 4, pci and
+// pcarrowi), in twoway's order: the coordinates, then "label",clock when
+// either is given (clock null when only the label is).  On a refusal it
+// returns "" with err "point", "position" or "none" and bad the token
+// refused.  left is what was dropped at the end, as written, and stop why:
+// "short", too little for another record, or "empty", a quoted "" where a
+// record's last coordinate belongs.  nrec is the number of records read
+// and nlab the number with a label that is not empty.
+string scalar _dash_imm_records(string scalar vals, real scalar w,
+                                string scalar err, string scalar bad,
+                                string scalar left, string scalar stop,
+                                real scalar nrec, real scalar nlab)
+{
+    real rowvector   b
+    string rowvector c, craw, recs
+    real scalar      i, k, kind, lastkind, start, cap
+    string scalar    txt, raw, rec, num, lab, clk
+
+    err      = ""
+    bad      = ""
+    left     = ""
+    stop     = ""
+    nrec     = 0
+    nlab     = 0
+    txt      = ""
+    raw      = ""
+    lastkind = 0
+    b        = ascii(vals)
+    cap      = 16
+    recs     = J(1, cap, "")
+    c        = J(1, w, "")
+    craw     = J(1, w, "")
+    i        = 1
+
+    // The first record's coordinates, read with gettoken: quotes stripped.
+    start = i
+    for (k = 1; k <= w; k++) {
+        lastkind = _dash_imm_next(vals, b, i, 0, txt, raw)
+        c[k]     = txt
+        craw[k]  = raw
+    }
+    // twoway's loop: while the record's last coordinate is not empty.
+    while (c[w] != "") {
         rec = ""
-        for (k = 0; k <= 3; k++) {
-            num = _dash_imm_number(txt[t + k], kind[t + k])
+        for (k = 1; k <= w; k++) {
+            num = _dash_imm_number(c[k])
             if (num == "") {
                 err = "point"
-                bad = raw[t + k]
+                bad = craw[k]
                 return("")
             }
-            rec = rec + (k ? "," : "") + num
+            rec = rec + (k > 1 ? "," : "") + num
         }
-        t   = t + 4
-        lab = ""
-        clk = ""
-        if (t <= ntok) {
-            if (kind[t] == 3) {
-                clk = _dash_imm_clock(txt[t])
-                if (clk == "") {
-                    err = "position"
-                    bad = txt[t]
-                    return("")
-                }
-                t++
+        // An optional (#clockpos), then an optional "label".  Whatever
+        // else comes next is the next record's first coordinate.
+        lab   = ""
+        clk   = ""
+        start = i
+        kind  = _dash_imm_next(vals, b, i, 2, txt, raw)
+        if (kind == 3) {
+            clk = _dash_imm_clock(txt)
+            if (clk == "") {
+                err = "position"
+                bad = _dash_imm_trim(txt)
+                return("")
             }
+            start = i
+            kind  = _dash_imm_next(vals, b, i, 1, txt, raw)
         }
-        if (t <= ntok) {
-            if (kind[t] == 2) {
-                lab = txt[t]
-                t++
-            }
+        if (kind == 2) {
+            lab = txt
+            if (lab != "") nlab++
+            start = i
+            kind  = _dash_imm_next(vals, b, i, 0, txt, raw)
         }
         if (lab != "" | clk != "") {
             if (clk == "") clk = "null"
             rec = rec + "," + char(34) + _json_escape(lab) + char(34) + "," + clk
         }
+        if (nrec == cap) {
+            recs = recs, J(1, cap, "")
+            cap  = 2 * cap
+        }
         nrec++
         recs[nrec] = "[" + rec + "]"
+        // The next record: its first coordinate is the token just read.
+        c[1]    = txt
+        craw[1] = raw
+        for (k = 2; k <= w; k++) {
+            lastkind = _dash_imm_next(vals, b, i, 0, txt, raw)
+            c[k]     = txt
+            craw[k]  = raw
+        }
     }
+    left = _dash_imm_trim(substr(vals, start, .))
+    if (left != "") stop = (lastkind == 2 ? "empty" : "short")
     if (nrec == 0) {
         err = "none"
         return("")
@@ -929,32 +1145,47 @@ string scalar _dash_pc_records(string scalar vals, string scalar err,
     return("[" + invtokens(recs[|1 \ nrec|], ",") + "]")
 }
 
-// dash.ado's entry point: the records of an immediate list, into the
-// caller's locals.
+// dash.ado's entry point: the records of an immediate list of width w
+// (2 for scatteri, 4 for pci and pcarrowi), into the caller's locals.
 //   _pci_json     the JSON array, or "" on a refusal
 //   _pci_err      "" | "point" | "position" | "none"
-//   _pci_bad      the token refused, as written
-//   _pci_left     what was dropped at the end, as written, or ""
+//   _pci_bad      the token refused, as written (cut at 80 characters)
+//   _pci_left     what was dropped at the end, as written (cut), or ""
 //   _pci_hasleft  1 when something was dropped at the end, else 0
-//   _pci_n        the number of arrows read
-void _dash_pc_immediate(string scalar vals)
+//   _pci_stop     why it was: "short" | "empty" | ""
+//   _pci_n        the number of records read
+//   _pci_nlab     the number of them with a label that is not empty
+void _dash_immediate(string scalar vals, real scalar w)
 {
-    string scalar json, err, bad, left
-    real scalar   n
+    string scalar json, err, bad, left, stop
+    real scalar   n, nl
 
+    if (w != 2 & w != 4) {
+        errprintf("_dash_immediate: a record is 2 or 4 coordinates\n")
+        exit(198)
+    }
     err  = ""
     bad  = ""
     left = ""
+    stop = ""
     n    = 0
-    json = _dash_pc_records(vals, err, bad, left, n)
+    nl   = 0
+    json = _dash_imm_records(vals, w, err, bad, left, stop, n, nl)
     st_local("_pci_json",    json)
     st_local("_pci_err",     err)
-    st_local("_pci_bad",     bad)
-    st_local("_pci_left",    left)
+    st_local("_pci_bad",     _dash_imm_echo(bad))
+    st_local("_pci_left",    _dash_imm_echo(left))
     st_local("_pci_hasleft", strofreal(left != ""))
+    st_local("_pci_stop",    stop)
     st_local("_pci_n",       strofreal(n))
+    st_local("_pci_nlab",    strofreal(nl))
 }
 
+// The same for four coordinates, the name WP-22 gave pcarrowi's entry.
+void _dash_pc_immediate(string scalar vals)
+{
+    _dash_immediate(vals, 4)
+}
 
 // ============================================================
 // 3. OPTION-KEY ABBREVIATION EXPANSION

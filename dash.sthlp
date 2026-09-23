@@ -170,16 +170,29 @@ so under the option concerned.
 {synoptline}
 
 {pstd}
-{ul:pccapsym and pcarrowi.}  {cmd:pccapsym} draws each spike with the same
-marker at both ends: the line options style the spike, the marker options
-the markers, and {cmd:mlabel()} labels the first point.  {cmd:pcarrowi}
-reads its values as {cmd:twoway} does -- {it:#y1 #x1 #y2 #x2}, then an
-optional clock position in parentheses and a label in quotes -- and
-refuses, with {cmd:r(198)}, a coordinate that is not a number, a clock
-position outside 0 to 12, or a list with no whole arrow.  An incomplete
-last arrow is dropped with a note, where {cmd:twoway} drops it silently.
-Each label is drawn at its arrow's tail, placed by its clock position,
-else by {cmd:mlabposition()}, else at 3 o'clock.
+{ul:pccapsym.}  {cmd:pccapsym} draws each spike with the same marker at
+both ends: the line options style the spike, the marker options the
+markers, and {cmd:mlabel()} labels the first point.
+
+{pstd}
+{ul:Immediate values.}  {cmd:scatteri}, {cmd:pci} and {cmd:pcarrowi} read
+their values as {cmd:twoway} does: {it:#y #x} for {cmd:scatteri} and
+{it:#y1 #x1 #y2 #x2} for {cmd:pci} and {cmd:pcarrowi}, each followed by an
+optional clock position in parentheses and then an optional label in
+quotes.  A missing value -- {cmd:.} or {cmd:.a} to {cmd:.z} -- draws
+nothing, and so does a number past the range of the float {cmd:twoway}
+stores it as.  {cmd:dash} refuses, with {cmd:r(198)}, a coordinate that is
+not a number, a clock position that is not a number from 0 to 12, and a
+list with no whole point, segment or arrow; it also refuses a numlist range
+such as {cmd:2/2}, which {cmd:twoway} takes and evaluates as a division.
+What {cmd:twoway} drops silently at the end of the list -- too little for
+another point, segment or arrow, or everything from a {cmd:""} where one's
+last number belongs -- {cmd:dash} drops with a note.  A label is drawn at
+its point for {cmd:scatteri} and at its arrow's tail for {cmd:pcarrowi},
+placed by its clock position, else by {cmd:mlabposition()}, else at 3
+o'clock; a clock position that is not a whole number, such as 3.5, is drawn
+at 12 o'clock, where {cmd:twoway} draws it, with a note.  {cmd:pci} draws
+no labels, as {cmd:twoway pci} draws none, and says so.
 
 {pstd}
 {ul:Not drawn.}  Five {cmd:twoway} plot types are not drawn by {cmd:dash}:

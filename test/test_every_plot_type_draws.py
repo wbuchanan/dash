@@ -129,7 +129,9 @@ def _plot_for(ptype):
         return {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
                 "options": {}}
     if ptype == "pci":
-        return {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
+        # One record per segment, y1 x1 y2 x2, as dash.ado writes
+        # `pci 20 3000 30 4000' (the record pcarrowi's is).
+        return {"type": ptype, "values": [[20.0, 3000.0, 30.0, 4000.0]],
                 "options": {}}
     if ptype == "pcarrowi":
         # One record per arrow, y1 x1 y2 x2, as dash.ado writes

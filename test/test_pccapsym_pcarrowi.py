@@ -288,11 +288,15 @@ class TestMapPcarrowi:
         assert _col(seg, "x0") == [1.0]
         assert not _labelsets(fig)
 
-    def test_a_clock_that_is_not_a_whole_number_is_drawn_at_three_once(self):
+    def test_a_clock_that_is_not_a_whole_number_is_drawn_at_twelve_once(self):
+        """twoway accepts (3.5) and draws the label above the tail, where
+        (12) puts it, noting "named style 3.5 not found in class clockdir,
+        default attributes used" -- measured 23sep2026 from the SVG export
+        of ``twoway pcarrowi 0 0 0 1 (3.5) "A" ...``.  It was drawn at 3."""
         _, fig, _, warns = self._draw([[0, 0, 0, 1, "A", 3.5],
                                        [1, 1, 2, 2, "B", 3.25]])
         (ls,) = _labelsets(fig)
-        assert (ls.x_offset, ls.y_offset) == (4, 0)
+        assert (ls.x_offset, ls.y_offset) == (0, 4)
         assert sorted(ls.source.data[ls.text if isinstance(ls.text, str)
                                      else ls.text.field]) == ["A", "B"]
         notes = [w for w in warns if "pcarrowi" in w and "clock" in w]

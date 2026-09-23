@@ -7884,15 +7884,22 @@ class GlyphMapper:
         options: dict[str, str],
         color_idx: int = 0,
     ) -> list:
-        """Add scatter glyphs from inline literal coordinate pairs to *fig*.
+        """Draw ``twoway scatteri``'s immediate points, and their labels.
 
-        ``scatteri`` plots fixed (y, x) coordinate pairs specified as
-        literals in the command rather than as variable names.  This method
-        builds an independent ColumnDataSource from the supplied list.
+        dash.ado writes one record per point (dash_parse.mata section 2c):
+        ``[y, x]``, or ``[y, x, "label", clock]`` when a label or a clock
+        position is given -- ``scatteri 1 2 (9) "A" 3 4`` is
+        ``[[1,2,"A",9],[3,4]]``, a missing coordinate null.  A point with a
+        missing coordinate is not drawn, nor is its label, as in twoway.
+        The labels are drawn by :meth:`_immediate_labels`: at the point,
+        placed by its own clock position, else by ``mlabposition()``, else
+        at 3 o'clock -- they were drawn up and to the right whatever the
+        clock position said -- and one that is not a whole number at 12
+        o'clock, where twoway draws it.
 
         Args:
             fig:     Bokeh Figure object.
-            values:  List of [y, x] numeric pairs (from JSON ``"values"`` key).
+            values:  The records from the spec's ``"values"``.
             options: Translated plot-level options dict.
 
         Returns:
@@ -7902,30 +7909,21 @@ class GlyphMapper:
             empty = ColumnDataSource({"x": [], "y": []})
             return [fig.scatter(x="x", y="y", source=empty)]
 
-        # A malformed values array used to surface as a bare
-        # "could not convert string to float: 'A'", which says nothing about
-        # where it came from.  Name the plot type and the offending pair.
-        try:
-            y_vals = np.array([float(pair[0]) for pair in values])
-            x_vals = np.array([float(pair[1]) for pair in values])
-        except (TypeError, ValueError, IndexError) as exc:
-            raise ValueError(
-                "dash: scatteri coordinates must be numeric y x pairs; got "
-                f"{values!r} ({exc}). Marker labels go after each pair, as in: "
-                'scatteri 20 3000 "A" 30 4000 "B"'
-            ) from exc
-
-        # An optional third element on a pair is that point's marker label:
-        #   scatteri 20 3000 "A" 30 4000 "B"  ->  [[20,3000,"A"],[30,4000,"B"]]
-        _labels = [
-            (str(pair[2]) if len(pair) > 2 and pair[2] is not None else "")
-            for pair in values
-        ]
-        _has_labels = any(_labels)
+        # A malformed record is named with the plot type; a bare
+        # "could not convert string to float: 'A'" said nothing of where it
+        # came from.
+        (y_all, x_all), _labels, _clocks = self._immediate_records(
+            values, "scatteri", 2)
+        _keep = [i for i in range(len(y_all))
+                 if math.isfinite(y_all[i]) and math.isfinite(x_all[i])]
+        y_vals = np.array([y_all[i] for i in _keep], dtype=float)
+        x_vals = np.array([x_all[i] for i in _keep], dtype=float)
+        _labels = [_labels[i] for i in _keep]
+        _clocks = [_clocks[i] for i in _keep]
 
         # Apply jitter if requested -- through the reader every jitter()
         # goes through, so a word is named rather than dropped.
-        if str(options.get("jitter", "") or "").strip():
+        if str(options.get("jitter", "") or "").strip() and len(_keep):
             jitter_pct = _stat_option_float(options, "jitter", 0.0,
                                             "scatteri", lo=0.0)
             if jitter_pct is not None and jitter_pct > 0:
@@ -7973,17 +7971,10 @@ class GlyphMapper:
         # malpha() are read only here, and dash.sthlp lists scatteri as
         # taking msangle().
         self._apply_marker_opts(r, options)
-        # Marker labels, one per point, from the optional third element.
-        if _has_labels:
-            from bokeh.models import LabelSet
-            _lsrc = ColumnDataSource({
-                "x": list(x_vals), "y": list(y_vals), "lab": _labels,
-            })
-            fig.add_layout(LabelSet(
-                x="x", y="y", text="lab", source=_lsrc,
-                x_offset=4, y_offset=4,
-                text_font_size=self.scheme.text_font_size,
-            ))
+        # The labels, each at its own (jittered) point.
+        if any(_labels):
+            self._immediate_labels(fig, x_vals.tolist(), y_vals.tolist(),
+                                   _labels, _clocks, options, "scatteri")
 
         return [r]
 
@@ -8082,46 +8073,36 @@ class GlyphMapper:
         options: "dict[str, str]",
         color_idx: int = 0,
     ) -> list:
-        """Draw ``twoway pci``'s literal coordinate pairs as segments.
+        """Draw ``twoway pci``'s immediate segments.
 
-        ``pci 20 3000 30 4000`` names two points -- ``(y=20, x=3000)`` and
-        ``(y=30, x=4000)`` -- and draws a line between them.  More points
-        draw more segments, two at a time.  dash.ado writes the list as
-        ``[[20,3000],[30,4000]]``, in ``(y, x)`` order, the same order
-        ``scatteri`` uses.
+        dash.ado writes one record per segment, as it writes pcarrowi's
+        arrows (dash_parse.mata section 2c): ``[y1, x1, y2, x2]``, or
+        ``[y1, x1, y2, x2, "label", clock]`` when a label or a clock position
+        is given -- ``pci 20 3000 30 4000`` is ``[[20,3000,30,4000]]``.  It
+        wrote ``[[20,3000],[30,4000]]``, two points this method paired up
+        again, which is how a label or a clock position sheared the list.
+        A segment with a missing coordinate is not drawn.  No label is drawn:
+        twoway pci is an immediate pcspike, whose serset carries the labels
+        and whose SVG export shows none (measured 23sep2026) -- dash.ado says
+        so when a label is given.
 
         Args:
             fig:       Bokeh Figure object.
-            values:    List of ``[y, x]`` pairs from the spec.
+            values:    The records from the spec's ``"values"``.
             options:   Translated plot-level options dict.
             color_idx: Zero-based plot index, for the scheme's colour cycle.
 
         Returns:
             List with the single Segment GlyphRenderer.
         """
-        pts: "list[tuple[float, float]]" = []
-        for pair in values or []:
-            try:
-                pts.append((float(pair[0]), float(pair[1])))
-            except (TypeError, ValueError, IndexError) as exc:
-                raise ValueError(
-                    "dash: pci coordinates must be numeric y x pairs; got "
-                    f"{values!r} ({exc})."
-                ) from exc
-
-        if len(pts) % 2:
-            warnings.warn(
-                f"dash: pci was given {len(pts)} coordinate pairs; they are "
-                f"drawn two at a time, so the last one is not drawn.",
-                UserWarning, stacklevel=2,
-            )
-
-        y0s = [pts[i][0] for i in range(0, len(pts) - 1, 2)]
-        x0s = [pts[i][1] for i in range(0, len(pts) - 1, 2)]
-        y1s = [pts[i + 1][0] for i in range(0, len(pts) - 1, 2)]
-        x1s = [pts[i + 1][1] for i in range(0, len(pts) - 1, 2)]
-
-        src = ColumnDataSource({"x0": x0s, "y0": y0s, "x1": x1s, "y1": y1s})
+        (y1, x1, y2, x2), _labels, _clocks = self._immediate_records(
+            values, "pci", 4)
+        rows = [i for i in range(len(y1))
+                if all(math.isfinite(v) for v in (y1[i], x1[i], y2[i], x2[i]))]
+        src = ColumnDataSource({"x0": [x1[i] for i in rows],
+                                "y0": [y1[i] for i in rows],
+                                "x1": [x2[i] for i in rows],
+                                "y1": [y2[i] for i in rows]})
         color = self.scheme.default_color(color_idx, "line")
         try:
             if "lcolor" in options:
@@ -8458,37 +8439,44 @@ class GlyphMapper:
         return [seg, dots]
 
     @staticmethod
-    def _pc_immediate_records(values, ptype: str = "pcarrowi"):
-        """Read an immediate paired-coordinate list, as dash.ado writes it.
+    def _immediate_records(values, ptype: str, width: int):
+        """Read an immediate list -- scatteri, pci, pcarrowi -- as dash.ado
+        writes it (dash_parse.mata section 2c).
 
-        ``pcarrowi 0 0 0 1 (3) "3 o'clock" 0 0 1 0`` arrives as
-        ``[[0,0,0,1,"3 o'clock",3],[0,0,1,0]]``: per arrow the coordinates
-        in twoway's order (y1, x1, y2, x2), then an optional label and an
-        optional clock position.  A missing or non-finite coordinate is NaN
-        (twoway draws nothing for it); anything else that is not a number,
-        and a record that is not four to six elements, is refused naming the
-        plot type -- a spec written by hand is an input too.
+        One record per point (scatteri, *width* 2) or per segment or arrow
+        (pci and pcarrowi, *width* 4): the coordinates in twoway's order,
+        then an optional label and an optional clock position.
+        ``scatteri 1 2 (9) "A" 3 4`` arrives as ``[[1,2,"A",9],[3,4]]`` and
+        ``pcarrowi 0 0 0 1 (3) "3 o'clock" 0 0 1 0`` as
+        ``[[0,0,0,1,"3 o'clock",3],[0,0,1,0]]``.  A missing or non-finite
+        coordinate is NaN (twoway draws nothing for it); anything else that
+        is not a number, a bool among them, and a record of any other
+        length, is refused naming the plot type -- a spec written by hand is
+        an input too.
 
         Returns:
-            ``(y1, x1, y2, x2, labels, clocks)``: four lists of floats, the
-            labels as strings ("" for none) and the clock positions as
-            strings, or None for none.
+            ``(coords, labels, clocks)``: *width* lists of floats, one per
+            coordinate; the labels as strings ("" for none); and the clock
+            positions as strings, or None for none.
         """
-        y1, x1, y2, x2, labels, clocks = [], [], [], [], [], []
+        names = ", ".join(("y", "x") if width == 2
+                          else ("y1", "x1", "y2", "x2"))
+        coords = [[] for _ in range(width)]
+        labels, clocks = [], []
 
         def _bad(rec, why):
             return ValueError(
-                f"dash: {ptype} records are [y1, x1, y2, x2], then an "
-                f"optional label and clock position; "
-                f"{_dash_display(repr(rec))} {why}.")
+                f"dash: {ptype} records are [{names}], then an optional "
+                f"label and clock position; {_dash_display(repr(rec))} "
+                f"{why}.")
 
         for rec in values or []:
-            if not isinstance(rec, (list, tuple)) or not 4 <= len(rec) <= 6:
+            if not isinstance(rec, (list, tuple)) or \
+                    not width <= len(rec) <= width + 2:
                 raise _bad(rec, "is not one")
-            nums = []
-            for v in rec[:4]:
+            for k, v in enumerate(rec[:width]):
                 if v is None:
-                    nums.append(float("nan"))
+                    coords[k].append(float("nan"))
                     continue
                 if isinstance(v, bool):
                     raise _bad(rec, "has a coordinate that is not a number")
@@ -8497,21 +8485,93 @@ class GlyphMapper:
                 except (TypeError, ValueError):
                     raise _bad(rec, "has a coordinate that is not a number") \
                         from None
-                nums.append(f if math.isfinite(f) else float("nan"))
-            y1.append(nums[0])
-            x1.append(nums[1])
-            y2.append(nums[2])
-            x2.append(nums[3])
-            lab = rec[4] if len(rec) > 4 else None
+                coords[k].append(f if math.isfinite(f) else float("nan"))
+            lab = rec[width] if len(rec) > width else None
             labels.append("" if lab is None else str(lab))
-            clk = rec[5] if len(rec) > 5 else None
+            clk = rec[width + 1] if len(rec) > width + 1 else None
             if clk is None:
                 clocks.append(None)
             elif isinstance(clk, float) and clk.is_integer():
                 clocks.append(str(int(clk)))
             else:
                 clocks.append(str(clk).strip())
+        return coords, labels, clocks
+
+    @staticmethod
+    def _pc_immediate_records(values, ptype: str = "pcarrowi"):
+        """:meth:`_immediate_records` for four coordinates, flattened.
+
+        Returns:
+            ``(y1, x1, y2, x2, labels, clocks)``.
+        """
+        (y1, x1, y2, x2), labels, clocks = GlyphMapper._immediate_records(
+            values, ptype, 4)
         return y1, x1, y2, x2, labels, clocks
+
+    def _immediate_labels(self, fig, xs, ys, labels, clocks, options,
+                          ptype: str, xcol: str = "x", ycol: str = "y"):
+        """Draw an immediate list's labels where twoway draws them.
+
+        twoway assumes ``mlabel()`` when a label is given and
+        ``mlabvposition()`` when a clock position is (twoway_scatteri.sthlp,
+        twoway_pcarrowi.sthlp).  So each label is placed by its own clock
+        position, else by ``mlabposition()``, else at 3 o'clock, and styled
+        by ``mlabcolor()``, ``mlabsize()``, ``mlabgap()`` and
+        ``mlabangle()`` through the one label applier every marker label
+        goes through; a label given replaces the layer's own ``mlabel()``,
+        as it does in twoway.  Measured 23sep2026 from twoway's SVG export,
+        a clock position that is not a whole number -- 3.5, 7.25, which
+        twoway takes -- is drawn at 12 o'clock, twoway noting "named style
+        3.5 not found in class clockdir, default attributes used"; it is
+        drawn there here and named once per layer.  A label whose point is
+        not drawn -- NaN in *xs* or *ys* -- is not drawn either, and an
+        empty one draws nothing.
+
+        Args:
+            fig:     Bokeh Figure object.
+            xs, ys:  Where each label's point is drawn; NaN where it is not.
+            labels:  One string per point, "" for none.
+            clocks:  One clock position per point, as a string, or None.
+            options: The layer's translated options.
+            ptype:   The plot type, for the note.
+            xcol, ycol: The label source's coordinate columns.
+        """
+        clock_ok = {str(i) for i in range(13)}
+        default_pos = str(options.get("mlabposition", "") or "").strip() or "3"
+        groups: "dict[str, list[int]]" = {}
+        odd = []
+        for i, lab in enumerate(labels):
+            if not lab or not (math.isfinite(xs[i]) and math.isfinite(ys[i])):
+                continue
+            pos = clocks[i]
+            if pos is None:
+                pos = default_pos
+            elif pos not in clock_ok:
+                odd.append(pos)
+                pos = "12"
+            groups.setdefault(pos, []).append(i)
+        if odd:
+            # One note per layer, naming its values, however many there are:
+            # each distinct value is not a note (nor a LabelSet) of its own.
+            # Keyed by the values, so a second layer with others is named
+            # too and a by() panel does not repeat it.
+            odd = list(dict.fromkeys(odd))
+            _dash_warn_once(
+                (ptype, "clock", tuple(odd)),
+                f"dash: {ptype} clock position(s) "
+                f"{_dash_display(', '.join(odd))} are not a whole number "
+                f"from 0 to 12; those labels are drawn at 12 (above), where "
+                f"twoway draws them.")
+        col = f"__{ptype}_label__"
+        for pos, rows in groups.items():
+            lab_src = ColumnDataSource({
+                xcol: [xs[i] for i in rows],
+                ycol: [ys[i] for i in rows],
+                col: [labels[i] for i in rows],
+            })
+            opts = dict(options, mlabel=col, mlabposition=pos)
+            opts.pop("mlabvposition", None)
+            self._apply_mlabel_opts(fig, lab_src, opts, xcol, ycol)
 
     def map_pcarrowi(
         self,
@@ -8528,16 +8588,13 @@ class GlyphMapper:
 
         The arrows are drawn by :meth:`map_pcarrow`, from a source built out
         of the records, so every option pcarrow honours is honoured the same
-        way.  twoway assumes ``mlabel()`` when a label is given and
-        ``mlabvposition()`` when a clock position is: a label is drawn at
-        its arrow's tail, (x1, y1), where twoway puts it without
-        ``headlabel``, placed by its own clock position, else by
-        ``mlabposition()``, else at 3 o'clock, and styled by
-        ``mlabcolor()``, ``mlabsize()`` and ``mlabgap()`` -- through the one
-        label applier every marker label goes through.  A clock position
-        that is not a whole number from 0 to 12 is drawn at 3 and named
-        once.  An arrow that is not drawn -- a missing coordinate -- draws
-        no label either.
+        way.  Each label is drawn at its arrow's tail, (x1, y1), where twoway
+        puts it without ``headlabel``, by :meth:`_immediate_labels`, as
+        scatteri's are: placed by its own clock position, else by
+        ``mlabposition()``, else at 3 o'clock.  A clock position that is not
+        a whole number is drawn at 12 o'clock, where twoway draws it (it was
+        drawn at 3), and named once.  An arrow that is not drawn -- a
+        missing coordinate -- draws no label either.
 
         Args:
             fig:       Bokeh Figure object.
@@ -8553,44 +8610,15 @@ class GlyphMapper:
         src = ColumnDataSource({"y1": y1, "x1": x1, "y2": y2, "x2": x2})
         out = self.map_pcarrow(fig, src, "y1", "x1", "y2", "x2", options,
                                color_idx=color_idx)
-
-        _default_pos = str(options.get("mlabposition", "") or "").strip() or "3"
-        _clock_ok = {str(i) for i in range(13)}
-        groups: "dict[str, list[int]]" = {}
-        _odd = []
-        for i, lab in enumerate(labels):
-            if not lab or not all(math.isfinite(v) for v in
-                                  (y1[i], x1[i], y2[i], x2[i])):
-                continue
-            pos = clocks[i]
-            if pos is None:
-                pos = _default_pos
-            elif pos not in _clock_ok:
-                _odd.append(pos)
-                pos = "3"
-            groups.setdefault(pos, []).append(i)
-        if _odd:
-            # One note per layer, naming its values, however many there are:
-            # each distinct value is not a note (nor a LabelSet) of its own.
-            # Keyed by the values, so a second layer with others is named
-            # too (the WP-22 review) and a by() panel does not repeat it.
-            _odd = list(dict.fromkeys(_odd))
-            _dash_warn_once(
-                ("pcarrowi", "clock", tuple(_odd)),
-                f"dash: pcarrowi clock position(s) "
-                f"{_dash_display(', '.join(dict.fromkeys(_odd)))} are not a "
-                f"whole number from 0 to 12; those labels are drawn at 3 "
-                f"(right).")
-        for pos, rows in groups.items():
-            lab_src = ColumnDataSource({
-                "x1": [x1[i] for i in rows],
-                "y1": [y1[i] for i in rows],
-                "__pcarrowi_label__": [labels[i] for i in rows],
-            })
-            self._apply_mlabel_opts(
-                fig, lab_src,
-                dict(options, mlabel="__pcarrowi_label__", mlabposition=pos),
-                "x1", "y1")
+        if any(labels):
+            # A label sits at its arrow's tail, and only on an arrow drawn.
+            nan = float("nan")
+            drawn = [all(math.isfinite(v) for v in (y1[i], x1[i], y2[i], x2[i]))
+                     for i in range(len(labels))]
+            self._immediate_labels(
+                fig, [x1[i] if drawn[i] else nan for i in range(len(labels))],
+                [y1[i] if drawn[i] else nan for i in range(len(labels))],
+                labels, clocks, options, "pcarrowi", "x1", "y1")
         return out
 
     def map_tsline(
@@ -16254,13 +16282,14 @@ class DashRenderer:
                 _plot_renderers: list = []
 
             if ptype.lower() == "scatteri":
-                # Inline coordinate list — no shared source variable needed
+                # An immediate list, one record per point -- [y, x] or
+                # [y, x, "label", clock] -- no shared source variable needed.
                 self.mapper.map_scatteri(fig, plot.get("values", []), popts, color_idx=pi)
             elif ptype.lower() == "pci":
-                # Also an inline coordinate list: `pci 20 3000 30 4000' is
-                # written as [[20,3000],[30,4000]], (y, x) pairs taken two at
-                # a time.  map_pci delegated to map_pcspike, which wants
-                # variable names, so nothing was ever drawn.
+                # An immediate list too, one record per segment, as
+                # pcarrowi's: `pci 20 3000 30 4000' is [[20,3000,30,4000]].
+                # map_pci delegated to map_pcspike, which wants variable
+                # names, so nothing was ever drawn.
                 self.mapper.map_pci_literal(fig, plot.get("values", []),
                                             popts, color_idx=pi)
             elif ptype.lower() == "pcarrowi":

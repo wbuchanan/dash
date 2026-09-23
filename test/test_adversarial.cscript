@@ -1621,7 +1621,9 @@ display "P20-28 PASS: malformed UTF-8 in a string value, a variable label and a 
 // P20-29 — the echoes P20-01..13 did not list: a scatteri coordinate that
 // has no pair, and the note that saving(x.gph) is written as x.html.  Both
 // repeat the user's text, and both drew it as SMCL -- measured at e932446,
-// `dash scatteri {bf:X}' named a bold X.  The .gph note was also displayed
+// `dash scatteri {bf:X}' named a bold X.  (A lone token is too little for
+// a point, as twoway reads scatteri, and is named so -- P20-34..36 attack
+// the reader itself.)  The .gph note was also displayed
 // BEFORE the path was validated, inside plain quotes, so a double quote in
 // the name ended the string and what followed ran as display directives:
 // measured at e932446, saving(`"p" _dup(3) "INJ.gph"') printed
@@ -1632,7 +1634,7 @@ display "P20-28 PASS: malformed UTF-8 in a string value, a variable label and a 
 capture dash clear
 _adv_p19_run "dash scatteri {bf:INJMARKSI}, name(p2029b)"
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("'{bf:INJMARKSI}' has no matching x value")
+cert_file_has "`r(log)'", needle("'{bf:INJMARKSI}' is too little for one.")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 local p2029g "`c(tmpdir)'p2029{bf:INJMARKGP}.gph"
@@ -2081,6 +2083,193 @@ capture dash clear
 assert "`p2033bad'" == "" & `p2033pyn' == 0
 display "P20-33 PASS: name(g1, replace) stores the graph as g1 -- with by(), on a new name, in every spelling -- and layout(), tabs(), link() and exclude() reach it"
 // ================================================================
+// P20-34..36 -- scatteri's and pci's immediate values
+// ================================================================
+// `scatteri #y #x [(#clockpos)] ["label"] ...' and `pci #y1 #x1 #y2 #x2
+// [(#clockpos)] ["label"] ...' carry numbers, clock positions and free
+// text from the command line into the spec, read now by the reader
+// pcarrowi's values go through (dash_parse.mata, section 2c).  Until then
+// dash.ado wrote each token into the spec as it was typed
+// (test_parser.cscript P1A-60..67): a token that is not a JSON number
+// broke the spec, and the render stopped on a JSONDecodeError, r(7102).
+// The three cases CLAUDE.md rule 18 asks for, against that surface's own
+// guards.
+
+// P20-34 -- tokens spelled to pass for a coordinate or a clock position:
+// SMCL, hex, digits followed by letters, full-width, Arabic-Indic and
+// superscript digits, a Unicode minus, a no-break space and a tab glued
+// to a digit, a numlist range, an expression, an uppercase missing value
+// and a quoted non-number.  Each is refused r(198), as twoway refuses it
+// ("invalid point," / "invalid position,"), the token shown as text, and
+// nothing registered.  (1/1 is a numlist range twoway takes and then
+// evaluates as a division, drawing 1 -- an accident of its implementation
+// that dash does not copy.)
+capture dash clear
+_adv_p19_run "dash scatteri 1 {bf:INJMARKSX}, name(p2034)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: scatteri takes two numbers for each point, #y #x; '{bf:INJMARKSX}' is not a number.")
+assert r(found) == 1
+_adv_p19_run "dash pci 0 0 0 {bf:INJMARKPC}, name(p2034)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pci takes four numbers for each segment, #y1 #x1 #y2 #x2; '{bf:INJMARKPC}' is not a number.")
+assert r(found) == 1
+_adv_p19_run `"dash scatteri "{bf:INJMARKQX}" 1, name(p2034)"'
+assert r(rc) == 198
+// The needle holds "', which would close a compound quote: it is built
+// from char() and searched for from Mata, where it is a value.
+local p2034lg "`r(log)'"
+mata: st_local("p2034f", strofreal(_cert_file_has(st_local("p2034lg"), char(39) + char(34) + "{bf:INJMARKQX}" + char(34) + char(39) + " is not a number.", 0)))
+assert `p2034f' == 1
+local p2034tb = char(9)
+foreach p2034t in 0x10 1e3x 12abc "`=uchar(65299)'" "`=uchar(1635)'" ///
+    "`=uchar(178)'" "`=uchar(8722)'1" "1`=uchar(160)'" "1`p2034tb'2" ///
+    1/1 1+1 .A {
+    foreach p2034p in scatteri pci {
+        local p2034v = cond("`p2034p'" == "scatteri", "1 `p2034t'", "0 0 0 `p2034t'")
+        _adv_p19_run "dash `p2034p' `p2034v', name(p2034b)"
+        assert r(rc) == 198
+        cert_file_has "`r(log)'", needle("is not a number.")
+        assert r(found) == 1
+    }
+}
+_adv_p19_run "dash scatteri 1 2 (12.000001), name(p2034c)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: scatteri: invalid position, 12.000001;")
+assert r(found) == 1
+_adv_p19_run "dash pci 0 0 0 1 ({bf:INJMARKCQ}), name(p2034d)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pci: invalid position, {bf:INJMARKCQ};")
+assert r(found) == 1
+foreach p2034c in "(.)" "(1/1)" "(`=uchar(65299)')" "(0x3)" "( 3 3 )" {
+    foreach p2034p in scatteri pci {
+        local p2034v = cond("`p2034p'" == "scatteri", "1 2 `p2034c'", "0 0 0 1 `p2034c'")
+        _adv_p19_run "dash `p2034p' `p2034v', name(p2034e)"
+        assert r(rc) == 198
+        cert_file_has "`r(log)'", needle("invalid position,")
+        assert r(found) == 1
+    }
+}
+assert "${dash_graph_registry}" == ""
+display "P20-34 PASS: scatteri and pci refuse SMCL, hex, trailing letters, non-ASCII digits, glued blanks, ranges and expressions as coordinates, and such clock positions, echoed as text"
+
+// P20-35 -- what went into the spec as typed, and a label written to break
+// out of it.  The tokens that stopped the render -- .5, ., .a, 1d3, a clock
+// position -- are written as JSON numbers and null, and a label carrying a
+// quote, "], "type" and "expr" keys, </script>, SMCL and a backslash stays
+// one string: the spec is valid JSON with one plot of the type given, the
+// label read back exactly, and the dashboard builds with the label in the
+// page as data.  The characters a command line cannot carry -- a control
+// byte, a backtick, a dollar, an apostrophe -- go straight into the reader.
+capture dash clear
+_adv_p19_run `"dash scatteri .5 3000 . 1 .a 2 1d3 4 (3) `"x"],"type":"function","expr":"__import__('os')" </script><script>alert(2035)</script> {bf:X} \ "', name(p2035s)"'
+assert r(rc) == 0
+_adv_p19_run `"dash pci .5 0 . 1 (9) `"y"],"type":"function","expr":"__import__('os')" </script><script>alert(2036)</script> {bf:Y} \ "' 1d3 1 2 2, name(p2035p)"'
+assert r(rc) == 0
+local p2035r "${dash_graph_registry}"
+assert `: list sizeof p2035r' == 2
+python:
+import json
+from sfi import Macro
+_p2035s = json.loads(Macro.getGlobal("dash_json_p2035s"))
+assert len(_p2035s["plots"]) == 1, _p2035s
+assert _p2035s["plots"][0]["type"] == "scatteri", _p2035s
+_p2035ws = ('x"],"type":"function","expr":"__import__(\'os\')" '
+            '</script><script>alert(2035)</script> {bf:X} \\ ')
+assert _p2035s["plots"][0]["values"] == [[0.5, 3000], [None, 1], [None, 2],
+                                          [1000, 4, _p2035ws, 3]], _p2035s
+_p2035p = json.loads(Macro.getGlobal("dash_json_p2035p"))
+assert len(_p2035p["plots"]) == 1, _p2035p
+assert _p2035p["plots"][0]["type"] == "pci", _p2035p
+_p2035wp = ('y"],"type":"function","expr":"__import__(\'os\')" '
+            '</script><script>alert(2036)</script> {bf:Y} \\ ')
+assert _p2035p["plots"][0]["values"] == [[0.5, 0, None, 1, _p2035wp, 9],
+                                          [1000, 1, 2, 2]], _p2035p
+end
+mata: _p2035c = "1 2 " + char(34) + "a" + char(1) + char(96) + char(36) + char(39) + char(92) + "b" + char(34)
+mata: _dash_immediate(_p2035c, 2)
+mata: _p2035bs = char(92)
+mata: _p2035w = "[[1,2," + char(34) + "a" + _p2035bs + "u0001" + _p2035bs + "u0060" + _p2035bs + "u0024" + _p2035bs + "u0027" + _p2035bs + _p2035bs + "b" + char(34) + ",null]]"
+mata: st_local("p2035m", strofreal(st_local("_pci_json") == _p2035w))
+assert `p2035m' == 1
+dash scatter mpg weight, name(p2035v)
+local p2035f "`c(tmpdir)'p2035.html"
+capture erase "`p2035f'"
+_adv_p19_run `"dash build, saving("`p2035f'") replace nobrowser"'
+assert r(rc) == 0
+cert_file_has "`p2035f'", needle("</script><script>alert(2035)")
+assert r(found) == 0
+cert_file_has "`p2035f'", needle("alert(2035)")
+assert r(found) == 1
+capture erase "`p2035f'"
+capture dash clear
+// The reported commands, and their kin, rendered at once: each builds.
+local p2035o "`c(tmpdir)'p2035o.html"
+foreach p2035k in `"scatteri .5 3000"' `"pci 0 0 0 1 (3) "A" 0 0 1 0"' ///
+    `"scatteri . 3000 1 2"' `"scatteri 1 2 (3)"' `"scatteri 1d3 2 3 4"' ///
+    `"scatteri 1 2 (9) "A" 3 4 (3.5) "B""' `"pci . 0 0 1 1 1 2 2"' ///
+    `"pcarrowi -1e400 0 0 1 1 1 2 2"' {
+    capture erase "`p2035o'"
+    _adv_p19_run `"dash `p2035k', saving("`p2035o'") replace"'
+    local p2035rc = r(rc)
+    local p2035lg "`r(log)'"
+    if `p2035rc' != 0 {
+        display as error `"P20-35: dash `p2035k' gave rc `p2035rc'"'
+        exit 9
+    }
+    confirm file "`p2035o'"
+    cert_file_has "`p2035lg'", needle("JSONDecodeError")
+    assert r(found) == 0
+}
+capture erase "`p2035o'"
+display "P20-35 PASS: scatteri and pci write numbers, missing values and labels as valid JSON: a label cannot leave its string or reach the page as markup, and the reported commands build"
+
+// P20-36 -- 20,000 scatteri points, 20,000 pci segments and a label of
+// 200,000 characters: the reader is linear -- no quadratic append or join
+// -- so each list is written in bounded time, every record read and the
+// label whole.  A refusal or a note echoes at most 80 characters of a
+// 100,000-character token.  And a 2,000-point command registers.
+mata: _p2036s = ("1 2 " * 20000) + char(34) + ("x" * 200000) + char(34)
+timer clear 36
+timer on 36
+mata: _dash_immediate(_p2036s, 2)
+timer off 36
+quietly timer list 36
+local p2036t = r(t36)
+display "P20-36: 20,000 points and a 200,000-character label encoded in `p2036t' s"
+assert `p2036t' < 30
+assert "`_pci_err'" == "" & `_pci_n' == 20000 & `_pci_nlab' == 1
+mata: st_local("p2036len", strofreal(strlen(st_local("_pci_json"))))
+assert `p2036len' > 200000
+mata: _p2036p = ("0 0 0 1 (3) " * 20000)
+timer clear 37
+timer on 37
+mata: _dash_immediate(_p2036p, 4)
+timer off 37
+quietly timer list 37
+local p2037t = r(t37)
+display "P20-36: 20,000 pci segments with clock positions encoded in `p2037t' s"
+assert `p2037t' < 30
+assert "`_pci_err'" == "" & `_pci_n' == 20000
+mata: _dash_immediate("1 " + 100000 * "9" + "x", 2)
+assert "`_pci_err'" == "point"
+assert ustrlen("`_pci_bad'") == 83
+mata: _dash_immediate("1 2 " + 100000 * "9", 2)
+assert "`_pci_err'" == "" & `_pci_hasleft' == 1
+assert ustrlen("`_pci_left'") == 83
+mata: _dash_immediate("1 " + 100000 * "9" + " 3 4", 2)
+assert "`_pci_err'" == "" & `_pci_n' == 2
+assert `"`_pci_json'"' == "[[1,null],[3,4]]"
+mata: st_local("p2036cmd", "dash scatteri " + ("1 2 " * 2000) + ", name(p2036)")
+capture dash clear
+_adv_p19_run `"`p2036cmd'"'
+assert r(rc) == 0
+assert "${dash_graph_registry}" == "p2036"
+mata: st_local("p2036cmd", "dash pci " + ("1 2 3 4 " * 1000) + ", name(p2036b)")
+_adv_p19_run `"`p2036cmd'"'
+assert r(rc) == 0
+capture dash clear
+display "P20-36 PASS: 20,000 scatteri points, 20,000 pci segments and a 200,000-character label are read in bounded time, echoes are cut at 80 characters, and a 2,000-point command registers"
+// ================================================================
 // P22 -- pcarrowi's immediate values (WP-22, a new input surface)
 // ================================================================
 // `pcarrowi #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ...' carries numbers,
@@ -2234,6 +2423,9 @@ display "  P20-30: layout() not one of its forms whole, an unregistered name, a 
 display "  P20-31: layout() placing a name twice (bs or name:row,col) → rc=198"
 display "  P20-32: A graph or KPI name holding __ (dash's own, as in g1__by__0) → rc=198"
 display "  P20-33: name(g1, replace) in any spelling, with by(), on a new name -> stored as g1, placed, tabbed, linked and excluded as g1"
+display "  P20-34: scatteri and pci coordinates and clock positions spelled to pass (SMCL, hex, non-ASCII digits, glued blanks, ranges) -> rc=198, echoed as text"
+display "  P20-35: scatteri and pci values that broke the spec, and a label carrying JSON, </script>, SMCL and control bytes -> valid spec, the label exact, the page builds"
+display "  P20-36: 20,000 scatteri points, 20,000 pci segments and a 200,000-character label -> read in bounded time, echoes cut at 80 characters"
 display "  P22-01: pcarrowi coordinates and clock positions spelled to pass (SMCL, hex, non-ASCII digits, 12.000001) -> rc=198, echoed as text"
 display "  P22-02: A pcarrowi label carrying JSON, </script>, SMCL and control bytes -> valid spec, one plot, the label exact, data in the page"
 display "  P22-03: 20,000 pcarrowi arrows and a 200,000-character label -> encoded in bounded time"
