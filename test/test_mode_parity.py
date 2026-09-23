@@ -380,6 +380,22 @@ def _sides(fig):
             list(fig.left) + list(fig.right))
 
 
+def _drawn_text(v):
+    """The text a LabelSet draws for one value, as the browser writes it.
+
+    The page interpolates the value into a string, so a float 22.0 is drawn
+    "22" and the string "22" is drawn "22": two columns that draw the same
+    text compare equal, and a formatted "22.0" does not.
+    """
+    if isinstance(v, float):
+        if math.isnan(v):
+            return "NaN"
+        if v.is_integer() and abs(v) < 1e21:
+            return str(int(v))
+        return repr(float(v))
+    return str(v)
+
+
 def _annotations(fig):
     """The annotations a figure carries, as comparable dicts.
 
@@ -403,10 +419,21 @@ def _annotations(fig):
     for r in _sides(fig):
         if isinstance(r, LabelSet):
             _, idx = _drawn(r)
-            out.append({"kind": "LabelSet", "text": _spec_of(r.text),
+            # WP-22: the angle mlabangle() sets and the text each label
+            # draws -- the texts mlabformat() formats.  A LabelSet reads its
+            # rows from `source', not `data_source', so the texts are taken
+            # from there, as the browser draws them.
+            _tf = _spec_of(r.text)
+            _src = getattr(r, "source", None)
+            _col = (list(_src.data.get(_tf[1], []))
+                    if _tf[0] == "field" and _src is not None else [])
+            out.append({"kind": "LabelSet", "text": _tf,
                         "font": r.text_font_size,
                         "color": _spec_of(r.text_color),
                         "x_offset": r.x_offset, "y_offset": r.y_offset,
+                        "angle": _spec_of(r.angle),
+                        "angle_units": r.angle_units,
+                        "texts": [_drawn_text(v) for v in _col],
                         "rows": len(idx or [])})
         elif isinstance(r, Label):
             # Position too: the served caption sat at y = -12, where the
@@ -868,7 +895,22 @@ CORPUS = [
         "fpfitci", "histogram", "kdensity", "rarea", "rbar", "rspike",
         "rcap", "rline", "rconnected", "dot", "dropline", "rcapsym",
         "scatteri", "pcspike", "pcarrow", "pcbarrow", "pci", "pcscatter",
-        "tsline", "tsrline", "mspline", "mband", "rscatter", "function")],
+        "tsline", "tsrline", "mspline", "mband", "rscatter", "function",
+        "pccapsym", "pcarrowi")],
+    # WP-22: the two twoway types dash drew nowhere until then, with what
+    # each honours beyond the bare glyphs -- pccapsym's marker labels (the
+    # served pc source must carry the label column) and marker and line
+    # options, pcarrowi's immediate labels and clock positions.
+    # rep is none of plot_for's four coordinates, so the served source
+    # carries the label column only through _dash_pc_source's label_var.
+    _case("pccapsym with marker labels and styles",
+          [plot_for("pccapsym", {"mlabel": "rep", "msymbol": "D",
+                                 "mcolor": "red", "lcolor": "navy"})]),
+    _case("pcarrowi with labels and clock positions",
+          [plot_for("pcarrowi", {"lcolor": "maroon", "mlabcolor": "navy"},
+                    values=[[20.0, 3000.0, 30.0, 4000.0, "A", 3],
+                            [25.0, 2000.0, 22.0, 3500.0, "B", None],
+                            [24.0, 2500.0, 26.0, 3200.0]])]),
     # ---- schemes and style, the file's original beat ------------------------
     _case("scatter, s1mono", [_sc()], {"scheme": "s1mono"}),
     _case("scatter, economist", [_sc()], {"scheme": "economist"}),
@@ -914,6 +956,19 @@ CORPUS = [
                                                    "bfcolor": "red"})]),
     _case("rcap, line options", [plot_for("rcap", {"lwidth": "thick",
                                                    "lcolor": "navy"})]),
+    # WP-22: twoway's connecting-line options.  They style the line in
+    # place of lcolor()/lpattern()/lwidth() whatever the order, never the
+    # markers, and on a CI type the fit line alone.
+    _case("line, clcolor clpattern clwidth",
+          [plot_for("line", {"clcolor": "maroon", "clpattern": "dash",
+                             "clwidth": "thick"})]),
+    _case("connected, lcolor beside clcolor",
+          [plot_for("connected", {"lcolor": "navy", "clcolor": "maroon",
+                                  "lwidth": "thin", "clwidth": "thick"})]),
+    _case("lfitci, clcolor", [plot_for("lfitci", {"clcolor": "maroon"})]),
+    _case("kdensity, clpattern", [plot_for("kdensity", {"clpattern": "dot"})]),
+    _case("line, a colour clcolor() cannot name",
+          [plot_for("line", {"clcolor": "notacolour", "lcolor": "navy"})]),
     _case("lpoly and lpolyci on the same data",
           [plot_for("lpoly"), plot_for("lpolyci")]),
     _case("lpoly, bwidth and degree",
@@ -959,6 +1014,19 @@ CORPUS = [
     _case("line with marker labels", [plot_for("line", {"mlabel": "foreign"})]),
     _case("rarea with marker labels",
           [plot_for("rarea", {"mlabel": "foreign"})]),
+    # WP-22: mlabangle() and mlabformat(), which landed in the note as
+    # unknown options and were drawn as if never written.
+    _case("scatter with marker labels at mlabangle(45)",
+          [_sc(mlabel="foreign", mlabangle="45")]),
+    _case("connected with marker labels at mlabangle(vertical)",
+          [plot_for("connected", {"mlabel": "rep", "mlabangle": "vertical"})]),
+    _case("scatter with numeric marker labels in mlabformat(%9.1fc)",
+          [_sc(mlabel="price", mlabformat="%9.1fc")]),
+    _case("two layers labelling one variable in two formats",
+          [_sc(mlabel="mpg", mlabformat="%9.2f"),
+           plot_for("connected", {"mlabel": "mpg", "mlabformat": "%9.0f"})]),
+    _case("a format mlabformat() cannot reproduce",
+          [_sc(mlabel="mpg", mlabformat="%9.3g")]),
     _case("hover()", [_sc()], None, {"hover": "foreign price"}),
     _case("hover() on a bar", [plot_for("bar")], None, {"hover": "foreign"}),
     _case("hover() on a linked graph", bo={"link": "g1 g2"},
@@ -1625,9 +1693,10 @@ class TestTheCorpusIsComplete:
             f"_expand_plottype_str: {sorted(mata - code)}")
 
     def test_the_literal_types_are_the_ones_dispatched_by_name(self):
-        """scatteri, pci and function are branched on by name in both
-        renderers; the constant is the one place they are listed."""
-        assert dr._DASH_LITERAL_TYPES == {"scatteri", "pci", "function"}
+        """scatteri, pci, pcarrowi and function are branched on by name in
+        both renderers; the constant is the one place they are listed."""
+        assert dr._DASH_LITERAL_TYPES == {"scatteri", "pci", "pcarrowi",
+                                          "function"}
         assert dr._DASH_LITERAL_TYPES <= dr._dash_plot_type_names()
 
     @pytest.mark.parametrize("feature,present", [
@@ -1658,6 +1727,17 @@ class TestTheCorpusIsComplete:
                        for g in s["graphs"] for p in g["plots"])),
         ("mlabel()", lambda s: any("mlabel" in p.get("options", {})
                                    for g in s["graphs"] for p in g["plots"])),
+        # WP-22 TR-22.3.
+        ("mlabangle()", lambda s: any("mlabangle" in p.get("options", {})
+                                      for g in s["graphs"]
+                                      for p in g["plots"])),
+        ("mlabformat()", lambda s: any("mlabformat" in p.get("options", {})
+                                       for g in s["graphs"]
+                                       for p in g["plots"])),
+        ("clcolor() clpattern() clwidth()",
+         lambda s: any({"clcolor", "clpattern", "clwidth"}
+                       & set(p.get("options", {}))
+                       for g in s["graphs"] for p in g["plots"])),
         ("hover()", lambda s: any(g["graph_options"].get("hover")
                                   for g in s["graphs"])),
         ("colorvar()", lambda s: any("colorvar" in p.get("options", {})

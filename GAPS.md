@@ -1073,7 +1073,14 @@ renderer is invoked directly.
 
 ## F. `twoway` parity
 
-### F1. Four real `twoway` plot types are rejected outright — S2, MEASURED
+### F1. Four real `twoway` plot types are rejected outright — S2, MEASURED, CLOSED by WP-22
+**Closed by WP-22.**  `pcarrowi` and `pccapsym` are drawn in both modes.
+`contour` and `contourline` -- and `heatmap`, `rpcap` and `rpspike`, which
+StataNow 19.5 added -- are refused by name, r(198), each with what to use
+instead, and the help's Plot types section names them.  Tests:
+`test_pccapsym_pcarrowi.py`, `test_help_plot_types.py`,
+`test_parser.cscript` P1A-49..59.
+
 
 `contour`, `contourline`, `pcarrowi`, `pccapsym` → `r(198) unrecognised plot
 type` (`dash.ado:938-948`, against the 38-row table at
@@ -1084,7 +1091,11 @@ copy-pasted from a do-file always runs." That is true of *options* and false
 of *plot types* — **and the help lists no supported plot types anywhere**, so
 a user has no way to anticipate it. The error message itself does list all 38.
 
-### F2. Eleven supported plot types are undocumented — S3, READ
+### F2. Eleven supported plot types are undocumented — S3, READ, CLOSED by WP-22
+**Closed by WP-22.**  `dash.sthlp`'s Plot types section lists every type
+dash draws, in `twoway`'s groups, and `test_help_plot_types.py` holds it to
+the renderer's own list in both directions.
+
 
 Present in `dash_parse.mata:174-211`, routed in `dash.ado`, rendered in
 `dash_render.py`, and mentioned nowhere in `dash.sthlp`:
@@ -1095,7 +1106,17 @@ mband function`
 `tsline`/`tsrline` even carry bespoke `tsset` fallback logic and error text
 (`dash.ado:1013-1024, 1080-1092`).
 
-### F3. Common twoway options land in "unknown" rather than the documented list — S3, MEASURED
+### F3. Common twoway options land in "unknown" rather than the documented list — S3, MEASURED, CLOSED by WP-22
+**Closed by WP-22.**  Measured against `twoway` itself: `clcolor()`,
+`clpattern()` and `clwidth()` are honoured as `twoway` defines them (the
+connecting line only, over the l-options); `mlabangle()` and `mlabformat()`
+are honoured; `sort(varlist)`, `mlabvposition()`, `mlabtextstyle()` and
+`xoverhangs`/`yoverhangs` are declared and listed in the help's
+Unsupported section; the rest are not `twoway` options where they were
+written, stay unknown and named in the note, and the help gives
+`twoway`'s own spelling for each.  Tests: `test_twoway_option_parity.py`,
+`test_twoway_option_parity.cscript`.
+
 
 These are reported — correct behaviour — but none appears in the help's
 "Unsupported twoway options" list, so the note arrives as a surprise:

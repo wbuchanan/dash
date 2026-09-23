@@ -1,0 +1,472 @@
+*! test_twoway_option_parity.cscript
+*! Certification script: the twoway options GAPS.md F3 listed as landing in
+*! the note as UNKNOWN -- ROADMAP WP-22 TR-22.3 and AC-22.2.
+*!
+*! Every expectation below is measured against twoway in the same run, the
+*! way test_alias_semantics.cscript measures bw(): twoway is asked first, and
+*! dash must do what twoway did.  The measurements behind the design (the
+*! pictures twoway draws, exported to SVG and compared) are recorded in the
+*! WP-22 work notes; the oracles used here are the cheap ones that decide the
+*! same questions:
+*!
+*!   * Whether a plot type draws the CONNECTING LINE that clcolor(),
+*!     clpattern() and clwidth() style.  twoway_yxview_parse.class maps
+*!     CLColor() to line(color()) only, and LColor() to line(color()) AND
+*!     area(linestyle(color())); a type that never draws its `line' style
+*!     never evaluates clwidth(), so clwidth(-1) is refused, when drawn,
+*!     exactly on the types that draw the connecting line ("gm_linewidth
+*!     must be between 0.000 and 1.0e+04", r(198)) and accepted everywhere
+*!     else.  Measured by SVG: on line connected lfit qfit fpfit lpoly
+*!     lowess mspline mband kdensity function tsline, and on the fit line of
+*!     lfitci qfitci lpolyci fpfitci, clX draws what lX draws on the line;
+*!     on every other type clX draws a picture identical to no option.
+*!   * Whether a plot type draws marker labels, which decides where
+*!     mlabangle(400) is refused ("textangle must be between -360.000 and
+*!     360.000", r(198), when drawn).
+*!
+*! Groups:
+*!   TP-01  clcolor() clpattern() clwidth(), per plot type: kept in the spec
+*!          where twoway draws the connecting line, dropped where it does
+*!          not (twoway draws nothing for them there), never named in the
+*!          note; clwidth(-1) refused, naming clwidth(), exactly where
+*!          twoway refuses it.
+*!   TP-02  their minimum abbreviations are twoway's -- clc() clp() clw()
+*!          -- and cl() is not one (twoway r(198); dash names cl()).
+*!   TP-03  lcolor() and clcolor() together: both reach the spec, where the
+*!          renderer lets clcolor() style the line whatever the order
+*!          (test_twoway_option_parity.py certifies the drawing).
+*!   TP-04  mlabangle(): recorded, abbreviated mlabang(), a bad name passed
+*!          on (twoway notes it); mlabangle(400) refused exactly on the types
+*!          where twoway draws marker labels.
+*!   TP-05  mlabformat(): recorded, abbreviated mlabf(), any text accepted
+*!          (twoway accepts mlabformat(abc) with no note).
+*!   TP-06  the declared-but-not-honoured ones are named in the note by
+*!          their full names, however they were abbreviated, in comma mode
+*!          and after the paren-mode comma: sort(varlist), mlabvposition(),
+*!          mlabtextstyle(), xoverhangs, yoverhangs.
+*!   TP-07  what twoway itself refuses stays UNKNOWN and is named as typed:
+*!          xreverse yreverse xalternate yalternate xcommon ycommon
+*!          lockaspect zoom() altaxis ddensity addplot() margin() region()
+*!          bargap() -- declaring any of them would be a lie in the help.
+*!
+*! Like test_alias_semantics.cscript, nothing is rendered: every dash probe
+*! registers with name(), and the spec is read back out of the registry.
+*!
+*! Usage:  do test/test_twoway_option_parity.cscript  (or run_all_cscripts.do)
+
+cscript "dash twoway option parity (WP-22 TR-22.3)" adodir ".."
+
+clear all
+set more off
+set graphics off
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+// cscript drops every global; cert_helpers.do set it again, and so does this.
+global dash_nobrowser 1
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+sysuse auto, clear
+generate lo  = mpg - 2
+generate hi  = mpg + 2
+generate pos = mod(_n, 12) + 1
+generate t   = _n
+
+local logfile "`c(tmpdir)'dash_twoway_option_parity.log"
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+capture mata: mata drop _ztp_has()
+mata:
+// Does the registered spec for graph `g' carry the quoted key `key'?
+real scalar _ztp_has(string scalar g, string scalar key)
+{
+    string scalar js
+    js = st_global("dash_json_" + g)
+    return(strpos(js, char(34) + key + char(34) + ":") > 0)
+}
+end
+
+capture program drop _ztp_has
+program define _ztp_has, rclass
+    args g key
+    mata: st_local("_zh", strofreal(_ztp_has(st_local("g"), st_local("key"))))
+    return scalar found = `_zh'
+end
+
+// Run one dash command under a named log; r(rc) is its return code and
+// r(note) whether the log carries the ignoring note at all.
+capture program drop _ztp_run
+program define _ztp_run, rclass
+    args cmdtext logpath
+    capture log close _ztplog
+    capture erase "`logpath'"
+    capture dash clear
+    log using "`logpath'", name(_ztplog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ztplog
+    cert_file_has "`logpath'", needle("ignoring unsupported")
+    return scalar note = r(found)
+    return scalar rc   = `rc'
+end
+
+// Is `needle' in the last probe's log?
+capture program drop _ztp_logged
+program define _ztp_logged, rclass
+    args logpath needle
+    cert_file_has "`logpath'", needle(`"`needle'"')
+    return scalar found = r(found)
+end
+
+local nfail = 0
+local faillist ""
+
+// ----------------------------------------------------------------
+// The plot types and a varlist that makes each legal in twoway and dash.
+// ----------------------------------------------------------------
+quietly tsset t
+local types "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci scatter area bar spike dot dropline histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter tsrline pcspike pcarrow pcbarrow pcscatter scatteri pci"
+foreach tt of local types {
+    local v_`tt' "mpg weight"
+}
+foreach tt in rarea rbar rspike rcap rcapsym rline rconnected rscatter {
+    local v_`tt' "lo hi weight"
+}
+foreach tt in pcspike pcarrow pcbarrow pcscatter {
+    local v_`tt' "mpg weight turn length"
+}
+local v_histogram "mpg"
+local v_kdensity  "mpg"
+local v_tsline    "mpg"
+local v_tsrline   "lo hi"
+local v_function  "y=x, range(0 1)"
+local v_scatteri  "20 3000 30 4000"
+local v_pci       "20 3000 30 4000"
+
+// ----------------------------------------------------------------
+// TP-01 -- the cl triple, per plot type.
+// ----------------------------------------------------------------
+foreach tt of local types {
+    local v `v_`tt''
+    // twoway: does this type draw the connecting line?  clwidth(-1) is
+    // evaluated, and refused, only where it does.
+    local sep ","
+    if strpos("`v'", ",") local sep ""
+    capture graph drop _all
+    capture twoway `tt' `v'`sep' clwidth(-1)
+    local tw_rc = _rc
+    capture graph drop _all
+    local draws = (`tw_rc' == 198)
+    if `tw_rc' != 0 & `tw_rc' != 198 {
+        display as error "TP-01 FAIL `tt': the twoway oracle itself failed, r(`tw_rc')"
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-01(`tt')"
+        continue
+    }
+
+    _ztp_run `"dash (`tt' `v'`sep' clcolor(red) clpattern(dash) clwidth(thick)), name(zqtp)"' "`logfile'"
+    local drc   = r(rc)
+    local dnote = r(note)
+    local nkeys = 0
+    foreach k in clcolor clpattern clwidth {
+        _ztp_has zqtp `k'
+        local nkeys = `nkeys' + r(found)
+    }
+    local bad = 0
+    if `drc' != 0 {
+        display as error "TP-01 FAIL `tt': dash rc=`drc'"
+        local bad = 1
+    }
+    else if `dnote' {
+        display as error "TP-01 FAIL `tt': clcolor()/clpattern()/clwidth() named in the note"
+        local bad = 1
+    }
+    else if `draws' & `nkeys' != 3 {
+        display as error "TP-01 FAIL `tt': twoway draws the connecting line, but the spec carries `nkeys' of the three keys"
+        local bad = 1
+    }
+    else if !`draws' & `nkeys' != 0 {
+        display as error "TP-01 FAIL `tt': twoway draws no connecting line (clX draws nothing), but the spec carries `nkeys' of the three keys"
+        local bad = 1
+    }
+
+    // clwidth(-1): twoway's rc, and on a refusal the option is named as written.
+    _ztp_run `"dash (`tt' `v'`sep' clwidth(-1)), name(zqtp)"' "`logfile'"
+    local nrc = r(rc)
+    if `nrc' != `tw_rc' {
+        display as error "TP-01 FAIL `tt': clwidth(-1) is r(`tw_rc') in twoway, rc `nrc' in dash"
+        local bad = 1
+    }
+    else if `nrc' == 198 {
+        _ztp_logged "`logfile'" "clwidth()"
+        if r(found) != 1 {
+            display as error "TP-01 FAIL `tt': clwidth(-1) refused without naming clwidth()"
+            local bad = 1
+        }
+    }
+    if `bad' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-01(`tt')"
+    }
+    else if `draws' display as text "TP-01 PASS `tt': connecting line drawn -- the triple is kept, clwidth(-1) refused"
+    else            display as text "TP-01 PASS `tt': no connecting line -- the triple is dropped, as twoway draws nothing for it"
+}
+quietly tsset, clear
+
+// ----------------------------------------------------------------
+// TP-02 -- twoway's own minimum abbreviations.
+// ----------------------------------------------------------------
+local bad = 0
+capture twoway line mpg weight, clc(red) clp(dash) clw(thick) nodraw
+if _rc {
+    display as error "TP-02 FAIL: the twoway oracle rejects clc() clp() clw(), r(`=_rc')"
+    local bad = 1
+}
+_ztp_run `"dash line mpg weight, clc(red) clp(dash) clw(thick) name(zqtp)"' "`logfile'"
+if r(rc) != 0 | r(note) != 0 {
+    display as error "TP-02 FAIL: clc() clp() clw() rc=`r(rc)' note=`r(note)'"
+    local bad = 1
+}
+foreach k in clcolor clpattern clwidth {
+    _ztp_has zqtp `k'
+    if r(found) != 1 {
+        display as error "TP-02 FAIL: the abbreviation did not record `k'"
+        local bad = 1
+    }
+}
+capture twoway line mpg weight, cl(red) nodraw
+local tw_rc = _rc
+_ztp_run `"dash line mpg weight, cl(red) name(zqtp)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "cl()"
+if `tw_rc' != 198 | `drc' != 0 | r(found) != 1 {
+    display as error "TP-02 FAIL: cl(red) is r(`tw_rc') in twoway; dash rc=`drc', named cl()=`r(found)'"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-02"
+}
+else display as text "TP-02 PASS: clc() clp() clw() are the triple; cl() is no abbreviation of it"
+
+// ----------------------------------------------------------------
+// TP-03 -- lcolor() beside clcolor(): both reach the renderer.
+// ----------------------------------------------------------------
+local bad = 0
+_ztp_run `"dash line mpg weight, clcolor(blue) lcolor(red) clwidth(thick) lwidth(vthin) name(zqtp)"' "`logfile'"
+if r(rc) != 0 | r(note) != 0 local bad = 1
+foreach k in lcolor clcolor lwidth clwidth {
+    _ztp_has zqtp `k'
+    if r(found) != 1 local bad = 1
+}
+if `bad' {
+    display as error "TP-03 FAIL: lcolor()/lwidth() beside clcolor()/clwidth() did not all reach the spec"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-03"
+}
+else display as text "TP-03 PASS: lcolor() and clcolor() both recorded; the renderer resolves them"
+
+// ----------------------------------------------------------------
+// TP-04 -- mlabangle().
+// ----------------------------------------------------------------
+local bad = 0
+capture twoway scatter mpg weight, mlabel(make) mlabang(45) nodraw
+if _rc {
+    display as error "TP-04 FAIL: the twoway oracle rejects mlabang(45), r(`=_rc')"
+    local bad = 1
+}
+_ztp_run `"dash scatter mpg weight, mlabel(make) mlabang(45) name(zqtp)"' "`logfile'"
+local drc = r(rc)
+_ztp_has zqtp mlabangle
+if r(found) != 1 | `drc' != 0 {
+    display as error "TP-04 FAIL: mlabang(45) did not record mlabangle"
+    local bad = 1
+}
+_ztp_run `"dash scatter mpg weight, mlabel(make) mlabangle(45) name(zqtp)"' "`logfile'"
+if r(note) != 0 {
+    display as error "TP-04 FAIL: mlabangle() named in the note"
+    local bad = 1
+}
+capture graph drop _all
+capture twoway scatter mpg weight, mlabel(make) mlabangle(abc)
+local tw_rc = _rc
+capture graph drop _all
+_ztp_run `"dash scatter mpg weight, mlabel(make) mlabangle(abc) name(zqtp)"' "`logfile'"
+if `tw_rc' != 0 | r(rc) != 0 {
+    display as error "TP-04 FAIL: mlabangle(abc) is r(`tw_rc') in twoway (a note), rc `r(rc)' in dash"
+    local bad = 1
+}
+// mlabangle(400), per type: refused where twoway draws marker labels.
+quietly tsset t
+local lab_types "scatter connected bar dot dropline rcapsym rconnected rscatter pcarrow pcbarrow pcscatter line area spike rcap rarea rline histogram lfitci tsline"
+foreach tt of local lab_types {
+    local v `v_`tt''
+    capture graph drop _all
+    capture twoway `tt' `v', mlabel(make) mlabangle(400)
+    local tw_rc = _rc
+    capture graph drop _all
+    _ztp_run `"dash (`tt' `v', mlabel(make) mlabangle(400)), name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    if `drc' != `tw_rc' {
+        display as error "TP-04 FAIL `tt': mlabangle(400) is r(`tw_rc') in twoway, rc `drc' in dash"
+        local bad = 1
+    }
+    else if `drc' == 198 {
+        _ztp_logged "`logfile'" "mlabangle()"
+        if r(found) != 1 {
+            display as error "TP-04 FAIL `tt': mlabangle(400) refused without naming mlabangle()"
+            local bad = 1
+        }
+    }
+}
+// scatteri labels its points from the literal list.
+capture graph drop _all
+capture twoway scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)
+local tw_rc = _rc
+capture graph drop _all
+_ztp_run `"dash (scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)), name(zqtp)"' "`logfile'"
+if r(rc) != `tw_rc' {
+    display as error "TP-04 FAIL scatteri: mlabangle(400) is r(`tw_rc') in twoway, rc `r(rc)' in dash"
+    local bad = 1
+}
+quietly tsset, clear
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-04"
+}
+else display as text "TP-04 PASS: mlabangle() recorded, a name passed on, 400 refused where twoway refuses it"
+
+// ----------------------------------------------------------------
+// TP-05 -- mlabformat().
+// ----------------------------------------------------------------
+local bad = 0
+capture twoway scatter mpg weight, mlabel(mpg) mlabf(%9.2f) nodraw
+if _rc local bad = 1
+_ztp_run `"dash scatter mpg weight, mlabel(mpg) mlabf(%9.2f) name(zqtp)"' "`logfile'"
+if r(rc) != 0 | r(note) != 0 local bad = 1
+_ztp_has zqtp mlabformat
+if r(found) != 1 local bad = 1
+capture graph drop _all
+capture twoway scatter mpg weight, mlabel(mpg) mlabformat(abc)
+local tw_rc = _rc
+capture graph drop _all
+_ztp_run `"dash scatter mpg weight, mlabel(mpg) mlabformat(abc) name(zqtp)"' "`logfile'"
+if `tw_rc' != 0 | r(rc) != 0 | r(note) != 0 local bad = 1
+if `bad' {
+    display as error "TP-05 FAIL: mlabformat() is not recorded as twoway takes it"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-05"
+}
+else display as text "TP-05 PASS: mlabformat() recorded, abbreviated mlabf(), any text accepted"
+
+// ----------------------------------------------------------------
+// TP-06 -- declared, not honoured: named by the full name.
+// ----------------------------------------------------------------
+// id | dash command | twoway command | the name the note must carry
+local n6 = 0
+local ++n6
+local c6_`n6' `"dash line mpg weight, sort(mpg) name(zqtp)"'
+local t6_`n6' `"twoway line mpg weight, sort(mpg) nodraw"'
+local w6_`n6' "sort()"
+local ++n6
+local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
+local t6_`n6' `"twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw"'
+local w6_`n6' "mlabvposition()"
+local ++n6
+local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabt(heading) name(zqtp)"'
+local t6_`n6' `"twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw"'
+local w6_`n6' "mlabtextstyle()"
+local ++n6
+local c6_`n6' `"dash scatter mpg weight, xoverhang name(zqtp)"'
+local t6_`n6' `"twoway scatter mpg weight, xoverhang nodraw"'
+local w6_`n6' "xoverhangs()"
+local ++n6
+local c6_`n6' `"dash scatter mpg weight, yoverhang name(zqtp)"'
+local t6_`n6' `"twoway scatter mpg weight, yoverhang nodraw"'
+local w6_`n6' "yoverhangs()"
+local ++n6
+local c6_`n6' `"dash (scatter mpg weight) (line mpg weight), xoverhang name(zqtp)"'
+local t6_`n6' `"twoway (scatter mpg weight) (line mpg weight), xoverhang nodraw"'
+local w6_`n6' "xoverhangs()"
+local ++n6
+local c6_`n6' `"dash (scatter mpg weight) (line mpg weight), yoverhangs name(zqtp)"'
+local t6_`n6' `"twoway (scatter mpg weight) (line mpg weight), yoverhangs nodraw"'
+local w6_`n6' "yoverhangs()"
+forvalues i = 1/`n6' {
+    capture `t6_`i''
+    local tw_rc = _rc
+    _ztp_run `"`c6_`i''"' "`logfile'"
+    local drc = r(rc)
+    _ztp_logged "`logfile'" "`w6_`i''"
+    local named = r(found)
+    if `tw_rc' != 0 | `drc' != 0 | `named' != 1 {
+        display as error `"TP-06 FAIL: `c6_`i'' -- twoway r(`tw_rc'), dash rc `drc', `w6_`i'' named=`named'"'
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-06(`i')"
+    }
+    else display as text `"TP-06 PASS: `w6_`i'' named in the note"'
+}
+// sort(varlist) is reported as sort() once, beside the flag, and carried
+// nowhere in the spec.
+_ztp_run `"dash line mpg weight, sort sort(mpg) name(zqtp)"' "`logfile'"
+local drc = r(rc)
+_ztp_has zqtp sort1
+if r(found) != 0 | `drc' != 0 {
+    display as error "TP-06 FAIL: sort sort(mpg) wrote a sort1 key or failed"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-06(sort1)"
+}
+_ztp_logged "`logfile'" "sort1"
+if r(found) != 0 {
+    display as error "TP-06 FAIL: the note names sort1, Stata's internal name, not sort()"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-06(sort1-note)"
+}
+
+// ----------------------------------------------------------------
+// TP-07 -- what twoway refuses stays unknown, named as typed.
+// ----------------------------------------------------------------
+foreach o in xreverse yreverse xalternate yalternate xcommon ycommon lockaspect "zoom(2)" altaxis ddensity "addplot(line mpg weight)" "margin(zero)" "region(fcolor(red))" "bargap(10)" {
+    local nm = "`o'"
+    local pp = strpos("`o'", "(")
+    if `pp' local nm = substr("`o'", 1, `pp' - 1)
+    capture twoway scatter mpg weight, `o' nodraw
+    local tw_rc = _rc
+    _ztp_run `"dash scatter mpg weight, `o' name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    _ztp_logged "`logfile'" "`nm'()"
+    local named = r(found)
+    if `tw_rc' != 198 | `drc' != 0 | `named' != 1 {
+        display as error "TP-07 FAIL: `nm' -- twoway r(`tw_rc'), dash rc `drc', named=`named'"
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-07(`nm')"
+    }
+    else display as text "TP-07 PASS: `nm' is no twoway option; named as typed"
+}
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+capture dash clear
+capture erase "`logfile'"
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_twoway_option_parity: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_twoway_option_parity: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

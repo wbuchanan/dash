@@ -287,10 +287,15 @@ MATA_PT_FULL = [
     "rconnected", "dot", "dropline", "rcapsym", "pcspike", "pcarrow",
     "pcbarrow", "pci", "pcscatter", "tsline", "tsrline", "mspline",
     "mband", "rscatter", "function", "scatteri",
+    # WP-22.  twoway takes neither by any shorter name (measured 23sep2026:
+    # "pccapsy is not a twoway plot type"; pcarrow is its own type), so the
+    # full names are all there is to guard.
+    "pccapsym", "pcarrowi",
 ]
 # varlists that make each plot type legal; fixture first, then dash-only ones.
 PT_VARS = {
     "rcapsym": "turn mpg weight", "pcbarrow": "mpg weight turn length",
+    "pccapsym": "mpg weight turn length", "pcarrowi": "20 3000 25 3500",
     "pci": "20 3000 25 3500", "pcscatter": "mpg weight turn length",
     "tsrline": "mpg price turn", "rconnected": "turn mpg weight",
     "rline": "turn mpg weight", "rscatter": "turn mpg weight",

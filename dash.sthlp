@@ -115,7 +115,8 @@
 {pstd}
 where {it:plot_specs} = {cmd:(}{it:plottype varlist} {ifin} {weight} [{cmd:,} {it:options}]{cmd:)}
 [{cmd:(}{it:plottype varlist} {ifin} {weight} [{cmd:,} {it:options}]{cmd:)} ...]
-or equivalently using {cmd:||} separators.  A {it:weight} is one
+or equivalently using {cmd:||} separators; {it:plottype} is one of those
+listed in {help dash##plottypes:Plot types}.  A {it:weight} is one
 variable, {cmd:[aweight=}{it:varname}{cmd:]}; see
 {help dash##weights:Weights}.
 
@@ -137,6 +138,61 @@ See {manhelp twoway G-2:graph twoway} for the full reference.
 {pstd}
 This help file documents only the features that differ from or extend
 {cmd:twoway}.
+
+
+{marker plottypes}
+{title:Plot types}
+
+{pstd}
+{cmd:dash} draws the {cmd:twoway} plot types below, each written as in
+{cmd:twoway} and abbreviated as {cmd:twoway} allows ({cmd:sc} for
+{cmd:scatter}).  What each draws is described in
+{manhelp twoway G-2:graph twoway}; where {cmd:dash} differs, this file says
+so under the option concerned.
+
+{synoptset 22}{...}
+{synoptline}
+{synopt:points, lines, bars}{cmd:scatter}, {cmd:line}, {cmd:connected},
+    {cmd:area}, {cmd:bar}, {cmd:spike}, {cmd:dropline}, {cmd:dot}{p_end}
+{synopt:immediate}{cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} -- the
+    coordinates are written on the command line{p_end}
+{synopt:range}{cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap},
+    {cmd:rcapsym}, {cmd:rscatter}, {cmd:rline}, {cmd:rconnected}{p_end}
+{synopt:paired coordinates}{cmd:pcspike}, {cmd:pccapsym}, {cmd:pcarrow},
+    {cmd:pcbarrow}, {cmd:pcscatter}{p_end}
+{synopt:time series}{cmd:tsline}, {cmd:tsrline} -- the time variable is
+    the one {help tsset} set when none is given{p_end}
+{synopt:fits and smooths}{cmd:lfit}, {cmd:qfit}, {cmd:fpfit},
+    {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci}, {cmd:lowess}, {cmd:lpoly},
+    {cmd:lpolyci}, {cmd:mspline}, {cmd:mband}{p_end}
+{synopt:distributions}{cmd:histogram}, {cmd:kdensity}{p_end}
+{synopt:functions}{cmd:function}{p_end}
+{synoptline}
+
+{pstd}
+{ul:pccapsym and pcarrowi.}  {cmd:pccapsym} draws each spike with the same
+marker at both ends: the line options style the spike, the marker options
+the markers, and {cmd:mlabel()} labels the first point.  {cmd:pcarrowi}
+reads its values as {cmd:twoway} does -- {it:#y1 #x1 #y2 #x2}, then an
+optional clock position in parentheses and a label in quotes -- and
+refuses, with {cmd:r(198)}, a coordinate that is not a number, a clock
+position outside 0 to 12, or a list with no whole arrow.  An incomplete
+last arrow is dropped with a note, where {cmd:twoway} drops it silently.
+Each label is drawn at its arrow's tail, placed by its clock position,
+else by {cmd:mlabposition()}, else at 3 o'clock.
+
+{pstd}
+{ul:Not drawn.}  Five {cmd:twoway} plot types are not drawn by {cmd:dash}:
+{cmd:contour} and {cmd:contourline}, which interpolate a surface over a
+grid from their three variables; {cmd:heatmap}, which colours the cells of
+a grid by {it:z}; and {cmd:rpcap} and {cmd:rpspike}, which mark a point on
+a range.  Each is refused with {cmd:r(198)} and a message naming what to
+use instead: {cmd:twoway} itself, {cmd:dash scatter} {it:y x}{cmd:,}
+{cmd:colorvar(}{it:z}{cmd:)} for the first three, or a range plot and a
+{cmd:scatter} of the point in one graph for the last two.  Any other word
+that is not a plot type is refused too, and the message lists the plot
+types above.  A plot type cannot be handled as an unknown option is --
+named in a note and drawn around -- because it is what would be drawn.
 
 
 {marker differences}
@@ -214,7 +270,9 @@ This help file documents only the features that differ from or extend
 
 {phang2}5.  {ul:Unsupported twoway options.}
     {cmd:dash} accepts every {cmd:twoway} option.  An unknown option is never
-    an error, so a command copy-pasted from a do-file always runs.  Anything
+    an error, so a command copy-pasted from a do-file runs whenever
+    {cmd:dash} draws its plot type (see {help dash##plottypes:Plot types},
+    which also names the two {cmd:twoway} plot types it refuses).  Anything
     {cmd:dash} cannot honour is named once per command, in a single note:
 
 {p 12 12 2}{cmd:. dash scatter mpg weight, play(x) text(20 3000 "hi")}{p_end}
@@ -1143,6 +1201,21 @@ annotations.  These options apply to the per-plot specification (not to
     reported and 3 used, as {cmd:twoway} notes it{p_end}
 {synopt:{cmdab:mlabg:ap(}{it:#}{cmd:)}}additional offset in pixels added to
     the clock-position offset{p_end}
+{synopt:{cmdab:mlabang:le(}{it:anglestyle}{cmd:)}}angle of the label text,
+    counter-clockwise: one of Stata's anglestyles ({cmd:horizontal},
+    {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}, {cmd:forty_five},
+    ...) or a number of degrees from -360 to 360.  A number outside that
+    range is refused where {cmd:twoway} refuses it, on the plot types
+    {cmd:twoway} draws marker labels on; a name that is not an anglestyle
+    is reported and the label drawn horizontal, as {cmd:twoway} notes it
+    {p_end}
+{synopt:{cmdab:mlabf:ormat(}{it:%fmt}{cmd:)}}display format of numeric
+    labels.  A {cmd:%f} or {cmd:%e} format, with or without {cmd:c}, is
+    drawn as Stata draws it: {cmd:mlabformat(%9.1fc)} labels 4099 as
+    {cmd:4,099.0}.  It changes nothing on a string or value-labelled
+    variable, as in {cmd:twoway}.  A {cmd:%g}, date or string format, one
+    on a date variable, or text that is no format is named in a note and
+    the labels drawn without it{p_end}
 {synoptline}
 
 {pstd}
@@ -1948,9 +2021,30 @@ disagree in either direction.
     scheme's own styling.  Their contents are not read.
 
 {phang2}{ul:Bar and dot geometry.}
-    {opt at(varname)}, {opt blabel(...)}, {opt horizontal}, {opt vertical},
-    {opt sort} — bars are drawn vertically at the x variable's values, and
-    {cmd:line} plots are already sorted by x, as in {cmd:twoway}.
+    {opt at(varname)}, {opt blabel(...)}, {opt horizontal}, {opt vertical}
+    -- bars are drawn vertically at the x variable's values.
+
+{phang2}{ul:Connection order.}
+    {opt sort} and {opt sort(varlist)} -- {cmd:dash} always joins the points
+    of {cmd:line}, {cmd:connected}, {cmd:area} and the range line and area
+    plots in the order of x, which is the picture {cmd:twoway} draws with
+    {cmd:sort}; without it {cmd:twoway} joins them in the order of the data.
+    {cmd:sort(}{it:varlist}{cmd:)}, which joins them in the order of other
+    variables, is not honoured: they are still joined in the order of x.
+    Where {it:varlist} has ties, {cmd:twoway}'s own order among them
+    changes from one run to the next.
+
+{phang2}{ul:Marker-label placement and text style.}
+    {opt mlabvposition(varname)} -- a layer's labels all sit at the one
+    clock position {cmd:mlabposition()} gives; a position per observation
+    is not read.  {opt mlabtextstyle(textstyle)} -- a named text style in
+    a {cmd:.scheme} file; set the size and colour with {cmd:mlabsize()} and
+    {cmd:mlabcolor()}.
+
+{phang2}{ul:Room for long end labels.}
+    {opt xoverhangs}, {opt yoverhangs} -- {cmd:twoway} widens the graph
+    region so that the label on the first or last tick does not run off the
+    edge; {cmd:dash} does not move the figure's edges for them.
 
 {phang2}{ul:Build-time options written on a graph.}
     {opt link(namelist)}, {opt filter(varname, ...)} — these belong to
@@ -1968,6 +2062,38 @@ disagree in either direction.
     {opt recast(plottype)} — name the plot type you want directly.
     {opt play(recordingname)} — there is no graph editor to replay.
     {opt text(# # "string")} — use {cmd:note()} or {cmd:caption()}.
+
+{pstd}
+Not in this list, because {cmd:dash} honours them: {cmd:twoway}'s
+connecting-line options {cmd:clcolor()}, {cmd:clpattern()} and
+{cmd:clwidth()} (abbreviated {cmd:clc()}, {cmd:clp()} and {cmd:clw()}),
+which style the line of {cmd:line}, {cmd:connected}, {cmd:lfit},
+{cmd:qfit}, {cmd:fpfit}, {cmd:lpoly}, {cmd:lowess}, {cmd:mspline},
+{cmd:mband}, {cmd:kdensity}, {cmd:function} and {cmd:tsline}, and the fit
+line of {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and {cmd:fpfitci}, in
+place of {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} -- and of
+{cmd:color()} -- whatever the order they are typed in, never touching the
+markers.  On every other plot type {cmd:twoway} draws nothing different for
+them, and neither does {cmd:dash}.  {cmd:clwidth()} takes 0 to 10000 and is
+refused outside that range where the line is drawn, as {cmd:twoway} refuses
+it.  {cmd:mlabangle()} and {cmd:mlabformat()} are honoured too; see
+{help dash##marker_labels:Marker Label Options}.
+
+{pstd}
+Some names that reach the note are not {cmd:twoway} options where they were
+written, and {cmd:twoway} itself refuses them with {cmd:r(198)}: it spells
+{cmd:xreverse} and {cmd:yreverse} as {cmd:xscale(reverse)} and
+{cmd:yscale(reverse)}, which {cmd:dash} honours, and {cmd:xalternate} and
+{cmd:yalternate} as {cmd:xscale(alt)} and {cmd:yscale(alt)}, whose
+{cmd:alt} {cmd:dash} names as a sub-option it does not implement;
+{cmd:xcommon} and {cmd:ycommon} are options of {cmd:graph combine};
+{cmd:margin()} is a sub-option of {cmd:plotregion()}, {cmd:graphregion()}
+and the title options, {cmd:region()} of {cmd:legend()}, and {cmd:altaxis}
+of a contour plot's {cmd:clegend()}; {cmd:addplot()} belongs to commands
+outside {cmd:graph twoway}, such as {cmd:histogram}; and {cmd:lockaspect},
+{cmd:zoom()} and {cmd:ddensity} are options of no Stata graph command.
+{cmd:bargap()} is an option of {cmd:graph bar}: {cmd:twoway bar} accepts it
+and draws nothing different, and {cmd:dash} names it.
 
 {pstd}
 Two further notes on the note itself.  It names option {it:names}, never the

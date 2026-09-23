@@ -227,6 +227,18 @@
 *!                                    extension does not make a name: a
 *!                                    name that is not shipped still needs
 *!                                    the file)
+*! WP-22 TR-22.3 -- the connecting-line width and the marker-label angle:
+*!   OV-149 line clwidth(thick)       rc 0, registry carries "clwidth":"thick"
+*!   OV-150 line clwidth(-1)          rc 198 naming clwidth()
+*!   OV-151 line clwidth(abc)         rc 0   (a name)
+*!   OV-152 bar clwidth(-1)           rc 0, and no clwidth in the registry
+*!                                    (bar draws no connecting line, so
+*!                                    twoway never evaluates it: rc 0)
+*!   OV-153 mlabangle(45)             rc 0, registry carries "mlabangle":"45"
+*!   OV-154 mlabangle(400)            rc 198 naming mlabangle()
+*!   OV-155 mlabangle(abc)            rc 0   (a name: twoway notes it)
+*!   OV-156 line mlabangle(400)       rc 0   (twoway draws no marker
+*!                                    labels on line, so never evaluates it)
 *! The corpus arbiter:
 *!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
 *!          with rc 0 and no refusal -- the table accepts every value the
@@ -771,6 +783,27 @@ _ov_case OV-145 `"dash scatter mpg weight, scheme(../x) name(ov145)"' 198 scheme
 _ov_case OV-146 `"dash scatter mpg weight, scheme(s2color.scheme) name(ov146)"' 0 "" `""scheme":"s2color.scheme""'
 _ov_case OV-147 `"dash scatter mpg weight, scheme(S2COLOR.SCHEME) name(ov147)"' 0 ""
 _ov_case OV-148 `"dash scatter mpg weight, scheme(nosuch.scheme) name(ov148)"' 198 scheme
+
+// ----------------------------------------------------------------
+// OV-149 .. OV-156: clwidth() and mlabangle() (WP-22 TR-22.3), measured
+// 23sep2026 into fixtures/value_truth.json (clwidth_1-8, mlabangle_1-8).
+// twoway refuses clwidth(-1) -- "gm_linewidth must be between 0.000 and
+// 1.0e+04" -- only where it draws the connecting line, and mlabangle(400)
+// -- "textangle must be between -360.000 and 360.000" -- only where it
+// draws marker labels; elsewhere neither value is evaluated, rc 0.  A
+// name is never refused: twoway notes it and draws the default.
+// ----------------------------------------------------------------
+_ov_case OV-149 `"dash line mpg weight, clwidth(thick) name(ov149)"' 0 "" `""clwidth":"thick""'
+_ov_case OV-150 `"dash line mpg weight, clwidth(-1) name(ov150)"' 198 clwidth
+_ov_case OV-151 `"dash line mpg weight, clwidth(abc) name(ov151)"' 0 ""
+_ov_case OV-152 `"dash bar mpg weight, clwidth(-1) name(ov152)"' 0 ""
+_ov_has ov152 `""clwidth":"'
+local _ov_found = r(found)
+_ov_assert OV-152b "(`_ov_found' == 0)" "bar draws no connecting line: clwidth() is not carried"
+_ov_case OV-153 `"dash scatter mpg weight, mlabel(make) mlabangle(45) name(ov153)"' 0 "" `""mlabangle":"45""'
+_ov_case OV-154 `"dash scatter mpg weight, mlabel(make) mlabangle(400) name(ov154)"' 198 mlabangle
+_ov_case OV-155 `"dash scatter mpg weight, mlabel(make) mlabangle(abc) name(ov155)"' 0 ""
+_ov_case OV-156 `"dash line mpg weight, mlabel(make) mlabangle(400) name(ov156)"' 0 ""
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

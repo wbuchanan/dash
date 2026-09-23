@@ -287,6 +287,60 @@ assert `n_noted' == 0
 capture erase "`helplog'"
 display "C-05 PASS: every documented example parses clean, with nothing dropped"
 
+// ----------------------------------------------------------------
+// C-06 -- pccapsym and pcarrowi each build on their own (WP-22 TR-22.1).
+// ----------------------------------------------------------------
+// Both exited r(198) "unrecognised plot type" until WP-22, where twoway
+// draws them (measured 23sep2026, rc 0).  C-01..C-04 render both inside
+// the whole corpus; here each is built alone on the immediate route, and
+// the saved page is read for what twoway draws: for pccapsym a spike (a
+// Segment) capped by markers (a Scatter) and the marker labels mlabel()
+// asks for; for pcarrowi pcarrow's own arrow (a Segment and an Arrow with
+// an OpenHead) and the labels written among its values, as text.
+// pcarrowi names no variable: the immediate route refused every such type
+// but scatteri, pci, pcscatter and function, so it is built here too.
+tempfile c6a c6b
+local c6a "`c6a'.html"
+local c6b "`c6b'.html"
+dash clear
+capture noisily dash pccapsym mpg weight m2 w2, msymbol(D) lcolor(navy) mlabel(make) saving("`c6a'")
+assert _rc == 0
+confirm file "`c6a'"
+foreach nd in Segment Scatter LabelSet {
+    cert_file_has "`c6a'", needle(`""name":"`nd'""')
+    assert r(found) == 1
+}
+cert_file_has "`c6a'", needle("AMC Concord")
+assert r(found) == 1
+// A %td label with a missing date.  The WP-22 review found the saved page
+// failed to write here: the label column became a list of Timestamps and
+// NaT, and Bokeh wrote NaT as a bare NaN, which is not JSON.
+tempfile c6d
+local c6d "`c6d'.html"
+quietly generate double c6date = mdy(1, _n, 2020) if _n != 3
+format c6date %td
+capture noisily dash pccapsym mpg weight m2 w2, mlabel(c6date) saving("`c6d'")
+assert _rc == 0
+confirm file "`c6d'"
+cert_file_has "`c6d'", needle(`""name":"LabelSet""')
+assert r(found) == 1
+drop c6date
+capture erase "`c6d'"
+capture noisily dash pcarrowi 41 2200 41 2060 (3) "VW Diesel" 31 3460 28 3280 (9) "Plymouth Arrow", saving("`c6b'")
+assert _rc == 0
+confirm file "`c6b'"
+foreach nd in Segment Arrow OpenHead LabelSet {
+    cert_file_has "`c6b'", needle(`""name":"`nd'""')
+    assert r(found) == 1
+}
+foreach nd in "VW Diesel" "Plymouth Arrow" {
+    cert_file_has "`c6b'", needle("`nd'")
+    assert r(found) == 1
+}
+capture erase "`c6a'"
+capture erase "`c6b'"
+display "C-06 PASS: pccapsym and pcarrowi each build alone: spikes capped with markers and their labels, arrows with theirs"
+
 dash clear
 
 display ""

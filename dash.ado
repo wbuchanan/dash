@@ -209,7 +209,7 @@ program define _dash_require_mata
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_is_digits _dash_item_globals _dash_json_get_str ///
         _dash_layout_cells _dash_layout_refusal _dash_option_names ///
-        _dash_say _dash_split_segs
+        _dash_pc_immediate _dash_say _dash_split_segs _dash_undrawn_plottype
 
     // The common case, and the cheap one.
     quietly capture mata: mata describe _dash_check_utf8()
@@ -577,6 +577,7 @@ program define _dash_parse_graph_opts, sclass
         B2title(string)           L1title(string)           L2title(string) ///
         R1title(string)           R2title(string)           TITLE2(string) ///
         SUBTITLE2(string)         NODRAW                    PLAY(string) ///
+        XOVERHANGs                YOVERHANGs ///
         T(string)                 B(string)                 L(string) ///
         R(string) ///
         PBGC(string)              XLA2(string asis)         XSC2(string asis) ///
@@ -665,8 +666,11 @@ program define _dash_parse_graph_opts, sclass
     if `"`title2'"' != "" local _dash_pending `"`_dash_pending' title2"'
     if `"`xmlabel'"' != "" local _dash_pending `"`_dash_pending' xmlabel"'
     if `"`xmtick'"' != "" local _dash_pending `"`_dash_pending' xmtick"'
+    // WP-22: twoway's advanced xoverhangs and yoverhangs, after the comma.
+    if `"`xoverhangs'"' != "" local _dash_pending `"`_dash_pending' xoverhangs"'
     if `"`ymlabel'"' != "" local _dash_pending `"`_dash_pending' ymlabel"'
     if `"`ymtick'"' != "" local _dash_pending `"`_dash_pending' ymtick"'
+    if `"`yoverhangs'"' != "" local _dash_pending `"`_dash_pending' yoverhangs"'
     // Whatever Stata could not match at all, via the trailing *.
     local _dash_unknown `"`options'"'
 
@@ -757,6 +761,14 @@ program define _dash_parse_plot_opts, sclass
     // do-file.  dash.sthlp has always claimed copy-pasted twoway commands
     // still run; without this they did not.  Unmatched options are
     // reported by name, once per command -- never silently dropped.
+    // WP-22 TR-22.3 declared the twoway options GAPS.md F3 found in the
+    // note as UNKNOWN, with twoway's own minimum abbreviations: CLColor,
+    // CLPattern, CLWidth, MLABANGle, MLABFormat, MLABTextstyle and
+    // MLABVposition are twoway_yxview_parse.class's declarations, and
+    // SORT SORT1() is the pair -syntax- (and that class file) uses for an
+    // option written bare, sort, or with an argument, sort(varlist).
+    // XOVERHANGs and YOVERHANGs are advanced_options.sthlp's xoverhangs and
+    // yoverhangs; twoway's measured minimum is xoverhang and yoverhang.
     syntax [, ///
         MColor(string)            Msymbol(string)           MSIze(string) ///
         MSAngle(string)           MFColor(string)           MLColor(string) ///
@@ -785,6 +797,10 @@ program define _dash_parse_plot_opts, sclass
         LStyle(string)            MLStyle(string)           MLPattern(string) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
+        SORT1(string)             CLColor(string)           CLPattern(string) ///
+        CLWidth(string)           MLABANGle(string)         MLABFormat(string) ///
+        MLABTextstyle(string)     MLABVposition(string)     XOVERHANGs ///
+        YOVERHANGs ///
         JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
         NOTE(string asis)         CAPtion(string asis)      NAMe(string) ///
         SAVing(string)            XTitle(string)            YTitle(string) ///
@@ -894,6 +910,11 @@ program define _dash_parse_plot_opts, sclass
     if `"`link'"' != "" local _dash_pending `"`_dash_pending' link"'
     if `"`lineopts'"' != "" local _dash_pending `"`_dash_pending' lineopts"'
     if `"`lstyle'"' != "" local _dash_pending `"`_dash_pending' lstyle"'
+    // WP-22: mlabtextstyle() names a text style in a .scheme file, and
+    // mlabvposition() a variable of clock positions, one per observation;
+    // dash draws a layer's labels at one position in the scheme's style.
+    if `"`mlabtextstyle'"' != "" local _dash_pending `"`_dash_pending' mlabtextstyle"'
+    if `"`mlabvposition'"' != "" local _dash_pending `"`_dash_pending' mlabvposition"'
     if `"`mlabwidth'"' != "" local _dash_pending `"`_dash_pending' mlabwidth"'
     if `"`mlpattern'"' != "" local _dash_pending `"`_dash_pending' mlpattern"'
     if `"`mlstyle'"' != "" local _dash_pending `"`_dash_pending' mlstyle"'
@@ -904,7 +925,10 @@ program define _dash_parse_plot_opts, sclass
     if `"`r2title'"' != "" local _dash_pending `"`_dash_pending' r2title"'
     if `"`recast'"' != "" local _dash_pending `"`_dash_pending' recast"'
     if `"`scale'"' != "" local _dash_pending `"`_dash_pending' scale"'
-    if `"`sort'"' != "" local _dash_pending `"`_dash_pending' sort"'
+    // sort and sort(varlist) are named alike, as sort(): the argument form
+    // arrives in `sort1', the name -syntax- gives it, which is Stata's
+    // plumbing and not a name the user wrote.
+    if `"`sort'`sort1'"' != "" local _dash_pending `"`_dash_pending' sort"'
     if `"`subtitle2'"' != "" local _dash_pending `"`_dash_pending' subtitle2"'
     if `"`t1title'"' != "" local _dash_pending `"`_dash_pending' t1title"'
     if `"`t2title'"' != "" local _dash_pending `"`_dash_pending' t2title"'
@@ -913,8 +937,12 @@ program define _dash_parse_plot_opts, sclass
     if `"`vertical'"' != "" local _dash_pending `"`_dash_pending' vertical"'
     if `"`xmlabel'"' != "" local _dash_pending `"`_dash_pending' xmlabel"'
     if `"`xmtick'"' != "" local _dash_pending `"`_dash_pending' xmtick"'
+    // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
+    // region so an end tick label does not run off the edge.
+    if `"`xoverhangs'"' != "" local _dash_pending `"`_dash_pending' xoverhangs"'
     if `"`ymlabel'"' != "" local _dash_pending `"`_dash_pending' ymlabel"'
     if `"`ymtick'"' != "" local _dash_pending `"`_dash_pending' ymtick"'
+    if `"`yoverhangs'"' != "" local _dash_pending `"`_dash_pending' yoverhangs"'
     // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
     // are twoway GRAPH-level options, and this program promotes them --
     // `sreturn local g_xsize' and friends just above, picked up by the
@@ -997,6 +1025,13 @@ program define _dash_parse_plot_opts, sclass
     sreturn local range            `"`range'"'
     sreturn local colorlist        `"`colorlist'"'
     sreturn local jitterseed       `"`jitterseed'"'
+    // WP-22: the honoured F3 options.  The connecting-line triple is kept
+    // or dropped by plot type in _dash_fold_cl, once the type is known.
+    sreturn local clcolor          `"`clcolor'"'
+    sreturn local clpattern        `"`clpattern'"'
+    sreturn local clwidth          `"`clwidth'"'
+    sreturn local mlabangle        `"`mlabangle'"'
+    sreturn local mlabformat       `"`mlabformat'"'
     // The seven statistical sub-options (WP-18): declared with twoway's own
     // minimum abbreviations (twoway_histogram_parse.class DISCrete;
     // twoway_lfitci_parse.class STDP STDF STDR, none abbreviable;
@@ -1171,10 +1206,15 @@ end
 // and names bw() in the note everywhere else, as an option it has no
 // reading for.  Called after _dash_parse_plot_opts, whose s() survives
 // this second sclass call.
+//
+// It is also where the other options whose reading depends on the plot type
+// are resolved: clcolor(), clpattern() and clwidth() (WP-22), in
+// _dash_fold_cl below, before the early exit for a segment with no bw().
 // ================================================================
 program define _dash_fold_bw, sclass
     version 16.0
     args ptype
+    _dash_fold_cl "`ptype'"
     local bw `"`s(bw)'"'
     if `"`bw'"' == "" exit
     local bandwidth_types "lpoly lpolyci lowess kdensity"
@@ -1194,6 +1234,45 @@ program define _dash_fold_bw, sclass
         sreturn local _unknown `"`s(_unknown)' bw(`bw')"'
     }
     sreturn local bw ""
+end
+
+// ================================================================
+// _dash_fold_cl  -- keep clcolor(), clpattern() and clwidth() on the plot
+//                   types whose CONNECTING line twoway styles with them.
+//
+// ROADMAP WP-22 AC-22.2.  twoway_yxview_parse.class factors CLColor() to
+// line(color()) alone, where LColor() is line(color()) AND
+// area(linestyle(color())), and factors the cl options after the l options
+// whatever order they were typed in.  Which types draw that `line' style
+// was measured 23sep2026 from SVG exports of what twoway draws: on line,
+// connected, lfit, qfit, fpfit, lpoly, lowess, mspline, mband, kdensity,
+// function and tsline, clX draws exactly what lX draws; on lfitci, qfitci,
+// lpolyci and fpfitci it styles the fit line alone; on every other type --
+// area, bar, histogram, spike, dropline, dot, scatter, the range and
+// paired-coordinate types, scatteri and pci -- the picture is identical to
+// one drawn with no option at all, and clwidth(-1), which twoway refuses
+// when it draws the line ("gm_linewidth must be between 0.000 and
+// 1.0e+04", r(198)), is accepted, because it is never evaluated.
+//
+// So the three are kept for the renderer on the types that draw the line,
+// where it lets them style it in place of lcolor(), lpattern() and
+// lwidth(), and dropped everywhere else: twoway draws nothing for them
+// there, dash draws nothing either, and the note does not name them,
+// because nothing dash draws differs from what twoway draws.  A plot type
+// added to dash later is not on the list, and the three are dropped there
+// until it is measured.
+//
+// Called first thing by _dash_fold_bw, so before _dash_validate_opts:
+// clwidth()'s rule fires exactly where twoway evaluates the width.
+// ================================================================
+program define _dash_fold_cl, sclass
+    version 16.0
+    args ptype
+    local cl_types "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci"
+    if `: list ptype in cl_types' exit
+    sreturn local clcolor   ""
+    sreturn local clpattern ""
+    sreturn local clwidth   ""
 end
 
 // BEGIN shipped schemes (WP-17)
@@ -1285,7 +1364,19 @@ program define _dash_option_rules
         n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         colornlevels=int,2,256 ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
-        colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2
+        colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
+        clwidth=style,0,10000 ///
+        mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|scatteri
+    // WP-22.  clwidth() has lwidth()'s bounds -- twoway refuses clwidth(-1)
+    // and lwidth(-1) alike, "gm_linewidth must be between 0.000 and
+    // 1.0e+04", r(198) -- but only where it draws the connecting line;
+    // _dash_fold_cl has dropped the triple everywhere else before this runs,
+    // so the rule needs no type list.  mlabangle() takes an anglestyle name
+    // (never refused: twoway notes an unknown one) or degrees, and twoway
+    // refuses a number outside -360..360, "textangle must be between
+    // -360.000 and 360.000", r(198), only where it draws marker labels --
+    // measured 23sep2026 on exactly the types listed.  Elsewhere it never
+    // evaluates the angle, and neither does this table.
     // Graph rules: validated once per segment in _dash_validate_opts, from
     // s(g_<opt>) -- so a value inside a segment is refused as twoway refuses
     // it even when a later segment or the after-comma part outranks it --
@@ -2079,7 +2170,8 @@ program define _dash_plot_opts_to_json, rclass
     // weight and wexp (WP-18) are not options: _dash_process_segment puts
     // them in s() for a weighted segment on a type that honours weights,
     // and an unweighted segment writes neither key, so its "options" text
-    // is byte-identical to what it was.
+    // is byte-identical to what it was.  clcolor, clpattern and clwidth
+    // (WP-22) are non-empty only on the types _dash_fold_cl keeps them for.
     foreach key in mcolor msymbol msize msangle mfcolor mlcolor mlabel mlabcolor ///
                    mlabsize mlabposition mlabgap mlabwidth malpha marker lcolor ///
                    lwidth lpattern lalpha fcolor fintensity falpha barwidth base ///
@@ -2090,6 +2182,7 @@ program define _dash_plot_opts_to_json, rclass
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle mlpattern ///
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
+                   clcolor clpattern clwidth mlabangle mlabformat ///
                    weight wexp {
         local val `"`s(`key')'"'
         if `"`val'"' != "" {
@@ -2151,6 +2244,37 @@ program define _dash_seg_weight_s, sclass
 end
 
 // ================================================================
+// _dash_plottype_families  -- the plot-type families, each named once
+//
+// _dash_process_segment routes a plot type to its varlist parser and its
+// JSON keys by family.  It did so with string inlist() tests, and the
+// range test was ptype and nine literals -- Stata's limit for a string
+// inlist(): measured 23sep2026, ptype and nine literals is rc 0, ptype and
+// ten is r(130) "expression too long" -- so a tenth range type could not
+// have been added.  Each family is a word list here, tested with
+// `: list ptype in <family>', which has no such limit (WP-22 TR-22.4).
+// The four routing families are the renderer's _DASH_UNIVARIATE_TYPES,
+// _DASH_RANGE_TYPES, _DASH_PC_TYPES and _DASH_LITERAL_TYPES;
+// test/test_plottype_families.py holds the two sides together.
+//
+//   _pt_univar   one variable                       histogram kdensity
+//   _pt_range    y1 y2 [x]                          the range types
+//   _pt_pc       y1 x1 y2 x2                        the paired-coordinate types
+//   _pt_literal  literal values or an expression    scatteri pci pcarrowi function
+//   _pt_pairs    literal y x pairs                  scatteri pci
+//   _pt_ts       x from tsset when it is not given  tsline tsrline
+// ================================================================
+program define _dash_plottype_families
+    version 16.0
+    c_local _pt_univar  "histogram kdensity"
+    c_local _pt_range   "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
+    c_local _pt_pc      "pcspike pcarrow pcbarrow pcscatter pccapsym"
+    c_local _pt_literal "scatteri pci pcarrowi function"
+    c_local _pt_pairs   "scatteri pci"
+    c_local _pt_ts      "tsline tsrline"
+end
+
+// ================================================================
 // _dash_process_segment
 //
 // Parse one plot segment (full text including plot type name),
@@ -2182,15 +2306,42 @@ program define _dash_process_segment, rclass
     local ptype "`_pt_exp'"
 
     if "`ptype'" == "" {
+        // contour and contourline are twoway plot types, and dash does not
+        // draw them: each interpolates a surface over a grid of z values,
+        // a data model no dash plot has.  They were answered "unrecognised
+        // plot type", as if twoway had no such type; they are named for
+        // what they are now, with what to use instead (WP-22 TR-22.1).
+        // heatmap, rpcap and rpspike, twoway plot types in StataNow 19.5,
+        // are refused the same way, each with its own reason (BR-22.1).
+        // _pt_nodraw is one of those five names or "": never user text.
+        mata: st_local("_pt_nodraw", _dash_undrawn_plottype(st_local("plottype")))
+        if "`_pt_nodraw'" != "" {
+            if "`_pt_nodraw'" == "contour" | "`_pt_nodraw'" == "contourline" {
+                local _pt_why "it needs a surface interpolated over a grid. Use Stata's own twoway `_pt_nodraw', or dash scatter y x, colorvar(z) to colour each point by z."
+            }
+            else if "`_pt_nodraw'" == "heatmap" {
+                local _pt_why "it colours the cells of a grid by z. Use Stata's own twoway heatmap, or dash scatter y x, colorvar(z) to colour each point by z."
+            }
+            else {
+                local _pt_rng = cond("`_pt_nodraw'" == "rpcap", "rcap", "rspike")
+                local _pt_why "it marks a point on a range. Use Stata's own twoway `_pt_nodraw', or draw the two together: dash (`_pt_rng' ylow yhigh x) (scatter y x)."
+            }
+            mata: _dash_say("err", "dash: '", st_local("plottype"), "' is a twoway plot type dash does not draw: " + st_local("_pt_why"))
+            exit(198)
+        }
         mata: _dash_say("err", "dash: unrecognised plot type '", st_local("plottype"), "'. ")
         display as error ///
             "Supported: scatter line connected area bar spike " _n ///
             "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci " _n ///
             "histogram kdensity rarea rbar rspike rcap rline rconnected " _n ///
             "dot dropline rcapsym scatteri pcspike pcarrow pcbarrow " _n ///
-            "pci pcscatter tsline tsrline mspline mband rscatter function"
+            "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband " _n ///
+            "rscatter function"
         exit(198)
     }
+
+    // The families each plot type is routed by, named once (TR-22.4).
+    _dash_plottype_families
 
     // ---- find comma separating varpart from options ----
     local comma_pos = 0
@@ -2215,11 +2366,13 @@ program define _dash_process_segment, rclass
     }
 
     // ---- parse varlist + if/in using type-appropriate syntax program ----
-    // Determine varpart syntax group for this plot type:
-    //   1v  : histogram kdensity
-    //   3v  : rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline
-    //   4v  : pcspike pcarrow pcbarrow pcscatter
-    //   any : scatteri pci function
+    // Determine varpart syntax group for this plot type, by its family
+    // (_dash_plottype_families):
+    //   1v  : _pt_univar   histogram kdensity
+    //   3v  : _pt_range    rarea rbar rspike rcap rline rconnected rcapsym
+    //                      rscatter tsrline
+    //   4v  : _pt_pc       pcspike pcarrow pcbarrow pcscatter pccapsym
+    //   any : _pt_literal  scatteri pci pcarrowi function
     //
     // pcscatter takes FOUR VARIABLES in Stata -- `pcscatter y1 x1 y2 x2' --
     // and was routed to the literal parser, which wrote its variable names
@@ -2242,14 +2395,13 @@ program define _dash_process_segment, rclass
     local if_cl ""
     local in_cl ""
 
-    if inlist("`ptype'", "histogram", "kdensity") {
+    if `: list ptype in _pt_univar' {
         _dash_parse_varpart_1v `varpart'
         local yvar    = word("`s(varlist)'", 1)
         local if_cl   `"`s(if_clause)'"'
         local in_cl   `"`s(in_clause)'"'
     }
-    else if inlist("`ptype'", "rarea", "rbar", "rspike", "rcap", "rline", ///
-                               "rconnected", "rcapsym", "rscatter", "tsrline") {
+    else if `: list ptype in _pt_range' {
         _dash_parse_varpart_3v `varpart'
         local vl = "`s(varlist)'"
         local yvar1 = word("`vl'", 1)
@@ -2274,7 +2426,7 @@ program define _dash_process_segment, rclass
         local if_cl `"`s(if_clause)'"'
         local in_cl `"`s(in_clause)'"'
     }
-    else if inlist("`ptype'", "pcspike", "pcarrow", "pcbarrow", "pcscatter") {
+    else if `: list ptype in _pt_pc' {
         _dash_parse_varpart_4v `varpart'
         local vl = "`s(varlist)'"
         local y1var = word("`vl'", 1)
@@ -2284,7 +2436,7 @@ program define _dash_process_segment, rclass
         local if_cl `"`s(if_clause)'"'
         local in_cl `"`s(in_clause)'"'
     }
-    else if inlist("`ptype'", "scatteri", "pci", "function") {
+    else if `: list ptype in _pt_literal' {
         _dash_parse_varpart_any `varpart'
         if "`ptype'" == "function" {
             // Remove optional "y=" prefix
@@ -2296,6 +2448,34 @@ program define _dash_process_segment, rclass
         }
         local if_cl `"`s(if_clause)'"'
         local in_cl `"`s(in_clause)'"'
+        if "`ptype'" == "pcarrowi" {
+            // twoway pcarrowi's immediate values (WP-22 TR-22.1):
+            //     #y1 #x1 #y2 #x2 [(#clockpos)] ["text for label"] ...
+            // read in Mata, as a value, and written one record per arrow,
+            // [y1,x1,y2,x2] or [y1,x1,y2,x2,"label",clock]; the grammar
+            // and what twoway does with each case are measured in
+            // dash_parse.mata, section 2c.  What twoway refuses is refused
+            // with its return code, r(198), the token shown as written.
+            // What twoway drops at the end, too little for another arrow,
+            // is dropped too -- and named, where twoway says nothing.
+            mata: _dash_pc_immediate(st_local("vals"))
+            if "`_pci_err'" == "point" {
+                mata: _dash_say("err", "dash: `ptype' takes four numbers for each arrow, #y1 #x1 #y2 #x2; '", st_local("_pci_bad"), "' is not a number.")
+                display as error `"      Each arrow is #y1 #x1 #y2 #x2 [(#clockpos)] ["text for label"], as in twoway `ptype'."'
+                exit 198
+            }
+            if "`_pci_err'" == "position" {
+                mata: _dash_say("err", "dash: `ptype': invalid position, ", st_local("_pci_bad"), "; a clock position is a number from 0 to 12.")
+                exit 198
+            }
+            if "`_pci_err'" == "none" {
+                display as error "dash: `ptype' needs at least one arrow, four numbers #y1 #x1 #y2 #x2."
+                exit 198
+            }
+            if `_pci_hasleft' {
+                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another arrow (#y1 #x1 #y2 #x2), as twoway does.")
+            }
+        }
     }
     else {
         // Standard: the LAST variable is x; every variable before it is a
@@ -2335,7 +2515,7 @@ program define _dash_process_segment, rclass
                 // tsline/tsrline with no x take the time variable from tsset,
                 // as twoway does.  Without this xvar stayed empty, the renderer
                 // hit a KeyError on "" and the user saw r(7102).
-                if inlist("`ptype'", "tsline", "tsrline") {
+                if `: list ptype in _pt_ts' {
                     local xvar `"`_dta[_TStvar]'"'
                     if `"`xvar'"' == "" {
                         // r(111) is what twoway itself returns here, verified
@@ -2395,6 +2575,9 @@ program define _dash_process_segment, rclass
     // (scatter, line, bar ...) a weight is accepted and named in the note
     // by type, as WP-13 left it: dash draws every observation.
     local _wt_honoured "lfit qfit lfitci qfitci lpoly lpolyci fpfit fpfitci histogram kdensity mspline mband"
+    // The types that refuse a pweight: a list, like every plot-type family,
+    // rather than a string inlist() (TR-22.4).
+    local _wt_nopw "kdensity lpoly lpolyci"
     if `"`_seg_weight'"' != "" {
         local _wt_refused ""
         if "`_seg_weight'" == "iweight" {
@@ -2406,7 +2589,7 @@ program define _dash_process_segment, rclass
         else if "`ptype'" == "histogram" & "`_seg_weight'" != "fweight" {
             local _wt_refused "`_seg_weight's not allowed"
         }
-        else if inlist("`ptype'", "kdensity", "lpoly", "lpolyci") & "`_seg_weight'" == "pweight" {
+        else if `: list ptype in _wt_nopw' & "`_seg_weight'" == "pweight" {
             local _wt_refused "pweights not allowed"
         }
         if `"`_wt_refused'"' != "" {
@@ -2534,18 +2717,17 @@ program define _dash_process_segment, rclass
     // Variable fields
     local vfields ""
 
-    if inlist("`ptype'", "histogram", "kdensity") {
+    if `: list ptype in _pt_univar' {
         _dash_json_str "`yvar'" _jyv
         local vfields `""var":"`_jyv'""'
     }
-    else if inlist("`ptype'", "rarea", "rbar", "rspike", "rcap", "rline", ///
-                               "rconnected", "rcapsym", "rscatter", "tsrline") {
+    else if `: list ptype in _pt_range' {
         _dash_json_str "`yvar1'" _jy1
         _dash_json_str "`yvar2'" _jy2
         _dash_json_str "`xvar'"  _jxv
         local vfields `""yvar1":"`_jy1'","yvar2":"`_jy2'","xvar":"`_jxv'""'
     }
-    else if inlist("`ptype'", "pcspike", "pcarrow", "pcbarrow", "pcscatter") {
+    else if `: list ptype in _pt_pc' {
         _dash_json_str "`y1var'" _jy1
         _dash_json_str "`x1var'" _jx1
         _dash_json_str "`y2var'" _jy2
@@ -2556,7 +2738,14 @@ program define _dash_process_segment, rclass
         _dash_json_str `"`expr'"' _jex
         local vfields `""expr":"`_jex'""'
     }
-    else if inlist("`ptype'", "scatteri", "pci") {
+    else if "`ptype'" == "pcarrowi" {
+        // Read and checked with the varlist above.  The array holds no
+        // apostrophe, backtick or dollar sign -- a label carries each as a
+        // JSON unicode escape (u0027, u0060, u0024 after a backslash) -- so
+        // it expands safely inside any quotes.
+        local vfields `""values":`_pci_json'"'
+    }
+    else if `: list ptype in _pt_pairs' {
         // Encode as a JSON array of [y, x] pairs, each optionally followed by a
         // quoted marker label:   scatteri 20 3000 "A" 30 4000 "B"
         // This used to pair tokens blindly, checking only that the count was
@@ -3341,11 +3530,17 @@ program define _dash_render_immediate
     }
     local needed_vars = strtrim("`needed_vars'")
 
-    // scatteri, pci, pcscatter and function take literal coordinates or an
-    // expression rather than variables, so having no varlist is correct for
-    // them -- this guard used to reject those plot types outright.
+    // The literal family -- scatteri, pci, pcarrowi and function -- takes
+    // literal coordinates or an expression rather than variables, so having
+    // no varlist is correct for them; this guard used to reject those plot
+    // types outright.  The list comes from _dash_plottype_families, so a
+    // literal type added there is admitted here: this list was written out
+    // by hand and did not know pcarrowi (WP-22).  pcscatter was on it, from
+    // when it was parsed as literals; it takes four variables and has no
+    // need.
+    _dash_plottype_families
     local _varfree = 0
-    foreach _vf in scatteri pci pcscatter function {
+    foreach _vf of local _pt_literal {
         if strpos(`"`json_spec'"', `""type":"`_vf'""') > 0 local _varfree = 1
     }
     local _dash_placeholder = 0

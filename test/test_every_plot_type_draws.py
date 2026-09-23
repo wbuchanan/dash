@@ -48,7 +48,7 @@ _DATA = {
 
 _RANGE_TYPES = {"rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
                 "rcapsym", "rscatter", "tsrline"}
-_PC_VAR_TYPES = {"pcspike", "pcarrow", "pcbarrow", "pcscatter"}
+_PC_VAR_TYPES = {"pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym"}
 _UNIVARIATE = {"histogram", "kdensity"}
 
 # Layers that need an OPTIONAL package. dash_setup installs these, and
@@ -130,6 +130,11 @@ def _plot_for(ptype):
                 "options": {}}
     if ptype == "pci":
         return {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
+                "options": {}}
+    if ptype == "pcarrowi":
+        # One record per arrow, y1 x1 y2 x2, as dash.ado writes
+        # `pcarrowi 20 3000 30 4000'.
+        return {"type": ptype, "values": [[20.0, 3000.0, 30.0, 4000.0]],
                 "options": {}}
     if ptype == "function":
         return {"type": ptype, "expr": "x", "options": {"range": "0 10"}}

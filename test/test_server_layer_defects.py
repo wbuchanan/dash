@@ -70,7 +70,7 @@ _DF = pd.DataFrame({
 #: Every plot type dash accepts, with the spec shape `dash.ado' writes for it.
 _RANGE = {"rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
           "rcapsym", "rscatter", "tsrline"}
-_PC = {"pcspike", "pcarrow", "pcbarrow", "pcscatter"}
+_PC = {"pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym"}
 
 #: Derived from the dispatch tables, not written by hand: a plot type added
 #: to the code is in every sweep here and in test_server_facets.py the same
@@ -91,6 +91,12 @@ def plot_for(ptype, options=None, **extra):
              "y2var": "price", "x2var": "foreign", "options": o}
     elif ptype in ("scatteri", "pci"):
         p = {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
+             "options": o}
+    elif ptype == "pcarrowi":
+        # dash.ado writes `pcarrowi 20 3000 30 4000 25 2000 22 3500' as one
+        # record per arrow, in twoway's order: y1 x1 y2 x2.
+        p = {"type": ptype, "values": [[20.0, 3000.0, 30.0, 4000.0],
+                                       [25.0, 2000.0, 22.0, 3500.0]],
              "options": o}
     elif ptype == "function":
         p = {"type": ptype, "expr": "x^2", "options": o}

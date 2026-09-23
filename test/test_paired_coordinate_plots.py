@@ -131,14 +131,29 @@ class TestEveryPairedCoordinateTypeDraws:
         assert isinstance(len(fig.renderers), int)
 
 
+def _branch_family(src, parser):
+    """The plot types the branch that calls *parser* is chosen for.
+
+    Since WP-22 (TR-22.4) each branch tests a family list,
+    `` `: list ptype in _pt_pc' ``, defined once in
+    ``_dash_plottype_families``, rather than a string inlist() of names --
+    so the names are read from the family the branch names."""
+    import re
+    i = src.index(parser + " `varpart'")
+    fams = re.findall(r"`: list ptype in (_pt_\w+)'", src[max(0, i - 300):i])
+    assert fams, f"the branch calling {parser} is not chosen by a family list"
+    m = re.search(r'^\s*c_local\s+%s\s+"([^"]*)"' % re.escape(fams[-1]),
+                  src, re.M)
+    assert m, f"family {fams[-1]} is not defined"
+    return m.group(1).split()
+
+
 class TestDashAdoRoutesPcscatterAsVariables:
     def test_pcscatter_is_parsed_with_the_four_variable_types(self):
         with open(os.path.join(_HERE, "..", "dash.ado"),
                   encoding="utf-8") as fh:
             src = fh.read()
-        i = src.index("_dash_parse_varpart_4v `varpart'")
-        branch = src[max(0, i - 300):i]
-        assert '"pcscatter"' in branch, (
+        assert "pcscatter" in _branch_family(src, "_dash_parse_varpart_4v"), (
             "pcscatter is still routed to the literal-coordinate parser, so "
             "its variable names are written into the spec as bare "
             "identifiers inside a JSON array"
@@ -148,8 +163,7 @@ class TestDashAdoRoutesPcscatterAsVariables:
         with open(os.path.join(_HERE, "..", "dash.ado"),
                   encoding="utf-8") as fh:
             src = fh.read()
-        i = src.index('_dash_parse_varpart_any `varpart\'')
-        head = src[max(0, i - 300):i]
-        assert '"pcscatter"' not in head, (
+        assert "pcscatter" not in _branch_family(src,
+                                                 "_dash_parse_varpart_any"), (
             "pcscatter takes four variables, not literal coordinates"
         )

@@ -6,9 +6,9 @@
   "how": "one `capture noisily twoway ...` per probe, rc and the joined message recorded; `graph query <style>` output parsed for the vocabularies (this Stata stores nothing in r() for it); `confirm numeric format` for the format probes",
   "finding": "twoway never rejects a bad style NAME: it prints `(note: named style X not found in class Y, default attributes used)` and draws with the default (rc 0). It rejects bad numbers, ranges, enums and unknown variables (rc 198/125/126/121/122/111/4026).",
   "counts": {
-   "twoway": 248,
-   "twoway_rc0": 188,
-   "twoway_rejected": 60,
+   "twoway": 264,
+   "twoway_rc0": 201,
+   "twoway_rejected": 63,
    "formats": 28,
    "vocab": {
     "colorstyle": 1335,
@@ -22,7 +22,10 @@
     "linestyle": 76,
     "gsizestyle": 47
    }
-  }
+  },
+  "additions": [
+   "23sep2026 (WP-22 TR-22.3): clwidth_1-8 and mlabangle_1-8, drawn with `set graphics off' in the same way; clwidth(-1) is refused only where the connecting line is drawn (bar: rc 0), mlabangle(400) only where marker labels are drawn (line: rc 0)"
+  ]
  },
  "vocab": {
   "colorstyle": [
@@ -3860,6 +3863,134 @@
    "command": "twoway scatter mpg weight, ytitle(\"T\", orientation(bogus))",
    "rc": 0,
    "message": "(note: named style bogus not found in class tb_orientstyle, default attributes used) (note: named style bogus not found in class anglestyle, default attributes used)"
+  },
+  {
+   "id": "clwidth_1",
+   "option": "clwidth",
+   "value": "abc",
+   "command": "twoway line mpg weight, clwidth(abc)",
+   "rc": 0,
+   "message": "(note: named style abc not found in class linewidth, default attributes used) (note: linewidth not found in scheme, default attributes used)"
+  },
+  {
+   "id": "clwidth_2",
+   "option": "clwidth",
+   "value": "*2",
+   "command": "twoway line mpg weight, clwidth(*2)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "clwidth_3",
+   "option": "clwidth",
+   "value": "-1",
+   "command": "twoway line mpg weight, clwidth(-1)",
+   "rc": 198,
+   "message": "gm_linewidth must be between 0.000 and 1.0e+04"
+  },
+  {
+   "id": "clwidth_4",
+   "option": "clwidth",
+   "value": "vvvthick",
+   "command": "twoway line mpg weight, clwidth(vvvthick)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "clwidth_5",
+   "option": "clwidth",
+   "value": "2",
+   "command": "twoway line mpg weight, clwidth(2)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "clwidth_6",
+   "option": "clwidth",
+   "value": "0",
+   "command": "twoway line mpg weight, clwidth(0)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "clwidth_7",
+   "option": "clwidth",
+   "value": "none",
+   "command": "twoway line mpg weight, clwidth(none)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "clwidth_8",
+   "option": "clwidth",
+   "value": "-1",
+   "command": "twoway bar mpg weight, clwidth(-1)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "mlabangle_1",
+   "option": "mlabangle",
+   "value": "abc",
+   "command": "twoway scatter mpg weight, mlabel(make) mlabangle(abc)",
+   "rc": 0,
+   "message": "(note: named style abc not found in class anglestyle, default attributes used)"
+  },
+  {
+   "id": "mlabangle_2",
+   "option": "mlabangle",
+   "value": "45",
+   "command": "twoway scatter mpg weight, mlabel(make) mlabangle(45)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "mlabangle_3",
+   "option": "mlabangle",
+   "value": "-30",
+   "command": "twoway scatter mpg weight, mlabel(make) mlabangle(-30)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "mlabangle_4",
+   "option": "mlabangle",
+   "value": "400",
+   "command": "twoway scatter mpg weight, mlabel(make) mlabangle(400)",
+   "rc": 198,
+   "message": "textangle must be between -360.000 and 360.000"
+  },
+  {
+   "id": "mlabangle_5",
+   "option": "mlabangle",
+   "value": "1e308",
+   "command": "twoway scatter mpg weight, mlabel(make) mlabangle(1e308)",
+   "rc": 111,
+   "message": "variable z_ not found"
+  },
+  {
+   "id": "mlabangle_6",
+   "option": "mlabangle",
+   "value": "Vertical",
+   "command": "twoway scatter mpg weight, mlabel(make) mlabangle(Vertical)",
+   "rc": 0,
+   "message": "(note: named style Vertical not found in class anglestyle, default attributes used)"
+  },
+  {
+   "id": "mlabangle_7",
+   "option": "mlabangle",
+   "value": "vertical",
+   "command": "twoway scatter mpg weight, mlabel(make) mlabangle(vertical)",
+   "rc": 0,
+   "message": ""
+  },
+  {
+   "id": "mlabangle_8",
+   "option": "mlabangle",
+   "value": "400",
+   "command": "twoway line mpg weight, mlabel(make) mlabangle(400)",
+   "rc": 0,
+   "message": ""
   }
  ]
 }

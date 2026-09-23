@@ -98,6 +98,9 @@ _AFFECTED = [
     ("map_pcspike",   ("y", "x", "y2", "x2")),
     ("map_pcarrow",   ("y", "x", "y2", "x2")),
     ("map_pcbarrow",  ("y", "x", "y2", "x2")),
+    # WP-22: pccapsym rebuilds a shorter source too (the dropna'd spike and
+    # its markers), so it masks by the view before any row goes.
+    ("map_pccapsym",  ("y", "x", "y2", "x2")),
 ]
 
 _ALIGNED_ALREADY = [

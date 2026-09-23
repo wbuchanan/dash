@@ -211,5 +211,365 @@ assert `: list posof "weight"  in _p1a48_vars' > 0
 assert `: list posof "foreign" in _p1a48_vars' > 0
 display "P1A-48 PASS: _dash_extract_vars includes colorvar variable"
 
+// ================================================================
+// P1A-49..57 -- the twoway plot types dash refused (WP-22 TR-22.1, TR-22.4)
+//
+// Measured 23sep2026 with the console binary: twoway draws contour,
+// contourline, pcarrowi and pccapsym (rc 0) and takes no abbreviation of
+// any of them ("pccapsy is not a twoway plot type", r(198); `con' is
+// connected, and cont .. contou are not plot types).  dash answered all
+// four with r(198) "unrecognised plot type" and its Supported: list.
+// pcarrowi and pccapsym are drawn now.  contour and contourline draw a
+// surface interpolated over a grid -- another data model -- and are
+// refused as what they are, with what to use instead.
+// ================================================================
+do "cert_helpers.do"
+
+// Run one command under a log of its own, at a linesize that keeps each
+// message on one line, and hand back its rc and the log.
+capture program drop _p1a_logrun
+program define _p1a_logrun, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_p1a_run.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _p1alog
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_p1alog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _p1alog
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// ================================================================
+// P1A-49 -- twoway contour: refused as a type dash does not draw
+// ================================================================
+sysuse auto, clear
+dash clear
+_p1a_logrun "dash contour mpg weight length, name(p1a49)"
+assert r(rc) == 198
+local lg49 "`r(log)'"
+cert_file_has "`lg49'", needle("dash: 'contour' is a twoway plot type dash does not draw: it needs a surface interpolated over a grid. Use Stata's own twoway contour, or dash scatter y x, colorvar(z) to colour each point by z.")
+assert r(found) == 1
+cert_file_has "`lg49'", needle("unrecognised plot type")
+assert r(found) == 0
+cert_file_has "`lg49'", needle("Supported:")
+assert r(found) == 0
+assert "${dash_graph_registry}" == ""
+display "P1A-49 PASS: twoway contour is refused, r(198), as a plot type dash does not draw, naming what to use instead"
+
+// ================================================================
+// P1A-50 -- twoway contourline: the same refusal, naming contourline
+// ================================================================
+_p1a_logrun "dash contourline mpg weight length, name(p1a50)"
+assert r(rc) == 198
+local lg50 "`r(log)'"
+cert_file_has "`lg50'", needle("dash: 'contourline' is a twoway plot type dash does not draw: it needs a surface interpolated over a grid. Use Stata's own twoway contourline, or dash scatter y x, colorvar(z) to colour each point by z.")
+assert r(found) == 1
+cert_file_has "`lg50'", needle("unrecognised plot type")
+assert r(found) == 0
+assert "${dash_graph_registry}" == ""
+display "P1A-50 PASS: twoway contourline is refused, r(198), as a plot type dash does not draw, naming what to use instead"
+
+// ================================================================
+// P1A-51 -- the refusal echoes the token as typed, holds inside a
+// multi-plot command, and is not given to a prefix twoway refuses too
+// ================================================================
+_p1a_logrun "dash CONTOUR mpg weight length, name(p1a51)"
+assert r(rc) == 198
+// Saved first: cert_file_has is rclass and replaces r(log).
+local lg51 "`r(log)'"
+cert_file_has "`lg51'", needle("dash: 'CONTOUR' is a twoway plot type dash does not draw")
+assert r(found) == 1
+cert_file_has "`lg51'", needle("Use Stata's own twoway contour, or")
+assert r(found) == 1
+_p1a_logrun "dash (scatter mpg weight) (contourline mpg weight length), name(p1a51b)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: 'contourline' is a twoway plot type dash does not draw")
+assert r(found) == 1
+// twoway takes no abbreviation of either name: "contourl is not a twoway
+// plot type".  A prefix stays an unrecognised plot type here as well.
+_p1a_logrun "dash contourl mpg weight length, name(p1a51c)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("unrecognised plot type 'contourl'")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P1A-51 PASS: the contour refusal echoes the token as typed, holds inside a multi-plot command, and is not given to a prefix"
+
+// ================================================================
+// P1A-52 -- pccapsym: four variables, the paired-coordinate keys
+// ================================================================
+_dash_process_segment "pccapsym mpg weight turn length, msymbol(D) mcolor(red) lcolor(navy) mlabel(make)" _pt52 _json52
+assert "`_pt52'" == "pccapsym"
+assert strpos(`"`_json52'"', `""type":"pccapsym","y1var":"mpg","x1var":"weight","y2var":"turn","x2var":"length""') > 0
+foreach k in msymbol mcolor lcolor mlabel {
+    assert strpos(`"`_json52'"', `""`k'":"') > 0
+}
+// twoway: "pccapsym requires 4 variables", r(102) for three, r(103) for five.
+capture _dash_process_segment "pccapsym mpg weight turn" _ptx _jx
+assert _rc == 102
+capture _dash_process_segment "pccapsym mpg weight turn length price" _ptx _jx
+assert _rc == 103
+display "P1A-52 PASS: pccapsym is parsed as four variables and written with the paired-coordinate keys"
+
+// ================================================================
+// P1A-53 -- pcarrowi: twoway's immediate values, one record per arrow
+//
+// #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ... is written as
+// [y1,x1,y2,x2] or [y1,x1,y2,x2,"label",clock].  Numbers are rewritten as
+// JSON numbers (.5 is 0.5, 1d3 is 1000), "." and .a are null, and a label
+// has every character JSON or a Stata macro could misread escaped: the
+// apostrophe is written as a backslash and u0027, so no label can close a
+// compound quote.  The backslash is char(92) here, never typed.
+// ================================================================
+local bs = char(92)
+_dash_process_segment `"pcarrowi 0 0 0 1 (3) "3 o'clock" 0 0 1 0 (12) "12 o'clock""' _pt53 _json53
+assert "`_pt53'" == "pcarrowi"
+assert strpos(`"`_json53'"', `""values":[[0,0,0,1,"3 o`bs'u0027clock",3],[0,0,1,0,"12 o`bs'u0027clock",12]]"') > 0
+_dash_process_segment "pcarrowi 20 3000 30 4000" _pt53 _json53
+assert strpos(`"`_json53'"', `""values":[[20,3000,30,4000]]"') > 0
+_dash_process_segment "pcarrowi .5 -.5 1e3 . +2 1d3 .a 7 (9)" _pt53 _json53
+assert strpos(`"`_json53'"', `""values":[[0.5,-0.5,1000,null],[2,1000,null,7,"",9]]"') > 0
+_dash_process_segment `"pcarrowi 1 2 3 4 "A" 5 6 7 8 `"say "hi""' 9 9 9 9 ( 12 )"' _pt53 _json53
+assert strpos(`"`_json53'"', `""values":[[1,2,3,4,"A",null],[5,6,7,8,"say \"hi\"",null],[9,9,9,9,"",12]]"') > 0
+// A clock position twoway accepts that is not a whole number is carried
+// as written; the renderer draws it at 3 and says so.
+_dash_process_segment "pcarrowi 0 0 0 1 (3.5) 0 0 1 0 (012)" _pt53 _json53
+assert strpos(`"`_json53'"', `""values":[[0,0,0,1,"",3.5],[0,0,1,0,"",12]]"') > 0
+display "P1A-53 PASS: pcarrowi's immediate values are written one record per arrow, with labels and clock positions"
+
+// ================================================================
+// P1A-54 -- pcarrowi refuses what twoway refuses, r(198)
+//
+// twoway: "invalid point," for a token that is not a number where a
+// coordinate belongs -- a label or clock position before the first arrow,
+// a second label, a label inside a record; "invalid position, 13" for a
+// clock position outside 0..12; "invalid observation number" for no arrow.
+// ================================================================
+_p1a_logrun "dash pcarrowi 0 0 0 abc, name(p1a54)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pcarrowi takes four numbers for each arrow, #y1 #x1 #y2 #x2; 'abc' is not a number.")
+assert r(found) == 1
+_p1a_logrun "dash pcarrowi (3) 0 0 0 1, name(p1a54b)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("'(3)' is not a number.")
+assert r(found) == 1
+_p1a_logrun `"dash pcarrowi 0 0 0 1 (13) "x", name(p1a54c)"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pcarrowi: invalid position, 13; a clock position is a number from 0 to 12.")
+assert r(found) == 1
+_p1a_logrun `"dash pcarrowi "A", name(p1a54d)"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pcarrowi needs at least one arrow, four numbers #y1 #x1 #y2 #x2.")
+assert r(found) == 1
+foreach seg in `"pcarrowi 0 0 0 1 "A" "B" 1 1 2 2"' `"pcarrowi 0 0 "A" 0 1"' ///
+               "pcarrowi 0 0 0 1 (-1)" "pcarrowi 0 0 0 1 (abc)" ///
+               "pcarrowi 0 0 0 1 1 1 2 2x" "pcarrowi 1+1 0 0 1" {
+    capture _dash_process_segment `"`seg'"' _ptx _jx
+    assert _rc == 198
+}
+assert "${dash_graph_registry}" == ""
+display "P1A-54 PASS: pcarrowi refuses a non-number where a coordinate belongs, a clock position outside 0..12, and an empty list"
+
+// ================================================================
+// P1A-55 -- what is left at the end, too little for an arrow, is dropped
+// as twoway drops it (measured: `pcarrowi 0 0 0 1 0 0 1' draws one
+// arrow, rc 0) -- and dash says so
+// ================================================================
+dash clear
+_p1a_logrun "dash pcarrowi 0 0 0 1 0 0 1, name(p1a55)"
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("dash: pcarrowi ignored '0 0 1' at the end, too little for another arrow (#y1 #x1 #y2 #x2), as twoway does.")
+assert r(found) == 1
+assert strpos(`"${dash_json_p1a55}"', `""values":[[0,0,0,1]]"') > 0
+_dash_process_segment `"pcarrowi 0 0 0 1 "x" (3)"' _pt55 _json55
+assert strpos(`"`_json55'"', `""values":[[0,0,0,1,"x",null]]"') > 0
+dash clear
+display "P1A-55 PASS: an incomplete arrow at the end is dropped, as twoway drops it, with a note"
+
+// ================================================================
+// P1A-56 -- TR-22.4: every plot type is routed by list membership
+//
+// The range test was a string inlist() of ptype and nine literals,
+// Stata's limit: a tenth range type would have been r(130).  Each family
+// is a word list now (_dash_plottype_families).  Every type dash draws is
+// routed here to its varlist parser and JSON keys, and a tenth and an
+// eleventh range member are found by `: list ... in' where inlist() of
+// the same membership is r(130).
+// ================================================================
+sysuse auto, clear
+quietly generate double lo = mpg - 3
+quietly generate double hi = mpg + 3
+local fam_var   "histogram kdensity"
+local fam_yvar1 "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
+local fam_y1var "pcspike pcarrow pcbarrow pcscatter pccapsym"
+local fam_yvar  "scatter line connected area bar spike lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci dot dropline tsline mspline mband"
+local n56 = 0
+foreach t of local fam_var {
+    _dash_process_segment "`t' mpg" _pt56 _js56
+    assert "`_pt56'" == "`t'"
+    assert strpos(`"`_js56'"', `""type":"`t'","var":"mpg""') > 0
+    local ++n56
+}
+foreach t of local fam_yvar1 {
+    _dash_process_segment "`t' lo hi weight" _pt56 _js56
+    assert "`_pt56'" == "`t'"
+    assert strpos(`"`_js56'"', `""type":"`t'","yvar1":"lo","yvar2":"hi","xvar":"weight""') > 0
+    local ++n56
+}
+foreach t of local fam_y1var {
+    _dash_process_segment "`t' mpg weight turn length" _pt56 _js56
+    assert "`_pt56'" == "`t'"
+    assert strpos(`"`_js56'"', `""type":"`t'","y1var":"mpg","x1var":"weight","y2var":"turn","x2var":"length""') > 0
+    local ++n56
+}
+foreach t of local fam_yvar {
+    _dash_process_segment "`t' mpg weight" _pt56 _js56
+    assert "`_pt56'" == "`t'"
+    assert strpos(`"`_js56'"', `""type":"`t'","yvar":"mpg","xvar":"weight""') > 0
+    local ++n56
+}
+_dash_process_segment "scatteri 20 3000" _pt56 _js56
+assert strpos(`"`_js56'"', `""type":"scatteri","values":[[20,3000]]"') > 0
+_dash_process_segment "pci 20 3000 30 4000" _pt56 _js56
+assert strpos(`"`_js56'"', `""type":"pci","values":[[20,3000],[30,4000]]"') > 0
+_dash_process_segment "pcarrowi 20 3000 30 4000" _pt56 _js56
+assert strpos(`"`_js56'"', `""type":"pcarrowi","values":[[20,3000,30,4000]]"') > 0
+_dash_process_segment "function y=x" _pt56 _js56
+assert strpos(`"`_js56'"', `""type":"function","expr":"x""') > 0
+local n56 = `n56' + 4
+assert `n56' == 40
+_dash_plottype_families
+assert "`_pt_univar'"  == "histogram kdensity"
+assert "`_pt_range'"   == "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
+assert "`_pt_pc'"      == "pcspike pcarrow pcbarrow pcscatter pccapsym"
+assert "`_pt_literal'" == "scatteri pci pcarrowi function"
+local _pt_range "`_pt_range' zz10 zz11"
+foreach ptype in rarea tsrline zz10 zz11 {
+    assert `: list ptype in _pt_range'
+}
+local ptype "zz12"
+assert !`: list ptype in _pt_range'
+capture noisily display inlist("zz10", "rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym", "rscatter", "tsrline", "zz10")
+assert _rc == 130
+display "P1A-56 PASS: all 40 plot types are routed by family lists, and a tenth range member is found where inlist() would be r(130)"
+
+// ================================================================
+// P1A-57 -- the Mata table: the full names only, as twoway takes them
+// ================================================================
+foreach t in pccapsym pcarrowi pcarrow pci scatteri pcspike {
+    mata: _dash_expand_plottype("`t'", "_pt57")
+    assert "`_pt57'" == "`t'"
+}
+mata: _dash_expand_plottype("PCCAPSYM", "_pt57")
+assert "`_pt57'" == "pccapsym"
+foreach t in pc pcc pcca pccap pccaps pccapsy pcarr pcarro contour contourline {
+    mata: _dash_expand_plottype("`t'", "_pt57")
+    assert "`_pt57'" == ""
+}
+display "P1A-57 PASS: pccapsym and pcarrowi expand by their full names only, as twoway takes them"
+
+// ================================================================
+// P1A-58 -- the Mata helpers behind P1A-49..57, one by one
+// Every expected backslash is char(92), never typed.
+// ================================================================
+mata:
+bs = char(92)
+q  = char(34)
+// _dash_undrawn_plottype: the five names, any case, and nothing else.
+assert(_dash_undrawn_plottype("contour") == "contour")
+assert(_dash_undrawn_plottype(" CONTOURLINE ") == "contourline")
+assert(_dash_undrawn_plottype("heatmap") == "heatmap")
+assert(_dash_undrawn_plottype("RPCAP") == "rpcap")
+assert(_dash_undrawn_plottype("rpspike") == "rpspike")
+assert(_dash_undrawn_plottype("contourl") == "")
+assert(_dash_undrawn_plottype("heatma") == "")
+assert(_dash_undrawn_plottype("rpca") == "")
+assert(_dash_undrawn_plottype("scatter") == "")
+assert(_dash_undrawn_plottype("") == "")
+// _json_escape: the backslash first, the quote, the five short forms,
+// the rest of C0 as u00XX, and the three a macro could misread.
+assert(_json_escape("a" + bs + "b") == "a" + bs + bs + "b")
+assert(_json_escape(q) == bs + q)
+assert(_json_escape(char(8) + char(9) + char(10) + char(12) + char(13)) == bs + "b" + bs + "t" + bs + "n" + bs + "f" + bs + "r")
+assert(_json_escape(char(1) + char(27) + char(31)) == bs + "u0001" + bs + "u001b" + bs + "u001f")
+assert(_json_escape(char(96) + char(36) + char(39)) == bs + "u0060" + bs + "u0024" + bs + "u0027")
+assert(_json_escape("plain text 123") == "plain text 123")
+// _dash_json_number: full precision, and a leading zero JSON requires.
+assert(_dash_json_number(.5) == "0.5")
+assert(_dash_json_number(-.25) == "-0.25")
+assert(_dash_json_number(3000) == "3000")
+assert(_dash_json_number(0) == "0")
+assert(strtoreal(_dash_json_number(1/3)) == 1/3)
+// _dash_imm_number: numbers, the missing literals, and nothing else.
+assert(_dash_imm_number("1e3", 1) == "1000")
+assert(_dash_imm_number(".", 1) == "null")
+assert(_dash_imm_number(".z", 1) == "null")
+assert(_dash_imm_number(".A", 1) == "")
+assert(_dash_imm_number("1+1", 1) == "")
+assert(_dash_imm_number("0x10", 1) == "")
+assert(_dash_imm_number("3", 2) == "")
+assert(_dash_imm_number("3", 3) == "")
+// _dash_imm_clock: a number from 0 to 12.
+assert(_dash_imm_clock("0") == "0")
+assert(_dash_imm_clock("012") == "12")
+assert(_dash_imm_clock("3.5") == "3.5")
+assert(_dash_imm_clock("12.000001") == "")
+assert(_dash_imm_clock("-1") == "")
+assert(_dash_imm_clock("") == "")
+// _dash_imm_tokens: bare words, "labels", `"compound"' labels that nest,
+// and (clock positions) that may hold blanks -- each with its raw text.
+raw = J(1, 0, "")
+txt = J(1, 0, "")
+kind = J(1, 0, 0)
+_dash_imm_tokens("1  -2 " + q + "a b" + q + " ( 3 ) " + char(96) + q + "x " + char(96) + q + "y" + q + char(39) + q + char(39) + " 4", raw, txt, kind)
+assert(kind == (1, 1, 2, 3, 2, 1))
+assert(txt == ("1", "-2", "a b", "3", "x " + char(96) + q + "y" + q + char(39), "4"))
+assert(raw[3] == q + "a b" + q)
+assert(raw[4] == "( 3 )")
+_dash_imm_tokens("", raw, txt, kind)
+assert(cols(raw) == 0 & cols(kind) == 0)
+end
+display "P1A-58 PASS: the Mata helpers read, escape and number immediate values as twoway does"
+
+// ================================================================
+// P1A-59 -- heatmap, rpcap and rpspike: twoway plot types in StataNow 19.5
+// that dash does not draw, refused by name with what to use instead
+// ================================================================
+// Measured 23sep2026: twoway heatmap z y x and twoway rpcap / rpspike
+// y ylow yhigh x run (rc 0) and take no abbreviation -- heat .. heatma,
+// rpc .. rpca and rpsp .. rpspik are not twoway plot types -- and dash
+// answered each as an unrecognised plot type (BR-22.1).
+sysuse auto, clear
+dash clear
+_p1a_logrun "dash heatmap price mpg weight, name(p1a59a)"
+assert r(rc) == 198
+local lg59a "`r(log)'"
+cert_file_has "`lg59a'", needle("dash: 'heatmap' is a twoway plot type dash does not draw: it colours the cells of a grid by z. Use Stata's own twoway heatmap, or dash scatter y x, colorvar(z) to colour each point by z.")
+assert r(found) == 1
+foreach p159 in rpcap rpspike {
+    local p159r = cond("`p159'" == "rpcap", "rcap", "rspike")
+    _p1a_logrun "dash `p159' mpg turn length weight, name(p1a59b)"
+    assert r(rc) == 198
+    local lg59b "`r(log)'"
+    cert_file_has "`lg59b'", needle("dash: '`p159'' is a twoway plot type dash does not draw: it marks a point on a range. Use Stata's own twoway `p159', or draw the two together: dash (`p159r' ylow yhigh x) (scatter y x).")
+    assert r(found) == 1
+}
+foreach p159 in heatma rpca rpspik {
+    _p1a_logrun "dash `p159' mpg turn length weight, name(p1a59c)"
+    assert r(rc) == 198
+    local lg59c "`r(log)'"
+    cert_file_has "`lg59c'", needle("unrecognised plot type")
+    assert r(found) == 1
+}
+assert "${dash_graph_registry}" == ""
+display "P1A-59 PASS: heatmap, rpcap and rpspike are refused, r(198), as twoway plot types dash does not draw; their prefixes stay unrecognised"
+
+capture erase "`c(tmpdir)'dash_p1a_run.log"
+
 display ""
 display "All syntax-based parser tests PASSED."

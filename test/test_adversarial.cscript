@@ -2080,6 +2080,112 @@ macro drop P2033_*
 capture dash clear
 assert "`p2033bad'" == "" & `p2033pyn' == 0
 display "P20-33 PASS: name(g1, replace) stores the graph as g1 -- with by(), on a new name, in every spelling -- and layout(), tabs(), link() and exclude() reach it"
+// ================================================================
+// P22 -- pcarrowi's immediate values (WP-22, a new input surface)
+// ================================================================
+// `pcarrowi #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ...' carries numbers,
+// clock positions and free text, which dash.ado reads token by token in
+// Mata (_dash_pc_immediate) and writes into the spec as JSON, and which the
+// renderer draws.  The three cases CLAUDE.md rule 18 asks for, against
+// that surface's own guards.
+
+// P22-01 -- tokens spelled to pass for a coordinate or a clock position:
+// SMCL, a hex literal, digits followed by letters, full-width and
+// Arabic-Indic digits, a clock position a hair past 12.  Each is refused
+// r(198), as twoway refuses it ("invalid point," / "invalid position,"),
+// the token shown as text, and nothing registered.
+capture dash clear
+_adv_p19_run "dash pcarrowi 0 0 0 {bf:INJMARKPA}, name(p2201)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("'{bf:INJMARKPA}' is not a number.")
+assert r(found) == 1
+foreach p2201t in 0x10 1e3x 12abc "`=uchar(65299)'" "`=uchar(1635)'" {
+    _adv_p19_run "dash pcarrowi 0 0 0 `p2201t', name(p2201b)"
+    assert r(rc) == 198
+    cert_file_has "`r(log)'", needle("is not a number.")
+    assert r(found) == 1
+}
+_adv_p19_run "dash pcarrowi 0 0 0 1 (12.000001), name(p2201c)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash: pcarrowi: invalid position, 12.000001;")
+assert r(found) == 1
+_adv_p19_run "dash pcarrowi 0 0 0 1 ({bf:INJMARKCP}), name(p2201d)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("invalid position, {bf:INJMARKCP};")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P22-01 PASS: pcarrowi refuses SMCL, hex, trailing letters and non-ASCII digits as coordinates, and a clock position past 12, echoed as text"
+
+// P22-02 -- a label written to break out: of its JSON string into the
+// spec (a quote, "], "type" and "expr" keys), into the page (</script>),
+// into Stata's display (SMCL), and through a control byte, a backslash,
+// a backtick, a dollar and an apostrophe.  The spec stays valid JSON with
+// one plot, of type pcarrowi, and the label one string read back exactly;
+// the page carries it as data.
+capture dash clear
+_adv_p19_run `"dash pcarrowi 0 0 0 1 (3) `"x"],"type":"function","expr":"__import__('os')" </script><script>alert(1)</script> {bf:X} \ "', name(p2202)"'
+assert r(rc) == 0
+assert "${dash_graph_registry}" == "p2202"
+python:
+import json
+from sfi import Macro
+_p2202 = json.loads(Macro.getGlobal("dash_json_p2202"))
+assert len(_p2202["plots"]) == 1, _p2202
+assert _p2202["plots"][0]["type"] == "pcarrowi", _p2202
+_want = ('x"],"type":"function","expr":"__import__(\'os\')" '
+         '</script><script>alert(1)</script> {bf:X} \\ ')
+assert _p2202["plots"][0]["values"] == [[0, 0, 0, 1, _want, 3]], _p2202
+end
+// The characters a command line cannot carry, straight into the encoder.
+// The expected escapes are built from char(92), never typed as backslashes.
+mata: _p2202s = "0 0 0 1 " + char(34) + "a" + char(1) + char(96) + char(36) + char(39) + char(92) + "b" + char(34)
+mata: _dash_pc_immediate(_p2202s)
+mata: _p2202bs = char(92)
+mata: _p2202w = "[[0,0,0,1," + char(34) + "a" + _p2202bs + "u0001" + _p2202bs + "u0060" + _p2202bs + "u0024" + _p2202bs + "u0027" + _p2202bs + _p2202bs + "b" + char(34) + ",null]]"
+mata: st_local("p2202m", strofreal(st_local("_pci_json") == _p2202w))
+assert `p2202m' == 1
+python:
+import json
+from sfi import Macro
+assert json.loads(Macro.getLocal("_pci_json")) == [[0, 0, 0, 1, "a" + chr(1) + chr(96) + chr(36) + chr(39) + chr(92) + "b", None]]
+end
+dash scatter mpg weight, name(p2202v)
+local p2202f "`c(tmpdir)'p2202.html"
+capture erase "`p2202f'"
+_adv_p19_run `"dash build, saving("`p2202f'") replace nobrowser"'
+assert r(rc) == 0
+cert_file_has "`p2202f'", needle("</script><script>alert(1)")
+assert r(found) == 0
+cert_file_has "`p2202f'", needle("__import__(")
+assert r(found) == 1
+capture erase "`p2202f'"
+capture dash clear
+display "P22-02 PASS: a pcarrowi label cannot leave its JSON string, reach the page as markup, or be read as Stata: valid spec, one plot, the label exact"
+
+// P22-03 -- 20,000 arrows, and a label of 200,000 characters: the encoder
+// is linear -- no quadratic append or join -- so both are written in
+// bounded time, every arrow read and the label whole.  And the command
+// itself, 2,000 arrows long, registers.
+mata: _p2203 = ("0 0 0 1 " * 20000) + char(34) + ("x" * 200000) + char(34)
+timer clear 22
+timer on 22
+mata: _dash_pc_immediate(_p2203)
+timer off 22
+quietly timer list 22
+local p2203t = r(t22)
+display "P22-03: 20,000 arrows and a 200,000-character label encoded in `p2203t' s"
+assert `p2203t' < 30
+assert "`_pci_err'" == ""
+assert `_pci_n' == 20000
+mata: st_local("p2203len", strofreal(strlen(st_local("_pci_json"))))
+assert `p2203len' > 200000
+mata: st_local("p2203cmd", "dash pcarrowi " + ("1 2 3 4 " * 2000) + ", name(p2203)")
+capture dash clear
+_adv_p19_run `"`p2203cmd'"'
+assert r(rc) == 0
+assert "${dash_graph_registry}" == "p2203"
+capture dash clear
+display "P22-03 PASS: 20,000 pcarrowi arrows and a 200,000-character label are encoded in bounded time; a 2,000-arrow command registers"
 
 capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p19.log"
@@ -2128,3 +2234,6 @@ display "  P20-30: layout() not one of its forms whole, an unregistered name, a 
 display "  P20-31: layout() placing a name twice (bs or name:row,col) → rc=198"
 display "  P20-32: A graph or KPI name holding __ (dash's own, as in g1__by__0) → rc=198"
 display "  P20-33: name(g1, replace) in any spelling, with by(), on a new name -> stored as g1, placed, tabbed, linked and excluded as g1"
+display "  P22-01: pcarrowi coordinates and clock positions spelled to pass (SMCL, hex, non-ASCII digits, 12.000001) -> rc=198, echoed as text"
+display "  P22-02: A pcarrowi label carrying JSON, </script>, SMCL and control bytes -> valid spec, one plot, the label exact, data in the page"
+display "  P22-03: 20,000 pcarrowi arrows and a 200,000-character label -> encoded in bounded time"

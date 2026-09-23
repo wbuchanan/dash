@@ -326,7 +326,11 @@ class TestEveryDashOnlyOptionIsDocumented:
                    "yla2": "ylabel2", "ysc2": "yscale2", "yti2": "ytitle2",
                    "t": "t1title", "b": "b1title", "l": "l1title",
                    "r": "r1title", "bins": "bin", "sc": "scatter",
-                   "li": "line", "hist": "histogram"}
+                   "li": "line", "hist": "histogram",
+                   # How Stata's -syntax- spells the argument form of an
+                   # option that may also be written bare: SORT SORT1() is
+                   # sort and sort(varlist), as twoway declares them.
+                   "sort1": "sort"}
         undocumented = []
         for name in sorted(_ado_declarations()):
             if name in twoway or name in documented:

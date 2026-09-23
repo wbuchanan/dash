@@ -1695,6 +1695,56 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
     return text, opts
 
 
+#: Stata's anglestyles: the anglestyle-*.style files it installs under
+#: ado/base/style, each name with the ``set val`` its file declares.  The
+#: names are case-sensitive, as Stata's style names are -- measured
+#: 23sep2026, ``mlabangle(Vertical)`` is "named style Vertical not found in
+#: class anglestyle" and draws horizontal.
+_DASH_ANGLESTYLES = {
+    "default": 0.0, "zero": 0.0, "horizontal": 0.0, "forty_five": 45.0,
+    "ninety": 90.0, "vertical": 90.0, "rhorizontal": 180.0,
+    "rvertical": 270.0, "two_seventy": 270.0, "stdarrow": 28.64,
+}
+
+
+def _dash_anglestyle_degrees(raw) -> "float | None":
+    """Degrees, counter-clockwise, for a Stata anglestyle, or ``None``.
+
+    An anglestyle is a name in :data:`_DASH_ANGLESTYLES` or a number of
+    degrees from -360 to 360, twoway's own bounds (measured: mlabangle(400)
+    is "textangle must be between -360.000 and 360.000", r(198), where the
+    label is drawn).  Blanks around the value are dropped, as Stata drops
+    them, and a number is read only in the plain decimal or exponent
+    spelling Stata writes, in ASCII digits, so ``inf``, ``nan``, ``45deg``
+    and a number in another script's digits (which Python's float() reads
+    and Stata does not) are not angles.  Bokeh measures a text angle
+    counter-clockwise, as Stata does.
+
+    Args:
+        raw: The option's value, as written.
+
+    Returns:
+        The angle in degrees, or ``None`` when *raw* is not an anglestyle.
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if text in _DASH_ANGLESTYLES:
+        return _DASH_ANGLESTYLES[text]
+    if len(text) > 32 or not re.fullmatch(
+            r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?", text):
+        return None
+    try:
+        deg = float(text)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(deg) or not -360.0 <= deg <= 360.0:
+        return None
+    return deg
+
+
 def _parse_axis_angle(raw: str) -> "float | None":
     """Extract angle sub-option from a Stata xlabel()/ylabel() option string.
 
@@ -4129,17 +4179,45 @@ class GlyphMapper:
         renderer: Any,
         options: dict[str, str],
     ) -> None:
-        """Apply lcolor/lwidth/lpattern/lalpha options to a line-type glyph renderer."""
+        """Apply lcolor/lwidth/lpattern/lalpha options to a line-type glyph renderer.
+
+        ``clcolor()``, ``clpattern()`` and ``clwidth()`` -- twoway's
+        connecting-line options (WP-22) -- style the line in place of
+        ``lcolor()``, ``lpattern()`` and ``lwidth()``, and of ``color()``,
+        whenever they are given and whatever the order they were typed in:
+        twoway_yxview_parse.class factors the cl options after the l
+        options, so ``lcolor(red) clcolor(blue)`` and ``clcolor(blue)
+        lcolor(red)`` both draw a blue line (measured).  dash.ado writes
+        them only onto the types whose connecting line twoway styles with
+        them (``_dash_fold_cl``), and on those types this is called for the
+        connecting line alone -- never for a marker, whose border twoway's
+        cl options never reach.  An unknown value is named as the user
+        wrote it and the scheme's default drawn, which is twoway's "default
+        attributes used": lcolor() does not stand in for a bad clcolor().
+        """
         glyph = renderer.glyph
         # The name the user wrote, for the note: color() is folded onto
         # lcolor() below, and a note reading lcolor(x) for a color(x) the
         # user never typed would send them to the wrong option.
-        _lc_name = ("lcolor" if str(options.get("lcolor", "") or "").strip()
+        _clc = str(options.get("clcolor", "") or "").strip()
+        _lc_name = ("clcolor" if _clc
+                    else "lcolor" if str(options.get("lcolor", "") or "").strip()
                     else "color")
         # A bar's own blcolor() is applied by map_bar just before this call,
         # so color() must not stand in for lcolor() and overwrite it.
         if not str(options.get("blcolor", "") or "").strip():
             options = _with_color_alias(options, "lcolor")
+        # The connecting-line options take the place of the l options, and
+        # the notes below name whichever was written.
+        _lw_name, _lp_name, _cl_over = "lwidth", "lpattern", {}
+        if _clc:
+            _cl_over["lcolor"] = options["clcolor"]
+        if str(options.get("clwidth", "") or "").strip():
+            _cl_over["lwidth"], _lw_name = options["clwidth"], "clwidth"
+        if str(options.get("clpattern", "") or "").strip():
+            _cl_over["lpattern"], _lp_name = options["clpattern"], "clpattern"
+        if _cl_over:
+            options = dict(options, **_cl_over)
         if "lcolor" in options:
             if OptionTranslator._means_no_color(options["lcolor"]):
                 # Stata draws nothing; this used to resolve through the
@@ -4162,12 +4240,12 @@ class GlyphMapper:
             try:
                 glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
             except ValueError:
-                _dash_style_note("lwidth", options["lwidth"], "line width")
+                _dash_style_note(_lw_name, options["lwidth"], "line width")
         if "lpattern" in options:
             try:
                 glyph.line_dash = self.tr.translate_lpattern(options["lpattern"])
             except ValueError:
-                _dash_style_note("lpattern", options["lpattern"],
+                _dash_style_note(_lp_name, options["lpattern"],
                                  "line pattern")
         # lalpha: standalone line opacity, 0-100%
         if "lalpha" in options:
@@ -4824,6 +4902,12 @@ class GlyphMapper:
                                 for v in raw]
                 source.data[text_col] = rendered
 
+        # mlabformat() (WP-22): the labels in the format the user gave.
+        _mfmt = str(options.get("mlabformat", "") or "").strip()
+        if _mfmt:
+            text_col = self._mlabformat_column(source, mlabel_var, _mfmt,
+                                               text_col)
+
         kwargs: dict[str, Any] = dict(
             x=xvar,
             y=yvar,
@@ -4833,6 +4917,19 @@ class GlyphMapper:
             x_offset=4,
             y_offset=4,
         )
+
+        # mlabangle() (WP-22): an anglestyle, drawn counter-clockwise as
+        # Stata draws it.  dash.ado refuses a number outside -360..360 where
+        # twoway refuses it; a name that is not an anglestyle is named and
+        # the label drawn horizontal, as twoway notes it and draws it.
+        if str(options.get("mlabangle", "") or "").strip():
+            _deg = _dash_anglestyle_degrees(options["mlabangle"])
+            if _deg is None:
+                _dash_style_note("mlabangle", options["mlabangle"], "angle",
+                                 "horizontal")
+            else:
+                kwargs["angle"] = math.radians(_deg)
+                kwargs["angle_units"] = "rad"
 
         # An unknown colour, size, position or gap is NAMED and the default
         # kept; each of these was an `except ValueError: pass'.
@@ -4889,6 +4986,69 @@ class GlyphMapper:
 
         ls = LabelSet(**kwargs)
         fig.add_layout(ls)
+
+    def _mlabformat_column(self, source: "ColumnDataSource", var: str,
+                           fmt: str, default_col: str) -> str:
+        """The label column twoway's ``mlabformat(fmt)`` draws.
+
+        Measured 23sep2026 from twoway's SVG: ``mlabformat(%9.2f)`` labels
+        22 as 22.00, ``%9.1fc`` 4099 as 4,099.0 and ``%9.2e`` as 4.10e+03;
+        on a string variable, or one carrying value labels, the labels are
+        the same whatever the format; and ``mlabformat(abc)`` is accepted
+        without a word and changes nothing.  A ``%f`` or ``%e`` format, with
+        or without ``c``, is drawn by ``_format_stata_numeric``, which
+        follows Stata's own width fallbacks.  Any other format -- ``%g``,
+        whose significant digits and leading zero Stata sets by the width, a
+        date or string format, or text that is no format -- and any format
+        on a date variable is named once and the labels drawn without it:
+        naming it is how nothing is dropped in silence.
+
+        The column is keyed by the variable AND the format: the saved page
+        shares one source among its layers, and a column keyed by the
+        variable alone would hand a second layer the first layer's format.
+
+        Args:
+            source:      The layer's source; the column is added to it.
+            var:         The label variable.
+            fmt:         The format, as written.
+            default_col: The column the labels come from without the format.
+
+        Returns:
+            The column to label from: the formatted one, or *default_col*.
+        """
+        raw = list(source.data[var])
+        if any(isinstance(v, str) for v in raw):
+            return default_col
+        labelset = getattr(self, "value_label_names", {}).get(var, "")
+        vlabels = (getattr(self, "value_labels", {}).get(labelset, {})
+                   if labelset else {})
+        if not vlabels:
+            _cand = getattr(self, "value_labels", {}).get(var, {})
+            vlabels = _cand if isinstance(_cand, dict) else {}
+        if vlabels:
+            return default_col
+        if getattr(self, "date_vars", {}).get(var):
+            _dash_warn_once(
+                ("mlabformat", fmt, "date variable"),
+                f"dash: mlabformat({_dash_display(fmt)}) is not applied to "
+                f"the date variable {_dash_display(var)}; its labels are "
+                f"drawn as dates.",
+            )
+            return default_col
+        # ASCII only: _parse_stata_numeric_fmt's \d also reads another
+        # script's digits, which Stata does not take as a format.
+        if not fmt.isascii() or _parse_stata_numeric_fmt(fmt) is None:
+            _dash_warn_once(
+                ("mlabformat", fmt, "not reproduced"),
+                f"dash: mlabformat({_dash_display(fmt)}) is not a display "
+                f"format dash reproduces; the labels are drawn without it.",
+            )
+            return default_col
+        col = f"__mlabel__{var}__fmt_{fmt.encode('utf-8').hex()}"
+        if col not in source.data:
+            source.data[col] = [_format_stata_numeric(v, fmt).strip()
+                                for v in raw]
+        return col
 
     # ------------------------------------------------------------------
     # Phase 1A plot types
@@ -8124,18 +8284,29 @@ class GlyphMapper:
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
 
-        # Add Arrow head annotations for each row
-        for _, row in clean.iterrows():
-            arrow = Arrow(
+        # One Arrow head annotation per row, added to the figure at once.
+        # One add_layout() per row appends to a Bokeh list property, which
+        # copies the list every time: measured by the WP-22 review, 1,000
+        # arrows took 1.45 s and 8,000 took 46 s -- quadratic, and pcarrowi's
+        # list is as long as a command line allows.  The models, their order
+        # and every property are what add_layout() made.
+        _heads = [
+            Arrow(
                 end=OpenHead(size=10, line_color=color),
-                x_start=float(row[x1var]),
-                y_start=float(row[y1var]),
-                x_end=float(row[x2var]),
-                y_end=float(row[y2var]),
+                x_start=float(xs),
+                y_start=float(ys),
+                x_end=float(xe),
+                y_end=float(ye),
                 line_color=color,
                 line_width=arrow_lw,
             )
-            fig.add_layout(arrow)
+            for ys, xs, ye, xe in zip(clean[y1var].tolist(),
+                                      clean[x1var].tolist(),
+                                      clean[y2var].tolist(),
+                                      clean[x2var].tolist())
+        ]
+        if _heads:
+            fig.center = list(fig.center) + _heads
 
         return [seg]
 
@@ -8219,6 +8390,232 @@ class GlyphMapper:
             fig.add_layout(arrow)
 
         return [seg]
+
+    def map_pccapsym(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        x1var: str,
+        y2var: str,
+        x2var: str,
+        options: dict[str, str],
+        view=None,
+        color_idx: int = 0,
+    ) -> list:
+        """Add paired-coordinate spikes capped with a marker at each end.
+
+        ``twoway pccapsym y1 x1 y2 x2`` draws, for each observation, a spike
+        from (x1, y1) to (x2, y2) and the same marker symbol at both ends
+        (twoway_pccapsym.sthlp).  dash refused it with r(198) until WP-22.
+
+        The spike is :meth:`map_pcspike`'s segment and takes the line
+        options; the markers are :meth:`map_pcscatter`'s, one at each end,
+        and take the marker options.  As in twoway, ``lcolor()``,
+        ``lwidth()``, ``lpattern()`` and ``lalpha()`` style the spike and not
+        the markers' outlines -- ``mlcolor()`` and ``mlwidth()`` are the
+        outline's own -- and ``color()`` colours both.  ``mlabel()`` labels
+        the first coordinate, (x1, y1), where twoway puts a label without
+        ``headlabel``.
+
+        Args:
+            fig:       Bokeh Figure object.
+            source:    The layer's ColumnDataSource.
+            y1var:     Name of the start y variable.
+            x1var:     Name of the start x variable.
+            y2var:     Name of the end y variable.
+            x2var:     Name of the end x variable.
+            options:   Translated plot-level options dict.
+            view:      The layer's CDSView, or None.
+            color_idx: Zero-based plot index, for the scheme's colour cycle.
+
+        Returns:
+            ``[spike Segment renderer, marker Scatter renderer]``.
+        """
+        coords = list(dict.fromkeys([y1var, x1var, y2var, x2var]))
+        clean = pd.DataFrame({c: source.data[c] for c in coords})
+        # The label column rides along -- the ONE extra column, so the source
+        # is the same whichever mode built the one handed in -- and a missing
+        # label never decides which rows are drawn.
+        _lab, _ = _dash_mlabel_names(options)
+        if _lab and _lab in source.data and _lab not in clean.columns:
+            clean[_lab] = list(source.data[_lab])
+        # Masked by the layer's own view BEFORE the rows are dropped: the
+        # view's filter is sized to the caller's source, and Bokeh applies
+        # it by position (see map_pcspike).
+        _pc_sel = self._view_mask(view, len(clean))
+        if _pc_sel is not None:
+            clean = clean[_pc_sel]
+        clean = clean.dropna(subset=coords)
+
+        # Arrays, not lists: tolist() turns a %td label column into
+        # Timestamps and NaT, and Bokeh writes NaT as a bare NaN, which no
+        # JSON reader takes -- the saved page failed to write (the WP-22
+        # review).  An array keeps its dtype and Bokeh encodes it as data.
+        seg_src = ColumnDataSource({c: clean[c].to_numpy()
+                                    for c in clean.columns})
+        seg = fig.segment(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
+                          source=seg_src,
+                          line_color=self.scheme.default_color(color_idx,
+                                                               "pccapsym"),
+                          line_width=1.5, legend_label=y1var)
+        self._apply_line_opts(seg, options)
+
+        # One marker at each end, from the same rows: the starts, then the
+        # ends.  A marker takes `color p#mark', as pcscatter's does.
+        mark_color = self.scheme.default_color(color_idx, "pcscatter")
+        dot_src = ColumnDataSource({
+            "x": np.concatenate([clean[x1var].to_numpy(),
+                                 clean[x2var].to_numpy()]),
+            "y": np.concatenate([clean[y1var].to_numpy(),
+                                 clean[y2var].to_numpy()]),
+        })
+        dots = fig.scatter(x="x", y="y", source=dot_src,
+                           marker=self.scheme.default_symbol(color_idx),
+                           size=self.scheme.default_marker_size(color_idx),
+                           fill_color=mark_color, line_color=mark_color)
+        _line_only = ("lcolor", "lwidth", "lpattern", "lalpha")
+        self._apply_marker_opts(
+            dots, {k: v for k, v in options.items() if k not in _line_only})
+
+        self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var)
+        return [seg, dots]
+
+    @staticmethod
+    def _pc_immediate_records(values, ptype: str = "pcarrowi"):
+        """Read an immediate paired-coordinate list, as dash.ado writes it.
+
+        ``pcarrowi 0 0 0 1 (3) "3 o'clock" 0 0 1 0`` arrives as
+        ``[[0,0,0,1,"3 o'clock",3],[0,0,1,0]]``: per arrow the coordinates
+        in twoway's order (y1, x1, y2, x2), then an optional label and an
+        optional clock position.  A missing or non-finite coordinate is NaN
+        (twoway draws nothing for it); anything else that is not a number,
+        and a record that is not four to six elements, is refused naming the
+        plot type -- a spec written by hand is an input too.
+
+        Returns:
+            ``(y1, x1, y2, x2, labels, clocks)``: four lists of floats, the
+            labels as strings ("" for none) and the clock positions as
+            strings, or None for none.
+        """
+        y1, x1, y2, x2, labels, clocks = [], [], [], [], [], []
+
+        def _bad(rec, why):
+            return ValueError(
+                f"dash: {ptype} records are [y1, x1, y2, x2], then an "
+                f"optional label and clock position; "
+                f"{_dash_display(repr(rec))} {why}.")
+
+        for rec in values or []:
+            if not isinstance(rec, (list, tuple)) or not 4 <= len(rec) <= 6:
+                raise _bad(rec, "is not one")
+            nums = []
+            for v in rec[:4]:
+                if v is None:
+                    nums.append(float("nan"))
+                    continue
+                if isinstance(v, bool):
+                    raise _bad(rec, "has a coordinate that is not a number")
+                try:
+                    f = float(v)
+                except (TypeError, ValueError):
+                    raise _bad(rec, "has a coordinate that is not a number") \
+                        from None
+                nums.append(f if math.isfinite(f) else float("nan"))
+            y1.append(nums[0])
+            x1.append(nums[1])
+            y2.append(nums[2])
+            x2.append(nums[3])
+            lab = rec[4] if len(rec) > 4 else None
+            labels.append("" if lab is None else str(lab))
+            clk = rec[5] if len(rec) > 5 else None
+            if clk is None:
+                clocks.append(None)
+            elif isinstance(clk, float) and clk.is_integer():
+                clocks.append(str(int(clk)))
+            else:
+                clocks.append(str(clk).strip())
+        return y1, x1, y2, x2, labels, clocks
+
+    def map_pcarrowi(
+        self,
+        fig: Any,
+        values: list,
+        options: "dict[str, str]",
+        color_idx: int = 0,
+    ) -> list:
+        """Draw ``twoway pcarrowi``'s immediate arrows: pcarrow's own glyphs.
+
+        ``pcarrowi`` is the immediate form of ``pcarrow``
+        (twoway_pcarrowi.sthlp): ``#y1 #x1 #y2 #x2 [(#clockpos)]
+        ["text for label"] ...``.  dash refused it with r(198) until WP-22.
+
+        The arrows are drawn by :meth:`map_pcarrow`, from a source built out
+        of the records, so every option pcarrow honours is honoured the same
+        way.  twoway assumes ``mlabel()`` when a label is given and
+        ``mlabvposition()`` when a clock position is: a label is drawn at
+        its arrow's tail, (x1, y1), where twoway puts it without
+        ``headlabel``, placed by its own clock position, else by
+        ``mlabposition()``, else at 3 o'clock, and styled by
+        ``mlabcolor()``, ``mlabsize()`` and ``mlabgap()`` -- through the one
+        label applier every marker label goes through.  A clock position
+        that is not a whole number from 0 to 12 is drawn at 3 and named
+        once.  An arrow that is not drawn -- a missing coordinate -- draws
+        no label either.
+
+        Args:
+            fig:       Bokeh Figure object.
+            values:    The records from the spec's ``"values"``.
+            options:   Translated plot-level options dict.
+            color_idx: Zero-based plot index, for the scheme's colour cycle.
+
+        Returns:
+            What :meth:`map_pcarrow` returns: the shaft Segment renderer.
+        """
+        y1, x1, y2, x2, labels, clocks = self._pc_immediate_records(
+            values, "pcarrowi")
+        src = ColumnDataSource({"y1": y1, "x1": x1, "y2": y2, "x2": x2})
+        out = self.map_pcarrow(fig, src, "y1", "x1", "y2", "x2", options,
+                               color_idx=color_idx)
+
+        _default_pos = str(options.get("mlabposition", "") or "").strip() or "3"
+        _clock_ok = {str(i) for i in range(13)}
+        groups: "dict[str, list[int]]" = {}
+        _odd = []
+        for i, lab in enumerate(labels):
+            if not lab or not all(math.isfinite(v) for v in
+                                  (y1[i], x1[i], y2[i], x2[i])):
+                continue
+            pos = clocks[i]
+            if pos is None:
+                pos = _default_pos
+            elif pos not in _clock_ok:
+                _odd.append(pos)
+                pos = "3"
+            groups.setdefault(pos, []).append(i)
+        if _odd:
+            # One note per layer, naming its values, however many there are:
+            # each distinct value is not a note (nor a LabelSet) of its own.
+            # Keyed by the values, so a second layer with others is named
+            # too (the WP-22 review) and a by() panel does not repeat it.
+            _odd = list(dict.fromkeys(_odd))
+            _dash_warn_once(
+                ("pcarrowi", "clock", tuple(_odd)),
+                f"dash: pcarrowi clock position(s) "
+                f"{_dash_display(', '.join(dict.fromkeys(_odd)))} are not a "
+                f"whole number from 0 to 12; those labels are drawn at 3 "
+                f"(right).")
+        for pos, rows in groups.items():
+            lab_src = ColumnDataSource({
+                "x1": [x1[i] for i in rows],
+                "y1": [y1[i] for i in rows],
+                "__pcarrowi_label__": [labels[i] for i in rows],
+            })
+            self._apply_mlabel_opts(
+                fig, lab_src,
+                dict(options, mlabel="__pcarrowi_label__", mlabposition=pos),
+                "x1", "y1")
+        return out
 
     def map_tsline(
         self,
@@ -11499,14 +11896,17 @@ _DASH_RANGE_TYPES = frozenset({
 _DASH_UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
 # pcscatter belongs here: it takes four variables, exactly as the other
 # three do.  Left out, it fell through to no branch at all and drew an empty
-# plot region with rc 0 and no warning.
-_DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter"})
+# plot region with rc 0 and no warning.  pccapsym (WP-22) takes the same
+# four.
+_DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter",
+                            "pccapsym"})
 
 #: Plot types that carry no variable names -- an inline coordinate list or
 #: an expression.  Both renderers branch on these by name BEFORE the
 #: dispatch tables, so this is the one place they are listed; the parity
 #: guard derives the full set of plot types from it and the tables.
-_DASH_LITERAL_TYPES = frozenset({"scatteri", "pci", "function"})
+#: pcarrowi (WP-22) is pcarrow's immediate form: one record per arrow.
+_DASH_LITERAL_TYPES = frozenset({"scatteri", "pci", "pcarrowi", "function"})
 
 
 #: Injection patterns a by() string may not carry.  One copy: the saved
@@ -13807,13 +14207,18 @@ def _dash_range_source(g_df, y1var, y2var, xvar, label_var, extra_cols=()):
         g_df[cols].dropna(subset=[y1var, y2var, xvar])), True
 
 
-def _dash_pc_source(g_df, y1var, x1var, y2var, x2var):
+def _dash_pc_source(g_df, y1var, x1var, y2var, x2var, label_var=""):
     """Build the ColumnDataSource for one paired-coordinate layer.
 
     All four variables are required; a pc plot with any of them missing draws
     nothing, which is what each inline branch did.  De-duplicated, because
     ``pcspike y x y x`` is a legal command and ``g_df[[c, c, c, c]]`` is not
     a legal selection -- the branch that forgot this crashed the served app.
+
+    ``label_var`` is the layer's ``mlabel()`` column (WP-22: pccapsym labels
+    its first coordinate).  It is carried when the data has it, so a served
+    label is drawn where the saved page draws it, and it never decides
+    which rows survive: a missing label is not a missing observation.
 
     Returns ``(source, ok)``.
     """
@@ -13823,7 +14228,9 @@ def _dash_pc_source(g_df, y1var, x1var, y2var, x2var):
     if not all(v in g_df.columns for v in names):
         return None, False
     cols = list(dict.fromkeys(names))
-    return ColumnDataSource(g_df[cols].dropna()), True
+    keep = cols + ([label_var] if label_var and label_var in g_df.columns
+                   and label_var not in cols else [])
+    return ColumnDataSource(g_df[keep].dropna(subset=cols)), True
 
 
 #: Plot types whose legend key Stata writes as "Fitted values" rather than as
@@ -14383,6 +14790,7 @@ def _dash_pc_dispatch(mapper):
         "pcbarrow":  mapper.map_pcbarrow,
         "pci":       mapper.map_pci,
         "pcscatter": mapper.map_pcscatter,
+        "pccapsym":  mapper.map_pccapsym,
     }
 
 
@@ -15702,6 +16110,11 @@ class DashRenderer:
                 # variable names, so nothing was ever drawn.
                 self.mapper.map_pci_literal(fig, plot.get("values", []),
                                             popts, color_idx=pi)
+            elif ptype.lower() == "pcarrowi":
+                # pcarrow's immediate form (WP-22): one record per arrow,
+                # [y1, x1, y2, x2] with an optional label and clock position.
+                self.mapper.map_pcarrowi(fig, plot.get("values", []),
+                                         popts, color_idx=pi)
             elif ptype.lower() in _PC_TYPES:
                 py1var = plot.get("y1var", "")
                 px1var = plot.get("x1var", "")
@@ -15868,7 +16281,7 @@ class DashRenderer:
             fig:        Bokeh Figure to add the glyph to.
             source:     ColumnDataSource.
             plot_type:  Paired-coordinate plot type name (pcspike, pcarrow, pcbarrow,
-                        pci, pcscatter).
+                        pci, pcscatter, pccapsym).
             y1var:      Start y variable name.
             x1var:      Start x variable name.
             y2var:      End y variable name.
@@ -17680,6 +18093,9 @@ class ServerAppBuilder:
                       "_DASH_FW_NONINT_NOTHING",
                       # _stata_date_kind's own pattern, for an axis format().
                       "_MS_PER_DAY", "_DATE_FMT_RE",
+                      # _dash_anglestyle_degrees' table of Stata's
+                      # anglestyles, for mlabangle() (WP-22).
+                      "_DASH_ANGLESTYLES",
                       # The sub-option tables and the filter parser's own.
                       "_DASH_LEGEND_SUBOPTS", "_DASH_TEXTBOX_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
@@ -17817,6 +18233,8 @@ class ServerAppBuilder:
                          "_dash_apply_legend",
                          # Axis titles, Stata's tick grammar, second axes.
                          "_parse_axis_angle", "_stata_date_kind",
+                         # mlabangle()'s anglestyle reader (WP-22).
+                         "_dash_anglestyle_degrees",
                          "_parse_scale_opt", "_source_frame",
                          "_compute_secondary_range",
                          "_dash_axis_labels",
@@ -19150,13 +19568,18 @@ class ServerAppBuilder:
             "            _DASH_MAPPER.map_scatteri(fig, plot.get('values', []), opts, color_idx=pi)",
             "        elif ptype == 'pci':",
             "            _DASH_MAPPER.map_pci_literal(fig, plot.get('values', []), opts, color_idx=pi)",
+            "        elif ptype == 'pcarrowi':",
+            "            _DASH_MAPPER.map_pcarrowi(fig, plot.get('values', []), opts, color_idx=pi)",
             "        elif ptype == 'function':",
             "            _fn_range, _fn_n = _dash_function_args(opts)",
             "            _DASH_MAPPER.map_function(fig, plot.get('expr', ''), _fn_range, _fn_n, opts)",
             "        elif ptype in _DASH_PC_TYPES:",
+            "            # The mlabel() column rides along, as the saved page's",
+            "            # source carries it (pccapsym labels its first point).",
             "            _ly_src, _ok = _dash_pc_source(",
             "                g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
-            "                plot.get('y2var', ''), plot.get('x2var', ''))",
+            "                plot.get('y2var', ''), plot.get('x2var', ''),",
+            "                _dash_mlabel_names(opts)[0])",
             "            if _ok:",
             "                _dash_add_pc_glyph(",
             "                    _DASH_MAPPER, fig, _ly_src, ptype,",

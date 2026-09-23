@@ -3256,7 +3256,7 @@ last below.
 
 ---
 
-## WP-22 · `twoway` parity
+## WP-22 · `twoway` parity — DONE
 
 **Gaps closed:** F1, F2, F3 · **Severity:** S2/S3 · **Effort:** L · **Depends on:** WP-09
 
@@ -3271,44 +3271,110 @@ last below.
   does.
 - **BR-22.3** No implementation limit may silently cap future growth.
 
-### Technical requirements
+### What was measured before any code changed
 
-- **TR-22.1** Implement the four rejected `twoway` plot types — `contour`,
-  `contourline`, `pcarrowi`, `pccapsym` — or state their absence explicitly in
-  the help. They exit 198 today (`dash.ado:938-948`) and the help lists no
-  supported types at all, so users cannot anticipate it. **Recommendation:**
-  implement `pcarrowi` and `pccapsym` (cheap — siblings of implemented types);
-  document `contour`/`contourline` as out of scope (they need a different
-  data model).
-- **TR-22.2** Add the 38 supported types to `dash.sthlp`, naming the 11
-  currently undocumented ones (F2): `rconnected rscatter pcspike pcarrow
-  pcbarrow pci pcscatter tsline tsrline mband function`. This is WP-23's
-  deliverable but its content is specified here.
-- **TR-22.3** Triage the F3 list — `clcolor() clpattern() clwidth()`,
-  `addplot()`, `margin()`, `region()`, `bargap()`, `xreverse`/`yreverse`,
-  `xalternate`/`yalternate`, `lockaspect`, `zoom()`, `mlabangle()`,
-  `mlabformat()`, and `sort(varname)`. These currently land in "unknown" and
-  are reported, which is correct behaviour, but none appears in the help's
-  unsupported list, so the note surprises. Implement the cheap and common ones
-  (`clcolor`/`clpattern`/`clwidth` are aliases of `lcolor`/`lpattern`/`lwidth`
-  and should simply fold); declare the rest.
-- **TR-22.4** Raise the latent `inlist()` ceiling at `dash.ado:1004-1005` and
-  `:1146-1147` — exactly 9 literals plus `ptype`, Stata's limit. **A tenth
-  range plot type will fail to compile.** Replace with a local macro list and
-  `` `: list ptype in …' ``.
+23sep2026 at `9f48cf7`, StataNow 19.5 with the console binary:
 
-### Acceptance criteria
+| Question | Measured |
+|---|---|
+| `contour`, `contourline`, `pcarrowi`, `pccapsym` | `twoway` draws all four (rc 0) and takes no abbreviation of any; dash refused each with "unrecognised plot type", r(198), and its Supported: list |
+| Every `twoway` plot type | `graph_twoway.sthlp` links 41; beyond the four above, `heatmap` (z y x), `rpcap` and `rpspike` (y ylow yhigh x) are new in StataNow 19.5, run with rc 0, take no abbreviation, and were "unrecognised" to dash |
+| Plot types in the help | dash drew 38; `dash.sthlp` listed none of them anywhere, and nine were not named at all: `pcarrow pcbarrow pci pcscatter pcspike rconnected rscatter tsline tsrline` |
+| F3's options | `clcolor() clpattern() clwidth()` are not plain aliases: `twoway_yxview_parse.class` applies them after the l-options whatever the order, to the connecting line only (lcolor() also outlines areas and bars); `mlabangle()`, `mlabformat()`, `sort(varlist)`, `mlabvposition()`, `mlabtextstyle()` and `xoverhangs`/`yoverhangs` are real `twoway` options; `xreverse`, `yreverse`, `xalternate`, `yalternate`, `xcommon`, `ycommon`, `lockaspect`, `zoom()`, `ddensity`, `altaxis`, `addplot()`, `margin()` and `region()` are refused by `twoway` at the level they were written (r(198)) -- sub-options of `xscale()`, `plotregion()`, `legend()`, `clegend()`, or options of `graph combine`, `histogram` or no command at all |
+| The `inlist()` ceiling | ten plot-type tests in dash.ado were string `inlist()` calls; the range types' held nine literals and `ptype`, Stata's limit of ten, so a tenth range type could not be added |
 
-- **AC-22.1** Every twoway plot type either renders or is documented as
-  unsupported.
-- **AC-22.2** `clcolor()`/`clpattern()`/`clwidth()` work as `twoway` does.
-- **AC-22.3** Adding a tenth range type compiles.
+### Technical requirements, as delivered
 
-### Test plan
+- **TR-22.1** `pcarrowi` and `pccapsym` are drawn, in both modes.
+  `pccapsym` is a spike with the same marker at each end -- line options
+  style the spike, marker options the markers, `mlabel()` labels the first
+  point (`map_pccapsym`).  `pcarrowi` reads its values as `twoway` does
+  (`#y1 #x1 #y2 #x2 [(#clockpos)] ["label"]`, a Mata reader in
+  dash_parse.mata that runs in linear time), refuses with r(198) what
+  `twoway` refuses, drops an incomplete last arrow with a note, and draws
+  through pcarrow's own mapper with its labels at the tails
+  (`map_pcarrowi`).  Five `twoway` plot types dash does not draw --
+  `contour`, `contourline`, `heatmap`, `rpcap`, `rpspike` -- are refused by
+  name, r(198), each with what to use instead (`_dash_undrawn_plottype`),
+  instead of as "unrecognised plot type".
+- **TR-22.2** `dash.sthlp` has a Plot types section: every type dash draws,
+  in `twoway`'s groups, the five it refuses and why, and the notes on
+  `pccapsym` and `pcarrowi`.  The syntax line and Differences item 5 point to
+  it; item 5 no longer claims that a copy-pasted command always runs.
+  `test_help_plot_types.py` holds the section to the code in both
+  directions.
+- **TR-22.3** The triage, measured against `twoway`: `clcolor()`,
+  `clpattern()` and `clwidth()` are honoured as `twoway` defines them -- on
+  the connecting line of the plot types that draw one, over the l-options
+  whatever the order, never on markers (`_dash_fold_cl` in dash.ado, the
+  shared `_apply_line_opts`); `mlabangle()` (Stata's anglestyles or
+  degrees) and `mlabformat()` (%f and %e) are honoured; `sort(varlist)`,
+  `mlabvposition()`, `mlabtextstyle()` and `xoverhangs`/`yoverhangs` are
+  declared, listed in the help's Unsupported section and named in the note
+  as declared; the names that are not `twoway` options where they were
+  written stay unknown, named in the note, and the help gives `twoway`'s own
+  spelling for each.  The help's claim that `twoway` sorts line plots by x
+  was wrong and is corrected.
+- **TR-22.4** Every plot-type test in dash.ado is `: list ptype in <family>`
+  over family lists defined once (`_dash_plottype_families`), equal to the
+  renderer's own sets; no string `inlist()` is left on a plot-type macro.
 
-Extend `test/fixtures/conformance_corpus.txt` and `test_conformance.cscript`;
-add parity entries for any newly implemented type (WP-12's TR-12.4 will
-require them).
+### Acceptance
+
+- **AC-22.1** Every plot type `graph_twoway.sthlp` links in StataNow 19.5 is
+  drawn by dash or refused by name and documented:
+  `test_help_plot_types.py`, `test_parser.cscript` P1A-49..59,
+  `test_pccapsym_pcarrowi.py` (45 tests), `test_conformance.cscript` C-06,
+  and the mode-parity corpus's bare and labelled entries for both new types.
+- **AC-22.2** `clcolor()`/`clpattern()`/`clwidth()` work as `twoway` does:
+  `test_twoway_option_parity.py` (134 tests) and
+  `test_twoway_option_parity.cscript` (47 checks, among them every plot type
+  against a live `twoway` run), OV-149..156.
+- **AC-22.3** A tenth range type compiles: `test_plottype_families.py`, and
+  `test_parser.cscript` P1A-56, where a tenth and eleventh range member are
+  found by `: list` while `inlist()` of the same list is r(130).
+
+### Found on the way
+
+- `map_pcarrow`, which pcarrowi draws through, added one arrowhead per
+  `add_layout()` call, each copying the annotation list: 8,000 arrows took
+  85 s.  They are added in one change now, linearly (BUGS.md).
+- dash_parse.mata's `_json_escape` was dead code, and wrong -- it wrote
+  four backslashes for one; the pcarrowi reader uses a rewritten one that
+  escapes every control character and the characters that would break a
+  Stata macro.
+- Recorded for later, each measured: `pcbarrow` still adds its arrowheads
+  one at a time; `scatteri` and `pci` pass their tokens into the spec
+  unchecked, so a malformed one fails the build with a JSON traceback;
+  dash draws marker labels on plot types `twoway` never labels, shows a
+  value-labelled `mlabel()` as codes, and styles marker borders with line
+  options; `dash build` of immediate graphs alone fails; `heatmap`, `rpcap`
+  and `rpspike` could be drawn later (the last two are siblings of `rcap`
+  and `rspike`).  Separate tasks carry the first several.
+
+### Verification, measured
+
+23sep2026, branch `feature/batch4-interactive-layer`, on top of the four
+fixes committed after WP-21 (`f92ef65`, `dbe24bc`, `0744eb6`, `99d5bed`;
+`main` already an ancestor, so nothing to pull).  Two agents did the work
+in worktrees cut from `9f48cf7`, each writing its tests first against that
+code; their diffs were merged by three-way apply, with one conflict --
+`test_adversarial.cscript`'s P20-33 beside P22-01..03, both kept.  The
+refusals of `heatmap`, `rpcap` and `rpspike` came after: P1A-58's new
+checks failed on the merged code without them (r(3498)).
+
+- `test/run_all_cscripts.do` with the console binary: **50 passed, 0
+  failed, 0 skipped** -- the new `test_twoway_option_parity.cscript` among
+  them, `test_parser.cscript` with P1A-49..59, `test_adversarial.cscript`
+  with P22-01..03, `test_conformance.cscript` with C-06 and
+  `test_option_validation.cscript` with OV-149..156.
+- `python3 -m pytest test/ -q`: **11,375 passed, 0 failed**, 63 skipped,
+  6 xfailed, 2:34.  The two new skips are `test_cscript_hygiene.py` checks
+  that do not apply to the new script.
+- The commit's own tree -- `HEAD` with only the staged WP-22 diff applied,
+  in a separate worktree, with `HEAD`'s `conftest.py` and no
+  `pyproject.toml` -- ran the fourteen test files WP-22 adds or changes,
+  with `-n auto`: **4,245 passed, 0 failed**, 63 skipped, 5 xfailed.
 
 ---
 

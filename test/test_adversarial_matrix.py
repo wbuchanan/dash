@@ -82,6 +82,8 @@ from conftest import make_data_json, make_spec
 
 _M = "test/test_adversarial_matrix.py::"
 _BS = "test/test_served_bs_layout.py::TestAdversarialServedBs::"
+# WP-22 TR-22.3: clcolor()/clpattern()/clwidth(), mlabangle(), mlabformat().
+_TW = "test/test_twoway_option_parity.py::TestAdversarialTwowayOptions::"
 
 SURFACES = {
     # `dash <plot> varlist, ...' -- the plot-type token and the varlist.
@@ -100,6 +102,25 @@ SURFACES = {
             "test_adversarial.cscript:P2-83",
             "test_adversarial.cscript:P19-07",
             "test_adversarial.cscript:P19-08",
+        ],
+    },
+    # `pcarrowi #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ...' -- a paired-
+    # coordinate plot's immediate values: numbers, clock positions and free
+    # text, read by dash.ado's Mata encoder into the spec and drawn by the
+    # renderer (WP-22).
+    "immediate_pc_values": {
+        "bypass": [
+            "test_adversarial.cscript:P22-01",
+            "test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_a_malformed_record_is_named",
+        ],
+        "injection": [
+            "test_adversarial.cscript:P22-02",
+            "test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_the_label_is_text_not_markup",
+        ],
+        "exhaustion": [
+            "test_adversarial.cscript:P22-03",
+            "test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_a_hundred_thousand_records_are_read_in_bounded_time",
+            "test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_the_arrow_heads_are_added_in_one_change",
         ],
     },
     # `if' and `in' on a plot or a KPI; the renderer re-applies them.
@@ -145,14 +166,19 @@ SURFACES = {
             "test/test_security_surface.py::TestAColourMustBeAColour::test_a_non_hex_hash_string_is_rejected",
             "test_adversarial.cscript:P20-03",
             "test/test_option_validation.py::TestUserTextIsEchoedThroughDashDisplay::test_the_style_note",
+            _TW + "test_an_angle_in_another_scripts_digits_is_not_an_angle",
         ],
         "injection": [
             "test_adversarial.cscript:P2-81",
             "test/test_html_output.py::TestAdversarialPlotOptions::test_injection_in_mcolor_produces_valid_html",
+            _TW + "test_markup_in_a_value_is_named_as_text_and_never_drawn",
+            _TW + "test_a_colour_that_is_code_is_refused_by_the_colour_reader",
         ],
         "exhaustion": [
             "test/test_option_validation.py::TestABadStyleValueNeverAborts::test_a_non_finite_size_or_width",
             _M + "TestStyleOptionBounds::test_a_megabyte_colour_is_judged_in_linear_time",
+            _TW + "test_a_megabyte_angle_is_judged_at_once",
+            _TW + "test_a_non_finite_clwidth_is_named_not_drawn",
         ],
     },
     # mlabel(varname) and the legend's label() and order() text.
@@ -160,13 +186,17 @@ SURFACES = {
         "bypass": [
             "test_adversarial.cscript:P20-04",
             "test/test_option_validation.py::TestUserTextIsEchoedThroughDashDisplay::test_the_mlabel_extras_warning",
+            _TW + "test_a_format_in_another_scripts_digits_is_not_applied",
         ],
         "injection": [
             "test/test_graph_options.py::TestLegendLabels::test_legend_label_xss_is_carried_as_text",
+            _TW + "test_markup_in_a_value_is_named_as_text_and_never_drawn",
         ],
         "exhaustion": [
             _M + "TestTextPlotOptionBounds::test_a_legend_order_of_a_hundred_thousand_keys_is_bounded",
             _M + "TestTextPlotOptionBounds::test_a_long_legend_label_is_escaped_once",
+            _TW + "test_a_format_stata_refuses_builds_no_giant_label",
+            _TW + "test_the_widest_format_stata_accepts_is_bounded_by_stata",
         ],
     },
     # title(), subtitle(), note(), caption(), xtitle(), ytitle().

@@ -36,6 +36,14 @@
 *!       Expand a plot-type abbreviation; store full name in out_macro.
 *!       Stores "" if the abbreviation is unrecognised.
 *!
+*!   _dash_undrawn_plottype(name)
+*!       "contour" or "contourline" when name is one of the twoway plot
+*!       types dash refuses by name, else "".
+*!
+*!   _dash_pc_immediate(vals)
+*!       Read pcarrowi's immediate values into the caller's locals
+*!       _pci_json, _pci_err, _pci_bad, _pci_left, _pci_hasleft, _pci_n.
+*!
 *!   _dash_comma_pos(input, out_macro)
 *!       Position (1-based) of the first top-level comma, or "0".
 *!
@@ -70,21 +78,45 @@ mata:
 // 1. CHARACTER-LEVEL HELPERS
 // ============================================================
 
-// JSON escaping: backslash, double-quote, and common control chars
+// JSON escaping, for a value written between double quotes.
+//
+// Every byte JSON forbids raw is escaped -- the backslash, the double quote
+// and all of C0, as _dash_json_str does in Stata -- and so are the three
+// characters a Stata macro could misread once the JSON is expanded: the
+// backtick (a macro reference), the dollar (a global) and the apostrophe
+// (after a double quote, "' closes a compound quote).  Those are written
+// \u00XX, which every JSON reader decodes back to the same character.
+//
+// This used to append one character at a time, which is quadratic in the
+// length, and wrote its escapes with Mata string literals as if Mata read
+// \\ as one backslash.  It does not (measured: strlen("\\") is 2), so a
+// backslash came out as four and a quote as \\".  Nothing called it then;
+// pcarrowi's labels do now (WP-22).  Every character is replaced in one
+// subinstr() pass, the backslash first because every escape adds one.
 string scalar _json_escape(string scalar s) {
-    string scalar out
-    real   scalar i, c
-    out = ""
-    for (i = 1; i <= strlen(s); i++) {
-        c = ascii(substr(s, i, 1))
-        if      (c == 92)  out = out + "\\\\"
-        else if (c == 34)  out = out + "\\" + char(34)
-        else if (c ==  8)  out = out + "\\b"
-        else if (c ==  9)  out = out + "\\t"
-        else if (c == 10)  out = out + "\\n"
-        else if (c == 13)  out = out + "\\r"
-        else               out = out + substr(s, i, 1)
+    string scalar out, hex, bs
+    real   scalar c
+
+    hex = "0123456789abcdef"
+    bs  = char(92)
+    out = subinstr(s,   bs,       bs + bs,       .)
+    out = subinstr(out, char(34), bs + char(34), .)
+    out = subinstr(out, char(8),  bs + "b",      .)
+    out = subinstr(out, char(9),  bs + "t",      .)
+    out = subinstr(out, char(10), bs + "n",      .)
+    out = subinstr(out, char(12), bs + "f",      .)
+    out = subinstr(out, char(13), bs + "r",      .)
+    for (c = 1; c <= 31; c++) {
+        if (c == 8 | c == 9 | c == 10 | c == 12 | c == 13) continue
+        if (strpos(out, char(c))) {
+            out = subinstr(out, char(c), bs + "u00" +
+                substr(hex, floor(c / 16) + 1, 1) +
+                substr(hex, mod(c, 16) + 1, 1), .)
+        }
     }
+    out = subinstr(out, char(96), bs + "u0060", .)
+    out = subinstr(out, char(36), bs + "u0024", .)
+    out = subinstr(out, char(39), bs + "u0027", .)
     return(out)
 }
 
@@ -583,7 +615,14 @@ string scalar _expand_plottype_str(string scalar name) {
         ("mband","mband") \
         ("rscatter","rsc") \
         ("function","fun") \
-        ("scatteri","scatteri")
+        ("scatteri","scatteri") \
+        ("pccapsym","pccapsym") \
+        ("pcarrowi","pcarrowi")
+    // pccapsym and pcarrowi (WP-22): twoway takes neither by any shorter
+    // name -- measured 23sep2026, pc .. pccapsy and pcarr, pcarro are "not
+    // a twoway plot type", and pcarrow is its own type -- so the minimum
+    // is the full name.  pcarrow still wins "pcarrow": pcarrowi's
+    // minimum is eight letters.
 
     nhits = 0
     hit   = ""
@@ -602,6 +641,318 @@ string scalar _expand_plottype_str(string scalar name) {
 
 void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
     st_local(out_macro, _expand_plottype_str(strlower(strtrim(abbrev))))
+}
+
+
+// ============================================================
+// 2b. TWOWAY PLOT TYPES DASH DOES NOT DRAW
+// ============================================================
+//
+// contour and contourline are twoway plot types (graph_twoway.sthlp) that
+// draw a surface interpolated over a grid of z values -- a data model no
+// dash plot has (twoway builds them on zyx2view_g, measured from the .gph).
+// heatmap (z y x, a grid of rectangles coloured by z), rpcap and rpspike
+// (y ylow yhigh x, a range drawn with a point on it) are twoway plot types
+// in StataNow 19.5 that dash does not draw either.  dash.ado refuses each
+// by name, with what to use instead, rather than as an unrecognised plot
+// type (WP-22 TR-22.1, BR-22.1).  twoway takes no abbreviation of any of
+// them -- measured 23sep2026: cont .. contou, contourl .. contourlin,
+// heat .. heatma, rpc .. rpca and rpsp .. rpspik are "not a twoway plot
+// type", and con is connected -- so only the full names match.  Returns
+// the name, lower case, or "".
+string scalar _dash_undrawn_plottype(string scalar name) {
+    string scalar s
+
+    s = strlower(strtrim(name))
+    if (anyof(("contour", "contourline", "heatmap", "rpcap", "rpspike"), s)) {
+        return(s)
+    }
+    return("")
+}
+
+
+// ============================================================
+// 2c. IMMEDIATE PAIRED-COORDINATE VALUES   (pcarrowi, WP-22)
+// ============================================================
+//
+// twoway_pcarrowi.sthlp's immediate values, one arrow each:
+//
+//     #y1 #x1 #y2 #x2 [(#clockposstyle)] ["text for label"]
+//
+// and what twoway does with them, measured 23sep2026 with the console
+// binary by loading the serset each command draws:
+//
+//   * an arrow is four numbers; "." and .a-.z are missing and draw nothing;
+//   * a clock position, if any, comes next and a label after it.  A clock
+//     position written after the label is not read, nor is a second label
+//     or a second clock position;
+//   * a token that is not a number where a coordinate belongs is refused,
+//     "invalid point," r(198): a label or clock position before the first
+//     arrow or inside one, and one left over with a whole arrow after it;
+//   * a clock position that is not a number from 0 to 12 is refused,
+//     "invalid position, 13" r(198).  3.5 and 012 are taken;
+//   * what is left at the end, too little for another arrow, is dropped
+//     without a word: pcarrowi 0 0 0 1 0 0 1 draws one arrow, rc 0;
+//   * a list with no arrow at all is refused, r(198).
+//
+// The list is read here byte by byte, as a value: nothing in it is ever
+// expanded as Stata.  A label is between double quotes or compound quotes,
+// which nest; a clock position is between parentheses, which may hold
+// blanks.  Every delimiter is ASCII, so a UTF-8 label is never split.
+// Each step is linear in the length of the list: tokens are stored in
+// vectors that double when full, and the JSON is joined once at the end.
+// ============================================================
+
+// Split an immediate list into tokens.  kind is 1 for a bare word, 2 for a
+// quoted label (txt holds the text between the quotes) and 3 for a clock
+// position in parentheses (txt holds the trimmed text between them).  raw
+// is each token as written, for a message.
+void _dash_imm_tokens(string scalar s, string rowvector raw,
+                      string rowvector txt, real rowvector kind)
+{
+    real scalar   n, i, j, depth, m, cap
+    string scalar ch, c2
+
+    n    = strlen(s)
+    cap  = 16
+    raw  = J(1, cap, "")
+    txt  = J(1, cap, "")
+    kind = J(1, cap, 0)
+    m    = 0
+    i    = 1
+    while (i <= n) {
+        ch = substr(s, i, 1)
+        if (ch == " " | ch == char(9) | ch == char(10) | ch == char(13)) {
+            i++
+            continue
+        }
+        if (m == cap) {
+            raw  = raw,  J(1, cap, "")
+            txt  = txt,  J(1, cap, "")
+            kind = kind, J(1, cap, 0)
+            cap  = 2 * cap
+        }
+        m++
+        if (ch == char(34)) {
+            // "label": to the next double quote, or to the end.
+            j = i + 1
+            while (j <= n) {
+                if (substr(s, j, 1) == char(34)) break
+                j++
+            }
+            raw[m]  = substr(s, i, j - i + 1)
+            txt[m]  = substr(s, i + 1, j - i - 1)
+            kind[m] = 2
+            i = j + 1
+        }
+        else if (ch == char(96) & substr(s, i + 1, 1) == char(34)) {
+            // `"label"': to the compound quote that closes this one.
+            depth = 1
+            j     = i + 2
+            while (j <= n) {
+                c2 = substr(s, j, 2)
+                if (c2 == char(96) + char(34)) {
+                    depth++
+                    j = j + 2
+                    continue
+                }
+                if (c2 == char(34) + char(39)) {
+                    depth--
+                    if (depth == 0) break
+                    j = j + 2
+                    continue
+                }
+                j++
+            }
+            raw[m]  = substr(s, i, j - i + 2)
+            txt[m]  = substr(s, i + 2, j - i - 2)
+            kind[m] = 2
+            i = j + 2
+        }
+        else if (ch == "(") {
+            // (#clockpos): to the parenthesis that closes this one.
+            depth = 1
+            j     = i + 1
+            while (j <= n) {
+                ch = substr(s, j, 1)
+                if (ch == "(") depth++
+                else if (ch == ")") {
+                    depth--
+                    if (depth == 0) break
+                }
+                j++
+            }
+            raw[m]  = substr(s, i, j - i + 1)
+            txt[m]  = strtrim(substr(s, i + 1, j - i - 1))
+            kind[m] = 3
+            i = j + 1
+        }
+        else {
+            // A bare word: to the next blank.
+            j = i
+            while (j <= n) {
+                ch = substr(s, j, 1)
+                if (ch == " " | ch == char(9) | ch == char(10) | ch == char(13)) break
+                j++
+            }
+            raw[m]  = substr(s, i, j - i)
+            txt[m]  = raw[m]
+            kind[m] = 1
+            i = j
+        }
+    }
+    if (m == 0) {
+        raw  = J(1, 0, "")
+        txt  = J(1, 0, "")
+        kind = J(1, 0, 0)
+    }
+    else {
+        raw  = raw[|1 \ m|]
+        txt  = txt[|1 \ m|]
+        kind = kind[|1 \ m|]
+    }
+}
+
+// A nonmissing real as a JSON number, at full precision.  %21.0g writes .5
+// and -.5, which JSON does not allow, so the zero is put back; its other
+// forms -- 3000, -2.5, 1.00000000000000e+21 -- are JSON numbers as written.
+string scalar _dash_json_number(real scalar v)
+{
+    string scalar s
+
+    s = strtrim(strofreal(v, "%21.0g"))
+    if (substr(s, 1, 1) == ".")  s = "0" + s
+    if (substr(s, 1, 2) == "-.") s = "-0" + substr(s, 2, .)
+    return(s)
+}
+
+// One coordinate: a JSON number, "null" for a missing value (. or .a-.z),
+// or "" when the token is not a number -- twoway's "invalid point".
+string scalar _dash_imm_number(string scalar tok, real scalar kind)
+{
+    real scalar v
+
+    if (kind != 1) return("")
+    if (tok == ".") return("null")
+    if (strlen(tok) == 2 & substr(tok, 1, 1) == ".") {
+        if (_dash_ascii_in(substr(tok, 2, 1), 97, 122)) return("null")
+    }
+    v = strtoreal(tok)
+    if (v >= .) return("")
+    return(_dash_json_number(v))
+}
+
+// One clock position: a JSON number, or "" when it is not a number from 0
+// to 12 -- twoway's "invalid position".
+string scalar _dash_imm_clock(string scalar tok)
+{
+    real scalar v
+
+    v = strtoreal(tok)
+    if (v >= . | v < 0 | v > 12) return("")
+    return(_dash_json_number(v))
+}
+
+// The immediate list as the JSON array the renderer reads, one record per
+// arrow in twoway's order: [y1,x1,y2,x2], or [y1,x1,y2,x2,"label",clock]
+// when either is given (clock null when only the label is).  On a refusal
+// it returns "" with err "point", "position" or "none" and bad the token
+// refused; left is what was dropped at the end.  bad and left are as the
+// user wrote them, for a message; nrec is the number of arrows read.
+string scalar _dash_pc_records(string scalar vals, string scalar err,
+                               string scalar bad, string scalar left,
+                               real scalar nrec)
+{
+    string rowvector raw, txt, recs
+    real rowvector   kind
+    string scalar    rec, num, lab, clk
+    real scalar      ntok, t, k
+
+    err  = ""
+    bad  = ""
+    left = ""
+    nrec = 0
+    raw  = J(1, 0, "")
+    txt  = J(1, 0, "")
+    kind = J(1, 0, 0)
+    _dash_imm_tokens(vals, raw, txt, kind)
+    ntok = cols(raw)
+    recs = J(1, max((1, floor(ntok / 4))), "")
+    t    = 1
+    while (t <= ntok) {
+        // Too little left for another arrow: twoway drops it.
+        if (ntok - t + 1 < 4) {
+            left = invtokens(raw[|t \ ntok|], " ")
+            break
+        }
+        rec = ""
+        for (k = 0; k <= 3; k++) {
+            num = _dash_imm_number(txt[t + k], kind[t + k])
+            if (num == "") {
+                err = "point"
+                bad = raw[t + k]
+                return("")
+            }
+            rec = rec + (k ? "," : "") + num
+        }
+        t   = t + 4
+        lab = ""
+        clk = ""
+        if (t <= ntok) {
+            if (kind[t] == 3) {
+                clk = _dash_imm_clock(txt[t])
+                if (clk == "") {
+                    err = "position"
+                    bad = txt[t]
+                    return("")
+                }
+                t++
+            }
+        }
+        if (t <= ntok) {
+            if (kind[t] == 2) {
+                lab = txt[t]
+                t++
+            }
+        }
+        if (lab != "" | clk != "") {
+            if (clk == "") clk = "null"
+            rec = rec + "," + char(34) + _json_escape(lab) + char(34) + "," + clk
+        }
+        nrec++
+        recs[nrec] = "[" + rec + "]"
+    }
+    if (nrec == 0) {
+        err = "none"
+        return("")
+    }
+    return("[" + invtokens(recs[|1 \ nrec|], ",") + "]")
+}
+
+// dash.ado's entry point: the records of an immediate list, into the
+// caller's locals.
+//   _pci_json     the JSON array, or "" on a refusal
+//   _pci_err      "" | "point" | "position" | "none"
+//   _pci_bad      the token refused, as written
+//   _pci_left     what was dropped at the end, as written, or ""
+//   _pci_hasleft  1 when something was dropped at the end, else 0
+//   _pci_n        the number of arrows read
+void _dash_pc_immediate(string scalar vals)
+{
+    string scalar json, err, bad, left
+    real scalar   n
+
+    err  = ""
+    bad  = ""
+    left = ""
+    n    = 0
+    json = _dash_pc_records(vals, err, bad, left, n)
+    st_local("_pci_json",    json)
+    st_local("_pci_err",     err)
+    st_local("_pci_bad",     bad)
+    st_local("_pci_left",    left)
+    st_local("_pci_hasleft", strofreal(left != ""))
+    st_local("_pci_n",       strofreal(n))
 }
 
 

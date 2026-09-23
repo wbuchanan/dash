@@ -10271,13 +10271,13 @@ class TestTheServerDispatchesThroughTheSharedTable:
                                              inspect.isfunction)
             if n.startswith("map_")
         }
-        # Three are reached by the CALLER rather than the table, because
-        # they do not take (yvar, xvar) from a shared source: pci and
-        # scatteri take an inline coordinate list, and function takes an
-        # expression and a range.  The standalone caller special-cases all
-        # three before it reaches _add_glyph, and the server must too.
-        for _caller_dispatched in ("map_pci_literal", "map_scatteri",
-                                   "map_function"):
+        # Four are reached by the CALLER rather than the table, because
+        # they do not take (yvar, xvar) from a shared source: pci, pcarrowi
+        # and scatteri take an inline coordinate list, and function takes
+        # an expression and a range.  The standalone caller special-cases
+        # all four before it reaches _add_glyph, and the server must too.
+        for _caller_dispatched in ("map_pci_literal", "map_pcarrowi",
+                                   "map_scatteri", "map_function"):
             defined.discard(_caller_dispatched)
         assert named == defined, (
             "table and GlyphMapper disagree; only in the table: %s; only on "

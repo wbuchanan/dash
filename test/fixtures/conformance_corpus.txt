@@ -39,6 +39,8 @@ pcspike mpg weight m2 w2
 pcarrow mpg weight m2 w2
 pcbarrow mpg weight m2 w2
 pcscatter mpg weight m2 w2
+pccapsym mpg weight m2 w2
+pcarrowi 20 3000 30 4000
 tsline mpg
 tsrline lo hi
 function y = x^2, range(0 10)
@@ -65,3 +67,5 @@ qfitci mpg weight, stdr
 mspline mpg weight, bands(5) n(4)
 lfit mpg weight [aw=price]
 kdensity mpg [fw=rep78]
+pccapsym mpg weight m2 w2, msymbol(D) mcolor(red) lcolor(navy) mlabel(make)
+pcarrowi 41 2200 41 2060 (3) "VW Diesel" 31 3460 28 3280 (9) "Plymouth Arrow", lcolor(maroon)

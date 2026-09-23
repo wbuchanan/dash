@@ -110,6 +110,10 @@ PLOT_VALUES = {
     "level": ("80", "99", "lfitci"),
     "lineopts": ("lcolor(red)", "lcolor(blue)", "kdensity"),
     "lstyle": ("p3", "p7", "line"),
+    # WP-22 TR-22.3: twoway options that used to land in the note as
+    # unknown, now declared -- named by their full names -- and not drawn.
+    "mlabtextstyle": ("heading", "body", "scatter"),
+    "mlabvposition": ("rep78", "foreign", "scatter"),
     "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
@@ -138,10 +142,12 @@ PLOT_VALUES = {
     "width": ("2", "4", "histogram"),
     "xmlabel": ("5(5)40", "10(10)40", "scatter"),
     "xmtick": ("5(1)40", "10(2)40", "scatter"),
+    "xoverhangs": ("xoverhangs", "", "scatter"),
     "xsize": ("3", "9", "scatter"),
     "xtick": ("5(5)40", "10(10)40", "scatter"),
     "ymlabel": ("5(5)40", "10(10)40", "scatter"),
     "ymtick": ("5(1)40", "10(2)40", "scatter"),
+    "yoverhangs": ("yoverhangs", "", "scatter"),
     "ysize": ("2", "9", "scatter"),
     "ytick": ("5(5)40", "10(10)40", "scatter"),
 }
@@ -170,6 +176,8 @@ def _graph_pending():
 # default value to be confused with, so that comparison has no trap.
 FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
          "frequency", "horizontal", "nodraw", "percent", "sort", "vertical",
+         # WP-22: twoway's advanced options, declared XOVERHANGs/YOVERHANGs.
+         "xoverhangs", "yoverhangs",
          # The seven statistical sub-options (WP-18): discrete on
          # histogram; stdp/stdf/stdr on lfitci and qfitci; mean, noweight,
          # adjust and logit on lowess.
@@ -341,7 +349,13 @@ def _declared_graph():
 #: *2 axis abbreviations).  They never appear as a spec key, so neither
 #: direction here can see them; test_alias_semantics.cscript pins them.
 ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
-           "xla2", "xsc2", "xti2", "yla2", "ysc2", "yti2"}
+           "xla2", "xsc2", "xti2", "yla2", "ysc2", "yti2",
+           # sort(varlist).  Stata's -syntax- spells an option that may be
+           # written bare or with an argument as a pair -- SORT SORT1() --
+           # exactly as twoway_yxview_parse.class declares it; the argument
+           # form is reported as sort() and never written to the spec
+           # (WP-22, pinned in test_twoway_option_parity.cscript TP-06).
+           "sort1"}
 
 #: Options that decide where a command goes rather than what it draws.
 NOT_IN_FILE = {
@@ -404,6 +418,14 @@ LIVE_VALUES = {
     "kernel": ({"kernel": "epan2"}, {"kernel": "gaussian"}, "kdensity", {}),
     "lalpha": ({"lalpha": "20"}, {"lalpha": "80"}, "line", {}),
     "lcolor": ({"lcolor": "red"}, {"lcolor": "blue"}, "line", {}),
+    # WP-22: the connecting-line options, on a type that draws the line.
+    "clcolor": ({"clcolor": "red"}, {"clcolor": "blue"}, "line", {}),
+    "clpattern": ({"clpattern": "dash"}, {"clpattern": "dot"}, "line", {}),
+    "clwidth": ({"clwidth": "vthin"}, {"clwidth": "vthick"}, "line", {}),
+    "mlabangle": ({**_ML, "mlabangle": "45"}, {**_ML, "mlabangle": "90"},
+                  "scatter", {}),
+    "mlabformat": ({"mlabel": "price", "mlabformat": "%9.1f"},
+                   {"mlabel": "price", "mlabformat": "%9.2f"}, "scatter", {}),
     "level": ({"level": "80"}, {"level": "99"}, "lfitci", {}),
     "lpattern": ({"lpattern": "dash"}, {"lpattern": "dot"}, "line", {}),
     "lwidth": ({"lwidth": "vthin"}, {"lwidth": "vthick"}, "line", {}),
