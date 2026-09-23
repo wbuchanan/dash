@@ -1164,6 +1164,56 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 44. test_caller_version.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_caller_version.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_caller_version.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_caller_version.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_caller_version.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_caller_version.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 45. test_resource_limits.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_resource_limits.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_resource_limits.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_resource_limits.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_resource_limits.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_resource_limits.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

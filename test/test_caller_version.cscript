@@ -1,0 +1,212 @@
+*! test_caller_version.cscript  v1.0
+*! Certification script: dash behaves the same whatever version its CALLER
+*! has set.
+*!
+*! dash's programs declare `version 16.0', but some of Stata's behaviour is
+*! resolved by the user version, c(userversion), which only the caller's own
+*! `version' statement sets.  regexm() is one such behaviour: from Stata 18
+*! it runs an engine that knows bounded repetition, and under a user version
+*! below 18 it runs the old engine, which does not.  The graph- and KPI-name
+*! checks were written
+*!
+*!     ^[a-zA-Z_][a-zA-Z0-9_]{0,31}$
+*!
+*! so a do-file that begins `version 16' -- dash's own minimum, and the first
+*! line of many do-files -- could not name anything:
+*!
+*!     version 16
+*!     dash scatter mpg weight, name(g1)   -> "invalid graph name 'g1'", r(198)
+*!
+*! Measured 23sep2026 on Stata 19.5: user versions 16 and 17 refused every
+*! name, 18 and 19.5 accepted them.  name() is how a dashboard holds more than
+*! one graph, so under those versions dash could build nothing but a single
+*! unnamed graph.
+*!
+*! Writing this test found a second defect in the same check.  It allowed 32
+*! characters, but the name becomes part of Stata globals -- dash_json_<name>,
+*! dash_spec_<name>, dash_kpi_<name>_stat -- and a global's name is at most 32
+*! characters.  A 23-character graph name passed the check and then failed on
+*! the global with Stata's bare "dash_spec_<name> invalid name".  The limits
+*! are now what the globals allow: 22 for a graph, 18 for a KPI.
+*!
+*! Tests: CV-01 through CV-11
+*!
+*! Usage:  do test/test_caller_version.cscript
+*! Version: 1.0  23sep2026
+
+cscript "dash under the caller's version" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "cert_helpers.do"
+
+// The refusals are read back from a log; at the batch default of 80 columns
+// Stata wraps them mid-phrase.
+set linesize 255
+
+// Loaded under the caller's version, as a do-file that begins `version 16'
+// would load them when it first calls dash.
+version 16
+assert c(userversion) == 16
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// ================================================================
+// CV-01..02 — a graph can be named under user version 16
+// ================================================================
+dash clear
+capture noisily dash scatter mpg weight, name(g1)
+assert _rc == 0
+assert `"${dash_json_g1}"' != ""
+assert "${dash_graph_registry}" == "g1"
+display "CV-01 PASS: name(g1) is accepted under version 16"
+
+capture noisily dash line mpg weight, name(g1, replace)
+assert _rc == 0
+assert "${dash_graph_registry}" == "g1"
+display "CV-02 PASS: name(g1, replace) is accepted under version 16"
+
+// ================================================================
+// CV-03 — a KPI can be named under user version 16
+// ================================================================
+capture noisily dash kpi mean(mpg), name(k1) title("Avg")
+assert _rc == 0
+assert "${dash_kpi_k1}" == "1"
+assert "${dash_graph_registry}" == "g1 k1"
+display "CV-03 PASS: a KPI name is accepted under version 16"
+
+// ================================================================
+// CV-04..05 — the length limits are what Stata's globals allow
+// ================================================================
+// A graph's globals are dash_json_<name> and dash_spec_<name>: 22 characters
+// fit.  A KPI's longest is dash_kpi_<name>_stat: 18 fit.
+local g22 "g234567890123456789012"
+local g23 "g2345678901234567890123"
+local k18 "k23456789012345678"
+local k19 "k234567890123456789"
+assert strlen("`g22'") == 22 & strlen("`g23'") == 23
+assert strlen("`k18'") == 18 & strlen("`k19'") == 19
+dash clear
+capture noisily dash scatter mpg weight, name(`g22')
+assert _rc == 0
+assert `"${dash_json_`g22'}"' != ""
+// Refused by dash's own check, with its own words -- not by Stata failing
+// on the global, which is also r(198) -- and with nothing left behind.
+tempfile lg4
+quietly log using "`lg4'", replace text name(_cvlog)
+capture noisily dash scatter mpg weight, name(`g23')
+local rc4 = _rc
+quietly log close _cvlog
+assert `rc4' == 198
+cert_file_has "`lg4'", needle("at most 22 characters")
+assert r(found) == 1
+mata: _dash_item_globals("`g23'", "_left")
+assert "`_left'" == ""
+assert "${dash_graph_registry}" == "`g22'"
+display "CV-04 PASS: a 22-character graph name registers, 23 is refused"
+
+capture noisily dash kpi mean(mpg), name(`k18') title("eighteen")
+assert _rc == 0
+assert "${dash_kpi_`k18'_stat}" == "mean"
+tempfile lg5
+quietly log using "`lg5'", replace text name(_cvlog)
+capture noisily dash kpi mean(mpg), name(`k19') title("x")
+local rc5 = _rc
+quietly log close _cvlog
+assert `rc5' == 198
+cert_file_has "`lg5'", needle("at most 18 characters")
+assert r(found) == 1
+mata: _dash_item_globals("`k19'", "_left")
+assert "`_left'" == ""
+// A graph-length name is too long for a KPI, replace or not.
+capture noisily dash kpi mean(mpg), name(`g22', replace) title("x")
+assert _rc == 198
+assert "${dash_graph_registry}" == "`g22' `k18'"
+display "CV-05 PASS: an 18-character KPI name registers, 19 is refused"
+
+// The longest names build: nothing downstream rebuilds a longer global.
+tempfile out5
+capture erase "`out5'.html"
+capture noisily dash build, saving("`out5'.html") replace nobrowser
+assert _rc == 0
+cert_file_has "`out5'.html", needle("eighteen")
+assert r(found) == 1
+display "CV-11 PASS: the longest graph and KPI names build a dashboard"
+
+// ================================================================
+// CV-06 — the grammar still refuses what it refused
+// ================================================================
+foreach bad in 1g g-1 g.1 {
+    capture noisily dash scatter mpg weight, name(`bad')
+    assert _rc == 198
+    capture noisily dash kpi mean(mpg), name(`bad') title("x")
+    assert _rc == 198
+}
+display "CV-06 PASS: names outside the grammar are refused under version 16"
+
+// ================================================================
+// CV-07 — a dashboard builds end to end under user version 16
+// ================================================================
+dash clear
+dash scatter mpg weight, name(a1)
+dash line mpg weight, name(a2)
+dash kpi mean(mpg), name(a3) title("Mean mpg")
+tempfile out7
+capture erase "`out7'.html"
+capture noisily dash build, saving("`out7'.html") replace nobrowser ///
+    layout(2 2) title("v16 dashboard")
+assert _rc == 0
+cert_file_has "`out7'.html", needle("v16 dashboard")
+assert r(found) == 1
+cert_file_has "`out7'.html", needle("Mean mpg")
+assert r(found) == 1
+display "CV-07 PASS: two graphs and a KPI build under version 16"
+
+// ================================================================
+// CV-08 — the same under user version 17
+// ================================================================
+version 17
+assert c(userversion) == 17
+dash clear
+capture noisily dash scatter mpg weight, name(g1)
+assert _rc == 0
+capture noisily dash kpi mean(mpg), name(k1) title("Avg")
+assert _rc == 0
+assert "${dash_graph_registry}" == "g1 k1"
+display "CV-08 PASS: graph and KPI names are accepted under version 17"
+
+// ================================================================
+// CV-09..10 — and nothing changed for a caller on the running version
+// ================================================================
+version `c(stata_version)'
+assert c(userversion) >= 18
+dash clear
+capture noisily dash scatter mpg weight, name(g1)
+assert _rc == 0
+capture noisily dash scatter mpg weight, name(`g23')
+assert _rc == 198
+capture noisily dash scatter mpg weight, name(1g)
+assert _rc == 198
+display "CV-09 PASS: the running version accepts and refuses as version 16 does"
+
+capture noisily dash kpi mean(mpg), name(k1) title("Avg")
+assert _rc == 0
+assert "${dash_graph_registry}" == "g1 k1"
+display "CV-10 PASS: a KPI name is accepted under the running version"
+
+dash clear
+
+display ""
+display "All caller-version tests PASSED."

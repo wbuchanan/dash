@@ -10,6 +10,7 @@
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
 {viewerjumpto "Server Mode"       "dash##server_mode"}{...}
+{viewerjumpto "Resource limits"   "dash##limits"}{...}
 {viewerjumpto "Examples"          "dash##examples"}{...}
 {viewerjumpto "Dependencies"      "dash##dependencies"}{...}
 {viewerjumpto "Author"            "dash##author"}{...}
@@ -159,6 +160,14 @@ This help file documents only the features that differ from or extend
     refused with {cmd:r(198)} unless you write
     {cmd:name(}{it:name}{cmd:, replace)}, which retires whatever held the
     name before.  {cmd:dash clear} empties the registry.
+
+{phang2}    {ul:What a name may be.}  A name starts with a letter or an
+    underscore and holds only letters, digits and underscores: at most 22
+    characters for a graph and 18 for a KPI card.  {cmd:dash} keeps each
+    item in Stata globals whose names carry it ({cmd:$dash_json_}{it:name},
+    {cmd:$dash_kpi_}{it:name}{cmd:_stat}), and a global's name is at most
+    32 characters.  The registry holds at most 100 items; see
+    {help dash##limits:Resource limits}.
 
 {phang2}    {ul:The registry lives in Stata globals.}  It is kept in
     {cmd:$dash_graph_registry} and a set of {cmd:$dash_*} macros, which is
@@ -488,7 +497,8 @@ For example:
 {pstd}
 Tab titles are used exactly as written.  A registered item named in no tab is
 still drawn, below the tabs.  Names that are not in the registry are ignored.
-{cmd:tabs()} works with every {cmd:layout()}.
+{cmd:tabs()} works with every {cmd:layout()}.  At most 50 tabs are drawn; a
+note names the rest (see {help dash##limits:Resource limits}).
 
 
 {marker linking}
@@ -527,7 +537,11 @@ Syntax:
 
 {phang2}{cmd:type(dropdown)} — select widget showing unique values of
     {it:varname}.  Value labels are used for display text when available.
-    An "All" option removes the filter.
+    An "All" option removes the filter.  A dropdown lists at most 1,000
+    values: over that, a numeric or date variable is drawn as
+    {cmd:type(range)} instead, and a string variable lists its first 1,000
+    values in sort order, each with a note (see
+    {help dash##limits:Resource limits}).
 
 {phang2}{cmd:type(slider)} — slider that filters observations where
     {it:varname} ≥ slider value.
@@ -550,8 +564,8 @@ same kind of warning.  Any other sub-option is accepted, named in a
 warning, and ignored.
 
 {pstd}
-{ul:More than one filter.}  Give {cmd:filter()} as many times as you need on
-the same {cmd:dash build} or {cmd:dash serve} call.  Because Stata's
+{ul:More than one filter.}  Give {cmd:filter()} as many times as you need, up
+to 20, on the same {cmd:dash build} or {cmd:dash serve} call.  Because Stata's
 {cmd:syntax} keeps only the last of a repeated option, {cmd:dash} collects
 them itself before parsing and joins them with a semicolon internally; you
 never write the semicolon.  Each group is validated on its own, so
@@ -703,9 +717,11 @@ that embeds all data as base64.  Run it outside Stata with:
 {pstd}
 It accepts {cmd:--port} {it:N}, {cmd:--address} {it:iface},
 {cmd:--allow-websocket-origin} {it:host:port} (repeatable),
-{cmd:--timeout} {it:minutes} and {cmd:--show}.  No browser window opens
-unless {cmd:--show} is given, so the app is usable from a script or a
-batch job.
+{cmd:--timeout} {it:minutes}, {cmd:--show}, {cmd:--trust-forwarded-for}, and
+the rate limits {cmd:--sessions-per-client} {it:N},
+{cmd:--new-clients-per-minute} {it:N} and {cmd:--sessions-per-minute}
+{it:N} described below.  No browser window opens unless {cmd:--show} is
+given, so the app is usable from a script or a batch job.
 
 {pstd}
 {cmd:bokeh serve app.py} also works and serves the same dashboard, with one
@@ -740,18 +756,111 @@ the page as a Bokeh model property or an escaped HTML attribute rather than
 as markup.
 
 {pstd}
-Session creation and {cmd:/health} are rate limited per client.  The client is
-identified by the peer address, not by {cmd:X-Forwarded-For}, because that
-header is set by the client unless a proxy you control overwrites it --
-trusting it made the limit bypassable with a single header.  Behind such a
-proxy, pass {cmd:--trust-forwarded-for} so that each end user gets their own
-bucket rather than sharing the proxy's.
+Session creation and {cmd:/health} are rate limited, each separately, so a
+health probe never spends the dashboard's budget.  The client is identified
+by the peer address, not by {cmd:X-Forwarded-For}, because that header is set
+by the client unless a proxy you control overwrites it -- trusting it made the
+limit bypassable with a single header.  Behind such a proxy, pass
+{cmd:--trust-forwarded-for} so that each end user gets their own bucket
+rather than sharing the proxy's.
+
+{pstd}
+Three limits apply to new sessions, each over the last minute:
+
+{phang2}{cmd:--sessions-per-client} {it:N} (default 60) -- sessions one
+    client may open.{p_end}
+{phang2}{cmd:--new-clients-per-minute} {it:N} (default 60) -- clients the
+    server is not already tracking, admitted between them.  A client that
+    presents a new address on every request -- possible through a proxy that
+    passes the header through unchanged -- is held to one client's rate
+    rather than escaping the limit.{p_end}
+{phang2}{cmd:--sessions-per-minute} {it:N} (default 600) -- all sessions
+    together.{p_end}
+
+{pstd}
+Each takes a whole number from 1 to 1,000,000.  A client over a limit gets a
+{cmd:429 Too Many Requests} page, and the server logs the refusal -- once a
+minute per limit, so a flood cannot flood the log -- naming the limit and its
+flag.  No client that is still active is ever forgotten to make room for new
+ones, so a flood of addresses cannot reset a real client's count.
+
+{pstd}
+{ul:Recomputation.}  A slider recomputes the dashboard when you release it,
+not at every step of the drag.  In each browser session, each filter widget
+and each brushed graph then recomputes at most 10 times in a burst and twice
+a second after that; changes that arrive faster are folded into one
+recomputation with the latest values.  A script that moves a widget in a
+loop therefore cannot monopolise the server, which runs one recomputation at
+a time for every session.
 
 {pstd}
 The generated app embeds your whole dataset, base64-encoded.  Treat the
 {cmd:.py} file as you would the data: {cmd:dash serve} writes its copy to a
 Stata temporary file that Stata erases when the command ends, and a file you
 name with {cmd:saving()} is yours to manage.
+
+
+{marker limits}
+{title:Resource limits}
+
+{pstd}
+Every input that decides how much {cmd:dash} builds has a limit, so that no
+dataset, option or registry can produce an unbounded file or exhaust memory.
+Each limit has a default, a ceiling that nothing moves, and a global macro
+that moves it for the rest of the session:
+
+{synoptset 28 tabbed}{...}
+{synopthdr:global}
+{synoptline}
+{synopt:{cmd:$dash_max_cells}}values embedded, observations times the
+    variables a dashboard uses; default 5,000,000, at most 20,000,000.  Over
+    it the dashboard is refused with {cmd:r(134)} before anything is
+    exported.{p_end}
+{synopt:{cmd:$dash_max_graphs}}graphs and KPI cards in the registry; default
+    100, at most 1,000.  A new name past it is refused with
+    {cmd:r(134)}.{p_end}
+{synopt:{cmd:$dash_max_plots}}plots in one graph, where each y variable of
+    {cmd:scatter y1 y2 x} is one; default 100, at most 1,000.  Refused with
+    {cmd:r(134)}.{p_end}
+{synopt:{cmd:$dash_max_filter_options}}values one {cmd:type(dropdown)}
+    filter lists; default 1,000, at most 100,000.  Over it a numeric or date
+    variable is drawn as {cmd:type(range)} and a string variable lists its
+    first values in sort order.{p_end}
+{synopt:{cmd:$dash_max_by_groups}}panels one {cmd:by()} graph draws; default
+    100, at most 1,000.  The first groups in sort order are drawn.{p_end}
+{synopt:{cmd:$dash_max_tabs}}tabs; default 50, at most 500.  The first are
+    drawn.{p_end}
+{synopt:{cmd:$dash_max_filters}}filter widgets; default 20, at most 200.
+    The first are built.{p_end}
+{synoptline}
+
+{pstd}
+A limit that clamps says so in a note naming the limit and the global that
+raises it; a limit that refuses says so in its error.  For example,
+
+{phang2}{cmd:. global dash_max_by_groups 250}{p_end}
+
+{pstd}
+lets one {cmd:by()} graph draw 250 panels.  A global must be a whole number
+from 1 to its ceiling, written in digits; anything else is refused with
+{cmd:r(198)}.  An unset global means the default.  {cmd:dash clear} does not
+drop these globals, because they are settings rather than registry;
+{cmd:macro drop dash_max_*} does.
+
+{pstd}
+{ul:Why the data limit counts every observation.}  {cmd:dash} exports every
+observation of the variables a dashboard uses and applies {cmd:if} and
+{cmd:in} itself, because different plots can carry different qualifiers.  A
+qualifier therefore does not reduce what is exported or held in memory, so
+reduce the data first -- {cmd:keep}, {cmd:drop}, {cmd:sample} or
+{cmd:collapse}, inside {cmd:preserve} and {cmd:restore}.  Above 1,000,000
+values {cmd:dash} notes the size the file will be, at about 24 bytes a value;
+measured, 4,000,000 values made a 95 MB page and took 2.1 GB of memory to
+render.
+
+{pstd}
+{ul:A served dashboard} has rate limits of its own; see
+{help dash##server_mode:Server Mode}.
 
 
 {marker examples}
@@ -824,6 +933,9 @@ that group.
 {pstd}
 Value labels are used for facet panel titles when available.
 Multiple by-variables produce composite labels (e.g. "Domestic / 3").
+One graph draws at most 100 panels: over that, the first 100 groups in
+sort order are drawn and a note names the limit (see
+{help dash##limits:Resource limits}).
 {cmd:cols()}, {cmd:total} and {cmd:missing} are the {cmd:by()} sub-options
 {cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
 example {cmd:rows()}, {cmd:holes()} or {cmd:compact} -- is accepted, named

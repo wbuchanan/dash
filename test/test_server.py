@@ -4074,8 +4074,15 @@ class TestRateLimiterBoundedMemory:
     permanent entries.
 
     Post-fix: keys are deleted when their timestamp list becomes empty after
-    pruning, and a _MAX_IPS hard cap evicts the oldest entry when the store
-    is full.
+    pruning, and a _MAX_IPS hard cap bounds the store.
+
+    TR-19.5 (ROADMAP.md WP-19) changed what the cap does when the store is
+    full. It used to evict the oldest entry, and that eviction was a defect
+    of its own: 10,000 forged keys evicted a live client's record and took
+    10,120 sessions in 60 s against a nominal 60. Now stale keys are swept,
+    and a new key that finds the store full of live keys is not tracked --
+    no live key is evicted. The bound itself, ``len(_store) <= _MAX_IPS``,
+    is unchanged. test_server_rate_limit.py covers the new contract.
     """
 
     def _minimal_spec(self):
@@ -4140,15 +4147,31 @@ class TestRateLimiterBoundedMemory:
             "empty per-IP list must be deleted from _store to prevent unbounded growth"
 
     def test_high_cardinality_ip_churn_store_bounded(self, dr_module, auto_df):
-        """BUG-30-1c: _store size must not exceed _MAX_IPS under high-cardinality churn."""
+        """BUG-30-1c: _store size must not exceed _MAX_IPS under high-cardinality churn.
+
+        Updated for TR-19.5. With the defaults, first contact from keys the
+        limiter is not tracking now shares one window of max_rpm, so this
+        churn tracked 60 keys and never came near the cap: the assertion
+        still held, but no longer tested the cap. The first-contact and
+        total bounds are opened wide here so that every one of the
+        _MAX_IPS + 500 keys is admitted and the cap is what bounds the
+        store; the bound asserted is unchanged, and the test now also
+        fails if the store never reaches the cap.
+        """
         app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
-        limiter = app_mod._RateLimiter(max_rpm=60)
-        max_ips = limiter._MAX_IPS
+        max_ips = app_mod._RateLimiter._MAX_IPS
+        limiter = app_mod._RateLimiter(max_rpm=60,
+                                       new_clients=max_ips + 500,
+                                       total_rpm=max_ips + 500)
         # Issue requests from many more IPs than _MAX_IPS
         for i in range(max_ips + 500):
             limiter.is_allowed(f"192.0.2.{i // 256}.{i % 256}")
         assert len(limiter._store) <= max_ips, (
             f"_store size {len(limiter._store)} must not exceed _MAX_IPS={max_ips}"
+        )
+        assert len(limiter._store) == max_ips, (
+            f"_store holds {len(limiter._store)} keys, so the churn never "
+            f"reached _MAX_IPS={max_ips} and the cap went untested"
         )
 
     def test_rate_limiter_has_max_ips_attribute(self, dr_module, auto_df):

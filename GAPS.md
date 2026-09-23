@@ -1568,9 +1568,11 @@ The generated server app has a genuine per-IP sliding-window rate limiter
 (`_RATE_LIMIT_RPM = 60`, `_HEALTH_LIMIT_RPM = 600`), separate buckets for
 sessions and health checks, an LRU `_MAX_IPS = 10000` eviction, and a
 `/health` endpoint returning 200/429 — satisfying CLAUDE.md rules 3 and 17.
-It binds loopback by default.
+It binds loopback by default.  *(WP-19: the LRU eviction was the defect I2
+records, and is gone; the limiter now has three bounds -- per client, new
+clients, all sessions -- and never evicts a live key.  See I2.)*
 
-### I2. The unbounded ones — S2, MEASURED
+### I2. The unbounded ones — S2, CLOSED by WP-19
 
 No constant exists for any of these — grep for
 `_MAX_FILTER_OPTIONS`, `_MAX_DROPDOWN`, `_MAX_BY_GROUPS`, `_MAX_FACETS`,
@@ -1587,6 +1589,29 @@ No constant exists for any of these — grep for
 - **`_MAX_IPS` is an eviction primitive, not a limiter.** A client cycling
   10 000 forwarded keys took 300 sessions inside a 60-second window against a
   nominal 60.
+
+**Closed by WP-19.** Remeasured first, 23sep2026 at `f1321c6`: a dropdown on
+200,000 distinct values was 200,001 options, a 38.8 MB page and a 14.8 MB
+served app; `by()` on 1,000 groups drew 1,000 figures in 29.2 s; 300 graphs
+took 7.9 s and 3,000 tabs 14.4 s; 4,000,000 cells made a 94.9 MB page at
+2.1 GB RSS with rc 0; and the forged-key cycle, with the header trusted, got
+10,120 sessions in 60 s (the 300 above predates the peer-address default),
+flushing the real client's own key.  Each quantity is now a limit with a
+default, a hard ceiling and a global macro that moves it for the session --
+`dash_max_cells` (5,000,000; at most 20,000,000), `dash_max_graphs` and
+`dash_max_plots` (100; 1,000), `dash_max_filter_options` (1,000; 100,000),
+`dash_max_by_groups` (100; 1,000), `dash_max_tabs` (50; 500),
+`dash_max_filters` (20; 200) -- held in one table in each language, which a
+test keeps equal.  dash.ado refuses cells (before the export), graphs and
+plots with r(134); the renderer clamps the rest in both render modes, and
+every clamp names its limit and the global.  A numeric or date dropdown
+over the limit becomes `type(range)`; a string one lists its first values.
+The limiter's eviction is replaced by three bounds and a swept store that
+never evicts a live key: the same attack now gets 59 sessions, the real
+client its 60.  Help: `dash.sthlp`, "Resource limits" and "Server Mode".
+Tests: `test_resource_limits.py`, `test_server_rate_limit.py`,
+`test_served_throttle.py`, `test_resource_limits.cscript`,
+`test_adversarial.cscript` P19.
 
 ### I3. Escaping — mostly solid — S3, READ
 

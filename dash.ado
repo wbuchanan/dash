@@ -1792,6 +1792,269 @@ program define _dash_validate_opts, sclass
 end
 // END option-validation table (WP-15)
 
+// BEGIN resource limits (WP-19)
+// ================================================================
+// Resource limits.
+//
+// ROADMAP WP-19: no user input may produce unbounded output or memory use
+// (BR-19.1), and every limit names the setting that would raise it
+// (BR-19.2).  Measured on the development machine, a standalone dashboard
+// embedding 2,000,000 values is 47.6 MB of HTML and took 1.0 GB of RSS in
+// the renderer; 4,000,000 is 94.9 MB and 2.1 GB; and Chrome cannot hold a
+// string longer than about 512 MB, which is roughly 20,000,000 values.
+//
+// This is the one table of limits.  Each row is key=default,ceiling.  A
+// session raises or lowers a limit with global dash_max_<key>: a whole
+// number written in digits only, at most nine of them, from 1 to the
+// ceiling.  dash.ado enforces three itself -- cells (values embedded:
+// observations x variables exported), graphs (graphs and KPI cards in the
+// registry) and plots (plot entries in one graph, one per y variable) --
+// and hands every limit the session has set to the renderer as
+// build_options.limits, under these keys, for the four it enforces:
+// filter_options, by_groups, tabs and filters.
+// ================================================================
+program define _dash_limit_table
+    version 16.0
+    local rows ///
+        cells=5000000,20000000 ///
+        graphs=100,1000 ///
+        plots=100,1000 ///
+        filter_options=1000,100000 ///
+        by_groups=100,1000 ///
+        tabs=50,500 ///
+        filters=20,200
+    c_local _dash_limit_rows "`rows'"
+end
+
+// ----------------------------------------------------------------
+// _dash_count_fmt <out_macro> <exp>  -- a count for a message: 1,234,567
+//
+// %30.0fc rather than %12.0fc: the two give the same text for every
+// number below 10^12, which covers every limit, but %12.0fc turns a
+// thirteen-digit count into 1.23457e+12 (measured), and observations x
+// variables can reach that.
+// ----------------------------------------------------------------
+program define _dash_count_fmt
+    version 16.0
+    gettoken out 0 : 0
+    local s : display %30.0fc `0'
+    local s = strtrim("`s'")
+    c_local `out' "`s'"
+end
+
+// ----------------------------------------------------------------
+// _dash_limit, name(<key>)  -- one limit, with its global validated
+//
+// r(value)    the effective limit: $dash_max_<key> when set, else the
+//             default
+// r(default)  r(ceiling)  from _dash_limit_table
+// r(global)   the global's name, dash_max_<key>
+//
+// An unset or empty global means the default.  Anything else must be a
+// whole number written in digits only, at most nine of them, from 1 to
+// the ceiling, or it is refused with r(198), naming the global and the
+// range and echoing the value reduced to safe characters.
+//
+// The global is read through st_global(), so its contents are a value and
+// are never parsed as Stata code, and it is tested with extended macro
+// functions, which work on a macro's value without expanding it.  It is
+// expanded only once it is known to be nine digits at most.  No regular
+// expression decides it: under a caller's version 16 or 17 Stata's old
+// engine does not know bounded repetition, so {1,9} silently fails, and
+// under StataNow's engine `$' also matches before a trailing newline --
+// measured, regexm("12" + char(10), "^[0-9]+$") is 1.
+// ----------------------------------------------------------------
+program define _dash_limit, rclass
+    version 16.0
+    syntax , NAME(string)
+
+    _dash_limit_table
+    local def  ""
+    local ceil ""
+    foreach _row of local _dash_limit_rows {
+        local _eq  = strpos("`_row'", "=")
+        local _key = substr("`_row'", 1, `_eq' - 1)
+        if `"`_key'"' != `"`macval(name)'"' continue
+        local _vals = substr("`_row'", `_eq' + 1, .)
+        local _cm   = strpos("`_vals'", ",")
+        local def   = substr("`_vals'", 1, `_cm' - 1)
+        local ceil  = substr("`_vals'", `_cm' + 1, .)
+    }
+    if "`def'" == "" {
+        display as error "dash: internal error: _dash_limit was asked for a limit that does not exist."
+        exit 198
+    }
+
+    local gname "dash_max_`name'"
+    mata: st_local("_raw", st_global(st_local("gname")))
+    local _len : strlen local _raw
+    local val = `def'
+    if `_len' > 0 {
+        // Digits only, and nine at most: with every digit taken out,
+        // nothing may be left.
+        local _ok = (`_len' <= 9)
+        if `_ok' {
+            local _rest : copy local _raw
+            forvalues _d = 0/9 {
+                local _rest : subinstr local _rest "`_d'" "", all
+            }
+            local _restlen : strlen local _rest
+            local _ok = (`_restlen' == 0)
+        }
+        if `_ok' {
+            local val = real("`_raw'")
+            local _ok = (`val' >= 1 & `val' <= `ceil')
+        }
+        if !`_ok' {
+            // The echo: the first 20 bytes, each outside [A-Za-z0-9_.-]
+            // shown as ?.  Read byte by byte from Mata, so a quote, a
+            // backtick, a brace or a byte that is not UTF-8 never reaches
+            // the display line as anything but a ?.
+            local _safe ""
+            local _nb = min(`_len', 20)
+            forvalues _i = 1/`_nb' {
+                mata: st_local("_b", strofreal(ascii(substr(st_local("_raw"), `_i', 1))))
+                if inrange(`_b', 48, 57) | inrange(`_b', 65, 90) | ///
+                   inrange(`_b', 97, 122) | inlist(`_b', 45, 46, 95) {
+                    local _safe "`_safe'`=char(`_b')'"
+                }
+                else local _safe "`_safe'?"
+            }
+            local _cut ""
+            if `_len' > 20 {
+                _dash_count_fmt _len_s `_len'
+                local _cut ", the first 20 of `_len_s' characters"
+            }
+            _dash_count_fmt _ceil_s `ceil'
+            _dash_count_fmt _def_s  `def'
+            display as error "dash: global `gname' must be a whole number from 1 to `_ceil_s', written in digits only (got '`_safe''`_cut')."
+            display as error "      Drop it (macro drop `gname') to use the default, `_def_s'."
+            exit 198
+        }
+    }
+
+    return scalar value   = `val'
+    return scalar default = `def'
+    return scalar ceiling = `ceil'
+    return local  global    "`gname'"
+end
+
+// ----------------------------------------------------------------
+// _dash_limits_json  -- the limits this session has set, as JSON
+//
+// r(json) is the object written as build_options.limits: one key for each
+// dash_max_<key> global that is set, in table order, validated through
+// _dash_limit and written as a plain integer -- {"by_groups":7} -- or {}
+// when none is set.  A limit the session has not set is left out, so the
+// renderer keeps its own default for it.
+// ----------------------------------------------------------------
+program define _dash_limits_json, rclass
+    version 16.0
+    _dash_limit_table
+    local json ""
+    local n = 0
+    foreach _row of local _dash_limit_rows {
+        local _key = substr("`_row'", 1, strpos("`_row'", "=") - 1)
+        local _set : strlen global dash_max_`_key'
+        if `_set' == 0 continue
+        _dash_limit, name(`_key')
+        local _v : display %12.0f r(value)
+        local _v = strtrim("`_v'")
+        if `n' > 0 local json `"`json',"'
+        local json `"`json'"`_key'":`_v'"'
+        local ++n
+    }
+    return local json `"{`json'}"'
+end
+
+// ----------------------------------------------------------------
+// _dash_graph_cap <already>  -- the registry limit
+//
+// Both registrars call this before they set or retire any global.  The
+// graphs limit is read, and its global validated, on every registration;
+// the cap itself applies only to a name the registry does not hold yet
+// (<already> 0).  A name already registered is a replace and never counts.
+// ----------------------------------------------------------------
+program define _dash_graph_cap
+    version 16.0
+    args already
+    _dash_limit, name(graphs)
+    local lim  = r(value)
+    local ceil = r(ceiling)
+    if `already' == 1 exit
+    local n : word count ${dash_graph_registry}
+    if `n' < `lim' exit
+
+    _dash_count_fmt _n_s    `n'
+    _dash_count_fmt _lim_s  `lim'
+    _dash_count_fmt _ceil_s `ceil'
+    // A registry can hold more than the limit when the limit was lowered
+    // after the items were registered; the message does not then claim
+    // the count is the most one dashboard draws.
+    if `n' == `lim' local _why "the most one dashboard draws"
+    else            local _why "more than the `_lim_s' one dashboard draws"
+    display as error "dash: the registry already holds `_n_s' graphs and KPI cards, `_why'."
+    display as error "      Run dash clear, reuse a name with name(<name>, replace), or set global dash_max_graphs to a higher value (at most `_ceil_s')."
+    exit 134
+end
+
+// ----------------------------------------------------------------
+// _dash_plot_cap_refuse <lim> <ceil> [<n>]  -- the plot-limit refusal
+//
+// <n> is the graph's plot count when it is known.  It is left off when
+// only a running total is known to have passed the limit and segments are
+// still to come.
+// ----------------------------------------------------------------
+program define _dash_plot_cap_refuse
+    version 16.0
+    args lim ceil n
+    _dash_count_fmt _lim_s  `lim'
+    _dash_count_fmt _ceil_s `ceil'
+    if "`n'" == "" {
+        local _has "more than `_lim_s' plots (each y variable is one), the most one graph draws"
+    }
+    else {
+        _dash_count_fmt _n_s `n'
+        local _has "`_n_s' plots (each y variable is one), more than the `_lim_s' one graph draws"
+    }
+    display as error "dash: this graph has `_has'."
+    display as error "      Split it into several graphs, or set global dash_max_plots to a higher value (at most `_ceil_s')."
+    exit 134
+end
+
+// ----------------------------------------------------------------
+// _dash_cell_cap <nvars> [<nobs>]  -- the embedded-data limit, before jsonio
+//
+// jsonio exports every observation of every variable it is given; the
+// renderer applies if/in itself, so if/in reduce nothing here and are not
+// offered as a remedy.  <nobs> is the observations exported, _N unless the
+// caller exports fewer (the one-row placeholder a graph of literal values
+// sends).  Both callers run this before the date-format swap that
+// brackets jsonio, so a refusal leaves the data in memory and every
+// display format exactly as they were.
+// ----------------------------------------------------------------
+program define _dash_cell_cap
+    version 16.0
+    args nvars nobs
+    if "`nobs'" == "" local nobs = _N
+    _dash_limit, name(cells)
+    local lim  = r(value)
+    local ceil = r(ceiling)
+    if `nobs' * `nvars' <= `lim' exit
+
+    _dash_count_fmt _cells_s `nobs' * `nvars'
+    _dash_count_fmt _obs_s   `nobs'
+    _dash_count_fmt _vars_s  `nvars'
+    _dash_count_fmt _lim_s   `lim'
+    _dash_count_fmt _ceil_s  `ceil'
+    local _obs_w  = cond(`nobs' == 1, "observation", "observations")
+    local _vars_w = cond(`nvars' == 1, "variable", "variables")
+    display as error "dash: this dashboard would embed `_cells_s' values (`_obs_s' `_obs_w' x `_vars_s' `_vars_w'), more than the `_lim_s' dash embeds."
+    display as error "      Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_cells to a higher value (at most `_ceil_s')."
+    exit 134
+end
+// END resource limits (WP-19)
+
 // ================================================================
 // _dash_plot_opts_to_json
 //
@@ -1886,16 +2149,21 @@ end
 // Parse one plot segment (full text including plot type name),
 // and build its JSON fragment.
 //
-// Usage:  _dash_process_segment `"`seg_text'"' `plottype_out' `json_out'
+// Usage:  _dash_process_segment `"`seg_text'"' `plottype_out' `json_out' [nsegs]
+//
+// nsegs is the number of segments in the graph (default 1); it only
+// decides whether a plot-limit refusal can state the graph's plot count.
 //
 // After the call:
 //   - c_local `plottype_out' = expanded plot type name
 //   - c_local `json_out'     = JSON fragment for this plot
+//   - c_local _seg_nplots_out = number of plot objects in that fragment
 //   - Caller's g_* locals are updated if graph-level opts were found.
 // ================================================================
 program define _dash_process_segment, rclass
     version 16.0
-    args seg_text plottype_out json_out
+    args seg_text plottype_out json_out nsegs
+    if "`nsegs'" == "" local nsegs 1
 
     // ---- extract plot type (first word) ----
     gettoken plottype rest : seg_text
@@ -2032,6 +2300,17 @@ program define _dash_process_segment, rclass
             if `nv' >= 2 {
                 local xvar = word("`vl'", `nv')
                 local nyv = `nv' - 1
+                // WP-19: one plot object is built per y variable below, so
+                // a segment whose y variables alone pass the plot limit is
+                // refused here, before any of them is built.  In a graph
+                // of several segments only "more than the limit" is known.
+                if `nyv' > 1 {
+                    _dash_limit, name(plots)
+                    if `nyv' > r(value) {
+                        if `nsegs' > 1 _dash_plot_cap_refuse `r(value)' `r(ceiling)'
+                        else           _dash_plot_cap_refuse `r(value)' `r(ceiling)' `nyv'
+                    }
+                }
                 local yvarlist ""
                 forvalues vi = 1/`nyv' {
                     local _thisy = word("`vl'", `vi')
@@ -2342,11 +2621,15 @@ program define _dash_process_segment, rclass
         }
     }
     else {
+        local _nyv = 1
         local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"}"'
     }
 
     c_local `plottype_out' "`ptype'"
     c_local `json_out'     `"`seg_json'"'
+    // How many plot objects seg_json holds, for _dash_plot's running total
+    // against the plot limit (WP-19).
+    c_local _seg_nplots_out `_nyv'
 end
 
 
@@ -2546,12 +2829,32 @@ program define _dash_plot
     local _dash_ignored_acc `"`_dash_gopt_ignored'"'
 
     // ---- Parse each plot segment ----
+    // WP-19: a graph holds at most `plots' plot entries -- one per y
+    // variable of a varlist, one for any other segment.  A single segment
+    // over the limit is refused inside _dash_process_segment, before its
+    // plot objects are built; the running total across segments is kept
+    // here.  The limit is read once, before any segment is parsed, so a bad
+    // dash_max_plots is refused first.  Refused here, nothing is registered.
+    _dash_limit, name(plots)
+    local _dash_plot_lim  = r(value)
+    local _dash_plot_ceil = r(ceiling)
+    local _dash_nplots    = 0
     local plots_json ""
     forvalues k = 1/`n_segs' {
         local seg `"`_seg_`k''"'
 
         local _seg_ignored_out ""
-        _dash_process_segment `"`seg'"' _pt_k _json_k
+        local _seg_nplots_out  1
+        _dash_process_segment `"`seg'"' _pt_k _json_k `n_segs'
+
+        local _dash_nplots = `_dash_nplots' + `_seg_nplots_out'
+        if `_dash_nplots' > `_dash_plot_lim' {
+            // The graph's total is known only once its last segment is in.
+            if `k' == `n_segs' {
+                _dash_plot_cap_refuse `_dash_plot_lim' `_dash_plot_ceil' `_dash_nplots'
+            }
+            else _dash_plot_cap_refuse `_dash_plot_lim' `_dash_plot_ceil'
+        }
 
         if `"`_seg_ignored_out'"' != "" {
             local _dash_ignored_acc `"`_dash_ignored_acc' `_seg_ignored_out'"'
@@ -2751,11 +3054,22 @@ program define _dash_register_graph
     }
     local name `"`_nm'"'
 
-    // Validate name format
-    if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]{0,31}$") {
-        display as error "dash: invalid graph name '`name''. " ///
-            "Names must start with a letter or underscore and contain only " ///
-            "letters, digits, and underscores (max 32 chars)."
+    // Validate name format.  No bounded repetition such as {0,31}: regexm()
+    // follows the CALLER's user version, and below 18 it runs Stata's old
+    // engine, which does not know it -- every name was refused in a do-file
+    // that began `version 16' (test_caller_version.cscript).  The length is
+    // checked on its own, and it is 22, not 32: the name becomes part of the
+    // globals dash_json_<name> and dash_spec_<name>, and a global's name is
+    // at most 32 characters.  A 23- to 32-character name used to pass here
+    // and then fail on the global with Stata's bare "invalid name".
+    if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]*$") | strlen("`name'") > 22 {
+        // Echoed as text: a refused name may hold anything, and shown raw
+        // name(a{bf:X}) printed a bold X -- the user's text drawn as SMCL.
+        mata: st_local("_name_safe", ustrregexra(usubstr( ///
+            st_local("name"), 1, 40), "[^A-Za-z0-9_.\-]", "?"))
+        display as error "dash: invalid graph name '`_name_safe''. " ///
+            "Names must start with a letter or underscore, contain only " ///
+            "letters, digits, and underscores, and be at most 22 characters."
         exit(198)
     }
 
@@ -2781,6 +3095,11 @@ program define _dash_register_graph
             "Use name(`name', replace) to overwrite."
         exit(198)
     }
+
+    // WP-19: the registry holds at most `graphs' graphs and KPI cards.  A
+    // NEW name past the limit is refused here, before any global is set or
+    // retired; a name already registered is a replace and never counts.
+    _dash_graph_cap `already'
 
     // Retire whatever held this name before.  Without this a graph that
     // replaced a KPI kept the KPI's marker, and _dash_prepare_spec then
@@ -2892,11 +3211,18 @@ program define _dash_render_immediate
     foreach _vf in scatteri pci pcscatter function {
         if strpos(`"`json_spec'"', `""type":"`_vf'""') > 0 local _varfree = 1
     }
+    local _dash_placeholder = 0
     if "`needed_vars'" == "" & `_varfree' {
         // Nothing to serialise, but jsonio still needs a non-empty varlist, so
-        // send a single variable the renderer will simply not read.
+        // send ONE observation of one variable, which the renderer will not
+        // read.  It used to send every observation of it: a function graph
+        // over ten million observations exported ten million values for
+        // nothing, and under the cell limit (WP-19) was refused for them.
         capture unab _allv : _all
-        if _rc == 0 local needed_vars : word 1 of `_allv'
+        if _rc == 0 {
+            local needed_vars : word 1 of `_allv'
+            local _dash_placeholder = 1
+        }
     }
     if "`needed_vars'" == "" {
         display as error "dash: no variables identified in plot specification."
@@ -2921,6 +3247,21 @@ program define _dash_render_immediate
         exit(198)
     }
 
+    // ---- Resource limits (WP-19), before anything is exported ----
+    // Every dash_max_* global the session has set is validated here -- a
+    // bad one is refused before the export, not after it -- and travels to
+    // the renderer as build_options.limits.  Then the size of what jsonio
+    // is about to embed, every observation of every variable in
+    // needed_vars, is held to the cells limit.  Both come before the
+    // date-format swap, so a refusal leaves the user's data and formats
+    // exactly as they were.
+    _dash_limits_json
+    local _dash_lim_json `"`r(json)'"'
+    local _dash_nvars : word count `needed_vars'
+    local _dash_in ""
+    if `_dash_placeholder' & _N > 0 local _dash_in "in 1"
+    _dash_cell_cap `_dash_nvars' `=cond(`_dash_placeholder', min(_N, 1), _N)'
+
     // Collect display formats, and transport date variables as
     // numbers so jsonio does not render them to text.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
@@ -2928,7 +3269,7 @@ program define _dash_render_immediate
     if `"`_dash_date_vars'"' != "" {
         _dash_date_fmts_swap "`_dash_date_vars'"
     }
-    quietly jsonio out `needed_vars', ///
+    quietly jsonio out `needed_vars' `_dash_in', ///
         what(all) filenm("`data_json_path'") ///
         metaprint(varnames varlabels vallabs labelnames)
 
@@ -2954,7 +3295,7 @@ program define _dash_render_immediate
     local _dash_lvl = c(level)
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json'}}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'}}"'
 
     tempname fh
     // quietly: `write replace' notes a missing file, and this path is a
@@ -3030,6 +3371,12 @@ program define _dash_clear
     // These four prefixes are dash's own namespace.  A user global that
     // happens to start with one of them is not distinguishable from dash's
     // and is cleared too; that is what `dash clear' means.
+    //
+    // The dash_max_* globals are deliberately NOT swept, and none of the
+    // patterns here matches them.  They are the session's resource limits
+    // (WP-19) -- settings the user chose, like $dash_nobrowser -- not
+    // registry state: a do-file that raises dash_max_cells once and runs
+    // `dash clear' between dashboards must keep the limit it set.
     capture macro drop dash_spec_*
     capture macro drop dash_json_*
     capture macro drop dash_opts_*
@@ -3102,8 +3449,16 @@ program define _dash_kpi
     }
     local name `"`_nm'"'
 
-    if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]{0,31}$") {
-        display as error "dash kpi: invalid name '`name''."
+    // The graph registrar's rule, without bounded repetition (see there).
+    // A KPI's longest global is dash_kpi_<name>_stat, 14 characters around
+    // the name, so its limit is 18.
+    if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]*$") | strlen("`name'") > 18 {
+        // Echoed as text, as the graph registrar does (see there).
+        mata: st_local("_name_safe", ustrregexra(usubstr( ///
+            st_local("name"), 1, 40), "[^A-Za-z0-9_.\-]", "?"))
+        display as error "dash kpi: invalid name '`_name_safe''. " ///
+            "Names must start with a letter or underscore, contain only " ///
+            "letters, digits, and underscores, and be at most 18 characters."
         exit(198)
     }
 
@@ -3143,6 +3498,10 @@ program define _dash_kpi
             "Use name(`name', replace) to overwrite."
         exit(198)
     }
+    // WP-19: the same registry limit as a graph, checked before any global
+    // is set or retired and before the statistic is computed.  A KPI
+    // replacing a registered name never counts.
+    _dash_graph_cap `_kpi_already'
     // Retire whatever held the name before, so the entry does not end up
     // carrying a graph's JSON and a KPI's marker at the same time.
     if `_kpi_already' == 1 {
@@ -3551,8 +3910,12 @@ program define _dash_prepare_spec, rclass
             // here is by definition not a variable name, and interpolating
             // it into a message is the same hazard the path validator had.
             if !regexm("`_fvar'", "^[a-zA-Z_][a-zA-Z0-9_]*$") {
-                mata: st_local("_fvar_safe", ///
-                    regexr(st_local("_fvar"), "[^A-Za-z0-9_.\-]+", "?"))
+                // EVERY unsafe character, and at most 40: regexr()
+                // replaced the first run only, so `a b{bf:X}{hline 5}'
+                // printed a bold X and a rule -- the text drawn as SMCL,
+                // which has {browse} and {stata} links to follow.
+                mata: st_local("_fvar_safe", ustrregexra(usubstr( ///
+                    st_local("_fvar"), 1, 40), "[^A-Za-z0-9_.\-]", "?"))
                 display as error "`cmdname': filter() names '`_fvar_safe''," ///
                     " which is not a valid Stata variable name."
                 exit(198)
@@ -3581,6 +3944,18 @@ program define _dash_prepare_spec, rclass
         display as error "dash: jsonio is required but not found. Run dash_setup first."
         exit(198)
     }
+
+    // ---- resource limits (WP-19), before anything is exported ----
+    // As on the immediate route: every dash_max_* global the session has
+    // set is validated and carried to the renderer as build_options.limits,
+    // and what jsonio is about to embed -- every observation of every
+    // variable in all_vars -- is held to the cells limit.  Both come before
+    // the date-format swap, so a refusal leaves the data and formats as
+    // they were, and before `dash build' records its dash_opts_* globals.
+    _dash_limits_json
+    local _dash_lim_json `"`r(json)'"'
+    local _dash_nvars : word count `all_vars'
+    _dash_cell_cap `_dash_nvars'
 
     // Collect display formats, and transport date variables as
     // numbers so jsonio does not render them to text.
@@ -3699,7 +4074,7 @@ program define _dash_prepare_spec, rclass
     // link(), layout() and filterposition() are validated before this line
     // and reject such a value with r(198); tabs() is escaped already.
     _dash_json_str `"`theme'"'             _theme_esc
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json'}}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'}}"'
 
     tempname fh
     // quietly: see the note at the other spec writer -- `write replace'
@@ -3851,7 +4226,8 @@ program define _dash_build
         // app serves itself.  Running it directly also honours --port and
         // the websocket origins, and opens no browser unless asked.
         display as text `"  To launch: python "`saving'""'
-        display as text `"  Options:   --port N  --show  --timeout MINUTES"'
+        display as text `"  Options:   --port N  --show  --timeout MINUTES  (--help lists them all)"'
+        display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N"'
     }
     else {
         display as text `"dash: dashboard saved to `saving'"'

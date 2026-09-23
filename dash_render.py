@@ -522,17 +522,20 @@ def _format_stata_numeric(value: float, fmt: "str | None") -> str:
 # Dataset size, in CELLS (rows x columns), above which dash says the output
 # will be large.
 #
-# Deliberately a constant and deliberately a REPORT rather than a refusal:
-# the user may well mean it, and `twoway' does not refuse to plot ten million
-# points either. The number is calibrated, not guessed -- measured at roughly
-# 34 bytes of HTML per cell, so a million cells is about 33 MB of standalone
+# Deliberately a REPORT rather than a refusal: the user may well mean it,
+# and `twoway' does not refuse to plot a million points either.  The refusal
+# is _DASH_LIMITS["cells"] below, five times further out.  The number is
+# calibrated, not guessed -- a million cells is about 24 MB of standalone
 # HTML and a comparable base64 payload in a served app. Below it sit every
 # dataset that ships with Stata: auto is 888 cells, nlsw88 is 38,182.
 _LARGE_DATASET_CELLS = 1_000_000
 
 # Measured bytes of standalone HTML per data cell, used only to put a figure
 # in the warning above. It is an order-of-magnitude estimate, not a promise.
-_HTML_BYTES_PER_CELL = 34
+# Measured 23sep2026 on two random normal columns: 2,000,000 cells gave
+# 47.6 MB and 4,000,000 gave 94.9 MB, 23.8 bytes a cell.  It was 34 when the
+# page carried a second copy of the data per filter.
+_HTML_BYTES_PER_CELL = 24
 
 
 def _report_dataset_size(df: "pd.DataFrame", mode: str) -> None:
@@ -553,17 +556,293 @@ def _report_dataset_size(df: "pd.DataFrame", mode: str) -> None:
         rows, cols = int(df.shape[0]), int(df.shape[1])
     except (AttributeError, TypeError, ValueError):
         return
+    _report_dataset_shape(rows, cols, mode, stacklevel=4)
+
+
+def _report_dataset_shape(rows, cols, mode, stacklevel=3):
+    """:func:`_report_dataset_size` for a shape known without a frame --
+    the served builder counts its JSON rather than building one."""
     cells = rows * cols
     if cells < _LARGE_DATASET_CELLS:
         return
     mb = cells * _HTML_BYTES_PER_CELL / 1_000_000.0
+    # Not "use an if qualifier": dash exports every observation of the
+    # variables it uses and applies qualifiers itself, so a qualifier shrinks
+    # a saved page without filters (8.4 MB to 1.5 MB, measured on 200,000
+    # rows) and nothing else -- a filter's page and a served app carry every
+    # row, and the renderer holds them all in memory either way.
     warnings.warn(
         f"dash: {rows:,} observations on {cols} variables is a large "
         f"dataset to embed; this {mode} will be roughly {mb:,.0f} MB and "
-        f"slow to open. Reduce it with an `if' or `in' qualifier, or keep "
-        f"only the variables the dashboard uses.",
-        UserWarning, stacklevel=3,
+        f"slow to open. dash exports every observation of the variables it "
+        f"uses, so reduce the data in memory first (keep, drop, sample or "
+        f"collapse, inside preserve/restore).",
+        UserWarning, stacklevel=stacklevel,
     )
+
+
+# ---- Resource limits (ROADMAP WP-19) ----------------------------------------
+#
+# Every input that decides how MUCH dash builds has a ceiling: no dataset,
+# option value or registry can make the output or the memory unbounded
+# (CLAUDE.md rule 3).  Each limit is a default the user can move for the
+# session with a global macro, up to a hard ceiling nothing can move, and
+# every clamp names the limit and the global that raises it.
+#
+# Measured on this machine, 23sep2026, standalone unless marked:
+#
+#   cells           2,000,000 cells: 47.6 MB, 1.0 GB RSS; 4,000,000: 94.9 MB,
+#                   2.1 GB RSS.  The ceiling is where a page stops opening at
+#                   all: Chrome holds no string past ~512 MB, about 21 million
+#                   cells at 24 bytes.  Refused, not clamped: which rows to
+#                   drop is not dash's decision.
+#   filter_options  a dropdown on 200,000 distinct values: 200,001 options,
+#                   38.8 MB of page, a 14.8 MB served app, 954 MB RSS.  A
+#                   list past a thousand entries cannot be read, so a numeric
+#                   variable gets a range slider instead.
+#   by_groups       by() on 300 groups: 8.4 s; on 1,000: 29.2 s, 7.3 MB and
+#                   1,000 figures.
+#   graphs          300 graphs: 7.9 s and 4.0 MB.
+#   tabs            3,000 tabs: 14.4 s and 3.9 MB.
+#   filters         each filter is a widget and a callback over every source.
+#   plots           `scatter v1-v5000 x' is 5,000 renderers in one figure.
+#
+# key: (default, ceiling, the global macro that moves it).  dash.ado keeps
+# the same table (_dash_limit) and writes any global the user set into
+# build_options["limits"]; test_resource_limits.py checks the two agree.
+_DASH_LIMITS = {
+    "cells":          (5_000_000, 20_000_000, "dash_max_cells"),
+    "graphs":         (100, 1_000, "dash_max_graphs"),
+    "plots":          (100, 1_000, "dash_max_plots"),
+    "filter_options": (1_000, 100_000, "dash_max_filter_options"),
+    "by_groups":      (100, 1_000, "dash_max_by_groups"),
+    "tabs":           (50, 500, "dash_max_tabs"),
+    "filters":        (20, 200, "dash_max_filters"),
+}
+
+
+class DashLimitError(ValueError):
+    """A dashboard over a limit dash refuses rather than clamps."""
+
+
+def _dash_limits(build_options):
+    """``{key: effective limit}`` for every key of :data:`_DASH_LIMITS`.
+
+    ``build_options["limits"]`` carries only the globals the user set.  Each
+    value is re-checked here -- the spec is a file, and a hand-edited one
+    must not lift a ceiling -- and one that is not a whole number from 1 to
+    the ceiling is named and replaced by the default.
+    """
+    raw = (build_options or {}).get("limits") if isinstance(
+        build_options, dict) else None
+    if not isinstance(raw, dict):
+        raw = {}
+    out = {}
+    for key, (default, ceiling, glob) in _DASH_LIMITS.items():
+        out[key] = default
+        if key not in raw:
+            continue
+        val = raw[key]
+        ok = False
+        if isinstance(val, bool):
+            ok = False
+        elif isinstance(val, int):
+            ok = True
+        elif isinstance(val, float) and val.is_integer():
+            val, ok = int(val), True
+        elif isinstance(val, str) and val.strip().isdigit() \
+                and len(val.strip()) <= 9:
+            val, ok = int(val.strip()), True
+        if ok and 1 <= val <= ceiling:
+            out[key] = val
+        else:
+            _dash_warn_once(
+                ("limit", key),
+                f"dash: {glob} must be a whole number from 1 to "
+                f"{ceiling:,}; {_dash_display(str(val))!r} is not, so "
+                f"{default:,} is used.", stacklevel=3)
+    return out
+
+
+def _dash_limit_hint(key, verb="raise the limit", start=False):
+    """``"set global dash_max_X to <verb> (at most N)"`` for one limit;
+    ``start`` capitalises it to open a sentence."""
+    _default, ceiling, glob = _DASH_LIMITS[key]
+    return (f"{'Set' if start else 'set'} global {glob} to {verb} "
+            f"(at most {ceiling:,})")
+
+
+def _dash_refuse_oversized(rows, cols, limits, mode):
+    """Raise :class:`DashLimitError` when rows x cols is over the cell limit.
+
+    The same refusal dash.ado makes before it exports anything; this one is
+    for a spec that reached the renderer another way.
+    """
+    cells = int(rows) * int(cols)
+    limit = int(limits["cells"])
+    if cells <= limit:
+        return
+    raise DashLimitError(
+        f"dash: this {mode} would embed {cells:,} values ({int(rows):,} "
+        f"observations x {int(cols)} variables), more than the {limit:,} "
+        f"dash embeds. Reduce the data in memory first (keep, drop, sample "
+        f"or collapse, inside preserve/restore), or "
+        f"{_dash_limit_hint('cells', 'a higher value')}.")
+
+
+def _dash_cap_spec(spec, limits):
+    """The spec with at most ``graphs`` items and ``plots`` plots a graph.
+
+    dash.ado refuses both at registration; this is the renderer's own bound
+    for a spec that did not come through it.  Items are kept in layout
+    order -- the registry, as typed -- and each graph keeps its first plots.
+    Returns a new dict; the caller's is not modified.
+    """
+    if not isinstance(spec, dict):
+        return spec
+    graphs = list(spec.get("graphs") or [])
+    kpis = list(spec.get("kpis") or [])
+    bo = spec.get("build_options") or {}
+    out = dict(spec)
+
+    n_items = len(graphs) + len(kpis)
+    if n_items > limits["graphs"]:
+        order = _dash_layout_order(bo.get("registry", ""), graphs, kpis)
+        keep = set(order[:limits["graphs"]])
+        graphs = [g for g in graphs
+                  if str((g.get("graph_options") or {}).get("name")
+                         or g.get("name") or "") in keep]
+        kpis = [k for k in kpis if str(k.get("name") or "") in keep]
+        warnings.warn(
+            f"dash: {n_items:,} graphs and KPI cards, more than the "
+            f"{limits['graphs']:,} a dashboard draws; the first "
+            f"{limits['graphs']:,} in the registry are drawn. "
+            f"{_dash_limit_hint('graphs', 'draw more', start=True)}.",
+            UserWarning, stacklevel=2)
+
+    capped = []
+    for g in graphs:
+        plots = g.get("plots") or []
+        if len(plots) > limits["plots"]:
+            gname = (g.get("graph_options") or {}).get("name") \
+                or g.get("name") or ""
+            warnings.warn(
+                f"dash: graph {_dash_display(str(gname))!r} has "
+                f"{len(plots):,} plots, more than the {limits['plots']:,} "
+                f"one graph draws; the first {limits['plots']:,} are drawn. "
+                f"{_dash_limit_hint('plots', 'draw more', start=True)}.",
+                UserWarning, stacklevel=2)
+            g = dict(g)
+            g["plots"] = list(plots[:limits["plots"]])
+        capped.append(g)
+    out["graphs"] = capped
+    out["kpis"] = kpis
+    return out
+
+
+def _dash_cap_filters(filter_specs, limit):
+    """At most *limit* filter specs, in the order written, and say so."""
+    specs = list(filter_specs or [])
+    if len(specs) <= limit:
+        return specs
+    _dash_warn_once(
+        ("limit", "filters"),
+        f"dash: {len(specs):,} filters, more than the {limit:,} a dashboard "
+        f"builds; the first {limit:,} are built. "
+        f"{_dash_limit_hint('filters', 'build more', start=True)}.",
+        stacklevel=3)
+    return specs[:limit]
+
+
+def _dash_dropdown_values(series):
+    """The dropdown's option values for *series*, sorted, as the page lists
+    them (``_dash_option_value`` of every non-missing value)."""
+    return sorted(
+        {_dash_option_value(v) for v in series.tolist()
+         if v is not None and str(v) not in ("nan", "None", "NaT")},
+        key=_dash_option_sort_key)
+
+
+def _dash_filter_effective_type(ftype, varname, column, limit):
+    """The widget ``filter(varname, type(ftype))`` gets under the option limit.
+
+    A dropdown lists every distinct value, and on a continuous variable that
+    is one option per observation: 200,000 observations gave 200,001
+    options and a 38.8 MB page.  Over *limit*, a numeric or date variable is
+    drawn as ``range`` -- the widget a continuous variable wants -- and a
+    string variable keeps its dropdown with the first *limit* values listed
+    (``_dash_filter_widget`` truncates it).  Either way the user is told,
+    with the limit and the global that raises it.
+    """
+    if ftype != "dropdown" or column is None:
+        return ftype
+    series = pd.Series(column)
+    # nunique first: an option is a value through _dash_option_value, which
+    # can merge two values ('1' and '1.0') and never splits one, so a column
+    # within the limit by its raw count is within it as options, and only a
+    # column over it pays for the exact count.
+    if int(series.nunique(dropna=True)) <= limit:
+        return ftype
+    n = len(_dash_dropdown_values(series))
+    if n <= limit:
+        return ftype
+    numeric = bool(pd.api.types.is_numeric_dtype(series)
+                   or pd.api.types.is_datetime64_any_dtype(series))
+    shown = _dash_display(str(varname))
+    if numeric:
+        _dash_warn_once(
+            ("limit", "filter_options", str(varname)),
+            f"dash: filter({shown}) has {n:,} distinct values, more than "
+            f"the {limit:,} a dropdown lists; it is drawn as type(range). "
+            f"Write type(range) or type(slider) to choose the widget "
+            f"yourself, or "
+            f"{_dash_limit_hint('filter_options', 'list more')}.",
+            stacklevel=3)
+        return "range"
+    _dash_warn_once(("limit", "filter_options", str(varname)),
+                    _dash_filter_truncation_note(varname, n, limit),
+                    stacklevel=3)
+    return ftype
+
+
+def _dash_filter_truncation_note(varname, n, limit):
+    """The note for a dropdown that lists only its first *limit* values."""
+    return (f"dash: filter({_dash_display(str(varname))}) has {n:,} distinct "
+            f"values, more than the {limit:,} a dropdown lists; the first "
+            f"{limit:,} in sort order are listed. Filter on a variable with "
+            f"fewer values, or "
+            f"{_dash_limit_hint('filter_options', 'list more')}.")
+
+
+def _dash_by_groups(work_df, by_vars, by_missing, limit, where=""):
+    """``[(key, frame)]`` for the by() groups of *work_df*, at most *limit*.
+
+    Both render modes group through here.  ``by(id)`` built one figure per
+    value -- 29 s and 1,000 figures on 1,000 groups -- and the loop copied
+    every group before anything could stop it; this counts the groups
+    first and stops after the first *limit* in sort order.
+    """
+    key = by_vars[0] if len(by_vars) == 1 else list(by_vars)
+    gb = work_df.groupby(key, sort=True, dropna=False)
+    n_groups = int(gb.ngroups)
+    if n_groups > limit:
+        shown = _dash_display(" ".join(by_vars))
+        at = f" on graph {_dash_display(str(where))!r}" if where else ""
+        _dash_warn_once(
+            ("limit", "by_groups", str(where), shown),
+            f"dash: by({shown}){at} has {n_groups:,} groups, more than the "
+            f"{limit:,} one graph draws; the first {limit:,} in sort order "
+            f"are drawn. {_dash_limit_hint('by_groups', 'draw more', start=True)}.",
+            stacklevel=3)
+    out = []
+    for gkey, gdf in gb:
+        vals = (gkey,) if len(by_vars) == 1 else gkey
+        if not by_missing and any(pd.isna(v) for v in vals):
+            continue
+        out.append((gkey, gdf))
+        if len(out) >= limit:
+            break
+    return out
 
 
 _WEBGL_THRESHOLD = 10_000
@@ -9969,6 +10248,7 @@ class FilterBuilder:
         kpi_divs: "dict | None" = None,
         label: str = "",
         column: "Any | None" = None,
+        max_options: "int | None" = None,
     ) -> "tuple[Select, CustomJS]":
         """Build a categorical dropdown filter widget with CustomJS callback.
 
@@ -10009,7 +10289,7 @@ class FilterBuilder:
         widget, _sentinel = _dash_filter_widget(
             "dropdown", varname, _values,
             _dash_filter_title(label, FilterBuilder._safe(varname), "dropdown"),
-            vlabels)
+            vlabels, max_options=max_options)
 
         callback = CustomJS(
             args={
@@ -11217,7 +11497,7 @@ def _dash_finite_column(col, allow_datetime=False):
 
 
 def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
-                        date_kind=""):
+                        date_kind="", max_options=None):
     """The one filter widget both modes show for ``filter(varname, type())``.
 
     Args:
@@ -11229,6 +11509,11 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
         title:        The resolved widget title.
         value_labels: ``{code: label}`` for the dropdown's display text.
         date_kind:    The variable's Stata date kind, for a clock series.
+        max_options:  The most options a dropdown lists -- the
+                      ``filter_options`` limit; None is its default.  A
+                      caller that planned the widget with
+                      ``_dash_filter_effective_type`` has said so already,
+                      and the note is made once a render either way.
 
     Returns:
         ``(widget, sentinel)``.  The widget is None when the column cannot
@@ -11242,15 +11527,20 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
     is_date = bool(pd.api.types.is_datetime64_any_dtype(series))
     if ftype == "dropdown":
         vlabels = value_labels or {}
-        raw_values = sorted(
-            {_dash_option_value(v) for v in series.tolist()
-             if v is not None and str(v) not in ("nan", "None", "NaT")},
-            key=_dash_option_sort_key)
+        raw_values = _dash_dropdown_values(series)
         # A per-widget sentinel absent from the data, so a real category
         # equal to the literal string "__all__" stays selectable.
         sentinel = "__all__"
         while sentinel in raw_values:
             sentinel += "_"
+        limit = (_DASH_LIMITS["filter_options"][0] if max_options is None
+                 else int(max_options))
+        if len(raw_values) > limit:
+            _dash_warn_once(("limit", "filter_options", str(varname)),
+                            _dash_filter_truncation_note(
+                                varname, len(raw_values), limit),
+                            stacklevel=3)
+            raw_values = raw_values[:limit]
 
         def _label(rv):
             if rv in vlabels:
@@ -11322,6 +11612,90 @@ def _dash_dropdown_mask(column, value):
     select the same rows."""
     want = _dash_option_value(value)
     return pd.Series(column).map(_dash_option_value).to_numpy() == want
+
+
+# How often a served session may recompute.  A filter move reruns every
+# aggregated layer, per by() panel, and every KPI; BUGS.md measured
+# _stata_lowess at 4.8 s on 20k rows and fpfit at about 2 s on 1e6.  The
+# server is one process, so while a recompute runs every other session waits,
+# and a scripted websocket client can send changes as fast as it likes.  Ten
+# at once lets a person click through a dropdown unhindered; two a second
+# after that turns a flood into a trickle.
+_DASH_EVENT_RATE = 2.0
+_DASH_EVENT_BURST = 10
+
+
+def _dash_event_throttle(doc, fn, rate=None, burst=None, clock=None):
+    """Wrap a served ``on_change`` callback in a token bucket.
+
+    The bucket holds *burst* tokens, starts full and refills at *rate* a
+    second.  An event that finds a token runs ``fn`` at once.  One that finds
+    none schedules ONE trailing call on *doc*, timed for the next token;
+    every event before it runs is folded into it, and it passes the latest
+    ``(attr, old, new)``.  Folding loses nothing: the filter callback reads
+    every widget's current value itself, and a brush's latest selection is
+    the one that counts.
+
+    Args:
+        doc:   The session's Document.  The trailing call is its timeout
+               callback, so it runs under the session's lock and is dropped
+               with the session.
+        fn:    The callback, ``fn(attr, old, new)``.  Its exceptions
+               propagate, as they would unwrapped; Bokeh logs them.
+        rate:  Tokens a second; ``_DASH_EVENT_RATE`` when None.
+        burst: The bucket's capacity; ``_DASH_EVENT_BURST`` when None.
+        clock: Monotonic seconds; ``time.monotonic`` when None.  For tests.
+
+    Returns:
+        The throttled callback, ``(attr, old, new)``.
+    """
+    rate = float(_DASH_EVENT_RATE if rate is None else rate)
+    burst = float(_DASH_EVENT_BURST if burst is None else burst)
+    if not (rate > 0 and burst >= 1):
+        # NaN fails both.  A zero rate never refills, and a bucket that
+        # cannot hold a whole token never runs an event at once.
+        raise ValueError("dash: an event throttle needs rate > 0 and "
+                         "burst >= 1; got rate=%r, burst=%r" % (rate, burst))
+    if clock is None:
+        # Imported here: the served app is given this function's source and
+        # imports time under another name.
+        import time
+        clock = time.monotonic
+    tokens, stamp = burst, clock()
+    pending, latest = False, None
+
+    def _refill():
+        nonlocal tokens, stamp
+        now = clock()
+        tokens = min(burst, tokens + (now - stamp) * rate)
+        stamp = now
+
+    def _trailing():
+        nonlocal tokens, pending, latest
+        _refill()
+        tokens -= 1.0                       # the token it waited for
+        # Cleared BEFORE fn runs: if fn raises, the next event must schedule
+        # a new call, not fold into this finished one and vanish.
+        args, pending, latest = latest, False, None
+        fn(*args)
+
+    def _on_change(attr, old, new):
+        nonlocal tokens, pending, latest
+        if pending:
+            latest = (attr, old, new)
+            return
+        _refill()
+        if tokens >= 1.0:
+            tokens -= 1.0
+            fn(attr, old, new)
+            return
+        doc.add_timeout_callback(
+            _trailing, max(1, math.ceil((1.0 - tokens) / rate * 1000.0)))
+        # Set once the call exists: a pending flag with nothing scheduled
+        # behind it would swallow every later event.
+        pending, latest = True, (attr, old, new)
+
+    return _on_change
 
 
 # ---- The document: order, cells, tabs, header ----------------------------------
@@ -11411,13 +11785,18 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
     return None
 
 
-def _dash_parse_tabs(tabs_str, all_names):
+def _dash_parse_tabs(tabs_str, all_names, limit=None):
     """``'Title: a b / Title2: c'`` -> ``[(title, [names])]``, or None.
 
     Tab titles are the user's text, verbatim.  Only registered names are
     accepted, so a tabs() option cannot place something that was never
-    registered.
+    registered.  At most *limit* tabs are kept (the ``tabs`` limit, its
+    default when None): a name may sit in any number of tabs, so tabs()
+    alone could ask for thousands -- 3,000 took 14.4 s -- whatever the
+    registry holds.
     """
+    if limit is None:
+        limit = _DASH_LIMITS["tabs"][0]
     if not tabs_str or not str(tabs_str).strip():
         return None
     valid = set(all_names)
@@ -11436,6 +11815,14 @@ def _dash_parse_tabs(tabs_str, all_names):
         safe = [x for x in items if x in valid]
         if safe:
             result.append((title, safe))
+    if len(result) > limit:
+        _dash_warn_once(
+            ("limit", "tabs"),
+            f"dash: tabs() has {len(result):,} tabs, more than the "
+            f"{limit:,} a dashboard draws; the first {limit:,} are drawn. "
+            f"{_dash_limit_hint('tabs', 'draw more', start=True)}.",
+            stacklevel=3)
+        result = result[:limit]
     return result or None
 
 
@@ -12788,6 +13175,13 @@ class DashRenderer:
         with open(data_json_path, encoding="utf-8") as f:
             self.data_json: dict = json.loads(f.read())
 
+        # The resource limits (WP-19): the defaults, moved by any global the
+        # user set, and the spec held to the graph and plot limits before
+        # anything is built from it.
+        self.limits: dict = _dash_limits(
+            self.master_spec.get("build_options", {}))
+        self.master_spec = _dash_cap_spec(self.master_spec, self.limits)
+
         self.translator = OptionTranslator()
 
         _build_opts: dict = self.master_spec.get("build_options", {})
@@ -12835,6 +13229,11 @@ class DashRenderer:
         self._facet_masks: dict = {}
 
         self._load_data()
+        # Refused before anything is drawn from it: dash.ado refuses the
+        # same data before exporting it, so this is for a spec that reached
+        # the renderer another way.
+        _dash_refuse_oversized(self.df.shape[0], self.df.shape[1],
+                               self.limits, "dashboard")
         # Stata's data in memory, for lowess adjust and lpoly's grid.
         self.mapper.dataset = self.df
 
@@ -12934,6 +13333,13 @@ class DashRenderer:
     # ------------------------------------------------------------------
     # _df property — convenience alias for self.df, settable for testing
     # ------------------------------------------------------------------
+
+    @property
+    def _limits(self) -> dict:
+        """The resource limits; the defaults for a renderer the tests built
+        without ``__init__``."""
+        lim = getattr(self, "limits", None)
+        return lim if isinstance(lim, dict) else _dash_limits({})
 
     @property
     def _df(self) -> pd.DataFrame:
@@ -13374,12 +13780,12 @@ class DashRenderer:
             return [("", work_df.copy())]
 
         groups: list[tuple[str, pd.DataFrame]] = []
-        # Use a scalar (not list) for single by-var so groupby returns scalar keys
-        groupby_key = valid_vars[0] if len(valid_vars) == 1 else valid_vars
-        for key, group_df in work_df.groupby(groupby_key, sort=True, dropna=False):
-            key_vals = (key,) if len(valid_vars) == 1 else key
-            if not by_missing and any(pd.isna(v) for v in key_vals):
-                continue
+        # The by_groups limit is applied where the groups are made, in the
+        # helper both render modes share.
+        _gname = (graph_opts.get("name") or graph_spec.get("name") or "")
+        for key, group_df in _dash_by_groups(
+                work_df, valid_vars, by_missing,
+                self._limits["by_groups"], _gname):
             label = self._facet_label(valid_vars, key)
             groups.append((label, group_df.copy()))
 
@@ -14537,10 +14943,11 @@ class DashRenderer:
     def _parse_tabs_option(
         tabs_str: str,
         all_names: "list[str]",
+        limit: "int | None" = None,
     ) -> "list[tuple[str, list[str]]] | None":
         """Parse a ``tabs()`` option string; see ``_dash_parse_tabs``, the
         one parser both render modes run."""
-        return _dash_parse_tabs(tabs_str, all_names)
+        return _dash_parse_tabs(tabs_str, all_names, limit)
 
     def _resolve_layout_names(self, name: str) -> "list[str]":
         """Return the figure keys a registered graph name owns.
@@ -14827,6 +15234,8 @@ class DashRenderer:
             raw_f = build.get("filter", "")
             if raw_f:
                 filters_cfg = DashRenderer._parse_filter_raw(raw_f)
+        filters_cfg = _dash_cap_filters(
+            filters_cfg, _dash_limits(build)["filters"])
         return link_names, filters_cfg
 
     def _build_sources_and_figures(
@@ -15308,12 +15717,23 @@ class DashRenderer:
             flabel = (fc.get("label") or "").strip() \
                      or self.variable_labels.get(fvar, "").strip() \
                      or fvar
+            # A dropdown over the option limit on a numeric or date
+            # variable is drawn as a range; the spec the page's script
+            # filters by must say so too, or it would test a slider's
+            # [lo, hi] as a category.
+            _fcol = self.df[fvar] if fvar in self.df.columns else None
+            _eff = _dash_filter_effective_type(
+                ftype, fvar, _fcol, self._limits["filter_options"])
+            if _eff != ftype:
+                ftype = _eff
+                fc = dict(fc, type=_eff)
             if ftype == "dropdown":
                 widget, cb = FilterBuilder.build_dropdown(
                     fvar, fsource, None, vlabels,
                     exclude_names=excludes,
                     label=flabel,
-                    column=self.df[fvar] if fvar in self.df.columns else None,
+                    column=_fcol,
+                    max_options=self._limits["filter_options"],
                 )
             elif ftype == "slider":
                 # Guard: slider requires numeric data.  Mirror the server-side
@@ -15516,7 +15936,8 @@ class DashRenderer:
         # _build_tabs_widget returns is an ordinary Bokeh Tabs; nothing
         # about it is Bootstrap-specific.
         if tabs_str:
-            _tabs_spec = DashRenderer._parse_tabs_option(tabs_str, all_names)
+            _tabs_spec = DashRenderer._parse_tabs_option(
+                tabs_str, all_names, self._limits["tabs"])
             if _tabs_spec:
                 (tabs_widget, tabbed_names,
                  tabbed_keys) = self._build_tabs_widget(_tabs_spec)
@@ -15833,6 +16254,16 @@ class ServerAppBuilder:
         with open(data_path, "r", encoding="utf-8") as f:
             self._raw_data_str: str = f.read()
 
+        # The resource limits (WP-19), and the spec held to the graph and
+        # plot limits BEFORE it is embedded: the app draws what it is given.
+        self.limits: dict = _dash_limits(self.spec.get("build_options", {}))
+        self.spec = _dash_cap_spec(self.spec, self.limits)
+        # The data parsed, and as the saved renderer loads it -- each made
+        # only if a build-time check needs it (see _data and _frame), and
+        # dropped when the build is written.
+        self._data_cache = None
+        self._frame_cache = None
+
         self._spec_str: str = json.dumps(self.spec)
 
         # The same scheme the standalone renderer would resolve, from the
@@ -15935,7 +16366,12 @@ class ServerAppBuilder:
                       "_DASH_LEGEND_SUBOPTS", "_DASH_TEXTBOX_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
                       "_DASH_REFLINE_SUBOPTS", "_DASH_FILTER_TYPES",
-                      "_DASH_FILTER_SUBOPTS", "_DASH_VARNAME_RE"):
+                      "_DASH_FILTER_SUBOPTS", "_DASH_VARNAME_RE",
+                      # The resource limits (WP-19): the app groups by(),
+                      # lists a dropdown and parses tabs() under them.
+                      "_DASH_LIMITS",
+                      # The recompute's pace, _dash_event_throttle's defaults.
+                      "_DASH_EVENT_RATE", "_DASH_EVENT_BURST"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -16034,6 +16470,14 @@ class ServerAppBuilder:
                          "_dash_option_value", "_dash_option_sort_key",
                          "_dash_filter_title", "_dash_finite_column",
                          "_dash_filter_widget", "_dash_dropdown_mask",
+                         # The token bucket make_document wraps every filter
+                         # and brush callback in.
+                         "_dash_event_throttle",
+                         # The resource limits, read from the spec and
+                         # applied where the app groups and lists (WP-19).
+                         "_dash_limits", "_dash_limit_hint",
+                         "_dash_dropdown_values",
+                         "_dash_filter_truncation_note", "_dash_by_groups",
                          # The document: order, cells, tabs, header.
                          "_dash_layout_order", "_dash_kpi_keys",
                          "_dash_facet_cols", "_dash_layout_cell",
@@ -16312,6 +16756,11 @@ class ServerAppBuilder:
             output_path: Destination path for the generated ``.py`` file.
             port:        Port number to embed in the ``__main__`` launch block.
         """
+        # A build is a render of its own: the notes an earlier render in
+        # this process made must not silence this one's (the saved renderer
+        # and the app each reset at their start too).
+        _dash_reset_notes()
+
         # Override port from build_options if present
         bo = self.spec.get("build_options", {})
         if bo.get("port"):
@@ -16322,26 +16771,102 @@ class ServerAppBuilder:
 
         # ServerAppBuilder holds the data as a JSON string, not a frame.
         # Parsing a large one costs about a second, so it is only parsed when
-        # it COULD reach the threshold: the smallest plausible cell is about
-        # six bytes of JSON (`"a":1,'), so a string shorter than six bytes
-        # per cell cannot hold a million cells and needs no parse.
-        if len(self._raw_data_str) >= _LARGE_DATASET_CELLS * 6:
+        # it COULD reach a threshold -- the large-dataset report or the cell
+        # limit, whichever is lower: the smallest plausible cell is about
+        # six bytes of JSON (`"a":1,'), so a shorter string cannot hold that
+        # many cells and needs no parse.
+        _floor = min(_LARGE_DATASET_CELLS, int(self.limits["cells"]))
+        if len(self._raw_data_str) >= _floor * 6:
+            _shape = None
             try:
-                _d = json.loads(self._raw_data_str)
+                _d = self._data()
                 # jsonio wraps everything in a "StataJSON" object.
                 _d = _d.get("StataJSON", _d)
                 _vals = _d.get("values") or []
                 _cols = _d.get("variableNames") or (
                     list(_vals[0]) if _vals else [])
-                _report_dataset_size(
-                    pd.DataFrame(index=range(len(_vals)),
-                                 columns=list(_cols)), "server app")
-            except (ValueError, TypeError, KeyError, IndexError):
+                _shape = (len(_vals), len(_cols))
+            except (ValueError, TypeError, KeyError, IndexError,
+                    AttributeError):
                 pass
+            if _shape is not None:
+                # The refusal is not inside the try: it must reach the user.
+                _dash_refuse_oversized(_shape[0], _shape[1], self.limits,
+                                       "server app")
+                _report_dataset_shape(_shape[0], _shape[1], "server app")
 
-        source = self._generate_app_source(port)
+        try:
+            # by() over the group limit: the app draws the first groups when
+            # a session opens, in a process whose output the user may never
+            # see, so they are told here, at build time, as the saved
+            # renderer tells them at render time.
+            self._plan_by_groups()
+            source = self._generate_app_source(port)
+        finally:
+            # The parsed data is the size of the dataset again; the file
+            # being written needs none of it.
+            self._data_cache = None
+            self._frame_cache = None
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(source)
+
+    def _frame(self) -> "pd.DataFrame":
+        """The dataset as the saved renderer loads it, for build-time plans.
+
+        ``DashRenderer._load_data`` itself, so a date or string column has
+        the type the app will give it.  Parsed once and only on demand: most
+        builds need no plan.
+        """
+        if getattr(self, "_frame_cache", None) is None:
+            loader = DashRenderer.__new__(DashRenderer)
+            loader.master_spec = self.spec
+            loader.data_json = self._data()
+            loader._load_data()
+            self._frame_cache = loader.df
+        return self._frame_cache
+
+    def _data(self) -> dict:
+        """The data JSON, parsed once for every build-time check."""
+        if getattr(self, "_data_cache", None) is None:
+            self._data_cache = json.loads(self._raw_data_str)
+        return self._data_cache
+
+    def _plan_by_groups(self) -> None:
+        """Say, at build time, which by() graphs are over the group limit.
+
+        The count is the app's own: the graph's qualifier applied, missing
+        by() values dropped unless ``missing`` was given, then
+        ``_dash_by_groups`` -- which warns, once per graph -- on the result.
+        """
+        graphs = [g for g in self.spec.get("graphs", [])
+                  if ((g.get("graph_options") or {}).get("by") or "").strip()]
+        if not graphs:
+            return
+        try:
+            df = self._frame()
+        except (ValueError, TypeError, KeyError, AttributeError):
+            return
+        for g in graphs:
+            go = g.get("graph_options") or {}
+            gname = go.get("name", "") or ""
+            bv, _bcols, _btotal, bmissing, _ = _dash_parse_by(
+                (go.get("by") or "").strip(), warn=False)
+            bmissing = bmissing or go.get("by_missing", "0") == "1"
+            by_vars = [v for v in bv.split() if v in df.columns]
+            if not by_vars:
+                continue
+            with warnings.catch_warnings():
+                # A qualifier the app cannot apply is reported by the app;
+                # the count here only needs its rows.
+                warnings.simplefilter("ignore")
+                g_df = _dash_qualified_frame(
+                    df, (go.get("if_expr") or g.get("if_expr") or ""),
+                    (go.get("in_expr") or g.get("in_expr") or ""),
+                    "graph %r" % gname, copy=False)
+            work = g_df if bmissing else g_df.dropna(subset=by_vars)
+            if not work.empty:
+                _dash_by_groups(work, by_vars, bmissing,
+                                self.limits["by_groups"], gname)
 
     def _embed_data(self) -> tuple[str, str]:
         """Base64-encode spec and data JSON strings.
@@ -16431,6 +16956,24 @@ class ServerAppBuilder:
                     "label": (_fs.get("label") or "").strip(),
                 })
 
+        # The filter limits (WP-19), planned here where the data is at hand
+        # so the user is told at build time.  A dropdown over the option
+        # limit on a numeric or date variable is served as a range; a string
+        # one keeps its dropdown and the app lists its first values.
+        filter_specs = _dash_cap_filters(filter_specs, self.limits["filters"])
+        if any(_fs.get("type") == "dropdown" for _fs in filter_specs):
+            try:
+                _fdf = self._frame()
+            except (ValueError, TypeError, KeyError, AttributeError):
+                _fdf = None
+            if _fdf is not None:
+                for _fs in filter_specs:
+                    if (_fs.get("type") == "dropdown"
+                            and _fs["var"] in _fdf.columns):
+                        _fs["type"] = _dash_filter_effective_type(
+                            "dropdown", _fs["var"], _fdf[_fs["var"]],
+                            self.limits["filter_options"])
+
         lines: list[str] = []
 
         # ----------------------------------------------------------------
@@ -16444,10 +16987,13 @@ class ServerAppBuilder:
             '# Or run directly: python <this_file.py>',
             '"""',
             "",
+            "import argparse as _argparse",
             "import base64",
+            "import bisect",
             "import ipaddress as _ipaddress",
             "import html",
             "import json",
+            "import logging",
             "import math",
             "import os",
             "import re",
@@ -16577,52 +17123,183 @@ class ServerAppBuilder:
         ] + self._scheme_lines() + self._shared_stat_lines() \
           + self._glyph_layer_lines() + [
             "",
-            "_RATE_LIMIT_RPM = 60   # max dashboard session connections per IP per minute",
+            "# Session limits, each raised by the launcher flag named beside it.",
+            "_RATE_LIMIT_RPM = 60       # sessions one client may open per minute (--sessions-per-client)",
+            "_NEW_CLIENTS_RPM = 60      # first sessions per minute from clients not seen in the last minute, all together (--new-clients-per-minute)",
+            "_SESSIONS_TOTAL_RPM = 600  # sessions per minute across all clients (--sessions-per-minute)",
             "_HEALTH_LIMIT_RPM = 600  # max /health requests per IP per minute (infrastructure checks)",
+            "# The flag a session refusal names for the bound that refused it.",
+            "_SESSION_LIMIT_FLAGS = {",
+            "    'per_client': '--sessions-per-client',",
+            "    'new_clients': '--new-clients-per-minute',",
+            "    'total': '--sessions-per-minute',",
+            "}",
+            "",
             "",
             "class _RateLimiter:",
-            "    '''Sliding-window per-IP rate limiter.",
-            "    Empty per-IP lists are deleted after pruning so unique-IP churn",
-            "    cannot grow _store without bound.  A hard _MAX_IPS cap evicts the",
-            "    oldest tracked IP when the store is full.'''",
-            "    _MAX_IPS = 10000  # max simultaneous tracked IPs (evict oldest when exceeded)",
-            "    def __init__(self, max_rpm=60):",
+            "    '''Sliding-window rate limiter: three bounds, bounded memory, and",
+            "    no live key is ever evicted.",
+            "",
+            "    1. Per key: at most max_rpm grants in any window (60 s).",
+            "    2. First contact: a key this limiter is not tracking -- no grant",
+            "       inside the window -- is charged to ONE shared window of",
+            "       new_clients grants (default max_rpm).  Refused there, the key",
+            "       is not tracked; granted, it is tracked, with that grant as",
+            "       the first entry of its own window.  So cycling fresh keys",
+            "       shares one client's budget.",
+            "    3. Total: at most total_rpm grants in the window across all keys",
+            "       (default 10 x max_rpm), which bounds keys established at the",
+            "       first-contact rate and then reused.",
+            "",
+            "    Memory: at most _MAX_IPS tracked keys.  A key with no grant inside",
+            "    the window is stale and is deleted: when it is next seen, in a",
+            "    sweep at most once per window, and when the table is full.  A new",
+            "    key that finds the table full of live keys is not tracked; it is",
+            "    served from the first-contact window, or refused.",
+            "",
+            "    This replaced a cap that evicted the least-recently-seen key when",
+            "    the table was full, and that eviction was the defect (TR-19.5).",
+            "    Behind a proxy that passes X-Forwarded-For through, with the",
+            "    header trusted, one machine cycling 10,000 forged values got",
+            "    10,120 sessions in 60 s against a nominal 60, and the flood",
+            "    evicted the real client's own key, which then got 120 of 120.",
+            "    '''",
+            "    _MAX_IPS = 10000  # max tracked keys; a live key is never evicted",
+            "",
+            "    def __init__(self, max_rpm=60, new_clients=None, total_rpm=None,",
+            "                 *, what='request', flags=None):",
             "        self._max = max_rpm",
+            "        self._new_max = max_rpm if new_clients is None else new_clients",
+            "        self._total_max = (10 * max_rpm if total_rpm is None",
+            "                           else total_rpm)",
             "        self._window = 60.0",
-            "        self._store = {}  # plain dict; keys deleted when empty (not defaultdict)",
-            "    def is_allowed(self, ip):",
+            "        # key -> a list of its grant times inside the window, oldest",
+            "        # first.  The dict is kept in order of each key's LATEST grant",
+            "        # (a grant moves its key to the end), so the stale keys are the",
+            "        # ones at the front and _sweep_oldest need not read the rest.",
+            "        self._store = {}",
+            "        # Deques: each expired entry costs one popleft.  bisect over a",
+            "        # deque is not O(log n), and these hold up to total_rpm entries.",
+            "        self._new = _collections.deque()   # first-contact grant times",
+            "        self._all = _collections.deque()   # every grant time",
+            "        self._swept = float('-inf')        # time of the last full sweep",
+            "        # What is refused ('session'), and the flag that raises each",
+            "        # bound, for the refusal log.  The /health limiter has no flags.",
+            "        self._what = what",
+            "        self._flags = dict(flags or {})",
+            "        self._logged = {}   # bound -> when a refusal by it was last logged",
+            "        self._quiet = {}    # bound -> its refusals not logged since then",
+            "",
+            "    def is_allowed(self, key):",
             "        now = _time.monotonic()",
             "        cutoff = now - self._window",
-            "        ts = self._store.get(ip)",
-            "        if ts is None:",
-            "            ts = []",
-            "        else:",
-            "            while ts and ts[0] < cutoff:",
-            "                ts.pop(0)",
+            "        if now - self._swept >= self._window:",
+            "            self._sweep(cutoff)",
+            "            self._swept = now",
+            "        grants = self._all",
+            "        while grants and grants[0] < cutoff:",
+            "            grants.popleft()",
+            "        store = self._store",
+            "        ts = store.get(key)",
+            "        if ts is not None:",
+            "            del ts[:bisect.bisect_left(ts, cutoff)]",
             "            if not ts:",
-            "                del self._store[ip]  # prune empty entry — prevents unbounded growth",
-            "        if len(ts) >= self._max:",
-            "            return False",
-            "        # Enforce global IP cap: evict oldest entry when store is full",
-            "        if ip not in self._store and len(self._store) >= self._MAX_IPS:",
-            "            # Least RECENTLY SEEN, not first inserted.  Insertion",
-            "            # order let a sprayer of 10,000 fresh keys evict the",
-            "            # record of a client that is still active, which makes",
-            "            # the cap itself an eviction primitive.",
-            "            oldest = min(self._store,",
-            "                         key=lambda k: self._store[k][-1]",
-            "                         if self._store[k] else 0)",
-            "            del self._store[oldest]",
-            "        ts.append(now)",
-            "        self._store[ip] = ts",
+            "                del store[key]  # stale: no grant inside the window",
+            "                ts = None",
+            "        if ts is not None:",
+            "            if len(ts) >= self._max:",
+            "                return self._refuse('per_client', now)",
+            "            if len(grants) >= self._total_max:",
+            "                return self._refuse('total', now)",
+            "            del store[key]      # re-inserted last: latest grant last",
+            "            ts.append(now)",
+            "            store[key] = ts",
+            "            grants.append(now)",
+            "            return True",
+            "        # First contact.  Bound 1 covers this grant as well.",
+            "        if self._max <= 0:",
+            "            return self._refuse('per_client', now)",
+            "        new = self._new",
+            "        while new and new[0] < cutoff:",
+            "            new.popleft()",
+            "        if len(new) >= self._new_max:",
+            "            return self._refuse('new_clients', now)",
+            "        if len(grants) >= self._total_max:",
+            "            return self._refuse('total', now)",
+            "        new.append(now)",
+            "        grants.append(now)",
+            "        if len(store) >= self._MAX_IPS:",
+            "            self._sweep_oldest(cutoff)",
+            "        if len(store) < self._MAX_IPS:",
+            "            store[key] = [now]",
+            "        # Otherwise every tracked key is live: this one is served from",
+            "        # the first-contact window without being tracked, and nothing",
+            "        # live is evicted to make room for it.",
             "        return True",
+            "",
+            "    def _sweep(self, cutoff):",
+            "        '''Delete every key with no grant inside the window.  It reads",
+            "        every key, so is_allowed runs it at most once per window.'''",
+            "        store = self._store",
+            "        for k in [k for k, ts in store.items()",
+            "                  if not ts or ts[-1] < cutoff]:",
+            "            del store[k]",
+            "",
+            "    def _sweep_oldest(self, cutoff):",
+            "        '''Delete the stale keys at the front of _store, which is in",
+            "        order of each key's latest grant, stopping at the first live",
+            "        key.  A full table costs only the keys it deletes.'''",
+            "        store = self._store",
+            "        stale = []",
+            "        for k, ts in store.items():",
+            "            if ts and ts[-1] >= cutoff:",
+            "                break",
+            "            stale.append(k)",
+            "        for k in stale:",
+            "            del store[k]",
+            "",
+            "    def _refuse(self, bound, now):",
+            "        '''Refuse, logging the bound, its value and the flag that",
+            "        raises it -- once per window per bound, so a flood of refusals",
+            "        is one line a minute, not a flood of lines.'''",
+            "        last = self._logged.get(bound)",
+            "        if last is not None and now - last < self._window:",
+            "            self._quiet[bound] = self._quiet.get(bound, 0) + 1",
+            "            return False",
+            "        quiet = self._quiet.pop(bound, 0)",
+            "        self._logged[bound] = now",
+            "        things = self._what + 's'",
+            "        if bound == 'per_client':",
+            "            limit = 'the per-client limit of %d %s per minute' % (",
+            "                self._max, things)",
+            "        elif bound == 'new_clients':",
+            "            limit = 'the new-client limit of %d new clients per minute' % (",
+            "                self._new_max,)",
+            "        else:",
+            "            limit = 'the limit of %d %s per minute across all clients' % (",
+            "                self._total_max, things)",
+            "        msg = 'dash refused a %s: %s is reached' % (self._what, limit)",
+            "        flag = self._flags.get(bound)",
+            "        if flag:",
+            "            msg += '; raise it with %s' % flag",
+            "        msg += ('. Refusals by this limit are logged at most once '",
+            "                'every %g s' % self._window)",
+            "        if quiet:",
+            "            msg += '; %d more were refused since the last line' % quiet",
+            "        logging.getLogger('dash.serve').warning('%s.', msg)",
+            "        return False",
+            "",
             "",
             "# Separate limiters so health checks and dashboard sessions do not",
             "# compete for the same per-IP budget.  Infrastructure liveness probes",
             "# poll /health frequently; exhausting the shared bucket would cause",
             "# false-negative health signals even when the service is fully healthy.",
-            "_SESSION_LIMITER = _RateLimiter(_RATE_LIMIT_RPM)",
-            "_HEALTH_LIMITER  = _RateLimiter(_HEALTH_LIMIT_RPM)",
+            "_SESSION_LIMITER = _RateLimiter(_RATE_LIMIT_RPM, _NEW_CLIENTS_RPM,",
+            "                                _SESSIONS_TOTAL_RPM, what='session',",
+            "                                flags=_SESSION_LIMIT_FLAGS)",
+            "_HEALTH_LIMITER = _RateLimiter(_HEALTH_LIMIT_RPM, _HEALTH_LIMIT_RPM,",
+            "                               10 * _HEALTH_LIMIT_RPM,",
+            "                               what='/health request')",
             "# Legacy alias kept for backwards compat with any external scripts that",
             "# reference _LIMITER directly (deprecated — use _SESSION_LIMITER instead).",
             "_LIMITER = _SESSION_LIMITER",
@@ -16661,14 +17338,24 @@ class ServerAppBuilder:
             "            # The LAST token is the hop our own proxy appended;",
             "            # earlier ones are whatever the client sent.",
             "            tok = xff.split(',')[-1].strip()",
+            "            # No address is longer than 45 characters, and none of",
+            "            # them needs an IPv6 zone: ip_address accepts",
+            "            # fe80::1%<anything> at any length, so a 60,012-character",
+            "            # key and a control character were both taken.",
+            "            if len(tok) > 45 or '%' in tok:",
+            "                return remote",
             "            try:",
-            "                _ipaddress.ip_address(tok)",
+            "                addr = _ipaddress.ip_address(tok)",
             "            except ValueError:",
             "                return remote",
+            "            # One key per address, however it is spelled:",
+            "            # 2001:db8::1 and 2001:0db8:0::1 were two clients, and so",
+            "            # were ::ffff:203.0.113.9 and 203.0.113.9.",
+            "            addr = getattr(addr, 'ipv4_mapped', None) or addr",
             "            # Prefixed: a forwarded 10.0.0.1 and a real peer",
             "            # 10.0.0.1 are different clients and must not share a",
             "            # bucket.",
-            "            return 'xff:' + tok",
+            "            return 'xff:' + str(addr)",
             "        return remote",
             "    except Exception:",
             "        return '0.0.0.0'",
@@ -16693,6 +17380,89 @@ class ServerAppBuilder:
             "        ts = _dt.datetime.now(_dt.timezone.utc).strftime(",
             "            '%Y-%m-%dT%H:%M:%SZ')",
             "        self.write('{\"status\": \"ok\", \"timestamp\": \"' + ts + '\"}')",
+            "",
+            "",
+            "# ---- Launcher command line ----",
+            "# Functions rather than code in the __main__ block, so the flags",
+            "# can be tested without starting a server.  A limit is an integer",
+            "# from 1 to 1,000,000: 0 would refuse every session, and much more",
+            "# than a million is no limit at all.",
+            "_LIMIT_ARG_MIN = 1",
+            "_LIMIT_ARG_MAX = 1000000",
+            "",
+            "",
+            "def _dash_limit_value(text):",
+            "    '''argparse type= for the rate-limit flags: an integer from 1 to",
+            "    1,000,000, in ASCII digits.  int() alone would also take '1_000',",
+            "    ' 60' and non-ASCII digits.'''",
+            "    s = str(text)",
+            "    n = None",
+            "    if re.fullmatch('[0-9]+', s):",
+            "        try:",
+            "            n = int(s)",
+            "        except ValueError:  # more digits than int() will convert",
+            "            n = None",
+            "    if n is None or not _LIMIT_ARG_MIN <= n <= _LIMIT_ARG_MAX:",
+            "        raise _argparse.ArgumentTypeError(",
+            "            '%r is not an integer from 1 to 1,000,000' % (s[:40],))",
+            "    return n",
+            "",
+            "",
+            "def _dash_arg_parser():",
+            "    '''The launcher's command line, every flag old and new.'''",
+            "    p = _argparse.ArgumentParser(description='Serve this dash dashboard.')",
+            "    p.add_argument('--port', type=int, default=_port,",
+            "                   help='TCP port to listen on.')",
+            "    p.add_argument('--address', default=None,",
+            "                   help='Interface to bind (default: loopback).')",
+            "    p.add_argument('--allow-websocket-origin', action='append',",
+            "                   default=None, dest='origins',",
+            "                   help='Extra Host values to accept; repeatable. '",
+            "                        'Needed to reach the app as 127.0.0.1 or "
+            "over a LAN.')",
+            "    p.add_argument('--trust-forwarded-for', action='store_true',",
+            "                   dest='trust_xff',",
+            "                   help='Believe X-Forwarded-For for rate limiting. '",
+            "                        'Only behind a proxy you control: the header '",
+            "                        'is client-settable otherwise.')",
+            "    p.add_argument('--show', action='store_true',",
+            "                   help='Open a browser window once the server is up.')",
+            "    p.add_argument('--timeout', type=int, default=0,",
+            "                   help='Shut down after N minutes (0 = never).')",
+            "    p.add_argument('--sessions-per-client', type=_dash_limit_value,",
+            "                   default=_RATE_LIMIT_RPM, metavar='N',",
+            "                   help='Dashboard sessions one client may open per '",
+            "                        'minute (default %(default)s; 1 to 1,000,000).')",
+            "    p.add_argument('--new-clients-per-minute', type=_dash_limit_value,",
+            "                   default=_NEW_CLIENTS_RPM, metavar='N',",
+            "                   help='Clients not seen in the last minute that may '",
+            "                        'open a session, per minute, all of them '",
+            "                        'together (default %(default)s; 1 to '",
+            "                        '1,000,000).')",
+            "    p.add_argument('--sessions-per-minute', type=_dash_limit_value,",
+            "                   default=_SESSIONS_TOTAL_RPM, metavar='N',",
+            "                   help='Dashboard sessions per minute across all '",
+            "                        'clients (default %(default)s; 1 to '",
+            "                        '1,000,000).')",
+            "    return p",
+            "",
+            "",
+            "def _dash_apply_limits(args):",
+            "    '''Rebuild the session limiter from the parsed",
+            "    --sessions-per-client, --new-clients-per-minute and",
+            "    --sessions-per-minute, and return it.",
+            "",
+            "    make_document reads _SESSION_LIMITER as each session opens, so",
+            "    rebinding the module global is enough.  The values are checked",
+            "    again: a caller need not have come through the parser.'''",
+            "    global _SESSION_LIMITER, _LIMITER",
+            "    _SESSION_LIMITER = _RateLimiter(",
+            "        _dash_limit_value(args.sessions_per_client),",
+            "        _dash_limit_value(args.new_clients_per_minute),",
+            "        _dash_limit_value(args.sessions_per_minute),",
+            "        what='session', flags=_SESSION_LIMIT_FLAGS)",
+            "    _LIMITER = _SESSION_LIMITER",
+            "    return _SESSION_LIMITER",
             "",
         ]
 
@@ -16844,8 +17614,10 @@ class ServerAppBuilder:
             "    # (option, value) per render, as DashRenderer.render() does.",
             "    _dash_reset_notes()",
             "    # ---- Rate-limit enforcement at session creation ----",
-            "    # Extract client IP via the shared helper which prefers",
-            "    # X-Forwarded-For (reverse-proxy client) over remote_ip (proxy IP).",
+            "    # The bucket key comes from the shared helper: the peer's",
+            "    # remote_ip, which the client cannot forge.  X-Forwarded-For is",
+            "    # used only with --trust-forwarded-for, and then only its last",
+            "    # hop, validated as an IP and kept in its own key space.",
             "    try:",
             "        _req = doc.session_context.request",
             "        _client_ip = _client_ip_from_request(_req)",
@@ -16863,6 +17635,8 @@ class ServerAppBuilder:
             "    graphs = spec.get('graphs', [])",
             "    kpi_defs = spec.get('kpis', [])",
             "    bo = spec.get('build_options', {})",
+            "    # The resource limits (WP-19), as the build resolved them.",
+            "    _dash_lim = _dash_limits(bo)",
             "    link_opt = bo.get('link', '') or ''",
             "    # Raw: the header builder escapes it exactly once.",
             "    title_text = bo.get('title', '') or ''",
@@ -17427,11 +18201,10 @@ class ServerAppBuilder:
             "                if _v and _v in df.columns and _v not in _gvars:",
             "                    _gvars.append(_v)",
             "        _panels = []",
-            "        _groupby = by_vars[0] if len(by_vars) == 1 else by_vars",
-            "        for _key, _gdf in work_df.groupby(_groupby, sort=True, dropna=False):",
-            "            _vals = (_key,) if len(by_vars) == 1 else _key",
-            "            if not _bmissing and any(pd.isna(_v) for _v in _vals):",
-            "                continue",
+            "        # The saved renderer's grouping, under the same by_groups",
+            "        # limit (the build said so when it was over).",
+            "        for _key, _gdf in _dash_by_groups(",
+            "                work_df, by_vars, _bmissing, _dash_lim['by_groups'], gname):",
             "            _panels.append((_dash_facet_label(by_vars, _key, val_label_names, val_labels),",
             "                            _gdf, _key))",
             "        if _btotal:",
@@ -17541,7 +18314,9 @@ class ServerAppBuilder:
             "            vlabels = meta['val_labels'][fvar]",
             "        # The widget itself comes from the builder the saved renderer",
             "        # runs: option values, titles, steps and bounds are one rule.",
-            "        widget, _sent = _dash_filter_widget(ftype, fvar, df[fvar], _ftitle, vlabels)",
+            "        widget, _sent = _dash_filter_widget(",
+            "            ftype, fvar, df[fvar], _ftitle, vlabels,",
+            "            max_options=_dash_lim['filter_options'])",
             "        if widget is None:",
             "            if ftype not in _DASH_FILTER_TYPES:",
             "                _dash_warn_filter_type(fvar, ftype)",
@@ -17750,7 +18525,18 @@ class ServerAppBuilder:
             "        # Every widget the builder made, whatever its class: a date",
             "        # slider is not a Slider subclass.",
             "        if hasattr(w, '_dash_var'):",
-            "            w.on_change('value', _cb_for_w)",
+            "            # A slider recomputes when the drag ENDS.  Its `value'",
+            "            # changes on every mouse move, so one drag queued dozens",
+            "            # of full recomputes, and lowess alone takes 4.8 s at 20k",
+            "            # rows (BUGS.md).  Every Bokeh slider carries",
+            "            # value_throttled, set once on release; the Select has",
+            "            # none and keeps `value'.  The callback reads each",
+            "            # widget's .value itself, never `new', so either may fire it.",
+            "            _attr = ('value_throttled'",
+            "                     if 'value_throttled' in w.properties() else 'value')",
+            "            # And a token bucket per callback per session, for changes",
+            "            # sent faster than any hand moves a widget.",
+            "            w.on_change(_attr, _dash_event_throttle(doc, _cb_for_w))",
             "",
             "    # ---- Wire brush selection callbacks ----",
             "    def _make_brush_cb(_kpi_divs, _kpi_defs, _df_ref, _src):",
@@ -17825,9 +18611,10 @@ class ServerAppBuilder:
             "                if 'index' not in getattr(_bsrc, 'data', {}):",
             "                    continue",
             "                _brush_wired.add(id(_bsrc))",
-            "                _bsrc.selected.on_change('indices', _make_brush_cb(",
-            "                    kpi_divs, kpi_defs, df, _bsrc",
-            "                ))",
+            "                # A token bucket of its own, as each filter has: a client",
+            "                # can send selections as fast as it can send values.",
+            "                _bsrc.selected.on_change('indices', _dash_event_throttle(",
+            "                    doc, _make_brush_cb(kpi_divs, kpi_defs, df, _bsrc)))",
             "",
             '    # ---- Assemble grid layout ----',
             '    #',
@@ -17875,7 +18662,7 @@ class ServerAppBuilder:
             '        return math.ceil(math.sqrt(n))',
             '',
             '    # ---- tabs() first: a tabbed element is not also in the grid ----',
-            '    tabs_spec = _dash_parse_tabs(tabs_opt, all_names)',
+            "    tabs_spec = _dash_parse_tabs(tabs_opt, all_names, _dash_lim['tabs'])",
             '    tabs_widget, placed_in_tabs = _dash_tab_panels(tabs_spec, _dash_cell)',
             '',
             '    grid_names = [n for n in all_names if n not in placed_in_tabs]',
@@ -18032,29 +18819,12 @@ class ServerAppBuilder:
             "    # a route, so an app served that way has a working dashboard",
             "    # and no health endpoint.  Project rule 17 asks for one, so",
             "    # this is the launcher dash points users at.",
-            "    import argparse as _ap",
-            "    _p = _ap.ArgumentParser(description='Serve this dash dashboard.')",
-            "    _p.add_argument('--port', type=int, default=_port,",
-            "                    help='TCP port to listen on.')",
-            "    _p.add_argument('--address', default=None,",
-            "                    help='Interface to bind (default: loopback).')",
-            "    _p.add_argument('--allow-websocket-origin', action='append',",
-            "                    default=None, dest='origins',",
-            "                    help='Extra Host values to accept; repeatable. '",
-            "                         'Needed to reach the app as 127.0.0.1 or "
-            "over a LAN.')",
-            "    _p.add_argument('--trust-forwarded-for', action='store_true',",
-            "                    dest='trust_xff',",
-            "                    help='Believe X-Forwarded-For for rate limiting. '",
-            "                         'Only behind a proxy you control: the header '",
-            "                         'is client-settable otherwise.')",
-            "    _p.add_argument('--show', action='store_true',",
-            "                    help='Open a browser window once the server is up.')",
-            "    _p.add_argument('--timeout', type=int, default=0,",
-            "                    help='Shut down after N minutes (0 = never).')",
-            "    _a = _p.parse_args()",
+            "    _a = _dash_arg_parser().parse_args()",
             "    if _a.trust_xff:",
             "        _TRUST_FORWARDED_FOR = True",
+            "    # Before the server starts, so no session is ever admitted",
+            "    # under limits other than the ones asked for.",
+            "    _dash_apply_limits(_a)",
             "    _port = max(1024, min(int(_a.port), 65535))",
             "    _server = _dash_server_app(port=_port, address=_a.address,",
             "                               origins=_a.origins)",
@@ -18069,6 +18839,9 @@ class ServerAppBuilder:
             "                                   _server.io_loop.stop)",
             "    print(f'Bokeh Server running at http://localhost:{_port}/')",
             "    print(f'Health check:  http://localhost:{_port}/health')",
+            "    print(f'Session limits per minute: {_a.sessions_per_client} per '",
+            "          f'client, {_a.new_clients_per_minute} new clients, '",
+            "          f'{_a.sessions_per_minute} in all.')",
             "    print('Press Ctrl+C to stop.')",
             f"    try:",
             f"        _server.io_loop.start()",

@@ -2705,12 +2705,29 @@ Acceptance, each certified by the tests named (all green in those runs):
 
 ---
 
-## WP-19 · Resource limits
+## WP-19 · Resource limits — DONE
 
 **Gaps closed:** I2 · **Severity:** S2 · **Effort:** M · **Depends on:** —
 
 > **User story.** As a user who pointed a filter at a continuous variable, I
 > want a warning and a sane widget — not a 200 001-option dropdown.
+
+### What was measured before any code changed
+
+23sep2026 at `f1321c6`, the standalone renderer unless marked, dash's own
+classes driven directly (`scratchpad/wp19/measure.py`, `limiter.py`):
+
+| Input | Measured |
+|---|---|
+| `filter(v, type(dropdown))`, 20,000 distinct values | 0.5 s; served app 2.0 MB, 20,001 options |
+| the same, 200,000 distinct values | 4.4 s, 38.8 MB page; served app 14.8 MB, 200,001 options; 954 MB RSS |
+| `by(id)`, 300 groups | 8.4 s, 300 figures |
+| `by(id)`, 1,000 groups | 29.2 s, 7.3 MB, 1,000 figures |
+| 300 registered graphs | 7.9 s, 4.0 MB |
+| `tabs()` with 3,000 tabs | 14.4 s, 3.9 MB |
+| 1,000,000 rows x 2 | 4.0 s, 47.6 MB, 1.0 GB RSS; the warning estimated 68 MB |
+| 2,000,000 rows x 2 | 7.9 s, 94.9 MB, 2.1 GB RSS, rc 0 |
+| the served limiter, one machine cycling 10,000 forged `X-Forwarded-For` keys in 60 s | peer-address default: 60 granted; `--trust-forwarded-for`: 10,120 granted, and the real client's key flushed -- 120 of 120 in one window |
 
 ### Business requirements
 
@@ -2719,39 +2736,137 @@ Acceptance, each certified by the tests named (all green in those runs):
 - **BR-19.2** Every clamp warns, naming the limit and the option that would
   raise it.
 
-### Technical requirements
+### Technical requirements, as delivered
 
-- **TR-19.1** Cap dropdown cardinality. `build_dropdown` (`:7628-7660`) takes
-  `set(source.data[varname])` with no ceiling: 200 000 observations give
-  200 001 options. Add `_MAX_FILTER_OPTIONS`, warn, and suggest
-  `type(range)`/`type(slider)` for continuous variables.
-- **TR-19.2** Add `_MAX_BY_GROUPS` — `by(id)` builds one figure per value.
-- **TR-19.3** Add `_MAX_TABS` and `_MAX_GRAPHS`.
-- **TR-19.4** Add a row/column cap with a clear refusal.
-  `_report_dataset_size` (`:538-567`) warns — its docstring records 2 M rows →
-  90.6 MB of HTML at 1.71 GB RSS — but never refuses or truncates.
-- **TR-19.5** Replace `_MAX_IPS` with a structure that actually limits.
-  Measured: a client cycling 10 000 forwarded keys took 300 sessions inside a
-  60-second window against a nominal 60. It is an eviction primitive, not a
-  limiter; a larger cap does not fix it.
-- **TR-19.6** Keep the bounds that already work: `_MAX_BINS`, `_MAX_MBANDS`,
-  `_MAX_EXPR_CHARS`, the function-point cap, `_WEBGL_THRESHOLD`, the port
-  clamp.
+One table in each language -- `_DASH_LIMITS` in `dash_render.py`,
+`_dash_limit_table` in `dash.ado`, held equal by
+`test_resource_limits.py::TestTheTwoLanguagesAgree` -- gives every limit a
+default, a hard ceiling nothing moves, and a global macro that moves the
+default for the session.  `_dash_limit` validates a set global (digits
+only, at most nine, 1 to the ceiling, read through `st_global()` and never
+by a regular expression; anything else is r(198) naming the global, the
+range and the value reduced to safe characters), and `_dash_limits_json`
+writes the set ones into `build_options["limits"]` on both routes.  The
+renderer's `_dash_limits` re-validates them, so a hand-edited spec cannot
+lift a ceiling.  `dash clear` leaves the globals alone: they are settings,
+not registry.  Documented in `dash.sthlp`, "Resource limits".
 
-### Acceptance criteria
+| Limit | Global | Default | Ceiling | At the limit |
+|---|---|---|---|---|
+| values embedded (observations x variables used) | `dash_max_cells` | 5,000,000 | 20,000,000 | refused, r(134), before the export |
+| graphs and KPI cards registered | `dash_max_graphs` | 100 | 1,000 | a new name refused, r(134) |
+| plots in one graph (one per y variable) | `dash_max_plots` | 100 | 1,000 | refused, r(134) |
+| values one dropdown lists | `dash_max_filter_options` | 1,000 | 100,000 | numeric or date → `type(range)`; string → its first values |
+| panels one `by()` graph draws | `dash_max_by_groups` | 100 | 1,000 | the first groups in sort order |
+| tabs | `dash_max_tabs` | 50 | 500 | the first tabs |
+| filter widgets | `dash_max_filters` | 20 | 200 | the first filters |
 
-- **AC-19.1** A dropdown filter on a continuous variable warns and is capped.
-- **AC-19.2** `by()` on a high-cardinality variable warns and is capped.
-- **AC-19.3** An oversized dataset is refused with a clear message.
-- **AC-19.4** The forwarded-key attack cannot exceed the nominal session rate.
+- **TR-19.1** `_dash_filter_effective_type` plans a dropdown under the
+  option limit in both modes -- in the saved renderer's filter loop, and at
+  build time in `ServerAppBuilder` so the served user is told where they
+  are.  Over the limit a numeric or date variable is drawn as `type(range)`
+  and the page's filter spec says so too; a string variable keeps its
+  dropdown and `_dash_filter_widget(max_options=)` lists its first values.
+  The distinct count is `nunique` first and the exact option count only
+  past the limit.
+- **TR-19.2** `_dash_by_groups`, one helper both modes group through,
+  counts the groups before it copies any and stops after the first
+  `by_groups` in sort order; the served build names the clamp at build
+  time (`_plan_by_groups`, on the graph's qualified rows).  KPI facet cards
+  follow the capped panels.
+- **TR-19.3** Graphs and KPI cards: `_dash_graph_cap` in both registrars,
+  before any global is set or retired, never counting a replace.  Plots:
+  `_dash_process_segment` refuses a single segment whose y variables pass
+  the limit before building their JSON, and `_dash_plot` keeps a running
+  total.  Tabs and filters: `_dash_parse_tabs(limit)` and
+  `_dash_cap_filters`.  The renderer also holds graphs and plots
+  (`_dash_cap_spec`) for a spec that did not come through dash.ado.
+- **TR-19.4** `_dash_cell_cap` refuses before the date-format swap and the
+  export, on both routes, leaving the data and formats untouched; the
+  message says `if`/`in` do not help (dash exports every observation and
+  applies qualifiers itself) and names keep/drop/sample/collapse.  Both
+  renderers refuse too (`_dash_refuse_oversized`, `DashLimitError`).  The
+  large-dataset note keeps its threshold, gets the measured 24 bytes a
+  cell (was 34), and stops advising a qualifier.
+- **TR-19.5** The served `_RateLimiter` is rewritten: per client
+  (`--sessions-per-client`, 60), a shared first-contact window for keys it
+  is not tracking (`--new-clients-per-minute`, 60), all sessions together
+  (`--sessions-per-minute`, 600); stale keys swept, a live key never
+  evicted; refusals logged once a minute per bound, naming the flag.  The
+  flags parse through `_dash_arg_parser`/`_dash_apply_limits`, each 1 to
+  1,000,000.  Health keeps a separate budget.
+- **TR-19.6** The bounds that held are pinned in both modes
+  (`TestTheBoundsThatAlreadyWorkedAreKept`): `_MAX_BINS`, `_MAX_MBANDS`,
+  `_MAX_EXPR_CHARS`, `_FP_GRID_MAX`, the function point clamp,
+  `_WEBGL_THRESHOLD`, the port clamp.
+- **The served recompute** (the WP-18 entry in `BUGS.md` assigned here): a
+  slider recomputes when its drag ends (`value_throttled`), and every filter
+  and brush callback runs through `_dash_event_throttle`, a token bucket per
+  callback per session (10 at once, 2 a second, the rest folded into one
+  trailing recompute with the latest values).  The estimators' own cost is
+  left recorded: lowess is O(N x window) by definition, as Stata's is.
 
-### Test plan
+### Acceptance
 
-| Kind | Test | Asserts |
-|---|---|---|
-| Unit | `test_resource_limits.py` | Each new cap fires, warns, and names the limit |
-| Adversarial | `test_server_rate_limit.py` | The 10 000-key cycle is held to the nominal rate |
-| Adversarial | `test_adversarial.cscript` | Resource-exhaustion cases per input surface (CLAUDE.md rule 18) |
+- **AC-19.1** `TestADropdownOnAContinuousVariable` (both modes, the page's
+  filter spec, the build-time note), RL-01..04.
+- **AC-19.2** `TestByOnAHighCardinalityVariable` (both modes, the qualified
+  count, two by-variables), RL-06..08 and RL-11.
+- **AC-19.3** `TestAnOversizedDatasetIsRefused` (both renderers), P19-11..13
+  (both routes: r(134), no file, no `dash_opts_*`, data and `%td` format
+  unchanged) and P19-23 (the default at scale: 5,200,000 values refused,
+  exactly 5,000,000 admitted).  The graph and plot refusals: P19-01..10.
+- **AC-19.4** `test_server_rate_limit.py::TestTheForwardedKeyCycleIsHeldToTheNominalRate`:
+  with the header trusted the same attack now gets 59 sessions (it got
+  10,000) and the real client its 60, not a second 60; with the default
+  peer-address key it gets none, as before.  Key reuse is held to the
+  total (`TestReusedKeysAreHeldToTheTotal`).
+
+### Found on the way
+
+Each with a failing test first, fixed, and recorded in `BUGS.md`:
+
+- A do-file beginning `version 16` or `version 17` could not name a graph
+  or KPI card: the name check used `{0,31}`, which Stata's old regex engine
+  -- the one a caller below 18 gets -- does not know.  The whole
+  certification suite was then run with the caller at `version 16`: 44 of
+  44 passed.
+- A 23- to 32-character graph name, or a 19- to 32-character KPI name,
+  passed the check and failed on Stata's 32-character global limit; the
+  limits are now 22 and 18, in dash's own words.
+- A refused filter, graph or KPI name was echoed as SMCL: `{bf:}`, `{hline}`
+  -- and SMCL's `{browse}` and `{stata}` links -- were drawn from the
+  user's text.  Every unsafe character is now neutralised (P19-24..26).
+- With the header trusted, a forwarded IPv6 zone of any length was a bucket
+  key, and one address spelled two ways was two clients; keys are now the
+  canonical address, at most 45 characters.
+- A graph of literal values (`function`, `scatteri`, `pci`) exported every
+  observation of a placeholder variable it never reads, and under the cell
+  limit was refused for it; it now exports one (RL-13..14).
+- Recorded, not fixed (a separate task): `cscript` drops every global, so
+  the runner's `$dash_nobrowser` never reaches the scripts; under the
+  console binary nothing opens.
+
+### Verification, measured
+
+23sep2026, on the tree committed with this record (branch
+`feature/batch4-interactive-layer`, `main` already an ancestor), both
+suites run once on the final code:
+
+- `python3 -m pytest test/ -q`: **9012 passed, 0 failed**, 6 xfailed
+  (unchanged), 60 skipped, 2:13.  Every skip is structural: 39 and 20
+  `test_cscript_hygiene.py` checks that do not apply to a given script --
+  one more for each new script than WP-18's 58 -- and the `layout(bs)`
+  parity entry (WP-21).  Tests: `test_resource_limits.py` 84 (19 before,
+  all kept), `test_server_rate_limit.py` 73 (11 before, two restated for
+  the new contract), `test_served_throttle.py` 31 (new).
+- `test/run_all_cscripts.do` with the console binary: **45 passed, 0
+  failed, 0 skipped** -- the new `test_caller_version.cscript` (11 checks)
+  and `test_resource_limits.cscript` (14) among them, and
+  `test_adversarial.cscript` with P19-01..26.
+- Once, after the name-check fix and before the rest of WP-19, the 44
+  scripts of the runner were run with the caller at `version 16` (the
+  runner with `version 16` after `clear all`): 44 passed.
 
 ---
 

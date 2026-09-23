@@ -59,6 +59,12 @@ do "../dash.ado"
 // file fails instead of reporting "payload not found".
 do "cert_helpers.do"
 
+// cscript runs `macro drop _all', which takes the runner's
+// $dash_nobrowser with it, so P2-78's `dash build' below reached the shell
+// line that opens a browser on every run (the console binary reports
+// c(os) "Unix" and ran xdg-open).  Set again here, after cscript.
+global dash_nobrowser 1
+
 // ================================================================
 // P2-78 — XSS in title → <script> HTML-escaped in output HTML
 // ================================================================
@@ -560,6 +566,583 @@ capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p9.log"
 
 // ================================================================
+// P19 — resource limits (WP-19)
+// ================================================================
+// ROADMAP WP-19: no input may produce unbounded output or memory use
+// (BR-19.1), and every limit names the setting that would raise it
+// (BR-19.2).  Measured on the development machine, a standalone dashboard
+// embedding 2,000,000 values is 47.6 MB of HTML at 1.0 GB of renderer RSS,
+// 4,000,000 is 94.9 MB at 2.1 GB, and Chrome cannot hold a string longer
+// than about 512 MB -- roughly 20,000,000 values.
+//
+// dash.ado enforces three limits itself -- items in the registry, plots in
+// a graph, values embedded in a dashboard -- and hands every limit the
+// session has set to the renderer as build_options.limits.  Each is raised
+// or lowered with global dash_max_<key>, a whole number in digits only
+// from 1 to the key's ceiling.  Every case asserts the rc, the message, and
+// that nothing was registered or written.
+//
+// Messages are read back from a log written at linesize 255: at 80 columns
+// Stata wraps a refusal mid-word, and a needle split across two lines is
+// not found.
+
+mata:
+// The value a refusal echoed between "(got '" and the next "'", read from
+// the log in Mata, where a line is a value: nothing in it can be parsed as
+// Stata code on the way.  Empty when the log holds no echo at all.
+string scalar _adv_p19_echo(string scalar path)
+{
+    real scalar   fh, p, q
+    string scalar ln, rest
+
+    fh = _fopen(path, "r")
+    if (fh < 0) return("")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        p = strpos(ln, "(got '")
+        if (p > 0) {
+            rest = substr(ln, p + 6, .)
+            q    = strpos(rest, "'")
+            fclose(fh)
+            return(q > 0 ? substr(rest, 1, q - 1) : rest)
+        }
+    }
+    fclose(fh)
+    return("")
+}
+
+// 1 when s is non-empty, at most 20 bytes, and made only of A-Z a-z 0-9
+// _ . - and the ? that stands in for every other byte.
+real scalar _adv_p19_safe(string scalar s)
+{
+    real scalar i, c
+
+    if (strlen(s) == 0 | strlen(s) > 20) return(0)
+    for (i = 1; i <= strlen(s); i++) {
+        c = ascii(substr(s, i, 1))
+        if (!((c >= 48 & c <= 57) | (c >= 65 & c <= 90) |
+              (c >= 97 & c <= 122) | c == 95 | c == 46 | c == 45 |
+              c == 63)) return(0)
+    }
+    return(1)
+}
+
+// The hostile values for a key whose ceiling is `ceiling': a word, zero, a
+// negative, a decimal, e-notation, one past the ceiling, ten digits, a
+// command after a semicolon, 5,000 characters of backtick, semicolon and
+// brace, a backtick macro reference, a trailing newline (measured:
+// StataNow's regexm() matches "^[0-9]+$" against "12" + char(10)), a
+// full-width digit, and two that real() reads as a number although they
+// are not digits only -- a leading plus and a leading space.
+string colvector _adv_p19_bad(real scalar ceiling)
+{
+    string colvector v
+
+    v = J(14, 1, "")
+    v[1]  = "abc"
+    v[2]  = "0"
+    v[3]  = "-5"
+    v[4]  = "1.5"
+    v[5]  = "1e6"
+    v[6]  = strofreal(ceiling + 1, "%12.0f")
+    v[7]  = "9999999999"
+    v[8]  = "1; shell echo hi"
+    v[9]  = 1000 * (char(96) + ";{x}")
+    v[10] = "5" + char(96) + "rm" + char(39)
+    v[11] = "12" + char(10)
+    v[12] = "1" + char(239) + char(188) + char(146)
+    v[13] = "+5"
+    v[14] = " 5"
+    return(v)
+}
+end
+
+// Run one command with its output captured to a log: r(rc), r(log).
+capture program drop _adv_p19_run
+program define _adv_p19_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_adv_p19.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _p19log
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_p19log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _p19log
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// Every hostile value of dash_max_<key> must make <cmdtext> fail with
+// r(198), naming the global and its range, echoing nothing but safe
+// characters -- no semicolon and no backtick anywhere in the output --
+// registering nothing and, when <file> is given, writing no file.  The
+// global is dropped afterwards.
+capture program drop _adv_p19_refuses
+program define _adv_p19_refuses
+    version 16.0
+    args key ceiling cmdtext file
+    local cfmt : display %12.0fc `ceiling'
+    local cfmt = strtrim("`cfmt'")
+    local reg0 "${dash_graph_registry}"
+    mata: _adv_p19_vals = _adv_p19_bad(`ceiling')
+    mata: st_local("nv", strofreal(rows(_adv_p19_vals)))
+    forvalues j = 1/`nv' {
+        mata: st_global("dash_max_`key'", _adv_p19_vals[`j'])
+        _adv_p19_run `"`cmdtext'"'
+        local rc = r(rc)
+        local lg "`r(log)'"
+        if `rc' != 198 {
+            display as error `"P19 FAIL: hostile value `j' of dash_max_`key' gave rc=`rc', not 198: `cmdtext'"'
+            exit 9
+        }
+        cert_file_has "`lg'", needle("global dash_max_`key' must be a whole number from 1 to `cfmt'")
+        assert r(found) == 1
+        mata: st_local("eok", strofreal(_adv_p19_safe(_adv_p19_echo(st_local("lg")))))
+        assert `eok' == 1
+        cert_file_has "`lg'", needle(";")
+        assert r(found) == 0
+        mata: st_local("bt", strofreal(_cert_file_has(st_local("lg"), char(96), 0)))
+        assert `bt' == 0
+        assert "${dash_graph_registry}" == "`reg0'"
+        if `"`file'"' != "" {
+            capture confirm file `"`file'"'
+            assert _rc != 0
+        }
+    }
+    macro drop dash_max_`key'
+end
+
+qui sysuse auto, clear
+global dash_nobrowser 1
+capture dash clear
+local p19_keys "cells graphs plots filter_options by_groups tabs filters"
+local p19_defs "5000000 100 100 1000 100 50 20"
+local p19_ceil "20000000 1000 1000 100000 1000 500 200"
+foreach k of local p19_keys {
+    capture macro drop dash_max_`k'
+}
+
+// P19-01 — a fourth graph, and a fourth KPI, at dash_max_graphs 3 → r(134)
+global dash_max_graphs 3
+dash scatter mpg weight, name(g1)
+dash scatter price weight, name(g2)
+dash kpi mean(mpg), name(k1) title("Mean mpg")
+assert "${dash_graph_registry}" == "g1 g2 k1"
+_adv_p19_run "dash scatter mpg weight, name(g4)"
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: the registry already holds 3 graphs and KPI cards, the most one dashboard draws.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("Run dash clear, reuse a name with name(<name>, replace), or set global dash_max_graphs to a higher value (at most 1,000).")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "g1 g2 k1"
+local left : all globals "dash_*_g4"
+assert "`left'" == ""
+_adv_p19_run `"dash kpi mean(price), name(k4) title("Mean price")"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: the registry already holds 3 graphs and KPI cards, the most one dashboard draws.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("set global dash_max_graphs to a higher value (at most 1,000).")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "g1 g2 k1"
+local left : all globals "dash_kpi_k4*"
+assert "`left'" == ""
+display "P19-01 PASS: a 4th graph and a 4th KPI at dash_max_graphs 3 → rc=134 naming 3 and dash_max_graphs, nothing registered"
+
+// P19-02 — a name already in the registry is a replace, and never counts
+capture noisily dash scatter mpg turn, name(g1, replace)
+assert _rc == 0
+assert strpos("${dash_spec_g1}", "turn") > 0
+capture noisily dash kpi mean(price), name(k1, replace) title("Mean price")
+assert _rc == 0
+assert "${dash_kpi_k1_var}" == "price"
+assert "${dash_graph_registry}" == "g1 g2 k1"
+display "P19-02 PASS: name(g1, replace) and a KPI replace succeed at the cap"
+
+// P19-03 — after dash clear a new name registers again
+dash clear
+capture noisily dash scatter mpg weight, name(g4)
+assert _rc == 0
+assert "${dash_graph_registry}" == "g4"
+display "P19-03 PASS: after dash clear, registering works again"
+
+// P19-04 — a registry already past a lowered limit says so
+dash clear
+macro drop dash_max_graphs
+dash scatter mpg weight, name(h1)
+dash scatter mpg weight, name(h2)
+dash scatter mpg weight, name(h3)
+global dash_max_graphs 2
+_adv_p19_run "dash scatter mpg weight, name(h4)"
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: the registry already holds 3 graphs and KPI cards, more than the 2 one dashboard draws.")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "h1 h2 h3"
+macro drop dash_max_graphs
+dash clear
+display "P19-04 PASS: 3 registered at dash_max_graphs 2 → rc=134 saying more than 2"
+
+// P19-05 — unset, each limit is its default: graphs 100
+_dash_limit, name(graphs)
+assert r(value) == 100 & r(default) == 100 & r(ceiling) == 1000
+assert "`r(global)'" == "dash_max_graphs"
+forvalues i = 1/7 {
+    local k : word `i' of `p19_keys'
+    _dash_limit, name(`k')
+    assert r(value)   == `: word `i' of `p19_defs''
+    assert r(default) == `: word `i' of `p19_defs''
+    assert r(ceiling) == `: word `i' of `p19_ceil''
+    assert "`r(global)'" == "dash_max_`k'"
+}
+display "P19-05 PASS: unset, _dash_limit gives graphs 100 and every default, ceiling and global"
+
+// P19-06 — two y variables at dash_max_plots 2 register
+global dash_max_plots 2
+capture noisily dash scatter mpg price weight, name(p1)
+assert _rc == 0
+assert "${dash_graph_registry}" == "p1"
+display "P19-06 PASS: scatter mpg price weight (2 plots) registers at dash_max_plots 2"
+
+// P19-07 — three y variables → r(134), p2 not registered
+_adv_p19_run "dash scatter mpg price turn weight, name(p2)"
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: this graph has 3 plots (each y variable is one), more than the 2 one graph draws.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("Split it into several graphs, or set global dash_max_plots to a higher value (at most 1,000).")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "p1"
+local left : all globals "dash_*_p2"
+assert "`left'" == ""
+display "P19-07 PASS: scatter mpg price turn weight (3 plots) → rc=134, p2 not registered"
+
+// P19-08 — three segments of one plot each → r(134)
+_adv_p19_run "dash (scatter mpg weight) (line price weight) (lfit mpg weight), name(p3)"
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: this graph has 3 plots (each y variable is one), more than the 2 one graph draws.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("set global dash_max_plots to a higher value (at most 1,000).")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "p1"
+local left : all globals "dash_*_p3"
+assert "`left'" == ""
+display "P19-08 PASS: three one-plot segments → rc=134, p3 not registered"
+
+// P19-09 — refused before the last segment, the total is not known yet
+_adv_p19_run "dash (scatter mpg weight) (line price weight) (lfit mpg weight) (qfit mpg weight), name(p4)"
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this graph has more than 2 plots (each y variable is one), the most one graph draws.")
+assert r(found) == 1
+_adv_p19_run "dash (scatter mpg price turn weight) (line mpg weight), name(p5)"
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this graph has more than 2 plots (each y variable is one), the most one graph draws.")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "p1"
+display "P19-09 PASS: a refusal before the last segment says more than 2 plots"
+
+// P19-10 — the immediate route is capped too, and writes nothing
+tempfile p19p
+local p19pf "`p19p'.html"
+capture erase "`p19pf'"
+_adv_p19_run `"dash scatter mpg price turn weight, saving("`p19pf'")"'
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this graph has 3 plots (each y variable is one)")
+assert r(found) == 1
+capture confirm file "`p19pf'"
+assert _rc != 0
+macro drop dash_max_plots
+dash clear
+display "P19-10 PASS: the immediate route refuses 3 plots at dash_max_plots 2 and writes no file"
+
+// P19-11 — 148 values at dash_max_cells 100 → r(134) before any export
+qui sysuse auto, clear
+generate double d = mdy(1, 1, 2000) + _n
+format d %td
+quietly datasignature
+local sig0 "`r(datasignature)'"
+global dash_max_cells 100
+tempfile p19c
+local p19cf "`p19c'.html"
+capture erase "`p19cf'"
+_adv_p19_run `"dash scatter mpg d, saving("`p19cf'")"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: this dashboard would embed 148 values (74 observations x 2 variables), more than the 100 dash embeds.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("Reduce the data in memory first (keep, drop, sample or collapse, inside preserve/restore), or set global dash_max_cells to a higher value (at most 20,000,000).")
+assert r(found) == 1
+// if/in reduce nothing that is exported, so they are not offered.
+cert_file_has "`lg'", needle("if/in")
+assert r(found) == 0
+capture confirm file "`p19cf'"
+assert _rc != 0
+quietly datasignature
+assert "`r(datasignature)'" == "`sig0'"
+local fmt_d : format d
+assert "`fmt_d'" == "%td"
+display "P19-11 PASS: 148 values at dash_max_cells 100 → rc=134, no file, data and %td format unchanged"
+
+// P19-12 — dash_max_cells 148 accepts the same command
+global dash_max_cells 148
+capture noisily dash scatter mpg d, saving("`p19cf'")
+assert _rc == 0
+confirm file "`p19cf'"
+local fmt_d : format d
+assert "`fmt_d'" == "%td"
+display "P19-12 PASS: the same command at dash_max_cells 148 writes the dashboard"
+
+// P19-13 — dash build is capped the same way
+dash clear
+global dash_max_cells 100
+dash scatter mpg weight, name(c1)
+tempfile p19b
+local p19bf "`p19b'.html"
+capture erase "`p19bf'"
+_adv_p19_run `"dash build, saving("`p19bf'") replace nobrowser"'
+assert r(rc) == 134
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash: this dashboard would embed 148 values (74 observations x 2 variables), more than the 100 dash embeds.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("set global dash_max_cells to a higher value (at most 20,000,000).")
+assert r(found) == 1
+capture confirm file "`p19bf'"
+assert _rc != 0
+local opts : all globals "dash_opts_*"
+assert "`opts'" == ""
+quietly datasignature
+assert "`r(datasignature)'" == "`sig0'"
+global dash_max_cells 148
+capture noisily dash build, saving("`p19bf'") replace nobrowser
+assert _rc == 0
+confirm file "`p19bf'"
+macro drop dash_max_cells
+dash clear
+display "P19-13 PASS: dash build refuses 148 values at 100 (no file, no dash_opts_*), builds at 148"
+
+// P19-14 — _dash_limits_json carries only the limits that are set
+foreach k of local p19_keys {
+    capture macro drop dash_max_`k'
+}
+_dash_limits_json
+assert `"`r(json)'"' == "{}"
+global dash_max_by_groups 7
+_dash_limits_json
+assert `"`r(json)'"' == `"{"by_groups":7}"'
+global dash_max_cells 00148
+global dash_max_tabs 3
+_dash_limits_json
+assert `"`r(json)'"' == `"{"cells":148,"by_groups":7,"tabs":3}"'
+display `"P19-14 PASS: _dash_limits_json gives {} unset, {"by_groups":7}, and set keys in table order"'
+
+// P19-15 — the master specs carry it as build_options.limits
+dash clear
+dash scatter mpg weight, name(j1)
+tempfile p19js p19jd
+_dash_serve_spec, specpath("`p19js'") datapath("`p19jd'")
+cert_file_has "`p19js'", needle(`","limits":{"cells":148,"by_groups":7,"tabs":3}}}"')
+assert r(found) == 1
+// The immediate route leaves no spec file to read; that the renderer
+// parsed a spec carrying limits is what rc 0 shows, on both routes.
+tempfile p19j
+local p19jf "`p19j'.html"
+capture noisily dash scatter mpg weight, saving("`p19jf'")
+assert _rc == 0
+confirm file "`p19jf'"
+capture noisily dash build, saving("`p19jf'") replace nobrowser
+assert _rc == 0
+display "P19-15 PASS: build_options.limits is in the build/serve spec, and both routes render with it"
+
+// P19-16 — dash clear keeps the limits: they are settings, not registry
+dash scatter mpg weight, name(z1)
+dash clear
+assert "${dash_max_cells}" == "00148"
+assert "${dash_max_by_groups}" == "7"
+assert "${dash_graph_registry}" == ""
+display "P19-16 PASS: dash clear leaves global dash_max_cells set"
+
+// P19-17 — accepted values: 1, the ceiling, leading zeros, empty = default,
+// and the same answers under a caller's version 16 (the old regex engine)
+foreach k of local p19_keys {
+    capture macro drop dash_max_`k'
+}
+global dash_max_graphs 1
+_dash_limit, name(graphs)
+assert r(value) == 1
+global dash_max_graphs 1000
+_dash_limit, name(graphs)
+assert r(value) == 1000
+global dash_max_cells 20000000
+_dash_limit, name(cells)
+assert r(value) == 20000000
+global dash_max_cells 000000148
+_dash_limit, name(cells)
+assert r(value) == 148
+global dash_max_graphs ""
+_dash_limit, name(graphs)
+assert r(value) == 100
+version 16: _dash_limit, name(cells)
+assert r(value) == 148
+mata: st_global("dash_max_cells", "12" + char(10))
+capture version 16: _dash_limit, name(cells)
+assert _rc == 198
+capture _dash_limit, name(cells)
+assert _rc == 198
+foreach k of local p19_keys {
+    capture macro drop dash_max_`k'
+}
+display "P19-17 PASS: 1, the ceiling and leading zeros accepted, empty is the default, same under version 16"
+
+// P19-18 — every hostile value, for every key, straight to _dash_limit
+forvalues i = 1/7 {
+    local k : word `i' of `p19_keys'
+    _adv_p19_refuses `k' `: word `i' of `p19_ceil'' "_dash_limit, name(`k')" ""
+    _dash_limit, name(`k')
+    assert r(value) == `: word `i' of `p19_defs''
+}
+display "P19-18 PASS: 14 hostile values x 7 globals → rc=198 naming the global, echo safe; dropped → default"
+
+// P19-19 — the immediate route refuses each of them and writes nothing
+qui sysuse auto, clear
+tempfile p19r
+local p19rf "`p19r'.html"
+capture erase "`p19rf'"
+forvalues i = 1/7 {
+    local k : word `i' of `p19_keys'
+    _adv_p19_refuses `k' `: word `i' of `p19_ceil'' `"dash scatter mpg weight, saving("`p19rf'")"' "`p19rf'"
+}
+capture noisily dash scatter mpg weight, saving("`p19rf'")
+assert _rc == 0
+confirm file "`p19rf'"
+display "P19-19 PASS: the immediate route refuses every hostile value of every global; dropped, it renders"
+
+// P19-20 — and so does dash build
+capture erase "`p19rf'"
+dash clear
+dash scatter mpg weight, name(b1)
+forvalues i = 1/7 {
+    local k : word `i' of `p19_keys'
+    _adv_p19_refuses `k' `: word `i' of `p19_ceil'' `"dash build, saving("`p19rf'") replace nobrowser"' "`p19rf'"
+}
+local opts : all globals "dash_opts_*"
+assert "`opts'" == ""
+capture noisily dash build, saving("`p19rf'") replace nobrowser
+assert _rc == 0
+confirm file "`p19rf'"
+dash clear
+display "P19-20 PASS: dash build refuses every hostile value of every global; dropped, it builds"
+
+// P19-21 — registration reads dash_max_graphs and dash_max_plots itself
+_adv_p19_refuses graphs 1000 "dash scatter mpg weight, name(r1)" ""
+_adv_p19_refuses plots  1000 "dash scatter mpg weight, name(r1)" ""
+global dash_max_graphs 0
+_adv_p19_run "dash scatter mpg weight, name(r1)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("global dash_max_graphs must be a whole number from 1 to 1,000")
+assert r(found) == 1
+_adv_p19_run "dash kpi mean(mpg), name(r2) title(T)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("global dash_max_graphs must be a whole number from 1 to 1,000")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+macro drop dash_max_graphs
+capture noisily dash scatter mpg weight, name(r1)
+assert _rc == 0
+assert "${dash_graph_registry}" == "r1"
+display "P19-21 PASS: a graph or KPI registration refuses every hostile value; global dash_max_graphs 0 too"
+
+// P19-22 — the message helpers: a thirteen-digit count keeps its commas
+// (%12.0fc would print 1.23457e+12), and one variable is "1 variable"
+_dash_count_fmt p19s 1234567890123
+assert "`p19s'" == "1,234,567,890,123"
+_dash_count_fmt p19s 20000000
+assert "`p19s'" == "20,000,000"
+qui sysuse auto, clear
+global dash_max_cells 50
+_adv_p19_run "_dash_cell_cap 1"
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this dashboard would embed 74 values (74 observations x 1 variable), more than the 50 dash embeds.")
+assert r(found) == 1
+_adv_p19_run "_dash_cell_cap 0"
+assert r(rc) == 0
+macro drop dash_max_cells
+display "P19-22 PASS: counts past 10^12 keep their separators; 74 x 1 is refused as 1 variable"
+
+// P19-23 — the default, with no global set: 2,600,000 observations of two
+// variables (5,200,000 values) are refused before jsonio sees them, and
+// 2,500,000 x 2 -- exactly 5,000,000 -- is within it.
+clear
+quietly set obs 2600000
+generate double y = mod(_n, 7)
+generate double x = _n
+tempfile p19big
+local p19gf "`p19big'.html"
+capture erase "`p19gf'"
+_adv_p19_run `"dash scatter y x, saving("`p19gf'")"'
+assert r(rc) == 134
+cert_file_has "`r(log)'", needle("dash: this dashboard would embed 5,200,000 values (2,600,000 observations x 2 variables), more than the 5,000,000 dash embeds.")
+assert r(found) == 1
+capture confirm file "`p19gf'"
+assert _rc != 0
+quietly keep in 1/2500000
+_adv_p19_run "_dash_cell_cap 2"
+assert r(rc) == 0
+quietly set obs 2500001
+_adv_p19_run "_dash_cell_cap 2"
+assert r(rc) == 134
+qui sysuse auto, clear
+display "P19-23 PASS: the default refuses 5,200,000 values and admits exactly 5,000,000"
+
+// P19-24..26 — a refused name is echoed as text, never as SMCL.  The
+// filter() echo replaced only the FIRST run of unsafe characters
+// (regexr), and the graph and KPI name refusals echoed the name raw, so
+// `name(a{bf:X})' printed a bold X and `{hline 43}' a rule: Stata drew the
+// user's text as its own markup, and SMCL has {browse} and {stata} links a
+// click would follow.  Found by WP-19's review.  In a text log a rendered
+// {bf:INJMARK} is plain "INJMARK"; only an echo that neutralised the
+// braces and the colon leaves "bf?INJMARK".
+dash clear
+dash scatter mpg weight, name(p19e)
+tempfile p19ef
+local p19ef "`p19ef'.html"
+capture erase "`p19ef'"
+_adv_p19_run `"dash build, saving("`p19ef'") replace nobrowser filter(a b{bf:INJMARKF}{hline 43}, type(dropdown))"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("bf?INJMARKF??hline?43?")
+assert r(found) == 1
+capture confirm file "`p19ef'"
+assert _rc != 0
+display "P19-24 PASS: a refused filter() name is echoed with every unsafe character neutralised"
+
+dash clear
+_adv_p19_run "dash scatter mpg weight, name(a{bf:INJMARKG}{hline 43})"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("a?bf?INJMARKG??hline?43?")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P19-25 PASS: a refused graph name is echoed as text, not SMCL"
+
+_adv_p19_run `"dash kpi mean(mpg), name(k{bf:INJMARKK}) title("x")"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("k?bf?INJMARKK?")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P19-26 PASS: a refused KPI name is echoed as text, not SMCL"
+
+foreach k of local p19_keys {
+    capture macro drop dash_max_`k'
+}
+capture dash clear
+capture erase "`c(tmpdir)'dash_adv_p19.log"
+foreach f in p19pf p19cf p19bf p19jf p19rf p19gf p19ef {
+    capture erase "``f''"
+}
+
+// ================================================================
 // Final summary
 // ================================================================
 display ""
@@ -580,3 +1163,11 @@ display "  P9-01..03: Code in a number-only option value → rc=198 naming it"
 display "  P9-04: Backtick in n() → refused by Stata's own line parser, nothing registered"
 display "  P9-06..10: Resource-exhaustion counts and sizes → rc=198 naming the option"
 display "  P9-11..14: Code in KPI fmt() → rc=198 naming fmt(), no KPI registered"
+display "  P19-01..05: Registry cap (dash_max_graphs) → rc=134 for a new name; replace and dash clear still work"
+display "  P19-06..10: Plot cap (dash_max_plots) → rc=134, each y variable counted, nothing registered or written"
+display "  P19-11..13: Cell cap (dash_max_cells) → rc=134 before export on both routes, data and formats unchanged"
+display "  P19-14..16: build_options.limits carries only the set limits; dash clear keeps them"
+display "  P19-17..21: Hostile dash_max_* values → rc=198 on every route, echo reduced to safe characters"
+display "  P19-22: Message helpers — separators past 10^12, singular variable"
+display "  P19-23: Default cell cap at scale — 5,200,000 values refused, 5,000,000 admitted"
+display "  P19-24..26: A refused filter, graph or KPI name → echoed as text, never as SMCL"

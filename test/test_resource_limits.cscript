@@ -1,0 +1,299 @@
+*! test_resource_limits.cscript  v1.0
+*! Certification script: the resource limits as the Stata user meets them.
+*!
+*! ROADMAP WP-19.  No constant bounded a dropdown, a by(), the tabs or the
+*! filters: a dropdown on 200,000 distinct values was 200,001 options and a
+*! 38.8 MB page, and by() on 1,000 groups drew 1,000 figures in 29 s.  The
+*! renderer now clamps each, in both render modes, under a limit the user can
+*! move with a global macro that dash.ado carries to it in
+*! build_options["limits"].
+*!
+*! A clamp the user cannot see is one they cannot act on.  Each note must
+*! reach the Stata log -- where a dash user reads it -- naming the limit and
+*! the global that raises it (BR-19.2), and moving the global must move the
+*! limit.  dash.ado's own refusals (graphs, plots, cells, a bad global) are
+*! certified in test_adversarial.cscript, P19.
+*!
+*! Tests: RL-01 through RL-14
+*!
+*! Usage:  do test/test_resource_limits.cscript
+*! Version: 1.0  23sep2026
+
+cscript "dash resource limits reach the user" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// The notes are read back from a log; at the batch default of 80 columns
+// Stata wraps them mid-phrase.
+set linesize 255
+global dash_nobrowser 1
+capture macro drop dash_max_*
+
+local rllog "`c(tmpdir)'dash_rl_cert.log"
+capture program drop _rl_on
+program define _rl_on
+    version 16.0
+    args logfile
+    capture log close _rllog
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_rllog) text replace
+end
+capture program drop _rl_off
+program define _rl_off
+    version 16.0
+    quietly log close _rllog
+end
+
+// ================================================================
+// RL-01..03 — a dropdown over the option limit
+// ================================================================
+// auto's price has 74 distinct values.  Under a limit of 10 a numeric
+// variable is drawn as a range slider, and the note says so.
+global dash_max_filter_options 10
+dash clear
+dash scatter mpg weight, name(g1)
+tempfile out1
+capture erase "`out1'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out1'.html") replace nobrowser ///
+    filter(price, type(dropdown))
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("filter(price) has 74 distinct values")
+assert r(found) == 1
+cert_file_has "`rllog'", needle("drawn as type(range)")
+assert r(found) == 1
+cert_file_has "`rllog'", needle("set global dash_max_filter_options")
+assert r(found) == 1
+cert_file_has "`out1'.html", needle(`""name":"RangeSlider""')
+assert r(found) == 1
+cert_file_has "`out1'.html", needle(`""name":"Select""')
+assert r(found) == 0
+display "RL-01 PASS: a numeric dropdown over the limit is a range, and the log says so"
+
+// The same, served: the note comes at build time, where the user is.
+tempfile app2
+capture erase "`app2'.py"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`app2'.py") replace server ///
+    filter(price, type(dropdown))
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("filter(price) has 74 distinct values")
+assert r(found) == 1
+cert_file_has "`app2'.py", needle("'type': 'range'")
+assert r(found) == 1
+display "RL-02 PASS: the served build says so too, and serves a range"
+
+// A string variable keeps its dropdown and lists its first values.
+tempfile out3
+capture erase "`out3'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out3'.html") replace nobrowser ///
+    filter(make, type(dropdown))
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("filter(make) has 74 distinct values")
+assert r(found) == 1
+cert_file_has "`rllog'", needle("the first 10 in sort order are listed")
+assert r(found) == 1
+cert_file_has "`out3'.html", needle(`""name":"Select""')
+assert r(found) == 1
+display "RL-03 PASS: a string dropdown over the limit lists its first values"
+
+// ================================================================
+// RL-04..05 — the default is untouched when no global is set
+// ================================================================
+macro drop dash_max_filter_options
+tempfile out4
+capture erase "`out4'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out4'.html") replace nobrowser ///
+    filter(price, type(dropdown))
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("distinct values")
+assert r(found) == 0
+cert_file_has "`out4'.html", needle(`""name":"Select""')
+assert r(found) == 1
+display "RL-04 PASS: with no global, 74 values are an ordinary dropdown"
+
+// dash clear is not a reset of the settings: the limit survives it.
+global dash_max_filter_options 10
+dash clear
+assert "${dash_max_filter_options}" == "10"
+macro drop dash_max_filter_options
+display "RL-05 PASS: dash clear leaves the limit globals alone"
+
+// ================================================================
+// RL-06..08 — by() over the group limit
+// ================================================================
+// rep78 has 5 groups.
+global dash_max_by_groups 3
+dash clear
+dash scatter mpg weight, by(rep78) name(b1)
+tempfile out6
+capture erase "`out6'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out6'.html") replace nobrowser
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("by(rep78) on graph 'b1' has 5 groups")
+assert r(found) == 1
+cert_file_has "`rllog'", needle("global dash_max_by_groups to draw more")
+assert r(found) == 1
+display "RL-06 PASS: by() over the limit is named, with its graph and global"
+
+// The one-line form goes through the same limit.
+tempfile out7
+capture erase "`out7'.html"
+_rl_on "`rllog'"
+capture noisily dash scatter mpg weight, by(rep78) saving("`out7'.html")
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("by(rep78) has 5 groups")
+assert r(found) == 1
+display "RL-07 PASS: the one-line form is limited and says so"
+
+// Raising the limit past the groups draws them all, silently.
+global dash_max_by_groups 5
+tempfile out8
+capture erase "`out8'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out8'.html") replace nobrowser
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("groups, more than")
+assert r(found) == 0
+macro drop dash_max_by_groups
+display "RL-08 PASS: a raised limit is honoured"
+
+// ================================================================
+// RL-09..10 — tabs and filters over their limits
+// ================================================================
+global dash_max_tabs 1
+dash clear
+dash scatter mpg weight, name(t1)
+dash line mpg weight, name(t2)
+tempfile out9
+capture erase "`out9'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out9'.html") replace nobrowser ///
+    tabs(A: t1 / B: t2)
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("tabs() has 2 tabs, more than the 1")
+assert r(found) == 1
+cert_file_has "`rllog'", needle("global dash_max_tabs to draw more")
+assert r(found) == 1
+macro drop dash_max_tabs
+display "RL-09 PASS: tabs() over the limit is named"
+
+global dash_max_filters 1
+tempfile out10
+capture erase "`out10'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out10'.html") replace nobrowser ///
+    filter(foreign, type(dropdown)) filter(rep78, type(dropdown))
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("2 filters, more than the 1")
+assert r(found) == 1
+cert_file_has "`rllog'", needle("global dash_max_filters to build more")
+assert r(found) == 1
+macro drop dash_max_filters
+display "RL-10 PASS: filters over the limit are named"
+
+// ================================================================
+// RL-11..12 — dash serve inherits the limits a build was given
+// ================================================================
+// The served app reads build_options["limits"] as the build resolved them.
+global dash_max_by_groups 3
+dash clear
+dash scatter mpg weight, by(rep78) name(s1)
+tempfile app11
+capture erase "`app11'.py"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`app11'.py") replace server
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("by(rep78) on graph 's1' has 5 groups")
+assert r(found) == 1
+cert_file_has "`app11'.py", needle("_dash_by_groups(")
+assert r(found) == 1
+display "RL-11 PASS: a served build names the by() limit at build time"
+
+// Every setting cleared: nothing is clamped.
+macro drop dash_max_*
+tempfile out12
+capture erase "`out12'.html"
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out12'.html") replace nobrowser
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`rllog'", needle("more than the")
+assert r(found) == 0
+display "RL-12 PASS: with no settings, an ordinary dashboard draws no note"
+
+// ================================================================
+// RL-13..14 — a graph that reads no variable is not charged for the data
+// ================================================================
+// function, scatteri and pci take literal values, not variables.  jsonio
+// needs a variable to export, so dash sends one the renderer never reads --
+// and sent every observation of it: a function graph over a dataset of
+// ten million observations exported ten million values for nothing, and
+// under the cell limit it was refused for them.  auto has 74 observations.
+global dash_max_cells 10
+tempfile out13
+capture erase "`out13'.html"
+_rl_on "`rllog'"
+capture noisily dash function y = x^2, range(0 1) saving("`out13'.html")
+local rc = _rc
+_rl_off
+assert `rc' == 0
+cert_file_has "`out13'.html", needle("bokeh")
+assert r(found) == 1
+cert_file_has "`rllog'", needle("would embed")
+assert r(found) == 0
+display "RL-13 PASS: a function graph is not refused for data it never reads"
+
+// A graph that does read variables is still held to the limit.
+capture noisily dash scatter mpg weight, saving("`out13'.html")
+assert _rc == 134
+macro drop dash_max_cells
+display "RL-14 PASS: a graph of variables is still held to the cell limit"
+
+dash clear
+capture erase "`rllog'"
+capture program drop _rl_on
+capture program drop _rl_off
+
+display ""
+display "All resource-limit certification tests PASSED."
