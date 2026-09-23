@@ -130,16 +130,21 @@ SURFACES = {
             _M + "TestIfQualifierEncodings::test_the_spelling_does_not_get_past_the_whitelist",
             "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_numeric_variable",
             "test/test_served_linked_views.py::TestEachServedViewShowsItsOwnRows::test_a_per_layer_qualifier_keeps_its_panel",
+            "test_json_escaping.cscript:JSE-11",
+            "test_json_escaping.cscript:JSE-12",
+            "test_json_escaping.cscript:JSE-14",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
             "test/test_phase5.py::TestIfExprRceHardening::test_at_poc_payload_blocked_end_to_end",
             "test/test_server_layer_defects.py::TestAKpiQualifierIsApplied::test_a_kpi_qualifier_cannot_execute",
+            "test_json_escaping.cscript:JSE-13",
         ],
         "exhaustion": [
             _M + "TestIfQualifierExhaustion::test_a_run_of_negations_is_skipped_not_raised",
             _M + "TestIfQualifierExhaustion::test_the_served_app_has_the_same_bound",
             "test_adversarial.cscript:P20-20",
+            "test_json_escaping.cscript:JSE-18",
         ],
     },
     # jitter(), level(), bin(), n(), bwidth(), bands(), xsize() ...

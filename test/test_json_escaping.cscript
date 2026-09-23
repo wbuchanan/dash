@@ -34,10 +34,20 @@
 *! value.  It now goes through _dash_json_get_str, the same reader dash uses
 *! for every other spec value.
 *!
-*! Tests: JSE-01 through JSE-10
+*! THE READER THAT NEVER READ AN ESCAPE.  _dash_extract_qual_vars finds the
+*! variables a graph's by() and if, and a KPI's if, name -- the ones no plot
+*! key carries -- so that they are exported with the data.  It meant to step
+*! over each JSON escape but compared the character with the Mata literal
+*! "\\", which is two characters, so it never did: the quote of \" ended the
+*! value.  Measured 23sep2026 at ad13a0f, for make != "AMC Concord" &
+*! foreign == 1 as the spec carries it, the reader returned make alone,
+*! foreign was not exported, and the saved page and the served app each
+*! warned "if_expr filter skipped" and drew all 74 cars instead of 22.
+*!
+*! Tests: JSE-01 through JSE-19
 *!
 *! Usage:  do test/test_json_escaping.cscript
-*! Version: 1.0  22sep2026
+*! Version: 1.1  23sep2026
 
 cscript "every spec string is valid JSON on the way out" adodir ".."
 
@@ -169,6 +179,273 @@ display "JSE-09 PASS: a backslash in saving() writes the path the user gave"
 capture confirm file `"`jdir'js_a\\b.html"'
 assert _rc != 0
 display "JSE-10 PASS: and does not write the doubled one"
+
+
+// ================================================================
+// JSE-11..19 -- the qualifier reader reads a JSON escape as an escape
+// ================================================================
+// _dash_extract_qual_vars walks each "by" and "if_expr" value to its
+// closing quote.  It tested every character against the Mata literal "\\"
+// to step over an escape, and that literal is TWO characters -- strlen("\\")
+// is 2 -- so the backslash of \" was kept and the quote after it ended the
+// value: every name after the first string literal was lost, and with it
+// the qualifier.  The escaped text below is made the way every spec string
+// is, by _dash_json_str in compound quotes, never typed.
+qui sysuse auto, clear
+capture dash clear
+do "cert_helpers.do"
+
+local jse_q1 `"make == "AMC" & foreign == 1"'
+_dash_json_str `"`jse_q1'"' jse_e1
+
+// JSE-11 -- a KPI's if, in the shape _dash_prepare_spec hands the reader
+// (dash.ado builds {"if_expr":"..."} around the escaped qualifier).
+local jse_v11 ""
+mata: _dash_extract_qual_vars(`"{"if_expr":"`jse_e1'"}"', "jse_v11")
+display as text "  read: [`jse_v11']"
+assert `: list posof "make" in jse_v11' > 0
+assert `: list posof "foreign" in jse_v11' > 0
+display "JSE-11 PASS: a KPI's if -- the name after a string literal is read"
+
+// JSE-12 -- a graph of two plots: the qualifier with the literal on the
+// first, a plain one on the second.  Every name of both is read, and
+// nothing from outside the two values.  The graph is dash's own; only the
+// first plot's empty if_expr is replaced.
+dash (scatter mpg weight) (scatter price weight if rep78 == 3), name(jse12)
+mata: st_local("jse_g12", subinstr(st_global("dash_json_jse12"), ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + char(34), ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + st_local("jse_e1") + char(34), 1))
+local jse_v12 ""
+mata: _dash_extract_qual_vars(st_local("jse_g12"), "jse_v12")
+display as text "  read: [`jse_v12']"
+foreach jse_w in make foreign rep78 {
+    assert `: list posof "`jse_w'" in jse_v12' > 0
+}
+foreach jse_w of local jse_v12 {
+    assert inlist("`jse_w'", "make", "AMC", "foreign", "rep78")
+}
+display "JSE-12 PASS: a plot's if -- every name of every plot's qualifier, nothing else"
+capture dash clear
+
+// JSE-13 -- a backslash in the literal.  \\ is one escape and the \" after
+// it another, so the value neither ends early nor runs on into "in_expr".
+// Single segment: the plot and the graph level both carry the qualifier.
+local jse_q3 `"make == "C:\" | foreign == 1"'
+_dash_json_str `"`jse_q3'"' jse_e3
+dash scatter mpg weight, name(jse13)
+mata: st_local("jse_g13", subinstr(st_global("dash_json_jse13"), ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + char(34), ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + st_local("jse_e3") + char(34), .))
+local jse_v13 ""
+mata: _dash_extract_qual_vars(st_local("jse_g13"), "jse_v13")
+display as text "  read: [`jse_v13']"
+assert `: list posof "make" in jse_v13' > 0
+assert `: list posof "foreign" in jse_v13' > 0
+foreach jse_w of local jse_v13 {
+    assert inlist("`jse_w'", "make", "C", "foreign")
+}
+display "JSE-13 PASS: a graph-level if -- an escaped backslash before an escaped quote"
+capture dash clear
+
+// JSE-14 -- the escapes JSON has that no qualifier dash registers can
+// carry today: Stata refuses a control character in an if ("invalid
+// name", r(198)) and dash refuses one in by() (r(111)), both measured.  The
+// reader is a JSON reader all the same: \t between two names in by() keeps
+// them two names, and \uXXXX is six characters, not two.
+local jse_v14a ""
+mata: _dash_extract_qual_vars("{" + char(34) + "by" + char(34) + ":" + char(34) + ///
+    "foreign" + char(92) + "trep78, cols(1)" + char(34) + "}", "jse_v14a")
+display as text "  read: [`jse_v14a']"
+assert "`jse_v14a'" == "foreign rep78"
+local jse_v14b ""
+mata: _dash_extract_qual_vars("{" + char(34) + "if_expr" + char(34) + ":" + char(34) + ///
+    "price > 0 &" + char(92) + "u0001foreign == 1" + char(34) + "}", "jse_v14b")
+display as text "  read: [`jse_v14b']"
+assert "`jse_v14b'" == "price foreign"
+display "JSE-14 PASS: \t and \uXXXX are read as escapes, in by() and in if"
+
+// ----------------------------------------------------------------
+// JSE-15..17 -- the build, end to end, for
+//     dash scatter mpg weight if make != "AMC Concord" & foreign == 1
+// foreign is named by the qualifier and nowhere else.  The registry holds
+// the graph as _dash_plot writes it with the plot's if_expr escaped like
+// every other spec string (the graph-level copy already is).  It is set
+// here from the escaper because _dash_process_segment hands the plot's if
+// to _dash_json_str inside plain double quotes, which loses any qualifier
+// holding a double quote at registration (measured 23sep2026) -- a defect
+// of its own, upstream of this reader.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(jse15)
+local jse_q5 `"make != "AMC Concord" & foreign == 1"'
+_dash_json_str `"`jse_q5'"' jse_e5
+mata: st_global("dash_json_jse15", subinstr(st_global("dash_json_jse15"), ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + char(34), ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + st_local("jse_e5") + char(34), .))
+quietly count if make != "AMC Concord" & foreign == 1
+local jse_n15 = r(N)
+assert `jse_n15' == 22
+
+// JSE-15 -- what dash build and dash serve export: foreign goes with the data.
+tempfile jse_s15 jse_d15
+_dash_prepare_spec, specpath("`jse_s15'") datapath("`jse_d15'")
+local jse_x15 `"`r(vars)'"'
+display as text "  exported: [`jse_x15']"
+assert `: list posof "foreign" in jse_x15' > 0
+display "JSE-15 PASS: the build exports a variable only a string-literal qualifier names"
+
+// JSE-16 -- both render modes, on that export, draw the 22 rows the
+// qualifier selects, and neither reports the qualifier skipped.  The saved
+// page is DashRenderer; the served app is the generated app's
+// make_document on a fresh Document.  The renderer is the one dash itself
+// uses, loaded by path under its own name.  No backslash, backtick or
+// dollar sign is written in the block: Stata reads its lines for macros.
+// Every call's value is assigned: a python block echoes a bare
+// expression's value, and render() returns the whole page.
+_dash_find_render
+global JSE_RENDER `"`r(fn)'"'
+global JSE_SPEC   "`jse_s15'"
+global JSE_DATA   "`jse_d15'"
+tempfile jse_app16
+global JSE_APP    "`jse_app16'"
+global JSE_ROWS_SAVED  ""
+global JSE_ROWS_SERVED ""
+global JSE_SKIPPED     ""
+python:
+import importlib.util as _jse_il
+import sys as _jse_sys
+import warnings as _jse_w
+from sfi import Macro as _jse_M
+from bokeh.document import Document as _jse_Doc
+from bokeh.models import GlyphRenderer as _jse_GR, Plot as _jse_Plot
+
+def _jse_rows(roots):
+    out = []
+    for root in roots:
+        for fig in root.select({"type": _jse_Plot}):
+            for r in fig.renderers:
+                if isinstance(r, _jse_GR) and type(r.glyph).__name__ == "Scatter":
+                    out.append(max((len(v) for v in r.data_source.data.values()), default=0))
+    return out
+
+# Registered while it is used: ServerAppBuilder copies helpers into the app
+# from its own source, which it finds through sys.modules.
+_jse_spec = _jse_il.spec_from_file_location("_jse16_dash_render", _jse_M.getGlobal("JSE_RENDER"))
+_jse_dr = _jse_il.module_from_spec(_jse_spec)
+_jse_sys.modules["_jse16_dash_render"] = _jse_dr
+_jse_spec.loader.exec_module(_jse_dr)
+_jse_sp = _jse_M.getGlobal("JSE_SPEC")
+_jse_dp = _jse_M.getGlobal("JSE_DATA")
+_jse_msgs = []
+
+with _jse_w.catch_warnings(record=True) as _jse_c:
+    _jse_w.simplefilter("always")
+    _jse_r = _jse_dr.DashRenderer(_jse_sp, _jse_dp)
+    _jse_page = _jse_r.render()
+_jse_msgs += [str(x.message) for x in _jse_c]
+_jse_M.setGlobal("JSE_ROWS_SAVED", " ".join(str(n) for n in _jse_rows([_jse_r._last_layout_root])))
+
+_jse_ap = _jse_M.getGlobal("JSE_APP")
+with _jse_w.catch_warnings(record=True) as _jse_c:
+    _jse_w.simplefilter("always")
+    _jse_built = _jse_dr.ServerAppBuilder(_jse_sp, _jse_dp).build(_jse_ap)
+_jse_msgs += [str(x.message) for x in _jse_c]
+with open(_jse_ap, encoding="utf-8") as _jse_fh:
+    _jse_src = _jse_fh.read()
+_jse_attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+assert _jse_attach in _jse_src, "the generated app's curdoc attach moved"
+_jse_ns = {"__name__": "_jse16_app"}
+with _jse_w.catch_warnings():
+    _jse_w.simplefilter("ignore")
+    exec(compile(_jse_src.replace(_jse_attach, "pass"), "_jse16_app.py", "exec"), _jse_ns)
+with _jse_w.catch_warnings(record=True) as _jse_c:
+    _jse_w.simplefilter("always")
+    _jse_doc = _jse_Doc()
+    _jse_made = _jse_ns["make_document"](_jse_doc)
+_jse_msgs += [str(x.message) for x in _jse_c]
+_jse_M.setGlobal("JSE_ROWS_SERVED", " ".join(str(n) for n in _jse_rows(_jse_doc.roots)))
+_jse_M.setGlobal("JSE_SKIPPED", str(sum(1 for m in _jse_msgs if "filter skipped" in m)))
+_jse_gone = _jse_sys.modules.pop("_jse16_dash_render", None)
+end
+local jse_rs "$JSE_ROWS_SAVED"
+local jse_rv "$JSE_ROWS_SERVED"
+local jse_sk "$JSE_SKIPPED"
+display as text "  saved rows: [`jse_rs']  served rows: [`jse_rv']  skip warnings: [`jse_sk']"
+assert "`jse_rs'" == "`jse_n15'"
+assert "`jse_rv'" == "`jse_n15'"
+assert "`jse_sk'" == "0"
+display "JSE-16 PASS: the saved page and the served app draw the 22 rows, no qualifier skipped"
+macro drop JSE_*
+
+// JSE-17 -- and dash build itself, on the same registry: rc 0, and nothing
+// in what it prints says the qualifier was skipped.  It printed Python's
+// "UserWarning: dash: if_expr filter skipped -- invalid syntax".
+tempfile jse_h17
+local jse_log "`c(tmpdir)'dash_jse17.log"
+local jse_ls = c(linesize)
+set linesize 255
+capture log close _jse17
+capture erase "`jse_log'"
+quietly log using "`jse_log'", name(_jse17) text replace
+capture noisily dash build, saving("`jse_h17'.html") replace nobrowser
+local jse_rc17 = _rc
+quietly log close _jse17
+set linesize `jse_ls'
+assert `jse_rc17' == 0
+confirm file "`jse_h17'.html"
+cert_file_has "`jse_log'", needle("filter skipped")
+assert r(found) == 0
+capture erase "`jse_log'"
+capture erase "`jse_h17'.html"
+capture dash clear
+display "JSE-17 PASS: dash build applies the qualifier and reports nothing skipped"
+
+// JSE-18 -- a long qualifier is read whole, in bounded time.  30,000
+// string literals, each a different word, then the name after the last:
+// about 620,000 characters, under c(macrolen) (645,200 at the default
+// maxvar), so an if that long can be held and handed to dash.  The reader
+// grew the value one character at a time (quadratic: measured 48.6 s for a
+// value of 1,000,000 characters) and listed names by searching the whole
+// list for every word (quadratic in the words); only its stop at the first
+// escape kept a long escaped qualifier from paying for either.  The text is
+// kept in Mata, never in a macro.
+mata: _jse_q18 = "{" + char(34) + "if_expr" + char(34) + ":" + char(34) + ///
+    invtokens("make == " + char(92) + char(34) + "w" :+ strofreal(1..30000) :+ ///
+    char(92) + char(34), " | ") + " | foreign == 1" + char(34) + "}"
+mata: st_local("jse_l18", strofreal(strlen(_jse_q18)))
+timer clear 18
+timer on 18
+local jse_v18 ""
+mata: _dash_extract_qual_vars(_jse_q18, "jse_v18")
+timer off 18
+quietly timer list 18
+local jse_t18 = r(t18)
+mata: mata drop _jse_q18
+local jse_n18 : word count `jse_v18'
+display as text "  `jse_l18' characters read in `jse_t18' s; `jse_n18' words"
+assert `jse_l18' > 600000
+assert `: list posof "foreign" in jse_v18' > 0
+assert `: list posof "make" in jse_v18' == 1
+assert `jse_n18' == 30002
+assert `jse_t18' < 30
+display "JSE-18 PASS: a 620,000-character qualifier is read whole in bounded time"
+
+// JSE-19 -- a value that names nothing: one word, and not a name (a number,
+// a Python constant, ~foreign).  It is read and passed over, and the other
+// values' names still come back.  The linear rewrite of the reader died
+// here with a conformability error, r(3200), before any user saw it:
+// select() of one word, not kept, is 0 x 1, not 1 x 0.  Measured on
+// dash scatter mpg weight if ~foreign.
+local jse_v19 ""
+mata: _dash_extract_qual_vars("{" + char(34) + "plots" + char(34) + ":[{" + ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + "1" + char(34) + "},{" + ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + "~foreign" + char(34) + "},{" + ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + "mpg > 1" + char(34) + "}]," + ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + "True" + char(34) + "}", "jse_v19")
+display as text "  read: [`jse_v19']"
+assert "`jse_v19'" == "mpg"
+display "JSE-19 PASS: a value that names nothing is passed over, not refused"
 
 display ""
 display "All JSON escaping tests PASSED."

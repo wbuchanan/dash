@@ -1470,8 +1470,8 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
 // referenced only in graph-level qualifier or faceting fields
 // (which _dash_extract_vars never looks at):
 //
-//   "by"      — each token in the varlist (before the first comma)
-//   "if_expr" — identifier tokens extracted from the Python expression
+//   "by"      -- each token in the varlist (before the first comma)
+//   "if_expr" -- identifier tokens of the Stata expression
 //
 // Only tokens that pass ^[a-zA-Z_][a-zA-Z0-9_]*$ and are not
 // Python keywords/constants are returned.  Callers in dash.ado
@@ -1479,141 +1479,173 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
 // that are not real dataset variables (e.g. string literals that
 // happened to look like identifiers in the expression).
 //
-// Appends discovered names (without duplicates) to the
-// space-separated varlist stored in out_macro.
+// Stores the names found -- each once, in the order first seen, the
+// "by" names before the "if_expr" names -- as a space-separated list
+// in the caller's local out_macro.
 // ============================================================
+
+// _dash_qual_str(b, pos) -- one JSON string value, its escapes blanked.
+//
+// b holds the bytes of the whole JSON text, as ascii() gives them, and
+// b[pos] is the value's opening quote.  Returns the value with every
+// escape, and any raw control byte, replaced by blanks, and leaves pos one
+// past the closing quote -- past the end of b when there is none.
+//
+// An escape is found by its byte, 92.  This reader used to compare each
+// character with the Mata literal "\\", which is TWO characters --
+// measured, strlen("\\") is 2 and "\\" == char(92) is 0 -- so no escape
+// was ever stepped over: the backslash of \" was kept and the quote after
+// it ended the value, and every name after the first string literal of a
+// qualifier was lost.  Measured 23sep2026 at ad13a0f: for
+//     make != "AMC Concord" & foreign == 1
+// only make was returned, foreign was not exported, and the saved page and
+// the served app each warned "if_expr filter skipped" and drew all 74 cars
+// instead of the 22 the qualifier selects.
+//
+// Each escape becomes blanks, never nothing.  JSON escapes a quote, a
+// backslash, a slash or a control character, none of which can be part of
+// a Stata name, so the words on either side of one stay two words.
+// \uXXXX is six bytes and every other escape two; a \u that four hex
+// digits do not follow counts as two, so the blanks never cover a quote.
+//
+// Linear in the length of the value: its bytes are read once and blanked
+// in place.  The value used to be grown one character at a time, which is
+// quadratic -- measured 48.6 s for a value of 1,000,000 characters -- and
+// only the early stop above kept a long escaped value from paying for it.
+string scalar _dash_qual_str(real rowvector b, real scalar pos)
+{
+    real rowvector v, h
+    real scalar    n, i, e, m, j
+
+    n = cols(b)
+    // The closing quote is the first byte 34 no escape takes.  The hex
+    // digits of \uXXXX are never a quote or a backslash, so stepping two
+    // bytes at every backslash finds it.
+    i = pos + 1
+    while (i <= n) {
+        if (b[i] == 34) break
+        i = i + (b[i] == 92 ? 2 : 1)
+    }
+    e   = min((i, n + 1))
+    m   = e - pos - 1
+    j   = pos + 1
+    pos = e + 1
+    if (m <= 0) return("")
+    v = b[|j \ e - 1|]
+
+    j = 1
+    while (j <= m) {
+        if (v[j] == 92 & j < m) {
+            if (v[j + 1] == 117 & j + 5 <= m) {
+                h = v[|j + 2 \ j + 5|]
+                if (all((h :>= 48 :& h :<= 57) :| (h :>= 65 :& h :<= 70) :|
+                        (h :>= 97 :& h :<= 102))) {
+                    v[|j \ j + 5|] = J(1, 6, 32)
+                    j = j + 6
+                    continue
+                }
+            }
+            v[|j \ j + 1|] = (32, 32)
+            j = j + 2
+            continue
+        }
+        if (v[j] < 32) v[j] = 32
+        j++
+    }
+    return(char(v))
+}
+
 void _dash_extract_qual_vars(string scalar json_str,
                               string scalar out_macro) {
-    string rowvector by_keys, expr_keys, reserved, toks
-    string scalar    varlist, val, tok, ch
+    string rowvector keys, reserved, toks, found
+    string scalar    val
+    real rowvector   b, keep
     real scalar      pos, local_pos, orig_pos, n, k, t, comma_pos
+    transmorphic     seen
 
     // Python expression keywords/constants that are not Stata variable names.
     reserved = ("True", "False", "None", "nan", "NaN", "inf",
                 "and",  "or",    "not",  "in",  "is")
 
-    by_keys   = (char(34) + "by"      + char(34) + ":")
-    expr_keys = (char(34) + "if_expr" + char(34) + ":")
+    // "by" first, then "if_expr": the order the names are listed in.
+    keys = (char(34) + "by"      + char(34) + ":",
+            char(34) + "if_expr" + char(34) + ":")
 
-    varlist = ""
-    n       = strlen(json_str)
+    b = ascii(json_str)
+    n = cols(b)
 
-    // ----------------------------------------------------------
-    // Helper: decode the next JSON string value starting just
-    // after the key's colon.  On entry pos points to the char
-    // immediately following the key+colon (before optional
-    // whitespace).  On return pos is set to one char past the
-    // closing quote (or at n+1 if the string was unterminated).
-    // The decoded value is returned in val.
-    //
-    // Escape sequences handled: \" → skip (no char added),
-    // \\ → skip, all other \x → skip.  This strips inner quotes
-    // from expressions like  make == \"AMC\"  so that "AMC"
-    // does not yield false tokens; variable names remain intact.
-    // ----------------------------------------------------------
+    // Each name is listed once.  Whether it has been is a hash lookup; it
+    // was a search of the whole list so far for every word, which is
+    // quadratic in the number of words.
+    seen  = asarray_create()
+    found = J(1, 0, "")
 
-    // ---- Extract "by" values ----
-    for (k = 1; k <= cols(by_keys); k++) {
+    for (k = 1; k <= cols(keys); k++) {
         pos = 1
         while (pos <= n) {
             orig_pos  = pos
-            local_pos = strpos(substr(json_str, orig_pos, .), by_keys[k])
+            local_pos = strpos(substr(json_str, orig_pos, .), keys[k])
             if (local_pos == 0) break
-            pos = orig_pos + local_pos - 1 + strlen(by_keys[k])
-            // Skip optional whitespace before opening quote
-            while (pos <= n &
-                   (substr(json_str, pos, 1) == " " |
-                    substr(json_str, pos, 1) == char(9))) pos++
-            if (pos > n | substr(json_str, pos, 1) != char(34)) continue
-            pos++   // skip opening quote
-            val = ""
+            pos = orig_pos + local_pos - 1 + strlen(keys[k])
+            // Skip optional whitespace before the opening quote.
             while (pos <= n) {
-                ch = substr(json_str, pos, 1)
-                if (ch == char(34)) break           // unescaped closing quote
-                if (ch == "\\" & pos + 1 <= n) {
-                    pos = pos + 2; continue         // skip escape sequence
-                }
-                val = val + ch
+                if (b[pos] != 32 & b[pos] != 9) break
                 pos++
             }
-            pos++   // skip closing quote
-            // Only tokenize before the first comma to avoid option keywords
-            // such as "cols", "total", "missing" in by(varlist, opts).
-            comma_pos = strpos(val, ",")
-            if (comma_pos > 0) val = substr(val, 1, comma_pos - 1)
-            toks = tokens(val)
-            for (t = 1; t <= cols(toks); t++) {
-                tok = toks[t]
-                if (regexm(tok, "^[a-zA-Z_][a-zA-Z0-9_]*$") &
-                    !anyof(tokens(varlist), tok)) {
-                    if (varlist != "") varlist = varlist + " "
-                    varlist = varlist + tok
-                }
+            if (pos > n) break
+            if (b[pos] != 34) continue
+            val = _dash_qual_str(b, pos)
+            if (k == 1) {
+                // Only tokenize before the first comma to avoid option
+                // keywords such as "cols", "total", "missing" in
+                // by(varlist, opts).
+                comma_pos = strpos(val, ",")
+                if (comma_pos > 0) val = substr(val, 1, comma_pos - 1)
             }
+            else {
+                // Replace operator and punctuation characters with spaces
+                // so that tokens() returns only identifier-like strings.
+                val = subinstr(val, "==", " ", .)
+                val = subinstr(val, "!=", " ", .)
+                val = subinstr(val, "~=", " ", .)
+                val = subinstr(val, "<=", " ", .)
+                val = subinstr(val, ">=", " ", .)
+                val = subinstr(val, "<",  " ", .)
+                val = subinstr(val, ">",  " ", .)
+                val = subinstr(val, "&",  " ", .)
+                val = subinstr(val, "|",  " ", .)
+                val = subinstr(val, "!",  " ", .)
+                val = subinstr(val, "(",  " ", .)
+                val = subinstr(val, ")",  " ", .)
+                val = subinstr(val, "+",  " ", .)
+                val = subinstr(val, "-",  " ", .)
+                val = subinstr(val, "*",  " ", .)
+                val = subinstr(val, "/",  " ", .)
+                val = subinstr(val, "%",  " ", .)
+                val = subinstr(val, ",",  " ", .)
+                val = subinstr(val, char(34), " ", .)
+            }
+            toks = tokens(val)
+            if (cols(toks) == 0) continue
+            keep = J(1, cols(toks), 0)
+            for (t = 1; t <= cols(toks); t++) {
+                // Keep only Stata-identifier-like tokens; in an if, skip
+                // Python reserved words.  Numeric literals fail the pattern.
+                if (!regexm(toks[t], "^[a-zA-Z_][a-zA-Z0-9_]*$")) continue
+                if (k == 2) {
+                    if (anyof(reserved, toks[t])) continue
+                }
+                if (asarray_contains(seen, toks[t])) continue
+                asarray(seen, toks[t], 1)
+                keep[t] = 1
+            }
+            // Only when something is kept: select() of a single word that
+            // is not is 0 x 1, which cannot be joined to a row.
+            if (any(keep)) found = found, select(toks, keep)
         }
     }
 
-    // ---- Extract "if_expr" values ----
-    for (k = 1; k <= cols(expr_keys); k++) {
-        pos = 1
-        while (pos <= n) {
-            orig_pos  = pos
-            local_pos = strpos(substr(json_str, orig_pos, .), expr_keys[k])
-            if (local_pos == 0) break
-            pos = orig_pos + local_pos - 1 + strlen(expr_keys[k])
-            while (pos <= n &
-                   (substr(json_str, pos, 1) == " " |
-                    substr(json_str, pos, 1) == char(9))) pos++
-            if (pos > n | substr(json_str, pos, 1) != char(34)) continue
-            pos++   // skip opening quote
-            val = ""
-            while (pos <= n) {
-                ch = substr(json_str, pos, 1)
-                if (ch == char(34)) break
-                if (ch == "\\" & pos + 1 <= n) {
-                    pos = pos + 2; continue     // skip \" and other escapes
-                }
-                val = val + ch
-                pos++
-            }
-            pos++   // skip closing quote
-            // Replace operator and punctuation characters with spaces so
-            // that tokens() returns only identifier-like strings.
-            val = subinstr(val, "==", " ", .)
-            val = subinstr(val, "!=", " ", .)
-            val = subinstr(val, "~=", " ", .)
-            val = subinstr(val, "<=", " ", .)
-            val = subinstr(val, ">=", " ", .)
-            val = subinstr(val, "<",  " ", .)
-            val = subinstr(val, ">",  " ", .)
-            val = subinstr(val, "&",  " ", .)
-            val = subinstr(val, "|",  " ", .)
-            val = subinstr(val, "!",  " ", .)
-            val = subinstr(val, "(",  " ", .)
-            val = subinstr(val, ")",  " ", .)
-            val = subinstr(val, "+",  " ", .)
-            val = subinstr(val, "-",  " ", .)
-            val = subinstr(val, "*",  " ", .)
-            val = subinstr(val, "/",  " ", .)
-            val = subinstr(val, "%",  " ", .)
-            val = subinstr(val, ",",  " ", .)
-            val = subinstr(val, char(34), " ", .)
-            toks = tokens(val)
-            for (t = 1; t <= cols(toks); t++) {
-                tok = toks[t]
-                // Keep only Stata-identifier-like tokens; skip Python
-                // reserved words and numeric literals.
-                if (regexm(tok, "^[a-zA-Z_][a-zA-Z0-9_]*$") &
-                    !anyof(reserved, tok) &
-                    !anyof(tokens(varlist), tok)) {
-                    if (varlist != "") varlist = varlist + " "
-                    varlist = varlist + tok
-                }
-            }
-        }
-    }
-
-    st_local(out_macro, strtrim(varlist))
+    st_local(out_macro, invtokens(found))
 }
 
 
