@@ -80,9 +80,13 @@
 *!                     nothing (dash build writes a named graph).
 *!   O2-10             the immediate render still honours saving() and is
 *!                     not told otherwise.
-*!   AC-13.1           a weight expression is accepted and reported by TYPE,
-*!                     [aweight], never naming the weight variable; once per
-*!                     distinct type per command (AC-13.1b/c).
+*!   AC-13.1           a weight expression on a GLYPH layer is accepted and
+*!                     reported by TYPE, [aweight], never naming the weight
+*!                     variable; once per distinct type per command
+*!                     (AC-13.1b/c).  Since WP-18 the statistical layers
+*!                     (lfit, kdensity ...) honour a weight and name nothing
+*!                     -- test_statistical_options.cscript -- so AC-13.1b/c
+*!                     put the named weight on scatter and line.
 *!
 *! ---------------------------------------------------------------------------
 *! MEASURED STATUS WHEN THIS FILE WAS WRITTEN (pre-fix, branch
@@ -921,9 +925,12 @@ if `bad' == 1 {
 else display as text "AC-13.1 PASS: [aw=price] is reported as [aweight], never naming price"
 
 // AC-13.1b -- a weight on ONE layer of a two-layer command, and the same
-// type on two layers, are each one note naming the type once.
-foreach case in "(lfit mpg weight [aw=price]) (scatter mpg weight)" ///
-                "(lfit mpg weight [aw=price]) (scatter mpg weight [aw=price])" {
+// type on two layers, are each one note naming the type once.  Both layers
+// are glyph layers: lfit honours [aw=price] since WP-18 and names nothing,
+// so the case that used to put the weight on lfit would now expect a note
+// for an option dash applies.
+foreach case in "(scatter mpg weight [aw=price]) (line mpg weight)" ///
+                "(scatter mpg weight [aw=price]) (line mpg weight [aw=price])" {
     _dsp_probe "weight2" `"`case'"' ""
     local prc    = r(rc)
     local pnotes = r(nnotes)
@@ -952,7 +959,9 @@ foreach case in "(lfit mpg weight [aw=price]) (scatter mpg weight)" ///
     else display as text `"AC-13.1b PASS: one note, [aweight] once, for  `case'"'
 }
 
-// AC-13.1c -- two weight types on two layers: both named.
+// AC-13.1c -- two weight types on two layers: the one on the glyph layer
+// (scatter [fw=rep78]) is named; the one lfit honours (WP-18, [aw=price])
+// is applied and NOT named.  Before WP-18 both were named.
 _dsp_probe "weight3" "(lfit mpg weight [aw=price]) (scatter mpg weight [fw=rep78])" ""
 local prc    = r(rc)
 local pnotes = r(nnotes)
@@ -963,19 +972,22 @@ if `prc' != 0 | `pnotes' != 1 {
     local bad = 1
 }
 else {
-    foreach k in aweight fweight {
-        _dsp_names `"`macval(pnote)'"' "`k'"
-        if r(found) != 1 {
-            display as error `"AC-13.1c FAIL: the note does not name `k': `macval(pnote)'"'
-            local bad = 1
-        }
+    _dsp_names `"`macval(pnote)'"' "fweight"
+    if r(found) != 1 {
+        display as error `"AC-13.1c FAIL: the note does not name fweight: `macval(pnote)'"'
+        local bad = 1
+    }
+    _dsp_names `"`macval(pnote)'"' "aweight"
+    if r(found) != 0 {
+        display as error `"AC-13.1c FAIL: the note names the aweight lfit honours: `macval(pnote)'"'
+        local bad = 1
     }
 }
 if `bad' == 1 {
     local nfail = `nfail' + 1
     local faillist `"`faillist' AC-13.1c"'
 }
-else display as text "AC-13.1c PASS: [aweight] and [fweight] are both named"
+else display as text "AC-13.1c PASS: [fweight] on scatter is named, [aweight] on lfit is honoured and not named"
 
 // ----------------------------------------------------------------
 // Summary

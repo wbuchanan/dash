@@ -3,8 +3,8 @@
 *!
 *! Dependencies checked:
 *!   - Python (via c(python_exec); python query reports the version)
-*!   - Python packages: bokeh, numpy, pandas (required);
-*!                      scipy, statsmodels (optional, per-plot-type)
+*!   - Python packages: bokeh, numpy, pandas (all required; no plot type
+*!                      needs scipy or statsmodels, see section 3)
 *!   - Stata package: jsonio (auto-installed from SSC if missing)
 *!
 *! Usage: dash_setup
@@ -22,7 +22,9 @@ program define dash_setup
     // Everything that went wrong, counted rather than merely displayed.
     // The summary below branches on these; it used to say "All dependencies
     // are satisfied" whatever had happened.  A FAILURE means dash cannot
-    // work; a WARNING means an optional layer will render empty.
+    // work; a WARNING means dash works but something is done less well
+    // than it could be (today: `packaging' could not be installed, so
+    // versions are compared approximately).
     local n_fail 0
     local n_warn 0
     local fail_items ""
@@ -129,28 +131,20 @@ program define dash_setup
     // ----------------------------------------------------------------
     // Minimum version requirements stored as locals.
     //
-    // Only bokeh, numpy and pandas are genuinely required — dash_render.py
-    // imports them at module scope, so without them nothing renders at all.
-    // scipy and statsmodels are OPTIONAL: they are imported lazily, inside the
-    // mapping method for one plot type each, and a missing one degrades that
-    // layer to an empty glyph with a warning rather than aborting the render.
-    //   scipy       -> lfitci, qfitci, kdensity, mspline
-    //   statsmodels -> lowess only
-    // Declaring them mandatory (and exiting 198 when pip fails) previously
-    // blocked setup entirely for users who need none of those plot types.
-    local pkg_required "bokeh numpy pandas"
-    local pkg_optional "scipy statsmodels"
-    local pkg_list   "`pkg_required' `pkg_optional'"
+    // bokeh, numpy and pandas are required -- dash_render.py imports them
+    // at module scope, so without them nothing renders at all -- and they
+    // are all dash needs.  scipy and statsmodels were OPTIONAL, one plot
+    // type each (scipy for lfitci, qfitci, kdensity and mspline;
+    // statsmodels for lowess), until every estimator became numpy code:
+    // kdensity in S07, the rest in WP-18, which measured each against
+    // Stata's own plotted points.  Nothing imports either any more, so
+    // setup neither installs nor checks them.
+    local pkg_list "bokeh numpy pandas"
     local min_bokeh       "3.0"
     local min_numpy       "1.23"
-    local min_scipy       "1.9"
-    local min_statsmodels "0.13"
     local min_pandas      "1.5"
-    local feat_scipy       "lfitci, qfitci, kdensity and mspline"
-    local feat_statsmodels "lowess"
 
     foreach pkg of local pkg_list {
-        local pkg_is_optional : list pkg in pkg_optional
         // Try importing the package; if it fails, pip-install it
         capture python: import `pkg'
         if _rc != 0 {
@@ -189,16 +183,6 @@ program define dash_setup
             // Re-check after install
             capture python: import `pkg'
             if _rc != 0 {
-                if `pkg_is_optional' {
-                    // Optional: report the lost plot types and carry on.
-                    display as text "  `pkg' ............. {err}unavailable{txt}" ///
-                        " — `feat_`pkg'' will render empty."
-                    display as text "      To enable them later:" ///
-                        " python -m pip install `pkg'"
-                    local n_warn = `n_warn' + 1
-                    local warn_items `"`warn_items' `pkg' (`feat_`pkg'')"'
-                    continue
-                }
                 display as error "  Failed to install `pkg'. Please install manually:"
                 display as error "    python -m pip install `_spec'"
                 // Still fatal -- nothing renders without bokeh, numpy and
@@ -238,14 +222,8 @@ program define dash_setup
             // in their environment may depend on the version they have.
             // AC-06.2 accepts either; reporting is the one that cannot
             // break unrelated work.
-            if `pkg_is_optional' {
-                local n_warn = `n_warn' + 1
-                local warn_items `"`warn_items' `pkg' `pkgver' (needs `minver')"'
-            }
-            else {
-                local n_fail = `n_fail' + 1
-                local fail_items `"`fail_items' `pkg' `pkgver' (needs `minver')"'
-            }
+            local n_fail = `n_fail' + 1
+            local fail_items `"`fail_items' `pkg' `pkgver' (needs `minver')"'
         }
         else if "`verdict'" == "unverified" {
             display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
@@ -483,13 +461,15 @@ program define _dash_setup_summary
     }
 
     if `warnings' > 0 {
+        // A warning used to be an optional package, and this said the
+        // layers needing it would render empty.  No package is optional
+        // since WP-18; each item now says what it costs.
         display as text "{res}dash_setup complete{txt}, with `warnings' " ///
-            "optional item(s) unavailable."
+            "warning(s)."
         if `"`items'"' != "" {
-            display as text "  Unavailable: `items'"
+            display as text "  Warned: `items'"
         }
-        display as text "  Everything else works; the layers above will " ///
-            "render empty."
+        display as text "  dash works; each item above says what it costs."
     }
     else {
         display as text "{res}dash_setup complete.{txt} All dependencies are satisfied."

@@ -771,6 +771,9 @@ program define _dash_parse_plot_opts, sclass
         CMISSing(string)          RECAST(string)            Connect(string) ///
         BIN(string)               BINS(string)              Width(string) ///
         START(string) ///
+        DISCrete                  STDP                      STDF ///
+        STDR                      MEan                      NOWeight ///
+        Adjust                    LOgit ///
         PERCENT                   FREQuency                 DENsity ///
         FRACtion                  Kernel(string)            N(string) ///
         LEvel(string)             BAnds(string)             AT(string asis) ///
@@ -991,6 +994,22 @@ program define _dash_parse_plot_opts, sclass
     sreturn local range            `"`range'"'
     sreturn local colorlist        `"`colorlist'"'
     sreturn local jitterseed       `"`jitterseed'"'
+    // The seven statistical sub-options (WP-18): declared with twoway's own
+    // minimum abbreviations (twoway_histogram_parse.class DISCrete;
+    // twoway_lfitci_parse.class STDP STDF STDR, none abbreviable;
+    // twoway_lowess_parse.class Mean noWeight Adjust LOgit).  MEan is
+    // declared one letter longer than twoway's `m': this parser also
+    // declares Msymbol(), and test_abbreviations.py refuses a prefix two
+    // options could claim.  Which type each belongs to is enforced by the
+    // flag rules in _dash_option_rules, not here.
+    sreturn local discrete         `"`discrete'"'
+    sreturn local stdp             `"`stdp'"'
+    sreturn local stdf             `"`stdf'"'
+    sreturn local stdr             `"`stdr'"'
+    sreturn local mean             `"`mean'"'
+    sreturn local noweight         `"`noweight'"'
+    sreturn local adjust           `"`adjust'"'
+    sreturn local logit            `"`logit'"'
     /* ---- graph-level (returned separately so _dash_plot can accumulate them) ---- */
     sreturn local g_title        `"`title'"'
     sreturn local g_subtitle     `"`subtitle'"'
@@ -1059,9 +1078,12 @@ end
 program define _dash_parse_varpart_std, sclass
     version 16.0
     syntax varlist [if] [in] [aweight fweight pweight iweight]
-    // dash does not weight its glyphs, but a pasted twoway command may carry
-    // a weight expression and must not abort; it is reported as ignored.
+    // The weight type and its expression are handed to _dash_process_segment,
+    // which honours, names or refuses them by plot type (WP-18).  syntax
+    // leaves the expression in `exp' WITH its leading `= ' (measured:
+    // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
+    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -1073,9 +1095,12 @@ end
 program define _dash_parse_varpart_1v, sclass
     version 16.0
     syntax varlist(min=1 max=1) [if] [in] [aweight fweight pweight iweight]
-    // dash does not weight its glyphs, but a pasted twoway command may carry
-    // a weight expression and must not abort; it is reported as ignored.
+    // The weight type and its expression are handed to _dash_process_segment,
+    // which honours, names or refuses them by plot type (WP-18).  syntax
+    // leaves the expression in `exp' WITH its leading `= ' (measured:
+    // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
+    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -1087,9 +1112,12 @@ end
 program define _dash_parse_varpart_3v, sclass
     version 16.0
     syntax varlist(min=2 max=3) [if] [in] [aweight fweight pweight iweight]
-    // dash does not weight its glyphs, but a pasted twoway command may carry
-    // a weight expression and must not abort; it is reported as ignored.
+    // The weight type and its expression are handed to _dash_process_segment,
+    // which honours, names or refuses them by plot type (WP-18).  syntax
+    // leaves the expression in `exp' WITH its leading `= ' (measured:
+    // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
+    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -1101,9 +1129,12 @@ end
 program define _dash_parse_varpart_4v, sclass
     version 16.0
     syntax varlist(min=4 max=4) [if] [in] [aweight fweight pweight iweight]
-    // dash does not weight its glyphs, but a pasted twoway command may carry
-    // a weight expression and must not abort; it is reported as ignored.
+    // The weight type and its expression are handed to _dash_process_segment,
+    // which honours, names or refuses them by plot type (WP-18).  syntax
+    // leaves the expression in `exp' WITH its leading `= ' (measured:
+    // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
+    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
     sreturn local varlist    "`varlist'"
     sreturn local if_clause  `"`if'"'
     sreturn local in_clause  `"`in'"'
@@ -1196,8 +1227,8 @@ end
 // angle, clock position, intensity) is unknown.  Every bound below was
 // measured against twoway (22sep2026, StataNow 19.5).  Five bounds are
 // dash's own rather than twoway's AND say so in a second sentence of the
-// refusal: yaxis/xaxis 1..2, degree 0..3, bin 1..1000, n 2..10000 and the
-// lowess bwidth (0,1].  The other dash-own bounds -- colornlevels 2..256,
+// refusal: yaxis/xaxis 1..2, degree 0..3, bin 1..1000, n 2..10000 (mspline's
+// n 1..300 and bands 1..200 are twoway's) and the lowess bwidth (0,1].  The other dash-own bounds -- colornlevels 2..256,
 // jitter 0..100, level strictly inside 0..100, barwidth > 0, aspectratio
 // >= 0, jitterseed()/jseed() >= 0, kdensity bwidth > 0 -- are refused with
 // the one sentence only.
@@ -1248,7 +1279,7 @@ program define _dash_option_rules
         base=num  barwidth=pos  level=num,0,100,x ///
         degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
-        n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         colornlevels=int,2,256 ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2
@@ -1265,8 +1296,18 @@ program define _dash_option_rules
     local graph ///
         xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
         scheme=scheme
+    // Flag applicability (WP-18): flag[|flag...]@type[|type...].  A flag
+    // written on a type outside its list is refused as twoway refuses it,
+    // r(198) "option <flag> not allowed" (measured 23sep2026: scatter
+    // discrete, lfit stdf, histogram mean, scatter noweight/logit/adjust,
+    // lowess stdp).  Checked in _dash_validate_opts, which also refuses
+    // more than one of stdp/stdf/stdr and discrete beside bin()/bins().
+    local flags ///
+        discrete@histogram  stdp|stdf|stdr@lfitci|qfitci ///
+        mean|noweight|adjust|logit@lowess
     c_local _dash_rules_plot  `"`plot'"'
     c_local _dash_rules_graph `"`graph'"'
+    c_local _dash_rules_flags `"`flags'"'
 end
 
 // ----------------------------------------------------------------
@@ -1331,7 +1372,8 @@ program define _dash_validate_value, rclass
     else if "`opt'" == "bin" {
         local extra ". dash draws up to 1000 bins."
     }
-    else if "`opt'" == "n" {
+    else if "`opt'" == "n" & "`ptype'" != "mspline" {
+        // mspline's 1..300 is twoway's own ("n must be between 1 and 300").
         local extra ". dash evaluates up to 10000 points."
     }
     else if "`opt'" == "bwidth" & "`ptype'" == "lowess" {
@@ -1637,6 +1679,59 @@ program define _dash_validate_opts, sclass
         local _snap_`_k' `"`s(`_k')'"'
     }
 
+    // ---- The statistical flags (WP-18) ----
+    // Each belongs to one plot family and is refused elsewhere as twoway
+    // refuses it.  stdp, stdf and stdr name one band each: `twoway lfitci
+    // mpg weight, stdf stdr' is r(198) "may not combine stdf stdr".
+    // discrete decides the bins itself: `twoway histogram rep78, discrete
+    // bin(3)' is r(198) "options discrete and bins() may not be combined",
+    // while width() and start() combine with it (rc 0).  All measured
+    // 23sep2026 (scratchpad/wp18/A/wording.log).
+    foreach tok of local _dash_rules_flags {
+        local at    = strpos("`tok'", "@")
+        local names = substr("`tok'", 1, `at' - 1)
+        local types = substr("`tok'", `at' + 1, .)
+        local names : subinstr local names "|" " ", all
+        local types : subinstr local types "|" " ", all
+        if `: list ptype in types' continue
+        foreach f of local names {
+            if `"`s(`f')'"' != "" {
+                display as error "option `f' not allowed"
+                exit 198
+            }
+        }
+    }
+    local _std ""
+    foreach f in stdp stdf stdr {
+        if `"`s(`f')'"' != "" local _std "`_std' `f'"
+    }
+    if `: word count `_std'' > 1 {
+        display as error "may not combine`_std'"
+        exit 198
+    }
+    // stdf and stdr need regress's residual variance, which predict will
+    // not give after weighted or robust estimation (regres_p.ado): twoway
+    // lfitci/qfitci with an aweight say "not possible with weighted data",
+    // r(135); with a pweight "option stdf not allowed after robust
+    // estimation", r(198).  An fweight is replication and is fine; stdp is
+    // fine under all three.  Measured 23sep2026.  s(weight) is set before
+    // this runs, and only on a type that honours weights.
+    local _std = strtrim("`_std'")
+    if "`_std'" == "stdf" | "`_std'" == "stdr" {
+        if `"`s(weight)'"' == "aweight" {
+            display as error "not possible with weighted data"
+            exit 135
+        }
+        if `"`s(weight)'"' == "pweight" {
+            display as error "option `_std' not allowed after robust estimation"
+            exit 198
+        }
+    }
+    if `"`s(discrete)'"' != "" & `"`s(bin)'"' != "" {
+        display as error "options discrete and bins() may not be combined"
+        exit 198
+    }
+
     // Options that have a type-specific rule for THIS type: their untyped
     // rule is skipped below, so the specific one wins.
     local typed ""
@@ -1710,7 +1805,11 @@ program define _dash_plot_opts_to_json, rclass
     local parts ""
     local nparts = 0
 
-    // Helper: append a k:v JSON pair if value non-empty
+    // Helper: append a k:v JSON pair if value non-empty.
+    // weight and wexp (WP-18) are not options: _dash_process_segment puts
+    // them in s() for a weighted segment on a type that honours weights,
+    // and an unweighted segment writes neither key, so its "options" text
+    // is byte-identical to what it was.
     foreach key in mcolor msymbol msize msangle mfcolor mlcolor mlabel mlabcolor ///
                    mlabsize mlabposition mlabgap mlabwidth malpha marker lcolor ///
                    lwidth lpattern lalpha fcolor fintensity falpha barwidth base ///
@@ -1719,7 +1818,9 @@ program define _dash_plot_opts_to_json, rclass
                    bwidth degree pstyle cmissing recast connect bin width start ///
                    percent frequency density fraction kernel n level bands at ciopts ///
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle mlpattern ///
-                   blabel horizontal vertical sort range colorlist jitterseed {
+                   blabel horizontal vertical sort range colorlist jitterseed ///
+                   discrete stdp stdf stdr mean noweight adjust logit ///
+                   weight wexp {
         local val `"`s(`key')'"'
         if `"`val'"' != "" {
             _dash_json_str `"`val'"' _jv
@@ -1764,6 +1865,20 @@ program define _dash_graph_opts_to_json, rclass
     c_local `out_macro' `"{`parts'}"'
 end
 
+
+// ================================================================
+// _dash_seg_weight_s  -- put a segment's weight into s() (WP-18)
+//
+// _dash_process_segment is rclass, so it cannot sreturn; this sclass
+// helper writes s(weight) and s(wexp) beside the parsed options, and
+// the rest of s() survives the call as it survives _dash_fold_bw.
+// ================================================================
+program define _dash_seg_weight_s, sclass
+    version 16.0
+    args wtype wvar
+    sreturn local weight `"`wtype'"'
+    sreturn local wexp   `"`wvar'"'
+end
 
 // ================================================================
 // _dash_process_segment
@@ -1973,26 +2088,137 @@ program define _dash_process_segment, rclass
     }
 
     // ---- parse options (clear stale sreturn values first) ----
-    // The varpart parsers sreturn the weight TYPE in s(_weight).  Saved
-    // before the clear below destroys it: it is appended to this segment's
-    // ignored list so the note names it.  The comment beside those parsers
-    // said it was reported; measured 22sep2026, `[aw=price]' registered
-    // with rc 0 and no note.
+    // The varpart parsers sreturn the weight TYPE in s(_weight) and the
+    // weight EXPRESSION, without its leading `=', in s(_wexp).  Both are
+    // saved before the clear below destroys them.
     local _seg_weight `"`s(_weight)'"'
+    local _seg_wexp   `"`s(_wexp)'"'
+
+    // ---- weights (WP-18) ----
+    // Which type honours which weight is twoway's own acceptance table,
+    // measured 23sep2026 (test/fixtures/stat_truth.json, weight_acceptance):
+    // iweight is refused on every type; lowess refuses every weight;
+    // histogram takes fweight only; kdensity, lpoly and lpolyci refuse
+    // pweight; the fit, smoother and band types take aw, fw and pw.  Each
+    // refusal is twoway's, r(101), in twoway's words.  On the glyph types
+    // (scatter, line, bar ...) a weight is accepted and named in the note
+    // by type, as WP-13 left it: dash draws every observation.
+    local _wt_honoured "lfit qfit lfitci qfitci lpoly lpolyci fpfit fpfitci histogram kdensity mspline mband"
+    if `"`_seg_weight'"' != "" {
+        local _wt_refused ""
+        if "`_seg_weight'" == "iweight" {
+            local _wt_refused "iweights not allowed"
+        }
+        else if "`ptype'" == "lowess" {
+            local _wt_refused "weights not allowed"
+        }
+        else if "`ptype'" == "histogram" & "`_seg_weight'" != "fweight" {
+            local _wt_refused "`_seg_weight's not allowed"
+        }
+        else if inlist("`ptype'", "kdensity", "lpoly", "lpolyci") & "`_seg_weight'" == "pweight" {
+            local _wt_refused "pweights not allowed"
+        }
+        if `"`_wt_refused'"' != "" {
+            display as error "`_wt_refused'"
+            exit 101
+        }
+    }
+    if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
+        // The data reach the renderer through jsonio, one column per
+        // variable, so a weight must be ONE existing variable.  twoway
+        // evaluates `[aw=price+1]' itself; dash cannot, and says so
+        // rather than weighting by something else.  unab expands an
+        // abbreviation (`[aw=pri]') to the full name the renderer reads.
+        // It reads a VARLIST, so the expression must first be one name:
+        // unab resolves the range `price-price' to price, where twoway
+        // weights by the expression price-price, which is zero (measured
+        // 23sep2026, rc 0).  confirm name accepts any Stata name,
+        // Unicode included, and nothing else.
+        local _wx ""
+        capture confirm name `macval(_seg_wexp)'
+        if !_rc capture unab _wx : `macval(_seg_wexp)'
+        if _rc | `: word count `_wx'' != 1 {
+            display as error `"dash: [`_seg_weight'=`macval(_seg_wexp)'] must name one variable; dash cannot evaluate a weight expression. Generate it first: generate double w = `macval(_seg_wexp)'"'
+            exit 198
+        }
+        local _seg_wexp "`_wx'"
+        // twoway's own checks of the weight's values, measured 23sep2026:
+        // a non-integer fweight is r(401) "may not use noninteger frequency
+        // weights" on lfit lfitci lpoly lpolyci histogram kdensity; a
+        // negative fweight is r(402) "negative weights encountered" on
+        // lpoly lpolyci histogram kdensity, and so is a negative aweight on
+        // lpoly lpolyci kdensity.  Elsewhere the command is accepted and
+        // the renderer does what twoway draws: lfit, qfit, lfitci and
+        // qfitci fit as if `if w > 0'; qfit, qfitci, fpfit and fpfitci
+        // draw nothing for a non-integer fweight, and fpfit and fpfitci
+        // nothing for any negative weight (regress and fracpoly "could not
+        // fit model"); mspline and mband ignore the weight.  Each check
+        // runs over the plot's own if/in sample -- a bad weight on a row
+        // whose y is missing still refuses, one outside the if does not --
+        // and a missing weight drops its observation without an error.
+        local _wq ""
+        if `"`macval(if_expr)'"' != "" local _wq `"if (`macval(if_expr)')"'
+        if `"`macval(in_expr)'"' != "" local _wq `"`macval(_wq)' in `macval(in_expr)'"'
+        local _w_neg ""
+        if "`_seg_weight'" == "fweight" local _w_neg "lpoly lpolyci histogram kdensity"
+        if "`_seg_weight'" == "aweight" local _w_neg "lpoly lpolyci kdensity"
+        if "`_seg_weight'" == "fweight" {
+            local _fw_int "lfit lfitci lpoly lpolyci histogram kdensity"
+            if `: list ptype in _fw_int' {
+                capture assert `_wx' == floor(`_wx') | missing(`_wx') `macval(_wq)'
+                if _rc {
+                    display as error "may not use noninteger frequency weights"
+                    exit 401
+                }
+            }
+        }
+        if `: list ptype in _w_neg' {
+            capture assert `_wx' >= 0 | missing(`_wx') `macval(_wq)'
+            if _rc {
+                display as error "negative weights encountered"
+                exit 402
+            }
+        }
+    }
+
     sreturn clear
-    if `"`opts_exp'"' != "" {
+    // A weight-only segment goes through the parser and the validation
+    // too, so the weight keys are in s() for the JSON writer and the flag
+    // rules run on every segment; the parser takes an empty option list.
+    if `"`opts_exp'"' != "" | `"`_seg_weight'"' != "" {
         _dash_parse_plot_opts , `opts_exp'
         _dash_fold_bw "`ptype'"
+        if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
+            _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
+        }
         _dash_validate_opts "`ptype'"
+        // twoway__histogram_gen.ado:102-107: a start() above the variable's
+        // minimum over the plot's sample is r(198), discrete or not.  dash
+        // drew it, the observations below start() silently left out of
+        // every bar (the WP-18 review, 23sep2026).
+        if "`ptype'" == "histogram" & `"`s(start)'"' != "" {
+            local _hq ""
+            if `"`macval(if_expr)'"' != "" local _hq `"if (`macval(if_expr)')"'
+            if `"`macval(in_expr)'"' != "" local _hq `"`macval(_hq)' in `macval(in_expr)'"'
+            quietly summarize `yvar' `macval(_hq)', meanonly
+            if r(N) > 0 {
+                if r(min) < `s(start)' & reldif(r(min), `s(start)') > 1e-5 {
+                    display as error "option start() may not be larger than minimum of `yvar'"
+                    exit 198
+                }
+            }
+        }
     }
 
     // Accumulate this segment's unsupported options so _dash_plot can report
     // them once for the whole command rather than once per plot segment.
     // c_local cannot read the caller's local, so hand back only THIS
     // segment's list and let _dash_plot append it.
-    // A weight is named by TYPE, in brackets, never by variable: [aweight].
+    // A weight on a type that does not honour it is named by TYPE, in
+    // brackets, never by variable: [aweight].  On a type that honours it
+    // (`_wt_honoured') it is written to the spec and nothing is named.
     local _seg_wtok ""
-    if `"`_seg_weight'"' != "" local _seg_wtok `" [`_seg_weight']"'
+    if `"`_seg_weight'"' != "" & !`: list ptype in _wt_honoured' local _seg_wtok `" [`_seg_weight']"'
     c_local _seg_ignored_out `"`s(_pending)' `s(_unknown)'`_seg_wtok'"'
 
     // Accumulate graph-level options found in this segment into g_* locals

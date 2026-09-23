@@ -101,6 +101,22 @@ end
 * Record the dataset currently in memory as a curve: the number of points, the
 * sampled indices, and every variable's values at those indices.  Short curves
 * are stored whole; long ones at 11 evenly spaced indices plus n/min/max.
+*
+* Long arrays are written in chunks of 100 values.  A single record line (or
+* the macro that builds it) longer than about 5,300 characters comes back with
+* a space inserted at every ~5,290th character -- measured on this Stata when
+* WP-18 first recorded 2,246-point curves -- so no line here is allowed to get
+* anywhere near that.  The first chunk is the plain S/A record it always was;
+* continuation chunks are tagged S+/A+ and the python reader appends them.
+* Every pre-existing curve is at most 64 points, so its record is unchanged.
+capture program drop zq_chunk
+program define zq_chunk
+    syntax , Sec(string) Key(string) Fld(string) Type(string) First(integer) [ Val(string) ]
+    if `first' local tag "`type'"
+    else       local tag "`type'+"
+    file write zqrec "`tag'@@@`sec'@@@`key'@@@`fld'@@@`val'" _n
+end
+
 capture program drop zq_curve
 program define zq_curve
     syntax varlist(numeric) , Sec(string) Key(string) [ MAXn(integer 41) ]
@@ -108,34 +124,51 @@ program define zq_curve
     local n = r(N)
     zq_n, sec(`sec') key(`key') fld(n_points) val(`n')
     if `n' == 0 exit
-    local idx ""
-    if `n' <= `maxn' {
-        forvalues i = 1/`n' {
-            local idx "`idx' `i'"
-        }
-    }
-    else {
-        forvalues j = 1/11 {
-            local i = round(1 + (`j'-1)*(`n'-1)/10)
-            local idx "`idx' `i'"
-        }
-    }
+    * K sampled positions: all of them when the curve is short, else 11
+    if `n' <= `maxn' local K = `n'
+    else             local K = 11
     local istr ""
-    foreach i of local idx {
+    local cnt 0
+    local first 1
+    forvalues k = 1/`K' {
+        if `n' <= `maxn' local i = `k'
+        else             local i = round(1 + (`k'-1)*(`n'-1)/10)
         if "`istr'" == "" local istr "`i'"
         else              local istr "`istr';`i'"
+        local ++cnt
+        if `cnt' == 100 {
+            zq_chunk, sec(`sec') key(`key') fld(sample_index) type(S) first(`first') val(`istr')
+            local istr ""
+            local cnt 0
+            local first 0
+        }
     }
-    zq_s, sec(`sec') key(`key') fld(sample_index) val(`istr')
+    if `cnt' > 0 | `first' {
+        zq_chunk, sec(`sec') key(`key') fld(sample_index) type(S) first(`first') val(`istr')
+    }
     foreach v of local varlist {
         local vals ""
-        foreach i of local idx {
+        local cnt 0
+        local first 1
+        forvalues k = 1/`K' {
+            if `n' <= `maxn' local i = `k'
+            else             local i = round(1 + (`k'-1)*(`n'-1)/10)
             local z = `v'[`i']
             if missing(`z') local s "null"
             else            local s = trim(string(`z', "%20.17g"))
             if "`vals'" == "" local vals "`s'"
             else              local vals "`vals';`s'"
+            local ++cnt
+            if `cnt' == 100 {
+                zq_chunk, sec(`sec') key(`key') fld(`v') type(A) first(`first') val(`vals')
+                local vals ""
+                local cnt 0
+                local first 0
+            }
         }
-        zq_a, sec(`sec') key(`key') fld(`v') val(`vals')
+        if `cnt' > 0 | `first' {
+            zq_chunk, sec(`sec') key(`key') fld(`v') type(A) first(`first') val(`vals')
+        }
         quietly summarize `v', meanonly
         zq_n, sec(`sec') key(`key') fld(`v'_min) val(r(min))
         zq_n, sec(`sec') key(`key') fld(`v'_max) val(r(max))
@@ -909,6 +942,911 @@ forvalues f = 1/`NFN' {
 display as text "function probed"
 
 * ===========================================================================
+* ===========================================================================
+* WP-18 EXTENSION.  Everything below was added for WP-18 (GAPS A3/A4/A5).  The
+* sections above are untouched and their JSON output is byte-for-byte what it
+* was; the new probes append new record sections only.
+*
+* Two facts about the graph engine, established by pilot runs and then
+* recorded here rather than assumed:
+*
+*  - twoway mspline's DERIVED serset (type spline) is serset index 2 of the
+*    saved .gph, not 1: derived_serset.class `reset' first creates the
+*    cross-median serset (id 1), then `serset create_cspline' makes the spline
+*    (id 2) and DROPS id 1, so `serset set 1' fails with _rc=111.  The layout
+*    is recorded per probe under serset_dir.
+*  - lowess evaluates its smooth at every observation, and observations with
+*    TIED x are NOT interchangeable: the running-line window is chosen by
+*    position, so tied observations receive different values, in the order the
+*    data are sorted.  Pilot: a fresh `sysuse' run equals a run after
+*    `sort x obs, stable' point for point, and differs from `gsort x -obs' on
+*    23 of 74 (auto) / 1352 of 2246 (nlsw88) observations.  The full-resolution
+*    records therefore carry obs_index (the 1-based row in the freshly loaded
+*    dataset) so the tie order is part of the truth.
+* ===========================================================================
+
+* Read every serset index 0..3 of a saved .gph and describe what is there, so
+* the index the probe used is on the record and not a guess.
+capture program drop zq_serset_dir
+program define zq_serset_dir, rclass
+    syntax , PATH(string)
+    capture graph drop _all
+    capture serset drop _all
+    quietly graph use "`path'"
+    local out ""
+    forvalues k = 0/3 {
+        capture serset set `k'
+        local src = _rc
+        if `src' == 0 {
+            local n : serset N
+            local kk : serset k
+            local item "`k':N=`n';k=`kk'"
+        }
+        else local item "`k':rc=`src'"
+        if "`out'" == "" local out "`item'"
+        else             local out "`out'|`item'"
+    }
+    return local dir "`out'"
+end
+
+* ===========================================================================
+* LAYER 9 -- mspline
+*
+* Stata computes the median spline inside the graph engine:
+*   twoway_mspline_parse.class  : bands(integer -1) n(integer 10)
+*   derived_serset.class reset  : serset create_xmedians y x, bands(#)
+*                                 then serset create_cspline 1 2, n(#)
+*   _gs_default_bands.ado       : bands = round(min(10*log10(N), sqrt(N)), 1)
+*                                 then max(bands, min(N, 2)); 10 if missing
+* The spline is read out of serset 2 of the saved .gph (see zq_serset_dir).
+* The knots it passes through are the cross medians, read from `twoway mband'
+* with the same bands() -- its derived serset (type median_bands) is index 1.
+* n() is "the number of points between the knots" (help twoway_mspline line
+* 98), so with K non-empty bands the spline has (K-1)*n + K points; the python
+* block checks that against every probe.
+* ===========================================================================
+forvalues d = 1/`NDS' {
+    local ds "${ZQ_DSN_`d'}"
+    local ld `"${ZQ_DSL_`d'}"'
+    local yv "${ZQ_DSY_`d'}"
+    local xv "${ZQ_DSX_`d'}"
+
+    foreach vspec in none bands(5) bands(20) n(20) "bands(5) n(4)" {
+        local vname default
+        local bopt ""
+        local nval 10
+        if "`vspec'" == "bands(5)"      {
+            local vname bands5
+            local bopt "bands(5)"
+        }
+        if "`vspec'" == "bands(20)"     {
+            local vname bands20
+            local bopt "bands(20)"
+        }
+        if "`vspec'" == "n(20)"         {
+            local vname n20
+            local nval 20
+        }
+        if "`vspec'" == "bands(5) n(4)" {
+            local vname bands5_n4
+            local bopt "bands(5)"
+            local nval 4
+        }
+        local opt "`vspec'"
+        if "`vspec'" == "none" local opt ""
+        local key "`ds':`vname'"
+        `ld'
+        local p "${ZQ_WORK}/ms_`ds'_`vname'.gph"
+        if "`opt'" == "" capture twoway mspline `yv' `xv' || , nodraw saving("`p'", replace)
+        else             capture twoway mspline `yv' `xv', `opt' || , nodraw saving("`p'", replace)
+        local rc = _rc
+        zq_s, sec(mspline) key(`key') fld(cmd) val(twoway mspline `yv' `xv', `opt')
+        zq_n, sec(mspline) key(`key') fld(rc)  val(`rc')
+        zq_n, sec(mspline) key(`key') fld(n_option) val(`nval')
+        zq_s, sec(mspline) key(`key') fld(bands_option) val(`bopt')
+        quietly count if !missing(`yv') & !missing(`xv')
+        local nxy = r(N)
+        zq_n, sec(mspline) key(`key') fld(N_xy) val(`nxy')
+        zq_n, sec(mspline) key(`key') fld(rule_default_bands) ///
+              val(max(round(min(10*log10(`nxy'), sqrt(`nxy')), 1), min(`nxy', 2)))
+        if `rc' != 0 continue
+        zq_serset_dir, path("`p'")
+        zq_s, sec(mspline) key(`key') fld(serset_dir) val(`r(dir)')
+        zq_n, sec(mspline) key(`key') fld(serset_index_used) val(2)
+        preserve
+        capture zq_serset spline_y spline_x, path("`p'") set(2)
+        local src = _rc
+        if `src' == 0 {
+            zq_curve spline_x spline_y, sec(mspline) key(`key') maxn(800)
+        }
+        restore
+        zq_n, sec(mspline) key(`key') fld(derived_serset_rc) val(`src')
+
+        * ---- the knots: the same bands() drawn with mband -----------------
+        `ld'
+        local pk "${ZQ_WORK}/msk_`ds'_`vname'.gph"
+        if "`bopt'" == "" capture twoway mband `yv' `xv' || , nodraw saving("`pk'", replace)
+        else              capture twoway mband `yv' `xv', `bopt' || , nodraw saving("`pk'", replace)
+        local rc = _rc
+        zq_s, sec(mspline_knots) key(`key') fld(cmd) val(twoway mband `yv' `xv', `bopt')
+        zq_n, sec(mspline_knots) key(`key') fld(rc)  val(`rc')
+        zq_n, sec(mspline_knots) key(`key') fld(serset_index_used) val(1)
+        if `rc' != 0 continue
+        preserve
+        capture zq_serset knot_y knot_x, path("`pk'") set(1)
+        local src = _rc
+        if `src' == 0 {
+            zq_curve knot_x knot_y, sec(mspline_knots) key(`key') maxn(64)
+        }
+        restore
+        zq_n, sec(mspline_knots) key(`key') fld(derived_serset_rc) val(`src')
+    }
+    display as text "mspline probed: `ds'"
+}
+
+* ===========================================================================
+* LAYER 10 -- fpfit: repeated powers and the origin shift
+*
+* twoway fpfit is `fracpoly regress y x [w]' followed by `fracpred' at the
+* distinct sorted x (twoway__fpfit_serset.ado lines 19-27).  fracpoly's
+* e(fp_pwrs) is the chosen power pair, e(fp_shft) the origin shift and
+* e(fp_sfac) the scale factor frac_xo.ado applied.  Every candidate pair on
+* the builtin datasets is recorded so a reimplementation is checked against
+* pairs Stata really chooses -- three of the six below are REPEATED powers --
+* and a synthetic dataset whose true model is x^2*ln(x) (the (2,2) pair) is
+* added with its data, so that case does not depend on a builtin dataset.
+* ===========================================================================
+capture program drop zq_fracpoly
+program define zq_fracpoly
+    syntax , Sec(string) Key(string) Y(string) X(string) [ Wgt(string) ]
+    local w ""
+    if "`wgt'" != "" local w "[`wgt']"
+    capture quietly fracpoly regress `y' `x' `w'
+    local rc = _rc
+    zq_s, sec(`sec') key(`key') fld(powers_cmd) val(fracpoly regress `y' `x' `w')
+    zq_n, sec(`sec') key(`key') fld(rc) val(`rc')
+    if `rc' != 0 exit
+    local pw "`e(fp_pwrs)'"
+    local pwa : subinstr local pw " " ";", all
+    zq_a, sec(`sec') key(`key') fld(powers) val(`pwa')
+    local n1 : word 1 of `pw'
+    local n2 : word 2 of `pw'
+    local rep = ("`n1'" == "`n2'" & "`n2'" != "")
+    zq_n, sec(`sec') key(`key') fld(powers_repeated) val(`rep')
+    zq_n, sec(`sec') key(`key') fld(fp_shft) val(e(fp_shft))
+    zq_n, sec(`sec') key(`key') fld(fp_sfac) val(e(fp_sfac))
+    zq_n, sec(`sec') key(`key') fld(fp_dev)  val(e(fp_dev))
+    zq_n, sec(`sec') key(`key') fld(fp_d0)   val(e(fp_d0))
+    zq_n, sec(`sec') key(`key') fld(fp_dlin) val(e(fp_dlin))
+    zq_n, sec(`sec') key(`key') fld(fp_d1)   val(e(fp_d1))
+    zq_n, sec(`sec') key(`key') fld(fp_d2)   val(e(fp_d2))
+    local p1 "`e(fp_p1)'"
+    local p1a : subinstr local p1 " " ";", all
+    zq_a, sec(`sec') key(`key') fld(fp_p1_best_degree1) val(`p1a')
+    local p2 "`e(fp_p2)'"
+    local p2a : subinstr local p2 " " ";", all
+    zq_a, sec(`sec') key(`key') fld(fp_p2_best_degree2) val(`p2a')
+    zq_n, sec(`sec') key(`key') fld(N)    val(e(N))
+    zq_n, sec(`sec') key(`key') fld(df_r) val(e(df_r))
+    zq_n, sec(`sec') key(`key') fld(rmse) val(e(rmse))
+    tempname B
+    matrix `B' = e(b)
+    local nb = colsof(`B')
+    local cn : colnames `B'
+    local cna : subinstr local cn " " ";", all
+    zq_s, sec(`sec') key(`key') fld(coef_names) val(`cna')
+    local cv ""
+    forvalues j = 1/`nb' {
+        local z = `B'[1,`j']
+        local t = trim(string(`z',"%20.17g"))
+        if "`cv'" == "" local cv "`t'"
+        else            local cv "`cv';`t'"
+    }
+    zq_a, sec(`sec') key(`key') fld(coef) val(`cv')
+end
+
+* ---- (a) the powers fracpoly picks on every builtin pair --------------------
+foreach spec in "auto price mpg" "auto weight mpg" "auto mpg weight" ///
+                "census death pop" "sp500 close volume" "nlsw88 wage ttl_exp" {
+    tokenize `spec'
+    local ds `1'
+    local yv `2'
+    local xv `3'
+    local key "`ds':`yv'_on_`xv'"
+    sysuse `ds', clear
+    zq_s, sec(fpfit_repeated) key(`key') fld(load_cmd) val(sysuse `ds', clear)
+    zq_fracpoly, sec(fpfit_repeated) key(`key') y(`yv') x(`xv')
+    * the curve twoway draws for the same pair
+    sysuse `ds', clear
+    local p "${ZQ_WORK}/fpr_`ds'_`yv'_`xv'.gph"
+    capture twoway fpfit `yv' `xv' || , nodraw saving("`p'", replace)
+    local rc = _rc
+    zq_s, sec(fpfit_repeated) key(`key') fld(cmd) val(twoway fpfit `yv' `xv')
+    zq_n, sec(fpfit_repeated) key(`key') fld(fpfit_rc) val(`rc')
+    if `rc' == 0 {
+        preserve
+        zq_serset fit fit_x, path("`p'") set(0)
+        zq_curve fit_x fit, sec(fpfit_repeated) key(`key') maxn(200)
+        restore
+    }
+    display as text "fpfit repeated-power probe: `spec'"
+}
+
+* ---- (b) a synthetic (2,2) dataset, data recorded ----------------------------
+clear
+set seed 20260923
+quietly set obs 200
+quietly generate double x = _n/20
+quietly generate double y = 3*x^2*ln(x) + rnormal(0,.5)
+zq_s, sec(fpfit_repeated_data) key(synthetic) fld(gen_cmd) ///
+      val(clear; set seed 20260923; set obs 200; gen double x = _n/20; gen double y = 3*x^2*ln(x) + rnormal(0,.5))
+zq_s, sec(fpfit_repeated_data) key(synthetic) fld(true_model) val(y = 3*x^2*ln(x) + N(0, 0.25))
+zq_n, sec(fpfit_repeated_data) key(synthetic) fld(N) val(_N)
+zq_curve x y, sec(fpfit_repeated_data) key(synthetic) maxn(200)
+tempfile zqsyn
+quietly save "`zqsyn'"
+zq_s, sec(fpfit_repeated) key(synthetic:y_on_x) fld(load_cmd) ///
+      val(the dataset recorded under fpfit_repeated_data/synthetic)
+zq_fracpoly, sec(fpfit_repeated) key(synthetic:y_on_x) y(y) x(x)
+use "`zqsyn'", clear
+local p "${ZQ_WORK}/fpr_synthetic.gph"
+capture twoway fpfit y x || , nodraw saving("`p'", replace)
+local rc = _rc
+zq_s, sec(fpfit_repeated) key(synthetic:y_on_x) fld(cmd) val(twoway fpfit y x)
+zq_n, sec(fpfit_repeated) key(synthetic:y_on_x) fld(fpfit_rc) val(`rc')
+if `rc' == 0 {
+    preserve
+    zq_serset fit fit_x, path("`p'") set(0)
+    zq_curve fit_x fit, sec(fpfit_repeated) key(synthetic:y_on_x) maxn(200)
+    restore
+}
+display as text "fpfit repeated-power probe: synthetic"
+
+* ---- (c) the origin shift when min(x) <= 0 ----------------------------------
+* frac_xo.ado lines 81-106: if min(x) <= 0, sort x, shift = (smallest positive
+* spacing) - min(x), x := x + shift; then s = max(x)-min(x) and
+* scale = 10^(sign(log10(s))*int(abs(log10(s)))), x := x/scale.  The rule is
+* recomputed here from the data and recorded beside e(fp_shft)/e(fp_sfac).
+foreach spec in "auto mpg weight-3000 xs" "auto price mpg-12 xz" {
+    tokenize `spec'
+    local ds `1'
+    local yv `2'
+    local expr `3'
+    local xv `4'
+    local key "`ds':`xv'_is_`expr'"
+    sysuse `ds', clear
+    quietly generate double `xv' = `expr'
+    zq_s, sec(fpfit_shift) key(`key') fld(load_cmd) val(sysuse `ds', clear)
+    zq_s, sec(fpfit_shift) key(`key') fld(gen_cmd)  val(gen double `xv' = `expr')
+    zq_s, sec(fpfit_shift) key(`key') fld(y) val(`yv')
+    zq_s, sec(fpfit_shift) key(`key') fld(x) val(`xv')
+    preserve
+    quietly keep if !missing(`yv') & !missing(`xv')
+    tempname XMN XMX MSP
+    quietly summarize `xv', meanonly
+    scalar `XMN' = r(min)
+    scalar `XMX' = r(max)
+    quietly count
+    local nn = r(N)
+    sort `xv'
+    quietly generate double zqd = `xv' - `xv'[_n-1]
+    quietly summarize zqd if zqd > 0, meanonly
+    scalar `MSP' = r(min)
+    quietly count if `xv' <= 0
+    local nnp = r(N)
+    restore
+    zq_n, sec(fpfit_shift) key(`key') fld(N_xy)   val(`nn')
+    zq_n, sec(fpfit_shift) key(`key') fld(x_min)  val(`XMN')
+    zq_n, sec(fpfit_shift) key(`key') fld(x_max)  val(`XMX')
+    zq_n, sec(fpfit_shift) key(`key') fld(n_x_nonpositive) val(`nnp')
+    zq_n, sec(fpfit_shift) key(`key') fld(min_positive_spacing) val(`MSP')
+    local rshift = `MSP' - `XMN'
+    local srange = `XMX' - `XMN'
+    local rscale = 10^(sign(log10(`srange'))*int(abs(log10(`srange'))))
+    zq_n, sec(fpfit_shift) key(`key') fld(rule_shift) val(`rshift')
+    zq_n, sec(fpfit_shift) key(`key') fld(rule_scale) val(`rscale')
+    zq_s, sec(fpfit_shift) key(`key') fld(rule) ///
+          val(shift = min_positive_spacing - min(x) when min(x) <= 0; then s = max(x)-min(x); scale = 10^(sign(log10(s))*int(abs(log10(s)))); x_used = (x + shift)/scale  [ado/base/f/frac_xo.ado lines 81-106])
+    zq_fracpoly, sec(fpfit_shift) key(`key') y(`yv') x(`xv')
+
+    foreach pt in fpfit fpfitci {
+        sysuse `ds', clear
+        quietly generate double `xv' = `expr'
+        local p "${ZQ_WORK}/fps_`ds'_`xv'_`pt'.gph"
+        capture twoway `pt' `yv' `xv' || , nodraw saving("`p'", replace)
+        local rc = _rc
+        zq_s, sec(fpfit_shift_curve) key(`key':`pt') fld(cmd) val(twoway `pt' `yv' `xv')
+        zq_n, sec(fpfit_shift_curve) key(`key':`pt') fld(rc)  val(`rc')
+        zq_n, sec(fpfit_shift_curve) key(`key':`pt') fld(level) val(c(level))
+        if `rc' != 0 continue
+        preserve
+        if "`pt'" == "fpfit" {
+            zq_serset fit fit_x, path("`p'") set(0)
+            zq_curve fit_x fit, sec(fpfit_shift_curve) key(`key':`pt') maxn(200)
+        }
+        else {
+            zq_serset fit lower upper fit_x, path("`p'") set(0)
+            zq_curve fit_x fit lower upper, sec(fpfit_shift_curve) key(`key':`pt') maxn(200)
+        }
+        restore
+    }
+    display as text "fpfit shift probe: `spec'"
+}
+
+* ===========================================================================
+* LAYER 11 -- lfitci / qfitci with stdp | stdf | stdr
+*
+* twoway_lfitci_parse.class line 13 defaults std to "stdp"; line 31 accepts
+* STDP STDF STDR; twoway__lfit_serset.ado line 89 hands the word straight to
+* `predict `se', `std''.  The band is xb -/+ invttail(df_r, (100-level)/200)*se
+* for every one of them.  Each is recorded from the plotted serset, and the
+* linear ones are rebuilt from regress + predict as an independent check.
+* ===========================================================================
+forvalues d = 1/`NDS' {
+    local ds "${ZQ_DSN_`d'}"
+    local ld `"${ZQ_DSL_`d'}"'
+    local yv "${ZQ_DSY_`d'}"
+    local xv "${ZQ_DSX_`d'}"
+
+    foreach pt in lfitci qfitci {
+        foreach std in stdp stdf stdr {
+            local key "`ds':`pt':`std'"
+            `ld'
+            local p "${ZQ_WORK}/`pt'_`ds'_`std'.gph"
+            capture twoway `pt' `yv' `xv', `std' level(95) || , nodraw saving("`p'", replace)
+            local rc = _rc
+            zq_s, sec(fitci_std) key(`key') fld(cmd) ///
+                  val(twoway `pt' `yv' `xv', `std' level(95))
+            zq_n, sec(fitci_std) key(`key') fld(rc) val(`rc')
+            zq_s, sec(fitci_std) key(`key') fld(std) val(`std')
+            zq_n, sec(fitci_std) key(`key') fld(level) val(95)
+            if `rc' != 0 continue
+            preserve
+            zq_serset fit lower upper fit_x, path("`p'") set(0)
+            zq_curve fit_x fit lower upper, sec(fitci_std) key(`key') maxn(41)
+            restore
+        }
+    }
+
+    * ---- regress + predict rebuild for the linear band, all three std -----
+    foreach std in stdp stdf stdr {
+        local key "`ds':lfitci:`std'"
+        `ld'
+        quietly regress `yv' `xv'
+        local dfr = e(df_r)
+        quietly summarize `xv' if e(sample), meanonly
+        local xmn = r(min)
+        local xmx = r(max)
+        local N0  = _N
+        quietly set obs `=`N0'+100'
+        forvalues i = 1/100 {
+            quietly replace `xv' = `xmn' + (`i'-1)*(`xmx'-`xmn')/99 in `=`N0'+`i''
+        }
+        capture drop zqxb zqse
+        quietly predict double zqxb, xb
+        quietly predict double zqse, `std'
+        local tv = invttail(`dfr', (100-95)/200)
+        quietly generate double zqlo = zqxb - `tv'*zqse
+        quietly generate double zqhi = zqxb + `tv'*zqse
+        zq_n, sec(fitci_std_rebuild) key(`key') fld(df_r) val(`dfr')
+        zq_n, sec(fitci_std_rebuild) key(`key') fld(tval) val(`tv')
+        zq_n, sec(fitci_std_rebuild) key(`key') fld(rmse) val(e(rmse))
+        zq_s, sec(fitci_std_rebuild) key(`key') fld(std) val(`std')
+        zq_s, sec(fitci_std_rebuild) key(`key') fld(cmd) ///
+              val(regress `yv' `xv' -- 100-point grid x_i = min + (i-1)*(max-min)/99 -- predict xb -- predict `std' -- xb -/+ invttail(df_r, (100-95)/200)*se)
+        preserve
+        quietly keep in `=`N0'+1'/`=`N0'+100'
+        quietly keep `xv' zqxb zqlo zqhi
+        quietly rename `xv' fit_x
+        quietly rename zqxb fit
+        quietly rename zqlo lower
+        quietly rename zqhi upper
+        zq_curve fit_x fit lower upper, sec(fitci_std_rebuild) key(`key') maxn(41)
+        restore
+    }
+    display as text "fitci std probed: `ds'"
+}
+
+* ===========================================================================
+* LAYER 12 -- lowess at full resolution, and logit / adjust
+*
+* lowess.ado: the smooth is computed by the builtin _LOWESS at every
+* observation (lines 90-93), then ADJ_LOGIT (lines 192-222) applies
+*   adjust : ys := ys * mean(y) / mean(ys)          (lines 203-209; NOTE
+*            `summ y, mean' there is NOT restricted to the estimation sample)
+*   logit  : with adj = 1/N and small = .0001,
+*            ys := adj if ys < small ; ys := 1-adj if ys > 1-small ;
+*            ys := ln(ys/(1-ys))                    (lines 213-221)
+* and adjust runs BEFORE logit when both are given.  twoway lowess calls
+* exactly this program (twoway_lowess_parse.class lines 77-82).
+*
+* Every curve here is recorded at FULL resolution -- all N points, with the
+* 1-based obs_index of each point in the loaded dataset -- because the smooth
+* at tied x depends on the tie order (see the WP-18 header note).
+* ===========================================================================
+capture program drop zq_lowess_full
+program define zq_lowess_full
+    syntax , Sec(string) Key(string) Y(string) X(string) [ OPTs(string) RAWy ]
+    capture drop zqlo
+    capture lowess `y' `x', nograph generate(zqlo) `opts'
+    local rc = _rc
+    zq_s, sec(`sec') key(`key') fld(cmd) val(lowess `y' `x', nograph generate(s) `opts')
+    zq_s, sec(`sec') key(`key') fld(options) val(`opts')
+    zq_n, sec(`sec') key(`key') fld(rc) val(`rc')
+    if `rc' != 0 exit
+    quietly summarize `y', meanonly
+    zq_n, sec(`sec') key(`key') fld(mean_y_all_obs) val(r(mean))
+    quietly summarize `y' if !missing(zqlo), meanonly
+    zq_n, sec(`sec') key(`key') fld(mean_y_smoothed_obs) val(r(mean))
+    quietly count if !missing(zqlo)
+    zq_n, sec(`sec') key(`key') fld(N_smoothed) val(r(N))
+    preserve
+    quietly generate long obs_index = _n
+    quietly keep `x' `y' zqlo obs_index
+    quietly drop if missing(zqlo)
+    sort `x' obs_index, stable
+    quietly rename `x' lowess_x
+    quietly rename zqlo lowess_y
+    if "`rawy'" != "" {
+        quietly rename `y' raw_y
+        zq_curve lowess_x lowess_y raw_y obs_index, sec(`sec') key(`key') maxn(3000)
+    }
+    else {
+        quietly drop `y'
+        zq_curve lowess_x lowess_y obs_index, sec(`sec') key(`key') maxn(3000)
+    }
+    restore
+end
+
+forvalues d = 1/`NDS' {
+    local ds "${ZQ_DSN_`d'}"
+    local ld `"${ZQ_DSL_`d'}"'
+    local yv "${ZQ_DSY_`d'}"
+    local xv "${ZQ_DSX_`d'}"
+    foreach vspec in none mean noweight {
+        local vname default
+        if "`vspec'" == "mean"     local vname mean
+        if "`vspec'" == "noweight" local vname noweight
+        local opt "`vspec'"
+        if "`vspec'" == "none" local opt ""
+        `ld'
+        zq_lowess_full, sec(lowess_more) key(`ds':`vname'_full) y(`yv') x(`xv') opts(`opt')
+    }
+    display as text "lowess full-resolution probed: `ds'"
+}
+
+* ---- logit / adjust need a 0/1 y ---------------------------------------------
+foreach spec in "auto foreign weight" "nlsw88 union wage" {
+    tokenize `spec'
+    local ds `1'
+    local yv `2'
+    local xv `3'
+    foreach vspec in none logit adjust "logit adjust" {
+        local vname default
+        if "`vspec'" == "logit"        local vname logit
+        if "`vspec'" == "adjust"       local vname adjust
+        if "`vspec'" == "logit adjust" local vname logit_adjust
+        local opt "`vspec'"
+        if "`vspec'" == "none" local opt ""
+        local key "`ds':`yv'_on_`xv':`vname'"
+        sysuse `ds', clear
+        zq_s, sec(lowess_more) key(`key') fld(load_cmd) val(sysuse `ds', clear)
+        zq_lowess_full, sec(lowess_more) key(`key') y(`yv') x(`xv') opts(`opt') rawy
+        quietly count if !missing(`yv') & !missing(`xv')
+        zq_n, sec(lowess_more) key(`key') fld(logit_adj_1_over_N) val(1/r(N))
+        zq_n, sec(lowess_more) key(`key') fld(logit_small) val(.0001)
+    }
+    display as text "lowess logit/adjust probed: `spec'"
+}
+
+* ===========================================================================
+* LAYER 13 -- histogram, discrete
+*
+* twoway__histogram_gen.ado lines 144-164: with `discrete', width = the
+* smallest positive spacing of the sorted distinct values (1 if there is
+* none, or width() if given), min := min - width/2, bin = int((max-min)/width
+* + .5); start stays at min(x).  discrete and bin() may not be combined
+* (line 27, _rc=198).  Recorded from the generator's r() and generate() and
+* from the serset of the drawn `twoway histogram v, discrete'.
+* ===========================================================================
+foreach spec in "auto rep78" "auto mpg" "census region" {
+    tokenize `spec'
+    local ds `1'
+    local hv `2'
+    foreach vspec in discrete "discrete frequency" "discrete width(2)" {
+        local vname discrete
+        if "`vspec'" == "discrete frequency" local vname discrete_frequency
+        if "`vspec'" == "discrete width(2)"  local vname discrete_width2
+        local key "`ds':`hv':`vname'"
+        sysuse `ds', clear
+        zq_s, sec(histogram_discrete) key(`key') fld(equivalent_user_cmd) val(histogram `hv', `vspec')
+        zq_s, sec(histogram_discrete) key(`key') fld(cmd) ///
+              val(twoway__histogram_gen `hv', generate(h x) return `vspec')
+        * the rule, by hand
+        preserve
+        quietly keep if !missing(`hv')
+        sort `hv'
+        quietly generate double zqd = `hv' - `hv'[_n-1]
+        quietly summarize zqd if zqd > 0, meanonly
+        local msp = cond(missing(r(min)), 1, r(min))
+        restore
+        zq_n, sec(histogram_discrete) key(`key') fld(rule_min_positive_spacing) val(`msp')
+        capture drop zqh zqx
+        capture twoway__histogram_gen `hv', generate(zqh zqx) return `vspec'
+        local rc = _rc
+        zq_n, sec(histogram_discrete) key(`key') fld(rc) val(`rc')
+        if `rc' != 0 continue
+        zq_n, sec(histogram_discrete) key(`key') fld(bin)   val(r(bin))
+        zq_n, sec(histogram_discrete) key(`key') fld(start) val(r(start))
+        zq_n, sec(histogram_discrete) key(`key') fld(width) val(r(width))
+        zq_n, sec(histogram_discrete) key(`key') fld(xmin)  val(r(min))
+        zq_n, sec(histogram_discrete) key(`key') fld(xmax)  val(r(max))
+        zq_n, sec(histogram_discrete) key(`key') fld(area)  val(r(area))
+        zq_n, sec(histogram_discrete) key(`key') fld(N)     val(r(N))
+        zq_n, sec(histogram_discrete) key(`key') fld(n_x)   val(r(n_x))
+        zq_s, sec(histogram_discrete) key(`key') fld(type)  val(`r(type)')
+        preserve
+        quietly keep zqh zqx
+        quietly drop if missing(zqx)
+        quietly rename zqh bar_height
+        quietly rename zqx bin_midpoint
+        zq_curve bin_midpoint bar_height, sec(histogram_discrete) key(`key') maxn(64)
+        restore
+
+        * ---- what twoway histogram draws (serset: height zero x) -----------
+        sysuse `ds', clear
+        local p "${ZQ_WORK}/hd_`ds'_`hv'_`vname'.gph"
+        capture twoway histogram `hv', `vspec' || , nodraw saving("`p'", replace)
+        local rc = _rc
+        zq_s, sec(histogram_discrete_twoway) key(`key') fld(cmd) val(twoway histogram `hv', `vspec')
+        zq_n, sec(histogram_discrete_twoway) key(`key') fld(rc)  val(`rc')
+        if `rc' != 0 continue
+        preserve
+        zq_serset bar_height zero bin_midpoint, path("`p'") set(0)
+        zq_curve bin_midpoint bar_height, sec(histogram_discrete_twoway) key(`key') maxn(64)
+        restore
+    }
+    * discrete with bin() is refused
+    sysuse `ds', clear
+    capture twoway__histogram_gen `hv', generate(zqh zqx) return discrete bin(3)
+    local rc = _rc
+    zq_n, sec(histogram_discrete) key(`ds':`hv':discrete_bin3) fld(rc) val(`rc')
+    zq_s, sec(histogram_discrete) key(`ds':`hv':discrete_bin3) fld(cmd) ///
+          val(twoway__histogram_gen `hv', generate(h x) return discrete bin(3))
+    zq_s, sec(histogram_discrete) key(`ds':`hv':discrete_bin3) fld(error) ///
+          val(options discrete and bins() may not be combined  [twoway__histogram_gen.ado line 27-30])
+    display as text "histogram discrete probed: `spec'"
+}
+
+* ===========================================================================
+* LAYER 14 -- weights
+*
+* What each command's own `syntax' line admits (all in ado/base):
+*   lowess.ado:9          no weights at all      -> _rc=101 for every type
+*   twoway_lowess_parse:35  "weights are not allowed"
+*   twoway__histogram_gen:6 [fw]                 -> aw/pw/iw _rc=101
+*   histogram.ado:5       [fw]
+*   twoway__kdensity_gen:7  [fw aw] ; kdensity.ado:11 [fw aw iw]
+*   lpoly.ado:5           [fw aw]
+*   fracpoly_10.ado:24    [aw fw pw iw]
+*   twoway_lfitci_parse:31  [aw fw pw] ; lfit/qfit/fpfit hand `.wtype' to
+*                           regress / fracpoly via weight()
+* The acceptance table is measured (weight_acceptance), then every accepted
+* estimator is recorded with a weight on every dataset (weighted).
+* ===========================================================================
+sysuse auto, clear
+quietly generate fw = int(price/1000)
+foreach wt in aw fw pw iw {
+    local wx "`wt'=price"
+    if "`wt'" == "fw" local wx "fw=fw"
+    foreach c in ///
+        "lowess mpg weight [W], nograph generate(zq1)" ///
+        "twoway lowess mpg weight [W], nodraw" ///
+        "histogram mpg [W], nodraw" ///
+        "twoway histogram mpg [W], nodraw" ///
+        "twoway__histogram_gen mpg [W], return" ///
+        "kdensity mpg [W], nograph generate(zq2 zq3)" ///
+        "twoway kdensity mpg [W], nodraw" ///
+        "lpoly mpg weight [W], nograph generate(zq4 zq5)" ///
+        "twoway lpoly mpg weight [W], nodraw" ///
+        "fracpoly regress mpg weight [W]" ///
+        "twoway fpfit mpg weight [W], nodraw" ///
+        "twoway fpfitci mpg weight [W], nodraw" ///
+        "twoway lfit mpg weight [W], nodraw" ///
+        "twoway qfit mpg weight [W], nodraw" ///
+        "twoway lfitci mpg weight [W], nodraw" ///
+        "twoway qfitci mpg weight [W], nodraw" ///
+        "twoway mspline mpg weight [W], nodraw" ///
+        "twoway mband mpg weight [W], nodraw" {
+        local cmd : subinstr local c "[W]" "[`wx']"
+        local nm : word 1 of `c'
+        if "`nm'" == "twoway" local nm : word 2 of `c'
+        if "`nm'" == "fracpoly" local nm fracpoly
+        local c1 : word 1 of `c'
+        if "`c1'" == "twoway" local nm "twoway_`nm'"
+        foreach v in zq1 zq2 zq3 zq4 zq5 {
+            capture drop `v'
+        }
+        capture `cmd'
+        local rc = _rc
+        zq_s, sec(weight_acceptance) key(`nm':`wt') fld(cmd) val(`cmd')
+        zq_n, sec(weight_acceptance) key(`nm':`wt') fld(rc)  val(`rc')
+        zq_s, sec(weight_acceptance) key(`nm':`wt') fld(weight_type) val(`wt')
+        zq_n, sec(weight_acceptance) key(`nm':`wt') fld(accepted) val(`rc' == 0)
+    }
+}
+display as text "weight acceptance probed"
+
+* ---- weighted estimates per dataset -----------------------------------------
+capture program drop zq_coef
+program define zq_coef
+    syntax , Sec(string) Key(string)
+    tempname B
+    matrix `B' = e(b)
+    local nb = colsof(`B')
+    local cn : colnames `B'
+    local cna : subinstr local cn " " ";", all
+    zq_s, sec(`sec') key(`key') fld(coef_names) val(`cna')
+    local cv ""
+    forvalues j = 1/`nb' {
+        local z = `B'[1,`j']
+        local t = trim(string(`z',"%20.17g"))
+        if "`cv'" == "" local cv "`t'"
+        else            local cv "`cv';`t'"
+    }
+    zq_a, sec(`sec') key(`key') fld(coef) val(`cv')
+    zq_n, sec(`sec') key(`key') fld(N)    val(e(N))
+    zq_n, sec(`sec') key(`key') fld(df_r) val(e(df_r))
+    zq_n, sec(`sec') key(`key') fld(rmse) val(e(rmse))
+end
+
+foreach wspec in "auto aw price" "auto fw fw" "census aw pop" "sp500 aw volume" "nlsw88 aw hours" {
+    tokenize `wspec'
+    local ds `1'
+    local wt `2'
+    local wv `3'
+    local w  "`wt'=`wv'"
+    local yv ""
+    local xv ""
+    forvalues d = 1/`NDS' {
+        if "${ZQ_DSN_`d'}" == "`ds'" {
+            local yv "${ZQ_DSY_`d'}"
+            local xv "${ZQ_DSX_`d'}"
+        }
+    }
+    local kb "`ds':`wt'_`wv'"
+    local wload "sysuse `ds', clear"
+    if "`wv'" == "fw" local wload "sysuse `ds', clear; gen fw = int(price/1000)"
+
+    * the weight variable itself, in dataset order
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    zq_s, sec(weighted_data) key(`kb') fld(load_cmd) val(`wload')
+    zq_s, sec(weighted_data) key(`kb') fld(weight_type) val(`wt')
+    zq_s, sec(weighted_data) key(`kb') fld(weight_var)  val(`wv')
+    zq_n, sec(weighted_data) key(`kb') fld(N_dataset) val(_N)
+    quietly count if !missing(`yv') & !missing(`xv') & !missing(`wv')
+    zq_n, sec(weighted_data) key(`kb') fld(N_xyw_nonmissing) val(r(N))
+    preserve
+    quietly generate long obs_index = _n
+    quietly keep obs_index `wv'
+    quietly rename `wv' weight
+    zq_curve obs_index weight, sec(weighted_data) key(`kb') maxn(3000)
+    restore
+
+    * ---- lfit / qfit / lfitci: serset + the regression behind it ---------
+    foreach pt in lfit qfit lfitci {
+        local key "`kb':`pt'"
+        sysuse `ds', clear
+        if "`wv'" == "fw" quietly generate fw = int(price/1000)
+        local p "${ZQ_WORK}/w_`ds'_`wt'_`pt'.gph"
+        capture twoway `pt' `yv' `xv' [`w'] || , nodraw saving("`p'", replace)
+        local rc = _rc
+        zq_s, sec(weighted) key(`key') fld(cmd) val(twoway `pt' `yv' `xv' [`w'])
+        zq_s, sec(weighted) key(`key') fld(load_cmd) val(`wload')
+        zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+        if `rc' == 0 {
+            preserve
+            if "`pt'" == "lfitci" {
+                zq_serset fit lower upper fit_x, path("`p'") set(0)
+                zq_curve fit_x fit lower upper, sec(weighted) key(`key') maxn(200)
+            }
+            else {
+                zq_serset fit fit_x, path("`p'") set(0)
+                zq_curve fit_x fit, sec(weighted) key(`key') maxn(200)
+            }
+            restore
+        }
+        if "`pt'" == "qfit" {
+            quietly generate double zqx2 = `xv'^2
+            capture quietly regress `yv' `xv' zqx2 [`w']
+            zq_s, sec(weighted) key(`key') fld(estimation_cmd) val(regress `yv' `xv' x2 [`w'] with x2 = `xv'^2)
+        }
+        else {
+            capture quietly regress `yv' `xv' [`w']
+            zq_s, sec(weighted) key(`key') fld(estimation_cmd) val(regress `yv' `xv' [`w'])
+        }
+        local erc = _rc
+        zq_n, sec(weighted) key(`key') fld(estimation_rc) val(`erc')
+        if `erc' == 0 zq_coef, sec(weighted) key(`key')
+        if "`pt'" == "lfitci" {
+            zq_s, sec(weighted) key(`key') fld(std) val(stdp)
+            zq_n, sec(weighted) key(`key') fld(level) val(c(level))
+        }
+    }
+
+    * ---- lowess: refused ----------------------------------------------------
+    local key "`kb':lowess"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    capture drop zqlo
+    capture lowess `yv' `xv' [`w'], nograph generate(zqlo)
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(lowess `yv' `xv' [`w'], nograph generate(s))
+    zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+    if `rc' != 0 {
+        zq_s, sec(weighted) key(`key') fld(error) ///
+              val(weights not allowed: lowess.ado line 9 declares no weight class, and twoway_lowess_parse.class line 35 says weights are not allowed)
+    }
+    else {
+        preserve
+        quietly generate long obs_index = _n
+        quietly keep `xv' zqlo obs_index
+        quietly drop if missing(zqlo)
+        sort `xv' obs_index, stable
+        quietly rename `xv' lowess_x
+        quietly rename zqlo lowess_y
+        zq_curve lowess_x lowess_y obs_index, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+    capture twoway lowess `yv' `xv' [`w'], nodraw
+    local trc = _rc
+    zq_n, sec(weighted) key(`key') fld(twoway_rc) val(`trc')
+    zq_s, sec(weighted) key(`key') fld(twoway_cmd) val(twoway lowess `yv' `xv' [`w'])
+
+    * ---- lpoly: estimation command and the plotted serset -----------------
+    local key "`kb':lpoly"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    capture drop zqlx zqly
+    capture lpoly `yv' `xv' [`w'], nograph generate(zqlx zqly)
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(lpoly `yv' `xv' [`w'], nograph generate(lx ly))
+    zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+    if `rc' == 0 {
+        zq_s, sec(weighted) key(`key') fld(kernel) val(`r(kernel)')
+        zq_n, sec(weighted) key(`key') fld(bwidth) val(r(bwidth))
+        zq_n, sec(weighted) key(`key') fld(degree) val(r(degree))
+        zq_n, sec(weighted) key(`key') fld(ngrid)  val(r(ngrid))
+        zq_n, sec(weighted) key(`key') fld(N)      val(r(N))
+        preserve
+        quietly keep zqlx zqly
+        quietly drop if missing(zqlx)
+        quietly rename zqlx lpoly_x
+        quietly rename zqly lpoly_y
+        zq_curve lpoly_x lpoly_y, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+    local key "`kb':lpoly_twoway"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    local p "${ZQ_WORK}/w_`ds'_`wt'_lpoly.gph"
+    capture twoway lpoly `yv' `xv' [`w'] || , nodraw saving("`p'", replace)
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(twoway lpoly `yv' `xv' [`w'])
+    zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+    if `rc' == 0 {
+        preserve
+        zq_serset lpoly_y lpoly_x, path("`p'") set(0)
+        zq_curve lpoly_x lpoly_y, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+
+    * ---- fpfit: fracpoly + the plotted serset ------------------------------
+    local key "`kb':fpfit"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    zq_s, sec(weighted) key(`key') fld(load_cmd) val(`wload')
+    zq_fracpoly, sec(weighted) key(`key') y(`yv') x(`xv') wgt(`w')
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    local p "${ZQ_WORK}/w_`ds'_`wt'_fpfit.gph"
+    capture twoway fpfit `yv' `xv' [`w'] || , nodraw saving("`p'", replace)
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(twoway fpfit `yv' `xv' [`w'])
+    zq_n, sec(weighted) key(`key') fld(fpfit_rc) val(`rc')
+    if `rc' == 0 {
+        preserve
+        zq_serset fit fit_x, path("`p'") set(0)
+        zq_curve fit_x fit, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+
+    * ---- histogram: fw only ------------------------------------------------
+    local key "`kb':histogram"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    capture drop zqh zqx
+    capture twoway__histogram_gen `yv' [`w'], generate(zqh zqx) return
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(twoway__histogram_gen `yv' [`w'], generate(h x) return)
+    zq_s, sec(weighted) key(`key') fld(equivalent_user_cmd) val(histogram `yv' [`w'])
+    zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+    if `rc' != 0 {
+        zq_s, sec(weighted) key(`key') fld(error) ///
+              val(twoway__histogram_gen.ado line 6 admits [fw] only; histogram.ado line 5 likewise)
+    }
+    else {
+        zq_n, sec(weighted) key(`key') fld(bin)   val(r(bin))
+        zq_n, sec(weighted) key(`key') fld(start) val(r(start))
+        zq_n, sec(weighted) key(`key') fld(width) val(r(width))
+        zq_n, sec(weighted) key(`key') fld(N)     val(r(N))
+        zq_n, sec(weighted) key(`key') fld(n_x)   val(r(n_x))
+        zq_n, sec(weighted) key(`key') fld(area)  val(r(area))
+        zq_s, sec(weighted) key(`key') fld(type)  val(`r(type)')
+        preserve
+        quietly keep zqh zqx
+        quietly drop if missing(zqx)
+        quietly rename zqh bar_height
+        quietly rename zqx bin_midpoint
+        zq_curve bin_midpoint bar_height, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+    local key "`kb':histogram_twoway"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    local p "${ZQ_WORK}/w_`ds'_`wt'_hist.gph"
+    capture twoway histogram `yv' [`w'] || , nodraw saving("`p'", replace)
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(twoway histogram `yv' [`w'])
+    zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+    if `rc' == 0 {
+        preserve
+        zq_serset bar_height zero bin_midpoint, path("`p'") set(0)
+        zq_curve bin_midpoint bar_height, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+
+    * ---- kdensity: estimation command and the plotted serset --------------
+    local key "`kb':kdensity"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    capture drop zqgx zqgy
+    capture kdensity `yv' [`w'], nograph generate(zqgx zqgy)
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(kdensity `yv' [`w'], nograph generate(gx gy))
+    zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+    if `rc' == 0 {
+        zq_s, sec(weighted) key(`key') fld(kernel) val(`r(kernel)')
+        zq_n, sec(weighted) key(`key') fld(bwidth) val(r(bwidth))
+        zq_n, sec(weighted) key(`key') fld(n)      val(r(n))
+        zq_n, sec(weighted) key(`key') fld(scale)  val(r(scale))
+        preserve
+        quietly keep zqgx zqgy
+        quietly drop if missing(zqgx)
+        quietly rename zqgx kde_x
+        quietly rename zqgy kde_y
+        zq_curve kde_x kde_y, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+    local key "`kb':kdensity_twoway"
+    sysuse `ds', clear
+    if "`wv'" == "fw" quietly generate fw = int(price/1000)
+    local p "${ZQ_WORK}/w_`ds'_`wt'_kd.gph"
+    capture twoway kdensity `yv' [`w'] || , nodraw saving("`p'", replace)
+    local rc = _rc
+    zq_s, sec(weighted) key(`key') fld(cmd) val(twoway kdensity `yv' [`w'])
+    zq_n, sec(weighted) key(`key') fld(rc)  val(`rc')
+    if `rc' == 0 {
+        preserve
+        zq_serset kde_y kde_x, path("`p'") set(0)
+        zq_curve kde_x kde_y, sec(weighted) key(`key') maxn(200)
+        restore
+    }
+    display as text "weighted probed: `wspec'"
+}
+
+* ===========================================================================
 file close zqrec
 display as text "records written to ${ZQ_REC}"
 
@@ -951,10 +1889,20 @@ with open(REC, "r", errors="replace") as fh:
         elif f[0] == "A" and len(f) >= 5:
             raw = "@@@".join(f[4:])
             sections[f[1]][f[2]][f[3]] = [num(t) for t in raw.split(";")] if raw else []
+        # continuation chunks of a long array / index list (see zq_chunk)
+        elif f[0] == "A+" and len(f) >= 5:
+            raw = "@@@".join(f[4:])
+            sections[f[1]][f[2]][f[3]].extend([num(t) for t in raw.split(";")] if raw else [])
+        elif f[0] == "S+" and len(f) >= 5:
+            sections[f[1]][f[2]][f[3]] += ";" + "@@@".join(f[4:])
 
 # Fields written by zq_n are numeric; everything else stays a string.
 NEVER_NUM = {"cmd", "equivalent_user_cmd", "formula", "kernel", "type", "error",
-             "load_cmd", "gph", "gen_cmdline", "terms", "y", "x", "sample_index"}
+             "load_cmd", "gph", "gen_cmdline", "terms", "y", "x", "sample_index",
+             # WP-18 sections
+             "serset_dir", "bands_option", "options", "std", "weight_type",
+             "weight_var", "coef_names", "powers_cmd", "estimation_cmd",
+             "twoway_cmd", "rule", "true_model", "gen_cmd"}
 for sec in sections:
     for key in sections[sec]:
         ent = sections[sec][key]
@@ -1383,6 +2331,332 @@ CONTRADICTIONS = {
         "implementation cannot be right for both."),
 }
 
+# =========================================================== WP-18 analysis
+# Every check below is a comparison between two things Stata itself produced,
+# or between a rule read out of Stata's .ado source and a measurement.  None of
+# the pre-existing RULES / UNVERIFIED / CONTRADICTIONS dicts is touched: the
+# WP-18 rules live in RULES_WP18 so the old JSON sections stay byte-identical.
+
+def arrays_close(a, b, tol=1e-6):
+    if not a or not b or len(a) != len(b):
+        return False
+    return all(close(p, q, tol) for p, q in zip(a, b))
+
+
+# --- mspline: points = (K-1)*n + K, and the default knots are mband's
+mspline_checks = {}
+for key, ent in sections.get("mspline", {}).items():
+    if ent.get("rc") != 0 or ent.get("derived_serset_rc") != 0:
+        continue
+    knots = sections.get("mspline_knots", {}).get(key, {})
+    K = knots.get("n_points")
+    n = ent.get("n_option")
+    ent["n_knots"] = K
+    ent["point_count_rule"] = "(n_knots-1)*n + n_knots"
+    ent["point_count_rule_gives"] = ((K - 1) * n + K) if K else None
+    ent["point_count_rule_agrees"] = (ent.get("n_points") == ent["point_count_rule_gives"]) if K else None
+    # the spline passes through the knots: every knot x must be a spline x and
+    # the spline y there must equal the knot y
+    sx, sy = ent.get("spline_x") or [], ent.get("spline_y") or []
+    kx, ky = knots.get("knot_x") or [], knots.get("knot_y") or []
+    through = None
+    if sx and kx and len(sx) == ent.get("n_points"):
+        through = True
+        for xk, yk in zip(kx, ky):
+            hit = [j for j, xs in enumerate(sx) if close(xs, xk, 1e-6)]
+            if not hit or not any(close(sy[j], yk, 1e-6) for j in hit):
+                through = False
+                break
+    ent["spline_passes_through_knots"] = through
+    ds, variant = key.split(":")
+    mb = None
+    if variant in ("default", "n20"):
+        mb = sections.get("mband", {}).get(ds + ":default")
+    elif variant in ("bands5", "bands5_n4"):
+        mb = sections.get("mband", {}).get(ds + ":bands5")
+    elif variant == "bands20":
+        mb = sections.get("mband", {}).get(ds + ":bands20")
+    ent["knots_equal_mband_section"] = (
+        arrays_close(kx, mb.get("band_x"), 1e-6) and arrays_close(ky, mb.get("band_y"), 1e-6)
+    ) if mb else None
+    mspline_checks[key] = {
+        "n_points": ent.get("n_points"), "n_knots": K, "n": n,
+        "point_count_rule_agrees": ent["point_count_rule_agrees"],
+        "spline_passes_through_knots": through,
+        "knots_equal_mband_section": ent["knots_equal_mband_section"],
+        "serset_dir": ent.get("serset_dir"),
+    }
+mspline_all_agree = (all(v["point_count_rule_agrees"] and v["spline_passes_through_knots"]
+                         and v["knots_equal_mband_section"] is not False
+                         for v in mspline_checks.values())
+                     if mspline_checks else None)
+
+# --- fpfit: the frac_xo shift/scale rule vs e(fp_shft)/e(fp_sfac)
+shift_checks = {}
+for key, ent in sections.get("fpfit_shift", {}).items():
+    if ent.get("rc") != 0:
+        continue
+    ok = (close(ent.get("rule_shift"), ent.get("fp_shft"), 1e-9)
+          and close(ent.get("rule_scale"), ent.get("fp_sfac"), 1e-9))
+    ent["rule_reproduces_fracpoly"] = ok
+    shift_checks[key] = {"rule_shift": ent.get("rule_shift"), "fp_shft": ent.get("fp_shft"),
+                         "rule_scale": ent.get("rule_scale"), "fp_sfac": ent.get("fp_sfac"),
+                         "agree": ok, "powers": ent.get("powers")}
+shift_all_agree = all(v["agree"] for v in shift_checks.values()) if shift_checks else None
+
+repeated_pairs = {k: v.get("powers") for k, v in sections.get("fpfit_repeated", {}).items()
+                  if v.get("rc") == 0 and v.get("powers_repeated") == 1}
+
+# --- fitci std: rebuild vs serset, and stdp == the level95 ci_bands probe
+fitci_agreement = {}
+for key, ent in sections.get("fitci_std_rebuild", {}).items():
+    obs = sections.get("fitci_std", {}).get(key)
+    if not obs:
+        continue
+    fitci_agreement[key] = all(arrays_close(obs.get(f), ent.get(f), 1e-5)
+                               for f in ("fit_x", "fit", "lower", "upper"))
+fitci_all_agree = all(fitci_agreement.values()) if fitci_agreement else None
+stdp_default_check = {}
+for key, ent in sections.get("fitci_std", {}).items():
+    if not key.endswith(":stdp") or ent.get("rc") != 0:
+        continue
+    ds, pt, _ = key.split(":")
+    ref = sections.get("ci_bands", {}).get("%s:%s:level95" % (ds, pt))
+    if ref:
+        stdp_default_check[key] = all(arrays_close(ent.get(f), ref.get(f), 1e-9)
+                                      for f in ("fit_x", "fit", "lower", "upper"))
+stdp_all_agree = all(stdp_default_check.values()) if stdp_default_check else None
+
+# --- lowess: the full-resolution curve must contain the sampled section
+lowess_full_check = {}
+for key, ent in sections.get("lowess_more", {}).items():
+    if not key.endswith("_full") or ent.get("rc") != 0:
+        continue
+    ds, variant = key.split(":")
+    ref = sections.get("lowess", {}).get(ds + ":" + variant.replace("_full", ""))
+    if not ref or not ref.get("sample_index"):
+        continue
+    fx, fy = ent.get("lowess_x") or [], ent.get("lowess_y") or []
+    idx = ref["sample_index"]
+    ok = (ent.get("n_points") == ref.get("n_points") and len(fx) == ent.get("n_points")
+          and all(close(fx[i - 1], rx, 1e-9) for i, rx in zip(idx, ref["lowess_x"]))
+          and all(close(fy[i - 1], ry, 1e-9) for i, ry in zip(idx, ref["lowess_y"])))
+    lowess_full_check[key] = ok
+lowess_full_all_agree = all(lowess_full_check.values()) if lowess_full_check else None
+lowess_adjust_check = {}
+for key, ent in sections.get("lowess_more", {}).items():
+    if not key.endswith(":adjust") or ent.get("rc") != 0:
+        continue
+    base = sections.get("lowess_more", {}).get(key[:-len("adjust")] + "default")
+    if not base or not base.get("lowess_y"):
+        continue
+    by = base["lowess_y"]
+    factor = ent.get("mean_y_all_obs") / (sum(by) / len(by))
+    ent["adjust_factor_mean_y_over_mean_smooth"] = factor
+    lowess_adjust_check[key] = arrays_close([v * factor for v in by], ent.get("lowess_y"), 1e-9)
+lowess_adjust_all_agree = all(lowess_adjust_check.values()) if lowess_adjust_check else None
+lowess_logit_check = {}
+for key, ent in sections.get("lowess_more", {}).items():
+    if not (key.endswith(":logit") or key.endswith(":logit_adjust")) or ent.get("rc") != 0:
+        continue
+    pre_key = key[:-len("logit")] + "default" if key.endswith(":logit") else key[:-len("logit_adjust")] + "adjust"
+    pre = sections.get("lowess_more", {}).get(pre_key)
+    if not pre or not pre.get("lowess_y"):
+        continue
+    adj, small = ent.get("logit_adj_1_over_N"), ent.get("logit_small")
+    want = []
+    for v in pre["lowess_y"]:
+        if v < small:
+            v = adj
+        elif v > 1 - small:
+            v = 1 - adj
+        want.append(math.log(v / (1 - v)))
+    lowess_logit_check[key] = arrays_close(want, ent.get("lowess_y"), 1e-9)
+lowess_logit_all_agree = all(lowess_logit_check.values()) if lowess_logit_check else None
+
+# --- histogram discrete: width rule and generator == drawn serset
+hist_discrete_check = {}
+for key, ent in sections.get("histogram_discrete", {}).items():
+    if ent.get("rc") != 0 or "width" not in ent:
+        continue
+    variant = key.split(":")[2]
+    tw = sections.get("histogram_discrete_twoway", {}).get(key, {})
+    width_ok = (close(ent.get("width"), ent.get("rule_min_positive_spacing"), 1e-9)
+                if variant in ("discrete", "discrete_frequency") else None)
+    ent["width_rule_agrees"] = width_ok
+    drawn_ok = ((arrays_close(ent.get("bar_height"), tw.get("bar_height"), 1e-6)
+                 and arrays_close(ent.get("bin_midpoint"), tw.get("bin_midpoint"), 1e-6))
+                if tw.get("rc") == 0 else None)
+    ent["drawn_serset_equals_generator"] = drawn_ok
+    hist_discrete_check[key] = {"width_rule_agrees": width_ok,
+                                "drawn_serset_equals_generator": drawn_ok,
+                                "bin": ent.get("bin"), "width": ent.get("width"),
+                                "start": ent.get("start")}
+hist_discrete_all_agree = (all(v["width_rule_agrees"] is not False and v["drawn_serset_equals_generator"] is not False
+                               for v in hist_discrete_check.values())
+                           if hist_discrete_check else None)
+
+# --- weights: acceptance table and serset-vs-regress checks
+weight_table = collections.defaultdict(dict)
+for key, ent in sections.get("weight_acceptance", {}).items():
+    cmd, wt = key.split(":")
+    weight_table[cmd][wt] = {"accepted": ent.get("rc") == 0, "rc": ent.get("rc")}
+weight_table = {k: dict(v) for k, v in sorted(weight_table.items())}
+weighted_fit_check = {}
+for key, ent in sections.get("weighted", {}).items():
+    parts = key.split(":")
+    if len(parts) != 3 or parts[2] not in ("lfit", "qfit", "lfitci"):
+        continue
+    if ent.get("rc") != 0 or ent.get("estimation_rc") != 0 or not ent.get("coef"):
+        continue
+    b = ent["coef"]
+    xs, fit = ent.get("fit_x") or [], ent.get("fit") or []
+    if parts[2] == "qfit":
+        want = [b[0] * x + b[1] * x * x + b[2] for x in xs]
+    else:
+        want = [b[0] * x + b[1] for x in xs]
+    ok = arrays_close(want, fit, 5e-6)
+    ent["serset_equals_weighted_regression"] = ok
+    weighted_fit_check[key] = ok
+weighted_fit_all_agree = all(weighted_fit_check.values()) if weighted_fit_check else None
+
+RULES_WP18 = {
+    "mspline.estimator": {
+        "formula": "cross medians of bands() equal-width x intervals (serset "
+                   "create_xmedians), then a cubic spline through those knots "
+                   "(serset create_cspline) evaluated at n() points between "
+                   "each pair of adjacent knots",
+        "source": "ado/base/t/twoway_mspline_parse.class lines 34-37 (bands "
+                  "default -1, n default 10) and ado/base/d/derived_serset.class "
+                  "reset, lines 51-63",
+        "points": "(K-1)*n + K where K is the number of NON-EMPTY bands (an "
+                  "empty band yields no knot: census bands(20) has 12 knots and "
+                  "122 points)",
+        "confirmed_by": "mspline_checks: point_count_rule_agrees and "
+                        "spline_passes_through_knots on every probe",
+        "serset_index": "the spline is serset 2 of the saved .gph; index 1 is "
+                        "the cross-median serset, created and then dropped by "
+                        "derived_serset.reset, so `serset set 1' fails with "
+                        "_rc=111.  Recorded per probe under serset_dir.",
+        "unverified": "the cubic spline's boundary condition is inside the "
+                      "builtin `serset create_cspline' and is not readable from "
+                      "any .ado; an implementation must be checked against the "
+                      "recorded spline_x/spline_y (natural or not-a-knot are the "
+                      "candidates).",
+    },
+    "mspline.bands_default": {
+        "formula": "bands = round(min(10*log10(N), sqrt(N)), 1); "
+                   "bands = max(bands, min(N, 2)); 10 if missing",
+        "source": "verbatim from ado/base/_/_gs_default_bands.ado lines 5-17, "
+                  "which BOTH mband and mspline call (serset.class as_median_bands "
+                  "line 462, derived_serset.class line 28)",
+        "note": "this is the rule the pre-existing section "
+                "mband_default_band_count_rule_search found by measurement and "
+                "unverified.mband.default_band_count_formula said was not "
+                "readable from any .ado.  It is: the file is _gs_default_bands.ado.  "
+                "help twoway_mspline line 87 documents it correctly; help "
+                "twoway_mband does not.",
+    },
+    "fpfit.repeated_powers": {
+        "formula": "for a repeated power p (p1 == p2) the second term is "
+                   "x^p * ln(x) (ln(x)^2 when p == 0); Stata's deviance search "
+                   "over degree-2 models includes every repeated pair",
+        "source": "ado/base/f/fracgen.ado lines 161-212 (the `not a repeated "
+                  "power' / `k = k+1 ; h_j = lnx * h_last' branches)",
+        "measured": "fracpoly regress picks a repeated pair on auto price~mpg "
+                    "(-2,-2), auto mpg~weight (-2,-2) and nlsw88 wage~ttl_exp "
+                    "(2,2); see fpfit_repeated_pairs_found",
+    },
+    "fpfit.origin_shift_and_scale": {
+        "formula": "if min(x) <= 0: shift = (smallest positive spacing of "
+                   "sorted x) - min(x), x := x + shift.  Then s = max(x)-min(x), "
+                   "scale = 10^(sign(log10(s))*int(abs(log10(s)))), x := x/scale.  "
+                   "The scaling happens on EVERY fit, shifted or not.",
+        "source": "verbatim from ado/base/f/frac_xo.ado lines 81-106; reported "
+                  "by fracpoly as e(fp_shft) and e(fp_sfac) (frac_154.ado lines "
+                  "520-521)",
+        "confirmed_by": "fpfit_shift_rule_check: the rule recomputed from the "
+                        "data equals e(fp_shft)/e(fp_sfac) on every probe",
+    },
+    "fitci.std": {
+        "default": "stdp",
+        "alternatives": "stdf stdr, mutually exclusive",
+        "band": "xb -/+ invttail(df_r, (100-level)/200) * se for all three; only "
+                "the `predict, <std>' word changes",
+        "source": "ado/base/t/twoway_lfitci_parse.class lines 13 and 31-49; "
+                  "ado/base/t/twoway__lfit_serset.ado lines 85-96 and "
+                  "twoway__qfit_serset.ado lines 76-87",
+        "points": "lfitci and qfit(ci) evaluate on 100 points "
+                  "(twoway_lfitci_parse.class line 26, twoway_qfit_parse.class "
+                  "line 26); plain lfit on 3 (twoway_lfit_parse.class line 15)",
+        "confirmed_by": "fitci_std_rebuild_agreement_by_probe (regress + predict "
+                        "rebuild) and fitci_stdp_equals_ci_bands_level95",
+    },
+    "lowess.adjust": {
+        "formula": "smooth := smooth * mean(y) / mean(smooth)",
+        "source": "ado/base/l/lowess.ado ADJ_LOGIT lines 203-209.  NOTE the "
+                  "`summ y, mean' there is not restricted to the estimation "
+                  "sample (both means are recorded: mean_y_all_obs and "
+                  "mean_y_smoothed_obs)",
+        "confirmed_by": "lowess_adjust_check: default curve * factor == adjust curve",
+    },
+    "lowess.logit": {
+        "formula": "adj = 1/N ; small = .0001 ; smooth := adj if smooth < small ; "
+                   "smooth := 1-adj if smooth > 1-small ; smooth := ln(smooth/(1-smooth))",
+        "order": "adjust is applied BEFORE logit when both are given",
+        "source": "ado/base/l/lowess.ado ADJ_LOGIT lines 213-221",
+        "confirmed_by": "lowess_logit_check: transforming the recorded default "
+                        "(or adjust) curve reproduces the logit (logit adjust) curve",
+    },
+    "lowess.tie_order": {
+        "rule": "the smooth is evaluated per observation with the data sorted "
+                "on x, ties kept in the CURRENT dataset order (stable); tied "
+                "observations do NOT share a value",
+        "source": "measured (pilot): a run on the freshly loaded dataset equals "
+                  "a run after `sort x obs, stable' point for point and differs "
+                  "from `gsort x -obs' on 23/74 (auto) and 1352/2246 (nlsw88) "
+                  "observations; the builtin _LOWESS is not readable",
+        "recorded_as": "obs_index (1-based row of the loaded dataset) beside "
+                       "every full-resolution point",
+    },
+    "lowess.weights": {
+        "accepted": False,
+        "source": "ado/base/l/lowess.ado line 9 (no weight class in `syntax'); "
+                  "ado/base/t/twoway_lowess_parse.class line 35 `weights are not "
+                  "allowed'",
+        "evidence": "_rc=101 for aw, fw, pw and iw on both lowess and twoway "
+                    "lowess; see weight_acceptance",
+    },
+    "histogram.discrete": {
+        "formula": "width = smallest positive spacing of the sorted distinct "
+                   "values (1 if none), or width() if given; start = min(x); "
+                   "the x axis minimum becomes min(x) - width/2 and "
+                   "bin = int((max(x) - (min(x) - width/2))/width + .5); each "
+                   "bar is centred on a distinct value",
+        "exclusive": "discrete and bin() may not be combined (_rc=198)",
+        "source": "verbatim from ado/base/t/twoway__histogram_gen.ado lines 27-30 "
+                  "and 144-164",
+        "confirmed_by": "histogram_discrete_check: width == the hand-computed "
+                        "spacing, and the drawn serset equals the generator",
+    },
+    "weights.accepted_by": {
+        "histogram": "fw only (twoway__histogram_gen.ado line 6, histogram.ado "
+                     "line 5); aw/pw/iw give _rc=101",
+        "kdensity": "fw aw iw (kdensity.ado line 11); twoway kdensity fw aw "
+                    "(twoway__kdensity_gen.ado line 7, twoway_kdensity_parse.class line 48)",
+        "lpoly": "fw aw (lpoly.ado line 5, twoway_lpoly_parse.class line 34)",
+        "fpfit": "aw fw pw iw (fracpoly_10.ado line 24; twoway__fpfit_serset.ado "
+                 "line 19 passes [weight])",
+        "lfit/qfit/lfitci/qfitci": "aw fw pw (twoway_lfitci_parse.class line 31; "
+                                   "the serset builders pass [weight] to regress, "
+                                   "twoway__lfit_serset.ado line 32)",
+        "mspline/mband": "accepted by the parser; the cross medians are "
+                         "computed by the builtin serset create_xmedians",
+        "lowess": "none",
+        "measured": "see weight_acceptance_table for the 18 x 4 measured grid",
+    },
+}
+
 doc = {
     "_meta": {
         "generated_by": "scripts/extract_stat_truth.do",
@@ -1425,7 +2699,22 @@ doc = {
                 all(v.get("bands_reproduced_by")
                     for v in sections.get("mband", {}).values()
                     if v.get("rc") == 0) if sections.get("mband") else None,
+            # WP-18
+            "mspline_point_count_and_knots_reproduced": mspline_all_agree,
+            "fpfit_shift_rule_reproduces_e_fp_shft_and_e_fp_sfac": shift_all_agree,
+            "fitci_std_rebuild_agrees_with_plotted_serset": fitci_all_agree,
+            "fitci_stdp_equals_ci_bands_level95": stdp_all_agree,
+            "lowess_full_resolution_contains_sampled_lowess_section": lowess_full_all_agree,
+            "lowess_adjust_is_mean_ratio_of_default": lowess_adjust_all_agree,
+            "lowess_logit_is_clamped_logit_of_default": lowess_logit_all_agree,
+            "histogram_discrete_width_rule_and_drawn_serset": hist_discrete_all_agree,
+            "weighted_fit_sersets_equal_weighted_regress": weighted_fit_all_agree,
         },
+        "sampling_wp18": (
+            "mspline curves are stored whole up to 800 points, lowess_more curves "
+            "up to 3000 (every dataset fits: nothing in lowess_more is sampled), "
+            "weighted and fpfit curves up to 200, fitci_std up to 41 (11 samples "
+            "of the 100-point grid, the same indices as ci_bands)."),
         "counts": {
             "datasets": len(sections.get("datasets", {})),
             "histogram_probes": len(sections.get("histogram", {})),
@@ -1446,6 +2735,22 @@ doc = {
             "rules_recorded": len(RULES),
             "unverified": len(UNVERIFIED),
             "contradictions_with_section_plan": len(CONTRADICTIONS),
+            # WP-18
+            "mspline_probes": len(sections.get("mspline", {})),
+            "mspline_knot_probes": len(sections.get("mspline_knots", {})),
+            "fpfit_repeated_probes": len(sections.get("fpfit_repeated", {})),
+            "fpfit_repeated_pairs_found": len(repeated_pairs),
+            "fpfit_shift_probes": len(sections.get("fpfit_shift", {})),
+            "fpfit_shift_curve_probes": len(sections.get("fpfit_shift_curve", {})),
+            "fitci_std_probes": len(sections.get("fitci_std", {})),
+            "fitci_std_rebuild_probes": len(sections.get("fitci_std_rebuild", {})),
+            "lowess_more_probes": len(sections.get("lowess_more", {})),
+            "histogram_discrete_probes": len(sections.get("histogram_discrete", {})),
+            "histogram_discrete_twoway_probes": len(sections.get("histogram_discrete_twoway", {})),
+            "weight_acceptance_probes": len(sections.get("weight_acceptance", {})),
+            "weighted_probes": len(sections.get("weighted", {})),
+            "weighted_data_probes": len(sections.get("weighted_data", {})),
+            "rules_wp18_recorded": len(RULES_WP18),
         },
     },
     "rules": RULES,
@@ -1457,11 +2762,29 @@ doc = {
     "mband_default_band_count": mband_resolved,
     "mband_default_band_count_rule_search": mband_rule,
     "ci_rebuild_agreement_by_probe": ci_agreement,
+    # WP-18
+    "rules_wp18": RULES_WP18,
+    "mspline_checks": mspline_checks,
+    "fpfit_shift_rule_check": shift_checks,
+    "fpfit_repeated_pairs_found": repeated_pairs,
+    "fitci_std_rebuild_agreement_by_probe": fitci_agreement,
+    "fitci_stdp_equals_ci_bands_level95_by_probe": stdp_default_check,
+    "lowess_full_resolution_check": lowess_full_check,
+    "lowess_adjust_check": lowess_adjust_check,
+    "lowess_logit_check": lowess_logit_check,
+    "histogram_discrete_check": hist_discrete_check,
+    "weight_acceptance_table": weight_table,
+    "weighted_fit_check": weighted_fit_check,
 }
 for name in ("datasets", "histogram", "histogram_resolved_cmd", "kdensity",
              "kdensity_rot_check", "kdensity_twoway", "lpoly", "lpoly_twoway",
              "lowess", "ci_bands", "ci_rebuild", "fp_powers", "fpfit",
-             "fpfit_optsupport", "mband", "function"):
+             "fpfit_optsupport", "mband", "function",
+             # WP-18
+             "mspline", "mspline_knots", "fpfit_repeated", "fpfit_repeated_data",
+             "fpfit_shift", "fpfit_shift_curve", "fitci_std", "fitci_std_rebuild",
+             "lowess_more", "histogram_discrete", "histogram_discrete_twoway",
+             "weight_acceptance", "weighted", "weighted_data"):
     doc[name] = sections.get(name, {})
 
 with open(OUT, "w") as fh:
@@ -1480,6 +2803,13 @@ for ds, v in sorted(mband_resolved.items()):
 print("  mband candidate rules over %d (N, bands) pairs:" % len(observed_pairs))
 for name, sc in rule_scores.items():
     print("    %-60s %d/%d" % (name, sc["matches"], sc["of"]))
+print("  WP-18 repeated-power pairs: %s" % repeated_pairs)
+for k, v in sorted(shift_checks.items()):
+    print("  WP-18 shift %-28s shift=%s scale=%s agree=%s" %
+          (k, v["fp_shft"], v["fp_sfac"], v["agree"]))
+for k, v in sorted(mspline_checks.items()):
+    print("  WP-18 mspline %-20s points=%-4s knots=%-3s n=%-3s serset=%s" %
+          (k, v["n_points"], v["n_knots"], v["n"], v["serset_dir"]))
 end
 
 display as text "extract_stat_truth.do: done"

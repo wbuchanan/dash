@@ -27,10 +27,12 @@
 *! One build renders the whole corpus, so the cost is one Python invocation
 *! rather than one per command.
 *!
-*! lowess is deliberately absent: it needs the OPTIONAL statsmodels package,
-*! and on a machine without it the layer is drawn empty on purpose, with a
-*! warning naming the package.  test/test_server_optional_deps.py owns that
-*! case.
+*! lowess was deliberately absent while it needed the OPTIONAL statsmodels
+*! package (a machine without it drew the layer empty, on purpose).  Since
+*! WP-18 it is Stata's own smoother in numpy, needs nothing, and is in the
+*! corpus with its sub-options; so are WP-18's other additions -- discrete,
+*! stdf/stdr, mspline's bands()/n() and two weighted layers -- so each is
+*! rendered end to end, not only registered.
 *!
 *! Fixtures:
 *!   test/fixtures/conformance_corpus.txt   the corpus C-01 registers and

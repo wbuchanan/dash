@@ -26,11 +26,19 @@ DASH_ONLY_MIN = {
     "marker": "marker", "lalpha": "lal", "falpha": "fa", "jseed": "jse",
     "colpalette": "colpal", "colornlevels": "colorn", "colormissing": "colorm",
     "bwidth": "bwidth",
+    # The seven statistical sub-options (WP-18) are not in abbrev_truth.json;
+    # these are twoway's own class-file minima (twoway_histogram_parse.class
+    # DISCrete; twoway_lfitci_parse.class STDP STDF STDR; twoway_lowess_
+    # parse.class Mean noWeight Adjust LOgit), except mean, declared `me'
+    # because Msymbol() already claims the bare `m'.
+    "discrete": "disc", "stdp": "stdp", "stdf": "stdf", "stdr": "stdr",
+    "mean": "me", "noweight": "now", "adjust": "a", "logit": "lo",
 }
 
 FLAGS = {
     "percent", "frequency", "density", "fraction", "horizontal", "vertical",
     "sort", "nodraw", "colordiscrete", "coloruseplegend",
+    "discrete", "stdp", "stdf", "stdr", "mean", "noweight", "adjust", "logit",
 }
 # `asis' means Stata hands the option's text to dash WITHOUT dequoting it.
 #
@@ -62,7 +70,7 @@ GRAPH = [
     ("legend", None), ("by", None), ("xscale", None), ("yscale", None),
     ("aspectratio", None), ("scheme", "S11"), ("plotregion", None),
     ("graphregion", None), ("bgcolor", None), ("plotbgcolor", None),
-    ("link", "IGNORE"), ("filter", "IGNORE")  # build-time; inert on a graph (WP-13),
+    ("link", "IGNORE"), ("filter", "IGNORE"),  # build-time; inert on a graph (WP-13)
     ("ytitle2", None), ("xtitle2", None), ("ylabel2", None), ("xlabel2", None),
     ("yscale2", None), ("xscale2", None),
     # --- accepted here, honoured by a later section ---
@@ -75,7 +83,8 @@ GRAPH = [
     ("r1title", "S09"), ("r2title", "S09"), ("title2", "S09"),
     ("subtitle2", "S09"),
     # --- accepted and reported as ignored, permanently ---
-    ("nodraw", None)  # honoured at the browser-launch decision (WP-13), ("play", "IGNORE"),
+    ("nodraw", None),  # honoured at the browser-launch decision (WP-13)
+    ("play", "IGNORE"),
 ]
 
 PLOT = [
@@ -104,6 +113,10 @@ PLOT = [
     # for what dash calls `jseed`; `colorlist` is Stata's, `colpalette` dash's.
     # Both spellings are accepted so either dialect works.
     ("range", "S07"), ("colorlist", "S09"), ("jitterseed", "S07"),
+    # The statistical sub-options (WP-18): honoured by the renderer, refused
+    # outside their plot type by the flag rules in _dash_option_rules.
+    ("discrete", None), ("stdp", None), ("stdf", None), ("stdr", None),
+    ("mean", None), ("noweight", None), ("adjust", None), ("logit", None),
 ]
 
 GRAPH_NAMES = [n for n, _ in GRAPH]
@@ -281,8 +294,11 @@ print("  plot sreturn block rewritten")
 i = src.index("program define _dash_plot_opts_to_json")
 ks = src.index("    foreach key in ", i)
 ke = src.index(" {\n", ks) + len(" {")
+# weight and wexp (WP-18) are not options: _dash_process_segment puts them
+# in s() for a weighted segment on a type that honours weights, and the
+# writer emits them beside the options.
 src = src[:ks] + "    foreach key in " + wrapped_list(
-    PLOT_NAMES, " " * 19) + " {" + src[ke:]
+    PLOT_NAMES + ["weight", "wexp"], " " * 19) + " {" + src[ke:]
 print("  plot JSON key list rewritten")
 
 # 6. every graph-level propagation loop (three of them, identical shape)

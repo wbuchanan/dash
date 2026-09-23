@@ -126,7 +126,7 @@ panels (`tops=[0.075, 0.0563, 0.0562]`). Unlinked `by()` is correct, because
 `:11455` builds a genuinely separate source per facet — so the same command
 gives different answers depending on whether `link()` is present.
 
-### A3. Weights are parsed and silently discarded — S2, CLOSED by WP-13
+### A3. Weights are parsed and silently discarded — S2, CLOSED by WP-13 (reported) and WP-18 (honoured)
 
 `_dash_parse_varpart_*` declares `[aweight fweight pweight iweight]`
 (`dash.ado:781, 795, 809, 823`) and stores the type in `s(_weight)`
@@ -146,7 +146,44 @@ and appended to the segment's ignored list, so the note reads
 variable, once per distinct type per command. The weight is still not
 applied (WP-18). Certified by `test_option_surface.cscript` AC-13.1a-c.
 
-### A4. Estimator divergences from Stata — S2, READ
+**Finished by WP-18**, 23sep2026, measured first at `fe3b12a`. The premise
+above -- that `lowess` honours weights -- was false: `twoway lowess` and
+`lowess` return r(101) `weights not allowed` for every type
+(`lowess.ado:9`, `twoway_lowess_parse.class:35`). The rest of the grid,
+18 commands by 4 types on auto (`weight_acceptance`, 72 probes;
+`weight_acceptance_table`): `iweight` is r(101) on every twoway statistical
+type; `histogram` takes `fweight` only (aw/pw r(101)); `kdensity`, `lpoly`
+and `lpolyci` refuse `pweight`; `lfit`, `qfit`, `lfitci`, `qfitci`,
+`fpfit`, `fpfitci`, `mspline` and `mband` take aw, fw and pw, the last two
+inertly. dash carried the type across the clear and nothing else: the
+expression was dropped in the parsers, the variable never exported, the
+plot JSON weightless, and `[iw=price]` on scatter or `[pw=price]` on
+histogram was rc 0 with the note where twoway is r(101). Now
+`_dash_process_segment` refuses exactly what twoway refuses, with its rc
+and its words, requires the expression to be one existing variable
+(abbreviations expanded; `[aw=price+1]` is r(198) with a `generate` hint,
+since dash cannot evaluate an expression before the data leave Stata,
+and a range such as `price-price` that `unab` would read as one variable
+is refused the same way), checks an `fweight` where twoway checks it (a
+non-integer one r(401) on lfit, lfitci, lpoly, lpolyci, histogram and
+kdensity, a negative one r(402) on the last four), and splices
+`"weight":"<type>","wexp":"<var>"` into the plot's options only when a
+weight is present, so the unweighted JSON stays byte for byte what
+`test_varlist_expansion.cscript` and `test_pipeline_integration.py` pin;
+`_dash_extract_vars` exports the variable on both routes;
+`_DASH_OPT_VAR_KEYS` carries it into either mode's source, and the twelve
+layers read it with each type's own semantics (aweights normalised to sum
+N with df_r = N - 2, fweights replicated with N = sum w, pweights the
+aweight estimates with an HC1 band). The WP-13 note stays on the glyph
+layers. Truth: `weighted` (55 probes over auto `[aw=price]` and
+`[fw=int(price/1000)]`, census `[aw=pop]`, sp500 `[aw=volume]`, nlsw88
+`[aw=hours]`), `weighted_data`, `weighted_fit_check` (15 of 15 weighted
+lfit/qfit/lfitci sersets equal the weighted `regress`), pinned by
+`test_statistical_truth.py::TestWeightedLayers`; the refusals and the
+JSON by `test_statistical_options.cscript`. The verification tally is
+ROADMAP.md WP-18's.
+
+### A4. Estimator divergences from Stata — S2, CLOSED by WP-18
 
 - **`mspline` is a different estimator.** Stata fits a cubic spline through
   the cross-medians of `bands()` bands. `dash_render.py:5953-5972`
@@ -163,7 +200,43 @@ applied (WP-18). Certified by `test_option_surface.cscript` AC-13.1a-c.
   drops those rows. Stata's `fp`/`fracpoly` shifts x so all values are
   positive.
 
-### A5. Statistical sub-options with no implementation — S3, READ
+**Closed by WP-18.** Measured first, 23sep2026 at `fe3b12a`, against the
+sersets of the saved `.gph` files (the regenerated
+`test/fixtures/stat_truth.json`, 52 sections, the 25 pre-existing ones
+byte-identical), with dash's mappers called as `test_statistical_truth.py`
+calls them and every error a fraction of the raw y range:
+
+| layer | at `fe3b12a` | Stata's rule | after |
+|---|---|---|---|
+| `mspline` | PCHIP through every distinct-x/mean-y point, 200-point grid, `bands()`/`n()` unread (`dash_render.py:6985-7057`) | cross medians of B equal-width bands (K non-empty; B default `round(min(10 log10 N, sqrt N))`, `_gs_default_bands.ado:5-17`), a cubic spline through the K knots at (K-1)n + K points, n default 10; the spline is serset 2 of the `.gph` | 14.0 mpg max error on auto default (y range 29), 9.2 at bands(8), 5.3 at bands(4); a natural cubic spline through the knots reproduces all 20 probes to 9.65e-6 abs (float32 sersets); not-a-knot 2.76, clamped 1.62, PCHIP-through-knots 0.96, Akima 1.02 rejected |
+| `fpfit`, repeated powers | `(p, p)` built as `[1, z, z]`, rank 2 of 3, never wins (`:5357-5408`) | `x^p` and `x^p ln x` (`ln^2 x` at p = 0), `fracgen.ado:193-212`; 36 pairs by deviance | `fracpoly` picks (-2,-2) on auto price~mpg and mpg~weight, (2,2) on nlsw88 wage~ttl_exp and on the synthetic sample; dash chose (-2,-1) (9.0e-3) and (1,3) (2.7e-2); with the design, 1.5e-7 on all four |
+| `fpfit`, shift and scale | x <= 0 dropped, no scaling, grid capped at 1000 (`:5361-5363`, `_FP_GRID_MAX`) | shift by (smallest positive spacing) - min(x) when min(x) <= 0, then ALWAYS divide by `10^(sign(log10 s) int(abs(log10 s)))`, s the range (`frac_xo.ado:81-106`); predict at every distinct x | census death~pop: cond 3.6e21 unscaled, dash (0,.5) vs Stata (1,3), 3.9e-2; `xs = weight - 3000` (35 non-positive): e(fp_shft) 1250, e(fp_sfac) 1000, powers (0,0), rc 0 in twoway, 35 rows dash would drop; `xz = mpg - 12` (min 0): shift 1, scale 10, (-2,-2); nlsw88 1546 distinct x against a 1000-point linspace |
+| `fpfitci` | bootstrap percentile band, 200 resamples, seed 42 (`:5531-5535`) | `fracpred, stdp` times `invttail(N - 3, (100 - level)/200)` (`twoway__fpfit_serset.ado:31-50`) | band off by 1.1e-1 (auto), 2.3e-1 (census), 1.17 (sp500, past the y range at the first sample), 1.1e-1 (nlsw88); width ratio 0.67 to 4.72; analytic stdp reproduces auto to 6.3e-8 |
+| `lowess` | statsmodels `lowess(frac=bw)`: nearest-by-distance window, 3 robustness iterations, tied x identical (`:5041`) | [R] lowess: stable sort, index window k = int((N bw - .5)/2), tricube on d/(1.0001 max d), local line, no iterations; ties in dataset order | 1.08e-1 (auto, 3.13 mpg), 1.19e-1 (census), 1.92e-1 (sp500), 3.67e-2 (nlsw88); the rule reproduces all 20 probes to 1.5e-10 abs |
+| `lpoly` degree >= 1 | `np.polyfit(w=K)`, which squares the weight (`:5167`) | weighted least squares, w = sqrt(K) | 2.8e-2 (auto), 2.9e-2 (sp500), 3.5e-2 (nlsw88) at Stata's own bandwidth; 1.3e-15 with sqrt(K) |
+| `lpoly` null rule and grid | a point drawn with one positive-weight observation; 200-point grid, `n()` unread | missing when fewer than 2 observations have positive weight; `n()` points, default 50 capped at the dataset's _N (_N when the dataset has fewer than 50 rows) | dash finite at 5 of 11 samples where Stata is null (auto bwidth(5)); as drawn 1.58e-2 (auto default), 5.5e-2 (degree(1)) |
+| `kdensity` | grid [min - 3h, max + 3h] x 300 (`:5781`) | twoway: [min, max] x n(), default 300 | estimator exact (2.7e-12) but as drawn 1.0 on census bwidth(2): grid step 617 against a kernel support of 4.5 |
+| `lfitci`, `qfitci`, `mband` | stdp band; equal-width cross medians | the same | exact: 2.7e-7, 2.8e-7, 1.5e-7 -- locked before anything was touched |
+
+The `lpoly` weighting, null rule and grid, the `fpfitci` band and the
+`kdensity` grid were not in this finding's text; they are in `BUGS.md`,
+one entry each, with the fixture sections that pin them (`mspline`,
+`mspline_knots`, `fpfit_repeated`, `fpfit_repeated_data`, `fpfit_shift`,
+`fpfit_shift_curve`, `lowess_more`, `lpoly`, `lpoly_twoway`, `kdensity_twoway`,
+`rules_wp18`). What stays as it was: the `lpoly` rule-of-thumb bandwidth
+(`_LPOLY_ROT_C`), which lives in compiled Mata and agrees with `r(bwidth)`
+to -9.7% (auto), +14.2% (census), +5.7% (sp500), +6.8% (nlsw88), the help
+now saying so in those numbers; `lpolyci`'s bootstrap band (recorded as a
+follow-up in ROADMAP WP-18); and the cubic spline's end condition, which
+is inside the builtin `serset create_cspline` and is pinned by the recorded
+curves rather than by any `.ado`. Tests, written before the renderer
+changed: `test_statistical_truth.py::TestMsplineAgainstStata`,
+`TestFpfitRepeatedPowers`, `TestFpfitShift`, `TestLowessIsStatasSmoother`,
+`TestLpolyDegreeOne`, `TestLpolyNullRule`, `TestKdensityAsDrawn`; the
+parity corpus carries `mspline bands(5) n(4)`. The verification tally is
+ROADMAP.md WP-18's.
+
+### A5. Statistical sub-options with no implementation — S3, CLOSED by WP-18
 
 Zero occurrences in `dash_render.py`: `histogram, discrete`;
 `lfitci`/`qfitci` `stdf`/`stdp`/`stdr` (only one band type is ever drawn);
@@ -176,6 +249,41 @@ Zero occurrences in `dash_render.py`: `histogram, discrete`;
 session `c(level)` inheritance and a proper t quantile (`_t_ppf`, `:6373`).
 `fpfit` correctly *rejects* `bwidth()`/`degree()` the way Stata does
 (`_fp_report_unsupported`, `:6474-6490`).
+
+**Closed by WP-18.** Measured first, 23sep2026 at `fe3b12a`: none of the
+seven was declared in `dash.ado`'s plot syntax block (`:757-816`), so each
+fell through the trailing `*` into the unknown-option note -- `dash lfitci
+mpg weight, stdf name(w7)` rc 0 with `stdf()` named, `dash lowess mpg
+weight, mean noweight logit adjust name(w8)` rc 0 with all four named,
+`dash histogram rep78, discrete name(w9)` rc 0 with `discrete()` named,
+every one registered with `"options":{}` and drawn as the default. What
+they draw in Stata, now in the fixture: `fitci_std` (24 probes, 4
+datasets by lfitci/qfitci by stdp/stdf/stdr; on auto lfitci at x = 1760
+stdp [27.34, 30.39] around 28.865, stdf [21.84, 35.89], stdr [22.18,
+35.55]; stdf = sqrt(stdp^2 + rmse^2), stdr = sqrt(rmse^2 - stdp^2), the
+same t; `fitci_std_rebuild` agrees on all 12, and stdp equals the level-95
+`ci_bands` on all 8), `histogram_discrete` (12; auto rep78: 5 bins of width
+1 from .5, densities .02899 .11594 .43478 .26087 .15942; auto mpg: 30 bins
+of width 1, 21 occupied; width(2) 15 bins; `discrete bin(3)` r(198)) with
+`histogram_discrete_twoway` (9, the drawn serset equals the generator),
+and the logit/adjust keys of `lowess_more` (adjust = smooth x
+mean(y)/mean(smooth), `lowess.ado:203-209`; logit clamps to 1/N and 1 - 1/N
+under the .0001 rule then ln(s/(1 - s)), `:213-221`, adjust before logit).
+twoway declares them `DISCrete`, `STDP STDF STDR` (no abbreviation; two of
+them `may not combine`, r(198)) and `Mean noWeight Adjust LOgit`, and
+refuses each outside its type (`option discrete not allowed`, r(198)).
+Now `dash.ado` declares the seven as twoway does, carries each as a flag
+in the plot JSON, refuses it outside its type through a flag-applicability
+list in `_dash_option_rules`, refuses two of stdp/stdf/stdr together and
+`discrete` with `bin()`; the renderer honours them in both modes, and
+`dash.sthlp` documents them beside the layers that take them. Pinned by
+`test_statistical_truth.py::TestFitciBandTypes`, `TestHistogramDiscrete`
+and `TestLowessIsStatasSmoother`, `test_unsupported_report_is_true.py`
+(each flag present against absent; stdp against its stdf sibling, since
+stdp names the default), the parity corpus (`lfitci stdf`, `qfitci stdr`,
+`histogram discrete`, `lowess mean`, `lowess noweight logit adjust`) and
+`test_statistical_options.cscript`. The verification tally is ROADMAP.md
+WP-18's.
 
 ### A6. A paren inside a quoted option value deletes every later `||` segment — S1, MEASURED
 

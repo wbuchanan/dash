@@ -1,0 +1,702 @@
+*! test_statistical_options.cscript
+*! Certification script: weights and the seven statistical sub-options
+*! (discrete; stdp stdf stdr; mean noweight adjust logit) are honoured
+*! where twoway honours them, refused where twoway refuses them -- with
+*! twoway's own return code and wording -- and never reported as ignored.
+*!
+*! ROADMAP WP-18 / GAPS.md A3 A4 A5.  Measured 23sep2026 with the console
+*! binary (scratchpad/wp18/adoplumbing/{wexp,wmatrix,dashw,collide}.log and
+*! scratchpad/wp18/A/{wording,negw}.log), StataNow 19.5:
+*!
+*!   WEIGHT ACCEPTANCE (twoway `<type> ... [<w>=turn], nodraw'):
+*!     iweight            r(101) "iweights not allowed" on EVERY plot type
+*!     lowess aw fw pw    r(101) "weights not allowed"
+*!     histogram aw / pw  r(101) "aweights not allowed" / "pweights not allowed"
+*!     kdensity lpoly lpolyci pw
+*!                        r(101) "pweights not allowed"
+*!     lfit qfit lfitci qfitci fpfit fpfitci mspline mband  aw fw pw  rc 0
+*!     kdensity lpoly lpolyci  aw fw  rc 0;  histogram  fw  rc 0
+*!     scatter line connected bar area spike dropline dot r*  aw fw pw  rc 0
+*!   FREQUENCY-WEIGHT VALUES:
+*!     non-integer fw     r(401) "may not use noninteger frequency weights"
+*!                        on lfit lfitci lpoly lpolyci histogram kdensity;
+*!                        rc 0 on qfit qfitci fpfit fpfitci mspline mband
+*!     negative fw        r(402) "negative weights encountered" on lpoly
+*!                        lpolyci histogram kdensity; rc 0 elsewhere
+*!   WEIGHT EXPRESSIONS: twoway evaluates `[aw=price+1]' (rc 0).  dash
+*!     cannot: the data reach the renderer through jsonio as columns, so
+*!     a weight must be ONE existing variable (abbreviations expanded).
+*!     Anything else is refused, r(198), with the generate hint.
+*!   SUB-OPTIONS (twoway's own declarations, class files under ado/base/t):
+*!     DISCrete (histogram: disc rc 0, dis/d r(198)); STDP STDF STDR with
+*!     no abbreviation (std r(198)), at most one ("may not combine stdf
+*!     stdr" r(198)); Mean noWeight Adjust LOgit (lowess: m/me rc 0, now
+*!     rc 0, a rc 0, lo rc 0; l/n/no r(198)).  Each outside its type is
+*!     r(198) "option <name> not allowed".  `discrete' with bin()/bins()
+*!     is r(198) "options discrete and bins() may not be combined";
+*!     with width() or start() it is rc 0.  mspline n(1) is rc 0 (dash's
+*!     untyped rule for n() started at 2); n(301) is r(198).
+*!   dash declares `MEan' (minimum "me") where twoway lowess takes a bare
+*!     `m': dash's plot parser also declares Msymbol(), and
+*!     test_abbreviations.py refuses a prefix two options can claim.
+*!
+*!   dash BEFORE this work (dashw.log): every weight type on every plot
+*!   type rc 0 with the note `[aweight]' and "options":{} -- the weight
+*!   was parsed and discarded; every one of the seven fell through the
+*!   trailing * into the note ("stdf()", "mean() noweight() logit()
+*!   adjust()", "discrete()") with "options":{}.
+*!
+*! MEASURED STATUS WHEN THIS FILE WAS WRITTEN (pre-fix, HEAD fe3b12a's
+*! dash.ado and dash_parse.mata, 23sep2026): 102 of 113 checks FAILED.
+*! Every refusal case (SO-16..28, 33..37, 40..42, 55..65) returned rc 0
+*! and registered the graph; every honoured case (SO-01..12, 30, 38, 39,
+*! 43..54, 66, 71, 72) returned rc 0 with the ignoring note and no key;
+*! SO-29 was rc 0 with the note; SO-67 was r(198).  The 10 that passed pin
+*! what must NOT change: the unweighted spec (SO-13), the glyph note
+*! (SO-14, 15, 31), syntax's own r(111) (SO-32), the n() bounds on the
+*! other types (SO-68, 69) and mspline bands() n() (SO-70).
+*!
+*! CASES (SO-nn; every case is tallied, the script exits 9 on any failure)
+*!   Honoured weights -- rc 0, NO note, the registry carries
+*!   "weight":"<type>","wexp":"<var>" inside the plot's options:
+*!     SO-01 lfit [aw=price]        SO-02 qfit [fw=mpg]
+*!     SO-03 lfitci [pw=price]      SO-04 qfitci [aw=price]
+*!     SO-05 fpfit [pw=price]       SO-06 fpfitci [fw=mpg]
+*!     SO-07 lpoly [aw=price]       SO-08 lpolyci [fw=mpg]
+*!     SO-09 kdensity mpg [aw=price]
+*!     SO-10 histogram mpg [fw=rep78]  (rep78 has missing values: dropped)
+*!     SO-11 mspline [aw=price]     SO-12 mband [pw=price]
+*!   The unweighted spec is byte-identical to what it was:
+*!     SO-13 lfit mpg weight        "options":{} and no "weight" key
+*!   Glyph layers keep the WP-13 note (the weight is named by type):
+*!     SO-14 scatter [aw=price]     rc 0, one note naming [aweight], no key
+*!     SO-15 line [fw=mpg]          rc 0, one note naming [fweight], no key
+*!   twoway's refusals, r(101), twoway's wording, nothing registered:
+*!     SO-16 lfit [iw=price]        "iweights not allowed"
+*!     SO-17 scatter [iw=price]     "iweights not allowed"
+*!     SO-18 histogram [iw=price]   "iweights not allowed"
+*!     SO-19 lowess [aw=price]      "weights not allowed"
+*!     SO-20 lowess [fw=mpg]        "weights not allowed"
+*!     SO-21 lowess [pw=price]      "weights not allowed"
+*!     SO-22 lowess [iw=price]      "iweights not allowed"
+*!     SO-23 histogram [aw=price]   "aweights not allowed"
+*!     SO-24 histogram [pw=price]   "pweights not allowed"
+*!     SO-25 kdensity [pw=price]    "pweights not allowed"
+*!     SO-26 lpoly [pw=price]       "pweights not allowed"
+*!     SO-27 lpolyci [pw=price]     "pweights not allowed"
+*!     SO-28 (lfit [aw=price]) (lowess [aw=price])
+*!                                  r(101): one refused layer refuses the
+*!                                  whole command
+*!   The one-variable policy:
+*!     SO-29 lfit [aw=price+1]      r(198) "must name one variable" and
+*!                                  the hint "generate double w = price+1"
+*!     SO-30 lfit [aw=pri]          rc 0, "wexp":"price" (expanded)
+*!     SO-31 scatter [aw=price+1]   rc 0, note [aweight] (a glyph layer
+*!                                  never evaluates the weight: unchanged)
+*!     SO-32 lfit [aw=nosuchvar]    r(111) -- syntax's own refusal
+*!     SO-33 lfit [aw=mpg-price]    r(198): a varlist range is not one
+*!                                  variable
+*!     SO-33b lfit [aw=price-price] r(198): a range that unab resolves to
+*!                                  ONE variable is still an expression
+*!                                  (twoway: price-price = 0, rc 0)
+*!     SO-33e lfit [aw=price - price]  r(198) likewise, with spaces
+*!     SO-33c lfit [aw=p*]          r(198) "invalid name" from syntax
+*!     SO-33d lfit [aw=pr~e]        r(198) likewise (twoway r(198) both)
+*!   Frequency-weight values, per twoway:
+*!     SO-34 histogram [fw=gear_ratio]  r(401) "may not use noninteger
+*!     SO-35 lfit [fw=gear_ratio]          frequency weights"
+*!     SO-36 kdensity [fw=gear_ratio]
+*!     SO-37 lpoly [fw=gear_ratio]
+*!     SO-38 qfit [fw=gear_ratio]       rc 0   (twoway accepts)
+*!     SO-39 mspline [fw=gear_ratio]    rc 0
+*!     SO-40 histogram [fw=negw]        r(402) "negative weights encountered"
+*!     SO-41 kdensity [fw=negw]         r(402)
+*!     SO-42 lpoly [fw=negw]            r(402)
+*!     SO-43 lfit [fw=negw]             rc 0   (twoway accepts)
+*!     SO-44 lfit [fw=halfint] if foreign
+*!                                      rc 0: the check runs on the
+*!                                      segment's own sample (halfint is
+*!                                      2 where foreign, 2.5 elsewhere)
+*!   The seven sub-options on their own type -- rc 0, no note, the flag
+*!   in the registry as "name":"name":
+*!     SO-45 histogram rep78, discrete      SO-46 histogram rep78, disc
+*!     SO-47 lfitci, stdf                   SO-48 lfitci, stdr
+*!     SO-49 qfitci, stdp                   SO-50 lowess, mean
+*!     SO-51 lowess, noweight               SO-52 lowess, adjust
+*!     SO-53 lowess, logit
+*!     SO-54 lowess, me now a lo            (all four, abbreviated)
+*!   Outside their type -- r(198) "option <name> not allowed":
+*!     SO-55 scatter, discrete              SO-56 lfit, stdf
+*!     SO-57 lowess, stdp                   SO-58 histogram, mean
+*!     SO-59 scatter, noweight              SO-60 scatter, logit
+*!     SO-61 lfitci, adjust
+*!   Combinations:
+*!     SO-62 lfitci, stdf stdr          r(198) "may not combine stdf stdr"
+*!     SO-63 qfitci, stdp stdf stdr     r(198) "may not combine"
+*!     SO-64 histogram rep78, discrete bin(5)
+*!                                      r(198) "options discrete and bins()
+*!                                      may not be combined"
+*!     SO-65 histogram rep78, discrete bins(5)   r(198) likewise
+*!     SO-66 histogram rep78, discrete width(2)  rc 0
+*!   mspline's n():
+*!     SO-67 mspline, n(1)              rc 0, "n":"1"
+*!     SO-68 mspline, n(0)              r(198) naming n()
+*!     SO-69 kdensity mpg, n(1)         r(198) naming n() (dash's own
+*!                                      bound 2..10000 on the other types)
+*!     SO-70 mspline, bands(5) n(4)     rc 0, both in the registry
+*!   Together:
+*!     SO-71 lfitci [fw=mpg], stdf level(90)
+*!                                      rc 0, no note, weight + stdf +
+*!                                      level all in the registry (an
+*!                                      fweight: stdf with an aweight is
+*!                                      r(135), SO-75)
+*!     SO-72 (lfit [aw=price]) (scatter [fw=rep78])
+*!                                      rc 0, ONE note naming [fweight]
+*!                                      and NOT [aweight]
+*!   Found by the WP-18 review (measured 23sep2026):
+*!     SO-75 lfitci [aw=price], stdf    r(135) "not possible with weighted
+*!     SO-76 qfitci [aw=price], stdr           data" (regres_p.ado)
+*!     SO-77 lfitci [pw=price], stdf    r(198) "option stdf not allowed
+*!     SO-78 qfitci [pw=price], stdr    after robust estimation" (stdr alike)
+*!     SO-79 qfitci [fw=mpg], stdr      rc 0 (an fweight is fine)
+*!     SO-80 lfitci [aw=price], stdp    rc 0 (stdp is fine under a weight)
+*!     SO-81 kdensity [aw=negw]         r(402) "negative weights encountered"
+*!     SO-82 lpoly [aw=negw]            r(402)
+*!     SO-83 lpolyci [aw=negw]          r(402)
+*!     SO-84 kdensity [aw=negw] if negw > 0   rc 0 (the plot's own sample)
+*!     SO-85 lfit [aw=negw]             rc 0 (twoway fits as if w > 0)
+*!     SO-86 fpfit [aw=negw]            rc 0 (twoway draws nothing: the
+*!                                      renderer's business)
+*!     SO-87 mspline, n(300)            rc 0
+*!     SO-88 mspline, n(301)            r(198): twoway's "n must be between
+*!                                      1 and 300"; SO-88d: the refusal
+*!                                      does not call the bound dash's
+*!     SO-89 histogram mpg, start(15)   r(198) "option start() may not be
+*!                                      larger than minimum of mpg"
+*!     SO-90 ... discrete start(15)     r(198) likewise
+*!     SO-91 histogram mpg, start(12)   rc 0 (start equal to the minimum)
+*!     SO-92 histogram mpg if mpg >= 20, start(15)   rc 0 (the plot's sample)
+*!   The data export:
+*!     SO-73 _dash_extract_vars on a weighted lfit's spec lists price: the
+*!           weight column is serialised on the build and the immediate route
+*!     SO-74 dash (scatter mpg weight) (lfit mpg weight [aw=price]),
+*!           saving(<tmp>.html): rc 0, the file exists and carries the
+*!           "price" column, and the same command without the weight
+*!           does not (the renderer reads wexp through _DASH_OPT_VAR_KEYS
+*!           and puts the column in the graph's source).  A fit-only
+*!           graph would not do: its source carries the fitted line, not
+*!           the data columns (measured: not even "mpg" appears in it).
+*!           Skipped without Python.
+*!
+*! Every refusal and note is read back out of a captured log with Stata's
+*! wrapped lines re-joined, as test_option_validation.cscript does.
+*!
+*! Usage:  via run_all_cscripts.do (the dash directory must be on the
+*!         ado-path), or `do test_statistical_options.cscript' from test/.
+
+cscript "dash statistical options" adodir ".."
+
+clear all
+set more off
+
+capture which jsonio
+if _rc {
+    display as text "SKIP: jsonio is not installed."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+global dash_nobrowser 1
+sysuse auto, clear
+quietly generate negw = price - 5000
+quietly generate double halfint = cond(foreign, 2, 2.5)
+
+// The tally lives in two globals: a helper program does the counting and
+// cannot read its caller's locals.  (A global's name cannot start with an
+// underscore -- measured, r(198).)
+global so_nfail    = 0
+global so_faillist ""
+
+// ----------------------------------------------------------------
+// Log scanner: re-join "> " continuations, then count the logical lines
+// that carry `needle' and hand back the first.
+// ----------------------------------------------------------------
+capture mata: mata drop _so_scan()
+capture mata: mata drop _so_json_has()
+mata:
+void _so_scan(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full, first
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    first = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle)) {
+            n = n + 1
+            if (first == "") first = full
+        }
+        full = line
+    }
+    if (strpos(full, needle)) {
+        n = n + 1
+        if (first == "") first = full
+    }
+    fclose(fh)
+    st_local("_so_n", strofreal(n))
+    st_local("_so_line", first)
+}
+
+// Does the registered spec for graph `g' carry the text `needle'?
+real scalar _so_json_has(string scalar g, string scalar needle)
+{
+    return(strpos(st_global("dash_json_" + g), needle) > 0)
+}
+end
+
+capture program drop _so_count
+program define _so_count, rclass
+    version 16.0
+    args logfile needle
+    mata: _so_scan(st_local("logfile"), st_local("needle"))
+    return scalar n = `_so_n'
+    return local line `"`macval(_so_line)'"'
+end
+
+capture program drop _so_has
+program define _so_has, rclass
+    version 16.0
+    args g needle
+    mata: st_local("_sh", strofreal(_so_json_has(st_local("g"), st_local("needle"))))
+    return scalar found = `_sh'
+end
+
+capture program drop _so_tally
+program define _so_tally
+    version 16.0
+    args id bad what
+    if `bad' {
+        global so_nfail    = ${so_nfail} + 1
+        global so_faillist "${so_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `macval(what)'"'
+end
+
+// Run one command with the log captured and judge it:
+//   rc must equal `expected';
+//   a refusal (expected != 0) must NOT be the ignoring note, and nothing
+//   may be registered under the case's name;
+//   an acceptance (expected == 0) must print no refusal line and -- unless
+//   `note' is given -- no ignoring note; with `note' = "[fweight]" it must
+//   print exactly ONE note that carries that token.
+// The case's registry name is so<nn> from its id.  Every probe starts from
+// an empty registry.
+capture program drop _so_probe
+program define _so_probe, rclass
+    version 16.0
+    args id cmdtext expected note
+    local logfile "`c(tmpdir)'dash_so.log"
+    local nm = "so" + subinstr("`id'", "SO-", "", 1)
+    set linesize 80
+    capture log close _solog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_solog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _solog
+    local bad = 0
+    if `rc' != `expected' {
+        display as error `"`id' FAIL: expected rc `expected', got rc `rc': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `expected' != 0 {
+        _so_count "`logfile'" "unsupported option"
+        if r(n) > 0 {
+            display as error `"`id' FAIL: a refusal was reported as an unsupported option: `r(line)'"'
+            local bad = 1
+        }
+        if `"${dash_json_`nm'}"' != "" {
+            display as error `"`id' FAIL: a refused command registered graph `nm'"'
+            local bad = 1
+        }
+    }
+    else {
+        foreach needle in "not allowed" "may not" "must name" "must be" "not found" "encountered" {
+            _so_count "`logfile'" "`needle'"
+            if r(n) > 0 {
+                display as error `"`id' FAIL: an accepted command was refused: `r(line)'"'
+                local bad = 1
+            }
+        }
+        _so_count "`logfile'" "unsupported option"
+        local nn = r(n)
+        local nline `"`r(line)'"'
+        if `"`note'"' == "" {
+            if `nn' > 0 {
+                display as error `"`id' FAIL: an honoured option was reported as ignored: `macval(nline)'"'
+                local bad = 1
+            }
+        }
+        else {
+            if `nn' != 1 {
+                display as error `"`id' FAIL: expected exactly one note carrying `note', got `nn'"'
+                local bad = 1
+            }
+            else if strpos(`"`macval(nline)'"', `"`note'"') == 0 {
+                display as error `"`id' FAIL: the note does not carry `note': `macval(nline)'"'
+                local bad = 1
+            }
+        }
+    }
+    return scalar bad = `bad'
+    return scalar rc  = `rc'
+    return local  nm  "`nm'"
+end
+
+// One case: probe, then assert the registry carries every needle given
+// (up to three) and not the one prefixed with a `!'.
+capture program drop _so_case
+program define _so_case
+    version 16.0
+    args id cmdtext expected note needle needle2 needle3
+    _so_probe "`id'" `"`macval(cmdtext)'"' `expected' "`note'"
+    local bad = r(bad)
+    local rc  = r(rc)
+    local nm  "`r(nm)'"
+    foreach nd in needle needle2 needle3 {
+        local v `"`macval(`nd')'"'
+        if `"`v'"' == "" | `bad' continue
+        if substr(`"`v'"', 1, 1) == "!" {
+            local v = substr(`"`v'"', 2, .)
+            _so_has "`nm'" `"`v'"'
+            if r(found) != 0 {
+                display as error `"`id' FAIL: the registered spec carries `v', which it must not:"'
+                mata: st_global("dash_json_" + st_local("nm"))
+                local bad = 1
+            }
+        }
+        else {
+            _so_has "`nm'" `"`v'"'
+            if r(found) != 1 {
+                display as error `"`id' FAIL: the registered spec does not carry `v':"'
+                mata: st_global("dash_json_" + st_local("nm"))
+                local bad = 1
+            }
+        }
+    }
+    _so_tally "`id'" `bad' `"rc `rc' -- `macval(cmdtext)'"'
+end
+
+// The log of the case just probed must carry `needle' (the wording of a
+// refusal).  Its own id suffix, so a case failing on both counts is
+// tallied twice.
+capture program drop _so_said
+program define _so_said
+    version 16.0
+    args id needle
+    _so_count "`c(tmpdir)'dash_so.log" `"`macval(needle)'"'
+    local bad = (r(n) == 0)
+    if `bad' display as error `"`id' FAIL: the log does not say `macval(needle)'"'
+    _so_tally "`id'" `bad' `"the log says `macval(needle)'"'
+end
+
+// ================================================================
+// Honoured weights: no note, weight and variable in the registry.
+// ================================================================
+_so_case SO-01 `"dash lfit mpg weight [aw=price], name(so01)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
+_so_case SO-02 `"dash qfit mpg weight [fw=mpg], name(so02)"' 0 "" `""weight":"fweight""' `""wexp":"mpg""'
+_so_case SO-03 `"dash lfitci mpg weight [pw=price], name(so03)"' 0 "" `""weight":"pweight""' `""wexp":"price""'
+_so_case SO-04 `"dash qfitci mpg weight [aw=price], name(so04)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
+_so_case SO-05 `"dash fpfit mpg weight [pw=price], name(so05)"' 0 "" `""weight":"pweight""' `""wexp":"price""'
+_so_case SO-06 `"dash fpfitci mpg weight [fw=mpg], name(so06)"' 0 "" `""weight":"fweight""' `""wexp":"mpg""'
+_so_case SO-07 `"dash lpoly mpg weight [aw=price], name(so07)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
+_so_case SO-08 `"dash lpolyci mpg weight [fw=mpg], name(so08)"' 0 "" `""weight":"fweight""' `""wexp":"mpg""'
+_so_case SO-09 `"dash kdensity mpg [aw=price], name(so09)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
+_so_case SO-10 `"dash histogram mpg [fw=rep78], name(so10)"' 0 "" `""weight":"fweight""' `""wexp":"rep78""'
+_so_case SO-11 `"dash mspline mpg weight [aw=price], name(so11)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
+_so_case SO-12 `"dash mband mpg weight [pw=price], name(so12)"' 0 "" `""weight":"pweight""' `""wexp":"price""'
+
+// The unweighted spec is what it always was, byte for byte around options.
+_so_case SO-13 `"dash lfit mpg weight, name(so13)"' 0 "" `""options":{},"if_expr":"","in_expr":"""' `"!"weight":"' `"!"wexp":"'
+
+// Glyph layers: the WP-13 note stays, and no key is written.
+_so_case SO-14 `"dash scatter mpg weight [aw=price], name(so14)"' 0 "[aweight]" `"!"weight":"' `"!"wexp":"'
+_so_case SO-15 `"dash line mpg weight [fw=mpg], name(so15)"' 0 "[fweight]" `"!"weight":"' `"!"wexp":"'
+
+// ================================================================
+// twoway's refusals, r(101), twoway's wording.
+// ================================================================
+_so_case SO-16 `"dash lfit mpg weight [iw=price], name(so16)"' 101
+_so_said SO-16w "iweights not allowed"
+_so_case SO-17 `"dash scatter mpg weight [iw=price], name(so17)"' 101
+_so_said SO-17w "iweights not allowed"
+_so_case SO-18 `"dash histogram mpg [iw=price], name(so18)"' 101
+_so_said SO-18w "iweights not allowed"
+_so_case SO-19 `"dash lowess mpg weight [aw=price], name(so19)"' 101
+_so_said SO-19w "weights not allowed"
+_so_case SO-20 `"dash lowess mpg weight [fw=mpg], name(so20)"' 101
+_so_said SO-20w "weights not allowed"
+_so_case SO-21 `"dash lowess mpg weight [pw=price], name(so21)"' 101
+_so_said SO-21w "weights not allowed"
+_so_case SO-22 `"dash lowess mpg weight [iw=price], name(so22)"' 101
+_so_said SO-22w "iweights not allowed"
+_so_case SO-23 `"dash histogram mpg [aw=price], name(so23)"' 101
+_so_said SO-23w "aweights not allowed"
+_so_case SO-24 `"dash histogram mpg [pw=price], name(so24)"' 101
+_so_said SO-24w "pweights not allowed"
+_so_case SO-25 `"dash kdensity mpg [pw=price], name(so25)"' 101
+_so_said SO-25w "pweights not allowed"
+_so_case SO-26 `"dash lpoly mpg weight [pw=price], name(so26)"' 101
+_so_said SO-26w "pweights not allowed"
+_so_case SO-27 `"dash lpolyci mpg weight [pw=price], name(so27)"' 101
+_so_said SO-27w "pweights not allowed"
+_so_case SO-28 `"dash (lfit mpg weight [aw=price]) (lowess mpg weight [aw=price]), name(so28)"' 101
+_so_said SO-28w "weights not allowed"
+
+// ================================================================
+// One variable, expanded; an expression is refused with the hint.
+// ================================================================
+_so_case SO-29 `"dash lfit mpg weight [aw=price+1], name(so29)"' 198
+_so_said SO-29w "must name one variable"
+_so_said SO-29h "generate double w = price+1"
+_so_case SO-30 `"dash lfit mpg weight [aw=pri], name(so30)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
+// The one-name check must take any Stata name, not only ASCII ones.
+quietly generate double größe = price
+_so_case SO-30u `"dash lfit mpg weight [aw=größe], name(so30u)"' 0 "" `""weight":"aweight""' `""wexp":"größe""'
+drop größe
+_so_case SO-31 `"dash scatter mpg weight [aw=price+1], name(so31)"' 0 "[aweight]" `"!"wexp":"'
+_so_case SO-32 `"dash lfit mpg weight [aw=nosuchvar], name(so32)"' 111
+_so_case SO-33 `"dash lfit mpg weight [aw=mpg-price], name(so33)"' 198
+_so_said SO-33w "must name one variable"
+// unab reads a varlist, not a name: `price-price' is the one-variable
+// range price, and `price - price' too.  twoway weights by the
+// EXPRESSION price-price, which is zero (rc 0, measured 23sep2026), so
+// weighting by price would be a silently wrong estimate: each must be
+// refused as an expression.  `p*' and `pr~e' never reach unab: syntax
+// itself says "p* invalid name", r(198), as twoway does.
+_so_case SO-33b `"dash lfit mpg weight [aw=price-price], name(so33b)"' 198
+_so_said SO-33bw "must name one variable"
+_so_case SO-33e `"dash lfit mpg weight [aw=price - price], name(so33e)"' 198
+_so_said SO-33ew "must name one variable"
+_so_case SO-33c `"dash lfit mpg weight [aw=p*], name(so33c)"' 198
+_so_said SO-33cw "invalid name"
+_so_case SO-33d `"dash lfit mpg weight [aw=pr~e], name(so33d)"' 198
+_so_said SO-33dw "invalid name"
+
+// ================================================================
+// Frequency-weight values, per twoway's own checks.
+// ================================================================
+_so_case SO-34 `"dash histogram mpg [fw=gear_ratio], name(so34)"' 401
+_so_said SO-34w "may not use noninteger frequency weights"
+_so_case SO-35 `"dash lfit mpg weight [fw=gear_ratio], name(so35)"' 401
+_so_said SO-35w "may not use noninteger frequency weights"
+_so_case SO-36 `"dash kdensity mpg [fw=gear_ratio], name(so36)"' 401
+_so_said SO-36w "may not use noninteger frequency weights"
+_so_case SO-37 `"dash lpoly mpg weight [fw=gear_ratio], name(so37)"' 401
+_so_said SO-37w "may not use noninteger frequency weights"
+_so_case SO-38 `"dash qfit mpg weight [fw=gear_ratio], name(so38)"' 0 "" `""weight":"fweight""' `""wexp":"gear_ratio""'
+_so_case SO-39 `"dash mspline mpg weight [fw=gear_ratio], name(so39)"' 0 "" `""weight":"fweight""'
+_so_case SO-40 `"dash histogram mpg [fw=negw], name(so40)"' 402
+_so_said SO-40w "negative weights encountered"
+_so_case SO-41 `"dash kdensity mpg [fw=negw], name(so41)"' 402
+_so_said SO-41w "negative weights encountered"
+_so_case SO-42 `"dash lpoly mpg weight [fw=negw], name(so42)"' 402
+_so_said SO-42w "negative weights encountered"
+_so_case SO-43 `"dash lfit mpg weight [fw=negw], name(so43)"' 0 "" `""weight":"fweight""' `""wexp":"negw""'
+_so_case SO-44 `"dash lfit mpg weight [fw=halfint] if foreign, name(so44)"' 0 "" `""weight":"fweight""' `""wexp":"halfint""' `""if_expr":"foreign""'
+
+// ================================================================
+// The seven sub-options on their own type: honoured, in the registry.
+// ================================================================
+_so_case SO-45 `"dash histogram rep78, discrete name(so45)"' 0 "" `""discrete":"discrete""'
+_so_case SO-46 `"dash histogram rep78, disc name(so46)"' 0 "" `""discrete":"discrete""'
+_so_case SO-47 `"dash lfitci mpg weight, stdf name(so47)"' 0 "" `""stdf":"stdf""'
+_so_case SO-48 `"dash lfitci mpg weight, stdr name(so48)"' 0 "" `""stdr":"stdr""'
+_so_case SO-49 `"dash qfitci mpg weight, stdp name(so49)"' 0 "" `""stdp":"stdp""'
+_so_case SO-50 `"dash lowess mpg weight, mean name(so50)"' 0 "" `""mean":"mean""'
+_so_case SO-51 `"dash lowess mpg weight, noweight name(so51)"' 0 "" `""noweight":"noweight""'
+_so_case SO-52 `"dash lowess mpg weight, adjust name(so52)"' 0 "" `""adjust":"adjust""'
+_so_case SO-53 `"dash lowess mpg weight, logit name(so53)"' 0 "" `""logit":"logit""'
+_so_case SO-54 `"dash lowess mpg weight, me now a lo name(so54)"' 0 "" `""mean":"mean""' `""noweight":"noweight""' `""adjust":"adjust""'
+_so_case SO-54b `"dash lowess mpg weight, me now a lo name(so54b)"' 0 "" `""logit":"logit""'
+
+// Outside their type: twoway's r(198) and wording.
+_so_case SO-55 `"dash scatter mpg weight, discrete name(so55)"' 198
+_so_said SO-55w "option discrete not allowed"
+_so_case SO-56 `"dash lfit mpg weight, stdf name(so56)"' 198
+_so_said SO-56w "option stdf not allowed"
+_so_case SO-57 `"dash lowess mpg weight, stdp name(so57)"' 198
+_so_said SO-57w "option stdp not allowed"
+_so_case SO-58 `"dash histogram mpg, mean name(so58)"' 198
+_so_said SO-58w "option mean not allowed"
+_so_case SO-59 `"dash scatter mpg weight, noweight name(so59)"' 198
+_so_said SO-59w "option noweight not allowed"
+_so_case SO-60 `"dash scatter mpg weight, logit name(so60)"' 198
+_so_said SO-60w "option logit not allowed"
+_so_case SO-61 `"dash lfitci mpg weight, adjust name(so61)"' 198
+_so_said SO-61w "option adjust not allowed"
+
+// Combinations.
+_so_case SO-62 `"dash lfitci mpg weight, stdf stdr name(so62)"' 198
+_so_said SO-62w "may not combine stdf stdr"
+_so_case SO-63 `"dash qfitci mpg weight, stdp stdf stdr name(so63)"' 198
+_so_said SO-63w "may not combine"
+_so_case SO-64 `"dash histogram rep78, discrete bin(5) name(so64)"' 198
+_so_said SO-64w "options discrete and bins() may not be combined"
+_so_case SO-65 `"dash histogram rep78, discrete bins(5) name(so65)"' 198
+_so_said SO-65w "options discrete and bins() may not be combined"
+_so_case SO-66 `"dash histogram rep78, discrete width(2) name(so66)"' 0 "" `""discrete":"discrete""' `""width":"2""'
+
+// mspline's n() may be 1; the other types keep dash's 2..10000.
+_so_case SO-67 `"dash mspline mpg weight, n(1) name(so67)"' 0 "" `""n":"1""'
+_so_case SO-68 `"dash mspline mpg weight, n(0) name(so68)"' 198
+_so_said SO-68w "n()"
+_so_case SO-69 `"dash kdensity mpg, n(1) name(so69)"' 198
+_so_said SO-69w "n()"
+_so_case SO-70 `"dash mspline mpg weight, bands(5) n(4) name(so70)"' 0 "" `""bands":"5""' `""n":"4""'
+
+// Together.  stdf with an aweight is r(135) in twoway (below), so the
+// combination case uses an fweight, which twoway accepts with stdf.
+_so_case SO-71 `"dash lfitci mpg weight [fw=mpg], stdf level(90) name(so71)"' 0 "" `""weight":"fweight""' `""stdf":"stdf""' `""level":"90""'
+_so_case SO-72 `"dash (lfit mpg weight [aw=price]) (scatter mpg weight [fw=rep78]), name(so72)"' 0 "[fweight]" `""wexp":"price""'
+_so_count "`c(tmpdir)'dash_so.log" "[aweight]"
+local bad = (r(n) > 0)
+if `bad' display as error "SO-72n FAIL: the honoured aweight on lfit was named in the note"
+_so_tally SO-72n `bad' "the honoured aweight is not named in the note"
+
+// ================================================================
+// Found by the WP-18 review (measured 23sep2026 with the console binary):
+// stdf/stdr under a weight, negative aweights, mspline's n() ceiling.
+// ================================================================
+// regress's predict refuses stdf and stdr after weighted or robust
+// estimation (regres_p.ado): twoway lfitci/qfitci with an aweight say
+// "not possible with weighted data", r(135); with a pweight "option stdf
+// not allowed after robust estimation", r(198).  An fweight is fine, and
+// so is stdp under any of the three.
+_so_case SO-75 `"dash lfitci mpg weight [aw=price], stdf name(so75)"' 135
+_so_said SO-75w "not possible with weighted data"
+_so_case SO-76 `"dash qfitci mpg weight [aw=price], stdr name(so76)"' 135
+_so_said SO-76w "not possible with weighted data"
+_so_case SO-77 `"dash lfitci mpg weight [pw=price], stdf name(so77)"' 198
+_so_said SO-77w "option stdf not allowed after robust estimation"
+_so_case SO-78 `"dash qfitci mpg weight [pw=price], stdr name(so78)"' 198
+_so_said SO-78w "option stdr not allowed after robust estimation"
+_so_case SO-79 `"dash qfitci mpg weight [fw=mpg], stdr name(so79)"' 0 "" `""weight":"fweight""' `""stdr":"stdr""'
+_so_case SO-80 `"dash lfitci mpg weight [aw=price], stdp name(so80)"' 0 "" `""weight":"aweight""' `""stdp":"stdp""'
+// A negative aweight: twoway kdensity, lpoly and lpolyci refuse it,
+// "negative weights encountered", r(402), checked over the plot's own
+// if/in sample (a negative weight on a row whose y is missing still
+// refuses; one outside the if does not).  lfit accepts it and fits as if
+// `if w > 0'; fpfit accepts the command and draws nothing (fracpoly
+// cannot fit it) -- both the renderer's business, rc 0 here.
+_so_case SO-81 `"dash kdensity mpg [aw=negw], name(so81)"' 402
+_so_said SO-81w "negative weights encountered"
+_so_case SO-82 `"dash lpoly mpg weight [aw=negw], name(so82)"' 402
+_so_said SO-82w "negative weights encountered"
+_so_case SO-83 `"dash lpolyci mpg weight [aw=negw], name(so83)"' 402
+_so_said SO-83w "negative weights encountered"
+_so_case SO-84 `"dash kdensity mpg [aw=negw] if negw > 0, name(so84)"' 0 "" `""weight":"aweight""' `""if_expr":"negw > 0""'
+_so_case SO-85 `"dash lfit mpg weight [aw=negw], name(so85)"' 0 "" `""weight":"aweight""' `""wexp":"negw""'
+_so_case SO-86 `"dash fpfit mpg weight [aw=negw], name(so86)"' 0 "" `""weight":"aweight""' `""wexp":"negw""'
+// twoway mspline: "n must be between 1 and 300", r(198).
+_so_case SO-87 `"dash mspline mpg weight, n(300) name(so87)"' 0 "" `""n":"300""'
+_so_case SO-88 `"dash mspline mpg weight, n(301) name(so88)"' 198
+_so_said SO-88w "n()"
+// ... and the refusal does not claim the bound is dash's own.
+_so_count "`c(tmpdir)'dash_so.log" "dash evaluates up to"
+local bad = (r(n) > 0)
+if `bad' display as error "SO-88d FAIL: mspline's n() refusal calls twoway's bound dash's own"
+_so_tally SO-88d `bad' "mspline's n() refusal names no dash-only bound"
+
+// histogram start() above the variable's minimum: twoway refuses it,
+// "option start() may not be larger than minimum of mpg", r(198)
+// (twoway__histogram_gen.ado:102-107), discrete or not, over the plot's
+// own sample.  dash drew it with the rows below start() silently gone.
+_so_case SO-89 `"dash histogram mpg, start(15) name(so89)"' 198
+_so_said SO-89w "option start() may not be larger than minimum of mpg"
+_so_case SO-90 `"dash histogram mpg, discrete start(15) name(so90)"' 198
+_so_said SO-90w "may not be larger than minimum"
+_so_case SO-91 `"dash histogram mpg, start(12) name(so91)"' 0 "" `""start":"12""'
+_so_case SO-92 `"dash histogram mpg if mpg >= 20, start(15) name(so92)"' 0 "" `""start":"15""'
+
+// ================================================================
+// The data export: the weight column is a plot variable on both routes.
+// ================================================================
+capture dash clear
+quietly dash lfit mpg weight [aw=price], name(so73)
+local _sov ""
+mata: _dash_extract_vars(st_global("dash_json_so73"), "_sov")
+local bad = !`: list posof "price" in _sov'
+if `bad' display as error `"SO-73 FAIL: _dash_extract_vars listed `_sov' for a weighted lfit, without price"'
+_so_tally SO-73 `bad' `"_dash_extract_vars lists the weight variable: `_sov'"'
+
+if `"`c(python_exec)'"' != "" {
+    local so_html "`c(tmpdir)'so74_weighted.html"
+    local so_ctrl "`c(tmpdir)'so74_unweighted.html"
+    capture erase "`so_html'"
+    capture erase "`so_ctrl'"
+    capture dash clear
+    capture noisily dash (scatter mpg weight) (lfit mpg weight [aw=price]), saving("`so_html'")
+    local rc = _rc
+    capture dash clear
+    capture noisily dash (scatter mpg weight) (lfit mpg weight), saving("`so_ctrl'")
+    local rc2 = _rc
+    local bad = 0
+    if `rc' != 0 | `rc2' != 0 {
+        display as error "SO-74 FAIL: rc=`rc' (weighted) rc=`rc2' (unweighted) from the immediate render"
+        local bad = 1
+    }
+    capture confirm file "`so_html'"
+    local nofile = _rc
+    capture confirm file "`so_ctrl'"
+    if _rc | `nofile' {
+        display as error "SO-74 FAIL: the immediate render wrote no file"
+        local bad = 1
+    }
+    else {
+        _so_count "`so_html'" `""price""'
+        if r(n) == 0 {
+            display as error `"SO-74 FAIL: the weighted render does not carry the "price" column"'
+            local bad = 1
+        }
+        _so_count "`so_ctrl'" `""price""'
+        if r(n) != 0 {
+            display as error `"SO-74 FAIL: the unweighted render carries a "price" column, so the weighted one proves nothing"'
+            local bad = 1
+        }
+        capture erase "`so_html'"
+        capture erase "`so_ctrl'"
+    }
+    _so_tally SO-74 `bad' "a weighted immediate render carries the weight column, its unweighted twin does not"
+}
+else display as text "SO-74 SKIP: no Python is linked to this Stata"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+capture dash clear
+capture erase "`c(tmpdir)'dash_so.log"
+local nfail = ${so_nfail}
+local faillist "${so_faillist}"
+macro drop so_nfail so_faillist
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_statistical_options: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_statistical_options: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

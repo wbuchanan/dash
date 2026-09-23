@@ -169,7 +169,12 @@ def _graph_pending():
 # meaningful comparison is present against absent -- and a flag has no
 # default value to be confused with, so that comparison has no trap.
 FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
-         "frequency", "horizontal", "nodraw", "percent", "sort", "vertical"}
+         "frequency", "horizontal", "nodraw", "percent", "sort", "vertical",
+         # The seven statistical sub-options (WP-18): discrete on
+         # histogram; stdp/stdf/stdr on lfitci and qfitci; mean, noweight,
+         # adjust and logit on lowess.
+         "discrete", "stdp", "stdf", "stdr", "mean", "noweight", "adjust",
+         "logit"}
 
 
 def _norm(html: str) -> str:
@@ -422,6 +427,23 @@ LIVE_VALUES = {
     "msize": ({"msize": "tiny"}, {"msize": "vlarge"}, "scatter", {}),
     "msymbol": ({"msymbol": "O"}, {"msymbol": "T"}, "scatter", {}),
     "n": ({"n": "30"}, {"n": "70"}, "kdensity", {}),
+    # ---- the statistical sub-options (WP-18) ----------------------------
+    # Flags: present against absent, except stdp, which NAMES the default
+    # band (the density trap above), so it is paired against a sibling.
+    # mpg has 15 distinct values in _DF, so `discrete' draws 15 unit-width
+    # bars where the default bin rule for N=15 draws fewer; stdf and stdr
+    # widen and narrow the band; the lowess four each change the smooth
+    # (Stata's own smoother, in the renderer since WP-18: statsmodels'
+    # lowess had none of these switches, so before it the flag rendered
+    # byte-identical and this test failed, which is what it is for).
+    "discrete": ({"discrete": "discrete"}, {}, "histogram", {}),
+    "stdf": ({"stdf": "stdf"}, {}, "lfitci", {}),
+    "stdr": ({"stdr": "stdr"}, {}, "lfitci", {}),
+    "stdp": ({"stdp": "stdp"}, {"stdf": "stdf"}, "lfitci", {}),
+    "mean": ({"mean": "mean"}, {}, "lowess", {}),
+    "noweight": ({"noweight": "noweight"}, {}, "lowess", {}),
+    "adjust": ({"adjust": "adjust"}, {}, "lowess", {}),
+    "logit": ({"logit": "logit"}, {}, "lowess", {}),
     "range": ({"range": "10 30"}, {"range": "12 28"}, "kdensity", {}),
     "start": ({"start": "8"}, {"start": "11"}, "histogram", {}),
     "width": ({"width": "2"}, {"width": "4"}, "histogram", {}),

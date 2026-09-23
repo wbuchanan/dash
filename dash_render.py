@@ -44,9 +44,10 @@ Dependencies
 ------------
   bokeh >= 3.0
   numpy >= 1.23
-  scipy >= 1.9
-  statsmodels >= 0.13
   pandas >= 1.5
+
+  No statistical layer needs scipy or statsmodels: every estimator is
+  computed with numpy alone (WP-18), so neither is imported.
 
 Author:  (see dash.sthlp)
 Version: 1.0.0  25mar2026
@@ -118,8 +119,49 @@ _DEFAULT_LEVEL = 95.0
 # They used 200 and 150 respectively, over different x-ranges, so the same
 # curve drawn two ways did not overlay.
 # fpfit/fpfitci evaluate at the distinct observed x values, exactly as Stata
-# does -- this is a cap for resource exhaustion, not a grid size.
-_FP_GRID_MAX = 1000
+# does -- this is a cap for resource exhaustion, not a grid size.  It was
+# 1000 while fpfitci's band was a 200-resample bootstrap refitting 36 models
+# per resample; the band is now Stata's analytic stdp, so the cap only has
+# to keep a pathological dataset from drawing a line of a million points.
+# nlsw88 has 1546 distinct x values, which the old cap silently replaced
+# with a 1000-point linspace.
+_FP_GRID_MAX = 20000
+
+# Which weight types each computed layer honours -- twoway's own acceptance,
+# measured for every (plot type x weight type) pair on 23sep2026
+# (test/fixtures/stat_truth.json weight_acceptance_table).  iweights are
+# refused by every twoway statistical type; lowess takes no weight at all;
+# histogram is fweight only; lpoly, lpolyci and kdensity refuse pweights.
+# mspline and mband ACCEPT aw/fw/pw and do nothing with them (measured: the
+# serset equals the unweighted one), so they are listed and noted as inert.
+# A weight outside a layer's set is refused in dash.ado with twoway's r(101);
+# the renderer, which a hand-written spec can reach directly, names it and
+# draws the layer unweighted.
+_DASH_WEIGHT_ACCEPTS = {
+    "lfit": ("aw", "fw", "pw"), "qfit": ("aw", "fw", "pw"),
+    "lfitci": ("aw", "fw", "pw"), "qfitci": ("aw", "fw", "pw"),
+    "fpfit": ("aw", "fw", "pw"), "fpfitci": ("aw", "fw", "pw"),
+    "lpoly": ("aw", "fw"), "lpolyci": ("aw", "fw"),
+    "kdensity": ("aw", "fw"), "histogram": ("fw",),
+    "mspline": ("aw", "fw", "pw"), "mband": ("aw", "fw", "pw"),
+    "lowess": (),
+}
+# The layers whose weights twoway accepts and never uses.
+_DASH_WEIGHT_INERT = frozenset({"mspline", "mband"})
+# The layers that fit as if `if w > 0' when a weight is negative (measured,
+# the WP-18 review: lfit/qfit/lfitci/qfitci with a negative aw, fw or pw
+# equal the fit without those rows).  On every other weighted layer a
+# negative weight means twoway draws nothing (fpfit, fpfitci: fracpoly
+# cannot fit it) or refuses the command (kdensity, lpoly, lpolyci,
+# histogram: r(402), which dash.ado reproduces).
+_DASH_WEIGHT_NEG_EXCLUDED = frozenset({"lfit", "qfit", "lfitci", "qfitci"})
+# The layers that accept the command and draw NOTHING for a non-integer
+# fweight (regress/fracpoly "could not fit model"); the other fweight layers
+# refuse it, r(401), in dash.ado as in twoway.
+_DASH_FW_NONINT_NOTHING = frozenset({"qfit", "qfitci", "fpfit", "fpfitci"})
+# Stata's names for the four weight types, keyed by the two-letter form.
+_DASH_WEIGHT_NAMES = {"aw": "aweight", "fw": "fweight", "pw": "pweight",
+                      "iw": "iweight"}
 
 # Bootstrap KPI cards per row.  A design choice about legibility, not
 # something derivable from the content.
@@ -464,49 +506,6 @@ def _format_stata_numeric(value: float, fmt: "str | None") -> str:
     return f"{val:.2e}"
 
 
-def _optional_import(module: str, attr: "str | None", package: str, feature: str):
-    """Import an optional dependency, warning instead of raising.
-
-    ``dash`` needs ``scipy`` only for CI bands, ``kdensity`` and ``mspline``,
-    and ``statsmodels`` only for ``lowess``.  Neither is required to render a
-    scatter, a line, a histogram, a fit, or anything else.  A missing or broken
-    package must therefore degrade that one plot type to an empty glyph — the
-    same shape already used by the minimum-N guards throughout this module —
-    rather than abort the entire dashboard.
-
-    ``Exception`` is caught rather than ``ImportError`` deliberately: a package
-    can be present but unimportable because one of *its* dependencies is
-    missing, which surfaces as an unrelated error type.
-
-    ``__import__`` is used rather than ``importlib.import_module`` so that this
-    keeps the semantics of the plain ``from x import y`` statements it
-    replaced — the IMPORT_NAME opcode always routes through ``__import__``,
-    which is both what the interpreter does and what makes the behaviour
-    observable to tests that patch it.
-
-    Args:
-        module:  Dotted module path to import.
-        attr:    Attribute to pull off the module, or None for the module.
-        package: Distribution name to name in the warning (for dash_setup).
-        feature: The dash plot type this enables, named in the warning.
-
-    Returns:
-        The imported object, or None if the import failed.
-    """
-
-    try:
-        mod = __import__(module, fromlist=[attr] if attr else ["__name__"])
-        return getattr(mod, attr) if attr else mod
-    except Exception as exc:
-        warnings.warn(
-            f"dash: {feature} requires the '{package}' package, which could "
-            f"not be imported ({type(exc).__name__}: {exc}). The {feature} "
-            f"layer will be drawn empty. Run dash_setup to install or repair "
-            f"'{package}'.",
-            UserWarning,
-            stacklevel=3,
-        )
-        return None
 
 
 # ---------------------------------------------------------------------------
@@ -3076,6 +3075,14 @@ class GlyphMapper:
         """
         self.tr = translator or OptionTranslator()
         self.default_level: float = float(default_level)
+        # The whole dataset, as Stata holds it in memory (dash exports every
+        # row of the variables it needs), for the rules that read beyond a
+        # layer's own sample: lowess's adjust divides by the mean of y over
+        # every observation (lowess.ado:207, `summ y, mean' with no if),
+        # and twoway lpoly's grid follows _N (twoway_lpoly_parse.class:56,
+        # lpoly.ado:283-290).  Both render modes set it; None -- a mapper
+        # used on its own -- falls back to the layer's own rows.
+        self.dataset = None
         self.date_vars: dict[str, str] = {}
         self.numeric_formats: dict[str, str] = {}
         # Defer scheme import to avoid circular dependency; default to s2color.
@@ -3288,6 +3295,7 @@ class GlyphMapper:
         seed: int = 42,
         fallback: "np.ndarray | None" = None,
         level: float = _DEFAULT_LEVEL,
+        w: "np.ndarray | None" = None,
     ) -> "tuple[np.ndarray, np.ndarray]":
         """Compute a bootstrap confidence interval for a smooth fit.
 
@@ -3300,13 +3308,16 @@ class GlyphMapper:
                       ``(xi, yi)``.  May raise ``ValueError``,
                       ``LinAlgError``, or ``FloatingPointError`` for
                       degenerate samples — those are caught and replaced
-                      with *fallback*.
+                      with *fallback*.  When *w* is given it is called as
+                      ``(xi, yi, xg, wi)`` with the resampled weights.
             n_boot:   Number of bootstrap resamples (default 200).
             seed:     Random-number-generator seed for reproducibility.
             level:    Confidence level in percent, e.g. 95.
             fallback: Array of length ``len(x_grid)`` used when *fit_fn*
                       fails or returns NaN predictions for a resample.
                       Defaults to zeros when ``None``.
+            w:        Observation weights resampled with their rows, or
+                      None.
 
         Returns:
             ``(y_lower, y_upper)`` arrays of length ``len(x_grid)``
@@ -3321,7 +3332,10 @@ class GlyphMapper:
         for i in range(n_boot):
             idx = rng.integers(0, len(x), size=len(x))
             try:
-                preds = fit_fn(x[idx], y[idx], x_grid)
+                if w is None:
+                    preds = fit_fn(x[idx], y[idx], x_grid)
+                else:
+                    preds = fit_fn(x[idx], y[idx], x_grid, w[idx])
                 # Replace NaN predictions with the fallback (e.g. the main fit)
                 boot_preds[i] = np.where(np.isnan(preds), _fb, preds)
             except (ValueError, np.linalg.LinAlgError, FloatingPointError):
@@ -4674,6 +4688,111 @@ class GlyphMapper:
         return tuple(c[finite] for c in cols)
 
     @staticmethod
+    def _layer_weights(source: ColumnDataSource, view, options, layer: str,
+                       *varnames: str) -> tuple:
+        """``_masked`` plus the layer's weight: ``(cols..., w, wtype)``.
+
+        The weight clause of a plot -- ``[aweight=price]`` -- reaches the
+        renderer as two option keys, ``weight`` (the type) and ``wexp``
+        (one variable; dash.ado refuses an expression).  This reads them,
+        applies twoway's own acceptance table (:data:`_DASH_WEIGHT_ACCEPTS`)
+        and pulls the weight column through the SAME joint NaN drop as x and
+        y, so a row with a missing weight leaves the sample the way
+        ``marksample`` drops it in Stata.  Rows with a zero or negative
+        weight are dropped after that, as ``regress``, ``fracpoly`` and the
+        smoothers drop them, and their number is reported once.
+
+        ``w`` is None and ``wtype`` is None when the layer is unweighted:
+        no clause, a variable the source does not carry, a type this layer
+        refuses (named, drawn unweighted -- dash.ado has already refused it
+        with twoway's r(101) on the command line; a hand-written spec can
+        still reach here), or one of the two layers whose weights twoway
+        accepts and does not use.
+
+        Returns:
+            One float array per name in *varnames*, then ``w`` (raw values,
+            not yet normalised -- each estimator normalises as its Stata
+            counterpart does) and ``wtype`` in {"aw", "fw", "pw", "iw"}.
+        """
+        wtype, wexp = _dash_weight_spec(options)
+        if wtype is None:
+            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+        wname = _DASH_WEIGHT_NAMES.get(wtype, wtype)
+        clause = f"[{wname}={wexp}]"
+        if wexp not in source.data:
+            _dash_warn_once(
+                ("weight-missing", layer, wexp),
+                f"dash: {layer} {clause}: the data carries no variable "
+                f"{wexp!r}, so the layer is drawn unweighted.")
+            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+        try:
+            np.asarray(source.data[wexp], dtype=float)
+        except (TypeError, ValueError):
+            # dash.ado refuses a string weight as twoway does (r(109)
+            # "type mismatch"); a hand-written spec could still reach here,
+            # and the float conversion in _masked took the render down.
+            _dash_warn_once(
+                ("weight-not-numeric", layer, wexp),
+                f"dash: {layer} {clause}: {wexp!r} is not numeric (twoway: "
+                f"type mismatch, r(109)); the layer is drawn unweighted.")
+            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+        if wtype not in _DASH_WEIGHT_ACCEPTS.get(layer, ()):
+            if layer == "lowess":
+                why = "weights not allowed"
+            else:
+                why = f"{wname}s not allowed"
+            _dash_warn_once(
+                ("weight-refused", layer, wtype),
+                f"dash: {layer} {clause}: twoway {layer} refuses it "
+                f"({why}, r(101)); the layer is drawn unweighted.")
+            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+        if layer in _DASH_WEIGHT_INERT:
+            _dash_warn_once(
+                ("weight-inert", layer, wtype),
+                f"dash: {layer} {clause}: twoway {layer} accepts the weight "
+                f"and does not use it (measured: the curve equals the "
+                f"unweighted one), so neither does dash.")
+            return (*GlyphMapper._masked(source, view, *varnames), None, None)
+        cols = GlyphMapper._masked(source, view, *varnames, wexp)
+        w = cols[-1]
+        nothing = tuple(c[:0] for c in cols)
+        # A weight's VALUES, as twoway treats them on this layer.  dash.ado
+        # refuses the commands twoway refuses; what reaches here is
+        # twoway's own "accepted, draws nothing", or a hand-written spec.
+        neg = w < 0
+        if neg.any() and layer not in _DASH_WEIGHT_NEG_EXCLUDED:
+            why = ("fracpoly cannot fit it, and twoway draws nothing"
+                   if layer in ("fpfit", "fpfitci")
+                   else "twoway refuses it, negative weights encountered, "
+                        "r(402)")
+            _dash_warn_once(
+                ("weight-negative", layer, wexp),
+                f"dash: {layer} {clause}: {int(neg.sum())} negative "
+                f"weight(s) -- {why}; dash draws nothing for this layer.")
+            return (*nothing[:-1], nothing[-1], wtype)
+        if wtype == "fw" and np.any(w != np.floor(w)):
+            why = ("regress and fracpoly cannot use non-integer frequency "
+                   "weights, and twoway draws nothing"
+                   if layer in _DASH_FW_NONINT_NOTHING
+                   else "twoway refuses it, may not use noninteger "
+                        "frequency weights, r(401)")
+            _dash_warn_once(
+                ("weight-nonint", layer, wexp),
+                f"dash: {layer} {clause}: {why}; dash draws nothing for "
+                f"this layer.")
+            return (*nothing[:-1], nothing[-1], wtype)
+        pos = w > 0
+        if not pos.all():
+            _dash_warn_once(
+                ("weight-nonpositive", layer, wexp),
+                f"dash: {layer} {clause}: {int((~pos).sum())} observation(s) "
+                f"with a zero or negative weight are excluded, as twoway "
+                f"excludes them.")
+            cols = tuple(c[pos] for c in cols)
+            w = cols[-1]
+        return (*cols[:-1], w, wtype)
+
+    @staticmethod
     def _masked_index(source: ColumnDataSource, view, *varnames: str):
         """Row indices selecting exactly the rows ``_masked`` keeps.
 
@@ -4738,14 +4857,19 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, _wt = self._layer_weights(source, view, options, "lfit",
+                                           xvar, yvar)
 
         # Need at least 2 points to fit a line
         if len(x) < 2:
             empty = ColumnDataSource({"x": [], "y": []})
             return fig.line(x="x", y="y", source=empty)
 
-        coeffs = np.polyfit(x, y, 1)  # [slope, intercept]
+        # numpy's `w' multiplies the UNSQUARED residual, so the regression
+        # weight w -- aweight, fweight or pweight, whose point estimates all
+        # coincide (measured: b = -.0062661022 on auto [w=rep78] for every
+        # type) -- is passed as sqrt(w).
+        coeffs = np.polyfit(x, y, 1, w=None if w is None else np.sqrt(w))
         # _fit_grid is Stata's rule -- n() points, 100 by default, over the
         # OBSERVED range.  This used to be 200 points over a range padded
         # 10% at each end, so lfit and lfitci drew the same fit at different
@@ -4788,17 +4912,27 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, _wt = self._layer_weights(source, view, options, "qfit",
+                                           xvar, yvar)
 
-        # Need at least 3 points for a degree-2 polyfit
+        # Need at least 3 points for a degree-2 fit
         if len(x) < 3:
             empty = ColumnDataSource({"x": [], "y": []})
             return fig.line(x="x", y="y", source=empty)
 
-        coeffs = np.polyfit(x, y, 2)
         # Stata's grid, as map_lfit uses -- see the note there.
         x_fit = _fit_grid(x, options)
-        y_fit = np.polyval(coeffs, x_fit)
+        # The regression qfitci draws its line from (_qfit_design,
+        # _dash_wls): one fit for both, so an x with two values is the
+        # line regress fits with x^2 omitted.  np.polyfit returned an
+        # arbitrary least-norm quadratic there, and the two layers disagreed
+        # between the points (the WP-18 review).
+        X, Xg = _qfit_design(x, x_fit)
+        try:
+            y_fit = Xg @ _dash_wls(X, y, w, _wt)["beta"]
+        except np.linalg.LinAlgError:
+            empty = ColumnDataSource({"x": [], "y": []})
+            return fig.line(x="x", y="y", source=empty)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
         r = fig.line(x="x", y="y", source=fit_source,
@@ -4830,13 +4964,12 @@ class GlyphMapper:
         Returns:
             List with [line_renderer, band_renderer].
         """
-        scipy_stats = _optional_import("scipy", "stats", "scipy", "lfitci")
-
         # Masked by the layer's own view: a per-plot `if', a by()
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, wtype = self._layer_weights(source, view, options, "lfitci",
+                                             xvar, yvar)
         n = len(x)
 
         # Need at least 3 points: df = n-2 must be >= 1, and we need
@@ -4845,7 +4978,7 @@ class GlyphMapper:
             "x_fit": [], "y_fit": [], "y_lower": [], "y_upper": []
         })
         _lfitci_color = self.scheme.default_color(color_idx, "line")
-        if scipy_stats is None or n < 3 or np.std(x) == 0.0:
+        if n < 3 or np.std(x) == 0.0:
             band_r = fig.varea(
                 x="x_fit", y1="y_lower", y2="y_upper",
                 source=empty_ci_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_lfitci_color
@@ -4855,29 +4988,27 @@ class GlyphMapper:
                               legend_label=yvar)
             return [line_r, band_r]
 
-        slope, intercept, _, _, se = scipy_stats.linregress(x, y)
-        # Extend x range by Bokeh's default 10% padding on each side so the
-        # fit line spans the full visible plot area, not just the data range.
+        # `regress y x [weight]' then `predict, stdp|stdf|stdr' on Stata's
+        # grid (twoway__lfit_serset.ado:32, 71-95).  The design is centred
+        # so the Gram matrix is well conditioned on an x measured in
+        # thousands; a reparameterisation of the same column space leaves
+        # every prediction and its variance unchanged.  scipy's linregress
+        # used to do the unweighted case; it cannot take a weight, and one
+        # weighted least-squares path serves every weight type.
         x_fit = _fit_grid(x, options)
-        y_fit = intercept + slope * x_fit
-
-        # stdp -- the standard error of the PREDICTION of the mean, which is
-        # what Stata's twoway lfitci uses (twoway__lfit_serset.ado:81-95):
-        #     stdp = s * sqrt(1/n + (x0 - xbar)^2 / Sxx)
-        # with s the residual standard deviation.  linregress returns the
-        # standard error of the SLOPE, and s = se_slope * sqrt(Sxx).
-        # dash multiplied by sqrt(n-2) instead of sqrt(Sxx), so every
-        # confidence band was wrong by a factor of sqrt(Sxx/(n-2)) -- on
-        # sysuse auto that is a band roughly 90 times too wide.
-        x_mean = x.mean()
-        x_ss = np.sum((x - x_mean) ** 2)  # guaranteed > 0 after np.std check
-        se_resid = se * np.sqrt(x_ss)
-        se_fit = se_resid * np.sqrt(1 / n + (x_fit - x_mean) ** 2 / x_ss)
+        _mu = float(np.mean(x))
+        X = np.column_stack([np.ones_like(x), x - _mu])
+        Xg = np.column_stack([np.ones_like(x_fit), x_fit - _mu])
+        fit = _dash_wls(X, y, w, wtype)
+        y_fit = Xg @ fit["beta"]
+        std = self._fitci_std_for(options, wtype, "lfitci")
+        se_band = _dash_fitci_se(Xg, fit, std)
         _lvl = _resolve_level(options, self.default_level)
-        t_crit = _t_ppf(0.5 + _lvl / 200.0, df=n - 2)
+        t_crit = (_t_ppf(0.5 + _lvl / 200.0, df=fit["df"])
+                  if fit["df"] >= 1 else float("nan"))
 
-        y_lower = y_fit - t_crit * se_fit
-        y_upper = y_fit + t_crit * se_fit
+        y_lower = y_fit - t_crit * se_band
+        y_upper = y_fit + t_crit * se_band
 
         ci_source = ColumnDataSource({
             "x_fit": x_fit, "y_fit": y_fit,
@@ -4888,6 +5019,29 @@ class GlyphMapper:
             fig, ci_source, "x_fit", "y_fit", _lfitci_color, yvar, options
         )
         return [line_r, band_r]
+
+    @staticmethod
+    def _fitci_std_for(options, wtype, layer: str) -> str:
+        """The band's standard error, or ``"none"`` where twoway refuses it.
+
+        regress's predict gives no stdf or stdr after weighted or robust
+        estimation (regres_p.ado): twoway lfitci/qfitci refuse them with
+        an aweight, r(135) "not possible with weighted data", and with a
+        pweight, r(198).  dash.ado refuses the command; a hand-written spec
+        reaches here, and gets the fit, a note and no band.
+        """
+        std = _dash_fitci_std(options)
+        if std in ("stdf", "stdr") and wtype in ("aw", "pw"):
+            _dash_warn_once(
+                ("fitci-weighted-std", layer, std, wtype),
+                f"dash: {layer} {std} with {_DASH_WEIGHT_NAMES[wtype]}s: "
+                f"twoway refuses it ("
+                + ("not possible with weighted data, r(135)" if wtype == "aw"
+                   else f"option {std} not allowed after robust "
+                        f"estimation, r(198)")
+                + "); the fit is drawn with no band.")
+            return "none"
+        return std
 
     def map_qfitci(
         self,
@@ -4918,7 +5072,8 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, wtype = self._layer_weights(source, view, options, "qfitci",
+                                             xvar, yvar)
 
         # Need at least 3 points for a degree-2 polyfit
         _qfitci_color = self.scheme.default_color(color_idx, "line")
@@ -4935,40 +5090,31 @@ class GlyphMapper:
                               legend_label=yvar)
             return [line_r, band_r]
 
-        coeffs = np.polyfit(x, y, 2)
         x_fit = _fit_grid(x, options)
-        y_fit = np.polyval(coeffs, x_fit)
 
         # Stata's twoway qfitci uses the analytic stdp of the quadratic
         # regression, exactly as lfitci does for the linear one -- not a
         # bootstrap.  A bootstrap gave a band that was close in shape but
         # never equal, and that moved between runs unless the seed was fixed.
         _lvl = _resolve_level(options, self.default_level)
-        # The design is CENTRED AND SCALED before the Gram matrix is formed.
-        # On raw x the columns are 1, ~3e3 and ~1e7, giving a condition number
-        # around 2.6e16 -- at which point the pseudo-inverse discards a real
-        # singular value and the confidence band comes out about half as wide
-        # as Stata's.  Rescaling is a reparameterisation of the same column
-        # space, so the prediction variance is unchanged and the arithmetic
-        # is well conditioned.
-        _mu = float(np.mean(x))
-        _sd = float(np.std(x)) or 1.0
-        _z = (x - _mu) / _sd
-        _zg = (x_fit - _mu) / _sd
-        X = np.column_stack([np.ones_like(_z), _z, _z * _z])
-        Xg = np.column_stack([np.ones_like(_zg), _zg, _zg * _zg])
+        # The design is centred and scaled (_qfit_design, shared with
+        # map_qfit, where the reason is written down).
+        X, Xg = _qfit_design(x, x_fit)
         try:
-            beta, *_ = np.linalg.lstsq(X, y, rcond=None)
-            XtX_inv = np.linalg.inv(X.T @ X)
-            resid = y - X @ beta
-            df = max(1, len(x) - 3)
-            s2 = float(resid @ resid) / df
-            var_fit = np.einsum("ij,jk,ik->i", Xg, XtX_inv, Xg)
-            se_fit = np.sqrt(np.maximum(s2 * var_fit, 0.0))
-            t_crit = _t_ppf(0.5 + _lvl / 200.0, df=df)
-            y_lower = y_fit - t_crit * se_fit
-            y_upper = y_fit + t_crit * se_fit
+            fit = _dash_wls(X, y, w, wtype)
+            y_fit = Xg @ fit["beta"]
+            std = self._fitci_std_for(options, wtype, "qfitci")
+            se_band = _dash_fitci_se(Xg, fit, std)
+            # Three observations leave df = 0: twoway draws the fit and no
+            # band.  _t_ppf(df=0) raised, and the whole dashboard with it
+            # (the WP-18 review: a by() panel of three cars was enough).
+            t_crit = (_t_ppf(0.5 + _lvl / 200.0, df=fit["df"])
+                      if fit["df"] >= 1 else float("nan"))
+            y_lower = y_fit - t_crit * se_band
+            y_upper = y_fit + t_crit * se_band
         except np.linalg.LinAlgError:
+            sw = None if w is None else np.sqrt(w)
+            y_fit = np.polyval(np.polyfit(x, y, 2, w=sw), x_fit)
             y_lower, y_upper = GlyphMapper._bootstrap_ci(
                 x, y, x_fit, lambda xi, yi, xg: np.polyval(np.polyfit(xi, yi, 2), xg),
                 fallback=y_fit, level=_lvl, seed=_resolve_seed(options),
@@ -5005,44 +5151,95 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer for the LOWESS line.
         """
-        # Validate the user's option FIRST.  If statsmodels is missing the
-        # layer degrades to an empty line, but a typo in bwidth() is the
-        # user's to fix and must be reported either way -- and it used to
-        # propagate a ValueError out of here and kill the entire render.
+        # Validate the user's option FIRST: a typo in bwidth() is the user's
+        # to fix and must be reported -- it used to propagate a ValueError
+        # out of here and kill the entire render.
         bw = _stat_option_float(options, "bwidth", 0.8, "lowess",
                                 lo=0.0, hi=1.0)
-        if bw is None or bw <= 0.0:
+        if bw is None or bw <= 0.0 or bw >= 1.0:
+            # lowess.ado:75-78 -- a bandwidth outside (0, 1) is silently
+            # reset to .8.  dash.ado already refuses one above 1; exactly 1
+            # gets through and is reset here, aloud.
+            if bw is not None and bw >= 1.0:
+                warnings.warn(
+                    f"dash: lowess option bwidth({options.get('bwidth')}) "
+                    f"must be strictly between 0 and 1; Stata's lowess "
+                    f"resets it to .8, and so does dash.",
+                    UserWarning, stacklevel=2)
             bw = 0.8
-
-        lowess = _optional_import(
-            "statsmodels.nonparametric.smoothers_lowess", "lowess",
-            "statsmodels", "lowess",
-        )
 
         # Masked by the layer's own view: a per-plot `if', a by()
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
-        # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        # had excluded, and said nothing.  lowess takes no weight in Stata
+        # (lowess.ado:9, twoway_lowess_parse.class:35: r(101) for every
+        # type); _layer_weights names one and draws the layer without it.
+        x, y, _w, _wt = self._layer_weights(source, view, options, "lowess",
+                                            xvar, yvar)
 
-        # Need statsmodels, at least 2 points, and x must vary
-        if lowess is None or len(x) < 2 or np.std(x) == 0.0:
+        # lowess.ado:89 smooths only when r(N) >= 3 and the range of x is at
+        # least 1e-30.  dash used len < 2 or a zero std: two rows drew a
+        # segment and x = 0.1 everywhere (std 2.8e-17) a vertical line,
+        # where Stata draws nothing.
+        if len(x) < 3 or not (float(np.ptp(x)) >= 1e-30):
             empty = ColumnDataSource({"x_lw": [], "y_lw": []})
             _r_empty = fig.line(x="x_lw", y="y_lw", source=empty)
             # An empty layer is still the user's layer: apply the line
             # options so lwidth/lcolor/lpattern survive a bail-out.
-            # statsmodels is OPTIONAL, so on a machine without it EVERY
-            # lowess layer takes this path.
             self._apply_line_opts(_r_empty, options)
             return _r_empty
 
-        # Stata's lowess bwidth() is the fraction of the sample in each local
-        # regression; its default is 0.8.  Resolved above.
-        smoothed = lowess(y, x, frac=bw, return_sorted=True)
+        # Stata's smoother, not statsmodels'.  statsmodels' lowess is a
+        # different estimator -- a nearest-by-distance neighbourhood, three
+        # bisquare robustness iterations, one value for every member of a
+        # tie group -- and measured against Stata's own curves it was off by
+        # 3.7% to 44% of the y range on every dataset; the rule below
+        # reproduces all twenty fixture probes to 1.5e-10.
+        mean = bool(str(options.get("mean", "") or "").strip())
+        noweight = bool(str(options.get("noweight", "") or "").strip())
+        x_lw, y_lw = self._stata_lowess(x, y, bw, mean=mean, noweight=noweight)
+
+        # lowess.ado ADJ_LOGIT (:203-221), adjust before logit.
+        #
+        # adjust multiplies by mean(y) / mean(smooth): mean(y) from `summ
+        # y, mean' with no if -- EVERY observation in memory with a y,
+        # whatever the if/in, the by() panel or a missing x (twoway lowess
+        # mpg weight if foreign, adjust: 21.2973/24.78416, not the foreign
+        # cars' own 24.77); mean(smooth) over the smooth's non-missing
+        # values.  A zero mean(smooth) divides by zero and every value is
+        # missing, so nothing is drawn.
+        if str(options.get("adjust", "") or "").strip():
+            y_all = None
+            if self.dataset is not None and yvar in getattr(self.dataset, "columns", ()):
+                y_all = np.asarray(self.dataset[yvar], dtype=float)
+            if y_all is None or not np.isfinite(y_all).any():
+                y_all = y
+            _ms = float(np.nanmean(y_lw)) if np.isfinite(y_lw).any() else np.nan
+            _my = float(np.nanmean(y_all))
+            if np.isfinite(_ms) and _ms != 0.0:
+                y_lw = y_lw * (_my / _ms)
+            else:
+                y_lw = np.full_like(y_lw, np.nan)
+        # logit clamps the smooth below .0001 to 1/N and above 1 - .0001 to
+        # 1 - 1/N, N the smoothed sample, then takes ln(s/(1-s)).  Stata's
+        # `ys > 1 - small' is TRUE for a missing smooth, so a missing value
+        # becomes 1 - 1/N and is drawn at ln(N-1) (measured: ln 19 at the
+        # nine missing tied rows of a 20-row sample; ln 73 everywhere for
+        # adjust logit on a y that is 0 throughout).
+        if str(options.get("logit", "") or "").strip():
+            _adj = 1.0 / len(y_lw)
+            y_lw = np.where(np.isnan(y_lw), 1.0 - _adj, y_lw)
+            y_lw = np.where(y_lw < 0.0001, _adj, y_lw)
+            y_lw = np.where(y_lw > 1.0 - 0.0001, 1.0 - _adj, y_lw)
+            y_lw = np.log(y_lw / (1.0 - y_lw))
+        # What is still missing is not drawn, and the line joins the points
+        # on either side, as twoway's cmissing(y) default does.
+        _keep = np.isfinite(y_lw)
+        x_lw, y_lw = x_lw[_keep], y_lw[_keep]
 
         lw_source = ColumnDataSource({
-            "x_lw": smoothed[:, 0],
-            "y_lw": smoothed[:, 1],
+            "x_lw": x_lw,
+            "y_lw": y_lw,
         })
         r = fig.line(x="x_lw", y="y_lw", source=lw_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
@@ -5051,12 +5248,79 @@ class GlyphMapper:
         self._apply_line_opts(r, options)
         return r
 
+    @staticmethod
+    def _stata_lowess(x: "np.ndarray", y: "np.ndarray", bw: float = 0.8,
+                      mean: bool = False, noweight: bool = False
+                      ) -> "tuple[np.ndarray, np.ndarray]":
+        """Stata's lowess ([R] lowess, Methods and formulas), one value per
+        observation at its own position in the x-sorted sample.
+
+        Sort by x, STABLY: tied x keep the dataset order, and each tied
+        observation gets its own window and its own value (measured: Stata
+        differs across tie members in 6 of auto's 10 tie groups).  With
+        ``k = int((N*bw - 0.5)/2)`` the window of observation i is the
+        positions ``max(0, i-k) .. min(N-1, i+k)`` -- symmetric by INDEX,
+        truncated at the ends, not the k nearest by distance.  Inside it
+        ``Delta = 1.0001 * max |x_j - x_i|`` and the tricube weight is
+        ``(1 - (|x_j - x_i| / Delta)^3)^3`` (``noweight``: every weight 1).
+        The smoothed value is the weighted least-squares line through the
+        window evaluated at x_i, or the weighted mean with ``mean``.  No
+        robustness iterations.  Reproduces every full-resolution fixture
+        curve (auto/census/nlsw88/sp500 x default/mean/noweight) to
+        1.5e-10 absolute.
+
+        Args:
+            x, y:     Cleaned paired arrays in dataset order.
+            bw:       The bandwidth, a fraction of the sample in (0, 1).
+            mean:     Running mean instead of running line.
+            noweight: Unit weights instead of tricube.
+
+        Returns:
+            ``(x_sorted, smooth)``, both of length N; the running line is
+            NaN where its window has no x spread, as Stata's is missing.
+        """
+        order = np.argsort(x, kind="stable")
+        xs = np.asarray(x, dtype=float)[order]
+        ys = np.asarray(y, dtype=float)[order]
+        n = len(xs)
+        k = int((n * bw - 0.5) / 2.0)
+        out = np.empty(n)
+        for i in range(n):
+            lo, hi = max(0, i - k), min(n - 1, i + k)
+            xi = xs[lo:hi + 1]
+            yi = ys[lo:hi + 1]
+            d = np.abs(xi - xs[i])
+            delta = 1.0001 * float(d.max())
+            if noweight or delta == 0.0:
+                w = np.ones_like(xi)
+            else:
+                w = (1.0 - (d / delta) ** 3) ** 3
+            sw = float(w.sum())
+            ym = float(np.dot(w, yi)) / sw
+            if mean:
+                out[i] = ym
+                continue
+            xm = float(np.dot(w, xi)) / sw
+            sxx = float(np.dot(w, (xi - xm) ** 2))
+            if sxx <= 0.0:
+                # Every x in the window equal (or k = 0): a line has no
+                # slope, and Stata's running line is MISSING there --
+                # measured on twenty rows with ten tied at x = 1, bwidth(.2),
+                # and on nlsw88 wage on grade, 495 of 2244 missing.  dash
+                # drew the window's mean.  The running mean is defined.
+                out[i] = np.nan
+            else:
+                b = float(np.dot(w, (xi - xm) * (yi - ym))) / sxx
+                out[i] = ym + b * (xs[i] - xm)
+        return xs, out
+
     # ------------------------------------------------------------------
     # Local polynomial smoother (lpoly / lpolyci)
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _default_lpoly_bwidth(x: "np.ndarray", y: "np.ndarray") -> float:
+    def _default_lpoly_bwidth(x: "np.ndarray", y: "np.ndarray",
+                              w: "np.ndarray | None" = None) -> float:
         """Rule-of-thumb local-polynomial bandwidth, in x's own units.
 
         dash used a fixed 0.5 regardless of the data, which is meaningless
@@ -5081,6 +5345,12 @@ class GlyphMapper:
 
         Args:
             x, y: Cleaned paired arrays.
+            w:    Observation weights as lpoly sees them (aweights already
+                  normalised to mean 1, fweights raw), or None.  The global
+                  fit is weighted the same way and an fweight replicates
+                  its observation in both sums.  Stata's weighted ROT is
+                  not reproduced exactly either (measured 70.64 unweighted,
+                  57.66 [aw=price], 48.87 [fw=rep78] on auto).
 
         Returns:
             A positive bandwidth in the units of *x*.
@@ -5093,11 +5363,13 @@ class GlyphMapper:
         if n < 8:
             return fallback
         try:
-            coeffs = np.polyfit(x, y, 4)
+            ww = np.ones(n) if w is None else np.asarray(w, dtype=float)
+            n_eff = float(ww.sum())
+            coeffs = np.polyfit(x, y, 4, w=np.sqrt(ww))
             resid = y - np.polyval(coeffs, x)
-            sigma2 = float(resid @ resid) / max(1, n - 5)
+            sigma2 = float(np.dot(ww, resid * resid)) / max(1.0, n_eff - 5)
             d2 = np.polyder(np.poly1d(coeffs), 2)
-            denom = float(np.sum(d2(x) ** 2))
+            denom = float(np.dot(ww, d2(x) ** 2))
             if not (sigma2 > 0 and denom > 0):
                 return fallback
             h = _LPOLY_ROT_C * (sigma2 / denom) ** 0.2
@@ -5111,14 +5383,16 @@ class GlyphMapper:
         y: "np.ndarray",
         bwidth: "float | None" = None,
         degree: int = 0,
-        n_grid: int = 200,
+        n_grid: "int | None" = None,
         kernel: str = "epanechnikov",
+        w: "np.ndarray | None" = None,
+        x_grid: "np.ndarray | None" = None,
     ) -> "tuple[np.ndarray, np.ndarray]":
-        """Kernel-weighted local polynomial regression.
+        """Kernel-weighted local polynomial regression, as ``lpoly`` does it.
 
-        Implements Nadaraya–Watson (degree=0) or local-linear (degree=1)
-        regression.  For higher degrees the weights are passed to a
-        least-squares polynomial fit at each grid point.
+        Nadaraya-Watson (degree=0) or a local polynomial fit of the given
+        degree at each grid point, with the kernel weight ``K_i`` times the
+        observation weight ``w_i`` (lpoly.ado:295-311).
 
         Args:
             x, y:    Cleaned (no NaN) paired arrays.
@@ -5126,50 +5400,114 @@ class GlyphMapper:
                      means it.  ``None`` derives one from the data.
             degree:  Polynomial degree (0 = kernel smoother, 1 = local linear,
                      2 = local quadratic).
-            n_grid:  Number of evaluation points on the x-grid.
+            n_grid:  Number of evaluation points on the x-grid; ``None`` is
+                     Stata's default ``min(N, 50)`` (lpoly.ado:283-292).
             kernel:  A key of :data:`_KERNELS`; Stata's default is
                      epanechnikov.
+            w:       Observation weights as lpoly uses them -- aweights
+                     normalised to mean 1, fweights raw -- or None.
+            x_grid:  Points to evaluate at, overriding *n_grid* -- the
+                     bootstrap evaluates every resample on the point
+                     estimate's own grid.
 
         Returns:
-            ``(x_grid, y_fit)`` — 1-D arrays of length *n_grid*.
+            ``(x_grid, y_fit)`` -- 1-D arrays of length *n_grid*.  ``y_fit``
+            is NaN at a grid point where fewer than two observations have a
+            positive kernel weight: Stata returns missing there (measured on
+            auto at bwidth 5/20/40, degree 0 and 1), and dash used to draw a
+            point wherever ONE observation had weight, producing spikes to
+            single observations that Stata suppresses.
         """
         x_min, x_max = x.min(), x.max()
         if bwidth is None or not (bwidth > 0):
-            bwidth = GlyphMapper._default_lpoly_bwidth(x, y)
+            bwidth = GlyphMapper._default_lpoly_bwidth(x, y, w)
         # Stata's bwidth() is an absolute bandwidth in data units.  dash used
         # to clamp it to [0.01, 1.0] and multiply by the x-range, so bwidth(5)
         # on a variable spanning thousands became the whole dataset -- the
         # exact opposite of the narrow window the user asked for.
         h = float(bwidth)
+        if x_grid is None:
+            if n_grid is None:
+                n_grid = min(len(x), 50)
+            n_grid = max(1, int(n_grid))
+            x_grid = np.linspace(x_min, x_max, n_grid)
+        else:
+            x_grid = np.asarray(x_grid, dtype=float)
+            n_grid = len(x_grid)
 
         support, kfn = _KERNELS.get(kernel, _KERNELS["epanechnikov"])
-        x_grid = np.linspace(x_min, x_max, n_grid)
         y_fit = np.empty(n_grid)
+        ow = None if w is None else np.asarray(w, dtype=float)
 
         for i, x0 in enumerate(x_grid):
             z = (x - x0) / h
             if np.isfinite(support):
-                w = np.zeros_like(z)
+                kw = np.zeros_like(z)
                 inside = np.abs(z) < support
                 if inside.any():
-                    w[inside] = kfn(z[inside])
+                    kw[inside] = kfn(z[inside])
             else:
-                w = kfn(z)
-            w_sum = w.sum()
-            if w_sum < 1e-12:
+                kw = kfn(z)
+            if ow is not None:
+                kw = kw * ow
+            pos = kw > 0
+            if int(pos.sum()) < 2:
                 y_fit[i] = np.nan
                 continue
-            if degree == 0:
-                y_fit[i] = np.dot(w, y) / w_sum
+            w_sum = kw.sum()
+            # A window whose positive-weight observations take no more
+            # distinct x values than the degree cannot fit it: Stata drops
+            # the top powers and fits the degree they support (the WP-18
+            # review: lpoly price rep78, degree(1) bwidth(.3) on auto is the
+            # group mean wherever the window holds one rep78 value).
+            # numpy's polyfit returned an arbitrary least-norm answer --
+            # 745 off at x = 1.327 -- with an uncaught RankWarning.
+            deg = degree
+            if deg > 0:
+                deg = min(deg, len(np.unique(x[pos])) - 1)
+            if deg == 0:
+                y_fit[i] = np.dot(kw, y) / w_sum
             else:
-                # Weighted polynomial fit of given degree
+                # numpy's `w' multiplies the UNSQUARED residual, so the
+                # local least squares wants sqrt(K*w).  Passing K itself
+                # minimised sum K^2 r^2 and put degree(1) 2.8% off Stata's
+                # curve at Stata's own bandwidth; with sqrt(K) it is exact
+                # to 1.3e-15 (fixture auto:degree1).
                 try:
-                    coeffs = np.polyfit(x, y, deg=degree, w=w)
+                    coeffs = np.polyfit(x[pos], y[pos], deg=deg,
+                                        w=np.sqrt(kw[pos]))
                     y_fit[i] = np.polyval(coeffs, x0)
                 except (np.linalg.LinAlgError, ValueError):
-                    y_fit[i] = np.dot(w, y) / w_sum
+                    y_fit[i] = np.dot(kw, y) / w_sum
 
         return x_grid, y_fit
+
+    def _lpoly_grid_n(self, options: "dict[str, str]", layer: str,
+                      n_sample: int) -> int:
+        """The number of grid points twoway lpoly and lpolyci draw at.
+
+        twoway_lpoly_parse.class:56 sets n = _N when the DATASET has fewer
+        than 50 rows -- overriding n() -- and lpoly.ado:283-290 then takes
+        n() (50 when it is absent or at most 1) and caps it at _N.  _N is
+        every row in memory, not the plot's sample: `twoway lpoly mpg
+        weight if foreign==1' draws on 50 grid points over the 22 foreign
+        cars (qualified_stat_truth.json), and `n(100)' on auto becomes 74.
+        dash used min(sample N, 50) and never capped n() (the WP-18
+        review).  Without a dataset -- the mapper on its own -- the layer's
+        own rows stand in for _N.
+        """
+        N = n_sample
+        if self.dataset is not None:
+            try:
+                N = int(len(self.dataset))
+            except TypeError:
+                N = n_sample
+        user = _stat_option_float(options, "n", None, layer, lo=1.0,
+                                  hi=10000.0)
+        if N < 50:
+            return max(1, N)
+        n = 50 if user is None or user <= 1 else int(user)
+        return max(1, min(n, N))
 
     def map_lpoly(
         self,
@@ -5203,7 +5541,8 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, wtype = self._layer_weights(source, view, options, "lpoly",
+                                             xvar, yvar)
 
         if len(x) < 2:
             empty = ColumnDataSource({"x_lp": [], "y_lp": []})
@@ -5230,8 +5569,12 @@ class GlyphMapper:
             )
             kernel = "epanechnikov"
 
-        x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bwidth,
-                                                 degree=degree, kernel=kernel)
+        # n(): the grid size, by twoway's rule (_lpoly_grid_n).  dash drew
+        # 200 points and read n() for nothing.
+        x_grid, y_fit = self._compute_lpoly_fit(
+            x, y, bwidth=bwidth, degree=degree, kernel=kernel,
+            n_grid=self._lpoly_grid_n(options, "lpoly", len(x)),
+            w=_dash_lpoly_weights(w, wtype))
         valid = ~np.isnan(y_fit)
         lp_src = ColumnDataSource({
             "x_lp": x_grid[valid].tolist(),
@@ -5270,7 +5613,8 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, wtype = self._layer_weights(source, view, options, "lpolyci",
+                                             xvar, yvar)
 
         _lpolyci_color = self.scheme.default_color(color_idx, "line")
         empty_src = ColumnDataSource({
@@ -5314,24 +5658,34 @@ class GlyphMapper:
             )
             kernel = "epanechnikov"
 
-        n_grid = 100  # coarser grid for speed
+        # The same grid as lpoly (_lpoly_grid_n: twoway's rule on _N).
+        n_grid = self._lpoly_grid_n(options, "lpolyci", len(x))
+        lw = _dash_lpoly_weights(w, wtype)
         x_grid, y_fit = self._compute_lpoly_fit(x, y, bwidth=bwidth,
                                                  degree=degree, kernel=kernel,
-                                                 n_grid=n_grid)
+                                                 n_grid=n_grid, w=lw)
 
         # Bootstrap CI (200 resamples for speed).  The resamples must use the
         # same smoother as the point estimate, or the band is not a band
-        # around the line that is drawn.
-        def _lpoly_fn(xi: "np.ndarray", yi: "np.ndarray", _xg: "np.ndarray") -> "np.ndarray":
+        # around the line that is drawn.  NOT Stata's band, which is
+        # invnormal x a Mata standard error (lpoly.ado:319-324); recorded as
+        # a follow-up outside WP-18.
+        # Every resample is evaluated on the point estimate's OWN grid.  It
+        # used to rebuild a grid over the resample's range, so the
+        # percentiles mixed different x positions: 124 of 200 resamples on
+        # auto were on another grid and the band's edges moved by up to
+        # 11.3 mpg (the WP-18 review).
+        def _lpoly_fn(xi: "np.ndarray", yi: "np.ndarray", _xg: "np.ndarray",
+                      wi: "np.ndarray | None" = None) -> "np.ndarray":
             _, yb = self._compute_lpoly_fit(xi, yi, bwidth=bwidth,
                                             degree=degree, kernel=kernel,
-                                            n_grid=n_grid)
+                                            w=wi, x_grid=_xg)
             return yb  # NaN entries are replaced by fallback in _bootstrap_ci
 
         y_lower, y_upper = GlyphMapper._bootstrap_ci(
             x, y, x_grid, _lpoly_fn, fallback=y_fit,
             level=_resolve_level(options, self.default_level),
-            seed=_resolve_seed(options),
+            seed=_resolve_seed(options), w=lw,
         )
 
         valid = ~np.isnan(y_fit)
@@ -5363,61 +5717,174 @@ class GlyphMapper:
                 result = np.where(x > 0, np.power(x.astype(float), p), np.nan)
         return result
 
+    @staticmethod
+    def _fp_prepare(x: "np.ndarray") -> "tuple[float, float]":
+        """fracpoly's origin shift and scaling of x (frac_xo.ado:81-106).
+
+        When ``min(x) <= 0`` the covariate is shifted by the smallest
+        positive spacing of its sorted values minus its minimum, so every
+        value is positive.  Then, on EVERY fit, shifted or not, x is divided
+        by ``10^(sign(log10 s) * int(|log10 s|))`` with ``s`` the range of
+        the (shifted) x.  Predictions are invariant to the scale; the
+        power selection is not numerically -- on census (pop up to 2.4e7)
+        the unscaled design for powers (1, 3) has a condition number of
+        3.6e21 and the search picked (0, .5) where Stata picks (1, 3).
+        Reported by fracpoly as e(fp_shft) and e(fp_sfac); the fixture's
+        fpfit_shift_rule_check confirms the rule on both shifted probes.
+
+        Returns:
+            ``(shift, scale)``; ``x_used = (x + shift) / scale``.
+        """
+        x = np.asarray(x, dtype=float)
+        xmin = float(x.min())
+        shift = 0.0
+        if xmin <= 0.0:
+            d = np.diff(np.sort(x))
+            d = d[d > 0]
+            if len(d) == 0:
+                return 0.0, 0.0            # every x equal: no fit possible
+            shift = float(d.min()) - xmin
+        xx = x + shift
+        s = float(xx.max() - xx.min())
+        if not (s > 0.0):
+            return shift, 0.0
+        l10 = math.log10(s)
+        scale = 10.0 ** (float(np.sign(l10)) * int(abs(l10)))
+        return shift, scale
+
+    @classmethod
+    def _fp_design(cls, xx: "np.ndarray", p1: float, p2: float) -> "np.ndarray":
+        """The degree-2 FP design [1, h1, h2] on prepared (positive) x.
+
+        fracgen.ado:161-212: ``h1 = x^p1`` (``ln x`` when p1 == 0) and, for
+        a repeated power (p1 == p2), ``h2 = h1 * ln x`` -- so ``x^p ln x``,
+        or ``ln^2 x`` when p == 0.  dash built ``[1, z, z]`` for a repeated
+        pair, a rank-2 design whose minimum-norm solution is the degree-1
+        fit, so no repeated pair could ever win the search; Stata picks a
+        repeated pair on auto (-2, -2) and nlsw88 (2, 2).
+        """
+        lnx = np.log(xx)
+        h1 = lnx if p1 == 0.0 else np.power(xx, p1)
+        if p1 == p2:
+            h2 = h1 * lnx
+        else:
+            h2 = lnx if p2 == 0.0 else np.power(xx, p2)
+        return np.column_stack([np.ones_like(xx), h1, h2])
+
+    @classmethod
+    def _fp_fit(
+        cls,
+        x: "np.ndarray",
+        y: "np.ndarray",
+        w: "np.ndarray | None" = None,
+        wtype: "str | None" = None,
+    ) -> "dict | None":
+        """``fracpoly regress y x [w]`` with degree 2: the 36 power pairs
+        ``p1 <= p2`` from ``_FP_POWERS`` (repeats included), the one with
+        the smallest (weighted) residual sum of squares, on the shifted and
+        scaled x of :meth:`_fp_prepare` (frac_154.ado:286-340; deviance is
+        monotone in RSS at fixed N).
+
+        Returns:
+            None when no model can be fitted, else a dict with ``p1``,
+            ``p2``, ``shift``, ``scale`` and the :func:`_dash_wls` fit
+            (``beta``, ``df``, ``cov``, ``s2`` ...) of the winning design.
+        """
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        # A constant y: fracpoly's null model has rss 0, deviance -1e30, and
+        # no model can beat it -- r(498), twoway draws nothing (the WP-18
+        # review).  dash drew a flat line.
+        if len(y) == 0 or not (float(np.ptp(y)) > 0.0):
+            return None
+        shift, scale = cls._fp_prepare(x)
+        if not (scale > 0.0):
+            return None
+        xx = (x + shift) / scale
+        best = None
+        for i, p1 in enumerate(cls._FP_POWERS):
+            for p2 in cls._FP_POWERS[i:]:
+                X = cls._fp_design(xx, p1, p2)
+                if not np.all(np.isfinite(X)):
+                    continue
+                try:
+                    fit = _dash_wls(X, y, w, wtype)
+                except np.linalg.LinAlgError:
+                    continue
+                if not np.isfinite(fit["rss"]):
+                    continue
+                if best is None or fit["rss"] < best["rss"]:
+                    best = dict(fit, p1=float(p1), p2=float(p2),
+                                shift=shift, scale=scale)
+        return best
+
+    @staticmethod
+    def _fp_plot_grid(x_all: "np.ndarray", y_all: "np.ndarray",
+                      x_est: "np.ndarray", y_est: "np.ndarray") -> "np.ndarray":
+        """The x values a weighted fpfit is drawn at, as Stata selects them.
+
+        twoway__fpfit_serset.ado keeps every row the plot's if/in admits,
+        fits fracpoly on the rows with a usable weight, then runs ``sort x
+        y; keep if x != x[_n-1]`` over ALL the kept rows and predicts with
+        ``fracpred``, which predicts ``if e(sample)`` only (fracpred.ado:32).
+        So a distinct x whose lowest-y row is one the weight excluded gets a
+        missing prediction and is omitted from the serset, even when another
+        row at that x was in the estimation sample.  Measured on nlsw88
+        ``[aw=hours]``: 1543 plotted points where the estimation sample has
+        1544 distinct x values (ttl_exp 16.31: the hours-missing row has the
+        smaller wage and sorts first).  Unweighted, the two samples are the
+        same rows and this is :func:`_fp_grid`.
+
+        Args:
+            x_all, y_all: The plot's rows (x and y non-missing).
+            x_est, y_est: The estimation sample (usable weight).
+
+        Returns:
+            Sorted distinct x values of the plot's rows whose first row in
+            (x, y) order is in the estimation sample.
+        """
+        if len(x_all) == len(x_est):
+            return _fp_grid(x_est)
+        o = np.lexsort((y_all, x_all))
+        ux, first = np.unique(x_all[o], return_index=True)
+        ymin_all = y_all[o][first]
+        oe = np.lexsort((y_est, x_est))
+        uxe, firste = np.unique(x_est[oe], return_index=True)
+        ymin_est = y_est[oe][firste]
+        pos = np.searchsorted(uxe, ux)
+        pos = np.minimum(pos, max(len(uxe) - 1, 0))
+        keep = (len(uxe) > 0) & (uxe[pos] == ux) & (ymin_est[pos] == ymin_all)
+        grid = ux[keep]
+        if len(grid) > _FP_GRID_MAX:
+            return np.linspace(float(grid[0]), float(grid[-1]), _FP_GRID_MAX)
+        return grid.astype(float)
+
     @classmethod
     def _fit_fp2(
         cls,
         x: "np.ndarray",
         y: "np.ndarray",
     ) -> "tuple[float, float, np.ndarray]":
-        """Fit a degree-2 fractional polynomial to (x, y).
-
-        Tries all unique pairs of powers from ``_FP_POWERS`` and returns the
-        pair (p1, p2) that minimises the residual sum of squares, together
-        with the fitted OLS coefficient vector.
-
-        Returns:
-            ``(p1, p2, coeffs)`` where *coeffs* is [beta0, beta1, beta2] for
-            the model ``y = beta0 + beta1*f(x,p1) + beta2*f(x,p2)``.
-        """
-        from itertools import combinations_with_replacement
-
-        best_rss = np.inf
-        best_p1, best_p2 = 1.0, 2.0
-        best_coeffs = np.array([y.mean(), 0.0, 0.0])
-
-        pairs = list(combinations_with_replacement(cls._FP_POWERS, 2))
-        for p1, p2 in pairs:
-            z1 = cls._fp_transform(x, p1)
-            z2 = cls._fp_transform(x, p2)
-            valid = ~(np.isnan(z1) | np.isnan(z2) | np.isnan(y))
-            if valid.sum() < 4:
-                continue
-            X = np.column_stack([np.ones(valid.sum()), z1[valid], z2[valid]])
-            try:
-                coeffs, _, _, _ = np.linalg.lstsq(X, y[valid], rcond=None)
-                y_pred = X @ coeffs
-                rss = float(np.sum((y[valid] - y_pred) ** 2))
-                if rss < best_rss:
-                    best_rss = rss
-                    best_p1, best_p2 = p1, p2
-                    best_coeffs = coeffs
-            except np.linalg.LinAlgError:
-                continue
-
-        return best_p1, best_p2, best_coeffs
+        """``(p1, p2, beta)`` of :meth:`_fp_fit` -- the powers Stata picks
+        and the coefficients on the prepared design."""
+        fit = cls._fp_fit(x, y)
+        if fit is None:
+            return 1.0, 2.0, np.array([float(np.mean(y)), 0.0, 0.0])
+        return fit["p1"], fit["p2"], fit["beta"]
 
     @classmethod
-    def _predict_fp2(
-        cls,
-        x_grid: "np.ndarray",
-        p1: float,
-        p2: float,
-        coeffs: "np.ndarray",
-    ) -> "np.ndarray":
-        """Evaluate the degree-2 FP model on *x_grid*."""
-        z1 = cls._fp_transform(x_grid, p1)
-        z2 = cls._fp_transform(x_grid, p2)
-        return coeffs[0] + coeffs[1] * z1 + coeffs[2] * z2
+    def _predict_fp2(cls, x_grid: "np.ndarray", fit: dict) -> "np.ndarray":
+        """Evaluate the fitted FP model at *x_grid* (raw x)."""
+        xx = (np.asarray(x_grid, dtype=float) + fit["shift"]) / fit["scale"]
+        return cls._fp_design(xx, fit["p1"], fit["p2"]) @ fit["beta"]
+
+    @classmethod
+    def _fp_stdp(cls, x_grid: "np.ndarray", fit: dict) -> "np.ndarray":
+        """``fracpred, stdp`` at *x_grid*: sqrt(x0' V x0) on the FP design,
+        V the (robust, for pweights) coefficient covariance."""
+        xx = (np.asarray(x_grid, dtype=float) + fit["shift"]) / fit["scale"]
+        Xg = cls._fp_design(xx, fit["p1"], fit["p2"])
+        return _dash_fitci_se(Xg, fit, "stdp")
 
     def map_fpfit(
         self,
@@ -5449,9 +5916,15 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, wtype = self._layer_weights(source, view, options, "fpfit",
+                                             xvar, yvar)
 
-        if len(x) < 4:
+        _fp_report_unsupported(options, "fpfit")
+        # Two observations are enough for twoway fpfit (auto in 1/2 draws
+        # 22 and 17; three collapsed rows with fweights, df 15, draw a
+        # fit).  dash wanted four.  _fp_prepare refuses one distinct x.
+        fit = self._fp_fit(x, y, w, wtype) if len(x) >= 2 else None
+        if fit is None:
             empty = ColumnDataSource({"x_fp": [], "y_fp": []})
             r = fig.line(x="x_fp", y="y_fp", source=empty)
             # An empty layer is still the user's layer: style it so
@@ -5459,10 +5932,11 @@ class GlyphMapper:
             self._apply_line_opts(r, options)
             return r
 
-        _fp_report_unsupported(options, "fpfit")
-        p1, p2, coeffs = self._fit_fp2(x, y)
         x_grid = _fp_grid(x)
-        y_fit = self._predict_fp2(x_grid, p1, p2, coeffs)
+        if w is not None:
+            x_all, y_all = self._masked(source, view, xvar, yvar)
+            x_grid = self._fp_plot_grid(x_all, y_all, x, y)
+        y_fit = self._predict_fp2(x_grid, fit)
 
         valid = ~np.isnan(y_fit)
         fp_src = ColumnDataSource({
@@ -5486,7 +5960,11 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
     ) -> list:
-        """Add a fractional polynomial fit with a bootstrap 95% CI band to *fig*.
+        """Add a fractional polynomial fit and its confidence band to *fig*.
+
+        The fit is :meth:`map_fpfit`'s; the band is Stata's, the t band on
+        the analytic standard error of the prediction at ``level()`` (see
+        the comment at the band below).  It was a bootstrap until WP-18.
 
         Args:
             fig:     Bokeh Figure object.
@@ -5502,13 +5980,16 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x, y = self._masked(source, view, xvar, yvar)
+        x, y, w, wtype = self._layer_weights(source, view, options, "fpfitci",
+                                             xvar, yvar)
 
         _fpfitci_color = self.scheme.default_color(color_idx, "line")
         empty_src = ColumnDataSource({
             "x_fp": [], "y_fp": [], "y_lower": [], "y_upper": []
         })
-        if len(x) < 4:
+        _fp_report_unsupported(options, "fpfitci")
+        fit = self._fp_fit(x, y, w, wtype) if len(x) >= 2 else None
+        if fit is None:
             band_r = fig.varea(
                 x="x_fp", y1="y_lower", y2="y_upper",
                 source=empty_src, fill_alpha=_CI_BAND_ALPHA, fill_color=_fpfitci_color,
@@ -5518,21 +5999,27 @@ class GlyphMapper:
                               legend_label=yvar)
             return [line_r, band_r]
 
-        _fp_report_unsupported(options, "fpfitci")
-        p1, p2, coeffs = self._fit_fp2(x, y)
         x_grid = _fp_grid(x)
-        y_fit = self._predict_fp2(x_grid, p1, p2, coeffs)
+        if w is not None:
+            x_all, y_all = self._masked(source, view, xvar, yvar)
+            x_grid = self._fp_plot_grid(x_all, y_all, x, y)
+        y_fit = self._predict_fp2(x_grid, fit)
 
-        def _fp_fn(xi: "np.ndarray", yi: "np.ndarray", xg: "np.ndarray") -> "np.ndarray":
-            bp1, bp2, bc = self._fit_fp2(xi, yi)
-            return self._predict_fp2(xg, bp1, bp2, bc)
-
+        # Stata's band (twoway__fpfit_serset.ado:31-50): `fracpred se, stdp'
+        # and invttail(e(df_r), (100-level)/200), df_r = N - 3.  Not a
+        # bootstrap: the 200-resample percentile band dash drew was 0.78x to
+        # 1.78x Stata's width across auto, moved with the seed, and cost the
+        # 36-model search 200 times over; the analytic band reproduces
+        # Stata's serset to 6e-8.
+        se_fit = self._fp_stdp(x_grid, fit)
+        # With no residual degrees of freedom (N = rank: auto in 1/2 or
+        # 1/3) Stata draws the fit and leaves the band missing.
+        t_crit = (_t_ppf(0.5 + _resolve_level(options, self.default_level)
+                         / 200.0, df=fit["df"])
+                  if fit["df"] >= 1 else float("nan"))
         valid = ~np.isnan(y_fit)
-        y_lower, y_upper = GlyphMapper._bootstrap_ci(
-            x, y, x_grid, _fp_fn, fallback=y_fit,
-            level=_resolve_level(options, self.default_level),
-            seed=_resolve_seed(options),
-        )
+        y_lower = y_fit - t_crit * se_fit
+        y_upper = y_fit + t_crit * se_fit
 
         ci_src = ColumnDataSource({
             "x_fp":    x_grid[valid].tolist(),
@@ -5575,10 +6062,30 @@ class GlyphMapper:
             empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
             return fig.quad(top="top", bottom=0, left="left", right="right",
                             source=empty_src)
-        arr = _extract_finite(source, yvar, view=view)
+        # twoway__histogram_gen.ado:6 admits [fw] only; any other type is
+        # named by _layer_weights and the bars are counted unweighted.
+        arr, w, wtype = self._layer_weights(source, view, options,
+                                            "histogram", yvar)
+        if not len(arr):
+            empty_src = ColumnDataSource({"top": [], "left": [], "right": []})
+            return fig.quad(top="top", bottom=0, left="left", right="right",
+                            source=empty_src)
 
-        edges, ymode = self._histogram_grid(arr, options)
-        counts, _ = np.histogram(arr, bins=edges)
+        edges, ymode = self._histogram_grid(arr, options, w)
+        discrete = bool(str(options.get("discrete", "") or "").strip())
+        if discrete and len(arr):
+            # twoway__histogram_gen.ado:200-203: bar floor((v - min)/h), a
+            # value one past the last bar folded back into it.  With
+            # discrete, a width() coarser than the data's spacing leaves the
+            # maximum past the last edge (`histogram mpg, discrete width(3)'
+            # has its 41-mpg car there), and np.histogram dropped it.
+            nb = len(edges) - 1
+            h = (float(edges[-1]) - float(edges[0])) / nb
+            idx = np.floor((arr - float(edges[0])) / h)
+            idx = np.clip(idx, 0, nb - 1).astype(np.int64)
+            counts = np.bincount(idx, weights=w, minlength=nb).astype(float)
+        else:
+            counts, _ = np.histogram(arr, bins=edges, weights=w)
         tops = _histogram_heights(counts, edges, ymode)
 
         hist_source = ColumnDataSource({
@@ -5616,23 +6123,43 @@ class GlyphMapper:
             # density histogram of a filtered subset has to renormalise to the
             # surviving rows, or the curve silently stops integrating to 1.
             "ymode":     ymode,
+            # The weight column the JS recount reads, when the layer has
+            # one.
+            "wvar":      (str(options.get("wexp", "")).strip()
+                          if wtype is not None else None),
+            "wtype":     wtype,
+            # A discrete grid folds a value past its last edge into the
+            # last bar, as the count above does; the JS recount must too.
+            "discrete":  discrete,
         }
         return r
 
     @staticmethod
     def _histogram_grid(
         arr: "np.ndarray", options: "dict[str, str]",
+        w: "np.ndarray | None" = None,
     ) -> "tuple[np.ndarray, str]":
         """Resolve Stata's histogram bin grid and y-axis family.
 
         Stata's precedence ([R] histogram): ``width()`` and ``start()``
         together define the grid explicitly; ``bin()`` instead sets a count
         over the observed range; with neither, the count comes from the data
-        via :func:`_stata_bin_count`.
+        via :func:`_stata_bin_count` -- of the SUM of the frequency weights
+        when there are any (twoway__histogram_gen.ado:73: ``sum v [fw]``,
+        ``r(N)``).
+
+        ``discrete`` (twoway__histogram_gen.ado:144-164) is its own grid:
+        every distinct value is a bar of width ``width()``, or the smallest
+        positive spacing of the sorted distinct values (1 when there is
+        only one), centred on the value -- the left edge is ``min - h/2``
+        and the bin count ``int((max - (min - h/2))/h + .5)``.  ``start()``
+        does not move that edge (:109-112).  ``bin()`` with ``discrete`` is
+        refused by Stata (r(198)); the renderer names it and ignores it.
 
         Args:
             arr:     Finite observations being binned.
             options: Translated plot-level options.
+            w:       Frequency weights aligned with *arr*, or None.
 
         Returns:
             ``(edges, ymode)`` where *ymode* is one of ``"density"``,
@@ -5640,12 +6167,10 @@ class GlyphMapper:
         """
         _MAX_BINS = 1000
         n = len(arr)
+        n_w = int(round(float(np.sum(w)))) if w is not None else n
         a_min = float(arr.min()) if n else 0.0
         a_max = float(arr.max()) if n else 1.0
 
-        start = _stat_option_float(options, "start", None, "histogram")
-        if start is None:
-            start = a_min
         width = _stat_option_float(options, "width", None, "histogram", lo=0.0)
         if width is not None and width <= 0.0:
             warnings.warn(
@@ -5655,9 +6180,45 @@ class GlyphMapper:
             )
             width = None
 
+        if str(options.get("discrete", "") or "").strip():
+            if str(options.get("bin", "") or "").strip():
+                warnings.warn(
+                    "dash: histogram options discrete and bin() may not be "
+                    "combined -- Stata refuses them together with r(198); "
+                    "bin() is ignored and each distinct value is its own bar.",
+                    UserWarning, stacklevel=2,
+                )
+            if width is None:
+                distinct = np.unique(arr) if n else np.array([0.0])
+                gaps = np.diff(distinct)
+                gaps = gaps[gaps > 0]
+                width = float(gaps.min()) if len(gaps) else 1.0
+            lo = a_min - width / 2.0
+            n_bins = int((a_max - lo) / width + 0.5)
+            n_bins = max(1, n_bins)
+            if n_bins > _MAX_BINS:
+                warnings.warn(
+                    f"dash: histogram discrete needs {n_bins} bins, more than "
+                    f"the {_MAX_BINS} limit; using {_MAX_BINS} bins.",
+                    UserWarning, stacklevel=2,
+                )
+                n_bins = _MAX_BINS
+                width = (a_max - lo) / n_bins
+            edges = lo + width * np.arange(n_bins + 1, dtype=float)
+            return edges, _dash_histogram_ymode(options)
+
+        start = _stat_option_float(options, "start", None, "histogram")
+        if start is None:
+            start = a_min
+
+        if n and a_max == a_min and width is None:
+            # twoway__histogram_gen.ado:98-100: every value equal and no
+            # width() makes the width 1 -- one bar from the value, whatever
+            # bin() says.  dash spread three bars of width |v|/3.
+            width = 1.0
         span = a_max - start
         if span <= 0.0:
-            span = abs(a_max) or 1.0
+            span = 0.0 if width is not None else (abs(a_max) or 1.0)
 
         if width is not None:
             # A denormal width -- width(1e-310) -- makes span/width overflow
@@ -5672,12 +6233,12 @@ class GlyphMapper:
                     UserWarning, stacklevel=2,
                 )
                 width = None
-                n_bins = _stata_bin_count(n)
+                n_bins = _stata_bin_count(n_w)
             else:
                 n_bins = int(math.ceil(_ratio))
         else:
             requested = _stat_option_float(options, "bin", None, "histogram", lo=1.0)
-            n_bins = int(requested) if requested is not None else _stata_bin_count(n)
+            n_bins = int(requested) if requested is not None else _stata_bin_count(n_w)
 
         n_bins = max(1, n_bins)
         if n_bins > _MAX_BINS:
@@ -5738,7 +6299,10 @@ class GlyphMapper:
         """
         if options is None:
             options = {}
-        arr = _extract_finite(source, yvar, view=view)
+        # twoway__kdensity_gen.ado:7 admits [fw aw]; pw/iw are named by
+        # _layer_weights and the density is estimated unweighted.
+        arr, w, wtype = self._layer_weights(source, view, options,
+                                            "kdensity", yvar)
 
         # Stata's kernels are implemented directly (see _KERNELS): scipy's
         # gaussian_kde can only ever be Gaussian, so it could not express
@@ -5756,7 +6320,7 @@ class GlyphMapper:
             )
             kernel = "epanechnikov"
 
-        default_bw = _stata_kde_bandwidth(arr)
+        default_bw = _stata_kde_bandwidth(arr, w, wtype)
         bw = _stat_option_float(options, "bwidth", default_bw, "kdensity",
                                 lo=0.0)
         if bw is None or bw <= 0.0:
@@ -5773,12 +6337,17 @@ class GlyphMapper:
 
         n_pts = _stat_option_float(options, "n", 300.0, "kdensity", lo=2.0,
                                    hi=10000.0) or 300.0
-        # Extend beyond the data so the tails of the kernel are drawn.
-        # Stata's kdensity takes range(# #), the span the density is
-        # estimated over. dash read range() in the `function' branch and
+        # twoway kdensity's grid is n() points, 300 by default, from the
+        # observed minimum to the observed maximum (measured: the plotted
+        # serset runs 12..41 on auto/mpg).  dash used to pad the span by
+        # three bandwidths at each end, which is the `kdensity' command's
+        # own generate() grid, not what twoway draws; on census with
+        # bwidth(2) the padded 300-point grid was too coarse to hit Stata's
+        # x at all.  Stata's kdensity takes range(# #), the span the density
+        # is estimated over. dash read range() in the `function' branch and
         # nowhere else, so `kdensity mpg, range(10 30)' estimated over the
         # default span and said nothing about it.
-        _lo, _hi = arr.min() - 3 * bw, arr.max() + 3 * bw
+        _lo, _hi = float(arr.min()), float(arr.max())
         _rng_raw = str(options.get("range", "") or "").strip()
         if _rng_raw:
             _parts = _rng_raw.split()
@@ -5798,7 +6367,7 @@ class GlyphMapper:
                 )
         x_range = np.linspace(_lo, _hi,
                               int(n_pts))
-        density = _kde_curve(arr, x_range, bw, kernel)
+        density = _kde_curve(arr, x_range, bw, kernel, w)
 
         kd_source = ColumnDataSource({"x": x_range, "y": density})
         r = fig.line(x="x", y="y", source=kd_source,
@@ -5821,6 +6390,11 @@ class GlyphMapper:
             "bw_rule":   _KDE_BANDWIDTH_RULE,
             "bw_fixed":  (float(bw)
                           if str(options.get("bwidth", "")).strip() else None),
+            # The weight column and type the JS reads for the weighted sd,
+            # percentiles and density sum; None on an unweighted layer.
+            "wvar":      (str(options.get("wexp", "")).strip()
+                          if wtype is not None else None),
+            "wtype":     wtype,
         }
         return r
 
@@ -6992,61 +7566,75 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
     ) -> list:
-        """Add a monotone cubic spline (PCHIP) line to *fig*.
+        """Add Stata's median spline to *fig*.
 
-        Uses ``scipy.interpolate.PchipInterpolator`` to fit a smooth
-        monotone cubic spline through the data points, evaluated on a
-        200-point grid spanning the data range.
+        ``twoway mspline`` (twoway_mspline_parse.class:34-37, 73-77) is
+        NOT a spline through the data: it is the cross medians of
+        ``bands()`` equal-width x bands -- the same knots ``mband`` plots --
+        joined by a cubic spline evaluated at ``n()`` (default 10) equally
+        spaced points between each pair of adjacent knots, so the curve
+        has ``(K-1)*n + K`` points for K non-empty bands.  The boundary
+        condition is inside Stata's builtin serset code; measured against
+        the plotted sersets of twenty probes (four datasets x default,
+        bands(5), bands(20), bands(5) n(4), n(20)) the NATURAL cubic spline
+        reproduces every curve to float32 precision (max 9.7e-6 absolute on
+        a y range of 2.8-12.4), where not-a-knot is off by 2.76, clamped
+        by 1.62 and PCHIP by 0.96 on auto's default.
+
+        dash used to draw a PCHIP through every observation (duplicate x
+        averaged) on a 200-point grid, read neither bands() nor n(), and
+        needed scipy for it: 14.0 mpg from Stata's curve on auto.
 
         Args:
             fig:     Bokeh Figure object.
             source:  Shared ColumnDataSource.
             yvar:    Name of the y variable.
             xvar:    Name of the x variable.
-            options: Translated plot-level options dict.
+            options: Translated plot-level options dict; ``bands()`` and
+                     ``n()`` are honoured, a weight is accepted and inert
+                     as in twoway (measured).
 
         Returns:
             List with the single GlyphRenderer for the spline line.
         """
-        PchipInterpolator = _optional_import(
-            "scipy.interpolate", "PchipInterpolator", "scipy", "mspline",
-        )
-
         # Masked by the layer's own view: a per-plot `if', a by()
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x_clean, y_clean = self._masked(source, view, xvar, yvar)
+        x_clean, y_clean, _w, _wt = self._layer_weights(
+            source, view, options, "mspline", xvar, yvar)
 
-        # Sort by x
-        order = np.argsort(x_clean)
-        x_clean = x_clean[order]
-        y_clean = y_clean[order]
+        empty = ColumnDataSource({"x_sp": [], "y_sp": []})
+        requested = _stat_option_float(options, "bands", None, "mspline",
+                                       lo=1.0, hi=float(_MAX_MBANDS))
+        n_bands = (int(requested) if requested is not None
+                   else _mband_default_bands(len(x_clean)))
+        # n() may be 1 in Stata (measured: bands(8) n(1) draws 15 points)
+        # and at most 300: twoway refuses n(301), "n must be between 1 and
+        # 300", r(198), and so does dash.ado; a hand-written spec gets the
+        # default and a note.
+        n_between = int(_stat_option_float(options, "n", 10.0, "mspline",
+                                           lo=1.0, hi=300.0) or 10.0)
 
-        # Deduplicate x values — PchipInterpolator requires strictly increasing x.
-        # For duplicate x values take the mean y to produce a single representative point.
-        unique_x, inv = np.unique(x_clean, return_inverse=True)
-        if len(unique_x) < len(x_clean):
-            y_agg = np.zeros(len(unique_x))
-            counts = np.zeros(len(unique_x))
-            for i, j in enumerate(inv):
-                y_agg[j] += y_clean[i]
-                counts[j] += 1
-            x_clean = unique_x
-            y_clean = y_agg / counts
-
-        # Needs scipy, and at least 2 valid (distinct) points for interpolation
-        if PchipInterpolator is None or len(x_clean) < 2:
-            empty = ColumnDataSource({"x_sp": [], "y_sp": []})
+        kx, ky = self._cross_medians(x_clean, y_clean, n_bands)
+        # No knot -- no data, or every x equal -- is no curve.
+        if len(kx) < 1:
             r = fig.line(x="x_sp", y="y_sp", source=empty)
             # An empty layer is still the user's layer: style it so
             # lwidth/lcolor/lpattern survive the bail-out.
             self._apply_line_opts(r, options)
             return [r]
 
-        interp = PchipInterpolator(x_clean, y_clean)
-        x_grid = np.linspace(x_clean.min(), x_clean.max(), 200)
-        y_grid = interp(x_grid)
+        if len(kx) < 3:
+            # One or two knots: Stata's serset is the knots themselves --
+            # no spline and no n() points between them (the WP-18 review:
+            # bands(1) plots (5.5, 30.5) alone, bands(2) its two knots).
+            x_grid, y_grid = kx, ky
+        else:
+            x_grid = np.concatenate(
+                [np.linspace(kx[i], kx[i + 1], n_between + 2)[:-1]
+                 for i in range(len(kx) - 1)] + [kx[-1:]])
+            y_grid = _natural_cubic_spline(kx, ky, x_grid)
 
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
         r = fig.line(x="x_sp", y="y_sp", source=ms_source,
@@ -7055,6 +7643,54 @@ class GlyphMapper:
                      legend_label=yvar)
         self._apply_line_opts(r, options)
         return [r]
+
+    @staticmethod
+    def _cross_medians(x: "np.ndarray", y: "np.ndarray", n_bands: int
+                       ) -> "tuple[np.ndarray, np.ndarray]":
+        """The cross medians of *n_bands* equal-width x bands.
+
+        What ``mband`` plots and what ``mspline`` splines through
+        (_gs_default_bands.ado, serset create_xmedians): the observed x
+        range cut into *n_bands* bands of equal WIDTH -- not equal count --
+        the last one closed on the right, and for every NON-EMPTY band the
+        median x and the median y of the observations inside it.  With
+        unevenly spread x the band's midpoint can sit where there is no
+        data at all, which is why the median x is plotted.  Reproduces the
+        plotted sersets of bands(5)/bands(20) on four datasets point for
+        point (fixture mband) and every mspline knot set (mspline_knots).
+
+        Returns:
+            ``(kx, ky)``, one entry per non-empty band; empty when x does
+            not vary.
+        """
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        if len(x) == 0:
+            return np.array([]), np.array([])
+        x_min, x_max = float(x.min()), float(x.max())
+        if x_max == x_min:
+            return np.array([]), np.array([])
+        n_bands = max(1, int(n_bands))
+        # The band of an observation is floor((x - min) * B / range), the
+        # top band closed on the right -- an observation ON an edge belongs
+        # to the band above it.  Comparing against np.linspace's edges put
+        # it below whenever the edge was not exactly representable: on
+        # x = 0, .1, ..., 1 with bands(10) the edge at .3 is
+        # 0.30000000000000004, and dash drew 8 knots where Stata draws 10;
+        # on 200 values rounded to hundredths, bands(20) moved 6 of the 20
+        # knots (the WP-18 review; test_statistical_helpers.py
+        # TestCrossMediansAgainstStata).  This rule reproduces those and
+        # every fixture mband record.
+        band = np.floor((x - x_min) * n_bands / (x_max - x_min))
+        band = np.minimum(band, n_bands - 1).astype(np.int64)
+        kx: "list[float]" = []
+        ky: "list[float]" = []
+        for i in range(n_bands):
+            in_band = band == i
+            if in_band.any():
+                kx.append(float(np.median(x[in_band])))
+                ky.append(float(np.median(y[in_band])))
+        return np.asarray(kx), np.asarray(ky)
 
     def map_mband(
         self,
@@ -7068,11 +7704,13 @@ class GlyphMapper:
     ) -> list:
         """Add a median band smoother to *fig*.
 
-        ``twoway mband`` replicates Stata's median-band plot: the x range is
-        divided into equal-width bands and the median of *yvar* within each
-        band is plotted as a step-through line.  The number of bands defaults
-        to ``min(ceil(n/5), 20)`` so that each band contains at least ~5
-        observations on average.
+        ``twoway mband``: the x range is cut into ``bands()`` equal-width
+        bands and the cross median (median x, median y) of each non-empty
+        band is joined by straight lines (:meth:`_cross_medians`).  The
+        band count defaults to :func:`_mband_default_bands`, Stata's
+        _gs_default_bands rule.  Any sample with two distinct x draws: two
+        observations are two bands and two knots, as in Stata (dash used to
+        draw nothing below four observations).
 
         Args:
             fig:     Bokeh Figure object.
@@ -7088,16 +7726,10 @@ class GlyphMapper:
         # facet panel or a linked graph's qualifier.  Reading the
         # whole source here computed the statistic from rows the user
         # had excluded, and said nothing.
-        x_clean, y_clean = self._masked(source, view, xvar, yvar)
+        x_clean, y_clean, _w, _wt = self._layer_weights(
+            source, view, options, "mband", xvar, yvar)
 
         empty = ColumnDataSource({"x_mb": [], "y_mb": []})
-
-        if len(x_clean) < 4:
-            r = fig.line(x="x_mb", y="y_mb", source=empty)
-            # An empty layer is still the user's layer: style it so
-            # lwidth/lcolor/lpattern survive the bail-out.
-            self._apply_line_opts(r, options)
-            return [r]
 
         # hi= matches the clamp the generated server app applies, so the two
         # modes draw the same number of bands.  Without it, bands(1e9)
@@ -7106,31 +7738,13 @@ class GlyphMapper:
                                        lo=1.0, hi=float(_MAX_MBANDS))
         n_bands = (int(requested) if requested is not None
                    else _mband_default_bands(len(x_clean)))
-        x_min, x_max = float(x_clean.min()), float(x_clean.max())
-        if x_max == x_min:
-            r = fig.line(x="x_mb", y="y_mb", source=empty)
-            return [r]
+        x_mids, y_meds = self._cross_medians(x_clean, y_clean, n_bands)
 
-        edges = np.linspace(x_min, x_max, n_bands + 1)
-        x_mids: list[float] = []
-        y_meds: list[float] = []
-        for i in range(n_bands):
-            lo, hi = edges[i], edges[i + 1]
-            # Include right edge in the last band
-            in_band = (
-                (x_clean >= lo) & (x_clean <= hi) if i == n_bands - 1
-                else (x_clean >= lo) & (x_clean < hi)
-            )
-            if in_band.sum() > 0:
-                # Stata plots CROSS-MEDIANS: the median x and the median y of
-                # the observations inside the band, not the band's midpoint.
-                # With unevenly spread x the midpoint can sit where there is
-                # no data at all.
-                x_mids.append(float(np.median(x_clean[in_band])))
-                y_meds.append(float(np.median(y_clean[in_band])))
-
-        if not x_mids:
+        if not len(x_mids):
+            # No data, or every x equal.  An empty layer is still the
+            # user's layer: style it so lwidth/lcolor/lpattern survive.
             r = fig.line(x="x_mb", y="y_mb", source=empty)
+            self._apply_line_opts(r, options)
             return [r]
 
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
@@ -7363,17 +7977,19 @@ _IF_EXPR_SAFE_NAMES: "frozenset[str]" = frozenset(
 
 
 def _mband_default_bands(n: int) -> int:
-    """Stata's default number of median bands.
+    """Stata's default number of median bands, for mband and mspline.
 
-    ``round(min(sqrt(N), 10*log10(N)))`` -- the same expression as the
-    histogram bin rule, but ROUNDED where the histogram rule truncates.
+    ``round(min(10*log10(N), sqrt(N)))``, raised to at least ``min(N, 2)``
+    (_gs_default_bands.ado:5-17) -- the same expression as the histogram
+    bin rule, but ROUNDED where the histogram rule truncates.
 
     NOTE: this is NOT what Stata documents.  `help twoway_mband` says
-    ``max(10, round(10*log10(N)))``, which would give 19 bands on auto where
-    Stata actually draws 9.  The graph engine computes the count internally
-    and no .ado exposes it, so this rule was recovered by measurement: it
-    reproduces all 14 probed (N, bands) pairs, from N=25 to N=2246.  See
-    ``mband_default_band_count_rule_search`` in test/fixtures/stat_truth.json.
+    ``max(10, round(10*log10(N)))``, which would give 19 bands on auto
+    where Stata draws 9.  The rule was first recovered by measurement (all
+    14 probed (N, bands) pairs, N=25 to N=2246, fixture
+    ``mband_default_band_count_rule_search``) and then found in
+    _gs_default_bands.ado, which both mband and mspline call; the floor of
+    min(N, 2) came with it (WP-18), so two observations make two knots.
 
     dash previously used an invented ``clip(ceil(n/5), 2, 20)``, which gives
     15 bands on auto.
@@ -7386,7 +8002,10 @@ def _mband_default_bands(n: int) -> int:
     """
     if n < 1:
         return 1
-    return max(1, int(round(min(math.sqrt(n), 10.0 * math.log10(n)))))
+    # Stata's round() rounds half away from zero; floor(v + .5) is that
+    # for the positive values here (Python's round() is half-to-even).
+    return max(min(n, 2),
+               int(math.floor(min(math.sqrt(n), 10.0 * math.log10(n)) + 0.5)))
 
 
 def _betacf(a: float, b: float, x: float) -> float:
@@ -7528,24 +8147,26 @@ def _fp_grid(x: "np.ndarray") -> "np.ndarray":
     line it belonged to did not lie on top of each other, and both ends of the
     fit were cut off.
 
-    A fractional polynomial needs x > 0, so non-positive observations are
-    dropped.
+    Every distinct x, positive or not: fracpoly shifts a covariate whose
+    minimum is not positive (frac_xo.ado:81-98, see GlyphMapper._fp_prepare)
+    rather than dropping observations, and twoway__fpfit_serset.ado:20-21
+    predicts at every distinct x of the estimation sample.  dash used to
+    drop x <= 0 here.
 
     Args:
         x: Cleaned x observations.
 
     Returns:
-        Sorted distinct positive x values, capped at _FP_GRID_MAX points.
+        Sorted distinct x values, capped at _FP_GRID_MAX points.
     """
-    pos = np.unique(x[x > 0])
+    pos = np.unique(np.asarray(x, dtype=float))
     if len(pos) == 0:
         return np.array([1e-6, 1.0])
     if len(pos) == 1:
         return np.array([float(pos[0])])
     if len(pos) > _FP_GRID_MAX:
-        # Resource guard: the bootstrap band costs O(n_boot * n_points), so a
-        # dataset with a hundred thousand distinct x values would hang the
-        # render.  Fall back to an even grid across the same range.
+        # Resource guard against a line of a million points.  Fall back to
+        # an even grid across the same range.
         return np.linspace(float(pos[0]), float(pos[-1]), _FP_GRID_MAX)
     return pos.astype(float)
 
@@ -7556,12 +8177,18 @@ def _fp_report_unsupported(options: dict, layer: str) -> None:
     ``dash.sthlp`` documented ``bwidth()`` and ``degree()`` for fpfit; Stata
     rejects both with r(198) ("option bwidth() not allowed"), and there is no
     bandwidth concept in a fractional polynomial at all.  Silently ignoring
-    them would leave the user believing they had an effect.
+    them would leave the user believing they had an effect.  ``fpfitci``
+    likewise draws only the stdp band: ``stdf`` and ``stdr`` are lfitci and
+    qfitci options, and twoway fpfitci rejects them with r(198) (measured).
     """
-    for key in ("bwidth", "degree"):
+    keys = ("bwidth", "degree")
+    if layer == "fpfitci":
+        keys = keys + ("stdf", "stdr")
+    for key in keys:
         if str(options.get(key, "")).strip():
+            shown = key if key in ("stdf", "stdr") else key + "()"
             warnings.warn(
-                f"dash: {layer} does not accept {key}() -- neither does "
+                f"dash: {layer} does not accept {shown} -- neither does "
                 f"Stata's twoway {layer}, which rejects it with r(198). "
                 f"The option is being ignored.",
                 UserWarning, stacklevel=3,
@@ -7858,7 +8485,41 @@ def _stata_percentile(sorted_arr: "np.ndarray", p: float) -> float:
     return float(sorted_arr[min(max(k, 1), n) - 1])
 
 
-def _stata_kde_bandwidth(arr: "np.ndarray") -> float:
+def _stata_weighted_percentile(sorted_arr: "np.ndarray",
+                               sorted_w: "np.ndarray", p: float) -> float:
+    """Stata's weighted percentile ([R] summarize, Methods and formulas).
+
+    With ``W_j`` the running sum of the weights of the sorted values and
+    ``P = p/100 * W``: the first j with ``W_j >= P`` gives ``x_(j)``, or the
+    mean of ``x_(j)`` and ``x_(j+1)`` when ``W_j == P`` exactly.  With unit
+    weights this is :func:`_stata_percentile`.
+    """
+    n = len(sorted_arr)
+    if n == 0:
+        return float("nan")
+    cum = np.cumsum(np.asarray(sorted_w, dtype=float))
+    total = float(cum[-1])
+    if total <= 0:
+        return float("nan")
+    P = total * p / 100.0
+    # The tie test needs the same tolerance on BOTH sides: a running sum
+    # that should equal P can land a hair below it in binary (weights .15
+    # and .7 sum to just under .85), and a search for the first W_j >= P
+    # then skips the tie.  That put p25 at 3.0 where Stata's is 2.5 and
+    # moved kdensity's bandwidth 9% (the WP-18 review); the page's
+    # dash_wpctl already had this rule, so the curve also jumped on the
+    # first filter move.
+    tol = 1e-12 * max(total, 1.0)
+    j = int(np.searchsorted(cum, P - tol, side="left"))
+    if j >= n:
+        return float(sorted_arr[-1])
+    if abs(float(cum[j]) - P) <= tol and j + 1 < n:
+        return float((sorted_arr[j] + sorted_arr[j + 1]) / 2.0)
+    return float(sorted_arr[j])
+
+
+def _stata_kde_bandwidth(arr: "np.ndarray", w: "np.ndarray | None" = None,
+                         wtype: "str | None" = None) -> float:
     """Stata's default kernel-density bandwidth.
 
     [R] kdensity: ``w = 0.9 * m * n^(-1/5)`` where
@@ -7868,57 +8529,92 @@ def _stata_kde_bandwidth(arr: "np.ndarray") -> float:
     Verified exact to ten decimal places against Stata: ``kdensity mpg`` on
     ``sysuse auto`` returns r(bwidth) = 1.9746142001, and so does this.
 
+    With a weight (kdensity.ado:184-201: ``summarize x [w], detail``) the sd
+    and the percentiles are weighted and ``n`` is r(N): the observation
+    count for aweights, the sum of the weights for fweights.  Measured:
+    ``[fw=rep78]`` on auto/mpg gives 1.5671661 and ``[aw=price]``
+    1.9746142, both reproduced.
+
     dash previously used scipy's Scott factor on the initial render while the
     filter callback used this rule, so the curve jumped the first time any
     filter was touched even when no rows were removed.  One rule, both paths.
 
     Args:
-        arr: Finite observations.
+        arr:   Finite observations.
+        w:     Positive weights aligned with *arr*, or None.
+        wtype: ``"aw"`` or ``"fw"`` when *w* is given.
 
     Returns:
         The bandwidth in data units; 0.0 when it is not computable.
     """
+    arr = np.asarray(arr, dtype=float)
     n = len(arr)
     if n < 2:
         return 0.0
-    sd = float(np.std(arr, ddof=1))
-    srt = np.sort(np.asarray(arr, dtype=float))
-    iqr = _stata_percentile(srt, 75) - _stata_percentile(srt, 25)
+    if w is None:
+        sd = float(np.std(arr, ddof=1))
+        srt = np.sort(arr)
+        iqr = _stata_percentile(srt, 75) - _stata_percentile(srt, 25)
+        n_eff = float(n)
+    else:
+        ww = np.asarray(w, dtype=float)
+        n_eff = float(ww.sum()) if wtype == "fw" else float(n)
+        if n_eff <= 1:
+            return 0.0
+        mu = float(np.dot(ww, arr)) / float(ww.sum())
+        # Stata's weighted variance: sum w (x-mu)^2 / (n_eff - 1) with the
+        # weights scaled to sum to n_eff.
+        var = float(np.dot(ww, (arr - mu) ** 2)) * (n_eff / float(ww.sum())) \
+            / (n_eff - 1.0)
+        sd = math.sqrt(max(var, 0.0))
+        order = np.argsort(arr, kind="stable")
+        srt, sw = arr[order], ww[order]
+        iqr = (_stata_weighted_percentile(srt, sw, 75)
+               - _stata_weighted_percentile(srt, sw, 25))
     m = min(sd, iqr / 1.349) if iqr > 0 else sd
     if m <= 0:
         m = sd
     if m <= 0:
         return 0.0
-    return 0.9 * m * n ** (-0.2)
+    return 0.9 * m * n_eff ** (-0.2)
 
 
 def _kde_curve(
     arr: "np.ndarray", grid: "np.ndarray", h: float, kernel: str,
+    w: "np.ndarray | None" = None,
 ) -> "np.ndarray":
     """Evaluate a kernel density estimate on *grid*.
+
+    ``f(x) = sum_i w_i K((x - x_i)/h) / (sum_i w_i * h)`` (kdensity.ado
+    _KDE); unit weights when *w* is None.
 
     Args:
         arr:    Finite observations.
         grid:   Points at which to evaluate the density.
         h:      Bandwidth in data units.
         kernel: A key of :data:`_KERNELS`.
+        w:      Positive weights aligned with *arr*, or None.
 
     Returns:
         Density values, one per grid point.
     """
     support, kfn = _KERNELS[kernel]
-    n = len(arr)
+    arr = np.asarray(arr, dtype=float)
+    ww = None if w is None else np.asarray(w, dtype=float)
+    total = float(len(arr)) if ww is None else float(ww.sum())
     out = np.empty(len(grid), dtype=float)
     for i, x0 in enumerate(grid):
         z = (x0 - arr) / h
         if np.isfinite(support):
             inside = np.abs(z) < support
-            w = np.zeros_like(z)
+            k = np.zeros_like(z)
             if inside.any():
-                w[inside] = kfn(z[inside])
+                k[inside] = kfn(z[inside])
         else:
-            w = kfn(z)
-        out[i] = w.sum() / (n * h)
+            k = kfn(z)
+        if ww is not None:
+            k = k * ww
+        out[i] = k.sum() / (total * h)
     return out
 
 
@@ -7972,6 +8668,272 @@ def _stata_bin_count(n: int) -> int:
         return 1
     k = min(math.sqrt(n), 10.0 * math.log(n) / math.log(10.0))
     return max(1, int(k))
+
+
+def _dash_weight_spec(options) -> "tuple[str | None, str]":
+    """``(wtype, wexp)`` from a layer's options, or ``(None, "")``.
+
+    dash.ado writes ``"weight":"aweight","wexp":"price"`` into the plot's
+    options only when the command carried a weight clause.  The type is
+    reduced to its two-letter form; either spelling is accepted from a
+    hand-written spec.
+    """
+    wtype = str((options or {}).get("weight", "") or "").strip().lower()
+    wexp = str((options or {}).get("wexp", "") or "").strip()
+    if not wtype or not wexp:
+        return None, ""
+    wtype = wtype[:2]
+    if wtype not in _DASH_WEIGHT_NAMES:
+        return None, ""
+    return wtype, wexp
+
+
+def _dash_weight_norm(w: "np.ndarray | None", wtype: "str | None",
+                      n: int) -> "np.ndarray":
+    """Weights as ``regress`` uses them: aweights and pweights scaled to sum
+    to the observation count, fweights raw (so their sum is N).  Unit
+    weights when there are none."""
+    if w is None:
+        return np.ones(n, dtype=float)
+    ww = np.asarray(w, dtype=float)
+    if wtype == "fw":
+        return ww
+    return ww * (len(ww) / float(ww.sum()))
+
+
+def _dash_lpoly_weights(w: "np.ndarray | None", wtype: "str | None"
+                        ) -> "np.ndarray | None":
+    """Weights as ``lpoly`` uses them (lpoly.ado:295-303): aweights
+    normalised to mean 1, fweights raw."""
+    if w is None:
+        return None
+    ww = np.asarray(w, dtype=float)
+    if wtype == "fw":
+        return ww
+    return ww * (len(ww) / float(ww.sum()))
+
+
+def _dash_wls(X: "np.ndarray", y: "np.ndarray",
+              w: "np.ndarray | None" = None,
+              wtype: "str | None" = None) -> dict:
+    """``regress y X [w]`` as Stata reports it, for the fitted lines' bands.
+
+    Weighted least squares on the design *X* (with its constant column),
+    the weights normalised by :func:`_dash_weight_norm`: ``N`` is their
+    sum (the observation count for aw/pw, the frequency total for fw),
+    ``df = N - rank``, ``s2 = sum w e^2 / df``.  For pweights the
+    covariance is the HC1 sandwich Stata's robust VCE uses (measured on
+    auto [pw=rep78]: stdp 1.2286585 at x=1760, where the model-based value
+    is .8380293).
+
+    A column that adds nothing to the columns BEFORE it is omitted, its
+    coefficient 0 -- regress drops the later of a collinear pair: qfitci
+    on an x with two values fits the line, x^2 omitted, with df N - 2.  The
+    remaining fit and its covariance are held in SVD form, with lstsq's
+    rank cutoff, because ``s2 * inv(X'WX)`` squares the condition number:
+    on a date-time x (a large offset against its range) the band came out
+    at 0.09 to 1.2 times Stata's half-width, and on the singular design of
+    a two-valued x with the wrong df and zero width (the WP-18 review).
+    :func:`_dash_fitci_se` evaluates the band in that basis.
+
+    Returns:
+        ``beta, resid, rss, N, df, s2, cov`` (``cov`` on *X*, zero rows and
+        columns for an omitted one) and the basis ``keep``, ``basis``,
+        ``meat`` the band is computed from.  Raises
+        ``numpy.linalg.LinAlgError`` when no column is usable.
+    """
+    X = np.asarray(X, dtype=float)
+    y = np.asarray(y, dtype=float)
+    n, k = X.shape
+    ww = _dash_weight_norm(w, wtype, n)
+    sw = np.sqrt(ww)
+    Xw = X * sw[:, None]
+    yw = y * sw
+    # Exact collinearity, in column order (twice-orthogonalised Gram-
+    # Schmidt): a column whose residual on the earlier kept ones is below
+    # 1e-12 of its own norm is omitted.  Near-collinearity is left to the
+    # SVD cutoff below, which is what lstsq did.
+    keep: "list[int]" = []
+    Q = np.zeros((n, 0))
+    for j in range(k):
+        v = Xw[:, j].copy()
+        nv0 = float(np.linalg.norm(v))
+        if not (nv0 > 0.0) or not np.isfinite(nv0):
+            continue
+        for _ in range(2):
+            v = v - Q @ (Q.T @ v)
+        nv = float(np.linalg.norm(v))
+        if nv > 1e-12 * nv0:
+            keep.append(j)
+            Q = np.column_stack([Q, v / nv])
+    if not keep:
+        raise np.linalg.LinAlgError("no usable column in the design")
+    Xk = X[:, keep]
+    kk = len(keep)
+    # The RANK is lstsq's, on the raw design: that is the decision which
+    # reproduced Stata where its regress drops a nearly collinear term (5-
+    # minute %tc data, df N - 2 -- the WP-18 review).  When the raw design
+    # is full rank the ARITHMETIC runs on a centred and scaled copy of the
+    # same column space, Z = X T -- predictions and their variances are
+    # invariant to T -- because on a date-time x even the SVD of the raw
+    # design loses the band: x0' V S^-1 cancels (30% off an exact
+    # reparameterisation, hourly milliseconds with powers 1 and 2).
+    s_raw = np.linalg.svd(Xk * sw[:, None], compute_uv=False)
+    r = int((s_raw > np.finfo(float).eps * max(n, kk) * s_raw[0]).sum())
+    T = None
+    if r == kk:
+        const = [j for j in range(kk) if float(np.ptp(Xk[:, j])) == 0.0]
+        T = np.eye(kk)
+        W = float(ww.sum())
+        for j in range(kk):
+            if j in const:
+                continue
+            col = Xk[:, j]
+            mu = float(np.dot(ww, col)) / W if const else 0.0
+            sd = math.sqrt(float(np.dot(ww, (col - mu) ** 2)) / W) or 1.0
+            if const:
+                T[const[0], j] = -mu / sd
+            T[j, j] = 1.0 / sd
+        Z = Xk @ T
+    else:
+        Z = Xk
+    U, S, Vt = np.linalg.svd(Z * sw[:, None], full_matrices=False)
+    U, S, Vt = U[:, :r], S[:r], Vt[:r]
+    bz = Vt.T @ ((U.T @ yw) / S)
+    beta = np.zeros(k)
+    beta[keep] = bz if T is None else T @ bz
+    resid = y - (Z @ bz)
+    rss = float(np.dot(ww, resid * resid))
+    N = float(ww.sum())
+    df = N - r
+    s2 = rss / df if df > 0 else float("nan")
+    basis = Vt.T / S                           # z0' basis = z0' V S^-1
+    meat = None
+    if wtype == "pw":
+        meat = (U * (ww * resid * resid)[:, None]).T @ U * (n / max(n - r, 1))
+    cov_z = (s2 * (basis @ basis.T) if meat is None
+             else basis @ meat @ basis.T)
+    cov = np.zeros((k, k))
+    cov[np.ix_(keep, keep)] = cov_z if T is None else T @ cov_z @ T.T
+    return {"beta": beta, "resid": resid, "rss": rss, "N": N, "df": df,
+            "s2": s2, "cov": cov, "rank": r, "keep": keep, "T": T,
+            "basis": basis, "meat": meat}
+
+
+def _qfit_design(x: "np.ndarray", x_fit: "np.ndarray"
+                 ) -> "tuple[np.ndarray, np.ndarray]":
+    """The quadratic design of qfit and qfitci, on *x* and the grid.
+
+    CENTRED AND SCALED before any Gram matrix is formed: on raw x the
+    columns are 1, ~3e3 and ~1e7 (condition number ~2.6e16), where the
+    pseudo-inverse discarded a real singular value and the band came out
+    about half as wide as Stata's.  A reparameterisation of the same
+    column space, so every prediction and its variance are unchanged.
+    """
+    mu = float(np.mean(x))
+    sd = float(np.std(x)) or 1.0
+    z = (np.asarray(x, dtype=float) - mu) / sd
+    zg = (np.asarray(x_fit, dtype=float) - mu) / sd
+    return (np.column_stack([np.ones_like(z), z, z * z]),
+            np.column_stack([np.ones_like(zg), zg, zg * zg]))
+
+
+def _dash_fitci_std(options) -> str:
+    """Which standard error the band uses: ``stdp`` (default), ``stdf`` or
+    ``stdr`` -- twoway_lfitci_parse.class:13, mutually exclusive there
+    (dash.ado refuses two of them together with r(198))."""
+    for key in ("stdf", "stdr"):
+        if str((options or {}).get(key, "") or "").strip():
+            return key
+    return "stdp"
+
+
+def _dash_fitci_se(Xg: "np.ndarray", fit: dict, std: str) -> "np.ndarray":
+    """The standard error a fitted line's band is built from, at the grid
+    design *Xg*: ``stdp = sqrt(x0' V x0)``; ``stdf = sqrt(stdp^2 + s^2)``;
+    ``stdr = sqrt(s^2 - stdp^2)``, missing where that is negative (Stata
+    gives missing; it cannot happen inside the observed range).  Measured
+    on auto at x=1760: stdp .76500711, stdf 3.522953 = sqrt(stdp^2 +
+    3.4388896^2), stdr 3.3527192 = sqrt(3.4388896^2 - stdp^2)."""
+    if "basis" in fit:
+        # The basis _dash_wls keeps: x0' V x0 without forming V on X, whose
+        # entries cancel catastrophically when X is ill conditioned.
+        zg = np.asarray(Xg, dtype=float)[:, fit["keep"]]
+        if fit.get("T") is not None:
+            zg = zg @ fit["T"]                  # centre and scale first
+        a = zg @ fit["basis"]
+        if fit.get("meat") is None:
+            var_fit = fit["s2"] * np.einsum("gi,gi->g", a, a)
+        else:
+            var_fit = np.einsum("gi,ij,gj->g", a, fit["meat"], a)
+    else:
+        var_fit = np.einsum("ij,jk,ik->i", Xg, fit["cov"], Xg)
+    stdp2 = np.maximum(var_fit, 0.0)
+    if std == "none":
+        # A band twoway refuses (stdf/stdr after weighted or robust
+        # estimation): no band at all.
+        return np.full(len(stdp2), np.nan)
+    if std == "stdf":
+        return np.sqrt(stdp2 + fit["s2"])
+    if std == "stdr":
+        d = fit["s2"] - stdp2
+        return np.where(d >= 0, np.sqrt(np.maximum(d, 0.0)), np.nan)
+    return np.sqrt(stdp2)
+
+
+def _natural_cubic_spline(kx: "np.ndarray", ky: "np.ndarray",
+                          xg: "np.ndarray") -> "np.ndarray":
+    """The natural cubic spline through the knots ``(kx, ky)`` at *xg*.
+
+    Second derivatives zero at both ends; the interior ones solve the
+    tridiagonal system ``h_{i-1} M_{i-1} + 2(h_{i-1}+h_i) M_i + h_i M_{i+1}
+    = 6[(y_{i+1}-y_i)/h_i - (y_i-y_{i-1})/h_{i-1}]`` (Thomas algorithm).
+    Two knots degenerate to the chord.  This is the boundary condition
+    that reproduces Stata's mspline sersets (see GlyphMapper.map_mspline);
+    numpy only, so mspline no longer needs scipy.
+
+    Args:
+        kx: Strictly increasing knot x values.
+        ky: Knot y values.
+        xg: Points to evaluate at, within ``[kx[0], kx[-1]]``.
+
+    Returns:
+        The spline's values at *xg*.
+    """
+    kx = np.asarray(kx, dtype=float)
+    ky = np.asarray(ky, dtype=float)
+    xg = np.asarray(xg, dtype=float)
+    K = len(kx)
+    if K < 2:
+        return np.full(len(xg), ky[0] if K else np.nan)
+    h = np.diff(kx)
+    M = np.zeros(K)
+    if K > 2:
+        slope = np.diff(ky) / h
+        rhs = 6.0 * np.diff(slope)                 # K-2 equations
+        a = h[:-1].copy()                          # sub-diagonal
+        b = 2.0 * (h[:-1] + h[1:])                 # diagonal
+        c = h[1:].copy()                           # super-diagonal
+        m = K - 2
+        # Thomas algorithm, in place.
+        for i in range(1, m):
+            f = a[i] / b[i - 1]
+            b[i] -= f * c[i - 1]
+            rhs[i] -= f * rhs[i - 1]
+        sol = np.zeros(m)
+        sol[-1] = rhs[-1] / b[-1]
+        for i in range(m - 2, -1, -1):
+            sol[i] = (rhs[i] - c[i] * sol[i + 1]) / b[i]
+        M[1:-1] = sol
+    seg = np.clip(np.searchsorted(kx, xg, side="right") - 1, 0, K - 2)
+    x0, x1 = kx[seg], kx[seg + 1]
+    y0, y1 = ky[seg], ky[seg + 1]
+    m0, m1 = M[seg], M[seg + 1]
+    hh = x1 - x0
+    t = x1 - xg
+    u = xg - x0
+    return (m0 * t ** 3 / (6.0 * hh) + m1 * u ** 3 / (6.0 * hh)
+            + (y0 / hh - m0 * hh / 6.0) * t + (y1 / hh - m1 * hh / 6.0) * u)
 
 
 def _stata_expr_to_python(expr: str) -> str:
@@ -8688,6 +9650,31 @@ function dash_pctl(sorted, p) {
     return sorted[Math.min(Math.max(k, 1), n) - 1];
 }
 // Stata's kernels ([R] kdensity), mirroring _KERNELS in dash_render.py.
+// Stata's WEIGHTED percentile ([R] summarize): with W_j the running sum of
+// the weights of the sorted values and P = p/100 * W, the first j with
+// W_j >= P gives x_j, or the mean of x_j and x_(j+1) when W_j == P exactly.
+// Mirrors _stata_weighted_percentile() in Python; with unit weights it is
+// dash_pctl.  `sorted' and `w' are aligned and sorted by value.
+function dash_wpctl(sorted, w, p) {
+    const n = sorted.length;
+    if (n === 0) return NaN;
+    let total = 0;
+    for (const v of w) total += v;
+    if (!(total > 0)) return NaN;
+    const P = total * p / 100;
+    let cum = 0;
+    for (let j = 0; j < n; j++) {
+        cum += w[j];
+        if (cum >= P - 1e-12 * Math.max(total, 1)) {
+            if (Math.abs(cum - P) <= 1e-12 * Math.max(total, 1) && j + 1 < n) {
+                return (sorted[j] + sorted[j + 1]) / 2;
+            }
+            return sorted[j];
+        }
+    }
+    return sorted[n - 1];
+}
+
 function dash_kernel(name) {
     const S5 = Math.sqrt(5);
     switch (name) {
@@ -8726,7 +9713,25 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     // new_data already contains only the rows that passed every active filter.
     const raw_col = new_data[ac.varname];
     if (!raw_col) continue;
-    const vals = raw_col.filter(v => v !== null && v !== undefined && !isNaN(v));
+    // A weighted layer ([fweight] on a histogram, [aweight]/[fweight] on a
+    // kdensity) names its weight column in ac.wvar: the values and the
+    // weights are then kept as PAIRS, a row surviving only when both are
+    // finite and the weight is positive -- the same joint drop the Python
+    // mapper applies.  An unweighted layer carries no wvar and keeps the
+    // original filter.
+    let vals, wts = null;
+    if (ac.wvar && new_data[ac.wvar]) {
+        const wcol = new_data[ac.wvar];
+        vals = []; wts = [];
+        for (let i = 0; i < raw_col.length; i++) {
+            const v = raw_col[i], w = wcol[i];
+            if (v === null || v === undefined || isNaN(v)) continue;
+            if (w === null || w === undefined || isNaN(w) || !(w > 0)) continue;
+            vals.push(v); wts.push(w);
+        }
+    } else {
+        vals = raw_col.filter(v => v !== null && v !== undefined && !isNaN(v));
+    }
 
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
@@ -8761,14 +9766,30 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             continue;
         }
         const counts = new Array(n_bins).fill(0);
-        for (const v of vals) {
+        const bw = (edges[n_bins] - edges[0]) / n_bins;
+        for (let vi = 0; vi < vals.length; vi++) {
+            const v = vals[vi];
+            // An fweight counts its observation that many times; the
+            // density then divides by the weight total, as Stata's
+            // `tabulate midbin [fw]' does.
+            const wv = wts ? wts[vi] : 1;
+            if (ac.discrete) {
+                // twoway__histogram_gen.ado:200-203, as the Python count:
+                // bar floor((v - min)/h), clamped to the grid, so a value
+                // past the last edge folds into the last bar.
+                let b = Math.floor((v - edges[0]) / bw);
+                if (b < 0) b = 0;
+                if (b > n_bins - 1) b = n_bins - 1;
+                counts[b] += wv;
+                continue;
+            }
             if (v < edges[0] || v > edges[edges.length - 1]) continue;
             if (v === edges[edges.length - 1]) {
                 // last bin is closed on the right
-                counts[n_bins - 1]++;
+                counts[n_bins - 1] += wv;
             } else {
                 for (let b = 0; b < n_bins; b++) {
-                    if (v >= edges[b] && v < edges[b + 1]) { counts[b]++; break; }
+                    if (v >= edges[b] && v < edges[b + 1]) { counts[b] += wv; break; }
                 }
             }
         }
@@ -8793,9 +9814,37 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // ([R] kdensity: w = 0.9 * m * n^(-1/5), m = min(sd, IQR/1.349)).
         // When the two disagreed, touching any filter moved the curve even
         // though no rows had been removed.
+        // A weighted layer: the weights paired with vals (see the top of
+        // the loop).  The bandwidth then uses the weighted sd and Stata's
+        // weighted percentiles with N = the weight total for an fweight
+        // and the row count for an aweight (kdensity.ado:184-201), and the
+        // density is sum w K / (sum w * h).  `wts' exists only when ac.wvar
+        // does; the unweighted arithmetic below is untouched.
+        const wv = ac.wvar ? wts : null;
+        const wsum = wv ? wv.reduce((a, b) => a + b, 0) : n;
+        const neff = (wv && ac.wtype === 'fw') ? wsum : n;
         let h;
         if (ac.bw_fixed !== null && ac.bw_fixed !== undefined) {
             h = ac.bw_fixed;          // explicit bwidth() stays fixed
+        } else if (wv) {
+            if (!(neff > 1)) {
+                src.data = { x: [], y: [] };
+                src.change.emit();
+                continue;
+            }
+            let mu = 0;
+            for (let i = 0; i < n; i++) mu += wv[i] * vals[i];
+            mu /= wsum;
+            let ss = 0;
+            for (let i = 0; i < n; i++) ss += wv[i] * (vals[i] - mu) * (vals[i] - mu);
+            const sd = Math.sqrt(ss * (neff / wsum) / (neff - 1));
+            const order = vals.map((v, i) => i).sort((a, b) => vals[a] - vals[b]);
+            const sx = order.map(i => vals[i]);
+            const sw = order.map(i => wv[i]);
+            const iqr = dash_wpctl(sx, sw, 75) - dash_wpctl(sx, sw, 25);
+            let m = iqr > 0 ? Math.min(sd, iqr / 1.349) : sd;
+            if (!(m > 0)) m = sd;
+            h = 0.9 * m * Math.pow(neff, -0.2);
         } else {
             const mu = vals.reduce((a, b) => a + b, 0) / n;
             const variance = vals.reduce((a, b) => a + (b - mu) * (b - mu), 0) / (n - 1);
@@ -8808,11 +9857,22 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             if (!(m > 0)) m = sd;
             h = 0.9 * m * Math.pow(n, -0.2);
         }
-        if (!(h > 0)) continue;
+        if (!(h > 0)) {
+            // Every surviving value equal: no bandwidth, no curve.  Python
+            // draws nothing on such data; `continue' alone left the
+            // previous curve on screen.
+            src.data = { x: [], y: [] };
+            src.change.emit();
+            continue;
+        }
         const kfn = dash_kernel(ac.kernel || 'epanechnikov');
         const xs = ac.x_grid;
         const ys = xs.map(x => {
             let s = 0;
+            if (wv) {
+                for (let i = 0; i < n; i++) s += wv[i] * kfn((x - vals[i]) / h);
+                return s / (wsum * h);
+            }
             for (const xi of vals) s += kfn((x - xi) / h);
             return s / (n * h);
         });
@@ -10435,7 +11495,12 @@ def _dash_header_models(title_text, subtitle_text, css=""):
 #: The served app carried mlabel() and hover() and nothing else, so
 #: `colorvar(foreign)' served drew the scheme colour: _apply_colorvar
 #: returns when its column is absent from the source.
-_DASH_OPT_VAR_KEYS = ("colorvar", "mlabel")
+#: `wexp' is the weight variable of a `[aweight=price]' clause: dash.ado
+#: writes it into the plot's options beside `weight' (the type), and naming
+#: it here carries the column into the layer's source in both render modes
+#: -- the standalone CDS through _collect_plot_vars, the served one through
+#: _dash_layer_source's extra_cols -- so the mappers can read it.
+_DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "wexp")
 #: The invisible swatch renderers a discrete colorvar() legend is built from.
 _DASH_SWATCH_PREFIX = "_clegend_"
 
@@ -11770,6 +12835,8 @@ class DashRenderer:
         self._facet_masks: dict = {}
 
         self._load_data()
+        # Stata's data in memory, for lowess adjust and lpoly's grid.
+        self.mapper.dataset = self.df
 
         # Propagate Stata label metadata to the GlyphMapper so that
         # _apply_colorvar (and any future consumer) can render value labels
@@ -11876,6 +12943,10 @@ class DashRenderer:
     @_df.setter
     def _df(self, value: pd.DataFrame) -> None:
         self.df = value
+        # The mapper's view of the data in memory moves with it (lowess
+        # adjust and lpoly's grid read it).
+        if getattr(self, "mapper", None) is not None:
+            self.mapper.dataset = value
 
     # ------------------------------------------------------------------
     # KPI statistic computation
@@ -14853,6 +15924,11 @@ class ServerAppBuilder:
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_LEGEND_KEYWORD_LOC", "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_SWATCH_PREFIX",
+                      # twoway's weight acceptance per layer, read by
+                      # GlyphMapper._layer_weights.
+                      "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
+                      "_DASH_WEIGHT_NAMES", "_DASH_WEIGHT_NEG_EXCLUDED",
+                      "_DASH_FW_NONINT_NOTHING",
                       # _stata_date_kind's own pattern, for an axis format().
                       "_MS_PER_DAY", "_DATE_FMT_RE",
                       # The sub-option tables and the filter parser's own.
@@ -14894,7 +15970,7 @@ class ServerAppBuilder:
             _l.split("(")[0][4:] for _l in _already if _l.startswith("def ")
         }
         for _fn_name in ("_parse_textbox_opt", "_textbox_split_point",
-                         "_optional_import", "_extract_finite", "_apply_jitter",
+                         "_extract_finite", "_apply_jitter",
                          "_with_color_alias", "_jitter_seed", "_floats_only",
                          "_parse_stata_numeric_fmt", "_format_stata_numeric",
                          # _dash_build_hover's own callees. A copied
@@ -15105,9 +16181,21 @@ class ServerAppBuilder:
                     # branch was a verbatim copy of lpoly and drew no band.
                     _resolve_level, _dash_session_level,
                     _dash_histogram_ymode, _resolve_seed, _jitter_seed,
-                    _stata_percentile, _stata_kde_bandwidth, _kde_curve,
+                    _stata_percentile, _stata_weighted_percentile,
+                    _stata_kde_bandwidth, _kde_curve,
                     _mband_default_bands, _stata_bin_count,
                     _histogram_heights,
+                    # WP-18: the weight readers, the one weighted least
+                    # squares the fitted lines' bands are built from, the
+                    # band's standard-error choice and the median spline's
+                    # natural cubic spline.  GlyphMapper calls every one of
+                    # them by name; a helper left behind here is a NameError
+                    # on the served page at draw time, not at build time.
+                    _dash_weight_spec, _dash_weight_norm,
+                    _dash_lpoly_weights, _dash_wls, _dash_fitci_std,
+                    _dash_fitci_se, _natural_cubic_spline,
+                    # qfit's and qfitci's shared design (the WP-18 review).
+                    _qfit_design,
                     # Stata's `if' grammar and its arithmetic operators.  The
                     # standalone renderer translates both before parsing; this
                     # file did neither, so `if inlist(rep78,1,2)' filtered
@@ -15373,28 +16461,12 @@ class ServerAppBuilder:
             "import numpy as np",
             "import warnings",
             "import pandas as pd",
-            "# Guarded, like every optional dependency on the standalone",
-            "# path.  This was a bare module-scope import, so a missing scipy",
-            "# aborted the WHOLE app -- measured, a plain scatter that uses no",
-            "# scipy raised ModuleNotFoundError on import while the standalone",
-            "# renderer rendered the same spec fine.  `except Exception', not",
-            "# ImportError: a package that is present but broken raises",
-            "# something else, which is why _optional_import catches Exception.",
-            "try:",
-            "    from scipy import stats as scipy_stats",
-            "    _HAS_SCIPY = True",
-            "except Exception:",
-            "    scipy_stats = None",
-            "    _HAS_SCIPY = False",
-            "try:",
-            "    import statsmodels.nonparametric.smoothers_lowess as sm_lowess",
-            "    _HAS_STATSMODELS = True",
-            "except Exception:",
-            "    # Not `except ImportError': a package that is present but",
-            "    # broken raises something else, and _optional_import on the",
-            "    # standalone path catches Exception for exactly that reason.",
-            "    sm_lowess = None",
-            "    _HAS_STATSMODELS = False",
+            "# No scipy and no statsmodels: every statistical layer is",
+            "# computed with numpy in the GlyphMapper text copied below",
+            "# (WP-18).  A guarded `from scipy import stats' stood here, read",
+            "# by nothing once the served layers were drawn through the",
+            "# mapper; before it was guarded, a missing scipy aborted the",
+            "# whole app, a plain scatter included.",
             "",
             "from bokeh.application import Application",
             "from bokeh.application.handlers.function import FunctionHandler",
@@ -15692,371 +16764,10 @@ class ServerAppBuilder:
             "",
             "",
             "# ---- Aggregate compute helpers ----",
-            'def _compute_histogram(df, varname, options=None):',
-            "    # The renderer's own grid and height rules.  This used to be",
-            '    # np.histogram(data, bins=<int>) returning RAW COUNTS, so start() and',
-            "    # width() were dropped and the y-axis was permanently Stata's",
-            "    # `frequency'.  Measured on auto/mpg: standalone tops [0.0522, 0.0969,",
-            '    # 0.0485] (density, the default), served [14, 26, 13].  The same',
-            '    # command, two different quantities, with no note that the axis had',
-            '    # changed meaning.',
-            '    options = options or {}',
-            '    data = df[varname].dropna().values.astype(float)',
-            '    if len(data) == 0:',
-            '        return dict(top=[], left=[], right=[])',
-            '    edges, ymode = _histogram_grid(data, options)',
-            '    counts, _ = np.histogram(data, bins=edges)',
-            '    tops = _histogram_heights(counts, edges, ymode)',
-            '    return dict(top=np.asarray(tops).tolist(),',
-            '                left=np.asarray(edges[:-1]).tolist(),',
-            '                right=np.asarray(edges[1:]).tolist())',
-            '',
-            '',
-            "def _compute_lfit(df, yvar, xvar, options=None):",
-            '    """Return line source dict for OLS fit of yvar on xvar.',
-            "",
-            "    _fit_grid is the standalone renderer's own function, copied",
-            "    in above, so n() is read here too and both modes draw at the",
-            "    same x. The point count was written as a literal 100.",
-            '    """',
-            "    clean = df[[xvar, yvar]].dropna()",
-            "    if len(clean) < 2:",
-            "        return dict(x=[], y=[])",
-            "    coeffs = np.polyfit(clean[xvar].values, clean[yvar].values, 1)",
-            "    x_range = _fit_grid(clean[xvar].values, options or {})",
-            "    return dict(x=x_range.tolist(), y=np.polyval(coeffs, x_range).tolist())",
-            "",
-            "",
-            "def _compute_qfit(df, yvar, xvar, options=None):",
-            '    """Return line source dict for quadratic fit of yvar on xvar."""',
-            "    clean = df[[xvar, yvar]].dropna()",
-            "    if len(clean) < 3:",
-            "        return dict(x=[], y=[])",
-            "    coeffs = np.polyfit(clean[xvar].values, clean[yvar].values, 2)",
-            "    x_range = _fit_grid(clean[xvar].values, options or {})",
-            "    return dict(x=x_range.tolist(), y=np.polyval(coeffs, x_range).tolist())",
-            "",
-            "",
-            'def _compute_lfitci(df, yvar, xvar, level=None):',
-            "    # `se' from linregress is the standard error of the SLOPE, not the",
-            '    # residual standard error.  It was used where the residual SE belongs',
-            '    # and then multiplied by sqrt(n-2) to compensate; measured on a',
-            '    # 74-point fixture the band came out 0.0015 wide where the standalone',
-            "    # renderer's is 1.39 -- a hairline drawn on the fit and labelled a",
-            '    # confidence interval.  s = se_slope * sqrt(Sxx) recovers it.',
-            '    if not _HAS_SCIPY:',
-            '        # scipy is optional.  These two were the only places the',
-            '        # generated app still hard-required it, and the exception',
-            '        # escaped make_document -- so a user without scipy got no',
-            '        # dashboard at all, where the standalone path draws an',
-            '        # empty band and warns.',
-            '        warnings.warn(',
-            '            "dash: a confidence band needs scipy, which could not "',
-            '            "be imported; the band is drawn empty. Run dash_setup.",',
-            '            UserWarning,',
-            '        )',
-            '        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])',
-            '    from scipy import stats as _sp_stats',
-            '    clean = df[list(dict.fromkeys([xvar, yvar]))].dropna()',
-            '    x = clean[xvar].values.astype(float)',
-            '    y = clean[yvar].values.astype(float)',
-            '    n = len(x)',
-            '    if n < 3 or float(np.std(x)) == 0.0:',
-            '        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])',
-            '    slope, intercept, _, _, se_slope = _sp_stats.linregress(x, y)',
-            '    x_fit = _fit_grid(x, {})',
-            '    y_fit = intercept + slope * x_fit',
-            '    x_mean = float(x.mean())',
-            '    x_ss = float(np.sum((x - x_mean) ** 2))',
-            '    se_resid = float(se_slope) * math.sqrt(x_ss)',
-            '    se_fit = se_resid * np.sqrt(1.0 / n + (x_fit - x_mean) ** 2 / x_ss)',
-            '    t_crit = _sp_stats.t.ppf(0.5 + _dash_level(level) / 200.0, df=n - 2)',
-            '    return dict(x_fit=x_fit.tolist(), y_fit=y_fit.tolist(),',
-            '                y_lower=(y_fit - t_crit * se_fit).tolist(),',
-            '                y_upper=(y_fit + t_crit * se_fit).tolist())',
-            '',
-            '',
-            "_DASH_LEVEL_CACHE = []",
-            "",
-            "",
-            'def _dash_level(level=None):',
-            "    # A per-plot level() wins over the session's c(level), as in Stata.",
-            '    # This took no argument, so level() on the plot was ignored and every',
-            '    # band in server mode was drawn at c(level).',
-            "    if level not in (None, ''):",
-            '        try:',
-            '            _pl = float(level)',
-            '            if 0.0 < _pl < 100.0:',
-            '                return _pl',
-            '        except (TypeError, ValueError):',
-            '            pass',
-            '    if not _DASH_LEVEL_CACHE:',
-            '        try:',
-            "            _s = json.loads(base64.b64decode(_SPEC_B64).decode('utf-8'))",
-            "            _lv = float(_s.get('build_options', {}).get('level', 95.0))",
-            '            if not (0.0 < _lv < 100.0):',
-            '                _lv = 95.0',
-            '        except Exception:',
-            '            _lv = 95.0',
-            '        _DASH_LEVEL_CACHE.append(_lv)',
-            '    return _DASH_LEVEL_CACHE[0]',
-            '',
-            '',
-            'def _compute_qfitci(df, yvar, xvar, level=None):',
-            "    # The standalone renderer's computation: the design is CENTRED AND",
-            '    # SCALED before the Gram matrix is formed, because on raw x the columns',
-            '    # are 1, ~3e3 and ~1e7 and the pseudo-inverse discards a real singular',
-            '    # value.  This emitted a FLAT band of width t * sd(residuals), which is',
-            '    # not a confidence interval for the mean at all.',
-            '    if not _HAS_SCIPY:',
-            '        # scipy is optional.  These two were the only places the',
-            '        # generated app still hard-required it, and the exception',
-            '        # escaped make_document -- so a user without scipy got no',
-            '        # dashboard at all, where the standalone path draws an',
-            '        # empty band and warns.',
-            '        warnings.warn(',
-            '            "dash: a confidence band needs scipy, which could not "',
-            '            "be imported; the band is drawn empty. Run dash_setup.",',
-            '            UserWarning,',
-            '        )',
-            '        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])',
-            '    from scipy import stats as _sp_stats',
-            '    clean = df[list(dict.fromkeys([xvar, yvar]))].dropna()',
-            '    x = clean[xvar].values.astype(float)',
-            '    y = clean[yvar].values.astype(float)',
-            '    n = len(x)',
-            '    if n < 4 or float(np.std(x)) == 0.0:',
-            '        return dict(x_fit=[], y_fit=[], y_lower=[], y_upper=[])',
-            '    coeffs = np.polyfit(x, y, 2)',
-            '    x_fit = _fit_grid(x, {})',
-            '    y_fit = np.polyval(coeffs, x_fit)',
-            '    _mu = float(np.mean(x))',
-            '    _sd = float(np.std(x)) or 1.0',
-            '    _z = (x - _mu) / _sd',
-            '    _zg = (x_fit - _mu) / _sd',
-            '    X = np.column_stack([np.ones_like(_z), _z, _z * _z])',
-            '    Xg = np.column_stack([np.ones_like(_zg), _zg, _zg * _zg])',
-            '    try:',
-            '        beta, *_ = np.linalg.lstsq(X, y, rcond=None)',
-            '        XtX_inv = np.linalg.inv(X.T @ X)',
-            '        resid = y - X @ beta',
-            '        _df = max(1, n - 3)',
-            '        s2 = float(resid @ resid) / _df',
-            "        var_fit = np.einsum('ij,jk,ik->i', Xg, XtX_inv, Xg)",
-            '        se_fit = np.sqrt(np.maximum(s2 * var_fit, 0.0))',
-            '        t_crit = _sp_stats.t.ppf(0.5 + _dash_level(level) / 200.0, df=_df)',
-            '        y_lower = y_fit - t_crit * se_fit',
-            '        y_upper = y_fit + t_crit * se_fit',
-            '    except np.linalg.LinAlgError:',
-            '        y_lower, y_upper = y_fit, y_fit',
-            '    return dict(x_fit=x_fit.tolist(), y_fit=y_fit.tolist(),',
-            '                y_lower=np.asarray(y_lower).tolist(),',
-            '                y_upper=np.asarray(y_upper).tolist())',
-            '',
-            '',
-            'def _compute_kdensity(df, varname, options=None):',
-            "    # Stata's kernel and Stata's bandwidth, from the renderer's own",
-            '    # helpers.  This used to call scipy.stats.gaussian_kde -- a Gaussian',
-            "    # kernel on Scott's rule -- and read neither kernel() nor bwidth(),",
-            "    # so the served curve was not the standalone one and was not Stata's.",
-            '    options = options or {}',
-            '    data = df[varname].dropna().values.astype(float)',
-            '    if len(data) < 2 or float(np.std(data)) == 0.0:',
-            '        return dict(x=[], y=[])',
-            "    kernel = str(options.get('kernel', '') or 'epanechnikov').strip().lower()",
-            '    if kernel not in _KERNELS:',
-            "        kernel = 'epanechnikov'",
-            '    h = 0.0',
-            '    try:',
-            "        h = float(options.get('bwidth', '') or 0.0)",
-            '    except (TypeError, ValueError):',
-            '        h = 0.0',
-            '    if h <= 0.0:',
-            '        h = _stata_kde_bandwidth(data)',
-            '    if h <= 0.0:',
-            '        return dict(x=[], y=[])',
-            '    try:',
-            "        n_pts = int(float(options.get('n', '') or 0))",
-            '    except (TypeError, ValueError):',
-            '        n_pts = 0',
-            '    if n_pts <= 1:',
-            '        n_pts = 200',
-            '    n_pts = max(2, min(n_pts, 10000))  # clamp: prevent resource exhaustion',
-            '    lo, hi = float(data.min()), float(data.max())',
-            "    _rng = str(options.get('range', '') or '').split()",
-            '    if len(_rng) == 2:',
-            '        try:',
-            '            lo, hi = float(_rng[0]), float(_rng[1])',
-            '        except ValueError:',
-            '            lo, hi = float(data.min()), float(data.max())',
-            '    if not (hi > lo):',
-            '        return dict(x=[], y=[])',
-            '    grid = np.linspace(lo, hi, n_pts)',
-            '    return dict(x=grid.tolist(),',
-            '                y=_kde_curve(data, grid, h, kernel).tolist())',
-            '',
-            '',
-            "def _compute_lowess(df, yvar, xvar, options=None):",
-            '    """Return line source dict for LOWESS smoother."""',
-            "    options = options or {}",
-            "    # Stata's lowess bwidth() is the fraction of the sample in each",
-            "    # local regression and its default is 0.8.  This was frac=0.5,",
-            "    # so the served curve was smoother than the standalone one from",
-            "    # the same command, and neither was what bwidth() asked for.",
-            "    _bw = _stat_option_float(options, 'bwidth', 0.8, 'lowess',",
-            "                             lo=0.0, hi=1.0)",
-            "    if _bw is None or _bw <= 0.0:",
-            "        _bw = 0.8",
-            "    clean = df[list(dict.fromkeys([xvar, yvar]))].dropna().sort_values(xvar)",
-            "    if len(clean) < 2:",
-            "        return dict(x=[], y=[])",
-            "    if _HAS_STATSMODELS:",
-            "        smoothed = sm_lowess.lowess(clean[yvar].values, clean[xvar].values, frac=_bw)",
-            "        return dict(x=smoothed[:, 0].tolist(), y=smoothed[:, 1].tolist())",
-            "    # Empty and loud, NOT the raw data.  This used to return the",
-            "    # cleaned points themselves, so a user with no statsmodels was",
-            "    # shown their own scatter joined up and told it was a lowess",
-            "    # curve -- measured, x and y matched the raw columns exactly,",
-            "    # 20 of 20 points, with no warning and rc 0.  The standalone",
-            "    # path warns and draws an empty line for the same input.",
-            "    import warnings as _w",
-            "    _w.warn(",
-            "        \"dash: lowess requires the 'statsmodels' package, which \"",
-            "        \"could not be imported; the layer is drawn empty rather \"",
-            "        \"than as the raw data. Run dash_setup.\",",
-            "        UserWarning, stacklevel=2)",
-            "    return dict(x=[], y=[])",
-            "",
-            "",
-            'def _compute_lpoly(df, yvar, xvar, options=None):',
-            "    # The renderer's own _compute_lpoly_fit, with Stata's semantics:",
-            '    # bwidth() is an ABSOLUTE bandwidth in x-units with a data-driven',
-            '    # default, and kernel() selects from _KERNELS.  This file used to carry',
-            '    # its own _lpoly_kernel_fit with a hard-coded Gaussian weight and a',
-            '    # bwidth treated as a FRACTION of the x-range clamped to [0.01, 1.0],',
-            '    # so bwidth(500) on weight became the whole range and kernel() was read',
-            '    # by nothing -- up to 7.5 mpg away from the standalone curve for the',
-            '    # same command.',
-            '    options = options or {}',
-            '    clean = df[list(dict.fromkeys([xvar, yvar]))].dropna()',
-            '    if len(clean) < 2:',
-            '        return dict(x_lp=[], y_lp=[])',
-            '    x = clean[xvar].values.astype(float)',
-            '    y = clean[yvar].values.astype(float)',
-            "    bwidth = _stat_option_float(options, 'bwidth', None, 'lpoly', lo=0.0)",
-            '    if bwidth is not None and bwidth <= 0.0:',
-            '        bwidth = None',
-            "    degree = int(_stat_option_float(options, 'degree', 0.0, 'lpoly',",
-            '                                    lo=0.0, hi=3.0) or 0.0)',
-            "    kernel = str(options.get('kernel', '') or 'epanechnikov').strip().lower()",
-            '    if kernel not in _KERNELS:',
-            "        kernel = 'epanechnikov'",
-            '    x_grid, y_fit = _compute_lpoly_fit(x, y, bwidth=bwidth, degree=degree,',
-            '                                       kernel=kernel)',
-            '    valid = ~np.isnan(y_fit)',
-            '    return dict(x_lp=np.asarray(x_grid)[valid].tolist(),',
-            '                y_lp=np.asarray(y_fit)[valid].tolist())',
-            '',
-            '',
-            "_FP_POWERS = (-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0)",
-            "def _fp_transform(x, p):",
-            '    """FP power transform: x^p (p==0 -> ln x)."""',
-            "    with np.errstate(divide='ignore', invalid='ignore'):",
-            "        if p == 0.0:",
-            "            return np.where(x > 0, np.log(x.astype(float)), np.nan)",
-            "        return np.where(x > 0, np.power(x.astype(float), p), np.nan)",
-            "",
-            "",
-            "def _fit_fp2(x, y):",
-            '    """Fit degree-2 FP: return (p1, p2, coeffs)."""',
-            "    from itertools import combinations_with_replacement",
-            "    best_rss = np.inf",
-            "    best_p1, best_p2, best_c = 1.0, 2.0, np.array([y.mean(), 0.0, 0.0])",
-            "    for p1, p2 in combinations_with_replacement(_FP_POWERS, 2):",
-            "        z1 = _fp_transform(x, p1)",
-            "        z2 = _fp_transform(x, p2)",
-            "        ok = ~(np.isnan(z1) | np.isnan(z2) | np.isnan(y))",
-            "        if ok.sum() < 4: continue",
-            "        X = np.column_stack([np.ones(ok.sum()), z1[ok], z2[ok]])",
-            "        try:",
-            "            c, _, _, _ = np.linalg.lstsq(X, y[ok], rcond=None)",
-            "            rss = float(np.sum((y[ok] - X @ c) ** 2))",
-            "            if rss < best_rss:",
-            "                best_rss, best_p1, best_p2, best_c = rss, p1, p2, c",
-            "        except Exception: pass",
-            "    return best_p1, best_p2, best_c",
-            "",
-            "",
-            "def _predict_fp2(x_grid, p1, p2, coeffs):",
-            '    """Evaluate FP-2 model on x_grid."""',
-            "    return coeffs[0] + coeffs[1]*_fp_transform(x_grid, p1) + coeffs[2]*_fp_transform(x_grid, p2)",
-            "",
-            "",
-            "def _compute_fpfit(df, yvar, xvar):",
-            '    """Return line source dict for fractional polynomial fit."""',
-            "    clean = df[[xvar, yvar]].dropna()",
-            "    if len(clean) < 4:",
-            "        return dict(x_fp=[], y_fp=[])",
-            "    x = clean[xvar].values.astype(float)",
-            "    y = clean[yvar].values.astype(float)",
-            "    p1, p2, coeffs = _fit_fp2(x, y)",
-            "    xp = x[x > 0]",
-            "    if len(xp) == 0: return dict(x_fp=[], y_fp=[])",
-            "    x_grid = np.linspace(float(np.percentile(x, 1)), float(np.percentile(x, 99)), 200)",
-            "    x_grid = x_grid[x_grid > 0]",
-            "    y_fit = _predict_fp2(x_grid, p1, p2, coeffs)",
-            "    valid = ~np.isnan(y_fit)",
-            "    return dict(x_fp=x_grid[valid].tolist(), y_fp=y_fit[valid].tolist())",
-            "",
-            "",
-            "def _compute_mspline(df, yvar, xvar):",
-            '    """Return spline source dict for mspline (PchipInterpolator)."""',
-            "    try:",
-            "        from scipy.interpolate import PchipInterpolator",
-            "        clean = df[[xvar, yvar]].dropna().sort_values(xvar)",
-            "        if len(clean) < 2:",
-            "            return {'x_sp': [], 'y_sp': []}",
-            "        interp = PchipInterpolator(clean[xvar].values, clean[yvar].values)",
-            "        x_grid = np.linspace(float(clean[xvar].min()), float(clean[xvar].max()), 200)",
-            "        y_grid = interp(x_grid)",
-            "        return {'x_sp': x_grid.tolist(), 'y_sp': y_grid.tolist()}",
-            "    except Exception:",
-            "        return {'x_sp': [], 'y_sp': []}",
-            "",
-            "",
-            'def _compute_mband(df, yvar, xvar, options=None):',
-            "    # Stata's band count and the band's OWN median x.  This used to bin by",
-            '    # clip(ceil(n/5), 2, 20) and place each point at the bin midpoint: 15',
-            '    # bands on auto where Stata draws 9, at the wrong x.',
-            '    options = options or {}',
-            '    try:',
-            '        clean = df[list(dict.fromkeys([xvar, yvar]))].dropna()',
-            '        if len(clean) < 2:',
-            "            return {'x_mb': [], 'y_mb': []}",
-            '        x = clean[xvar].values.astype(float)',
-            '        y = clean[yvar].values.astype(float)',
-            '        try:',
-            "            n_bands = int(float(options.get('bands', '') or 0))",
-            '        except (TypeError, ValueError):',
-            '            n_bands = 0',
-            '        if n_bands <= 0:',
-            '            n_bands = _mband_default_bands(len(x))',
-            '        n_bands = max(1, min(n_bands, 1000))  # clamp',
-            '        x_edges = np.linspace(float(x.min()), float(x.max()), n_bands + 1)',
-            '        xmids, ymeds = [], []',
-            '        for bi in range(n_bands):',
-            '            if bi < n_bands - 1:',
-            '                sel = (x >= x_edges[bi]) & (x < x_edges[bi + 1])',
-            '            else:',
-            '                sel = (x >= x_edges[bi]) & (x <= x_edges[bi + 1])',
-            '            if sel.sum() > 0:',
-            '                xmids.append(float(np.median(x[sel])))',
-            '                ymeds.append(float(np.median(y[sel])))',
-            "        return {'x_mb': xmids, 'y_mb': ymeds}",
-            '    except Exception:',
-            "        return {'x_mb': [], 'y_mb': []}",
-            '',
-            '',
+            # _compute_histogram, _compute_lfit and _compute_qfit stood
+            # here: textual copies no call site reached (the layers are
+            # drawn and redrawn through GlyphMapper), all three blind to a
+            # weight.  Deleted with WP-18's other dead statistical copies.
             "def _compute_rscatter(df, yvar1, yvar2, xvar):",
             '    """Return stacked source dict for rscatter (two y-vars over same x)."""',
             "    try:",
@@ -16082,49 +16793,6 @@ class ServerAppBuilder:
             "        return {'x': xs.tolist(), 'y': ys.tolist()}",
             "    except Exception:",
             "        return {'x': [], 'y': []}",
-            "",
-            "",
-            "def _compute_lpolyci(df, yvar, xvar, options=None):",
-            '    """Return the lpoly fit and its bootstrap confidence band.',
-            "",
-            "    The served lpolyci branch used to be a verbatim copy of the",
-            "    lpoly one: it drew the smoother and no band at all, so a",
-            "    served lpolyci and a saved one were different figures.",
-            "    _bootstrap_ci and _compute_lpoly_fit are the standalone",
-            "    renderer's own functions, copied in above.",
-            '    """',
-            "    options = options or {}",
-            "    clean = df[[xvar, yvar]].dropna()",
-            "    if len(clean) < 3:",
-            "        return dict(x_lp=[], y_lp=[], y_lower=[], y_upper=[])",
-            "    x = clean[xvar].to_numpy(dtype=float)",
-            "    y = clean[yvar].to_numpy(dtype=float)",
-            "    bwidth = _stat_option_float(options, 'bwidth', None, 'lpolyci', lo=0.0)",
-            "    if bwidth is not None and bwidth <= 0:",
-            "        bwidth = None",
-            "    degree = int(_stat_option_float(options, 'degree', 0.0, 'lpoly',",
-            "                                    lo=0.0, hi=3.0) or 0.0)",
-            "    kernel = str(options.get('kernel', '') or 'epanechnikov').strip().lower()",
-            "    if kernel not in _KERNELS:",
-            "        kernel = 'epanechnikov'",
-            "    x_grid, y_fit = _compute_lpoly_fit(x, y, bwidth=bwidth,",
-            "                                       degree=degree, kernel=kernel,",
-            "                                       n_grid=100)",
-            "",
-            "    def _fn(xi, yi, _xg):",
-            "        _, yb = _compute_lpoly_fit(xi, yi, bwidth=bwidth,",
-            "                                   degree=degree, kernel=kernel,",
-            "                                   n_grid=100)",
-            "        return yb",
-            "",
-            "    y_lower, y_upper = _bootstrap_ci(",
-            "        x, y, x_grid, _fn, fallback=y_fit,",
-            "        level=_resolve_level(options), seed=_resolve_seed(options))",
-            "    valid = ~np.isnan(y_fit)",
-            "    return dict(x_lp=x_grid[valid].tolist(),",
-            "                y_lp=y_fit[valid].tolist(),",
-            "                y_lower=y_lower[valid].tolist(),",
-            "                y_upper=y_upper[valid].tolist())",
             "",
             "",
             "def _compute_kpi(df, stat, varname):",
@@ -16216,6 +16884,10 @@ class ServerAppBuilder:
             "    # draws at it.  It used to reach the legend key and never",
             "    # the band, so `set level 90' served a 95% band labelled 90%.",
             "    _DASH_MAPPER.default_level = _dash_session_level(bo)",
+            "    # Stata's data in memory -- the whole frame, not a filter's",
+            "    # rows -- for lowess adjust and lpoly's grid, as the saved",
+            "    # renderer sets it.",
+            "    _DASH_MAPPER.dataset = df",
             "",
             "    # ---- Determine linked graphs ----",
             "    linked_names = set()",

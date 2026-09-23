@@ -233,7 +233,7 @@ def test_a_range_path_keeps_its_pairing(name):
 # ==========================================================================
 
 #: Mappers that compute a curve and fall back to an empty renderer when they
-#: cannot -- no statsmodels, too few points, an x that does not vary.
+#: cannot -- too few points, an x that does not vary.
 _DEGRADING_MAPPERS = ["map_lowess", "map_lpoly", "map_mspline", "map_mband",
                       "map_lfit", "map_qfit", "map_fpfit"]
 
@@ -262,9 +262,10 @@ def test_a_degraded_layer_still_applies_lwidth(name):
         map_fpfit    line_width 1    (should be 2.5)
         map_lpoly, map_lfit, map_qfit  2.5   -- already correct
 
-    It matters beyond tidiness: ``statsmodels`` is an OPTIONAL dependency,
-    and on a machine without it EVERY lowess layer takes this path. The
-    generated server app applied the width regardless, which is how
+    It mattered beyond tidiness while ``statsmodels`` was an OPTIONAL
+    dependency of lowess (until WP-18): on a machine without it EVERY
+    lowess layer took this path. The generated server app applied the
+    width regardless, which is how
     ``test_server.py::TestServerLineWidthAllTypes::test_lowess_applies_lwidth``
     caught this the moment lowess started going through the mapper.
     """

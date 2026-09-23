@@ -70,7 +70,7 @@ malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
 base=num  barwidth=pos  level=num,0,100,x
 degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
-n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
+n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
 colornlevels=int,2,256
 colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds
 colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2
@@ -147,13 +147,16 @@ class TestTheTableIsWellFormed:
         parsed = set(_parse_rules(_BLOCK))
         want = set(_parse_rules(CONTRACT_PLOT_RULES)
                    + _parse_rules(CONTRACT_GRAPH_RULES))
-        assert len(want) == 39, "the contract text above lost a token"
+        # 40 since WP-18: mspline's n() is twoway's own 1 to 300 ("n must
+        # be between 1 and 300", r(198), measured), so it has a typed token
+        # beside the untyped n=int,2,10000 of the other types.
+        assert len(want) == 40, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
 
     def test_every_kind_is_one_the_validator_knows(self):
         rules = _parse_rules(_BLOCK)
-        assert len(rules) >= 39
+        assert len(rules) >= 40
         bad = [r for r in rules if r[1] not in KINDS]
         assert not bad, bad
 

@@ -211,19 +211,23 @@ class TestTheConfidenceBandIsTheRightWidth:
 
 class TestLowess:
     def test_the_default_fraction_is_statas_point_eight(self, tmp_path):
-        pytest.importorskip("statsmodels")
+        """The served lowess is the saved one, point for point.
+
+        Both modes draw through GlyphMapper._stata_lowess since WP-18 --
+        Stata's smoother in numpy, no statsmodels and so no skip -- and
+        bind the same x_lw/y_lw columns, so the served default must equal
+        the saved default exactly; the saved default's bwidth(0.8) against
+        Stata's own points is TestLowessIsStatasSmoother.  This used to
+        allow 2% of the range between two different smoothers.
+        """
         spec = _spec("lowess")
-        srv = _pick(_server_sources(tmp_path, spec), "x", "y")
+        srv = _pick(_server_sources(tmp_path, spec), "x_lw", "y_lw")
         std = _pick(_standalone_sources(tmp_path, spec), "x_lw", "y_lw")
         assert srv is not None and std is not None
-        on = np.interp(srv["x"], std["x_lw"], std["y_lw"])
-        span = float(np.nanmax(std["y_lw"]) - np.nanmin(std["y_lw"]))
-        worst = float(np.nanmax(np.abs(on - srv["y"])))
-        assert worst <= 0.02 * span, (
-            f"served lowess differs from standalone by {worst:.4f} "
-            f"({100 * worst / span:.1f}% of its range) — the server is not "
-            f"using Stata's default bwidth(0.8)"
-        )
+        np.testing.assert_allclose(np.asarray(srv["x_lw"], float),
+                                   np.asarray(std["x_lw"], float), rtol=1e-12)
+        np.testing.assert_allclose(np.asarray(srv["y_lw"], float),
+                                   np.asarray(std["y_lw"], float), rtol=1e-12)
 
 
 class TestConfidenceLevel:

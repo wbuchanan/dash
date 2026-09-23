@@ -2307,65 +2307,401 @@ stcolor_alt`.
 
 ---
 
-## WP-18 · Statistical fidelity
+## WP-18 · Statistical fidelity — DONE
 
-**Gaps closed:** A4, A5 · **Severity:** S2 · **Effort:** L · **Depends on:** WP-02
+**Gaps closed:** A4, A5, and A3 finished (weights honoured, not only named) · **Severity:** S2 · **Effort:** L · **Depends on:** WP-02
 
 > **User story.** As a researcher, I want `mspline` and `fpfit` to be the
 > estimators Stata documents, and weights to be honoured.
 
-### Business requirements
+### What was measured before any code changed
 
-- **BR-18.1** Every statistical layer is the estimator Stata documents, not
-  an approximation of it.
-- **BR-18.2** Options that change an estimate are honoured or rejected —
-  never accepted and ignored.
-- **BR-18.3** Behaviour already verified correct against Stata is locked by a
-  truth fixture before any refactor.
+The baseline, 23sep2026 at `fe3b12a`, with the console binary
+(`scratchpad/wp18/measure_result.json`: keys `truth`, `estimators`,
+`fidelity`, `ado`; `scratchpad/wp18/probe/fidelity.json`), dash's mappers
+called exactly as `test_statistical_truth.py` calls them and every error
+a fraction of the raw y range (auto 29, census 184824, sp500 407.93,
+nlsw88 39.74; for kdensity, Stata's density range). The truth is the
+serset of the saved `.gph`, read back into the regenerated
+`test/fixtures/stat_truth.json` (26 to 52 sections; the 25 pre-existing
+sections byte-identical by serialisation; `_meta.self_checks` 14 of 14
+true; every probe rc 0, nothing skipped):
 
-### Technical requirements
+| layer | at `fe3b12a` | Stata's rule (source) | measured gap |
+|---|---|---|---|
+| `mspline` | PCHIP through every distinct-x/mean-y point on a 200-point grid; `bands()`/`n()` in the options dict and read by nothing (`dash_render.py:6985-7057`) | `as_median_bands, bands(B)` then `as_spline, splinepts(n)`: cross medians of B equal-width bands (K non-empty), a cubic spline through the K knots at the knots plus n equally spaced points between each pair, (K-1)n + K points; B default `round(min(10 log10 N, sqrt N))` raised to `min(N, 2)` (`_gs_default_bands.ado:5-17`); n default 10 (`twoway_mspline_parse.class:34`); the spline is serset 2 of the `.gph`, serset 1 dropped by `derived_serset.class` | 14.0 mpg max error on auto default; 9.2 bands(8), 11.5 bands(8) n(5), 5.3 bands(4); auto default 89 points, nlsw88 342 (K 32 of 34), census bands(20) 122 (K 12); a natural cubic spline through the knots reproduces all 20 probes to 4.1e-6 (auto) and 9.65e-6 (nlsw88) abs against float32 sersets; not-a-knot 2.76, clamped 1.62, PCHIP-through-knots 0.96, Akima 1.02 |
+| `fpfit` | `_fit_fp2` loops pairs including (p, p) but the design has no repeated-power column, so `[1, z, z]` is rank 2 of 3 and collapses to FP1; x <= 0 dropped to NaN; no scaling; `_fp_grid` capped at 1000 (`:5357-5408`, `:7520-7550`) | `fracpoly regress y x [w]` then `fracpred` at every distinct sorted x; powers -2 -1 -.5 0 .5 1 2 3, degree 2 by deviance over all 36 pairs p1 <= p2; (p, p) is `x^p` and `x^p ln x` (`ln^2 x` at 0) (`fracgen.ado:193-212`); `frac_xo.ado:81-106`: if min(x) <= 0 shift by (smallest positive spacing of sorted x) - min(x), then ALWAYS scale by `10^(sign(log10 s) int(abs(log10 s)))`, s the range | auto (-2,-1) vs Stata (-2,-2): 9.0e-3; census (0,.5) vs (1,3): 3.9e-2 (cond 3.6e21 unscaled; RSS at (1,3) 7.39e10 raw, 1.67e9 scaled by 1e7); nlsw88 (1,3) vs (2,2): 2.7e-2, and 1000 grid points where Stata has 1546; sp500 (-.5,0) both, 1.5e-7; with the repeated-power column and the scaling, 1.5e-7 on all four; `xs = weight - 3000` (35 non-positive): shift 1250, scale 1000, (0,0), twoway rc 0; `xz = mpg - 12`: shift 1, scale 10, (-2,-2) |
+| `fpfitci` | bootstrap percentile band, 200 resamples, seed 42 (`:5531-5535`, `_bootstrap_ci` `:3282`) | `fracpred, stdp` t band, `invttail(df_r, (100 - level)/200)`, df_r = N - 3 (`twoway__fpfit_serset.ado:31-50`); stdf/stdr refused r(198) | band off by 1.1e-1 (auto), 2.3e-1 (census), 1.17 (sp500: past the y range at the first sample), 1.1e-1 (nlsw88); width ratio 0.67 to 4.72; analytic stdp reproduces auto to 6.3e-8 |
+| `lowess` | statsmodels `lowess(frac=bw, it=3)`: nearest-by-distance window, three robustness iterations, tied x identical; `mean`/`noweight`/`adjust`/`logit` unread (`:4986-5061`) | [R] lowess: stable sort by x; k = int((N bw - .5)/2); window by INDEX; tricube on d/(1.0001 max d); local line at x_i (weighted mean with `mean`; unit weights with `noweight`); no iterations; `adjust` = smooth x mean(y)/mean(smooth) (`lowess.ado:203-209`); `logit` clamps to 1/N, 1 - 1/N under the .0001 rule then ln(s/(1 - s)) (`:213-221`), adjust before logit; bwidth outside (0, 1) -> .8 (`:75-78`); ties in dataset order after a stable sort | 1.08e-1 (auto, 3.13 mpg), 1.19e-1 (census), 1.92e-1 (sp500), 3.67e-2 (nlsw88) on the default; `mean` drawn as the default 1.46e-1 (auto), 4.36e-1 (census); it = 0 alone leaves 0.62 mpg; the rule reproduces all 20 probes to 1.5e-10 abs |
+| `lfitci`/`qfitci` | stdp band only | stdp (default), stdf = sqrt(stdp^2 + s^2), stdr = sqrt(s^2 - stdp^2) (missing where negative); two together r(198) `may not combine` | stdp exact today (2.7e-7, 2.8e-7); stdf/stdr absent (auto lfitci at x = 1760: stdp [27.34, 30.39], stdf [21.84, 35.89], stdr [22.18, 35.55]) |
+| `lpoly` | `np.polyfit(w=K)`, which squares the kernel weight; a point drawn with one positive-weight observation; 200-point grid, `n()` unread (`:5108-5172`) | weighted least squares needs w = sqrt(K); a grid point is missing when fewer than 2 observations have positive kernel weight; `n()` points over the observed range, default min(N, 50); aw normalised to mean 1, fw raw, local weight K_i w_i (`lpoly.ado:295-303`) | degree(1) at Stata's own bandwidth 2.8e-2 (auto), 2.9e-2 (sp500), 3.5e-2 (nlsw88), 1.3e-15 with sqrt(K); degree(0) exact (5.6e-15); dash finite at 5 of 11 samples where Stata is null (auto bwidth(5)); as drawn 1.58e-2 (auto default); the ROT bandwidth -9.7% (auto), +14.2% (census), +5.7% (sp500), +6.8% (nlsw88) against `r(bwidth)`, in compiled Mata, not changed |
+| `histogram` | no `discrete`; no weights | `discrete`: each distinct value its own bin, width = `width()` or the smallest positive spacing of the distinct values (1 if a single value), start = min - width/2 (`twoway__histogram_gen.ado:109-164, 200-231`); `discrete` + `bin()` r(198); fweight only (aw/pw/iw r(101)); N = sum fw | absent: auto rep78 discrete 5 bins of width 1 from .5, densities .02899 .11594 .43478 .26087 .15942; auto mpg 30 bins, 21 occupied; `[fw=int(price/1000)]` N 417, 20 bins of width 1.45 |
+| `kdensity` | grid [min - 3h, max + 3h] x 300; no weights (`:5717-5828`) | twoway: [min, max] x n() (default 300); aw/fw honoured (weighted sd and percentiles in the bandwidth, N = sum fw; density = sum w K / (sum w h)); pw/iw r(101) | estimator exact (2.7e-12; bandwidth 3.4e-16) but as drawn 1.0 on census bwidth(2), grid step 617 against a kernel support of 4.5; 1.0e-2 sp500 bwidth(2); else below 1.2e-3 |
+| `lfit`/`qfit` | unweighted | aw normalised to sum N (df_r = N - 2), fw replicated (N = sum w), pw = aw point estimates with HC1 robust stdp for a band | exact unweighted; auto `[aw=price]` lfit -0.0054960, 37.6987 in `weighted` |
+| `mband` | exact (1.5e-7) | weights accepted and inert (aw/fw/pw rc 0, iw r(101)) | none |
+| weights | parsed, type named in the note, expression discarded (`dash.ado:1059-1110`, `:1976-1996`; `dash_parse.mata:768-772`; `dash_render.py:10438`) | accepted by lfit qfit lfitci qfitci fpfit fpfitci lpoly lpolyci kdensity histogram mspline mband, each with twoway's own type list; twoway accepts an expression (`[aw=price+1]` rc 0) | not applied; `[iw=price]` on scatter and `[pw=price]` on histogram rc 0 with the note where twoway is r(101) |
 
-- **TR-18.1 (A4).** Reimplement `mspline` (`dash_render.py:5912-5980`) as
-  Stata's estimator: a cubic spline through the **cross-medians of `bands()`
-  bands**. It currently PCHIP-interpolates through every observation after
-  averaging duplicate x, ignores `bands()` and `n()`, and hardcodes a 200-point
-  grid at `:5973`. This is a different estimator, not a tuning difference.
-- **TR-18.2 (A4).** Add the repeated-power branch to `_fp_transform`
-  (`:4452-4459`): Royston–Altman requires `β₁·xᵖ + β₂·xᵖ·ln x` when
-  `p₁ == p₂`. `_fit_fp2` (`:4483`) already generates those pairs via
-  `combinations_with_replacement`, but the design matrix is then singular and
-  the model collapses to FP1 — about a third of Stata's FP2 candidates are
-  unreachable.
-- **TR-18.3 (A4).** Apply Stata's origin shift in `fpfit` rather than dropping
-  `x <= 0` rows to NaN (`:4456-4458`).
-- **TR-18.4 (A5).** Implement `histogram, discrete`; `lfitci`/`qfitci`
-  `stdf`/`stdp`/`stdr` (only one band type is drawn today); and `lowess`
-  `mean`, `noweight`, `logit`, `adjust`. All have zero occurrences currently.
-- **TR-18.5 (A3 follow-on).** Honour weights in the computed layers, carrying
-  the weight expression through the spec. Stata's `lfit`, `qfit`, `lowess`,
-  `lpoly`, `fpfit`, `histogram` and `kdensity` all accept them.
-- **TR-18.6** Preserve what already matches Stata: `_fit_grid`'s observed-range
-  rule, `_stata_bin_count`, `_stata_kde_bandwidth`, the ROT bandwidths,
-  `_t_ppf`, `_stata_percentile` (Hyndman-Fan type 2), and `fpfit`'s correct
-  *rejection* of `bwidth()`/`degree()`. These are verified correct — lock them
-  with truth fixtures before refactoring.
+Three premises of this package as first written were false, measured in
+the 18 x 4 grid of `weight_acceptance` (72 probes, `weight_acceptance_table`):
+**`lowess` takes no weights in Stata** (`twoway lowess` and `lowess` r(101)
+`weights not allowed` for aw, fw, pw and iw; `lowess.ado:9`,
+`twoway_lowess_parse.class:35`); **`histogram` takes `fweight` only**
+(aw/pw/iw r(101) on `histogram`, `twoway histogram` and
+`twoway__histogram_gen`); **`iweight` is refused by every twoway
+statistical type**, and `pweight` by `kdensity`, `lpoly` and `lpolyci`.
+TR-18.5's list is corrected below. Two more things the measurement
+corrected: the old fixture's `unverified` block said the default
+band-count rule was in no `.ado` -- it is `_gs_default_bands.ado:5-17`,
+which both `mband` and `mspline` call (`rules_wp18.mspline.bands_default`);
+and the help's "`bands()` 1 to 200 is twoway's own limit" was false --
+twoway has no cap, the cap is dash's (`dash.ado:1251`). **Corrected by
+the coordinator's review:** the help was right. twoway mband and mspline
+refuse `bands(0)` and `bands(250)`, "bands must be between 1 and 200",
+r(198); the cap is twoway's (see "Found by the coordinator's review").
 
-### Acceptance criteria
+### Technical requirements, as delivered
 
-- **AC-18.1** `mspline` output matches Stata's `twoway mspline` within
-  tolerance, for two `bands()` values.
-- **AC-18.2** `fpfit` selects a repeated-power model where Stata does.
-- **AC-18.3** `fpfit` on data containing `x <= 0` uses all observations.
-- **AC-18.4** Each A5 option changes the output in the documented direction.
-- **AC-18.5** Weighted fits match Stata's weighted estimates.
+The contract is `scratchpad/wp18/DESIGN.md`; the owners were disjoint
+(Stata side, renderer, Python tests, docs) and the coordinator's
+verification run below is the record of what landed. Principle: every
+statistical layer is the estimator Stata documents, checked against
+Stata's own plotted points in both render modes through the one
+`GlyphMapper`; an option that changes an estimate is honoured or refused,
+never accepted and ignored; what already matched Stata was locked by the
+fixture before it was touched.
 
-### Test plan
+- **TR-18.1 (A4)** `map_mspline` is Stata's estimator: the cross medians
+  of `bands()` equal-width bands (the loop factored out of `map_mband`
+  into a shared helper; non-empty bands only; default count by
+  `_gs_default_bands`'s rule, the one `_mband_default_bands` already
+  had), a numpy cubic spline through the K knots -- the end condition
+  MEASURED against the fixture's curves, natural first, not-a-knot
+  second, shipping the one that matches to better than 1e-6 relative or
+  the closest with its residual recorded in the help -- evaluated at
+  (K-1)n + K points with `n()` honoured (default 10; `n(1)` accepted, the
+  rule token `n=int,1,10000@mspline`) and nothing drawn when K < 2. scipy
+  is no longer needed for it. `bands()` keeps dash's 1..200 cap, now
+  documented as dash's own. *Review corrections: `n()` is 1..300, as
+  twoway (`n=int,1,300@mspline`); one or two knots draw the knots alone;
+  the 1..200 `bands()` cap is twoway's.*
+- **TR-18.2 (A4)** `_fit_fp2` builds the repeated-power design (`x^p`,
+  `x^p ln x`; `ln x`, `ln^2 x` at p = 0), searches all 36 pairs by RSS
+  (weighted RSS under a weight) and predicts at every distinct sorted x,
+  the 1000-point cap removed or raised past 1546 (delivered:
+  `_FP_GRID_MAX` 20000), its reason (the bootstrap) gone. `_fp_report_unsupported` keeps refusing `bwidth()` and
+  `degree()`.
+- **TR-18.3 (A4)** `_fp_prepare` applies `frac_xo`'s shift when
+  min(x) <= 0 and its power-of-ten scaling on every fit; no row is
+  dropped for its sign. `map_fpfitci` draws the t band on the analytic
+  stdp of the FP design with N - 3 degrees of freedom (HC1 under
+  pweights; *review correction: N minus the rank the design supports,
+  and no band at df 0*); `_bootstrap_ci` remains for `lpolyci` and the `qfitci`
+  LinAlgError fallback only.
+- **TR-18.4 (A5)** The seven sub-options are declared in `dash.ado`
+  as twoway declares them (`DISCrete`; `STDP STDF STDR` with no
+  abbreviation; `NOWeight Adjust LOgit`; and `MEan`, one letter longer
+  than twoway's `m` because the same parser declares `Msymbol()` and
+  `test_abbreviations.py` refuses a prefix two options could claim --
+  `dash.ado:774-776` and the comment at `:997-1004`), sreturned,
+  carried as flags in the plot JSON (`"discrete":"discrete"`), mirrored
+  in `scripts/regen_option_surface.py`'s lists, honoured by the renderer
+  in both modes, and refused outside their plot type with twoway's r(198)
+  `option X not allowed` through a flag-applicability list in
+  `_dash_option_rules` (`discrete@histogram`,
+  `stdp|stdf|stdr@lfitci|qfitci`, `mean|noweight|adjust|logit@lowess`)
+  checked in `_dash_validate_opts`; `stdp`, `stdf`, `stdr` are mutually
+  exclusive (r(198) `may not combine`); `discrete` with `bin()`/`bins()`
+  is r(198). With them: `map_lowess` is Stata's smoother
+  (`GlyphMapper._stata_lowess`: stable sort, index window, tricube on
+  1.0001 max d, local line or `mean`, `noweight`, `adjust`, `logit`,
+  ties in dataset order), statsmodels no longer imported for it;
+  `map_lfitci`/`map_qfitci` draw stdp, stdf or stdr from the values they
+  already had; `_histogram_grid` has the discrete branch and the
+  standalone page's JavaScript recompute keeps working on its edges;
+  `_compute_lpoly_fit` weights by sqrt(K), leaves a grid point missing
+  below two positive-weight observations, and evaluates on `n()` points
+  with Stata's default min(N, 50) (*review correction: 50, capped at the
+  DATASET's _N, and _N whenever the dataset has fewer than 50 rows --
+  `twoway_lpoly_parse.class:56`*); `map_kdensity` uses twoway's grid
+  [min, max] x n().
+- **TR-18.5 (A3)** Weights are honoured on lfit qfit lfitci qfitci fpfit
+  fpfitci lpoly lpolyci kdensity histogram mspline mband with twoway's
+  own acceptance per type, and refused in Stata where twoway refuses
+  them, with rc 101 and twoway's wording (`iweights not allowed`
+  everywhere; `weights not allowed` on lowess; `aweights not allowed` and
+  `pweights not allowed` on histogram; `pweights not allowed` on
+  kdensity, lpoly, lpolyci); on scatter and the other glyph layers the
+  WP-13 note stays. The parsers sreturn the expression (stripping the
+  leading `= `); `_dash_process_segment` saves it across `sreturn clear`,
+  expands and confirms it as ONE existing variable (anything else:
+  `dash: [aweight=price+1] must name one variable; dash cannot evaluate
+  a weight expression. Generate it first: generate double w = price+1`,
+  r(198)), checks fweight integrality (r(401)), runs the option
+  validation also for a weight-only segment, makes the note conditional
+  on the type not honouring weights, and splices
+  `"weight":"<type>","wexp":"<var>"` into the plot's options ONLY when a
+  weight is present (the unweighted JSON is pinned byte for byte by
+  `test_varlist_expansion.cscript` and `test_pipeline_integration.py`);
+  `_dash_extract_vars` gains `"wexp":`, one edit for both export routes;
+  `_DASH_OPT_VAR_KEYS` gains `"wexp"`, one line for both modes' sources;
+  `_layer_weights` hands each mapper (w, type): aweights normalised to
+  sum N, fweights replicated where a closed form needs counts (N = sum
+  w, df from it), pweights the aweight estimates with HC1 for the bands;
+  `_masked` returns w with a joint NaN drop and drops w <= 0 with a note.
+  Weights on mspline and mband are accepted and inert, as in Stata.
+- **TR-18.6** What already matched Stata was locked first: the fixture
+  regenerated by `scripts/extract_stat_truth.do` (1485 to 2815 lines;
+  curves written in 100-value chunks because a record line longer than
+  about 5,300 characters came back from Stata with a space inserted
+  every ~5,290 characters, 117 corrupted tokens on the first run, 0
+  after chunking), 26 to 52 sections, the 25 pre-existing ones
+  byte-identical, so `_fit_grid`'s observed-range rule,
+  `_stata_bin_count`, `_stata_kde_bandwidth`, the ROT bandwidths,
+  `_t_ppf`, `_stata_percentile`, `mband`'s cross medians and the stdp
+  bands are pinned as they were. The served app's dead textual copies
+  of `_compute_kdensity/_lowess/_lpoly/_lpolyci/_mband/_lfitci/_qfitci`
+  and the second `_FP_POWERS/_fp_transform/_fit_fp2` (`dash_render.py`
+  ~15695-16128) are deleted after a grep for call sites; every new
+  module-level helper is in `_shared_stat_lines` or a `GlyphMapper`
+  staticmethod, so both modes run one text.
+- **TR-18.7** Records. `BUGS.md`, written first: eleven entries (mspline;
+  the repeated-power FP2; the missing shift and scale; lowess; lpoly's
+  squared kernel weight; lpoly's null rule; lpoly's grid and `n()`; the
+  fpfitci band; kdensity's grid; the seven sub-options; weights), each
+  with the measured numbers and the fixture sections that pin it.
+  `GAPS.md` A3 finished, A4 and A5 closed. `dash.sthlp`: `{weight}` in
+  the syntax diagrams; a Weights section with the per-type table, the
+  one-variable rule and the refusals with twoway's rc; `bands()`/`n()`
+  and the cross-median spline under mspline; `mean`, `noweight`,
+  `adjust`, `logit` under lowess and that statsmodels is no longer
+  needed; stdp/stdf/stdr under lfitci/qfitci; `discrete` under
+  histogram; fpfit's "require positive x values" replaced by the shift
+  rule; lpoly's `n()` and null rule and its bandwidth tolerance in the
+  measured numbers; kdensity's grid; the dependency section corrected.
 
-| Kind | Test | Asserts |
-|---|---|---|
-| Truth | `scripts/extract_stat_truth.do` → `stat_truth.json` | Ground truth from Stata for `mspline` (2 band counts), `fpfit` (incl. repeated-power and non-positive x), each A5 option, and weighted fits |
-| Unit | `test_statistical_truth.py` | Compare against the fixture within tolerance |
-| Regression | `BUGS.md` entries for A4's three sub-findings | Written first |
+### Acceptance
+
+- **AC-18.1** `mspline` equals `twoway mspline` for two `bands()` values
+  and more: `test_statistical_truth.py::TestMsplineAgainstStata` over all
+  20 probes (4 datasets x default, bands(5), bands(20), n(20),
+  bands(5) n(4)) -- point count (K-1)n + K, knots equal the `mband`
+  cross medians, curve rtol 1e-6 or the documented residual; the parity
+  corpus `mspline bands(5) n(4)` in both modes;
+  `test_statistical_options.cscript` `mspline, n(1)` rc 0.
+- **AC-18.2** `fpfit` selects a repeated-power model where Stata does:
+  `TestFpfitRepeatedPowers` over the 7 fits (auto price~mpg, weight~mpg,
+  mpg~weight, census death~pop, sp500 close~volume, nlsw88 wage~ttl_exp,
+  the synthetic `y = 3 x^2 ln x + N(0, .5^2)` from `fpfit_repeated_data`),
+  chosen powers equal to `e(fp_powers)`, curve rtol 1e-6.
+- **AC-18.3** `fpfit` on data with x <= 0 uses every observation:
+  `TestFpfitShift` on `xs = weight - 3000` and `xz = mpg - 12` (powers,
+  the 64- and 21-point curves) and the fpfitci stdp band.
+- **AC-18.4** Each A5 option changes the output in the documented
+  direction: `TestFitciBandTypes` (24 probes), `TestHistogramDiscrete`
+  (12), `TestLowessIsStatasSmoother` (full-resolution default, mean,
+  noweight on 4 datasets at rtol 1e-8 of the y range; logit and adjust on
+  auto foreign~weight and nlsw88 union~wage); `TestLpolyDegreeOne`,
+  `TestLpolyNullRule` and `TestKdensityAsDrawn` for the findings beside
+  them; `test_unsupported_report_is_true.py` renders each flag present
+  against absent (stdp against its stdf sibling); the parity corpus
+  `lowess mean`, `lowess noweight logit adjust`, `lfitci stdf`, `qfitci
+  stdr`, `histogram discrete`; `test_statistical_options.cscript` SO-nn:
+  each flag accepted on its type with no note and refused elsewhere with
+  r(198) `not allowed`, `stdf stdr` together r(198), `discrete bin(5)`
+  r(198).
+- **AC-18.5** Weighted fits match Stata's weighted estimates:
+  `TestWeightedLayers` over every weighted probe (lfit, qfit, lfitci
+  coefficients and curves; lpoly; fpfit powers and curve; histogram
+  fweight heights; kdensity bandwidth and curve); the parity corpus's
+  weighted lfit and weighted kdensity; `test_statistical_options.cscript`
+  SO-nn: each type accepted per the table with no note and the JSON
+  carrying `weight`/`wexp`, every refusal of the table with r(101) (iw
+  everywhere, lowess any, histogram aw/pw, kdensity/lpoly/lpolyci pw),
+  `[aw=price+1]` r(198) with the hint, `[aw=pri]` expanded to price,
+  `[fw=mpg]` on histogram accepted and `[fw=gear_ratio]` r(401), a
+  weighted immediate render rc 0 with `"price"` in the data JSON.
+
+### Found on the way
+
+- The lpoly weighting defect was outside A4/A5's text and inside
+  "statistical fidelity": `numpy.polyfit`'s `w` multiplies the unsquared
+  residual, so passing the kernel weight minimised sum K^2 r^2.
+  degree(0) has no polyfit, which is why the existing fixture test was
+  green.
+- Stata's positive-weight cutoff for the gaussian kernel at extreme z is
+  not pinned: census `kernel(gaussian)` (|z| up to 3e5) has 8 Stata nulls
+  against 5 predicted by double underflow (|z| < 38.6); the rule
+  reproduces the other 15 probes.
+- The spline serset is index 2 of a `.gph`, not 1: `derived_serset.reset`
+  creates the cross-median serset, builds the spline from it and drops
+  it, so `serset set 1` is r(111) on an mspline graph (recorded per probe
+  under `serset_dir`). `mband` keeps index 1, which is why LAYER 7 of the
+  extractor reads `set(1)`.
+- `lowess` tie order is the dataset order after a stable sort by x: a
+  fresh `sysuse` run equals a run after `sort x obs, stable` point for
+  point and differs from `gsort x -obs` on 23 of 74 (auto) and 1352 of
+  2246 (nlsw88) observations; 14 tied-x groups on auto carry unequal
+  values, so `obs_index` is recorded beside every full-resolution point.
+- The `adjust` factor uses `mean(y)` over ALL observations, not the
+  estimation sample (`lowess.ado:203-209`); both means are recorded.
+- `lowess bwidth(1)`: Stata resets a bandwidth outside (0, 1) to .8;
+  dash's table refuses more than 1 (`bwidth=pos,1@lowess`) and passes
+  exactly 1 through -- unchanged, and the help keeps saying "at most 1".
+- The help credited scipy to `qfitci` and `kdensity`; at `fe3b12a` only
+  `map_lfitci` (`linregress`) and `map_mspline` (`PchipInterpolator`)
+  imported it, and `map_qfitci` and `_t_ppf` were written to run without
+  it. The weighted rewrite of `map_lfitci` removes the first import and
+  the numpy spline the second, and `map_lowess` no longer imports
+  statsmodels, so the help's dependency section now says no optional
+  package is needed by any statistical layer. Written from the contract
+  while the renderer was still being edited (at the docs owner's last
+  read `map_lfitci` and `map_lowess` had lost their imports and
+  `map_mspline` still called `_optional_import("scipy.interpolate",
+  "PchipInterpolator")`): the coordinator verifies that sentence against
+  the merged renderer. `dash_setup.ado:134-150` and
+  `dash_setup.sthlp:76-78, 91` still declare scipy and statsmodels as
+  optional with the old per-layer attribution, and `dash_render.py`'s
+  module docstring (`:47-48`, `:500-501`) still lists both; none of the
+  three is in this package's files. Follow-up. **Done by the
+  coordinator:** the merged renderer imports neither (an AST scan of an
+  app built with every statistical layer, `test_server_optional_deps.py`),
+  the served app's guarded `from scipy import stats` -- read by nothing --
+  is deleted, and `dash_setup` neither installs nor checks either package
+  (`dash_setup.ado`, its help, `dash.pkg`, HON-05 of
+  `test_setup_honesty.cscript`); the help's sentence is now true.
+- `lpolyci` keeps its bootstrap band: Stata's is `invnormal` times a
+  Mata standard error (`lpoly.ado:319-324`), outside A4/A5. Follow-up.
+- A weight EXPRESSION is refused, not evaluated: supporting it would mean
+  generating a variable on both export routes, rewriting the spec, and
+  keeping a temporary name out of the served app's column list. Out of
+  scope; the refusal says how to do it by hand.
+- `scripts/regen_option_surface.py` is stale (no `hover`, none of the
+  alias declarations), so the syntax block is hand-edited and the
+  generator's lists kept in step for the record, as the last three
+  packages did.
+- Stale line references: this package as first written cited `187a786`
+  (`map_mspline` at `dash_render.py:5912-5980`, `_fp_transform`
+  `:4452-4459`, `_fit_fp2` `:4483`); at `fe3b12a` they are `:6985-7057`,
+  `:5357-5365` and `:5367-5408`, with `map_lowess` at `:4986-5061`,
+  `map_fpfitci` `:5479-5546`, `_compute_lpoly_fit` `:5108-5172`,
+  `map_kdensity` `:5717-5828` and the option rules at `dash.ado:1241-1253`.
+
+### Found by the coordinator's review
+
+The package landed in the working tree without its verification run, and
+the DESIGN.md contract and the scratchpad measurements it cites were
+gone. The coordinator re-ran both suites (Python: 11 failures, every one
+a test pinning behaviour the package replaced -- the 200-point PCHIP
+mspline, the served app's deleted `_compute_*` copies, lpoly curves the
+null rule now empties -- each restated to Stata's rule; Stata: 43 of 43)
+and had four independent reviews read the diff against Stata's own
+`.ado` sources and probe Stata where they doubted it. Everything below
+was measured with the console binary on 23sep2026 and is fixed with a
+test written from Stata's output; each has a `BUGS.md` entry with the
+numbers.
+
+- **The weight clause.** `unab` read `[aw=price-price]` as the range
+  price (twoway weights by zero); `confirm name` first. stdf/stdr under
+  an aweight (r(135) "not possible with weighted data") or a pweight
+  (r(198)) were drawn; refused. A negative aweight on kdensity, lpoly and
+  lpolyci is r(402) in twoway; refused, over the plot's own if/in sample
+  (a bad weight on a row whose y is missing still refuses -- measured).
+  In the renderer the value rules are twoway's per layer: lfit, qfit,
+  lfitci and qfitci leave a negative weight's row out; fpfit/fpfitci draw
+  nothing for any negative weight, and qfit/qfitci/fpfit/fpfitci nothing
+  for a non-integer fweight ("could not fit model"). A string weight in a
+  hand-written spec is named, not fatal.
+- **mband and mspline.** An observation on a band edge belongs to the
+  band above (`floor((x - min) B / range)`; linspace's edges put it
+  below: 8 knots for Stata's 10 on tenths, 6 of 20 knots moved on
+  hundredths). The default band count is at least min(N, 2); mband draws
+  from two observations; one or two knots draw the knots alone. mspline
+  `n()` is 1..300 and `bands()` 1..200, both twoway's own bounds (this
+  section's measured table said otherwise; corrected above).
+- **histogram and kdensity.** `discrete` folds a value past its last edge
+  into the last bar (twoway__histogram_gen.ado:200-203), in Python and in
+  the page's recount; a single repeated value is one bar of width 1; a
+  `start()` above the sample's minimum is r(198), as in twoway. The
+  weighted percentile's tie needed dash_wpctl's tolerance (kdensity's
+  bandwidth 9% off on a tie the float sum lands just below). The page's
+  kdensity recount clears a curve it cannot smooth instead of leaving the
+  old one.
+- **lowess.** adjust divides by the mean of y over every observation in
+  memory (lowess.ado:207, `summ y, mean`, no if), not the smoothed
+  sample: 4.13 mpg on `if foreign, adjust`. The running line is missing
+  where its window has no x spread (495 of 2244 on nlsw88 wage~grade);
+  logit turns a missing smooth into 1 - 1/N; N >= 3 and a range of 1e-30
+  gate the smooth; a zero-mean smooth has no adjusted value. The mapper
+  now holds the data in memory (`GlyphMapper.dataset`, set by both modes)
+  for this and for lpoly's grid.
+- **lpoly and lpolyci.** The grid follows the dataset's _N
+  (`twoway_lpoly_parse.class:56`, `lpoly.ado:283-290`), not the sample:
+  50 points on `if foreign==1`, n(100) capped at 74. A window with fewer
+  distinct x than the degree fits the degree it supports. lpolyci's
+  bootstrap evaluates every resample on the drawn grid (it mixed grids;
+  the band is still a bootstrap -- follow-up).
+- **The fitted lines' regression.** `_dash_wls` omits an exactly
+  collinear later column (qfit/qfitci on a two-valued x are the line, as
+  regress fits them), decides the rank on the raw design as lstsq does
+  (Stata's regress omits a nearly collinear term on date-time data, and
+  so must dash), and keeps the covariance in SVD form -- on a centred,
+  scaled copy of the column space when full rank. fpfitci's band on
+  hourly %tc was 0.09 to 1.2 of Stata's; fpfit draws from two
+  observations and nothing for a constant y; qfitci with three rows no
+  longer takes the dashboard down (df 0: the fit, no band); qfit draws
+  qfitci's own regression.
+- **Dead code.** The served `_compute_histogram`, `_compute_lfit` and
+  `_compute_qfit` (called by nothing, weight-blind) are deleted with their
+  tests restated against the served layers; a test now checks that the
+  served app defines every module-level name GlyphMapper reads (it caught
+  three during the review). `_compute_rscatter`/`_compute_pcscatter` are
+  left for WP-26.
+
+Recorded, not fixed (outside WP-18; `BUGS.md`): linked graphs with
+`by()` under a served filter move overwrite the shared source per panel;
+a weight on `function`/`scatteri` answers with a different rc from
+twoway's, and twoway's `kernel()` abbreviations are refused; lowess costs
+116 s at 100k rows (no slower than statsmodels was) and fpfit ~2 s at
+1e6, rerun unthrottled on every served filter move (WP-19). On a
+date-time or offset x, Stata's choice between two nearly equal FP models
+rests on its own rounding and can differ from dash's (on the offset x
+the residual sums of squares, to 60 digits, rank dash's choice first);
+the curves then agree to 5e-4 of their span, and the fixture test carries
+that tolerance.
+
+### Verification, measured
+
+23sep2026, the coordinator, on the tree committed with this record
+(branch `feature/batch4-interactive-layer`, `main` merged first: already
+an ancestor), both suites run once on the final code:
+
+- `python3 -m pytest test/ -q`: **8846 passed, 0 failed**, 6 xfailed
+  (unchanged), 58 skipped, 1:52.  Every skip is structural, none a
+  missing dependency: 37 and 20 `test_cscript_hygiene.py` checks that do
+  not apply to a given script, and the `layout(bs)` parity entry whose
+  document tree cannot be compared (WP-21).  scipy and statsmodels were
+  installed, and no test needs either.
+- `test/run_all_cscripts.do` with the console binary: **43 passed, 0
+  failed, 0 skipped** -- `test_statistical_options.cscript` (151 checks)
+  among them, `test_conformance.cscript` rendering the corpus with lowess
+  and WP-18's options and weights, `test_setup_honesty.cscript` against
+  the setup that no longer installs scipy or statsmodels.
+
+Acceptance, each certified by the tests named (all green in those runs):
+
+- **AC-18.1** `TestMsplineAgainstStata` (20 probes), the parity entry
+  `mspline, bands(5) n(4)`, SO-67/70/87/88; the review's knots and band
+  edges in `test_statistical_helpers.py`.
+- **AC-18.2** `TestFpfitRepeatedPowers` (7 fits: powers equal
+  `e(fp_powers)`, curves rtol 1e-6).
+- **AC-18.3** `TestFpfitShift` and the fpfitci stdp band; the edge
+  cases of `fp_edge_truth.json` (14, fit and band against Stata).
+- **AC-18.4** `TestFitciBandTypes`, `TestHistogramDiscrete`,
+  `TestLowessIsStatasSmoother`, `TestLpolyDegreeOne`, `TestLpolyNullRule`,
+  `TestKdensityAsDrawn`; `test_unsupported_report_is_true.py` for each
+  flag; the parity corpus; SO-45..66.
+- **AC-18.5** `TestWeightedLayers` (every weighted probe), the parity
+  corpus's weighted lfit and kdensity, SO-01..44 and SO-71..86.
 
 ---
 

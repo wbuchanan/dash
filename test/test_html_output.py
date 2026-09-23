@@ -741,10 +741,7 @@ class TestColorRenderingAllPlotTypes:
         assert self._NAVY in html, "qfit lcolor(navy) must embed #1a476f in model JSON"
 
     def test_lowess_lcolor_in_html(self):
-        pytest.importorskip(
-            "statsmodels.nonparametric.smoothers_lowess",
-            reason="lowess needs statsmodels to produce a curve; see dash_setup",
-        )
+        # No statsmodels skip: lowess is Stata's smoother in numpy (WP-18).
         html = self._html("lowess", {"yvar": "y", "xvar": "x"}, "lcolor")
         assert self._NAVY in html, "lowess lcolor(navy) must embed #1a476f in model JSON"
 

@@ -3,14 +3,22 @@ test_dependency_guards.py
 Regression tests for graceful degradation when an OPTIONAL third-party
 plotting dependency is not installed.
 
-Four smoother/fit glyphs import a heavy library lazily, inside the mapping
-method, and none of those imports is guarded (verified in dash_render.py):
+Four smoother/fit glyphs imported a heavy library lazily, inside the mapping
+method, and none of those imports was guarded (verified in dash_render.py at
+the time):
 
-    dash_render.py:2404   from scipy import stats as scipy_stats           -> map_lfitci
-    dash_render.py:2547   from statsmodels...smoothers_lowess import lowess -> map_lowess
-    (map_kdensity used scipy.stats.gaussian_kde here until S07; it now
-     implements Stata's kernels directly and needs no optional dependency.)
-    dash_render.py:4001   from scipy.interpolate import PchipInterpolator  -> map_mspline
+    from scipy import stats as scipy_stats                       -> map_lfitci
+    from statsmodels...smoothers_lowess import lowess            -> map_lowess
+    scipy.stats.gaussian_kde                                     -> map_kdensity
+    from scipy.interpolate import PchipInterpolator              -> map_mspline
+
+All four are gone, not guarded: map_kdensity implements Stata's kernels
+directly (S07); map_lowess is Stata's own smoother in numpy, map_mspline the
+cross-median cubic spline twoway draws, and map_lfitci a weighted least
+squares with dash's own t quantile (WP-18, test_statistical_truth.py).  Each
+must now draw with the package entirely unavailable and must not reach for
+it.  The guard shape below is kept for the record and for any optional
+import a later layer adds.
 
 When the library is missing the ModuleNotFoundError escapes the mapper and
 kills the whole render, so a user loses the entire dashboard because one
@@ -132,6 +140,23 @@ def assert_guard_warning(record, library: str, context: str):
     )
 
 
+def assert_no_import_of(method, package: str, context: str):
+    """*method*'s source neither imports *package* nor asks _optional_import
+    for it.  Prose (a docstring or comment explaining WHY the package is
+    gone) is not an import and must not decide this."""
+    import inspect
+    import re
+    code = "\n".join(
+        line.split("#", 1)[0] for line in inspect.getsource(method).splitlines()
+    )
+    assert not re.search(rf"^\s*(from|import)\s+{package}\b", code, re.M), (
+        f"{context} imports {package} again"
+    )
+    assert not re.search(rf"_optional_import\([^)]*{package}", code), (
+        f"{context} asks _optional_import for {package} again"
+    )
+
+
 def call_expecting_graceful(fn, context: str):
     """Call *fn*, failing loudly if the optional-dependency error escapes.
 
@@ -175,91 +200,70 @@ def fit_cds():
 
 
 # ================================================================
-# map_lowess  --  statsmodels  (dash_render.py:2547)
+# map_lowess  --  NO LONGER NEEDS statsmodels
 # ================================================================
-class TestLowessStatsmodelsGuard:
+# WP-18 replaced statsmodels' lowess (it=3 bisquare iterations, a nearest-
+# by-distance neighbourhood, one value per tied x) with Stata's smoother:
+# a stable sort by x, a symmetric window of 2k+1 observations BY INDEX,
+# tricube weights, one local line per observation.  Measured 23sep2026:
+# statsmodels was 3.7e-2 .. 4.4e-1 of the y range away from `lowess` on
+# every fixture dataset; the numpy rule reproduces all 20 probes to 2e-13
+# (test_statistical_truth.py::TestLowessIsStatasSmoother).  The guard these
+# tests pinned is gone because the dependency is.
+class TestLowessNeedsNoOptionalDependency:
 
-    def test_lowess_populated_when_statsmodels_available(self, fig, fit_cds, gm):
-        """With statsmodels importable, map_lowess returns a populated renderer.
-
-        statsmodels is currently broken under this interpreter
-        (ModuleNotFoundError: packaging), so this SKIPS rather than errors.
-        """
-        pytest.importorskip(
-            "statsmodels.nonparametric.smoothers_lowess",
-            reason="statsmodels not importable in this interpreter",
-        )
+    def test_lowess_populated(self, fig, fit_cds, gm):
         result = gm.map_lowess(fig, fit_cds, "y", "x", {})
-        assert_populated_source(result, "map_lowess with statsmodels present")
+        assert_populated_source(result, "map_lowess")
 
-    def test_lowess_missing_statsmodels_warns_and_degrades(self, fig, fit_cds, gm):
-        """map_lowess must warn + return an empty renderer, not raise."""
+    def test_lowess_populated_even_without_statsmodels(self, fig, fit_cds, gm):
+        """The whole point of dropping statsmodels: no optional import left."""
         import warnings
         with blocked_import("statsmodels"):
             with warnings.catch_warnings(record=True) as record:
                 warnings.simplefilter("always")
-                result = call_expecting_graceful(
-                    lambda: gm.map_lowess(fig, fit_cds, "y", "x", {}), "map_lowess"
-                )
-        assert_guard_warning(record, "statsmodels", "map_lowess")
-        assert_empty_source(result, "map_lowess without statsmodels")
+                result = gm.map_lowess(fig, fit_cds, "y", "x", {})
+        assert_populated_source(result, "map_lowess without statsmodels")
+        assert not [w for w in record if "statsmodels" in str(w.message)], (
+            "map_lowess still reaches for statsmodels somewhere"
+        )
 
-    def test_lowess_missing_statsmodels_does_not_raise(self, fig, fit_cds, gm):
-        """The bare no-raise contract, isolated from the warning assertion."""
-        import warnings
-        with blocked_import("statsmodels"):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                try:
-                    result = gm.map_lowess(fig, fit_cds, "y", "x", {})
-                except BaseException as exc:  # noqa: BLE001 - intentional
-                    pytest.fail(
-                        f"map_lowess raised {type(exc).__name__}: {exc} instead "
-                        f"of degrading gracefully"
-                    )
-        assert result is not None
+    def test_lowess_source_has_no_statsmodels_import(self):
+        """Guard against statsmodels creeping back into the lowess path."""
+        assert_no_import_of(GlyphMapper.map_lowess, "statsmodels", "map_lowess")
 
 
 # ================================================================
-# map_lfitci  --  scipy.stats  (dash_render.py:2404)
+# map_lfitci  --  NO LONGER NEEDS scipy
 # ================================================================
-class TestLfitciScipyGuard:
+# WP-18 gave lfitci weights (aw/fw/pw) and the stdf/stdr band types.
+# scipy's linregress takes no weights, so the fit is a weighted least
+# squares in numpy and the band is the same stdp/stdf/stdr algebra qfitci
+# already used, with dash's own scipy-free t quantile (_t_ppf).  The guard
+# these tests pinned is gone because the dependency is.
+class TestLfitciNeedsNoOptionalDependency:
 
-    def test_lfitci_populated_when_scipy_available(self, fig, fit_cds, gm):
-        pytest.importorskip("scipy.stats", reason="scipy not importable")
+    def test_lfitci_populated(self, fig, fit_cds, gm):
         result = gm.map_lfitci(fig, fit_cds, "y", "x", {})
         assert len(as_renderers(result)) == 2, (
             "map_lfitci must return [line_renderer, band_renderer]"
         )
-        assert_populated_source(result, "map_lfitci with scipy present")
+        assert_populated_source(result, "map_lfitci")
 
-    def test_lfitci_missing_scipy_warns_and_degrades(self, fig, fit_cds, gm):
+    def test_lfitci_populated_even_without_scipy(self, fig, fit_cds, gm):
         import warnings
         with blocked_import("scipy"):
             with warnings.catch_warnings(record=True) as record:
                 warnings.simplefilter("always")
-                result = call_expecting_graceful(
-                    lambda: gm.map_lfitci(fig, fit_cds, "y", "x", {}), "map_lfitci"
-                )
-        assert_guard_warning(record, "scipy", "map_lfitci")
-        assert len(as_renderers(result)) == 2, (
-            "degraded map_lfitci must keep the 2-renderer return shape"
+                result = gm.map_lfitci(fig, fit_cds, "y", "x", {})
+        assert len(as_renderers(result)) == 2
+        assert_populated_source(result, "map_lfitci without scipy")
+        assert not [w for w in record if "scipy" in str(w.message)], (
+            "map_lfitci still reaches for scipy somewhere"
         )
-        assert_empty_source(result, "map_lfitci without scipy")
 
-    def test_lfitci_missing_scipy_does_not_raise(self, fig, fit_cds, gm):
-        import warnings
-        with blocked_import("scipy"):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                try:
-                    result = gm.map_lfitci(fig, fit_cds, "y", "x", {})
-                except BaseException as exc:  # noqa: BLE001 - intentional
-                    pytest.fail(
-                        f"map_lfitci raised {type(exc).__name__}: {exc} instead "
-                        f"of degrading gracefully"
-                    )
-        assert result is not None
+    def test_lfitci_source_has_no_scipy_import(self):
+        assert_no_import_of(GlyphMapper.map_lfitci, "scipy", "map_lfitci")
 
 
 # ================================================================
@@ -305,43 +309,35 @@ class TestKdensityNeedsNoOptionalDependency:
 
 
 # ================================================================
-# map_mspline  --  scipy.interpolate.PchipInterpolator  (dash_render.py:4001)
+# map_mspline  --  NO LONGER NEEDS scipy
 # ================================================================
-class TestMsplineScipyGuard:
+# WP-18 replaced scipy's PchipInterpolator through every observation (14.0
+# mpg away from `twoway mspline` on auto, bands()/n() ignored) with what
+# twoway draws: the cross medians of bands() equal-width bands as knots and
+# a natural cubic spline through them, n() points between adjacent knots,
+# in numpy (test_statistical_truth.py::TestMsplineAgainstStata).  The guard
+# these tests pinned is gone because the dependency is.
+class TestMsplineNeedsNoOptionalDependency:
 
-    def test_mspline_populated_when_scipy_available(self, fig, fit_cds, gm):
-        pytest.importorskip("scipy.interpolate", reason="scipy not importable")
+    def test_mspline_populated(self, fig, fit_cds, gm):
         result = gm.map_mspline(fig, fit_cds, "y", "x", {})
         assert isinstance(result, list), "map_mspline must return a list"
-        assert_populated_source(result, "map_mspline with scipy present")
+        assert_populated_source(result, "map_mspline")
 
-    def test_mspline_missing_scipy_warns_and_degrades(self, fig, fit_cds, gm):
+    def test_mspline_populated_even_without_scipy(self, fig, fit_cds, gm):
         import warnings
         with blocked_import("scipy"):
             with warnings.catch_warnings(record=True) as record:
                 warnings.simplefilter("always")
-                result = call_expecting_graceful(
-                    lambda: gm.map_mspline(fig, fit_cds, "y", "x", {}), "map_mspline"
-                )
-        assert_guard_warning(record, "scipy", "map_mspline")
-        assert isinstance(result, list), (
-            "degraded map_mspline must keep the list return shape"
+                result = gm.map_mspline(fig, fit_cds, "y", "x", {})
+        assert isinstance(result, list), "map_mspline must return a list"
+        assert_populated_source(result, "map_mspline without scipy")
+        assert not [w for w in record if "scipy" in str(w.message)], (
+            "map_mspline still reaches for scipy somewhere"
         )
-        assert_empty_source(result, "map_mspline without scipy")
 
-    def test_mspline_missing_scipy_does_not_raise(self, fig, fit_cds, gm):
-        import warnings
-        with blocked_import("scipy"):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                try:
-                    result = gm.map_mspline(fig, fit_cds, "y", "x", {})
-                except BaseException as exc:  # noqa: BLE001 - intentional
-                    pytest.fail(
-                        f"map_mspline raised {type(exc).__name__}: {exc} instead "
-                        f"of degrading gracefully"
-                    )
-        assert result is not None
+    def test_mspline_source_has_no_scipy_import(self):
+        assert_no_import_of(GlyphMapper.map_mspline, "scipy", "map_mspline")
 
 
 # ================================================================

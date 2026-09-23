@@ -755,8 +755,11 @@ void _dash_split_segs(string scalar input) {
 // ============================================================
 //
 // Scans a plot-spec JSON string and collects all "yvar", "xvar",
-// "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var" values
-// into a space-separated varlist stored in out_macro.
+// "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var" values,
+// and the option-named variables "mlabel", "colorvar" and "wexp" (the
+// weight variable, WP-18: it lives inside "options" and must reach the
+// data JSON on the immediate route and the build route alike), into a
+// space-separated varlist stored in out_macro.
 //
 void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
     string rowvector keys
@@ -770,7 +773,8 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
                char(34)+"yvar1"+char(34)+":", char(34)+"yvar2"+char(34)+":",
                char(34)+"y1var"+char(34)+":", char(34)+"x1var"+char(34)+":", char(34)+"y2var"+char(34)+":", char(34)+"x2var"+char(34)+":",
                char(34)+"mlabel"+char(34)+":",
-               char(34)+"colorvar"+char(34)+":")
+               char(34)+"colorvar"+char(34)+":",
+               char(34)+"wexp"+char(34)+":")
     varlist = ""
 
     for (k = 1; k <= cols(keys); k++) {

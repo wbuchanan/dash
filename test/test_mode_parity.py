@@ -831,6 +831,24 @@ CORPUS = [
           [plot_for("function", {"range": "0 5", "n": "7"})]),
     _case("lfitci at level(90)", [plot_for("lfitci")], {"level": "90"}),
     _case("qfitci at level(90)", [plot_for("qfitci")], {"level": "90"}),
+    # WP-18: statistical sub-options and weights.  The served app copies
+    # GlyphMapper, so a helper left out of _shared_stat_lines, or a weight
+    # column the served layer source does not carry, shows up here first.
+    _case("mspline, bands(5) n(4)",
+          [plot_for("mspline", {"bands": "5", "n": "4"})]),
+    _case("lowess, mean", [plot_for("lowess", {"mean": "mean"})]),
+    _case("lowess, noweight logit adjust",
+          [plot_for("lowess", {"noweight": "noweight", "logit": "logit",
+                               "adjust": "adjust"},
+                    yvar="foreign", xvar="weight")]),
+    _case("lfitci, stdf", [plot_for("lfitci", {"stdf": "stdf"})]),
+    _case("qfitci, stdr", [plot_for("qfitci", {"stdr": "stdr"})]),
+    _case("histogram, discrete",
+          [plot_for("histogram", {"discrete": "discrete"})]),
+    _case("lfit [aw=price]",
+          [plot_for("lfit", {"weight": "aweight", "wexp": "price"})]),
+    _case("kdensity [fw=rep]",
+          [plot_for("kdensity", {"weight": "fweight", "wexp": "rep"})]),
     _case("lpolyci at level(90)", [plot_for("lpolyci")], {"level": "90"}),
     _case("fpfitci at level(90)", [plot_for("fpfitci")], {"level": "90"}),
     _case("lfitci with a per-plot level",
@@ -1523,6 +1541,8 @@ class TestTheCorpusIsComplete:
                                   for g in s["graphs"])),
         ("colorvar()", lambda s: any("colorvar" in p.get("options", {})
                                      for g in s["graphs"] for p in g["plots"])),
+        ("a weight", lambda s: any("wexp" in p.get("options", {})
+                                   for g in s["graphs"] for p in g["plots"])),
         ("a non-default scheme",
          lambda s: bool(s["build_options"].get("scheme"))),
         ("a %td variable", lambda s: bool(s["build_options"].get("formats"))),

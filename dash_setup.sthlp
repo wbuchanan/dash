@@ -67,16 +67,12 @@ anything at all:
 {synopt:{opt pandas}}1.5 or later{p_end}
 {synoptline}
 
-{pstd}Two are optional.  A missing optional package costs you the layers
-that need it and nothing else: the layer is drawn empty and a warning names
-the package, so the rest of the dashboard is unaffected and setup does not
-stop:
-
-{synoptset 20 tabbed}{...}
-{synopt:{opt scipy}}1.9 or later — {cmd:lfitci}, {cmd:qfitci},
-    {cmd:kdensity} and {cmd:mspline}{p_end}
-{synopt:{opt statsmodels}}0.13 or later — {cmd:lowess}{p_end}
-{synoptline}
+{pstd}Nothing else is needed.  Earlier versions listed {cmd:scipy} (for
+{cmd:lfitci}, {cmd:qfitci}, {cmd:kdensity} and {cmd:mspline}) and
+{cmd:statsmodels} (for {cmd:lowess}) as optional; every statistical layer is
+now computed with {cmd:numpy} alone, as Stata computes it, so
+{cmd:dash_setup} neither installs nor checks them, and an installed copy is
+not used.
 
 {pstd}{cmd:dash_setup} also installs {cmd:packaging} before anything else,
 because the version comparisons below use it.
@@ -88,7 +84,7 @@ manually:
 {phang2}{cmd:python: import subprocess, sys}
 
 {phang2}{cmd:python: subprocess.run([sys.executable, "-m", "pip", "install",}
-{cmd:"bokeh", "numpy", "scipy", "statsmodels", "pandas"])}
+{cmd:"bokeh", "numpy", "pandas"])}
 
 {pstd}{ul:Stata package}
 

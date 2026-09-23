@@ -353,33 +353,109 @@ class TestMapMspline:
         assert len(result) >= 1
         assert isinstance(result[0].glyph, Line)
 
-    def test_mspline_uses_200_grid_points(self, fig, ts_cds, gm):
-        """P4-33: mspline evaluates on a 200-point grid by default."""
-        result = gm.map_mspline(fig, ts_cds, "yval", "t", {})
-        src_data = result[0].data_source.data
-        assert len(src_data["x_sp"]) == 200
+    # twoway mspline (WP-18) is the cross medians of bands() equal-width
+    # x bands joined by a natural cubic spline, drawn at the K knots plus
+    # n() points between each adjacent pair.  Until WP-18 dash drew a
+    # PCHIP through every observation on a fixed 200-point grid, which was
+    # 14 mpg from Stata's curve on auto; these four tests pinned that.
+    # The knots and the spline are recomputed here independently of
+    # dash_render, so the tests do not grade the renderer by itself.
 
-    def test_mspline_grid_spans_data_range(self, fig, ts_cds, gm):
-        """P4-34: mspline grid spans from data min to max of x."""
-        t_min = float(np.min(ts_cds.data["t"]))
-        t_max = float(np.max(ts_cds.data["t"]))
+    @staticmethod
+    def _knots(x, y, bands):
+        """Cross medians of *bands* equal-width bands, the last one closed."""
+        x = np.asarray(x, float)
+        y = np.asarray(y, float)
+        edges = np.linspace(x.min(), x.max(), bands + 1)
+        kx, ky = [], []
+        for i in range(bands):
+            hi = (x <= edges[i + 1]) if i == bands - 1 else (x < edges[i + 1])
+            inside = (x >= edges[i]) & hi
+            if inside.any():
+                kx.append(np.median(x[inside]))
+                ky.append(np.median(y[inside]))
+        return np.array(kx), np.array(ky)
+
+    @staticmethod
+    def _natural_spline(kx, ky, xs):
+        """The natural cubic spline through (kx, ky), solved directly."""
+        k = len(kx)
+        h = np.diff(kx)
+        a = np.zeros((k, k))
+        rhs = np.zeros(k)
+        a[0, 0] = a[-1, -1] = 1.0          # zero curvature at both ends
+        for i in range(1, k - 1):
+            a[i, i - 1] = h[i - 1]
+            a[i, i] = 2.0 * (h[i - 1] + h[i])
+            a[i, i + 1] = h[i]
+            rhs[i] = 6.0 * ((ky[i + 1] - ky[i]) / h[i]
+                            - (ky[i] - ky[i - 1]) / h[i - 1])
+        m = np.linalg.solve(a, rhs)
+        out = np.empty(len(xs))
+        for j, xv in enumerate(xs):
+            i = min(max(int(np.searchsorted(kx, xv, side="right")) - 1, 0), k - 2)
+            dl, dr = xv - kx[i], kx[i + 1] - xv
+            out[j] = (m[i] * dr ** 3 / (6 * h[i]) + m[i + 1] * dl ** 3 / (6 * h[i])
+                      + (ky[i] / h[i] - m[i] * h[i] / 6) * dr
+                      + (ky[i + 1] / h[i] - m[i + 1] * h[i] / 6) * dl)
+        return out
+
+    def test_mspline_draws_k_minus_1_times_n_plus_k_points(self, fig, ts_cds, gm):
+        """P4-33: (K-1)*n + K points, n() defaulting to 10.
+
+        The fixture's 30 evenly spaced t fill all of the default
+        round(min(10*log10(30), sqrt(30))) = 5 bands, so K = 5 and the
+        default curve has 45 points; n() and bands() move the count.
+        """
+        default_bands = int(round(min(10 * math.log10(30), math.sqrt(30))))
+        assert default_bands == 5
         result = gm.map_mspline(fig, ts_cds, "yval", "t", {})
-        src_x = result[0].data_source.data["x_sp"]
-        assert abs(float(src_x[0]) - t_min) < 1e-9
-        assert abs(float(src_x[-1]) - t_max) < 1e-9
+        assert len(result[0].data_source.data["x_sp"]) == 4 * 10 + 5
+        result = gm.map_mspline(figure(), ts_cds, "yval", "t", {"n": "4"})
+        assert len(result[0].data_source.data["x_sp"]) == 4 * 4 + 5
+        result = gm.map_mspline(figure(), ts_cds, "yval", "t",
+                                {"bands": "3", "n": "1"})
+        assert len(result[0].data_source.data["x_sp"]) == 2 * 1 + 3
+
+    def test_mspline_spans_the_first_to_the_last_knot(self, fig, ts_cds, gm):
+        """P4-34: the curve runs from the first band's median x to the last's.
+
+        It does NOT reach the data's own ends, which is what twoway
+        draws: the end points are cross medians, not observations.
+        """
+        t = np.asarray(ts_cds.data["t"], float)
+        y = np.asarray(ts_cds.data["yval"], float)
+        kx, _ = self._knots(t, y, 5)
+        result = gm.map_mspline(fig, ts_cds, "yval", "t", {})
+        src_x = np.asarray(result[0].data_source.data["x_sp"], float)
+        assert src_x[0] == pytest.approx(kx[0], abs=1e-12)
+        assert src_x[-1] == pytest.approx(kx[-1], abs=1e-12)
+        assert src_x[0] > t.min() and src_x[-1] < t.max()
 
     def test_mspline_drops_nan(self, gm):
-        """P4-35: mspline silently drops NaN observations."""
+        """P4-35: a NaN observation is dropped and changes nothing else.
+
+        The four usable rows get the default max(round(min(10*log10(4),
+        sqrt(4))), min(4, 2)) = 2 bands, knots (0.5, 0.5) and (3.5, 3.5),
+        and with two knots Stata plots the knots alone -- the same curve as
+        the four rows without the NaN one.
+        """
         from bokeh.models.glyphs import Line
         df = pd.DataFrame({
             "t": [0.0, 1.0, float("nan"), 3.0, 4.0],
             "y": [0.0, 1.0, float("nan"), 3.0, 4.0],
         })
-        cds = ColumnDataSource(df)
-        tfig = figure()
-        result = gm.map_mspline(tfig, cds, "y", "t", {})
+        result = gm.map_mspline(figure(), ColumnDataSource(df), "y", "t", {})
         assert isinstance(result[0].glyph, Line)
-        assert len(result[0].data_source.data["x_sp"]) == 200
+        d = result[0].data_source.data
+        clean = gm.map_mspline(figure(), ColumnDataSource(df.dropna()),
+                               "y", "t", {})[0].data_source.data
+        assert np.asarray(d["x_sp"], float).tolist() == pytest.approx([0.5, 3.5])
+        assert np.asarray(d["y_sp"], float).tolist() == pytest.approx([0.5, 3.5])
+        np.testing.assert_array_equal(np.asarray(d["x_sp"], float),
+                                      np.asarray(clean["x_sp"], float))
+        np.testing.assert_array_equal(np.asarray(d["y_sp"], float),
+                                      np.asarray(clean["y_sp"], float))
 
     def test_mspline_insufficient_points_returns_empty_renderer(self, gm):
         """P4-36: mspline with fewer than 2 valid points returns an empty line renderer."""
@@ -403,21 +479,30 @@ class TestMapMspline:
         result = gm.map_mspline(fig, ts_cds, "yval", "t", {"lcolor": "navy"})
         assert result[0].glyph.line_color == "#1a476f"
 
-    def test_mspline_interpolation_is_smooth(self, gm):
-        """P4-39: mspline interpolation is smoother than linear interpolation."""
-        # For a sinusoidal curve, PCHIP should match values at input points closely
-        t = np.linspace(0, 2 * math.pi, 20)
-        y = np.sin(t)
-        df = pd.DataFrame({"t": t, "y": y})
-        cds = ColumnDataSource(df)
-        tfig = figure()
-        result = gm.map_mspline(tfig, cds, "y", "t", {})
-        x_sp = np.array(result[0].data_source.data["x_sp"])
-        y_sp = np.array(result[0].data_source.data["y_sp"])
-        # Spline values should closely match sin at interior grid points
-        expected = np.sin(x_sp)
-        max_err = np.max(np.abs(y_sp - expected))
-        assert max_err < 0.01, f"mspline max error {max_err:.6f} exceeds threshold 0.01"
+    def test_mspline_is_the_natural_spline_through_the_cross_medians(self, gm):
+        """P4-39: the curve is the natural cubic spline through the knots.
+
+        It passes through every cross median (every (n+1)-th point is a
+        knot) and between them equals a natural cubic spline solved
+        directly; the fixture comparison against Stata's own plotted
+        points is test_statistical_truth.py::TestMsplineAgainstStata.
+        The data are uneven on purpose, so equal-width bands hold unequal
+        counts and each knot's median x is not its band's midpoint.
+        """
+        rng = np.random.default_rng(3)
+        t = np.sort(rng.uniform(0, 2 * math.pi, 40) ** 1.3)
+        y = np.sin(t) + rng.normal(0, 0.2, 40)
+        result = gm.map_mspline(figure(), ColumnDataSource({"t": t, "y": y}),
+                                "y", "t", {"bands": "6", "n": "7"})
+        x_sp = np.asarray(result[0].data_source.data["x_sp"], float)
+        y_sp = np.asarray(result[0].data_source.data["y_sp"], float)
+        kx, ky = self._knots(t, y, 6)
+        assert len(kx) >= 4, "the test data must give an interior knot or two"
+        assert len(x_sp) == (len(kx) - 1) * 7 + len(kx)
+        np.testing.assert_allclose(x_sp[::8], kx, rtol=0, atol=1e-12)
+        np.testing.assert_allclose(y_sp[::8], ky, rtol=0, atol=1e-12)
+        np.testing.assert_allclose(y_sp, self._natural_spline(kx, ky, x_sp),
+                                   rtol=0, atol=1e-10)
 
 
 # ================================================================

@@ -74,13 +74,16 @@ def _write(tmp_path, spec, df=_DF):
     return tag, str(sp), str(dp)
 
 
-def standalone(tmp_path, spec, df=_DF):
+def standalone(tmp_path, spec, df=_DF, dataset=None):
     """``{figure_key: figure}`` from the saved-dashboard renderer, and its
-    warnings."""
+    warnings.  *dataset*, when given, is the frame the mapper treats as
+    Stata's data in memory (GlyphMapper.dataset) in place of *df*."""
     _, sp, dp = _write(tmp_path, spec, df)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
+        if dataset is not None:
+            r.mapper.dataset = dataset
         r.render()
     return dict(r.figures), [str(w.message) for w in caught]
 
@@ -390,9 +393,16 @@ class TestAServedComputedLayerRecomputesWhenAFilterMoves:
         return self._derived(figs), warns
 
     def _saved_on_filtered_rows(self, tmp_path, plots, by=None):
+        # The filtered rows are drawn, but the data in memory is still the
+        # whole frame: a filter is an `if', and two rules read beyond the
+        # layer's rows -- lpoly's grid follows _N and lowess's adjust the
+        # mean of y over every observation (WP-18).  The served app keeps
+        # the whole frame as its dataset after a filter move, so the
+        # baseline must too.
         go = {"by": by} if by else None
         spec = make_spec(plots, None, go)
-        figs, _ = standalone(tmp_path, spec, _DF[_DF["foreign"] == 1.0])
+        figs, _ = standalone(tmp_path, spec, _DF[_DF["foreign"] == 1.0],
+                             dataset=_DF)
         return self._derived(figs.values())
 
     @pytest.mark.parametrize("ptype", ["lfit", "qfit", "lfitci", "qfitci",
@@ -405,17 +415,13 @@ class TestAServedComputedLayerRecomputesWhenAFilterMoves:
         plots = [plot_for(ptype)]
         if ptype not in ("histogram", "kdensity", "rscatter", "pcscatter"):
             plots = [plot_for("scatter")] + plots
-        served_now, warns = self._served_after_filter(tmp_path, plots)
+        served_now, _ = self._served_after_filter(tmp_path, plots)
         want = self._saved_on_filtered_rows(tmp_path, plots)
-        _missing = [w for w in warns
-                    if "could not be imported" in w or "requires" in w]
-        if not any(v for v in served_now.values()) and _missing:
-            # lowess needs statsmodels and mspline needs scipy; both are
-            # optional.  Without the package the layer is drawn empty, on
-            # purpose, and there is nothing whose refresh could be seen.
-            # That is a fact about this machine, not a pass.
-            pytest.skip("%s: optional package missing here: %s"
-                        % (ptype, _missing[0][:90]))
+        # This skipped when lowess (statsmodels) or mspline (scipy) came
+        # out empty for want of an optional package.  Since WP-18 neither
+        # layer needs one, so an empty served layer is a failure here.
+        assert any(v for v in served_now.values()), (
+            "%s drew nothing to compare after the filter" % ptype)
         assert served_now == want, (
             "%s after filtering to foreign==1:\n  served %s\n  saved  %s"
             % (ptype, served_now, want)

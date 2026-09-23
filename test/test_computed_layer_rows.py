@@ -76,9 +76,6 @@ _LAYERS = [
     ("histogram", "dist"), ("kdensity", "dist"),
 ]
 
-_NEEDS_STATSMODELS = {"lowess"}
-
-
 def _source(frame):
     """A ColumnDataSource carrying the row-identity column the views use."""
     data = {c: list(frame[c]) for c in frame.columns}
@@ -122,21 +119,12 @@ def _call(name, kind, source, view):
     return out
 
 
-def _skip_if_unavailable(name):
-    if name in _NEEDS_STATSMODELS:
-        try:
-            import statsmodels.api  # noqa: F401
-        except Exception as exc:                       # pragma: no cover
-            pytest.skip("%s needs statsmodels (%s)" % (name, exc))
-
-
 @pytest.mark.parametrize("name,kind", _LAYERS, ids=[n for n, _ in _LAYERS])
 class TestAQualifierReachesTheComputation:
 
     def test_the_qualified_result_differs_from_the_unqualified_one(
             self, name, kind):
         """The bug signature: the qualifier used to change nothing."""
-        _skip_if_unavailable(name)
         src = _source(_DF)
         allrows = _call(name, kind, src, None)
         qualified = _call(name, kind, src, _mask_view(_DF, _DF.g == 0))
@@ -151,7 +139,6 @@ class TestAQualifierReachesTheComputation:
         Masking the input must give exactly what the same mapper gives when
         handed a source containing only those rows.
         """
-        _skip_if_unavailable(name)
         via_view = _call(name, kind, _source(_DF),
                          _mask_view(_DF, _DF.g == 0))
         via_subset = _call(name, kind, _source(_SUBSET), None)
@@ -167,7 +154,6 @@ class TestAQualifierReachesTheComputation:
 
     def test_no_view_is_unchanged(self, name, kind):
         """The common case -- no qualifier -- must not move at all."""
-        _skip_if_unavailable(name)
         src = _source(_DF)
         a = _call(name, kind, src, None)
         b = _call(name, kind, _source(_DF), None)
@@ -175,7 +161,6 @@ class TestAQualifierReachesTheComputation:
 
     def test_an_all_true_mask_matches_no_view(self, name, kind):
         """A view that selects everything is the same as no view."""
-        _skip_if_unavailable(name)
         none_view = _call(name, kind, _source(_DF), None)
         all_true = _call(name, kind, _source(_DF),
                          _mask_view(_DF, np.ones(len(_DF), dtype=bool)))

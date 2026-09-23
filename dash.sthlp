@@ -44,13 +44,13 @@
 {pstd}{ul:Single interactive graph (immediate render)}{p_end}
 
 {p 8 17 2}
-{cmd:dash} {it:plot_specs} {ifin} [{cmd:,} {it:graph_options}
+{cmd:dash} {it:plot_specs} {ifin} {weight} [{cmd:,} {it:graph_options}
 {cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}]
 
 {pstd}{ul:Named graph (accumulate for multi-graph dashboard)}{p_end}
 
 {p 8 17 2}
-{cmd:dash} {it:plot_specs} {ifin} [{cmd:,} {it:graph_options}
+{cmd:dash} {it:plot_specs} {ifin} {weight} [{cmd:,} {it:graph_options}
 {cmdab:nam:e}{cmd:(}{it:identifier} [{cmd:, replace}]{cmd:)}]
 
 {pstd}{ul:KPI card}{p_end}
@@ -111,9 +111,11 @@
 {cmd:dash_setup}
 
 {pstd}
-where {it:plot_specs} = {cmd:(}{it:plottype varlist} [{cmd:,} {it:options}]{cmd:)}
-[{cmd:(}{it:plottype varlist} [{cmd:,} {it:options}]{cmd:)} ...]
-or equivalently using {cmd:||} separators.
+where {it:plot_specs} = {cmd:(}{it:plottype varlist} {ifin} {weight} [{cmd:,} {it:options}]{cmd:)}
+[{cmd:(}{it:plottype varlist} {ifin} {weight} [{cmd:,} {it:options}]{cmd:)} ...]
+or equivalently using {cmd:||} separators.  A {it:weight} is one
+variable, {cmd:[aweight=}{it:varname}{cmd:]}; see
+{help dash##weights:Weights}.
 
 
 {marker description}
@@ -210,10 +212,12 @@ This help file documents only the features that differ from or extend
     {cmd:filter()} that {cmd:dash} does not implement is named in a
     warning, as {cmd:by()}'s are:
     {cmd:dash: legend() sub-option(s) not implemented and ignored: span stack}.
-    A weight expression -- {cmd:[aweight=}{it:exp}{cmd:]}, {cmd:[fweight=]},
-    {cmd:[pweight=]} or {cmd:[iweight=]} -- is accepted on any plot, so a
-    pasted command still runs, but nothing is weighted; the weight is named
-    in the same note by type and never by variable, as {cmd:[aweight]}.
+    A weight, {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=]} or
+    {cmd:[pweight=]}, is honoured on the statistical layers that take it
+    in {cmd:twoway} and refused, as {cmd:twoway} refuses it, where they do
+    not; on {cmd:scatter} and the other glyph layers it is named in the
+    same note by type and never by variable, as {cmd:[aweight]}.  See
+    {help dash##weights:Weights}.
     Note: {cmd:scheme()} is fully supported — see
     {help dash##scheme:Stata scheme support} below.
 
@@ -239,7 +243,8 @@ This help file documents only the features that differ from or extend
     {cmd:width()} and {cmd:bwidth()} positive, and on {cmd:lowess}
     {cmd:bwidth()} is a fraction of the sample, so at most 1.  Integers:
     {cmd:yaxis()} and {cmd:xaxis()} 1 or 2; {cmd:degree()} 0 to 3;
-    {cmd:n()} 2 to 10000; {cmd:bin()} 1 to 1000; {cmd:bands()} 1 to 200;
+    {cmd:n()} 2 to 10000, or 1 to 300 on {cmd:mspline}; {cmd:bin()} 1
+    to 1000; {cmd:bands()} 1 to 200;
     {cmd:colornlevels()} 2 to 256; {cmd:jitterseed()} and {cmd:jseed()}
     0 or more; an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
     {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
@@ -273,19 +278,34 @@ This help file documents only the features that differ from or extend
     Five say so in a second sentence of the message: {cmd:yaxis()} and
     {cmd:xaxis()} 1 or 2 ({cmd:dash} draws two axes; {cmd:twoway} allows
     nine), {cmd:degree()} 0 to 3, {cmd:bin()} up to 1000, {cmd:n()} 2 to
-    10000, and the {cmd:lowess} {cmd:bwidth()} fraction.  The others carry
+    10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound), and
+    the {cmd:lowess} {cmd:bwidth()} fraction.  The others carry
     no second sentence: {cmd:colornlevels()} 2 to 256, {cmd:jitter()} 0 to
     100, {cmd:level()} strictly inside 0 and 100, {cmd:barwidth()}
     positive, {cmd:aspectratio()} 0 or more, {cmd:jitterseed()} and
-    {cmd:jseed()} 0 or more, and {cmd:kdensity} {cmd:bwidth()} positive
+    {cmd:jseed()} 0 or more, {cmd:kdensity} {cmd:bwidth()} positive
     ({cmd:kdensity} itself accepts {cmd:bwidth(0)}).  {cmd:bands()} 1 to
-    200 is {cmd:twoway}'s own limit.  Two values {cmd:twoway} refuses,
+    200 is {cmd:twoway}'s own bound ({cmd:bands must be between 1 and
+    200}).  Two values {cmd:twoway} refuses,
     {cmd:dash} accepts: {cmd:kernel(GAUSSIAN)} is read as
     {cmd:kernel(gaussian)}, and {cmd:lwidth(())} passes as a name that
     the renderer then reports.  And {cmd:scheme()} and {cmd:theme()}
     are refused where {cmd:twoway} draws {cmd:s2color} with a note,
     because a saved dashboard in the wrong scheme is not a note you
     see; {help dash##scheme:Stata scheme support} says more.
+
+{phang2}    A switch that belongs to one plot type is refused on every
+    other, as {cmd:twoway} refuses it, with r(198): {cmd:discrete} on
+    {cmd:histogram}; {cmd:stdp}, {cmd:stdf} and {cmd:stdr} on
+    {cmd:lfitci} and {cmd:qfitci}; {cmd:mean}, {cmd:noweight},
+    {cmd:adjust} and {cmd:logit} on {cmd:lowess}.  Two of {cmd:stdp},
+    {cmd:stdf} and {cmd:stdr} together ({cmd:may not combine}) and
+    {cmd:discrete} with {cmd:bin()} are refused the same way.  A weight
+    the plot type does not take is r(101), as in {cmd:twoway}; see
+    {help dash##weights:Weights}.
+
+{phang3}{cmd:. dash (scatter mpg weight, discrete)}{p_end}
+{phang3}{cmd:option discrete not allowed}{p_end}
 
 {phang2}    Colours, {cmd:msymbol()}, {cmd:lpattern()}, {cmd:scheme()} and
     the sub-options of the structured options are not checked in Stata.
@@ -852,12 +872,14 @@ For range plot types, labels are placed at the upper boundary (y2 variable).
 
 
 {marker smoother_options}
-{title:Smoother Plot-Type Options}
+{title:Statistical Layer Options}
 
 {pstd}
-The following plot-level options apply specifically to {cmd:lpoly} and
-{cmd:lpolyci}.  They are {it:not} accepted by {cmd:fpfit}/{cmd:fpfitci} —
-see below.
+The following plot-level options belong to the statistical layers; each
+entry names the plot types that take it, as {helpb twoway} does.  An
+option that changes an estimate is honoured or refused, never accepted
+and ignored.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
+options — see below.
 
 {synoptset 20}{...}
 {synopt:{opt bwidth(#)}}half-width of the smoothing kernel, as an
@@ -876,15 +898,56 @@ see below.
     {cmd:biweight}, {cmd:cosine}, {cmd:gaussian}, {cmd:parzen},
     {cmd:rectangle} or {cmd:triangle}; any other word is refused{p_end}
 {synopt:{opt n(#)}}number of points at which {cmd:lpoly}, {cmd:lpolyci}
-    and {cmd:kdensity} evaluate; an integer from 2 to 10000, since
-    {cmd:dash} evaluates up to 10000 points{p_end}
+    and {cmd:kdensity} evaluate, an integer from 2 to 10000, since
+    {cmd:dash} evaluates up to 10000 points.  {cmd:lpoly} and
+    {cmd:lpolyci} follow {cmd:twoway}: 50 points over the observed range
+    by default, never more than the dataset has observations, and every
+    observation's worth when the dataset has fewer than 50 -- counting
+    the whole dataset, not the plot's sample, so an {cmd:if} or a
+    {cmd:by()} panel keeps the 50-point grid.  {cmd:kdensity} defaults to
+    300 points from the minimum to the maximum of the data, as in
+    {cmd:twoway}.  On {cmd:mspline} it is the number of points drawn
+    between each pair of adjacent knots, default 10, from 1 to 300 as in
+    {cmd:twoway}{p_end}
+{synopt:{opt bands(#)}}number of equal-width bands for {cmd:mspline} and
+    {cmd:mband}, an integer from 1 to 200, as in {cmd:twoway}.  The
+    default is Stata's: round(min(10 log10 {it:N}, sqrt {it:N})), and at
+    least min({it:N}, 2){p_end}
+{synopt:{opt discrete}}{cmd:histogram} only: one bar per distinct value;
+    see below.  Refused together with {cmd:bin()}, r(198){p_end}
+{synopt:{opt stdp}}{cmd:lfitci} and {cmd:qfitci} only: the band is built
+    on the standard error of the prediction (the default){p_end}
+{synopt:{opt stdf}}{cmd:lfitci} and {cmd:qfitci} only: on the standard
+    error of the forecast, sqrt(stdp^2 + rmse^2){p_end}
+{synopt:{opt stdr}}{cmd:lfitci} and {cmd:qfitci} only: on the standard
+    error of the residual, sqrt(rmse^2 - stdp^2), left missing where
+    that is negative.  Two of {cmd:stdp}, {cmd:stdf} and {cmd:stdr}
+    together are refused, r(198), as {cmd:twoway} refuses them{p_end}
+{synopt:{opt mean}}{cmd:lowess} only: a running mean rather than a
+    running line{p_end}
+{synopt:{opt noweight}}{cmd:lowess} only: the tricube weights are
+    dropped{p_end}
+{synopt:{opt adjust}}{cmd:lowess} only: the smooth is rescaled so that
+    its mean equals the mean of {it:yvar} -- over every observation in
+    the data, as {cmd:lowess} computes it, whatever the {cmd:if} or the
+    {cmd:by()} panel{p_end}
+{synopt:{opt logit}}{cmd:lowess} only: the logit of the smooth is
+    drawn, for a 0/1 {it:yvar}; applied after {cmd:adjust}{p_end}
 {synoptline}
 
 {pstd}
 {cmd:lpoly} and {cmd:lpolyci} implement kernel-weighted local polynomial
 regression — the same smoother underlying Stata's {helpb twoway lpoly},
 with the same default kernel ({cmd:epanechnikov}) and the same
-{cmd:degree(0)} default.
+{cmd:degree(0)} default.  At a given {cmd:bwidth()} the curve is Stata's
+at every degree -- including where a window holds fewer distinct x
+values than the degree needs, where the degree drops as Stata's does.
+A grid point at which fewer than two observations have positive kernel
+weight is left missing, as Stata leaves it, and the line joins the
+points on either side of it, as {cmd:twoway lpoly} draws it; a
+{cmd:bwidth()} too narrow for any window to hold two observations draws
+nothing.  The grid is {cmd:n()} points over the observed range, sized as
+{cmd:twoway} sizes it (see {cmd:n()} above).
 
 {pstd}
 {bf:Note on {cmd:bwidth()} for {cmd:lowess}.}  Stata gives the same option
@@ -897,16 +960,68 @@ bandwidth in x units, while for {helpb twoway lowess} it is the
 {bf:Default bandwidth.}  With no {cmd:bwidth()}, {cmd:dash} uses a
 Fan–Gijbels rule of thumb.  Stata computes its own rule of thumb in
 compiled Mata and it is not reproducible from the published documentation,
-so the two agree to roughly 10%, not exactly.  Specify {cmd:bwidth()} to
-reproduce a Stata smoother exactly.
+so the two agree only approximately: measured against {cmd:r(bwidth)} on
+Stata's example datasets, {cmd:dash}'s default is 9.7% below Stata's on
+{cmd:auto} mpg on weight, 22% below on {cmd:auto} price on mpg and on
+rep78, 17% below on mpg on weight with {cmd:[aweight=price]}, and 5.7%,
+6.8% and 14.2% above on {cmd:sp500}, {cmd:nlsw88} and {cmd:census};
+below eight observations it is a tenth of the range (34% above Stata's
+at seven).  Specify {cmd:bwidth()} to reproduce a Stata smoother
+exactly.
+
+{pstd}
+{cmd:lowess} is Stata's smoother, not a library's: the sample is sorted
+by x with ties kept in dataset order, each observation is fitted by a
+weighted running line over the {cmd:bwidth()} fraction of the sample
+centred on it by position, with tricube weights on the distance, and no
+robustness iterations are run — the rule in {manhelp lowess R:lowess},
+Methods and formulas.  A window whose x values are all equal has no
+line, and the running line is missing there, as Stata's is; the line
+joins the points on either side.  Fewer than three observations, or an
+x that does not vary, draw nothing.  {cmd:mean} fits a running mean
+instead, {cmd:noweight} drops the tricube weights, {cmd:adjust}
+multiplies the smooth by the mean of {it:yvar} over every observation in
+the data divided by the mean of the smooth (a smooth whose mean is zero
+has no adjusted value), and {cmd:logit} draws ln({it:s}/(1 - {it:s}))
+after clamping {it:s} to [1/{it:N}, 1 - 1/{it:N}] -- a missing smooth,
+as in Stata, becoming 1 - 1/{it:N} -- {cmd:adjust} first when both are
+given.  {cmd:lowess} takes no weights, in {cmd:twoway} or here.
+{cmd:dash} no longer needs statsmodels for it.
+
+{pstd}
+{cmd:mspline} is Stata's estimator: the x range is cut into
+{cmd:bands()} equal-width bands, the cross-median (the median x and the
+median y) of each non-empty band is a knot, and a cubic spline through
+the knots is drawn at the knots plus {cmd:n()} equally spaced points
+between each adjacent pair — a natural cubic spline, which reproduces
+Stata's plotted points to the precision Stata stores them at; with one
+or two knots only the knots are drawn, as in Stata.  An observation on
+a band's edge belongs to the band above it.  {cmd:mband} draws the same
+cross medians as a line, from two observations up.  A weight on either
+is accepted and, as in {cmd:twoway}, changes nothing -- not even a
+missing or zero weight drops its observation.
 
 {pstd}
 {cmd:fpfit} and {cmd:fpfitci} implement degree-2 fractional polynomial
 fitting (Royston & Altman, 1994), selecting the pair of powers from
 {c -(}{cmd:–2}, {cmd:–1}, {cmd:–0.5}, {cmd:0}, {cmd:0.5}, {cmd:1},
-{cmd:2}, {cmd:3}{c )-} that minimises the residual sum of squares.  Both
-require positive x values and, like Stata, both evaluate at the distinct
-observed x values rather than on a fixed grid.
+{cmd:2}, {cmd:3}{c )-} that minimises the residual sum of squares over
+all 36 pairs, a repeated pair ({it:p}, {it:p}) meaning x^{it:p} and
+x^{it:p} ln x, as in {helpb fracpoly}.  x need not be positive: when
+its minimum is zero or less the origin is shifted as {cmd:fracpoly}
+shifts it, by the smallest positive spacing of the sorted x values
+minus the minimum, and x is then scaled by the power of ten
+{cmd:fracpoly} takes from its range before the powers are chosen; every
+observation is used.  Like Stata, both evaluate at the distinct observed
+x values rather than on a fixed grid, from two observations up.
+{cmd:fpfitci}'s band is {it:t} times the standard error of the
+prediction with {it:N} - 3 degrees of freedom ({it:N} minus the number
+of terms the design supports, when x takes only two values); with none
+to spare the fit is drawn with no band, and a {it:y} that does not vary
+draws nothing, as in Stata.  It takes {cmd:stdp} only.  On a date-time
+x, whose offset is large against its range, Stata's choice between two
+nearly equal models can differ from {cmd:dash}'s; the curves then differ
+by no more than 5e-4 of their range (measured).
 
 {pstd}
 {bf:{cmd:fpfit} does not take {cmd:bwidth()} or {cmd:degree()}.}  Earlier
@@ -916,17 +1031,101 @@ spelled {cmd:estopts(degree(#))}.  {cmd:dash} accepts them so a pasted
 command still runs, and reports that they were ignored.
 
 {pstd}
+{cmd:histogram} with {cmd:discrete} draws one bar per distinct value, of
+width {cmd:width()} or, by default, the smallest positive spacing
+between the distinct values (1 when there is only one), each bar centred
+on its value; {cmd:start()} does not move the bars, as in Stata, and a
+value past the last bar's edge (a {cmd:width()} coarser than the data's
+spacing) is counted in the last bar, as Stata counts it.
+{cmd:discrete} with {cmd:bin()} is refused, r(198), as {cmd:twoway}
+refuses it.  On any {cmd:histogram} a {cmd:start()} above the smallest
+value of the plot's sample is refused, r(198), as {cmd:twoway} refuses
+it ({cmd:option start() may not be larger than minimum of} ...); a
+variable whose values are all equal is one bar of width 1, as in Stata.
+{cmd:kdensity} evaluates on {cmd:n()} points from the minimum to the
+maximum of the data, as {cmd:twoway kdensity} does.
+
+{pstd}
 {cmd:fpfitci}, {cmd:lpolyci}, {cmd:lfitci} and {cmd:qfitci} draw a
 confidence band at {cmd:level()}, defaulting to the session's
 {cmd:c(level)} — so {cmd:set level 90} is honoured.
 {cmd:level(}{it:#}{cmd:)} must be a number strictly between 0 and 100 and
-is refused otherwise, with r(198).  The bound of every checked option is
-listed under {help dash##validation:Option values}.
+is refused otherwise, with r(198).  {cmd:lfitci} and {cmd:qfitci} build
+the band on {cmd:stdp}, {cmd:stdf} or {cmd:stdr}, {it:t} times that
+standard error with the same {it:t} for all three; with an
+{cmd:aweight}, {cmd:stdf} and {cmd:stdr} are refused as {cmd:twoway}
+refuses them ({cmd:not possible with weighted data}, r(135)), and with a
+{cmd:pweight} likewise (r(198)).  An {it:x} with two values fits the
+line ({cmd:qfit} and {cmd:qfitci} omit x^2, as {cmd:regress} does), and
+three observations draw the quadratic fit with no band.
+{cmd:lpolyci}'s band is a bootstrap percentile band, not Stata's, every
+resample evaluated on the drawn line's own grid.  The bound of every checked
+option is listed under {help dash##validation:Option values}.
 
 {pstd}
 {it:Example:}
 {phang2}{cmd:. dash (scatter mpg weight) (lpoly mpg weight, bwidth(0.4)), saving(lp.html)}{p_end}
 {phang2}{cmd:. dash (scatter mpg weight) (fpfit mpg weight), saving(fp.html)}{p_end}
+{phang2}{cmd:. dash (scatter mpg weight) (lfitci mpg weight, stdf), saving(lf.html)}{p_end}
+{phang2}{cmd:. dash histogram rep78, discrete saving(h.html)}{p_end}
+
+
+{marker weights}
+{title:Weights}
+
+{pstd}
+A weight is written inside a plot as {cmd:twoway} writes it —
+{cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=}{it:varname}{cmd:]}
+or {cmd:[pweight=}{it:varname}{cmd:]} — and each statistical layer takes
+the types {cmd:twoway} lets it take:
+
+{synoptset 32}{...}
+{synopt:{cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}}{cmd:aweight}, {cmd:fweight}, {cmd:pweight}{p_end}
+{synopt:{cmd:fpfit}, {cmd:fpfitci}}{cmd:aweight}, {cmd:fweight}, {cmd:pweight}{p_end}
+{synopt:{cmd:lpoly}, {cmd:lpolyci}, {cmd:kdensity}}{cmd:aweight}, {cmd:fweight}{p_end}
+{synopt:{cmd:histogram}}{cmd:fweight}{p_end}
+{synopt:{cmd:mspline}, {cmd:mband}}{cmd:aweight}, {cmd:fweight}, {cmd:pweight} — accepted and inert, as in {cmd:twoway}{p_end}
+{synopt:{cmd:lowess}}none{p_end}
+{synoptline}
+
+{pstd}
+The meaning is Stata's: an {cmd:aweight} is normalised to sum to
+{it:N}; an {cmd:fweight} replicates observations, so {it:N} is the sum of
+the weights; a {cmd:pweight} gives the {cmd:aweight} estimates with a
+robust standard error for the band.  A weight's values are treated as
+{cmd:twoway} treats them, checked over the plot's own sample: a
+non-integer {cmd:fweight} is r(401) on {cmd:lfit}, {cmd:lfitci},
+{cmd:lpoly}, {cmd:lpolyci}, {cmd:histogram} and {cmd:kdensity}, a
+negative {cmd:fweight} r(402) on the last four, and a negative
+{cmd:aweight} r(402) on {cmd:kdensity}, {cmd:lpoly} and {cmd:lpolyci}.
+Elsewhere the command is accepted and the layer drawn as {cmd:twoway}
+draws it: {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} and {cmd:qfitci} leave a
+negative weight's observation out; {cmd:qfit}, {cmd:qfitci}, {cmd:fpfit}
+and {cmd:fpfitci} draw nothing for a non-integer {cmd:fweight}, and
+{cmd:fpfit} and {cmd:fpfitci} nothing for any negative weight, each with
+a note.  A zero weight leaves its observation out everywhere.  A weight {cmd:twoway} refuses,
+{cmd:dash} refuses with the same code and words: {cmd:[iweight=]} on any
+plot type, any weight on {cmd:lowess} ({cmd:weights not allowed}),
+{cmd:[aweight=]} or {cmd:[pweight=]} on {cmd:histogram}, and
+{cmd:[pweight=]} on {cmd:kdensity}, {cmd:lpoly} or {cmd:lpolyci} — each
+r(101).  The weight must be one existing variable, abbreviated as
+{cmd:twoway} abbreviates a variable.  {cmd:twoway} also accepts an
+expression there; {cmd:dash} cannot evaluate one before the data leave
+Stata, so it is refused with r(198) and the remedy:
+
+{phang3}{cmd:. dash lfit mpg weight [aw=price+1]}{p_end}
+{phang3}{cmd:dash: [aweight=price+1] must name one variable; dash cannot evaluate a weight expression. Generate it first: generate double w = price+1}{p_end}
+
+{pstd}
+On {cmd:scatter} and the other glyph layers a weight is accepted so a
+pasted command still runs, but it is not drawn ({cmd:twoway scatter}
+sizes its markers by an {cmd:aweight}; {cmd:dash} does not), and it is
+named in the note by type, never by variable, as {cmd:[aweight]}.  The
+weight variable is exported with the data.
+
+{pstd}
+{it:Example:}
+{phang2}{cmd:. dash (scatter mpg weight) (lfitci mpg weight [aw=price]), saving(w.html)}{p_end}
 
 
 {marker region_options}
@@ -1509,11 +1708,12 @@ Run {helpb dash_setup} once before using {cmd:dash}.
 {phang2}{ul:Python packages, required} — bokeh≥3.0, numpy≥1.23,
     pandas≥1.5.
 
-{phang2}{ul:Python packages, optional} — scipy≥1.9 for {cmd:lfitci},
-    {cmd:qfitci}, {cmd:kdensity} and {cmd:mspline}; statsmodels≥0.13 for
-    {cmd:lowess}.  Without one of these the layers that need it are drawn
-    empty with a warning naming the package; the rest of the dashboard is
-    unaffected.
+{phang2}{ul:Python packages, optional} — none.  Every statistical
+    layer is computed with numpy: {cmd:lfitci} and {cmd:mspline} no
+    longer use scipy, {cmd:lowess} no longer uses statsmodels, and
+    {cmd:qfitci} and {cmd:kdensity} use neither.  An installed scipy or
+    statsmodels is neither required nor read, and {helpb dash_setup} no
+    longer installs them.
 
 {phang2}{ul:jsonio} — Stata package for JSON serialization of datasets.
     See {helpb jsonio}.

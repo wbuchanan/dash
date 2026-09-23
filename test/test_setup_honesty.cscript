@@ -147,9 +147,10 @@ _hon_summary 1 0 "Python"
 assert r(named) == 1
 display "HON-04 PASS: the summary names what failed"
 
-// A warning is not a failure: an optional package that could not be
-// installed costs the user four plot types, not their setup.
-_hon_summary 0 1 "scipy"
+// A warning is not a failure: `packaging' that could not be installed
+// costs exact version checks, not the setup.  (This used to be scipy, an
+// optional package; since WP-18 no package is optional.)
+_hon_summary 0 1 "packaging (version checks approximate)"
 assert r(rc) == 0
 assert r(claimed) == 0
 assert r(named) == 1

@@ -283,7 +283,10 @@ def _run_filter_js_kde(vals, x_grid, kernel="epanechnikov", bw_fixed=None):
     helpers = js[js.index("function dash_pctl"):
                  js.index("// agg_sources is a Bokeh model list")]
     blk_lo = js.index("// DASH_KDE_RULE")
-    blk_hi = js.index("src.change.emit();", blk_lo) + len("src.change.emit();")
+    # The block ends where it writes the curve: an earlier emit clears the
+    # source on data it cannot smooth, so the first emit is not the end.
+    blk_end = js.index("src.data = { x: xs, y: ys };", blk_lo)
+    blk_hi = js.index("src.change.emit();", blk_end) + len("src.change.emit();")
     block = js[blk_lo:blk_hi]
 
     harness = (
@@ -747,12 +750,23 @@ class TestKdensityRange:
         b = self._curve({"range": "5 25"})
         assert not np.allclose(a, b)
 
-    def test_without_range_the_default_span_is_unchanged(self):
-        """The default must stay min-3h to max+3h, not become the data range."""
+    def test_without_range_the_default_span_is_the_observed_range(self):
+        """twoway kdensity draws n() (300) points on [min(x), max(x)].
+
+        This used to pin "min-3h to max+3h, not the data range".  WP-18
+        measured the drawn curve against the twoway serset: on census with
+        bwidth(2) the padded grid was too coarse to show the estimator at
+        all (as-drawn error 1.0 of the density range) although the
+        estimator was exact at Stata's own x.  The default span is Stata's
+        (test_statistical_truth.py::TestKdensityAsDrawn); range() is how a
+        user asks for the tails.
+        """
         x = self._curve({})
         rng = np.random.default_rng(7)
         arr = rng.normal(20.0, 5.0, 300)
-        assert x.min() < arr.min() and x.max() > arr.max()
+        assert len(x) == 300
+        assert x.min() == pytest.approx(arr.min(), rel=1e-12)
+        assert x.max() == pytest.approx(arr.max(), rel=1e-12)
 
     def test_a_reversed_or_malformed_range_is_reported_not_fatal(self):
         for bad in ("30 10", "10", "", "a b", "10 20 30"):

@@ -56,3 +56,12 @@ scatter mpg weight, xsize(9) ysize(3)
 scatter mpg weight, plotregion(color(ltblue)) graphregion(color(white))
 area mpg weight, sort fcolor(ltblue) falpha(40) base(5)
 bar mpg weight, barwidth(20) blcolor(navy) bfcolor(eltblue)
+lowess mpg weight
+lowess mpg weight, bwidth(.5) mean noweight
+lowess foreign weight, logit adjust
+histogram rep78, discrete
+lfitci mpg weight, stdf
+qfitci mpg weight, stdr
+mspline mpg weight, bands(5) n(4)
+lfit mpg weight [aw=price]
+kdensity mpg [fw=rep78]

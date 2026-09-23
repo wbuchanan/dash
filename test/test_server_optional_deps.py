@@ -17,6 +17,10 @@ so the user is shown their own scatter joined up, labelled as a smoother,
 with no warning and rc 0. The standalone path warns and draws an empty line
 for the same input.
 
+Since WP-18 the app's lowess is Stata's smoother in numpy (copied in with
+``GlyphMapper``): there is no statsmodels import in the app at all, and the
+first class below pins that instead of the fallback's shape.
+
 **scipy — the whole app dies.** ``from scipy import stats`` sits at module
 scope of the generated app, unguarded, so a missing scipy breaks a plain
 scatter that uses no scipy at all. Measured with an import hook blocking
@@ -25,8 +29,12 @@ standalone renderer rendered the same spec fine.
 
 ``except ImportError`` is also too narrow. It catches this machine's
 ``ModuleNotFoundError``, but a package that is *present and broken* raises
-something else — which is exactly why ``_optional_import`` catches
+something else — which is exactly why ``_optional_import`` caught
 ``Exception``.
+
+Since WP-18 neither package is imported anywhere: every statistical layer
+is computed with numpy, ``_optional_import`` is gone, and so is the app's
+guarded scipy import, which nothing read.  The classes below pin that.
 """
 import json
 import os
@@ -77,54 +85,58 @@ _LOWESS = [{"type": "lowess", "yvar": "mpg", "xvar": "weight",
             "options": {}}]
 
 
-class TestLowessDoesNotFakeACurve:
+class TestLowessNeedsNoStatsmodelsInTheApp:
+    """WP-18: the app's lowess is Stata's own smoother in numpy, copied in
+    with ``GlyphMapper``.  There is no statsmodels import left to guard and
+    no ``_compute_lowess`` fallback left to fake a curve with -- the tests
+    this class replaces pinned that fallback (empty, warned, ``except
+    Exception``); the property that replaced it is stronger: a lowess app
+    draws the curve with statsmodels entirely unavailable.
+    """
 
-    def test_a_missing_smoother_draws_nothing_rather_than_the_raw_data(
-            self, tmp_path):
-        app, df = _build(_LOWESS, str(tmp_path))
-        mod = _module(app)
-        if mod.get("_HAS_STATSMODELS"):
-            pytest.skip("statsmodels imports here; the fallback is unreachable")
-        out = mod["_compute_lowess"](df, "mpg", "weight")
-        raw_x = sorted(df["weight"].tolist())
-        assert list(out["x"]) != raw_x, (
-            "the raw data was returned as the lowess curve: the user is "
-            "shown their own scatter joined up, labelled a smoother"
-        )
-        assert not out["x"] and not out["y"], (
-            f"a layer that cannot be computed must be empty; got "
-            f"{len(out['x'])} points"
-        )
-
-    def test_it_warns(self, tmp_path):
-        app, df = _build(_LOWESS, str(tmp_path))
-        mod = _module(app)
-        if mod.get("_HAS_STATSMODELS"):
-            pytest.skip("statsmodels imports here")
-        import warnings
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            mod["_compute_lowess"](df, "mpg", "weight")
-        msgs = " ".join(str(w.message) for w in caught)
-        assert "statsmodels" in msgs, (
-            f"nothing told the user why the curve is missing: {msgs!r}"
-        )
-
-    def test_a_broken_package_is_caught_too(self, tmp_path):
-        """`except ImportError` misses a package that is present but broken.
-
-        That is the reason _optional_import catches Exception, and its
-        docstring says so.
-        """
+    def test_the_app_imports_no_statsmodels(self, tmp_path):
         app, _ = _build(_LOWESS, str(tmp_path))
         with open(app, encoding="utf-8") as fh:
             src = fh.read()
-        i = src.index("import statsmodels")
-        window = src[i:i + 400]
-        assert "except Exception" in window, (
-            "the statsmodels guard catches only ImportError, so a present "
-            "but broken install still aborts"
-        )
+        code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
+        assert "statsmodels" not in code, (
+            "the generated app still imports statsmodels for lowess")
+        assert "_compute_lowess" not in code, (
+            "the dead textual _compute_lowess copy is back in the app")
+
+    def test_a_lowess_app_draws_the_curve_without_statsmodels(self, tmp_path):
+        app, df = _build(_LOWESS, str(tmp_path))
+
+        class _Block:
+            def find_spec(self, name, path=None, target=None):
+                if name.split(".")[0] == "statsmodels":
+                    raise ModuleNotFoundError("No module named 'statsmodels'")
+                return None
+
+        from bokeh.document import Document
+        from bokeh.models import ColumnDataSource
+        saved = list(sys.meta_path)
+        removed = {k: v for k, v in sys.modules.items()
+                   if k == "statsmodels" or k.startswith("statsmodels.")}
+        for k in removed:
+            del sys.modules[k]
+        sys.meta_path.insert(0, _Block())
+        try:
+            mod = _module(app)
+            doc = Document()
+            mod["make_document"](doc)
+        finally:
+            sys.meta_path[:] = saved
+            sys.modules.update(removed)
+        curves = [m for m in doc.select({"type": ColumnDataSource})
+                  if "x_lw" in m.data]
+        assert curves, "no lowess line source in the served document"
+        xs = list(curves[0].data["x_lw"])
+        ys = list(curves[0].data["y_lw"])
+        assert len(xs) == len(df) and len(ys) == len(df), (
+            f"lowess drew {len(xs)} points; Stata draws one per observation")
+        assert ys != df["mpg"].tolist(), (
+            "the raw data was returned as the lowess curve")
 
 
 class TestScipyDoesNotKillTheWholeApp:
@@ -167,10 +179,38 @@ class TestScipyDoesNotKillTheWholeApp:
             sys.modules.update(removed)
 
     def test_the_guard_reports_its_absence(self, tmp_path):
-        app, _ = _build(_SCATTER, str(tmp_path))
+        """No served layer imports scipy or statsmodels at all.
+
+        This required a `_HAS_SCIPY' flag beside a guarded scipy import so
+        a consumer could degrade.  Since WP-18 no layer needs scipy
+        (lfitci's linregress went with the weights, kdensity's
+        gaussian_kde with S07, mspline's Pchip with WP-18) and lowess is
+        Stata's smoother in numpy, so the guarded import was read by
+        nothing and is gone: an app that cannot miss a package is the
+        stronger state.  The check parses the app built with EVERY
+        statistical layer, so an import re-added inside any method --
+        where a text scan of module-level lines would not look -- fails
+        it, and a docstring that merely names scipy does not.
+        """
+        import ast
+        plots = [{"type": t, "yvar": "mpg", "xvar": "weight", "options": {}}
+                 for t in ("lfit", "qfit", "lfitci", "qfitci", "lowess",
+                           "lpoly", "lpolyci", "fpfit", "fpfitci", "mspline",
+                           "mband")]
+        plots += [{"type": t, "yvar": "mpg", "options": {}}
+                  for t in ("kdensity", "histogram")]
+        app, _ = _build(plots, str(tmp_path))
         with open(app, encoding="utf-8") as fh:
-            src = fh.read()
-        assert "_HAS_SCIPY" in src, (
-            "nothing records whether scipy is available, so a consumer "
-            "cannot degrade gracefully"
-        )
+            tree = ast.parse(fh.read())
+        found = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            else:
+                continue
+            found += [n for n in names
+                      if n.split(".")[0] in ("scipy", "statsmodels")]
+        assert not found, (
+            "the served app imports %s although no layer needs it" % found)

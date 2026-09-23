@@ -115,13 +115,21 @@ class TestLpolyciUsesTheSameSmootherAsLpoly:
 
     def test_no_bwidth_uses_statas_rule_not_a_hardcoded_half(self):
         """The old default was the literal 0.5, which is not Stata's."""
-        # bwidth(0.5) is now 0.5 x-UNITS, and x spans 1000-5000, so almost
-        # no window contains a point and the curve nearly vanishes. Under the
+        # bwidth(0.5) is now 0.5 x-UNITS, and x spans 1000-5000 in steps of
+        # about 68, so no window holds two observations.  lpoly leaves a
+        # grid point missing below two positive-weight observations (WP-18,
+        # measured), so the curve vanishes: nothing is drawn.  Under the
         # old code 0.5 was a fraction of the range and gave a full curve --
         # which is exactly the semantics that had to change.
         _, auto = _fit_of("map_lpolyci", {})
-        _, half = _fit_of("map_lpolyci", {"bwidth": "0.5"})
-        assert len(half) < len(auto) / 2, (
+        gm = dr.GlyphMapper(scheme=dr.SchemeParser("s2color"))
+        fig = figure()
+        gm.map_lpolyci(fig, _src(), "mpg", "weight", {"bwidth": "0.5"})
+        drawn = [np.asarray(r.data_source.data["y_lp"], float)
+                 for r in fig.renderers if "y_lp" in r.data_source.data]
+        assert drawn, "map_lpolyci drew no line renderer at all"
+        assert len(auto) > 2
+        assert all(int(np.isfinite(y).sum()) == 0 for y in drawn), (
             "bwidth(0.5) still behaves like a fraction of the x-range"
         )
         xa, ya = _fit_of("map_lpoly", {})

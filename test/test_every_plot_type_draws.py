@@ -55,14 +55,34 @@ _UNIVARIATE = {"histogram", "kdensity"}
 # dash.sthlp says a missing one degrades that layer to an empty glyph with a
 # warning rather than blocking anything -- so on a machine without it, an
 # empty layer is the documented behaviour, not the defect this file hunts.
-_OPTIONAL_DEPS = {
-    "lowess":  "statsmodels",
-    "mspline": "scipy",
-    "lfitci":  "scipy",
-    "qfitci":  "scipy",
-    "fpfitci": "scipy",
-    "lpolyci": "scipy",
-}
+#
+# Read off the mappers rather than listed by hand: a layer needs an optional
+# package exactly when its map_* method calls _optional_import(module, attr,
+# package, feature).  The hand-written list this replaces named statsmodels
+# for lowess and scipy for mspline (both gone since WP-18: Stata's smoother
+# and Stata's cross-median spline are numpy) and scipy for qfitci, fpfitci
+# and lpolyci, none of which ever imported it.
+
+
+def _optional_deps():
+    import inspect
+    out = {}
+    for name in dir(dr.GlyphMapper):
+        if not name.startswith("map_"):
+            continue
+        try:
+            src = inspect.getsource(getattr(dr.GlyphMapper, name))
+        except (OSError, TypeError):
+            continue
+        code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
+        m = re.search(r'_optional_import\(\s*"[^"]+"\s*,\s*[^,]+,\s*"([^"]+)"',
+                      code)
+        if m:
+            out[name[4:]] = m.group(1)
+    return out
+
+
+_OPTIONAL_DEPS = _optional_deps()
 
 
 def _missing_dep(ptype):

@@ -499,17 +499,41 @@ class TestMapHistogram:
 # ----------------------------------------------------------------
 class TestMapKdensity:
     def test_kdensity_integrates_to_one(self, fig, cds, gm):
-        """P1B-53: kdensity density curve integrates to approximately 1.0."""
+        """P1B-53: the density integrates to 1 over the kernel's support.
+
+        twoway kdensity draws n() points on [min(x), max(x)] (WP-18: this
+        used to be min-3h .. max+3h, and on census with bwidth(2) that grid
+        was too coarse to show the estimator at all), so the DRAWN curve
+        carries less than the whole mass: the epanechnikov tails reach
+        sqrt(5)*h past the data.  Asked for that span through range(), the
+        curve integrates to 1.
+        """
         renderer = gm.map_kdensity(fig, cds, "mpg", {})
         from bokeh.models.glyphs import Line
         assert isinstance(renderer.glyph, Line)
         x_data = np.array(renderer.data_source.data["x"])
         y_data = np.array(renderer.data_source.data["y"])
-        assert len(x_data) > 10
-        # Numerical integration via trapezoidal rule
-        integral = np.trapezoid(y_data, x_data) if hasattr(np, "trapezoid") else np.trapz(y_data, x_data)
-        assert abs(integral - 1.0) < 0.05, (
-            f"kdensity integral={integral:.4f}, expected ~1.0"
+        assert len(x_data) == 300
+        arr = np.asarray(cds.data["mpg"], dtype=float)
+        assert x_data[0] == pytest.approx(arr.min())
+        assert x_data[-1] == pytest.approx(arr.max())
+        _trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+        drawn = _trapz(y_data, x_data)
+        assert 0.8 < drawn <= 1.0 + 1e-9, (
+            f"integral over [min, max] = {drawn:.4f}; only the tails may "
+            f"be missing")
+        from dash_render import _stata_kde_bandwidth
+        h = _stata_kde_bandwidth(arr)
+        lo = float(arr.min() - np.sqrt(5.0) * h)
+        hi = float(arr.max() + np.sqrt(5.0) * h)
+        full = gm.map_kdensity(figure(), cds, "mpg",
+                               {"range": f"{lo!r} {hi!r}", "n": "3000"})
+        xf = np.array(full.data_source.data["x"])
+        yf = np.array(full.data_source.data["y"])
+        integral = _trapz(yf, xf)
+        assert abs(integral - 1.0) < 0.01, (
+            f"kdensity integral={integral:.4f} over the kernel support, "
+            f"expected ~1.0"
         )
 
 
@@ -1251,10 +1275,6 @@ class TestMapLowess:
 
     def test_lowess_lcolor_applied(self, fig, cds, gm):
         """lcolor option applied to lowess line."""
-        pytest.importorskip(
-            "statsmodels.nonparametric.smoothers_lowess",
-            reason="lowess needs statsmodels to produce a curve; see dash_setup",
-        )
         r = gm.map_lowess(fig, cds, "mpg", "weight", {"lcolor": "red"})
         assert r.glyph.line_color == "#ff0000"
 
@@ -1587,11 +1607,21 @@ class TestMapMspline:
         result = gm.map_mspline(fig, cds, "mpg", "weight", {})
         assert isinstance(result[0].glyph, Line)
 
-    def test_mspline_smooth_output(self, fig, cds, gm):
-        """map_mspline outputs more points than input (smooth interpolation)."""
+    def test_mspline_draws_n_points_between_adjacent_knots(self, fig, cds, gm):
+        """twoway mspline: (K-1)*n + K points, n() = 10 by default.
+
+        The K knots are the cross medians `twoway mband` draws with the
+        same (default) band count, so the count is read off map_mband
+        rather than restated here.  This used to assert ">= 50 points"
+        of a PCHIP through every observation on a 200-point grid.
+        """
         result = gm.map_mspline(fig, cds, "mpg", "weight", {})
         n_output = len(result[0].data_source.data["x_sp"])
-        assert n_output >= 50, f"Expected >=50 interpolated points, got {n_output}"
+        knots = gm.map_mband(figure(), cds, "mpg", "weight", {})
+        k = len(knots[0].data_source.data["x_mb"])
+        assert k >= 2
+        assert n_output == (k - 1) * 10 + k, (
+            f"{k} knots: expected {(k - 1) * 10 + k} points, got {n_output}")
 
     def test_mspline_lcolor_applied(self, fig, cds, gm):
         """lcolor option applied to mspline."""
@@ -1599,7 +1629,14 @@ class TestMapMspline:
         assert result[0].glyph.line_color == "#ff0000"
 
     def test_mspline_handles_duplicate_x(self, fig, gm):
-        """map_mspline deduplicates x values to satisfy PchipInterpolator."""
+        """Tied x values are ordinary observations of a cross-median band.
+
+        This used to say "deduplicates x values to satisfy
+        PchipInterpolator"; there is no interpolant through the
+        observations any more.  N=5 gives 2 bands ([1, 2.5) and [2.5, 4]),
+        knots (2, 2) and (3.5, 3.5) -- and with two knots Stata plots the
+        knots alone, no spline between them (the WP-18 review).
+        """
         dup_df = pd.DataFrame({
             "y": [1.0, 2.0, 2.0, 3.0, 4.0],
             "x": [1.0, 2.0, 2.0, 3.0, 4.0],   # duplicate x=2.0
@@ -1607,7 +1644,11 @@ class TestMapMspline:
         dup_cds = ColumnDataSource(dup_df)
         result = gm.map_mspline(fig, dup_cds, "y", "x", {})
         assert isinstance(result, list)
-        assert result[0].data_source.data["x_sp"] is not None
+        xs = np.asarray(result[0].data_source.data["x_sp"], dtype=float)
+        ys = np.asarray(result[0].data_source.data["y_sp"], dtype=float)
+        assert len(xs) == 2, f"2 knots: expected the 2 knots, got {len(xs)}"
+        np.testing.assert_allclose(xs, [2.0, 3.5])
+        np.testing.assert_allclose(ys, [2.0, 3.5])
 
 
 class TestMapFunction:
@@ -1704,10 +1745,6 @@ class TestLegendLabelCoverage:
 
     def test_lowess_legend(self, fig, cds, gm):
         """map_lowess must create a legend entry for yvar."""
-        pytest.importorskip(
-            "statsmodels.nonparametric.smoothers_lowess",
-            reason="lowess needs statsmodels to produce a curve; see dash_setup",
-        )
         gm.map_lowess(fig, cds, "mpg", "weight", {})
         assert "mpg" in _legend_items(fig)
 
@@ -2137,7 +2174,14 @@ class TestNewPlotTypes:
         assert n_band <= n_raw
 
     def test_map_mband_too_few_rows_returns_empty(self):
-        """map_mband() with < 4 rows returns an empty line (no crash)."""
+        """map_mband() with few rows draws what twoway draws (no crash).
+
+        Two observations are two bands and two knots in Stata
+        (_gs_default_bands: at least min(N, 2) bands; the WP-18 review
+        read `twoway mband' on N=2 back as (1,1),(2,2) for this data).
+        This used to require an empty line below four rows.  One row, or
+        an x that does not vary, still draws nothing.
+        """
         from bokeh.models.glyphs import Line
         gm = GlyphMapper(OptionTranslator())
         fig2 = figure()
@@ -2146,7 +2190,11 @@ class TestNewPlotTypes:
         line_rs = [r for r in fig2.renderers
                    if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
         assert len(line_rs) == 1
-        assert len(line_rs[0].data_source.data["x_mb"]) == 0
+        assert list(line_rs[0].data_source.data["x_mb"]) == [1.0, 2.0]
+        assert list(line_rs[0].data_source.data["y_mb"]) == [1.0, 2.0]
+        fig3 = figure()
+        gm.map_mband(fig3, ColumnDataSource({"y": [1.0], "x": [1.0]}), "y", "x", {})
+        assert len(fig3.renderers[0].data_source.data["x_mb"]) == 0
 
     def test_pci_in_dispatch(self, fig, pc_cds):
         """_add_pc_glyph dispatches 'pci' correctly."""
@@ -2781,10 +2829,6 @@ class TestLowessConstantX:
 
     def test_normal_x_still_works(self):
         """BUG-4c: lowess must still work normally for varying x."""
-        pytest.importorskip(
-            "statsmodels.nonparametric.smoothers_lowess",
-            reason="lowess needs statsmodels to produce a curve; see dash_setup",
-        )
         from bokeh.plotting import figure as bk_figure
         from bokeh.models import ColumnDataSource
         fig = bk_figure()

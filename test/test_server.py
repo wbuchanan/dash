@@ -17,9 +17,9 @@ Tests:
   P4-67  XSS: <script> in title is HTML-escaped in generated file
   P4-68  Python escape chars in data do not break generated file syntax
   P4-69  --mode standalone still produces HTML (regression)
-  P4-70  _compute_histogram returns correct structure
+  P4-70  the served histogram's structure (top/left/right per bin)
   P4-71  _compute_kpi returns correct values for mean and dcount
-  P4-72  _compute_lfit returns 100 x/y points
+  P4-72  the served lfit is drawn at 100 x/y points
   P4-73  _compute_kpi sd uses ddof=1 matching Stata (regression)
 
   BUG-RL-1  _RateLimiter allows requests below limit and blocks above it
@@ -257,52 +257,74 @@ def test_make_document_callable(dr_module, auto_df):
 # P4-62: Filter callback recomputes histogram CDS
 # ---------------------------------------------------------------------------
 
-def test_filter_callback_recomputes_histogram(dr_module, auto_df):
-    """P4-62: Histogram bins change when filter reduces the dataset."""
-    from bokeh.document import Document
+def _served_layer(dr_module, df, plot, key, filter_move=None, mod="_srv_layer"):
+    """Serve one plot and return the first data source carrying *key*, as
+    a dict of lists; with ``filter_move=(var, value)`` also return it again
+    after the dropdown on *var* is moved to *value*.
 
-    spec = _make_spec_json(
-        graphs=[{
-            "plots": [{"type": "histogram", "yvar": "mpg", "xvar": "", "options": {"bin": "10"}}],
-            "graph_options": {"name": "h1", "title": "MPG Histogram"},
-        }],
-        build_options={
-            "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
-            "theme": "default", "title": "", "subtitle": "",
-            "registry": "h1", "mode": "server", "port": "5006",
-        },
-    )
-    spec_path, data_path = _write_temp_files(auto_df, spec)
+    P4-62, P4-63, P4-70 and P4-72 called the served app's
+    `_compute_histogram' and `_compute_lfit' directly.  Nothing in the app
+    called either -- the layers are drawn, and redrawn under a filter,
+    through GlyphMapper -- and both ignored a weight, so WP-18 deleted them
+    with the other dead statistical copies.  The same properties are asked
+    of what the app actually serves.
+    """
+    import warnings
+    from bokeh.document import Document
+    from bokeh.models import Select
+    bo = None
+    if filter_move is not None:
+        bo = {"layout": "auto", "link": "",
+              "filter": "%s, type(dropdown)" % filter_move[0],
+              "theme": "default", "title": "", "subtitle": "",
+              "registry": "", "mode": "server", "port": "5006"}
+    spec = _make_spec_json(graphs=[{"plots": [plot],
+                                    "graph_options": {"name": "g1"}}],
+                           build_options=bo)
+    spec_path, data_path = _write_temp_files(df, spec)
     out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
     out_f.close()
-
     try:
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name, port=5006)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+            ms = importlib.util.spec_from_file_location(mod, out_f.name)
+            app = importlib.util.module_from_spec(ms)
+            ms.loader.exec_module(app)
+            doc = Document()
+            app.make_document(doc)
 
-        app_spec_obj = importlib.util.spec_from_file_location("_test_app_hist", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
+            def _grab():
+                for m in doc.select({"type": object}):
+                    d = getattr(m, "data", None)
+                    if isinstance(d, dict) and key in d:
+                        return {k: list(v) for k, v in d.items()}
+                raise AssertionError("no source with %r in the served app" % key)
 
-        doc = Document()
-        app_mod.make_document(doc)
-        # Test _compute_histogram directly with filtered data.  frequency()
-        # is asked for explicitly, because the default is a density now --
-        # it is Stata's default and the standalone renderer's.
-        _freq = {"bin": "10", "frequency": "frequency"}
-        full_result = app_mod._compute_histogram(auto_df, "mpg", _freq)
-        half_df = auto_df[auto_df["foreign"] == 0]
-        half_result = app_mod._compute_histogram(half_df, "mpg", _freq)
-
-        assert len(full_result["top"]) == 10
-        assert len(half_result["top"]) == 10
-        # Total counts differ (different number of rows)
-        assert sum(full_result["top"]) == len(auto_df)
-        assert sum(half_result["top"]) == len(half_df)
+            first = _grab()
+            if filter_move is None:
+                return first
+            w = [m for m in doc.select({"type": Select})][0]
+            old = w.value
+            w.value = filter_move[1]
+            for cb in w._callbacks.get("value", []):
+                cb("value", old, filter_move[1])
+            return first, _grab()
     finally:
-        os.unlink(spec_path)
-        os.unlink(data_path)
-        os.unlink(out_f.name)
+        for p in (spec_path, data_path, out_f.name):
+            try: os.unlink(p)
+            except OSError: pass
+
+
+def test_filter_callback_recomputes_histogram(dr_module, auto_df):
+    """P4-62: the served histogram recounts when a filter drops rows."""
+    plot = {"type": "histogram", "yvar": "mpg", "xvar": "",
+            "options": {"bin": "10", "frequency": "frequency"}}
+    full, half = _served_layer(dr_module, auto_df, plot, "top",
+                               filter_move=("foreign", "0.0"), mod="_t_hist_f")
+    assert len(full["top"]) == 10 and len(half["top"]) == 10
+    assert sum(full["top"]) == len(auto_df)
+    assert sum(half["top"]) == int((auto_df["foreign"] == 0).sum())
 
 
 # ---------------------------------------------------------------------------
@@ -310,41 +332,13 @@ def test_filter_callback_recomputes_histogram(dr_module, auto_df):
 # ---------------------------------------------------------------------------
 
 def test_filter_callback_recomputes_lfit(dr_module, auto_df):
-    """P4-63: lfit y-values differ when computed from a filtered subset."""
-    from bokeh.document import Document
-
-    spec = _make_spec_json(
-        graphs=[{
-            "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "l1", "title": "OLS Fit"},
-        }],
-    )
-    spec_path, data_path = _write_temp_files(auto_df, spec)
-    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-    out_f.close()
-
-    try:
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-
-        app_spec_obj = importlib.util.spec_from_file_location("_test_app_lfit", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
-
-        full_fit = app_mod._compute_lfit(auto_df, "mpg", "weight")
-        subset_df = auto_df[auto_df["weight"] < auto_df["weight"].median()]
-        sub_fit = app_mod._compute_lfit(subset_df, "mpg", "weight")
-
-        assert len(full_fit["x"]) == 100
-        assert len(full_fit["y"]) == 100
-        assert len(sub_fit["x"]) == 100
-        # The y-values should differ between full and filtered data
-        assert not np.allclose(full_fit["y"], sub_fit["y"], atol=1.0), \
-            "lfit should produce different values for full vs filtered data"
-    finally:
-        os.unlink(spec_path)
-        os.unlink(data_path)
-        os.unlink(out_f.name)
+    """P4-63: the served lfit refits when a filter drops rows."""
+    plot = {"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}
+    full, sub = _served_layer(dr_module, auto_df, plot, "y",
+                              filter_move=("foreign", "1.0"), mod="_t_lfit_f")
+    assert len(full["x"]) == 100 and len(sub["x"]) == 100
+    assert not np.allclose(full["y"], sub["y"], atol=1.0), \
+        "lfit should produce different values for full vs filtered data"
 
 
 # ---------------------------------------------------------------------------
@@ -608,48 +602,28 @@ def test_standalone_mode_still_works(dr_module, auto_df):
 
 
 # ---------------------------------------------------------------------------
-# P4-70: _compute_histogram returns correct structure
+# P4-70: the served histogram's structure
 # ---------------------------------------------------------------------------
 
 def test_compute_histogram_structure(dr_module, auto_df):
-    """P4-70: _compute_histogram returns dict with top/left/right of length bins."""
-    spec = _make_spec_json()
-    spec_path, data_path = _write_temp_files(auto_df, spec)
-    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-    out_f.close()
+    """P4-70: the served histogram has top/left/right, one per bin.
 
-    try:
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-
-        app_spec_obj = importlib.util.spec_from_file_location("_test_hist_struct", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
-
-        # The signature takes the plot's OPTIONS now, not a bin count, so
-        # start()/width() and the y-axis family reach it the way they reach
-        # the standalone renderer.  The heights are a DENSITY by default, as
-        # Stata's histogram is; this used to assert raw counts, which is
-        # Stata's `frequency' and was the defect.
-        result = app_mod._compute_histogram(auto_df, "mpg", {"bin": "15"})
-        assert set(result.keys()) == {"top", "left", "right"}
-        assert len(result["top"]) == 15
-        assert len(result["left"]) == 15
-        assert len(result["right"]) == 15
-        # All heights non-negative
-        assert all(v >= 0 for v in result["top"])
-        # A density: the bar areas integrate to 1.
-        _area = sum(t * (r - l) for t, l, r
-                    in zip(result["top"], result["left"], result["right"]))
-        assert abs(_area - 1.0) < 1e-9
-        # frequency() asks for the counts, and then they are the counts.
-        counts = app_mod._compute_histogram(
-            auto_df, "mpg", {"bin": "15", "frequency": "frequency"})
-        assert sum(counts["top"]) == auto_df["mpg"].dropna().shape[0]
-    finally:
-        os.unlink(spec_path)
-        os.unlink(data_path)
-        os.unlink(out_f.name)
+    The heights are a DENSITY by default, as Stata's histogram is (this
+    once asserted raw counts, Stata's `frequency', which was the defect);
+    frequency() asks for the counts, and then they are the counts.
+    """
+    plot = {"type": "histogram", "yvar": "mpg", "xvar": "",
+            "options": {"bin": "15"}}
+    result = _served_layer(dr_module, auto_df, plot, "top", mod="_t_hist_s")
+    assert {"top", "left", "right"} <= set(result.keys())
+    assert len(result["top"]) == len(result["left"]) == len(result["right"]) == 15
+    assert all(v >= 0 for v in result["top"])
+    _area = sum(t * (r - l) for t, l, r
+                in zip(result["top"], result["left"], result["right"]))
+    assert abs(_area - 1.0) < 1e-9
+    plot["options"]["frequency"] = "frequency"
+    counts = _served_layer(dr_module, auto_df, plot, "top", mod="_t_hist_c")
+    assert sum(counts["top"]) == auto_df["mpg"].dropna().shape[0]
 
 
 # ---------------------------------------------------------------------------
@@ -684,33 +658,17 @@ def test_compute_kpi_mean_and_dcount(dr_module, auto_df):
 
 
 # ---------------------------------------------------------------------------
-# P4-72: _compute_lfit returns 100 x/y points
+# P4-72: the served lfit is drawn at 100 points
 # ---------------------------------------------------------------------------
 
 def test_compute_lfit_100_points(dr_module, auto_df):
-    """P4-72: _compute_lfit returns exactly 100 x-points and 100 y-points."""
-    spec = _make_spec_json()
-    spec_path, data_path = _write_temp_files(auto_df, spec)
-    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-    out_f.close()
-
-    try:
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-
-        app_spec_obj = importlib.util.spec_from_file_location("_test_lfit_pts", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
-
-        result = app_mod._compute_lfit(auto_df, "mpg", "weight")
-        assert len(result["x"]) == 100, f"Expected 100 x-points, got {len(result['x'])}"
-        assert len(result["y"]) == 100, f"Expected 100 y-points, got {len(result['y'])}"
-        # x should be sorted (linspace)
-        assert result["x"][0] < result["x"][-1]
-    finally:
-        os.unlink(spec_path)
-        os.unlink(data_path)
-        os.unlink(out_f.name)
+    """P4-72: the served lfit has 100 x-points and 100 y-points, x rising
+    (Stata's fit grid, _gs_x_create.ado: n() 100 over the observed range)."""
+    plot = {"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}
+    result = _served_layer(dr_module, auto_df, plot, "y", mod="_t_lfit_pts")
+    assert len(result["x"]) == 100, f"Expected 100 x-points, got {len(result['x'])}"
+    assert len(result["y"]) == 100, f"Expected 100 y-points, got {len(result['y'])}"
+    assert result["x"][0] < result["x"][-1]
 
 
 # ---------------------------------------------------------------------------
@@ -757,43 +715,53 @@ def test_compute_kpi_sd_uses_ddof1(dr_module, auto_df):
 # ---------------------------------------------------------------------------
 
 def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
-    """Regression: _compute_kdensity with constant-value column returns empty dict.
+    """Regression: a served kdensity on constant data draws nothing, and
+    does not crash.
 
-    scipy.stats.gaussian_kde raises LinAlgError on zero-variance data.
-    The generated server code must guard against this.
+    scipy.stats.gaussian_kde raised LinAlgError on zero-variance data, and
+    the served app's own `_compute_kdensity' guarded against it.  That copy
+    was dead once the served app drew computed layers through the mapper,
+    and WP-18 deleted it; the guard that matters is the one on the path the
+    served app runs, so this builds and serves the layer.  A constant
+    column and a single row each give an empty kdensity source; ordinary
+    data give the 300-point curve, so the empty source is not the only
+    thing the layer can produce.
     """
-    spec = _make_spec_json()
-    spec_path, data_path = _write_temp_files(auto_df, spec)
-    out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-    out_f.close()
+    import warnings
+    from bokeh.document import Document
 
-    try:
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
+    spec = _make_spec_json(graphs=[{
+        "plots": [{"type": "kdensity", "yvar": "mpg", "options": {}}],
+        "graph_options": {"name": "g1"},
+    }])
 
-        app_spec_obj = importlib.util.spec_from_file_location("_test_kde_const", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
+    def _served_lengths(df, mod_name):
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+                ms = importlib.util.spec_from_file_location(mod_name, out_f.name)
+                mod = importlib.util.module_from_spec(ms)
+                ms.loader.exec_module(mod)
+                doc = Document()
+                mod.make_document(doc)
+            figs = [m for m in doc.select({"type": object})
+                    if type(m).__name__ == "figure"]
+            return [len(r.data_source.data.get("y", ()))
+                    for f in figs for r in f.renderers]
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try: os.unlink(_p)
+                except OSError: pass
 
-        # Constant-value column — gaussian_kde would raise LinAlgError without guard
-        const_df = auto_df.copy()
-        const_df["mpg"] = 22.0
-
-        result = app_mod._compute_kdensity(const_df, "mpg")
-        assert result == {"x": [], "y": []}, (
-            f"Expected empty dict for constant data, got {result}"
-        )
-
-        # Single-point column
-        single_df = auto_df.iloc[:1].copy()
-        result2 = app_mod._compute_kdensity(single_df, "mpg")
-        assert result2 == {"x": [], "y": []}, (
-            f"Expected empty dict for single-point data, got {result2}"
-        )
-    finally:
-        os.unlink(spec_path)
-        os.unlink(data_path)
-        os.unlink(out_f.name)
+    const_df = auto_df.copy()
+    const_df["mpg"] = 22.0
+    assert _served_lengths(const_df, "_test_kde_const") == [0]
+    assert _served_lengths(auto_df.iloc[:1].copy(), "_test_kde_one") == [0]
+    assert _served_lengths(auto_df, "_test_kde_ok") == [300]
 
 
 # ---------------------------------------------------------------------------
@@ -2682,67 +2650,74 @@ class TestServerFitCIFilterRecompute:
         _assert_served_layer_refits(dr_module, auto_df, "pcscatter")
 
 
-    def test_mspline_compute_fn_changes_with_filter(self, dr_module, auto_df):
-        """A-90: _compute_mspline must return different y values for filtered vs full data."""
+    # A-90/A-91 called the served app's `_compute_mspline' and
+    # `_compute_mband' on a full and a filtered frame.  Those copies were
+    # dead once the served app redrew computed layers through the mapper
+    # (the callback never reached them), and WP-18 deleted them.  What the
+    # tests were for is asked of the live callback instead: move the filter
+    # and the served curve must change.  That it changes to the RIGHT curve
+    # is test_m{spline,band}_filter_callback_recomputes above.
+
+    @staticmethod
+    def _served_curve_before_and_after_filter(dr_module, df, ptype, ycol):
+        import warnings
         from bokeh.document import Document
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
+        from bokeh.models import Select
+        spec = _make_spec_json(
+            graphs=[{"plots": [{"type": ptype, "yvar": "mpg", "xvar": "weight",
+                                "options": {}}],
+                     "graph_options": {"name": "g1"}}],
+            build_options={"filter": "foreign, type(dropdown)"})
+        spec_path, data_path = _write_temp_files(df, spec)
         out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
         out_f.close()
         try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            app_spec_obj = importlib.util.spec_from_file_location("_tmsp_fn", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            full_result = app_mod._compute_mspline(auto_df, "mpg", "weight")
-            half_df = auto_df[auto_df["foreign"] == 0]
-            half_result = app_mod._compute_mspline(half_df, "mpg", "weight")
-            assert len(full_result["y_sp"]) > 0, "_compute_mspline must return non-empty y_sp"
-            assert not np.allclose(full_result["y_sp"], half_result["y_sp"], atol=1.0), \
-                "_compute_mspline must return different y values for filtered vs full data"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+                ms = importlib.util.spec_from_file_location("_bf_" + ptype, out_f.name)
+                mod = importlib.util.module_from_spec(ms)
+                ms.loader.exec_module(mod)
+                doc = Document()
+                mod.make_document(doc)
+
+                def _curve():
+                    for m in doc.select({"type": object}):
+                        d = getattr(m, "data", None)
+                        if isinstance(d, dict) and ycol in d:
+                            return [float(v) for v in d[ycol]]
+                    raise AssertionError("no %s source in the served document" % ycol)
+
+                before = _curve()
+                w = [m for m in doc.select({"type": Select})][0]
+                old = w.value
+                w.value = "1.0"
+                for cb in w._callbacks.get("value", []):
+                    cb("value", old, "1.0")
+                after = _curve()
+            return before, after
         finally:
             for p in (spec_path, data_path, out_f.name):
                 try: os.unlink(p)
                 except OSError: pass
 
+    def test_mspline_compute_fn_changes_with_filter(self, dr_module, auto_df):
+        """A-90: the served mspline curve changes when a filter drops rows."""
+        before, after = self._served_curve_before_and_after_filter(
+            dr_module, auto_df, "mspline", "y_sp")
+        assert len(before) > 0 and len(after) > 0
+        assert (len(before) != len(after)
+                or not np.allclose(before, after, atol=1.0)), \
+            "the served mspline did not change when the filter dropped rows"
+
     def test_mband_compute_fn_changes_with_filter(self, dr_module, auto_df):
-        """A-91: _compute_mband must return different y values for filtered vs full data."""
-        from bokeh.document import Document
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            app_spec_obj = importlib.util.spec_from_file_location("_tmb_fn", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            full_result = app_mod._compute_mband(auto_df, "mpg", "weight")
-            half_df = auto_df[auto_df["foreign"] == 0]
-            half_result = app_mod._compute_mband(half_df, "mpg", "weight")
-            assert len(full_result["y_mb"]) > 0, "_compute_mband must return non-empty y_mb"
-            assert len(half_result["y_mb"]) > 0, "_compute_mband must return non-empty y_mb for subset"
-            # Either the lengths differ (different # of bands) or the y values differ
-            assert (
-                len(full_result["y_mb"]) != len(half_result["y_mb"])
-                or not np.allclose(full_result["y_mb"], half_result["y_mb"], atol=1.0)
-            ), "_compute_mband must return different results for filtered vs full data"
-        finally:
-            for p in (spec_path, data_path, out_f.name):
-                try: os.unlink(p)
-                except OSError: pass
+        """A-91: the served mband curve changes when a filter drops rows."""
+        before, after = self._served_curve_before_and_after_filter(
+            dr_module, auto_df, "mband", "y_mb")
+        assert len(before) > 0 and len(after) > 0
+        assert (len(before) != len(after)
+                or not np.allclose(before, after, atol=1.0)), \
+            "the served mband did not change when the filter dropped rows"
 
 
 # ---------------------------------------------------------------------------
@@ -3271,6 +3246,12 @@ class TestServerLpolyFpfit:
         compile(source, "<generated>", "exec")
         assert "_compute_lpoly" in source
 
+    # These asserted "_compute_fpfit" was in the source: the served app's own
+    # second copy of the FP code, dead since the served layers were drawn
+    # through GlyphMapper and deleted by WP-18 (TR-18.6).  The app must now
+    # carry GlyphMapper's fit -- the one text both modes run -- and not a
+    # second one that could drift from it.
+
     def test_fpfit_generates_valid_app(self, dr_module, auto_df):
         """fpfit must produce compilable server app source."""
         spec = _make_spec_json(graphs=[{
@@ -3279,7 +3260,8 @@ class TestServerLpolyFpfit:
         }])
         source = _build_app(dr_module, auto_df, spec)
         compile(source, "<generated>", "exec")
-        assert "_compute_fpfit" in source
+        assert "def _fit_fp2(" in source and "def _fp_prepare(" in source
+        assert "_compute_fpfit" not in source
 
     def test_fpfitci_generates_valid_app(self, dr_module, auto_df):
         """fpfitci must produce compilable server app source."""
@@ -3289,7 +3271,8 @@ class TestServerLpolyFpfit:
         }])
         source = _build_app(dr_module, auto_df, spec)
         compile(source, "<generated>", "exec")
-        assert "_compute_fpfit" in source
+        assert "def _fit_fp2(" in source and "def _fp_stdp(" in source
+        assert "_compute_fpfit" not in source
 
     def test_lpoly_bwidth_in_generated_source(self, dr_module, auto_df):
         """bwidth() option must be encoded in generated lpoly server source."""
@@ -3397,18 +3380,27 @@ class TestServerLpolyFpfit:
                 out = []
                 for m in doc.select({"type": object}):
                     d = getattr(m, "data", None)
-                    if isinstance(d, dict) and "y_lp" in d and len(d["y_lp"]):
+                    if isinstance(d, dict) and "y_lp" in d:
                         out.append([round(float(v), 6) for v in d["y_lp"]])
-                return out
+                return sorted(out)
             finally:
                 for _p in (spec_path, data_path, out_f.name):
                     try: os.unlink(_p)
                     except OSError: pass
 
-        with_opt = _curves({"bwidth": "0.3"})
+        # bwidth() is in x-units.  weight spans 1800-4800 over 14 and 16
+        # rows per panel, so 800 is a wide window that draws a full curve
+        # in both panels, unlike the default's.  bwidth(0.3), which this
+        # test used to use, holds fewer than two observations in every
+        # window, and lpoly draws nothing there (WP-18, Stata's null rule):
+        # both panels empty is also the option reaching them.
+        with_opt = _curves({"bwidth": "800"})
         plain = _curves({})
-        assert len(with_opt) == len(plain) == 2, (with_opt, plain)
-        assert with_opt != plain, "bwidth(0.3) changed nothing in the served panels"
+        narrow = _curves({"bwidth": "0.3"})
+        assert len(with_opt) == len(plain) == len(narrow) == 2, (with_opt, plain)
+        assert all(len(c) > 2 for c in with_opt + plain), (with_opt, plain)
+        assert with_opt != plain, "bwidth(800) changed nothing in the served panels"
+        assert narrow == [[], []], "bwidth(0.3) drew points no window supports"
 
     def test_lpoly_faceted_degree_respected(self, dr_module, auto_df):
         """A faceted lpoly honours degree(2): its panels differ from the default's.
