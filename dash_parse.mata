@@ -448,14 +448,14 @@ real scalar _dash_is_name(string scalar s) {
 // The value must be one of the forms whole -- rows cols or name:row,col
 // placements as _dash_layout_scan() reads them; bs; or bs: followed by
 // rows of name or name=span separated by / -- every name must be in
-// registry, as link() and exclude() require, and every span a whole number
-// from 1 to 12 written in at most two digits.  dash_render.py's
+// registry, as link() and exclude() require, and placed once, and every
+// span a whole number from 1 to 12 written in at most two digits.  dash_render.py's
 // _dash_layout_check() reports the same problems in a spec that did not
 // come through dash.ado.
 // ============================================================
 string scalar _dash_layout_refusal(string scalar layout, string scalar registry) {
     string scalar    s, form, names, spec, tok, nm, span
-    string rowvector reg, nms, toks
+    string rowvector reg, nms, toks, seen
     real scalar      i, eq
 
     form = "layout() must be 'auto', 'N M' grid (N and M >= 1), " +
@@ -474,12 +474,17 @@ string scalar _dash_layout_refusal(string scalar layout, string scalar registry)
         if (spec == "") return(form)
         spec = subinstr(spec, "/", " ")
         toks = tokens(spec)
+        seen = J(1, 0, "")
         for (i = 1; i <= cols(toks); i++) {
             tok = toks[i]
             eq  = strpos(tok, "=")
             nm  = (eq ? substr(tok, 1, eq - 1) : tok)
             if (!_dash_is_name(nm)) return(form)
             if (!anyof(reg, nm)) return("layout() name '" + nm + "' not found in registry.")
+            // A name placed twice: the saved page embedded it once per
+            // repeat -- 100,000 made an 18.1 MB page (WP-21).
+            if (anyof(seen, nm)) return("layout() places '" + nm + "' more than once.")
+            seen = seen, nm
             if (eq) {
                 span = substr(tok, eq + 1, .)
                 if (!_dash_is_digits(span, 2)) {
@@ -498,6 +503,12 @@ string scalar _dash_layout_refusal(string scalar layout, string scalar registry)
     nms = tokens(names)
     for (i = 1; i <= cols(nms); i++) {
         if (!anyof(reg, nms[i])) return("layout() name '" + nms[i] + "' not found in registry.")
+        // Placed twice, it kept its last place without a word.
+        if (i > 1) {
+            if (anyof(nms[|1 \ i - 1|], nms[i])) {
+                return("layout() places '" + nms[i] + "' more than once.")
+            }
+        }
     }
     return("")
 }

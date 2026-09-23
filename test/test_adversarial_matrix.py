@@ -81,6 +81,7 @@ from conftest import make_data_json, make_spec
 # passing (cscript).
 
 _M = "test/test_adversarial_matrix.py::"
+_BS = "test/test_served_bs_layout.py::TestAdversarialServedBs::"
 
 SURFACES = {
     # `dash <plot> varlist, ...' -- the plot-type token and the varlist.
@@ -314,22 +315,28 @@ SURFACES = {
             _M + "TestALayoutThatCannotBeReadIsReported::test_a_bootstrap_spec_is_read_whole_or_said",
             "test_adversarial.cscript:P20-30",
             "test_echo_text.cscript:ECH-11",
+            # layout(bs) as the served app reads it (WP-21).
+            _BS + "test_bypass_only_the_grid_names_are_placed",
         ],
         "injection": [
             "test_adversarial.cscript:P2-84",
             "test/test_axis_options.py::TestDashboardTitleEscaping::test_a_script_tag_is_still_escaped",
             "test/test_html_output.py::TestBuildSubtitleInHtml::test_build_subtitle_escaped",
             "test_path_validation.cscript:PV-12",
+            _BS + "test_injection_no_spec_text_reaches_the_document",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P20-25",
             _M + "TestLayoutGridBound::test_the_saved_page_draws_it_as_auto",
+            _M + "TestARepeatedLayoutNameIsPlacedOnce::test_the_saved_page_embeds_a_repeated_item_once",
+            "test_adversarial.cscript:P20-31",
             _M + "TestLayoutGridBound::test_the_measure_is_never_smaller_than_the_grid",
             "test_echo_text.cscript:ECH-08",
             "test_echo_text.cscript:ECH-09",
             "test_adversarial.cscript:P19-13",
             "test_resource_limits.cscript:RL-09",
             "test_resource_limits.cscript:RL-10",
+            _BS + "test_exhaustion_repeats_cannot_grow_the_served_grid",
         ],
     },
     # dash serve: port(), timeout(), nobrowser.
@@ -413,9 +420,13 @@ SURFACES = {
         "injection": [
             _M + "TestHostileSpec::test_a_nul_inside_a_title_does_not_split_the_escaping",
             "test/test_server_function_security.py::TestAKeywordArgumentCannotExecute::test_the_standalone_renderer_does_not_either",
+            # A graph name reaching the save button's file name (WP-21).
+            "test/test_toolbar.py::TestTheBootstrapPage::test_only_a_stata_name_reaches_the_page",
+            "test/test_toolbar.py::TestSaveFilename::test_anything_else_is_dashboard",
         ],
         "exhaustion": [
             _M + "TestHostileSpec::test_a_deeply_nested_spec_fails_before_anything_is_written",
+            "test/test_toolbar.py::TestSaveFilename::test_a_huge_name_is_refused_without_being_scanned",
             _M + "TestLayoutGridBound::test_an_oversized_grid_is_drawn_as_auto",
             "test/test_resource_limits.py::TestAnOversizedDatasetIsRefused::test_the_saved_renderer_refuses_before_drawing",
         ],
@@ -510,6 +521,24 @@ SURFACES = {
             "test/test_render_cli_port.py::TestPortReachesTheGeneratedApp::test_an_out_of_range_port_is_clamped_not_embedded_raw",
         ],
     },
+    # The CSV download (WP-21, `dash build, csv'): what a viewer's click
+    # makes the page or the server write, and where it lands -- in a
+    # spreadsheet.
+    "csv_download": {
+        "bypass": [
+            "test/test_export.py::TestTheButtonIsThereWhenAsked::test_the_served_app_has_it_only_with_csv",
+            "test/test_export.py::TestTheFileHoldsTheFilteredRows::test_the_modes_agree_on_every_filter_state",
+            "test_export.cscript:EXP-06",
+        ],
+        "injection": [
+            "test/test_export.py::TestTheCsvFormatter::test_a_text_cell_that_a_spreadsheet_would_run_is_defused",
+            "test/test_export.py::TestTheCsvFormatter::test_a_label_that_a_spreadsheet_would_run_is_defused",
+            "test/test_export.py::TestTheCsvFormatter::test_rfc_4180_quoting",
+        ],
+        "exhaustion": [
+            "test/test_export.py::TestTheServedDownload::test_a_burst_of_clicks_is_held_to_the_bucket",
+        ],
+    },
 }
 
 _CATEGORIES = ("bypass", "injection", "exhaustion")
@@ -524,7 +553,7 @@ _REQUIRED_SURFACES = frozenset({
     "resource_limit_globals", "dash_setup_inputs", "data_content",
     "renderer_spec_and_data_json", "served_health_endpoint",
     "served_session_creation", "served_widget_model_changes",
-    "served_app_cli_flags",
+    "served_app_cli_flags", "csv_download",
 })
 
 _PYTEST_ID = re.compile(r"^test/test_\w+\.py::(?:\w+::)?test_\w+$")
@@ -1453,6 +1482,45 @@ class TestALayoutThatCannotBeReadIsReported:
                              + free[:2 - len(placed)])
         assert served_cells == saved_cells, (served_cells, saved_cells,
                                              (rows, cols))
+
+
+class TestARepeatedLayoutNameIsPlacedOnce:
+    """Found by WP-21, measured 23sep2026: a name repeated in layout(bs: ...)
+    was placed once per repeat.  The saved page embedded the item again for
+    every repeat, with the same element id -- 100,000 repeats made an 18.1 MB
+    page, and dash.ado let it through -- and the served app read the whole
+    spec on every session (a 4 MB spec: about 3 s and 300 MB each).  A
+    placement repeated in layout(name:row,col ...) silently kept the LAST
+    place.  Now the first place is kept in both forms and both modes, the
+    renderer says so, and dash.ado refuses it (P20-31)."""
+
+    def test_the_bs_reader_keeps_the_first_place(self):
+        rows = dr._dash_parse_bs_layout("bs: g1=4 g1=8 g2=6 / g1=12",
+                                        ["g1", "g2"], [])
+        assert rows == [[("g1", 4), ("g2", 6)]]
+
+    def test_the_saved_page_embeds_a_repeated_item_once(self, tmp_path):
+        spec = _two_graph_spec("bs: " + "g1=6 " * 2000 + "g2=6")
+        html, _msgs = _render(tmp_path, spec)
+        # Each embedded root is one <div ... data-root-id=...>.
+        assert html.count("data-root-id") <= 4
+        assert len(html) < 5_000_000
+
+    def test_the_served_grid_places_it_once(self, tmp_path):
+        from bokeh.models import GridBox
+        src = _app_source(tmp_path, _two_graph_spec("bs: g1=6 g1=6 g2=6"))
+        doc = _session(_load_app(src, "bs_repeat"))
+        cells = [c for gb in doc.select({"type": GridBox}) for c in gb.children]
+        assert len(cells) == 2
+
+    @pytest.mark.parametrize("layout,kept", [
+        ("bs: g1=6 g1=6 g2=6", "bs: g1=6 g1=6 g2=6"),
+        ("g1:1,1 g1:2,2 g2:1,2", "g1:1,1 g2:1,2"),
+    ])
+    def test_the_repeat_is_reported(self, layout, kept):
+        got, problem = dr._dash_layout_check(layout, {"g1", "g2"})
+        assert got == kept
+        assert problem and "g1 is placed more than once" in problem, problem
 
 
 # ===========================================================================

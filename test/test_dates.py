@@ -760,3 +760,48 @@ class TestFacetAndMarkerLabels:
         fig = dr._build_figures()["g1"]
         labels = [r for r in fig.center if isinstance(r, LabelSet)]
         assert labels and labels[0].text == "y"
+
+
+class TestAMissingDateDoesNotBreakAFilteredPage:
+    """Found by WP-21, measured 23sep2026 at ed41e8a: a saved dashboard
+    with a filter, over a %td variable holding one missing value, failed
+    to render at all -- ``ValueError: Out of range float values are not
+    JSON compliant: nan``.  ``_make_source`` built every column with
+    ``tolist()``, so a date column became Timestamps with a ``NaT`` in the
+    list, and Bokeh writes ``NaT`` in a list as a float NaN, which JSON
+    refuses.  Without a filter the source never reached the document;
+    the filter callbacks' arguments carry it in."""
+
+    def _data(self):
+        vals = _dated_payload()
+        rows = vals["StataJSON"]["values"]
+        rows[3]["date"] = None
+        return vals
+
+    @pytest.mark.parametrize("ftype", ["range", "dropdown"])
+    def test_the_page_renders(self, tmp_path, ftype):
+        spec = _minimal_spec(
+            [{"type": "line", "yvar": "close", "xvar": "date",
+              "options": {}}], formats={"date": "%td"})
+        spec["build_options"]["filters"] = [
+            {"varname": "close" if ftype == "range" else "date",
+             "type": ftype, "exclude": [], "label": ""}]
+        dr = _renderer(spec, self._data(), tmp_path)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            html = dr.render()
+        assert "<html" in html.lower()
+
+    def test_the_source_keeps_the_missing_date_missing(self, tmp_path):
+        spec = _minimal_spec(
+            [{"type": "line", "yvar": "close", "xvar": "date",
+              "options": {}}], formats={"date": "%td"})
+        spec["build_options"]["filters"] = [
+            {"varname": "close", "type": "range", "exclude": [], "label": ""}]
+        dr = _renderer(spec, self._data(), tmp_path)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.render()
+        col = list(dr.sources["g1"].data["date"])
+        assert pd.isna(col[3])
+        assert not pd.isna(col[2]) and not pd.isna(col[4])

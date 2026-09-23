@@ -3082,7 +3082,7 @@ The second commit (closing WP-20's gaps), 23sep2026, the same way:
 
 # Milestone 4 — Complete and covered
 
-## WP-21 · Export
+## WP-21 · Export — DONE
 
 **Gaps closed:** H1, H3 · **Severity:** S2 · **Effort:** S · **Depends on:** WP-09
 
@@ -3095,32 +3095,163 @@ The second commit (closing WP-20's gaps), 23sep2026, the same way:
   CSV, in both modes.
 - **BR-21.2** Exported data reflects the filters the user has applied.
 
-### Technical requirements
+### What was measured before any code changed
 
-- **TR-21.1** Add `SaveTool` to both toolbars — the standalone string at
-  `dash_render.py:9552` and the server lists at `:13801, 15127, 15230`. There
-  are zero occurrences of `SaveTool`, `download`, `export` or `to_csv` in the
-  file today.
-- **TR-21.2** Consider `BoxZoomTool`, `UndoTool`, `RedoTool`, `CrosshairTool`
-  in the same pass.
-- **TR-21.3** Add a CSV download of the current (filtered) selection, via
-  `CustomJS` standalone and a Bokeh callback in server mode.
-- **TR-21.4** (H3) Verify what `layout(bs…)` does in server mode —
-  `_render_bootstrap_html` is standalone-only, and the behaviour is currently
-  unknown. Fix or document.
-- **TR-21.5** Document the new tools in `dash.sthlp`.
+23sep2026 at `ed41e8a`:
 
-### Acceptance criteria
+| Question | Measured |
+|---|---|
+| Tools on a figure | saved `pan,wheel_zoom,box_select,lasso_select,reset`; served the same five as ONE list of instances handed to every figure, so all figures shared each tool object |
+| Save, CSV, download, export | none, in either mode |
+| What `gridplot` does with save tools | merges every figure's into one new `SaveTool` on the grid's toolbar, whose BokehJS view exports its parent -- the whole grid -- as one PNG, and which, having no file name, stops to `prompt()` with `bokeh_plot` filled in (BokehJS 3.9 source) |
+| Stata's `export delimited` | dates in their display format (`16jan2020`, `2020m1`), value labels, 16 significant digits without a leading zero (`.3333333333333333`), RFC quoting, no byte-order mark, and a cell `=SUM(A1)` written as it is |
+| Stata's `import delimited` on UTF-8 with a BOM and CRLF | variable names clean, `é` intact, quoted commas intact |
+| `layout(bs)` served | read by the placement parser, nothing found, the automatic grid drawn without a word: `bs` of two graphs and four KPI cards a 2 x 3 grid in registry order where the saved page draws the cards in one row at span 3 and the graphs under them at span 6; `bs:` spans and rows ignored |
 
-- **AC-21.1** Both modes offer PNG save and CSV download.
-- **AC-21.2** The CSV reflects active filters.
-- **AC-21.3** `layout(bs)` in server mode is specified and tested.
+### Technical requirements, as delivered
 
-### Test plan
+- **TR-21.1 / TR-21.2** Every figure, in both modes, carries
+  `pan, wheel_zoom, box_zoom, box_select, lasso_select, undo, redo, reset,
+  save` (`_DASH_FIGURE_TOOLS`), and in the served app each figure owns its
+  own tools.  What is active when the page opens is unchanged -- pan is the
+  drag, the wheel scrolls the page until wheel zoom is chosen (read from
+  BokehJS's own `default_order`, and pinned).  No crosshair: in a toolbar a
+  grid shares it draws across every figure at once, and the tooltip already
+  reads values.  Every grid's one save button -- the dashboard's, a tab's, a
+  `by()` graph's panels -- writes `dashboard.png` (`_dash_name_save`); under
+  `layout(bs)`, where each item keeps its own toolbar, it writes the item
+  under its own name, in both modes.  The parity guard's `_tools` compared a
+  sorted list and so never saw an order change; it now compares the order,
+  and the document tree carries each grid's save and its name.
+- **TR-21.3** `dash build, csv` (and `dash serve`, which inherits it) adds a
+  **Download CSV** button beside the filters, or in a bar of its own when
+  there are none, in both modes.  Opt-in, because it hands any viewer every
+  row of every variable the dashboard uses: a served dashboard otherwise
+  sends the browser only what it plots, and a variable only a KPI card
+  summarises stays on the server (dash.sthlp, Exporting).  One formatter,
+  written in JavaScript (`_DASH_CSV_JS`), writes the file in both modes, so
+  the two cannot disagree on a number or a date:
+  - saved: the button's CustomJS masks the filter callbacks' own snapshot
+    with their own function (`dash_filter_mask`) and writes the rows that
+    pass; string columns travel once more, raw, because the snapshot holds
+    "007" as 7 (its dropdown matches through that);
+  - served: the button's click reaches the server, which masks its frame
+    with the recompute's own rule (`_dash_frame_filter_mask`, moved out of
+    the app template so the two share it), puts the rows in a source
+    (`_dash_csv_payload`, converting the frame's Stata dates as the saved
+    loader does), and bumps the button's tags, whose CustomJS writes the
+    file -- a new tag each click, so the same rows twice are two files, and
+    the source rides in that callback's args, which is what puts it in the
+    document.  A token bucket (`_DASH_CSV_RATE`, `_DASH_CSV_BURST`: two at
+    once, then one every five seconds) holds each session.
+  - the file: variable names, then the rows in the data's order; numbers as
+    JavaScript spells them (the shortest decimal that reads back as the same
+    double); a value-labelled number as its label; dates in ISO 8601 (the
+    fraction of a `%tc` second only when not zero; the year for `%ty`; the
+    period's first day for `%tw %tm %tq %th`); a text cell beginning
+    `= + - @`, a tab or a carriage return after an apostrophe (OWASP, "CSV
+    injection"); RFC 4180 quoting, CRLF, UTF-8 with a byte-order mark --
+    which Excel needs and Stata's `import delimited` reads through
+    (measured).  Stata's own `export delimited` was measured first: it
+    writes dates in their display format, value labels, 16 significant
+    digits without a leading zero, no BOM and no formula guard.
+- **TR-21.4** `layout(bs)` is served with the saved page's rows and spans, on
+  a 12-column `GridBox` (`_dash_bs_grid`): each item takes its span, a row
+  wraps where Bootstrap wraps at wide widths, a name the spec leaves out is
+  appended full width, tabs() takes its items out of the grid as on the
+  saved page, and each figure keeps its own toolbar.  One reader for both
+  modes -- `_dash_parse_bs_layout` and `_dash_auto_bs_layout`, moved out of
+  `DashRenderer` (whose methods now wrap them) and copied into the app.  The
+  served grid does not reflow as the window narrows, as the saved page
+  does; dash.sthlp says so.  The parity corpus's `layout(bs)` entry, skipped
+  until now, compares the saved page's grid, read from its HTML, with the
+  served `GridBox` cell by cell.
+- **TR-21.5** dash.sthlp: "The toolbar" (every tool, the save files, why no
+  crosshair, one toolbar per grid), "Exporting" (the save button and
+  `csv`: what a file holds and how it differs from `export delimited`, why
+  it is opt-in, the served pace), `csv` in the options tables, the mode
+  table's toolbar and `layout(bs)` rows.
 
-`test_mode_parity.py` toolbar comparison (WP-12's `_glyph_profile` now
-collects tools); a `test_html_output.py` assertion for the tools; a
-`test_server_serves.py` case exercising the CSV callback.
+### Acceptance
+
+- **AC-21.1** Both modes offer PNG save and CSV download: `test_toolbar.py`
+  (107 tests), `test_export.py` (84), `test_export.cscript` EXP-01..06.
+  Checked in Chromium on pages built from the tree: the saved page's grid
+  save wrote a 2560 x 990 PNG (97.7 KB) named `dashboard`, the served one an
+  85 KB PNG; each page's Download CSV wrote `dashboard.csv`, UTF-8 with a
+  BOM, the two files identical, with no policy violation under either
+  page's `default-src 'none'`.
+- **AC-21.2** The CSV reflects the active filters:
+  `TestTheFileHoldsTheFilteredRows`, which runs both modes' downloads on the
+  same filter states through the shipped JavaScript and requires identical
+  files; in the browser the saved and served files held the same two rows
+  after the same dropdown and range moves (checked before the toolbar
+  merge) and the same six before any move (checked again after it).
+- **AC-21.3** `layout(bs)` in server mode is specified (dash.sthlp) and
+  tested: `test_served_bs_layout.py` (103 tests, each served grid checked
+  against a written expectation and against the saved page's HTML), and the
+  parity entry.
+
+### Found on the way
+
+Each with a failing test first and a `BUGS.md` entry:
+
+- A saved page's range and slider filters compared a missing value as
+  JavaScript compares null, as 0, while the served app drops it: the modes'
+  KPI cards disagreed.  One mask function now, failing a missing value.
+- An untouched range filter dropped every missing value as soon as any
+  filter moved; a range at its full extent, or a slider at its start, now
+  restricts nothing, as a dropdown at "All" restricts nothing.
+- A saved dashboard with a filter failed to render at all when a date
+  variable held a missing value (`NaT` in a list, which JSON refuses).
+- Under plain `layout(bs)`, a KPI card placed in tabs() was drawn twice on
+  the saved page.
+- A name repeated in `layout()` was placed once per repeat (100,000
+  repeats: an 18.1 MB page) or kept its last place, in silence; dash.ado
+  refuses it now (P20-31).
+- The parity corpus's `tabs()` entry wrote `"A: g1; B: g2"`, which tabs()
+  reads as ONE tab holding g2, so no two-tab dashboard was ever compared;
+  fixed in its own commit (`4f6a314`) with a test that it builds two tabs.
+
+Not done here, recorded for later: under a saved `layout(bs)`, a `by()`
+graph's panels ignore `cols()` where the served grid honours it; the
+saved `layout(bs)` page puts the filters above the title where every other
+layout puts them below; the served grid does not copy the saved KPI cells'
+minimum heights.
+
+### Verification, measured
+
+23sep2026, branch `feature/batch4-interactive-layer` (`main` already an
+ancestor, so nothing to pull).  As for WP-20, both suites ran on the working
+tree, which also carries test-infrastructure changes from other work that
+are not part of this commit; the commit's own tree was then run on its own,
+last below.
+
+- `test/run_all_cscripts.do` with the console binary: **49 passed, 0
+  failed, 0 skipped**, in 47 s -- the new `test_export.cscript`
+  (EXP-01..06) among them, `test_adversarial.cscript` with P20-31 (a name
+  repeated in `layout()` refused) and `test_echo_text.cscript` with the
+  repeated-name refusals echoed as typed.  No file a script reads changed
+  after it.
+- `python3 -m pytest test/ -q`, first run: 10,793 passed, **1 failed**,
+  2:15.  `test_varlist_expansion.py`'s single-y golden hash: the page
+  carries the new tools.  Diffed token by token against `HEAD`, whose
+  output gives the recorded `5e1c3a24`: four chunks, all insertions -- the
+  grid toolbar's box zoom (with its default overlay), undo, redo and its
+  save named `dashboard`, and the figure's own four new tools.
+  Re-baselined to `20a7cb46`, with that reason beside the constant.
+- Second run: **10,794 passed, 0 failed**, 61 skipped, 6 xfailed, 2:15.
+  Every skip is structural: `test_cscript_hygiene.py` checks that do not
+  apply to a given script.  The `layout(bs)` parity entry, the one other
+  skip until now, is compared.
+- The commit's own tree -- `HEAD` with only the staged WP-21 diff applied,
+  in a separate worktree, with `HEAD`'s `conftest.py` and no
+  `pyproject.toml` -- run whole with `-n auto`: **10,776 passed, 0
+  failed**, 61 skipped, 6 xfailed, 4:08.  The 18 fewer are the two
+  uncommitted infrastructure test files.  The certification scripts were
+  not rerun there: the files they read are byte-identical to the ones they
+  ran against, and what changed after them -- this record and the golden
+  hash -- no script reads.
 
 ---
 

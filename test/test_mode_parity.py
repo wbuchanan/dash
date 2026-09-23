@@ -63,9 +63,9 @@ import warnings
 import pandas as pd
 import pytest
 from bokeh.document import Document
-from bokeh.models import (Band, BoxAnnotation, Div, HoverTool, Label,
-                          LabelSet, Legend, RangeSlider, Select, Slider, Span,
-                          TabPanel, Tabs, Widget)
+from bokeh.models import (Band, BoxAnnotation, Div, GridPlot, HoverTool,
+                          Label, LabelSet, Legend, RangeSlider, Select,
+                          Slider, Span, TabPanel, Tabs, ToolProxy, Widget)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -115,14 +115,23 @@ ALLOWED = {
         "the rows a renderer draws through its view are."
     ),
     "layout(bs) is standalone markup": (
-        "The Bootstrap layout is an HTML page the saved renderer writes "
-        "around separately embedded Bokeh components; there is no single "
-        "layout root to compare, and the served document draws the auto "
-        "grid instead (WP-21 TR-21.4 decides what it should do). For a "
-        "layout(bs) entry the figures are compared in registry order, the "
-        "document tree is not, and neither is toolbar_location: a figure "
-        "embedded on its own keeps its toolbar, a figure in a gridplot "
-        "gives it up to the grid."
+        "The saved layout(bs) page is HTML: each bs row a flex row of "
+        "db-col-lg-N cells, each cell one separately embedded Bokeh "
+        "component, so it has no Bokeh layout root to walk.  The served "
+        "document draws the same rows and spans as a Bokeh GridBox of 12 "
+        "columns (WP-21 TR-21.4).  For a layout(bs) entry the saved tree is "
+        "therefore read from the page's markup -- its cells in page order, "
+        "each placed where a browser at 992px or more places it (a bs row "
+        "starts a line; a cell that would carry the line past 12 columns "
+        "starts the next) -- and compared with the served GridBox's "
+        "children: content, row, column and spans.  What the markup does "
+        "below 992px, where it reflows, has no served counterpart and is "
+        "not compared; dash.sthlp says the served grid does not reflow.  "
+        "Nor is the rest of the page, which is why a layout(bs) entry sets "
+        "no filter(), tabs(), title() or subtitle(): the saved page puts "
+        "its filters above the title (or, filterposition(left), beside "
+        "it), and the served app -- as the saved page under every other "
+        "layout -- below it."
     ),
 }
 
@@ -195,14 +204,20 @@ def _write(spec):
     return tag, sp, dp
 
 
-def _standalone(spec):
-    """(renderer, warnings) from the saved-dashboard renderer."""
+def _standalone_page(spec):
+    """(renderer, warnings, page) from the saved-dashboard renderer."""
     _, sp, dp = _write(spec)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
-    return r, sorted(str(w.message) for w in caught)
+        page = r.render()
+    return r, sorted(str(w.message) for w in caught), page
+
+
+def _standalone(spec):
+    """(renderer, warnings) from the saved-dashboard renderer."""
+    r, caught, _page = _standalone_page(spec)
+    return r, caught
 
 
 def _served(spec):
@@ -437,8 +452,12 @@ def _tools(fig):
     GAPS.md D2's hover findings -- no tooltip at all on a served bar, a
     served ``hover(foreign)`` ignored -- were invisible because tools were
     not collected.
+
+    The toolbar's tools are kept in the order the figure holds them (WP-21):
+    sorted, two toolbars holding the same tools in a different order
+    compared equal.  The hover tools follow them, sorted.
     """
-    out = []
+    out, hovers = [], []
     for t in fig.tools:
         e = {"type": type(t).__name__}
         if isinstance(t, HoverTool):
@@ -451,9 +470,19 @@ def _tools(fig):
             rs = t.renderers
             e["renderers"] = (sorted(type(x.glyph).__name__ for x in rs)
                               if isinstance(rs, list) else str(rs))
-        out.append(e)
-    return sorted(out, key=lambda d: json.dumps(d, sort_keys=True,
-                                                default=str))
+            hovers.append(e)
+        else:
+            out.append(e)
+    return out + sorted(hovers, key=lambda d: json.dumps(d, sort_keys=True,
+                                                         default=str))
+
+
+def _grid_toolbar(grid):
+    """What a grid's own toolbar holds besides the proxies for its figures'
+    tools: the one save button ``gridplot()`` merges them into, with the
+    file it writes (WP-21).  BokehJS exports the whole grid through it."""
+    return [(type(t).__name__, getattr(t, "filename", None))
+            for t in grid.toolbar.tools if not isinstance(t, ToolProxy)]
 
 
 def _axes(fig):
@@ -642,6 +671,12 @@ def _layout_tree(m, figures):
         # mutation that made the served app ignore by(, cols(#)) went
         # unnoticed here.
         return ("at", m[1], m[2], _layout_tree(m[0], figures))
+    if (isinstance(m, tuple) and len(m) == 5
+            and all(isinstance(x, int) for x in m[1:])):
+        # A GridBox child with its spans, (model, row, col, row_span,
+        # col_span): the served layout(bs) grid.  The spans are the layout
+        # as much as the position is.
+        return ("at", m[1], m[2], m[3], m[4], _layout_tree(m[0], figures))
     if isinstance(m, (list, tuple)):
         return [_layout_tree(x, figures) for x in m]
     if m is None:
@@ -659,6 +694,10 @@ def _layout_tree(m, figures):
         return ("Tabs", [_layout_tree(t, figures) for t in m.tabs])
     if isinstance(m, Widget):
         return ("Widget", _widget_profile(m))
+    if isinstance(m, GridPlot):
+        # With its own toolbar: a grid whose save button wrote a different
+        # file in one mode compared equal while only its children were read.
+        return (tn, _grid_toolbar(m), _layout_tree(m.children, figures))
     kids = getattr(m, "children", None)
     return (tn, _layout_tree(kids, figures) if kids is not None else [])
 
@@ -669,22 +708,58 @@ def _layout_tree(m, figures):
 
 _CACHE = {}
 
+_BS_ROW = '<div class="db-row db-section">'
+_BS_CELL = re.compile(r'db-col-lg-(\d+)[^"]*"><div id="[^"]*" '
+                      r'data-root-id="([^"]+)"')
+
+
+def _bs_markup_tree(r, page, figures):
+    """The saved ``layout(bs)`` page's grid, read from the page itself.
+
+    Each ``db-row`` is a Bootstrap row and each ``db-col-lg-N`` cell embeds
+    one component by ``data-root-id``.  A cell is placed where a browser at
+    992px or more puts it: a row starts a new line, and a cell that would
+    carry its line past 12 columns starts the next (flex-wrap).  The result
+    is spelled as ``_layout_tree`` spells a GridBox, so it compares directly
+    with the served grid.
+    """
+    models = {m.id: m for m in list(r.figures.values())
+              + list(r.kpi_divs.values())}
+    body = page[page.index('<div class="db-container">'):]
+    cells, line = [], 0
+    for chunk in body.split(_BS_ROW)[1:]:
+        found = _BS_CELL.findall(chunk)
+        used = 0
+        for span, root in found:
+            span = int(span)
+            if used + span > 12:
+                line, used = line + 1, 0
+            assert root in models, (
+                f"a layout(bs) cell embeds {root}, which is neither a figure "
+                f"nor a KPI card; this reader cannot name it")
+            cells.append(("at", line, used, 1, span,
+                          _layout_tree(models[root], figures)))
+            used += span
+        if found:
+            line += 1
+    return ("GridBox", cells)
+
 
 def _render_pair(name, spec):
     """``{"std": ..., "srv": ...}`` -- each ``{"tree", "figures", "warnings",
-    "widgets", "kpis"}`` -- rendered once per corpus entry."""
+    "widgets", "kpis"}``, and ``"bs"`` on the saved side when the page is
+    ``layout(bs)`` markup -- rendered once per corpus entry."""
     if name in _CACHE:
         return _CACHE[name]
-    r, std_w = _standalone(spec)
+    r, std_w, page = _standalone_page(spec)
     doc, srv_w = _served(spec)
     std_figs, srv_figs = [], []
     root = getattr(r, "_last_layout_root", None)
     if root is None:
-        # No root to walk, so the figures are taken in the renderer's own
-        # order: _allowed("layout(bs) is standalone markup").
-        std_tree = None
-        for f in r.figures.values():
-            std_figs.append(_figure_profile(f))
+        # No root to walk: the grid is read from the page's markup, and its
+        # figures are taken in page order.
+        _allowed("layout(bs) is standalone markup")
+        std_tree = _bs_markup_tree(r, page, std_figs)
     else:
         std_tree = _layout_tree(root, std_figs)
     srv_tree = [_layout_tree(x, srv_figs) for x in doc.roots]
@@ -706,15 +781,16 @@ def _render_pair(name, spec):
     def kpis_of(tree):
         return [d[1:] for d in leaves(tree, "Div") if d[0] == "kpi"]
 
-    if std_tree is None:
+    if root is None:
+        # The markup tree holds the grid alone; the widgets sit outside it.
         std_widgets = [_widget_profile(w) for w in r.filter_widgets]
-        std_kpis = [_kpi_card(d) for d in r.kpi_divs.values()]
     else:
         std_widgets = leaves(std_tree, "Widget")
-        std_kpis = kpis_of(std_tree)
+    std_kpis = kpis_of(std_tree)
     pair = {
         "std": {"tree": std_tree, "figures": std_figs, "warnings": std_w,
-                "widgets": std_widgets, "kpis": std_kpis},
+                "widgets": std_widgets, "kpis": std_kpis,
+                "bs": root is None},
         "srv": {"tree": srv_tree, "figures": srv_figs, "warnings": srv_w,
                 "widgets": leaves(srv_tree, "Widget"),
                 "kpis": kpis_of(srv_tree)},
@@ -999,6 +1075,13 @@ CORPUS = [
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])]),
     _case("layout(bs)", bo={"layout": "bs"},
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])]),
+    # Spans, KPI cards, an order that is not the registry's and a row that
+    # wraps: the saved markup puts g1 on a line of its own under g2, and the
+    # served GridBox must as well (WP-21).
+    _case("layout(bs: ...) with KPI cards and a wrapped row",
+          bo={"layout": "bs: k2=3 k1=3 / g2=8 g1=6"},
+          graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])],
+          kpis=[_kpi(), _kpi(name="k2", stat="count")]),
     # ---- filter() -----------------------------------------------------------
     _case("filter(, type(dropdown))", [_sc()],
           {"filter": "foreign, type(dropdown)"}),
@@ -1115,13 +1198,20 @@ class _Agree:
     def test_same_document_tree(self, name, spec):
         """Where every figure, card and widget sits, in one tree.
 
-        ``layout(bs)`` has no tree on the saved side (``ALLOWED``); its
-        figures are still compared below.
+        A ``layout(bs)`` page has no Bokeh tree: its grid is read from the
+        page's markup (``ALLOWED``), and it is the grid alone -- so a
+        ``layout(bs)`` entry must not carry what sits outside it, and its
+        served document must be that grid and nothing else.
         """
         pair = _render_pair(name, spec)
-        if pair["std"]["tree"] is None:
-            assert "layout(bs) is standalone markup" in ALLOWED
-            pytest.skip("layout(bs): " + ALLOWED["layout(bs) is standalone markup"])
+        if pair["std"]["bs"]:
+            bo = spec["build_options"]
+            outside = [k for k in ("filter", "tabs", "title", "subtitle")
+                       if bo.get(k)]
+            assert not outside, (
+                f"{name}: a layout(bs) entry compares the grid alone, and "
+                f"sets {outside}: "
+                + _allowed("layout(bs) is standalone markup"))
         diffs = _diff(pair["std"]["tree"], pair["srv"]["tree"])
         assert not diffs, _explain(name, "document trees", diffs)
 
@@ -1164,12 +1254,10 @@ class _Agree:
         std, srv = pair["std"]["figures"], pair["srv"]["figures"]
         assert len(std) == len(srv), f"{name}: figure counts differ"
         for i, (a, b) in enumerate(zip(std, srv)):
-            ca, cb = dict(a["chrome"]), dict(b["chrome"])
-            if pair["std"]["tree"] is None:
-                _allowed("layout(bs) is standalone markup")
-                ca.pop("toolbar_location")
-                cb.pop("toolbar_location")
-            diffs = _diff(ca, cb)
+            # toolbar_location included under layout(bs) as well: the served
+            # GridBox is not a gridplot, so a figure keeps its own toolbar
+            # there, as it does embedded on its own in the saved page.
+            diffs = _diff(a["chrome"], b["chrome"])
             assert not diffs, _explain(name, f"figure {i} chrome", diffs)
 
     def test_same_kpi_cards(self, name, spec):
@@ -1530,6 +1618,9 @@ class TestTheCorpusIsComplete:
                        for k in s["kpis"])),
         ("layout() placement",
          lambda s: ":" in s["build_options"].get("layout", "")),
+        ("layout(bs)", lambda s: s["build_options"].get("layout") == "bs"),
+        ("layout(bs: ...) spans",
+         lambda s: s["build_options"].get("layout", "").startswith("bs:")),
         ("a graph-level qualifier",
          lambda s: any(g.get("if_expr") or g.get("in_expr")
                        for g in s["graphs"])),

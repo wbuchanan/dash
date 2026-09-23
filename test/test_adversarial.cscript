@@ -1717,6 +1717,27 @@ capture erase "`p2030f'"
 capture dash clear
 display "P20-30 PASS: a layout() that is not one of its forms whole, names an unregistered item, or gives a Bootstrap span outside 1..12 is refused"
 
+// P20-31 — a layout() that places one name more than once.  Measured
+// 23sep2026: layout(bs: ...) embedded the item once per repeat on the saved
+// page -- 100,000 repeats made an 18.1 MB page of duplicate element ids --
+// and a repeated placement kept its last place without a word.  Refused
+// now, in either form.
+capture dash clear
+dash scatter mpg weight, name(p2031a)
+dash scatter price weight, name(p2031b)
+local p2031f "`c(tmpdir)'p2031.html"
+foreach p2031l in "bs: p2031a=6 p2031a=6 p2031b=6" "bs: p2031a / p2031b p2031a=12" "p2031a:1,1 p2031b:1,2 p2031a:2,1" {
+    capture erase "`p2031f'"
+    _adv_p19_run `"dash build, saving("`p2031f'") replace nobrowser layout(`p2031l')"'
+    assert r(rc) == 198
+    cert_file_has "`r(log)'", needle("layout() places 'p2031a' more than once.")
+    assert r(found) == 1
+    capture confirm file "`p2031f'"
+    assert _rc != 0
+}
+capture dash clear
+display "P20-31 PASS: a layout() that places a name twice is refused"
+
 capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p19.log"
 
@@ -1761,3 +1782,4 @@ display "  P20-27: KPI stat(var) outside its allow-list (case, p0, p100, p97.5, 
 display "  P20-28: Malformed UTF-8 inside the data (string value, variable and value labels) → rendered"
 display "  P20-29: A scatteri coordinate and the .gph note → shown as text; the note runs no directive"
 display "  P20-30: layout() not one of its forms whole, an unregistered name, a Bootstrap span outside 1..12 → rc=198"
+display "  P20-31: layout() placing a name twice (bs or name:row,col) → rc=198"

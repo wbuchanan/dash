@@ -292,8 +292,16 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               changes is pinned off the models by
 #               test_scheme_rendered_output.py for all 14 schemes in both
 #               modes.  Intended.
+#   20a7cb46  WP-21.  Every figure carries box zoom, undo, redo and save
+#               beside its pan, wheel zoom, box select, lasso select and
+#               reset, and the grid's one save button writes dashboard.png.
+#               Diffed token by token against HEAD (4f6a314, which gives
+#               5e1c3a24) before re-baselining: four chunks, all insertions
+#               -- the grid toolbar's BoxZoomTool with its default overlay,
+#               its UndoTool and RedoTool, its merged SaveTool with filename
+#               "dashboard", and the figure's own four new tools.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "5e1c3a248b539a5cda6f29849941310e9a8d4dceedc212d8d3fb76173b49e8f5"
+    "20a7cb462ec5fe934835671e0578513cb5801ae04f2eb9e39db928c92cc84407"
 )
 
 

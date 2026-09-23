@@ -172,6 +172,19 @@ _DASH_WEIGHT_NAMES = {"aw": "aweight", "fw": "fweight", "pw": "pweight",
 # something derivable from the content.
 _MAX_KPIS_PER_ROW = 4
 
+# The layout(bs) grid: Bootstrap's twelve columns, the db-col-*-1..12
+# classes of _DASH_GRID_CSS.  The served app draws the same rows and spans
+# on a GridBox of this many columns (_dash_bs_grid).
+_DASH_BS_COLUMNS = 12
+# One served column.  A saved page's column is `flex:0 0 N/12; max-width;
+# min-width:0' -- a fixed share of its row whatever it holds -- and this is
+# the CSS grid spelling of that; a bare `1fr' is minmax(auto, 1fr), which
+# lets a wide child widen its own column and narrow the rest.
+_DASH_BS_TRACK = "minmax(0, 1fr)"
+# The saved page's gutter: `.db-row>[class*="db-col"]' pads each cell 8px a
+# side, 16px between two cells, and `.db-section' puts 16px under a row.
+_DASH_BS_GUTTER_PX = 16
+
 # The band within which a figure's aspect ratio is honoured, in pixels.
 # Outside it the ratio yields, so that one square panel cannot fill an entire
 # screen and a 10x2in panel on a phone does not collapse to a 73px sliver.
@@ -770,7 +783,7 @@ _DASH_LAYOUT_FORMS = ("auto, rows cols, name:row,col placements or "
 
 def _dash_bs_layout_check(layout, text, names, shown):
     """``(layout to draw, problem or None)`` for a ``bs`` layout; see
-    ``_dash_layout_check``.  The spec's reader (``_parse_bs_layout``) keeps
+    ``_dash_layout_check``.  The spec's reader (``_dash_parse_bs_layout``) keeps
     what it can read -- it drops an unknown name and clamps a span -- so the
     layout is kept and the problem said; a value that is neither ``bs`` nor
     ``bs: spec`` is drawn as ``bs``, as the reader drew it."""
@@ -781,10 +794,14 @@ def _dash_bs_layout_check(layout, text, names, shown):
         return "bs", (f"dash: layout({shown}) is not bs or bs: name=span "
                       f"...; it is drawn as layout(bs).")
     problems = []
+    seen, repeated = set(), []
     for tok in re.split(r"[\s/]+", m.group(1)):
         if not tok:
             continue
         name, eq, span = tok.partition("=")
+        if name in seen and name not in repeated:
+            repeated.append(name)
+        seen.add(name)
         if name not in names:
             problems.append(f"{_dash_display(name) or '(no name)'} is not a "
                             f"registered graph or KPI card")
@@ -792,6 +809,8 @@ def _dash_bs_layout_check(layout, text, names, shown):
                        and 1 <= int(span) <= 12):
             problems.append(f"{_dash_display(tok)}: the span must be a whole "
                             f"number from 1 to 12 (got '{_dash_display(span)}')")
+    problems += [f"{_dash_display(n)} is placed more than once; its first "
+                 f"place is kept" for n in repeated]
     if not problems:
         return layout, None
     return layout, f"dash: layout({shown}): {'; '.join(problems)}."
@@ -832,19 +851,32 @@ def _dash_layout_check(layout, names, registered=None):
         return "auto", (f"dash: layout({shown}) is not "
                         f"{_DASH_LAYOUT_FORMS}; it is drawn as "
                         f"layout(auto).")
-    if all(n in names for n, _r, _c in pairs):
+    # A name placed twice kept its LAST place (a dict), without a word;
+    # the first is kept now, as the bs reader keeps it.
+    firsts, taken, repeated = [], set(), []
+    for n, r, c in pairs:
+        if n in taken:
+            if n not in repeated:
+                repeated.append(n)
+            continue
+        taken.add(n)
+        firsts.append((n, r, c))
+    if not repeated and all(n in names for n, _r, _c in firsts):
         return layout, None
-    kept = " ".join(f"{n}:{r},{c}" for n, r, c in pairs if n in names)
-    unknown = list(dict.fromkeys(n for n, _r, _c in pairs
+    kept = " ".join(f"{n}:{r},{c}" for n, r, c in firsts if n in names)
+    unknown = list(dict.fromkeys(n for n, _r, _c in firsts
                                  if n not in registered))
-    if not unknown:
+    problems = [f"{_dash_display(n)} is placed more than once, so its first "
+                f"place is kept" for n in repeated]
+    if unknown:
+        listed = ", ".join(_dash_display(n) for n in unknown)
+        verb = "is" if len(unknown) == 1 else "are"
+        problems.append(
+            f"{listed} {verb} not a registered graph or KPI card, so "
+            f"{'it is' if len(unknown) == 1 else 'they are'} not placed")
+    if not problems:
         return kept or "auto", None
-    listed = ", ".join(_dash_display(n) for n in unknown)
-    verb = "is" if len(unknown) == 1 else "are"
-    return kept or "auto", (
-        f"dash: layout({shown}): {listed} {verb} not a registered graph or "
-        f"KPI card, so {'it is' if len(unknown) == 1 else 'they are'} not "
-        f"placed.")
+    return kept or "auto", f"dash: layout({shown}): {'; '.join(problems)}."
 
 
 def _dash_cap_spec(spec, limits):
@@ -10012,6 +10044,315 @@ def _sanitize_css_color(val: str, default: str) -> str:
 
 
 # ===========================================================================
+# CSV download (WP-21)
+# ===========================================================================
+# `dash build, csv' offers a download of the rows the dashboard's filters
+# leave, in both render modes, through ONE formatter written in JavaScript:
+# the saved page masks its full-frame snapshot in the browser; the served
+# app masks its frame on the server and hands the rows to the page, where the
+# same formatter writes them.  Two writers, one per language, would have to
+# agree on every number and date to the character; one cannot disagree with
+# itself.
+#
+# It is opt-in because it hands any viewer every row of every variable the
+# dashboard uses.  A served dashboard otherwise sends the browser only what
+# it plots: a variable a KPI card only summarises stays on the server.
+#
+# What a file holds, and why:
+#   - a header of variable names, then the rows, in the data's order;
+#   - numbers as JavaScript spells them (the shortest decimal that reads back
+#     as the same double; an integer has no decimal point), a missing value
+#     as an empty field;
+#   - a value-labelled number as its label, as Stata's `export delimited'
+#     writes it and as the dashboard shows it;
+#   - a date as ISO 8601 -- 2020-01-16; 2020-01-15 13:45:30.25 for %tc, the
+#     fraction only when it is not zero; the year alone for %ty; the first
+#     day of the period for %tw %tm %tq %th -- as the tooltips show it, and
+#     as Excel, R, pandas and Stata's date() read it;
+#   - a string variable's own text, never read as a number: the filter
+#     snapshot holds "007" as 7 (its dropdown matches through that), so the
+#     saved page carries string columns once more, raw, for the download;
+#   - a text cell that begins = + - @, a tab or a carriage return with a
+#     leading apostrophe, which a spreadsheet hides: it would otherwise run
+#     the cell as a formula (OWASP, "CSV injection");
+#   - RFC 4180 quoting, CRLF line ends, and UTF-8 with a byte-order mark,
+#     which Excel needs to read UTF-8 and Stata's `import delimited' reads
+#     through (measured 23sep2026).
+
+#: The downloaded file's name.
+_DASH_CSV_FILENAME = "dashboard.csv"
+#: The served download's token bucket: a click serialises the filtered frame
+#: and sends it down the websocket, so a session gets two at once and then
+#: one every five seconds; clicks in between fold into one trailing download
+#: (_dash_event_throttle).
+_DASH_CSV_RATE = 0.2
+_DASH_CSV_BURST = 2
+#: The button's width, in pixels, in either mode's filter bar.
+_DASH_CSV_BUTTON_WIDTH = 150
+
+
+def _dash_csv_wanted(build_options):
+    """Whether the build asked for the CSV download.
+
+    dash.ado writes ``"csv":"1"`` or ``"csv":"0"``; a hand-written spec may
+    say true, 1 or yes.  Anything else -- absent, empty, "0" -- is no.
+    """
+    if not isinstance(build_options, dict):
+        return False
+    v = build_options.get("csv", "")
+    if isinstance(v, bool):
+        return v
+    return str(v).strip().lower() in ("1", "true", "yes", "csv")
+
+
+def _dash_json_value(v):
+    """Convert a single value to a JSON-safe Python scalar.
+
+    A datetime becomes epoch MILLISECONDS, which is exactly how Bokeh
+    transports a datetime column to the browser.  Without this,
+    ``float(v)`` raises on a Timestamp and the fallback ``str(v)`` wrote
+    "2001-01-02 00:00:00" into the snapshot -- so the filter callback
+    compared a string against the slider's numeric bounds, dragging the
+    slider filtered nothing, and every date KPI collapsed to 0.  One
+    function for the saved page's snapshot and the served download's rows
+    (``DashRenderer._to_serialisable`` calls it).
+    """
+    if v is None:
+        return None
+    if isinstance(v, (pd.Timestamp, np.datetime64)) or hasattr(v, "year"):
+        try:
+            ts = pd.Timestamp(v)
+        except (TypeError, ValueError):
+            return str(v)
+        if pd.isna(ts):
+            return None
+        return float(ts.value // 1_000_000)
+    try:
+        f = float(v)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (TypeError, ValueError):
+        return str(v) if v is not None else None
+
+
+def _dash_csv_text_value(v):
+    """A string variable's value as the download writes it: its own text.
+
+    Never read as a number (``_dash_json_value`` would make "007" 7.0 and
+    "nan" missing).  Missing -- None, NaN, or Stata's empty string -- is
+    None, an empty field.
+    """
+    if v is None:
+        return None
+    if isinstance(v, float) and math.isnan(v):
+        return None
+    s = str(v)
+    return s if s != "" else None
+
+
+def _dash_csv_meta(columns, formats, string_flags, value_labels,
+                   value_label_names, filename=_DASH_CSV_FILENAME):
+    """What the CSV formatter needs to know about each column.
+
+    The same for both render modes: the saved renderer passes its frame's
+    columns, the spec's formats and its string, label and label-set maps;
+    the served app passes its own, read from the same data JSON and spec.
+
+    Returns:
+        ``{"columns": [...], "strings": [...], "dates": {var: kind},
+        "labels": {var: {code: label}}, "filename": str}``.  The row
+        identity column is never a column of the file.
+    """
+    formats = formats if isinstance(formats, dict) else {}
+    string_flags = string_flags if isinstance(string_flags, dict) else {}
+    value_labels = value_labels if isinstance(value_labels, dict) else {}
+    value_label_names = (value_label_names
+                         if isinstance(value_label_names, dict) else {})
+    cols = [str(c) for c in columns if str(c) != _ROW_ID_COLUMN]
+    strings = [c for c in cols if string_flags.get(c)]
+    dates = {}
+    labels = {}
+    for c in cols:
+        if c in strings:
+            continue
+        kind = _stata_date_kind(formats.get(c))
+        if kind:
+            dates[c] = kind
+            continue
+        labelset = value_label_names.get(c, "")
+        vmap = value_labels.get(labelset, {}) if labelset else {}
+        if not vmap:
+            cand = value_labels.get(c, {})
+            vmap = cand if isinstance(cand, dict) else {}
+        if isinstance(vmap, dict) and vmap:
+            labels[c] = {str(k): str(v) for k, v in vmap.items()}
+    return {"columns": cols, "strings": strings, "dates": dates,
+            "labels": labels, "filename": str(filename)}
+
+
+def _dash_csv_payload(frame, meta):
+    """The served download's rows: *frame*'s columns as JSON-safe lists.
+
+    String columns keep their text (``_dash_csv_text_value``); a date column
+    the served frame still holds as Stata's numbers is converted here, as the
+    saved loader converts it (``_stata_dates_to_datetime``), so the page's
+    formatter reads epoch milliseconds in both modes.
+    """
+    out = {}
+    strings = set(meta.get("strings", []))
+    dates = meta.get("dates", {})
+    for c in meta.get("columns", []):
+        if c not in frame.columns:
+            continue
+        col = frame[c]
+        if c in strings:
+            out[c] = [_dash_csv_text_value(v) for v in col.tolist()]
+            continue
+        kind = dates.get(c)
+        if kind and not pd.api.types.is_datetime64_any_dtype(col):
+            with warnings.catch_warnings():
+                # pandas warns casting a missing date's NaN; it becomes NaT,
+                # which is what is wanted, and the app would log it per click.
+                warnings.simplefilter("ignore", RuntimeWarning)
+                col = _stata_dates_to_datetime(
+                    pd.to_numeric(col, errors="coerce"), kind)
+        out[c] = [_dash_json_value(v) for v in col.tolist()]
+    return out
+
+
+def _dash_frame_filter_mask(df, widgets):
+    """The served filters' row mask over *df*, from each widget's value.
+
+    The served recompute's own rule, shared with the download so a file
+    holds the rows the dashboard shows: a dropdown matches through
+    ``_dash_dropdown_mask`` unless it is at its sentinel; a range keeps
+    ``lo <= x <= hi`` and a slider ``x >= value``, and a missing value fails
+    both, as it fails the saved page's ``dash_filter_mask`` -- except that a
+    range at its full extent, or a slider at its start, restricts nothing, as
+    a dropdown at its sentinel restricts nothing.  A widget without
+    ``_dash_var`` (the download button) is skipped.
+    """
+    def _at_full_extent(w, lo, hi=None):
+        # A range at [start, end], or a slider at its start, restricts
+        # nothing -- a missing value included -- as a dropdown at its
+        # sentinel restricts nothing.  Bounds that cannot be compared leave
+        # the widget filtering.
+        try:
+            start, end = getattr(w, "start", None), getattr(w, "end", None)
+            if start is None:
+                return False
+            if hi is None:
+                return bool(lo <= start)
+            return end is not None and bool(lo <= start and hi >= end)
+        except (TypeError, ValueError):
+            return False
+
+    mask = pd.Series([True] * len(df), index=df.index)
+    for w in widgets:
+        wvar = getattr(w, "_dash_var", None)
+        if wvar is None or wvar not in df.columns:
+            continue
+        kind = getattr(w, "_dash_ftype", "")
+        if kind == "dropdown":
+            # The widget's own sentinel: '__all__' grows an underscore when
+            # the data holds that literal value (BUG-37).
+            _w_sentinel = getattr(w, "_dash_sentinel", "__all__")
+            if w.value != _w_sentinel:
+                mask &= _dash_dropdown_mask(df[wvar], w.value)
+        elif kind == "range":
+            lo, hi = w.value
+            if _at_full_extent(w, lo, hi):
+                continue
+            mask &= (df[wvar] >= lo) & (df[wvar] <= hi)
+        elif kind == "slider":
+            if _at_full_extent(w, w.value):
+                continue
+            mask &= (df[wvar] >= w.value)
+    return mask
+
+
+_DASH_CSV_JS = """
+function dash_csv_missing(v) {
+    return v === null || v === undefined ||
+        (typeof v === "number" && Number.isNaN(v));
+}
+function dash_csv_number(v) {
+    return Object.is(v, -0) ? "0" : String(v);
+}
+function dash_csv_date(ms, kind) {
+    const d = new Date(ms);
+    if (Number.isNaN(d.getTime())) return "";
+    const iso = d.toISOString();
+    if (kind === "ty") return iso.slice(0, 4);
+    if (kind === "tc" || kind === "tC") {
+        let t = iso.slice(11, 23);
+        if (t.endsWith(".000")) t = t.slice(0, 8);
+        else t = t.replace(/0+$/, "");
+        return iso.slice(0, 10) + " " + t;
+    }
+    return iso.slice(0, 10);
+}
+function dash_csv_guard(s) {
+    return /^[=+\\-@\\t\\r]/.test(s) ? "'" + s : s;
+}
+function dash_csv_quote(s) {
+    return /[",\\r\\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function dash_csv_cell(v, is_text, kind, labels) {
+    if (dash_csv_missing(v)) return "";
+    if (is_text || typeof v === "string")
+        return dash_csv_quote(dash_csv_guard(String(v)));
+    if (kind) return dash_csv_date(v, kind);
+    if (labels) {
+        const lab = labels[dash_csv_number(v)];
+        if (lab !== undefined) return dash_csv_quote(dash_csv_guard(String(lab)));
+    }
+    return Number.isFinite(v) ? dash_csv_number(v) : "";
+}
+function dash_csv_text(data, text, rows, meta) {
+    const strings = new Set(meta.strings || []);
+    const cols = meta.columns.filter(
+        (c) => (strings.has(c) && text && c in text) || c in data);
+    const srcs = cols.map((c) => (strings.has(c) && text && c in text) ? text[c] : data[c]);
+    const text_col = cols.map((c) => strings.has(c));
+    const kinds = cols.map((c) => (meta.dates || {})[c] || "");
+    const labels = cols.map((c) => (meta.labels || {})[c] || null);
+    const out = [cols.map((c) => dash_csv_quote(dash_csv_guard(c))).join(",")];
+    for (const i of rows) {
+        const cells = new Array(cols.length);
+        for (let j = 0; j < cols.length; j++)
+            cells[j] = dash_csv_cell(srcs[j][i], text_col[j], kinds[j], labels[j]);
+        out.push(cells.join(","));
+    }
+    return out.join("\\r\\n") + "\\r\\n";
+}
+function dash_csv_download(text, filename) {
+    const blob = new Blob(["\\ufeff" + text], {type: "text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.dispatchEvent(new MouseEvent("click"));
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+"""
+
+# The served page's download: the server has put the filtered rows in the
+# source and then bumped its tags, which is what fires this -- a new tag each
+# click, so the same rows twice are two downloads.
+_DASH_CSV_SERVED_JS = _DASH_CSV_JS + """
+const meta = JSON.parse(meta_json);
+const data = src.data;
+const cols = meta.columns.filter((c) => c in data);
+const n = cols.length > 0 ? data[cols[0]].length : 0;
+const rows = [];
+for (let i = 0; i < n; i++) rows.push(i);
+dash_csv_download(dash_csv_text(data, data, rows, meta), meta.filename);
+"""
+
+
+# ===========================================================================
 # FilterBuilder
 # ===========================================================================
 
@@ -10021,7 +10362,82 @@ def _sanitize_css_color(val: str, default: str) -> str:
 # The callback re-applies ALL active filter conditions on the original data
 # then replaces source.data (which reliably triggers Bokeh 3.x re-renders),
 # clears any lingering selection, and updates KPI Div text via the DOM.
-_FILTER_JS = """
+# The row mask every saved-page filter callback computes, and the CSV
+# download too (WP-21), so the rows a download holds are the rows the
+# filters leave.  A missing value -- JSON null, as _to_serialisable writes
+# NaN, or NaN itself -- fails every range and slider filter, as it fails
+# the served app's pandas comparisons and dash's own `if' translation
+# (x >= 5 is false for NaN).  It used to be compared as JavaScript compares
+# null, as 0, so range(-1, 10) kept every missing row and range(5, 10)
+# dropped it, and the two modes' KPI cards disagreed (test_export.py).
+_DASH_FILTER_MASK_JS = """
+function dash_filter_mask(orig, filter_specs, all_widgets) {
+    const keys = Object.keys(orig);
+    const n_rows = keys.length > 0 ? orig[keys[0]].length : 0;
+    const active = new Array(n_rows).fill(true);
+    const present = (v) => v !== null && v !== undefined && !Number.isNaN(v);
+
+    // Re-apply every filter widget's current value
+    for (let fi = 0; fi < filter_specs.length; fi++) {
+        const spec = filter_specs[fi];
+        const w    = all_widgets[fi];
+        const fvar = spec.varname;
+        const ftype = spec.type;
+
+        // Defensive guard: skip if widget ref is missing or column absent from data.
+        // In practice filter_specs_json is built only from successfully-built specs
+        // so this should never fire, but it prevents a runtime TypeError if the
+        // callback is ever invoked with stale or partially-constructed args.
+        if (!w || !(fvar in orig)) continue;
+        const col = orig[fvar];
+
+        if (ftype === 'dropdown') {
+            const val = w.value;
+            // Use per-widget sentinel (may differ from '__all__' when data contains
+            // the literal '__all__' value — sentinel is then '__all__' + extra '_').
+            const sentinel = spec.sentinel || '__all__';
+            if (val === sentinel) continue;
+            for (let i = 0; i < n_rows; i++) {
+                if (active[i] && (!present(col[i]) || String(col[i]) !== val))
+                    active[i] = false;
+            }
+        } else if (ftype === 'slider') {
+            const val = w.value;
+            // At its start a slider restricts nothing, a missing value
+            // included, as a dropdown at "All" restricts nothing.
+            if (present(w.start) && val <= w.start) continue;
+            for (let i = 0; i < n_rows; i++) {
+                if (active[i] && !(present(col[i]) && col[i] >= val))
+                    active[i] = false;
+            }
+        } else if (ftype === 'range') {
+            const lo = w.value[0];
+            const hi = w.value[1];
+            // Nor does a range at its full extent.
+            if (present(w.start) && present(w.end) && lo <= w.start && hi >= w.end)
+                continue;
+            for (let i = 0; i < n_rows; i++) {
+                if (active[i] && !(present(col[i]) && col[i] >= lo && col[i] <= hi))
+                    active[i] = false;
+            }
+        }
+    }
+    return active;
+}
+"""
+
+# The saved page's button: mask the snapshot as the filters do, write the
+# rows that pass.
+_DASH_CSV_SAVED_JS = _DASH_FILTER_MASK_JS + _DASH_CSV_JS + """
+const meta = JSON.parse(meta_json);
+const orig = orig_source.data;
+const active = dash_filter_mask(orig, JSON.parse(filter_specs_json), all_widgets);
+const rows = [];
+for (let i = 0; i < active.length; i++) if (active[i]) rows.push(i);
+dash_csv_download(dash_csv_text(orig, text_source.data, rows, meta), meta.filename);
+"""
+
+_FILTER_JS = _DASH_FILTER_MASK_JS + """
 // Bokeh 3.x serialises Python dicts as JavaScript Map objects, not plain {}.
 // All structured args (orig_data, filter_specs, kpi_config) are therefore
 // passed as JSON strings and parsed here to avoid Map-vs-object mismatches.
@@ -10030,44 +10446,7 @@ const filter_specs = JSON.parse(filter_specs_json);
 const kpi_config  = JSON.parse(kpi_config_json);
 
 const n_rows = orig[Object.keys(orig)[0]].length;
-const active = new Array(n_rows).fill(true);
-
-// Re-apply every filter widget's current value
-for (let fi = 0; fi < filter_specs.length; fi++) {
-    const spec = filter_specs[fi];
-    const w    = all_widgets[fi];
-    const fvar = spec.varname;
-    const ftype = spec.type;
-
-    // Defensive guard: skip if widget ref is missing or column absent from data.
-    // In practice filter_specs_json is built only from successfully-built specs
-    // so this should never fire, but it prevents a runtime TypeError if the
-    // callback is ever invoked with stale or partially-constructed args.
-    if (!w || !(fvar in orig)) continue;
-
-    if (ftype === 'dropdown') {
-        const val = w.value;
-        // Use per-widget sentinel (may differ from '__all__' when data contains
-        // the literal '__all__' value — sentinel is then '__all__' + extra '_').
-        const sentinel = spec.sentinel || '__all__';
-        if (val === sentinel) continue;
-        for (let i = 0; i < n_rows; i++) {
-            if (active[i] && String(orig[fvar][i]) !== val) active[i] = false;
-        }
-    } else if (ftype === 'slider') {
-        const val = w.value;
-        for (let i = 0; i < n_rows; i++) {
-            if (active[i] && orig[fvar][i] < val) active[i] = false;
-        }
-    } else if (ftype === 'range') {
-        const lo = w.value[0];
-        const hi = w.value[1];
-        for (let i = 0; i < n_rows; i++) {
-            if (active[i] && (orig[fvar][i] < lo || orig[fvar][i] > hi))
-                active[i] = false;
-        }
-    }
-}
+const active = dash_filter_mask(orig, filter_specs, all_widgets);
 
 // Build new data arrays containing only active rows from the primary source.
 // This snapshot is used for KPI value updates and for the primary `source`
@@ -12212,6 +12591,68 @@ def _dash_event_throttle(doc, fn, rate=None, burst=None, clock=None):
     return _on_change
 
 
+# ---- The toolbar ---------------------------------------------------------------
+
+#: Every figure's tools, in this order, in both render modes (WP-21).  A
+#: string, not a list of tool objects: Bokeh's figure() builds new tools from
+#: it on every call, so each figure owns its own.  The served app used to
+#: hand ONE list of five tool objects to every figure it drew, so every
+#: toolbar in the document held the same instances.
+#:
+#: The drag tool active when the page opens is still pan: Bokeh activates the
+#: drag tool with the lowest ``default_order`` (pan 10, lasso 12, box zoom
+#: 20, box select 30), not the first one listed.  Wheel zoom is still off
+#: until its button is clicked -- a wheel tool with no modifier key is not
+#: auto-activated -- so scrolling the page does not zoom a figure.  No
+#: crosshair: in a grid's merged toolbar it draws its lines across every
+#: figure at once, and the hover tool already reads values off a figure.
+_DASH_FIGURE_TOOLS = ("pan,wheel_zoom,box_zoom,box_select,lasso_select,"
+                      "undo,redo,reset,save")
+
+#: The name the save button gives the PNG of a grid: dashboard.png.  The
+#: browser adds the extension from the image's type.
+_DASH_SAVE_NAME = "dashboard"
+
+#: A Stata name, which is what may name the PNG of one layout(bs) item.
+#: dash.ado admits at most 22 characters for a graph; 32 is Stata's own
+#: ceiling for a name, and anything else falls back to _DASH_SAVE_NAME.
+_DASH_SAVE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,31}")
+
+
+def _dash_save_filename(name=None):
+    """The file name, without extension, a save button writes.
+
+    *name* when it is a Stata name -- the registered name of an item that
+    ``layout(bs)`` embeds on its own -- and ``dashboard`` otherwise, which is
+    also what every grid is saved as.  The name reaches the page only as a
+    Bokeh model property, and the browser uses it as the download's file
+    name; holding it to a Stata name keeps a hand-built spec from putting a
+    path separator, a control character or a very long string there.
+    """
+    s = name if isinstance(name, str) else ""
+    return s if _DASH_SAVE_NAME_RE.fullmatch(s) else _DASH_SAVE_NAME
+
+
+def _dash_name_save(model, name=None):
+    """Name the PNG the save button on *model*'s own toolbar writes.
+
+    *model* is a figure, or a grid from ``gridplot()``, which merges every
+    figure's save tool into ONE new ``SaveTool`` on the grid's toolbar.
+    BokehJS exports that tool's parent -- the whole grid -- as one image.
+    The merged tool has no file name, and with none BokehJS stops to
+    ``prompt()`` for one, with ``bokeh_plot`` filled in.  The name is
+    ``_dash_save_filename(name)``.  Returns *model*, so a call can wrap the
+    ``gridplot()`` it names.
+    """
+    from bokeh.models import SaveTool
+    filename = _dash_save_filename(name)
+    toolbar = getattr(model, "toolbar", None)
+    for tool in (getattr(toolbar, "tools", None) or ()):
+        if isinstance(tool, SaveTool):
+            tool.filename = filename
+    return model
+
+
 # ---- The document: order, cells, tabs, header ----------------------------------
 
 def _dash_layout_order(registry, graphs, kpis):
@@ -12278,7 +12719,8 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
     column of its per-facet cards.  The grid AND the tab panels call this,
     in both modes -- the saved tabs used to flatten a faceted graph's
     panels into the tab's own grid, ignoring cols(), while the saved grid
-    and the served app nested them.
+    and the served app nested them.  The sub-grid keeps a toolbar of its
+    own, whose save button writes dashboard.png like every grid's.
     """
     if name in facet_map:
         figs = [figures[fk] for fk, _ in facet_map[name] if fk in figures]
@@ -12288,7 +12730,7 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         rows = [figs[i:i + cn] for i in range(0, len(figs), cn)]
         while len(rows[-1]) < cn:
             rows[-1].append(None)
-        return gridplot(rows, sizing_mode="stretch_width")
+        return _dash_name_save(gridplot(rows, sizing_mode="stretch_width"))
     if name in figures:
         return figures[name]
     keys = _dash_kpi_keys(name, kpi_divs)
@@ -12342,7 +12784,8 @@ def _dash_parse_tabs(tabs_str, all_names, limit=None):
 
 def _dash_tab_panels(tabs_spec, cell_of):
     """``(Tabs or None, registered names placed)`` from ``[(title, [names])]``.
-    Each tab is a ceil(sqrt(n)) grid of the cells its names own."""
+    Each tab is a ceil(sqrt(n)) grid of the cells its names own, with its
+    own toolbar, whose save button writes that tab's grid to dashboard.png."""
     from bokeh.models import TabPanel, Tabs
     panels, placed = [], set()
     for title, names in (tabs_spec or []):
@@ -12354,11 +12797,275 @@ def _dash_tab_panels(tabs_spec, cell_of):
         rows = [items[i:i + cn] for i in range(0, len(items), cn)]
         while len(rows[-1]) < cn:
             rows[-1].append(None)
-        panels.append(TabPanel(child=gridplot(rows, sizing_mode="stretch_width"),
-                               title=title))
+        panels.append(TabPanel(
+            child=_dash_name_save(gridplot(rows, sizing_mode="stretch_width")),
+            title=title))
     if not panels:
         return None, placed
     return Tabs(tabs=panels, sizing_mode="stretch_width"), placed
+
+
+# ---- layout(bs): one reading of the rows, for both render modes ------------
+
+def _dash_is_bs_layout(layout_opt):
+    """True when *layout_opt* asks for the Bootstrap grid.
+
+    Bootstrap layouts start with the literal token ``bs`` (case-insensitive),
+    optionally followed by a colon and an explicit column-span
+    specification::
+
+        layout(bs)                              # auto layout
+        layout(bs: k1=3 k2=3 / s1=8 h1=4)       # explicit layout
+
+    ``_dash_layout_check`` has already made any other value that starts with
+    ``bs`` plain ``bs``.
+    """
+    return bool(layout_opt) and str(layout_opt).strip().lower().startswith("bs")
+
+
+def _dash_auto_bs_layout(all_names, kpi_names, figures=None):
+    """Generate an automatic Bootstrap layout.
+
+    KPI cards are placed in a first row with equal column spans (up to 4 per
+    row).  Graphs fill the rows after them: a graph at least 2.5 times as
+    wide as it is tall takes a row of its own; of the rest, one alone takes
+    the whole row, and otherwise they go two to a row (``col-6`` each) --
+    three (``col-4``) when there are five or more and none is at least 1.8
+    times as wide as it is tall.
+
+    Only the names in *all_names* are laid out.  A KPI card in *kpi_names*
+    that *all_names* does not hold -- one tabs() placed, which both modes
+    leave out of the grid -- used to get a row anyway: the saved page drew
+    the card in its tab and again, full width, in the grid.
+
+    Args:
+        all_names:  All dashboard element names in display order.
+        kpi_names:  The names of *all_names* that are KPI cards.
+        figures:    ``{figure key: figure}``; a graph's aspect ratio decides
+                    how many share a row.  None reads every ratio as 0.
+
+    Returns:
+        A list of rows, each row being a list of ``(name, col_span)`` tuples.
+    """
+    _present = set(all_names)
+    kpi_names = [n for n in kpi_names if n in _present]
+    graph_names = [n for n in all_names if n not in kpi_names]
+    rows: list[list[tuple[str, int]]] = []
+
+    # ---- KPI row(s) ----
+    if kpi_names:
+        n_kpis = len(kpi_names)
+        # A KPI card has no aspect ratio to derive a count from -- four
+        # per row is a legibility judgement, not a derivable quantity, so
+        # it is a named constant rather than a bare literal.
+        per_row = min(n_kpis, _MAX_KPIS_PER_ROW)
+        span = max(1, 12 // per_row)
+        for i in range(0, n_kpis, per_row):
+            chunk = kpi_names[i : i + per_row]
+            rows.append([(name, span) for name in chunk])
+
+    # ---- Graph row(s) ----
+    if graph_names:
+        n_graphs = len(graph_names)
+        # Derived from each figure's OWN proportions, not from the
+        # count alone and not from the widest figure on the dashboard: a
+        # panel wide enough to need a full row should take one without
+        # pushing every other graph onto a row of its own.
+        def _ar_of(nm):
+            _f = (figures or {}).get(nm)
+            _a = getattr(_f, "aspect_ratio", None) if _f else None
+            return float(_a) if _a else 0.0
+
+        _wide = [n for n in graph_names if _ar_of(n) >= 2.5]
+        _rest = [n for n in graph_names if n not in _wide]
+
+        for name in _wide:
+            rows.append([(name, 12)])
+
+        if _rest:
+            n_rest = len(_rest)
+            if n_rest == 1:
+                per_row = 1
+            elif max((_ar_of(n) for n in _rest), default=0.0) >= 1.8:
+                per_row = min(2, n_rest)
+            elif n_rest <= 4:
+                per_row = 2
+            else:
+                per_row = 3
+            span = max(1, 12 // per_row)
+            for i in range(0, n_rest, per_row):
+                chunk = _rest[i : i + per_row]
+                rows.append([(name, span) for name in chunk])
+
+    return rows if rows else [[(n, 12 // max(1, len(all_names))) for n in all_names]]
+
+
+def _dash_parse_bs_layout(layout_opt, all_names, kpi_names, figures=None):
+    """Parse a Bootstrap layout string into rows of ``(name, col_span)`` pairs.
+
+    Syntax::
+
+        bs                              # automatic layout
+        bs: name=N ...                  # explicit; / separates rows
+        bs: k1=3 k2=3 / s1=8 h1=4
+
+    Column spans are integers in ``[1, 12]``.  Items missing from the spec
+    that are present in *all_names* are appended as full-width (``col-12``)
+    entries after the last explicit row.
+
+    The saved page and the served app both lay their grid out from what this
+    returns: the saved page as rows of ``db-col-lg-N`` cells, the served app
+    through ``_dash_bs_grid``.
+
+    Security:
+        Name tokens are validated against *all_names*; unknown tokens are
+        dropped here.  Span values are clamped to ``[1, 12]``.  Both are
+        reported before this runs, by ``_dash_layout_check`` (dash.ado
+        refuses them).
+
+    Args:
+        layout_opt:  The raw ``layout()`` option string, must start with ``bs``.
+        all_names:   The names the grid holds, in display order: the
+                     registry as typed, less what tabs() placed.
+        kpi_names:   The KPI card names, for the automatic layout.
+        figures:     ``{figure key: figure}``, for the automatic layout.
+
+    Returns:
+        List of rows, each a list of ``(name, col_span)`` tuples.
+    """
+    stripped = layout_opt.strip()
+    # Pure "bs" or "bs " — auto layout
+    if re.match(r"^bs\s*$", stripped, re.IGNORECASE):
+        return _dash_auto_bs_layout(all_names, kpi_names, figures)
+
+    # Explicit: "bs: <spec>"
+    m = re.match(r"^bs\s*:\s*(.+)$", stripped, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return _dash_auto_bs_layout(all_names, kpi_names, figures)
+
+    spec_str = m.group(1)
+    valid_names = set(all_names)
+    placed: set[str] = set()
+    rows: list[list[tuple[str, int]]] = []
+
+    for row_str in spec_str.split("/"):
+        row: list[tuple[str, int]] = []
+        for token in row_str.split():
+            token = token.strip()
+            if not token:
+                continue
+            if "=" in token:
+                parts = token.split("=", 1)
+                name = parts[0].strip()
+                try:
+                    span = max(1, min(12, int(parts[1].strip())))
+                except (ValueError, TypeError):
+                    span = 6
+            else:
+                name = token
+                span = 6  # default span when not specified
+            # Security: only accept names present in the registry -- and
+            # each once, at its first place.  A repeated name was placed
+            # again for every repeat: 100,000 repeats made an 18.1 MB saved
+            # page of duplicate element ids (WP-21, test_adversarial_matrix).
+            if name in valid_names and name not in placed:
+                row.append((name, span))
+                placed.add(name)
+        if row:
+            rows.append(row)
+
+    # Append any names not mentioned in the spec as full-width rows
+    unplaced = [n for n in all_names if n not in placed]
+    for name in unplaced:
+        rows.append([(name, 12)])
+
+    return rows if rows else _dash_auto_bs_layout(all_names, kpi_names, figures)
+
+
+def _dash_bs_grid_cells(rows):
+    """``[(name, row, col, row_span, col_span), ...]`` for bs *rows*.
+
+    Where the saved page's markup puts each cell at its large breakpoint:
+    every bs row is a ``.db-row{flex-wrap:wrap}`` of ``db-col-lg-N`` cells,
+    so it starts a new line, and within it the cells run left to right and
+    a cell whose span would carry the row past 12 columns starts the next
+    line -- flex-wrap.  A row with no cells takes no line; the saved page
+    writes none for it.  Rows and columns are 0-based, as a GridBox reads
+    them.
+
+    Args:
+        rows: What ``_dash_parse_bs_layout`` returns.
+
+    Returns:
+        One ``(name, row, col, 1, span)`` a cell, in the order given.
+    """
+    cells = []
+    line = 0
+    for bs_row in rows or []:
+        used = 0
+        for name, span in bs_row:
+            span = min(_DASH_BS_COLUMNS, max(1, int(span)))
+            if used + span > _DASH_BS_COLUMNS:
+                line += 1
+                used = 0
+            cells.append((name, line, used, 1, span))
+            used += span
+        if bs_row:
+            line += 1
+    return cells
+
+
+def _dash_bs_grid(rows, cell_of):
+    """The served ``layout(bs)`` grid: a GridBox of 12 equal columns.
+
+    *rows* is what ``_dash_parse_bs_layout`` returns and *cell_of(name)* the
+    renderable a registered name owns, or None -- ``_dash_layout_cell``, the
+    resolver the other grids and the tab panels use.  Each renderable sits
+    where ``_dash_bs_grid_cells`` puts it, which is where the saved page's
+    markup puts it at its large breakpoint; unlike that markup, this grid
+    does not reflow as the window narrows (dash.sthlp says so).
+
+    A name with no renderable takes no columns, as the saved page leaves it
+    out of its row.  A name the spec places twice keeps its first cell and
+    the repeat draws nothing, its columns left empty: the saved page writes
+    the same component twice, and Bokeh fills only the first element with
+    that id.  A grid row that only repeats occupy is closed up, as a line of
+    the saved page's empty copies of a graph has no height -- so however
+    often a name is repeated, the grid has no more rows than items.  A
+    figure keeps its own toolbar, as it does embedded on its own in the
+    saved page -- this is not a gridplot.
+
+    Args:
+        rows:    ``[[(name, span), ...], ...]``.
+        cell_of: ``name -> renderable or None``; called once a name.
+
+    Returns:
+        The GridBox; it has no children when nothing could be placed.
+    """
+    from bokeh.models import GridBox
+    cell = {}
+    kept = []
+    for bs_row in rows or []:
+        keep = []
+        for name, span in bs_row:
+            if name not in cell:
+                cell[name] = cell_of(name)
+            if cell[name] is not None:
+                keep.append((name, span))
+        kept.append(keep)
+    placed = []
+    done = set()
+    for name, r, c, r_span, c_span in _dash_bs_grid_cells(kept):
+        if name in done:
+            continue
+        done.add(name)
+        placed.append((cell[name], r, c, r_span, c_span))
+    line_of = {r: i for i, r in enumerate(sorted({p[1] for p in placed}))}
+    children = [(m, line_of[r], c, r_span, c_span)
+                for m, r, c, r_span, c_span in placed]
+    return GridBox(children=children,
+                   cols=[_DASH_BS_TRACK] * _DASH_BS_COLUMNS,
+                   spacing=_DASH_BS_GUTTER_PX, sizing_mode="stretch_width")
 
 
 def _dash_header_fragments(title_text, subtitle_text):
@@ -14124,7 +14831,16 @@ class DashRenderer:
         """
         frame = df if df is not None else self.df
         available = [v for v in varnames if v in frame.columns]
-        data_dict = {v: frame[v].tolist() for v in available}
+        # A date column stays an array.  tolist() made it Timestamps with a
+        # NaT for each missing value, and Bokeh writes NaT in a list as a
+        # float NaN, which JSON refuses: a saved page with a filter over a
+        # date variable holding one missing value failed to render at all
+        # (test_dates.py, found by WP-21).  An array of datetime64 goes out
+        # as binary, NaT as NaN, which BokehJS reads as a missing value.
+        data_dict = {v: (frame[v].to_numpy()
+                         if pd.api.types.is_datetime64_any_dtype(frame[v])
+                         else frame[v].tolist())
+                     for v in available}
         # The row's position in the primary frame, so the filter callback can
         # mask this source by identity however short or reordered it is.
         data_dict[_ROW_ID_COLUMN] = self._row_ids_for(frame)
@@ -14616,7 +15332,8 @@ class DashRenderer:
             # scrollable; documented in dash.sthlp.
             max_height=_MAX_FIGURE_HEIGHT,
             min_height=_MIN_FIGURE_HEIGHT,
-            tools="pan,wheel_zoom,box_select,lasso_select,reset",
+            # The one tool list, which the generated app passes too.
+            tools=_DASH_FIGURE_TOOLS,
         )
         if aspect_ratio is not None:
             fig_kwargs["aspect_ratio"] = aspect_ratio
@@ -15051,15 +15768,9 @@ class DashRenderer:
 
     @staticmethod
     def _is_bootstrap_layout(layout_opt: str) -> bool:
-        """Return True when *layout_opt* requests a Bootstrap grid layout.
-
-        Bootstrap layouts start with the literal token ``bs`` (case-insensitive),
-        optionally followed by a colon and an explicit column-span specification::
-
-            layout(bs)                              # auto layout
-            layout(bs: k1=3 k2=3 / s1=8 h1=4)     # explicit layout
-        """
-        return bool(layout_opt) and layout_opt.strip().lower().startswith("bs")
+        """Return True when *layout_opt* requests a Bootstrap grid layout;
+        see ``_dash_is_bs_layout``, the test both render modes run."""
+        return _dash_is_bs_layout(layout_opt)
 
     @staticmethod
     def _auto_bs_layout(
@@ -15067,68 +15778,9 @@ class DashRenderer:
         kpi_names: "list[str]",
         figures: "dict | None" = None,
     ) -> "list[list[tuple[str, int]]]":
-        """Generate an automatic Bootstrap layout.
-
-        KPI cards are placed in a first row with equal column spans (up to 4 per
-        row).  Graphs fill subsequent rows at two per row (``col-6`` each), or
-        three per row when there are six or more graphs (``col-4`` each).
-
-        Args:
-            all_names:  All dashboard element names in display order.
-            kpi_names:  Subset of *all_names* that are KPI card names.
-
-        Returns:
-            A list of rows, each row being a list of ``(name, col_span)`` tuples.
-        """
-        graph_names = [n for n in all_names if n not in kpi_names]
-        rows: list[list[tuple[str, int]]] = []
-
-        # ---- KPI row(s) ----
-        if kpi_names:
-            n_kpis = len(kpi_names)
-            # A KPI card has no aspect ratio to derive a count from -- four
-            # per row is a legibility judgement, not a derivable quantity, so
-            # it is a named constant rather than a bare literal.
-            per_row = min(n_kpis, _MAX_KPIS_PER_ROW)
-            span = max(1, 12 // per_row)
-            for i in range(0, n_kpis, per_row):
-                chunk = kpi_names[i : i + per_row]
-                rows.append([(name, span) for name in chunk])
-
-        # ---- Graph row(s) ----
-        if graph_names:
-            n_graphs = len(graph_names)
-            # Derived from each figure's OWN proportions, not from the
-            # count alone and not from the widest figure on the dashboard: a
-            # panel wide enough to need a full row should take one without
-            # pushing every other graph onto a row of its own.
-            def _ar_of(nm):
-                _f = (figures or {}).get(nm)
-                _a = getattr(_f, "aspect_ratio", None) if _f else None
-                return float(_a) if _a else 0.0
-
-            _wide = [n for n in graph_names if _ar_of(n) >= 2.5]
-            _rest = [n for n in graph_names if n not in _wide]
-
-            for name in _wide:
-                rows.append([(name, 12)])
-
-            if _rest:
-                n_rest = len(_rest)
-                if n_rest == 1:
-                    per_row = 1
-                elif max((_ar_of(n) for n in _rest), default=0.0) >= 1.8:
-                    per_row = min(2, n_rest)
-                elif n_rest <= 4:
-                    per_row = 2
-                else:
-                    per_row = 3
-                span = max(1, 12 // per_row)
-                for i in range(0, n_rest, per_row):
-                    chunk = _rest[i : i + per_row]
-                    rows.append([(name, span) for name in chunk])
-
-        return rows if rows else [[(n, 12 // max(1, len(all_names))) for n in all_names]]
+        """Generate an automatic Bootstrap layout; see
+        ``_dash_auto_bs_layout``, the rule both render modes run."""
+        return _dash_auto_bs_layout(all_names, kpi_names, figures)
 
     @staticmethod
     def _parse_bs_layout(
@@ -15137,74 +15789,10 @@ class DashRenderer:
         kpi_names: "list[str]",
         figures: "dict | None" = None,
     ) -> "list[list[tuple[str, int]]]":
-        """Parse a Bootstrap layout string into rows of ``(name, col_span)`` pairs.
-
-        Syntax::
-
-            bs                              # automatic layout
-            bs: name=N ...                  # explicit; / separates rows
-            bs: k1=3 k2=3 / s1=8 h1=4
-
-        Column spans are integers in ``[1, 12]``.  Items missing from the spec
-        that are present in *all_names* are appended as full-width (``col-12``)
-        entries after the last explicit row.
-
-        Security:
-            Name tokens are validated against *all_names*; unknown tokens are
-            silently dropped.  Span values are clamped to ``[1, 12]``.
-
-        Args:
-            layout_opt:  The raw ``layout()`` option string, must start with ``bs``.
-            all_names:   All dashboard element names (KPIs first, then graphs).
-            kpi_names:   Subset of *all_names* that are KPI card names.
-
-        Returns:
-            List of rows, each a list of ``(name, col_span)`` tuples.
-        """
-        stripped = layout_opt.strip()
-        # Pure "bs" or "bs " — auto layout
-        if re.match(r"^bs\s*$", stripped, re.IGNORECASE):
-            return DashRenderer._auto_bs_layout(all_names, kpi_names, figures)
-
-        # Explicit: "bs: <spec>"
-        m = re.match(r"^bs\s*:\s*(.+)$", stripped, re.IGNORECASE | re.DOTALL)
-        if not m:
-            return DashRenderer._auto_bs_layout(all_names, kpi_names, figures)
-
-        spec_str = m.group(1)
-        valid_names = set(all_names)
-        placed: set[str] = set()
-        rows: list[list[tuple[str, int]]] = []
-
-        for row_str in spec_str.split("/"):
-            row: list[tuple[str, int]] = []
-            for token in row_str.split():
-                token = token.strip()
-                if not token:
-                    continue
-                if "=" in token:
-                    parts = token.split("=", 1)
-                    name = parts[0].strip()
-                    try:
-                        span = max(1, min(12, int(parts[1].strip())))
-                    except (ValueError, TypeError):
-                        span = 6
-                else:
-                    name = token
-                    span = 6  # default span when not specified
-                # Security: only accept names present in the registry
-                if name in valid_names:
-                    row.append((name, span))
-                    placed.add(name)
-            if row:
-                rows.append(row)
-
-        # Append any names not mentioned in the spec as full-width rows
-        unplaced = [n for n in all_names if n not in placed]
-        for name in unplaced:
-            rows.append([(name, 12)])
-
-        return rows if rows else DashRenderer._auto_bs_layout(all_names, kpi_names, figures)
+        """Parse a Bootstrap layout string into rows of ``(name, col_span)``
+        pairs; see ``_dash_parse_bs_layout``, the one reader both render
+        modes run."""
+        return _dash_parse_bs_layout(layout_opt, all_names, kpi_names, figures)
 
     @staticmethod
     def _head_of_file_html(page: str) -> str:
@@ -15301,8 +15889,9 @@ class DashRenderer:
         # Only names NOT assigned to a tab appear in the Bootstrap grid.
         grid_names = [n for n in all_names if n not in tabbed_names]
 
-        # Parse Bootstrap layout for grid items (KPIs + non-tabbed graphs).
-        bs_rows = DashRenderer._parse_bs_layout(
+        # Parse Bootstrap layout for grid items (KPIs + non-tabbed graphs),
+        # through the reader the served app runs as well (_dash_bs_grid).
+        bs_rows = _dash_parse_bs_layout(
             layout_opt, grid_names, kpi_names, self.figures)
 
         # ---- Collect all Bokeh models ----
@@ -15339,18 +15928,22 @@ class DashRenderer:
                     continue
                 # A faceted graph owns several figures; they go into one cell
                 # as a sub-grid so the user's span arithmetic still holds.
+                # Each cell is embedded on its own and keeps its own toolbar,
+                # so its save button writes the one item it holds, named
+                # after it: g1.png, not a dashboard.png per cell.
                 keys = [k for k in self._resolve_layout_names(name)
                         if k not in tabbed_keys]
                 if not keys:
                     continue
                 if len(keys) == 1:
-                    all_models.append(self.figures[keys[0]])
+                    all_models.append(
+                        _dash_name_save(self.figures[keys[0]], name))
                 else:
-                    all_models.append(gridplot(
+                    all_models.append(_dash_name_save(gridplot(
                         [[self.figures[k] for k in keys]],
                         sizing_mode="stretch_width",
                         toolbar_location="right",
-                    ))
+                    ), name))
                 model_keys.append(name)
                 _added.add(name)
                 _placed_figs.update(keys)
@@ -15744,23 +16337,7 @@ class DashRenderer:
         compared a string against the slider's numeric bounds, dragging the
         slider filtered nothing, and every date KPI collapsed to 0.
         """
-        if v is None:
-            return None
-        if isinstance(v, (pd.Timestamp, np.datetime64)) or hasattr(v, "year"):
-            try:
-                ts = pd.Timestamp(v)
-            except (TypeError, ValueError):
-                return str(v)
-            if pd.isna(ts):
-                return None
-            return float(ts.value // 1_000_000)
-        try:
-            f = float(v)
-            if math.isnan(f) or math.isinf(f):
-                return None
-            return f
-        except (TypeError, ValueError):
-            return str(v) if v is not None else None
+        return _dash_json_value(v)
 
     @staticmethod
     def _parse_fmt(fmt: str) -> "tuple[int, bool]":
@@ -16458,7 +17035,50 @@ class DashRenderer:
             _cb.args["agg_sources"]      = _agg_srcs
             _cb.args["agg_configs_json"] = json.dumps(_agg_cfgs)
 
+        # The CSV download (WP-21), when the build asked for it: the
+        # snapshot the filter callbacks read, masked the way they mask it,
+        # so the file holds the rows the dashboard shows.  A dashboard with
+        # no filter has no snapshot yet; the download builds it.
+        if _dash_csv_wanted(self.master_spec.get("build_options", {})):
+            if not _orig_data:
+                for _col in self.df.columns:
+                    _orig_data[str(_col)] = [DashRenderer._to_serialisable(v)
+                                             for v in self.df[_col]]
+                _orig_data[_ROW_ID_COLUMN] = list(self._row_ids_for(self.df))
+                _orig_snapshot = ColumnDataSource(_orig_data)
+            filter_row_widgets.append(
+                self._csv_button(_orig_snapshot, _filter_specs))
+
         return filter_row_widgets
+
+    def _csv_button(self, snapshot, filter_specs):
+        """The saved page's Download CSV button (WP-21).
+
+        Its CustomJS masks *snapshot* with the filter widgets' current values
+        through ``dash_filter_mask`` -- the filter callbacks' own function --
+        and writes the rows that pass through the one CSV formatter.  String
+        columns travel once more, raw, in their own source: the snapshot
+        holds "007" as 7.
+        """
+        from bokeh.models import Button
+
+        meta = _dash_csv_meta(
+            self.df.columns, getattr(self, "formats", {}),
+            {c: True for c in getattr(self, "string_vars", set())},
+            getattr(self, "value_labels", {}),
+            getattr(self, "value_label_names", {}))
+        text = ColumnDataSource({
+            c: [_dash_csv_text_value(v) for v in self.df[c]]
+            for c in meta["strings"] if c in self.df.columns})
+        btn = Button(label="Download CSV", name="dash_csv_download",
+                     width=_DASH_CSV_BUTTON_WIDTH)
+        btn.js_on_event("button_click", CustomJS(
+            args={"orig_source": snapshot, "text_source": text,
+                  "all_widgets": list(self.filter_widgets),
+                  "filter_specs_json": json.dumps(filter_specs),
+                  "meta_json": json.dumps(meta)},
+            code=_DASH_CSV_SAVED_JS))
+        return btn
 
     def _assemble_layout(
         self,
@@ -16502,10 +17122,10 @@ class DashRenderer:
                 (tabs_widget, tabbed_names,
                  tabbed_keys) = self._build_tabs_widget(_tabs_spec)
 
-        if DashRenderer._is_bootstrap_layout(layout_opt):
+        if _dash_is_bs_layout(layout_opt):
             # A Bootstrap page embeds its components one by one; there is
-            # no single Bokeh layout root, which the parity guard records
-            # as a legitimate difference.
+            # no single Bokeh layout root, so the parity guard reads this
+            # page's grid from its markup (test_mode_parity.py).
             self._last_layout_root = None
             return self._render_bootstrap_html(
                 layout_opt=layout_opt,
@@ -16584,7 +17204,8 @@ class DashRenderer:
             grid_rows = [
                 cells[r * cols_n : (r + 1) * cols_n] for r in range(rows_n)
             ]
-        grid = gridplot(grid_rows, sizing_mode="stretch_width")
+        # The grid's one save button writes the whole grid to dashboard.png.
+        grid = _dash_name_save(gridplot(grid_rows, sizing_mode="stretch_width"))
 
         # The tabs widget sits above the remaining grid.  An empty grid --
         # every element tabbed -- would otherwise contribute a stray blank
@@ -16946,11 +17567,31 @@ class ServerAppBuilder:
                       "_MAX_AXIS_TICKS",
                       # The blanks _dash_grid_dims and _dash_placement_map
                       # strip (WP-20).
-                      "_DASH_ASCII_BLANKS"):
+                      "_DASH_ASCII_BLANKS",
+                      # The CSV download (WP-21): the page-side writer, the
+                      # file's name, the button and the session's pace; and
+                      # what _stata_dates_to_datetime reads to convert the
+                      # served frame's Stata dates for it.
+                      "_DASH_CSV_SERVED_JS", "_DASH_CSV_FILENAME",
+                      "_DASH_CSV_BUTTON_WIDTH", "_DASH_CSV_RATE",
+                      "_DASH_CSV_BURST", "_STATA_EPOCH", "_STATA_DATE_KINDS",
+                      # The toolbar every figure carries and the names its
+                      # save button writes (WP-21), read by the figure
+                      # block and by _dash_save_filename.
+                      "_DASH_FIGURE_TOOLS", "_DASH_SAVE_NAME",
+                      "_DASH_SAVE_NAME_RE",
+                      # layout(bs): the automatic rows' KPI count, and the
+                      # served grid's columns, track and gutter (WP-21).
+                      "_MAX_KPIS_PER_ROW", "_DASH_BS_COLUMNS",
+                      "_DASH_BS_TRACK", "_DASH_BS_GUTTER_PX"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
             if any(_l.startswith(_name + " =") for _l in _already):
+                continue
+            if isinstance(_val, pd.Timestamp):
+                # repr() is Timestamp('...'), a name the app has not got.
+                out.append("%s = pd.Timestamp(%r)" % (_name, _val.isoformat()))
                 continue
             if hasattr(_val, "pattern") and hasattr(_val, "flags"):
                 # repr() of a compiled pattern TRUNCATES anything over 200
@@ -17018,6 +17659,13 @@ class ServerAppBuilder:
                          # layout(name:row,col), one parser for one spec,
                          # and layout(rows cols), one reading of the grid.
                          "_dash_placement_map", "_dash_grid_dims",
+                         # The CSV download (WP-21): the flag, the column
+                         # metadata and the rows, read the saved page's way,
+                         # and the filters' mask the recompute shares.
+                         "_dash_csv_wanted", "_dash_json_value",
+                         "_dash_csv_text_value", "_dash_csv_meta",
+                         "_dash_csv_payload", "_dash_frame_filter_mask",
+                         "_stata_dates_to_datetime",
                          # The KPI card's format resolution and rendering.
                          "_dash_effective_kpi_fmt",
                          "_dash_format_kpi_value",
@@ -17067,6 +17715,16 @@ class ServerAppBuilder:
                          "_dash_facet_cols", "_dash_layout_cell",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
+                         # layout(bs): the saved page's reader of the rows
+                         # and spans, and the 12-column grid they are
+                         # placed on when served (WP-21).
+                         "_dash_is_bs_layout", "_dash_auto_bs_layout",
+                         "_dash_parse_bs_layout", "_dash_bs_grid_cells",
+                         "_dash_bs_grid",
+                         # The name every grid's save button writes: the
+                         # cell and tab helpers above call it, and so does
+                         # the grid make_document builds (WP-21).
+                         "_dash_save_filename", "_dash_name_save",
                          # The columns a layer's options name.
                          "_dash_mlabel_names", "_dash_option_columns",
                          "_dash_attach_labels",
@@ -17634,6 +18292,8 @@ class ServerAppBuilder:
             "import collections as _collections",
             "import time as _time",
             "from tornado.web import RequestHandler as _RequestHandler",
+            "# The CSV download's button and its page-side writer (WP-21).",
+            "from bokeh.models import Button as _DashButton, CustomJS as _DashCustomJS",
             "",
             "# ---- Rate limiter configuration ----",
             "# Width of the filterposition(left) sidebar, shared with the",
@@ -18327,7 +18987,10 @@ class ServerAppBuilder:
             "",
             "    # ---- Build figures ----",
             "    figures: dict = {}",
-            "    TOOLS = [PanTool(), WheelZoomTool(), BoxSelectTool(), LassoSelectTool(), ResetTool()]",
+            "    # Each figure's tools come from _DASH_FIGURE_TOOLS, the saved",
+            "    # renderer's string, which bokeh_figure() turns into new tools",
+            "    # on every call.  A TOOLS list of five instances stood here and",
+            "    # was handed to every figure, so all of them shared one set.",
             "",
             "    _redrawn_ids = set()",
             "    # Sub-option reports already made this render, so a by()",
@@ -18480,7 +19143,7 @@ class ServerAppBuilder:
             "            title=_parse_textbox_opt(go.get('title', '') or '')[0],",
             "            x_axis_label=x_label,",
             "            y_axis_label=y_label,",
-            "            tools=TOOLS,",
+            "            tools=_DASH_FIGURE_TOOLS,",
             "            sizing_mode='stretch_width',",
             "            output_backend=backend,",
             "        )",
@@ -18940,27 +19603,10 @@ class ServerAppBuilder:
             "",
             "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset()):",
             "        def _on_filter_change(attr, old, new):",
-            "            # 1. Build combined mask from all active widgets",
-            "            mask = pd.Series([True] * len(_df_ref), index=_df_ref.index)",
-            "            for w in _all_widgets:",
-            "                wvar = getattr(w, '_dash_var', None)",
-            "                if wvar is None or wvar not in _df_ref.columns:",
-            "                    continue",
-            "                _w_kind = getattr(w, '_dash_ftype', '')",
-            "                if _w_kind == 'dropdown':",
-            "                    # Use per-widget sentinel (may differ from '__all__' when data",
-            "                    # contains the literal string '__all__').",
-            "                    _w_sentinel = getattr(w, '_dash_sentinel', '__all__')",
-            "                    if w.value != _w_sentinel:",
-            "                        # The saved page's own match rule: both the",
-            "                        # option value and the column go through",
-            "                        # _dash_option_value, so '1' and '1.0' agree.",
-            "                        mask &= _dash_dropdown_mask(_df_ref[wvar], w.value)",
-            "                elif _w_kind == 'range':",
-            "                    lo, hi = w.value",
-            "                    mask &= (_df_ref[wvar] >= lo) & (_df_ref[wvar] <= hi)",
-            "                elif _w_kind == 'slider':",
-            "                    mask &= (_df_ref[wvar] >= w.value)",
+            "            # 1. Build combined mask from all active widgets -- the",
+            "            # rule the CSV download shares (_dash_frame_filter_mask),",
+            "            # so a file holds the rows this recompute shows.",
+            "            mask = _dash_frame_filter_mask(_df_ref, _all_widgets)",
             "            fdf = _df_ref[mask]",
             "            # 2. Replace raw source data (facet-aware)",
             "            excl = getattr(_trig_widget, '_dash_exclude', [])",
@@ -19211,6 +19857,44 @@ class ServerAppBuilder:
             "                _bsrc.selected.on_change('indices', _dash_event_throttle(",
             "                    doc, _make_brush_cb(kpi_divs, kpi_defs, df, _bsrc)))",
             "",
+            "    # ---- CSV download (WP-21) ----",
+            "    # Opt-in (dash build, csv).  The server masks its frame with",
+            "    # the filters' own rule and puts the rows in a source; then it",
+            "    # bumps the button's tags, which fires the page, where the",
+            "    # saved page's formatter writes them -- a new tag each click,",
+            "    # so the same rows twice are two files.  The source rides in",
+            "    # that callback's args, which is what makes it part of the",
+            "    # document: one referenced by nothing on the page would never",
+            "    # reach the browser.  A token bucket holds a session to two",
+            "    # downloads at once and one every five seconds after.",
+            "    if _dash_csv_wanted(bo):",
+            "        _csv_meta = _dash_csv_meta(",
+            "            list(df.columns), bo.get('formats', {}) or {},",
+            "            meta.get('type_is_str', {}) or {}, val_labels,",
+            "            val_label_names)",
+            "        _csv_src = ColumnDataSource(data={})",
+            "        _csv_btn = _DashButton(label='Download CSV',",
+            "                               name='dash_csv_download',",
+            "                               width=_DASH_CSV_BUTTON_WIDTH)",
+            "        _csv_btn.js_on_change('tags', _DashCustomJS(",
+            "            args={'src': _csv_src, 'meta_json': json.dumps(_csv_meta)},",
+            "            code=_DASH_CSV_SERVED_JS))",
+            "        _csv_widgets = list(filter_widgets)",
+            "        _csv_seq = [0]",
+            "        def _send_csv(attr, old, new):",
+            "            _csv_rows = df[_dash_frame_filter_mask(df, _csv_widgets)]",
+            "            _csv_seq[0] += 1",
+            "            _csv_src.data = _dash_csv_payload(_csv_rows, _csv_meta)",
+            "            _csv_btn.tags = [_csv_seq[0]]",
+            "        _csv_send = _dash_event_throttle(doc, _send_csv,",
+            "                                         rate=_DASH_CSV_RATE,",
+            "                                         burst=_DASH_CSV_BURST)",
+            "        _csv_btn.on_click(lambda event: _csv_send('clicks', None, None))",
+            "        # After the filters in their bar or sidebar; a dashboard with",
+            "        # no filter gets a bar of its own.  A new list: the recompute",
+            "        # callbacks keep the filters' own.",
+            "        filter_widgets = list(filter_widgets) + [_csv_btn]",
+            "",
             '    # ---- Assemble grid layout ----',
             '    #',
             '    # layout(), tabs(), filterposition() and subtitle() used to be read by',
@@ -19262,53 +19946,76 @@ class ServerAppBuilder:
             '',
             '    grid_names = [n for n in all_names if n not in placed_in_tabs]',
             '',
-            "    # ---- layout(): 'auto', 'N M', or 'name:row,col' placements ----",
-            "    placement = {} if layout_opt.lower() in ('', 'auto') else _dash_placements(layout_opt)",
-            '    placement = {k: v for k, v in placement.items() if k in grid_names}',
-            '    # The saved page\'s reading (_dash_grid_dims): ASCII digits, each',
-            '    # clamped to 1, as the cell limit measured them.',
-            '    rows_n = cols_n = 0',
-            '    _dims = _dash_grid_dims(layout_opt)',
-            "    if layout_opt.lower() not in ('', 'auto') and _dims:",
-            '        rows_n, cols_n = _dims',
-            '    if not rows_n and placement:',
-            '        rows_n = max(r for r, _ in placement.values()) + 1',
-            '        cols_n = max(c for _, c in placement.values()) + 1',
-            '        _extra = [n for n in grid_names if n not in placement]',
-            '        if _extra:',
-            '            rows_n += math.ceil(len(_extra) / max(1, cols_n))',
-            '    if not rows_n:',
-            '        # auto, or a layout() this path could not read (a Bootstrap spec',
-            '        # reaches the standalone renderer only; the server document has no',
-            '        # Bootstrap markup to place it in).',
-            '        cols_n = _dash_auto_cols(len(grid_names))',
-            '        rows_n = math.ceil(len(grid_names) / cols_n) if cols_n > 0 else 1',
-            '',
-            '    if len(grid_names) > rows_n * cols_n:',
-            '        rows_n = math.ceil(len(grid_names) / max(1, cols_n))',
-            '',
-            '    if placement:',
-            '        _slots = [[None] * cols_n for _ in range(rows_n)]',
-            '        _taken = set()',
-            '        for _nm, (_r, _c) in placement.items():',
-            '            if 0 <= _r < rows_n and 0 <= _c < cols_n:',
-            '                _slots[_r][_c] = _dash_cell(_nm)',
-            '                _taken.add(_nm)',
-            '        _free = [(r, c) for r in range(rows_n) for c in range(cols_n)',
-            '                 if _slots[r][c] is None]',
-            '        for _nm in [n for n in grid_names if n not in _taken]:',
-            '            if not _free:',
-            '                break',
-            '            _r, _c = _free.pop(0)',
-            '            _slots[_r][_c] = _dash_cell(_nm)',
-            '        grid_rows = _slots',
+            "    # ---- layout(): 'auto', 'N M', 'name:row,col' placements, or bs ----",
+            '    #',
+            '    # layout(bs): the saved page\'s rows and spans.  This path used to',
+            '    # read a Bootstrap spec with the placement parser, find no',
+            '    # placements and draw the automatic grid, without a word:',
+            '    # measured at ed41e8a, layout(bs) of two graphs and four KPI',
+            '    # cards was a 2 x 3 grid in registry order where the saved page',
+            '    # draws the cards in one row at span 3 and the graphs under them',
+            '    # at span 6, and bs: spans and rows were ignored.  The rows now',
+            '    # come from the saved page\'s own reader, over the names tabs()',
+            '    # left, and each item takes its span of a GridBox\'s 12 columns',
+            '    # where the saved page\'s markup puts it at its large breakpoint.',
+            '    # Unlike that page it does not reflow as the window narrows',
+            '    # (dash.sthlp says so).  Each item keeps its own toolbar, and its',
+            '    # save button writes the item under its own name, as on the',
+            '    # saved page (_dash_name_save).',
+            '    if _dash_is_bs_layout(layout_opt):',
+            '        _kpi_names = [n for n in all_names if _dash_kpi_keys(n, kpi_divs)]',
+            '        grid = _dash_bs_grid(',
+            '            _dash_parse_bs_layout(layout_opt, grid_names, _kpi_names,',
+            '                                  figures),',
+            '            lambda _n: _dash_name_save(_dash_cell(_n), _n))',
             '    else:',
-            '        cells = [_dash_cell(n) for n in grid_names]',
-            '        while len(cells) < rows_n * cols_n:',
-            '            cells.append(None)',
-            '        grid_rows = [cells[i * cols_n:(i + 1) * cols_n] for i in range(rows_n)]',
+            "        placement = {} if layout_opt.lower() in ('', 'auto') else _dash_placements(layout_opt)",
+            '        placement = {k: v for k, v in placement.items() if k in grid_names}',
+            '        # The saved page\'s reading (_dash_grid_dims): ASCII digits, each',
+            '        # clamped to 1, as the cell limit measured them.',
+            '        rows_n = cols_n = 0',
+            '        _dims = _dash_grid_dims(layout_opt)',
+            "        if layout_opt.lower() not in ('', 'auto') and _dims:",
+            '            rows_n, cols_n = _dims',
+            '        if not rows_n and placement:',
+            '            rows_n = max(r for r, _ in placement.values()) + 1',
+            '            cols_n = max(c for _, c in placement.values()) + 1',
+            '            _extra = [n for n in grid_names if n not in placement]',
+            '            if _extra:',
+            '                rows_n += math.ceil(len(_extra) / max(1, cols_n))',
+            '        if not rows_n:',
+            '            # auto, or placements of names tabs() took; a layout()',
+            '            # this path cannot read was made auto by _dash_layout_check.',
+            '            cols_n = _dash_auto_cols(len(grid_names))',
+            '            rows_n = math.ceil(len(grid_names) / cols_n) if cols_n > 0 else 1',
             '',
-            "    grid = gridplot(grid_rows, sizing_mode='stretch_width')",
+            '        if len(grid_names) > rows_n * cols_n:',
+            '            rows_n = math.ceil(len(grid_names) / max(1, cols_n))',
+            '',
+            '        if placement:',
+            '            _slots = [[None] * cols_n for _ in range(rows_n)]',
+            '            _taken = set()',
+            '            for _nm, (_r, _c) in placement.items():',
+            '                if 0 <= _r < rows_n and 0 <= _c < cols_n:',
+            '                    _slots[_r][_c] = _dash_cell(_nm)',
+            '                    _taken.add(_nm)',
+            '            _free = [(r, c) for r in range(rows_n) for c in range(cols_n)',
+            '                     if _slots[r][c] is None]',
+            '            for _nm in [n for n in grid_names if n not in _taken]:',
+            '                if not _free:',
+            '                    break',
+            '                _r, _c = _free.pop(0)',
+            '                _slots[_r][_c] = _dash_cell(_nm)',
+            '            grid_rows = _slots',
+            '        else:',
+            '            cells = [_dash_cell(n) for n in grid_names]',
+            '            while len(cells) < rows_n * cols_n:',
+            '                cells.append(None)',
+            '            grid_rows = [cells[i * cols_n:(i + 1) * cols_n] for i in range(rows_n)]',
+            '',
+            "        # The grid's one save button writes the whole grid to",
+            "        # dashboard.png, through the helper the saved grid uses.",
+            "        grid = _dash_name_save(gridplot(grid_rows, sizing_mode='stretch_width'))",
             '',
             '    # A tab strip sits above whatever grid is left.  An empty grid -- every',
             '    # element tabbed -- would otherwise contribute a blank row.',

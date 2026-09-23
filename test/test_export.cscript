@@ -1,0 +1,137 @@
+*! test_export.cscript
+*! Certification script for dash build's csv option (ROADMAP WP-21).
+*!
+*! Usage:  do test/test_export.cscript
+*!
+*! Requires: dash_setup completed (jsonio, Python, bokeh).
+*! Version: 1.0.0  23sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! `dash build, csv' offers a download of the rows the dashboard's filters
+*! leave, in both render modes.  It is opt-in: it hands any viewer every row
+*! of every variable the dashboard uses, where a served dashboard otherwise
+*! sends the browser only what it plots.  These cases certify the Stata half:
+*! the flag reaches the spec as "1" or "0" on both commands, the saved page
+*! carries the button only when asked, `dash serve' inherits the flag from
+*! the preceding `dash build' as it inherits every build option, `dash clear'
+*! forgets it, and the option takes no argument.  What a file holds is
+*! certified by test/test_export.py, which runs the shipped JavaScript.
+*!
+*! No server is started: _dash_serve_spec is everything `dash serve' does
+*! except the launch.
+
+cscript "dash export: the csv option" adodir ".."
+
+// cscript drops every global, the runner's $dash_nobrowser with it.
+global dash_nobrowser 1
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+do "cert_helpers.do"
+
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(e1)
+
+// ---------------------------------------------------------------
+// EXP-01 — without csv the spec says "0", with it "1" (dash serve)
+// ---------------------------------------------------------------
+tempfile m1 d1 m2 d2
+_dash_serve_spec, specpath("`m1'") datapath("`d1'")
+local mj1 "`r(master_json_path)'"
+cert_file_has "`mj1'", needle(`""csv":"0""')
+assert r(found) == 1
+_dash_serve_spec, specpath("`m2'") datapath("`d2'") csv
+local mj2 "`r(master_json_path)'"
+cert_file_has "`mj2'", needle(`""csv":"1""')
+assert r(found) == 1
+display "EXP-01 PASS: dash serve writes csv as 0 or 1"
+
+// ---------------------------------------------------------------
+// EXP-02 — the saved page carries the button only when asked
+// ---------------------------------------------------------------
+local f1 "`c(tmpdir)'dash_exp02a.html"
+local f2 "`c(tmpdir)'dash_exp02b.html"
+capture erase "`f1'"
+capture erase "`f2'"
+dash build, saving("`f1'") replace nobrowser csv filter(foreign, type(dropdown))
+cert_file_has "`f1'", needle("dash_csv_download")
+assert r(found) == 1
+cert_file_has "`f1'", needle("Download CSV")
+assert r(found) == 1
+dash build, saving("`f2'") replace nobrowser filter(foreign, type(dropdown))
+cert_file_has "`f2'", needle("dash_csv_download")
+assert r(found) == 0
+capture erase "`f1'"
+capture erase "`f2'"
+display "EXP-02 PASS: dash build, csv puts a Download CSV button on the page, and only then"
+
+// ---------------------------------------------------------------
+// EXP-03 — a dashboard with no filter still gets the button
+// ---------------------------------------------------------------
+local f3 "`c(tmpdir)'dash_exp03.html"
+capture erase "`f3'"
+dash build, saving("`f3'") replace nobrowser csv
+cert_file_has "`f3'", needle("dash_csv_download")
+assert r(found) == 1
+capture erase "`f3'"
+display "EXP-03 PASS: the button needs no filter"
+
+// ---------------------------------------------------------------
+// EXP-04 — dash serve inherits csv from the preceding dash build
+// ---------------------------------------------------------------
+local f4 "`c(tmpdir)'dash_exp04.html"
+tempfile m4 d4 m5 d5
+dash build, saving("`f4'") replace nobrowser csv
+_dash_serve_spec, specpath("`m4'") datapath("`d4'")
+local mj4 "`r(master_json_path)'"
+cert_file_has "`mj4'", needle(`""csv":"1""')
+assert r(found) == 1
+dash build, saving("`f4'") replace nobrowser
+_dash_serve_spec, specpath("`m5'") datapath("`d5'")
+local mj5 "`r(master_json_path)'"
+cert_file_has "`mj5'", needle(`""csv":"0""')
+assert r(found) == 1
+capture erase "`f4'"
+display "EXP-04 PASS: dash serve inherits csv from dash build, as every build option"
+
+// ---------------------------------------------------------------
+// EXP-05 — dash clear forgets it
+// ---------------------------------------------------------------
+local f6 "`c(tmpdir)'dash_exp05.html"
+tempfile m6 d6
+dash build, saving("`f6'") replace nobrowser csv
+dash clear
+dash scatter mpg weight, name(e1)
+_dash_serve_spec, specpath("`m6'") datapath("`d6'")
+local mj6 "`r(master_json_path)'"
+cert_file_has "`mj6'", needle(`""csv":"0""')
+assert r(found) == 1
+capture erase "`f6'"
+display "EXP-05 PASS: dash clear forgets csv"
+
+// ---------------------------------------------------------------
+// EXP-06 — the option takes no argument
+// ---------------------------------------------------------------
+local f7 "`c(tmpdir)'dash_exp06.html"
+capture erase "`f7'"
+capture dash build, saving("`f7'") replace nobrowser csv(1)
+assert _rc == 198
+capture confirm file "`f7'"
+assert _rc != 0
+display "EXP-06 PASS: csv(1) is refused"
+
+dash clear
+display ""
+display "test_export.cscript: ALL CHECKS PASSED"

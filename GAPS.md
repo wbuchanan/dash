@@ -1521,7 +1521,7 @@ measured at `187a786`; at `0112221` the pass-through was at
 
 ## H. The interactive layer
 
-### H1. There is no export of any kind — S2, READ
+### H1. There is no export of any kind — S2, CLOSED by WP-21
 
 Zero occurrences of `SaveTool`, `download`, `export` or `to_csv` in
 `dash_render.py`. Both toolbars are fixed:
@@ -1533,6 +1533,20 @@ Zero occurrences of `SaveTool`, `download`, `export` or `to_csv` in
 No PNG save, no CSV download, no `BoxZoomTool`, no `UndoTool`/`RedoTool`, no
 `CrosshairTool`. For a product whose output is a dashboard someone will want
 to put in a paper or a deck, this is the most conspicuous single omission.
+
+**Closed by WP-21.**  Every figure, in both modes, carries pan, wheel zoom,
+box zoom, box select, lasso select, undo, redo, reset and save -- no
+crosshair, which a shared toolbar would draw across every figure -- and each
+served figure owns its tools (they were one shared set).  A grid's save
+button writes the whole grid as `dashboard.png`; under `layout(bs)` each
+item saves under its own name.  `dash build, csv` adds a Download CSV
+button: the rows the filters leave, every variable the dashboard uses, as
+`dashboard.csv` -- written in both modes by ONE JavaScript formatter, so the
+two files are identical (tested under node, and in Chromium).  Opt-in,
+because a served dashboard otherwise sends the browser only what it plots.
+Text a spreadsheet would run as a formula is defused; dates are ISO 8601;
+UTF-8 with a BOM, which Excel needs and Stata's `import delimited` reads.
+Tests: `test_toolbar.py`, `test_export.py`, `test_export.cscript`.
 
 ### H2. What is built — no gap
 
@@ -1548,10 +1562,18 @@ The live-recompute-versus-JS-rescale difference between modes is real,
 documented in the help's comparison table, and explicitly allowed by the
 parity test.
 
-### H3. Bootstrap layout in server mode is unverified — SUSPECTED
+### H3. Bootstrap layout in server mode is unverified — SUSPECTED, CLOSED by WP-21
 
 `_render_bootstrap_html` is standalone-only. What `layout(bs…)` does when
 served needs a runtime check.
+
+**Closed by WP-21.**  Measured at `ed41e8a`: the served app read a `bs`
+layout with the placement parser, found nothing, and drew the automatic
+grid without a word.  It now draws the saved page's rows and spans on a
+12-column `GridBox`, from the one reader both modes share, without the
+saved page's reflow at narrow widths (dash.sthlp says so).  Tests:
+`test_served_bs_layout.py`, and `test_mode_parity.py`'s `layout(bs)` entry,
+which had been skipped.
 
 ---
 

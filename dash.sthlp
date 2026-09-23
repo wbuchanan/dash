@@ -7,6 +7,7 @@
 {viewerjumpto "Dashboard Options" "dash##dashboard_options"}{...}
 {viewerjumpto "Layout"            "dash##layout"}{...}
 {viewerjumpto "Linking and Brushing" "dash##linking"}{...}
+{viewerjumpto "The toolbar"       "dash##toolbar"}{...}
 {viewerjumpto "Filters"           "dash##filters"}{...}
 {viewerjumpto "KPI Cards"         "dash##kpi"}{...}
 {viewerjumpto "Server Mode"       "dash##server_mode"}{...}
@@ -142,8 +143,9 @@ This help file documents only the features that differ from or extend
 {title:Differences from twoway}
 
 {phang2}1.  {ul:Output is interactive HTML, not a Stata graph window.}
-    Every figure includes pan, zoom, box-select, lasso-select,
-    and hover tooltips automatically.
+    Every figure includes pan, zoom, box-select, lasso-select, undo, redo,
+    reset, a button that saves the figures as a PNG image, and hover
+    tooltips, automatically; see {help dash##toolbar:The toolbar}.
     The file can be shared, emailed, or opened in any browser.
 
 {phang2}2.  {ul:The {cmd:name()} option is repurposed.}
@@ -387,8 +389,9 @@ widget interaction.
 {pstd}
 {cmd:dash serve} also accepts every option {cmd:dash build} accepts —
 {cmd:title()}, {cmd:subtitle()}, {cmd:layout()}, {cmd:link()},
-{cmd:filter()}, {cmd:theme()}, {cmd:scheme()}, {cmd:tabs()} and
-{cmd:filterposition()} — with the same meanings and the same validation.
+{cmd:filter()}, {cmd:theme()}, {cmd:scheme()}, {cmd:tabs()},
+{cmd:filterposition()} and {cmd:csv} — with the same meanings and the same
+validation.
 See {help dash##dashboard_options:Dashboard Options}.
 
 {pstd}
@@ -436,6 +439,8 @@ The following options are available on {cmd:dash build}.
 {synopt:{cmdab:filterpos:ition}{cmd:(}{it:where}{cmd:)}}where the filter
     widgets are placed: {cmd:top} (the default) puts them in a row above the
     dashboard, {cmd:left} puts them in a sidebar beside it{p_end}
+{synopt:{cmd:csv}}add a {bf:Download CSV} button that downloads the rows
+    the filters leave; see {help dash##export:Exporting}{p_end}
 {synopt:{cmdab:sch:eme}{cmd:(}{it:schemename}{cmd:)}}apply a named Stata
     graph scheme; see {help dash##scheme:Stata scheme support}{p_end}
 {synopt:{cmd:theme(}{it:name}{cmd:)}}an alias for a scheme
@@ -452,6 +457,48 @@ The following options are available on {cmd:dash build}.
     {cmd:dash build} is rarely wanted{p_end}
 {synopt:{cmd:replace}}overwrite output file if it already exists{p_end}
 {synoptline}
+
+
+{marker export}
+{title:Exporting}
+
+{pstd}
+Every dashboard can save its figures as a PNG image, with the save button
+on the toolbar (see {help dash##toolbar:The toolbar}).  With {cmd:csv} it
+can also give you its data.
+
+{pstd}
+With {cmd:csv}, the dashboard carries a {bf:Download CSV} button beside its
+filters (or on its own, when there are none).  It downloads
+{it:dashboard.csv}: every observation the filters currently leave, with every
+variable the dashboard uses, in the order of the data.  Only the filters
+count; a selection brushed on a graph and a graph's own {cmd:if} or {cmd:in}
+do not.  A filter at its full extent -- a range spanning every value, a
+slider at its minimum -- restricts nothing, as {bf:All} does in a dropdown.
+Once moved, a range or slider filter drops observations whose value is
+missing, as {cmd:if} {it:x} {cmd:>=} {it:value} does in {cmd:dash}.
+
+{pstd}
+The file is written as Stata's {cmd:export delimited} writes one, with these
+differences: a date is written in ISO 8601 ({cmd:2020-01-16}; for {cmd:%tc},
+{cmd:2020-01-15 13:45:30.25}; for {cmd:%ty}, the year; for {cmd:%tw},
+{cmd:%tm}, {cmd:%tq} and {cmd:%th}, the first day of the period); a number is
+written in full, with a leading zero ({cmd:0.5}); a text value that begins
+with {cmd:=}, {cmd:+}, {cmd:-}, {cmd:@}, a tab or a carriage return is written
+after an apostrophe, so that a spreadsheet shows it rather than runs it as a
+formula; and the file is UTF-8 with a byte-order mark, which Excel needs and
+{cmd:import delimited} reads through.  A value-labelled variable is written as
+its labels, as {cmd:export delimited} writes it by default.
+
+{pstd}
+{cmd:csv} is off unless asked for, because it lets anyone who opens the
+dashboard download every row of every variable it uses -- including one that
+only a KPI card summarises.  A saved dashboard with filters already contains
+those rows (the filters need them), but a served one sends the browser only
+what it draws.  When served, each click is computed on the server from the
+same filters, and a session may download twice at once and then once every
+five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
+{cmd:dash build}, as it inherits every dashboard option.
 
 
 {marker layout}
@@ -482,17 +529,24 @@ in the dashboard grid.
     name must be a registered graph or KPI card, as in {cmd:link()}.
 
 {phang2}{cmd:layout(bs}[{cmd::} {it:name}{cmd:=}{it:span} ...]{cmd:)} —
-    a responsive Bootstrap-style 12-column grid, which reflows as the
-    browser window narrows.  With no specification {cmd:dash} chooses the
-    spans; otherwise each named item takes the given number of columns out
-    of 12, and {cmd:/} starts a new row.  Each name must be registered, and
-    each {it:span} a whole number from 1 to 12; a name written without one
-    takes 6.  Example: {cmd:layout(bs: k1=3 k2=3 s1=6)}.
+    a Bootstrap-style 12-column grid.  With no specification {cmd:dash}
+    chooses the spans; otherwise each named item takes the given number of
+    columns out of 12, and {cmd:/} starts a new row.  A row whose spans add
+    up to more than 12 wraps onto the next line, and a registered item the
+    specification does not name is drawn below the rows it gives, the full
+    width.  Each name must be registered, and each {it:span} a whole number
+    from 1 to 12; a name written without one takes 6.  Example:
+    {cmd:layout(bs: k1=3 k2=3 s1=6)}.  A saved dashboard's grid reflows as
+    the browser window narrows: below 992 pixels an item of 4 columns or
+    fewer takes half the row, and below 768 every item takes the whole row.
+    {cmd:dash serve} and {cmd:dash build, server} draw the same rows and
+    spans on a grid that narrows with the window but does not reflow.
 
 {pstd}
 A {cmd:layout()} that is not one of these forms as a whole, that names an
-item the registry does not hold, or that gives a span outside 1 to 12 is
-refused with {cmd:r(198)}; nothing is drawn some other way in silence.
+item the registry does not hold, that places an item more than once, or that
+gives a span outside 1 to 12 is refused with {cmd:r(198)}; nothing is drawn
+some other way in silence.
 
 
 {marker tabs}
@@ -537,6 +591,57 @@ Only one link group per dashboard is supported.
 {pstd}
 Graphs not in the link group receive their own independent data source
 and are unaffected by selection in linked graphs.
+
+
+{marker toolbar}
+{title:The toolbar}
+
+{pstd}
+Every figure carries the same tools, in both render modes:
+
+{synoptset 16 tabbed}
+{synopthdr:tool}
+{synoptline}
+{synopt:Pan}drag to move the figure.  This is what a drag does when the
+    page opens.{p_end}
+{synopt:Wheel zoom}zoom with the mouse wheel or trackpad.  It is off when
+    the page opens, so the wheel scrolls the page; click its button to turn
+    it on.{p_end}
+{synopt:Box zoom}drag a rectangle to zoom to it.{p_end}
+{synopt:Box select}drag a rectangle to select the observations inside
+    it; see {help dash##linking:Linking and Brushing}.{p_end}
+{synopt:Lasso select}draw around observations to select them.{p_end}
+{synopt:Undo}step back through your pans and zooms.{p_end}
+{synopt:Redo}step forward again.{p_end}
+{synopt:Reset}return to the view the page opened with, and clear the
+    selection.{p_end}
+{synopt:Save}write the figures to a PNG image; see below.{p_end}
+{synoptline}
+
+{pstd}
+A figure with tooltips also has a hover button, which turns them off and
+on.  There is no crosshair tool: in a toolbar that a grid of figures
+shares it would draw its lines across every figure at once, and the
+tooltip already reads values off a figure.
+
+{pstd}
+{ul:One toolbar per grid.}  The figures of a grid share one toolbar, above
+the grid.  Choosing a tool there chooses it for every figure in the grid,
+and undo, redo and reset act on all of them at once.  Each tab of
+{cmd:tabs()} is a grid with a toolbar of its own, and the panels of a
+{cmd:by()} graph have one of their own as well.  {cmd:layout(bs)} places
+each graph on its own, with its own toolbar beside it; a graph in a tab is
+still part of that tab's grid.
+
+{pstd}
+{ul:Saving an image.}  The save button writes everything its toolbar
+serves as one PNG file.  A grid -- the dashboard's, a tab's, or a
+{cmd:by()} graph's panels -- is saved as {cmd:dashboard.png}.  A graph that
+{cmd:layout(bs)} places on its own, with its {cmd:by()} panels if it has
+any, is saved under its name: {cmd:g1.png} for the graph registered as
+{cmd:g1}.  Your browser decides where the file goes.  The image holds only
+the figures: a KPI card in a grid is left blank, and the title, the filters
+and the tab strip, which sit outside every grid, are not in it.
 
 
 {marker filters}
@@ -705,9 +810,10 @@ follows:
 {synopt:Kernel density on filter}      Yes (JS)            Yes (Python){p_end}
 {synopt:Fit-line recompute on filter}  No                  Yes{p_end}
 {synopt:Brush/lasso KPI update}        Yes                 Yes{p_end}
+{synopt:Toolbar, save as PNG}          Yes                 Yes{p_end}
 {synopt:{cmd:scheme()} / {cmd:theme()}}            Yes                 Yes{p_end}
 {synopt:{cmd:layout()}, {cmd:tabs()}, {cmd:filterposition()}} Yes                 Yes{p_end}
-{synopt:Bootstrap {cmd:layout(bs)}}         Yes                 No (falls back to a grid){p_end}
+{synopt:Bootstrap {cmd:layout(bs)}}         Yes, reflows        Yes, without reflow{p_end}
 {synopt:Health endpoint}              n/a                 {cmd:/health}{p_end}
 {synopt:Deployment}                    Email / open file   {cmd:python app.py}{p_end}
 {synoptline}
@@ -718,6 +824,11 @@ the rows that pass the filter but keeps the bin edges chosen when the
 dashboard was built, so the bins do not move as you filter.  The server
 recomputes the bins themselves from the filtered rows.  The same
 distinction applies to any layer whose x-grid is derived from the data.
+
+{pstd}
+{ul:What "reflow" means.}  A saved {cmd:layout(bs)} grid rearranges itself as
+the browser window narrows; the served one keeps the rows and spans it was
+given at every width.  See {help dash##layout:Layout}.
 
 {pstd}
 {ul:Blocking behavior.}  {cmd:dash serve} blocks Stata until the server

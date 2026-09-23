@@ -296,6 +296,11 @@ _sp = ("bs: g1=13", "bs: g1=0", "bs: g1=x", "bs: g1=", "bs: g1=0012", "bs: g1=1.
 for (_i = 1; _i <= cols(_sp); _i++) _e = _e \ (strpos(_dash_layout_refusal(_sp[_i], _reg), "must be a whole number from 1 to 12") > 0)
 // An empty registry refuses every name.
 _e = _e \ (_dash_layout_refusal("g1:1,1", "") == "layout() name 'g1' not found in registry.")
+// A name placed twice, in either form (WP-21): the saved page embedded a
+// repeated bs name once per repeat.
+_e = _e \ (_dash_layout_refusal("bs: g1=6 g1=6", _reg) == "layout() places 'g1' more than once.")
+_e = _e \ (_dash_layout_refusal("bs: g1 / g2 g1=12", _reg) == "layout() places 'g1' more than once.")
+_e = _e \ (_dash_layout_refusal("g1:1,1 g2:1,2 g1:2,1", _reg) == "layout() places 'g1' more than once.")
 st_local("ech11", strofreal(all(_e)))
 st_local("ech11n", strofreal(rows(_e)))
 end

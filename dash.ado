@@ -3713,6 +3713,7 @@ program define _dash_prepare_spec, rclass
         SERVER                  ///
         TABS(string asis)       ///
         FILTERPOSition(string)  ///
+        CSV                     ///
     ]
 
     if `"`cmdname'"' == "" local cmdname "dash build"
@@ -3726,7 +3727,7 @@ program define _dash_prepare_spec, rclass
     // label() text, and expanding a value containing a double quote is
     // the failure this file has already been bitten by twice.
     if "`inherit'" != "" {
-        foreach _bo in title subtitle layout link theme scheme tabs filterposition filter {
+        foreach _bo in title subtitle layout link theme scheme tabs filterposition filter csv {
             local _cur : length local `_bo'
             if `_cur' == 0 {
                 mata: st_local("_bo_val", st_global("dash_opts_" + st_local("_bo")))
@@ -4184,7 +4185,12 @@ program define _dash_prepare_spec, rclass
     _dash_json_str `"`layout'"'            _layout_esc
     _dash_json_str `"`link'"'              _link_esc
     _dash_json_str `"`filterposition'"'    _fpos_esc
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'}}"'
+    // csv (WP-21): offer a download of the rows the filters leave.  Opt-in,
+    // because it hands any viewer every row of every variable the dashboard
+    // uses -- a served dashboard otherwise sends the browser only what it
+    // plots.  A flag, so only "1" or "0" reaches the spec.
+    local _csv_flag = cond("`csv'" != "", "1", "0")
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'}}"'
 
     tempname fh
     // quietly: see the note at the other spec writer -- `write replace'
@@ -4235,6 +4241,7 @@ program define _dash_build
         SERVER                  ///
         TABS(string asis)       ///
         FILTERPOSition(string)  ///
+        CSV                     ///
     ]
 
     // ---- check registry is not empty ----
@@ -4314,6 +4321,7 @@ program define _dash_build
     global dash_opts_scheme         `"`scheme'"'
     global dash_opts_tabs           `"`tabs'"'
     global dash_opts_filterposition `"`r(filterposition)'"'
+    global dash_opts_csv            "`csv'"
     global dash_opts_filter         `"`filter'"'
 
     // ---- Locate dash_render.py ----
