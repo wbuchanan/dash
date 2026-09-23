@@ -44,6 +44,10 @@
 
 cscript "dash locates its own renderer" adodir ".."
 
+// `cscript' drops every global macro, the runner's $dash_nobrowser with them;
+// set it again before this script builds a dashboard (test_cscript_hygiene.py).
+global dash_nobrowser 1
+
 // ----------------------------------------------------------------
 // Setup
 // ----------------------------------------------------------------

@@ -213,3 +213,229 @@ class TestTheShippedAdoFilesFollowTheSameRule:
             f"{os.path.basename(path)} lines {bad}: concludes Python is "
             f"missing from the rc of a bare warm-up call"
         )
+
+
+# ---------------------------------------------------------------------------
+# No certification script may build a dashboard with the browser allowed.
+# ---------------------------------------------------------------------------
+#
+# run_all_cscripts.do sets `global dash_nobrowser 1' so that no dash build in
+# the suite opens a window.  But every script starts with `cscript', and
+# `cscript' drops EVERY global macro -- measured 23sep2026 on StataNow 19.5:
+# `global dash_nobrowser 1', then `cscript "probe"', left the global empty,
+# where `clear all', `clear *', `clear' and `program drop _all' all kept it.
+# So inside the scripts the runner's setting was gone, and 13 of them built
+# dashboards with nothing but an explicit `nobrowser' option -- or not even
+# that -- standing between the suite and one browser window per build.  Under
+# the console binary `xdg-open' is absent and nothing opened; a run from the
+# Stata GUI would have opened them.
+#
+# The rule: after `cscript', before any dashboard is built, the script sets
+# the global -- itself, or by loading cert_helpers.do, which sets it.  Built
+# means `dash build', or an immediate `dash <plot>' with neither name()
+# (which only registers) nor saving() (with which dash never opens a
+# window).  `dash serve' is not counted: the suite never lets it launch.
+
+_HELPERS = os.path.join(_HERE, "cert_helpers.do")
+
+
+def _stata_logical_lines(src):
+    """``(first line number, code)`` for each command in a do-file.
+
+    Stata's own comment rules: a line whose first non-blank is ``*`` is a
+    comment; ``/* */`` spans lines; ``//`` and ``///`` begin a comment only
+    at the start of a line or after a blank; ``///`` also joins the next
+    line on.  Strings are not parsed, so a ``//`` inside a URL after a blank
+    ends the line early -- which can only hide text, and a hidden build is
+    caught by the build itself being required to come after the global.
+    """
+    src = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"),
+                 src, flags=re.S)
+    out, buf, start = [], "", None
+    for n, raw in enumerate(src.splitlines(), 1):
+        line = raw
+        if not buf and line.lstrip().startswith("*"):
+            continue
+        cont = False
+        m = re.search(r"(^|\s)///", line)
+        if m:
+            line, cont = line[:m.start()], True
+        else:
+            m = re.search(r"(^|\s)//", line)
+            if m:
+                line = line[:m.start()]
+        if start is None:
+            start = n
+        buf += " " + line
+        if not cont:
+            if buf.strip():
+                out.append((start, buf.strip()))
+            buf, start = "", None
+    if buf.strip():
+        out.append((start, buf.strip()))
+    return out
+
+
+_PREFIX = re.compile(r"^(?:(?:capture|cap|noisily|noi|quietly|qui|n)\b\s*:?\s*)+")
+_DISPLAY = re.compile(r"^di(s(p(l(a(y)?)?)?)?)?\b")
+_BLOCK = re.compile(r"^(python|mata)\s*:?\s*$")
+_ONE_LINER = re.compile(r"^(python|mata)\s*:")
+_BLOCK_END = re.compile(r"^end\s*$")
+#: `dash' at the start of a command, or at the start of a quoted command
+#: handed to a helper (`_run "dash build, ..."'); the subcommand may be a
+#: macro (`dash ${cmd}'), which is taken for a build since it may be one.
+_DASH = re.compile(r"""(?:^|`"|")dash\s+(\(|[A-Za-z_]\w*|[`$])""")
+_NOT_A_BUILD = {"serve", "kpi", "clear"}
+_SAVING = re.compile(r"\bsav(i(n(g)?)?)?\s*\(")
+_NAME = re.compile(r"\bnam(e)?\s*\(")
+_SETS = re.compile(r"^global\s+dash_nobrowser\s+\S")
+_DROPS = re.compile(r"^macro\s+drop\b.*(\bdash_nobrowser\b|\bdash_\*|\b_all\b)"
+                    r"|^global\s+dash_nobrowser\s*(\"\")?\s*$")
+_LOADS_HELPERS = re.compile(r"^(do|run)\s+\"?[^\"\s]*cert_helpers\.do")
+_CSCRIPT = re.compile(r"^cscript\b")
+
+
+def _builds(code):
+    """Does this command build a dashboard?  `dash build', or an immediate
+    plot with neither name() nor saving()."""
+    for m in _DASH.finditer(code):
+        sub = m.group(1)
+        if sub == "build":
+            return True
+        if sub in _NOT_A_BUILD:
+            continue
+        rest = code[m.start():]
+        if not _SAVING.search(rest) and not _NAME.search(rest):
+            return True
+    return False
+
+
+def _helpers_set_the_global():
+    with open(_HELPERS, encoding="utf-8") as fh:
+        return any(_SETS.match(_PREFIX.sub("", code))
+                   for _n, code in _stata_logical_lines(fh.read()))
+
+
+def _builds_with_the_browser_allowed(src, helpers_set):
+    """The line numbers of every dashboard built while $dash_nobrowser is
+    not set: before `cscript' has run and the global been set after it, or
+    after the global was dropped.  Program bodies are read where they are
+    defined, which is where a script sets itself up; Python and Mata blocks
+    are not Stata commands."""
+    state, block, bad = False, False, []
+    for n, raw in _stata_logical_lines(src):
+        code = _PREFIX.sub("", raw)
+        if block:
+            if _BLOCK_END.match(code):
+                block = False
+            continue
+        if _BLOCK.match(code):
+            block = True
+            continue
+        if _ONE_LINER.match(code) or _DISPLAY.match(code):
+            continue
+        if _CSCRIPT.match(code):
+            state = False
+            continue
+        if _SETS.match(code):
+            state = True
+        elif _DROPS.match(code):
+            state = False
+        elif _LOADS_HELPERS.match(code) and helpers_set:
+            state = True
+        if _builds(code) and not state:
+            bad.append(n)
+    return bad
+
+
+class TestTheDetectorReadsStataAsStataDoes:
+    """The rule below is only as good as its reading of a do-file."""
+
+    def _bad(self, text, helpers_set=True):
+        return _builds_with_the_browser_allowed(text, helpers_set)
+
+    def test_a_build_before_the_global_is_flagged(self):
+        assert self._bad('cscript "x"\ndash build, saving(a.html)\n') == [2]
+
+    def test_the_global_set_after_cscript_protects(self):
+        assert self._bad('cscript "x"\nglobal dash_nobrowser 1\n'
+                         'dash build, saving(a.html)\n') == []
+
+    def test_the_global_set_before_cscript_does_not(self):
+        """cscript drops it: that is the whole defect."""
+        assert self._bad('global dash_nobrowser 1\ncscript "x"\n'
+                         'dash build, saving(a.html)\n') == [3]
+
+    def test_loading_cert_helpers_protects_only_if_it_sets_the_global(self):
+        text = 'cscript "x"\ndo "cert_helpers.do"\ndash build, saving(a.html)\n'
+        assert self._bad(text, helpers_set=True) == []
+        assert self._bad(text, helpers_set=False) == [3]
+
+    def test_dropping_the_global_unprotects(self):
+        assert self._bad('cscript "x"\nglobal dash_nobrowser 1\n'
+                         'macro drop dash_nobrowser\n'
+                         'capture noisily dash build, saving(a.html)\n') == [4]
+
+    def test_an_immediate_plot_builds_unless_named_or_saved(self):
+        text = ('cscript "x"\n'
+                'dash scatter mpg weight\n'                       # 2: builds
+                'dash scatter mpg weight, name(g1)\n'             # registers
+                'dash (line mpg weight), saving("o.html")\n'      # never opens
+                'dash scatter mpg ///\n    weight, sav(o.html)\n'  # joined line
+                'dash kpi mean(mpg), name(k1)\n'
+                'dash clear\n'
+                'capture dash serve, port(1)\n')
+        assert self._bad(text) == [2]
+
+    def test_a_command_handed_to_a_helper_counts(self):
+        assert self._bad('cscript "x"\n'
+                         '_run `"dash build, saving("a.html")"\'\n') == [2]
+
+    def test_a_macro_subcommand_counts(self):
+        assert self._bad('cscript "x"\ncapture quietly dash ${CMD`i\'}\n') == [2]
+
+    def test_comments_displays_and_embedded_code_do_not(self):
+        text = ('cscript "x"\n'
+                '* dash build, saving(a.html)\n'
+                '// dash build\n'
+                'di "dash build refused"\n'
+                'display as error "V2 FAIL: -dash scatter mpg weight-"\n'
+                '/* dash build\n   dash scatter mpg weight */\n'
+                'python:\n'
+                'x = "dash build"\n'
+                'end\n'
+                'mata: st_local("s", "dash build")\n'
+                'local x = 1   // dash build\n')
+        assert self._bad(text) == []
+
+    def test_a_program_body_is_read_where_it_is_defined(self):
+        text = ('cscript "x"\n'
+                'program define _b\n'
+                '    capture noisily dash build, saving(a.html) replace\n'
+                'end\n'
+                'global dash_nobrowser 1\n'
+                '_b\n')
+        assert self._bad(text) == [3]
+
+
+class TestNoScriptBuildsWithTheBrowserAllowed:
+    """Every script that builds a dashboard sets $dash_nobrowser after its
+    `cscript' line, itself or through cert_helpers.do."""
+
+    def test_cert_helpers_sets_the_global(self):
+        assert _helpers_set_the_global(), (
+            "cert_helpers.do does not set `global dash_nobrowser 1'; the "
+            "scripts that load it right after `cscript' then build with "
+            "the browser allowed, because cscript dropped the runner's"
+        )
+
+    def test_no_build_runs_with_the_browser_allowed(self, cscript):
+        path, src = cscript
+        bad = _builds_with_the_browser_allowed(src, _helpers_set_the_global())
+        assert not bad, (
+            f"{_name(path)} builds a dashboard at line(s) {bad} with "
+            f"$dash_nobrowser unset: `cscript' drops every global, so the "
+            f"runner's setting does not reach the script.  Set `global "
+            f"dash_nobrowser 1' after the cscript line, or load "
+            f"cert_helpers.do there"
+        )

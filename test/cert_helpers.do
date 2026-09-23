@@ -25,6 +25,16 @@
 *!     cert_file_has "`outpath'", needle("bokeh") lower
 *!     assert r(found) == 1
 
+// Keep every dashboard this suite builds out of a browser window.
+// run_all_cscripts.do sets this global too, but `cscript' -- the first line
+// of every script -- drops EVERY global macro (measured 23sep2026: `global
+// dash_nobrowser 1' then `cscript "probe"' left it empty; `clear all' does
+// not drop it), so the runner's setting never reached the scripts, and a
+// dash build without its own nobrowser option would have opened a window
+// per build.  Scripts load this file straight after `cscript'; one that does
+// not sets the global itself (test_cscript_hygiene.py checks both).
+global dash_nobrowser 1
+
 capture mata: mata drop _cert_file_has()
 
 mata:

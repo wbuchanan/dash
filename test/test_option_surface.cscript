@@ -139,6 +139,10 @@
 
 cscript "dash twoway option surface conformance" adodir ".."
 
+// `cscript' drops every global macro, the runner's $dash_nobrowser with them;
+// set it again before this script builds a dashboard (test_cscript_hygiene.py).
+global dash_nobrowser 1
+
 // Certification scripts share one Stata session, so start from a clean
 // state: leftover data, globals, tsset settings or loaded programs from an
 // earlier script otherwise leak in and change what this one measures.

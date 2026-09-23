@@ -41,6 +41,10 @@
 
 cscript "every spec string is valid JSON on the way out" adodir ".."
 
+// `cscript' drops every global macro, the runner's $dash_nobrowser with them;
+// set it again before this script builds a dashboard (test_cscript_hygiene.py).
+global dash_nobrowser 1
+
 capture which jsonio
 if _rc != 0 {
     display as error "SKIP: jsonio not installed. Run dash_setup first."

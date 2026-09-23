@@ -2843,9 +2843,12 @@ Each with a failing test first, fixed, and recorded in `BUGS.md`:
 - A graph of literal values (`function`, `scatteri`, `pci`) exported every
   observation of a placeholder variable it never reads, and under the cell
   limit was refused for it; it now exports one (RL-13..14).
-- Recorded, not fixed (a separate task): `cscript` drops every global, so
-  the runner's `$dash_nobrowser` never reaches the scripts; under the
-  console binary nothing opens.
+- Recorded here and fixed straight after, in its own commit: `cscript`
+  drops every global, so the runner's `$dash_nobrowser` never reached the
+  scripts, and 13 of them built dashboards with it unset (under the
+  console binary nothing opened).  `cert_helpers.do` now sets it, the six
+  scripts that build without loading it set it after `cscript`, and
+  `test_cscript_hygiene.py` fails any build that runs while it is unset.
 
 ### Verification, measured
 
