@@ -1019,7 +1019,8 @@ CORPUS = [
     _case("a filter on a faceted graph", [_sc()],
           {"filter": "price, type(range)"}, {"by": "foreign"}),
     # ---- tabs() --------------------------------------------------------------
-    _case("tabs()", bo={"tabs": "A: g1; B: g2"},
+    # Groups are separated by "/"; "A: g1; B: g2" was one tab holding g2.
+    _case("tabs()", bo={"tabs": "A: g1 / B: g2"},
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])]),
     _case("tabs() with an unassigned item", bo={"tabs": "A: g1"},
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])]),
@@ -1703,3 +1704,55 @@ class TestTheCopiedHelpersBringTheirCallees:
         for name in ("_stata_if_to_pandas", "_resolve_seed", "_bootstrap_ci",
                      "_kpi_statistic"):
             assert name in src, f"{name} is no longer copied into the app"
+
+
+# ---------------------------------------------------------------------------
+# The "tabs()" corpus entry really builds two tabs
+# ---------------------------------------------------------------------------
+
+def _glyph_kinds(layout):
+    """The glyph type names each figure in *layout* draws, figure by figure."""
+    from bokeh.models import GlyphRenderer, Plot
+    return [sorted({type(r.glyph).__name__ for r in f.renderers
+                    if isinstance(r, GlyphRenderer)})
+            for f in layout.select({"type": Plot})]
+
+
+def _tab_contents(root):
+    """``[(title, [glyph kinds of each figure in the tab])]`` for every Tabs
+    model under *root*."""
+    return [(p.title, _glyph_kinds(p.child))
+            for t in root.select({"type": Tabs}) for p in t.tabs]
+
+
+class TestTheTabsEntryBuildsTwoTabs:
+    """The corpus entry named "tabs()" wrote its groups as "A: g1; B: g2".
+    tabs() separates groups with "/" (dash.sthlp, _dash_parse_tabs), so that
+    string is ONE group, titled "A", whose words are "g1;", "B:" and "g2" --
+    and of those only g2 is a registered name.  Measured 23sep2026 at
+    ed41e8a: _dash_parse_tabs returned [("A", ["g2"])], both modes built one
+    tab holding g2 and left g1 outside, and the parity checks compared two
+    one-tab dashboards.  These pin the entry to what its name says: two
+    tabs, A holding g1 (a scatter) and B holding g2 (a line), in both
+    modes."""
+
+    _WANT = [("A", [["Scatter"]]), ("B", [["Line"]])]
+
+    @staticmethod
+    def _spec():
+        case = next(p for p in CORPUS if p.values[0] == "tabs()")
+        return case.values[1]
+
+    def test_the_string_parses_to_two_tabs(self):
+        tabs = self._spec()["build_options"]["tabs"]
+        assert dr._dash_parse_tabs(tabs, ["g1", "g2"]) == [
+            ("A", ["g1"]), ("B", ["g2"])]
+
+    def test_the_saved_page_builds_two_tabs(self):
+        r, _warns = _standalone(self._spec())
+        assert _tab_contents(r._last_layout_root) == self._WANT
+
+    def test_the_served_app_builds_two_tabs(self):
+        doc, _warns = _served(self._spec())
+        got = [c for root in doc.roots for c in _tab_contents(root)]
+        assert got == self._WANT
