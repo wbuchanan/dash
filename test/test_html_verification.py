@@ -375,15 +375,22 @@ class TestAlphaTransparency:
         assert abs(r.glyph.fill_alpha - 0.2) < 0.02
 
     def test_lalpha_sets_line_alpha_only(self):
-        """ALP-14: lalpha(10) sets line_alpha without changing fill_alpha."""
+        """ALP-14: lalpha(10) sets a LINE's alpha, and leaves the markers.
+
+        lalpha() is dash's own "opacity of the lines" (dash.sthlp); it was
+        read onto a scatter marker's outline here, as lcolor() and lwidth()
+        were, where twoway's line options never reach a marker (measured
+        23sep2026; test_marker_label_parity.py).
+        """
         fig = figure()
         src = ColumnDataSource({"x": [1.0, 2.0, 3.0], "y": [1.0, 2.0, 3.0]})
         gm = GlyphMapper()
+        line = gm.map_line(fig, src, "y", "x", {"lalpha": "10"})
+        assert abs(line.glyph.line_alpha - 0.1) < 0.02
+        base = gm.map_scatter(figure(), src, "y", "x", {})
         r = gm.map_scatter(fig, src, "y", "x", {"lalpha": "10"})
-        assert abs(r.glyph.line_alpha - 0.1) < 0.02
-        # fill_alpha should be the default (≈0.7, set by alpha=0.7 in map_scatter)
-        assert r.glyph.fill_alpha > 0.5, \
-            "fill_alpha should be near default, not affected by lalpha"
+        assert r.glyph.line_alpha == base.glyph.line_alpha
+        assert r.glyph.fill_alpha == base.glyph.fill_alpha
 
     def test_invalid_alpha_value_ignored(self):
         """ALP-15: malpha with non-numeric value does not crash."""

@@ -225,16 +225,19 @@ SURFACES = {
             "test/test_option_validation.py::TestUserTextIsEchoedThroughDashDisplay::test_the_mlabel_extras_warning",
             _TW + "test_a_format_in_another_scripts_digits_is_not_applied",
             "test_json_escaping.cscript:JSE-29",
+            "test_twoway_option_parity.cscript:TP-12",
         ],
         "injection": [
             "test/test_graph_options.py::TestLegendLabels::test_legend_label_xss_is_carried_as_text",
             _TW + "test_markup_in_a_value_is_named_as_text_and_never_drawn",
+            "test_twoway_option_parity.cscript:TP-12",
         ],
         "exhaustion": [
             _M + "TestTextPlotOptionBounds::test_a_legend_order_of_a_hundred_thousand_keys_is_bounded",
             _M + "TestTextPlotOptionBounds::test_a_long_legend_label_is_escaped_once",
             _TW + "test_a_format_stata_refuses_builds_no_giant_label",
             _TW + "test_the_widest_format_stata_accepts_is_bounded_by_stata",
+            "test_twoway_option_parity.cscript:TP-12",
         ],
     },
     # title(), subtitle(), note(), caption(), xtitle(), ytitle().
@@ -502,17 +505,21 @@ SURFACES = {
         "bypass": [
             "test_adversarial.cscript:P20-28",
             "test/test_server.py::TestDropdownSentinelCollision::test_standalone_sentinel_unique_when_data_has_all_value",
+            "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_label_keyed_by_another_spelling_is_not_matched",
         ],
         "injection": [
             "test_adversarial.cscript:P4-86",
             "test/test_phase5.py::TestByFacetingSecurity::test_by_xss_in_facet_label_is_canvas_text",
             "test/test_filters.py::TestFilterSecurity::test_filter_values_are_text_and_never_code",
             "test/test_server.py::test_escape_chars_in_data_do_not_break_syntax",
+            "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_markup_in_a_value_label_is_carried_as_text",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P19-11",
             "test_resource_limits.cscript:RL-03",
             "test/test_resource_limits.py::TestADropdownOnAContinuousVariable::test_the_widget_lists_at_most_the_limit",
+            "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_huge_label_set_is_read_at_once",
+            "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_number_stata_would_write_long_is_bounded",
         ],
     },
     # The spec JSON and data JSON dash_render.py reads -- written by

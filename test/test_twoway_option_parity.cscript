@@ -22,7 +22,8 @@
 *!     on every other type clX draws a picture identical to no option.
 *!   * Whether a plot type draws marker labels, which decides where
 *!     mlabangle(400) is refused ("textangle must be between -360.000 and
-*!     360.000", r(198), when drawn).
+*!     360.000", r(198), when drawn -- though on pcarrow and pcbarrow
+*!     twoway prints the message and returns rc 0).
 *!
 *! Groups:
 *!   TP-01  clcolor() clpattern() clwidth(), per plot type: kept in the spec
@@ -37,7 +38,8 @@
 *!          (test_twoway_option_parity.py certifies the drawing).
 *!   TP-04  mlabangle(): recorded, abbreviated mlabang(), a bad name passed
 *!          on (twoway notes it); mlabangle(400) refused exactly on the types
-*!          where twoway draws marker labels.
+*!          where twoway refuses it (pccapsym among them; pcarrow and
+*!          pcbarrow draw labels yet return rc 0 in twoway).
 *!   TP-05  mlabformat(): recorded, abbreviated mlabf(), any text accepted
 *!          (twoway accepts mlabformat(abc) with no note).
 *!   TP-06  the declared-but-not-honoured ones are named in the note by
@@ -48,9 +50,23 @@
 *!          xreverse yreverse xalternate yalternate xcommon ycommon
 *!          lockaspect zoom() altaxis ddensity addplot() margin() region()
 *!          bargap() -- declaring any of them would be a lie in the help.
+*!   TP-08  mlabel(), per plot type: refused where twoway refuses it --
+*!          r(103) on mspline and mband, r(111) for a variable that does
+*!          not exist on every type but histogram and function -- and, on
+*!          those two, which never read it, left out of the spec.
+*!   TP-09  marker labels are drawn on exactly the plot types twoway draws
+*!          them on (twoway's exported SVG against the saved dashboard).
+*!   TP-10  a value-labelled variable is labelled with its value labels.
+*!   TP-11  lcolor() never reaches a marker; mlcolor() draws its outline.
+*!   TP-12  adversarial mlabel() values on mspline (CLAUDE.md rule 18): an
+*!          abbreviation, a repeated name and four hundred names refused
+*!          r(103) as twoway refuses them; SMCL refused and echoed as text;
+*!          nothing registered.
 *!
-*! Like test_alias_semantics.cscript, nothing is rendered: every dash probe
-*! registers with name(), and the spec is read back out of the registry.
+*! TP-01 to TP-08 render nothing: every dash probe registers with name(),
+*! and the spec is read back out of the registry, as in
+*! test_alias_semantics.cscript.  TP-09 to TP-11 compare what is DRAWN, so
+*! they export twoway's picture to SVG and save the dashboard.
 *!
 *! Usage:  do test/test_twoway_option_parity.cscript  (or run_all_cscripts.do)
 
@@ -141,7 +157,7 @@ foreach tt of local types {
 foreach tt in rarea rbar rspike rcap rcapsym rline rconnected rscatter {
     local v_`tt' "lo hi weight"
 }
-foreach tt in pcspike pcarrow pcbarrow pcscatter {
+foreach tt in pcspike pcarrow pcbarrow pcscatter pccapsym {
     local v_`tt' "mpg weight turn length"
 }
 local v_histogram "mpg"
@@ -307,7 +323,7 @@ if `tw_rc' != 0 | r(rc) != 0 {
 }
 // mlabangle(400), per type: refused where twoway draws marker labels.
 quietly tsset t
-local lab_types "scatter connected bar dot dropline rcapsym rconnected rscatter pcarrow pcbarrow pcscatter line area spike rcap rarea rline histogram lfitci tsline"
+local lab_types "scatter connected bar dot dropline rcapsym rconnected rscatter pcarrow pcbarrow pcscatter pccapsym line area spike rcap rarea rline histogram lfitci tsline"
 foreach tt of local lab_types {
     local v `v_`tt''
     capture graph drop _all
@@ -452,6 +468,313 @@ foreach o in xreverse yreverse xalternate yalternate xcommon ycommon lockaspect 
     }
     else display as text "TP-07 PASS: `nm' is no twoway option; named as typed"
 }
+
+// ----------------------------------------------------------------
+// TP-08 .. TP-11 -- marker labels and marker outlines (the marker-label
+// parity work).  twoway is the oracle in every case, asked in this run:
+// its rc for the refusals, and for what it DRAWS, the SVG it exports --
+// a label is a <text> element holding the label, a red outline is
+// stroke:#FF0000 -- against the saved dashboard's own document.
+// ----------------------------------------------------------------
+capture mata: mata drop _ztp_count()
+capture mata: mata drop _ztp_labelsets()
+capture mata: mata drop _ztp_redline()
+mata:
+// How many times `needle' occurs in the file at `path'; -1 if unreadable.
+// The whole file is read as one string, so a needle can never straddle a
+// line break the reader introduced.
+real scalar _ztp_count(string scalar path, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar s
+    fh = _fopen(path, "r")
+    if (fh < 0) return(-1)
+    fseek(fh, 0, 1)
+    n = ftell(fh)
+    fseek(fh, 0, -1)
+    s = (n > 0 ? fread(fh, n) : "")
+    fclose(fh)
+    if (strlen(needle) == 0) return(0)
+    return((strlen(s) - strlen(subinstr(s, needle, "", .))) / strlen(needle))
+}
+// How many LabelSet models a saved dashboard's document holds.
+real scalar _ztp_labelsets(string scalar path)
+{
+    string scalar q
+    q = char(34)
+    return(_ztp_count(path, q + "name" + q + ":" + q + "LabelSet" + q))
+}
+// How many times a saved dashboard names the colour red (#ff0000), in any
+// case.  The page's own script holds no such colour, and the probes below
+// set no other red, so on a plot with no line every one is an outline --
+// a marker glyph writes it as "line_color":{"type":"value","value":...}.
+real scalar _ztp_redline(string scalar path)
+{
+    real scalar   fh, n
+    string scalar s
+    fh = _fopen(path, "r")
+    if (fh < 0) return(-1)
+    fseek(fh, 0, 1)
+    n = ftell(fh)
+    fseek(fh, 0, -1)
+    s = (n > 0 ? strlower(fread(fh, n)) : "")
+    fclose(fh)
+    return((strlen(s) - strlen(subinstr(s, "#ff0000", "", .))) / 7)
+}
+end
+
+capture program drop _ztp_count
+program define _ztp_count, rclass
+    args path needle
+    mata: st_local("_zc", strofreal(_ztp_count(st_local("path"), st_local("needle"))))
+    return scalar n = `_zc'
+end
+
+capture program drop _ztp_page
+program define _ztp_page, rclass
+    args path
+    mata: st_local("_zl", strofreal(_ztp_labelsets(st_local("path"))))
+    mata: st_local("_zr", strofreal(_ztp_redline(st_local("path"))))
+    return scalar labelsets = `_zl'
+    return scalar redlines  = `_zr'
+end
+
+local svgfile  "`c(tmpdir)'dash_tp_marker.svg"
+local htmlfile "`c(tmpdir)'dash_tp_marker.html"
+capture drop zq
+generate str12 zq = "ZQLAB" + string(_n)
+
+// ----------------------------------------------------------------
+// TP-08 -- mlabel() is refused and ignored where twoway refuses and
+// ignores it.  twoway reads the label variable as a third plotted
+// variable on mspline and mband ("too many variables specified",
+// r(103)); it refuses a variable that does not exist, r(111), on every
+// type but histogram and function, which never read the option.
+// ----------------------------------------------------------------
+local bad = 0
+// The immediate types take their labels from the command line, and
+// their branch is not this group's subject.
+local mtypes "`types' pccapsym"
+local _ztp_imm "scatteri pci"
+local mtypes : list mtypes - _ztp_imm
+quietly tsset t
+foreach tt of local mtypes {
+    local v `v_`tt''
+    local sep ","
+    if strpos("`v'", ",") local sep ""
+    foreach lab in make nosuchvar {
+        capture graph drop _all
+        capture twoway `tt' `v'`sep' mlabel(`lab')
+        local tw_rc = _rc
+        capture graph drop _all
+        _ztp_run `"dash (`tt' `v'`sep' mlabel(`lab')), name(zqtp)"' "`logfile'"
+        local drc = r(rc)
+        if `drc' != `tw_rc' {
+            display as error "TP-08 FAIL `tt': mlabel(`lab') is r(`tw_rc') in twoway, rc `drc' in dash"
+            local bad = 1
+            continue
+        }
+        if `drc' == 103 {
+            _ztp_logged "`logfile'" "mlabel()"
+            if r(found) != 1 {
+                display as error "TP-08 FAIL `tt': mlabel(`lab') refused without naming mlabel()"
+                local bad = 1
+            }
+        }
+        if `drc' == 0 & "`lab'" == "make" {
+            // where twoway never reads it the spec does not carry it;
+            // everywhere else the renderer decides what is drawn
+            _ztp_has zqtp mlabel
+            local want = !inlist("`tt'", "histogram", "function")
+            if r(found) != `want' {
+                display as error "TP-08 FAIL `tt': the spec carries mlabel = `r(found)', expected `want'"
+                local bad = 1
+            }
+        }
+    }
+}
+quietly tsset, clear
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-08"
+}
+else display as text "TP-08 PASS: mlabel() refused (r(103), r(111)) and ignored exactly where twoway refuses and ignores it"
+
+// ----------------------------------------------------------------
+// TP-09 -- marker labels are drawn on exactly the plot types twoway
+// draws them on: twoway's SVG holds the label text, the saved
+// dashboard's document holds a LabelSet.
+// ----------------------------------------------------------------
+local bad = 0
+// mspline and mband refuse mlabel() (TP-08): nothing to draw.
+local _ztp_ref "mspline mband"
+local dtypes : list mtypes - _ztp_ref
+quietly tsset t
+foreach tt of local dtypes {
+    local v `v_`tt''
+    local sep ","
+    if strpos("`v'", ",") local sep ""
+    capture erase "`svgfile'"
+    capture graph drop _all
+    capture twoway `tt' `v'`sep' mlabel(zq)
+    local tw_rc = _rc
+    if `tw_rc' == 0 capture graph export "`svgfile'", replace
+    capture graph drop _all
+    _ztp_count "`svgfile'" ">ZQLAB1<"
+    local tw_n = r(n)
+    if `tw_rc' != 0 | `tw_n' < 0 {
+        display as error "TP-09 FAIL `tt': the twoway oracle failed, r(`tw_rc')"
+        local bad = 1
+        continue
+    }
+    capture erase "`htmlfile'"
+    _ztp_run `"dash (`tt' `v'`sep' mlabel(zq)), saving("`htmlfile'")"' "`logfile'"
+    local drc = r(rc)
+    _ztp_page "`htmlfile'"
+    local d_n = r(labelsets)
+    if `drc' != 0 | `d_n' < 0 {
+        display as error "TP-09 FAIL `tt': dash rc `drc', page readable = `=`d_n' >= 0'"
+        local bad = 1
+    }
+    else if (`tw_n' > 0) != (`d_n' > 0) {
+        display as error "TP-09 FAIL `tt': twoway draws `tw_n' label(s) for the first observation, the saved dashboard holds `d_n' LabelSet(s)"
+        local bad = 1
+    }
+    else display as text "TP-09 `tt': twoway labels the first observation `tw_n' time(s); LabelSets `d_n'"
+}
+quietly tsset, clear
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-09"
+}
+else display as text "TP-09 PASS: marker labels drawn on exactly the plot types twoway labels"
+
+// ----------------------------------------------------------------
+// TP-10 -- a value-labelled variable is labelled with its value labels.
+// ----------------------------------------------------------------
+local bad = 0
+capture label drop zqorigin
+label define zqorigin 0 "ZQDOM" 1 "ZQFOR"
+capture drop zqf
+generate zqf = foreign
+label values zqf zqorigin
+foreach spec in "scatter mpg weight" "rscatter lo hi weight" "pccapsym mpg weight turn length" {
+    gettoken tt : spec
+    capture erase "`svgfile'"
+    capture graph drop _all
+    capture twoway `spec', mlabel(zqf)
+    local tw_rc = _rc
+    if `tw_rc' == 0 capture graph export "`svgfile'", replace
+    capture graph drop _all
+    _ztp_count "`svgfile'" ">ZQFOR<"
+    local tw_n = r(n)
+    capture erase "`htmlfile'"
+    _ztp_run `"dash `spec', mlabel(zqf) saving("`htmlfile'")"' "`logfile'"
+    local drc = r(rc)
+    _ztp_count "`htmlfile'" "ZQFOR"
+    local d_n = r(n)
+    if `tw_rc' != 0 | `tw_n' < 1 {
+        display as error "TP-10 FAIL `tt': the twoway oracle drew no value label, r(`tw_rc')"
+        local bad = 1
+    }
+    else if `drc' != 0 | `d_n' < 1 {
+        display as error "TP-10 FAIL `tt': twoway labels with ZQFOR; the saved dashboard (rc `drc') holds it `d_n' time(s)"
+        local bad = 1
+    }
+}
+label values zqf
+capture label drop zqorigin
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-10"
+}
+else display as text "TP-10 PASS: a value-labelled variable is labelled with its value labels"
+
+// ----------------------------------------------------------------
+// TP-11 -- lcolor() never reaches a marker; mlcolor() draws its outline.
+// On these types twoway has no line for lcolor() to style: nothing red
+// is drawn.  The saved dashboard must draw no red line either.
+// ----------------------------------------------------------------
+local bad = 0
+foreach spec in "scatter mpg weight" "dot mpg weight" "rscatter lo hi weight" "pcscatter mpg weight turn length" {
+    gettoken tt : spec
+    foreach o in lcolor mlcolor {
+        capture erase "`svgfile'"
+        capture graph drop _all
+        capture twoway `spec', `o'(red)
+        local tw_rc = _rc
+        if `tw_rc' == 0 capture graph export "`svgfile'", replace
+        capture graph drop _all
+        _ztp_count "`svgfile'" "stroke:#FF0000"
+        local tw_n = r(n)
+        capture erase "`htmlfile'"
+        _ztp_run `"dash `spec', `o'(red) saving("`htmlfile'")"' "`logfile'"
+        local drc = r(rc)
+        _ztp_page "`htmlfile'"
+        local d_n = r(redlines)
+        if `tw_rc' != 0 | `tw_n' < 0 | `drc' != 0 | `d_n' < 0 {
+            display as error "TP-11 FAIL `tt' `o'(red): twoway r(`tw_rc'), dash rc `drc'"
+            local bad = 1
+        }
+        else if (`tw_n' > 0) != (`d_n' > 0) {
+            display as error "TP-11 FAIL `tt' `o'(red): twoway draws `tw_n' red outline(s), the saved dashboard `d_n' red line(s)"
+            local bad = 1
+        }
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-11"
+}
+else display as text "TP-11 PASS: lcolor() leaves the markers alone, mlcolor() draws their outline, as in twoway"
+capture erase "`svgfile'"
+capture erase "`htmlfile'"
+
+// ----------------------------------------------------------------
+// TP-12 -- adversarial mlabel() values where dash.ado now refuses it
+// (CLAUDE.md rule 18).  Bypass: an abbreviation, a repeated name; resource
+// exhaustion: four hundred names -- twoway refuses each with r(103), and so
+// must dash, registering nothing.  Injection: SMCL in the value is refused
+// (twoway r(198) "invalid name"; dash's variable rule says r(111), "not
+// found"), echoed as text, never as SMCL, and registers nothing.  A macro
+// reference cannot reach dash from a command line: Stata expands it first
+// (test_adversarial.cscript P9-04, P9-05).
+// ----------------------------------------------------------------
+local bad = 0
+local _ztp_long ""
+forvalues i = 1/400 {
+    local _ztp_long "`_ztp_long' make"
+}
+foreach v in "mak" "make make" `"`_ztp_long'"' {
+    capture graph drop _all
+    capture twoway mspline mpg weight, mlabel(`v')
+    local tw_rc = _rc
+    capture graph drop _all
+    _ztp_run `"dash mspline mpg weight, mlabel(`v') name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    local shown = substr(`"`v'"', 1, 20)
+    if `tw_rc' != 103 | `drc' != 103 {
+        display as error `"TP-12 FAIL mlabel(`shown'...): twoway r(`tw_rc'), dash rc `drc'"'
+        local bad = 1
+    }
+    if "${dash_graph_registry}" != "" {
+        display as error `"TP-12 FAIL mlabel(`shown'...): the command registered a graph, where twoway refuses it"'
+        local bad = 1
+    }
+}
+_ztp_run `"dash mspline mpg weight, mlabel({bf:ZQINJ}) name(zqtp)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "{bf:ZQINJ}"
+local echoed = r(found)
+if `drc' == 0 | `echoed' != 1 | "${dash_graph_registry}" != "" {
+    display as error "TP-12 FAIL: mlabel({bf:ZQINJ}) rc `drc', echoed as text = `echoed', registry ${dash_graph_registry}"
+    local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-12"
+}
+else display as text "TP-12 PASS: hostile mlabel() values on mspline are refused as twoway refuses them, echoed as text, and register nothing"
 
 // ----------------------------------------------------------------
 // Summary

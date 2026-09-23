@@ -234,19 +234,23 @@ class TestTheDeclarations:
         assert m, "_dash_fold_cl no longer holds its type list"
         assert sorted(m.group(1).split()) == sorted(_CL_TYPES + _CI_TYPES)
 
-    def test_the_mlabangle_rule_names_the_types_twoway_labels(self):
-        """Measured: twoway refuses mlabangle(400) exactly where it draws
-        marker labels -- scatter connected bar dot dropline rcapsym
-        rconnected rscatter pcscatter scatteri -- and draws none (so never
-        evaluates the angle) on line, spike, area, the range lines and
-        bars, rcap, the fits and pcarrow/pcbarrow."""
+    def test_the_mlabangle_rule_names_the_types_twoway_refuses_it_on(self):
+        """Measured: twoway refuses mlabangle(400), r(198), on scatter
+        connected bar dot dropline rcapsym rconnected rscatter pcscatter
+        pccapsym scatteri, and never evaluates it on line, spike, area,
+        the range lines and bars, rcap and the fits, which draw no marker
+        label.  pccapsym was measured with the marker-label parity work
+        (23sep2026): r(198), where this rule accepted it.  pcarrow and
+        pcbarrow draw labels and still return rc 0 -- twoway prints
+        "textangle must be between -360.000 and 360.000" and draws the
+        arrows without their labels -- so they are not refused either."""
         rules = _program_body(_ado(), "_dash_option_rules")
         m = __import__("re").search(r"mlabangle=style,-360,360@([a-z|]+)",
                                     rules)
         assert m, "no mlabangle rule"
         assert sorted(m.group(1).split("|")) == sorted(
             ["scatter", "connected", "bar", "dot", "dropline", "rcapsym",
-             "rconnected", "rscatter", "pcscatter", "scatteri"])
+             "rconnected", "rscatter", "pcscatter", "pccapsym", "scatteri"])
 
     def test_clwidth_has_lwidths_bounds(self):
         rules = _program_body(_ado(), "_dash_option_rules")
@@ -484,13 +488,18 @@ def test_a_bad_mlabangle_is_named_and_drawn_horizontal(raw):
 
 
 def test_mlabangle_reaches_every_layer_that_labels():
+    """rcapsym labels both of its ends -- one LabelSet each -- as twoway
+    does (test_marker_label_parity.py), and the angle reaches both."""
     for ptype in ("connected", "bar", "dropline", "rcapsym"):
         r, doc, std_w, srv_w = _both(
             [plot_for(ptype, {"mlabel": "make", "mlabangle": "45"})])
         assert std_w == srv_w
         for fig in _figures(r, doc):
-            assert float(_labelset(fig).angle) == pytest.approx(
-                math.radians(45)), ptype
+            sets = [x for x in fig.center if isinstance(x, LabelSet)]
+            assert len(sets) == (2 if ptype == "rcapsym" else 1), ptype
+            for ls in sets:
+                assert float(ls.angle) == pytest.approx(
+                    math.radians(45)), ptype
 
 
 # ===========================================================================

@@ -914,14 +914,17 @@ class TestSecondaryAxisRange:
 class TestMlabelOnLines:
 
     def test_labels_land_on_the_sorted_points(self):
-        """map_line sorts by x; the labels were built from the unsorted source."""
+        """A connected plot sorts its line by x; each marker label must stay
+        on its own point.  (This was a `line' layer, which twoway -- and
+        now dash -- draws no marker label on; connected labels its markers.)
+        """
         from bokeh.models import LabelSet
         df = pd.DataFrame({
             "y": [1.0, 2.0, 3.0, 4.0],
             "x": [40.0, 10.0, 30.0, 20.0],
             "lab": [100.0, 200.0, 300.0, 400.0],
         })
-        fig, _ = _fig([{"type": "line", "yvar": "y", "xvar": "x",
+        fig, _ = _fig([{"type": "connected", "yvar": "y", "xvar": "x",
                         "options": {"mlabel": "lab"}}], df=df)
         labels = [r for r in fig.center if isinstance(r, LabelSet)]
         assert labels, "no marker labels were drawn"

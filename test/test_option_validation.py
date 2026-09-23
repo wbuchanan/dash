@@ -639,13 +639,19 @@ class TestMlabelWithSeveralNamesUsesTheFirst:
         assert std_w == srv_w
         assert not _naming(std_w, "mlabel"), std_w
 
-    def test_a_line_plot_also_labels_from_the_first(self):
+    def test_a_line_plot_draws_no_label_and_says_nothing(self):
+        """twoway accepts mlabel() on a line -- ``line y x, mlabel(zl t)``
+        included -- and draws no label, without a note (measured 23sep2026);
+        so there is nothing to label "from the first", and nothing to name.
+        This used to assert the line was labelled from make."""
         r, doc, std_w, srv_w = _both(
             [plot_for("line", {"mlabel": "make foreign"})])
-        _the_one(std_w, srv_w, "mlabel")
+        assert std_w == srv_w and not _naming(std_w, "mlabel"), std_w
         fig = list(r.figures.values())[0]
-        ls = self._labelsets(fig)
-        assert len(ls) == 1 and ls[0].text == "make", ls
+        assert self._labelsets(fig) == []
+        srv = [m for m in tp._walk_models(doc)
+               if type(m).__name__ == "figure"][0]
+        assert self._labelsets(srv) == []
 
 
 # ---- the helpers themselves ------------------------------------------------

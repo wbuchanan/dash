@@ -248,7 +248,10 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
         srv = profiles_srv(tmp_path, spec)
         assert std == srv
         for p in srv:
-            assert p["labels"] == ["rep"], p
+            # A numeric label is drawn from the column derived beside the
+            # variable's (test_marker_label_parity.py): "." for a missing
+            # value, and a column a served filter's redraw keeps.
+            assert p["labels"] == ["__mlabel__rep"], p
             assert any("price" in h for h in p["hover"]), p
 
     def test_a_linked_faceted_graph_agrees(self, tmp_path):

@@ -1195,12 +1195,14 @@ end
 //
 // It is also where the other options whose reading depends on the plot type
 // are resolved: clcolor(), clpattern() and clwidth() (WP-22), in
-// _dash_fold_cl below, before the early exit for a segment with no bw().
+// _dash_fold_cl below, and mlabel(), in _dash_fold_mlab, both before the
+// early exit for a segment with no bw().
 // ================================================================
 program define _dash_fold_bw, sclass
     version 16.0
     args ptype
     _dash_fold_cl "`ptype'"
+    _dash_fold_mlab "`ptype'"
     local bw `"`s(bw)'"'
     if `"`bw'"' == "" exit
     local bandwidth_types "lpoly lpolyci lowess kdensity"
@@ -1259,6 +1261,52 @@ program define _dash_fold_cl, sclass
     sreturn local clcolor   ""
     sreturn local clpattern ""
     sreturn local clwidth   ""
+end
+
+// ================================================================
+// _dash_fold_mlab  -- mlabel() where twoway refuses it, or never reads it.
+//
+// Measured 23sep2026, one twoway probe per plot type (rc, and the SVG it
+// exports): on mspline and mband twoway reads mlabel()'s variable as a
+// third plotted variable and refuses the command -- "too many variables
+// specified", r(103) -- whatever the variable, string or numeric; a
+// variable that does not exist it refuses with r(111) on every type but
+// histogram and function, which never read the option at all
+// (mlabel(nosuchvar) is rc 0 there, and draws nothing).
+//
+// So mlabel() is refused on mspline and mband, naming it, when its
+// variable exists -- one that does not is refused r(111) by the value
+// rules, as twoway refuses it -- and dropped on histogram and function
+// before those rules run, so a variable that does not exist is not
+// refused where twoway accepts it.  Everywhere else it reaches the
+// renderer, which draws the labels where twoway draws them and nowhere
+// else: none on line, area, the fits and the range lines, bars and caps,
+// among others (dash.sthlp, Marker Label Options).  The note does not
+// name mlabel() on those, because twoway draws nothing for it there
+// either.
+//
+// Called by _dash_fold_bw, after _dash_fold_cl and before
+// _dash_validate_opts.  The value is only ever expanded through macval(),
+// so a backtick in it cannot become a macro reference.
+// ================================================================
+program define _dash_fold_mlab, sclass
+    version 16.0
+    args ptype
+    local v `"`s(mlabel)'"'
+    if `"`macval(v)'"' == "" exit
+    local mlab_unread  "histogram function"
+    local mlab_refused "mspline mband"
+    if `: list ptype in mlab_unread' {
+        sreturn local mlabel ""
+        exit
+    }
+    if `: list ptype in mlab_refused' {
+        capture confirm variable `macval(v)'
+        if !_rc {
+            display as error "dash: mlabel() is not allowed on `ptype' (twoway: too many variables specified)"
+            exit 103
+        }
+    }
 end
 
 // BEGIN shipped schemes (WP-17)
@@ -1352,7 +1400,7 @@ program define _dash_option_rules
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
         clwidth=style,0,10000 ///
-        mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|scatteri
+        mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri
     // WP-22.  clwidth() has lwidth()'s bounds -- twoway refuses clwidth(-1)
     // and lwidth(-1) alike, "gm_linewidth must be between 0.000 and
     // 1.0e+04", r(198) -- but only where it draws the connecting line;
@@ -1360,9 +1408,14 @@ program define _dash_option_rules
     // so the rule needs no type list.  mlabangle() takes an anglestyle name
     // (never refused: twoway notes an unknown one) or degrees, and twoway
     // refuses a number outside -360..360, "textangle must be between
-    // -360.000 and 360.000", r(198), only where it draws marker labels --
-    // measured 23sep2026 on exactly the types listed.  Elsewhere it never
-    // evaluates the angle, and neither does this table.
+    // -360.000 and 360.000", r(198), where it draws marker labels --
+    // measured 23sep2026 on exactly the types listed (pccapsym with the
+    // marker-label parity work; the rule had left it out).  On pcarrow and
+    // pcbarrow, which draw labels too, twoway prints that message and
+    // returns rc 0, drawing the arrows without their labels, so they are
+    // not refused; the renderer reports the angle and draws horizontal.
+    // Elsewhere twoway never evaluates the angle, and neither does this
+    // table.
     // Graph rules: validated once per segment in _dash_validate_opts, from
     // s(g_<opt>) -- so a value inside a segment is refused as twoway refuses
     // it even when a later segment or the after-comma part outranks it --

@@ -4239,10 +4239,20 @@ class GlyphMapper:
     ) -> None:
         """Apply mcolor/msymbol/msize/malpha options to a scatter-type glyph renderer.
 
-        Supports Stata's ``color%alpha`` notation on ``mcolor``, ``mfcolor``,
-        and ``lcolor`` (e.g. ``mcolor(red%50)``).  A standalone ``malpha``
-        option overrides the alpha of both fill and line; ``lalpha`` overrides
-        only the line alpha.
+        Supports Stata's ``color%alpha`` notation on ``mcolor``, ``mfcolor``
+        and ``mlcolor`` (e.g. ``mcolor(red%50)``).  A standalone ``malpha``
+        option overrides the alpha of both fill and outline.
+
+        The marker's outline is ``mlcolor()`` and ``mlwidth()``, and nothing
+        else.  The line options -- ``lcolor()``, ``lwidth()`` and dash's own
+        ``lalpha()`` -- style a layer's LINES (a connecting line, a drop, a
+        spike) and are never read here.  Measured 23sep2026 from twoway's
+        SVG: on scatter, connected, dot, dropline, rscatter, rcapsym,
+        rconnected, pcscatter, pccapsym and scatteri, ``lcolor(red)``,
+        ``lcolor(red%50)`` and ``lwidth(vthick)`` leave every marker exactly
+        as drawn without them, where ``mlcolor(red)`` turns the outline red.
+        This applier used to take the outline from ``lcolor()``,
+        ``lwidth()`` and ``lalpha()`` on every one of those types.
 
         The generic ``marker`` key (produced by the Mata parser's ``m()``
         abbreviation expansion) is treated as an alias for ``msymbol``.
@@ -4320,33 +4330,24 @@ class GlyphMapper:
                         glyph.fill_alpha = alpha
                 except AttributeError:
                     pass
-        # lcolor sets the marker border (outline) color independently of fill.
-        if "lcolor" in options:
-            if OptionTranslator._means_no_color(options["lcolor"]):
-                if hasattr(glyph, "line_alpha"):
-                    glyph.line_alpha = 0.0
-            else:
-                try:
-                    color, alpha = self.tr.parse_color_alpha(
-                        options["lcolor"], "lcolor")
-                    if color and hasattr(glyph, "line_color"):
-                        glyph.line_color = color
-                    if alpha is not None and hasattr(glyph, "line_alpha"):
-                        glyph.line_alpha = alpha
-                except AttributeError:
-                    pass
-        # lwidth sets the marker border width.
-        if "lwidth" in options:
+        # lcolor() and lwidth() never reach the marker -- they were read
+        # onto its outline here, as were lalpha()'s -- but twoway resolves
+        # their style names wherever it parses them, and notes an unknown
+        # one even on a plot with no line to draw it on (measured on
+        # scatter, dot, rscatter and pcscatter: "named style abc not found
+        # in class linewidth, default attributes used").  So an unknown
+        # name is still named from here, once per render, and nothing is
+        # applied; _apply_line_opts applies them where there is a line.
+        _lc = str(options.get("lcolor", "") or "").strip()
+        if _lc and not OptionTranslator._means_no_color(_lc):
+            self.tr.parse_color_alpha(_lc, "lcolor")
+        if str(options.get("lwidth", "") or "").strip():
             try:
-                glyph.line_width = self.tr.translate_lwidth(options["lwidth"])
+                self.tr.translate_lwidth(options["lwidth"])
             except ValueError:
                 _dash_style_note("lwidth", options["lwidth"], "line width")
-            except AttributeError:
-                pass
-        # mlcolor()/mlwidth() are the marker's OWN border options.  The
-        # border used to be taken from lcolor(), the CONNECTING LINE colour,
-        # which is wrong in both directions: mlcolor() did nothing and
-        # lcolor() restyled the marker.  Applied after lcolor so they win.
+        # mlcolor()/mlwidth() are the marker's OWN border options, and the
+        # only ones.
         if "mlcolor" in options:
             raw_mlc = str(options["mlcolor"]).strip().lower()
             if raw_mlc == "none":
@@ -4388,7 +4389,9 @@ class GlyphMapper:
             if hasattr(glyph, "line_alpha"):
                 glyph.line_alpha = 0.0
         # malpha: standalone fill+line opacity override, 0-100%.
-        # Applied last so it wins over any alpha embedded in mcolor/mfcolor/lcolor.
+        # Applied last so it wins over any alpha embedded in mcolor/mfcolor/
+        # mlcolor.  lalpha() is the LINES' opacity (dash.sthlp: "opacity of
+        # the lines"), and is not read here.
         if "malpha" in options:
             try:
                 ma = float(options["malpha"].strip())
@@ -4397,14 +4400,6 @@ class GlyphMapper:
                         glyph.fill_alpha = ma / 100.0
                     if hasattr(glyph, "line_alpha"):
                         glyph.line_alpha = ma / 100.0
-            except (ValueError, AttributeError):
-                pass
-        # lalpha: standalone line-only opacity, 0-100%.
-        if "lalpha" in options:
-            try:
-                la = float(options["lalpha"].strip())
-                if 0.0 <= la <= 100.0 and hasattr(glyph, "line_alpha"):
-                    glyph.line_alpha = la / 100.0
             except (ValueError, AttributeError):
                 pass
         # msangle: rotate all markers by a fixed angle (degrees → radians).
@@ -4819,18 +4814,44 @@ class GlyphMapper:
         options: dict[str, str],
         xvar: str,
         yvar: str,
+        label_col: "str | None" = None,
     ) -> None:
         """Add a LabelSet annotation when the mlabel() option is set.
 
-        Reads ``mlabel``, ``mlabcolor``, ``mlabsize``, ``mlabposition``, and
-        ``mlabgap`` from *options* and adds a Bokeh ``LabelSet`` to *fig*.
+        Reads ``mlabel``, ``mlabcolor``, ``mlabsize``, ``mlabposition``,
+        ``mlabgap``, ``mlabangle`` and ``mlabformat`` from *options* and adds
+        a Bokeh ``LabelSet`` to *fig*, at (*xvar*, *yvar*) of each row.
+
+        Which layers call this is each mapper's business, and follows what
+        twoway draws (measured 23sep2026 from its SVG): scatter, connected,
+        bar, dot and dropline label each point; rcapsym, rconnected and
+        rscatter label BOTH ends of each range, one call per end or one
+        stacked source; pcscatter, pccapsym, pcarrow and pcbarrow label the
+        first point, (y1, x1); every other type draws no label and does not
+        call this at all.
+
+        The text is what twoway writes (yxview.class, series.class): a
+        string as it is; a value-labelled numeric variable its value labels,
+        an unlabelled value its number as Stata writes it into a macro
+        (%18.0g, whatever the display format); a date variable its date; a
+        number in its display format when dash reproduces that format, else
+        as it is; and a missing value ".".  mlabformat() then formats the
+        numbers, as :meth:`_mlabformat_column` says.
 
         Args:
-            fig:     Bokeh Figure object.
-            source:  ColumnDataSource that contains the label column.
-            options: Translated plot-level options dict.
-            xvar:    Name of the x-axis variable column in *source*.
-            yvar:    Name of the y-axis variable column in *source*.
+            fig:       Bokeh Figure object.
+            source:    ColumnDataSource that contains the label column.
+            options:   Translated plot-level options dict.
+            xvar:      Name of the x-axis variable column in *source*.
+            yvar:      Name of the y-axis variable column in *source*.
+            label_col: The column of *source* holding the label values, when
+                       it is not named after the variable -- a mapper that
+                       stacks its points in columns ``x`` and ``y`` keeps
+                       the labels under a name of its own, so a variable
+                       called ``x`` or ``y`` cannot take their place.  The
+                       variable's name, from ``mlabel()``, still decides its
+                       value labels and formats.  Absent from *source*, the
+                       variable is taken to be absent from the data.
         """
         from bokeh.models import LabelSet
 
@@ -4847,7 +4868,8 @@ class GlyphMapper:
             )
         if not mlabel_var:
             return
-        if mlabel_var not in source.data:
+        values_col = label_col or mlabel_var
+        if values_col not in source.data:
             # Every source that reaches here carries the label column when
             # the data has it (map_line's is the frame, map_dropline's is
             # built with it), so its absence means the data lacks the
@@ -4860,29 +4882,48 @@ class GlyphMapper:
             )
             return
 
-        # mlabel(datevar) labelled points with the raw Stata value.  Bokeh
-        # renders whatever is in the column, so a formatted text column is
-        # derived beside it rather than reformatting in the browser.
-        text_col = mlabel_var
-        _kind = getattr(self, "date_vars", {}).get(mlabel_var)
-        _numfmt = getattr(self, "numeric_formats", {}).get(mlabel_var, "")
-        if _kind or _numfmt:
+        # Bokeh draws whatever is in the column -- a code as its number, a
+        # missing value as "NaN" -- so the text twoway writes is derived
+        # beside it, once per source.  A string column is drawn as it is.
+        # For any other column the derived one ALWAYS exists, named by the
+        # variable alone: a served filter redraws a mapper-built source
+        # through the mapper, and a column that existed only while a
+        # missing value was in view would leave the live LabelSet naming a
+        # column its redrawn source no longer has.
+        text_col = values_col
+        _is_text, _miss = self._mlabel_column_kind(source.data[values_col])
+        if not _is_text:
+            _kind = getattr(self, "date_vars", {}).get(mlabel_var)
+            _numfmt = getattr(self, "numeric_formats", {}).get(mlabel_var,
+                                                               "")
+            # A date variable's column holds datetimes in the saved
+            # renderer; its value labels are keyed by Stata's numbers, so
+            # they are read only for a column of numbers.
+            _vlabels = ({} if _kind else self._mlabel_value_labels(mlabel_var))
             text_col = f"__mlabel__{mlabel_var}"
             if text_col not in source.data:
-                raw = list(source.data[mlabel_var])
-                if _kind:
-                    rendered = [_format_date_value_standalone(v, _kind)
+                raw = list(source.data[values_col])
+                if _vlabels:
+                    rendered = [self._mlabel_value_text(v, _vlabels)
                                 for v in raw]
+                elif _kind:
+                    rendered = ["." if m else
+                                _format_date_value_standalone(v, _kind)
+                                for v, m in zip(raw, _miss)]
+                elif _numfmt:
+                    rendered = ["." if m else
+                                _format_stata_numeric(v, _numfmt).strip()
+                                for v, m in zip(raw, _miss)]
                 else:
-                    rendered = [_format_stata_numeric(v, _numfmt).strip()
-                                for v in raw]
+                    rendered = ["." if m else v
+                                for v, m in zip(raw, _miss)]
                 source.data[text_col] = rendered
 
         # mlabformat() (WP-22): the labels in the format the user gave.
         _mfmt = str(options.get("mlabformat", "") or "").strip()
         if _mfmt:
             text_col = self._mlabformat_column(source, mlabel_var, _mfmt,
-                                               text_col)
+                                               text_col, values_col)
 
         kwargs: dict[str, Any] = dict(
             x=xvar,
@@ -4964,20 +5005,22 @@ class GlyphMapper:
         fig.add_layout(ls)
 
     def _mlabformat_column(self, source: "ColumnDataSource", var: str,
-                           fmt: str, default_col: str) -> str:
+                           fmt: str, default_col: str,
+                           values_col: "str | None" = None) -> str:
         """The label column twoway's ``mlabformat(fmt)`` draws.
 
         Measured 23sep2026 from twoway's SVG: ``mlabformat(%9.2f)`` labels
         22 as 22.00, ``%9.1fc`` 4099 as 4,099.0 and ``%9.2e`` as 4.10e+03;
         on a string variable, or one carrying value labels, the labels are
-        the same whatever the format; and ``mlabformat(abc)`` is accepted
-        without a word and changes nothing.  A ``%f`` or ``%e`` format, with
-        or without ``c``, is drawn by ``_format_stata_numeric``, which
-        follows Stata's own width fallbacks.  Any other format -- ``%g``,
-        whose significant digits and leading zero Stata sets by the width, a
-        date or string format, or text that is no format -- and any format
-        on a date variable is named once and the labels drawn without it:
-        naming it is how nothing is dropped in silence.
+        the same whatever the format; ``mlabformat(abc)`` is accepted
+        without a word and changes nothing; and a missing value is "." in
+        every format.  A ``%f`` or ``%e`` format, with or without ``c``, is
+        drawn by ``_format_stata_numeric``, which follows Stata's own width
+        fallbacks.  Any other format -- ``%g``, whose significant digits and
+        leading zero Stata sets by the width, a date or string format, or
+        text that is no format -- and any format on a date variable is named
+        once and the labels drawn without it: naming it is how nothing is
+        dropped in silence.
 
         The column is keyed by the variable AND the format: the saved page
         shares one source among its layers, and a column keyed by the
@@ -4988,20 +5031,18 @@ class GlyphMapper:
             var:         The label variable.
             fmt:         The format, as written.
             default_col: The column the labels come from without the format.
+            values_col:  The column holding the variable's values, when it
+                         is not named after the variable (see
+                         :meth:`_apply_mlabel_opts`'s ``label_col``).
 
         Returns:
             The column to label from: the formatted one, or *default_col*.
         """
-        raw = list(source.data[var])
-        if any(isinstance(v, str) for v in raw):
+        _is_text, _miss = self._mlabel_column_kind(
+            source.data[values_col or var])
+        if _is_text:
             return default_col
-        labelset = getattr(self, "value_label_names", {}).get(var, "")
-        vlabels = (getattr(self, "value_labels", {}).get(labelset, {})
-                   if labelset else {})
-        if not vlabels:
-            _cand = getattr(self, "value_labels", {}).get(var, {})
-            vlabels = _cand if isinstance(_cand, dict) else {}
-        if vlabels:
+        if self._mlabel_value_labels(var):
             return default_col
         if getattr(self, "date_vars", {}).get(var):
             _dash_warn_once(
@@ -5022,9 +5063,144 @@ class GlyphMapper:
             return default_col
         col = f"__mlabel__{var}__fmt_{fmt.encode('utf-8').hex()}"
         if col not in source.data:
-            source.data[col] = [_format_stata_numeric(v, fmt).strip()
-                                for v in raw]
+            raw = list(source.data[values_col or var])
+            source.data[col] = ["." if m else
+                                _format_stata_numeric(v, fmt).strip()
+                                for v, m in zip(raw, _miss)]
         return col
+
+    def _mlabel_value_labels(self, var: str) -> "dict[str, str]":
+        """The value labels of *var*, ``{code: text}``, or ``{}``.
+
+        Looked up by the label set's name first -- ``valueLabelNames`` maps
+        the variable to it -- and then by the variable's own name, which is
+        how real jsonio keys ``valueLabels`` (measured: ``jsonio out ...
+        metaprint(vallabs labelnames)`` writes ``{"r": {"0": "Zero"}}`` for
+        a variable ``r`` carrying the label set ``rl``).
+        """
+        labelset = getattr(self, "value_label_names", {}).get(var, "")
+        vlabels = (getattr(self, "value_labels", {}).get(labelset, {})
+                   if labelset else {})
+        if not vlabels:
+            vlabels = getattr(self, "value_labels", {}).get(var, {})
+        return vlabels if isinstance(vlabels, dict) else {}
+
+    @staticmethod
+    def _mlabel_column_kind(col: Any) -> "tuple[bool, np.ndarray]":
+        """``(is_text, missing)`` for a label column, read in one pass.
+
+        *is_text* is True for a column of strings, which is drawn as it is.
+        *missing* is a boolean array marking the missing values of any other
+        column, found by numpy for a numeric or datetime column -- a label
+        column is as long as the data, so it is not walked value by value
+        -- and by :meth:`_mlabel_missing` only for a column of Python
+        objects (datetimes, or numbers mixed with None).
+        """
+        arr = np.asarray(col)
+        n = len(arr)
+        if arr.dtype.kind == "f":
+            return False, np.isnan(arr)
+        if arr.dtype.kind in "iub":
+            return False, np.zeros(n, dtype=bool)
+        if arr.dtype.kind in "mM":
+            return False, np.isnat(arr)
+        if arr.dtype.kind in "US":
+            return True, np.zeros(n, dtype=bool)
+        vals = list(col)
+        if any(isinstance(v, str) for v in vals):
+            return True, np.zeros(n, dtype=bool)
+        return False, np.fromiter((GlyphMapper._mlabel_missing(v)
+                                   for v in vals), dtype=bool, count=n)
+
+    @staticmethod
+    def _mlabel_missing(value: Any) -> bool:
+        """Is *value* a missing label value -- None, NaN or NaT?
+
+        jsonio writes every missing value, ``.`` and ``.a`` to ``.z``
+        alike, as ``"null"``, which the loader reads as NaN; a date column
+        holds NaT.  A string is never missing here: an empty string is a
+        label with no text, which twoway draws as nothing.
+        """
+        if value is None or isinstance(value, str):
+            return value is None
+        try:
+            return bool(pd.isna(value))
+        except (TypeError, ValueError):
+            return False
+
+    @staticmethod
+    def _mlabel_number_text(value: Any) -> str:
+        """*value* as twoway writes an unlabelled value of a labelled
+        variable: the number as Stata expands it into a macro.
+
+        yxview.class draws such a label with ``.value_label
+        `=serset(...)'`` and series.class's ``value_label`` returns the
+        expanded number untouched, which is Stata's %18.0g -- the variable's
+        own display format plays no part.  Measured 23sep2026 (twoway SVG):
+        1234567 is "1234567", -3.25 "-3.25", 0.00001 ".00001", 12345.678
+        "12345.678", 1e15 "1000000000000000", 2.5e-12
+        "2.50000000000e-12", 0.1 ".1" and a float 0.1 ".1000000014901161".
+        So: 16 significant digits after the sign, trailing zeros dropped and
+        no leading zero before the point; exponential when the fixed form
+        would show fewer significant digits than the exponential's twelve
+        (a magnitude below 1e-5, or of 17 digits or more), in the 18
+        characters %18.0g allows a signed value -- 11 decimals, 10 beside a
+        three-digit exponent.  A missing value is ".".
+        """
+        if GlyphMapper._mlabel_missing(value):
+            return "."
+        try:
+            f = float(value)
+        except (TypeError, ValueError):
+            return str(value)
+        if not math.isfinite(f):
+            return "."
+        if f == 0:
+            return "0"
+        sign = "-" if f < 0 else ""
+        a = abs(f)
+        if a.is_integer() and a < 1e16:
+            return sign + str(int(a))
+        exp10 = math.floor(math.log10(a))
+        if exp10 >= 0:
+            digits = exp10 + 1
+            text = (None if digits > 16 else
+                    f"{a:.{16 - digits}f}")
+        else:
+            # Leading zeros after the point; each costs a digit of the 16.
+            text = None if (-exp10 - 1) > 4 else f"{a:.16f}"
+        if text is None:
+            text = f"{a:.11e}"
+            if len(text.split("e")[1]) > 3:      # e+308: one decimal fewer
+                text = f"{a:.10e}"
+            return sign + text
+        if "." in text:
+            text = text.rstrip("0").rstrip(".")
+        if text.startswith("0."):
+            text = text[1:]
+        return sign + text
+
+    @staticmethod
+    def _mlabel_value_text(value: Any, vlabels: "dict[str, str]") -> str:
+        """One value of a value-labelled variable, as twoway labels it.
+
+        A labelled code draws its label, whole; any other value draws its
+        number (:meth:`_mlabel_number_text`), and a missing value ".".
+        Codes are Stata's integers, keyed as jsonio writes them ("0",
+        "-2"); another spelling of the same number ("01", "1.0") is not a
+        code, as it is not in Stata.
+        """
+        if GlyphMapper._mlabel_missing(value):
+            return "."
+        try:
+            f = float(value)
+        except (TypeError, ValueError):
+            return str(value)
+        if math.isfinite(f) and f.is_integer():
+            label = vlabels.get(str(int(f)))
+            if label is not None:
+                return str(label)
+        return GlyphMapper._mlabel_number_text(f)
 
     # ------------------------------------------------------------------
     # Phase 1A plot types
@@ -5160,14 +5336,9 @@ class GlyphMapper:
         Returns:
             The single GlyphRenderer created.
         """
-        # Drop NaN and sort by x for correct line rendering.
-        # The marker-label column is carried across too: it used to be left
-        # behind, so mlabel() on a line plot had to fall back to the
-        # unsorted source, which still holds the rows dropped here.
+        # Drop NaN and sort by x for correct line rendering.  No marker-label
+        # column rides along: twoway draws no mlabel() on a line (below).
         _cols = {xvar: source.data[xvar], yvar: source.data[yvar]}
-        _mlab = _dash_mlabel_names(options)[0]
-        if _mlab and _mlab in source.data and _mlab not in _cols:
-            _cols[_mlab] = source.data[_mlab]
         df = pd.DataFrame(_cols)
         df = df.dropna(subset=[xvar, yvar]).sort_values(xvar)
         sorted_source = ColumnDataSource(df)
@@ -5202,12 +5373,10 @@ class GlyphMapper:
             _line_kwargs["view"] = view
         r = fig.line(**_line_kwargs)
         self._apply_line_opts(r, options)
-        # The SORTED source, so labels cover exactly the rows the
-        # line covers.  (The pairing was already correct with the original
-        # source -- each row carries its own x, y and label together -- but
-        # the unsorted source still holds the NaN rows map_line dropped,
-        # which would label points the line does not draw.)
-        self._apply_mlabel_opts(fig, sorted_source, options, xvar, yvar)
+        # No marker labels: twoway accepts mlabel() on line (and on tsline,
+        # which is drawn here) and draws none, without a note -- measured
+        # 23sep2026 from its SVG.  dash labelled every point.  connected
+        # and rconnected label their MARKERS, through map_scatter.
         fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         return r
 
@@ -5325,7 +5494,7 @@ class GlyphMapper:
                                line_color=border_color, line_width=self.scheme.default_line_width)
             self._apply_line_opts(line_r, options)
 
-        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
+        # No marker labels: twoway draws none on an area (measured).
         return r
 
     def map_bar(
@@ -5505,7 +5674,7 @@ class GlyphMapper:
         y0_base = np.full_like(x_arr, base_val)
 
         # The same rows _masked() kept, as positions, so the caller's other
-        # columns -- an mlabel, a variable hover() names -- can ride along.
+        # columns -- a variable hover() names -- can ride along.
         _spike_sel = self._masked_index(source, view, xvar, yvar)
         seg_source = ColumnDataSource(self._carry_cols(source, {
             "x0": x_arr, "y0": y0_base,
@@ -5519,7 +5688,7 @@ class GlyphMapper:
         # No view here: seg_source already holds only the selected rows.
         r = fig.segment(**_seg_kwargs)
         self._apply_line_opts(r, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, yvar)
+        # No marker labels: twoway draws none on a spike (measured).
         return r
 
     # ------------------------------------------------------------------
@@ -7357,9 +7526,6 @@ class GlyphMapper:
             v: np.asarray(source.data[v], dtype=float)[_ord]
             for v in (xvar, y1var, y2var)
         }
-        for _extra in (_dash_mlabel_names(options)[0],):
-            if _extra and _extra in source.data and _extra not in _cols:
-                _cols[_extra] = [source.data[_extra][_i] for _i in _ord]
         source = ColumnDataSource(_cols)
         view = None
 
@@ -7371,7 +7537,7 @@ class GlyphMapper:
             _varea_kwargs["view"] = view
         r = fig.varea(**_varea_kwargs)
         self._apply_fill_opts(r, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
+        # No marker labels: twoway draws none on rarea (measured).
         return [r]
 
     def map_rbar(
@@ -7450,7 +7616,7 @@ class GlyphMapper:
         self._apply_fill_opts(r, options)
         # After bfcolor/blcolor, so blcolor keeps priority for the line.
         self._apply_line_opts(r, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
+        # No marker labels: twoway draws none on rbar (measured).
         return [r]
 
     def map_rspike(
@@ -7488,7 +7654,7 @@ class GlyphMapper:
             _rseg_kwargs["view"] = view
         r = fig.segment(**_rseg_kwargs)
         self._apply_line_opts(r, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
+        # No marker labels: twoway draws none on rspike (measured).
         return [r]
 
     def map_rcap(
@@ -7538,9 +7704,9 @@ class GlyphMapper:
 
         _x0_col = f"{xvar}_x0_cap"
         _x1_col = f"{xvar}_x1_cap"
-        # The caller's other columns ride along -- the marker-label column,
-        # and any variable hover() names.  The source keeps every row here
-        # (see above), so they are carried whole.
+        # The caller's other columns ride along -- any variable hover()
+        # names.  The source keeps every row here (see above), so they are
+        # carried whole.
         cap_source = ColumnDataSource(self._carry_cols(source, {
             xvar: x_arr, y1var: y1_arr, y2var: y2_arr,
             _x0_col: x_arr - cap_hw, _x1_col: x_arr + cap_hw,
@@ -7566,7 +7732,7 @@ class GlyphMapper:
         top_cap = fig.segment(**_top_kwargs)
         for seg in (spine, bot_cap, top_cap):
             self._apply_line_opts(seg, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
+        # No marker labels: twoway draws none on rcap (measured).
         return [spine, bot_cap, top_cap]
 
     def map_rline(
@@ -7606,11 +7772,6 @@ class GlyphMapper:
             v: np.asarray(source.data[v], dtype=float)[_ord]
             for v in (xvar, y1var, y2var)
         }
-        # Any other column the layer needs -- an mlabel is not numeric, so it
-        # rides the same row order rather than going through _masked.
-        for _extra in (_dash_mlabel_names(options)[0],):
-            if _extra and _extra in source.data and _extra not in _cols:
-                _cols[_extra] = [source.data[_extra][_i] for _i in _ord]
         source = ColumnDataSource(_cols)
         view = None
 
@@ -7628,7 +7789,8 @@ class GlyphMapper:
         r2 = fig.line(**_rl2_kwargs)
         self._apply_line_opts(r1, options)
         self._apply_line_opts(r2, options)
-        self._apply_mlabel_opts(fig, source, options, xvar, y2var)
+        # No marker labels: twoway draws none on rline or tsrline, which is
+        # drawn here (measured).
         return [r1, r2]
 
     def map_rconnected(
@@ -7654,6 +7816,12 @@ class GlyphMapper:
 
         Returns:
             List of four renderers [lower_line, lower_scatter, upper_line, upper_scatter].
+
+        ``mlabel()`` labels both ends, as twoway does ("the same marker
+        label would be used to label both lines", twoway_rconnected.sthlp;
+        measured, twenty labels for ten observations): each map_scatter
+        labels its own end, once.  map_line draws no labels -- it used to,
+        so every end was labelled twice, one label over the other.
         """
         return [
             self.map_line(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
@@ -7874,6 +8042,13 @@ class GlyphMapper:
             self._apply_line_opts(seg, options)
         for dot in (bot_dot, top_dot):
             self._apply_marker_opts(dot, options)
+        # Both ends are labelled, as twoway labels them ("the same marker
+        # label would be used to label both ends of the spike",
+        # twoway_rcapsym.sthlp; measured, twenty labels for ten
+        # observations, and an end that is missing unlabelled on its own).
+        # dash labelled the top end only.  One LabelSet per end, both over
+        # the caller's source, as the top one always was.
+        self._apply_mlabel_opts(fig, source, options, xvar, y1var)
         self._apply_mlabel_opts(fig, source, options, xvar, y2var)
         return [spine, bot_cap, top_cap, bot_dot, top_dot]
 
@@ -8157,15 +8332,40 @@ class GlyphMapper:
             y2var: source.data[y2var],
             x2var: source.data[x2var],
         })
+        coords = list(clean.columns)
+        # The marker-label values ride along, under a name of their own (a
+        # variable called x or y must not become the points), and a missing
+        # label never decides which observations are drawn.
+        _lab = _dash_mlabel_names(options)[0]
+        _has_lab = bool(_lab) and _lab in source.data
+        if _has_lab:
+            clean["__mlabel_values__"] = list(source.data[_lab])
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
-        clean = clean.dropna()
+        clean = clean.dropna(subset=coords)
 
         # Concatenate both endpoint sets into one scatter source
         x_all = np.concatenate([clean[x1var].values, clean[x2var].values])
         y_all = np.concatenate([clean[y1var].values, clean[y2var].values])
-        pc_source = ColumnDataSource({"x": x_all.tolist(), "y": y_all.tolist()})
+        _pc_cols = {"x": x_all.tolist(), "y": y_all.tolist()}
+        # The label goes at the FIRST point only -- twoway: "By default, the
+        # labels are placed at ... the point defined by y1var and x1var"
+        # (twoway_pcarrow.sthlp); measured on pcscatter, ten labels for ten
+        # observations, every one at (y1, x1).  The labels ride the markers'
+        # own source, so a filter redraw refreshes them with the markers; a
+        # second point's label position is NaN, which BokehJS draws nothing
+        # at.  dash drew no pcscatter label at all.
+        if _has_lab:
+            _n = len(clean)
+            _nan = np.full(_n, np.nan)
+            _pc_cols["__mlabel_x__"] = np.concatenate(
+                [clean[x1var].to_numpy(dtype=float), _nan])
+            _pc_cols["__mlabel_y__"] = np.concatenate(
+                [clean[y1var].to_numpy(dtype=float), _nan])
+            _labs = list(clean["__mlabel_values__"])
+            _pc_cols["__mlabel_values__"] = _labs + _labs
+        pc_source = ColumnDataSource(_pc_cols)
 
         _pcsc_kwargs: dict = dict(source=pc_source,
                                    size=self.scheme.default_marker_size(color_idx),
@@ -8174,7 +8374,38 @@ class GlyphMapper:
         # No view here: pc_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_pcsc_kwargs)
         self._apply_marker_opts(r, options)
+        self._apply_mlabel_opts(fig, pc_source, options, "__mlabel_x__",
+                                "__mlabel_y__", label_col="__mlabel_values__")
         return [r]
+
+    def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
+                             x1var: str, y2var: str, x2var: str,
+                             options: "dict[str, str]",
+                             view=None) -> "pd.DataFrame":
+        """The rows a paired-coordinate arrow layer draws, as a frame.
+
+        Its four coordinates and, when ``mlabel()`` names a column the data
+        has, that column too, so the labels are drawn from the very rows the
+        arrows are.  Masked by the layer's view BEFORE a row is dropped (the
+        view's filter is sized to the caller's source, and Bokeh applies it
+        by position), and a row is dropped for a missing COORDINATE only: a
+        missing label is not a missing observation.  A repeated coordinate
+        (``pcarrow y x y x``) is one column.
+        """
+        clean = pd.DataFrame({
+            y1var: source.data[y1var],
+            x1var: source.data[x1var],
+            y2var: source.data[y2var],
+            x2var: source.data[x2var],
+        })
+        coords = list(clean.columns)
+        _lab = _dash_mlabel_names(options)[0]
+        if _lab and _lab in source.data and _lab not in clean.columns:
+            clean[_lab] = list(source.data[_lab])
+        _pc_sel = self._view_mask(view, len(clean))
+        if _pc_sel is not None:
+            clean = clean[_pc_sel]
+        return clean.dropna(subset=coords)
 
     def map_pcarrow(
         self,
@@ -8210,16 +8441,8 @@ class GlyphMapper:
         # built below is shorter once rows with missing values go, and Bokeh
         # applies a mask by position -- so attaching the view to the rebuilt
         # source selected the wrong observations.
-        clean = pd.DataFrame({
-            y1var: source.data[y1var],
-            x1var: source.data[x1var],
-            y2var: source.data[y2var],
-            x2var: source.data[x2var],
-        })
-        _pc_sel = self._view_mask(view, len(clean))
-        if _pc_sel is not None:
-            clean = clean[_pc_sel]
-        clean = clean.dropna()
+        clean = self._pc_clean_with_label(source, y1var, x1var, y2var, x2var,
+                                          options, view)
         pc_source = ColumnDataSource(clean)
 
         color = self.scheme.default_color(color_idx, "pcarrow")
@@ -8265,6 +8488,10 @@ class GlyphMapper:
         if _heads:
             fig.center = list(fig.center) + _heads
 
+        # Labels at the tail, (x1, y1), where twoway puts them without
+        # headlabel (twoway_pcarrow.sthlp; measured, ten labels, all at the
+        # first point).  dash drew no pcarrow label at all.
+        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var)
         return [seg]
 
     def map_pcbarrow(
@@ -8301,16 +8528,8 @@ class GlyphMapper:
         # built below is shorter once rows with missing values go, and Bokeh
         # applies a mask by position -- so attaching the view to the rebuilt
         # source selected the wrong observations.
-        clean = pd.DataFrame({
-            y1var: source.data[y1var],
-            x1var: source.data[x1var],
-            y2var: source.data[y2var],
-            x2var: source.data[x2var],
-        })
-        _pc_sel = self._view_mask(view, len(clean))
-        if _pc_sel is not None:
-            clean = clean[_pc_sel]
-        clean = clean.dropna()
+        clean = self._pc_clean_with_label(source, y1var, x1var, y2var, x2var,
+                                          options, view)
         pc_source = ColumnDataSource(clean)
 
         color = self.scheme.default_color(color_idx, "pcbarrow")
@@ -8346,6 +8565,10 @@ class GlyphMapper:
             )
             fig.add_layout(arrow)
 
+        # Labels at the first point, (x1, y1), as twoway labels pcbarrow
+        # without headlabel (measured, ten labels, all at the first point).
+        # dash drew no pcbarrow label at all.
+        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var)
         return [seg]
 
     def map_pccapsym(
@@ -8431,9 +8654,11 @@ class GlyphMapper:
                            marker=self.scheme.default_symbol(color_idx),
                            size=self.scheme.default_marker_size(color_idx),
                            fill_color=mark_color, line_color=mark_color)
-        _line_only = ("lcolor", "lwidth", "lpattern", "lalpha")
-        self._apply_marker_opts(
-            dots, {k: v for k, v in options.items() if k not in _line_only})
+        # The line options never reach the markers: _apply_marker_opts
+        # reads the outline from mlcolor()/mlwidth() alone, on every type
+        # (this mapper used to filter lcolor()/lwidth()/lalpha() out itself,
+        # the only one that did).
+        self._apply_marker_opts(dots, options)
 
         self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var)
         return [seg, dots]
@@ -8708,6 +8933,11 @@ class GlyphMapper:
         x_arr = np.array(source.data[xvar], dtype=float)
         y1_arr = np.array(source.data[y1var], dtype=float)
         y2_arr = np.array(source.data[y2var], dtype=float)
+        # The marker-label values, when mlabel() names a column the data
+        # has; stacked below exactly as the points are.
+        _lab = _dash_mlabel_names(options)[0]
+        lab_vals = (list(source.data[_lab])
+                    if _lab and _lab in source.data else None)
 
         # Masked by the layer's own view BEFORE stacking.  The source built
         # below holds TWO entries per observation, so the caller's row mask
@@ -8721,16 +8951,30 @@ class GlyphMapper:
             x_arr = x_arr[_rs_sel]
             y1_arr = y1_arr[_rs_sel]
             y2_arr = y2_arr[_rs_sel]
+            if lab_vals is not None:
+                lab_vals = [v for v, keep in zip(lab_vals, _rs_sel) if keep]
 
         # Interleave both y-boundary points at the same x
         x_all = np.concatenate([x_arr, x_arr])
         y_all = np.concatenate([y1_arr, y2_arr])
         mask = ~(np.isnan(x_all) | np.isnan(y_all))
 
-        rs_source = ColumnDataSource({
+        _rs_cols = {
             "x": x_all[mask].tolist(),
             "y": y_all[mask].tolist(),
-        })
+        }
+        # Both ends are labelled, as twoway labels them ("the same marker
+        # label would be used to label both points", twoway_rscatter.sthlp;
+        # measured, twenty labels for ten observations, a missing end
+        # unlabelled on its own) -- so the labels ride the stacked points,
+        # each label beside its own marker, from the one source the markers
+        # are drawn from.  dash drew no rscatter label at all.  The column
+        # is named for itself, not for the variable: a variable called x
+        # or y must not replace the points.
+        if lab_vals is not None:
+            _rs_cols["__mlabel_values__"] = [
+                v for v, keep in zip(lab_vals + lab_vals, mask) if keep]
+        rs_source = ColumnDataSource(_rs_cols)
         _rs_kwargs: dict = dict(source=rs_source,
                                  size=self.scheme.default_marker_size(color_idx),
                                  color=self.scheme.default_color(color_idx, "scatter"),
@@ -8738,6 +8982,8 @@ class GlyphMapper:
         # No view here: rs_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_rs_kwargs)
         self._apply_marker_opts(r, options)
+        self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
+                                label_col="__mlabel_values__")
         return [r]
 
     def map_mspline(

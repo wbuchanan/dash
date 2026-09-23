@@ -1195,15 +1195,14 @@ in every other linked graph.
 {title:Marker Label Options}
 
 {pstd}
-Any plot layer that renders individual data points supports marker label
-annotations.  These options apply to the per-plot specification (not to
-{cmd:dash build} options).
+Marker labels are drawn on the plot types {cmd:twoway} draws them on, at
+the places {cmd:twoway} draws them (measured against {cmd:twoway}'s own
+pictures); see {it:Where labels are drawn} below.  These options apply to
+the per-plot specification (not to {cmd:dash build} options).
 
 {synoptset 28}{...}
-{synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}annotate each observation with
-    the value of {it:varname}; applies to scatter, line, connected, bar,
-    spike, dot, dropline, and all range plot types (rspike, rcap, rline,
-    rarea, rbar, rcapsym){p_end}
+{synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}label each observation with
+    the value of {it:varname}, on the plot types listed below{p_end}
 {synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text{p_end}
 {synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}size keyword or number; e.g.
     {cmd:small}, {cmd:medium}, {cmd:large}{p_end}
@@ -1218,10 +1217,14 @@ annotations.  These options apply to the per-plot specification (not to
     counter-clockwise: one of Stata's anglestyles ({cmd:horizontal},
     {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}, {cmd:forty_five},
     ...) or a number of degrees from -360 to 360.  A number outside that
-    range is refused where {cmd:twoway} refuses it, on the plot types
-    {cmd:twoway} draws marker labels on; a name that is not an anglestyle
-    is reported and the label drawn horizontal, as {cmd:twoway} notes it
-    {p_end}
+    range is refused where {cmd:twoway} refuses it -- {cmd:scatter},
+    {cmd:connected}, {cmd:bar}, {cmd:dot}, {cmd:dropline}, {cmd:rcapsym},
+    {cmd:rconnected}, {cmd:rscatter}, {cmd:pcscatter}, {cmd:pccapsym} and
+    {cmd:scatteri}.  On {cmd:pcarrow} and {cmd:pcbarrow} {cmd:twoway}
+    prints that the angle is out of range but draws the arrows, without
+    their labels; {cmd:dash} reports it and draws the labels horizontal.
+    A name that is not an anglestyle is reported and the label drawn
+    horizontal, as {cmd:twoway} notes it{p_end}
 {synopt:{cmdab:mlabf:ormat(}{it:%fmt}{cmd:)}}display format of numeric
     labels.  A {cmd:%f} or {cmd:%e} format, with or without {cmd:c}, is
     drawn as Stata draws it: {cmd:mlabformat(%9.1fc)} labels 4099 as
@@ -1232,7 +1235,46 @@ annotations.  These options apply to the per-plot specification (not to
 {synoptline}
 
 {pstd}
-For range plot types, labels are placed at the upper boundary (y2 variable).
+{ul:Where labels are drawn.}  {cmd:scatter}, {cmd:connected}, {cmd:bar},
+{cmd:dot} and {cmd:dropline} label each point.  {cmd:rcapsym},
+{cmd:rconnected} and {cmd:rscatter} label both ends of each range, as
+{cmd:twoway} does, and an end that is missing is left unlabelled on its
+own.  {cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow} and {cmd:pcbarrow}
+label the first point, ({it:y1var}, {it:x1var}) -- the tail of an arrow.
+{cmd:twoway}'s {cmd:headlabel}, which moves those labels to the second
+point, is not implemented: {cmd:dash} names it in the note and draws the
+labels at the first point.  A paired-coordinate observation with a missing
+coordinate is not drawn at all, marker or label, where {cmd:twoway}, when
+only the second point is missing, still labels the first point (and marks
+it, on {cmd:pcscatter} and {cmd:pccapsym}).  {cmd:scatteri} and
+{cmd:pcarrowi} take their labels from the command line; see
+{help dash##plottypes:Plot types}.
+
+{pstd}
+{cmd:line}, {cmd:spike}, {cmd:area}, {cmd:rarea}, {cmd:rbar}, {cmd:rspike},
+{cmd:rcap}, {cmd:rline}, {cmd:pcspike}, {cmd:tsline}, {cmd:tsrline}, the
+fits and smooths ({cmd:lfit}, {cmd:qfit}, {cmd:fpfit}, {cmd:lowess},
+{cmd:lpoly}, {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci}, {cmd:lpolyci}),
+{cmd:histogram}, {cmd:kdensity} and {cmd:function} draw no marker labels:
+{cmd:twoway} accepts {cmd:mlabel()} on them and draws nothing, without a
+note, and so does {cmd:dash}.  A variable that does not exist is refused,
+r(111), as {cmd:twoway} refuses it, except on {cmd:histogram} and
+{cmd:function}, where {cmd:twoway} never reads the option.  On
+{cmd:mspline} and {cmd:mband} {cmd:twoway} refuses {cmd:mlabel()} -- "too
+many variables specified", r(103) -- and so does {cmd:dash}.
+
+{pstd}
+{ul:What a label says.}  A string variable is drawn as it is.  A numeric
+variable with value labels is labelled with its value labels, whatever the
+display format or {cmd:mlabformat()} says, and a value with no label with
+its number as {cmd:twoway} writes it ({cmd:2}, {cmd:.5}), not in the
+display format.  A date variable is labelled with its dates (a value label
+attached to one is not read), and any other numeric variable with its
+values, in its display format where {cmd:dash} reproduces that format.  A
+missing value is drawn as {cmd:.}; {cmd:twoway} draws an extended missing
+value, {cmd:.a} to {cmd:.z}, as its value label or its name, which
+{cmd:dash} cannot do, because the data it is handed carry every missing
+value alike.
 
 {pstd}
 {it:Example:}
@@ -1744,6 +1786,14 @@ has never named them.
 {pstd}
 Stata's {cmd:color%alpha} notation works too, so {cmd:mcolor(red%50)} and
 {cmd:mcolor(red) malpha(50)} are the same thing.
+
+{pstd}
+The line options {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lalpha()} style a
+layer's lines -- a connecting line, a drop, a spike -- and never its
+markers, as in {cmd:twoway}: a marker's outline is {cmd:mlcolor()} and
+{cmd:mlwidth()}, and {cmd:color()} colours markers and lines alike.  An
+unknown {cmd:lcolor()} or {cmd:lwidth()} name is still reported on a plot
+with no line, as {cmd:twoway} notes it there.
 
 {pstd}
 {it:Example:}

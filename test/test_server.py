@@ -1982,7 +1982,11 @@ class TestServerMlabel:
 
 
 class TestServerMlabelNonScatter:
-    """mlabel must work for line, connected, and dot plot types in server mode."""
+    """mlabel() in server mode: drawn on the plot types twoway labels --
+    connected, dot and dropline here -- and on no type it leaves unlabelled:
+    line, tsline, rspike, rline and rbar draw no marker label in twoway
+    (measured 23sep2026 from its SVG; test_marker_label_parity.py has every
+    type in both modes).  Those five asserted a LabelSet until then."""
 
     def _exec_and_collect(self, dr_module, df, spec, mod_name):
         """Build and exec make_document, collecting all document objects."""
@@ -2020,8 +2024,8 @@ class TestServerMlabelNonScatter:
                 try: os.unlink(p)
                 except OSError: pass
 
-    def test_mlabel_in_line_produces_labelset(self, dr_module, auto_df):
-        """line with mlabel() must produce a LabelSet annotation in the document."""
+    def test_mlabel_in_line_draws_no_labelset(self, dr_module, auto_df):
+        """line with mlabel(): twoway draws no marker label, and neither does dash."""
         from bokeh.models import LabelSet
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "line", "yvar": "mpg", "xvar": "weight",
@@ -2029,8 +2033,8 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmline")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
-            "server-mode line with mlabel() must produce a LabelSet annotation"
+        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode line with mlabel() must draw no LabelSet (twoway draws none)"
 
     def test_mlabel_in_connected_produces_labelset(self, dr_module, auto_df):
         """connected with mlabel() must produce a LabelSet annotation in the document."""
@@ -2056,8 +2060,8 @@ class TestServerMlabelNonScatter:
         assert any(isinstance(o, LabelSet) for o in all_objs), \
             "server-mode dot with mlabel() must produce a LabelSet annotation"
 
-    def test_mlabel_in_tsline_produces_labelset(self, dr_module, auto_df):
-        """tsline with mlabel() must produce a LabelSet annotation in the document."""
+    def test_mlabel_in_tsline_draws_no_labelset(self, dr_module, auto_df):
+        """tsline with mlabel(): twoway draws no marker label, and neither does dash."""
         from bokeh.models import LabelSet
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "tsline", "yvar": "mpg", "xvar": "weight",
@@ -2065,8 +2069,8 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmtsline")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
-            "server-mode tsline with mlabel() must produce a LabelSet annotation"
+        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode tsline with mlabel() must draw no LabelSet (twoway draws none)"
 
     def test_mlabel_in_dropline_produces_labelset(self, dr_module, auto_df):
         """dropline with mlabel() must produce a LabelSet annotation in the document."""
@@ -2080,8 +2084,8 @@ class TestServerMlabelNonScatter:
         assert any(isinstance(o, LabelSet) for o in all_objs), \
             "server-mode dropline with mlabel() must produce a LabelSet annotation"
 
-    def test_mlabel_on_rspike_produces_labelset(self, dr_module, auto_df):
-        """rspike with mlabel() must produce a LabelSet in the document."""
+    def test_mlabel_on_rspike_draws_no_labelset(self, dr_module, auto_df):
+        """rspike with mlabel(): twoway draws no marker label, and neither does dash."""
         from bokeh.models import LabelSet
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rspike", "yvar1": "mpg", "yvar2": "price", "xvar": "weight",
@@ -2089,11 +2093,11 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrspike_mlab")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
-            "server-mode rspike with mlabel() must produce a LabelSet"
+        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode rspike with mlabel() must draw no LabelSet (twoway draws none)"
 
-    def test_mlabel_on_rline_produces_labelset(self, dr_module, auto_df):
-        """rline with mlabel() must produce a LabelSet in the document."""
+    def test_mlabel_on_rline_draws_no_labelset(self, dr_module, auto_df):
+        """rline with mlabel(): twoway draws no marker label, and neither does dash."""
         from bokeh.models import LabelSet
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rline", "yvar1": "mpg", "yvar2": "price", "xvar": "weight",
@@ -2101,11 +2105,11 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrline_mlab")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
-            "server-mode rline with mlabel() must produce a LabelSet"
+        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode rline with mlabel() must draw no LabelSet (twoway draws none)"
 
-    def test_mlabel_on_rbar_produces_labelset(self, dr_module, auto_df):
-        """rbar with mlabel() must produce a LabelSet in the document."""
+    def test_mlabel_on_rbar_draws_no_labelset(self, dr_module, auto_df):
+        """rbar with mlabel(): twoway draws no marker label, and neither does dash."""
         from bokeh.models import LabelSet
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rbar", "yvar1": "mpg", "yvar2": "price", "xvar": "weight",
@@ -2113,8 +2117,8 @@ class TestServerMlabelNonScatter:
             "graph_options": {"name": "g1"},
         }])
         all_objs = self._exec_and_collect(dr_module, auto_df, spec, "_tmrbar_mlab")
-        assert any(isinstance(o, LabelSet) for o in all_objs), \
-            "server-mode rbar with mlabel() must produce a LabelSet"
+        assert not any(isinstance(o, LabelSet) for o in all_objs), \
+            "server-mode rbar with mlabel() must draw no LabelSet (twoway draws none)"
 
 
 class TestServerPerGraphFilter:

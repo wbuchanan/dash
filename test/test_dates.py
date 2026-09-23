@@ -759,7 +759,13 @@ class TestFacetAndMarkerLabels:
         dr = _renderer(spec, data, tmp_path)
         fig = dr._build_figures()["g1"]
         labels = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert labels and labels[0].text == "y"
+        # The values as they are, not dates.  (They are drawn from a column
+        # derived beside the variable's -- every numeric label is, so a
+        # missing value reads "." and a served filter's redraw keeps the
+        # column -- rather than from the variable's own column.)
+        assert labels
+        texts = list(labels[0].source.data[labels[0].text])
+        assert texts == [0.0, 1.0, 2.0, 3.0], texts
 
 
 class TestAMissingDateDoesNotBreakAFilteredPage:

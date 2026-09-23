@@ -400,15 +400,21 @@ class TestMlabelIsDrawnExactlyAsTheSavedDashboardDrawsIt:
             "dashboard draws %r" % (ptype, std, srv)
         )
 
-    @pytest.mark.parametrize("ptype", ["line", "connected", "dot", "dropline",
-                                       "tsline", "scatter", "bar", "spike"])
+    # line, tsline and spike were listed here too; twoway draws no marker
+    # label on them (measured 23sep2026; test_marker_label_parity.py), so
+    # they now draw none in either mode, which the parity test above holds.
+    @pytest.mark.parametrize("ptype", ["connected", "dot", "dropline",
+                                       "scatter", "bar", "pccapsym",
+                                       "pcscatter", "pcarrow", "pcbarrow"])
     def test_a_labelled_layer_is_labelled_once(self, tmp_path, ptype):
-        """The specific shape of the defect: one layer, two LabelSets."""
+        """The specific shape of the defect: one layer, two LabelSets.
+
+        Counted as LabelSets rather than by the column they draw: rscatter
+        and pcscatter keep their labels under a column of their own."""
         spec = make_spec([plot_for(ptype, {"mlabel": "foreign"})])
         srv = label_texts(served(tmp_path, spec)[0])
-        assert srv.count("foreign") == 1, (
-            "%s drew %d marker-label sets for one layer" % (ptype,
-                                                            srv.count("foreign"))
+        assert len(srv) == 1, (
+            "%s drew %d marker-label sets for one layer" % (ptype, len(srv))
         )
 
     def test_the_generated_app_has_no_second_mlabel_implementation(self):

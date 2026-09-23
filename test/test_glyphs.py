@@ -108,20 +108,30 @@ class TestMapScatter:
         expected_size = OptionTranslator.translate_msize("large")
         assert glyph.size == expected_size
 
-    def test_scatter_lcolor_sets_line_color(self, fig, cds, gm):
-        """GAP 3.2: lcolor sets marker outline (line_color) on scatter glyph."""
-        renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"lcolor": "red"})
-        glyph = renderer.glyph
-        expected = OptionTranslator.translate_mcolor("red")
-        assert glyph.line_color == expected, \
-            f"scatter lcolor should set line_color; expected {expected}, got {glyph.line_color}"
+    def test_scatter_lcolor_leaves_the_marker_outline(self, fig, cds, gm):
+        """lcolor() is a line option and never reaches a marker.
 
-    def test_scatter_lwidth_sets_line_width(self, fig, cds, gm):
-        """GAP 3.2: lwidth sets marker border width on scatter glyph."""
+        This asserted the opposite (GAP 3.2: "lcolor sets marker outline"),
+        which is not what twoway draws: measured 23sep2026 from its SVG,
+        ``scatter mpg weight, lcolor(red)`` draws every marker exactly as
+        the picture without it; ``mlcolor(red)`` is the outline's option.
+        test_marker_label_parity.py holds the per-type measurements.
+        """
+        base = gm.map_scatter(figure(), cds, "mpg", "weight", {}).glyph
+        renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        assert renderer.glyph.line_color == base.line_color
+        outlined = gm.map_scatter(figure(), cds, "mpg", "weight",
+                                  {"mlcolor": "red"}).glyph
+        assert outlined.line_color == OptionTranslator.translate_mcolor("red")
+
+    def test_scatter_lwidth_leaves_the_marker_outline(self, fig, cds, gm):
+        """lwidth() never widens a marker's outline; mlwidth() does."""
+        base = gm.map_scatter(figure(), cds, "mpg", "weight", {}).glyph
         renderer = gm.map_scatter(fig, cds, "mpg", "weight", {"lwidth": "thick"})
-        glyph = renderer.glyph
-        assert glyph.line_width > 1.0, \
-            f"scatter lwidth 'thick' should set line_width > 1.0, got {glyph.line_width}"
+        assert renderer.glyph.line_width == base.line_width
+        outlined = gm.map_scatter(figure(), cds, "mpg", "weight",
+                                  {"mlwidth": "thick"}).glyph
+        assert outlined.line_width > base.line_width
 
 
 # ================================================================
@@ -920,7 +930,10 @@ class TestMlabelOption:
 
 
 class TestMlabelOnNonScatter:
-    """P6-21b: mlabel works for non-scatter standard plot types via _add_glyph()."""
+    """P6-21b: mlabel() on the non-scatter standard plot types, as twoway
+    draws it: bar and dot label each point; line and spike draw no label
+    (twoway accepts the option there and draws nothing -- measured
+    23sep2026 from its SVG; test_marker_label_parity.py has every type)."""
 
     def _cds_with_label(self, std_df):
         """Return a CDS built from std_df (cols: 'y', 'x') plus a 'lbl' column."""
@@ -929,13 +942,13 @@ class TestMlabelOnNonScatter:
         from bokeh.models import ColumnDataSource
         return ColumnDataSource(df)
 
-    def test_mlabel_on_line(self, fig, std_df):
+    def test_no_mlabel_on_line(self, fig, std_df):
         from bokeh.models import LabelSet
         gm = GlyphMapper()
         src = self._cds_with_label(std_df)
         gm.map_line(fig, src, "y", "x", {"mlabel": "lbl"})
         ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on line should add a LabelSet"
+        assert ls == [], "twoway draws no marker label on a line"
 
     def test_mlabel_on_bar(self, fig, std_df):
         from bokeh.models import LabelSet
@@ -945,13 +958,13 @@ class TestMlabelOnNonScatter:
         ls = [r for r in fig.center if isinstance(r, LabelSet)]
         assert len(ls) >= 1, "mlabel on bar should add a LabelSet"
 
-    def test_mlabel_on_spike(self, fig, std_df):
+    def test_no_mlabel_on_spike(self, fig, std_df):
         from bokeh.models import LabelSet
         gm = GlyphMapper()
         src = self._cds_with_label(std_df)
         gm.map_spike(fig, src, "y", "x", {"mlabel": "lbl"})
         ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1
+        assert ls == [], "twoway draws no marker label on a spike"
 
     def test_mlabel_on_dot(self, fig, std_df):
         from bokeh.models import LabelSet
@@ -963,7 +976,15 @@ class TestMlabelOnNonScatter:
 
 
 class TestMlabelOnRangePlots:
-    """A-59 resolved: mlabel() labels at y2 (top boundary) for range plot types."""
+    """mlabel() on the range plot types, as twoway draws it.
+
+    A-59 once "resolved" this by labelling every range type at y2, which is
+    not what twoway draws.  Measured 23sep2026 from its SVG: rspike, rcap,
+    rline, rarea and rbar draw no marker label at all (rc 0, no note), and
+    rcapsym, rconnected and rscatter label BOTH ends ("the same marker label
+    would be used to label both ends", twoway_rcapsym.sthlp).
+    test_marker_label_parity.py checks every type in both render modes.
+    """
 
     def _range_cds_with_label(self):
         """Return a range CDS with y1, y2, x, and lbl columns."""
@@ -975,59 +996,28 @@ class TestMlabelOnRangePlots:
         })
         return ColumnDataSource(df)
 
-    def test_mlabel_on_rspike(self, fig):
-        """mlabel on rspike adds a LabelSet positioned at y2."""
+    @staticmethod
+    def _ends(fig):
+        """The (y field, labels) each LabelSet on *fig* draws."""
         from bokeh.models import LabelSet
+        return sorted((ls.y, list(ls.source.data[ls.text]))
+                      for ls in fig.center if isinstance(ls, LabelSet))
+
+    @pytest.mark.parametrize("mapper", ["map_rspike", "map_rcap", "map_rline",
+                                        "map_rarea", "map_rbar"])
+    def test_no_mlabel_where_twoway_draws_none(self, fig, mapper):
         src = self._range_cds_with_label()
         gm = GlyphMapper()
-        gm.map_rspike(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on rspike must add LabelSet"
+        getattr(gm, mapper)(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
+        assert self._ends(fig) == [], f"{mapper} drew marker labels"
 
-    def test_mlabel_on_rcap(self, fig):
-        """mlabel on rcap adds a LabelSet positioned at y2."""
-        from bokeh.models import LabelSet
-        src = self._range_cds_with_label()
-        gm = GlyphMapper()
-        gm.map_rcap(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on rcap must add LabelSet"
-
-    def test_mlabel_on_rline(self, fig):
-        """mlabel on rline adds a LabelSet positioned at y2."""
-        from bokeh.models import LabelSet
-        src = self._range_cds_with_label()
-        gm = GlyphMapper()
-        gm.map_rline(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on rline must add LabelSet"
-
-    def test_mlabel_on_rarea(self, fig):
-        """mlabel on rarea adds a LabelSet positioned at y2."""
-        from bokeh.models import LabelSet
-        src = self._range_cds_with_label()
-        gm = GlyphMapper()
-        gm.map_rarea(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on rarea must add LabelSet"
-
-    def test_mlabel_on_rbar(self, fig):
-        """mlabel on rbar adds a LabelSet positioned at y2."""
-        from bokeh.models import LabelSet
-        src = self._range_cds_with_label()
-        gm = GlyphMapper()
-        gm.map_rbar(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on rbar must add LabelSet"
-
-    def test_mlabel_on_rcapsym(self, fig):
-        """mlabel on rcapsym adds a LabelSet positioned at y2."""
-        from bokeh.models import LabelSet
+    def test_mlabel_on_rcapsym_labels_both_ends(self, fig):
+        """One LabelSet per end: at lo and at hi, every observation."""
         src = self._range_cds_with_label()
         gm = GlyphMapper()
         gm.map_rcapsym(fig, src, "lo", "hi", "x", {"mlabel": "lbl"})
-        ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on rcapsym must add LabelSet"
+        labs = ["a", "b", "c", "d", "e"]
+        assert self._ends(fig) == [("hi", labs), ("lo", labs)]
 
     def test_mlabel_absent_no_labelset(self, fig):
         """No mlabel option → no LabelSet added."""

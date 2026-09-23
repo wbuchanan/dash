@@ -1052,6 +1052,32 @@ CORPUS = [
            plot_for("connected", {"mlabel": "mpg", "mlabformat": "%9.0f"})]),
     _case("a format mlabformat() cannot reproduce",
           [_sc(mlabel="mpg", mlabformat="%9.3g")]),
+    # Marker labels where twoway draws them (test_marker_label_parity.py):
+    # both ends of rcapsym, rconnected and rscatter, the first point of the
+    # paired-coordinate types, and the value labels of a labelled variable
+    # (foreign carries `origin' here) -- each drawn one way in both modes.
+    _case("rcapsym with marker labels at both ends",
+          [plot_for("rcapsym", {"mlabel": "rep"})]),
+    _case("rconnected with marker labels at both ends",
+          [plot_for("rconnected", {"mlabel": "rep"})]),
+    _case("rscatter with value-labelled marker labels at both ends",
+          [plot_for("rscatter", {"mlabel": "foreign"})]),
+    _case("pcscatter with marker labels at the first point",
+          [plot_for("pcscatter", {"mlabel": "rep", "mlabangle": "45"})]),
+    _case("pcarrow with value-labelled marker labels",
+          [plot_for("pcarrow", {"mlabel": "foreign"})]),
+    _case("pcbarrow with marker labels", [plot_for("pcbarrow",
+                                                   {"mlabel": "rep"})]),
+    _case("bar with value-labelled marker labels in mlabformat()",
+          [plot_for("bar", {"mlabel": "foreign", "mlabformat": "%9.2f"})]),
+    _case("spike, tsline and rcap with mlabel(), which draw no label",
+          [plot_for("spike", {"mlabel": "rep"}),
+           plot_for("tsline", {"mlabel": "rep"}),
+           plot_for("rcap", {"mlabel": "rep"})]),
+    # The line options style lines and never the markers.
+    _case("scatter and dropline with lcolor() lwidth() lalpha()",
+          [_sc(lcolor="red", lwidth="vthick", lalpha="30"),
+           plot_for("dropline", {"lcolor": "red", "lwidth": "vthick"})]),
     _case("hover()", [_sc()], None, {"hover": "foreign price"}),
     _case("hover() on a bar", [plot_for("bar")], None, {"hover": "foreign"}),
     _case("hover() on a linked graph", bo={"link": "g1 g2"},
