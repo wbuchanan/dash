@@ -281,30 +281,6 @@ def _format_date_value_standalone(value, kind: str) -> str:
     return ts.strftime("%d %b %Y")
 
 
-def _is_datetime_column(source, varname: str) -> bool:
-    """True when *varname* in *source* holds datetime values.
-
-    A datetime64 column fails ``is_numeric_dtype``, and the range and slider
-    filters skipped any column that failed it (commit b25584c, added for
-    string columns) -- so a date range filter produced NO WIDGET at all.
-
-    Args:
-        source:  A ColumnDataSource or mapping.
-        varname: Column name.
-
-    Returns:
-        Whether the column is datetime-like.
-    """
-    try:
-        col = source.data[varname]
-    except (AttributeError, KeyError, TypeError):
-        return False
-    try:
-        return bool(pd.api.types.is_datetime64_any_dtype(pd.Series(col)))
-    except (TypeError, ValueError):
-        return False
-
-
 def _datetime_formatter_for(kind: str):
     """A DatetimeTickFormatter matched to a Stata date kind.
 
@@ -12890,6 +12866,23 @@ def _dash_finite_column(col, allow_datetime=False):
     return arr[~np.isnan(arr)]
 
 
+def _dash_filter_rangeable(column):
+    """Whether *column* can carry a range or slider filter: its type is
+    numeric or datetime -- the test :func:`_dash_filter_widget` applies
+    before it builds one, so the saved page refuses the variables the served
+    app refuses.
+
+    *column* is the variable over the data the filter filters.  One graph's
+    rows cannot answer: a graph whose own if/in selects none has an empty
+    column, and an empty column carries no type (``pd.Series([])`` is
+    object).  A datetime column fails ``is_numeric_dtype`` and is filterable
+    all the same (commit b25584c refused it once).
+    """
+    series = pd.Series(column)
+    return bool(pd.api.types.is_numeric_dtype(series)
+                or pd.api.types.is_datetime64_any_dtype(series))
+
+
 def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                         date_kind="", max_options=None):
     """The one filter widget both modes show for ``filter(varname, type())``.
@@ -17333,36 +17326,57 @@ class DashRenderer:
 
         For each filter spec, creates the appropriate Bokeh widget (Select,
         Slider, or RangeSlider) and a CustomJS callback that re-applies all
-        active filter conditions on every widget change.
+        active filter conditions on every widget change.  Each widget is
+        judged from ``self.df``, the data the filter filters, never from a
+        graph's source.
 
-        Reads:  self.sources, self.kpi_divs, self.agg_source_registry
+        Reads:  self.df, self.sources, self.kpi_divs, self.agg_source_registry
         Writes: self.filter_widgets, self.filter_callbacks
 
         Returns:
             Ordered list of Bokeh widget objects to place in the filter row.
         """
         filter_row_widgets: list = []
-        fsource = None
         # Track filter specs that actually produced a widget+callback, in the
         # same order as self.filter_callbacks.  Specs whose variable is missing
-        # in the data source are skipped and must NOT appear here, otherwise
+        # from the data are skipped and must NOT appear here, otherwise
         # zip(built_filter_specs, filter_callbacks) would pair the wrong spec
         # with the wrong callback and apply incorrect exclude() lists.
         built_filter_specs: list = []
+
+        # The source each callback falls back to writing, _FILTER_JS's
+        # `source': the link group's, else the first one registered.  It
+        # carries the callback and decides nothing about the widget.  Whether
+        # a filter gets a widget, and its type, options and range, are the
+        # data's -- self.df, the frame the snapshot below holds and every
+        # callback masks -- because this source is one graph's rows: under
+        # that graph's own if/in, or when it is a by() panel or the graph
+        # after one, a subset, and it can be empty.  They were read from it:
+        # measured 23sep2026, g1 `if price > 1000000' (no rows) and
+        # filter(price, type(range)) or type(slider) gave the saved page no
+        # widget ("requires numeric data": an empty column has no numeric
+        # type), and a dashboard of KPIs alone, which has no such source,
+        # refused every filter as "not in the data", while the served app,
+        # which reads its whole frame, built each one
+        # (test_filter_widget_data.py).
+        if link_names and link_names[0] in self.sources:
+            fsource = self.sources[link_names[0]]
+        else:
+            fsource = next(iter(self.sources.values()), None)
 
         for fc in filters_cfg:
             fvar    = fc.get("varname", "")
             ftype   = fc.get("type", "dropdown")
             excludes = fc.get("exclude", [])
 
-            if link_names and link_names[0] in self.sources:
-                fsource = self.sources[link_names[0]]
-            else:
-                fsource = next(iter(self.sources.values())) if self.sources else None
-
-            if fsource is None or fvar not in fsource.data:
+            if fvar not in self.df.columns:
                 _dash_warn_filter_missing(fvar)
                 continue
+            if fsource is None:
+                # No graph: the filter recomputes the KPI cards.  The script
+                # writes its `source' when no graph owns it, so it gets one
+                # that nothing draws rather than null.
+                fsource = ColumnDataSource(data={})
 
             # Resolve value labels (standard Stata format or direct-by-varname)
             labelset = self.value_label_names.get(fvar, "")
@@ -17383,7 +17397,7 @@ class DashRenderer:
             # variable is drawn as a range; the spec the page's script
             # filters by must say so too, or it would test a slider's
             # [lo, hi] as a category.
-            _fcol = self.df[fvar] if fvar in self.df.columns else None
+            _fcol = self.df[fvar]
             _eff = _dash_filter_effective_type(
                 ftype, fvar, _fcol, self._limits["filter_options"])
             if _eff != ftype:
@@ -17397,46 +17411,26 @@ class DashRenderer:
                     column=_fcol,
                     max_options=self._limits["filter_options"],
                 )
-            elif ftype == "slider":
-                # Guard: slider requires numeric data.  Mirror the server-side
-                # is_numeric_dtype check so string columns skip gracefully.
-                _sl_col = fsource.data.get(fvar, [])
-                # A datetime64 column is not "numeric" by this test, but it is
-                # perfectly filterable -- it used to be dropped silently.
-                if not (pd.api.types.is_numeric_dtype(pd.Series(_sl_col))
-                        or _is_datetime_column(fsource, fvar)):
+            elif ftype in ("slider", "range"):
+                # A range or slider needs a numeric or date variable: a
+                # string one is skipped with this note, as the served app
+                # skips it -- the variable's type in the data, by the test
+                # the shared widget builder applies.
+                if not _dash_filter_rangeable(_fcol):
                     warnings.warn(
-                        f"dash: filter '{fvar}' type 'slider' requires numeric "
+                        f"dash: filter '{fvar}' type '{ftype}' requires numeric "
                         f"data; skipping widget (use type(dropdown) for string "
                         f"columns).",
                         stacklevel=2,
                     )
                     continue
-                widget, cb = FilterBuilder.build_slider(
+                _build = (FilterBuilder.build_slider if ftype == "slider"
+                          else FilterBuilder.build_range)
+                widget, cb = _build(
                     fvar, fsource, None, exclude_names=excludes,
                     label=flabel,
                     date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
-                    column=self.df[fvar] if fvar in self.df.columns else None,
-                )
-            elif ftype == "range":
-                # Same guard for range slider.
-                _rng_col = fsource.data.get(fvar, [])
-                # A datetime64 column is not "numeric" by this test, but it is
-                # perfectly filterable -- it used to be dropped silently.
-                if not (pd.api.types.is_numeric_dtype(pd.Series(_rng_col))
-                        or _is_datetime_column(fsource, fvar)):
-                    warnings.warn(
-                        f"dash: filter '{fvar}' type 'range' requires numeric "
-                        f"data; skipping widget (use type(dropdown) for string "
-                        f"columns).",
-                        stacklevel=2,
-                    )
-                    continue
-                widget, cb = FilterBuilder.build_range(
-                    fvar, fsource, None, exclude_names=excludes,
-                    label=flabel,
-                    date_kind=getattr(self, "date_vars", {}).get(fvar, ""),
-                    column=self.df[fvar] if fvar in self.df.columns else None,
+                    column=_fcol,
                 )
             else:
                 _dash_warn_filter_type(fvar, ftype)
@@ -17462,7 +17456,9 @@ class DashRenderer:
         # with no filters, 11.47 MB with five. Bokeh serialises a model once
         # and refers to it by id, so a shared source appears once.
         _orig_data: dict = {}
-        if fsource is not None:
+        # Built when a callback will read it; a dashboard whose filters all
+        # failed has none, and the CSV download below builds its own.
+        if built_filter_specs:
             # The WHOLE frame, not the first graph's source.  Under by()
             # that source is one facet and under a graph-level `if' it is
             # the qualified rows; the widgets' categories and bounds and the

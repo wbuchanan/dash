@@ -128,6 +128,7 @@ SURFACES = {
         "bypass": [
             "test/test_security_surface.py::TestIfQualifierLeavesStringLiteralsAlone::test_the_literal_is_unchanged",
             _M + "TestIfQualifierEncodings::test_the_spelling_does_not_get_past_the_whitelist",
+            "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_numeric_variable",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
@@ -378,6 +379,8 @@ SURFACES = {
             "test/test_filter_exclude.py::TestTheSavedPageLeavesAnExcludedGraphAlone::test_whatever_order_the_graphs_came_in",
             "test/test_filter_exclude.py::TestTheSavedPageLeavesAnExcludedGraphAlone::test_a_graph_after_a_by_graph_is_left_alone",
             "test/test_filter_exclude.py::TestTheSavedPageLeavesAnExcludedGraphAlone::test_an_excluded_link_group_is_left_alone",
+            "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_numeric_variable",
+            "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_string_variable_is_refused_by_both",
         ],
         "injection": [
             "test_adversarial.cscript:P2-84",
