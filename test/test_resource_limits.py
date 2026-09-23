@@ -757,6 +757,106 @@ class TestByOnAHighCardinalityVariable:
         assert len(figs) == 3
 
 
+def _widest_rows(namespace, monkeypatch=None):
+    """Wrap *namespace*'s gridplot() so each call records the length of the
+    widest row it is handed; returns the list the lengths go into."""
+    widths = []
+    real = namespace["gridplot"] if isinstance(namespace, dict) else \
+        namespace.gridplot
+
+    def spy(children, *a, **k):
+        widths.append(max((len(r) for r in children if isinstance(r, list)),
+                          default=0))
+        return real(children, *a, **k)
+
+    if isinstance(namespace, dict):
+        namespace["gridplot"] = spy
+    else:
+        monkeypatch.setattr(namespace, "gridplot", spy)
+    return widths
+
+
+class TestByColsCannotOutgrowThePanels:
+    """by(varlist, cols(#)) is bounded by the panels it arranges.
+
+    Nothing bounded # -- not dash.ado, not the parser, not the renderer --
+    and the shared cell resolver padded the last row of panels with None up
+    to # columns before handing it to gridplot(), in both modes.  Measured
+    at 31e76e0, four panels under layout(auto): cols(3,000,000) 0.33 s and
+    28 MB, cols(30,000,000) 1.8 s and 237 MB -- linear, so cols(1000000000)
+    is about a minute and 8 GB for one render, paid again by every served
+    session.  gridplot() skips a None, so the page was the same at every #
+    past the panel count (one row, 1.30 MB): the padding drew nothing.
+    """
+
+    @pytest.mark.parametrize("gopts, n, want", [
+        ({"by": "g, cols(1000000000000)"}, 4, 4),
+        ({"by": "g, cols(5)"}, 4, 4),
+        ({"by": "g, cols(4)"}, 4, 4),
+        ({"by": "g, cols(3)"}, 4, 3),
+        ({"by": "g", "by_cols": "999999999"}, 4, 4),
+        ({"by": "g, cols(0)"}, 4, 2),
+        ({"by": "g, cols(-7)"}, 4, 2),
+        ({"by": "g"}, 9, 3),
+        ({"by": "g"}, 1, 1),
+    ])
+    def test_the_columns_are_at_most_the_panels(self, gopts, n, want):
+        assert dr._dash_facet_cols(gopts, n) == want
+
+    @pytest.mark.parametrize("build", [
+        {"layout": "auto"}, {"layout": "bs"}, {"layout": "bs: g1=12"},
+        {"layout": "auto", "tabs": "A: g1"}, {"layout": "bs", "tabs": "A: g1"},
+    ])
+    def test_the_saved_page_hands_gridplot_the_panels_alone(
+            self, tmp_path, monkeypatch, build):
+        widths = _widest_rows(dr, monkeypatch)
+        spec = _spec([_graph("g1", by="g, cols(1000000)")], build=build)
+        r, _, _ = _standalone(tmp_path, spec, _frame(12, groups=4))
+        assert len([k for k in r.figures if k.startswith("g1")]) == 4
+        assert widths and max(widths) <= 4, (
+            f"gridplot() was handed a row of {max(widths):,} cells for four "
+            f"panels")
+
+    @pytest.mark.parametrize("build", [
+        {"layout": "auto"}, {"layout": "bs"}, {"layout": "auto",
+                                               "tabs": "A: g1"},
+    ])
+    def test_the_served_app_hands_gridplot_the_panels_alone(self, tmp_path,
+                                                            build):
+        from test_adversarial_matrix import _load_app, _session
+        spec = _spec([_graph("g1", by="g, cols(1000000)")], build=build)
+        tag, sp, dp = _write(tmp_path, spec, _frame(12, groups=4))
+        ap = tmp_path / f"rl_app_{tag}.py"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.ServerAppBuilder(sp, dp).build(str(ap))
+        ns = _load_app(ap.read_text(), f"rl_cols_{tag}")
+        widths = _widest_rows(ns)
+        doc = _session(ns)
+        figs = [m for m in _walk(doc) if type(m).__name__ == "figure"]
+        assert len(figs) == 4
+        assert widths and max(widths) <= 4, (
+            f"the app handed gridplot() a row of {max(widths):,} cells for "
+            f"four panels")
+
+    @pytest.mark.parametrize("cols", ["4", "5", "1000000"])
+    def test_a_cols_past_the_panels_draws_one_row_as_it_always_did(
+            self, tmp_path, cols):
+        from bokeh.models import GridPlot
+        spec = _spec([_graph("g1", by=f"g, cols({cols})")])
+        want = [(0, 0), (0, 1), (0, 2), (0, 3)]
+
+        def panels(grids):
+            [g] = [g for g in grids
+                   if all(type(c[0]).__name__ == "figure" for c in g.children)]
+            return [(row, col) for _, row, col in g.children]
+
+        r, _, _ = _standalone(tmp_path, spec, _frame(12, groups=4))
+        assert panels(r._last_layout_root.select({"type": GridPlot})) == want
+        doc, _, _, _ = _served(tmp_path, spec, _frame(12, groups=4))
+        assert panels(doc.select({"type": GridPlot})) == want
+
+
 class TestTheTabAndFilterLimits:
     def test_tabs_past_the_limit_are_dropped_with_a_note(self):
         dr._dash_reset_notes()

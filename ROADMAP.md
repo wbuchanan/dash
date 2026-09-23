@@ -3213,11 +3213,12 @@ Each with a failing test first and a `BUGS.md` entry:
   reads as ONE tab holding g2, so no two-tab dashboard was ever compared;
   fixed in its own commit (`4f6a314`) with a test that it builds two tabs.
 
-Not done here, recorded for later: under a saved `layout(bs)`, a `by()`
-graph's panels ignore `cols()` where the served grid honours it; the
-saved `layout(bs)` page puts the filters above the title where every other
-layout puts them below; the served grid does not copy the saved KPI cells'
-minimum heights.
+Not done here, recorded for later: the saved `layout(bs)` page puts the
+filters above the title where every other layout puts them below; the
+served grid does not copy the saved KPI cells' minimum heights.  A third,
+that under a saved `layout(bs)` a `by()` graph's panels ignored `cols()`
+where the served grid honoured it, was fixed in the commit after this one,
+with an unbounded `cols()` found on the way (both in BUGS.md).
 
 ### Verification, measured
 

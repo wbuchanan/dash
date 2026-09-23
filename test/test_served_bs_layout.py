@@ -39,7 +39,7 @@ import warnings
 
 import pytest
 from bokeh.document import Document
-from bokeh.models import Column, Div, GridBox, GridPlot, Row, Tabs
+from bokeh.models import Column, Div, GridBox, GridPlot, Row, SaveTool, Tabs
 from bokeh.plotting import figure
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -48,7 +48,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from dash_render import DashRenderer
-from test_adversarial_matrix import (_SCATTER, _app_source, _load_app,
+from test_adversarial_matrix import (_DF, _SCATTER, _app_source, _load_app,
                                      _session, _write_inputs)
 
 _SEQ = itertools.count()
@@ -640,6 +640,108 @@ class TestTheServedDocument:
         assert "nosuch" in layout_msgs(built)[0]
         assert layout_msgs(session) == []
         assert _served_cells(doc) == [("g1", 0, 0, 1, 6), ("g2", 1, 0, 1, 12)]
+
+
+# ---------------------------------------------------------------------------
+# A by() graph's cell: its panels in the columns cols() asks for
+# ---------------------------------------------------------------------------
+
+#: A by() variable of four levels.  foreign's two cannot tell cols(2) from
+#: one row, which is how the saved page's one row of panels went unseen.
+_DF_REP = _DF.assign(rep=[1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0])
+
+
+def _saved_by_cell(tmp_path, spec, monkeypatch):
+    """The sub-grid the saved bs page embeds in a grid cell -- the by()
+    graph's -- taken where the renderer hands its components to
+    components(), and found by the root id its cell's markup names."""
+    handed = {}
+    real = dr.components
+
+    def spy(models, *a, **k):
+        handed.update((m.id, m) for m in models)
+        return real(models, *a, **k)
+
+    monkeypatch.setattr(dr, "components", spy)
+    sp, dp = _write_inputs(tmp_path, spec, _DF_REP)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        page = DashRenderer(sp, dp).render()
+    body = page[page.index('<div class="db-container">'):]
+    roots = [root for chunk in body.split(_ROW)[1:]
+             for _, root in _CELL.findall(chunk)]
+    grids = [handed[x] for x in roots if isinstance(handed.get(x), GridPlot)]
+    assert len(grids) == 1, f"{len(grids)} sub-grids in the saved bs grid"
+    return grids[0]
+
+
+def _served_by_cell(tmp_path, spec):
+    """The sub-grid among the served GridBox's cells."""
+    doc = _session(_load_app(_app_source(tmp_path, spec, _DF_REP),
+                             "bs_by_%d" % next(_SEQ)))
+    grids = [m for m, *_ in _served_grid(doc).children
+             if isinstance(m, GridPlot)]
+    assert len(grids) == 1, f"{len(grids)} sub-grids in the served GridBox"
+    return grids[0]
+
+
+def _panels(grid):
+    """A by() cell as the browser draws it: each panel's title with its row
+    and column, the side of the cell its toolbar sits on, and the file its
+    save button writes."""
+    return ([(f.title.text, r, c) for f, r, c in grid.children],
+            grid.toolbar_location,
+            [t.filename for t in grid.toolbar.tools
+             if isinstance(t, SaveTool)])
+
+
+class TestAByGraphsCellHonoursCols:
+    """by(, cols(#)) under layout(bs), in both modes.
+
+    Every other grid lays a by() graph's panels out through
+    _dash_layout_cell, in the columns cols(#) asks for and ceil(sqrt(n))
+    without it: the saved page's grid and its tabs, and every served grid,
+    the layout(bs) GridBox included.  The saved layout(bs) page built a cell
+    of its own, every panel in one row whatever cols() said, with its
+    toolbar on the right where every other grid's sits above.  Measured at
+    31e76e0: by(rep, cols(2)) of four panels drew one row of four on the
+    saved page and two rows of two served; by(foreign, cols(1)) one row of
+    two against a column of two; by(rep) one row of four against two rows
+    of two.
+    """
+
+    @pytest.mark.parametrize("by, layout, where", [
+        ("rep, cols(2)", "bs: g1=12 / g2=6",
+         [(0, 0), (0, 1), (1, 0), (1, 1)]),
+        ("rep, cols(2)", "bs", [(0, 0), (0, 1), (1, 0), (1, 1)]),
+        ("rep, cols(3)", "bs: g2=6 / g1=12",
+         [(0, 0), (0, 1), (0, 2), (1, 0)]),
+        ("rep, cols(1)", "bs: g1=6 g2=6", [(0, 0), (1, 0), (2, 0), (3, 0)]),
+        ("foreign, cols(1)", "bs: g1=12 / g2=6", [(0, 0), (1, 0)]),
+        # No cols(): the default every other grid uses, ceil(sqrt(4)).
+        ("rep", "bs: g1=12 / g2=6", [(0, 0), (0, 1), (1, 0), (1, 1)]),
+    ])
+    def test_the_saved_cell_is_the_served_cell(self, tmp_path, monkeypatch,
+                                               by, layout, where):
+        spec = _spec(["g1", "g2"], layout=layout,
+                     graph_options={"g1": {"by": by}})
+        served = _panels(_served_by_cell(tmp_path, spec))
+        saved = _panels(_saved_by_cell(tmp_path, spec, monkeypatch))
+        assert [(r, c) for _, r, c in served[0]] == where, served
+        assert [(r, c) for _, r, c in saved[0]] == where, saved
+        assert saved == served
+
+    def test_the_cell_still_saves_under_the_graph_s_name(self, tmp_path,
+                                                         monkeypatch):
+        """Laid out by the shared resolver, the cell keeps one toolbar,
+        above its panels as every grid's is, and its save button still
+        writes the whole cell named after the graph -- not the
+        dashboard.png the resolver names a grid everywhere else."""
+        spec = _spec(["g1", "g2"], layout="bs",
+                     graph_options={"g1": {"by": "rep, cols(2)"}})
+        _, side, saves = _panels(_saved_by_cell(tmp_path, spec, monkeypatch))
+        assert saves == ["g1"]
+        assert side == "above"
 
 
 class TestAdversarialServedBs:

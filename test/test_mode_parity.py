@@ -59,6 +59,7 @@ import re
 import sys
 import tempfile
 import warnings
+from unittest import mock
 
 import pandas as pd
 import pytest
@@ -478,11 +479,15 @@ def _tools(fig):
 
 
 def _grid_toolbar(grid):
-    """What a grid's own toolbar holds besides the proxies for its figures'
-    tools: the one save button ``gridplot()`` merges them into, with the
-    file it writes (WP-21).  BokehJS exports the whole grid through it."""
-    return [(type(t).__name__, getattr(t, "filename", None))
-            for t in grid.toolbar.tools if not isinstance(t, ToolProxy)]
+    """A grid's own toolbar: the side of the grid it sits on, and what it
+    holds besides the proxies for its figures' tools -- the one save button
+    ``gridplot()`` merges them into, with the file it writes (WP-21).
+    BokehJS exports the whole grid through it.  The side is compared since
+    a by() graph's cell on the saved layout(bs) page kept its toolbar on
+    the right while the served cell's sat above."""
+    return (grid.toolbar_location,
+            [(type(t).__name__, getattr(t, "filename", None))
+             for t in grid.toolbar.tools if not isinstance(t, ToolProxy)])
 
 
 def _axes(fig):
@@ -713,18 +718,23 @@ _BS_CELL = re.compile(r'db-col-lg-(\d+)[^"]*"><div id="[^"]*" '
                       r'data-root-id="([^"]+)"')
 
 
-def _bs_markup_tree(r, page, figures):
+def _bs_markup_tree(r, page, figures, embedded=None):
     """The saved ``layout(bs)`` page's grid, read from the page itself.
 
     Each ``db-row`` is a Bootstrap row and each ``db-col-lg-N`` cell embeds
-    one component by ``data-root-id``.  A cell is placed where a browser at
-    992px or more puts it: a row starts a new line, and a cell that would
-    carry its line past 12 columns starts the next (flex-wrap).  The result
-    is spelled as ``_layout_tree`` spells a GridBox, so it compares directly
-    with the served grid.
+    one component by ``data-root-id``: a figure, a KPI card, a column of
+    per-facet cards, or a by() graph's sub-grid.  *embedded* is every
+    component the page embeds, by id, as the renderer handed them to
+    ``components()``; the figures and cards alone could not name a sub-grid,
+    which is how a corpus without a by() graph under layout(bs) came about.
+    A cell is placed where a browser at 992px or more puts it: a row starts
+    a new line, and a cell that would carry its line past 12 columns starts
+    the next (flex-wrap).  The result is spelled as ``_layout_tree`` spells
+    a GridBox, so it compares directly with the served grid.
     """
     models = {m.id: m for m in list(r.figures.values())
               + list(r.kpi_divs.values())}
+    models.update(embedded or {})
     body = page[page.index('<div class="db-container">'):]
     cells, line = [], 0
     for chunk in body.split(_BS_ROW)[1:]:
@@ -735,8 +745,8 @@ def _bs_markup_tree(r, page, figures):
             if used + span > 12:
                 line, used = line + 1, 0
             assert root in models, (
-                f"a layout(bs) cell embeds {root}, which is neither a figure "
-                f"nor a KPI card; this reader cannot name it")
+                f"a layout(bs) cell embeds {root}, which the page was not "
+                f"handed; this reader cannot name it")
             cells.append(("at", line, used, 1, span,
                           _layout_tree(models[root], figures)))
             used += span
@@ -751,7 +761,14 @@ def _render_pair(name, spec):
     ``layout(bs)`` markup -- rendered once per corpus entry."""
     if name in _CACHE:
         return _CACHE[name]
-    r, std_w, page = _standalone_page(spec)
+    # A layout(bs) page embeds its components one by one; they are read
+    # where the renderer hands them over, so its markup reader can name
+    # each cell's component.  Every other page embeds one root and never
+    # calls components().
+    with mock.patch.object(dr, "components", wraps=dr.components) as handed:
+        r, std_w, page = _standalone_page(spec)
+    embedded = {m.id: m for call in handed.call_args_list
+                for m in call.args[0]}
     doc, srv_w = _served(spec)
     std_figs, srv_figs = [], []
     root = getattr(r, "_last_layout_root", None)
@@ -759,7 +776,7 @@ def _render_pair(name, spec):
         # No root to walk: the grid is read from the page's markup, and its
         # figures are taken in page order.
         _allowed("layout(bs) is standalone markup")
-        std_tree = _bs_markup_tree(r, page, std_figs)
+        std_tree = _bs_markup_tree(r, page, std_figs, embedded)
     else:
         std_tree = _layout_tree(root, std_figs)
     srv_tree = [_layout_tree(x, srv_figs) for x in doc.roots]
@@ -1082,6 +1099,13 @@ CORPUS = [
           bo={"layout": "bs: k2=3 k1=3 / g2=8 g1=6"},
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])],
           kpis=[_kpi(), _kpi(name="k2", stat="count")]),
+    # A by() graph's cell: rep's three panels in the two columns cols(2)
+    # asks for, with the cell's toolbar above them, in both modes.  The
+    # saved page drew one row of three, its toolbar on the right.
+    _case("layout(bs: ...) with a by(, cols(2)) graph",
+          bo={"layout": "bs: g1=12 / g2=6"},
+          graphs=[("g1", [_sc()], {"by": "rep, cols(2)"}),
+                  ("g2", [plot_for("line")])]),
     # ---- filter() -----------------------------------------------------------
     _case("filter(, type(dropdown))", [_sc()],
           {"filter": "foreign, type(dropdown)"}),

@@ -630,8 +630,8 @@ the grid.  Choosing a tool there chooses it for every figure in the grid,
 and undo, redo and reset act on all of them at once.  Each tab of
 {cmd:tabs()} is a grid with a toolbar of its own, and the panels of a
 {cmd:by()} graph have one of their own as well.  {cmd:layout(bs)} places
-each graph on its own, with its own toolbar beside it; a graph in a tab is
-still part of that tab's grid.
+each graph on its own, with its own toolbar beside it, or above the panels
+of a {cmd:by()} graph; a graph in a tab is still part of that tab's grid.
 
 {pstd}
 {ul:Saving an image.}  The save button writes everything its toolbar
@@ -1072,6 +1072,12 @@ that group.
 {synoptline}
 
 {pstd}
+The panels are arranged the same way wherever the graph is drawn -- in the
+dashboard's grid, in a tab, or in a {cmd:layout(bs)} cell -- and in both
+{cmd:dash build} and {cmd:dash serve}: in {it:#} columns with
+{cmd:cols(}{it:#}{cmd:)}, and otherwise in as many columns as the square
+root of the number of panels, rounded up.  A {cmd:cols()} of more columns
+than there are panels puts them all in one row.
 Value labels are used for facet panel titles when available.
 Multiple by-variables produce composite labels (e.g. "Domestic / 3").
 One graph draws at most 100 panels: over that, the first 100 groups in

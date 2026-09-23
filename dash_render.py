@@ -12699,7 +12699,15 @@ def _dash_kpi_keys(name, kpi_divs):
 
 
 def _dash_facet_cols(gopts, n_panels):
-    """cols(#) from by() first, then the by_cols key, then ceil(sqrt(n))."""
+    """cols(#) from by() first, then the by_cols key, then ceil(sqrt(n)) --
+    and never more columns than there are panels.
+
+    Nothing upstream bounds #, and a column past the last panel draws
+    nothing: gridplot() skips the None the last row is padded with.  The
+    padding was built all the same -- cols(30000000) of four panels took
+    1.8 s and 237 MB, cols(1000000000) about a minute and 8 GB, for one
+    render and again for every served session.
+    """
     n_by = _dash_parse_by((gopts.get("by") or ""), warn=False)[1]
     try:
         n_key = int(gopts.get("by_cols", "0") or 0)
@@ -12708,7 +12716,7 @@ def _dash_facet_cols(gopts, n_panels):
     n = n_by or n_key
     if n <= 0:
         n = min(n_panels, max(1, math.ceil(math.sqrt(n_panels))))
-    return n
+    return max(1, min(n, n_panels))
 
 
 def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
@@ -15907,6 +15915,13 @@ class DashRenderer:
             model_keys.append("__tabs__")
 
         # 2. Grid items — KPIs and non-tabbed graphs
+        _graphs = self.master_spec.get("graphs", [])
+
+        def _gopts_of(name):
+            return next((g.get("graph_options", {}) for g in _graphs
+                         if g.get("graph_options", {}).get("name") == name),
+                        {})
+
         _added: set[str] = set()
         # Figure keys, not registered names -- this is the set the
         # "no graph vanishes" guard is checked against.
@@ -15915,38 +15930,24 @@ class DashRenderer:
             for name, _ in row_spec:
                 if name in _added:
                     continue
-                _kk = _dash_kpi_keys(name, self.kpi_divs)
-                if _kk:
-                    # A KPI registered under one name may own several
-                    # per-facet cards; they travel as one column.
-                    all_models.append(
-                        self.kpi_divs[_kk[0]] if len(_kk) == 1 else
-                        column(*[self.kpi_divs[k] for k in _kk],
-                               sizing_mode="stretch_width"))
-                    model_keys.append(name)
-                    _added.add(name)
+                # One cell per name, through the resolver every other grid
+                # uses in both modes, the served layout(bs) grid included: a
+                # KPI's card or its column of per-facet cards, a graph's
+                # figure, or a faceted graph's panels in a sub-grid that
+                # honours by(, cols(#)), so the user's span arithmetic still
+                # holds.  This path used to build a cell of its own, every
+                # panel in one row whatever cols() said.  Each cell is
+                # embedded on its own and keeps its own toolbar, so its save
+                # button writes the one item it holds, named after it:
+                # g1.png, not a dashboard.png per cell.
+                cell = _dash_layout_cell(name, self.figures, self._facet_map,
+                                         self.kpi_divs, _gopts_of)
+                if cell is None:
                     continue
-                # A faceted graph owns several figures; they go into one cell
-                # as a sub-grid so the user's span arithmetic still holds.
-                # Each cell is embedded on its own and keeps its own toolbar,
-                # so its save button writes the one item it holds, named
-                # after it: g1.png, not a dashboard.png per cell.
-                keys = [k for k in self._resolve_layout_names(name)
-                        if k not in tabbed_keys]
-                if not keys:
-                    continue
-                if len(keys) == 1:
-                    all_models.append(
-                        _dash_name_save(self.figures[keys[0]], name))
-                else:
-                    all_models.append(_dash_name_save(gridplot(
-                        [[self.figures[k] for k in keys]],
-                        sizing_mode="stretch_width",
-                        toolbar_location="right",
-                    ), name))
+                all_models.append(_dash_name_save(cell, name))
                 model_keys.append(name)
                 _added.add(name)
-                _placed_figs.update(keys)
+                _placed_figs.update(self._resolve_layout_names(name))
 
         # 3. Filter widgets
         for fw_idx, widget in enumerate(filter_row_widgets):

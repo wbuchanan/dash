@@ -212,6 +212,8 @@ SURFACES = {
         "exhaustion": [
             "test/test_resource_limits.py::TestByOnAHighCardinalityVariable::test_the_first_groups_in_sort_order_are_kept",
             "test_resource_limits.cscript:RL-06",
+            "test/test_resource_limits.py::TestByColsCannotOutgrowThePanels::test_the_saved_page_hands_gridplot_the_panels_alone",
+            "test/test_resource_limits.py::TestByColsCannotOutgrowThePanels::test_the_served_app_hands_gridplot_the_panels_alone",
         ],
     },
     # name(name[, replace]) on a graph or a KPI.
