@@ -1162,6 +1162,28 @@ program define _dash_fold_bw, sclass
     sreturn local bw ""
 end
 
+// BEGIN shipped schemes (WP-17)
+// ================================================================
+// The one list of what dash can draw by name.
+//
+// `_dash_schemes' are the twenty scheme translations the package ships in
+// schemes/ -- dash_render.py's SchemeParser._BUILTIN_NAMES is the same
+// list, and test/test_scheme_resolution.py holds the two together --
+// and `_dash_themes' are the theme() aliases the renderer maps onto them.
+// _dash_validate_value reads both for the `scheme' kind and
+// _dash_prepare_spec for theme(), so a name is accepted or refused by
+// this list and nowhere else.  Third-party schemes installed in PLUS/s
+// are deliberately not on it and not looked for (WP-05: the letter
+// directories are shared); the help says to copy such a file into the
+// working directory.
+// ================================================================
+program define _dash_shipped_schemes
+    version 16.0
+    c_local _dash_schemes "economist s1color s1manual s1mono s1rcolor s2color s2color8 s2gcolor s2gmanual s2manual s2mono sj stcolor stcolor_alt stgcolor stgcolor_alt stmono1 stmono2 stsj sttrans"
+    c_local _dash_themes  "default clean mono dark economist sj"
+end
+// END shipped schemes (WP-17)
+
 // BEGIN option-validation table (WP-15)
 // ================================================================
 // Option-value validation.
@@ -1200,7 +1222,11 @@ end
 // refused, since dash cannot draw one; varlist: one or more, likewise;
 // byvarlist: the text before the first top-level comma is a varlist, the
 // rest is kept verbatim; format: a numeric display format (the gate is
-// spelled out in _dash_validate_value).  A number that passes a num, int
+// spelled out in _dash_validate_value); scheme (WP-17): a shipped scheme
+// or theme name from _dash_shipped_schemes, case-insensitive (a shipped
+// name may carry the .scheme extension), or a .scheme
+// file in the working directory named bare or with the extension -- no
+// `/', `\' or `..' -- passed through as written.  A number that passes a num, int
 // or pos rule reaches the renderer in one canonical spelling: an int as
 // %21.0f (2.0, 02, +2 and 1E3 -> 2, 2, 2, 1000); a num or pos as written
 // when it is a plain decimal or e-notation Python parses, else as %21.0g
@@ -1231,8 +1257,14 @@ program define _dash_option_rules
     // it even when a later segment or the after-comma part outranks it --
     // and once per graph in _dash_plot, from the g_<opt> accumulators,
     // after an after-comma option has outranked a segment's.
+    // scheme (WP-17): a name the renderer could not resolve used to reach
+    // it with rc 0 and be drawn as s2color under a warning, half applied
+    // when the file existed and was named bare.  Refused here instead, on
+    // the immediate route, on a registered graph and inside a segment
+    // alike, by the same rule `dash build' and `dash serve' apply.
     local graph ///
-        xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist
+        xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
+        scheme=scheme
     c_local _dash_rules_plot  `"`plot'"'
     c_local _dash_rules_graph `"`graph'"'
 end
@@ -1500,6 +1532,57 @@ program define _dash_validate_value, rclass
         }
         local norm `"`vv'"'
         if `hastail' local norm `"`vv', `macval(tail)'"'
+    }
+    else if "`kind'" == "scheme" {
+        // WP-17: a shipped translation or a theme alias, by name and
+        // case-insensitively (a shipped name with or without the .scheme
+        // extension), or a .scheme file in the working directory
+        // named bare (mytheme) or with the extension (mytheme.scheme) --
+        // the lookup dash_render.py's SchemeParser makes, so a name that
+        // passes here resolves there.  A name carrying a path separator
+        // or `..' is refused before any file is looked for; the renderer's
+        // containment stays the second line of defence.  The value goes
+        // through as written: the renderer lower-cases shipped names
+        // itself, and a file name is the user's own.  Nothing outside the
+        // working directory is looked for (third-party schemes in PLUS/s
+        // included: WP-05, the letter directories are shared).
+        _dash_shipped_schemes
+        local lv = lower(`"`macval(tv)'"')
+        // A shipped name written WITH the extension -- scheme(s2color.scheme),
+        // in any case -- is the shipped scheme: the renderer's _resolve_path
+        // reads that spelling from the package's schemes/ too, so no file
+        // in the working directory is needed.  Measured 22sep2026: the
+        // extension form was looked for as a working-directory file only,
+        // and scheme(s2color.scheme) was refused although the renderer
+        // would have drawn it.  The extension is dropped for the list test
+        // only: a theme is not a file and takes no extension, and a name
+        // that is not shipped still needs the file (below).
+        local lbase `"`macval(lv)'"'
+        if substr(`"`macval(lv)'"', -7, .) == ".scheme" {
+            local lbase = substr(`"`macval(lv)'"', 1, strlen(`"`macval(lv)'"') - 7)
+        }
+        local hit = 0
+        foreach c of local _dash_schemes {
+            if `"`macval(lbase)'"' == "`c'" local hit = 1
+        }
+        foreach c of local _dash_themes {
+            if `"`macval(lv)'"' == "`c'" local hit = 1
+        }
+        if !`hit' & `"`macval(tv)'"' != "" {
+            local unsafe = strpos(`"`macval(tv)'"', "/") | ///
+                           strpos(`"`macval(tv)'"', char(92)) | ///
+                           strpos(`"`macval(tv)'"', "..")
+            if !`unsafe' {
+                if substr(`"`macval(lv)'"', -7, .) == ".scheme" {
+                    capture confirm file `"`macval(tv)'"'
+                }
+                else {
+                    capture confirm file `"`macval(tv)'.scheme"'
+                }
+                if !_rc local hit = 1
+            }
+        }
+        if !`hit' local bad "a shipped scheme, a theme, or a .scheme file in the working directory"
     }
     else if "`kind'" == "format" {
         // 1. Character gate: one leading %, then only the characters a
@@ -3070,6 +3153,30 @@ program define _dash_prepare_spec, rclass
         // here sent the user to an option -syntax- does not accept.
         display as error "`cmdname': filterposition() must be 'top' (default) or 'left' (sidebar)."
         exit(198)
+    }
+
+    // ---- validate theme() and scheme() (WP-17) ----
+    // Before anything is written, through the program that gates a
+    // graph-level scheme(): theme() is one of the six aliases, scheme() a
+    // shipped translation, a theme, or a .scheme file in the working
+    // directory.  Measured 22sep2026: scheme(nosuchthing) and
+    // theme(nosuchtheme) went through with rc 0 and a warning and were
+    // drawn as s2color, and a hostile theme() reached the spec (escaped,
+    // but reached it).  The session's c(scheme) is not validated -- it was
+    // not asked for -- and the renderer warns once when it cannot
+    // translate it.  Lengths, not expansions, decide whether a value is
+    // present: these carry the user's own text.
+    local _tlen : length local theme
+    if `_tlen' > 0 {
+        _dash_shipped_schemes
+        local _tsorted : list sort _dash_themes
+        local _tspec : subinstr local _tsorted " " "|", all
+        _dash_validate_value "`cmdname'" "theme" "enum,`_tspec'" `"`macval(theme)'"' ""
+        local theme `"`macval(_dash_vnorm)'"'
+    }
+    local _slen : length local scheme
+    if `_slen' > 0 {
+        _dash_validate_value "`cmdname'" "scheme" "scheme" `"`macval(scheme)'"' ""
     }
 
     // ---- validate link() names ----

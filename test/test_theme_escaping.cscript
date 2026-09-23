@@ -1,4 +1,4 @@
-*! test_theme_escaping.cscript  v1.0
+*! test_theme_escaping.cscript  v1.1
 *! Certification script for theme() as a data input.
 *!
 *! _dash_build assembles the master spec by interpolating locals into a JSON
@@ -31,10 +31,27 @@
 *!
 *! so theme() was the only hole, and this script pins that.
 *!
+*! Restated for ROADMAP WP-17 (22sep2026).  theme() is now gated in
+*! _dash_prepare_spec, before anything is written, as one of the six aliases
+*! dash draws (clean, dark, default, economist, mono, sj): the values above
+*! used to go through with rc 0 and be reported by the renderer as "not a
+*! known theme or scheme", drawn as s2color.  They are now REFUSED in Stata
+*! with one line naming theme(), r(198), no Python traceback and no file
+*! written -- so THM-01..06 assert rc 198 where they asserted rc 0.  The
+*! escaping THM-07 pins is unchanged and still stands behind the gate: the
+*! session scheme and every other string on that line go through
+*! _dash_json_str exactly as before.
+*!
 *! Tests: THM-01 through THM-09
+*!   THM-01..05  a hostile theme() is refused at the gate: rc 198, the
+*!               message names theme(), no traceback, nothing written
+*!   THM-06      theme("a\b") likewise, and the refusal echoes the two
+*!               characters the user wrote, not a backspace
+*!   THM-07      theme() is no longer interpolated raw into the spec
+*!   THM-08..09  an ordinary and an empty theme() still build, rc 0
 *!
 *! Usage:  do test/test_theme_escaping.cscript
-*! Version: 1.0  21sep2026
+*! Version: 1.1  22sep2026
 
 cscript "theme() is escaped like every other spec string" adodir ".."
 
@@ -55,9 +72,12 @@ qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
 
-// Build once with the given theme() value and hand back the return code.
-// A fresh registry each time, so a refused build cannot be masked by a
-// graph left over from the one before.
+// Build once with the given theme() value and hand back the return code,
+// whether the dashboard file was written, and the captured log.  A fresh
+// registry each time, so a refused build cannot be masked by a graph left
+// over from the one before.  The output path is erased first: a tempfile
+// name is reused once the program exits, so a file written by an earlier
+// call would otherwise pass as this call's.
 capture program drop _thm_build
 program define _thm_build, rclass
     args val
@@ -65,48 +85,106 @@ program define _thm_build, rclass
     qui sysuse auto, clear
     dash scatter mpg weight, name(tg1)
     tempfile out
+    capture erase "`out'.html"
+    local logfile "`c(tmpdir)'dash_thm.log"
+    capture log close _thmlog
+    capture erase "`logfile'"
+    log using "`logfile'", name(_thmlog) text replace
     capture noisily dash build, saving("`out'.html") replace nobrowser ///
         theme(`"`val'"')
-    return scalar rc = _rc
+    local rc = _rc
+    log close _thmlog
+    capture confirm file "`out'.html"
+    return scalar written = (_rc == 0)
+    return scalar rc = `rc'
+    return local logfile "`logfile'"
+end
+
+// Count the logical lines of a captured log that carry `needle', with
+// Stata's "> " continuations re-joined first.
+capture mata: mata drop _thm_log_count()
+mata:
+real scalar _thm_log_count(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle)) n = n + 1
+        full = line
+    }
+    if (strpos(full, needle)) n = n + 1
+    fclose(fh)
+    return(n)
+}
+end
+
+// One refused build: rc 198, nothing written, the log names theme() in
+// dash's own words and carries no Python traceback.
+capture program drop _thm_refused
+program define _thm_refused
+    args id
+    local rc      = r(rc)
+    local written = r(written)
+    local logfile "`r(logfile)'"
+    assert `rc' == 198
+    assert `written' == 0
+    mata: st_local("_n_named", strofreal(_thm_log_count(st_local("logfile"), "theme() must be one of")))
+    assert `_n_named' == 1
+    mata: st_local("_n_trace", strofreal(_thm_log_count(st_local("logfile"), "Traceback")))
+    assert `_n_trace' == 0
+    mata: st_local("_n_known", strofreal(_thm_log_count(st_local("logfile"), "not a known theme")))
+    assert `_n_known' == 0
 end
 
 
 // ================================================================
-// THM-01..05 — a hostile or careless theme() must not reach Python raw
+// THM-01..05 — a hostile or careless theme() never reaches Python at all
 // ================================================================
-// rc 0 is the assertion, not rc 198: theme() takes an arbitrary string and
-// an unknown one is reported by the renderer as "not a known theme", which
-// is dash's own message.  What must never happen is r(7102).
+// Since WP-17 the assertion is rc 198, not rc 0: theme() is one of six
+// aliases and anything else is refused in Stata, by dash's own one-line
+// message, before the spec is assembled.  What must never happen is
+// r(7102) -- or any Python traceback -- and nothing may be written.
 
 _thm_build `"a\q"'
-assert r(rc) == 0
-display "THM-01 PASS: an invalid JSON escape in theme() no longer aborts"
+_thm_refused THM-01
+display "THM-01 PASS: an invalid JSON escape in theme() is refused at the gate"
 
 _thm_build `"C:\temp\x"'
-assert r(rc) == 0
-display "THM-02 PASS: a Windows path in theme() no longer aborts"
+_thm_refused THM-02
+display "THM-02 PASS: a Windows path in theme() is refused at the gate"
 
 _thm_build `"a\"'
-assert r(rc) == 0
-display "THM-03 PASS: a trailing backslash in theme() no longer aborts"
+_thm_refused THM-03
+display "THM-03 PASS: a trailing backslash in theme() is refused at the gate"
 
 _thm_build `"a"b"'
-assert r(rc) == 0
-display "THM-04 PASS: a double quote in theme() no longer aborts"
+_thm_refused THM-04
+display "THM-04 PASS: a double quote in theme() is refused at the gate"
 
 _thm_build `"x","injected":"y"'
-assert r(rc) == 0
-display "THM-05 PASS: a theme() that looks like JSON cannot add spec keys"
+_thm_refused THM-05
+display "THM-05 PASS: a theme() that looks like JSON is refused at the gate"
 
 // ================================================================
-// THM-06 — the value survives intact rather than being mangled
+// THM-06 — the value is refused intact rather than mangled
 // ================================================================
-// theme("a\b") returned rc 0 before this, because \b is a valid JSON escape
-// -- the renderer received a BACKSPACE character where the user wrote two
-// ordinary ones.  Silent corruption is worse than the abort.
+// theme("a\b") returned rc 0 before the escaping fix, because \b is a
+// valid JSON escape -- the renderer received a BACKSPACE character where
+// the user wrote two ordinary ones.  It is refused now like the others,
+// and the refusal echoes the two characters the user wrote.
 _thm_build `"a\b"'
-assert r(rc) == 0
-display "THM-06 PASS: a backslash-b in theme() is two characters, not one"
+local _thm06_log "`r(logfile)'"
+_thm_refused THM-06
+mata: st_local("_n_echo", strofreal(_thm_log_count(st_local("_thm06_log"), "(got: a" + char(92) + "b)")))
+assert `_n_echo' == 1
+display "THM-06 PASS: a backslash-b in theme() is refused, echoed as two characters"
 
 // ================================================================
 // THM-07 — the escaping is done by the shared helper, at the one site
@@ -149,6 +227,8 @@ assert r(rc) == 0
 display "THM-09 PASS: an empty theme() is unaffected"
 
 capture program drop _thm_build
+capture program drop _thm_refused
+capture erase "`c(tmpdir)'dash_thm.log"
 
 display ""
 display "All theme() escaping tests PASSED."

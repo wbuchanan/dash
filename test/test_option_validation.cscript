@@ -210,6 +210,23 @@
 *!                                    not a variable
 *!   OV-140 histogram mpg             rc 0 (the one-variable types are
 *!   OV-141 kdensity mpg              rc 0  untouched)
+*! The scheme kind (WP-17): a shipped scheme or theme name passes as
+*! written, anything else is refused before Python (the file-in-the-
+*! working-directory cases are test_custom_scheme.cscript's):
+*!   OV-142 scheme(s2color)           rc 0
+*!   OV-143 scheme(Economist)         rc 0, registry carries
+*!                                    "scheme":"Economist" (nothing normalised)
+*!   OV-144 scheme(nosuchthing)       rc 198 naming scheme()
+*!   OV-145 scheme(../x)              rc 198 naming scheme()
+*!   OV-146 scheme(s2color.scheme)    rc 0, registry carries
+*!                                    "scheme":"s2color.scheme" (a shipped
+*!                                    name written with the extension; no
+*!                                    such file in the working directory)
+*!   OV-147 scheme(S2COLOR.SCHEME)    rc 0   (likewise, in any case)
+*!   OV-148 scheme(nosuch.scheme)     rc 198 naming scheme() (the
+*!                                    extension does not make a name: a
+*!                                    name that is not shipped still needs
+*!                                    the file)
 *! The corpus arbiter:
 *!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
 *!          with rc 0 and no refusal -- the table accepts every value the
@@ -728,6 +745,32 @@ _ov_refused OV-138 `"dash (scatter mpg weight) (bar price), name(ov138)"' 102 "d
 _ov_refused OV-139 `"dash line price if foreign, name(ov139)"' 102 "dash: line requires a y and an x variable (got: price)"
 _ov_case    OV-140 `"dash histogram mpg, name(ov140)"' 0 ""
 _ov_case    OV-141 `"dash kdensity mpg, name(ov141)"' 0 ""
+
+// ----------------------------------------------------------------
+// OV-142 .. OV-145: the scheme kind (WP-17).  A shipped scheme or theme
+// name passes as written -- the renderer lower-cases it itself -- and a
+// name that is neither, nor a .scheme file in the working directory, is
+// refused here.  The working-directory cases live in
+// test_custom_scheme.cscript, which builds one.
+// ----------------------------------------------------------------
+_ov_case OV-142 `"dash scatter mpg weight, scheme(s2color) name(ov142)"' 0 ""
+_ov_case OV-143 `"dash scatter mpg weight, scheme(Economist) name(ov143)"' 0 "" `""scheme":"Economist""'
+_ov_case OV-144 `"dash scatter mpg weight, scheme(nosuchthing) name(ov144)"' 198 scheme
+_ov_case OV-145 `"dash scatter mpg weight, scheme(../x) name(ov145)"' 198 scheme
+
+// ----------------------------------------------------------------
+// OV-146 .. OV-148: a shipped name written WITH the extension
+// (scheme(s2color.scheme), in any case) is the shipped scheme -- the
+// renderer's SchemeParser._resolve_path reads that spelling from the
+// package's schemes/ too -- so the gate accepts it with no file in the
+// working directory (test/ holds no .scheme file).  A name that is not
+// shipped still needs the file.  Measured before the fix: OV-146 and
+// OV-147 were refused, rc 198 -- the extension form was looked for as a
+// working-directory file only, although the renderer would have drawn it.
+// ----------------------------------------------------------------
+_ov_case OV-146 `"dash scatter mpg weight, scheme(s2color.scheme) name(ov146)"' 0 "" `""scheme":"s2color.scheme""'
+_ov_case OV-147 `"dash scatter mpg weight, scheme(S2COLOR.SCHEME) name(ov147)"' 0 ""
+_ov_case OV-148 `"dash scatter mpg weight, scheme(nosuch.scheme) name(ov148)"' 198 scheme
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

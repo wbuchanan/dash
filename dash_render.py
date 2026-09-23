@@ -1598,11 +1598,11 @@ class SchemeParser:
     #
     #     PLUS/py/dash_render.py          <- EXTENSION subdirectory
     #     PLUS/e/economist.scheme
-    #     PLUS/s/s2color.scheme  (+ the other twelve)
+    #     PLUS/s/s2color.scheme  (+ the other eighteen)
     #
     # Stata files by basename and extension, so the `schemes/' component of
     # each `f schemes/<name>.scheme' manifest line is dropped.  Neither search
-    # dir above exists on such a tree, so all fourteen schemes fell back --
+    # dir above exists on such a tree, so all twenty schemes fell back --
     # including the default, which made every installed build warn.
     #
     # The `== "py"' guard is what keeps this inert everywhere else.  In the
@@ -1617,15 +1617,22 @@ class SchemeParser:
         if os.path.basename(_PKG_DIR) == "py" else None
     )
 
-    # The translated StataCorp schemes dash ships.  Each is a faithful
-    # translation of the same-named Stata scheme, generated from
+    # The twenty translated StataCorp schemes dash ships.  Each is a
+    # faithful translation of the same-named Stata scheme, generated from
     # test/fixtures/scheme_truth.json by scripts/extract_scheme_truth.py.
-    # Section 11 restricts scheme()/theme() to exactly this set.
+    # scheme()/theme() names one of these, a theme alias, or a .scheme file
+    # in the working directory (WP-17).  The same twenty are listed by the
+    # extractor's SCHEMES and by dash.ado's _dash_shipped_schemes;
+    # test_scheme_resolution.py holds the copies equal.
     _BUILTIN_NAMES: frozenset[str] = frozenset({
         # Stata 18+ family (stcolor is Stata's default since v18)
-        "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
+        "stcolor", "stcolor_alt", "stgcolor", "stgcolor_alt", "stmono1",
+        "stmono2", "stsj", "sttrans",
         # legacy defaults (s2color was the default from v10 to v17)
-        "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
+        "s2color", "s2color8", "s2mono", "s2gcolor", "s1color", "s1mono",
+        "s1rcolor",
+        # the black-and-white manual variants
+        "s2manual", "s1manual", "s2gmanual",
         # journal styles
         "economist", "sj",
     })
@@ -1886,9 +1893,9 @@ class SchemeParser:
     def _installed_letter_dir(cls, name: str) -> "str | None":
         """The install directory that would hold *name*, or None.
 
-        Returns a directory ONLY for one of the fourteen names dash ships, and
+        Returns a directory ONLY for one of the twenty names dash ships, and
         only on an installed tree.  That is the whole of the narrowing: the
-        join's second component is one of fourteen literals matching
+        join's second component is one of twenty literals matching
         ``^[a-z][a-z0-9_]*$``, so no caller string can steer it out of
         _PLUS_ROOT, and a letter directory is never offered for a name dash
         does not ship.  The letter directories are SHARED -- every package
@@ -1907,9 +1914,43 @@ class SchemeParser:
             return None
         return os.path.join(cls._PLUS_ROOT, base[0])
 
+    @classmethod
+    def can_resolve(cls, name: str) -> bool:
+        """Whether :meth:`_resolve_path` would find *name*.
+
+        True for a shipped scheme and for a ``.scheme`` file in the working
+        directory given by bare name or with the extension; False for a
+        name no file answers to and for one that fails containment
+        (``../x``, an absolute path, a symlink out of the working
+        directory).  Quiet: no warning and no exception either way.
+
+        ``_resolve_scheme_name`` asks this before it reports a name as
+        unknown, so the gate and the parser cannot disagree about what
+        resolves.  They used to: the gate refused any unknown name that did
+        not end in ".scheme" before the parser's bare-name branch could
+        look in the working directory, while the per-graph swap called the
+        parser directly and found the file -- a bare name was drawn on the
+        figure and refused for the page chrome.
+        """
+        raw = (name or "").strip()
+        if not raw:
+            return False
+        # _resolve_path reads only class state.  A bare instance keeps its
+        # instance signature, which test_installed_layout calls directly.
+        probe = cls.__new__(cls)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                probe._resolve_path(raw)
+        except (ValueError, OSError):
+            return False
+        return True
+
     def _resolve_path(self, name: str) -> str:
         """Return absolute path for a scheme name, blocking path traversal."""
-        is_file_ref = name.endswith(".scheme") or os.sep in name or "/" in name
+        # The extension in any case: dash.ado's gate admits S2COLOR.SCHEME.
+        is_file_ref = (name.lower().endswith(".scheme") or os.sep in name
+                       or "/" in name)
 
         search_dirs = list(self._SCHEME_SEARCH_DIRS)
 
@@ -1975,7 +2016,7 @@ class SchemeParser:
         # also governs the CWD candidate, which the caller fully controls, so
         # adding <PLUS>/s to it would let a symlink named `s2color.scheme'
         # planted in the working directory point at any file in <PLUS>/s --
-        # reopening BUG-51 for exactly the fourteen names this is meant to
+        # reopening BUG-51 for exactly the twenty names this is meant to
         # help.  Checking one path against its own directory keeps the
         # reachable set byte-identical to before.
         installed_dir = self._installed_letter_dir(name)
@@ -2090,6 +2131,34 @@ class SchemeParser:
                 stacklevel=3,
             )
             return default
+
+    def _color_alpha(
+        self, key: str, default: str = "#000000",
+        default_alpha: "float | None" = None,
+    ) -> "tuple[str, float | None]":
+        """``(hex, opacity)`` of a scheme colour: the colour as ``_color``
+        reads it, and the opacity its ``%NN`` suffix declares, or None.
+
+        Stata's colour syntax carries an opacity on the colour itself:
+        scheme-sttrans.scheme declares every p# colour as ``"26 71 111
+        %20"`` and draws it at fill-opacity AND stroke-opacity 0.20
+        (measured 22sep2026 in its SVG export).  ``_color`` resolves that
+        through ``translate_mcolor``, which strips the suffix, so the
+        opacity was read by nothing and sttrans drew opaque.
+
+        An ABSENT key falls back to *default* and *default_alpha* together:
+        a scheme that declares only ``color p1 red%50`` gives p1line, p1bar,
+        p1mark and p1lineplot the colour and its opacity, as Stata's p#stub
+        -> p# chain does.  A PRESENT but unresolvable colour degrades loudly
+        through ``_color`` and carries no opacity.
+        """
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return default, default_alpha
+        hexval, alpha = OptionTranslator.parse_color_alpha(raw)
+        if hexval is None:
+            return self._color(key, default), default_alpha
+        return hexval, alpha
 
     def _gsize(self, key: str, default: str = "10pt") -> str:
         raw = self._props.get(key, "").strip().lower()
@@ -2306,22 +2375,36 @@ class SchemeParser:
         self.tick_label_color: str = self._color("color tick_label", "#000000")
         self.key_label_color: str = self._color("color key_label", "#000000")
 
-        # Per-plot color cycles (15 entries)
-        self.p_colors: list[str] = [
-            self._color(f"color p{i}") for i in range(1, 16)
-        ]
-        self.p_line_colors: list[str] = [
-            self._color(f"color p{i}line", self.p_colors[i - 1])
+        # Per-plot color cycles (15 entries), each colour beside the
+        # opacity its scheme declares on it (Stata's %NN suffix: sttrans's
+        # `color p1 "26 71 111 %20"', shipped as `#1a476f%20'), None where
+        # the colour is opaque.  The fixture records the same lists as
+        # p_colors_opacity and its line/bar/mark/lineplot twins;
+        # default_alpha() reads them where default_color() reads the hex.
+        _p = [self._color_alpha(f"color p{i}") for i in range(1, 16)]
+        self.p_colors: list[str] = [c for c, _ in _p]
+        self.p_alphas: "list[float | None]" = [a for _, a in _p]
+        _pl = [
+            self._color_alpha(f"color p{i}line", self.p_colors[i - 1],
+                              self.p_alphas[i - 1])
             for i in range(1, 16)
         ]
-        self.p_bar_colors: list[str] = [
-            self._color(f"color p{i}bar", self.p_colors[i - 1])
+        self.p_line_colors: list[str] = [c for c, _ in _pl]
+        self.p_line_alphas: "list[float | None]" = [a for _, a in _pl]
+        _pb = [
+            self._color_alpha(f"color p{i}bar", self.p_colors[i - 1],
+                              self.p_alphas[i - 1])
             for i in range(1, 16)
         ]
-        self.p_mark_colors: list[str] = [
-            self._color(f"color p{i}mark", self.p_colors[i - 1])
+        self.p_bar_colors: list[str] = [c for c, _ in _pb]
+        self.p_bar_alphas: "list[float | None]" = [a for _, a in _pb]
+        _pm = [
+            self._color_alpha(f"color p{i}mark", self.p_colors[i - 1],
+                              self.p_alphas[i - 1])
             for i in range(1, 16)
         ]
+        self.p_mark_colors: list[str] = [c for c, _ in _pm]
+        self.p_mark_alphas: "list[float | None]" = [a for _, a in _pm]
 
         # Marker symbol cycle
         self.p_symbols: list[str] = [
@@ -2365,11 +2448,14 @@ class SchemeParser:
         # declares `color p#line black'; Stata draws #606060 / #a0a0a0 /
         # #808080 for three overlaid line charts, and dash drew three
         # identical black lines.
-        self.p_lineplot_colors: list[str] = [
-            self._color(f"color p{i}lineplot",
-                        self._color("color plineplot", self.p_colors[i - 1]))
-            for i in range(1, 16)
-        ]
+        _plp = []
+        for i in range(1, 16):
+            _dc, _da = self._color_alpha("color plineplot",
+                                         self.p_colors[i - 1],
+                                         self.p_alphas[i - 1])
+            _plp.append(self._color_alpha(f"color p{i}lineplot", _dc, _da))
+        self.p_lineplot_colors: list[str] = [c for c, _ in _plp]
+        self.p_lineplot_alphas: "list[float | None]" = [a for _, a in _plp]
 
         # Default line/grid widths
         self.default_line_width: float = self._lwidth("linewidth p", 1.5)
@@ -2378,7 +2464,7 @@ class SchemeParser:
         self.minor_grid_line_width: float = self._lwidth(
             "linewidth minor_grid", OptionTranslator.translate_lwidth("thin"))
         # `linewidth axisline', `thin' in every shipped scheme.  It was
-        # extracted, shipped in all fourteen files and the fallback dict,
+        # extracted, shipped in all twenty files and the fallback dict,
         # and read by nothing: every axis line was Bokeh's 1px.  Applied
         # in apply_to_figure.  (`color foreground' is carried alongside
         # it in the same files and has no consumer here by design: Stata
@@ -2430,7 +2516,7 @@ class SchemeParser:
         # scheme level -- grep "scheme draw_major_grid" over Stata's
         # style/ directory returns nothing.  Every scheme declares it `no',
         # so the flag read False everywhere and looked plausible, while
-        # Stata's real answer for ten of the fourteen is `yes'.
+        # Stata's real answer for fifteen of the twenty is `yes'.
         self.draw_major_hgrid: bool = self._yesno("yesno draw_major_hgrid", False)
         self.draw_major_vgrid: bool = self._yesno("yesno draw_major_vgrid", False)
         # The minor grid, by the same per-axis rule (axisstyle-horizontal_
@@ -2479,6 +2565,31 @@ class SchemeParser:
         "scatter", "scatteri", "dot", "dropline", "rscatter", "pcscatter",
     })
 
+    def _cycle_for(self, plot_type: str) -> str:
+        """Which p# colour cycle *plot_type* reads: ``"lineplot"``,
+        ``"line"``, ``"bar"``, ``"mark"`` or the plain ``"p"``.
+
+        One dispatch for ``default_color`` and ``default_alpha``, so the
+        opacity is always read from the cycle the colour came from.
+        """
+        # `color p#line' is the CONNECTING line of twoway connected.  A plain
+        # line plot reads `color p#lineplot', falling back to `color p#'.
+        if plot_type in {"line", "tsline", "tsrline", "mspline", "mband",
+                         "rline"}:
+            return "lineplot"
+        if plot_type in {"connected", "rconnected"}:
+            return "line"
+        if plot_type in {"bar", "rbar", "area", "rarea", "histogram"}:
+            return "bar"
+        # A MARKER reads `color p#mark' (style/markerstyle-p#.style), which
+        # falls back to `color p#' at parse time.  Equal in every shipped
+        # scheme, so nothing rendered changes; a user scheme declaring
+        # `color p1mark' used to be read into p_mark_colors and drawn from
+        # nowhere.
+        if plot_type in self._MARKER_PLOT_TYPES:
+            return "mark"
+        return "p"
+
     def default_color(self, index: int, plot_type: str = "scatter") -> str:
         """Return the default CSS hex color for the plot at *index*.
 
@@ -2493,23 +2604,42 @@ class SchemeParser:
                        plain ``color p#``.
         """
         idx = index % 15
-        # `color p#line' is the CONNECTING line of twoway connected.  A plain
-        # line plot reads `color p#lineplot', falling back to `color p#'.
-        if plot_type in {"line", "tsline", "tsrline", "mspline", "mband",
-                         "rline"}:
+        cycle = self._cycle_for(plot_type)
+        if cycle == "lineplot":
             return self.p_lineplot_colors[idx]
-        if plot_type in {"connected", "rconnected"}:
+        if cycle == "line":
             return self.p_line_colors[idx]
-        if plot_type in {"bar", "rbar", "area", "rarea", "histogram"}:
+        if cycle == "bar":
             return self.p_bar_colors[idx]
-        # A MARKER reads `color p#mark' (style/markerstyle-p#.style), which
-        # falls back to `color p#' at parse time.  Equal in every shipped
-        # scheme, so nothing rendered changes; a user scheme declaring
-        # `color p1mark' used to be read into p_mark_colors and drawn from
-        # nowhere.
-        if plot_type in self._MARKER_PLOT_TYPES:
+        if cycle == "mark":
             return self.p_mark_colors[idx]
         return self.p_colors[idx]
+
+    def default_alpha(self, index: int,
+                      plot_type: str = "scatter") -> "float | None":
+        """The opacity the scheme declares on the colour ``default_color``
+        returns for *index* and *plot_type*, or None when it declares none.
+
+        sttrans declares every p# colour at %20, and Stata draws it as
+        fill-opacity and stroke-opacity 0.20: a real opacity, where
+        `intensity p inten80' is a lightening that dash only approximates
+        as alpha.  A declared opacity therefore wins over ``fill_alpha``,
+        ``bar_alpha`` and ``area_alpha`` at every mapper site that draws a
+        scheme alpha (``GlyphMapper._scheme_alpha``), and sets a line's
+        alpha, which no intensity reaches; a user colour with its own %NN
+        still wins over both.
+        """
+        idx = index % 15
+        cycle = self._cycle_for(plot_type)
+        if cycle == "lineplot":
+            return self.p_lineplot_alphas[idx]
+        if cycle == "line":
+            return self.p_line_alphas[idx]
+        if cycle == "bar":
+            return self.p_bar_alphas[idx]
+        if cycle == "mark":
+            return self.p_mark_alphas[idx]
+        return self.p_alphas[idx]
 
     def _markersize_px(self, keyword: str) -> float:
         """Convert a Stata markersize keyword to Bokeh screen pixels.
@@ -2570,9 +2700,10 @@ class SchemeParser:
 
         # Per axis, because the scheme decides each one separately.  This
         # loop used to colour every grid unconditionally, and Bokeh draws
-        # both by default, so dash drew a grid Stata does not draw in ten of
-        # the fourteen shipped schemes -- BOTH grids under s1color, s1mono,
-        # s1rcolor and stmono1, which draw none at all.
+        # both by default, so dash drew a grid Stata does not draw in
+        # fourteen of the twenty shipped schemes -- BOTH grids under
+        # s1color, s1manual, s1mono, s1rcolor and stmono1, which draw none
+        # at all.
         #
         # `grid_line_color = None' is how the rest of the file expresses "no
         # grid" (see the xlabel(, nogrid) path), so an explicit nogrid and a
@@ -3966,6 +4097,23 @@ class GlyphMapper:
     # Phase 1A plot types
     # ------------------------------------------------------------------
 
+    def _scheme_alpha(self, color_idx: int, plot_type: str,
+                      intensity_alpha: float) -> float:
+        """The alpha the scheme draws the plot at *color_idx* with.
+
+        Stata's intensity (``intensity p inten80``) is a lightening towards
+        the background, which dash approximates as alpha; a colour's own
+        ``%NN`` suffix IS an opacity.  sttrans declares every p# colour at
+        %20, and Stata's SVG export draws fill-opacity and stroke-opacity
+        0.20 (measured 22sep2026), where dash drew the intensity's 0.8 like
+        every other scheme.  When the scheme declares an opacity it is the
+        real value and wins over the approximation.  A user mcolor(),
+        fcolor() or lcolor() with its own %NN still wins over both: the
+        option appliers run after the glyph is drawn.
+        """
+        declared = self.scheme.default_alpha(color_idx, plot_type)
+        return intensity_alpha if declared is None else declared
+
     def map_scatter(
         self,
         fig: Any,
@@ -4031,7 +4179,10 @@ class GlyphMapper:
             size=self.scheme.default_marker_size(color_idx),
             fill_color=_default_color,
             line_color=_default_color,
-            alpha=self.scheme.fill_alpha,
+            # Fill AND outline: Stata's SVG carries fill-opacity and
+            # stroke-opacity alike, 0.20 under sttrans.
+            alpha=self._scheme_alpha(color_idx, "scatter",
+                                     self.scheme.fill_alpha),
             legend_label=yvar,
         )
         if view is not None:
@@ -4106,6 +4257,14 @@ class GlyphMapper:
                  else self.scheme.default_line_pattern(color_idx))
         if _dash:
             _line_kwargs["line_dash"] = _dash
+        # A line has no intensity-derived alpha (Stata's `intensity p' is
+        # for fills), so only a colour's declared opacity sets one:
+        # sttrans's %20 is stroke-opacity 0.20 in Stata's own SVG, for a
+        # line plot and for connected's connecting line alike.
+        _line_alpha = self.scheme.default_alpha(
+            color_idx, "connected" if connected else "line")
+        if _line_alpha is not None:
+            _line_kwargs["line_alpha"] = _line_alpha
         if view is not None:
             _line_kwargs["view"] = view
         r = fig.line(**_line_kwargs)
@@ -4208,7 +4367,9 @@ class GlyphMapper:
                       fill_color=self.scheme.default_color(color_idx, "area"),
                       # `intensity area' was parsed and never read, so an
                       # area was half-transparent whatever the scheme said.
-                      fill_alpha=self.scheme.area_alpha, legend_label=yvar)
+                      fill_alpha=self._scheme_alpha(
+                          color_idx, "area", self.scheme.area_alpha),
+                      legend_label=yvar)
 
         # Honour fill color option.  An unknown name was dropped in silence
         # here, and nothing downstream reads color() for an area.
@@ -4332,8 +4493,16 @@ class GlyphMapper:
             line_color=_bar_default_color,
             legend_label=yvar,
             # `intensity bar' was parsed and never read.
-            fill_alpha=self.scheme.bar_alpha,
+            fill_alpha=self._scheme_alpha(color_idx, "bar",
+                                          self.scheme.bar_alpha),
         )
+        # The outline takes the colour's declared opacity too: Stata's SVG
+        # draws a sttrans bar with stroke-opacity 0.20 beside its
+        # fill-opacity 0.20.  No intensity reaches an outline, so nothing
+        # is passed where none is declared.
+        _bar_line_alpha = self.scheme.default_alpha(color_idx, "bar")
+        if _bar_line_alpha is not None:
+            _vbar_kwargs["line_alpha"] = _bar_line_alpha
         # No view here: clean_source already holds only the selected rows.
         r = fig.vbar(**_vbar_kwargs)
         if "color" in options:
@@ -5423,7 +5592,9 @@ class GlyphMapper:
                      line_color="white",
                      # `intensity bar' -- a histogram is a bar plot in
                      # Stata's own scheme vocabulary.
-                     fill_alpha=self.scheme.bar_alpha, legend_label=yvar)
+                     fill_alpha=self._scheme_alpha(
+                         color_idx, "histogram", self.scheme.bar_alpha),
+                     legend_label=yvar)
         if "color" in options:
             try:
                 c = self.tr.translate_mcolor(options["color"])
@@ -9011,22 +9182,52 @@ def _resolve_scheme_name(master_spec: dict) -> str:
         or ""
     )
     # theme() takes Stata theme names, which are aliases for schemes.  A
-    # name that is neither a known alias nor a known scheme is reported:
-    # theme(dark) is documented in dash.sthlp, is absent from the map, and
-    # used to fall through to s2color without a word.
+    # name that is neither an alias, nor a shipped scheme, nor something
+    # SchemeParser can resolve -- a .scheme file in the working directory,
+    # by bare name or with the extension -- is reported: theme(dark) is
+    # documented in dash.sthlp, was absent from the map, and used to fall
+    # through to s2color without a word.
+    #
+    # The parser is asked, not second-guessed.  This gate used to refuse
+    # any unknown name that did not end in ".scheme" before _resolve_path's
+    # bare-name branch could look in the working directory, while the
+    # per-graph swap in _make_figure called the parser directly and found
+    # the file: `dash scatter ..., scheme(mytheme)' drew the figure with
+    # mytheme and the page chrome with s2color, and `dash build,
+    # scheme(mytheme)' drew s2color throughout (measured, WP-17).
+    #
+    # dash.ado refuses an explicit scheme()/theme() it cannot resolve
+    # before Python runs, so a name that arrives here unresolved is the
+    # session's own c(scheme) -- 129 third-party schemes on one machine,
+    # and cscript's s2color8 before dash shipped it -- or a spec built by
+    # hand.  The warning says so.  One line; the words three other tests
+    # pin ("is not a known theme or scheme") are kept.
     _lower = _raw_name.lower()
     if (_raw_name and _lower not in _THEME_SCHEME_MAP
             and _lower not in SchemeParser._BUILTIN_NAMES
-            and not _raw_name.endswith(".scheme")):
+            and not SchemeParser.can_resolve(_raw_name)):
         warnings.warn(
-            f"dash: {_raw_name!r} is not a known theme or scheme; using "
-            f"s2color. Themes: "
+            f"dash: {_raw_name!r} is not a known theme or scheme; it was "
+            "inherited from the session (c(scheme)) because no scheme() or "
+            "theme() was given, or came from a spec built without "
+            "dash.ado; using s2color. Themes: "
             f"{', '.join(sorted(_THEME_SCHEME_MAP))}. Schemes: "
             f"{', '.join(sorted(SchemeParser._BUILTIN_NAMES))}.",
             UserWarning,
         )
         _raw_name = ""
         _lower = ""
+    # A shipped name is accepted in any case -- dash.ado's gate lowers it
+    # too -- and handed on lowered, so it resolves on a case-sensitive
+    # filesystem as it does on this one, and `scheme.name' is the scheme's
+    # own spelling rather than the caller's.  A user file keeps its
+    # spelling: the parser looks for that file.
+    # ... with or without the extension: scheme(S2COLOR.SCHEME) is the
+    # shipped s2color, not a file of that spelling.
+    _base = _lower[:-len(".scheme")] if _lower.endswith(".scheme") else _lower
+    if _base in SchemeParser._BUILTIN_NAMES:
+        _raw_name = _base
+        _lower = _base
     _scheme_name: str = (
         _THEME_SCHEME_MAP.get(_lower, _raw_name) or "s2color"
     )

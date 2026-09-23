@@ -12,12 +12,48 @@ sizes, line widths and intensities are *themselves* indirections into
 
 This script walks that whole graph and emits a single JSON document of fully
 resolved values, which is the specification the translated ``dash`` scheme files
-are written from -- and it then brings those fourteen files
+are written from -- and it then brings those twenty files
 (``schemes/<name>.scheme``) up to date with it: every directive the fixture pins
 is checked against the file, a value that disagrees is corrected on its own
-line and reported, and a directive the file lacks is appended in a dated block
-after the file's last directive.  The files' hand-written provenance comments
-are left untouched, and a second run changes nothing.
+line and reported, a directive the file lacks is appended in a dated block
+after the file's last directive, and a file that does not exist is created
+with the same writer.  The files' hand-written comments are left untouched,
+the generated provenance block at the end of each file is rewritten only when
+it differs, and a second run changes nothing.
+
+DIRECTIVE VALUES ARE STATA'S THIRD TOKEN
+----------------------------------------
+Stata's own reader (``ado/base/s/scheme.class``, ``setscheme``) does
+``tokenize`` then ``args style id stylename``: a directive's value is its THIRD
+token, a double-quoted string is one token, and anything after the third token
+is ignored.  ``scheme-sttrans.scheme`` writes ``symbolsize p small *medium``,
+which Stata reads as ``small`` (measured 22sep2026: its marker radius in an SVG
+export equals s2color's ``msize(small)``, 19.29, not medium's 26.35).  The
+resolver tokenises the same way; joining every token after the key, as it once
+did, would have shipped ``small *medium``.
+
+OPACITY
+-------
+A colour token may carry Stata's ``%NN`` opacity suffix; sttrans writes every
+p# colour as ``"r g b %20"`` and draws it at fill-opacity 0.20.  The fixture
+keeps the hex in ``p_colors`` (what every consumer compares) and the percentage
+beside it in ``p_colors_opacity`` (and the line/bar/mark/lineplot twins), and
+the translated file writes the directive as ``#rrggbb%20``, which
+``SchemeParser`` reads (``translate_mcolor`` strips the suffix) without
+mistaking the colour for an opaque one.
+
+PROVENANCE
+----------
+Every fixture entry carries ``provenance`` beside ``sources``: for each
+extracted key (per index for the p# cycles) whether the value was TRANSCRIBED
+-- a Stata scheme file in the #include chain writes the very key the
+translation carries, and ``file``/``line`` say which directive -- or INFERRED --
+no file writes that key, and the value is what Stata itself falls back to: the
+documented ``p#stub -> pstub -> p# -> p`` chain, a bare class default, the
+generic ``color grid``, or an axisstyle indirection; ``rule`` says which.  The
+same is written into every shipped file as a block of ``* provenance:`` lines,
+one per directive, between ``* BEGIN provenance (WP-17)`` and ``* END
+provenance (WP-17)``, so the distinction survives into what is shipped.
 
 GRID SWITCHES ARE RECORDED AS *EFFECTIVE* PER-AXIS VALUES
 ---------------------------------------------------------
@@ -25,7 +61,7 @@ twoway builds its x axis with ``axisstyle horizontal_default`` and its y axis
 with ``axisstyle vertical_default``.  The scheme maps each of those roles to a
 style name, and ``style/axisstyle-<name>.style`` then names the ``yesno`` key
 that is actually read (``set draw_major_grid scheme draw_major_hgrid``).  For
-thirteen schemes the roles map to themselves, so the keys are
+nineteen schemes the roles map to themselves, so the keys are
 ``draw_major_hgrid``/``draw_minor_hgrid`` (x) and ``draw_major_vgrid``/
 ``draw_minor_vgrid`` (y); economist maps ``vertical_default`` to
 ``vertical_nolinetick``, whose style file reads ``draw_major_nlt_vgrid`` and
@@ -91,6 +127,7 @@ import sys
 from decimal import Decimal, ROUND_HALF_UP
 
 DEFAULT_STATA_BASE = "/Applications/StataNow/ado/base"
+STATA_VERSION = "StataNow 19.5 (MP), born 12 Aug 2026"
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_SCHEMES_DIR = os.path.join(REPO_ROOT, "schemes")
@@ -118,6 +155,11 @@ class SchemeResolver:
     Lines beginning with ``*`` are comments (``*!`` is the version stamp).
     ``#include <scheme>`` splices another scheme in at that point, so directives
     appearing *after* the include in the child override the parent.
+
+    The value is the THIRD token, exactly as Stata's ``setscheme`` reads it
+    (``tokenize`` + ``args style id stylename``): a double-quoted string is one
+    token and anything after the value is ignored.  ``sequence`` and ``label``
+    lines are skipped as Stata skips them (the label is kept aside).
     """
 
     def __init__(self, stata_base: str):
@@ -126,6 +168,11 @@ class SchemeResolver:
         self.style_dir = os.path.join(stata_base, "style")
         # (class, key) -> value.  key "" is the class-level default.
         self.settings: dict[tuple[str, str], str] = {}
+        # (class, key) -> (scheme name, 1-based line) of the directive that
+        # LAST wrote it, i.e. the one whose value stands.
+        self.origins: dict[tuple[str, str], tuple[str, int]] = {}
+        # Stata's `label "..."' line of the child scheme (the first seen).
+        self.label: str | None = None
         # Scheme names in the order their files were OPENED: the child first,
         # then each #include as it is met (child -> ... -> root).
         self.include_chain: list[str] = []
@@ -179,9 +226,9 @@ class SchemeResolver:
         self.include_chain.append(scheme_name)
 
         with open(path, "r", encoding="utf-8", errors="replace") as fh:
-            for raw in fh:
+            for lineno, raw in enumerate(fh, 1):
                 line = raw.strip()
-                if not line or line.startswith("*"):
+                if not line or line.startswith("*") or line.startswith("//"):
                     continue
                 if line.startswith("#include"):
                     parts = line.split()
@@ -190,18 +237,29 @@ class SchemeResolver:
                         # the child file overwrites it.  Last write wins.
                         self._load(parts[1], stack, depth + 1)
                     continue
-                # Drop a trailing inline comment introduced by " *" ... Stata
-                # schemes do not use those, so we deliberately do NOT strip
-                # anything that could be part of a value (e.g. "navy*0.5").
-                tokens = line.split()
+                # Stata's tokenize: a double-quoted string is one token.  A
+                # value such as "navy*0.5" is a single token either way.
+                tokens = _TOKEN.findall(line)
                 if len(tokens) < 2:
                     continue
                 cls = tokens[0]
+                if cls in ("sequence", "label"):
+                    # setscheme skips both; the child's own label (depth 0,
+                    # not a parent's, which is read first because #include
+                    # precedes the label line) is worth keeping.
+                    if cls == "label" and depth == 0:
+                        self.label = tokens[1].strip('"')
+                    continue
                 if len(tokens) == 2:
-                    # Class-level default, e.g. "intensity full".
-                    self.settings[(cls, "")] = tokens[1]
+                    # Class-level default, e.g. "intensity full" (Stata
+                    # stores it as the class's `_default').
+                    key, value = "", tokens[1]
                 else:
-                    self.settings[(cls, tokens[1])] = " ".join(tokens[2:])
+                    # The third token is the value; Stata ignores the rest
+                    # (scheme-sttrans.scheme: `symbolsize p small *medium').
+                    key, value = tokens[1], tokens[2]
+                self.settings[(cls, key)] = value
+                self.origins[(cls, key)] = (scheme_name, lineno)
 
     # -- style file lookup ------------------------------------------------- #
 
@@ -234,6 +292,10 @@ class SchemeResolver:
 
 _RGB_LITERAL = re.compile(r"^\d+\s+\d+\s+\d+$")
 
+# Stata's tokenize, as far as scheme files need it: a double-quoted string is
+# one token, otherwise whitespace separates tokens.
+_TOKEN = re.compile(r'"[^"]*"|\S+')
+
 
 def _round_half_up(x: float) -> int:
     return int(Decimal(repr(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
@@ -263,17 +325,41 @@ class ColorResolver:
         self.unresolved: list[str] = []
 
     def resolve(self, token: str | None, _depth: int = 0) -> str | None:
+        """``#rrggbb`` for *token*; an opacity suffix is REPORTED, not kept.
+
+        For a scalar colour key the fixture has nowhere to put an opacity, so
+        one is flagged in ``unresolved`` rather than dropped in silence.  The
+        p# cycles go through :meth:`resolve_with_opacity` instead.
+        """
+        hexval, opacity = self.resolve_with_opacity(token, _depth)
+        if opacity is not None:
+            self.unresolved.append(
+                f"opacity suffix %{opacity:g} on colour token {token!r} not "
+                f"folded into hex"
+            )
+        return hexval
+
+    def resolve_with_opacity(
+        self, token: str | None, _depth: int = 0,
+    ) -> "tuple[str | None, float | None]":
+        """``(#rrggbb, opacity percent or None)`` for *token*."""
         if token is None:
-            return None
+            return None, None
         tok = token.strip().strip('"').strip()
         if not tok or _depth > 8:
-            return None
+            return None, None
 
-        # Opacity suffix (%NN) is recorded separately; strip it for the hex.
-        opacity = None
+        # Opacity suffix (%NN): Stata's 0-100 opacity, kept beside the hex.
+        opacity: float | None = None
         if "%" in tok:
             tok, _, op = tok.partition("%")
-            opacity = op
+            try:
+                opacity = float(op.strip())
+            except ValueError:
+                self.unresolved.append(
+                    f"unparseable opacity suffix in colour token {token!r}"
+                )
+                opacity = None
 
         # Intensity multiplier (*N).
         mult = None
@@ -294,7 +380,7 @@ class ColorResolver:
         if low == "none":
             # color-none.style carries "0 0 0" but its own comment says the
             # values should not matter: 'none' means "do not draw".
-            return None
+            return None, None
 
         rgb: tuple[int, int, int] | None = None
 
@@ -302,9 +388,13 @@ class ColorResolver:
             parts = [int(p) for p in tok.split()]
             rgb = (parts[0], parts[1], parts[2])
         elif low in ("background", "bg"):
-            return self.resolve(self.r.get("color", "background"), _depth + 1)
+            h, inner = self.resolve_with_opacity(
+                self.r.get("color", "background"), _depth + 1)
+            return h, opacity if opacity is not None else inner
         elif low in ("foreground", "fg"):
-            return self.resolve(self.r.get("color", "foreground"), _depth + 1)
+            h, inner = self.resolve_with_opacity(
+                self.r.get("color", "foreground"), _depth + 1)
+            return h, opacity if opacity is not None else inner
         else:
             st = self.r.style("color", low)
             if st and "rgb" in st:
@@ -314,20 +404,12 @@ class ColorResolver:
 
         if rgb is None:
             self.unresolved.append(f"unknown colour token {token!r}")
-            return None
+            return None, None
 
         if mult is not None:
             rgb = _apply_intensity(rgb, mult)
 
-        hexval = "#%02x%02x%02x" % rgb
-        if opacity is not None:
-            # Recorded, not folded into the hex; no scheme key we extract uses
-            # one today, but flag it rather than silently dropping it.
-            self.unresolved.append(
-                f"opacity suffix %{opacity} on colour token {token!r} not folded "
-                f"into hex"
-            )
-        return hexval
+        return "#%02x%02x%02x" % rgb, opacity
 
 
 # --------------------------------------------------------------------------- #
@@ -523,58 +605,135 @@ def extract(stata_base: str, scheme: str) -> dict:
     r.load(scheme)
     c = ColorResolver(r)
     unresolvable: list[str] = []
-    # Provenance: output key -> the "<class> <key>" directive that actually
-    # supplied the value, or "<class> <class-default>" when the value came from
-    # a bare two-token class default line rather than a named key.
+    # Provenance, two ways.  ``sources``: output key -> the "<class> <key>"
+    # directive that actually supplied the value, or "<class> <class-default>"
+    # when the value came from a bare two-token class default line rather
+    # than a named key.  ``provenance``: the same keys -> a record saying
+    # whether the translation's directive was TRANSCRIBED (a Stata file in
+    # the chain writes that very key; file:line names the directive) or
+    # INFERRED (no file writes it; the value is Stata's own fallback, and
+    # ``rule`` says which one).  The p# cycles hold one entry per index.
     sources: dict[str, object] = {}
+    provenance: dict[str, object] = {}
+    opacities: dict[str, list] = {}
 
-    def getsrc(cls: str, keys: list[str], class_default: bool):
-        """First matching key in ``keys``; returns (value, provenance string)."""
+    def where(cls: str, key: str):
+        o = r.origins.get((cls, key))
+        if o is None:
+            return None, None
+        return f"scheme-{o[0]}.scheme", o[1]
+
+    def raw_value(cls: str, key: str):
+        v = r.settings.get((cls, key))
+        return v.strip().strip('"').strip() if v is not None else None
+
+    def spelled(cls: str, key: str) -> str:
+        """The directive as Stata's file writes it, for a rule sentence."""
+        return f"{cls} {key} {raw_value(cls, key)}" if key else \
+            f"{cls} {raw_value(cls, key)}"
+
+    def prov_entry(kind: str, cls: str, key: str, rule=None, via=None) -> dict:
+        file, line = where(cls, key)
+        entry = {
+            "kind": kind,
+            "directive": f"{cls} {key}" if key else cls,
+            "value": raw_value(cls, key),
+            "file": file,
+            "line": line,
+        }
+        if rule:
+            entry["rule"] = rule
+        if via:
+            entry["via"] = via
+        return entry
+
+    def getsrc(cls: str, keys: list[str], class_default: bool,
+               chain_name: str = "Stata's documented fallback"):
+        """First matching key in ``keys``; (value, source, provenance).
+
+        ``keys[0]`` is the key the translation carries; a hit on it is a
+        transcription, a hit further down the list or on the class default
+        is an inference, and ``chain_name`` says which rule was followed.
+        """
         for k in keys:
             v = r.get(cls, k, class_default=False)
             if v is not None:
-                return v, f"{cls} {k}"
+                if k == keys[0]:
+                    prov = prov_entry("transcribed", cls, k)
+                else:
+                    prov = prov_entry("inferred", cls, k, rule=(
+                        f"{chain_name}; `{cls} {keys[0]}' is not set anywhere "
+                        f"in the #include chain, took `{spelled(cls, k)}'"))
+                return v, f"{cls} {k}", prov
         if class_default:
             v = r.settings.get((cls, ""))
             if v is not None:
-                return v, f"{cls} <class-default>"
-        return None, None
+                prov = prov_entry("inferred", cls, "", rule=(
+                    f"class default; `{cls} {keys[0]}' is not set anywhere in "
+                    f"the #include chain, took the bare `{spelled(cls, '')}' "
+                    "class default"))
+                return v, f"{cls} <class-default>", prov
+        return None, None, None
 
-    def color_of(out_key: str, keys: list[str]):
-        tok, src_s = getsrc("color", keys, class_default=False)
+    def color_of(out_key: str, keys: list[str], required: bool = True):
+        tok, src_s, prov = getsrc("color", keys, class_default=False,
+                                  chain_name="Stata's generic colour fallback")
         if tok is None:
-            unresolvable.append(
-                f"{out_key}: none of [" + ", ".join("color " + k for k in keys)
-                + "] is set anywhere in the #include chain")
+            if required:
+                unresolvable.append(
+                    f"{out_key}: none of [" + ", ".join("color " + k for k in keys)
+                    + "] is set anywhere in the #include chain")
             sources[out_key] = None
+            provenance[out_key] = None
             return None
         sources[out_key] = src_s
+        provenance[out_key] = prov
         return c.resolve(tok)
 
     # --- the p1..p15 cycle, with Stata's p#stub -> pstub -> p# -> p chain --- #
+    P_CHAIN = "p#stub -> pstub -> p# -> p"
+
     def p_chain(cls: str, n: int, stub: str = ""):
         keys = []
         if stub:
             keys += [f"p{n}{stub}", f"p{stub}"]
         keys += [f"p{n}", "p"]
-        return getsrc(cls, keys, class_default=False)
+        return getsrc(cls, keys, class_default=False, chain_name=P_CHAIN)
 
     def p_series(out_key, cls, stub, conv):
-        vals, srcs = [], []
+        vals, srcs, provs = [], [], []
         for i in range(1, N_PLOTS + 1):
-            tok, s = p_chain(cls, i, stub)
+            tok, s, prov = p_chain(cls, i, stub)
             if tok is None:
                 unresolvable.append(
                     f"{out_key}[{i}]: no value for p{i}{stub} and no fallback")
             vals.append(conv(tok))
             srcs.append(s)
+            provs.append(prov)
         sources[out_key] = srcs
+        provenance[out_key] = provs
         return vals
 
-    p_colors = p_series("p_colors", "color", "", c.resolve)
-    p_line_colors = p_series("p_line_colors", "color", "line", c.resolve)
-    p_bar_colors = p_series("p_bar_colors", "color", "bar", c.resolve)
-    p_mark_colors = p_series("p_mark_colors", "color", "mark", c.resolve)
+    def p_color_series(out_key, stub):
+        """The colour cycle, hex in *out_key* and Stata's %NN opacity (or
+        None) beside it in ``<out_key>_opacity``."""
+        pcts: list = []
+
+        def conv(tok):
+            if tok is None:
+                pcts.append(None)
+                return None
+            hexval, pct = c.resolve_with_opacity(tok)
+            pcts.append(pct)
+            return hexval
+        vals = p_series(out_key, "color", stub, conv)
+        opacities[f"{out_key}_opacity"] = pcts
+        return vals
+
+    p_colors = p_color_series("p_colors", "")
+    p_line_colors = p_color_series("p_line_colors", "line")
+    p_bar_colors = p_color_series("p_bar_colors", "bar")
+    p_mark_colors = p_color_series("p_mark_colors", "mark")
     p_symbols = p_series("p_symbols", "symbol", "", lambda t: t)
     p_line_patterns = p_series("p_line_patterns", "linepattern", "line",
                                lambda t: t)
@@ -591,13 +750,13 @@ def extract(stata_base: str, scheme: str) -> dict:
     # ``linepattern p#lineplot`` (solid / dash / vshortdash / ...), not from
     # ``linepattern p#line`` (which s2mono leaves at the ``linepattern p solid``
     # class value inherited from s2color).  Only the s2mono branch of the base
-    # schemes declares any ``lineplot`` key; everywhere else these resolve
-    # through the ordinary p#stub -> pstub -> p# -> p fallback, which is why
-    # ``lineplot_declared`` below is recorded separately: it says whether the
-    # value was WRITTEN by a scheme or merely INHERITED by fallback, and a
-    # translation must not present the second as though it were the first.
-    p_lineplot_colors = p_series("p_lineplot_colors", "color", "lineplot",
-                                 c.resolve)
+    # schemes declares any ``lineplot`` key, and only s2mono and s2gmanual
+    # write one themselves; everywhere else these resolve through the ordinary
+    # p#stub -> pstub -> p# -> p fallback, which is why ``lineplot_declared``
+    # below is recorded separately: it says whether the value was WRITTEN by a
+    # scheme or merely INHERITED by fallback, and a translation must not
+    # present the second as though it were the first.
+    p_lineplot_colors = p_color_series("p_lineplot_colors", "lineplot")
     p_lineplot_patterns = p_series("p_lineplot_patterns", "linepattern",
                                    "lineplot", lambda t: t)
     p_lineplot_dash = [resolve_linepattern(r, t) for t in p_lineplot_patterns]
@@ -610,9 +769,12 @@ def extract(stata_base: str, scheme: str) -> dict:
             if c_ == cls
         )
 
-    def scalar(out_key, cls, keys, conv, class_default=True):
-        tok, s = getsrc(cls, keys, class_default=class_default)
+    def scalar(out_key, cls, keys, conv, class_default=True,
+               chain_name="Stata's documented fallback"):
+        tok, s, prov = getsrc(cls, keys, class_default=class_default,
+                              chain_name=chain_name)
         sources[out_key] = s
+        provenance[out_key] = prov
         if tok is None:
             unresolvable.append(
                 f"{out_key}: none of [" + ", ".join(f"{cls} {k}" for k in keys)
@@ -622,8 +784,9 @@ def extract(stata_base: str, scheme: str) -> dict:
 
     # --- graph size: "graphsize x" / "graphsize y", then bare "graphsize" --- #
     def graphsize(axis):
-        tok, s = getsrc("graphsize", [axis], class_default=True)
+        tok, s, prov = getsrc("graphsize", [axis], class_default=True)
         sources[f"graphsize_{axis}"] = s
+        provenance[f"graphsize_{axis}"] = prov
         if tok is None:
             unresolvable.append(
                 f"graphsize_{axis}: neither 'graphsize {axis}' nor a bare "
@@ -645,8 +808,17 @@ def extract(stata_base: str, scheme: str) -> dict:
                 unresolvable.append(
                     f"{out_key}: {info['style_file']} sets no draw_{which}_grid")
                 sources[out_key] = None
+                provenance[out_key] = None
                 return None
             sources[out_key] = f"{info['style_file']}: set draw_{which}_grid {lit}"
+            provenance[out_key] = {
+                "kind": "transcribed",
+                "directive": f"set draw_{which}_grid",
+                "value": lit,
+                "file": info["style_file"],
+                "line": None,
+                "via": f"axisstyle {info['role']} = {info['axisstyle']}",
+            }
             return lit
         tok = r.get("yesno", key, class_default=False)
         if tok is None:
@@ -654,15 +826,22 @@ def extract(stata_base: str, scheme: str) -> dict:
                 f"{out_key}: yesno {key} (named by {info['style_file']}) is "
                 "not set anywhere in the #include chain")
             sources[out_key] = None
+            provenance[out_key] = None
             return None
         via = ""
         if info["axisstyle"].lower() != info["role"]:
             via = (f" (via axisstyle {info['role']} = {info['axisstyle']}, "
                    f"{info['style_file']})")
         sources[out_key] = f"yesno {key}{via}"
+        provenance[out_key] = prov_entry(
+            "transcribed", "yesno", key,
+            via=(f"axisstyle {info['role']} = {info['axisstyle']}, "
+                 f"{info['style_file']}") if via else None)
         return tok.strip()
 
     out = {
+        # Stata's own `label "..."' for the scheme.
+        "label": r.label,
         # root -> ... -> child: the order the directives are applied, the
         # child's last.  (The resolver opens the files child-first.)
         "include_chain": list(reversed(r.include_chain)),
@@ -692,6 +871,11 @@ def extract(stata_base: str, scheme: str) -> dict:
         "legend_border_color": color_of("legend_border_color", ["legend_line"]),
         # Stata draws the major grid; "color grid" is the generic fallback.
         "grid_color": color_of("grid_color", ["major_grid", "grid"]),
+        # The generic `color grid' itself: SchemeParser reads it when a file
+        # has no `color major_grid'.  Two hand-written translations carry it;
+        # it is checked and given provenance where present, never appended.
+        "grid_color_generic": color_of("grid_color_generic", ["grid"],
+                                       required=False),
         "minor_grid_color": color_of("minor_grid_color", ["minor_grid"]),
         # Grid switches: the EFFECTIVE per-axis values (see the module
         # docstring).  A grid belongs to an axis and its key is named for that
@@ -739,7 +923,8 @@ def extract(stata_base: str, scheme: str) -> dict:
             lambda t: resolve_linewidth(r, t), class_default=True),
         "grid_line_width": scalar(
             "grid_line_width", "linewidth", ["major_grid", "grid"],
-            lambda t: resolve_linewidth(r, t), class_default=True),
+            lambda t: resolve_linewidth(r, t), class_default=True,
+            chain_name="Stata's generic grid fallback"),
         "minor_grid_line_width": scalar(
             "minor_grid_line_width", "linewidth", ["minor_grid"],
             lambda t: resolve_linewidth(r, t), class_default=True),
@@ -792,8 +977,10 @@ def extract(stata_base: str, scheme: str) -> dict:
                               lambda t: _as_number(t.strip()),
                               class_default=False),
     }
+    out.update(opacities)
 
     out["sources"] = sources
+    out["provenance"] = provenance
 
     # Anything that came back None because a token could not be resolved.
     for msg in c.unresolved:
@@ -808,13 +995,21 @@ def extract(stata_base: str, scheme: str) -> dict:
 # --------------------------------------------------------------------------- #
 #
 # A translated file is Stata's own one-directive-per-line grammar with every
-# colour pre-resolved to #rrggbb and the p#stub -> pstub -> p# -> p fallback
-# flattened into explicit p1..p15 lines, because SchemeParser reads by exact
-# key.  The files carry hand-written provenance comments, so they are UPDATED
-# IN PLACE rather than rewritten: every directive the fixture pins is checked
-# against the file; a directive whose value disagrees is corrected on its own
-# line and reported on stderr; a directive the file lacks is appended, in a
-# dated block, after the file's last directive.  A second run changes nothing.
+# colour pre-resolved to #rrggbb (plus Stata's %NN opacity suffix where the
+# scheme carries one) and the p#stub -> pstub -> p# -> p fallback flattened
+# into explicit p1..p15 lines, because SchemeParser reads by exact key.  The
+# files carry hand-written comments, so they are UPDATED IN PLACE rather than
+# rewritten: every directive the fixture pins is checked against the file; a
+# directive whose value disagrees is corrected on its own line and reported on
+# stderr; a directive the file lacks is appended, in a dated block, after the
+# file's last directive; a file that does not exist is created.  Each file
+# ends with a generated provenance block -- one `* provenance:' line per
+# directive, transcribed-from or inferred-by -- that is rewritten only when
+# it differs.  A second run changes nothing.
+
+_RULE = "* " + "-" * 75
+PROVENANCE_BEGIN = "* BEGIN provenance (WP-17)"
+PROVENANCE_END = "* END provenance (WP-17)"
 
 def _fmt(value) -> str:
     """A fixture value as the token a .scheme directive carries."""
@@ -859,94 +1054,121 @@ def _grid_comment(e: dict) -> list[str]:
     ]
 
 
-def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple[str, str, str]]]]":
+def _color_token(hexval, opacity) -> "str | None":
+    """A colour directive's token: ``#rrggbb``, with Stata's ``%NN`` opacity
+    suffix when the scheme carries one (sttrans), or None for `none'."""
+    if hexval is None:
+        return None
+    if opacity is None:
+        return hexval
+    return f"{hexval}%{opacity:g}"
+
+
+def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     """The directives a translated file must carry for fixture entry *e*.
 
-    Returns ordered groups ``(comment_lines, [(class, key, value), ...])``;
-    the comment is written above the group when any of it has to be appended.
+    Returns ordered groups ``(comment_lines, items, optional)`` with each item
+    ``(class, key, value, ref)`` where ``ref`` is ``(fixture key, index)`` --
+    index None for a scalar, 1-based for a p# cycle -- pointing at the
+    fixture's ``provenance`` record for that directive.  The comment is
+    written above the group when any of it has to be appended.  An
+    ``optional`` group is checked where a file carries it but never appended.
     A ``None`` value (Stata colour ``none``, or an unresolvable entry) is
     skipped rather than written.
     """
     groups: list = []
 
-    def group(comment, items):
-        items = [(c, k, _fmt(v)) for c, k, v in items if v is not None]
+    def group(comment, items, optional=False):
+        items = [(c, k, _fmt(v), ref) for c, k, v, ref in items if v is not None]
         if items:
-            groups.append((comment, items))
+            groups.append((comment, items, optional))
 
     def name_of(spec):
         return (spec or {}).get("name")
 
+    def scalar(cls, key, fixture_key, value=None, use_name=False):
+        v = e.get(fixture_key)
+        if use_name:
+            v = name_of(v)
+        return (cls, key, v if value is None else value, (fixture_key, None))
+
+    def color_cycle(stub, fixture_key):
+        vals = e.get(fixture_key) or []
+        pcts = e.get(f"{fixture_key}_opacity") or [None] * len(vals)
+        return [("color", f"p{i}{stub}",
+                 _color_token(vals[i - 1], pcts[i - 1] if len(pcts) >= i else None),
+                 (fixture_key, i))
+                for i in range(1, N_PLOTS + 1) if len(vals) >= i]
+
+    def name_cycle(cls, stub, fixture_key):
+        vals = e.get(fixture_key) or []
+        return [(cls, f"p{i}{stub}", vals[i - 1], (fixture_key, i))
+                for i in range(1, N_PLOTS + 1) if len(vals) >= i]
+
     group(["Background and region colours."], [
-        ("color", "background", e.get("background_color")),
-        ("color", "plotregion", e.get("plotregion_color")),
-        ("color", "legend", e.get("legend_bg_color")),
-        ("color", "legend_line", e.get("legend_border_color")),
-        ("color", "major_grid", e.get("grid_color")),
-        ("color", "minor_grid", e.get("minor_grid_color")),
-        ("color", "heading", e.get("title_color")),
-        ("color", "axisline", e.get("axis_line_color")),
+        scalar("color", "background", "background_color"),
+        scalar("color", "plotregion", "plotregion_color"),
+        scalar("color", "legend", "legend_bg_color"),
+        scalar("color", "legend_line", "legend_border_color"),
+        scalar("color", "major_grid", "grid_color"),
+        scalar("color", "minor_grid", "minor_grid_color"),
+        scalar("color", "heading", "title_color"),
+        scalar("color", "axisline", "axis_line_color"),
     ])
+    group(["Generic grid colour (Stata: color grid), the parser's fallback when",
+           "color major_grid is absent.  Checked where a file carries it, never",
+           "appended."], [
+        scalar("color", "grid", "grid_color_generic"),
+    ], optional=True)
     for stub, key in (("", "p_colors"), ("line", "p_line_colors"),
                       ("bar", "p_bar_colors"), ("mark", "p_mark_colors")):
-        vals = e.get(key) or []
         group([f"Per-plot colour cycle p#{stub} (Stata's p#stub -> pstub -> p# -> p chain, flattened)."],
-              [("color", f"p{i}{stub}", vals[i - 1]) for i in range(1, N_PLOTS + 1)
-               if len(vals) >= i])
+              color_cycle(stub, key))
     decl = e.get("lineplot_declared") or {}
     if decl.get("color"):
-        vals = e.get("p_lineplot_colors") or []
         group(["Per-plot `twoway line' colour (Stata: color p#lineplot; declared by this chain)."],
-              [("color", f"p{i}lineplot", vals[i - 1]) for i in range(1, N_PLOTS + 1)
-               if len(vals) >= i])
-    vals = e.get("p_symbols") or []
-    group(["Marker symbol cycle."],
-          [("symbol", f"p{i}", vals[i - 1]) for i in range(1, N_PLOTS + 1)
-           if len(vals) >= i])
-    vals = e.get("p_line_patterns") or []
+              color_cycle("lineplot", "p_lineplot_colors"))
+    group(["Marker symbol cycle."], name_cycle("symbol", "", "p_symbols"))
     group(["Line patterns of the connecting line (Stata: linepattern p#line)."],
-          [("linepattern", f"p{i}line", vals[i - 1]) for i in range(1, N_PLOTS + 1)
-           if len(vals) >= i])
+          name_cycle("linepattern", "line", "p_line_patterns"))
     if decl.get("linepattern"):
-        vals = e.get("p_lineplot_patterns") or []
         group(["Line patterns of `twoway line' (Stata: linepattern p#lineplot; declared by this chain)."],
-              [("linepattern", f"p{i}lineplot", vals[i - 1])
-               for i in range(1, N_PLOTS + 1) if len(vals) >= i])
+              name_cycle("linepattern", "lineplot", "p_lineplot_patterns"))
     group(["Line widths (Stata linewidth style names)."], [
-        ("linewidth", "p", name_of(e.get("default_line_width"))),
-        ("linewidth", "major_grid", name_of(e.get("grid_line_width"))),
+        scalar("linewidth", "p", "default_line_width", use_name=True),
+        scalar("linewidth", "major_grid", "grid_line_width", use_name=True),
     ])
     group(["Fill intensities."], [
-        ("intensity", "p", name_of(e.get("fill_alpha"))),
-        ("intensity", "bar", name_of(e.get("bar_alpha"))),
-        ("intensity", "area", name_of(e.get("area_alpha"))),
+        scalar("intensity", "p", "fill_alpha", use_name=True),
+        scalar("intensity", "bar", "bar_alpha", use_name=True),
+        scalar("intensity", "area", "area_alpha", use_name=True),
     ])
     group(["Font sizes (Stata gsize style names, relative units)."], [
-        ("gsize", "text", name_of(e.get("text_size"))),
-        ("gsize", "heading", name_of(e.get("heading_size"))),
-        ("gsize", "axis_title", name_of(e.get("axis_title_size"))),
-        ("gsize", "tick_label", name_of(e.get("tick_label_size"))),
-        ("gsize", "note", name_of(e.get("note_size"))),
+        scalar("gsize", "text", "text_size", use_name=True),
+        scalar("gsize", "heading", "heading_size", use_name=True),
+        scalar("gsize", "axis_title", "axis_title_size", use_name=True),
+        scalar("gsize", "tick_label", "tick_label_size", use_name=True),
+        scalar("gsize", "note", "note_size", use_name=True),
     ])
     group(["Graph dimensions, in inches."], [
-        ("graphsize", "x", e.get("graphsize_x")),
-        ("graphsize", "y", e.get("graphsize_y")),
+        scalar("graphsize", "x", "graphsize_x"),
+        scalar("graphsize", "y", "graphsize_y"),
     ])
     group(["Marker size and legend placement."], [
-        ("symbolsize", "p", name_of(e.get("symbolsize"))),
-        ("clockdir", "legend_position", e.get("legend_position")),
-        ("numstyle", "legend_cols", e.get("legend_cols")),
+        scalar("symbolsize", "p", "symbolsize", use_name=True),
+        scalar("clockdir", "legend_position", "legend_position"),
+        scalar("numstyle", "legend_cols", "legend_cols"),
     ])
     group(["Major grid switches (effective per-axis values; see the minor-grid note)."], [
-        ("yesno", "draw_major_hgrid", e.get("draw_major_hgrid")),
-        ("yesno", "draw_major_vgrid", e.get("draw_major_vgrid")),
-        ("yesno", "draw_major_grid", e.get("draw_major_grid")),
+        scalar("yesno", "draw_major_hgrid", "draw_major_hgrid"),
+        scalar("yesno", "draw_major_vgrid", "draw_major_vgrid"),
+        scalar("yesno", "draw_major_grid", "draw_major_grid"),
     ])
     # --- the directives the first translation did not carry ---------------- #
     group(_grid_comment(e), [
-        ("yesno", "draw_minor_hgrid", e.get("draw_minor_hgrid")),
-        ("yesno", "draw_minor_vgrid", e.get("draw_minor_vgrid")),
-        ("yesno", "draw_minor_grid", e.get("draw_minor_grid")),
+        scalar("yesno", "draw_minor_hgrid", "draw_minor_hgrid"),
+        scalar("yesno", "draw_minor_vgrid", "draw_minor_vgrid"),
+        scalar("yesno", "draw_minor_grid", "draw_minor_grid"),
     ])
     group([
         "Text colours, one per textbox style: style/textboxstyle-<name>.style",
@@ -956,14 +1178,14 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple[str, str, 
         "`color foreground' are the scheme's general text and foreground",
         "colours.",
     ], [
-        ("color", "subheading", e.get("subheading_color")),
-        ("color", "body", e.get("body_color")),
-        ("color", "small_body", e.get("small_body_color")),
-        ("color", "text", e.get("text_color")),
-        ("color", "axis_title", e.get("axis_title_color")),
-        ("color", "tick_label", e.get("tick_label_color")),
-        ("color", "key_label", e.get("key_label_color")),
-        ("color", "foreground", e.get("foreground_color")),
+        scalar("color", "subheading", "subheading_color"),
+        scalar("color", "body", "body_color"),
+        scalar("color", "small_body", "small_body_color"),
+        scalar("color", "text", "text_color"),
+        scalar("color", "axis_title", "axis_title_color"),
+        scalar("color", "tick_label", "tick_label_color"),
+        scalar("color", "key_label", "key_label_color"),
+        scalar("color", "foreground", "foreground_color"),
     ])
     group([
         "Text sizes, one per textbox style (Stata gsize style names; the",
@@ -971,17 +1193,17 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple[str, str, 
         "at Stata's 4-inch reference).  note() is drawn with small_body: the",
         "`gsize note' line above is not the key Stata's note textbox reads.",
     ], [
-        ("gsize", "subheading", name_of(e.get("subheading_size"))),
-        ("gsize", "body", name_of(e.get("body_size"))),
-        ("gsize", "small_body", name_of(e.get("small_body_size"))),
-        ("gsize", "key_label", name_of(e.get("key_label_size"))),
+        scalar("gsize", "subheading", "subheading_size", use_name=True),
+        scalar("gsize", "body", "body_size", use_name=True),
+        scalar("gsize", "small_body", "small_body_size", use_name=True),
+        scalar("gsize", "key_label", "key_label_size", use_name=True),
     ])
     group(["Minor grid and axis line widths (Stata linewidth style names)."], [
-        ("linewidth", "minor_grid", name_of(e.get("minor_grid_line_width"))),
-        ("linewidth", "axisline", name_of(e.get("axis_line_width"))),
+        scalar("linewidth", "minor_grid", "minor_grid_line_width", use_name=True),
+        scalar("linewidth", "axisline", "axis_line_width", use_name=True),
     ])
     group(["Legend rows; 0 means not fixed, so the column count above decides."], [
-        ("numstyle", "legend_rows", e.get("legend_rows")),
+        scalar("numstyle", "legend_rows", "legend_rows"),
     ])
     return groups
 
@@ -1016,52 +1238,162 @@ def _chain_text(name: str, e: dict) -> str:
     return " -> ".join(chain)
 
 
-def _render_block(name: str, e: dict, groups, stamp: str) -> list[str]:
-    rule = "* " + "-" * 75
-    out = [
-        rule,
-        f"* Added {stamp} by scripts/extract_scheme_truth.py (WP-16): directives",
-        "* Stata consumes that the translation above did not carry.  Values are",
-        "* resolved from the same Stata #include chain and style files as the",
-        f"* rest of this file (chain: {_chain_text(name, e)}); colours are",
-        "* pre-resolved #rrggbb.  Re-running the script re-checks every directive",
-        "* in this file and appends only what is missing.",
-        rule,
-    ]
+def _render_block(name: str, e: dict, groups, stamp: str,
+                  created: bool = False) -> list[str]:
+    if created:
+        out = [
+            _RULE,
+            f"* Directives, written {stamp} by scripts/extract_scheme_truth.py (WP-17)",
+            "* from test/fixtures/scheme_truth.json.  Every value is resolved from",
+            "* Stata's own #include chain and style files (chain:",
+            f"* {_chain_text(name, e)}); colours are pre-resolved #rrggbb, a %NN",
+            "* suffix being Stata's opacity kept as written; every p#stub is spelled",
+            "* out p1..p15.  Re-running the script re-checks every directive here.",
+            _RULE,
+        ]
+    else:
+        out = [
+            _RULE,
+            f"* Added {stamp} by scripts/extract_scheme_truth.py (WP-16): directives",
+            "* Stata consumes that the translation above did not carry.  Values are",
+            "* resolved from the same Stata #include chain and style files as the",
+            f"* rest of this file (chain: {_chain_text(name, e)}); colours are",
+            "* pre-resolved #rrggbb.  Re-running the script re-checks every directive",
+            "* in this file and appends only what is missing.",
+            _RULE,
+        ]
     for comment, items in groups:
         out.append("")
         out.extend("* " + c if c else "*" for c in comment)
-        width = max(len(k) for _, k, _ in items)
-        for cls, key, value in items:
+        width = max(len(k) for _, k, _, _ in items)
+        for cls, key, value, _ref in items:
             out.append(f"{cls} {key:<{width}}  {value}")
     return out
 
 
 def _new_file_header(name: str, e: dict, stata_base: str, stamp: str) -> list[str]:
     chain = _chain_text(name, e)
-    rule = "* " + "-" * 75
+    src = os.path.join(stata_base, "s", f"scheme-{name}.scheme")
+    label = e.get("label") or name
     return [
         f"* {name}.scheme",
-        rule,
-        f"* dash translation of Stata's {name} scheme, written {stamp} by",
-        "* scripts/extract_scheme_truth.py from Stata's own scheme-*.scheme and",
-        "* style/*.style files.",
-        f"*   Source Stata scheme : {os.path.join(stata_base, 's', f'scheme-{name}.scheme')}",
-        f"*                         (Stata #include chain: {chain})",
-        "* Every colour is a RESOLVED #rrggbb value; every p#stub is spelled out",
-        "* p1..p15 because SchemeParser reads by exact key with no fallback.",
-        rule,
+        _RULE,
+        f"* dash translation of Stata's {name} scheme.",
+        "*",
+        f"* Source Stata scheme file : {src}",
+        f"* Stata version            : {STATA_VERSION}",
+        f"* Stata #include chain     : {chain}",
+        f"* Translated on            : {stamp}",
+        "* Derived from             : test/fixtures/scheme_truth.json, generated by",
+        "*                            scripts/extract_scheme_truth.py from Stata's own",
+        "*                            scheme-*.scheme and style/*.style files.",
+        "*",
+        "* Every colour below is a RESOLVED #rrggbb value, not a Stata colour name",
+        "* (a %NN suffix is Stata's opacity, kept as the scheme writes it), and",
+        "* every p#stub is spelled out p1..p15 because SchemeParser reads by exact",
+        "* key with no fallback.  The provenance block at the end says, for every",
+        "* directive, which Stata directive it was transcribed from or which",
+        "* fallback rule inferred it.",
+        "*",
+        "* Re-extract and re-check this file whenever Stata is upgraded: the header",
+        "* above is only true as of the version and date recorded in it.",
+        _RULE,
         "",
-        f'label "{name}"',
+        f'label "{label}"',
     ]
+
+
+# --- the provenance block ---------------------------------------------------- #
+
+def _provenance_text(entry: "dict | None") -> "str | None":
+    """One directive's provenance, as the `* provenance:' line carries it."""
+    if not entry:
+        return None
+    directive, value = entry.get("directive"), entry.get("value")
+    spelled = f"`{directive} {value}'" if value is not None else f"`{directive}'"
+    where = entry.get("file") or "?"
+    if entry.get("line"):
+        where += f":{entry['line']}"
+    if entry.get("kind") == "transcribed":
+        text = f"transcribed from {where} {spelled}"
+        if entry.get("via"):
+            text += f" via {entry['via']}"
+        return text
+    return f"inferred: {entry.get('rule') or 'no rule recorded'} ({where})"
+
+
+def provenance_block(name: str, e: dict, groups, present: dict) -> "list[str] | None":
+    """The `* provenance:' block for the directives the file carries.
+
+    One line per directive, in the order of ``expected_directives``; a
+    directive the file does not carry gets no line.  None when the fixture
+    entry has no ``provenance`` map (an older fixture), so nothing is
+    written.
+    """
+    prov = e.get("provenance")
+    if not isinstance(prov, dict):
+        return None
+    lines = []
+    for _comment, items, _optional in groups:
+        for cls, key, _value, (fixture_key, index) in items:
+            if (cls, key.lower()) not in present:
+                continue
+            entry = prov.get(fixture_key)
+            if isinstance(entry, list):
+                entry = entry[index - 1] if index and len(entry) >= index else None
+            text = _provenance_text(entry)
+            if text is None:
+                continue
+            lines.append(f"* provenance: {cls} {key} -- {text}")
+    if not lines:
+        return None
+    return [
+        _RULE,
+        PROVENANCE_BEGIN,
+        "* Where every directive above comes from, written by",
+        "* scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'",
+        "* map (one line per directive, in the order of the groups above).",
+        "*   transcribed from <file>:<line> `<directive>'  a Stata scheme file in",
+        f"*       this chain ({_chain_text(name, e)}) writes the very key this",
+        "*       translation carries; the value is that directive's, resolved.",
+        "*   inferred: <rule>  no Stata file writes the key dash reads; the value",
+        "*       is what Stata itself falls back to -- the documented",
+        "*       p#stub -> pstub -> p# -> p chain, a bare class default, the",
+        "*       generic `color grid', or an axisstyle indirection.",
+        "* Do not hand-edit this block: a re-run rewrites it in place when it",
+        "* differs, and leaves it alone when it does not.",
+        *lines,
+        PROVENANCE_END,
+        _RULE,
+    ]
+
+
+def _upsert_provenance(lines: list[str], block: list[str]) -> "str | None":
+    """Write *block* into *lines*: replace an existing one only if it differs,
+    append one otherwise.  Returns "written", "updated" or None (unchanged)."""
+    if PROVENANCE_BEGIN in lines and PROVENANCE_END in lines:
+        b = lines.index(PROVENANCE_BEGIN)
+        e = lines.index(PROVENANCE_END)
+        if e > b:
+            start = b - 1 if b > 0 and lines[b - 1] == _RULE else b
+            stop = e + 2 if e + 1 < len(lines) and lines[e + 1] == _RULE else e + 1
+            if lines[start:stop] == block:
+                return None
+            lines[start:stop] = block
+            return "updated"
+    while lines and lines[-1] == "":
+        lines.pop()
+    lines.extend([""] + block)
+    return "written"
 
 
 def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
                        stamp: str) -> dict:
     """Bring ``schemes/<name>.scheme`` into line with fixture entry *e*.
 
-    Returns ``{"changed": [...], "added": [...], "created": bool}`` describing
-    what was written; an empty result means the file already agreed.
+    Returns ``{"changed": [...], "added": [...], "created": bool,
+    "provenance": "written" | "updated" | None}`` describing what was
+    written; an all-empty result means the file already agreed.
     """
     created = not os.path.exists(path)
     if created:
@@ -1071,12 +1403,14 @@ def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
             lines = fh.read().split("\n")
     present = _file_directives(lines)
     changed, added, append_groups = [], [], []
-    for comment, items in expected_directives(e):
+    groups = expected_directives(e)
+    for comment, items, optional in groups:
         missing = []
-        for cls, key, value in items:
+        for cls, key, value, ref in items:
             hit = present.get((cls, key.lower()))
             if hit is None:
-                missing.append((cls, key, value))
+                if not optional:
+                    missing.append((cls, key, value, ref))
                 continue
             idx, old = hit
             if not _same(old, value):
@@ -1084,29 +1418,41 @@ def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
                 changed.append(f"{cls} {key}: {old} -> {value}")
         if missing:
             append_groups.append((comment, missing))
-            added.extend(f"{c} {k}" for c, k, _ in missing)
+            added.extend(f"{c} {k}" for c, k, _, _ in missing)
     if append_groups:
         if present:
             insert_at = max(i for i, _ in present.values()) + 1
         else:
             insert_at = len(lines)
-        block = _render_block(name, e, append_groups, stamp)
+        block = _render_block(name, e, append_groups, stamp, created=created)
         lines[insert_at:insert_at] = [""] + block
-    if created or changed or added:
+    # The provenance block describes what the file NOW carries.
+    present = _file_directives(lines)
+    block = provenance_block(name, e, groups, present)
+    prov_state = _upsert_provenance(lines, block) if block else None
+    if created or changed or added or prov_state:
         text = "\n".join(lines)
         if not text.endswith("\n"):
             text += "\n"
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
-    return {"changed": changed, "added": added, "created": created}
+    return {"changed": changed, "added": added, "created": created,
+            "provenance": prov_state}
 
 
 # --------------------------------------------------------------------------- #
 
+# The twenty user-selectable schemes StataCorp ships.  The internal ones
+# (meta, stcolor_meta, stgcolor_meta, stcolor_mv, stgcolor_mv, stcoloralias)
+# are deliberately not translated.  SchemeParser._BUILTIN_NAMES,
+# test_scheme_fidelity.EXPECTED_SCHEMES and dash.ado's _dash_shipped_schemes
+# must list exactly these; test_scheme_resolution.py checks all four agree.
 SCHEMES = [
     "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
     "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
     "economist", "sj",
+    # WP-17: the six that were missing.
+    "s2manual", "s1manual", "s2gmanual", "s2color8", "sttrans", "stgcolor_alt",
 ]
 
 
@@ -1141,7 +1487,7 @@ def main(argv=None) -> int:
             ),
             "generated_utc": datetime.datetime.now(
                 datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
+            "stata_version": STATA_VERSION,
             "scheme_dir": os.path.join(base, "s"),
             "style_dir": os.path.join(base, "style"),
             "also_identical_in": "/Applications/Stata/ado/base "
@@ -1156,8 +1502,10 @@ def main(argv=None) -> int:
                 "'linepattern p solid' while 'linepattern p#lineplot' is "
                 "solid/dash/vshortdash/..., so three overlaid twoway line plots "
                 "are drawn with three different dashes. Only the s2mono branch "
-                "(s2mono, stmono2, stsj, sj) declares any lineplot key; for "
-                "every other scheme p_lineplot_* is the p#stub->pstub->p#->p "
+                "(s2mono, s2manual, s2gmanual, stmono2, stsj, sj) declares any "
+                "lineplot key, and only s2mono and s2gmanual write one "
+                "themselves; for every other scheme p_lineplot_* is the "
+                "p#stub->pstub->p#->p "
                 "fallback result, not something the scheme wrote. "
                 "'lineplot_declared' records which case a scheme is in, per "
                 "class, so a translation can tell an inherited value from a "
@@ -1180,6 +1528,47 @@ def main(argv=None) -> int:
                 "against Stata 19.5 SVG export over 24 colour/multiplier cases."
             ),
             "color_none": "Stata colour 'none' is emitted as JSON null.",
+            "label": "Per-scheme 'label' is Stata's own `label \"...\"' line.",
+            "directive_value": (
+                "Stata's scheme.class setscheme reads a directive with "
+                "`tokenize' then `args style id stylename': the value is the "
+                "THIRD token, a double-quoted string is one token, and "
+                "anything after the value is ignored -- scheme-sttrans.scheme's "
+                "`symbolsize p small *medium' is `small' (measured: its marker "
+                "radius in an SVG export equals s2color's msize(small)). The "
+                "resolver tokenises the same way."
+            ),
+            "opacity": (
+                "A colour token's %NN suffix is Stata's opacity (0-100). It is "
+                "recorded beside the hex it belongs to, per plot, in "
+                "p_colors_opacity, p_line_colors_opacity, p_bar_colors_opacity, "
+                "p_mark_colors_opacity and p_lineplot_colors_opacity (None when "
+                "the scheme writes none); the hex lists stay plain #rrggbb. Only "
+                "sttrans uses one (every p# colour is \"r g b %20\"). A scalar "
+                "colour with an opacity suffix has no slot and is reported in "
+                "'unresolvable' rather than dropped."
+            ),
+            "provenance": (
+                "Per-scheme 'provenance' parallels 'sources': for every extracted "
+                "key (one record per index for the p# cycles) {kind, directive, "
+                "value, file, line[, rule][, via]}. kind 'transcribed': a Stata "
+                "scheme file in the #include chain writes the very key the "
+                "translation carries, and file:line is that directive (via names "
+                "an axisstyle indirection, or the style file a grid literal came "
+                "from). kind 'inferred': no file writes the key dash reads; the "
+                "value is what Stata itself falls back to -- the documented "
+                "p#stub -> pstub -> p# -> p chain, a bare class default, or the "
+                "generic `color grid' -- and 'rule' says which. The shipped "
+                "schemes/<name>.scheme files carry the same as `* provenance:' "
+                "lines between `* BEGIN provenance (WP-17)' and `* END "
+                "provenance (WP-17)', one per directive."
+            ),
+            "grid_color_generic": (
+                "Stata's `color grid', the generic fallback SchemeParser reads "
+                "when a file has no `color major_grid'. Optional in the shipped "
+                "files: checked and given provenance where a file carries it "
+                "(s2color, sj), never appended."
+            ),
             "sources": (
                 "Per-scheme 'sources' records, for every extracted property, the "
                 "exact '<class> <key>' directive that supplied the value after "
@@ -1306,7 +1695,10 @@ def main(argv=None) -> int:
             sys.stderr.write(
                 f"{path}: added {len(result['added'])} directive(s): "
                 + ", ".join(result["added"]) + "\n")
-        elif not result["changed"]:
+        if result.get("provenance") and not result["created"]:
+            sys.stderr.write(f"{path}: provenance {result['provenance']}\n")
+        if not (result["created"] or result["added"] or result["changed"]
+                or result.get("provenance")):
             sys.stderr.write(f"{path}: up to date\n")
     return 0
 

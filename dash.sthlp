@@ -249,8 +249,13 @@ This help file documents only the features that differ from or extend
     {cmd:msangle()} -360 to 360; {cmd:xsize()} and {cmd:ysize()} 1 to
     100; a word that only looks like a number, such as
     {cmd:msize(1e400)}, is refused as {cmd:twoway} refuses it.  A word
-    from a list, matched without regard to case: {cmd:kernel()} and
-    {cmd:colpalette()}.  A list of numbers, written as any Stata
+    from a list, matched without regard to case: {cmd:kernel()},
+    {cmd:colpalette()} and {cmd:theme()}.  A scheme name:
+    {cmd:scheme()} must be a shipped scheme, a {cmd:theme()} name or a
+    {cmd:.scheme} file in the working directory, given by bare name or
+    with the extension, wherever it is written (see
+    {help dash##scheme:Stata scheme support}).  A list of numbers,
+    written as any Stata
     {it:numlist}: {cmd:colorcuts()} one or more, {cmd:range()} exactly
     two; {cmd:colorcuts(1(1)5)} reaches the renderer as 1 2 3 4 5.
     Variables: {cmd:mlabel()} and {cmd:colorvar()} name one, {cmd:hover()}
@@ -277,7 +282,10 @@ This help file documents only the features that differ from or extend
     200 is {cmd:twoway}'s own limit.  Two values {cmd:twoway} refuses,
     {cmd:dash} accepts: {cmd:kernel(GAUSSIAN)} is read as
     {cmd:kernel(gaussian)}, and {cmd:lwidth(())} passes as a name that
-    the renderer then reports.
+    the renderer then reports.  And {cmd:scheme()} and {cmd:theme()}
+    are refused where {cmd:twoway} draws {cmd:s2color} with a note,
+    because a saved dashboard in the wrong scheme is not a note you
+    see; {help dash##scheme:Stata scheme support} says more.
 
 {phang2}    Colours, {cmd:msymbol()}, {cmd:lpattern()}, {cmd:scheme()} and
     the sub-options of the structured options are not checked in Stata.
@@ -1185,20 +1193,35 @@ own {cmd:c(scheme)}, so a dashboard has the look of every other graph you
 draw without your asking.
 
 {pstd}
-{cmd:dash} ships faithful translations of fourteen StataCorp schemes:
+{cmd:dash} ships faithful translations of twenty StataCorp schemes:
 
 {synoptset 16}{...}
 {synopt:{cmd:stcolor}}Stata 18+ default{p_end}
 {synopt:{cmd:stcolor_alt}}{p_end}
 {synopt:{cmd:stgcolor}}{p_end}
+{synopt:{cmd:stgcolor_alt}}{cmd:stcolor_alt} at the manuals' page size{p_end}
 {synopt:{cmd:stmono1}}{p_end}
 {synopt:{cmd:stmono2}}{p_end}
 {synopt:{cmd:stsj}}{p_end}
+{synopt:{cmd:sttrans}}{cmd:s2color} restyled to {cmd:stcolor}'s look
+    (white background, legend at the right) with a colourblind-friendly
+    palette (Paul Tol's muted colours) declared at twenty percent
+    opacity ({cmd:%20}), which {cmd:dash} carries into the glyphs in both
+    modes, as Stata draws it{p_end}
 {synopt:{cmd:s2color}}the default from Stata 10 to 17{p_end}
+{synopt:{cmd:s2color8}}{cmd:s2color} with Stata's {cmd:8} colour variants
+    ({cmd:navy8}, {cmd:ltbluishgray8}, {cmd:bluishgray8}) for the
+    background, grid, boxes and the first and last series{p_end}
 {synopt:{cmd:s2mono}}{p_end}
+{synopt:{cmd:s2manual}}{cmd:s2mono} at the manuals' page size, as printed in
+    every manual but [G]{p_end}
+{synopt:{cmd:s2gmanual}}{cmd:s2mono} at the manuals' page size with each
+    line plot in its own solid grey, as printed in [G]{p_end}
 {synopt:{cmd:s2gcolor}}{p_end}
 {synopt:{cmd:s1color}}{p_end}
 {synopt:{cmd:s1mono}}{p_end}
+{synopt:{cmd:s1manual}}{cmd:s1mono} at the manuals' page size, with larger
+    text and symbols{p_end}
 {synopt:{cmd:s1rcolor}}light on a dark background{p_end}
 {synopt:{cmd:economist}}{p_end}
 {synopt:{cmd:sj}}{p_end}
@@ -1217,7 +1240,14 @@ A scheme directive that Stata's {cmd:graph} consumes is consumed by
 {phang2}{ul:Series.}  The colour, symbol, line-pattern and line-width
     cycles ({cmd:p1} to {cmd:p15}), the marker colour where a scheme
     declares a {cmd:color p}{it:#}{cmd:mark} apart from {cmd:p}{it:#}, the
-    marker size ({cmd:symbolsize p}) and the fill intensities.{p_end}
+    marker size ({cmd:symbolsize p}), the fill intensities, and a colour
+    opacity the scheme declares ({cmd:sttrans}'s {cmd:%20}), which is
+    carried into the scatter, connected, line, bar, area and histogram
+    layers in both modes and wins over the alpha {cmd:dash} otherwise
+    derives from the intensities; the range, spike, fit, band, density,
+    function and immediate layers take the colour but not yet its opacity;
+    your own {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} or {cmd:malpha()}
+    still wins over both.{p_end}
 
 {phang2}{ul:Grids.}  A major grid is drawn on an axis only where the
     scheme says so ({cmd:yesno draw_major_hgrid} for the x axis,
@@ -1284,26 +1314,78 @@ compatibility: {cmd:default} is {cmd:s2color}, {cmd:clean} is {cmd:s1color},
 are given.
 
 {pstd}
-A name that is neither a translated scheme nor one of those aliases is
-reported and {cmd:s2color} is used -- {cmd:dash} does not silently draw
-something other than what you asked for.  To use a scheme {cmd:dash} does not
-ship, put its Stata-format {cmd:.scheme} file in the working directory and
-give its base name without the extension.
+{ul:A scheme of your own.}  To use a scheme {cmd:dash} does not ship, put
+its {cmd:.scheme} file in the working directory and name it either by its
+base name, {cmd:scheme(mytheme)}, or by its file name,
+{cmd:scheme(mytheme.scheme)}.  Both work on every entry point -- a plot
+drawn at once with {cmd:dash} {it:plottype}, a {cmd:scheme()} written on
+a registered graph or inside a layer's parentheses, {cmd:dash build} and
+{cmd:dash serve} -- and the page and every figure take the same file.  A
+file in the working directory wins over a shipped scheme of the same
+name.  A shipped name may be given with the extension too,
+{cmd:scheme(s2color.scheme)}, on every entry point and with no file in
+the working directory.  A scheme another package installed into
+{cmd:PLUS} is not read from there, deliberately: the letter directories
+are shared, so
+{cmd:dash} reads only its own translations and the working directory.
+Copy the file into the working directory instead.  A name carrying a
+directory separator or {cmd:..} is refused.
 
 {pstd}
-{ul:A scheme file of your own, and what it may include.}  StataCorp's
-schemes are written as edits on top of an {cmd:#include}d parent, and
-{cmd:dash} resolves that chain once, when it extracts its fourteen
-translations, so each shipped file already carries every directive it needs
-with every colour written as hex.  A file of yours is read the same way: an
+{ul:A name that resolves to nothing is refused.}  A {cmd:scheme()} that
+is neither a shipped scheme, one of the {cmd:theme()} aliases nor a
+{cmd:.scheme} file in the working directory is refused before any Python
+runs, on every entry point, with r(198):
+
+{phang3}{cmd:. dash build, saving(d.html) scheme(nosuchthing) replace}{p_end}
+{phang3}{cmd:dash build: scheme() must be a shipped scheme, a theme, or a .scheme file in the working directory (got: nosuchthing)}{p_end}
+
+{pstd}
+and a {cmd:theme()} likewise, naming its six values:
+{cmd:dash build: theme() must be one of clean, dark, default, economist, mono, sj (got: nosuchtheme)}.
+That is stricter than {cmd:twoway}, which draws {cmd:s2color} with a note
+when a scheme is not found, and the same as {cmd:set scheme}, which is
+r(111): a dashboard is a file you look at later, so {cmd:dash} will not
+save one in a scheme you did not ask for.  The session's own
+{cmd:c(scheme)}, inherited when you name none, is the one exception.
+When {cmd:dash} cannot translate it -- a third-party scheme, or one of
+StataCorp's internal ones such as {cmd:stcolor_meta} -- it says so once,
+{cmd:dash: 'X' is not a known theme or scheme; it was inherited from the session (c(scheme)) because no scheme() or theme() was given ...; using s2color},
+and draws {cmd:s2color}; never an error, so a session set to a scheme
+{cmd:dash} does not know still builds.
+
+{pstd}
+{ul:What a scheme file of yours may include.}  StataCorp's schemes are
+written as edits on top of an {cmd:#include}d parent, and {cmd:dash}
+resolves that chain once, when it extracts its twenty translations, so
+each shipped file already carries every directive it needs with every
+colour written as hex.  A file of yours is read the same way: an
 {cmd:#include} is resolved as {cmd:scheme()} itself is -- a {cmd:.scheme}
-file of that name in the working directory first, then one of the fourteen
+file of that name in the working directory first, then one of the twenty
 translations {cmd:dash} ships -- never Stata's own
 {cmd:scheme-}{it:name}{cmd:.scheme}.  An {cmd:#include} that resolves to
-neither (a StataCorp scheme {cmd:dash} does not ship, such as
-{cmd:s2color8}) is skipped in silence, so a scheme built on one has to
-state every directive it wants itself.  Colours may be Stata colour names
-or {cmd:#rrggbb}.
+neither (one of StataCorp's internal schemes, such as
+{cmd:stcolor_meta}, or a third-party scheme) is skipped in silence, so a
+scheme built on one has to state every directive it wants itself.
+Colours may be Stata colour names or {cmd:#rrggbb}.
+
+{pstd}
+{ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
+own format, not a copy of StataCorp's file and not a drop-in Stata
+scheme: about 135 directives (the {cmd:s2mono} family, which declares a
+line-plot cycle, about 165) where Stata's {cmd:scheme-s2color.scheme}
+has 2060, the {cmd:#include} chain flattened into the file, every colour
+resolved to {cmd:#rrggbb} ({cmd:sttrans}'s with the {cmd:%20} opacity
+Stata declares kept as {cmd:#rrggbb%20}), and a {cmd:* provenance:}
+comment for every
+directive saying whether it was transcribed from Stata's file, and from
+which directive, or inferred by {cmd:dash} -- the {cmd:p}{it:#}{cmd:line},
+{cmd:p}{it:#}{cmd:bar} and {cmd:p}{it:#}{cmd:mark} colours, the marker
+symbols, the line patterns and the area intensity, which Stata resolves
+through its {cmd:p}{it:#}{cmd:stub} fallback and {cmd:dash} writes out
+resolved.  The directives {cmd:dash} does not carry govern what it does
+not draw: bar, box, pie, dot and matrix styling, margins and tick
+geometry.  {cmd:graph} never reads these files (see below).
 
 {pstd}
 {it:Example:}
@@ -1312,12 +1394,14 @@ or {cmd:#rrggbb}.
 {pstd}
 {ul:Where the shipped schemes live after an install.}  {cmd:net install}
 files by basename and extension rather than by the path in the manifest, so
-the fourteen {cmd:.scheme} files land in the {cmd:PLUS} letter directories --
+the twenty {cmd:.scheme} files land in the {cmd:PLUS} letter directories --
 {cmd:PLUS/s/s2color.scheme}, {cmd:PLUS/e/economist.scheme} and so on -- while
-{cmd:dash_render.py} goes to {cmd:PLUS/py/}.  {cmd:dash} looks there, so
-{cmd:scheme()} works the same from an installed copy as from a source
-checkout.  A {cmd:.scheme} file you put in the working directory still wins
-over the shipped one of the same name.
+{cmd:dash_render.py} goes to {cmd:PLUS/py/}.  {cmd:dash} looks there for
+its own twenty names and for nothing else, so {cmd:scheme()} works the
+same from an installed copy as from a source checkout, and a third-party
+{cmd:scheme-}{it:name}{cmd:.scheme} in the same directory stays unread.
+A {cmd:.scheme} file you put in the working directory still wins over
+the shipped one of the same name.
 
 {pstd}
 {ul:They are named without Stata's {cmd:scheme-} prefix, deliberately.}

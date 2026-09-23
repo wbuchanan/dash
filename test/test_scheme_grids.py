@@ -70,7 +70,46 @@ _GRID_TRUTH = {
     "stmono1":     (False, False),
     "stmono2":     (True,  True),
     "stsj":        (False, True),
+    # WP-17: the six added schemes, from their parents' chains --
+    # s2manual/s2gmanual #include s2mono (-> s2color), s1manual #include
+    # s1mono, s2color8 #include s2color, stgcolor_alt #include stcolor_alt;
+    # sttrans #includes s2color and then sets `yesno draw_major_hgrid yes'
+    # itself, so it is the one s2-family scheme that draws both.
+    "s2manual":    (False, True),
+    "s1manual":    (False, False),
+    "s2gmanual":   (False, True),
+    "s2color8":    (False, True),
+    "sttrans":     (True,  True),
+    "stgcolor_alt": (True,  True),
 }
+
+_FIXTURE = os.path.join(_HERE, "fixtures", "scheme_truth.json")
+
+
+class TestTheTruthTableIsTheFixture:
+    """The table above is hand-written; the fixture is extracted from Stata's
+    files.  They must agree, and the table must cover every shipped scheme,
+    or a scheme added later silently escapes these tests."""
+
+    def test_the_table_covers_every_scheme_in_the_fixture(self):
+        with open(_FIXTURE, encoding="utf-8") as fh:
+            truth = json.load(fh)
+        names = sorted(k for k in truth if k != "_meta")
+        assert sorted(_GRID_TRUTH) == names, (
+            f"_GRID_TRUTH covers {sorted(_GRID_TRUTH)}, the fixture {names}"
+        )
+        assert len(names) == 20
+
+    @pytest.mark.parametrize("name,truth", sorted(_GRID_TRUTH.items()))
+    def test_the_table_agrees_with_the_fixtures_effective_flags(self, name, truth):
+        with open(_FIXTURE, encoding="utf-8") as fh:
+            entry = json.load(fh)[name]
+        effective = (entry["draw_major_hgrid"] == "yes",
+                     entry["draw_major_vgrid"] == "yes")
+        assert effective == truth, (
+            f"{name}: the fixture's effective flags are {effective}, the "
+            f"table says {truth}"
+        )
 
 
 def _render(scheme):

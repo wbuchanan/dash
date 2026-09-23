@@ -4,7 +4,7 @@
 *! Usage:  do test/test_render_log_clean.cscript
 *!
 *! Requires: dash_setup completed (jsonio, Python).
-*! Version: 1.0.0  20sep2026
+*! Version: 1.1.0  22sep2026
 *!
 *! WHY THIS EXISTS
 *!
@@ -24,6 +24,23 @@
 *!
 *! `dash serve' had the same line and was fixed when it was rewritten; this
 *! script covers the path every other command takes.
+*!
+*! NO PYTHON WARNING EITHER (WP-17, 22sep2026)
+*!
+*! cscript sets the session scheme to c(scheme_cscript) -- s2color8 -- so
+*! every certification render inherits s2color8 as its c(scheme).  Until
+*! WP-17 dash shipped no translation of s2color8, and the renderer put one
+*! Python UserWarning ("'s2color8' is not a known theme or scheme; using
+*! s2color") into the log of every render, this script's own captured log
+*! included (test/run_all_cscripts.log, the WP-16 run: the render below
+*! printed it, wrapped by Stata as "UserWar" / "> ning").  s2color8 is one
+*! of the twenty shipped translations since WP-17, so the log of a plain
+*! render must carry no Python warning at all.  Check 4 re-joins Stata's
+*! "> " continuation lines -- a raw line-by-line search would miss the
+*! wrapped word -- and asserts that no logical line carries "UserWarning".
+*! A session scheme dash cannot translate is still one warning
+*! (test_custom_scheme.cscript CS-10); this script asserts that the scheme
+*! cscript sets is not such a scheme.
 
 cscript "render log clean" adodir ".."
 
@@ -41,6 +58,32 @@ if "`c(python_exec)'" == "" {
 
 qui do "../dash.ado"
 do "cert_helpers.do"
+
+// Log scanner for check 4: re-join "> " continuations, then count the
+// logical lines that carry `needle'.  Mata strings are values, so nothing
+// read from the log is ever expanded as Stata code.
+capture mata: mata drop _rlc_count()
+mata:
+real scalar _rlc_count(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle)) n = n + 1
+        full = line
+    }
+    if (strpos(full, needle)) n = n + 1
+    fclose(fh)
+    return(n)
+}
+end
 
 global dash_nobrowser 1
 
@@ -70,7 +113,7 @@ assert _rc == 0
 cert_file_has "`outhtml'.html", needle("bokeh") lower
 assert r(found) == 1
 
-display as result "  [1/3] the dashboard was rendered: PASS"
+display as result "  [1/4] the dashboard was rendered: PASS"
 
 // ---------------------------------------------------------------
 // 2. No Python namespace dump
@@ -82,7 +125,7 @@ assert r(found) == 0
 cert_file_has "`logfile'", needle("GlyphMapper")
 assert r(found) == 0
 
-display as result "  [2/3] no Python namespace in the log: PASS"
+display as result "  [2/4] no Python namespace in the log: PASS"
 
 // ---------------------------------------------------------------
 // 3. The log stays small.  653 lines for one command was the
@@ -100,7 +143,18 @@ file close `fh'
 display as text "     log lines for one render: `nlines'"
 assert `nlines' < 60
 
-display as result "  [3/3] the log is short: PASS"
+display as result "  [3/4] the log is short: PASS"
+
+// ---------------------------------------------------------------
+// 4. No Python warning.  The session scheme cscript sets (s2color8)
+//    ships since WP-17, so a plain render inherits it silently; the
+//    one line every certification log used to carry is gone.
+// ---------------------------------------------------------------
+mata: st_local("nwarn", strofreal(_rlc_count(st_local("logfile"), "UserWarning")))
+display as text "     UserWarning lines in the log (wrapped lines re-joined): `nwarn'"
+assert `nwarn' == 0
+
+display as result "  [4/4] no Python warning in the log: PASS"
 
 dash clear
 display as result "test_render_log_clean.cscript: ALL PASS"

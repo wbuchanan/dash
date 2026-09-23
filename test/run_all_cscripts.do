@@ -1114,6 +1114,31 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 42. test_custom_scheme.cscript
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_custom_scheme.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_custom_scheme.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_custom_scheme.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_custom_scheme.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_custom_scheme.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

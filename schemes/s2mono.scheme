@@ -324,3 +324,184 @@ linewidth axisline    thin
 
 * Legend rows; 0 means not fixed, so the column count above decides.
 numstyle legend_rows  0
+
+* ---------------------------------------------------------------------------
+* BEGIN provenance (WP-17)
+* Where every directive above comes from, written by
+* scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
+* map (one line per directive, in the order of the groups above).
+*   transcribed from <file>:<line> `<directive>'  a Stata scheme file in
+*       this chain (s2color -> s2mono) writes the very key this
+*       translation carries; the value is that directive's, resolved.
+*   inferred: <rule>  no Stata file writes the key dash reads; the value
+*       is what Stata itself falls back to -- the documented
+*       p#stub -> pstub -> p# -> p chain, a bare class default, the
+*       generic `color grid', or an axisstyle indirection.
+* Do not hand-edit this block: a re-run rewrites it in place when it
+* differs, and leaves it alone when it does not.
+* provenance: color background -- transcribed from scheme-s2mono.scheme:15 `color background gs15'
+* provenance: color plotregion -- transcribed from scheme-s2mono.scheme:67 `color plotregion white'
+* provenance: color legend -- transcribed from scheme-s2mono.scheme:71 `color legend white'
+* provenance: color legend_line -- transcribed from scheme-s2mono.scheme:72 `color legend_line black'
+* provenance: color major_grid -- transcribed from scheme-s2mono.scheme:40 `color major_grid dimgray'
+* provenance: color minor_grid -- transcribed from scheme-s2mono.scheme:41 `color minor_grid gs5'
+* provenance: color heading -- transcribed from scheme-s2mono.scheme:23 `color heading black'
+* provenance: color axisline -- transcribed from scheme-s2color.scheme:348 `color axisline black'
+* provenance: color p1 -- transcribed from scheme-s2mono.scheme:83 `color p1 gs6'
+* provenance: color p2 -- transcribed from scheme-s2mono.scheme:84 `color p2 gs10'
+* provenance: color p3 -- transcribed from scheme-s2mono.scheme:85 `color p3 gs8'
+* provenance: color p4 -- transcribed from scheme-s2mono.scheme:86 `color p4 gs4'
+* provenance: color p5 -- transcribed from scheme-s2mono.scheme:87 `color p5 black'
+* provenance: color p6 -- transcribed from scheme-s2mono.scheme:88 `color p6 gs12'
+* provenance: color p7 -- transcribed from scheme-s2mono.scheme:89 `color p7 gs2'
+* provenance: color p8 -- transcribed from scheme-s2mono.scheme:90 `color p8 gs7'
+* provenance: color p9 -- transcribed from scheme-s2mono.scheme:91 `color p9 gs9'
+* provenance: color p10 -- transcribed from scheme-s2mono.scheme:92 `color p10 gs11'
+* provenance: color p11 -- transcribed from scheme-s2mono.scheme:93 `color p11 gs13'
+* provenance: color p12 -- transcribed from scheme-s2mono.scheme:94 `color p12 gs5'
+* provenance: color p13 -- transcribed from scheme-s2mono.scheme:95 `color p13 gs3'
+* provenance: color p14 -- transcribed from scheme-s2mono.scheme:96 `color p14 gs12'
+* provenance: color p15 -- transcribed from scheme-s2mono.scheme:97 `color p15 gs5'
+* provenance: color p1line -- inferred: p#stub -> pstub -> p# -> p; `color p1line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p2line -- inferred: p#stub -> pstub -> p# -> p; `color p2line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p3line -- inferred: p#stub -> pstub -> p# -> p; `color p3line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p4line -- inferred: p#stub -> pstub -> p# -> p; `color p4line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p5line -- inferred: p#stub -> pstub -> p# -> p; `color p5line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p6line -- inferred: p#stub -> pstub -> p# -> p; `color p6line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p7line -- inferred: p#stub -> pstub -> p# -> p; `color p7line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p8line -- inferred: p#stub -> pstub -> p# -> p; `color p8line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p9line -- inferred: p#stub -> pstub -> p# -> p; `color p9line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p10line -- inferred: p#stub -> pstub -> p# -> p; `color p10line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p11line -- inferred: p#stub -> pstub -> p# -> p; `color p11line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p12line -- inferred: p#stub -> pstub -> p# -> p; `color p12line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p13line -- inferred: p#stub -> pstub -> p# -> p; `color p13line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p14line -- inferred: p#stub -> pstub -> p# -> p; `color p14line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p15line -- inferred: p#stub -> pstub -> p# -> p; `color p15line' is not set anywhere in the #include chain, took `color pline black' (scheme-s2mono.scheme:99)
+* provenance: color p1bar -- inferred: p#stub -> pstub -> p# -> p; `color p1bar' is not set anywhere in the #include chain, took `color p1 gs6' (scheme-s2mono.scheme:83)
+* provenance: color p2bar -- inferred: p#stub -> pstub -> p# -> p; `color p2bar' is not set anywhere in the #include chain, took `color p2 gs10' (scheme-s2mono.scheme:84)
+* provenance: color p3bar -- inferred: p#stub -> pstub -> p# -> p; `color p3bar' is not set anywhere in the #include chain, took `color p3 gs8' (scheme-s2mono.scheme:85)
+* provenance: color p4bar -- inferred: p#stub -> pstub -> p# -> p; `color p4bar' is not set anywhere in the #include chain, took `color p4 gs4' (scheme-s2mono.scheme:86)
+* provenance: color p5bar -- inferred: p#stub -> pstub -> p# -> p; `color p5bar' is not set anywhere in the #include chain, took `color p5 black' (scheme-s2mono.scheme:87)
+* provenance: color p6bar -- inferred: p#stub -> pstub -> p# -> p; `color p6bar' is not set anywhere in the #include chain, took `color p6 gs12' (scheme-s2mono.scheme:88)
+* provenance: color p7bar -- inferred: p#stub -> pstub -> p# -> p; `color p7bar' is not set anywhere in the #include chain, took `color p7 gs2' (scheme-s2mono.scheme:89)
+* provenance: color p8bar -- inferred: p#stub -> pstub -> p# -> p; `color p8bar' is not set anywhere in the #include chain, took `color p8 gs7' (scheme-s2mono.scheme:90)
+* provenance: color p9bar -- inferred: p#stub -> pstub -> p# -> p; `color p9bar' is not set anywhere in the #include chain, took `color p9 gs9' (scheme-s2mono.scheme:91)
+* provenance: color p10bar -- inferred: p#stub -> pstub -> p# -> p; `color p10bar' is not set anywhere in the #include chain, took `color p10 gs11' (scheme-s2mono.scheme:92)
+* provenance: color p11bar -- inferred: p#stub -> pstub -> p# -> p; `color p11bar' is not set anywhere in the #include chain, took `color p11 gs13' (scheme-s2mono.scheme:93)
+* provenance: color p12bar -- inferred: p#stub -> pstub -> p# -> p; `color p12bar' is not set anywhere in the #include chain, took `color p12 gs5' (scheme-s2mono.scheme:94)
+* provenance: color p13bar -- inferred: p#stub -> pstub -> p# -> p; `color p13bar' is not set anywhere in the #include chain, took `color p13 gs3' (scheme-s2mono.scheme:95)
+* provenance: color p14bar -- inferred: p#stub -> pstub -> p# -> p; `color p14bar' is not set anywhere in the #include chain, took `color p14 gs12' (scheme-s2mono.scheme:96)
+* provenance: color p15bar -- inferred: p#stub -> pstub -> p# -> p; `color p15bar' is not set anywhere in the #include chain, took `color p15 gs5' (scheme-s2mono.scheme:97)
+* provenance: color p1mark -- inferred: p#stub -> pstub -> p# -> p; `color p1mark' is not set anywhere in the #include chain, took `color p1 gs6' (scheme-s2mono.scheme:83)
+* provenance: color p2mark -- inferred: p#stub -> pstub -> p# -> p; `color p2mark' is not set anywhere in the #include chain, took `color p2 gs10' (scheme-s2mono.scheme:84)
+* provenance: color p3mark -- inferred: p#stub -> pstub -> p# -> p; `color p3mark' is not set anywhere in the #include chain, took `color p3 gs8' (scheme-s2mono.scheme:85)
+* provenance: color p4mark -- inferred: p#stub -> pstub -> p# -> p; `color p4mark' is not set anywhere in the #include chain, took `color p4 gs4' (scheme-s2mono.scheme:86)
+* provenance: color p5mark -- inferred: p#stub -> pstub -> p# -> p; `color p5mark' is not set anywhere in the #include chain, took `color p5 black' (scheme-s2mono.scheme:87)
+* provenance: color p6mark -- inferred: p#stub -> pstub -> p# -> p; `color p6mark' is not set anywhere in the #include chain, took `color p6 gs12' (scheme-s2mono.scheme:88)
+* provenance: color p7mark -- inferred: p#stub -> pstub -> p# -> p; `color p7mark' is not set anywhere in the #include chain, took `color p7 gs2' (scheme-s2mono.scheme:89)
+* provenance: color p8mark -- inferred: p#stub -> pstub -> p# -> p; `color p8mark' is not set anywhere in the #include chain, took `color p8 gs7' (scheme-s2mono.scheme:90)
+* provenance: color p9mark -- inferred: p#stub -> pstub -> p# -> p; `color p9mark' is not set anywhere in the #include chain, took `color p9 gs9' (scheme-s2mono.scheme:91)
+* provenance: color p10mark -- inferred: p#stub -> pstub -> p# -> p; `color p10mark' is not set anywhere in the #include chain, took `color p10 gs11' (scheme-s2mono.scheme:92)
+* provenance: color p11mark -- inferred: p#stub -> pstub -> p# -> p; `color p11mark' is not set anywhere in the #include chain, took `color p11 gs13' (scheme-s2mono.scheme:93)
+* provenance: color p12mark -- inferred: p#stub -> pstub -> p# -> p; `color p12mark' is not set anywhere in the #include chain, took `color p12 gs5' (scheme-s2mono.scheme:94)
+* provenance: color p13mark -- inferred: p#stub -> pstub -> p# -> p; `color p13mark' is not set anywhere in the #include chain, took `color p13 gs3' (scheme-s2mono.scheme:95)
+* provenance: color p14mark -- inferred: p#stub -> pstub -> p# -> p; `color p14mark' is not set anywhere in the #include chain, took `color p14 gs12' (scheme-s2mono.scheme:96)
+* provenance: color p15mark -- inferred: p#stub -> pstub -> p# -> p; `color p15mark' is not set anywhere in the #include chain, took `color p15 gs5' (scheme-s2mono.scheme:97)
+* provenance: color p1lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p1lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p2lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p2lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p3lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p3lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p4lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p4lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p5lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p5lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p6lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p6lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p7lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p7lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p8lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p8lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p9lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p9lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p10lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p10lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p11lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p11lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p12lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p12lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p13lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p13lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p14lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p14lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: color p15lineplot -- inferred: p#stub -> pstub -> p# -> p; `color p15lineplot' is not set anywhere in the #include chain, took `color plineplot black' (scheme-s2mono.scheme:103)
+* provenance: symbol p1 -- transcribed from scheme-s2mono.scheme:152 `symbol p1 circle'
+* provenance: symbol p2 -- transcribed from scheme-s2mono.scheme:153 `symbol p2 diamond'
+* provenance: symbol p3 -- transcribed from scheme-s2mono.scheme:154 `symbol p3 square'
+* provenance: symbol p4 -- transcribed from scheme-s2mono.scheme:155 `symbol p4 triangle'
+* provenance: symbol p5 -- transcribed from scheme-s2mono.scheme:156 `symbol p5 x'
+* provenance: symbol p6 -- transcribed from scheme-s2mono.scheme:157 `symbol p6 plus'
+* provenance: symbol p7 -- transcribed from scheme-s2mono.scheme:158 `symbol p7 circle_hollow'
+* provenance: symbol p8 -- transcribed from scheme-s2mono.scheme:159 `symbol p8 diamond_hollow'
+* provenance: symbol p9 -- transcribed from scheme-s2mono.scheme:160 `symbol p9 square_hollow'
+* provenance: symbol p10 -- transcribed from scheme-s2mono.scheme:161 `symbol p10 triangle_hollow'
+* provenance: symbol p11 -- transcribed from scheme-s2mono.scheme:162 `symbol p11 smcircle'
+* provenance: symbol p12 -- transcribed from scheme-s2mono.scheme:163 `symbol p12 smdiamond'
+* provenance: symbol p13 -- transcribed from scheme-s2mono.scheme:164 `symbol p13 smsquare'
+* provenance: symbol p14 -- transcribed from scheme-s2mono.scheme:165 `symbol p14 smtriangle'
+* provenance: symbol p15 -- transcribed from scheme-s2mono.scheme:166 `symbol p15 smx'
+* provenance: linepattern p1line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p1line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p2line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p2line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p3line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p3line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p4line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p4line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p5line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p5line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p6line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p6line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p7line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p7line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p8line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p8line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p9line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p9line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p10line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p10line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p11line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p11line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p12line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p12line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p13line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p13line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p14line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p14line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p15line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p15line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p1lineplot -- transcribed from scheme-s2mono.scheme:132 `linepattern p1lineplot solid'
+* provenance: linepattern p2lineplot -- transcribed from scheme-s2mono.scheme:133 `linepattern p2lineplot dash'
+* provenance: linepattern p3lineplot -- transcribed from scheme-s2mono.scheme:134 `linepattern p3lineplot vshortdash'
+* provenance: linepattern p4lineplot -- transcribed from scheme-s2mono.scheme:135 `linepattern p4lineplot longdash_dot'
+* provenance: linepattern p5lineplot -- transcribed from scheme-s2mono.scheme:136 `linepattern p5lineplot longdash'
+* provenance: linepattern p6lineplot -- transcribed from scheme-s2mono.scheme:137 `linepattern p6lineplot dash_dot'
+* provenance: linepattern p7lineplot -- transcribed from scheme-s2mono.scheme:138 `linepattern p7lineplot dot'
+* provenance: linepattern p8lineplot -- transcribed from scheme-s2mono.scheme:139 `linepattern p8lineplot shortdash_dot'
+* provenance: linepattern p9lineplot -- transcribed from scheme-s2mono.scheme:140 `linepattern p9lineplot tight_dot'
+* provenance: linepattern p10lineplot -- transcribed from scheme-s2mono.scheme:141 `linepattern p10lineplot dash_dot_dot'
+* provenance: linepattern p11lineplot -- transcribed from scheme-s2mono.scheme:142 `linepattern p11lineplot longdash_shortdash'
+* provenance: linepattern p12lineplot -- transcribed from scheme-s2mono.scheme:143 `linepattern p12lineplot dash_3dot'
+* provenance: linepattern p13lineplot -- transcribed from scheme-s2mono.scheme:144 `linepattern p13lineplot longdash_dot_dot'
+* provenance: linepattern p14lineplot -- transcribed from scheme-s2mono.scheme:145 `linepattern p14lineplot shortdash_dot_dot'
+* provenance: linepattern p15lineplot -- transcribed from scheme-s2mono.scheme:146 `linepattern p15lineplot longdash_3dot'
+* provenance: linewidth p -- transcribed from scheme-s2color.scheme:1199 `linewidth p medium'
+* provenance: linewidth major_grid -- transcribed from scheme-s2color.scheme:1203 `linewidth major_grid medium'
+* provenance: intensity p -- transcribed from scheme-s2color.scheme:1300 `intensity p inten80'
+* provenance: intensity bar -- transcribed from scheme-s2mono.scheme:168 `intensity bar full'
+* provenance: intensity area -- inferred: class default; `intensity area' is not set anywhere in the #include chain, took the bare `intensity full' class default (scheme-s2color.scheme:1267)
+* provenance: gsize text -- transcribed from scheme-s2color.scheme:136 `gsize text medium'
+* provenance: gsize heading -- transcribed from scheme-s2color.scheme:139 `gsize heading large'
+* provenance: gsize axis_title -- transcribed from scheme-s2color.scheme:141 `gsize axis_title medsmall'
+* provenance: gsize tick_label -- transcribed from scheme-s2color.scheme:158 `gsize tick_label medsmall'
+* provenance: gsize note -- transcribed from scheme-s2color.scheme:147 `gsize note small'
+* provenance: graphsize x -- transcribed from scheme-s2color.scheme:32 `graphsize x 5.5'
+* provenance: graphsize y -- transcribed from scheme-s2color.scheme:33 `graphsize y 4'
+* provenance: symbolsize p -- transcribed from scheme-s2color.scheme:274 `symbolsize p medium'
+* provenance: clockdir legend_position -- transcribed from scheme-s2color.scheme:1924 `clockdir legend_position 6'
+* provenance: numstyle legend_cols -- transcribed from scheme-s2color.scheme:39 `numstyle legend_cols 2'
+* provenance: yesno draw_major_hgrid -- transcribed from scheme-s2color.scheme:2117 `yesno draw_major_hgrid no'
+* provenance: yesno draw_major_vgrid -- transcribed from scheme-s2color.scheme:2121 `yesno draw_major_vgrid yes'
+* provenance: yesno draw_major_grid -- transcribed from scheme-s2color.scheme:2113 `yesno draw_major_grid no'
+* provenance: yesno draw_minor_hgrid -- transcribed from scheme-s2color.scheme:2118 `yesno draw_minor_hgrid no'
+* provenance: yesno draw_minor_vgrid -- transcribed from scheme-s2color.scheme:2122 `yesno draw_minor_vgrid no'
+* provenance: yesno draw_minor_grid -- transcribed from scheme-s2color.scheme:2114 `yesno draw_minor_grid no'
+* provenance: color subheading -- transcribed from scheme-s2mono.scheme:24 `color subheading black'
+* provenance: color body -- transcribed from scheme-s2mono.scheme:22 `color body black'
+* provenance: color small_body -- transcribed from scheme-s2color.scheme:315 `color small_body black'
+* provenance: color text -- transcribed from scheme-s2mono.scheme:21 `color text black'
+* provenance: color axis_title -- transcribed from scheme-s2mono.scheme:25 `color axis_title black'
+* provenance: color tick_label -- transcribed from scheme-s2mono.scheme:29 `color tick_label black'
+* provenance: color key_label -- transcribed from scheme-s2mono.scheme:28 `color key_label black'
+* provenance: color foreground -- transcribed from scheme-s2mono.scheme:16 `color foreground black'
+* provenance: gsize subheading -- transcribed from scheme-s2color.scheme:140 `gsize subheading medium'
+* provenance: gsize body -- transcribed from scheme-s2color.scheme:137 `gsize body medsmall'
+* provenance: gsize small_body -- transcribed from scheme-s2color.scheme:138 `gsize small_body small'
+* provenance: gsize key_label -- transcribed from scheme-s2color.scheme:146 `gsize key_label medsmall'
+* provenance: linewidth minor_grid -- transcribed from scheme-s2color.scheme:1204 `linewidth minor_grid thin'
+* provenance: linewidth axisline -- transcribed from scheme-s2color.scheme:1205 `linewidth axisline thin'
+* provenance: numstyle legend_rows -- transcribed from scheme-s2color.scheme:38 `numstyle legend_rows 0'
+* END provenance (WP-17)
+* ---------------------------------------------------------------------------

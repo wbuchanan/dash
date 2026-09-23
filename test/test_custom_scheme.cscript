@@ -1,0 +1,516 @@
+*! test_custom_scheme.cscript
+*! Certification script: a scheme is named by one of dash's shipped
+*! translations, a theme alias, or a .scheme file in the working directory
+*! (bare name or with the extension) -- the same rule on every entry point
+*! -- and an explicit scheme() or theme() that is none of those is refused
+*! in Stata, before Python runs.  A shipped name may be written with the
+*! extension too (scheme(s2color.scheme), in any case): the renderer reads
+*! that spelling from the package's schemes/, so the gate accepts it with
+*! no file in the working directory.  The session's own c(scheme) is inherited
+*! when nothing is requested, and one warning names the cause when dash
+*! cannot translate it.
+*!
+*! ROADMAP WP-17 / GAPS.md G1, G2, G8 and F4's bare-name row.  Measured
+*! 22sep2026 (scratchpad/wp17/probe): `scheme(mytheme)' with mytheme.scheme
+*! in the working directory drew the FIGURE with mytheme and the page chrome
+*! with s2color, under a warning that mytheme "is not a known theme or
+*! scheme" -- half applied, on the immediate route, on a registered graph
+*! and on `dash build' alike; `scheme(mytheme.scheme)' worked everywhere;
+*! scheme(nosuchthing) and theme(nosuchtheme) were rc 0 plus that warning;
+*! and `set scheme s2color8' -- which cscript does for every session -- put
+*! the same warning into eleven of twelve certification logs.
+*!
+*! The gate is dash.ado's own (`scheme' kind in the WP-15 table, applied to
+*! graph-level scheme() by the existing loops and to build/serve scheme()
+*! and theme() in _dash_prepare_spec), so a refusal is one `display as
+*! error' line naming the option, exit 198, and no Python traceback.  The
+*! list of shipped names lives in one place, _dash_shipped_schemes.
+*!
+*! The cases run in a temporary working directory holding mytheme.scheme
+*! (schemes/s1rcolor.scheme with `color background #123456' substituted)
+*! and scheme-zzdashtest.scheme (`#include s2color', for `set scheme').  A
+*! page is fingerprinted by the custom background #123456 and by s2color's
+*! heading colour #1e2d53, which the half-applied page carried:
+*!
+*!   CS-01  dash scatter ..., scheme(mytheme) saving(a.html, replace)
+*!          rc 0, no UserWarning, a.html carries #123456
+*!   CS-02  the same with scheme(mytheme.scheme)
+*!   CS-03  name(g) then dash build, scheme(mytheme)
+*!          rc 0, no UserWarning, #123456 present, #1e2d53 ABSENT
+*!   CS-04  the same with scheme(mytheme.scheme)
+*!   CS-05  registered with graph-level scheme(mytheme), built with no
+*!          scheme(): #123456 present, #1e2d53 absent
+*!   CS-06  scheme(nosuchthing) on scatter      rc 198, names scheme()
+*!   CS-07  scheme(nosuchthing) on dash build   rc 198, names scheme()
+*!   CS-08  theme(nosuchtheme) on dash build    rc 198, names theme()
+*!   CS-09  scheme(../mytheme) on scatter and on build   rc 198 each
+*!   CS-10  set scheme zzdashtest, build with no scheme(): rc 0, EXACTLY
+*!          one UserWarning line, it mentions the session, page is s2color
+*!          (#1e2d53 present)
+*!   CS-11  set scheme s2color8, build: rc 0 and NO warning (s2color8 ships)
+*!   CS-12  every one of the twenty shipped names on dash build, scheme():
+*!          rc 0 and no warning; the list holds twenty
+*!   CS-13  _dash_serve_spec ..., scheme(nosuchthing) rc 198 naming
+*!          scheme(); theme(nosuchtheme) rc 198 naming theme()
+*!   CS-14  dash build, scheme(s2color.scheme) -- a shipped name written
+*!          with the extension, no such file in the working directory:
+*!          rc 0, no UserWarning, page is s2color (#1e2d53 present,
+*!          #123456 absent).  Measured before the fix: rc 198, the
+*!          extension form was looked for as a working-directory file only
+*!
+*! Every render is read back out of a captured log with Stata's wrapped
+*! lines re-joined, as test_suboption_reporting.cscript does.  The session
+*! scheme is restored at the end.
+*!
+*! Usage:  via run_all_cscripts.do (the dash directory must be on the
+*!         ado-path for the render to find dash_render.py).
+
+cscript "dash custom schemes" adodir ".."
+
+clear all
+set more off
+
+capture which jsonio
+if _rc {
+    display as text "SKIP: jsonio is not installed."
+    exit 222
+}
+if `"`c(python_exec)'"' == "" {
+    display as text "SKIP: no Python is linked to this Stata."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui do "../dash_parse.mata"
+qui do "../dash.ado"
+
+global dash_nobrowser 1
+sysuse auto, clear
+
+// ----------------------------------------------------------------
+// The working directory for the cases.  Everything that follows resolves
+// relative to it: the immediate route's saving(), dash build's saving(),
+// the .scheme lookups, and `set scheme' (the working directory is on the
+// ado-path).  The source scheme is located before the cd.
+// ----------------------------------------------------------------
+local cs_home    "`c(pwd)'"
+local cs_scheme0 "`c(scheme)'"
+local cs_src     "`cs_home'/../schemes/s1rcolor.scheme"
+local cs_dir     "`c(tmpdir)'dash_cs_wd"
+capture mkdir "`cs_dir'"
+
+capture mata: mata drop _cs_write_theme()
+capture mata: mata drop _cs_scan()
+mata:
+// Copy `src' to `dst' with the `color background' directive replaced by
+// #123456; returns the number of lines replaced (one, when the source is
+// the file this script expects).
+real scalar _cs_write_theme(string scalar src, string scalar dst)
+{
+    string colvector L
+    string scalar    c
+    real scalar      i, fh, n
+    L = cat(src)
+    n = 0
+    for (i = 1; i <= rows(L); i++) {
+        if (strpos(L[i], "color background") == 1) {
+            c = substr(L[i], 17, 1)
+            if (c == " " | c == char(9)) {
+                L[i] = "color background      #123456"
+                n = n + 1
+            }
+        }
+    }
+    _unlink(dst)
+    fh = fopen(dst, "w")
+    for (i = 1; i <= rows(L); i++) fput(fh, L[i])
+    fclose(fh)
+    return(n)
+}
+
+// Log scanner: re-join "> " continuations, then count the logical lines
+// that carry `needle' and hand back the first.
+void _cs_scan(string scalar fn, string scalar needle)
+{
+    real scalar   fh, n
+    string scalar line, full, first
+    fh = fopen(fn, "r")
+    n = 0
+    full = ""
+    first = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strpos(full, needle)) {
+            n = n + 1
+            if (first == "") first = full
+        }
+        full = line
+    }
+    if (strpos(full, needle)) {
+        n = n + 1
+        if (first == "") first = full
+    }
+    fclose(fh)
+    st_local("_cs_n", strofreal(n))
+    st_local("_cs_line", first)
+}
+end
+
+mata: st_local("cs_nsub", strofreal(_cs_write_theme(st_local("cs_src"), ///
+    st_local("cs_dir") + "/mytheme.scheme")))
+if `cs_nsub' != 1 {
+    display as error "SETUP FAIL: expected one `color background' line in `cs_src', replaced `cs_nsub'"
+    exit 9
+}
+
+tempname fh
+file open `fh' using "`cs_dir'/scheme-zzdashtest.scheme", write text replace
+file write `fh' "#include s2color" _n
+file close `fh'
+
+cd "`cs_dir'"
+
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+// Run `prep' (a registration, or nothing) and then `main' with the log
+// captured.  r(prc) and r(rc) are their return codes; the caller reads
+// them into locals at once, because the next helper overwrites r().
+capture program drop _cs_run
+program define _cs_run, rclass
+    version 16.0
+    args prep main
+    local logfile "`c(tmpdir)'dash_cs.log"
+    set linesize 80
+    capture log close _cslog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_cslog) text replace
+    local prc = 0
+    if `"`macval(prep)'"' != "" {
+        capture noisily `macval(prep)'
+        local prc = _rc
+    }
+    capture noisily `macval(main)'
+    local rc = _rc
+    log close _cslog
+    return scalar rc  = `rc'
+    return scalar prc = `prc'
+    return local logfile "`logfile'"
+end
+
+capture program drop _cs_count
+program define _cs_count, rclass
+    version 16.0
+    args logfile needle
+    mata: _cs_scan(st_local("logfile"), st_local("needle"))
+    return scalar n = `_cs_n'
+    return local line `"`macval(_cs_line)'"'
+end
+
+// The tally lives in globals: a helper program cannot read the do-file's
+// locals.  (A global's name cannot start with an underscore.)
+global cs_nfail    = 0
+global cs_faillist ""
+global cs_bad      = 0
+
+// One assertion of the case in progress: on failure print the detail and
+// mark the case bad.  `cond' arrives already expanded.
+capture program drop _cs_expect
+program define _cs_expect
+    version 16.0
+    args id cond msg
+    if !(`cond') {
+        display as error `"`id' FAIL: `macval(msg)'"'
+        global cs_bad = 1
+    }
+end
+
+// Close the case: one PASS line, or one entry in the tally.
+capture program drop _cs_done
+program define _cs_done
+    version 16.0
+    args id msg
+    if ${cs_bad} {
+        global cs_nfail    = ${cs_nfail} + 1
+        global cs_faillist "${cs_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `macval(msg)'"'
+    global cs_bad = 0
+end
+
+// The log of the case just run must carry `needle' exactly `want' times
+// (`want' = -1: at least once).
+capture program drop _cs_log
+program define _cs_log
+    version 16.0
+    args id logfile needle want
+    _cs_count "`logfile'" `"`macval(needle)'"'
+    local n = r(n)
+    local line `"`r(line)'"'
+    if `want' == -1 {
+        _cs_expect "`id'" "(`n' > 0)" `"the log does not say `macval(needle)'"'
+    }
+    else {
+        _cs_expect "`id'" "(`n' == `want')" `"expected `want' log line(s) with `macval(needle)', found `n': `macval(line)'"'
+    }
+end
+
+// The page must (want = 1) or must not (want = 0) carry `needle'.
+capture program drop _cs_page
+program define _cs_page
+    version 16.0
+    args id html needle want
+    capture confirm file "`html'"
+    if _rc {
+        _cs_expect "`id'" "(0)" "`html' was not written"
+        exit
+    }
+    cert_file_has "`html'", needle("`needle'")
+    local found = r(found)
+    if `want' {
+        _cs_expect "`id'" "(`found' == 1)" "`html' does not carry `needle'"
+    }
+    else {
+        _cs_expect "`id'" "(`found' == 0)" "`html' carries `needle'"
+    }
+end
+
+// ----------------------------------------------------------------
+// CS-01 / CS-02: the immediate route, bare name and file name
+// ----------------------------------------------------------------
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(mytheme) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-01 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-01 "`lg'" "UserWarning" 0
+_cs_page CS-01 "a.html" "#123456" 1
+_cs_done CS-01 "scheme(mytheme) on the immediate route: rc 0, no warning, mytheme drawn"
+
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(mytheme.scheme) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-02 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-02 "`lg'" "UserWarning" 0
+_cs_page CS-02 "a.html" "#123456" 1
+_cs_done CS-02 "scheme(mytheme.scheme) on the immediate route: rc 0, no warning, mytheme drawn"
+
+// ----------------------------------------------------------------
+// CS-03 / CS-04: dash build, bare name and file name; the chrome too
+// ----------------------------------------------------------------
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(mytheme) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-03 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-03 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-03 "`lg'" "UserWarning" 0
+_cs_page CS-03 "b.html" "#123456" 1
+_cs_page CS-03 "b.html" "#1e2d53" 0
+_cs_done CS-03 "dash build, scheme(mytheme): rc 0, no warning, figure AND chrome from mytheme"
+
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(mytheme.scheme) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-04 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-04 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-04 "`lg'" "UserWarning" 0
+_cs_page CS-04 "b.html" "#123456" 1
+_cs_page CS-04 "b.html" "#1e2d53" 0
+_cs_done CS-04 "dash build, scheme(mytheme.scheme): rc 0, no warning, figure and chrome from mytheme"
+
+// ----------------------------------------------------------------
+// CS-05: graph-level scheme(mytheme), built with no scheme()
+// ----------------------------------------------------------------
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g) scheme(mytheme)"' `"dash build, saving(b.html) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-05 "(`prc' == 0)" "registration with scheme(mytheme) rc `prc' (expected 0)"
+_cs_expect CS-05 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-05 "`lg'" "UserWarning" 0
+_cs_page CS-05 "b.html" "#123456" 1
+_cs_page CS-05 "b.html" "#1e2d53" 0
+_cs_done CS-05 "a registered graph's scheme(mytheme): rc 0, no warning, figure and chrome from mytheme"
+
+// ----------------------------------------------------------------
+// CS-06 .. CS-09: an explicit name that resolves to nothing is refused
+// ----------------------------------------------------------------
+_cs_run "" `"dash scatter mpg weight, scheme(nosuchthing) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-06 "(`rc' == 198)" "rc `rc' (expected 198)"
+_cs_log CS-06 "`lg'" "scheme() must be a shipped scheme" -1
+_cs_log CS-06 "`lg'" "UserWarning" 0
+_cs_log CS-06 "`lg'" "Traceback" 0
+_cs_done CS-06 "scheme(nosuchthing) on scatter is refused, rc 198, naming scheme()"
+
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(nosuchthing) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-07 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-07 "(`rc' == 198)" "rc `rc' (expected 198)"
+_cs_log CS-07 "`lg'" "dash build: scheme() must be a shipped scheme" -1
+_cs_log CS-07 "`lg'" "UserWarning" 0
+_cs_done CS-07 "scheme(nosuchthing) on dash build is refused, rc 198, naming scheme()"
+
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) theme(nosuchtheme) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-08 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-08 "(`rc' == 198)" "rc `rc' (expected 198)"
+_cs_log CS-08 "`lg'" "dash build: theme() must be one of" -1
+_cs_log CS-08 "`lg'" "UserWarning" 0
+_cs_done CS-08 "theme(nosuchtheme) on dash build is refused, rc 198, naming theme()"
+
+_cs_run "" `"dash scatter mpg weight, scheme(../mytheme) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-09 "(`rc' == 198)" "scatter: rc `rc' (expected 198)"
+_cs_log CS-09 "`lg'" "scheme() must be a shipped scheme" -1
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(../mytheme) replace"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-09 "(`rc' == 198)" "dash build: rc `rc' (expected 198)"
+_cs_log CS-09 "`lg'" "scheme() must be a shipped scheme" -1
+_cs_done CS-09 "scheme(../mytheme) is refused on scatter and on dash build, rc 198"
+
+// ----------------------------------------------------------------
+// CS-10: an untranslatable session scheme is one warning and s2color
+// ----------------------------------------------------------------
+capture noisily set scheme zzdashtest
+local src = _rc
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-10 "(`src' == 0)" "set scheme zzdashtest rc `src' (expected 0; is the working directory on the ado-path?)"
+_cs_expect CS-10 `"("`c(scheme)'" == "zzdashtest")"' "c(scheme) is `c(scheme)' (expected zzdashtest)"
+_cs_expect CS-10 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-10 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-10 "`lg'" "UserWarning" 1
+_cs_log CS-10 "`lg'" "session" -1
+_cs_page CS-10 "b.html" "#1e2d53" 1
+_cs_done CS-10 "set scheme zzdashtest: rc 0, one warning naming the session, page is s2color"
+
+// ----------------------------------------------------------------
+// CS-11: the session scheme cscript sets now ships
+// ----------------------------------------------------------------
+capture noisily set scheme s2color8
+local src = _rc
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-11 "(`src' == 0)" "set scheme s2color8 rc `src' (expected 0)"
+_cs_expect CS-11 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-11 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-11 "`lg'" "UserWarning" 0
+_cs_page CS-11 "b.html" "#1e2d53" 1
+_cs_done CS-11 "set scheme s2color8 then dash build: rc 0 and no warning"
+
+// ----------------------------------------------------------------
+// CS-12: every shipped name, from the one list
+// ----------------------------------------------------------------
+local _dash_schemes ""
+capture noisily _dash_shipped_schemes
+local lrc = _rc
+_cs_expect CS-12 "(`lrc' == 0)" "_dash_shipped_schemes rc `lrc' (expected 0)"
+local nsh : word count `_dash_schemes'
+_cs_expect CS-12 "(`nsh' == 20)" "the shipped list holds `nsh' names (expected 20): `_dash_schemes'"
+local nrun = 0
+foreach nm of local _dash_schemes {
+    capture erase "c.html"
+    _cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(c.html) scheme(`nm') replace"'
+    local rc = r(rc)
+    local lg `"`r(logfile)'"'
+    _cs_expect CS-12 "(`rc' == 0)" "scheme(`nm'): rc `rc' (expected 0)"
+    _cs_count "`lg'" "UserWarning"
+    local nw = r(n)
+    local line `"`r(line)'"'
+    _cs_expect CS-12 "(`nw' == 0)" `"scheme(`nm'): `nw' UserWarning line(s): `macval(line)'"'
+    local ++nrun
+}
+_cs_done CS-12 "all `nrun' shipped names build with rc 0 and no warning"
+
+// ----------------------------------------------------------------
+// CS-13: dash serve's spec path refuses the same names
+// ----------------------------------------------------------------
+tempfile mj dj
+_cs_run `"dash scatter mpg weight, name(g)"' `"_dash_serve_spec, specpath("`mj'") datapath("`dj'") scheme(nosuchthing)"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-13 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-13 "(`rc' == 198)" "scheme(nosuchthing): rc `rc' (expected 198)"
+_cs_log CS-13 "`lg'" "dash serve: scheme() must be a shipped scheme" -1
+_cs_run `"dash scatter mpg weight, name(g)"' `"_dash_serve_spec, specpath("`mj'") datapath("`dj'") theme(nosuchtheme)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-13 "(`rc' == 198)" "theme(nosuchtheme): rc `rc' (expected 198)"
+_cs_log CS-13 "`lg'" "dash serve: theme() must be one of" -1
+_cs_done CS-13 "dash serve's spec path refuses scheme(nosuchthing) and theme(nosuchtheme), rc 198"
+
+// ----------------------------------------------------------------
+// CS-14: a shipped name written with the extension needs no file in
+// the working directory -- the renderer reads it from schemes/
+// ----------------------------------------------------------------
+capture confirm file "s2color.scheme"
+local nofile = _rc
+_cs_expect CS-14 "(`nofile' != 0)" "the working directory holds an s2color.scheme, so the case proves nothing"
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(s2color.scheme) replace"'
+local rc  = r(rc)
+local prc = r(prc)
+local lg `"`r(logfile)'"'
+_cs_expect CS-14 "(`prc' == 0)" "registration rc `prc' (expected 0)"
+_cs_expect CS-14 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_log CS-14 "`lg'" "scheme() must be" 0
+_cs_log CS-14 "`lg'" "UserWarning" 0
+_cs_page CS-14 "b.html" "#1e2d53" 1
+_cs_page CS-14 "b.html" "#123456" 0
+_cs_done CS-14 "dash build, scheme(s2color.scheme) with no such file in the working directory: rc 0, no warning, page is s2color"
+
+// ----------------------------------------------------------------
+// Restore the session, leave the working directory as it was found
+// ----------------------------------------------------------------
+capture set scheme `cs_scheme0'
+capture dash clear
+cd "`cs_home'"
+foreach f in a.html b.html c.html mytheme.scheme scheme-zzdashtest.scheme {
+    capture erase "`cs_dir'/`f'"
+}
+capture rmdir "`cs_dir'"
+capture erase "`c(tmpdir)'dash_cs.log"
+
+// ----------------------------------------------------------------
+// Summary
+// ----------------------------------------------------------------
+local nfail    = ${cs_nfail}
+local faillist "${cs_faillist}"
+macro drop cs_nfail cs_faillist cs_bad
+display as text ""
+display as text "============================================================"
+if `nfail' == 0 {
+    display as text "  test_custom_scheme: ALL CHECKS PASSED"
+    display as text "============================================================"
+}
+else {
+    display as error "  test_custom_scheme: `nfail' CHECK(S) FAILED"
+    display as error "  failing:`faillist'"
+    display as text "============================================================"
+    exit 9
+}

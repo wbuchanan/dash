@@ -341,3 +341,154 @@ numstyle legend_rows  0
 *   color       p#lineplot -> color p#, i.e. the `color p1`..`color p15`
 *       values already written above
 *       (/Applications/StataNow/ado/base/s/scheme-economist.scheme:176-190)
+
+* ---------------------------------------------------------------------------
+* BEGIN provenance (WP-17)
+* Where every directive above comes from, written by
+* scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
+* map (one line per directive, in the order of the groups above).
+*   transcribed from <file>:<line> `<directive>'  a Stata scheme file in
+*       this chain (s2color -> economist) writes the very key this
+*       translation carries; the value is that directive's, resolved.
+*   inferred: <rule>  no Stata file writes the key dash reads; the value
+*       is what Stata itself falls back to -- the documented
+*       p#stub -> pstub -> p# -> p chain, a bare class default, the
+*       generic `color grid', or an axisstyle indirection.
+* Do not hand-edit this block: a re-run rewrites it in place when it
+* differs, and leaves it alone when it does not.
+* provenance: color background -- transcribed from scheme-economist.scheme:114 `color background ebg'
+* provenance: color plotregion -- transcribed from scheme-economist.scheme:160 `color plotregion ebg'
+* provenance: color legend -- transcribed from scheme-economist.scheme:164 `color legend ebg'
+* provenance: color legend_line -- transcribed from scheme-economist.scheme:165 `color legend_line ebg'
+* provenance: color major_grid -- transcribed from scheme-economist.scheme:133 `color major_grid white'
+* provenance: color minor_grid -- transcribed from scheme-economist.scheme:134 `color minor_grid white'
+* provenance: color heading -- transcribed from scheme-economist.scheme:118 `color heading black'
+* provenance: color axisline -- transcribed from scheme-s2color.scheme:348 `color axisline black'
+* provenance: color p1 -- transcribed from scheme-economist.scheme:176 `color p1 edkblue'
+* provenance: color p2 -- transcribed from scheme-economist.scheme:177 `color p2 emidblue'
+* provenance: color p3 -- transcribed from scheme-economist.scheme:178 `color p3 eltblue'
+* provenance: color p4 -- transcribed from scheme-economist.scheme:179 `color p4 emerald'
+* provenance: color p5 -- transcribed from scheme-economist.scheme:180 `color p5 erose'
+* provenance: color p6 -- transcribed from scheme-economist.scheme:181 `color p6 ebblue'
+* provenance: color p7 -- transcribed from scheme-economist.scheme:182 `color p7 eltgreen'
+* provenance: color p8 -- transcribed from scheme-economist.scheme:183 `color p8 stone'
+* provenance: color p9 -- transcribed from scheme-economist.scheme:184 `color p9 navy'
+* provenance: color p10 -- transcribed from scheme-economist.scheme:185 `color p10 maroon'
+* provenance: color p11 -- transcribed from scheme-economist.scheme:186 `color p11 brown'
+* provenance: color p12 -- transcribed from scheme-economist.scheme:187 `color p12 lavender'
+* provenance: color p13 -- transcribed from scheme-economist.scheme:188 `color p13 teal'
+* provenance: color p14 -- transcribed from scheme-economist.scheme:189 `color p14 cranberry'
+* provenance: color p15 -- transcribed from scheme-economist.scheme:190 `color p15 khaki'
+* provenance: color p1line -- inferred: p#stub -> pstub -> p# -> p; `color p1line' is not set anywhere in the #include chain, took `color p1 edkblue' (scheme-economist.scheme:176)
+* provenance: color p2line -- inferred: p#stub -> pstub -> p# -> p; `color p2line' is not set anywhere in the #include chain, took `color p2 emidblue' (scheme-economist.scheme:177)
+* provenance: color p3line -- inferred: p#stub -> pstub -> p# -> p; `color p3line' is not set anywhere in the #include chain, took `color p3 eltblue' (scheme-economist.scheme:178)
+* provenance: color p4line -- inferred: p#stub -> pstub -> p# -> p; `color p4line' is not set anywhere in the #include chain, took `color p4 emerald' (scheme-economist.scheme:179)
+* provenance: color p5line -- inferred: p#stub -> pstub -> p# -> p; `color p5line' is not set anywhere in the #include chain, took `color p5 erose' (scheme-economist.scheme:180)
+* provenance: color p6line -- inferred: p#stub -> pstub -> p# -> p; `color p6line' is not set anywhere in the #include chain, took `color p6 ebblue' (scheme-economist.scheme:181)
+* provenance: color p7line -- inferred: p#stub -> pstub -> p# -> p; `color p7line' is not set anywhere in the #include chain, took `color p7 eltgreen' (scheme-economist.scheme:182)
+* provenance: color p8line -- inferred: p#stub -> pstub -> p# -> p; `color p8line' is not set anywhere in the #include chain, took `color p8 stone' (scheme-economist.scheme:183)
+* provenance: color p9line -- inferred: p#stub -> pstub -> p# -> p; `color p9line' is not set anywhere in the #include chain, took `color p9 navy' (scheme-economist.scheme:184)
+* provenance: color p10line -- inferred: p#stub -> pstub -> p# -> p; `color p10line' is not set anywhere in the #include chain, took `color p10 maroon' (scheme-economist.scheme:185)
+* provenance: color p11line -- inferred: p#stub -> pstub -> p# -> p; `color p11line' is not set anywhere in the #include chain, took `color p11 brown' (scheme-economist.scheme:186)
+* provenance: color p12line -- inferred: p#stub -> pstub -> p# -> p; `color p12line' is not set anywhere in the #include chain, took `color p12 lavender' (scheme-economist.scheme:187)
+* provenance: color p13line -- inferred: p#stub -> pstub -> p# -> p; `color p13line' is not set anywhere in the #include chain, took `color p13 teal' (scheme-economist.scheme:188)
+* provenance: color p14line -- inferred: p#stub -> pstub -> p# -> p; `color p14line' is not set anywhere in the #include chain, took `color p14 cranberry' (scheme-economist.scheme:189)
+* provenance: color p15line -- inferred: p#stub -> pstub -> p# -> p; `color p15line' is not set anywhere in the #include chain, took `color p15 khaki' (scheme-economist.scheme:190)
+* provenance: color p1bar -- inferred: p#stub -> pstub -> p# -> p; `color p1bar' is not set anywhere in the #include chain, took `color p1 edkblue' (scheme-economist.scheme:176)
+* provenance: color p2bar -- inferred: p#stub -> pstub -> p# -> p; `color p2bar' is not set anywhere in the #include chain, took `color p2 emidblue' (scheme-economist.scheme:177)
+* provenance: color p3bar -- inferred: p#stub -> pstub -> p# -> p; `color p3bar' is not set anywhere in the #include chain, took `color p3 eltblue' (scheme-economist.scheme:178)
+* provenance: color p4bar -- inferred: p#stub -> pstub -> p# -> p; `color p4bar' is not set anywhere in the #include chain, took `color p4 emerald' (scheme-economist.scheme:179)
+* provenance: color p5bar -- inferred: p#stub -> pstub -> p# -> p; `color p5bar' is not set anywhere in the #include chain, took `color p5 erose' (scheme-economist.scheme:180)
+* provenance: color p6bar -- inferred: p#stub -> pstub -> p# -> p; `color p6bar' is not set anywhere in the #include chain, took `color p6 ebblue' (scheme-economist.scheme:181)
+* provenance: color p7bar -- inferred: p#stub -> pstub -> p# -> p; `color p7bar' is not set anywhere in the #include chain, took `color p7 eltgreen' (scheme-economist.scheme:182)
+* provenance: color p8bar -- inferred: p#stub -> pstub -> p# -> p; `color p8bar' is not set anywhere in the #include chain, took `color p8 stone' (scheme-economist.scheme:183)
+* provenance: color p9bar -- inferred: p#stub -> pstub -> p# -> p; `color p9bar' is not set anywhere in the #include chain, took `color p9 navy' (scheme-economist.scheme:184)
+* provenance: color p10bar -- inferred: p#stub -> pstub -> p# -> p; `color p10bar' is not set anywhere in the #include chain, took `color p10 maroon' (scheme-economist.scheme:185)
+* provenance: color p11bar -- inferred: p#stub -> pstub -> p# -> p; `color p11bar' is not set anywhere in the #include chain, took `color p11 brown' (scheme-economist.scheme:186)
+* provenance: color p12bar -- inferred: p#stub -> pstub -> p# -> p; `color p12bar' is not set anywhere in the #include chain, took `color p12 lavender' (scheme-economist.scheme:187)
+* provenance: color p13bar -- inferred: p#stub -> pstub -> p# -> p; `color p13bar' is not set anywhere in the #include chain, took `color p13 teal' (scheme-economist.scheme:188)
+* provenance: color p14bar -- inferred: p#stub -> pstub -> p# -> p; `color p14bar' is not set anywhere in the #include chain, took `color p14 cranberry' (scheme-economist.scheme:189)
+* provenance: color p15bar -- inferred: p#stub -> pstub -> p# -> p; `color p15bar' is not set anywhere in the #include chain, took `color p15 khaki' (scheme-economist.scheme:190)
+* provenance: color p1mark -- inferred: p#stub -> pstub -> p# -> p; `color p1mark' is not set anywhere in the #include chain, took `color p1 edkblue' (scheme-economist.scheme:176)
+* provenance: color p2mark -- inferred: p#stub -> pstub -> p# -> p; `color p2mark' is not set anywhere in the #include chain, took `color p2 emidblue' (scheme-economist.scheme:177)
+* provenance: color p3mark -- inferred: p#stub -> pstub -> p# -> p; `color p3mark' is not set anywhere in the #include chain, took `color p3 eltblue' (scheme-economist.scheme:178)
+* provenance: color p4mark -- inferred: p#stub -> pstub -> p# -> p; `color p4mark' is not set anywhere in the #include chain, took `color p4 emerald' (scheme-economist.scheme:179)
+* provenance: color p5mark -- inferred: p#stub -> pstub -> p# -> p; `color p5mark' is not set anywhere in the #include chain, took `color p5 erose' (scheme-economist.scheme:180)
+* provenance: color p6mark -- inferred: p#stub -> pstub -> p# -> p; `color p6mark' is not set anywhere in the #include chain, took `color p6 ebblue' (scheme-economist.scheme:181)
+* provenance: color p7mark -- inferred: p#stub -> pstub -> p# -> p; `color p7mark' is not set anywhere in the #include chain, took `color p7 eltgreen' (scheme-economist.scheme:182)
+* provenance: color p8mark -- inferred: p#stub -> pstub -> p# -> p; `color p8mark' is not set anywhere in the #include chain, took `color p8 stone' (scheme-economist.scheme:183)
+* provenance: color p9mark -- inferred: p#stub -> pstub -> p# -> p; `color p9mark' is not set anywhere in the #include chain, took `color p9 navy' (scheme-economist.scheme:184)
+* provenance: color p10mark -- inferred: p#stub -> pstub -> p# -> p; `color p10mark' is not set anywhere in the #include chain, took `color p10 maroon' (scheme-economist.scheme:185)
+* provenance: color p11mark -- inferred: p#stub -> pstub -> p# -> p; `color p11mark' is not set anywhere in the #include chain, took `color p11 brown' (scheme-economist.scheme:186)
+* provenance: color p12mark -- inferred: p#stub -> pstub -> p# -> p; `color p12mark' is not set anywhere in the #include chain, took `color p12 lavender' (scheme-economist.scheme:187)
+* provenance: color p13mark -- inferred: p#stub -> pstub -> p# -> p; `color p13mark' is not set anywhere in the #include chain, took `color p13 teal' (scheme-economist.scheme:188)
+* provenance: color p14mark -- inferred: p#stub -> pstub -> p# -> p; `color p14mark' is not set anywhere in the #include chain, took `color p14 cranberry' (scheme-economist.scheme:189)
+* provenance: color p15mark -- inferred: p#stub -> pstub -> p# -> p; `color p15mark' is not set anywhere in the #include chain, took `color p15 khaki' (scheme-economist.scheme:190)
+* provenance: symbol p1 -- inferred: p#stub -> pstub -> p# -> p; `symbol p1' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p2 -- inferred: p#stub -> pstub -> p# -> p; `symbol p2' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p3 -- inferred: p#stub -> pstub -> p# -> p; `symbol p3' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p4 -- inferred: p#stub -> pstub -> p# -> p; `symbol p4' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p5 -- inferred: p#stub -> pstub -> p# -> p; `symbol p5' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p6 -- inferred: p#stub -> pstub -> p# -> p; `symbol p6' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p7 -- inferred: p#stub -> pstub -> p# -> p; `symbol p7' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p8 -- inferred: p#stub -> pstub -> p# -> p; `symbol p8' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p9 -- inferred: p#stub -> pstub -> p# -> p; `symbol p9' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p10 -- inferred: p#stub -> pstub -> p# -> p; `symbol p10' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p11 -- inferred: p#stub -> pstub -> p# -> p; `symbol p11' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p12 -- inferred: p#stub -> pstub -> p# -> p; `symbol p12' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p13 -- inferred: p#stub -> pstub -> p# -> p; `symbol p13' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p14 -- inferred: p#stub -> pstub -> p# -> p; `symbol p14' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: symbol p15 -- inferred: p#stub -> pstub -> p# -> p; `symbol p15' is not set anywhere in the #include chain, took `symbol p circle' (scheme-s2color.scheme:527)
+* provenance: linepattern p1line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p1line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p2line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p2line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p3line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p3line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p4line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p4line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p5line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p5line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p6line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p6line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p7line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p7line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p8line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p8line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p9line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p9line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p10line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p10line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p11line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p11line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p12line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p12line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p13line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p13line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p14line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p14line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linepattern p15line -- inferred: p#stub -> pstub -> p# -> p; `linepattern p15line' is not set anywhere in the #include chain, took `linepattern p solid' (scheme-s2color.scheme:599)
+* provenance: linewidth p -- transcribed from scheme-economist.scheme:193 `linewidth p 1.2'
+* provenance: linewidth major_grid -- transcribed from scheme-s2color.scheme:1203 `linewidth major_grid medium'
+* provenance: intensity p -- transcribed from scheme-s2color.scheme:1300 `intensity p inten80'
+* provenance: intensity bar -- transcribed from scheme-s2color.scheme:1285 `intensity bar full'
+* provenance: intensity area -- inferred: class default; `intensity area' is not set anywhere in the #include chain, took the bare `intensity full' class default (scheme-s2color.scheme:1267)
+* provenance: gsize text -- transcribed from scheme-economist.scheme:24 `gsize text medium'
+* provenance: gsize heading -- transcribed from scheme-economist.scheme:27 `gsize heading 6.0'
+* provenance: gsize axis_title -- transcribed from scheme-economist.scheme:29 `gsize axis_title medium'
+* provenance: gsize tick_label -- transcribed from scheme-economist.scheme:42 `gsize tick_label medium'
+* provenance: gsize note -- transcribed from scheme-economist.scheme:34 `gsize note large'
+* provenance: graphsize x -- transcribed from scheme-economist.scheme:15 `graphsize x 2.2'
+* provenance: graphsize y -- transcribed from scheme-economist.scheme:16 `graphsize y 2.2'
+* provenance: symbolsize p -- transcribed from scheme-economist.scheme:95 `symbolsize p large'
+* provenance: clockdir legend_position -- transcribed from scheme-economist.scheme:315 `clockdir legend_position 12'
+* provenance: numstyle legend_cols -- transcribed from scheme-economist.scheme:20 `numstyle legend_cols 3'
+* provenance: yesno draw_major_hgrid -- transcribed from scheme-economist.scheme:342 `yesno draw_major_hgrid no'
+* provenance: yesno draw_major_vgrid -- transcribed from scheme-economist.scheme:366 `yesno draw_major_nlt_vgrid yes' via axisstyle vertical_default = vertical_nolinetick, style/axisstyle-vertical_nolinetick.style
+* provenance: yesno draw_major_grid -- transcribed from scheme-economist.scheme:338 `yesno draw_major_grid no'
+* provenance: yesno draw_minor_hgrid -- transcribed from scheme-economist.scheme:343 `yesno draw_minor_hgrid no'
+* provenance: yesno draw_minor_vgrid -- transcribed from scheme-economist.scheme:367 `yesno draw_minor_nlt_vgrid no' via axisstyle vertical_default = vertical_nolinetick, style/axisstyle-vertical_nolinetick.style
+* provenance: yesno draw_minor_grid -- transcribed from scheme-economist.scheme:339 `yesno draw_minor_grid no'
+* provenance: color subheading -- transcribed from scheme-s2color.scheme:317 `color subheading black'
+* provenance: color body -- transcribed from scheme-s2color.scheme:313 `color body black'
+* provenance: color small_body -- transcribed from scheme-s2color.scheme:315 `color small_body black'
+* provenance: color text -- transcribed from scheme-s2color.scheme:312 `color text black'
+* provenance: color axis_title -- transcribed from scheme-s2color.scheme:318 `color axis_title black'
+* provenance: color tick_label -- transcribed from scheme-s2color.scheme:322 `color tick_label black'
+* provenance: color key_label -- transcribed from scheme-s2color.scheme:321 `color key_label black'
+* provenance: color foreground -- transcribed from scheme-economist.scheme:115 `color foreground black'
+* provenance: gsize subheading -- transcribed from scheme-economist.scheme:28 `gsize subheading medium'
+* provenance: gsize body -- transcribed from scheme-economist.scheme:25 `gsize body 3.0'
+* provenance: gsize small_body -- transcribed from scheme-economist.scheme:26 `gsize small_body small'
+* provenance: gsize key_label -- transcribed from scheme-economist.scheme:33 `gsize key_label medium'
+* provenance: linewidth minor_grid -- transcribed from scheme-s2color.scheme:1204 `linewidth minor_grid thin'
+* provenance: linewidth axisline -- transcribed from scheme-s2color.scheme:1205 `linewidth axisline thin'
+* provenance: numstyle legend_rows -- transcribed from scheme-s2color.scheme:38 `numstyle legend_rows 0'
+* END provenance (WP-17)
+* ---------------------------------------------------------------------------

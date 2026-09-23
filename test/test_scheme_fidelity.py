@@ -4,7 +4,10 @@
 WHAT THIS FILE IS
 -----------------
 Section 03 of the plan translates Stata's 14 shipped graph schemes into dash
-``.scheme`` files; section 11 makes ``dash_render`` consume them.  This file is
+``.scheme`` files; section 11 makes ``dash_render`` consume them; WP-17 adds
+the six user-selectable StataCorp schemes that were still missing (s2manual,
+s1manual, s2gmanual, s2color8, sttrans, stgcolor_alt), making twenty.  This
+file is
 the *test-first* half of that work (project rule 8): every assertion below is
 driven by ``test/fixtures/scheme_truth.json``, the ground truth another agent
 extracted from Stata's own ``scheme-*.scheme`` and ``style/*.style`` files with
@@ -110,12 +113,29 @@ ALPHA_TOL = 1e-6
 #: Tolerance for graph size in inches.
 SIZE_TOL = 1e-9
 
-#: The 14 schemes Stata ships and dash must translate.
+#: The 20 user-selectable schemes Stata ships and dash must translate.  The
+#: internal ones (meta, stcolor_meta, stgcolor_meta, stcolor_mv, stgcolor_mv,
+#: stcoloralias) are deliberately not here.
 EXPECTED_SCHEMES = (
     "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
     "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
     "economist", "sj",
+    # WP-17: the six that were missing.
+    "s2manual", "s1manual", "s2gmanual", "s2color8", "sttrans", "stgcolor_alt",
 )
+
+#: The six WP-17 added, kept apart so their tests can name them.
+WP17_SCHEMES = (
+    "s2manual", "s1manual", "s2gmanual", "s2color8", "sttrans", "stgcolor_alt",
+)
+
+#: WP-17 sanity anchors, read off Stata's own files and one SVG export.
+ANCHOR_S2COLOR8_P1 = "#273f6f"           # color-navy8.style: 39 63 111
+ANCHOR_S2COLOR8_BACKGROUND = "#e1e6f0"   # color-ltbluishgray8.style: 225 230 240
+ANCHOR_S2GMANUAL_P2LINEPLOT = "#a0a0a0"  # scheme-s2gmanual.scheme: color p2lineplot gs10
+ANCHOR_STTRANS_P1 = "#1a476f"            # scheme-sttrans.scheme: "26 71 111 %20"
+ANCHOR_STTRANS_OPACITY = 20.0            # ... and the %20 is a real 0.20 fill-opacity
+ANCHOR_MANUAL_GRAPHSIZE = (3.12, 2.392)  # s2manual, s1manual, s2gmanual
 
 # --- Sanity anchors: the only hardcoded expected values in this file --------
 BLACK = "#000000"
@@ -140,8 +160,8 @@ def _load_truth():
 
 TRUTH, _FIXTURE_ERROR = _load_truth()
 
-#: Scheme names to test.  Driven by the fixture; falls back to the expected 14
-#: so that a missing fixture produces 14 honest failures rather than 0 tests.
+#: Scheme names to test.  Driven by the fixture; falls back to the expected 20
+#: so that a missing fixture produces 20 honest failures rather than 0 tests.
 SCHEME_NAMES = (
     [k for k in TRUTH if k != "_meta"] if TRUTH else list(EXPECTED_SCHEMES)
 )
@@ -205,7 +225,7 @@ NAME_LISTS = {
 ALPHA_SCALARS = {
     "fill_alpha": ["intensity p"],
     "bar_alpha":  ["intensity bar"],
-    # No Stata base scheme sets "intensity area"; all 14 resolve it through the
+    # No Stata base scheme sets "intensity area"; all 20 resolve it through the
     # bare "intensity" class default (see _meta.sources).  Either spelling in a
     # translated scheme supplies it.
     "area_alpha": ["intensity area", "intensity"],
@@ -541,7 +561,7 @@ def coverage(checks):
 # ===========================================================================
 
 def test_fixture_is_present_and_complete():
-    """The ground-truth fixture exists and covers exactly the 14 schemes."""
+    """The ground-truth fixture exists and covers exactly the 20 schemes."""
     assert _FIXTURE_ERROR is None, (
         f"cannot read {FIXTURE_PATH}: {_FIXTURE_ERROR}"
     )
@@ -610,12 +630,12 @@ def test_scheme_parser_exposes_props():
 
 
 # ===========================================================================
-# 1. All 14 schemes resolve, with no silent fallback
+# 1. All 20 schemes resolve, with no silent fallback
 # ===========================================================================
 
 @pytest.mark.parametrize("name", SCHEME_NAMES)
 def test_scheme_resolves(name):
-    """Every one of Stata's 14 schemes is a real, parseable dash scheme.
+    """Every one of Stata's 20 schemes is a real, parseable dash scheme.
 
     "Without falling back" means three things: the file exists in schemes/, the
     parser does not raise, and no ``#include`` in the chain was silently skipped
@@ -883,7 +903,7 @@ def test_translator_can_express_scheme_symbols_and_patterns(name):
 # 7. Unknown scheme names are rejected by name
 # ===========================================================================
 
-# Was xfail pending section 11.  It now passes: _BUILTIN_NAMES lists all 14
+# Was xfail pending section 11.  It now passes: _BUILTIN_NAMES lists all 20
 # translated schemes, so the not-found message names the supported set.  The
 # marker is removed rather than left in place, because an xfail that passes is
 # itself a landmine -- it reports green while asserting nothing is expected.
@@ -900,3 +920,321 @@ def test_unknown_scheme_rejected_with_supported_set():
         "rejection message does not name the supported scheme set — missing "
         f"{missing}. Message was: {message}"
     )
+
+
+# ===========================================================================
+# 8. WP-17: the six added schemes, provenance, and the extractor itself
+# ===========================================================================
+#
+# These were written before the six files and the provenance block existed
+# (project rule 8), against scripts/extract_scheme_truth.py, which the fixture
+# and the shipped files are generated from.
+
+import importlib.util
+import shutil
+
+EXTRACTOR_PATH = os.path.join(REPO_ROOT, "scripts", "extract_scheme_truth.py")
+
+_PROVENANCE_BEGIN = "* BEGIN provenance (WP-17)"
+_PROVENANCE_END = "* END provenance (WP-17)"
+_PROVENANCE_LINE = re.compile(r"^\* provenance: (\S+) (\S+) -- (.*)$")
+
+
+def _extractor():
+    """The extractor as a module (it is a script, not a package).
+
+    Bytecode writing is suppressed while it loads so the import does not
+    leave a scripts/__pycache__/ behind (which .gitignore does not cover).
+    """
+    spec = importlib.util.spec_from_file_location("extract_scheme_truth",
+                                                  EXTRACTOR_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    was = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = was
+    return mod
+
+
+def _file_directives(path):
+    """``(class, key) -> value`` for every directive line of a shipped file,
+    read the way SchemeParser reads them (the last token is the value)."""
+    out = {}
+    with open(path, encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.strip()
+            if (not line or line.startswith("*") or line.startswith("#include")
+                    or line.startswith("label")):
+                continue
+            tokens = line.split()
+            if len(tokens) < 3:
+                continue
+            out[(tokens[0].lower(), tokens[1].lower())] = tokens[-1]
+    return out
+
+
+def _provenance_lines(path):
+    """``(class, key) -> text`` from the file's provenance block, plus whether
+    the block's sentinels were both found."""
+    lines = open(path, encoding="utf-8").read().split("\n")
+    if _PROVENANCE_BEGIN not in lines or _PROVENANCE_END not in lines:
+        return {}, False
+    start, end = lines.index(_PROVENANCE_BEGIN), lines.index(_PROVENANCE_END)
+    out = {}
+    for line in lines[start + 1:end]:
+        m = _PROVENANCE_LINE.match(line)
+        if m:
+            out[(m.group(1).lower(), m.group(2).lower())] = m.group(3)
+    return out, start < end
+
+
+def test_extractor_schemes_list_is_the_twenty():
+    """One list: the extractor's SCHEMES is exactly EXPECTED_SCHEMES."""
+    mod = _extractor()
+    assert sorted(mod.SCHEMES) == sorted(EXPECTED_SCHEMES), (
+        f"extractor SCHEMES {sorted(mod.SCHEMES)} != {sorted(EXPECTED_SCHEMES)}"
+    )
+    assert len(mod.SCHEMES) == 20
+
+
+def test_extractor_reads_a_directive_value_as_stata_does(tmp_path):
+    """Stata's scheme.class ``setscheme`` does ``tokenize`` then
+    ``args style id stylename``: the value is the THIRD token, a quoted
+    string is one token, and anything after the third token is ignored.
+    scheme-sttrans.scheme has ``symbolsize p small *medium``, which Stata
+    reads as ``small`` (measured: its marker radius in an SVG export equals
+    s2color's ``msize(small)``, 19.29, not medium's 26.35).  The extractor
+    used to join every token after the key, giving ``small *medium``."""
+    mod = _extractor()
+    base = tmp_path / "base"
+    (base / "s").mkdir(parents=True)
+    (base / "style").mkdir()
+    (base / "s" / "scheme-t.scheme").write_text(
+        "* a comment\n"
+        "symbolsize p       small *medium\n"
+        "color p1  \"26 71 111 %20\"\n"
+        "gsize text 3.9\n"
+        "intensity full\n"
+        "label \"t label\"\n",
+        encoding="utf-8")
+    r = mod.SchemeResolver(str(base))
+    r.load("t")
+    assert r.get("symbolsize", "p") == "small"
+    assert r.get("color", "p1") == '"26 71 111 %20"'
+    assert r.get("gsize", "text") == "3.9"
+    assert r.get("intensity", "") == "full"
+    # Where each value came from: (scheme, 1-based line).
+    assert r.origins[("symbolsize", "p")] == ("t", 2)
+    assert r.origins[("color", "p1")] == ("t", 3)
+    assert r.origins[("intensity", "")] == ("t", 5)
+    # The quoted RGB token with an opacity suffix resolves to hex + pct.
+    c = mod.ColorResolver(r)
+    assert c.resolve_with_opacity(r.get("color", "p1")) == ("#1a476f", 20.0)
+    assert not c.unresolved, c.unresolved
+    # The plain resolver still flags an opacity it cannot carry (scalar
+    # colours have no opacity slot in the fixture), so nothing is dropped
+    # in silence.
+    assert c.resolve(r.get("color", "p1")) == "#1a476f"
+    assert any("opacity" in m for m in c.unresolved), c.unresolved
+
+
+def test_the_six_have_every_key_and_nothing_unresolved():
+    """The six WP-17 schemes carry every key the fourteen carry, and no
+    scheme reports an unresolvable token."""
+    reference = set(truth_for("s2color"))
+    for name in WP17_SCHEMES:
+        entry = truth_for(name)
+        missing = sorted(reference - set(entry))
+        extra = sorted(set(entry) - reference)
+        assert not missing and not extra, (
+            f"{name}: fixture keys differ from s2color's -- missing {missing}, "
+            f"extra {extra}"
+        )
+    bad = {n: truth_for(n)["unresolvable"] for n in EXPECTED_SCHEMES
+           if truth_for(n).get("unresolvable")}
+    assert not bad, f"unresolvable tokens: {bad}"
+
+
+def test_fixture_anchors_for_the_six():
+    """Hand-verified anchors for the added schemes (see the constants)."""
+    assert truth_for("s2color8")["p_colors"][0] == ANCHOR_S2COLOR8_P1
+    assert truth_for("s2color8")["background_color"] == ANCHOR_S2COLOR8_BACKGROUND
+    assert truth_for("s2gmanual")["p_lineplot_colors"][1] == ANCHOR_S2GMANUAL_P2LINEPLOT
+    assert truth_for("sttrans")["p_colors"][0] == ANCHOR_STTRANS_P1
+    for name in ("s2manual", "s1manual", "s2gmanual"):
+        t = truth_for(name)
+        assert (t["graphsize_x"], t["graphsize_y"]) == ANCHOR_MANUAL_GRAPHSIZE, name
+    assert (truth_for("stgcolor_alt")["graphsize_x"],
+            truth_for("stgcolor_alt")["graphsize_y"]) == (3.588, 2.392)
+    assert (truth_for("sttrans")["graphsize_x"],
+            truth_for("sttrans")["graphsize_y"]) == (7.5, 4.5)
+    assert truth_for("sttrans")["legend_position"] == 3
+    # Stata reads `symbolsize p small *medium' as small (measured, see
+    # test_extractor_reads_a_directive_value_as_stata_does).
+    assert truth_for("sttrans")["symbolsize"]["name"] == "small"
+    assert truth_for("s1manual")["symbolsize"]["name"] == "2.2"
+    # The include chains, root -> child.
+    assert truth_for("s2gmanual")["include_chain"] == ["s2color", "s2mono", "s2gmanual"]
+    assert truth_for("s2manual")["include_chain"] == ["s2color", "s2mono", "s2manual"]
+    assert truth_for("s1manual")["include_chain"][-2:] == ["s1mono", "s1manual"]
+    assert truth_for("s2color8")["include_chain"] == ["s2color", "s2color8"]
+    assert truth_for("sttrans")["include_chain"] == ["s2color", "sttrans"]
+    assert truth_for("stgcolor_alt")["include_chain"][-2:] == ["stcolor_alt", "stgcolor_alt"]
+
+
+def test_sttrans_opacity_is_recorded_not_flagged():
+    """sttrans is the transparency scheme: every p# colour is written as
+    ``"r g b %20"`` and Stata really draws it at fill-opacity 0.20.  The
+    fixture keeps the hex in p_colors (what every consumer compares) and the
+    percentage in p_colors_opacity, and reports nothing as unresolvable."""
+    t = truth_for("sttrans")
+    for key in ("p_colors", "p_line_colors", "p_bar_colors", "p_mark_colors",
+                "p_lineplot_colors"):
+        assert t[key + "_opacity"] == [ANCHOR_STTRANS_OPACITY] * N_PLOTS, key
+        assert all(hex_to_rgb(v) is not None for v in t[key]), key
+    assert t["unresolvable"] == []
+    # An opaque scheme records None, not 100.
+    s = truth_for("s2color")
+    assert s["p_colors_opacity"] == [None] * N_PLOTS
+
+
+def test_sttrans_shipped_file_carries_the_opacity():
+    """The shipped directive keeps Stata's ``%20`` (``#1a476f%20``): the
+    file is the translation, and it must not say the colour is opaque.
+    SchemeParser._color strips the suffix (OptionTranslator.translate_mcolor
+    does), so the parsed hex is still what the fixture pins -- dash drawing
+    sttrans opaque is a renderer gap, recorded in the final report, not a
+    translation error."""
+    sp = parser_for("sttrans")
+    props = raw_props(sp)
+    for i in range(1, N_PLOTS + 1):
+        for stub in ("", "line", "bar", "mark"):
+            raw = props.get(f"color p{i}{stub}", "")
+            assert raw.endswith("%20"), f"color p{i}{stub} = {raw!r}"
+    assert colors_close(sp.p_colors[0], ANCHOR_STTRANS_P1)
+
+
+def test_every_fixture_key_has_provenance():
+    """Per scheme, ``provenance`` says for every sourced key whether the
+    value was transcribed (which Stata file and directive) or inferred by
+    dash (which rule), and the two maps cover the same keys."""
+    for name in EXPECTED_SCHEMES:
+        t = truth_for(name)
+        prov = t.get("provenance")
+        assert isinstance(prov, dict) and prov, f"{name}: no provenance map"
+        assert set(prov) == set(t["sources"]), (
+            f"{name}: provenance keys {sorted(set(prov) ^ set(t['sources']))} "
+            "differ from sources keys"
+        )
+        for key, entry in prov.items():
+            entries = entry if isinstance(entry, list) else [entry]
+            for e in entries:
+                if e is None:
+                    assert t["sources"][key] is None or (
+                        isinstance(t["sources"][key], list)
+                        and None in t["sources"][key]), (name, key)
+                    continue
+                assert e["kind"] in ("transcribed", "inferred"), (name, key, e)
+                assert e["file"] and e["directive"], (name, key, e)
+                if e["kind"] == "inferred":
+                    assert e.get("rule"), (name, key, e)
+
+
+def test_s2gmanual_lineplot_comes_from_its_declared_directive():
+    """s2gmanual is one of only two StataCorp schemes (with s2mono) that
+    WRITES a ``lineplot`` directive.  Its p_lineplot_* values must be the
+    declared ones -- transcribed from scheme-s2gmanual.scheme -- not the
+    p#stub -> pstub -> p# -> p inference, and the shipped file must carry
+    them as real directives; s2color, which declares none, must be marked
+    inferred and ship none."""
+    t = truth_for("s2gmanual")
+    assert t["lineplot_declared"] == {"color": True, "linepattern": True}
+    for i in range(1, N_PLOTS + 1):
+        assert t["sources"]["p_lineplot_colors"][i - 1] == f"color p{i}lineplot"
+        assert t["sources"]["p_lineplot_patterns"][i - 1] == f"linepattern p{i}lineplot"
+        pc = t["provenance"]["p_lineplot_colors"][i - 1]
+        pp = t["provenance"]["p_lineplot_patterns"][i - 1]
+        assert (pc["kind"], pc["file"]) == ("transcribed", "scheme-s2gmanual.scheme"), pc
+        assert (pp["kind"], pp["file"]) == ("transcribed", "scheme-s2gmanual.scheme"), pp
+        assert pc["directive"] == f"color p{i}lineplot"
+        assert pp["directive"] == f"linepattern p{i}lineplot"
+    # The declared values differ from what inference would give: s2mono's
+    # p2lineplot pattern is not solid, s2gmanual overrides it to solid.
+    assert t["p_lineplot_patterns"] == ["solid"] * N_PLOTS
+    assert truth_for("s2mono")["p_lineplot_patterns"][1] != "solid"
+    assert t["p_lineplot_colors"][1] == ANCHOR_S2GMANUAL_P2LINEPLOT
+    # And the shipped file writes them out.
+    directives = _file_directives(scheme_path("s2gmanual"))
+    for i in range(1, N_PLOTS + 1):
+        assert directives.get(("color", f"p{i}lineplot")) == t["p_lineplot_colors"][i - 1]
+        assert directives.get(("linepattern", f"p{i}lineplot")) == "solid"
+    sp = parser_for("s2gmanual")
+    assert colors_close(raw_props(sp).get("color p2lineplot"), ANCHOR_S2GMANUAL_P2LINEPLOT)
+
+    # The contrast: s2color infers, and ships no lineplot directive.
+    s = truth_for("s2color")
+    assert s["lineplot_declared"] == {"color": False, "linepattern": False}
+    assert s["sources"]["p_lineplot_colors"][0] == "color p1"
+    assert s["provenance"]["p_lineplot_colors"][0]["kind"] == "inferred"
+    assert ("color", "p1lineplot") not in _file_directives(scheme_path("s2color"))
+    # And s2mono declares its own.
+    m = truth_for("s2mono")
+    assert m["provenance"]["p_lineplot_patterns"][0]["file"] == "scheme-s2mono.scheme"
+    assert m["provenance"]["p_lineplot_patterns"][0]["kind"] == "transcribed"
+
+
+@pytest.mark.parametrize("name", SCHEME_NAMES)
+def test_shipped_file_carries_one_provenance_line_per_directive(name):
+    """Every shipped file ends with a provenance block: one ``* provenance:``
+    line for each directive it carries, saying ``transcribed from
+    scheme-X.scheme:...`` or ``inferred: ...``, and no line for a directive
+    it does not carry."""
+    path = scheme_path(name)
+    directives = _file_directives(path)
+    prov, ok = _provenance_lines(path)
+    assert ok, f"{name}: no `{_PROVENANCE_BEGIN}' ... `{_PROVENANCE_END}' block"
+    missing = sorted(k for k in directives if k not in prov)
+    stray = sorted(k for k in prov if k not in directives)
+    assert not missing, f"{name}: directives without a provenance line: {missing}"
+    assert not stray, f"{name}: provenance lines for absent directives: {stray}"
+    for key, text in prov.items():
+        assert text.startswith("transcribed from scheme-") or \
+            text.startswith("transcribed from style/") or \
+            text.startswith("inferred: "), (name, key, text)
+
+
+def test_shipped_provenance_agrees_with_the_fixture():
+    """Spot checks that the block says what the fixture says."""
+    prov, _ = _provenance_lines(scheme_path("s2gmanual"))
+    assert prov[("color", "p1lineplot")].startswith(
+        "transcribed from scheme-s2gmanual.scheme:")
+    assert prov[("color", "p1")].startswith("transcribed from scheme-s2mono.scheme:")
+    prov, _ = _provenance_lines(scheme_path("s2color"))
+    assert prov[("color", "p1line")].startswith("inferred: ")
+    assert "color p1" in prov[("color", "p1line")]
+    assert prov[("intensity", "area")].startswith("inferred: ")
+    assert prov[("color", "background")].startswith(
+        "transcribed from scheme-s2color.scheme:")
+    prov, _ = _provenance_lines(scheme_path("economist"))
+    assert "draw_major_nlt_vgrid" in prov[("yesno", "draw_major_vgrid")]
+
+
+@pytest.mark.parametrize("name", SCHEME_NAMES)
+def test_regenerating_a_shipped_file_is_a_no_op(name, tmp_path):
+    """update_scheme_file on a copy of the shipped file, fed the fixture it
+    was generated from, changes nothing: no CHANGED value, no added
+    directive, and the provenance block is byte-identical."""
+    mod = _extractor()
+    src = scheme_path(name)
+    dst = str(tmp_path / f"{name}.scheme")
+    shutil.copyfile(src, dst)
+    before = open(dst, "rb").read()
+    result = mod.update_scheme_file(dst, name, truth_for(name),
+                                    mod.DEFAULT_STATA_BASE, "01jan2000")
+    assert result["changed"] == [], result
+    assert result["added"] == [], result
+    assert not result["created"]
+    assert not result.get("provenance"), result
+    assert open(dst, "rb").read() == before, f"{name}: file rewritten"

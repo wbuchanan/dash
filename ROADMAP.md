@@ -2022,18 +2022,19 @@ one-mode change there would have been invisible.
   `_dash_apply_one_axis` exists), `test_scheme.py`'s minor-grid test being
   new rather than restated, and five line ranges in BUGS G4/G5 that were
   off by two or three at `52c473c`.
-- Not fixed here, two follow-ups from the review. `s2color8`, the session
-  scheme `cscript` sets (`c(scheme_cscript)`, cscript.ado:35), is not among
-  the 14 translations, so every unschemed `dash build` under the
-  certification runner writes `dash: 's2color8' is not a known theme or
-  scheme; using s2color` into the Stata log -- 41 occurrences across 11 of
-  the 12 certification logs the review read, at HEAD as well, because
-  `dash.ado` forwards `c(scheme)` as the session scheme; extracting a
-  fifteenth translation is the fix (WP-17 TR-17.3 already lists
-  `s2color8`), an alias to s2color the stopgap. And
-  `test_render_log_clean.cscript` asserts only on `__builtins__`,
-  `DashRenderer`, `GlyphMapper` and a line count, so it tolerates a
-  `UserWarning` line; it should assert that none appears, so a
+- Not fixed here, two follow-ups from the review, both resolved by WP-17.
+  `s2color8`, the session scheme `cscript` sets (`c(scheme_cscript)`,
+  cscript.ado:35), was not among the 14 translations, so every unschemed
+  `dash build` under the certification runner wrote `dash: 's2color8' is
+  not a known theme or scheme; using s2color` into the Stata log -- 41
+  occurrences across 11 of the 12 certification logs the review read, at
+  HEAD as well, because `dash.ado` forwards `c(scheme)` as the session
+  scheme; WP-17 ships s2color8 as one of its six new translations
+  (TR-17.3), so the line is gone (`test_custom_scheme.cscript` CS-11: `set
+  scheme s2color8` then a build, rc 0 and no warning). And
+  `test_render_log_clean.cscript` asserted only on `__builtins__`,
+  `DashRenderer`, `GlyphMapper` and a line count, so it tolerated a
+  `UserWarning` line; it now asserts that none appears, so a
   session-scheme warning is caught rather than tolerated.
 
 ### Verification, measured 22sep2026
@@ -2060,61 +2061,249 @@ and dying at build.
 
 ---
 
-## WP-17 · Scheme coverage and custom schemes
+## WP-17 · Scheme coverage and custom schemes — DONE
 
-**Gaps closed:** G1, G2, G8 · **Severity:** S2/S3 · **Effort:** M · **Depends on:** WP-05
+**Gaps closed:** G1, G2, G8, F4's bare-name row, WP-05's AC-05.3 · **Severity:** S2/S3 · **Effort:** M · **Depends on:** WP-05
 
 > **User story.** As a user with a house scheme, I want to point `dash` at it
 > the way the help says I can.
 
-### Business requirements
+### What was measured before any code changed
 
-- **BR-17.1** A user-supplied scheme file works by the route the help
-  documents, on every entry point.
-- **BR-17.2** An explicitly requested scheme that cannot be resolved is an
-  error; an untranslatable inherited `c(scheme)` is a single clear warning.
-- **BR-17.3** The shipped scheme set covers Stata's user-selectable schemes.
+The baseline, 22sep2026 at `0112221`, with the console binary, a
+`mytheme.scheme` in the working directory that is a copy of s1rcolor
+(black background, white heading) and the session scheme read back from
+`c(scheme)` (scratchpad `wp17/probe/probe.log`, `probe2.log` and the
+rendered pages):
 
-### Technical requirements
-
-- **TR-17.1 (G8/F4).** Make the documented bare-name path work: at
-  `dash_render.py:7967-7970`, `_resolve_scheme_name` rejects any name that is
-  neither a theme alias nor a builtin **unless** it ends in `.scheme`, before
-  `_resolve_path`'s CWD bare-name branch (`:1704-1716`, added for exactly this
-  purpose) can run. Let a bare name try CWD first. Note graph-level `scheme()`
-  already works (`:9484-9487` bypasses the gate) — the same name behaving
-  differently on `dash scatter` and `dash build` is itself the bug.
-- **TR-17.2 (G8).** Decide the unknown-scheme policy: today it warns and falls
-  back, so a typo yields a wrongly-styled dashboard and a warning in the log.
-  Error on an explicitly requested name; keep the fallback only for an
-  inherited `c(scheme)` dash cannot translate — that path is common (129
-  third-party schemes on the test machine alone) and must stay non-fatal, but
-  must say so once, clearly.
-- **TR-17.3 (G1).** Translate the six missing user-selectable Stata schemes:
-  `s2manual`, `s1manual`, `s2gmanual`, `s2color8`, `sttrans`, `stgcolor_alt`.
-  `s2gmanual` is the best test of the `p#lineplot` logic — it is one of only
-  two Stata schemes declaring a `lineplot` directive.
-- **TR-17.4 (G2).** Document in `dash.sthlp` that the shipped `.scheme` files
-  are dash-format translations (≈118 keys, flattened, no `#include`), not
-  drop-in Stata scheme files (s2color's Stata original has 2060 directives).
-  Preserve the `sources` provenance from `test/fixtures/scheme_truth.json`
-  into the shipped files as comments.
-
-### Acceptance criteria
-
-- **AC-17.1** A `mytheme.scheme` in the working directory is found by
-  `scheme(mytheme)` on **both** `dash scatter` and `dash build`.
-- **AC-17.2** `scheme(nosuchthing)` errors; an untranslatable `c(scheme)`
-  warns once and falls back.
-- **AC-17.3** All 20 schemes ship, translate faithfully and render.
-
-### Test plan
-
-| Kind | Test | Asserts |
+| entry point | value | at `0112221` |
 |---|---|---|
-| Cert | new `test_custom_scheme.cscript` | Bare name and `.scheme` name both resolve, on both entry points |
-| Unit | `test_scheme_fidelity.py` | Extend the 14-scheme parametrization to 20; `scheme_truth.json` coverage assertion updated |
-| Security | `test_scheme.py` | The WP-05 containment checks still reject traversal and symlink escape |
+| `dash scatter ..., scheme(mytheme)` (immediate) | bare name, file in the CWD | rc 0; `dash: 'mytheme' is not a known theme or scheme; using s2color`; the figure drawn with mytheme (`background_fill_color` `#000000`) under s2color page chrome (`.db-title { color: #1e2d53 }`, `#eaf2f3`): half applied |
+| `dash scatter ..., scheme(mytheme.scheme)` | file name | works throughout (`.db-title { color: #ffffff }`, no s2color colour on the page) |
+| `dash build, scheme(mytheme)` | bare name | rc 0, the warning, s2color throughout |
+| `dash build, scheme(mytheme.scheme)` | file name | works |
+| graph registered with `scheme(mytheme)`, then `dash build` | bare name | half applied, as the immediate route |
+| `scheme(nosuchthing)` / `theme(nosuchtheme)`, either entry point | a typo | rc 0, the warning, s2color; two warnings on the immediate route, the gate's and the per-graph swap's (`scheme 'nosuchthing' was not found for graph (unnamed); using s2color`), each a raw Python block naming `dash_render.py` and a line |
+| `scheme(d3colors)` | one of 129 third-party `scheme-*.scheme` files in `PLUS/s` | rc 0, the warning, s2color: dash reads its own translations and the working directory only, by design (WP-05) |
+| `set scheme s2color8`, then any unschemed dash | inherited `c(scheme)` | rc 0, `'s2color8' is not a known theme or scheme; using s2color`; `cscript` sets s2color8 (`c(scheme_cscript)`, cscript.ado:35) for every session, so the runner's log of the WP-16 verification run (`test/run_all_cscripts.log`, 41 passed) carried the line 49 times across 13 of the 41 scripts |
+| `set scheme d3colors`, then any unschemed dash | inherited third-party | the same line with that name |
+
+`twoway scatter mpg weight, scheme(nosuchthing)` is rc 0 with `(note:
+scheme nosuchthing not found, using s2color)`, `set scheme nosuchthing` is
+r(111) `scheme nosuchthing not found`, and `twoway ..., scheme(s2color8)`
+draws it: dash had copied twoway's note for the explicit case where a saved
+dashboard wants `set scheme`'s refusal, and could not draw a scheme Stata
+draws.
+
+The cause, read at `0112221`: `_resolve_scheme_name` (`dash_render.py:8941`)
+takes `scheme()`, then `theme()`, then a graph's `scheme()`, then
+`session_scheme`, and its unknown-name branch (`:9018-9029`) rejected any
+name that was neither a `_THEME_SCHEME_MAP` alias (`:8926-8938`) nor one of
+the fourteen `_BUILTIN_NAMES` (`:1624-1631`) unless it ended in `.scheme`,
+blanking the name and warning, before `SchemeParser._resolve_path` (`:1910`,
+whose bare-name branch at `:1930-1931` tries `<cwd>/<name>.scheme` first and
+was added for exactly this route) could run. The per-graph swap in
+`_make_figure` (`:12317-12325`) calls `resolve_or_fallback` directly, so a
+graph-level name reached the file for the figure while the page chrome had
+already fallen back. On the Stata side `_dash_prepare_spec` (`dash.ado:2969`)
+validated `layout()`, `link()` and `filterposition()` and only escaped
+`scheme()` and `theme()` (`:3357-3369`); a graph-level `scheme()` was one of
+the keys written verbatim (`:1669`); WP-15's `_dash_validate_value` (`:1257`)
+had no kind for either. The session scheme took the same branch and the same
+words as an explicit one, so a user who typed no `scheme()` read a warning
+about a name they never typed.
+
+For G2: dash's `s2color.scheme` carried 136 directives (118 at `187a786`;
+WP-16's eighteen) against Stata's 2060, 135 to 166 across the fourteen
+files, every `color` line hex, no `#include` directive in any file, and the
+`sources` map of `test/fixtures/scheme_truth.json` the only record of which
+directives were transcribed and which inferred. For G1: s2gmanual and
+s2mono are the only two StataCorp schemes that declare a `lineplot`
+directive at all (s2mono `color plineplot` and fifteen `linepattern
+p#lineplot`; s2gmanual fifteen `color p#lineplot` and fifteen `linepattern
+p#lineplot`), so s2gmanual is the one scheme whose `p_lineplot_colors` must
+come from a declared directive rather than the `p#stub` fallback. The six
+files to add: s2manual and s2gmanual `#include s2mono`, s1manual `#include
+s1mono`, s2color8 and sttrans `#include s2color`, stgcolor_alt `#include
+stcolor_alt`.
+
+### Technical requirements, as delivered
+
+- **TR-17.1 (G8/F4)** `SchemeParser._BUILTIN_NAMES` is the twenty, and
+  every "fourteen" comment in `dash_render.py` says twenty. A new classmethod
+  `SchemeParser.can_resolve(name)` says whether `_resolve_path(name)` would
+  succeed, with no warning and no exception (a name that fails containment
+  is False). The unknown-name branch of `_resolve_scheme_name` asks it
+  first, so a bare working-directory name, a `.scheme` file name and a
+  shipped name pass untouched and only a name that resolves to nothing
+  warns. The warning keeps the substring `is not a known theme or scheme`
+  and now says why the name can be one the user never typed, in one line:
+  `dash: 's2color8' is not a known theme or scheme; it was inherited from
+  the session (c(scheme)) because no scheme() or theme() was given, or came
+  from a spec built without dash.ado; using s2color. Themes: ... Schemes:
+  ...`. The per-graph swap and the served builder are unchanged; with the
+  gate agreeing, a working-directory bare name gives the same page chrome
+  (`css_block()` colours) and the same figure in both modes.
+- **TR-17.2 (G8)** One list in one place: `_dash_shipped_schemes`, between
+  `// BEGIN shipped schemes (WP-17)` and `// END shipped schemes (WP-17)`,
+  hands back `_dash_schemes` (the twenty, lower case) and `_dash_themes`
+  (`default clean mono dark economist sj`). WP-15's table gains the kind
+  `scheme`: accepted when the lower-cased value is a shipped name or a
+  theme, with or without the `.scheme` extension (`scheme(s2color.scheme)`
+  needs no file in the working directory); else when it carries no `/`,
+  `\` or `..` and `confirm file` finds it in the working directory, as
+  written if it ends in `.scheme` or with `.scheme` appended (nothing
+  normalised, the value passed through); else
+  refused, `P: scheme() must be a shipped scheme, a theme, or a .scheme file
+  in the working directory (got: V)`, r(198). The graph rule token
+  `scheme=scheme` puts the immediate route, a registered graph and a
+  per-segment `scheme()` through the existing validation loops;
+  `_dash_prepare_spec` validates `scheme` with the same kind and `theme` as
+  an `enum` of the six themes beside its `layout()`/`filterposition()`
+  checks, for `dash build` and `dash serve` alike, before anything is
+  written. The session's `c(scheme)` is inherited when nothing is requested
+  and stays warn-and-fall-back, never fatal (129 third-party schemes on this
+  machine alone). Third-party schemes in `PLUS/s` are deliberately not read;
+  the help says so.
+- **TR-17.3 (G1)** `scripts/extract_scheme_truth.py`'s `SCHEMES` is the
+  twenty; the fixture is regenerated and the six files created by the same
+  writer (the `update_scheme_file` "created" path: the same header, the
+  include chain stated, every colour hex), the fourteen re-run reporting no
+  changed value. `test_scheme_fidelity.py`'s `EXPECTED_SCHEMES` is the
+  twenty, and an anchor test reads the fixture's `lineplot_declared` and
+  `sources` to check that s2gmanual's `p_lineplot_colors` and patterns come
+  from its declared directive, not the inference. The grid truth tables in
+  `test_scheme_grids.py` / `test_scheme_grid_measured.py` are extended to
+  twenty from the fixture's effective flags where they enumerated the
+  fourteen.
+- **TR-17.4 (G2)** The fixture's per-scheme `sources` map is written into
+  every shipped file as a `* provenance:` block, one line per directive,
+  `transcribed from scheme-X.scheme:<directive>` or `inferred: <rule>`, by
+  the same writer, so a re-run is a no-op. `dash.sthlp` says what the
+  shipped files are (dash-format translations, about 135 directives,
+  flattened, every colour hex, sttrans's with its `%20` opacity kept,
+  provenance comments; not drop-in Stata scheme
+  files, never read by `graph`), lists the twenty with one-line descriptions
+  taken from Stata's own file headers, documents the custom-scheme rule on
+  every entry point, the refusal, the inherited-session warning, and that
+  third-party schemes in `PLUS` are not read; the WP-16 sentence that named
+  `s2color8` as an `#include` dash would skip is corrected, since it ships.
+- **TR-17.5** Tests and records. New `test/test_scheme_resolution.py`,
+  written first: in a temporary working directory holding `mytheme.scheme`
+  (s1rcolor with `color background #123456`), build-level `scheme(mytheme)`
+  and `scheme(mytheme.scheme)` and graph-level `scheme(mytheme)` in both
+  modes give a figure with `border_fill_color` `#123456` and a
+  `css_block()` containing it, with no warning; `scheme(nosuchthing)` from
+  a spec dict gives exactly one warning carrying the inherited-session
+  sentence; `_BUILTIN_NAMES` equals the extractor's `SCHEMES`,
+  `test_scheme_fidelity.EXPECTED_SCHEMES` and the Stata list parsed from
+  between the sentinels; every one of the twenty resolves with no warning
+  in both modes; `can_resolve("../x")` is False and `can_resolve("mytheme")`
+  True there. New `test/test_custom_scheme.cscript`, CS-01 to CS-13 (runner
+  block 42), in a temporary directory it `cd`s into with `mytheme.scheme`
+  and a `scheme-zzdashtest.scheme` (`#include s2color`, so `set scheme
+  zzdashtest` finds it). `test_theme_escaping.cscript` THM-01 to THM-06
+  restated to r(198) at the gate. `BUGS.md`: the silent typo (G8) written
+  first, then the half-applied bare name, the s2color8 warning in the
+  certification logs, and `theme()`'s hostile strings; `GAPS.md` G1, G2 and
+  G8 closed with the table above and F4's bare-name row cross-referenced.
+
+### Acceptance
+
+- **AC-17.1** a `mytheme.scheme` in the working directory is found by
+  `scheme(mytheme)` on `dash scatter` and on `dash build`, and by a
+  graph-level `scheme(mytheme)`, the page and the figure from the same
+  file: `test_custom_scheme.cscript` CS-01 to CS-05 (`#123456` present,
+  s2color's `#1e2d53` absent, no warning) and `test_scheme_resolution.py`
+  in both modes.
+- **AC-17.2** `scheme(nosuchthing)` is r(198) naming `scheme()` on the
+  immediate route (CS-06), on `dash build` (CS-07) and on the `dash serve`
+  spec path (CS-13); `theme(nosuchtheme)` r(198) naming `theme()` (CS-08);
+  `scheme(../mytheme)` r(198) (CS-09); an untranslatable session scheme is
+  rc 0 with exactly one warning that mentions the session and an s2color
+  page (CS-10); `set scheme s2color8` then a build is rc 0 with no warning
+  (CS-11); the hostile `theme()` values of THM-01 to THM-06 are refused
+  with no traceback and nothing written; `test_scheme_resolution.py` pins
+  the one warning from a spec dict.
+- **AC-17.3** all twenty ship, translate faithfully and render:
+  `test_scheme_fidelity.py` over the twenty against Stata's files with the
+  s2gmanual anchor; `test_scheme_rendered_output.py` over the twenty in both
+  modes; CS-12, every shipped name on `dash build, scheme()` with rc 0 and
+  no warning; the WP-05 containment tests in `test_scheme.py` still pass.
+
+### Found on the way
+
+- The refusal is stricter than `twoway`, whose `scheme(nosuchthing)` is rc
+  0 with a note, and matches `set scheme`, which is r(111); the help says so
+  and why (a saved dashboard in the wrong scheme is not a note the user
+  sees). `theme()` was the one option whose hostile values WP-05 had made
+  survive the trip to Python (THM-01 to THM-06 asserted rc 0); an alias
+  table of six names has no arbitrary values, so those cases are refused at
+  the gate now, and the escaping helper stays for the values that pass.
+- The immediate route warned twice for one typo, once from the gate and
+  once from the per-graph swap; both go with the Stata refusal.
+- s2color8 is not s2color: Stata's file is `#include s2color` with the "8"
+  colour variants substituted (`ltbluishgray8` `225 230 240` for the
+  background and grid against `ltbluishgray` `234 242 243`, `navy8` `39 63
+  111` for p1 against `navy` `26 71 111`, `bluishgray8` for the boxes and
+  p15), so the fallback under `cscript` was a near miss, not the scheme.
+- sttrans declares every `color p#` with a `%20` opacity suffix (`"26 71
+  111 %20"`, Paul Tol's muted palette), and Stata draws it so: `twoway
+  scatter mpg weight, scheme(sttrans)` exported to SVG carries its markers
+  at fill-opacity 0.20 (scratchpad `wp17/ownerA/`). At `0112221` the
+  extractor stripped the suffix, recorded `opacity suffix %20 ... not
+  folded into hex` in `unresolved` and wrote the opaque hex; once the
+  extractor kept it, the shipped `sttrans.scheme` wrote `color p1
+  #1a476f%20` (with its line, bar, mark and lineplot twins) and the
+  renderer dropped it, because `SchemeParser._color` resolved a scheme
+  colour through `translate_mcolor`, which discards a `%NN` suffix, so the
+  figure drew sttrans opaque in both modes while the file was faithful.
+  Now the declared opacity is carried into the glyphs in both modes for
+  the layers that take a scheme alpha (scatter and connected markers,
+  line, connected, bar, area, histogram): a colour opacity the scheme
+  declares wins over the intensity approximation, and a user's
+  `mcolor(x%NN)` or `malpha()` still wins over the scheme. The range,
+  spike, fit, band, density, function, scatteri, pci, dot and rscatter
+  layers still draw sttrans opaque (they apply no scheme alpha); routing
+  them through `default_alpha` is a follow-up. The fixture records it in `p_colors_opacity` and its twins,
+  the help's sttrans row says dash carries it, and `BUGS.md` has the entry
+  ("sttrans's twenty-percent colour opacity ...").
+- "About 118 keys" in this package as first written was stale by one
+  package: 136 at `0112221` for s2color, WP-16 having added eighteen.
+- `test_render_log_clean.cscript` tolerated a `UserWarning` line (it
+  asserted on `__builtins__`, `DashRenderer`, `GlyphMapper` and a line
+  count), as the WP-16 review recorded; with s2color8 shipped the line it
+  tolerated is gone, and it now asserts that no `UserWarning` line
+  appears, closing that follow-up.
+- Stale line references: this package as first written cited `187a786`
+  (`_resolve_scheme_name`'s gate at `dash_render.py:7967-7970`, the CWD
+  bare-name branch at `:1704-1716`, the swap at `:9484-9487`); at `0112221`
+  they are `:8941` (the gate `:9018-9029`), `:1910` (the bare-name branch
+  `:1930-1931`) and `:12317-12325`, with `_BUILTIN_NAMES` at `:1624-1631`
+  and `_THEME_SCHEME_MAP` at `:8926-8938`; `dash.ado`'s pass-through at
+  `:3357-3369` and `_dash_validate_value` at `:1257`.
+- Not fixed here, one follow-up seen in the certification log once the
+  session-scheme warning was gone: three example files
+  (`examples/bootstrap_stacked.do`, `multi_graph_dashboard.do`,
+  `kelly22ex_categorical.do`) ask for `ms(inverted_triangle)`, a Bokeh
+  marker name that neither Stata's symbolstyle list nor dash's translator
+  knows, so those layers draw the scheme's default symbol with a note in
+  both modes. Either the examples take a Stata symbol or dash's marker
+  map admits the Bokeh names as a documented superset; the examples pass
+  (WP-27) decides.
+
+### Verification, measured 22sep2026
+
+| Suite | Result |
+|---|---|
+| `test_custom_scheme.cscript` CS-01 to CS-14 (both entry points, refusals, the session scheme, all twenty names) | ALL CHECKS PASSED |
+| `test_scheme_resolution.py` (both modes; one shipped list in dash.ado, the extractor and the fixture; the carried opacity) | 266 passed |
+| `test_scheme_fidelity.py`, twenty schemes against Stata's files | 175 passed |
+| `test_scheme_rendered_output.py`, twenty schemes, both modes | 1162 passed |
+| `test_render_log_clean.cscript`, now asserting no warning line | ALL PASS |
+| Parity guard `test_mode_parity.py` | 2114 passed, 1 skipped (layout(bs), stated), 5 xfailed |
+| Full Python suite | 8307 passed, 58 skipped (stated reasons), 6 xfailed, 0 failed |
+| Full certification suite | 42 passed, 0 failed, 0 skipped; no session-scheme warning in any log |
 
 ---
 
