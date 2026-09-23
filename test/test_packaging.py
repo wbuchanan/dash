@@ -368,6 +368,10 @@ class TestNoUnsuppressableBrowserWindow:
     """
 
     _LAUNCHERS = ("shell open", "shell start", "shell xdg-open")
+    #: The programs that decide whether a window opens: the one-line form's
+    #: and the one `dash build' and `dash serve' share.  Each must read the
+    #: switches (test_each_decision_reads_the_switches).
+    _DECIDERS = ("_dash_browser_wanted", "_dash_dashboard_browser")
 
     @staticmethod
     def _ado_lines():
@@ -376,21 +380,50 @@ class TestNoUnsuppressableBrowserWindow:
             return fh.read().splitlines()
 
     def test_every_launcher_call_sits_inside_a_guard(self):
+        """Each launcher sits beside a call to a decision program.
+
+        This looked for the global's own name above the launcher.  The
+        decision now lives in programs -- `dash build' and `dash serve'
+        share _dash_dashboard_browser, since `dash serve' was found reading
+        its nobrowser option alone -- so a launcher must sit beside a call
+        to one, and the next test checks what each one reads.  A comment
+        naming the global no longer passes for a guard.
+        """
         lines = self._ado_lines()
         unguarded = []
         for i, line in enumerate(lines):
             code = line.split("//", 1)[0]
             if not any(l in code for l in self._LAUNCHERS):
                 continue
-            # Look back for the guard that encloses it.
-            window = "\n".join(lines[max(0, i - 12):i])
-            if ("dash_nobrowser" not in window
-                    and "open_browser" not in window):
+            # Look back for the decision that guards it, in code.
+            window = "\n".join(l.split("//", 1)[0]
+                               for l in lines[max(0, i - 12):i])
+            if not any(d in window for d in self._DECIDERS):
                 unguarded.append(f"dash.ado:{i + 1}: {line.strip()}")
         assert not unguarded, (
             "a browser launcher runs with nothing able to suppress it:\n"
             + "\n".join(unguarded)
         )
+
+    def _program_body(self, name):
+        lines = self._ado_lines()
+        start = next(i for i, l in enumerate(lines)
+                     if l.startswith(f"program define {name}"))
+        end = next(i for i in range(start + 1, len(lines))
+                   if lines[i].strip() == "end")
+        return "\n".join(l.split("//", 1)[0] for l in lines[start:end])
+
+    def test_each_decision_reads_the_switches(self):
+        """Both decisions read $dash_nobrowser and nodraw; the shared one
+        reads the command's nobrowser option as well."""
+        for name in self._DECIDERS:
+            body = self._program_body(name)
+            assert "${dash_nobrowser}" in body, (
+                f"{name} does not read $dash_nobrowser")
+            assert ('"nodraw":"nodraw"' in body
+                    or "_dash_registry_nodraw" in body), (
+                f"{name} does not read nodraw")
+        assert "`nobrowser'" in self._program_body("_dash_dashboard_browser")
 
     def test_the_build_command_accepts_nobrowser(self):
         path = os.path.join(REPO_ROOT, "dash.ado")

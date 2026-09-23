@@ -1,0 +1,203 @@
+*! test_serve_browser.cscript  v1.0
+*! Certification script: `dash serve' opens a browser only when nothing says
+*! not to -- by the same rule as `dash build'.
+*!
+*! dash.sthlp says that setting the global $dash_nobrowser "suppresses the
+*! window for a whole session", and `dash build' and the one-line form
+*! honour it.  `dash serve' did not: it decided from its own nobrowser
+*! option alone (_dash_serve_spec's r(nobrowser)), so
+*!
+*!     global dash_nobrowser 1
+*!     dash serve, port(5006)
+*!
+*! launched the generated app without --no-browser, and dash_render.py's
+*! launcher then added --show and opened a window.  A registered graph's
+*! nodraw, which keeps `dash build' shut, did not keep `dash serve' shut
+*! either.
+*!
+*! HOW THIS RUNS `dash serve' WITHOUT STARTING A SERVER.  `dash serve' finds
+*! its renderer with `findfile dash_render.py' (_dash_find_render).  This
+*! script puts a directory holding a STUB dash_render.py at the front of the
+*! ado-path; the stub records the arguments it was launched with and exits.
+*! So the whole serve path -- options, registry, data, spec, the launch
+*! arguments -- runs, and only the server itself is replaced.  Before any
+*! serve, the script asserts the stub is what _dash_find_render resolves;
+*! `timeout(1)' stops a real server within a minute should that ever fail.
+*!
+*! Tests: SB-01 through SB-12
+*!
+*! Usage:  do test/test_serve_browser.cscript
+*! Version: 1.0  23sep2026
+
+cscript "dash serve honours the browser settings" adodir ".."
+
+// ----------------------------------------------------------------
+// Setup
+// ----------------------------------------------------------------
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "cert_helpers.do"
+qui sysuse auto, clear
+do "../dash_parse.mata"
+do "../dash.ado"
+
+// This script sets and drops $dash_nobrowser itself, case by case; it
+// never builds a dashboard, and the stub below opens nothing whatever it
+// is told.
+capture macro drop dash_nobrowser
+
+// ================================================================
+// SB-01..05 — the rule, through its seam
+// ================================================================
+// r(open) is 1 unless the command's own nobrowser option was given,
+// $dash_nobrowser is set, or a registered graph carries nodraw; r(flag) is
+// what `dash serve' hands the launcher.
+dash clear
+dash scatter mpg weight, name(sb1)
+
+_dash_dashboard_browser
+assert r(open) == 1
+assert "`r(flag)'" == ""
+display "SB-01 PASS: with nothing said, the window opens and no flag is passed"
+
+_dash_dashboard_browser, nobrowser
+assert r(open) == 0
+assert "`r(flag)'" == "--no-browser"
+display "SB-02 PASS: the nobrowser option keeps it shut"
+
+global dash_nobrowser 1
+_dash_dashboard_browser
+assert r(open) == 0
+assert "`r(flag)'" == "--no-browser"
+display "SB-03 PASS: \$dash_nobrowser keeps it shut"
+
+// An empty global is an unset global, as it is for `dash build'.
+global dash_nobrowser ""
+_dash_dashboard_browser
+assert r(open) == 1
+display "SB-04 PASS: an empty \$dash_nobrowser does not"
+
+dash scatter mpg weight, name(sb2) nodraw
+_dash_dashboard_browser
+assert r(open) == 0
+assert "`r(flag)'" == "--no-browser"
+display "SB-05 PASS: a registered graph's nodraw keeps it shut"
+
+// ================================================================
+// SB-06..12 — `dash serve' itself, launching a stub
+// ================================================================
+capture program drop _sb_serve
+program define _sb_serve, rclass
+    version 16.0
+    args argvf opts
+    capture erase "`argvf'"
+    capture noisily dash serve, port(5099) timeout(1) `opts'
+    local rc = _rc
+    capture confirm file "`argvf'"
+    return scalar launched = (_rc == 0)
+    return scalar rc = `rc'
+end
+
+tempfile stubbase
+local stubdir "`stubbase'_serve_stub"
+capture mkdir "`stubdir'"
+local stub "`stubdir'/dash_render.py"
+local argvf "`stubdir'/argv.json"
+tempname fh
+file open `fh' using "`stub'", write text replace
+file write `fh' `"import json, os, sys"' _n
+file write `fh' `"_out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "argv.json")"' _n
+file write `fh' `"with open(_out, "w", encoding="utf-8") as _f:"' _n
+file write `fh' `"    json.dump(sys.argv[1:], _f)"' _n
+file close `fh'
+
+// Everything that runs with the stub on the ado-path runs inside one
+// capture block, so the stub comes off on every path: left on, it would
+// stand in for the renderer in every script the runner runs after this one.
+adopath ++ "`stubdir'"
+capture noisily {
+    // The guard: nothing below may reach a real server.
+    _dash_find_render
+    assert strpos(`"`r(fn)'"', "_serve_stub") > 0
+    display "SB-06 PASS: dash serve resolves the stub renderer, not the real one"
+
+    // SB-07 -- THE DEFECT: the global set, no option.
+    dash clear
+    dash scatter mpg weight, name(sv1)
+    global dash_nobrowser 1
+    _sb_serve "`argvf'"
+    assert r(rc) == 0 & r(launched) == 1
+    cert_file_has "`argvf'", needle("--no-browser")
+    assert r(found) == 1
+    display "SB-07 PASS: dash serve passes --no-browser when \$dash_nobrowser is set"
+
+    // SB-08 -- the option, the global unset.
+    macro drop dash_nobrowser
+    _sb_serve "`argvf'" nobrowser
+    assert r(rc) == 0 & r(launched) == 1
+    cert_file_has "`argvf'", needle("--no-browser")
+    assert r(found) == 1
+    display "SB-08 PASS: dash serve passes --no-browser for its nobrowser option"
+
+    // SB-09 -- neither: the launcher is left to open the window.
+    _sb_serve "`argvf'"
+    assert r(rc) == 0 & r(launched) == 1
+    cert_file_has "`argvf'", needle("--no-browser")
+    assert r(found) == 0
+    cert_file_has "`argvf'", needle(`""--launch""')
+    assert r(found) == 1
+    display "SB-09 PASS: with neither, dash serve lets the launcher open the window"
+
+    // SB-10 -- a registered graph's nodraw, as `dash build' reads it.
+    dash clear
+    dash scatter mpg weight, name(sv2) nodraw
+    _sb_serve "`argvf'"
+    assert r(rc) == 0 & r(launched) == 1
+    cert_file_has "`argvf'", needle("--no-browser")
+    assert r(found) == 1
+    display "SB-10 PASS: a registered graph's nodraw keeps the served window shut"
+
+    // SB-11 -- and the options still reach the launch as before.
+    dash clear
+    dash scatter mpg weight, name(sv3)
+    global dash_nobrowser 1
+    _sb_serve "`argvf'"
+    assert r(rc) == 0 & r(launched) == 1
+    cert_file_has "`argvf'", needle(`""--port", "5099""')
+    assert r(found) == 1
+    cert_file_has "`argvf'", needle(`""--timeout", "1""')
+    assert r(found) == 1
+    display "SB-11 PASS: port() and timeout() reach the launch unchanged"
+}
+local rc_sb = _rc
+
+// Restore, whatever happened above: the stub off the ado-path and off the
+// disk, and the suite's setting back.
+adopath - "`stubdir'"
+capture erase "`argvf'"
+capture erase "`stub'"
+capture rmdir "`stubdir'"
+capture program drop _sb_serve
+capture dash clear
+global dash_nobrowser 1
+if `rc_sb' {
+    display as error "test_serve_browser: a check above failed (rc=`rc_sb')"
+    exit `rc_sb'
+}
+
+// SB-12 -- the renderer is the real one again.
+_dash_find_render
+assert strpos(`"`r(fn)'"', "_serve_stub") == 0
+confirm file `"`r(fn)'"'
+display "SB-12 PASS: the stub is gone; dash_render.py resolves to the real renderer"
+
+display ""
+display "All serve-browser tests PASSED."

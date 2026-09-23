@@ -3010,6 +3010,34 @@ program define _dash_registry_nodraw, rclass
 end
 
 // ================================================================
+// _dash_dashboard_browser [, nobrowser]  — does a dashboard of the whole
+// registry open a browser window?
+//
+// The one rule `dash build' and `dash serve' decide by.  r(open) is 1
+// unless the command's own nobrowser option was given, $dash_nobrowser is
+// set (an empty global is an unset one), or a registered graph carries
+// Stata's nodraw.  r(flag) is what `dash serve' hands the launcher:
+// "--no-browser" when r(open) is 0, else empty.
+//
+// `dash serve' used to decide from its nobrowser option alone, so the
+// global dash.sthlp says "suppresses the window for a whole session" did
+// not: `global dash_nobrowser 1' then `dash serve, port(5006)' launched
+// the app without --no-browser, and dash_render.py's launcher added --show
+// and opened a window.  A registered graph's nodraw, which kept `dash
+// build' shut, did not keep `dash serve' shut either.
+// ================================================================
+program define _dash_dashboard_browser, rclass
+    version 16.0
+    syntax [, NOBRowser]
+    _dash_registry_nodraw
+    local open = ("`nobrowser'" == "" & "${dash_nobrowser}" == "" ///
+                  & r(nodraw) == 0)
+    return scalar open = `open'
+    if `open' return local flag ""
+    else      return local flag "--no-browser"
+end
+
+// ================================================================
 // _dash_register_graph  — store named graph in global registry
 // ================================================================
 // ================================================================
@@ -4236,9 +4264,9 @@ program define _dash_build
         // twenty dashboards opened twenty browser tabs, and so did any
         // do-file run in batch.
         // A registered graph's nodraw keeps the window shut too, as the
-        // help has always said it does.
-        _dash_registry_nodraw
-        if "`nobrowser'" == "" & "${dash_nobrowser}" == "" & r(nodraw) == 0 {
+        // help has always said it does -- the rule `dash serve' uses.
+        _dash_dashboard_browser, `nobrowser'
+        if r(open) {
             if "`c(os)'" == "MacOSX"  shell open        "`saving'"
             if "`c(os)'" == "Windows" shell start "" "`saving'"
             if "`c(os)'" == "Unix"    shell xdg-open "`saving'"
@@ -4364,8 +4392,12 @@ program define _dash_serve
 
     local port_int   "`r(port)'"
     local timeout    "`r(timeout)'"
-    local no_browser_flag ""
-    if "`r(nobrowser)'" == "nobrowser" local no_browser_flag "--no-browser"
+    // The browser, by the rule `dash build' uses: its nobrowser option,
+    // the session's $dash_nobrowser, or a registered graph's nodraw keeps
+    // it shut.  This read the option alone (test_serve_browser.cscript).
+    local _srv_nobr "`r(nobrowser)'"
+    _dash_dashboard_browser, `_srv_nobr'
+    local no_browser_flag "`r(flag)'"
 
     // ---- Locate dash_render.py ----
     // Before the announcement below, and before `python:'.  `dash serve'

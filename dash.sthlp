@@ -375,7 +375,10 @@ widget interaction.
 {synoptline}
 {synopt:{cmd:port(}{it:#}{cmd:)}}TCP port for the Bokeh Server; must be
     an integer in the range 1024–65535; default 5006{p_end}
-{synopt:{cmd:nobrowser}}do not open a browser window automatically{p_end}
+{synopt:{cmd:nobrowser}}do not open a browser window automatically.  The
+    rule is {cmd:dash build}'s: a registered graph's {cmd:nodraw} has the
+    same effect, and so does setting the global {cmd:$dash_nobrowser}, which
+    keeps every {cmd:dash} window shut for the session{p_end}
 {synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes;
     0 means run until Ctrl+C (default){p_end}
 {synoptline}
@@ -443,7 +446,8 @@ The following options are available on {cmd:dash build}.
 {synopt:{cmdab:nobr:owser}}write the dashboard but do not open it in a
     browser.  Stata's own {cmd:nodraw} on the graph has the same effect, and
     setting the global {cmd:$dash_nobrowser} to any non-empty value suppresses
-    the window for a whole session -- useful in batch, where one window per
+    the window for a whole session -- for {cmd:dash build}, the one-line
+    form and {cmd:dash serve} alike -- useful in batch, where one window per
     {cmd:dash build} is rarely wanted{p_end}
 {synopt:{cmd:replace}}overwrite output file if it already exists{p_end}
 {synoptline}
