@@ -62,8 +62,7 @@ filter title, slider/range/date        Slider/RangeSlider/DateSlider/    DOM tex
 dropdown option: value label or        Select.options[i][1]              DOM text node
 string value
 tabs() title                           TabPanel.title                    DOM text node
-KPI title, subtitle, value, and the    Div.text                          HTML
-per-facet KPI title
+KPI title, subtitle, and value         Div.text                          HTML
 KPI card rebuilt in the saved page     CustomJS.args kpi_config_json     HTML: _FILTER_JS joins it
                                                                          into Div.text
 dashboard title, subtitle              Div.text (Bootstrap: page HTML)   HTML
@@ -320,7 +319,9 @@ def hostile_inputs(payload):
     kpis = [
         {"name": "k1", "stat": "mean", "var": "mpg", "fmt": "%9.1f",
          "title": free("ktitle"), "subtitle": free("ksub")},
-        # One card per by() panel, each titled "<title> (<value label>)".
+        # update() naming a by() graph: the saved page used to draw a card
+        # per panel, titled "<title> (<value label>)"; one card now, in
+        # both modes (test_keyword_names.py).
         {"name": "k2", "stat": "mean", "var": "mpg", "fmt": "%9.1f",
          "update": "g2", "title": free("kftitle")},
         # No statistic: the card shows the value Stata sent.
@@ -621,12 +622,9 @@ SINKS = (
     Sink("kpi_subtitle", "ksub", ("Div",), "text", "html"),
     Sink("dashboard_title", "dtitle", ("Div",), "text", "html"),
     Sink("dashboard_subtitle", "dsub", ("Div",), "text", "html"),
-    # The saved page alone builds a card per by() panel, shows a value Stata
-    # sent without a statistic, and rebuilds cards in the browser.
-    Sink("kpi_title_per_facet", "kftitle", ("Div",), "text", "html",
-         modes=("standalone",)),
-    Sink("kpi_title_facet_value_label", "vlo0", ("Div",), "text", "html",
-         modes=("standalone",)),
+    Sink("kpi_title_beside_a_by_graph", "kftitle", ("Div",), "text", "html"),
+    # The saved page alone shows a value Stata sent without a statistic,
+    # and rebuilds cards in the browser.
     Sink("kpi_value", "kval", ("Div",), "text", "html",
          modes=("standalone",)),
     Sink("kpi_rebuild_title", "ktitle", ("CustomJS",), "args", "json-html",

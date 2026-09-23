@@ -840,7 +840,7 @@ def _dash_layout_check(layout, names, registered=None):
     if text == "" or text.lower() == "auto":
         return layout, None
     shown = _dash_display(str(layout))
-    if text[:2].lower() == "bs":
+    if _dash_is_bs_layout(text):
         return _dash_bs_layout_check(layout, text, registered, shown)
     if re.fullmatch(r"\d+\s+\d+", text, re.ASCII):
         return layout, None
@@ -894,6 +894,12 @@ def _dash_reserved_name(name):
     return "__" in str(name)
 
 
+#: Names dash reads as a keyword wherever a name may stand: link(_all)
+#: links every graph.  A graph named _all made link(_all g2) mean one thing
+#: saved and another served (measured 23sep2026); dash.ado refuses it.
+_DASH_KEYWORD_NAMES = frozenset({"_all"})
+
+
 def _dash_listed_names(names, limit=5):
     """*names* quoted for a warning, each as ``_dash_display`` shows user
     text: at most *limit* of them, then how many more."""
@@ -925,12 +931,15 @@ def _dash_named_once(graphs, kpis):
     seen = set()
     kept = {"graph": [], "KPI": []}
     reserved = {"graph": {}, "KPI": {}}
+    keyword = {"graph": {}, "KPI": {}}
     repeated = {"graph": {}, "KPI": {}}
     for kind, items in (("graph", graphs), ("KPI", kpis)):
         for item in items:
             name = _dash_item_name(item)
             if _dash_reserved_name(name):
                 reserved[kind][name] = None
+            elif name in _DASH_KEYWORD_NAMES:
+                keyword[kind][name] = None
             elif name in seen:
                 repeated[kind][name] = None
             else:
@@ -941,6 +950,8 @@ def _dash_named_once(graphs, kpis):
                 (list(reserved[kind]),
                  "refused: two underscores in a row are kept for the names "
                  "dash generates, such as a by() graph's panels"),
+                (list(keyword[kind]),
+                 "refused: it is the word link(_all) uses for every graph"),
                 (list(repeated[kind]),
                  "already {verb} an earlier graph or KPI card")):
             if not names:
@@ -12768,14 +12779,46 @@ def _dash_layout_order(registry, graphs, kpis):
 
 
 def _dash_kpi_keys(name, kpi_divs):
-    """The ``kpi_divs`` keys one registered KPI owns: itself, or its
-    per-facet cards ``name__by__0``, ``name__by__1`` ... in index order."""
-    if name in kpi_divs:
-        return [name]
-    pre = name + "__by__"
-    return sorted((k for k in kpi_divs if k.startswith(pre)),
-                  key=lambda k: int(k[len(pre):]) if k[len(pre):].isdigit()
-                  else 0)
+    """The ``kpi_divs`` keys one registered KPI owns: its own card, or none.
+
+    A KPI is one card in both modes.  The saved renderer used to split one
+    into per-panel cards ``name__by__0``, ``name__by__1``, ... and this
+    found them by prefix -- a prefix a KPI named ``g2__by__0`` also
+    matched, making graph g2 a card.  Neither can happen now.
+    """
+    return [name] if name in kpi_divs else []
+
+
+def _dash_link_names(link, graph_names):
+    """The graphs ``link()`` ties together, by one rule in both modes: the
+    names it gives, or every graph when one of them is ``_all``.
+
+    dash.ado takes ``link(_all)`` alone, and refuses it beside other names.
+    The saved renderer expanded ``_all`` wherever it stood and the served
+    app only when it stood alone, so ``link(_all g2)`` linked every graph
+    when saved and none when served (measured 23sep2026).  Names may be
+    separated by ``;``, as older specs wrote them.
+    """
+    if isinstance(link, (list, tuple)):
+        names = [str(x) for x in link]
+    else:
+        names = str(link or "").replace(";", " ").split()
+    if "_all" in names:
+        return [n for n in graph_names if n]
+    return names
+
+
+def _dash_excluded(key, excluded, owner_of):
+    """True when ``filter(..., exclude())`` names *key*: the graph it
+    belongs to, or the by() graph whose panel it is (*owner_of* maps a
+    panel's key to its graph's name).
+
+    A by() graph's panels are keyed ``g1__by__0``, ``g1__by__1``, ..., and
+    both modes matched exclude(g1) against those keys alone, so an unlinked
+    by() graph's panels were filtered as though nothing had been excluded
+    (measured 23sep2026: 5 and 5 rows became 3 and 1 on a price move).
+    """
+    return key in excluded or owner_of.get(key) in excluded
 
 
 def _dash_facet_cols(gopts, n_panels):
@@ -12803,8 +12846,8 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
     """The ONE renderable a registered name owns, or None.
 
     A faceted graph is one cell: its panels in a sub-grid that honours
-    by(, cols(#)).  A plain graph is its figure.  A KPI is its card, or a
-    column of its per-facet cards.  The grid AND the tab panels call this,
+    by(, cols(#)).  A plain graph is its figure.  A KPI is its card.  The
+    grid AND the tab panels call this,
     in both modes -- the saved tabs used to flatten a faceted graph's
     panels into the tab's own grid, ignoring cols(), while the saved grid
     and the served app nested them.  The sub-grid keeps a toolbar of its
@@ -12821,12 +12864,7 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         return _dash_name_save(gridplot(rows, sizing_mode="stretch_width"))
     if name in figures:
         return figures[name]
-    keys = _dash_kpi_keys(name, kpi_divs)
-    if len(keys) == 1:
-        return kpi_divs[keys[0]]
-    if keys:
-        return column(*[kpi_divs[k] for k in keys], sizing_mode="stretch_width")
-    return None
+    return kpi_divs.get(name)
 
 
 def _dash_parse_tabs(tabs_str, all_names, limit=None):
@@ -12905,10 +12943,17 @@ def _dash_is_bs_layout(layout_opt):
         layout(bs)                              # auto layout
         layout(bs: k1=3 k2=3 / s1=8 h1=4)       # explicit layout
 
+    A value that reads whole as placements or a grid is not one, whatever
+    its first letters: every reader took any value starting with ``bs``
+    for the Bootstrap form, so ``layout(bsales:1,1 g2:1,2)`` -- a graph
+    named bsales, placed -- was refused by dash.ado and drawn as
+    layout(bs) by both modes (measured 23sep2026).  dash.ado's Mata
+    ``_dash_layout_refusal`` reads it by the same rule.
     ``_dash_layout_check`` has already made any other value that starts with
     ``bs`` plain ``bs``.
     """
-    return bool(layout_opt) and str(layout_opt).strip().lower().startswith("bs")
+    text = str(layout_opt or "").strip(_DASH_ASCII_BLANKS)
+    return text[:2].lower() == "bs" and _dash_layout_cells(text) is None
 
 
 def _dash_auto_bs_layout(all_names, kpi_names, figures=None):
@@ -16494,9 +16539,8 @@ class DashRenderer:
         ]
         # link(_all) is documented and was expanded only in the two dead
         # helpers, so the shipped path produced an unlinked dashboard and
-        # returned rc 0.
-        if "_all" in link_names:
-            link_names[:] = [n for n in all_graph_names if n]
+        # returned rc 0.  The served app reads it by the same rule.
+        link_names[:] = _dash_link_names(link_names, all_graph_names)
 
         # ---- 2. Build ColumnDataSources ----
         if link_names:
@@ -16685,74 +16729,46 @@ class DashRenderer:
     def _build_kpi_html(self, kpis: list) -> None:
         """Phase 4 of render(): build KPI Div widgets and store in self.kpi_divs.
 
-        For faceted KPIs (``update`` references a faceted graph) one card is
-        created per facet group, computing the statistic on each group's
-        filtered DataFrame.  For all other KPIs a single card is created,
-        recomputing the display value from the loaded DataFrame so the ``fmt``
-        format string is applied correctly.
+        One card per KPI, recomputing the display value from the loaded
+        DataFrame so the ``fmt`` format string is applied correctly -- as
+        the served app builds it.  A KPI's ``update`` names how the card
+        follows the dashboard (filter, brush or both), never a graph: this
+        read it as a by() graph's name and drew a card per panel when one
+        matched, so a by() graph named ``filter`` split every default KPI on
+        the saved page alone, into cards that never recomputed, and that
+        showed a placeholder over a linked graph (measured 23sep2026).
 
-        Reads:  self.df, self._facet_map, self.sources
+        Reads:  self.df
         Writes: self.kpi_divs
         """
         for kpi in kpis:
             name = kpi.get("name", "kpi")
             kpi["name"] = name  # ensure name key present in def
 
-            update_graph = kpi.get("update", "")
             stat = kpi.get("stat", "")
             varname = kpi.get("var") or kpi.get("varname", "")
 
-            if update_graph and update_graph in self._facet_map and stat and varname:
-                # Per-facet KPIs: one card per facet group
-                for idx, (fkey, facet_label) in enumerate(
-                    self._facet_map[update_graph]
-                ):
-                    facet_src = self.sources.get(fkey)
-                    facet_df = (
-                        pd.DataFrame(facet_src.data) if facet_src is not None
-                        else pd.DataFrame()
+            kpi_copy = dict(kpi)
+            if stat and varname and varname in self.df.columns:
+                try:
+                    # Honour the KPI's own if/in qualifier.  Stata computes
+                    # the right value and stores it; this recompute used to
+                    # run on the FULL frame and overwrite it, so `dash kpi
+                    # mean(mpg) if foreign==1` displayed the unconditional
+                    # 21.2973 where Stata's summarize reports 24.7727.
+                    _kdf = self._apply_graph_filter(kpi)
+                    raw_val = self._compute_kpi_stat_on_df(
+                        _kdf, stat, varname)
+                    kpi_copy["value"] = self._format_kpi_value(
+                        raw_val, self._effective_kpi_fmt(kpi, varname),
+                        varname, stat
                     )
-                    facet_kpi = dict(kpi)
-                    fkpi_name = f"{name}__by__{idx}"
-                    facet_kpi["name"] = fkpi_name
-                    orig_title = facet_kpi.get("title", "")
-                    facet_kpi["title"] = (
-                        f"{orig_title} ({facet_label})" if orig_title
-                        else facet_label
-                    )
-                    try:
-                        val = self._compute_kpi_stat_on_df(facet_df, stat, varname)
-                        facet_kpi["value"] = self._format_kpi_value(
-                            val, self._effective_kpi_fmt(kpi, varname),
-                            varname, stat
-                        )
-                    except (ValueError, KeyError, TypeError):
-                        facet_kpi["value"] = "—"
-                    self.kpi_divs[fkpi_name] = self._make_kpi_div(facet_kpi)
-            else:
-                # Non-faceted KPI: recompute from df so fmt is applied correctly
-                kpi_copy = dict(kpi)
-                if stat and varname and varname in self.df.columns:
-                    try:
-                        # Honour the KPI's own if/in qualifier.  Stata
-                        # computes the right value and stores it; this
-                        # recompute used to run on the FULL frame and
-                        # overwrite it, so `dash kpi mean(mpg) if foreign==1`
-                        # displayed the unconditional 21.2973 where Stata's
-                        # summarize reports 24.7727.
-                        _kdf = self._apply_graph_filter(kpi)
-                        raw_val = self._compute_kpi_stat_on_df(
-                            _kdf, stat, varname)
-                        kpi_copy["value"] = self._format_kpi_value(
-                            raw_val, self._effective_kpi_fmt(kpi, varname),
-                            varname, stat
-                        )
-                    except (ValueError, KeyError, TypeError):
-                        if not kpi_copy.get("value"):
-                            kpi_copy["value"] = kpi.get("display", "")
-                elif not kpi_copy.get("value"):
-                    kpi_copy["value"] = kpi.get("display", "")
-                self.kpi_divs[name] = self._make_kpi_div(kpi_copy)
+                except (ValueError, KeyError, TypeError):
+                    if not kpi_copy.get("value"):
+                        kpi_copy["value"] = kpi.get("display", "")
+            elif not kpi_copy.get("value"):
+                kpi_copy["value"] = kpi.get("display", "")
+            self.kpi_divs[name] = self._make_kpi_div(kpi_copy)
 
     def _kpi_callback_config(self, kname: str, kdef: dict) -> dict:
         """One KPI's payload for a JS recompute callback.
@@ -17058,6 +17074,11 @@ class DashRenderer:
         ]
 
         _kpi_defs_by_name: dict = {k.get("name", ""): k for k in kpis}
+        # A by() graph's panels answer to its name in exclude(), as in the
+        # served recompute (_dash_excluded).
+        _owner_of: dict = {fkey: gname
+                           for gname, entries in self._facet_map.items()
+                           for fkey, _label in entries}
 
         for _fc, _cb in zip(built_filter_specs, self.filter_callbacks):
             _fc_excludes = [str(x) for x in _fc.get("exclude", [])]
@@ -17083,7 +17104,7 @@ class DashRenderer:
             # graph in an unlinked dashboard (not just the primary fsource).
             _graph_srcs_for_cb: list = []
             for _gsrc_name, _gsrc in self.sources.items():
-                if _gsrc_name in _fc_excludes:
+                if _dash_excluded(_gsrc_name, _fc_excludes, _owner_of):
                     continue
                 if _gsrc not in _graph_srcs_for_cb:
                     _graph_srcs_for_cb.append(_gsrc)
@@ -17108,7 +17129,7 @@ class DashRenderer:
             _agg_srcs: list = []
             _agg_cfgs: list = []
             for _gname, _agg_list in self.agg_source_registry.items():
-                if _gname in _fc_excludes:
+                if _dash_excluded(_gname, _fc_excludes, _owner_of):
                     continue
                 for _agg_cds, _agg_cfg in _agg_list:
                     _agg_srcs.append(_agg_cds)
@@ -17794,12 +17815,16 @@ class ServerAppBuilder:
                          # The document: order, cells, tabs, header.
                          "_dash_layout_order", "_dash_kpi_keys",
                          "_dash_facet_cols", "_dash_layout_cell",
+                         # link() and exclude(), read by the saved
+                         # renderer's rules.
+                         "_dash_link_names", "_dash_excluded",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
                          # and spans, and the 12-column grid they are
                          # placed on when served (WP-21).
-                         "_dash_is_bs_layout", "_dash_auto_bs_layout",
+                         "_dash_is_bs_layout", "_dash_layout_cells",
+                         "_dash_auto_bs_layout",
                          "_dash_parse_bs_layout", "_dash_bs_grid_cells",
                          "_dash_bs_grid",
                          # The name every grid's save button writes: the
@@ -18232,15 +18257,10 @@ class ServerAppBuilder:
         graphs = self.spec.get("graphs", [])
         kpis = self.spec.get("kpis", [])
 
-        # Determine linked graph names
-        linked_names: set[str] = set()
-        if link_opt == "_all":
-            for g in graphs:
-                n = g.get("graph_options", {}).get("name", "")
-                if n:
-                    linked_names.add(n)
-        elif link_opt:
-            linked_names = set(link_opt.split())
+        # Determine linked graph names, by the saved renderer's rule
+        linked_names: set[str] = set(_dash_link_names(
+            link_opt, [g.get("graph_options", {}).get("name", "")
+                       for g in graphs]))
 
         # Filters, taken the SAME way the standalone path takes them.
         #
@@ -18995,14 +19015,10 @@ class ServerAppBuilder:
             "    # renderer sets it.",
             "    _DASH_MAPPER.dataset = df",
             "",
-            "    # ---- Determine linked graphs ----",
-            "    linked_names = set()",
-            "    if link_opt == '_all':",
-            "        for g in graphs:",
-            "            n = g.get('graph_options', {}).get('name', '')",
-            "            if n: linked_names.add(n)",
-            "    elif link_opt:",
-            "        linked_names = set(link_opt.split())",
+            "    # ---- Determine linked graphs, by the saved renderer's rule ----",
+            "    linked_names = set(_dash_link_names(",
+            "        link_opt, [g.get('graph_options', {}).get('name', '')",
+            "                   for g in graphs]))",
             "",
             "    # ---- Collect all variable names ----",
             "    all_vars = set()",
@@ -19692,7 +19708,9 @@ class ServerAppBuilder:
             "            # 2. Replace raw source data (facet-aware)",
             "            excl = getattr(_trig_widget, '_dash_exclude', [])",
             "            for gname, srcs in _all_sources.items():",
-            "                if gname in excl:",
+            "                # A by() graph's panels answer to its name, as on",
+            "                # the saved page (_dash_excluded).",
+            "                if _dash_excluded(gname, excl, _gfac_to_orig):",
             "                    continue",
             "                # For faceted sources, further filter by group value",
             "                if gname in _fgvals:",
@@ -19776,7 +19794,7 @@ class ServerAppBuilder:
             "            # 3. Recompute aggregated sources",
             "            for key, agg in _agg_srcs.items():",
             "                gname = key[0]",
-            "                if gname in excl:",
+            "                if _dash_excluded(gname, excl, _gfac_to_orig):",
             "                    continue",
             "                # Derive per-facet data frame analogously to raw source update.",
             "                # Faceted aggregates must recompute from the facet's subgroup,",

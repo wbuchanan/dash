@@ -1149,6 +1149,11 @@ CORPUS = [
                      bgcolor="#2c3e50")]),
     _case("a KPI on a faceted graph", [_sc()], None, {"by": "foreign"},
           kpis=[_kpi()]),
+    # A by() graph named after the KPI's update() mode: the saved page read
+    # the mode as the graph's name and drew a card per panel; the served
+    # app drew one card.  One card in both modes (test_keyword_names.py).
+    _case("a KPI beside a by() graph named filter",
+          graphs=[("filter", [_sc()], {"by": "foreign"})], kpis=[_kpi()]),
     _case("a KPI in a tab", bo={"tabs": "A: g1 k1"},
           graphs=[("g1", [_sc()]), ("g2", [plot_for("line")])],
           kpis=[_kpi()]),

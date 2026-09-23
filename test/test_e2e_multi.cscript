@@ -185,6 +185,37 @@ assert `fsize_if' > 0
 display "P1B-70b PASS: HTML output from if() graphs is non-empty"
 
 // ================================================================
+// P1B-71 — a placement whose first name begins with bs is a placement
+// ================================================================
+// Measured 23sep2026: layout(bsales:1,1 g2:1,2) was refused ("layout()
+// must be 'auto', ...") because every reader took a value starting with
+// bs for the Bootstrap form, and the renderer drew it as layout(bs);
+// layout(g2:1,1 bsales:1,2) built.  A value that reads whole as
+// placements is one -- a graph named bs placed first as well -- and a
+// Bootstrap page is the only one with db-col-lg- cells.
+dash clear
+dash scatter mpg weight, name(bsales)
+dash scatter price weight, name(g2)
+tempfile p171
+local p171f = "`p171'.html"
+capture noisily dash build, saving("`p171f'") replace nobrowser layout(bsales:1,1 g2:1,2)
+assert _rc == 0
+cert_file_has "`p171f'", needle("db-col-lg-")
+assert r(found) == 0
+dash clear
+dash scatter mpg weight, name(bs)
+dash scatter price weight, name(g2)
+capture noisily dash build, saving("`p171f'") replace nobrowser layout(bs:1,1 g2:1,2)
+assert _rc == 0
+cert_file_has "`p171f'", needle("db-col-lg-")
+assert r(found) == 0
+capture noisily dash build, saving("`p171f'") replace nobrowser layout(bs)
+assert _rc == 0
+cert_file_has "`p171f'", needle("db-col-lg-")
+assert r(found) == 1
+display "P1B-71 PASS: a placement layout naming a graph that begins with bs builds as placed"
+
+// ================================================================
 // Cleanup
 // ================================================================
 dash clear

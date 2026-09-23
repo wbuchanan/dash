@@ -466,7 +466,11 @@ string scalar _dash_layout_refusal(string scalar layout, string scalar registry)
     if (s == "" | s == "auto") return("")
     reg = tokens(registry)
 
-    if (strlower(substr(s, 1, 2)) == "bs") {
+    // A value that reads whole as placements or a grid is one, whatever
+    // its first letters: layout(bsales:1,1 g2:1,2) places a graph named
+    // bsales, and was refused as a malformed bs layout (measured
+    // 23sep2026).  dash_render.py's _dash_is_bs_layout() is the same rule.
+    if (strlower(substr(s, 1, 2)) == "bs" & missing(_dash_layout_scan(s, names))) {
         spec = strtrim(substr(s, 3, .))
         if (spec == "") return("")
         if (substr(spec, 1, 1) != ":") return(form)

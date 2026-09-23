@@ -172,7 +172,9 @@ This help file documents only the features that differ from or extend
     {cmd:dash} names what it generates with them -- the panels of a
     {cmd:by()} graph {cmd:g1} are {cmd:g1__by__0}, {cmd:g1__by__1}, ...
     -- and a name of that form would take one of their places, so it is
-    refused with {cmd:r(198)}.  The registry holds at most 100 items; see
+    refused with {cmd:r(198)}.  So is {cmd:_all}, the word
+    {cmd:link(_all)} uses for every graph.  The registry holds at most 100
+    items; see
     {help dash##limits:Resource limits}.
 
 {phang2}    {ul:The registry lives in Stata globals.}  It is kept in
@@ -540,7 +542,9 @@ in the dashboard grid.
     specification does not name is drawn below the rows it gives, the full
     width.  Each name must be registered, and each {it:span} a whole number
     from 1 to 12; a name written without one takes 6.  Example:
-    {cmd:layout(bs: k1=3 k2=3 s1=6)}.  A saved dashboard's grid reflows as
+    {cmd:layout(bs: k1=3 k2=3 s1=6)}.  A value that reads as placements is
+    placements, whatever its first letters: {cmd:layout(bsales:1,1 g2:1,2)}
+    places a graph named {cmd:bsales}.  A saved dashboard's grid reflows as
     the browser window narrows: below 992 pixels an item of 4 columns or
     fewer takes half the row, and below 768 every item takes the whole row.
     {cmd:dash serve} and {cmd:dash build, server} draw the same rows and
@@ -590,7 +594,9 @@ specified graphs.  All graphs must have been registered with {cmd:name()}.
 Only one link group per dashboard is supported.
 
 {pstd}
-{cmd:link(_all)} — link all registered graphs.
+{cmd:link(_all)} — link all registered graphs.  {cmd:_all} stands alone:
+beside other names it is refused with {cmd:r(198)}, and no graph may be
+named {cmd:_all}.
 
 {pstd}
 Graphs not in the link group receive their own independent data source
@@ -676,7 +682,8 @@ Syntax:
     {it:varname} is between the low and high slider values.
 
 {phang2}{cmd:exclude(}{it:namelist}{cmd:)} — prevent the filter from
-    affecting the specified graphs and KPIs.
+    affecting the specified graphs and KPIs.  Excluding a {cmd:by()} graph
+    excludes every one of its panels.
 
 {phang2}{cmd:label(}{it:string}{cmd:)} — the text shown beside the widget.
     Without it the variable's own label is used, and failing that its name.
@@ -792,6 +799,13 @@ Stata's biased m3/m2^1.5 -- again, the values {cmd:summarize, detail} gives.
 
 {phang2}{cmd:update(both)} — KPI recalculates on either filter changes
     or brush selections.
+
+{pstd}
+A KPI is one card, in {cmd:dash build} and {cmd:dash serve} alike:
+{cmd:update()} says how the card follows the dashboard, never which graph
+it follows, and a {cmd:by()} graph does not split a card into one per
+panel.  For a statistic of each group, register a card per group:
+{cmd:dash kpi mean(mpg) if foreign == 0, title("Domestic") name(kdom)}.
 
 
 {marker server_mode}

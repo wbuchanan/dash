@@ -223,6 +223,8 @@ SURFACES = {
             "test_adversarial.cscript:P19-02",
             "test_adversarial.cscript:P20-32",
             "test/test_reserved_names.py::TestAdversarialReservedNames::test_bypass_no_spelling_takes_a_panel_s_place",
+            "test_registry_collision.cscript:REG-16",
+            "test/test_keyword_names.py::TestLinkAll::test_a_graph_named_all_is_refused_in_both_modes",
         ],
         "injection": [
             "test_adversarial.cscript:P19-25",

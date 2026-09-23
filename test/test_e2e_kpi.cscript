@@ -135,6 +135,26 @@ assert `found_count' == 1
 display "P2-77b PASS: count KPI value '`expected_count'' found in HTML"
 
 // ----------------------------------------------------------------
+// P2-78 — a by() graph named after an update() mode does not split a card
+// ----------------------------------------------------------------
+// Measured 23sep2026: with a by() graph named filter, dash build drew the
+// default KPI (update filter) as one card per panel, kpi_val_k1__by__0 and
+// kpi_val_k1__by__1 -- the saved renderer read the mode as a graph's name
+// -- where the served app drew one card.  A KPI is one card in both modes.
+dash clear
+dash scatter mpg weight, by(foreign) name(filter)
+dash kpi mean(mpg), title("K1") name(k1)
+tempfile p278
+local p278f = "`p278'.html"
+capture noisily dash build, saving("`p278f'") replace nobrowser
+assert _rc == 0
+cert_file_has "`p278f'", needle("kpi_val_k1__by__")
+assert r(found) == 0
+cert_file_has "`p278f'", needle("kpi_val_k1")
+assert r(found) == 1
+display "P2-78 PASS: a by() graph named filter leaves the default KPI one card"
+
+// ----------------------------------------------------------------
 // Cleanup
 // ----------------------------------------------------------------
 dash clear

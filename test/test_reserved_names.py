@@ -191,9 +191,11 @@ class TestAGraphNamedLikeAPanel:
 
 
 class TestAKpiNamedLikeACard:
-    """A KPI k1 with a card per panel (its update() names the by() graph)
-    and a KPI k1__by__0: k1 keeps both cards, and the second KPI is refused
-    aloud rather than drawn as k1's first."""
+    """A KPI k1 whose update() names the by() graph, and a KPI k1__by__0:
+    the second is refused aloud.  The saved page drew k1 as a card per
+    panel under names of that form, and k1__by__0 replaced the first; k1 is
+    one card now (test_keyword_names.py), and the name is refused all the
+    same."""
 
     @staticmethod
     def _spec():
@@ -203,8 +205,7 @@ class TestAKpiNamedLikeACard:
 
     def test_the_saved_page(self, tmp_path):
         r, page, msgs = _saved(tmp_path, self._spec())
-        assert _cards(r.kpi_divs.values()) == [
-            ("k1__by__0", "K1 (0.0)"), ("k1__by__1", "K1 (1.0)")]
+        assert _cards(r.kpi_divs.values()) == [("k1", "K1")]
         assert "PLAIN" not in page
         _one_refusal(msgs, "KPI", "k1__by__0")
 
@@ -332,14 +333,15 @@ class TestTheRule:
     def test_every_name_dash_generates_is_reserved(self, tmp_path):
         """The rule holds only while every name dash makes up holds "__":
         each figure and card the renderer keys under a name nobody
-        registered -- a by() graph's panels, a KPI's per-panel cards."""
+        registered -- a by() graph's panels.  (A KPI is one card, under its
+        own name, since the saved page stopped splitting one per panel.)"""
         spec = _spec([_graph("g1", by="foreign")],
                      [_kpi("k1", update="g1")], layout="bs", tabs="A: g1",
                      filter="foreign, type(dropdown)")
         r, _, _ = _saved(tmp_path, spec)
         made_up = [k for k in list(r.figures) + list(r.kpi_divs)
                    if k not in ("g1", "k1")]
-        assert len(made_up) == 4, made_up
+        assert len(made_up) == 2, made_up
         assert all(dr._dash_reserved_name(k) for k in made_up)
 
     @pytest.mark.parametrize("names, shown", [

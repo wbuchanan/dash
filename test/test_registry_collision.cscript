@@ -239,6 +239,47 @@ assert `brc' == 0
 assert `_reg_warned' == 1
 display "REG-15 PASS: an entry registered as both is named in the output"
 
+// ================================================================
+// REG-16 — _all is link()'s word, never a name
+// ================================================================
+// Measured 23sep2026: a graph named _all registered, and link(_all g2)
+// then built -- every graph linked when saved, _all and g2 when served --
+// while link(_all g2) over graphs of other names was refused as naming a
+// graph the registry lacked.  _all is refused as a name now, for a graph
+// and a KPI card, and link(_all) beside names is refused for what it is.
+dash clear
+local r16ls = c(linesize)
+set linesize 255
+tempname r16f
+tempfile r16g
+quietly log using "`r16g'", replace text name(`r16f')
+capture noisily dash scatter mpg weight, name(_all)
+local r16a = _rc
+capture noisily dash kpi mean(mpg), name(_all) title("A")
+local r16b = _rc
+quietly log close `r16f'
+assert `r16a' == 198
+assert `r16b' == 198
+mata: st_local("_reg_g", strofreal(_reg_log_has("`r16g'", "dash: graph name '_all' is the word link(_all) uses for every graph")))
+mata: st_local("_reg_k", strofreal(_reg_log_has("`r16g'", "dash kpi: name '_all' is the word link(_all) uses for every graph")))
+assert `_reg_g' == 1
+assert `_reg_k' == 1
+assert "${dash_graph_registry}" == ""
+dash scatter mpg weight, name(g1)
+dash scatter price weight, name(g2)
+tempfile out4
+quietly log using "`r16g'", replace text name(`r16f')
+capture noisily dash build, saving("`out4'.html") replace nobrowser link(_all g2)
+local r16c = _rc
+quietly log close `r16f'
+set linesize `r16ls'
+assert `r16c' == 198
+mata: st_local("_reg_l", strofreal(_reg_log_has("`r16g'", "link(_all) links every graph; give it alone")))
+assert `_reg_l' == 1
+capture noisily dash build, saving("`out4'.html") replace nobrowser link(_all)
+assert _rc == 0
+display "REG-16 PASS: _all is refused as a graph or KPI name, and link(_all) beside names is refused for what it is"
+
 capture program drop _reg_count
 
 display ""

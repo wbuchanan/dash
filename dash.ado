@@ -3134,6 +3134,15 @@ program define _dash_register_graph
         exit(198)
     }
 
+    // _all is link()'s word for every graph: a graph named _all made
+    // link(_all g2) build, linking every graph when saved and two when
+    // served (measured 23sep2026).  Stata itself keeps the word.
+    if "`name'" == "_all" {
+        display as error "dash: graph name '_all' is the word link(_all) " ///
+            "uses for every graph. Choose another name."
+        exit(198)
+    }
+
     // Paren-mode fallback: the sub-option may have been written on the graph
     // suffix rather than captured in name().
     if `replace_flag' == 0 {
@@ -3538,6 +3547,12 @@ program define _dash_kpi
             "Choose a name without __.")
         exit(198)
     }
+    // _all is link()'s word for every graph, as for a graph (see there).
+    if "`name'" == "_all" {
+        display as error "dash kpi: name '_all' is the word link(_all) " ///
+            "uses for every graph. Choose another name."
+        exit(198)
+    }
 
     // Every option is proven BEFORE anything is retired: measured
     // 22sep2026, `name(k, replace) fmt(bogus)' was refused correctly but
@@ -3888,6 +3903,12 @@ program define _dash_prepare_spec, rclass
         local ntok_link : word count `link'
         forvalues k = 1/`ntok_link' {
             local lname : word `k' of `link'
+            // _all links every graph, so beside names it is a contradiction,
+            // and it used to be refused as a name the registry lacked.
+            if "`lname'" == "_all" {
+                display as error "`cmdname': link(_all) links every graph; give it alone, or name the graphs to link."
+                exit(198)
+            }
             if !`: list lname in registry' {
                 // Shown as written, never as SMCL (P20-09).
                 mata: _dash_say("err", "`cmdname': link() name '", st_local("lname"), "' not found in registry.")

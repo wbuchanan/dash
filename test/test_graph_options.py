@@ -989,7 +989,15 @@ class TestBySuboptions:
 # ================================================================
 
 class TestPerFacetKpis:
-    """KPI cards are created per-facet when a KPI references a faceted graph."""
+    """A KPI whose update() names a by() graph is still ONE card.
+
+    These tests used to pin a card per panel (k1__by__0, k1__by__1) on the
+    saved page -- the renderer read update(), whose values are filter,
+    brush and both, as a graph's name.  The served app never built such
+    cards, dash.ado never wrote such a spec, and a by() graph named
+    ``filter`` split every default KPI on the saved page alone (measured
+    23sep2026; test_keyword_names.py).  Restated to the one-card rule.
+    """
 
     def _build_renderer_with_kpi(self, kpi_def: dict) -> DashRenderer:
         """Build a renderer with foreign faceting and one KPI."""
@@ -1043,7 +1051,7 @@ class TestPerFacetKpis:
         return r
 
     def test_facet_kpi_divs_created(self):
-        """P6-24a: KPI with stat+var+update → two kpi_divs (one per facet)."""
+        """P6-24a, restated: one card, under the KPI's own name."""
         kpi = {
             "name": "k1", "title": "Avg MPG",
             "stat": "mean", "var": "mpg",
@@ -1052,13 +1060,11 @@ class TestPerFacetKpis:
         }
         r = self._build_renderer_with_kpi(kpi)
         r.render()
-        # Should have per-facet divs: k1__by__0 and k1__by__1
-        assert "k1__by__0" in r.kpi_divs, "Missing k1__by__0"
-        assert "k1__by__1" in r.kpi_divs, "Missing k1__by__1"
-        assert "k1" not in r.kpi_divs, "k1 should be replaced by per-facet divs"
+        assert list(r.kpi_divs) == ["k1"]
 
     def test_facet_kpi_titles_include_label(self):
-        """P6-24b: Per-facet KPI titles include the facet label."""
+        """P6-24b, restated: the card keeps its own title and shows the
+        statistic over every row, as the served card does."""
         kpi = {
             "name": "k1", "title": "Avg MPG",
             "stat": "mean", "var": "mpg",
@@ -1067,11 +1073,9 @@ class TestPerFacetKpis:
         }
         r = self._build_renderer_with_kpi(kpi)
         r.render()
-        # Each facet KPI div should contain the facet label in its title
-        div0_text = r.kpi_divs["k1__by__0"].text
-        div1_text = r.kpi_divs["k1__by__1"].text
-        # At least one should contain "0.0" or "1.0" label
-        assert any("0" in t for t in [div0_text, div1_text])
+        text = r.kpi_divs["k1"].text
+        assert "Avg MPG" in text and "Avg MPG (" not in text
+        assert ">14.5<" in text   # the mean of mpg 10, 11, ..., 19
 
     def test_no_stat_var_falls_back_to_single_kpi(self):
         """P6-24c: KPI without stat/var → single KPI div created normally."""

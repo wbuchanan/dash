@@ -150,20 +150,28 @@ class TestLinkAll:
 
         It used to live in ``_setup_sources`` AND ``_build_figures``, neither
         of which ``render()`` called, so it looked implemented twice over and
-        shipped in neither. There is now one implementation, reached by every
-        caller.
+        shipped in neither.  Then the saved builder and the served app each
+        had one, and they disagreed: ``link(_all g2)`` linked every graph
+        saved and none served (23sep2026, test_keyword_names.py).  There is
+        now one implementation, ``_dash_link_names``, reached by the saved
+        builder, the server builder and the generated app.
         """
         import inspect
         shared = inspect.getsource(DashRenderer._build_sources_and_figures)
-        assert '"_all"' in shared, (
-            "the shared source builder does not expand _all"
+        assert "_dash_link_names(" in shared, (
+            "the shared source builder does not read link() by the shared "
+            "rule"
         )
         src = open(os.path.join(_HERE, "..", "dash_render.py")).read()
         code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
-        assert code.count('if "_all" in link_names') == 1, (
+        assert code.count('if "_all" in names') == 1, (
             "_all is expanded in more than one place, so the copies can "
             "drift apart again"
         )
+        assert "== '_all'" not in code and '== "_all"' not in code
+        # Defined once, called by the saved builder, the server builder and
+        # the app's make_document.
+        assert code.count("_dash_link_names(") == 4
 
 
 # ======================================================================
