@@ -129,6 +129,7 @@ SURFACES = {
             "test/test_security_surface.py::TestIfQualifierLeavesStringLiteralsAlone::test_the_literal_is_unchanged",
             _M + "TestIfQualifierEncodings::test_the_spelling_does_not_get_past_the_whitelist",
             "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_numeric_variable",
+            "test/test_served_linked_views.py::TestEachServedViewShowsItsOwnRows::test_a_per_layer_qualifier_keeps_its_panel",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
@@ -548,6 +549,7 @@ SURFACES = {
             _M + "TestWidgetValuesFromTheClient::test_a_range_of_nan_or_inf_raises_nothing",
             _M + "TestWidgetValuesFromTheClient::test_out_of_range_selection_indices_are_dropped",
             "test/test_filter_exclude.py::TestTheServedAppLeavesAnExcludedGraphAlone::test_whatever_order_the_graphs_came_in",
+            "test/test_served_linked_views.py::TestEachServedViewShowsItsOwnRows::test_after_one_move",
         ],
         "injection": [
             _M + "TestWidgetValuesFromTheClient::test_a_value_is_never_evaluated_or_reflected",
@@ -555,6 +557,7 @@ SURFACES = {
         "exhaustion": [
             "test/test_served_throttle.py::TestAFloodOfFilterChangesIsThrottled::test_a_thousand_select_changes_run_at_most_burst_recomputes",
             "test/test_served_throttle.py::TestTheBrushIsThrottled::test_a_thousand_selections_run_at_most_burst_and_the_last_wins",
+            "test/test_served_linked_views.py::TestTheSharedSourceHoldsEveryFilteredRowOnce::test_written_once_per_move",
         ],
     },
     # The served app's own command line (python app.py --port ...).

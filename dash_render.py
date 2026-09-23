@@ -13229,6 +13229,166 @@ def _dash_excluded(key, excluded, owner_of):
     return key in excluded or owner_of.get(key) in excluded
 
 
+# ---- A link group's views, after a filter move (served) -----------------------
+#
+# Every member of a link() group draws from ONE ColumnDataSource.  A member
+# that must not draw all of it -- a by() panel, a graph or a layer with its
+# own if()/in() -- draws through a CDSView whose IndexFilter holds positions
+# in that source (_dash_layer_source).  The served recompute used to write
+# each linked graph's and each panel's own filtered rows into the shared
+# source in turn, so whichever was written last decided what every linked
+# graph showed, and it never recounted a view's positions against the rows
+# the source then held: measured 23sep2026 on sysuse auto, link(g1 g2) with
+# g1 by(foreign) and a price range of 5000-8000 drew panels of 9 and 0 rows
+# and g2 9, where the saved page draws 14, 9 and 23.  The saved page's
+# callback (_FILTER_JS) writes the shared source once with the rows every
+# filter keeps and rebuilds each view from the rows it owns; these helpers
+# do the same when served.
+
+def _dash_view_positions(position_of, members):
+    """Where a view's own rows now sit in the source it draws from.
+
+    A view owns a fixed set of rows -- those its graph's qualifier, its by()
+    group and its layer's qualifier select from the whole dataset -- and a
+    filter move rewrites the source with fewer, so its positions are counted
+    again against the rows the source holds now.
+
+    Args:
+        position_of: ``{row label: position}`` for the rows the source holds
+                     now.
+        members:     The row labels the view owns.
+
+    Returns:
+        Ascending positions.  An owned row the source no longer holds -- a
+        filter dropped it -- is not drawn.
+    """
+    return sorted(position_of[m] for m in members if m in position_of)
+
+
+def _dash_linked_views(figures, source):
+    """Each view over *source* in *figures*, with the rows it owns.
+
+    Read once, before any filter moves, while *source* still holds every row:
+    a view's positions then name its own rows through the source's ``index``
+    column (row labels).  Only IndexFilter views are listed, the only kind
+    the served app builds (_dash_layer_source).  A filter several renderers
+    draw through is listed once.
+
+    Args:
+        figures: The figures, each with ``.renderers``.
+        source:  The link group's shared ColumnDataSource.
+
+    Returns:
+        ``[(IndexFilter, frozenset of row labels)]``.
+    """
+    labels = list(source.data.get("index", []))
+    n = len(labels)
+    out, seen = [], set()
+    for fig in figures:
+        for r in getattr(fig, "renderers", []):
+            if getattr(r, "data_source", None) is not source:
+                continue
+            flt = getattr(getattr(r, "view", None), "filter", None)
+            if not isinstance(flt, IndexFilter) or flt.indices is None:
+                continue
+            if id(flt) in seen:
+                continue
+            seen.add(id(flt))
+            out.append((flt, frozenset(labels[i] for i in flt.indices
+                                       if 0 <= i < n)))
+    return out
+
+
+def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None):
+    """Write one filter move's rows into a link group's source, once, and
+    point every view over it at the rows it owns.
+
+    *frame* is the rows every active filter keeps: the whole dataset masked,
+    before any graph's if()/in() or by() group -- those live in the views.
+    A graph drawing the source without a view draws all of it.
+
+    The views are written before the data when the source shrinks and after
+    it when it grows: the browser applies the changes in order, and a view
+    naming a row past its source's end is ignored with an out-of-bounds
+    warning in the console.
+
+    Args:
+        source:   The shared ColumnDataSource; its ``index`` column is the
+                  row labels.
+        frame:    The filtered DataFrame, indexed by row label.
+        views:    ``_dash_linked_views``' list.
+        snapshot: ``{column: values}`` the source held before any move; a
+                  column *frame* does not carry is taken from it by row.
+        pos_of:   ``{row label: position in snapshot}``.
+    """
+    labels = list(frame.index)
+    old_n = len(next(iter(source.data.values()), [])) if source.data else 0
+    new_data = {}
+    rows = None
+    for col in list(source.data):
+        if col == "index":
+            new_data[col] = labels
+        elif col in frame.columns:
+            new_data[col] = frame[col].tolist()
+        else:
+            if rows is None:
+                at_snap = pos_of or {}
+                rows = [at_snap.get(lbl, -1) for lbl in labels]
+            orig = (snapshot or {}).get(col, [])
+            new_data[col] = [orig[i] if 0 <= i < len(orig) else None
+                             for i in rows]
+    at = {lbl: i for i, lbl in enumerate(labels)}
+    positions = [_dash_view_positions(at, members) for _flt, members in views]
+
+    def _point():
+        for (flt, _members), pos in zip(views, positions):
+            flt.indices = pos
+
+    if len(labels) < old_n:
+        _point()
+        source.data = new_data
+    else:
+        source.data = new_data
+        _point()
+
+
+def _dash_own_redrawn_views(figures, redrawn_ids):
+    """Give each renderer that draws a REDRAWN source through a view a filter
+    of its own, and return those filters by source.
+
+    A linked layer's mapper can draw from a copy of the shared source -- a
+    line sorted along x, connected's line, a jittered scatter, dropline's
+    segments -- and keep the view it was handed.  A filter move redraws the
+    copy from the layer's own filtered rows, which are exactly the rows to
+    draw, so after one its view selects every row.  The view is often the
+    very one a renderer on the shared source draws through (connected's
+    markers), whose positions a move recounts for that source, so each
+    renderer here gets a copy first: a line exclude() protects, never
+    redrawn, then keeps the positions it was drawn with.  Called once,
+    before any move.
+
+    Args:
+        figures:     The figures, each with ``.renderers``.
+        redrawn_ids: ``id()`` of every source the recompute redraws.
+
+    Returns:
+        ``{id(source): [IndexFilter, ...]}``.
+    """
+    out = {}
+    for fig in figures:
+        for r in getattr(fig, "renderers", []):
+            src = getattr(r, "data_source", None)
+            if src is None or id(src) not in redrawn_ids:
+                continue
+            flt = getattr(getattr(r, "view", None), "filter", None)
+            if not isinstance(flt, IndexFilter) or flt.indices is None:
+                continue
+            own = IndexFilter(indices=list(flt.indices))
+            r.view = CDSView(filter=own)
+            out.setdefault(id(src), []).append(own)
+    return out
+
+
 def _dash_facet_cols(gopts, n_panels):
     """cols(#) from by() first, then the by_cols key, then ceil(sqrt(n)) --
     and never more columns than there are panels.
@@ -18267,6 +18427,9 @@ class ServerAppBuilder:
                          # link() and exclude(), read by the saved
                          # renderer's rules.
                          "_dash_link_names", "_dash_excluded",
+                         # A link group's source and views after a move.
+                         "_dash_view_positions", "_dash_linked_views",
+                         "_dash_refresh_linked", "_dash_own_redrawn_views",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
@@ -20152,7 +20315,18 @@ class ServerAppBuilder:
             "        for _s in (_gs_list if isinstance(_gs_list, list) else [_gs_list]):",
             "            _orig_src_data[id(_s)] = {c: list(v) for c, v in _s.data.items()}",
             "",
-            "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset()):",
+            "    # The views over the link group's ONE source, with the rows each",
+            "    # owns -- a by() panel's, a qualified graph's or layer's -- read",
+            "    # now, while the source holds every row.  A move writes the",
+            "    # source once and recounts each view (_dash_refresh_linked).",
+            "    _linked_views = _dash_linked_views(figures.values(), shared_source)",
+            "    # A linked layer drawn from a COPY of that source (a sorted line,",
+            "    # a jittered scatter) keeps its view; the redraw a move triggers",
+            "    # is that layer's own rows, so the view then selects them all.",
+            "    _redrawn_views = _dash_own_redrawn_views(figures.values(), _redrawn_ids)",
+            "",
+            "    def _make_filter_cb(_trig_widget, _all_widgets, _all_sources, _agg_srcs, _kpi_divs, _kpi_defs, _df_ref, _fmap, _fgvals, _orig_src_data, _gquals, _gfac_to_orig, _redrawn=frozenset(), _shared=None, _linked_views=(), _shared_pos=None, _redrawn_views=None):",
+            "        _redrawn_views = _redrawn_views or {}",
             "        def _on_filter_change(attr, old, new):",
             "            # 1. Build combined mask from all active widgets -- the",
             "            # rule the CSV download shares (_dash_frame_filter_mask),",
@@ -20161,11 +20335,23 @@ class ServerAppBuilder:
             "            fdf = _df_ref[mask]",
             "            # 2. Replace raw source data (facet-aware)",
             "            excl = getattr(_trig_widget, '_dash_exclude', [])",
+            "            _shared_hit = False",
             "            for gname, srcs in _all_sources.items():",
             "                # A by() graph's panels answer to its name, as on",
             "                # the saved page (_dash_excluded).",
             "                if _dash_excluded(gname, excl, _gfac_to_orig):",
             "                    continue",
+            "                srcs = srcs if isinstance(srcs, list) else [srcs]",
+            "                if _shared is not None and any(s is _shared for s in srcs):",
+            "                    # The link group's ONE source, which every member",
+            "                    # and panel draws from: written once, below, with",
+            "                    # every row the filters keep.  Each member used to",
+            "                    # write its own rows into it in turn, and the last",
+            "                    # one written was what every linked graph showed.",
+            "                    _shared_hit = True",
+            "                    srcs = [s for s in srcs if s is not _shared]",
+            "                    if not srcs:",
+            "                        continue",
             "                # For faceted sources, further filter by group value",
             "                if gname in _fgvals:",
             "                    _bvs, _gkey = _fgvals[gname]",
@@ -20220,7 +20406,7 @@ class ServerAppBuilder:
             "                    if _safe_g_cb(_px_cb, _gdf.columns):",
             "                        try: _gdf = _gdf.query(_px_cb, engine='python')",
             "                        except Exception: pass",
-            "                for src in (srcs if isinstance(srcs, list) else [srcs]):",
+            "                for src in srcs:",
             "                    if id(src) in _redrawn:",
             "                        # A mapper-built source; the redraw below",
             "                        # refreshes it from the filtered frame.",
@@ -20245,6 +20431,18 @@ class ServerAppBuilder:
             "                            n_orig = len(_orig_col)",
             "                            new_data[col] = [_orig_col[i] for i in _src_idx if 0 <= i < n_orig]",
             "                    src.data = new_data",
+            "            # 2b. The link group's source, once: every row the filters",
+            "            # keep, and each view over it -- a by() panel, a graph or a",
+            "            # layer with its own if()/in() -- recounted from the rows it",
+            "            # owns, as the saved page rebuilds each view's BooleanFilter.",
+            "            # Written whenever a member the filter does not exclude",
+            "            # draws from it; a member exclude() names shares it, and is",
+            "            # filtered with the group, in both modes.",
+            "            if _shared_hit:",
+            "                _dash_refresh_linked(",
+            "                    _shared, fdf, _linked_views,",
+            "                    snapshot=_orig_src_data.get(id(_shared), {}),",
+            "                    pos_of=_shared_pos)",
             "            # 3. Recompute aggregated sources",
             "            for key, agg in _agg_srcs.items():",
             "                gname = key[0]",
@@ -20278,6 +20476,12 @@ class ServerAppBuilder:
             "                # copied onto the live sources, so nothing can drift.",
             "                _fresh = agg['redraw'](agg_fdf)",
             "                for _live, _new in zip(agg['sources'], _fresh):",
+            "                    # A copy of the link group's source drawn through",
+            "                    # the view it was built with: the redraw is the",
+            "                    # layer's own rows, so the view selects them all --",
+            "                    # set first, so it never names a row past the end.",
+            "                    for _vf in _redrawn_views.get(id(_live), ()):",
+            "                        _vf.indices = None",
             "                    _live.data = dict(_new.data)",
             "                if len(_fresh) != len(agg['sources']):",
             "                    warnings.warn(",
@@ -20314,7 +20518,9 @@ class ServerAppBuilder:
             "        _cb_for_w = _make_filter_cb(",
             "            w, filter_widgets, graph_sources, agg_sources, kpi_divs, kpi_defs, df,",
             "            _facet_map, _facet_group_vals, _orig_src_data,",
-            "            _graph_qualifiers, _facet_to_orig, _redrawn_ids",
+            "            _graph_qualifiers, _facet_to_orig, _redrawn_ids,",
+            "            _shared=shared_source, _linked_views=_linked_views,",
+            "            _shared_pos=_shared_pos, _redrawn_views=_redrawn_views,",
             "        )",
             "        # Every widget the builder made, whatever its class: a date",
             "        # slider is not a Slider subclass.",

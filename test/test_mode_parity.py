@@ -286,6 +286,12 @@ def _drawn(r):
 
     The source's identity is not part of the profile, only the rows seen
     through the view: ``_allowed("linked graphs share one source")``.
+
+    A row the view names past the source's end is not drawn: BokehJS
+    ignores such an index (it logs an out-of-bounds warning) and reads a
+    BooleanFilter no further than the source's length.  A served view left
+    counting the rows of an unfiltered source used to raise IndexError
+    here instead of comparing unequal.
     """
     src = getattr(r, "data_source", None)
     if src is None:
@@ -299,8 +305,10 @@ def _drawn(r):
     if idx is None and filt is not None:
         bools = getattr(filt, "booleans", None)
         if bools is not None:
-            idx = [i for i, b in enumerate(bools) if b]
-    return data, (list(idx) if idx is not None else list(range(n)))
+            idx = [i for i, b in enumerate(list(bools)[:n]) if b]
+    if idx is None:
+        return data, list(range(n))
+    return data, [i for i in idx if 0 <= i < n]
 
 
 _STYLE = ("marker", "size", "fill_color", "line_color", "line_width",
@@ -1546,9 +1554,9 @@ _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
 
 
 def _move_case(name, move, plots=None, go=None, graphs=None, kpis=None,
-               if_expr=""):
+               if_expr="", bo=None):
     _, filt, action, oracle = move
-    bo = {"filter": filt}
+    bo = dict(bo or {}, filter=filt)
     spec = _spec(plots, bo, go, graphs, kpis, if_expr)
     return pytest.param(name, spec, action, oracle, id=name)
 
@@ -1568,10 +1576,36 @@ MOVE_CORPUS = [
     _move_case("a KPI, dropdown", _MOVES[0], [_sc()], kpis=[_kpi()]),
     _move_case("a KPI with its own if, range", _MOVES[1], [_sc()],
                kpis=[_kpi(if_expr="foreign == 0")]),
+    # Linked: this entry named a linked pair and set no link(), so it
+    # compared two unlinked graphs.
     _move_case("a linked pair, dropdown", _MOVES[0],
-               graphs=[("g1", [_sc()]), ("g2", [plot_for("lfit")])]),
+               graphs=[("g1", [_sc()]), ("g2", [plot_for("lfit")])],
+               bo={"link": "g1 g2"}),
     _move_case("a graph with its own if, range", _MOVES[1], [_sc()],
                if_expr="foreign == 0"),
+    # A linked graph drawn through a view -- a by() panel, or a graph with
+    # its own if/in -- shows the rows it owns that the move keeps.  The
+    # served recompute wrote each linked graph's rows into the ONE shared
+    # source in turn, so the last one written decided what every linked
+    # graph showed, and it never rebuilt a view (measured 23sep2026).
+    # Each graph drawn through a view is the one the recompute reached last.
+    _move_case("a linked by() graph beside a plain one, range", _MOVES[1],
+               graphs=[("g1", [_sc()], {"by": "foreign"}), ("g2", [_sc()])],
+               bo={"link": "g1 g2"}),
+    _move_case("a linked graph with its own if, registered last, dropdown",
+               _MOVES[0],
+               graphs=[("g2", [_sc()]),
+                       ("g1", [_sc()], None, {"if_expr": "price > 4500"})],
+               bo={"link": "g1 g2"}),
+    _move_case("a linked graph with its own in, registered last, slider",
+               _MOVES[2],
+               graphs=[("g2", [_sc()]),
+                       ("g1", [_sc()], None, {"in_expr": "3/8"})],
+               bo={"link": "g1 g2"}),
+    _move_case("a linked qualified by() graph, range", _MOVES[1],
+               graphs=[("g1", [_sc()], {"by": "foreign"},
+                        {"if_expr": "price > 4500"}), ("g2", [_sc()])],
+               bo={"link": "g1 g2"}),
 ]
 
 
