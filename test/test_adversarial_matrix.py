@@ -325,6 +325,9 @@ SURFACES = {
             "test_echo_text.cscript:ECH-11",
             # layout(bs) as the served app reads it (WP-21).
             _BS + "test_bypass_only_the_grid_names_are_placed",
+            "test/test_filter_exclude.py::TestTheSavedPageLeavesAnExcludedGraphAlone::test_whatever_order_the_graphs_came_in",
+            "test/test_filter_exclude.py::TestTheSavedPageLeavesAnExcludedGraphAlone::test_a_graph_after_a_by_graph_is_left_alone",
+            "test/test_filter_exclude.py::TestTheSavedPageLeavesAnExcludedGraphAlone::test_an_excluded_link_group_is_left_alone",
         ],
         "injection": [
             "test_adversarial.cscript:P2-84",
@@ -489,6 +492,7 @@ SURFACES = {
             _M + "TestWidgetValuesFromTheClient::test_a_select_value_outside_its_options_raises_nothing",
             _M + "TestWidgetValuesFromTheClient::test_a_range_of_nan_or_inf_raises_nothing",
             _M + "TestWidgetValuesFromTheClient::test_out_of_range_selection_indices_are_dropped",
+            "test/test_filter_exclude.py::TestTheServedAppLeavesAnExcludedGraphAlone::test_whatever_order_the_graphs_came_in",
         ],
         "injection": [
             _M + "TestWidgetValuesFromTheClient::test_a_value_is_never_evaluated_or_reflected",

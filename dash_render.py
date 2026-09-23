@@ -10541,7 +10541,7 @@ const active = dash_filter_mask(orig, filter_specs, all_widgets);
 
 // Build new data arrays containing only active rows from the primary source.
 // This snapshot is used for KPI value updates and for the primary `source`
-// fallback path (when source is not already in all_graph_sources).
+// fallback path (a source render() registered under no graph's name).
 const new_data = {};
 const cols = Object.keys(orig);
 for (const col of cols) { new_data[col] = []; }
@@ -10617,8 +10617,18 @@ for (const vf of (view_filters || [])) {
     vf.filter.booleans = kept.map(id => member.has(id));
     vf.filter.change.emit();
 }
-// Also update the primary `source` (may overlap with all_graph_sources when linked)
-if (!_srcs.includes(source)) {
+// Also update the primary `source', when it is no graph's source at all.
+// render() puts every graph's source in all_graph_sources, written above, or,
+// when an exclude() names the graph (or the by() graph a panel belongs to),
+// in excluded_sources, and a source an exclude() protects is never written.
+// The primary is the first source render() registered -- the first graph's,
+// the link group's when there is one, a later one when the first graph is an
+// unlinked by() graph, whose own source gives way to its panels' -- so this
+// fallback used to write the whole dataset's filtered rows into an excluded
+// graph whenever its source held that place: measured 23sep2026, exclude(g1)
+// took g1 from 74 rows to 22 on the saved page while the served app left it
+// at 74 (test_filter_exclude.py).
+if (!_srcs.includes(source) && !(excluded_sources || []).includes(source)) {
     source.data = new_data;
     source.selected.indices = [];
     source.change.emit();
@@ -11202,6 +11212,9 @@ class FilterBuilder:
                 # unlinked graphs with different columns from being corrupted
                 # when a single new_data payload is broadcast to all sources.
                 "all_graph_sources_orig": [],   # populated by DashRenderer.render()
+                # The graph sources this filter's exclude() protects, which
+                # the fallback to `source' must not write.
+                "excluded_sources":  [],    # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -11253,6 +11266,7 @@ class FilterBuilder:
                 "agg_configs_json":  "[]",
                 "all_graph_sources": [],              # populated by DashRenderer.render()
                 "all_graph_sources_orig": [],   # populated by DashRenderer.render()
+                "excluded_sources":  [],        # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -11305,6 +11319,7 @@ class FilterBuilder:
                 "agg_configs_json":  "[]",
                 "all_graph_sources": [],              # populated by DashRenderer.render()
                 "all_graph_sources_orig": [],   # populated by DashRenderer.render()
+                "excluded_sources":  [],        # populated by DashRenderer.render()
             },
             code=_FILTER_JS,
         )
@@ -17109,6 +17124,26 @@ class DashRenderer:
                 if _gsrc not in _graph_srcs_for_cb:
                     _graph_srcs_for_cb.append(_gsrc)
             _cb.args["all_graph_sources"] = _graph_srcs_for_cb
+
+            # And every graph source this exclude() protects -- one no
+            # filtered graph shares -- so the callback's fallback to its
+            # primary `source' (fsource: the first source registered) never
+            # writes it.  It did: an excluded graph was filtered on the saved
+            # page whenever its source held that place, and left alone when
+            # served (test_filter_exclude.py).  An excluded member of a link
+            # group shares the group's source, which the group's other graphs
+            # have listed above, and is filtered with them in both modes.
+            # By identity, in one pass: a by() graph's panels can number
+            # graphs x by_groups sources.
+            _listed_ids = {id(_s) for _s in _graph_srcs_for_cb}
+            _excluded_srcs_for_cb: list = []
+            for _gsrc_name, _gsrc in self.sources.items():
+                if id(_gsrc) in _listed_ids or not _dash_excluded(
+                        _gsrc_name, _fc_excludes, _owner_of):
+                    continue
+                _listed_ids.add(id(_gsrc))
+                _excluded_srcs_for_cb.append(_gsrc)
+            _cb.args["excluded_sources"] = _excluded_srcs_for_cb
 
             # Each facet/qualifier CDSView, with the row identities that
             # belong to it, so the callback can rebuild its BooleanFilter
