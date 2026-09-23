@@ -560,16 +560,26 @@ class TestLegendLabels:
         first_label = self._item_label(fig.legend[0].items[0])
         assert first_label == "Top First", f"Expected 'Top First', got {first_label!r}"
 
-    def test_legend_label_xss_escaped(self):
-        """P6-14: XSS payload in legend label is HTML-escaped."""
+    def test_legend_label_xss_is_carried_as_text(self):
+        """P6-14, restated by WP-20: an XSS payload in a legend label reaches
+        the LegendItem as the text the user wrote, never as markup.
+
+        This used to assert the label was html-escaped.  BokehJS renders a
+        LegendItem label as a DOM text node -- legend.js builds it as
+        ``div({class: label}, `${label}`)'' and core/dom appends a string
+        child with ``document.createTextNode'' (bokeh 3.8.0 and 3.9.0) -- so
+        the escaping only put the entities on screen (``&lt;script&gt;'').
+        The label is now raw; test_label_sinks.py pins that text rendering
+        to the Bokeh versions where it was verified.
+        """
         r = self._make_two_plot_renderer(
             {"legend": 'label(1 "<script>alert(1)</script>")'}
         )
         fig = r._build_figures()["g1"]
         assert fig.legend
         first_label = self._item_label(fig.legend[0].items[0])
-        assert "<script>" not in first_label
-        assert "&lt;script&gt;" in first_label
+        assert first_label == "<script>alert(1)</script>"
+        assert "&lt;" not in first_label, "the label was escaped twice"
 
 
 # ================================================================

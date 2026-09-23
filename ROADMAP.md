@@ -2873,7 +2873,7 @@ suites run once on the final code:
 
 ---
 
-## WP-20 · Security hardening
+## WP-20 · Security hardening — DONE
 
 **Gaps closed:** I3 · **Severity:** S2/S3 · **Effort:** S · **Depends on:** WP-09
 
@@ -2888,42 +2888,158 @@ suites run once on the final code:
 - **BR-20.3** Defences that depend on a third-party library's behaviour are
   pinned by a test, not assumed.
 
-### Technical requirements
+### What was measured before any code changed
 
-- **TR-20.1** Emit the CSP in server mode. `_CSP_META` (`:660-668`) is
-  injected at `:10897` and `:12139`, both standalone; the Bokeh-server
-  document sets no security headers.
-- **TR-20.2** Strengthen the CSP itself: it is `script-src 'unsafe-inline'
-  'unsafe-eval'` with no `default-src`, `object-src 'none'`, `base-uri` or
-  `frame-ancestors`.
-- **TR-20.3** Resolve the hover-tooltip label question (SUSPECTED). `:10234`
-  appends `self._axis_label(col)` — a user-controlled variable label — into
-  `tooltips`. Bokeh 3.x builds tooltip rows as DOM text nodes, so this is
-  almost certainly safe, but the safety comes from BokehJS. Add a
-  version-pinned test; escape if the test shows otherwise.
-- **TR-20.4** Sanitise `` `pkgver' `` at `dash_setup.ado:158`, which
-  interpolates distribution metadata into a `python:` line as
-  `Version("`pkgver'")`. `_dash_pkg_version` guards the package *name*
-  (`:307`) but not the returned version.
-- **TR-20.5** Preserve the defences that are already correct and verified: the
-  `function` AST whitelist, `_stata_if_to_pandas` validation, the scheme
-  abspath+realpath containment, `_sanitize_css_color`, `FilterBuilder._safe`,
-  and loopback-by-default binding. Add tests that pin them.
+23sep2026 at `e932446`, in Chromium (the browser pane) on pages built by
+dash's own classes, with bokeh 3.9.0 (the test suite's Python) and 3.8.0
+(Stata's configured Python) read at source:
 
-### Acceptance criteria
+| Question | Measured |
+|---|---|
+| Served app, `/` and `/health` | `Server`, `Content-Type`, `Date`, `Etag` only: no CSP, no `X-Content-Type-Options`, `X-Frame-Options` or `Referrer-Policy` |
+| Saved page under `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'` | renders; no violation; the dropdown's CustomJS ran (KPI -0.07 → 0.04); hover drawn.  The same for `layout(bs)` |
+| Served policy on a minimal Bokeh server (template meta + Tornado transform) | headers on `/`; the websocket opens under `connect-src 'self'`; a server callback round-trips; CustomJS runs; no violation |
+| Variable label `<img src=x onerror="document.title='PWNED'">` on y | axis title, legend and tooltip show the text; no `<img>` in the document or any shadow root; title unchanged -- saved and served |
+| The BokehJS sink walk | text nodes and canvas text everywhere except a slider-family title holding a TeX pair (`innerHTML` after `process_tex`, which copies the text around the TeX raw), a Div's MathJax pass (`\href{javascript:}` a live link), and a tooltip field `@{name}` (parsed as HTML after filling) |
+| `dash_setup` | a crafted version string reached `Version("...")` as code and created a marker file; a renderer directory whose name closed `r"..."` ran `sfi.Macro.setGlobal` |
 
-- **AC-20.1** A served document carries the CSP.
-- **AC-20.2** A hostile variable label cannot execute script in either mode.
-- **AC-20.3** Three adversarial cases (auth bypass, injection, exhaustion) per
-  input surface exist and pass (CLAUDE.md rule 18).
+### Technical requirements, as delivered
 
-### Test plan
+- **TR-20.1 / TR-20.2** Two policies, both `default-src 'none'`:
+  `_DASH_CSP_STANDALONE` (scripts and styles inline only, images and fonts
+  from `data:`, `connect-src 'none'`, `object-src 'none'`, `base-uri 'none'`,
+  `form-action 'none'`) and `_DASH_CSP_SERVED` (the same with `'self'` and
+  `connect-src 'self'` for the websocket).  `_dash_csp_meta` refuses any
+  character a policy does not need.  The meta is the first element of
+  `<head>` on both saved pages (the `layout(bs)` page had it after the
+  inlined BokehJS -- `BUGS.md`) and on the served page, through a Bokeh
+  document template (`_dash_served_template`, set in `make_document`).  The
+  served app's own launcher adds a Tornado transform (`_DashSecurityHeaders`
+  through `_dash_server_transforms`, which keeps Tornado's gzip rule) that
+  sends the policy with `frame-ancestors 'none'`, `X-Content-Type-Options:
+  nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer` on
+  every response, `/health` included; `bokeh serve app.py` sends none, and
+  `dash.sthlp` says so.  `unsafe-eval` stays: BokehJS's `CustomJS` needs it.
+- **TR-20.3** The hover label is safe (a text node) and pinned.  Every sink a
+  label or value reaches is classified in `test_label_sinks.py`, pinned to the
+  Bokeh versions it was verified on (3.9.0 walked; 3.8.0 compared at source
+  and identical).  The three unsafe sinks are closed: `_dash_inert_tex` breaks
+  every `$$`, `\(`, `\)`, `\[`, `\]` in a slider, range or date filter title
+  with a WORD JOINER; every Div dash writes sets `disable_math`; a tooltip
+  field is built only for a plain Stata name.  The text sinks -- legend
+  labels, dropdown options, facet titles, tick labels, colour-bar titles --
+  get the raw text, which they had shown as entities, and tick labels travel
+  in the formatter's `args`, not its code.
+- **TR-20.4** `dash_setup` reads every value inside Python with
+  `sfi.Macro.getLocal` (the version gate, the scheme probe, the metadata
+  query), and keeps a version read back only when it is made of version
+  characters; `test_cscript_hygiene.py` forbids a macro inside a Python
+  string literal on any `python:` line of either ado file.
+- **TR-20.5** Pinned in `test_security_surface.py`: the function whitelist in
+  both modes (whose literal check let strings and `True` towers through --
+  now refused, `BUGS.md`), the qualifier whitelist, scheme containment
+  (abspath + realpath, symlinks, includes), `_sanitize_css_color`, the filter
+  name check and loopback binding at run time.
+- **AC-20.3** `test_adversarial_matrix.py` registers 24 input surfaces --
+  every command-line token and option family, the data, the files dash
+  reads, the renderer's own command line and every request the served app
+  answers -- with at least one auth-bypass, one injection and one exhaustion
+  test each, 196 entries in all; meta-tests prove that every entry is a
+  collected test or a certification case its script displays as passing.
+  "Auth bypass" is getting past a surface's own guard: dash has no accounts
+  (L10, and the standing note below).  The gaps the registry exposed were
+  fixed, each with a failing test first and a `BUGS.md` entry:
+  - every echo of the user's text in `dash.ado` -- 23 of them -- drew it as
+    SMCL, and the `.gph` note ran a quoted name as display directives; the
+    Mata `_dash_say` now prints the text by value, as written, with control
+    characters shown as `?`;
+  - `port()` and `timeout()` took digits followed by a newline (StataNow's
+    `regexm` matches `$` before it), and `timeout()` 400 digits; both are
+    now proven byte by byte (`_dash_is_digits`), `timeout()` nine digits at
+    most;
+  - a backslash at the end of `layout()` broke the spec (it went in raw);
+    `EXCLUDE()` in upper case skipped the registry check;
+  - a `layout()` grid of any size was built cell by cell (4000 x 4000 peaked
+    at 1.5 GB); dash.ado refuses a grid larger than the graphs limit and the
+    renderer draws one as `layout(auto)`, with one ASCII reading of the
+    layout in the count and in both grid readers (`_dash_grid_dims`), which
+    the Mata and Python counts share (`test_echo_text.cscript` ECH-09);
+  - the renderer recursed or allocated without bound on a 1,500-file
+    `#include` chain, a 490-operator `if`, `xlabel(0(0.000001)1000000)`, a
+    billion-decimal format, a limit in non-ASCII digits and an infinite
+    function `n`; each is bounded.
 
-Extend `test_security_surface.py`, `test_kpi_security.py` and
-`test_adversarial.cscript`. Add a standing note that `dash` has no auth model
-(L10) so rule 19 is N/A by design, not by omission.
+### Acceptance
+
+- **AC-20.1** `test_csp.py` (65 tests): both policies and their placement,
+  the meta first in `<head>` on every page, and nine against a live served
+  app on a free port -- the headers on `/` and `/health`, the meta in the
+  document, a session and its websocket.  Checked in Chromium on the real
+  served app: headers and meta present, websocket open, no violation.
+- **AC-20.2** `test_label_sinks.py` (918 tests): a hostile label through
+  every sink in both modes, the TeX and MathJax paths, the tooltip field,
+  the served app's source; checked in Chromium in both modes (text shown, no
+  `<img>`).
+- **AC-20.3** `test_adversarial_matrix.py` (202 tests: the registry and its
+  gap tests), `test_adversarial.cscript` P20-01..29,
+  `test_setup_injection.cscript` INJ-01..11, `test_echo_text.cscript`
+  ECH-01..09.
+
+### Standing note: CLAUDE.md rule 19 is not applicable, by design
+
+dash has no accounts, no administrators and no administrative component;
+every dashboard is built by the Stata user who runs the command, and the
+served app binds loopback by default and offers no privileged route.  Rule
+19 therefore does not apply, by design and not by omission (GAPS.md L10; the
+module docstring of `test_adversarial_matrix.py`).  If dash ever gains
+accounts or an administrative surface, it does.
+
+### Found on the way
+
+- In the new P20 cases, a second `cert_file_has` in a row read an emptied
+  `r(log)` (each call replaces `r()`), and three "no file was written"
+  checks could be answered by a file an earlier run had left behind; the
+  cases keep the log path in a local and erase first.
+- Stata's own parser refuses a brace in a weight expression, so that echo
+  cannot carry SMCL; it goes through `_dash_say` all the same.
+
+### Verification, measured
+
+23sep2026, branch `feature/batch4-interactive-layer` (`main` already an
+ancestor, so nothing to pull).  Both suites were run on the working tree,
+which also carries test-infrastructure changes from other work that are not
+part of this commit (`pyproject.toml`'s parallel default, `test/conftest.py`'s
+per-test document reset and session lock, and the two tests that pin them);
+the commit's own tree was then run on its own, last below.
+
+- `test/run_all_cscripts.do` with the console binary: **48 passed, 0
+  failed, 0 skipped**, in 43 s -- the new `test_echo_text.cscript`
+  (ECH-01..09) and `test_setup_injection.cscript` (INJ-01..11) among them,
+  and `test_adversarial.cscript` with P20-01..29.  After it the help's
+  `timeout()` entry was reflowed (below), and `test_abbreviations.cscript`,
+  the one script that parses the help, was run again: passed.
+- `python3 -m pytest test/ -q`, first run: 10,410 passed, **2 failed**.
+  `test_server.py`'s BUG-49 check reads the help's `timeout()` entry as two
+  lines, and the new wording ran to three: reflowed.
+  `test_option_validation.py` forbade any `mata:` in the three validator
+  programs, a WP-15 constraint that keeps validation in Stata; the refusals
+  now echo through the Mata display helper `_dash_say`, so the check allows
+  that call alone and a new test asserts it is the only Mata there.
+- Second run: **10,413 passed, 0 failed**, 61 skipped, 6 xfailed
+  (unchanged), 2:01.  Every skip is structural: 60 `test_cscript_hygiene.py`
+  checks that do not apply to a given script, and the `layout(bs)` parity
+  entry (WP-21).
+- The commit's own tree -- `HEAD` with only the staged WP-20 diff applied,
+  in a separate worktree, with `HEAD`'s `conftest.py` and no
+  `pyproject.toml` -- run whole with `-n auto`: **10,395 passed, 0
+  failed**, 61 skipped, 6 xfailed, 3:39.  The 18 fewer are the two
+  uncommitted infrastructure test files.  The certification scripts were
+  not rerun there: every WP-20 file in that tree is byte-identical to the
+  one they ran, and the files left out are pytest infrastructure and
+  documents, which no script reads.
 
 ---
+
 
 # Milestone 4 — Complete and covered
 

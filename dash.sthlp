@@ -374,13 +374,14 @@ widget interaction.
 {synopthdr}
 {synoptline}
 {synopt:{cmd:port(}{it:#}{cmd:)}}TCP port for the Bokeh Server; must be
-    an integer in the range 1024–65535; default 5006{p_end}
+    an integer in the range 1024–65535, written in digits only (no sign,
+    decimal point or exponent); default 5006{p_end}
 {synopt:{cmd:nobrowser}}do not open a browser window automatically.  The
     rule is {cmd:dash build}'s: a registered graph's {cmd:nodraw} has the
     same effect, and so does setting the global {cmd:$dash_nobrowser}, which
     keeps every {cmd:dash} window shut for the session{p_end}
-{synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes;
-    0 means run until Ctrl+C (default){p_end}
+{synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes,
+    at most nine digits; 0 means run until Ctrl+C (default){p_end}
 {synoptline}
 
 {pstd}
@@ -468,12 +469,16 @@ in the dashboard grid.
 {phang2}{cmd:layout(}{it:rows} {it:cols}{cmd:)} — explicit grid dimensions.
     Example: {cmd:layout(2 3)} creates a grid with 2 rows and 3 columns.
     If the number of registered items is less than {it:rows} × {it:cols},
-    the remaining cells are left empty.
+    the remaining cells are left empty.  A grid may have at most as many
+    cells as a dashboard may hold graphs and KPI cards ({cmd:$dash_max_graphs},
+    default 100; see {help dash##limits:Limits}); a larger one is refused
+    with {cmd:r(198)}, because every empty cell is drawn.
 
 {phang2}{cmd:layout(}{it:name}{cmd::}{it:row}{cmd:,}{it:col} ...{cmd:)} —
     explicit placement.  Each registered item is placed at the specified
     {it:row},{it:col} position (1-indexed).  Example:
-    {cmd:layout(s1:1,1 s2:1,2 k1:2,1)}.
+    {cmd:layout(s1:1,1 s2:1,2 k1:2,1)}.  The largest row times the largest
+    column is held to the same limit as a {it:rows} {it:cols} grid.
 
 {phang2}{cmd:layout(bs}[{cmd::} {it:name}{cmd:=}{it:span} ...]{cmd:)} —
     a responsive Bootstrap-style 12-column grid, which reflows as the
@@ -760,6 +765,18 @@ the page as a Bokeh model property or an escaped HTML attribute rather than
 as markup.
 
 {pstd}
+The page carries a Content-Security-Policy in both modes.  A saved dashboard
+may run only the scripts and styles written into it and may load nothing
+from anywhere; a served one may also load from, and connect to, the server
+it came from, and nothing else.  {cmd:python app.py} also sends the policy as
+a header on every response, {cmd:/health} included, adding
+{cmd:frame-ancestors 'none'} so that no other site can frame the dashboard,
+and sends {cmd:X-Content-Type-Options: nosniff},
+{cmd:X-Frame-Options: DENY} and {cmd:Referrer-Policy: no-referrer} with it.
+{cmd:bokeh serve app.py} sends none of these headers, so its page carries
+the policy but can be framed.
+
+{pstd}
 Session creation and {cmd:/health} are rate limited, each separately, so a
 health probe never spends the dashboard's budget.  The client is identified
 by the peer address, not by {cmd:X-Forwarded-For}, because that header is set
@@ -822,7 +839,8 @@ that moves it for the rest of the session:
     exported.{p_end}
 {synopt:{cmd:$dash_max_graphs}}graphs and KPI cards in the registry; default
     100, at most 1,000.  A new name past it is refused with
-    {cmd:r(134)}.{p_end}
+    {cmd:r(134)}.  It also bounds the cells of a {cmd:layout()} grid, which
+    is refused with {cmd:r(198)} when larger.{p_end}
 {synopt:{cmd:$dash_max_plots}}plots in one graph, where each y variable of
     {cmd:scatter y1 y2 x} is one; default 100, at most 1,000.  Refused with
     {cmd:r(134)}.{p_end}

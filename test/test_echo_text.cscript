@@ -1,0 +1,295 @@
+*! test_echo_text.cscript
+*! Unit tests for the Mata helpers WP-20 added to dash_parse.mata:
+*! _dash_smcl_text, _dash_say, _dash_is_digits, _dash_ascii_in and
+*! _dash_layout_cells -- the last checked against dash_render.py's
+*! _dash_layout_cells, the rule it copies.
+*!
+*! Usage:  do test/test_echo_text.cscript
+*!
+*! Requires: Python configured (c(python_exec)) for ECH-09 only.
+*! Version: 1.0.0  23sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! Every refusal and note that repeats what the user typed now prints it
+*! through _dash_say, which shows the text as written: display reads its
+*! text as SMCL, so an echoed {bf:X} used to print a bold X, and a value
+*! expanded into the display line could end its quotes.  port() and
+*! timeout() are proven to be digits by _dash_is_digits, not by a regular
+*! expression whose `$' also matches before a trailing newline.  And
+*! dash build refuses a layout() grid larger than the graphs limit by
+*! _dash_layout_cells, which must count exactly as the renderer does, or
+*! one side refuses what the other draws.  test_adversarial.cscript's P20
+*! section drives these through the commands; this script pins each
+*! function on its own.
+*!
+*! Hostile strings are assembled in Mata, where a string is a value, and
+*! compared there: a quote or a brace in one is never expanded as macro
+*! text.
+
+cscript "dash echo-as-text and digit helpers" adodir ".."
+
+// cscript drops every global; set it so a stray build could never open a
+// window (test_cscript_hygiene.py checks it).
+global dash_nobrowser 1
+
+do "../dash_parse.mata"
+
+// ================================================================
+// ECH-01 — braces become {c -(} and {c )-}, and nothing else changes
+// ================================================================
+mata:
+_e = J(0, 1, .)
+_e = _e \ (_dash_smcl_text("{bf:X}") == "{c -(}bf:X{c )-}")
+_e = _e \ (_dash_smcl_text("{{}}") == "{c -(}{c -(}{c )-}{c )-}")
+_e = _e \ (_dash_smcl_text("}{") == "{c )-}{c -(}")
+_e = _e \ (_dash_smcl_text("plain text 100%") == "plain text 100%")
+_e = _e \ (_dash_smcl_text("") == "")
+// UTF-8 is kept byte for byte: é (C3 A9), the sum sign (E2 88 91), and a
+// no-break space (C2 A0), whose lead byte is the C1 range's.
+_e = _e \ (_dash_smcl_text("caf" + char(195) + char(169)) == "caf" + char(195) + char(169))
+_e = _e \ (_dash_smcl_text(char(226) + char(136) + char(145)) == char(226) + char(136) + char(145))
+_e = _e \ (_dash_smcl_text("a" + char(194) + char(160) + "b") == "a" + char(194) + char(160) + "b")
+// Quotes, backticks and dollars are data here and stay as they are.
+_e = _e \ (_dash_smcl_text(char(34) + char(96) + char(36) + "x'") == char(34) + char(96) + char(36) + "x'")
+st_local("ech01", strofreal(all(_e)))
+st_local("ech01n", strofreal(rows(_e)))
+end
+assert `ech01' == 1
+display "ECH-01 PASS: braces are escaped and every other character is kept (`ech01n' checks)"
+
+// ================================================================
+// ECH-02 — control characters become ?: C0, DEL and C1
+// A terminal reads ESC [ ... and CSI (U+009B, C2 9B) as commands, and the
+// console binary writes to a terminal.
+// ================================================================
+mata:
+_e = J(0, 1, .)
+_e = _e \ (_dash_smcl_text(char(27) + "[2J") == "?[2J")
+_e = _e \ (_dash_smcl_text("a" + char(9) + "b" + char(10) + "c" + char(13)) == "a?b?c?")
+_e = _e \ (_dash_smcl_text("x" + char(127)) == "x?")
+_e = _e \ (_dash_smcl_text(char(194) + char(155) + "31m") == "?31m")
+_e = _e \ (_dash_smcl_text(char(194) + char(128) + char(194) + char(159)) == "??")
+_e = _e \ (_dash_smcl_text(char(1) + char(31)) == "??")
+// NUL, the internal placeholder, cannot turn into a brace.
+_e = _e \ (_dash_smcl_text("a" + char(0) + "b") == "ab")
+_e = _e \ (_dash_smcl_text("{" + char(0) + "}") == "{c -(}{c )-}")
+st_local("ech02", strofreal(all(_e)))
+end
+assert `ech02' == 1
+display "ECH-02 PASS: C0, DEL and C1 control characters are shown as ?"
+
+// ================================================================
+// ECH-03 — _dash_say prints the text as written, in a text log
+// ================================================================
+local lg "`c(tmpdir)'dash_ech03.log"
+capture log close _ech03
+capture erase "`lg'"
+local ls = c(linesize)
+set linesize 255
+quietly log using "`lg'", name(_ech03) text replace
+mata: _dash_say("err", "before 100% ", "{bf:X}{hline 5}" + char(34) + char(96) + char(36) + "'", " after")
+mata: _dash_say("txt", "", "{stata erase x}", "")
+mata: _dash_say("res", "{bf:words}", "", "")
+quietly log close _ech03
+set linesize `ls'
+
+do "cert_helpers.do"
+// Searched from Mata: the needle holds a quote, a backtick and a dollar.
+mata: st_local("f1", strofreal(_cert_file_has(st_local("lg"), "before 100% {bf:X}{hline 5}" + char(34) + char(96) + char(36) + "' after", 0)))
+assert `f1' == 1
+cert_file_has "`lg'", needle("{stata erase x}")
+assert r(found) == 1
+// Even the message's own words are shown as written.
+cert_file_has "`lg'", needle("{bf:words}")
+assert r(found) == 1
+display "ECH-03 PASS: _dash_say shows SMCL, quotes, backticks and dollars as typed"
+
+// ================================================================
+// ECH-04 — a style _dash_say does not know is plain text, not markup
+// ================================================================
+capture log close _ech04
+capture erase "`lg'"
+set linesize 255
+quietly log using "`lg'", name(_ech04) text replace
+mata: _dash_say("hline 20} {bf", "ECH04MARK", "", "")
+quietly log close _ech04
+set linesize `ls'
+cert_file_has "`lg'", needle("ECH04MARK")
+assert r(found) == 1
+// A rendered {hline 20} is a row of dashes in a text log.
+cert_file_has "`lg'", needle("--------------------")
+assert r(found) == 0
+capture erase "`lg'"
+display "ECH-04 PASS: an unknown style falls back to text and draws nothing"
+
+// ================================================================
+// ECH-05 — _dash_is_digits: ASCII digits only, within the length
+// ================================================================
+mata:
+_e = J(0, 1, .)
+_e = _e \ (_dash_is_digits("0", .) == 1)
+_e = _e \ (_dash_is_digits("5006", .) == 1)
+_e = _e \ (_dash_is_digits("05006", 9) == 1)
+_e = _e \ (_dash_is_digits("999999999", 9) == 1)
+_e = _e \ (_dash_is_digits("1234567890", 9) == 0)
+_e = _e \ (_dash_is_digits(400 * "9", .) == 1)
+_e = _e \ (_dash_is_digits("", .) == 0)
+_e = _e \ (_dash_is_digits("7" + char(10), .) == 0)
+_e = _e \ (_dash_is_digits(char(10) + "7", .) == 0)
+_e = _e \ (_dash_is_digits(" 7", .) == 0)
+_e = _e \ (_dash_is_digits("+5006", .) == 0)
+_e = _e \ (_dash_is_digits("-1", .) == 0)
+_e = _e \ (_dash_is_digits("5006.0", .) == 0)
+_e = _e \ (_dash_is_digits("1e4", .) == 0)
+_e = _e \ (_dash_is_digits("0x138e", .) == 0)
+// Full-width 5 (EF BC 95) is a digit to Unicode, not to a port.
+_e = _e \ (_dash_is_digits(char(239) + char(188) + char(149), .) == 0)
+_e = _e \ (_dash_is_digits("5" + char(0), .) == 0)
+st_local("ech05", strofreal(all(_e)))
+st_local("ech05n", strofreal(rows(_e)))
+end
+assert `ech05' == 1
+display "ECH-05 PASS: _dash_is_digits accepts ASCII digits only (`ech05n' checks)"
+
+// ================================================================
+// ECH-06 — _dash_ascii_in: one byte, within the range
+// ================================================================
+mata:
+_e = J(0, 1, .)
+_e = _e \ (_dash_ascii_in("a", 97, 122) == 1)
+_e = _e \ (_dash_ascii_in("z", 97, 122) == 1)
+_e = _e \ (_dash_ascii_in("A", 97, 122) == 0)
+_e = _e \ (_dash_ascii_in("0", 48, 57) == 1)
+_e = _e \ (_dash_ascii_in("", 48, 57) == 0)
+_e = _e \ (_dash_ascii_in("12", 48, 57) == 0)
+_e = _e \ (_dash_ascii_in(char(195) + char(169), 0, 255) == 0)
+st_local("ech06", strofreal(all(_e)))
+end
+assert `ech06' == 1
+display "ECH-06 PASS: _dash_ascii_in tests one byte against a range"
+
+// ================================================================
+// ECH-07..08 — _dash_layout_cells on a corpus with known answers
+// ================================================================
+// The corpus is shared with ECH-09.  Column 2 is the expected count as
+// %21.0f text, "." when the layout has no size of its own -- including
+// the spellings Python's int() would read and the grid readers no longer
+// do: 1_000, +5, full-width digits, an ideographic or no-break space.
+// 999,999,999
+// squared is 999,999,998,000,000,001, which a double cannot hold; Mata's
+// count is the nearest double, and any count that large is far past every
+// limit (at most 1,000), which is all the count decides.
+mata:
+_lc = (
+    "10 10",                    "100"                 \
+    "3 2",                      "6"                   \
+    "  3  4  ",                 "12"                  \
+    "3" + char(9) + "4",        "12"                  \
+    "99999 99999",              "9999800001"          \
+    "999999999 999999999",      "999999998000000000"  \
+    "1234567890 1",             "1000000000000000000" \
+    "3 4 5",                    "."                   \
+    "0 5",                      "5"                   \
+    "1_000 1_000",              "."                   \
+    "+99999 +99999",            "."                   \
+    "1000" + char(227) + char(128) + char(128) + "1000", "." \
+    "1000 " + char(194) + char(160) + "1000", "."     \
+    char(239) + char(188) + char(145) + " 1",   "."   \
+    "auto",                     "."                   \
+    "bs",                       "."                   \
+    "bs: 6 6",                  "."                   \
+    "",                         "."                   \
+    "a:1,1",                    "1"                   \
+    "a:1,1 b:11,10",            "110"                 \
+    "p2025a:1,1 p2025b:99999,99999", "9999800001"     \
+    "g1:0,0 g2:0,1",            "2"                   \
+    "g1:0,0",                   "1"                   \
+    "a : 2 , 3",                "6"                   \
+    "a:1,1b:2,2",               "4"                   \
+    "a:1234567890,1",           "1000000000000000000" \
+    "a:1,1\",                   "."                   \
+    "a:1,12:3,4",               "."                   \
+    "a:1,",                     "."                   \
+    "1a:1,1",                   "."                   \
+    "_x9:2,2",                  "4"                   \
+    "a:1,1 junk",               "."                   \
+    "a:" + char(239) + char(188) + char(145) + ",1", "."
+)
+_got = J(rows(_lc), 1, "")
+for (_i = 1; _i <= rows(_lc); _i++) {
+    _got[_i] = strofreal(_dash_layout_cells(_lc[_i, 1]), "%21.0f")
+}
+_bad = select((1::rows(_lc)), _got :!= _lc[., 2])
+st_local("ech07", strofreal(rows(_bad) == 0))
+st_local("ech07n", strofreal(rows(_lc)))
+if (rows(_bad)) {
+    for (_i = 1; _i <= rows(_bad); _i++) {
+        printf("{err}ECH-07: layout %f gave %s, expected %s\n", _bad[_i], _got[_bad[_i]], _lc[_bad[_i], 2])
+    }
+}
+st_local("ech07done", "1")
+end
+assert `ech07' == 1
+display "ECH-07 PASS: _dash_layout_cells counts rows x cols and placement spans (`ech07n' layouts)"
+
+// ECH-08 — the count never depends on anything but the text: a layout
+// that is ten thousand placements long is read, and in bounded time.
+mata:
+_long = ""
+for (_i = 1; _i <= 10000; _i++) _long = _long + "g" + strofreal(_i) + ":1,1 "
+st_local("ech08n", strofreal(strlen(_long)))
+end
+timer clear 8
+timer on 8
+mata: st_local("ech08v", strofreal(_dash_layout_cells(_long), "%21.0f"))
+timer off 8
+quietly timer list 8
+assert "`ech08v'" == "1"
+assert r(t8) < 30
+display "ECH-08 PASS: a 10,000-placement layout is counted in bounded time"
+
+// ================================================================
+// ECH-09 — the renderer counts the same corpus the same way
+// dash build refuses a grid larger than the graphs limit by the Mata
+// count; the renderer keeps a spec that did not come through dash.ado to
+// the automatic layout by its own.  If they disagreed, one side would
+// refuse what the other draws.
+// ================================================================
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available (ECH-09 needs dash_render.py)."
+    exit 222
+}
+// The first python call of a session fails under the runner whatever it
+// is (test_cscript_hygiene.py), so the warm-up is spent first and each
+// call that matters is retried once.
+local dashdir = substr("`c(pwd)'", 1, strlen("`c(pwd)'") - strlen("/test"))
+capture python: pass
+capture python: import sys, sfi; sys.path.insert(0, sfi.Macro.getLocal("dashdir"))
+if _rc != 0 capture python: import sys, sfi; sys.path.insert(0, sfi.Macro.getLocal("dashdir"))
+capture python: import dash_render
+if _rc != 0 capture python: import dash_render
+if _rc != 0 {
+    display as error "SKIP: dash_render.py could not be imported (bokeh missing?)."
+    exit 222
+}
+mata: st_local("nlc", strofreal(rows(_lc)))
+local ech09bad ""
+forvalues i = 1/`nlc' {
+    mata: st_local("lay", _lc[`i', 1])
+    mata: st_local("mc", _got[`i'])
+    python: import sfi, dash_render as _dr; _dash_c = _dr._dash_layout_cells(sfi.Macro.getLocal("lay")); sfi.Macro.setLocal("pc", "." if _dash_c is None else str(_dash_c))
+    // Past 2^53 (16 digits) a double is not exact: there the two agree
+    // when both are that large (see the corpus note above).
+    local agree = ("`pc'" == "`mc'")
+    if !`agree' & strlen("`pc'") >= 16 & strlen("`mc'") >= 16 local agree = 1
+    if !`agree' local ech09bad "`ech09bad' `i'"
+}
+if "`ech09bad'" != "" {
+    display as error "ECH-09: the renderer and Mata disagree on layout(s):`ech09bad'"
+}
+assert "`ech09bad'" == ""
+display "ECH-09 PASS: dash_render.py's _dash_layout_cells agrees on all `nlc' layouts"
+
+display ""
+display "test_echo_text.cscript: ALL CHECKS PASSED"

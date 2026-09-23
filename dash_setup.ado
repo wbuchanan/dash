@@ -407,15 +407,26 @@ program define _dash_pkg_version
     version 16.0
     args pkg outmac
 
-    // Reject anything that is not a plain package name before it reaches
-    // Python, so the name cannot carry code into the expression below.
+    // The name is READ inside Python with sfi.Macro.getLocal (below), so it
+    // reaches the query as a string value and can never be parsed as code.
+    // The regex is kept as defence in depth: it rejects an obviously bad name
+    // up front, without touching Python at all.
     if !regexm("`pkg'", "^[A-Za-z0-9._-]+$") {
         c_local `outmac' "unknown"
         exit 0
     }
 
+    // The version comes back from the distribution's metadata, which is as
+    // untrusted as the name: dash_setup displays it, and passes it to
+    // _dash_setup_gate inside double quotes.  A version holding {bf:X}
+    // would be drawn as SMCL -- {stata} makes a link a click runs -- and
+    // one holding a double quote would end the quotes it is passed in.  So
+    // only a version made of the characters PEP 440 spells versions with,
+    // 64 of them at most, is kept; anything else is "unknown".  re's
+    // fullmatch, not Stata's regexm, whose `$' also matches before a
+    // trailing newline.
     local _pv "unknown"
-    capture python: import importlib.metadata as _im, sfi; sfi.Macro.setLocal("_pv", next((d.version for d in _im.distributions() if (d.metadata["Name"] or "").lower() == "`pkg'".lower()), "unknown"))
+    capture python: import importlib.metadata as _im, re as _dash_re, sfi; _dash_pv = next((d.version for d in _im.distributions() if (d.metadata["Name"] or "").lower() == sfi.Macro.getLocal("pkg").lower()), "unknown"); sfi.Macro.setLocal("_pv", _dash_pv if isinstance(_dash_pv, str) and _dash_re.fullmatch(r"[A-Za-z0-9.+!_-]{1,64}", _dash_pv) else "unknown")
     if _rc != 0 local _pv "unknown"
     if "`_pv'" == "" local _pv "unknown"
     c_local `outmac' "`_pv'"
@@ -534,12 +545,23 @@ program define _dash_setup_gate, rclass
         // `capture' because Version() raises InvalidVersion on a string it
         // cannot parse, and without it the whole of dash_setup ended at
         // r(7102) with no message of its own.  Measured on "0.1.0_1".
+        //
+        // `got' is an installed package's version, read from distribution
+        // metadata by _dash_pkg_version -- UNTRUSTED.  It is handed to Python
+        // with sfi.Macro.getLocal, NOT interpolated as `Version("`got'")': a
+        // double quote in the value used to close the Python string so the
+        // rest ran as code (measured: `1.0") == __import__("os").system(...)
+        // or Version("1.0' created a file and returned "ok").  getLocal reads
+        // THIS program's own locals, so `got' and `want' reach Version() as
+        // string values that are never parsed.  test_setup_injection.cscript
+        // drives this with hostile metadata; test_cscript_hygiene.py forbids
+        // the interpolated form in either shipped ado file.
         local ver_ok ""
         capture python: ///
             from packaging.version import Version; ///
             import sfi; ///
             sfi.Macro.setLocal("ver_ok", ///
-                "1" if Version("`got'") >= Version("`want'") else "0")
+                "1" if Version(sfi.Macro.getLocal("got")) >= Version(sfi.Macro.getLocal("want")) else "0")
         if _rc == 0 {
             if "`ver_ok'" == "1" local verdict "ok"
             if "`ver_ok'" == "0" local verdict "below"
@@ -606,10 +628,17 @@ program define _dash_setup_check_files, rclass
     // from one render before, zero after.  The filter list is saved and
     // put back; a `with' block cannot follow `;' on the one line Stata's
     // ado-path loader allows.
+    // `render_py' is a file path from `findfile'.  It is handed to Python
+    // with sfi.Macro.getLocal, NOT interpolated as `r"`render_py'"': a double
+    // quote in the path closed the raw string the same way the version gate's
+    // did (measured: a dash_render.py in a directory whose NAME closed the
+    // string and called sfi.Macro.setGlobal ran that call).  getLocal passes
+    // the true path -- backslashes and all, which is what `r"..."' was for --
+    // as a value the interpreter never parses.
     local _sch_ok "0"
     capture python: ///
         import importlib.util as _iu, sfi, warnings; ///
-        _sp = _iu.spec_from_file_location("_dash_setup_probe", r"`render_py'"); ///
+        _sp = _iu.spec_from_file_location("_dash_setup_probe", sfi.Macro.getLocal("render_py")); ///
         _m = _iu.module_from_spec(_sp); ///
         _sp.loader.exec_module(_m); ///
         _dash_setup_filters = warnings.filters[:]; ///

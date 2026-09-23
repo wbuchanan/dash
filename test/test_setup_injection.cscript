@@ -1,0 +1,331 @@
+*! test_setup_injection.cscript
+*! Certification script for code-injection through untrusted values that
+*! dash_setup interpolates into a `python:' line.
+*!
+*! Usage:  do test/test_setup_injection.cscript
+*!
+*! Requires: Python configured (c(python_exec)); the `packaging' module.
+*! Version: 1.0.0  23sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! dash_setup's version gate compared an installed package's version to the
+*! minimum with
+*!
+*!     capture python: ///
+*!         from packaging.version import Version; ///
+*!         import sfi; ///
+*!         sfi.Macro.setLocal("ver_ok", ///
+*!             "1" if Version("`got'") >= Version("`want'") else "0")
+*!
+*! `got' is the installed version string, read from distribution metadata by
+*! _dash_pkg_version (importlib.metadata).  That metadata is UNTRUSTED, and a
+*! double quote in it closes the Python string so that the rest runs as code.
+*! _dash_pkg_version validates the package NAME with a regex but not the
+*! version it returns.  Measured on this tree before the fix, calling
+*!
+*!     _dash_setup_gate "bokeh" ///
+*!         `1.0") == __import__("os").system("touch M") or Version("1.0' "1.0" 1
+*!
+*! created the file M -- arbitrary command execution -- and returned the
+*! verdict "ok".  The task's own probe payload, `1.0") or __import__(...) or
+*! ("', did not create the file (Python's `or' short-circuits on the truthy
+*! Version object) but STILL returned "ok" for a value that is not a version
+*! at all.
+*!
+*! The same file's scheme probe interpolated a file path as r"`render_py'".
+*! A path with a double quote breaks out the same way; measured before the
+*! fix, a dash_render.py placed in a directory whose NAME closed the raw
+*! string and called sfi.Macro.setGlobal ran that call.
+*!
+*! The fix reads every untrusted value with sfi.Macro.getLocal, so the value
+*! reaches Python as a string argument and never as source text.  These
+*! cases drive the two internal programs directly with hostile input and
+*! assert that nothing executes, the command never aborts, and no hostile
+*! value is ever reported "ok".
+*!
+*! HOW HOSTILE STRINGS ARE BUILT.  A Stata string expression that concatenates
+*! char(34) re-expands the resulting quote and dies with r(132); a double
+*! quote, backtick, dollar or newline written inline has the same problem.
+*! Every hostile value here is therefore assembled in Mata, where a string is
+*! a value, and handed to Stata with st_local.
+
+cscript "dash_setup rejects code injection through untrusted values" adodir ".."
+
+// cscript drops every global (incl. the runner's $dash_nobrowser); this
+// script builds no dashboard, but set it so a stray build could never open a
+// window.  test_cscript_hygiene.py enforces the rule for scripts that build.
+global dash_nobrowser 1
+
+// Availability is CONFIGURATION: read it, do not run Python to ask.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+// The gate's injectable line only runs when `packaging' is importable
+// (haspkg==1), which is the branch the vulnerability lived in.  Checking that
+// can only be done by importing it; the first python call of a session fails
+// under the runner regardless, so spend it on a warm-up and ask twice.
+capture python: pass
+capture python: import packaging
+if _rc != 0 capture python: import packaging
+if _rc != 0 {
+    display as error "SKIP: packaging not installed. Run dash_setup first."
+    exit 222
+}
+
+qui do "../dash_setup.ado"
+
+// A marker the injected `touch' would create.  Absolute, under Stata's temp
+// directory, so it does not depend on the working directory and cannot land
+// in the source tree.
+local marker "`c(tmpdir)'/dash_inj_marker_$S_TIME"
+local marker : subinstr local marker ":" "" , all
+capture erase "`marker'"
+
+// ----------------------------------------------------------------
+// Driver: call the gate with a hostile `got', report what happened.
+// Returns r(rc) (the gate's own return code), r(verdict), r(made)=1 if the
+// marker file now exists.  The marker is erased before every call so a
+// leftover from an earlier case cannot mask a real execution.
+// ----------------------------------------------------------------
+capture program drop _inj_gate
+program define _inj_gate, rclass
+    args got mk
+    capture erase "`mk'"
+    capture noisily _dash_setup_gate "bokeh" `"`got'"' "1.0" 1
+    local rc = _rc
+    local verdict "`r(verdict)'"
+    local made 0
+    capture confirm file "`mk'"
+    if _rc == 0 local made 1
+    return scalar rc      = `rc'
+    return local  verdict "`verdict'"
+    return scalar made    = `made'
+end
+
+
+// ================================================================
+// INJ-01 — the task's double-quote payload
+//     1.0") or __import__("os").system("touch M") or ("
+// Breaks out of Version("...") but `or' short-circuits on the truthy
+// Version object, so it does not `touch' -- yet before the fix it reported
+// "ok" for a value that is not a version.  No marker, rc 0, never "ok".
+// ================================================================
+mata: st_local("p", "1.0" + char(34) + ") or __import__(" + char(34) + "os" + char(34) + ").system(" + char(34) + "touch " + st_local("marker") + char(34) + ") or (" + char(34))
+_inj_gate `"`p'"' "`marker'"
+assert r(made) == 0
+assert r(rc) == 0
+assert "`r(verdict)'" != "ok"
+display "INJ-01 PASS: double-quote `or' payload does not execute and is not ok"
+
+// ================================================================
+// INJ-02 — a double-quote payload that DOES execute before the fix
+//     1.0") == __import__("os").system("touch M") or Version("1.0
+// `==' binds tighter than `or', so os.system() is evaluated: measured, this
+// created the marker on the unfixed tree.  This is the case that gives the
+// marker assertion teeth.
+// ================================================================
+mata: st_local("p", "1.0" + char(34) + ") == __import__(" + char(34) + "os" + char(34) + ").system(" + char(34) + "touch " + st_local("marker") + char(34) + ") or Version(" + char(34) + "1.0")
+_inj_gate `"`p'"' "`marker'"
+assert r(made) == 0
+assert r(rc) == 0
+assert "`r(verdict)'" != "ok"
+display "INJ-02 PASS: executing double-quote payload creates no marker and is not ok"
+
+// ================================================================
+// INJ-03 — the single-quote variant of the task payload
+//     1.0') or __import__('os').system('touch M') or ('
+// Inert against a double-quoted template (the single quotes never close the
+// string), but it must still not execute or be reported ok.
+// ================================================================
+mata: st_local("p", "1.0') or __import__('os').system('touch " + st_local("marker") + "') or ('")
+_inj_gate `"`p'"' "`marker'"
+assert r(made) == 0
+assert r(rc) == 0
+assert "`r(verdict)'" != "ok"
+display "INJ-03 PASS: single-quote payload does not execute and is not ok"
+
+// ================================================================
+// INJ-04 — a backtick in the version string
+// A Stata-special character that must reach Python as data, not code.
+// ================================================================
+mata: st_local("p", "1.0" + char(96) + "x" + char(96))
+_inj_gate `"`p'"' "`marker'"
+assert r(made) == 0
+assert r(rc) == 0
+assert "`r(verdict)'" != "ok"
+display "INJ-04 PASS: a backtick is data, not code, and is not ok"
+
+// ================================================================
+// INJ-05 — a dollar in the version string:  1.0$FOO
+// Stata expands $FOO (undefined -> empty) at the ARGUMENT boundary, so the
+// gate receives "1.0" and honestly reports "ok".  That is a safety property
+// in its own right -- a literal `$' never reaches Python -- so this case
+// asserts only that nothing executed and the command did not abort; it does
+// NOT assert the verdict, because "1.0" >= "1.0" is genuinely ok.
+// ================================================================
+mata: st_local("p", "1.0$FOO")
+_inj_gate `"`p'"' "`marker'"
+assert r(made) == 0
+assert r(rc) == 0
+display "INJ-05 PASS: a dollar is consumed by Stata; nothing executes, rc 0"
+
+// ================================================================
+// INJ-06 — an embedded newline followed by code
+//     1.0<LF>__import__('os').system('touch M')
+// Interpolated into a one-line python: statement the newline lands inside a
+// non-triple-quoted string and is a SyntaxError rather than a break-out; the
+// value must still not execute or validate as ok.
+// ================================================================
+mata: st_local("p", "1.0" + char(10) + "__import__('os').system('touch " + st_local("marker") + "')")
+_inj_gate `"`p'"' "`marker'"
+assert r(made) == 0
+assert r(rc) == 0
+assert "`r(verdict)'" != "ok"
+display "INJ-06 PASS: an embedded newline does not execute and is not ok"
+
+// ================================================================
+// INJ-07 — a 5,000-character version string (resource exhaustion)
+// Must return rather than hang, and must not execute.  The verdict is not
+// asserted: the point is a bounded, crash-free return (rc 0).
+// ================================================================
+mata: st_local("p", "1." + (5000 * "9"))
+mata: st_local("plen", strofreal(strlen(st_local("p"))))
+assert `plen' >= 5000
+_inj_gate `"`p'"' "`marker'"
+assert r(made) == 0
+assert r(rc) == 0
+display "INJ-07 PASS: a 5,000-character value returns rc 0 without executing"
+
+// A final erase: no marker may survive this script.
+capture confirm file "`marker'"
+assert _rc != 0
+capture erase "`marker'"
+
+
+// ================================================================
+// INJ-08..09 — legitimate values are unchanged by the fix
+// ================================================================
+_dash_setup_gate "bokeh" "1.2.3" "1.0" 1
+assert "`r(verdict)'" == "ok"
+display "INJ-08 PASS: a real at-or-above version is still ok"
+
+_dash_setup_gate "bokeh" "0.9" "1.0" 1
+assert "`r(verdict)'" == "below"
+display "INJ-09 PASS: a real below-minimum version is still below"
+
+
+// ================================================================
+// INJ-10 — the scheme probe interpolates render_py; a hostile path executes
+// ================================================================
+// _dash_setup_check_files loads dash_render.py through
+//     _iu.spec_from_file_location("_dash_setup_probe", r"`render_py'")
+// The path comes from `findfile'.  A directory whose NAME closes the raw
+// string and injects `sfi.Macro.setGlobal("DASH_INJ_PWNED","1")' ran that
+// call before the fix (measured).  A directory name cannot contain '/', so
+// the witness is a Stata global rather than a file.  The stub renderer only
+// has to exist for `findfile' to return it.
+//
+// Everything is captured into locals and the hostile ado-path entry removed
+// BEFORE any assert, so a failure here cannot leak the entry into later
+// scripts.
+global DASH_INJ_PWNED ""
+mata:
+// mkdir() errors if the directory already exists (it is not `mkdir -p'), and
+// this script runs many times, so create each level only when absent.
+_parent = st_global("c(tmpdir)") + "dash_probe_inj_scratch"
+if (direxists(_parent) == 0) mkdir(_parent, 1)
+_leaf = "P" + char(34) + "); __import__(" + char(34) + "sfi" + char(34) + ").Macro.setGlobal(" + char(34) + "DASH_INJ_PWNED" + char(34) + "," + char(34) + "1" + char(34) + ") ; _z=(" + char(34)
+_hd = _parent + "/" + _leaf
+if (direxists(_hd) == 0) mkdir(_hd, 1)
+_fh = fopen(_hd + "/dash_render.py", "w")
+fput(_fh, "class SchemeParser:")
+fput(_fh, "    @staticmethod")
+fput(_fh, "    def resolve_or_fallback(a, b):")
+fput(_fh, "        class R:")
+fput(_fh, "            is_fallback = False")
+fput(_fh, "        return R()")
+fclose(_fh)
+st_local("hd", _hd)
+end
+
+adopath ++ `"`hd'"'
+capture noisily _dash_setup_check_files
+local probe_rc = _rc
+// Remove the hostile entry no matter what happened above.
+capture adopath - `"`hd'"'
+local probe_pwned "$DASH_INJ_PWNED"
+capture erase `"`hd'/dash_render.py"'
+
+assert "`probe_pwned'" == ""
+assert `probe_rc' == 0
+display "INJ-10 PASS: a hostile renderer path is data, not code"
+
+// ================================================================
+// INJ-11 — the installed VERSION is as untrusted as the name
+// dash_setup displays the version _dash_pkg_version reads from a
+// distribution's metadata, and passes it to _dash_setup_gate inside double
+// quotes.  A version of 1.0{bf:INJMARKV}"x was handed back as written:
+// displayed, {bf:...} is SMCL (and {stata ...} a link a click runs), and
+// its double quote ends the quotes it is passed in.  Only a version made of
+// PEP 440's characters is kept now; anything else is "unknown".  Two fake
+// distributions are put on sys.path: one with an ordinary version, which
+// must come back as written -- so the "unknown" of the other is not the
+// fake going unseen -- and one with the hostile version.
+// ================================================================
+mata:
+_r = c("tmpdir") + "/dash_inj11"
+if (direxists(_r) == 0) mkdir(_r, 1)
+_names = ("dashzzinjok", "dashzzinjbad")
+_vers  = ("2.5.1", "1.0{bf:INJMARKV}" + char(34) + "x")
+for (_i = 1; _i <= 2; _i++) {
+    _d = _r + "/" + _names[_i] + "-1.0.dist-info"
+    if (direxists(_d) == 0) mkdir(_d, 1)
+    if (fileexists(_d + "/METADATA")) unlink(_d + "/METADATA")
+    _fh = fopen(_d + "/METADATA", "w")
+    fput(_fh, "Metadata-Version: 2.1")
+    fput(_fh, "Name: " + _names[_i])
+    fput(_fh, "Version: " + _vers[_i])
+    fclose(_fh)
+}
+st_local("inj11root", _r)
+end
+
+python: import sys, sfi; sys.path.insert(0, sfi.Macro.getLocal("inj11root"))
+local v11ok "x"
+capture noisily _dash_pkg_version "dashzzinjok" v11ok
+local rc11ok = _rc
+local v11bad "x"
+capture noisily _dash_pkg_version "dashzzinjbad" v11bad
+local rc11bad = _rc
+// Read back by value: the hostile version, if it came back, holds a quote.
+mata: st_local("v11ok_is",   strofreal(st_local("v11ok")  == "2.5.1"))
+mata: st_local("v11bad_is",  strofreal(st_local("v11bad") == "unknown"))
+python: import sys, sfi; sys.path.remove(sfi.Macro.getLocal("inj11root"))
+
+// (Interactive Mata reads the line after an `if' to see whether it is an
+// `else', so no block here ends on an `if'.)
+mata:
+for (_i = 1; _i <= 2; _i++) {
+    _d = _r + "/" + _names[_i] + "-1.0.dist-info"
+    if (fileexists(_d + "/METADATA")) unlink(_d + "/METADATA")
+    if (direxists(_d)) rmdir(_d)
+}
+if (direxists(_r)) rmdir(_r)
+st_local("inj11clean", strofreal(direxists(_r) == 0))
+end
+assert `inj11clean' == 1
+
+assert `rc11ok' == 0
+assert `v11ok_is' == 1
+assert `rc11bad' == 0
+assert `v11bad_is' == 1
+display "INJ-11 PASS: a version that is not made of version characters comes back unknown"
+
+capture program drop _inj_gate
+global DASH_INJ_PWNED ""
+
+display ""
+display "test_setup_injection.cscript: ALL CHECKS PASSED"

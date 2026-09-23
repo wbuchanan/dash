@@ -1613,7 +1613,7 @@ Tests: `test_resource_limits.py`, `test_server_rate_limit.py`,
 `test_served_throttle.py`, `test_resource_limits.cscript`,
 `test_adversarial.cscript` P19.
 
-### I3. Escaping — mostly solid — S3, READ
+### I3. Escaping — mostly solid — S3, CLOSED by WP-20
 
 `html.escape` is applied at 20 sites (KPI title/value/subtitle, dashboard
 title/subtitle, facet labels, tick-label maps, legend overrides, scheme CSS,
@@ -1644,6 +1644,54 @@ Remaining:
   `_dash_pkg_version` guards the package *name* (`:307`) but not the returned
   version string. The only unvalidated interpolation into executable Python in
   the file.
+
+**Closed by WP-20.** Measured first, 23sep2026 at `e932446`: the served app
+answered `/` with no Content-Security-Policy and none of the other security
+headers; the saved page's policy had no `default-src`, `object-src`,
+`base-uri` or `form-action`, and the `layout(bs)` page placed it after the
+inlined BokehJS, where it governed nothing BokehJS did.  The hover label
+was safe -- a variable label `<img src=x onerror=...>` showed as text in the
+axis title, the legend and the tooltip in both modes, with no `<img>` in the
+document -- but a walk of every sink found three that were not: a slider or
+range filter title holding a TeX pair is written with `innerHTML` after
+`process_tex`, which copies the surrounding text raw; a Div's text goes
+through MathJax, where `\href{javascript:...}` is a live link; and a
+tooltip field `@{name}` is parsed as HTML after it is filled, so a column
+name that closed the brace left markup behind.  `dash_setup`'s version gate
+and scheme probe ran a crafted version string and a crafted renderer path as
+Python, which created a marker file.
+
+Now both pages carry a `default-src 'none'` policy as the first element of
+`<head>` -- scripts and styles inline only, images and fonts from `data:`,
+`connect-src 'none'`, `object-src 'none'`, `base-uri 'none'`,
+`form-action 'none'`; the served policy adds `'self'` and `connect-src
+'self'` for the websocket -- and the served app's own launcher sends the
+policy with `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`,
+`X-Frame-Options: DENY` and `Referrer-Policy: no-referrer` on every
+response, `/health` included (`bokeh serve` sends none of them, and the help
+says so).  Checked in Chromium: no violation, and the CustomJS filters, the
+hover, the websocket and a server callback all still work.  Every sink a
+label reaches is classified and pinned to the Bokeh version it was verified
+on; slider-family titles have their TeX pairs broken, every Div dash writes
+sets `disable_math`, a tooltip field is built only for a plain Stata name,
+and the text sinks get the raw text.  `dash_setup` reads every value with
+`sfi.Macro.getLocal`, and keeps a version only when it is made of version
+characters.  The existing defences -- the function whitelist (whose literal
+check let strings and `True` towers through, now closed), the qualifier
+whitelist, scheme containment, the colour sanitiser, the filter-name check
+and loopback binding -- are pinned in `test_security_surface.py`.  The
+three-case adversarial matrix (AC-20.3) registers 24 input surfaces
+(`test_adversarial_matrix.py`) and the gaps it exposed are fixed, each in
+`BUGS.md`: every echo of the user's text drew it as SMCL (23 sites in
+`dash.ado`, one of which ran it as display directives), `port()` and
+`timeout()` took a trailing newline, a `layout()` backslash broke the spec,
+`EXCLUDE()` skipped its check, a `layout()` grid of any size was built, and
+the renderer could be made to recurse or allocate without bound by a scheme
+`#include` chain, an `if` qualifier, an axis label, a format, a limit or a
+function.  Tests: `test_csp.py`, `test_label_sinks.py`,
+`test_security_surface.py`, `test_adversarial_matrix.py`,
+`test_setup_injection.cscript`, `test_echo_text.cscript`,
+`test_adversarial.cscript` P20.
 
 ---
 
@@ -1962,11 +2010,24 @@ auditor re-reports 25 resolved items as live gaps.
 Resolution; **six do not** (`BUGS.md:341, 359, 383, 395, 413, 431`), two of
 which are security fixes. CLAUDE.md rule 8 asks for a test per fixed defect.
 
-### L10. Auth bypass — not a gap
+### L10. Auth bypass — not a gap — standing note (WP-20)
 
 `dash` has no auth model, and `test_security_surface.py:95` establishes that
 the help does not claim one. CLAUDE.md rule 19 is N/A. Worth stating
 explicitly rather than leaving as an apparent hole.
+
+**Standing note, recorded by WP-20.** CLAUDE.md rule 19 does not apply to
+dash, by design and not by omission: dash has no accounts, no
+administrators and no administrative component.  Every dashboard is built
+by the Stata user who runs the command; the served app binds loopback by
+default and offers no privileged route (`/health` reports liveness and
+nothing else).  So for rule 18's three adversarial cases, "auth bypass"
+means getting past a surface's own guard -- its validation, escaping, path
+containment, origin check or rate limit -- and that is how
+`test_adversarial_matrix.py` (whose module docstring carries this note) and
+`test_adversarial.cscript`'s P20 section read it.  If dash ever gains
+accounts or an administrative surface, this note is wrong and rule 19
+applies.
 
 ---
 

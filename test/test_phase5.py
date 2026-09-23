@@ -344,8 +344,17 @@ class TestByFacetingSecurity:
         groups = renderer._expand_by_groups(g)
         assert len(groups) == 1 and groups[0][0] == ""
 
-    def test_by_xss_in_facet_label_escaped(self):
-        """XSS payload in by-variable value → escaped in facet title."""
+    def test_by_xss_in_facet_label_is_canvas_text(self):
+        """An XSS payload in a by-variable's value label reaches the facet
+        title as the text it is -- restated by WP-20.
+
+        This used to assert the title was html-escaped.  A facet title is
+        ``fig.title.text'', which Bokeh draws on the canvas; it is never
+        parsed as HTML, so the escaping only put the entities on screen,
+        and the per-facet KPI card, which is HTML, escaped it a second
+        time.  The title is now raw (the KPI card escapes it once);
+        test_label_sinks.py pins the canvas rendering.
+        """
         data = {
             "y": [1.0, 2.0, 3.0, 4.0],
             "x": [1.0, 2.0, 3.0, 4.0],
@@ -386,9 +395,8 @@ class TestByFacetingSecurity:
                     pass
         figs = r._build_figures()
         titles = [figs[k].title.text for k in figs if "__by__" in k]
-        # Ensure XSS payload is escaped
-        for t in titles:
-            assert "<script>" not in t, f"Unescaped XSS in facet title: {t}"
+        assert any("<script>alert(1)</script>" in t for t in titles), titles
+        assert not any("&lt;" in t for t in titles), "escaped: " + repr(titles)
 
 
 # ================================================================

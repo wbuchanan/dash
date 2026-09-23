@@ -282,7 +282,20 @@ class TestTheNewProgramsKeepTheirConstraints:
     ])
     def test_it_contains_no_forbidden_text(self, program, forbidden):
         body = _program_body(_ado(), program) or ""
+        # Validation is Stata's; Mata holds character-level helpers only
+        # (dash_parse.mata's charter).  _dash_say is one: WP-20 routes every
+        # echo of the user's text through it, so a refused value is shown as
+        # typed instead of drawn as SMCL (P20-02..06).  Its calls are the one
+        # Mata these programs may make -- no Mata validation.
+        if forbidden == "mata:":
+            body = re.sub(r'mata: _dash_say\("err", ', "", body)
         assert forbidden not in body, f"{program} contains {forbidden!r}"
+
+    def test_the_only_mata_in_the_validator_is_the_echo(self):
+        body = _program_body(_ado(), "_dash_validate_value") or ""
+        calls = re.findall(r"mata:\s*(\w+)\(", body)
+        assert calls, "the refusals no longer echo through _dash_say"
+        assert set(calls) == {"_dash_say"}, calls
 
     @pytest.mark.parametrize("program", PROGRAMS)
     def test_it_has_no_syntax_line(self, program):

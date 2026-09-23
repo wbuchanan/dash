@@ -210,8 +210,16 @@ class TestFilterSecurity:
         except (ValueError, KeyError):
             pass  # Raising is the safest behavior
 
-    def test_html_escaped_values_in_callback(self, auto_df, cds):
-        """P2-55: HTML-sensitive characters in filter values are escaped."""
+    def test_filter_values_are_text_and_never_code(self, auto_df, cds):
+        """P2-55, restated by WP-20: a filter value holding markup reaches
+        the dropdown as the text it is, and never reaches the callback code.
+
+        This used to assert the option label was html-escaped.  BokehJS
+        builds each option as ``option({value}, label)'', a DOM text node
+        (bokeh 3.8.0 and 3.9.0), so the escaping only put the entities on
+        screen -- a value label ``Men's'' read ``Men&#x27;s''.  The label is
+        now raw; test_label_sinks.py pins that text rendering.
+        """
         # Create a dataset with a potentially dangerous category value
         danger_df = pd.DataFrame({
             "cat": ["<script>alert(1)</script>", "normal"],
@@ -222,12 +230,13 @@ class TestFilterSecurity:
             "cat", danger_cds, danger_df, {},
             exclude_names=[], all_figure_names=["s1"]
         )
-        # Option display text should be HTML-escaped
-        for opt in widget.options:
-            label = opt[1] if isinstance(opt, (list, tuple)) else str(opt)
-            assert "<script>" not in label, (
-                f"Unescaped <script> found in dropdown option: {label}"
-            )
+        labels = [opt[1] if isinstance(opt, (list, tuple)) else str(opt)
+                  for opt in widget.options]
+        assert "<script>alert(1)</script>" in labels, labels
+        assert not any("&lt;" in l for l in labels), "escaped twice"
+        # The callback is the fixed filter script; the value is data in its
+        # args, never spliced into its code.
+        assert "<script>" not in callback.code
 
 
 # ================================================================

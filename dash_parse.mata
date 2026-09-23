@@ -12,6 +12,16 @@
 *!   _dash_check_utf8(s)
 *!       Validate UTF-8.  Calls exit(198) on failure.
 *!
+*!   _dash_say(style, before, value, after)
+*!       Print before + value + after as one line in SMCL style "err",
+*!       "txt" or "res", every character shown as written (_dash_smcl_text).
+*!
+*!   _dash_is_digits(s, maxlen)
+*!       1 when s is 1..maxlen ASCII digits and nothing else.
+*!
+*!   _dash_layout_cells(layout)
+*!       Cells an explicit layout() grid asks for, or missing.
+*!
 *!   _dash_split_segs(input)
 *!       Split the raw command line into plot segments + graph-opts string.
 *!       Sets in the *caller's* local-macro environment:
@@ -221,6 +231,174 @@ void _dash_check_utf8(string scalar s) {
         exit(198)
     }
 }
+
+// ============================================================
+// _dash_smcl_text(s)  and  _dash_say(style, before, value, after)
+//
+// A message that repeats what the user typed must show it as typed.
+// `display' reads its text as SMCL, so an echoed {bf:X} printed a bold X,
+// {hline} a rule, and {browse} and {stata} drew links a click would
+// follow -- the user's text drawn as Stata's own markup (P19-24..26,
+// P20-01..13).  And a value written into a display line through a macro
+// is parsed with the line: a double quote in it ended the string, and
+// what followed ran as display directives (P9-11..14).
+//
+// _dash_smcl_text() returns s written in SMCL so that it displays exactly
+// as written: { and } become {c -(} and {c )-}.  A control character --
+// C0, DEL, or C1 (U+0080..U+009F, the bytes C2 80..C2 9F) -- becomes ?:
+// a terminal reads ESC and CSI sequences as commands, and the console
+// binary writes to a terminal.  NUL, which no macro can hold, is dropped
+// first because it is the placeholder that keeps the two brace
+// replacements from rewriting each other.
+//
+// _dash_say() prints before + value + after as one line in the given SMCL
+// style, every piece through _dash_smcl_text() and from Mata, so no piece
+// is parsed as Stata code or drawn as markup.  before and after are the
+// message's own words; value is read by the caller with st_local().
+// ============================================================
+string scalar _dash_smcl_text(string scalar s) {
+    string scalar t
+    real scalar   b
+
+    t = subinstr(s, char(0), "")
+    for (b = 1; b <= 31; b++) t = subinstr(t, char(b), "?")
+    t = subinstr(t, char(127), "?")
+    for (b = 128; b <= 159; b++) t = subinstr(t, char(194) + char(b), "?")
+    t = subinstr(t, "{", char(0))
+    t = subinstr(t, "}", "{c )-}")
+    return(subinstr(t, char(0), "{c -(}"))
+}
+
+void _dash_say(string scalar style, string scalar before,
+               string scalar value, string scalar after) {
+    if (!anyof(("err", "txt", "res"), style)) style = "txt"
+    printf("{%s}%s\n", style, _dash_smcl_text(before + value + after))
+}
+
+// ============================================================
+// _dash_is_digits(s, maxlen)
+//
+// 1 when s is one or more ASCII digits and nothing else, and at most
+// maxlen of them (missing: any number); else 0.  Byte by byte, because no
+// regular expression can say this under every caller: under StataNow's
+// engine `$' also matches before a trailing newline -- regexm("7" +
+// char(10), "^[0-9]+$") is 1, measured -- and under a caller's version
+// 16 or 17 the old engine does not know bounded repetition.
+// ============================================================
+real scalar _dash_is_digits(string scalar s, real scalar maxlen) {
+    real scalar i, n, b
+
+    n = strlen(s)
+    if (n == 0 | n > maxlen) return(0)
+    for (i = 1; i <= n; i++) {
+        b = ascii(substr(s, i, 1))
+        if (b < 48 | b > 57) return(0)
+    }
+    return(1)
+}
+
+// 1 when the one-byte string ch has a byte value from lo to hi.
+real scalar _dash_ascii_in(string scalar ch, real scalar lo, real scalar hi) {
+    real scalar b
+
+    if (strlen(ch) != 1) return(0)
+    b = ascii(ch)
+    return(b >= lo & b <= hi)
+}
+
+// ============================================================
+// _dash_layout_cells(layout)
+//
+// How many cells an explicit layout() grid asks for: rows x cols (each at
+// least 1) for layout(rows cols), and for layout(name:row,col ...) the
+// rectangle the
+// placements span, read 1-based unless an index is 0.  An index longer
+// than nine digits counts as 1e18, larger than any limit.  Missing when
+// the layout has no size of its own (auto, bs, bs: ...) or is not one of
+// the two forms.  dash_render.py's _dash_layout_cells() is the same rule;
+// this one reads ASCII only, and what it cannot read it leaves to the
+// renderer's, which then keeps the page to the automatic layout.
+// ============================================================
+real scalar _dash_layout_cells(string scalar layout) {
+    string scalar s, ch, d1, d2
+    real scalar   n, i, j, k, npair, big, allpos, maxr, maxc, r, c
+
+    s = layout
+    for (i = 9; i <= 13; i++) s = subinstr(s, char(i), " ")
+    s = strtrim(s)
+    n = strlen(s)
+    if (n == 0) return(.)
+
+    // rows cols: digits, blanks, digits, and nothing else.
+    i = 1
+    while (i <= n & _dash_ascii_in(substr(s, i, 1), 48, 57)) i++
+    j = i
+    while (j <= n & substr(s, j, 1) == " ") j++
+    if (i > 1 & j > i & j <= n) {
+        k = j
+        while (k <= n & _dash_ascii_in(substr(s, k, 1), 48, 57)) k++
+        if (k > n) {
+            d1 = substr(s, 1, i - 1)
+            d2 = substr(s, j, k - j)
+            if (strlen(d1) > 9 | strlen(d2) > 9) return(1e18)
+            // Each at least 1, as the grid is built.
+            return(max((1, strtoreal(d1))) * max((1, strtoreal(d2))))
+        }
+    }
+
+    // name:row,col placements, blanks allowed around : and , and between.
+    npair  = 0
+    big    = 0
+    allpos = 1
+    maxr   = 0
+    maxc   = 0
+    i = 1
+    while (i <= n) {
+        while (i <= n & substr(s, i, 1) == " ") i++
+        if (i > n) break
+        ch = substr(s, i, 1)
+        if (!(_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) | ch == "_")) return(.)
+        i++
+        while (i <= n) {
+            ch = substr(s, i, 1)
+            if (!(_dash_ascii_in(ch, 48, 57) | _dash_ascii_in(ch, 65, 90) |
+                  _dash_ascii_in(ch, 97, 122) | ch == "_")) break
+            i++
+        }
+        while (i <= n & substr(s, i, 1) == " ") i++
+        if (i > n) return(.)
+        if (substr(s, i, 1) != ":") return(.)
+        i++
+        while (i <= n & substr(s, i, 1) == " ") i++
+        j = i
+        while (i <= n & _dash_ascii_in(substr(s, i, 1), 48, 57)) i++
+        if (i == j) return(.)
+        d1 = substr(s, j, i - j)
+        while (i <= n & substr(s, i, 1) == " ") i++
+        if (i > n) return(.)
+        if (substr(s, i, 1) != ",") return(.)
+        i++
+        while (i <= n & substr(s, i, 1) == " ") i++
+        j = i
+        while (i <= n & _dash_ascii_in(substr(s, i, 1), 48, 57)) i++
+        if (i == j) return(.)
+        d2 = substr(s, j, i - j)
+        npair++
+        if (strlen(d1) > 9 | strlen(d2) > 9) big = 1
+        else {
+            r = strtoreal(d1)
+            c = strtoreal(d2)
+            if (r == 0 | c == 0) allpos = 0
+            if (r > maxr) maxr = r
+            if (c > maxc) maxc = c
+        }
+    }
+    if (npair == 0) return(.)
+    if (big) return(1e18)
+    if (allpos) return(maxr * maxc)
+    return((maxr + 1) * (maxc + 1))
+}
+
 
 
 // ============================================================

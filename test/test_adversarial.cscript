@@ -1143,6 +1143,519 @@ foreach f in p19pf p19cf p19bf p19jf p19rf p19gf p19ef {
 }
 
 // ================================================================
+// P20 — the rest of the input surfaces (WP-20, AC-20.3)
+// ================================================================
+// CLAUDE.md rule 18 asks for an auth-bypass, an injection and an exhaustion
+// case per input surface.  dash has no authentication model (GAPS.md L10),
+// so "bypass" means getting past the surface's OWN guard.  The registry of
+// every surface and the test behind each of its three cases is
+// test/test_adversarial_matrix.py, which also checks that each case id
+// below is displayed here as "<id> PASS".
+//
+// P20-01..13.  P19-24..26 found that a refused filter, graph or KPI name
+// was echoed raw, so `display' drew the user's text as SMCL -- {bf:X} bold,
+// {hline} a rule, and {browse} and {stata} links a click would follow.
+// Every OTHER echo of user text had the same hole (measured 23sep2026 at
+// e932446): each option-value refusal (_dash_validate_value), the plot
+// type, link(), exclude(), theme(), the KPI fmt(), port(), timeout(), the
+// saving() refusals, and the saving() path in the success messages.  A text
+// log shows a rendered {bf:INJMARK} as plain INJMARK; only an echo whose
+// braces were escaped (written as SMCL's {c -(} and {c )-}) shows the
+// literal "{bf:INJMARK}", so finding that literal is the assertion.
+
+qui sysuse auto, clear
+global dash_nobrowser 1
+capture dash clear
+
+// P20-01 — the plot-type token
+_adv_p19_run "dash {bf:INJMARKPT} mpg weight, name(p2001)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("unrecognised plot type '{bf:INJMARKPT}'")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P20-01 PASS: an unrecognised plot type is echoed as text, not SMCL"
+
+// P20-02 — a numeric plot option (every num/int/pos rule shares the echo)
+_adv_p19_run "dash scatter mpg weight, jitter({bf:INJMARKJIT}) name(p2002)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("jitter() must be a number between 0 and 100 (got: {bf:INJMARKJIT})")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P20-02 PASS: a refused jitter() value is echoed as text, not SMCL"
+
+// P20-03 — a keyword option (the enum rule)
+_adv_p19_run "dash kdensity mpg, kernel({bf:INJMARKKER}) name(p2003)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("(got: {bf:INJMARKKER})")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P20-03 PASS: a refused kernel() keyword is echoed as text, not SMCL"
+
+// P20-04 — a variable option: mlabel(), the marker-label text source
+_adv_p19_run "dash scatter mpg weight, mlabel({bf:INJMARKML}) name(p2004)"
+assert r(rc) == 111
+cert_file_has "`r(log)'", needle("mlabel(): variable {bf:INJMARKML} not found")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P20-04 PASS: a refused mlabel() variable is echoed as text, not SMCL"
+
+// P20-05 — by()
+_adv_p19_run "dash scatter mpg weight, by({bf:INJMARKBY}) name(p2005)"
+assert r(rc) == 111
+cert_file_has "`r(log)'", needle("by(): variable {bf:INJMARKBY} not found")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P20-05 PASS: a refused by() variable is echoed as text, not SMCL"
+
+// P20-06 — scheme() on a graph
+_adv_p19_run "dash scatter mpg weight, scheme({bf:INJMARKSCH}) name(p2006)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("(got: {bf:INJMARKSCH})")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P20-06 PASS: a refused scheme() is echoed as text, not SMCL"
+
+// P20-07 — the saving() path in the immediate route's success message.
+// The braces are legal in a file name, so the file is written under the
+// literal name and the message must show that name, not bold text.
+local p2007 "`c(tmpdir)'p2007{bf:INJMARKSAV}.html"
+capture erase "`p2007'"
+_adv_p19_run `"dash scatter mpg weight, saving("`p2007'")"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("saved to `p2007'")
+assert r(found) == 1
+confirm file "`p2007'"
+capture erase "`p2007'"
+display "P20-07 PASS: the saving() path in the success message is shown as the file's real name"
+
+// P20-08 — dash build: the extension refusal, the "already exists"
+// refusal and the server-mode success lines all repeat the path.
+dash scatter mpg weight, name(p2008)
+local p2008e "`c(tmpdir)'p2008{bf:INJMARKEXT}.htm"
+_adv_p19_run `"dash build, saving("`p2008e'") replace nobrowser"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("p2008{bf:INJMARKEXT}.htm)")
+assert r(found) == 1
+local p2008x "`c(tmpdir)'p2008{bf:INJMARKEX}.html"
+capture erase "`p2008x'"
+_adv_p19_run `"dash build, saving("`p2008x'") nobrowser"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("saved to `p2008x'")
+assert r(found) == 1
+_adv_p19_run `"dash build, saving("`p2008x'") nobrowser"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("p2008{bf:INJMARKEX}.html' already exists")
+assert r(found) == 1
+local p2008y "`c(tmpdir)'p2008{bf:INJMARKPY}.py"
+capture erase "`p2008y'"
+_adv_p19_run `"dash build, saving("`p2008y'") server replace"'
+local p20lg "`r(log)'"
+assert r(rc) == 0
+cert_file_has "`p20lg'", needle("server app written to `p2008y'")
+assert r(found) == 1
+cert_file_has "`p20lg'", needle(`"To launch: python "`p2008y'""')
+assert r(found) == 1
+capture erase "`p2008x'"
+capture erase "`p2008y'"
+display "P20-08 PASS: dash build's saving() refusals and server lines show the path as text"
+
+// P20-09 — link()
+capture erase "`c(tmpdir)'p2009.html"
+_adv_p19_run `"dash build, saving("`c(tmpdir)'p2009.html") replace nobrowser link({bf:INJMARKLNK})"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("link() name '{bf:INJMARKLNK}' not found in registry.")
+assert r(found) == 1
+capture confirm file "`c(tmpdir)'p2009.html"
+assert _rc != 0
+display "P20-09 PASS: a refused link() name is echoed as text, not SMCL"
+
+// P20-10 — filter(..., exclude())
+capture erase "`c(tmpdir)'p2010.html"
+_adv_p19_run `"dash build, saving("`c(tmpdir)'p2010.html") replace nobrowser filter(mpg, type(range) exclude({bf:INJMARKEXC}))"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("exclude() name '{bf:INJMARKEXC}' not found in registry.")
+assert r(found) == 1
+capture confirm file "`c(tmpdir)'p2010.html"
+assert _rc != 0
+display "P20-10 PASS: a refused exclude() name is echoed as text, not SMCL"
+
+// P20-11 — theme()
+_adv_p19_run `"dash build, saving("`c(tmpdir)'p2011.html") replace nobrowser theme({bf:INJMARKTHM})"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("(got: {bf:INJMARKTHM})")
+assert r(found) == 1
+display "P20-11 PASS: a refused theme() is echoed as text, not SMCL"
+
+// P20-12 — the KPI fmt()
+_adv_p19_run "dash kpi mean(mpg), name(p2012) title(T) fmt({bf:INJMARKFMT})"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("(got: {bf:INJMARKFMT})")
+assert r(found) == 1
+assert "${dash_kpi_p2012}" == ""
+display "P20-12 PASS: a refused KPI fmt() is echoed as text, not SMCL"
+
+// P20-13 — dash serve's port() and timeout(), through _dash_serve_spec,
+// which validates exactly as dash serve does and never starts a server.
+tempfile p20sp p20dp
+_adv_p19_run `"_dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") port({bf:INJMARKPRT})"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("(got: {bf:INJMARKPRT})")
+assert r(found) == 1
+_adv_p19_run `"_dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") timeout({bf:INJMARKTMO})"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("(got: {bf:INJMARKTMO})")
+assert r(found) == 1
+display "P20-13 PASS: refused port() and timeout() values are echoed as text, not SMCL"
+
+// P20-14 — digits and a trailing newline.  Measured 23sep2026: StataNow's
+// regexm() matches "^[0-9]+$" against "7" + char(10) (the P19 note), so
+// timeout() took it with rc 0 and handed "7<LF>" to the one-line python:
+// statement that launches the server.  port() was refused only because
+// real() of it is missing, by the range message.  Both are now digits only.
+capture dash clear
+dash scatter mpg weight, name(p2014)
+mata: st_local("p20nl", "7" + char(10))
+local p2014c `"_dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") timeout(`p20nl')"'
+_adv_p19_run `"`p2014c'"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("timeout() must be a non-negative integer in minutes")
+assert r(found) == 1
+mata: st_local("p20nl", "5007" + char(10))
+local p2014c `"_dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") port(`p20nl')"'
+_adv_p19_run `"`p2014c'"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("port() must be a positive integer")
+assert r(found) == 1
+display "P20-14 PASS: port() and timeout() refuse digits followed by a newline"
+
+// P20-15 — an overlong UTF-8 encoding of "<" and ">" (C0 BC, C0 BE) in a
+// graph title().  Overlong forms are the classic way past an HTML filter
+// that looks for the one-byte character; the gate refuses them first.
+capture dash clear
+mata: st_local("p20ov", char(192) + char(188) + "script" + char(192) + char(190))
+capture dash scatter mpg weight, name(p2015) title(`"x`p20ov'y"')
+assert _rc == 198
+capture dash scatter mpg weight, name(p2015) note(`"x`p20ov'y"')
+assert _rc == 198
+assert "${dash_graph_registry}" == ""
+display "P20-15 PASS: an overlong-encoded <script> in title() or note() is refused at the UTF-8 gate"
+
+// P20-16 — saving() spelled to slip past the traversal check: the minimum
+// abbreviation, a `///' continuation inside the option, and upper case,
+// which is not an alias of saving() at all and so cannot carry a path.
+capture erase "../p2016c.html"
+capture dash scatter mpg weight, sav("../p2016a.html")
+assert _rc == 198
+capture dash scatter mpg weight, saving( ///
+    "../p2016b.html")
+assert _rc == 198
+capture noisily dash scatter mpg weight, SAVING("../p2016c.html")
+assert _rc == 0
+capture confirm file "../p2016c.html"
+assert _rc != 0
+display "P20-16 PASS: sav(), a /// continuation and SAVING() cannot carry a traversal"
+
+// P20-17 — layout() was the one build option written into the spec raw.
+// Its check reads only the start of the value (bs..., or name:r,c...), so
+// layout("bs\") passed and its backslash escaped the closing quote of the
+// JSON string: measured, r(7102) and a JSONDecodeError traceback.  Now
+// escaped like every other string, it builds.
+capture dash clear
+dash scatter mpg weight, name(p2017)
+local p2017f "`c(tmpdir)'p2017.html"
+capture erase "`p2017f'"
+_adv_p19_run `"dash build, saving("`p2017f'") replace nobrowser layout("bs\")"'
+assert r(rc) == 0
+confirm file "`p2017f'"
+cert_file_has "`r(log)'", needle("JSONDecodeError")
+assert r(found) == 0
+capture erase "`p2017f'"
+_adv_p19_run `"dash build, saving("`p2017f'") replace nobrowser layout("p2017:1,1\")"'
+assert r(rc) == 0
+confirm file "`p2017f'"
+capture erase "`p2017f'"
+display "P20-17 PASS: a backslash in layout() is escaped into the spec, not a JSON breakout"
+
+// P20-18 — a compound-quote breakout inside an option value.  If "' could
+// end the quotes a value is expanded in, what followed would be read as
+// display directives (the fmt() hole P9-11..14 closed).  It is stopped at
+// the first line that expands the command, and no directive runs.
+capture dash clear
+local p2018 = "x" + char(34) + char(39) + " _dup(3) " + char(34) + "INJ" + char(34) + " " + char(96) + char(34)
+local p2018lg "`c(tmpdir)'dash_adv_p20.log"
+local p2018ls = c(linesize)
+set linesize 255
+capture log close _p20log
+capture erase "`p2018lg'"
+quietly log using "`p2018lg'", name(_p20log) text replace
+capture noisily dash scatter mpg weight, name(p2018) jitter(`p2018')
+local p2018rc = _rc
+quietly log close _p20log
+set linesize `p2018ls'
+assert `p2018rc' != 0
+cert_file_has "`p2018lg'", needle("INJINJINJ")
+assert r(found) == 0
+assert "${dash_graph_registry}" == ""
+capture erase "`p2018lg'"
+display "P20-18 PASS: a quote breakout in an option value runs no directive and registers nothing"
+
+// P20-19 — timeout() of 400 digits.  Measured: accepted with rc 0; the
+// launcher multiplies it by 60 into a float and the app died with
+// OverflowError after binding its port.  At most nine digits now.
+dash scatter mpg weight, name(p2019)
+local p2019 = 400 * "9"
+_adv_p19_run `"_dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") timeout(`p2019')"'
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("timeout() must be a non-negative integer in minutes")
+assert r(found) == 1
+capture noisily _dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") timeout(999999999)
+assert _rc == 0
+assert "`r(timeout)'" == "999999999"
+display "P20-19 PASS: a 400-digit timeout() is refused; nine digits are accepted"
+
+// P20-20 — an if qualifier of 600 !s.  Stata reads it; the renderer's
+// qualifier check and pandas' evaluator each recurse once per operator, and
+// the RecursionError escaped both guards: measured, r(7102) and a traceback
+// on the immediate route, and on dash build for the same KPI qualifier.  It
+// is now reported as a qualifier that could not be applied.
+capture dash clear
+local p2020 = 600 * "!"
+local p2020f "`c(tmpdir)'p2020.html"
+capture erase "`p2020f'"
+_adv_p19_run `"dash scatter mpg weight if `p2020'(mpg > 1), saving("`p2020f'")"'
+local p20lg "`r(log)'"
+assert r(rc) == 0
+confirm file "`p2020f'"
+cert_file_has "`p20lg'", needle("if_expr filter skipped")
+assert r(found) == 1
+cert_file_has "`p20lg'", needle("RecursionError")
+assert r(found) == 0
+capture erase "`p2020f'"
+dash kpi mean(mpg) if `p2020'(mpg > 1), name(p2020k) title(T)
+dash scatter mpg weight, name(p2020g)
+_adv_p19_run `"dash build, saving("`p2020f'") replace nobrowser"'
+assert r(rc) == 0
+confirm file "`p2020f'"
+cert_file_has "`r(log)'", needle("RecursionError")
+assert r(found) == 0
+capture erase "`p2020f'"
+capture dash clear
+display "P20-20 PASS: a 600-operator if qualifier is reported and skipped, not a traceback"
+
+// P20-21 — name() of 5,000 characters, graph and KPI: refused, and the
+// echo is cut at 40 characters, so the refusal is bounded too.
+local p2021 = 5000 * "a"
+local p2021e = 40 * "a"
+_adv_p19_run "dash scatter mpg weight, name(`p2021')"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("invalid graph name '`p2021e''")
+assert r(found) == 1
+_adv_p19_run "dash kpi mean(mpg), name(`p2021') title(T)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("invalid name '`p2021e''")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+display "P20-21 PASS: a 5,000-character name() is refused with a 40-character echo"
+
+// P20-22..23 — dash_setup.  Its inputs are what the environment reports:
+// installed package names and versions, read back from Python.
+do "../dash_setup.ado"
+
+// P20-22 — _dash_pkg_version refuses anything but a plain package name
+// before the name is interpolated into its python: line.  A name with
+// code characters, a blank, or a trailing newline comes back "unknown",
+// and a name carrying a double quote cannot reach Python at all.
+global ZZADV20 ""
+foreach p2022 in "bokeh;import" "bo keh" "bokeh.lower()or(1)" "bokeh)#" {
+    local p2022v "x"
+    capture _dash_pkg_version "`p2022'" p2022v
+    assert _rc == 0
+    assert "`p2022v'" == "unknown"
+}
+mata: st_local("p2022n", "bokeh" + char(10))
+local p2022v "x"
+capture _dash_pkg_version "`p2022n'" p2022v
+assert "`p2022v'" == "unknown"
+local p2022q = "bokeh" + char(34) + ") or __import__(" + char(34) + "sfi" + char(34) + ").Macro.setGlobal(" + char(34) + "ZZADV20" + char(34) + "," + char(34) + "1" + char(34) + ") or (" + char(34)
+local p2022v "x"
+capture _dash_pkg_version `"`p2022q'"' p2022v
+assert "${ZZADV20}" == ""
+assert inlist("`p2022v'", "x", "unknown")
+macro drop ZZADV20
+display "P20-22 PASS: a package name that is not a plain name never reaches Python as code"
+
+// P20-23 — a version string of 5,001 components, all equal to the minimum
+// at every place, is judged in bounded time and does not fail.
+local p2023 = "3." + 4999 * "0." + "0"
+timer clear 20
+timer on 20
+_dash_setup_gate bokeh "`p2023'" "3.0" 0
+local p2023v "`r(verdict)'"
+timer off 20
+quietly timer list 20
+assert "`p2023v'" == "unverified"
+assert r(t20) < 60
+display "P20-23 PASS: a 5,001-component version string is judged in bounded time"
+
+// P20-24 — exclude() in upper or mixed case.  The registry check searched
+// for "exclude(" case-sensitively while the renderer reads the sub-option
+// in any case, so EXCLUDE(nosuch) skipped the check, built with rc 0, and
+// excluded nothing -- the typo the check exists to catch, in silence.
+capture dash clear
+dash scatter mpg weight, name(p2024)
+// Erased first: "no file written" must not be answered by a file an
+// earlier run left behind.
+capture erase "`c(tmpdir)'p2024.html"
+foreach p2024x in EXCLUDE Exclude {
+    _adv_p19_run `"dash build, saving("`c(tmpdir)'p2024.html") replace nobrowser filter(mpg, type(range) `p2024x'(nosuch))"'
+    assert r(rc) == 198
+    cert_file_has "`r(log)'", needle("exclude() name 'nosuch' not found in registry.")
+    assert r(found) == 1
+}
+capture confirm file "`c(tmpdir)'p2024.html"
+assert _rc != 0
+display "P20-24 PASS: EXCLUDE() and Exclude() get the same registry check as exclude()"
+
+// P20-25 — layout() grid size.  The saved page pads its grid out to rows x
+// cols cells before drawing it: measured 23sep2026, a 4000 x 4000 grid of
+// two graphs peaked at 1.5 GB and the cost grows with the cells, so
+// layout(99999 99999) -- ten billion -- could not finish.  No grid needs
+// more cells than a dashboard can hold graphs and KPI cards, so rows x cols
+// (for name:row,col, the largest row by the largest column) is held to the
+// graphs limit that dash_max_graphs sets.
+capture dash clear
+dash scatter mpg weight, name(p2025a)
+dash scatter price weight, name(p2025b)
+local p2025f "`c(tmpdir)'p2025.html"
+capture erase "`p2025f'"
+foreach p2025l in "99999 99999" "10 11" "p2025a:1,1 p2025b:99999,99999" "p2025a:1,1 p2025b:11,10" {
+    _adv_p19_run `"dash build, saving("`p2025f'") replace nobrowser layout(`p2025l')"'
+    local p20lg "`r(log)'"
+    assert r(rc) == 198
+    cert_file_has "`p20lg'", needle("graphs and KPI cards one dashboard draws")
+    assert r(found) == 1
+    cert_file_has "`p20lg'", needle("set global dash_max_graphs to a higher value (at most 1,000)")
+    assert r(found) == 1
+    capture confirm file "`p2025f'"
+    assert _rc != 0
+}
+_adv_p19_run `"dash build, saving("`p2025f'") replace nobrowser layout(10 10)"'
+assert r(rc) == 0
+confirm file "`p2025f'"
+capture erase "`p2025f'"
+global dash_max_graphs 110
+_adv_p19_run `"dash build, saving("`p2025f'") replace nobrowser layout(10 11)"'
+assert r(rc) == 0
+confirm file "`p2025f'"
+macro drop dash_max_graphs
+capture erase "`p2025f'"
+display "P20-25 PASS: a layout() grid larger than the graphs limit is refused; 10 x 10 builds, and 10 x 11 at dash_max_graphs 110"
+
+// P20-26 — port() at and past its bounds, and spelled to slip past a
+// digits check: a sign, a decimal, e-notation and full-width digits.
+// A graph is registered first, so a refusal here is port()'s own and not
+// the empty registry's (which also exits 198).
+capture dash clear
+dash scatter mpg weight, name(p2026)
+mata: st_local("p2026fw", char(239) + char(188) + char(149) + char(239) + char(188) + char(144) + char(239) + char(188) + char(144) + char(239) + char(188) + char(150))
+foreach p2026p in 1023 65536 +5006 5006.0 1e4 0x138e `p2026fw' 99999999999999999999 {
+    capture _dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") port(`p2026p')
+    assert _rc == 198
+}
+foreach p2026p in 1024 65535 05006 {
+    capture noisily _dash_serve_spec, specpath("`p20sp'") datapath("`p20dp'") port(`p2026p')
+    assert _rc == 0
+    assert "`r(port)'" == strofreal(real("`p2026p'"))
+}
+capture dash clear
+display "P20-26 PASS: port() refuses 1023, 65536, signs, decimals, hex and full-width digits; accepts 1024 and 65535"
+
+// P20-27 — dash kpi's stat(var), spelled to slip past its allow-list:
+// upper and mixed case, the percentile bounds, a fractional percentile,
+// trailing text, unbalanced or doubled parentheses, a blank inside, and
+// two variables.  Every one is refused and registers nothing.
+capture dash clear
+foreach p2027s in "MEAN(mpg)" "Mean(mpg)" "p0(mpg)" "p100(mpg)" "p97.5(mpg)" "mean(mpg);x" "mean(mpg))" "mean( mpg)" "sum(mpg price)" "mean(mpg)(price)" {
+    capture dash kpi `p2027s', name(p2027) title(T)
+    assert _rc != 0
+    assert "${dash_kpi_p2027}" == ""
+    assert "${dash_graph_registry}" == ""
+}
+display "P20-27 PASS: KPI stat(var) spellings outside the allow-list are refused, nothing registered"
+
+// P20-28 — malformed UTF-8 inside the DATA.  The UTF-8 gate reads command
+// text only; a Latin-1 byte in a string value, a variable label and a value
+// label reaches jsonio, which must still hand the renderer a file it can
+// decode.  Measured 23sep2026: it does, and the page is drawn.
+qui sysuse auto, clear
+generate str20 p2028s = "caf" + char(233) in 1/10
+replace p2028s = "ok" in 11/74
+local p2028l = "Mile" + char(233) + "age"
+label variable mpg "`p2028l'"
+local p2028v = "For" + char(255)
+label define p2028b 0 "Dom" 1 "`p2028v'"
+label values foreign p2028b
+local p2028f "`c(tmpdir)'p2028.html"
+capture erase "`p2028f'"
+_adv_p19_run `"dash scatter mpg weight, mlabel(p2028s) by(foreign) saving("`p2028f'")"'
+assert r(rc) == 0
+confirm file "`p2028f'"
+cert_file_has "`r(log)'", needle("UnicodeDecodeError")
+assert r(found) == 0
+capture erase "`p2028f'"
+qui sysuse auto, clear
+display "P20-28 PASS: malformed UTF-8 in a string value, a variable label and a value label renders"
+
+// P20-29 — the echoes P20-01..13 did not list: a scatteri coordinate that
+// has no pair, and the note that saving(x.gph) is written as x.html.  Both
+// repeat the user's text, and both drew it as SMCL -- measured at e932446,
+// `dash scatteri {bf:X}' named a bold X.  The .gph note was also displayed
+// BEFORE the path was validated, inside plain quotes, so a double quote in
+// the name ended the string and what followed ran as display directives:
+// measured at e932446, saving(`"p" _dup(3) "INJ.gph"') printed
+// "INJ.htmlINJ.htmlINJ.html".  The path is validated first now, which
+// refuses the quote, and the note is shown as written.  (A weight
+// expression is echoed the same way, but cannot carry SMCL: Stata's own
+// parser refuses a brace in it -- [aw={bf:X}] is "invalid syntax".)
+capture dash clear
+_adv_p19_run "dash scatteri {bf:INJMARKSI}, name(p2029b)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("'{bf:INJMARKSI}' has no matching x value")
+assert r(found) == 1
+assert "${dash_graph_registry}" == ""
+local p2029g "`c(tmpdir)'p2029{bf:INJMARKGP}.gph"
+local p2029h "`c(tmpdir)'p2029{bf:INJMARKGP}.html"
+capture erase "`p2029h'"
+_adv_p19_run `"dash scatter mpg weight, saving("`p2029g'")"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("not a Stata .gph; using `p2029h'")
+assert r(found) == 1
+confirm file "`p2029h'"
+capture erase "`p2029h'"
+local p2029q = "p2029" + char(34) + " _dup(3) " + char(34) + "INJ.gph"
+local p2029lg "`c(tmpdir)'dash_adv_p2029.log"
+local p2029ls = c(linesize)
+set linesize 255
+capture log close _p2029log
+capture erase "`p2029lg'"
+quietly log using "`p2029lg'", name(_p2029log) text replace
+capture noisily dash scatter mpg weight, saving(`"`c(tmpdir)'`p2029q'"')
+local p2029rc = _rc
+quietly log close _p2029log
+set linesize `p2029ls'
+assert `p2029rc' == 198
+cert_file_has "`p2029lg'", needle("INJ.htmlINJ.html")
+assert r(found) == 0
+cert_file_has "`p2029lg'", needle("saving() path contains disallowed characters")
+assert r(found) == 1
+capture erase "`p2029lg'"
+assert "${dash_graph_registry}" == ""
+display "P20-29 PASS: a scatteri coordinate and the .gph note are echoed as text, and the note runs no directive"
+
+capture dash clear
+capture erase "`c(tmpdir)'dash_adv_p19.log"
+
+// ================================================================
 // Final summary
 // ================================================================
 display ""
@@ -1171,3 +1684,14 @@ display "  P19-17..21: Hostile dash_max_* values → rc=198 on every route, echo
 display "  P19-22: Message helpers — separators past 10^12, singular variable"
 display "  P19-23: Default cell cap at scale — 5,200,000 values refused, 5,000,000 admitted"
 display "  P19-24..26: A refused filter, graph or KPI name → echoed as text, never as SMCL"
+display "  P20-01..13: Every other echo of user text (option values, plot type, link, exclude, theme, fmt, port, timeout, saving) → shown as text, never as SMCL"
+display "  P20-14, 19: port()/timeout() → digits only (no trailing newline), timeout() at most nine digits"
+display "  P20-15..18: Overlong UTF-8, saving() spellings, a layout() backslash, a quote breakout → refused or escaped"
+display "  P20-20..21: A 600-operator if qualifier and a 5,000-character name() → bounded, no traceback"
+display "  P20-22..23: dash_setup package names and versions → never code, judged in bounded time"
+display "  P20-24: EXCLUDE() in any case → the same registry check as exclude()"
+display "  P20-25: A layout() grid larger than the graphs limit → rc=198, not gigabytes of padding"
+display "  P20-26: port() bounds and spellings (sign, decimal, hex, full-width digits) → rc=198"
+display "  P20-27: KPI stat(var) outside its allow-list (case, p0, p100, p97.5, trailing text) → refused"
+display "  P20-28: Malformed UTF-8 inside the data (string value, variable and value labels) → rendered"
+display "  P20-29: A scatteri coordinate and the .gph note → shown as text; the note runs no directive"

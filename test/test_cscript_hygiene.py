@@ -40,6 +40,97 @@ _REPO = os.path.dirname(_HERE)
 _ADOS = [os.path.join(_REPO, n) for n in ("dash.ado", "dash_setup.ado")]
 
 
+#: Macros that legitimately appear inside a Python string literal on a
+#: ``python:`` line, per shipped file, each with the reason it is safe.  Every
+#: other in-string macro is a potential injection site and fails the test.
+#:
+#: The rule exists because ``dash_setup.ado`` interpolated an untrusted
+#: distribution version as ``Version("`got'")`` and an untrusted file path as
+#: ``r"`render_py'"``; a double quote in either closed the string and ran the
+#: rest as code.  The fix reads such values with ``sfi.Macro.getLocal``, which
+#: leaves no macro in the source at all -- so the closed sites appear in
+#: neither this allowlist nor the files.
+_ALLOWED_INLINE_PY_MACROS = {
+    "dash.ado": {
+        "_py_spec": r"escaped by _dash_json_str (\\ and \") before interpolation",
+        "_py_data": "escaped by _dash_json_str before interpolation",
+        "_py_output": "escaped by _dash_json_str before interpolation",
+        "_py_mode": "escaped by _dash_json_str; only ever 'standalone'/'server'",
+        "_py_renderpy": "escaped by _dash_json_str before interpolation",
+        "_py_master": "escaped by _dash_json_str before interpolation",
+        "_py_serve": "escaped by _dash_json_str before interpolation",
+        "_py_render": "escaped by _dash_json_str before interpolation",
+        "port_int": "validated ^[0-9]+$ and range 1024-65535 in _dash_serve_spec",
+        "timeout": "validated ^[0-9]+$ in _dash_serve_spec",
+    },
+    "dash_setup.ado": {
+        "_spec": "built only from the fixed pkg_list and min_* constants "
+                 "in this file (e.g. 'bokeh>=3.0'), never from user or "
+                 "package-supplied text",
+    },
+}
+
+
+def _python_command_sources(src):
+    """``(start_line, python_source)`` for every ``python:`` command.
+
+    Joins ``python: ///`` continuations into one logical line, exactly as
+    Stata does, and strips the ``capture``/``quietly``/``noisily`` prefixes so
+    what remains is the Python the interpreter receives.  ``_stata_logical_lines``
+    and ``_PREFIX`` are defined later in this module and resolved at call time.
+    """
+    out = []
+    for start, code in _stata_logical_lines(src):
+        stripped = _PREFIX.sub("", code)
+        m = re.match(r"python\s*:\s?(.*)$", stripped)
+        if m and m.group(1).strip():
+            out.append((start, m.group(1)))
+    return out
+
+
+def _macros_inside_string_literals(py_src):
+    """The Stata macros ( `` `name' `` ) that fall inside a Python string
+    literal in one line of Python source.
+
+    A minimal string-state scanner: it opens on ``"`` or ``'`` (noting an
+    ``r`` prefix so a backslash does not escape inside a raw string) and, while
+    open, records any `` `macro' `` token before the matching quote.  A macro
+    OUTSIDE every string -- ``import `pkg'``, whose value is a bare identifier
+    from a fixed list -- is not an injection into a string literal and is not
+    reported.
+    """
+    found = set()
+    i, n = 0, len(py_src)
+    in_str, quote, raw = False, "", False
+    while i < n:
+        c = py_src[i]
+        if in_str:
+            if not raw and c == "\\":
+                i += 2
+                continue
+            if c == quote:
+                in_str, quote, raw = False, "", False
+                i += 1
+                continue
+            if c == "`":
+                j = py_src.find("'", i + 1)
+                if j != -1:
+                    found.add(py_src[i + 1:j])
+                    i = j + 1
+                    continue
+            i += 1
+        else:
+            if c in "\"'":
+                k, pref = i - 1, ""
+                while k >= 0 and py_src[k].isalpha():
+                    pref = py_src[k].lower() + pref
+                    k -= 1
+                raw = "r" in pref
+                in_str, quote = True, c
+            i += 1
+    return found
+
+
 def _name(path):
     return os.path.basename(path)
 
@@ -212,6 +303,72 @@ class TestTheShippedAdoFilesFollowTheSameRule:
         assert not bad, (
             f"{os.path.basename(path)} lines {bad}: concludes Python is "
             f"missing from the rc of a bare warm-up call"
+        )
+
+    # -- No untrusted value may be inlined into Python SOURCE ----------------
+    #
+    # A Stata macro expanded inside a Python string literal on a ``python:``
+    # line becomes part of the program text: a double quote in the value ends
+    # the string and the rest runs as code.  ``dash_setup.ado`` shipped two
+    # such sites -- ``Version("`got'")`` (an untrusted distribution version)
+    # and ``r"`render_py'"`` (a file path) -- and both were exploitable
+    # (measured: an ``os.system`` and an ``sfi.Macro.setGlobal`` injected
+    # through them ran).  The safe form reads the value with
+    # ``sfi.Macro.getLocal``, which passes it as a string argument the
+    # interpreter never parses.
+    #
+    # Every in-string macro that remains must be on the per-file allowlist,
+    # with its reason: escaped by ``_dash_json_str``, validated by a strict
+    # regex, or drawn only from a fixed list of constants in the code.
+
+    def test_no_untrusted_macro_is_inlined_into_python_source(self, ado):
+        path, src = ado
+        base = os.path.basename(path)
+        allowed = _ALLOWED_INLINE_PY_MACROS.get(base, {})
+        bad = []
+        for start, py in _python_command_sources(src):
+            for macro in sorted(_macros_inside_string_literals(py)):
+                if macro not in allowed:
+                    bad.append(f"{base}:{start}: `{macro}' inside a Python "
+                               f"string literal")
+        assert not bad, (
+            "a Stata macro is expanded inside a Python string literal on a "
+            "python: line; a quote in the value ends the string and the rest "
+            "runs as code. Read the value with sfi.Macro.getLocal instead, or "
+            "add it to _ALLOWED_INLINE_PY_MACROS with the reason it is safe "
+            "(escaped, regex-validated, or from a fixed list):\n"
+            + "\n".join(bad)
+        )
+
+    def test_the_known_setup_injection_sites_stay_closed(self):
+        """A crisp regression guard for the three sites WP-20 closed in
+        dash_setup.ado: the version gate, the scheme probe and the package
+        version query.
+
+        Independent of the allowlist above, so gaming the allowlist cannot
+        quietly reopen them.
+        """
+        with open(os.path.join(_REPO, "dash_setup.ado"), encoding="utf-8") as fh:
+            code = "\n".join(self._code(fh.read()))
+        # The exact vulnerable interpolations must be gone ...
+        assert 'Version("`got' + "'" + '")' not in code, (
+            "the version gate again interpolates the untrusted `got' into "
+            "Version(); read it with sfi.Macro.getLocal(\"got\")"
+        )
+        assert 'r"`render_py' + "'" + '"' not in code, (
+            "the scheme probe again interpolates the path `render_py' into a "
+            "raw string; read it with sfi.Macro.getLocal(\"render_py\")"
+        )
+        # ... and the safe reads must be present.
+        assert 'getLocal("got")' in code and 'getLocal("want")' in code, (
+            "the version gate must read got/want with sfi.Macro.getLocal"
+        )
+        assert 'getLocal("render_py")' in code, (
+            "the scheme probe must read render_py with sfi.Macro.getLocal"
+        )
+        assert '"`pkg' + "'" + '".lower()' not in code and \
+            'getLocal("pkg")' in code, (
+            "the package version query must read pkg with sfi.Macro.getLocal"
         )
 
 

@@ -207,8 +207,8 @@ program define _dash_require_mata
     // one would pass a library that compiled half way.
     local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
-        _dash_item_globals _dash_json_get_str _dash_option_names ///
-        _dash_split_segs
+        _dash_is_digits _dash_item_globals _dash_json_get_str ///
+        _dash_layout_cells _dash_option_names _dash_say _dash_split_segs
 
     // The common case, and the cheap one.
     quietly capture mata: mata describe _dash_check_utf8()
@@ -421,13 +421,15 @@ program define _dash_validate_path
     // treating it as a file.  Measured, saving("-e.html") was accepted.
     local _base `"`fpath'"'
     if regexm(`"`_base'"', "([^/\\]+)$") local _base = regexs(1)
+    // The path is echoed through _dash_say, so a brace in it -- legal in a
+    // file name -- is shown as written, not drawn as SMCL (P20-08).
     if substr(`"`_base'"', 1, 1) == "-" {
         display as error "dash: saving() file name may not start with '-'; the shell would read it as an option."
-        display as error "      Write ./`_base' if that is really the name you want."
+        mata: _dash_say("err", "      Write ./", st_local("_base"), " if that is really the name you want.")
         exit(198)
     }
     if !regexm(lower("`fpath'"), "\.`ext'$") {
-        display as error "dash: saving() path must end in .`ext' (got: `fpath')"
+        mata: _dash_say("err", "dash: saving() path must end in .`ext' (got: ", st_local("fpath"), ")")
         exit(198)
     }
     // Reject shell metacharacters to prevent command injection via shell open/start/xdg-open.
@@ -1532,7 +1534,7 @@ program define _dash_validate_value, rclass
                 local hastail = 1
             }
             if strtrim(`"`macval(head)'"') == "" {
-                display as error `"dash: by() must name at least one variable (got: `macval(value)')"'
+                mata: _dash_say("err", "dash: by() must name at least one variable (got: ", st_local("value"), ")")
                 exit 198
             }
         }
@@ -1562,14 +1564,14 @@ program define _dash_validate_value, rclass
                 }
             }
             if `ists' & `tsop' {
-                display as error `"`prefix': `opt'() must name a variable, not a time-series expression (got: `macval(value)')"'
+                mata: _dash_say("err", "`prefix': `opt'() must name a variable, not a time-series expression (got: ", st_local("value"), ")")
                 exit 198
             }
-            display as error `"`prefix': `opt'(): variable `macval(badvar)' not found"'
+            mata: _dash_say("err", "`prefix': `opt'(): variable ", st_local("badvar"), " not found")
             exit 111
         }
         if "`kind'" == "var" & `: word count `vv'' > 1 {
-            display as error `"`prefix': `opt'() must name one variable (got: `macval(value)')"'
+            mata: _dash_say("err", "`prefix': `opt'() must name one variable (got: ", st_local("value"), ")")
             exit 198
         }
         local norm `"`vv'"'
@@ -1642,13 +1644,17 @@ program define _dash_validate_value, rclass
             if !_rc local ok = 1
         }
         if !`ok' {
-            display as error `"`prefix': `opt'() must be a numeric display format such as %9.2f or %12.0fc (got: `macval(value)')"'
+            mata: _dash_say("err", "`prefix': `opt'() must be a numeric display format such as %9.2f or %12.0fc (got: ", st_local("value"), ")")
             exit 198
         }
     }
 
+    // Every refusal above and here echoes the value through _dash_say: the
+    // value is read from Mata, never expanded into the display line, and
+    // shown as written -- `jitter({bf:X})' printed a bold X (P20-02..06).
+    // prefix, opt, bad and extra are this program's own words.
     if `"`bad'"' != "" {
-        display as error `"`prefix': `opt'() must be `bad' (got: `macval(value)')`extra'"'
+        mata: _dash_say("err", "`prefix': `opt'() must be `bad' (got: ", st_local("value"), ")`extra'")
         exit 198
     }
     c_local _dash_vnorm `"`macval(norm)'"'
@@ -2166,12 +2172,17 @@ program define _dash_process_segment, rclass
     if "`nsegs'" == "" local nsegs 1
 
     // ---- extract plot type (first word) ----
+    // The token is read from Mata by value: expanded inside the quotes of
+    // the mata: line, a double quote in it ended the string.  A token that
+    // is no plot type is echoed through _dash_say, as written -- `dash
+    // {bf:X} mpg weight' printed a bold X (P20-01).
     gettoken plottype rest : seg_text
-    mata: _dash_expand_plottype(strlower("`plottype'"), "_pt_exp")
+    mata: _dash_expand_plottype(strlower(st_local("plottype")), "_pt_exp")
     local ptype "`_pt_exp'"
 
     if "`ptype'" == "" {
-        display as error "dash: unrecognised plot type '`plottype''. " _n ///
+        mata: _dash_say("err", "dash: unrecognised plot type '", st_local("plottype"), "'. ")
+        display as error ///
             "Supported: scatter line connected area bar spike " _n ///
             "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci " _n ///
             "histogram kdensity rarea rbar rspike rcap rline rconnected " _n ///
@@ -2417,7 +2428,10 @@ program define _dash_process_segment, rclass
         capture confirm name `macval(_seg_wexp)'
         if !_rc capture unab _wx : `macval(_seg_wexp)'
         if _rc | `: word count `_wx'' != 1 {
-            display as error `"dash: [`_seg_weight'=`macval(_seg_wexp)'] must name one variable; dash cannot evaluate a weight expression. Generate it first: generate double w = `macval(_seg_wexp)'"'
+            // The expression is echoed through _dash_say: read by value,
+            // shown as written (a brace or a quote in it is the user's text).
+            mata: _dash_say("err", "dash: [`_seg_weight'=", st_local("_seg_wexp"), "] must name one variable; dash cannot evaluate a weight expression.")
+            mata: _dash_say("err", "      Generate it first: generate double w = ", st_local("_seg_wexp"), "")
             exit 198
         }
         local _seg_wexp "`_wx'"
@@ -2558,8 +2572,7 @@ program define _dash_process_segment, rclass
             local yv `"`=word(`"`words_raw'"', `pi')'"'
             local xv `"`=word(`"`words_raw'"', `=`pi'+1')'"'
             if `"`xv'"' == "" {
-                display as error "dash: `ptype' needs coordinates in y x pairs;" ///
-                    " '`yv'' has no matching x value."
+                mata: _dash_say("err", "dash: `ptype' needs coordinates in y x pairs; '", st_local("yv"), "' has no matching x value.")
                 exit(198)
             }
             local pi = `pi' + 2
@@ -2759,7 +2772,8 @@ program define _dash_report_ignored
     }
     if `"`out'"' == "" exit
 
-    display as text "dash: ignoring unsupported option(s):" as result `"`out'"'
+    // The names are the user's text: shown as written, never as SMCL.
+    mata: _dash_say("txt", "dash: ignoring unsupported option(s):", st_local("out"), "")
 end
 
 // ================================================================
@@ -3190,15 +3204,22 @@ program define _dash_render_immediate
             local _sv = strtrim(regexs(1))
             local replace = "replace"
         }
+        // The .gph note is shown only once the path is validated, and
+        // through _dash_say: it was displayed first, inside plain quotes,
+        // so a double quote in the name ended the string and what followed
+        // ran as display directives, and a brace drew SMCL.
+        local _gph = 0
         if regexm(lower(`"`_sv'"'), "\.gph$") {
             local _sv = substr(`"`_sv'"', 1, strlen(`"`_sv'"') - 4)
-            display as text "dash: saving() writes HTML, not a Stata .gph;" ///
-                " using `_sv'.html"
+            local _gph = 1
         }
         if !regexm(lower(`"`_sv'"'), "\.html$") local _sv `"`_sv'.html"'
         local saving_path `"`_sv'"'
         _dash_validate_path `"`saving_path'"'
         local saving_path `"`_dash_vpath'"'   // `~/' expanded, if it was there
+        if `_gph' {
+            mata: _dash_say("txt", "dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
+        }
     }
     else {
         tempfile saving_path_tmp
@@ -3364,7 +3385,8 @@ program define _dash_render_immediate
         if "`c(os)'" == "Unix"    shell xdg-open "`saving_path'"
     }
     else {
-        display as text `"dash: dashboard saved to `saving_path'"'
+        // Shown as written: braces are legal in a file name (P20-07).
+        mata: _dash_say("txt", "dash: dashboard saved to ", st_local("saving_path"), "")
     }
 end
 
@@ -3747,15 +3769,40 @@ program define _dash_prepare_spec, rclass
     local registry = "${dash_graph_registry}"
 
     // ---- validate layout ----
-    if "`layout'" == "" local layout "auto"
-    if "`layout'" != "auto" {
+    local _llen : length local layout
+    if `_llen' == 0 local layout "auto"
+    if `"`layout'"' != "auto" {
         // Require strictly positive integers in "N M" grid layout.
         // ^[1-9][0-9]* rejects zero and leading-zero forms (e.g. "0 0", "0 2").
-        if !regexm("`layout'", "^[1-9][0-9]* [1-9][0-9]*$") & ///
-           !regexm("`layout'", "^[a-zA-Z_][a-zA-Z0-9_]*:[0-9]+,[0-9]+") & ///
-           !regexm(lower("`layout'"), "^bs") {
+        if !regexm(`"`layout'"', "^[1-9][0-9]* [1-9][0-9]*$") & ///
+           !regexm(`"`layout'"', "^[a-zA-Z_][a-zA-Z0-9_]*:[0-9]+,[0-9]+") & ///
+           !regexm(lower(`"`layout'"'), "^bs") {
             display as error "`cmdname': layout() must be 'auto', 'N M' grid (N and M >= 1), 'name:row,col' placement, or 'bs[: spec]' Bootstrap layout."
             exit(198)
+        }
+
+        // The grid's size.  The saved page pads its grid out to rows x
+        // cols cells before drawing it: measured 23sep2026, a 4000 x 4000
+        // grid of two graphs peaked at 1.5 GB, and layout(99999 99999) --
+        // ten billion cells -- could not finish.  No grid needs more cells
+        // than a dashboard can hold graphs and KPI cards, so its cells are
+        // held to the graphs limit.  _dash_layout_cells() is the
+        // renderer's rule (dash_render.py's _dash_layout_cells), read in
+        // Mata so the value is never expanded into an expression.
+        mata: st_local("_lcells", strofreal(_dash_layout_cells(st_local("layout")), "%21.0f"))
+        if "`_lcells'" != "." {
+            _dash_limit, name(graphs)
+            local _glim  = r(value)
+            local _gceil = r(ceiling)
+            if `_lcells' > `_glim' {
+                _dash_count_fmt _glim_s  `_glim'
+                _dash_count_fmt _gceil_s `_gceil'
+                if `_lcells' >= 1e15 local _lcells_s "more than 999,999,999,999,999"
+                else                 _dash_count_fmt _lcells_s `_lcells'
+                display as error "`cmdname': layout() asks for a grid of `_lcells_s' cells, more than the `_glim_s' graphs and KPI cards one dashboard draws."
+                display as error "      Use a smaller grid, or set global dash_max_graphs to a higher value (at most `_gceil_s')."
+                exit(198)
+            }
         }
     }
 
@@ -3798,7 +3845,8 @@ program define _dash_prepare_spec, rclass
         forvalues k = 1/`ntok_link' {
             local lname : word `k' of `link'
             if !`: list lname in registry' {
-                display as error "`cmdname': link() name '`lname'' not found in registry."
+                // Shown as written, never as SMCL (P20-09).
+                mata: _dash_say("err", "`cmdname': link() name '", st_local("lname"), "' not found in registry.")
                 exit(198)
             }
         }
@@ -3811,10 +3859,18 @@ program define _dash_prepare_spec, rclass
     // string at the first quote.  Measured: filter(weight, type(range)
     // label("Curb weight")) died here with `type mismatch' r(109), which
     // names neither the option nor the cause.
+    //
+    // In any case: the renderer reads the sub-option's name in any case
+    // (dash_render.py's _dash_subopt_name lower-cases it), and this search
+    // was for "exclude(" alone, so EXCLUDE(nosuch) skipped the check, built
+    // with rc 0 and excluded nothing -- the typo the check exists to catch,
+    // in silence (P20-24).  lower() changes A-Z only, byte for byte, so a
+    // position found in the lower-cased text is the same position in the
+    // original.
     local _flen0 : length local filter
     if `_flen0' > 0 {
         local _excl_rem `"`filter'"'
-        local _excl_pos = strpos(`"`_excl_rem'"', "exclude(")
+        local _excl_pos = strpos(lower(`"`_excl_rem'"'), "exclude(")
         while `_excl_pos' > 0 {
             local _excl_inner = substr(`"`_excl_rem'"', `_excl_pos' + 8, .)
             local _excl_end   = strpos(`"`_excl_inner'"', ")")
@@ -3824,7 +3880,8 @@ program define _dash_prepare_spec, rclass
                 forvalues ke = 1/`n_excl' {
                     local ename : word `ke' of `_excl_names'
                     if !`: list ename in registry' {
-                        display as error "`cmdname': filter exclude() name '`ename'' not found in registry."
+                        // Shown as written, never as SMCL (P20-10).
+                        mata: _dash_say("err", "`cmdname': filter exclude() name '", st_local("ename"), "' not found in registry.")
                         exit(198)
                     }
                 }
@@ -3835,7 +3892,7 @@ program define _dash_prepare_spec, rclass
                 // Malformed exclude() — no closing paren; stop scanning
                 continue, break
             }
-            local _excl_pos = strpos(`"`_excl_rem'"', "exclude(")
+            local _excl_pos = strpos(lower(`"`_excl_rem'"'), "exclude(")
         }
     }
 
@@ -4099,10 +4156,18 @@ program define _dash_prepare_spec, rclass
     // JSONDecodeError traceback, with no message from dash; theme("a\b")
     // gave rc 0 and silently delivered a BACKSPACE, because \b happens to
     // be a valid JSON escape.  The same values in scheme() were all fine.
-    // link(), layout() and filterposition() are validated before this line
-    // and reject such a value with r(198); tabs() is escaped already.
     _dash_json_str `"`theme'"'             _theme_esc
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`layout'","link":"`link'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`filterposition'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'}}"'
+    // layout() went in raw too, on the belief that its check had refused
+    // any such value.  The check reads only the START of the value (bs...,
+    // or name:r,c...), so layout("bs\") passed it and its backslash escaped
+    // the closing quote of the JSON string: measured 23sep2026, r(7102) and
+    // a JSONDecodeError traceback (P20-17).  link() and filterposition()
+    // are proven to be registry names and top or left before this line,
+    // and are escaped all the same, so no value on it goes in raw.
+    _dash_json_str `"`layout'"'            _layout_esc
+    _dash_json_str `"`link'"'              _link_esc
+    _dash_json_str `"`filterposition'"'    _fpos_esc
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'}}"'
 
     tempname fh
     // quietly: see the note at the other spec writer -- `write replace'
@@ -4185,7 +4250,8 @@ program define _dash_build
     if "`replace'" == "" {
         capture confirm new file "`saving'"
         if _rc != 0 {
-            display as error "dash build: file '`saving'' already exists. Use replace option to overwrite."
+            // The path is shown as written (P20-08), here and below.
+            mata: _dash_say("err", "dash build: file '", st_local("saving"), "' already exists. Use replace option to overwrite.")
             exit(198)
         }
     }
@@ -4246,19 +4312,19 @@ program define _dash_build
         output("`saving'") renderpy("`render_py'") mode("`render_mode'")
 
     if "`server'" != "" {
-        display as text `"dash build: server app written to `saving'"'
+        mata: _dash_say("txt", "dash build: server app written to ", st_local("saving"), "")
         // Point at the app's OWN launcher, not `bokeh serve'.  Both work for
         // the dashboard now, but `bokeh serve' owns its Tornado application
         // and gives an app script no supported way to register a route, so
         // the /health endpoint project rule 17 asks for exists only when the
         // app serves itself.  Running it directly also honours --port and
         // the websocket origins, and opens no browser unless asked.
-        display as text `"  To launch: python "`saving'""'
+        mata: _dash_say("txt", "  To launch: python " + char(34), st_local("saving"), char(34))
         display as text `"  Options:   --port N  --show  --timeout MINUTES  (--help lists them all)"'
         display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N"'
     }
     else {
-        display as text `"dash: dashboard saved to `saving'"'
+        mata: _dash_say("txt", "dash: dashboard saved to ", st_local("saving"), "")
         // nobrowser, or the global the certification runner sets once.
         // There was no way to suppress this at all: a suite that builds
         // twenty dashboards opened twenty browser tabs, and so did any
@@ -4317,22 +4383,41 @@ program define _dash_serve_spec, rclass
         *                   ///
     ]
 
-    if "`port'"    == "" local port    "5006"
-    if "`timeout'" == "" local timeout "0"
+    // port() and timeout() go into the one-line python: statement that
+    // launches the server, so each must be digits and nothing else.  They
+    // are tested byte by byte (_dash_is_digits) and never by a regular
+    // expression: StataNow's regexm() matches "^[0-9]+$" against "7" +
+    // char(10), so timeout(7<LF>) was accepted and handed a newline to that
+    // statement (P20-14).  timeout() is at most nine digits: a 400-digit
+    // timeout() was accepted, and the launcher, multiplying it by 60 into a
+    // float, died with OverflowError after binding its port (P20-19).  A
+    // port of more than nine digits is out of range without being read.
+    // Values are tested by length, never expanded into an expression, and
+    // a refused one is echoed through _dash_say, as written.
+    local _plen : length local port
+    if `_plen' == 0 local port "5006"
+    local _tlen : length local timeout
+    if `_tlen' == 0 local timeout "0"
 
-    if !regexm("`port'", "^[0-9]+$") {
-        display as error "dash serve: port() must be a positive integer (got: `port')"
+    mata: st_local("_pdig", strofreal(_dash_is_digits(st_local("port"), .)))
+    if !`_pdig' {
+        mata: _dash_say("err", "dash serve: port() must be a positive integer (got: ", st_local("port"), ")")
         exit(198)
     }
-    local port_int = real("`port'")
+    local _plen : length local port
+    local port_int = .
+    if `_plen' <= 9 local port_int = real("`port'")
     if `port_int' < 1024 | `port_int' > 65535 {
-        display as error "dash serve: port() must be between 1024 and 65535 (got: `port')"
+        mata: _dash_say("err", "dash serve: port() must be between 1024 and 65535 (got: ", st_local("port"), ")")
         exit(198)
     }
-    if !regexm("`timeout'", "^[0-9]+$") {
-        display as error "dash serve: timeout() must be a non-negative integer in minutes (got: `timeout')"
+    mata: st_local("_tdig", strofreal(_dash_is_digits(st_local("timeout"), 9)))
+    if !`_tdig' {
+        mata: _dash_say("err", "dash serve: timeout() must be a non-negative integer in minutes, at most nine digits (got: ", st_local("timeout"), ")")
         exit(198)
     }
+    // Written as a plain integer: 007 goes to the launcher as 7.
+    local timeout = strofreal(real("`timeout'"), "%12.0f")
 
     if `"`specpath'"' == "" | `"`datapath'"' == "" {
         display as error "dash serve: internal error — specpath() and datapath() are required."

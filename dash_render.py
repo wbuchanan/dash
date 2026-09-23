@@ -36,9 +36,14 @@ Security notes
   embedded in Div widgets, titles, or CustomJS templates.
 * CustomJS templates use parameterised construction — user values are never
   directly interpolated into JavaScript code paths.
-* Output HTML includes a Content-Security-Policy meta tag restricting scripts
-  to inline only, preventing loading of external scripts if the file is later
-  served from a web server.
+* Both dashboard pages carry a Content-Security-Policy <meta>, ahead of every
+  script and style in the page.  A saved dashboard may run only the scripts
+  and styles written into it and load nothing from anywhere
+  (_DASH_CSP_STANDALONE); a served one may also load from, and connect to,
+  its own server (_DASH_CSP_SERVED).  The generated app's `python app.py`
+  launcher also sends the policy as a header on every response, with
+  frame-ancestors 'none', nosniff, DENY and no-referrer
+  (_DASH_SECURITY_HEADERS).
 
 Dependencies
 ------------
@@ -432,7 +437,17 @@ def _parse_stata_numeric_fmt(fmt: "str | None") -> "tuple | None":
     m = re.fullmatch(r"%(-)?(\d+)\.(\d+)(f|e)(c)?", fmt.strip())
     if not m:
         return None
-    return int(m.group(2)), int(m.group(3)), m.group(4), bool(m.group(5))
+    # Only a format Stata itself accepts: a width of at most 2,045 and fewer
+    # decimals than the width (measured with `confirm numeric format':
+    # %2045.2044f passes, %2046.2f and %9.30f do not).  Reproducing any
+    # %w.df let `format(%9.999999999f)' build a pattern of a billion zeros
+    # (WP-20).  The digit strings are measured before int() reads them.
+    if len(m.group(2)) > 4 or len(m.group(3)) > 4:
+        return None
+    width, dec = int(m.group(2)), int(m.group(3))
+    if not 1 <= width <= 2045 or dec >= width:
+        return None
+    return width, dec, m.group(4), bool(m.group(5))
 
 
 def _stata_numeric_pattern(fmt: "str | None") -> "str | None":
@@ -650,14 +665,16 @@ def _dash_limits(build_options):
             ok = True
         elif isinstance(val, float) and val.is_integer():
             val, ok = int(val), True
-        elif isinstance(val, str) and val.strip().isdigit() \
-                and len(val.strip()) <= 9:
-            val, ok = int(val.strip()), True
+        elif isinstance(val, str) and re.fullmatch(r"[0-9]{1,9}", val):
+            # ASCII digits only, as dash.ado takes them: str.isdigit()
+            # passes a superscript two, which int() then refuses, and an
+            # Arabic-Indic three, which int() reads as 3 (WP-20).
+            val, ok = int(val), True
         if ok and 1 <= val <= ceiling:
             out[key] = val
         else:
             _dash_warn_once(
-                ("limit", key),
+                ("limit", key, repr(val)[:40]),
                 f"dash: {glob} must be a whole number from 1 to "
                 f"{ceiling:,}; {_dash_display(str(val))!r} is not, so "
                 f"{default:,} is used.", stacklevel=3)
@@ -688,6 +705,62 @@ def _dash_refuse_oversized(rows, cols, limits, mode):
         f"dash embeds. Reduce the data in memory first (keep, drop, sample "
         f"or collapse, inside preserve/restore), or "
         f"{_dash_limit_hint('cells', 'a higher value')}.")
+
+
+#: The blanks a layout() may carry: the six ASCII ones.  str.strip(),
+#: str.split() and an un-flagged \s also take the ideographic and no-break
+#: spaces, which Stata's layout() grammar and dash.ado's Mata count do not.
+_DASH_ASCII_BLANKS = " \t\n\r\f\v"
+
+
+def _dash_grid_dims(layout):
+    """``(rows, cols)`` of a ``layout(rows cols)`` grid, each at least 1, or
+    None when the layout is not that form.
+
+    ASCII digits only, nine at most, and ASCII blanks.  The grid readers used
+    ``int()`` on ``str.split()``: it reads ``1_000``, ``+5`` and full-width
+    digits and splits at an ideographic space, while the cell count that
+    bounds the grid (``_dash_layout_cells``) read none of those, so such a
+    grid went unmeasured and was built at full size -- layout(1_000 1_000)
+    was a 1,000 x 1,000 grid in both modes.  One reading for all three now.
+    """
+    m = re.fullmatch(r"(\d{1,9})\s+(\d{1,9})",
+                     str(layout or "").strip(_DASH_ASCII_BLANKS), re.ASCII)
+    if not m:
+        return None
+    return max(1, int(m.group(1))), max(1, int(m.group(2)))
+
+
+def _dash_layout_cells(layout):
+    """How many cells an explicit ``layout()`` grid asks for, or None.
+
+    ``layout(rows cols)`` asks for rows x cols (each at least 1, as the grid
+    is built); ``layout(name:row,col ...)`` for the rectangle its placements
+    span, read 1-based unless an index is 0 (``_dash_placement_map``'s rule).
+    An index too long to be read is taken as larger than any limit.  Every
+    other layout (auto, bs, bs: ...) is None: it has no size of its own.
+    ASCII digits and blanks only, as ``_dash_grid_dims`` and
+    ``_dash_placement_map`` read them; dash.ado's Mata _dash_layout_cells()
+    is the same rule, and test_echo_text.cscript checks the two agree.
+    """
+    text = str(layout or "").strip(_DASH_ASCII_BLANKS)
+    huge = 10 ** 18
+    m = re.fullmatch(r"(\d+)\s+(\d+)", text, re.ASCII)
+    if m:
+        if len(m.group(1)) > 9 or len(m.group(2)) > 9:
+            return huge
+        return max(1, int(m.group(1))) * max(1, int(m.group(2)))
+    pairs = re.findall(r"([A-Za-z_]\w*)\s*:\s*(\d+)\s*,\s*(\d+)", text,
+                       re.ASCII)
+    if not pairs or re.sub(r"[A-Za-z_]\w*\s*:\s*\d+\s*,\s*\d+", "",
+                           text, flags=re.ASCII).strip(_DASH_ASCII_BLANKS):
+        return None
+    if any(len(x) > 9 for _n, r, c in pairs for x in (r, c)):
+        return huge
+    cells = [(int(r), int(c)) for _n, r, c in pairs]
+    if all(r > 0 and c > 0 for r, c in cells):
+        cells = [(r - 1, c - 1) for r, c in cells]
+    return (max(r for r, _c in cells) + 1) * (max(c for _r, c in cells) + 1)
 
 
 def _dash_cap_spec(spec, limits):
@@ -737,6 +810,23 @@ def _dash_cap_spec(spec, limits):
         capped.append(g)
     out["graphs"] = capped
     out["kpis"] = kpis
+
+    # The layout grid.  The saved page pads its grid to rows x cols cells,
+    # and the served template does the same on every session: layout(4000
+    # 4000) of two graphs peaked at 1.5 GB, and layout(99999 99999) never
+    # finished (measured 23sep2026, WP-20).  No grid needs more cells than a
+    # dashboard holds items, so a larger one is drawn as layout(auto).
+    _layout = bo.get("layout", "")
+    _cells = _dash_layout_cells(_layout)
+    if _cells is not None and _cells > limits["graphs"]:
+        _shown = (f"{_cells:,}" if _cells < 10 ** 18 else "too many")
+        warnings.warn(
+            f"dash: layout({_dash_display(str(_layout))}) asks for a grid of "
+            f"{_shown} cells, more than the {limits['graphs']:,} graphs and "
+            f"KPI cards a dashboard holds; it is drawn as layout(auto). "
+            f"{_dash_limit_hint('graphs', 'allow a larger grid', start=True)}.",
+            UserWarning, stacklevel=2)
+        out["build_options"] = dict(bo, layout="auto")
     return out
 
 
@@ -932,18 +1022,183 @@ def _clock_slider_step_ms(vmin: float, vmax: float) -> int:
     """
     return max(1, int(round(max(0.0, float(vmax) - float(vmin)) / 100.0)))
 
-# CSP meta tag injected into every output HTML file.
-# 'unsafe-eval' is required because Bokeh's CustomJS compiles callback
-# code via `new Function(...)` at runtime.  Without it the browser raises
-# an EvalError and no filter or interactive callback fires.
+# ---------------------------------------------------------------------------
+# Content-Security-Policy, and the served app's security headers (WP-20)
+# ---------------------------------------------------------------------------
+# ONE constant per policy: adjust it here and every page that carries it
+# follows.  The saved page's <meta> is _CSP_META below, the served page's
+# comes from _dash_served_template, and the `python app.py` launcher's
+# headers from _dash_server_transforms.  The generated app receives
+# _DASH_CSP_SERVED and _DASH_SECURITY_HEADERS through ServerAppBuilder's
+# constant copy list and those three helpers through its helper list; a
+# name left out of either is a NameError in the served app.
+#
+# The saved page.  Everything in it is inline -- file_html(..., INLINE)
+# writes BokehJS into <script> elements and its CSS into <style> elements --
+# so script-src and style-src need 'unsafe-inline', and nothing may load
+# from anywhere: default-src 'none', connect-src 'none'.  'unsafe-eval'
+# because Bokeh's CustomJS compiles each callback with `new Function(...)`;
+# without it the browser raises an EvalError and no filter or interactive
+# callback fires.  img-src data: blob: for the toolbar's icons and the save
+# tool's image, font-src data: for an inline font.  Checked in Chromium on
+# a dashboard with a dropdown and a range filter, a KPI, hover tooltips, an
+# lfit and a histogram: no violation, the dropdown's CustomJS ran and hover
+# worked.
+_DASH_CSP_STANDALONE = (
+    "default-src 'none'; "
+    "script-src 'unsafe-inline' 'unsafe-eval'; "
+    "style-src 'unsafe-inline'; "
+    "img-src data: blob:; "
+    "font-src data:; "
+    "connect-src 'none'; "
+    "object-src 'none'; "
+    "base-uri 'none'; "
+    "form-action 'none'"
+)
+
+# The served page: the same, plus 'self', because it loads BokehJS from its
+# own server's /static and opens its websocket back to that server.  Checked
+# in Chromium on a Bokeh 3.9 server under this policy: no violation, the
+# websocket opened under connect-src 'self', a server callback round-tripped
+# and a CustomJS callback ran.
+_DASH_CSP_SERVED = (
+    "default-src 'none'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "font-src 'self' data:; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'none'; "
+    "form-action 'none'"
+)
+
+# What the `python app.py` launcher adds to every response.  frame-ancestors
+# is here and in no <meta>: the CSP specification ignores it in a <meta>.
+# A tuple of pairs, so that nothing can change it in place.
+_DASH_SECURITY_HEADERS = (
+    ("Content-Security-Policy", _DASH_CSP_SERVED + "; frame-ancestors 'none'"),
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    ("Referrer-Policy", "no-referrer"),
+)
+
+
+def _dash_csp_meta(policy: str) -> str:
+    """The <meta> element that makes ``policy`` a page's CSP.
+
+    The one writer of that element, for the saved page and the served one.
+    The policy is spliced into an HTML attribute -- and on the served page
+    into a Jinja template's source as well -- so it is held to the
+    characters such a policy is written in: ASCII letters and digits, the
+    space, and ``' * + - . / : ; = _``.  Anything else is refused rather
+    than escaped: a quote, an angle bracket, an ampersand or a brace could
+    end the attribute or open markup or a Jinja tag, and a comma, which
+    separates policies in a header, has no place in one.
+
+    Args:
+        policy: A serialized policy, its directives separated by ``;``.
+
+    Returns:
+        ``<meta http-equiv="Content-Security-Policy" content="...">``.
+
+    Raises:
+        TypeError: if ``policy`` is not a string.
+        ValueError: if it is blank or holds any other character.
+    """
+    if not isinstance(policy, str):
+        raise TypeError("dash: a Content-Security-Policy must be a string, "
+                        "not %s" % (type(policy).__name__,))
+    if not policy.strip() or not re.fullmatch(r"[A-Za-z0-9 '*+\-./:;=_]+",
+                                              policy):
+        raise ValueError(
+            "dash: refusing Content-Security-Policy text %r: a policy is "
+            "written in ASCII letters, digits, spaces and ' * + - . / : ; = _"
+            % (policy[:80],))
+    return '<meta http-equiv="Content-Security-Policy" content="%s">' % policy
+
+
+def _dash_served_template():
+    """The served page's template: Bokeh's own page, plus the CSP <meta>.
+
+    ``{% extends base %}`` over ``bokeh.core.templates.FILE`` -- the page
+    Bokeh writes anyway -- with the policy added to its ``preamble`` block,
+    which sits in the page's head after its title and ahead of every style
+    element and script Bokeh writes, so the policy governs all of them.
+    (No literal tag names here: this text is copied into the generated app,
+    whose source is checked for a raw script tag.)  Nothing else of the
+    page is replaced, and ``{{ super() }}`` keeps whatever a later Bokeh
+    puts in that block.  ``base`` is bound in the template's own globals, so
+    the template does not depend on Bokeh passing it (Bokeh 3.9 passes it).
+
+    A <meta> rather than a header because it is the one form that also
+    holds under ``bokeh serve app.py``: make_document sets this template
+    on every document it builds, and Bokeh renders the page with it.
+
+    Returns:
+        A ``jinja2.Template``.
+    """
+    from bokeh.core.templates import FILE
+    return FILE.environment.from_string(
+        "{% extends base %}\n"
+        "{% block preamble %}{{ super() }}    "
+        + _dash_csp_meta(_DASH_CSP_SERVED)
+        + "\n{% endblock %}",
+        globals={"base": FILE})
+
+
+def _dash_server_transforms(settings: "dict | None" = None) -> list:
+    """Output transforms for the Server the ``python app.py`` launcher
+    builds: Tornado's own, then one that sets ``_DASH_SECURITY_HEADERS``.
+
+    ``Server`` hands ``transforms=`` through ``BokehTornado`` to
+    ``tornado.web.Application``, which then adds none of its own.  Left
+    alone, it adds ``GZipContentEncoding`` when ``compress_response`` (or
+    ``gzip``) is set and nothing otherwise; the same rule is applied here,
+    to the same settings, so passing the list loses nothing.
+
+    The added transform runs on every response the application's handlers
+    write -- the page, /static, /health, an error page -- and sets each
+    header to dash's value, replacing any value a handler set.  Tornado is
+    imported here, not at the top of the module, so that importing
+    dash_render does not import it.
+
+    Args:
+        settings: The keyword arguments the Server is given; Tornado reads
+            ``compress_response`` and ``gzip`` from them.
+
+    Returns:
+        A list of ``tornado.web.OutputTransform`` subclasses.
+    """
+    from tornado.web import GZipContentEncoding, OutputTransform
+
+    class _DashSecurityHeaders(OutputTransform):
+        """Sets every header in _DASH_SECURITY_HEADERS on a response."""
+
+        def transform_first_chunk(self, status_code, headers, chunk,
+                                  finishing):
+            for _name, _value in _DASH_SECURITY_HEADERS:
+                headers[_name] = _value
+            return status_code, headers, chunk
+
+    settings = settings or {}
+    out = []
+    if settings.get("compress_response") or settings.get("gzip"):
+        out.append(GZipContentEncoding)
+    out.append(_DashSecurityHeaders)
+    return out
+
+
+# The saved page's <meta>, written into both standalone pages: the layout(bs)
+# page and the default one each put it first in <head>, because a <meta>
+# policy governs only what the page parses after it.
 _CSP_META = (
-    '<meta http-equiv="Content-Security-Policy" '
-    "content=\"script-src 'unsafe-inline' 'unsafe-eval';\">"
+    _dash_csp_meta(_DASH_CSP_STANDALONE)
     # Without this a mobile browser lays the page out at its 980px default
     # and zooms the whole thing out to fit, so every breakpoint below 980px
     # is unreachable on a phone and the text is unreadable.  Found by opening
     # a dashboard at 375px: window.innerWidth reported 980.
-    '\n<meta name="viewport" content="width=device-width, initial-scale=1">'
+    + '\n<meta name="viewport" content="width=device-width, initial-scale=1">'
 )
 
 # Bootstrap-compatible 12-column responsive grid CSS (db- prefix avoids
@@ -1846,6 +2101,14 @@ class OptionTranslator:
 # SchemeParser — parse Stata .scheme files for Bokeh-mappable properties
 # ===========================================================================
 
+
+#: How many files deep a .scheme ``#include`` chain is read.  None of the
+#: twenty shipped schemes includes another; a custom one that includes a
+#: shipped one is two deep.  The bound is what stops a chain of hand-written
+#: files from exhausting the stack (SchemeParser._parse_file, WP-20).
+_MAX_SCHEME_INCLUDE_DEPTH = 32
+
+
 class SchemeParser:
     """Parses a Stata .scheme file and extracts properties relevant to Bokeh.
 
@@ -2330,11 +2593,16 @@ class SchemeParser:
     # File parsing
     # ------------------------------------------------------------------
 
-    def _parse_file(self, path: str, _visited: set[str]) -> dict[str, str]:
+    def _parse_file(self, path: str, _visited: set[str],
+                    _depth: int = 0) -> dict[str, str]:
         """Parse one .scheme file and return a flat key→value dict.
 
         Handles ``#include`` by recursively loading the parent first;
-        child properties override parent properties.
+        child properties override parent properties.  At most
+        ``_MAX_SCHEME_INCLUDE_DEPTH`` files deep: a chain of 1,500 distinct
+        files raised RecursionError out of here, which resolve_or_fallback
+        does not catch, so the render died with a traceback (measured
+        23sep2026, WP-20).
         """
         real = os.path.realpath(path)
         if real in _visited:
@@ -2358,9 +2626,18 @@ class SchemeParser:
                 parts = line.split(None, 1)
                 if len(parts) == 2:
                     parent_name = parts[1].strip()
+                    if _depth + 1 >= _MAX_SCHEME_INCLUDE_DEPTH:
+                        warnings.warn(
+                            f"dash scheme: '#include {parent_name}' in "
+                            f"'{os.path.basename(path)}' is nested more than "
+                            f"{_MAX_SCHEME_INCLUDE_DEPTH} files deep; it and "
+                            f"the files it includes are not read.",
+                            UserWarning, stacklevel=2)
+                        continue
                     try:
                         parent_path = self._resolve_path(parent_name)
-                        parent_props = self._parse_file(parent_path, _visited)
+                        parent_props = self._parse_file(
+                            parent_path, _visited, _depth + 1)
                         # Parent provides base; will be overridden by child
                         for k, v in parent_props.items():
                             if k not in props:
@@ -4192,8 +4469,10 @@ class GlyphMapper:
             # legend.  Inspecting the items instead does not survive the
             # rewrite it has to survive, and gets the mixed case (a colorvar
             # plot and a plain plot in one figure) wrong.
+            # Raw: a Legend title is a DOM text node in BokehJS, and the
+            # factor labels above are too, so escaping only showed entities.
             fig.add_layout(
-                Legend(items=legend_items, title=html.escape(var_display),
+                Legend(items=legend_items, title=var_display,
                        name=_COLORVAR_LEGEND_NAME),
                 "right",
             )
@@ -4219,10 +4498,12 @@ class GlyphMapper:
                 pass
 
             try:
+                # Raw: a ColorBar draws its title on the canvas, so escaping
+                # it only showed the entities.
                 fig.add_layout(
                     ColorBar(color_mapper=mapper, label_standoff=8,
                              width=12, location=(0, 0),
-                             title=html.escape(var_display)),
+                             title=var_display),
                     "right",
                 )
             except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
@@ -8083,7 +8364,23 @@ class GlyphMapper:
             if isinstance(node, _ast.Expression):
                 _validate_expr_node(node.body)
             elif isinstance(node, _ast.Constant):
-                pass  # numeric literals are always safe
+                # Only REAL numeric literals.  The docstring promises "numeric
+                # literals are always safe", and _floats_only -- the coercion
+                # that turns 9^9^9^9 into inf instead of an exact bignum -- acts
+                # on int and float alone.  So anything else here reaches eval():
+                # a str/bytes constant is a resource vector (`'%50000000d' % 1`
+                # allocates 50 MB, `'a'*n` a long string), and a power tower of
+                # bool constants -- `(True+True)**(True+True+True)**...` -- is
+                # computed EXACTLY, because _floats_only deliberately skips bool,
+                # holding the GIL past 15 s (measured) the same way the int tower
+                # used to.  Reject bool, str, bytes, complex, None and Ellipsis;
+                # accept int and float, which _floats_only then makes float.
+                if isinstance(node.value, bool) or not isinstance(
+                        node.value, (int, float)):
+                    raise ValueError(
+                        "Only real numeric literals are allowed in function "
+                        f"expressions, not {type(node.value).__name__}."
+                    )
             elif isinstance(node, _ast.Name):
                 if node.id not in _SAFE_NAMES:
                     raise ValueError(
@@ -9384,6 +9681,14 @@ def _stata_if_to_pandas(expr: str) -> str:
     return _unmask_string_literals(out, _literals)
 
 
+#: The deepest ``if`` expression tree the whitelist passes on to pandas.
+#: pandas' evaluator recurses once or twice per level and raised
+#: RecursionError at about 490 levels (measured 23sep2026); Stata's own
+#: ``inlist()`` takes at most 255 values, which become a chain about that
+#: deep, so 300 admits every qualifier Stata can write.
+_IF_EXPR_MAX_DEPTH = 300
+
+
 def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
     """Return True only if *expr* is a safe comparison/boolean expression.
 
@@ -9408,17 +9713,27 @@ def _validate_if_expr(expr: str, columns: "Iterable[str]") -> bool:
     # allow access to local Python objects via pandas query engine.
     if "@" in expr:
         return False
+    # A pathological expression is refused here rather than raised out of
+    # here: `!' repeated 600 times, or 50,000 `~', made the parser or pandas'
+    # evaluator raise RecursionError or MemoryError, which nothing caught --
+    # r(7102) and a traceback in both modes (measured 23sep2026, WP-20).
     try:
         tree = _ast.parse(expr, mode="eval")
-    except SyntaxError:
+    except (SyntaxError, RecursionError, MemoryError, ValueError):
         return False
     col_set = frozenset(str(c) for c in columns)
-    for node in _ast.walk(tree):
+    stack = [(tree, 0)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > _IF_EXPR_MAX_DEPTH:
+            return False
         if type(node) not in _IF_EXPR_ALLOWED_NODES:
             return False
         if isinstance(node, _ast.Name):
             if node.id not in col_set and node.id not in _IF_EXPR_SAFE_NAMES:
                 return False
+        stack.extend((child, depth + 1)
+                     for child in _ast.iter_child_nodes(node))
     return True
 
 
@@ -10767,7 +11082,11 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
         int_str = (str(int(val)) if isinstance(val, float) and val == int(val)
                    else str_val)
         label = vlabels.get(str_val) or vlabels.get(int_str) or str_val
-        parts.append(html.escape(label))
+        # Raw: a facet label titles a panel (fig.title.text), which Bokeh
+        # draws on the canvas, and it also feeds a per-facet KPI card that
+        # html-escapes it again -- so escaping here showed the entities on
+        # the panel and double-escaped the card.
+        parts.append(label)
     return " / ".join(parts)
 
 
@@ -11006,13 +11325,16 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                 if rows > 0:
                     legend.nrows = rows
 
-    # 5. label(N "text") overrides.  Escaped: this text is the user's and
-    #    the rule is pinned by test_legend_label_xss_escaped.
+    # 5. label(N "text") overrides.  Raw: a LegendItem label is a DOM text
+    #    node in BokehJS (legend.js: `div({class: label}, `${label}`)'), so
+    #    escaping it here only showed the entities (`R&amp;D').  The security
+    #    of the whole legend rests on that text rendering, pinned in
+    #    test_label_sinks.py.
     if legend is not None:
         for lm in re.finditer(r'label\(\s*(\d+)\s+"([^"]*)"\s*\)', legend_opt):
             idx = int(lm.group(1)) - 1
             if 0 <= idx < len(legend.items):
-                legend.items[idx].label = {"value": html.escape(lm.group(2))}
+                legend.items[idx].label = {"value": lm.group(2)}
 
     # 6. cols()/rows() on every legend.  Stata treats the two as
     #    alternatives, so the one the user did not give goes back to
@@ -11151,6 +11473,13 @@ def _dash_parse_axis_label_opt(raw):
     return sorted(ticks), labels
 
 
+#: The most ticks one axis label option may ask for.  The ``a(b)c`` form
+#: expanded every tick into a list: 10**7 ticks took 0.8 s and 1 GB, and
+#: ``xlabel(0(0.000001)1000000)`` -- 10**12 -- never finished (measured
+#: 23sep2026, WP-20).  Two thousand labels on one axis is past legible.
+_MAX_AXIS_TICKS = 2000
+
+
 def _dash_parse_axis_spec(raw):
     """Parse Stata's full ``axis_label`` grammar.
 
@@ -11221,25 +11550,46 @@ def _dash_parse_axis_spec(raw):
     m = re.fullmatch(r"#\s*(\d+)", head)
     if m:
         out["mode"] = "count"
-        out["count"] = max(1, int(m.group(1)))
+        # Clamped, and never int() of a string too long for it (Python
+        # refuses more than 4,300 digits).
+        _digits = m.group(1)
+        _n = int(_digits) if len(_digits) <= 9 else _MAX_AXIS_TICKS
+        out["count"] = max(1, min(_n, _MAX_AXIS_TICKS))
         return out
 
     # a(b)c increment form, possibly repeated and mixed with bare values.
+    # The ticks are counted before any is made, so an increment that asks
+    # for millions costs nothing: past _MAX_AXIS_TICKS in all, the axis
+    # keeps its default ticks and says so.
     ticks = []
     rest = head
+    _too_many = False
     for m in re.finditer(
             r"(-?[\d.eE+]+)\s*\(\s*(-?[\d.eE+]+)\s*\)\s*(-?[\d.eE+]+)",
             head):
+        rest = rest.replace(m.group(0), " ")
         try:
             a, b, c = (float(m.group(1)), float(m.group(2)),
                        float(m.group(3)))
         except ValueError:
             continue
-        if b == 0:
+        if b == 0 or not all(math.isfinite(v) for v in (a, b, c)):
             continue
-        n_steps = int(math.floor((c - a) / b + 1e-9))
+        _span = (c - a) / b + 1e-9
+        if not math.isfinite(_span):
+            continue
+        if _span + 1 + len(ticks) > _MAX_AXIS_TICKS:
+            _too_many = True
+            break
+        n_steps = int(math.floor(_span))
         ticks.extend(a + b * i for i in range(max(0, n_steps) + 1))
-        rest = rest.replace(m.group(0), " ")
+    if _too_many:
+        warnings.warn(
+            f"dash: an axis label option asks for more than "
+            f"{_MAX_AXIS_TICKS:,} ticks ({_dash_display(head)}); the axis "
+            f"keeps its default ticks.",
+            UserWarning, stacklevel=2)
+        return out
 
     bare_ticks, labels = _dash_parse_axis_label_opt(rest)
     ticks.extend(bare_ticks)
@@ -11307,10 +11657,16 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
     elif mode == "explicit" and spec["ticks"]:
         axis_obj.ticker = FixedTicker(ticks=spec["ticks"])
         if spec["labels"]:
-            safe = {str(k): html.escape(str(v))
-                    for k, v in spec["labels"].items()}
+            # Raw, and carried in args -- not html.escape'd into the JS
+            # `code'.  A tick label is drawn on the canvas, so escaping it
+            # showed the entities (`R&amp;D'); and the label is user text,
+            # which belongs in args as data the code parses, never in the
+            # source.  The overrides carry the same raw text and BokehJS
+            # lets them win on any tick they match.
+            _labels = {str(k): str(v) for k, v in spec["labels"].items()}
             axis_obj.formatter = CustomJSTickFormatter(
-                code=f"const m = {json.dumps(safe)}; "
+                args={"labels": json.dumps(_labels)},
+                code="const m = JSON.parse(labels); "
                      "return m[String(tick)] || String(tick);")
             axis_obj.major_label_overrides = {
                 float(k): v for k, v in spec["labels"].items()}
@@ -11409,10 +11765,13 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame):
             if ticks:
                 ax.ticker = FixedTicker(ticks=ticks)
                 if labels:
-                    safe = {str(k): html.escape(str(v))
-                            for k, v in labels.items()}
+                    # Raw, in args, as the primary axis does above: a tick
+                    # label is canvas text (escaping shows the entities) and
+                    # user text belongs in args, not the JS `code'.
+                    _labels2 = {str(k): str(v) for k, v in labels.items()}
                     ax.formatter = CustomJSTickFormatter(
-                        code=f"const m = {json.dumps(safe)}; "
+                        args={"labels": json.dumps(_labels2)},
+                        code="const m = JSON.parse(labels); "
                              "return m[String(tick)] || String(tick);")
             ang = _parse_axis_angle(raw)
             if ang is not None:
@@ -11467,10 +11826,60 @@ def _dash_option_sort_key(rv):
         return (1, rv)
 
 
+#: A zero-width U+2060 WORD JOINER, dropped between the two characters of a
+#: MathJax delimiter to break the pair without changing how the text looks.
+_DASH_WORD_JOINER = "\u2060"
+
+
+def _dash_inert_tex(text):
+    """Return *text* with every MathJax delimiter pair broken.
+
+    A widget title BokehJS treats as TeX is rendered with ``innerHTML``, not
+    ``textContent`` -- ``AbstractSliderView._update_title`` in BokehJS 3.9.0
+    does ``this.title_el.innerHTML = process_tex(title)`` when
+    ``contains_tex_string(title)`` is true -- and ``process_tex`` copies the
+    text around the delimiters through unchanged.  A served page always
+    loads MathJax, and a saved page loads it as soon as any model holds a
+    TeX pair (``bokeh.embed.bundle._model_requires_mathjax``), so a variable
+    label such as ``\\(x\\)<img src=x onerror=...>`` on a range filter put a
+    live ``<img>`` into the page.
+
+    BokehJS's ``FindTeX`` and Bokeh's ``contains_tex_string`` both look for
+    the literal pairs ``$$``..``$$``, ``\\[``..``\\]`` and ``\\(``..``\\)``.
+    Dropping a WORD JOINER after the first character of each ``$$``, ``\\(``,
+    ``\\)``, ``\\[`` or ``\\]`` means the pair no longer occurs, so neither
+    treats the string as maths, while the reader sees the same glyphs (the
+    joiner is zero width).  Idempotent: a second pass finds no unbroken
+    delimiter.  This is the right tool only for a sink BokehJS draws as
+    text; a Div, which is HTML, is kept out of MathJax with
+    ``disable_math`` instead.
+    """
+    def _wj(m):
+        return m.group(0) + _DASH_WORD_JOINER
+
+    s = str(text)
+    # A '$' immediately before another '$' -> break the '$$'.  The lookahead
+    # keeps overlapping runs ("$$$") from leaving a pair behind.
+    s = re.sub(r"\$(?=\$)", _wj, s)
+    # A backslash immediately before a TeX bracket -> break the '\(' etc.
+    s = re.sub(r"\\(?=[()\[\]])", _wj, s)
+    return s
+
+
 def _dash_filter_title(label, fallback, ftype):
     """A widget's title: the resolved label, plus the documented inequality
-    on a threshold slider (dash.sthlp: "varname >= slider value")."""
+    on a threshold slider (dash.sthlp: "varname >= slider value").
+
+    The label of a slider, range or date widget is passed through
+    :func:`_dash_inert_tex`: those are ``AbstractSlider`` titles, which
+    BokehJS renders as HTML when they hold a TeX delimiter pair, and the
+    label can come from a variable label the dataset carries.  A dropdown is
+    a ``Select`` whose title is always a text node, so its title is left
+    exactly as written.
+    """
     raw = str(label or "").strip() or str(fallback)
+    if ftype != "dropdown":
+        raw = _dash_inert_tex(raw)
     if ftype == "slider" and not raw.endswith(("≥", ">=")):
         raw += " ≥"
     return raw
@@ -11553,8 +11962,13 @@ def _dash_filter_widget(ftype, varname, column, title, value_labels=None,
                 pass
             return rv
 
+        # The option label is raw: BokehJS builds each option as
+        # `option({value: label}, label)', a text node, so escaping it only
+        # showed the entities (a value label `Men's' as `Men&#x27;s').  The
+        # value (rv) is compared, never displayed.  Both are pinned in
+        # test_label_sinks.py.
         options = [(sentinel, "All")] + [
-            (rv, html.escape(str(_label(rv)), quote=True)) for rv in raw_values]
+            (rv, str(_label(rv))) for rv in raw_values]
         w = Select(title=title, value=sentinel, options=options)
         w._dash_sentinel = sentinel
         w._dash_ftype = "dropdown"
@@ -11870,8 +12284,12 @@ def _dash_header_models(title_text, subtitle_text, css=""):
     """
     from bokeh.models import Div, InlineStyleSheet
     sheets = [InlineStyleSheet(css=css)] if css else []
+    # disable_math: a Div runs its text through MathJax unless told not to,
+    # and the escaped title/subtitle is not maths.  Without this a title
+    # holding a TeX pair (`$$\href{javascript:...}{x}$$') is rendered by
+    # MathJax, whose `html' package turns \href into a live <a>.
     return [Div(text=frag, sizing_mode="stretch_width",
-                stylesheets=list(sheets))
+                disable_math=True, stylesheets=list(sheets))
             for frag in _dash_header_fragments(title_text, subtitle_text)
             if frag]
 
@@ -12537,6 +12955,15 @@ def _dash_format_kpi_value(value, fmt_str, varname="", stat="",
     if use_comma:
         fmt = fmt[:-1]
 
+    # A width or precision Stata would refuse is not handed to Python, which
+    # formats whatever it is given: a hand-edited `fmt' of %9.999999999f made
+    # a card of a billion characters (measured 23sep2026, WP-20).
+    _wd = re.fullmatch(r"-?(\d+)\.(\d+)[A-Za-z]", fmt)
+    if _wd and (len(_wd.group(1)) > 4 or len(_wd.group(2)) > 4
+                or int(_wd.group(1)) > 2045
+                or int(_wd.group(2)) >= int(_wd.group(1))):
+        return f"{float(value):g}"
+
     try:
         formatted = f"{value:{fmt}}"
     except (ValueError, TypeError):
@@ -12579,13 +13006,16 @@ def _dash_placement_map(layout_opt, valid_names=None):
     """
     if not layout_opt:
         return {}
+    # ASCII digits, names and blanks only (re.ASCII), as _dash_layout_cells
+    # measures them: a full-width digit or an ideographic space read here
+    # and not there was a grid the cell limit never saw.
     pairs = re.findall(r"([A-Za-z_]\w*)\s*:\s*(\d+)\s*,\s*(\d+)",
-                       layout_opt.strip())
+                       layout_opt.strip(_DASH_ASCII_BLANKS), re.ASCII)
     if not pairs:
         return {}
     # Anything else in the string means this is not a placement spec.
     leftover = re.sub(r"[A-Za-z_]\w*\s*:\s*\d+\s*,\s*\d+", "",
-                      layout_opt).strip()
+                      layout_opt, flags=re.ASCII).strip(_DASH_ASCII_BLANKS)
     if leftover:
         return {}
     raw = {name: (int(r), int(c)) for name, r, c in pairs
@@ -12745,9 +13175,26 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
 
     _wanted, _seen = [], set()
     for _c in [xvar, y1var, y2var] + list(hover_extra or []):
-        if _c and _c not in _seen and _c in _present:
-            _wanted.append(_c)
+        if not _c or _c in _seen or _c not in _present:
+            continue
+        # The column name is written into a tooltip FIELD as `@{name}',
+        # which BokehJS parses as HTML (replace_placeholders_html, then
+        # DOMParser).  A name that is not a plain identifier can carry a
+        # `}' that closes the placeholder early -- `@{x}<img ...>' -- or a
+        # `{safe}' that turns escaping off, leaving markup in the tooltip.
+        # Stata cannot produce such a name; a hand-written data file can, so
+        # it is refused by name rather than trusted into a field.
+        if not _DASH_VARNAME_RE.match(_c):
+            _dash_warn_once(
+                ("hover", "unsafe-field", _c),
+                f"dash: variable {_dash_display(_c)!r} is not a plain name; "
+                f"leaving it out of the tooltip, because a tooltip field "
+                f"cannot carry it safely.",
+                stacklevel=3)
             _seen.add(_c)
+            continue
+        _wanted.append(_c)
+        _seen.add(_c)
 
     _fields, _formatters = [], {}
     for _c in _wanted:
@@ -12844,8 +13291,13 @@ def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
         # Stata's `in N/M' is 1-based and inclusive at both ends.
         _m = re.match(r"^(\d+)/(\d+)$", _in)
         if _m:
-            _lo = max(0, int(_m.group(1)) - 1)
-            _hi = int(_m.group(2))
+            # A bound too long for int() (Python refuses a string of more
+            # than 4,300 digits) is past any dataset's end, so it reads as
+            # such rather than raising.
+            def _bound(digits):
+                return int(digits) if len(digits) <= 18 else 10 ** 18
+            _lo = max(0, _bound(_m.group(1)) - 1)
+            _hi = _bound(_m.group(2))
             out = out.iloc[_lo:_hi]
 
     if _if:
@@ -12864,7 +13316,7 @@ def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
             try:
                 out = out.query(pandas_expr, engine="python")
             except (ValueError, SyntaxError, KeyError, TypeError,
-                    NameError) as _qexc:
+                    NameError, RecursionError, MemoryError) as _qexc:
                 # NameError (pandas UndefinedVariableError) is raised when a
                 # column the qualifier names was never serialised by Stata.
                 warnings.warn(
@@ -13030,7 +13482,9 @@ def _dash_function_args(options):
     if "n" in options:
         try:
             n_pts = max(2, min(int(options["n"]), 10000))
-        except ValueError:
+        except (ValueError, OverflowError, TypeError):
+            # "n": Infinity is legal to Python's JSON reader and int(inf)
+            # raises OverflowError; None raises TypeError (WP-20).
             pass
     return (x_lo, x_hi), n_pts
 
@@ -14483,7 +14937,12 @@ class DashRenderer:
             kpi_def.get("subtitle", ""), kpi_def.get("color", ""),
             kpi_def.get("bgcolor", ""), kpi_def.get("name", "kpi"),
             self.scheme)
+        # disable_math: the card is escaped HTML, not maths, and a Div runs
+        # its text through MathJax otherwise -- where a title of
+        # `$$\href{javascript:...}{x}$$' becomes a live link.  The served
+        # KPI Div sets this too.
         return Div(text=html_content, sizing_mode="stretch_width",
+                   disable_math=True,
                    stylesheets=[InlineStyleSheet(css=self.scheme.css_block())])
 
     # ------------------------------------------------------------------
@@ -14922,8 +15381,12 @@ class DashRenderer:
             "<!DOCTYPE html>\n"
             '<html lang="en">\n'
             "<head>\n"
-            f"{_extracted_head}\n"
+            # First in <head>, as on the default page.  A <meta> policy
+            # governs only what the page parses after it, and it used to
+            # follow _extracted_head -- where BokehJS is inlined -- so
+            # BokehJS itself ran outside the policy.
             f"  {_CSP_META}\n"
+            f"{_extracted_head}\n"
             "  <style>\n"
             f"{_DASH_GRID_CSS}\n"
             f"{scheme_css_block}\n"
@@ -15087,14 +15550,11 @@ class DashRenderer:
             rows = math.ceil(n / cols) if cols > 0 else 1
             return rows, cols
 
-        parts = layout_opt.strip().split()
-        if len(parts) == 2:
-            try:
-                # Clamp to minimum 1 so a zero-column layout can never cause
-                # ZeroDivisionError in _assemble_layout (math.ceil(n / cols_n)).
-                return max(1, int(parts[0])), max(1, int(parts[1]))
-            except ValueError:
-                pass
+        # ASCII digits only, each clamped to 1 so a zero-column layout can
+        # never divide by zero in _assemble_layout (_dash_grid_dims).
+        dims = _dash_grid_dims(layout_opt)
+        if dims is not None:
+            return dims
 
         placement = self._placement_map(layout_opt)
         if placement:
@@ -16371,7 +16831,22 @@ class ServerAppBuilder:
                       # lists a dropdown and parses tabs() under them.
                       "_DASH_LIMITS",
                       # The recompute's pace, _dash_event_throttle's defaults.
-                      "_DASH_EVENT_RATE", "_DASH_EVENT_BURST"):
+                      "_DASH_EVENT_RATE", "_DASH_EVENT_BURST",
+                      # The served page's policy and the launcher's headers
+                      # (WP-20), read by _dash_served_template and
+                      # _dash_server_transforms.
+                      "_DASH_CSP_SERVED", "_DASH_SECURITY_HEADERS",
+                      # SchemeParser._parse_file's include bound; the app
+                      # is handed properties and never parses a file, but
+                      # the method's source travels with the class.
+                      "_MAX_SCHEME_INCLUDE_DEPTH",
+                      # _validate_if_expr's tree-depth bound (WP-20).
+                      "_IF_EXPR_MAX_DEPTH",
+                      # _dash_parse_axis_spec's tick bound (WP-20).
+                      "_MAX_AXIS_TICKS",
+                      # The blanks _dash_grid_dims and _dash_placement_map
+                      # strip (WP-20).
+                      "_DASH_ASCII_BLANKS"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -16440,8 +16915,9 @@ class ServerAppBuilder:
                          "_dash_hover_row", "_dash_build_hover",
                          # Stata's legend keying rules.
                          "_dash_legend_key", "_dash_legend_entries",
-                         # layout(name:row,col), one parser for one spec.
-                         "_dash_placement_map",
+                         # layout(name:row,col), one parser for one spec,
+                         # and layout(rows cols), one reading of the grid.
+                         "_dash_placement_map", "_dash_grid_dims",
                          # The KPI card's format resolution and rendering.
                          "_dash_effective_kpi_fmt",
                          "_dash_format_kpi_value",
@@ -16468,11 +16944,19 @@ class ServerAppBuilder:
                          "_whole_number_step", "_is_clock_kind",
                          "_date_slider_step_days", "_clock_slider_step_ms",
                          "_dash_option_value", "_dash_option_sort_key",
+                         # _dash_filter_title neutralises TeX in the title;
+                         # _dash_inert_tex is its callee and must travel too.
+                         "_dash_inert_tex",
                          "_dash_filter_title", "_dash_finite_column",
                          "_dash_filter_widget", "_dash_dropdown_mask",
                          # The token bucket make_document wraps every filter
                          # and brush callback in.
                          "_dash_event_throttle",
+                         # The page's CSP <meta>, the template make_document
+                         # sets it in, and the launcher's header transform
+                         # (WP-20).
+                         "_dash_csp_meta", "_dash_served_template",
+                         "_dash_server_transforms",
                          # The resource limits, read from the spec and
                          # applied where the app groups and lists (WP-19).
                          "_dash_limits", "_dash_limit_hint",
@@ -17610,6 +18094,13 @@ class ServerAppBuilder:
             "    Builds the full dashboard layout including figures, KPI cards,",
             "    filter widgets, and wires all Python callbacks.",
             '    """',
+            "    # The page's Content-Security-Policy, as a <meta> in Bokeh's own",
+            "    # page template (WP-20).  A <meta> because it is the one form",
+            "    # that also holds under `bokeh serve app.py', which gives an app",
+            "    # no hook into its responses; `python app.py' sends the policy",
+            "    # as a header too.  Set first, so that a session refused below",
+            "    # is served under the policy as well.",
+            "    doc.template = _dash_served_template()",
             "    # The previous document's style notes, forgotten: one note per",
             "    # (option, value) per render, as DashRenderer.render() does.",
             "    _dash_reset_notes()",
@@ -18261,7 +18752,11 @@ class ServerAppBuilder:
             "        val = _compute_kpi(_k_df, kstat, kvar)",
             "        disp = _format_kpi(val, kfmt, kvar, kstat)",
             "        div_html = _dash_kpi_card(ktitle, disp, ksub, kcolor, kbg, kname)",
+            "        # disable_math: the card is escaped HTML, not maths; a",
+            "        # Div otherwise hands its text to MathJax, whose html",
+            "        # package makes `$$\\href{javascript:...}{x}$$' a live link.",
             "        kpi_divs[kname] = Div(text=div_html, sizing_mode='stretch_width',",
+            "                              disable_math=True,",
             "                              stylesheets=_dash_kpi_stylesheets())",
             "",
             "    # Reverse map: faceted gname → original gname (for qualifier lookup).",
@@ -18670,14 +19165,12 @@ class ServerAppBuilder:
             "    # ---- layout(): 'auto', 'N M', or 'name:row,col' placements ----",
             "    placement = {} if layout_opt.lower() in ('', 'auto') else _dash_placements(layout_opt)",
             '    placement = {k: v for k, v in placement.items() if k in grid_names}',
-            '    parts = layout_opt.split()',
+            '    # The saved page\'s reading (_dash_grid_dims): ASCII digits, each',
+            '    # clamped to 1, as the cell limit measured them.',
             '    rows_n = cols_n = 0',
-            "    if layout_opt.lower() not in ('', 'auto') and len(parts) == 2:",
-            '        try:',
-            '            # Clamped to 1: a zero-column grid divides by zero below.',
-            '            rows_n, cols_n = max(1, int(parts[0])), max(1, int(parts[1]))',
-            '        except ValueError:',
-            '            rows_n = cols_n = 0',
+            '    _dims = _dash_grid_dims(layout_opt)',
+            "    if layout_opt.lower() not in ('', 'auto') and _dims:",
+            '        rows_n, cols_n = _dims',
             '    if not rows_n and placement:',
             '        rows_n = max(r for r, _ in placement.values()) + 1',
             '        cols_n = max(c for _, c in placement.values()) + 1',
@@ -18802,6 +19295,24 @@ class ServerAppBuilder:
             "    # forges localhost:<port>, completed the handshake.",
             "    # --address 0.0.0.0 still opens it deliberately.",
             "    _kw = {'address': address or '127.0.0.1'}",
+            "    # Every response carries _DASH_SECURITY_HEADERS (WP-20): the",
+            "    # page's policy again, now with frame-ancestors 'none', which a",
+            "    # <meta> cannot carry, and nosniff, DENY and no-referrer.",
+            "    # Server hands transforms= through BokehTornado to Tornado's",
+            "    # Application, which then adds none of its own;",
+            "    # _dash_server_transforms puts back what it would have added",
+            "    # (GZipContentEncoding, were compress_response set; it is not).",
+            "    # `bokeh serve app.py' runs no launcher and gives an app script",
+            "    # no way to reach its Tornado application, so there only the",
+            "    # page's <meta> policy applies.",
+            "    _kw['transforms'] = _dash_server_transforms(_kw)",
+            "    # nosniff makes a browser refuse a script or stylesheet served",
+            "    # under any other type, and Tornado types /static by mimetypes,",
+            "    # which on Windows reads the registry, where .js is sometimes",
+            "    # text/plain: BokehJS would be refused and the page left blank.",
+            "    import mimetypes as _mimetypes",
+            "    _mimetypes.add_type('text/javascript', '.js')",
+            "    _mimetypes.add_type('text/css', '.css')",
             "    return Server(",
             "        {'/': Application(FunctionHandler(make_document))},",
             "        port=_p,",
