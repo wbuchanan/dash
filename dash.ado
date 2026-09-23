@@ -3116,6 +3116,24 @@ program define _dash_register_graph
         exit(198)
     }
 
+    // Two underscores in a row are dash's own.  The renderer names what it
+    // generates with them -- a by() graph g1's panels are g1__by__0,
+    // g1__by__1, ..., a KPI's per-panel cards the same, and the saved
+    // layout(bs) page keys its tab strip and filters __tabs__ and __fw_0__
+    // -- so a name holding them took one of those places without a word
+    // (measured 23sep2026: name(g1__by__0) beside by(foreign) name(g1) was
+    // drawn as g1's first panel).  A rule of its own, after the format
+    // check, so the message names the one rule broken; by now the name is
+    // letters, digits and underscores.  The renderer refuses such a name in
+    // a spec that did not come through here (_dash_named_once).
+    if strpos("`name'", "__") {
+        mata: _dash_say("err", "dash: graph name '", st_local("name"), ///
+            "' holds two underscores in a row, which dash keeps for the " + ///
+            "names it generates, such as a by() graph's panels. " + ///
+            "Choose a name without __.")
+        exit(198)
+    }
+
     // Paren-mode fallback: the sub-option may have been written on the graph
     // suffix rather than captured in name().
     if `replace_flag' == 0 {
@@ -3510,6 +3528,14 @@ program define _dash_kpi
         display as error "dash kpi: invalid name '`_name_safe''. " ///
             "Names must start with a letter or underscore, contain only " ///
             "letters, digits, and underscores, and be at most 18 characters."
+        exit(198)
+    }
+    // Two underscores in a row are dash's own, as for a graph (see there).
+    if strpos("`name'", "__") {
+        mata: _dash_say("err", "dash kpi: name '", st_local("name"), ///
+            "' holds two underscores in a row, which dash keeps for the " + ///
+            "names it generates, such as a by() graph's panels. " + ///
+            "Choose a name without __.")
         exit(198)
     }
 

@@ -879,11 +879,88 @@ def _dash_layout_check(layout, names, registered=None):
     return kept or "auto", f"dash: layout({shown}): {'; '.join(problems)}."
 
 
-def _dash_cap_spec(spec, limits):
-    """The spec with at most ``graphs`` items and ``plots`` plots a graph.
+def _dash_reserved_name(name):
+    """True for a name dash keeps for what it names itself: one that holds
+    two underscores in a row.
 
-    dash.ado refuses both at registration; this is the renderer's own bound
-    for a spec that did not come through it.  Items are kept in layout
+    Every name dash makes up holds them -- a by() graph g1's panels are
+    ``g1__by__0``, ``g1__by__1``, ..., a KPI's per-panel cards the same, and
+    the saved layout(bs) page keys its tab strip ``__tabs__`` and its
+    filters ``__fw_0__``, ``__fw_1__`` -- so a registered name that holds
+    none cannot be one of them.  dash.ado refuses such a name at
+    registration; ``_dash_named_once`` refuses it in a spec that did not
+    come through dash.ado.
+    """
+    return "__" in str(name)
+
+
+def _dash_listed_names(names, limit=5):
+    """*names* quoted for a warning, each as ``_dash_display`` shows user
+    text: at most *limit* of them, then how many more."""
+    names = list(names)
+    shown = ", ".join(repr(_dash_display(n)) for n in names[:limit])
+    more = len(names) - limit
+    return shown + (f" and {more:,} more" if more > 0 else "")
+
+
+def _dash_item_name(item):
+    """The name a graph or KPI card is registered under in a spec."""
+    return str((item.get("graph_options") or {}).get("name")
+               or item.get("name") or "")
+
+
+def _dash_named_once(graphs, kpis):
+    """``(graphs, kpis)`` less any item whose name dash keeps for itself
+    (``_dash_reserved_name``) or an earlier item already has, and say so.
+
+    Both modes key every item by its name, all the way down -- the figures,
+    the cards, the saved layout(bs) page's components, the served app's
+    figures -- so such a name took another item's place without a word
+    (measured 23sep2026): ``g1__by__0`` beside a by() graph g1 was drawn as
+    g1's first panel, a graph ``__tabs__`` replaced the saved bs page's tab
+    strip, and of two graphs named g1 only the second was drawn.  dash.ado
+    refuses both at registration.  Graphs are read before KPI cards, so a
+    card named like a graph is the one refused.
+    """
+    seen = set()
+    kept = {"graph": [], "KPI": []}
+    reserved = {"graph": {}, "KPI": {}}
+    repeated = {"graph": {}, "KPI": {}}
+    for kind, items in (("graph", graphs), ("KPI", kpis)):
+        for item in items:
+            name = _dash_item_name(item)
+            if _dash_reserved_name(name):
+                reserved[kind][name] = None
+            elif name in seen:
+                repeated[kind][name] = None
+            else:
+                seen.add(name)
+                kept[kind].append(item)
+    for kind, noun in (("graph", "graph"), ("KPI", "card")):
+        for names, why in (
+                (list(reserved[kind]),
+                 "refused: two underscores in a row are kept for the names "
+                 "dash generates, such as a by() graph's panels"),
+                (list(repeated[kind]),
+                 "already {verb} an earlier graph or KPI card")):
+            if not names:
+                continue
+            one = len(names) == 1
+            warnings.warn(
+                f"dash: {kind} name{'' if one else 's'} "
+                f"{_dash_listed_names(names)} "
+                f"{why.format(verb='names' if one else 'name')}; "
+                f"{'that ' + noun + ' is' if one else 'those ' + noun + 's are'}"
+                f" not drawn.", UserWarning, stacklevel=3)
+    return kept["graph"], kept["KPI"]
+
+
+def _dash_cap_spec(spec, limits):
+    """The spec with at most ``graphs`` items and ``plots`` plots a graph,
+    and each item under a name of its own (``_dash_named_once``).
+
+    dash.ado refuses all three at registration; this is the renderer's own
+    bound for a spec that did not come through it.  Items are kept in layout
     order -- the registry, as typed -- and each graph keeps its first plots.
     Returns a new dict; the caller's is not modified.
     """
@@ -893,6 +970,9 @@ def _dash_cap_spec(spec, limits):
     kpis = list(spec.get("kpis") or [])
     bo = spec.get("build_options") or {}
     out = dict(spec)
+
+    # First, so a refused item takes no place under the graphs limit.
+    graphs, kpis = _dash_named_once(graphs, kpis)
 
     n_items = len(graphs) + len(kpis)
     if n_items > limits["graphs"]:

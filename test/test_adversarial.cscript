@@ -1738,6 +1738,41 @@ foreach p2031l in "bs: p2031a=6 p2031a=6 p2031b=6" "bs: p2031a / p2031b p2031a=1
 capture dash clear
 display "P20-31 PASS: a layout() that places a name twice is refused"
 
+// P20-32 — a graph or KPI name that holds two underscores in a row.  The
+// renderer names what it generates with them: a by() graph g1's panels are
+// g1__by__0, g1__by__1, ..., a KPI's per-panel cards the same, and the
+// saved layout(bs) page keys its tab strip __tabs__ and its filters
+// __fw_0__.  Measured 23sep2026: name(g1__by__0) beside by(foreign)
+// name(g1) was registered, and dash build drew it in place of g1's
+// Domestic panel.  Refused now, for a graph and a KPI card alike, with or
+// without replace, and nothing is registered; single underscores are still
+// a name, and the dashboard builds.
+capture dash clear
+dash scatter mpg weight, by(foreign) name(g1)
+foreach p2032n in g1__by__0 __tabs__ __fw_0__ a__b {
+    _adv_p19_run "dash scatter price weight, name(`p2032n')"
+    assert r(rc) == 198
+    cert_file_has "`r(log)'", needle("dash: graph name '`p2032n'' holds two underscores in a row")
+    assert r(found) == 1
+}
+_adv_p19_run "dash scatter price weight, name(g1__by__0, replace)"
+assert r(rc) == 198
+_adv_p19_run "dash kpi mean(mpg), title(T) name(k1__by__0)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("dash kpi: name 'k1__by__0' holds two underscores in a row")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "g1"
+dash scatter price weight, name(_p2032_b_)
+assert "${dash_graph_registry}" == "g1 _p2032_b_"
+local p2032f "`c(tmpdir)'p2032.html"
+capture erase "`p2032f'"
+_adv_p19_run `"dash build, saving("`p2032f'") replace nobrowser"'
+assert r(rc) == 0
+confirm file "`p2032f'"
+capture erase "`p2032f'"
+capture dash clear
+display "P20-32 PASS: a graph or KPI name holding two underscores in a row is refused, and nothing is registered"
+
 capture dash clear
 capture erase "`c(tmpdir)'dash_adv_p19.log"
 
@@ -1783,3 +1818,4 @@ display "  P20-28: Malformed UTF-8 inside the data (string value, variable and v
 display "  P20-29: A scatteri coordinate and the .gph note → shown as text; the note runs no directive"
 display "  P20-30: layout() not one of its forms whole, an unregistered name, a Bootstrap span outside 1..12 → rc=198"
 display "  P20-31: layout() placing a name twice (bs or name:row,col) → rc=198"
+display "  P20-32: A graph or KPI name holding __ (dash's own, as in g1__by__0) → rc=198"

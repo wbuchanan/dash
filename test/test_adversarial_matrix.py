@@ -221,14 +221,18 @@ SURFACES = {
         "bypass": [
             "test_adversarial.cscript:P19-25",
             "test_adversarial.cscript:P19-02",
+            "test_adversarial.cscript:P20-32",
+            "test/test_reserved_names.py::TestAdversarialReservedNames::test_bypass_no_spelling_takes_a_panel_s_place",
         ],
         "injection": [
             "test_adversarial.cscript:P19-25",
             "test_adversarial.cscript:P19-26",
+            "test/test_reserved_names.py::TestAdversarialReservedNames::test_injection_a_refused_name_is_inert_text",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P20-21",
             "test_adversarial.cscript:P19-01",
+            "test/test_reserved_names.py::TestAdversarialReservedNames::test_exhaustion_many_refused_names_make_one_bounded_report",
         ],
     },
     # saving(path) on a plot and on dash build (.html and .py).

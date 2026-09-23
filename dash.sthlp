@@ -168,7 +168,11 @@ This help file documents only the features that differ from or extend
     characters for a graph and 18 for a KPI card.  {cmd:dash} keeps each
     item in Stata globals whose names carry it ({cmd:$dash_json_}{it:name},
     {cmd:$dash_kpi_}{it:name}{cmd:_stat}), and a global's name is at most
-    32 characters.  The registry holds at most 100 items; see
+    32 characters.  A name may not hold two underscores in a row:
+    {cmd:dash} names what it generates with them -- the panels of a
+    {cmd:by()} graph {cmd:g1} are {cmd:g1__by__0}, {cmd:g1__by__1}, ...
+    -- and a name of that form would take one of their places, so it is
+    refused with {cmd:r(198)}.  The registry holds at most 100 items; see
     {help dash##limits:Resource limits}.
 
 {phang2}    {ul:The registry lives in Stata globals.}  It is kept in
