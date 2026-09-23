@@ -60,6 +60,10 @@
 *!   _dash_json_esc(s, out_macro)   — JSON-escape s, store in out_macro
 *!   _dash_html_esc(s, out_macro)   — HTML-escape s, store in out_macro
 *!
+*!   _dash_json_str_args()
+*!       dash.ado's _dash_json_str: its `0' read by value, the text
+*!       JSON-escaped into the local _dash_jsv, the name into _dash_jsn.
+*!
 *!   _dash_json_get_str(json_str, key, out_macro)
 *!       Extract a JSON string field value by key, correctly handling \"
 *!       escape sequences inside the value.  Used by _dash_render_immediate.
@@ -142,6 +146,52 @@ void _dash_json_esc(string scalar s, string scalar out_macro) {
 }
 void _dash_html_esc(string scalar s, string scalar out_macro) {
     st_local(out_macro, _html_escape(s))
+}
+
+// _dash_json_str_args() -- dash.ado's _dash_json_str, read and escaped by
+// value.
+//
+// _dash_json_str is called as  _dash_json_str `"<text>"' <name>  (or with
+// the text in plain quotes).  It read its arguments with -args- and escaped
+// the text through a chain of subinstr() calls in compound quotes, and both
+// parse the text as Stata.  A text holding "' -- a compound-quoted title()
+// or legend label does -- ended a compound quote early and came back empty
+// or cut, with rc 0 (measured 23sep2026 at ad13a0f: `"A "B" C"' came back
+// empty; make == `"AMC"' & foreign == 1 came back as make ==  & foreign ==
+// 1).  In plain quotes the text was split at its first inner quote and the
+// word after that quote became the NAME the result was stored under -- a
+// qualifier chose which of its caller's locals was overwritten.
+//
+// Here the calling program's `0' is read as a value: its last word is the
+// name, and what comes before it is the text, less one pair of enclosing
+// quotes, compound or simple.  The text is escaped by _json_escape(), which
+// also writes the backtick, the dollar sign and the apostrophe as JSON
+// escapes (backslash u 0060, 0024 and 0027), so the result can be
+// expanded inside compound quotes -- every spec line is built that way --
+// without ending them.  Sets the caller's locals _dash_jsn (the name) and
+// _dash_jsv (the escaped text).
+void _dash_json_str_args()
+{
+    string scalar z, t
+    real scalar   k, n
+
+    z = strtrim(st_local("0"))
+    k = strlen(z)
+    while (k > 0) {
+        if (substr(z, k, 1) == " " | substr(z, k, 1) == char(9)) break
+        k--
+    }
+    st_local("_dash_jsn", substr(z, k + 1, .))
+    t = strrtrim(substr(z, 1, k))
+    n = strlen(t)
+    if (n >= 4 & substr(t, 1, 2) == char(96) + char(34) &
+        substr(t, n - 1, 2) == char(34) + char(39)) {
+        t = substr(t, 3, n - 4)
+    }
+    else if (n >= 2 & substr(t, 1, 1) == char(34) & substr(t, n, 1) == char(34)) {
+        t = substr(t, 2, n - 2)
+    }
+    st_local("_dash_jsv", _json_escape(t))
 }
 
 // UTF-8 byte validation
@@ -1704,8 +1754,10 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
 //   "by"      -- each token in the varlist (before the first comma)
 //   "if_expr" -- identifier tokens of the Stata expression
 //
-// Only tokens that pass ^[a-zA-Z_][a-zA-Z0-9_]*$ and are not
-// Python keywords/constants are returned.  Callers in dash.ado
+// A token is a run of the bytes a Stata name is made of -- ASCII
+// letters, digits and _, and every byte of 128 or more, which is part
+// of a Unicode letter -- that does not start with a digit and, in an
+// if, is not a Python keyword/constant.  Callers in dash.ado
 // should use `capture confirm variable' to discard any tokens
 // that are not real dataset variables (e.g. string literals that
 // happened to look like identifiers in the expression).
@@ -1790,8 +1842,8 @@ void _dash_extract_qual_vars(string scalar json_str,
                               string scalar out_macro) {
     string rowvector keys, reserved, toks, found
     string scalar    val
-    real rowvector   b, keep
-    real scalar      pos, local_pos, orig_pos, n, k, t, comma_pos
+    real rowvector   b, keep, v, sep
+    real scalar      pos, local_pos, orig_pos, n, k, t, comma_pos, c1
     transmorphic     seen
 
     // Python expression keywords/constants that are not Stata variable names.
@@ -1833,36 +1885,29 @@ void _dash_extract_qual_vars(string scalar json_str,
                 comma_pos = strpos(val, ",")
                 if (comma_pos > 0) val = substr(val, 1, comma_pos - 1)
             }
-            else {
-                // Replace operator and punctuation characters with spaces
-                // so that tokens() returns only identifier-like strings.
-                val = subinstr(val, "==", " ", .)
-                val = subinstr(val, "!=", " ", .)
-                val = subinstr(val, "~=", " ", .)
-                val = subinstr(val, "<=", " ", .)
-                val = subinstr(val, ">=", " ", .)
-                val = subinstr(val, "<",  " ", .)
-                val = subinstr(val, ">",  " ", .)
-                val = subinstr(val, "&",  " ", .)
-                val = subinstr(val, "|",  " ", .)
-                val = subinstr(val, "!",  " ", .)
-                val = subinstr(val, "(",  " ", .)
-                val = subinstr(val, ")",  " ", .)
-                val = subinstr(val, "+",  " ", .)
-                val = subinstr(val, "-",  " ", .)
-                val = subinstr(val, "*",  " ", .)
-                val = subinstr(val, "/",  " ", .)
-                val = subinstr(val, "%",  " ", .)
-                val = subinstr(val, ",",  " ", .)
-                val = subinstr(val, char(34), " ", .)
-            }
-            toks = tokens(val)
+            // Every byte that cannot be part of a Stata name becomes a
+            // blank: the operators and punctuation of an if, and whatever
+            // separates the names of a by().  That includes ~, Stata's
+            // logical not beside !: the list of operators this replaced had
+            // ~= and no ~, so `if ~foreign' named no variable and foreign
+            // was not exported (measured 23sep2026).  A byte of 128 or more
+            // is kept: it is part of a UTF-8 character, and a Stata name
+            // may hold Unicode letters -- an if on a variable named with an
+            // e-acute and "tranger" named no variable either, the pattern
+            // this replaced being ASCII.  The callers confirm that each name
+            // exists.
+            v = ascii(val)
+            if (cols(v) == 0) continue
+            sep = (v :< 128) :& !((v :>= 48 :& v :<= 57) :| (v :>= 65 :& v :<= 90) :|
+                                  (v :>= 97 :& v :<= 122) :| (v :== 95))
+            toks = tokens(char(v :* !sep + 32 :* sep))
             if (cols(toks) == 0) continue
             keep = J(1, cols(toks), 0)
             for (t = 1; t <= cols(toks); t++) {
-                // Keep only Stata-identifier-like tokens; in an if, skip
-                // Python reserved words.  Numeric literals fail the pattern.
-                if (!regexm(toks[t], "^[a-zA-Z_][a-zA-Z0-9_]*$")) continue
+                // A name does not start with a digit, so numbers are passed
+                // over; in an if, so are Python's reserved words.
+                c1 = ascii(substr(toks[t], 1, 1))
+                if (c1 >= 48 & c1 <= 57) continue
                 if (k == 2) {
                     if (anyof(reserved, toks[t])) continue
                 }
@@ -2046,8 +2091,9 @@ void _dash_extract_filters(string scalar filter_out,
 void _dash_json_get_str(string scalar json_str,
                         string scalar key,
                         string scalar out_macro) {
-    string scalar needle, sub, ch, value
-    real scalar   pos, local_pos, n
+    string scalar  needle, s
+    real rowvector b, o, u, h
+    real scalar    local_pos, n, i, k, c, code, t, d
 
     // Build search pattern:  "key":"
     needle    = char(34) + key + char(34) + ":" + char(34)
@@ -2057,54 +2103,88 @@ void _dash_json_get_str(string scalar json_str,
         return
     }
 
-    // Start reading value characters just after the opening "
-    pos   = local_pos + strlen(needle)
-    n     = strlen(json_str)
-    value = ""
-
-    while (pos <= n) {
-        ch = substr(json_str, pos, 1)
-        if (ch == char(34)) {
-            // Unescaped closing double-quote — end of string value
-            break
+    // The value's bytes, from just after its opening quote, decoded in one
+    // pass into o -- never longer than the escaped text, so allocated
+    // once.  It used to grow the value a character at a time, which is
+    // quadratic in its length; a qualifier is read here and may be very
+    // long (test_json_escaping.cscript JSE-18, JSE-36).
+    //
+    // The backslash is byte 92, never the Mata literal "\\": Mata does NOT
+    // collapse a doubled backslash in a string literal the way C does --
+    // measured, strlen("\\") is 2 and "\\" == char(92) is false.  So every
+    // comparison this decoder made with "\\" was a 1-character string
+    // against a 2-character one, never true, and it decoded nothing: the
+    // first backslash of an escape fell through to the plain-character
+    // branch and the '"' after it was read as the closing quote, so
+    //     "if_expr": "make == \"AMC Concord\""
+    // -- the very case this function was written for -- came back as a
+    // single backslash.
+    //
+    // Every escape JSON has is decoded: \" \\ \/ \b \f \n \r \t and \uXXXX.
+    // _dash_json_str writes the backtick, the dollar sign and the
+    // apostrophe as JSON escapes, backslash u 0060, 0024 and 0027 (raw,
+    // they would end or expand the compound quotes the spec is built in),
+    // so a saving() path or a qualifier holding an apostrophe comes back
+    // here through one.  An escape that is not JSON's is kept as written.
+    b = ascii(substr(json_str, local_pos + strlen(needle), .))
+    n = cols(b)
+    o = J(1, max((n, 1)), 0)
+    k = 0
+    i = 1
+    while (i <= n) {
+        c = b[i]
+        if (c == 34) break                  // the closing quote
+        if (c != 92 | i == n) {             // a plain byte, or a last backslash
+            k++
+            o[k] = c
+            i++
+            continue
         }
-        else if (ch == char(92)) {
-            // Escape sequence — peek at next character.
-            //
-            // char(92), not "\\".  Mata does NOT collapse a doubled
-            // backslash in a string literal the way C does: measured,
-            // strlen("\\") is 2 and "\\" == char(92) is false.  So every
-            // one of these comparisons was a 1-character string against a
-            // 2-character one, never true, and this decoder has never
-            // decoded anything.  The first backslash of an escape fell
-            // through to the plain-character branch and the '"' that
-            // followed it was read as the closing quote, so
-            //     "if_expr": "make == \"AMC Concord\""
-            // -- the very case this function was written for -- came back
-            // as a single backslash.
-            if (pos + 1 <= n) {
-                ch = substr(json_str, pos + 1, 1)
-                if      (ch == char(34)) value = value + char(34)
-                else if (ch == char(92)) value = value + char(92)
-                else if (ch == "n")      value = value + char(10)
-                else if (ch == "r")      value = value + char(13)
-                else if (ch == "t")      value = value + char(9)
-                else                     value = value + char(92) + ch
-                pos = pos + 2
+        c = b[i + 1]
+        d = .
+        if      (c == 34)  d = 34
+        else if (c == 92)  d = 92
+        else if (c == 47)  d = 47           // \/
+        else if (c == 98)  d = 8            // \b
+        else if (c == 102) d = 12           // \f
+        else if (c == 110) d = 10           // \n
+        else if (c == 114) d = 13           // \r
+        else if (c == 116) d = 9            // \t
+        if (d < .) {
+            k++
+            o[k] = d
+            i = i + 2
+            continue
+        }
+        if (c == 117 & i + 5 <= n) {        // \uXXXX
+            h = b[|i + 2 \ i + 5|]
+            if (all((h :>= 48 :& h :<= 57) :| (h :>= 65 :& h :<= 70) :|
+                    (h :>= 97 :& h :<= 102))) {
+                code = 0
+                for (t = 1; t <= 4; t++) {
+                    code = 16 * code + (h[t] <= 57 ? h[t] - 48 :
+                                       (h[t] <= 70 ? h[t] - 55 : h[t] - 87))
+                }
+                // A code Stata cannot hold (NUL) or uchar() cannot write (a
+                // lone surrogate) is kept as written.
+                s = (code == 0 ? "" : (code < 128 ? char(code) : uchar(code)))
+                if (s != "") {
+                    u = ascii(s)
+                    o[|k + 1 \ k + cols(u)|] = u
+                    k = k + cols(u)
+                    i = i + 6
+                    continue
+                }
             }
-            else {
-                // Trailing backslash with no next char — keep it
-                value = value + char(92)
-                pos++
-            }
         }
-        else {
-            value = value + ch
-            pos++
-        }
+        k++
+        o[k] = 92
+        k++
+        o[k] = c
+        i = i + 2
     }
 
-    st_local(out_macro, value)
+    st_local(out_macro, (k ? char(o[|1 \ k|]) : ""))
 }
 
 // ---------------------------------------------------------------------

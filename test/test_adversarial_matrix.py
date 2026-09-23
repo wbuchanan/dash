@@ -157,18 +157,24 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-11",
             "test_json_escaping.cscript:JSE-12",
             "test_json_escaping.cscript:JSE-14",
+            "test_json_escaping.cscript:JSE-22",
+            "test_json_escaping.cscript:JSE-33",
+            "test_json_escaping.cscript:JSE-35",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
             "test/test_phase5.py::TestIfExprRceHardening::test_at_poc_payload_blocked_end_to_end",
             "test/test_server_layer_defects.py::TestAKpiQualifierIsApplied::test_a_kpi_qualifier_cannot_execute",
             "test_json_escaping.cscript:JSE-13",
+            "test_json_escaping.cscript:JSE-32",
+            "test_json_escaping.cscript:JSE-34",
         ],
         "exhaustion": [
             _M + "TestIfQualifierExhaustion::test_a_run_of_negations_is_skipped_not_raised",
             _M + "TestIfQualifierExhaustion::test_the_served_app_has_the_same_bound",
             "test_adversarial.cscript:P20-20",
             "test_json_escaping.cscript:JSE-18",
+            "test_json_escaping.cscript:JSE-36",
         ],
     },
     # jitter(), level(), bin(), n(), bwidth(), bands(), xsize() ...
@@ -218,6 +224,7 @@ SURFACES = {
             "test_adversarial.cscript:P20-04",
             "test/test_option_validation.py::TestUserTextIsEchoedThroughDashDisplay::test_the_mlabel_extras_warning",
             _TW + "test_a_format_in_another_scripts_digits_is_not_applied",
+            "test_json_escaping.cscript:JSE-29",
         ],
         "injection": [
             "test/test_graph_options.py::TestLegendLabels::test_legend_label_xss_is_carried_as_text",
@@ -235,11 +242,13 @@ SURFACES = {
         "bypass": [
             "test_adversarial.cscript:P20-15",
             "test_json_escaping.cscript:JSE-08",
+            "test_json_escaping.cscript:JSE-29",
         ],
         "injection": [
             "test_adversarial.cscript:P2-78",
             "test/test_html_output.py::TestXssInHtmlOutput::test_script_tag_in_title_is_escaped",
             "test/test_html_output.py::TestAdversarialPlotOptions::test_xss_in_note_option_escaped",
+            "test_json_escaping.cscript:JSE-27",
         ],
         "exhaustion": [
             _M + "TestGraphTextBounds::test_a_long_title_is_drawn_once_in_bounded_time",
@@ -265,6 +274,7 @@ SURFACES = {
         "bypass": [
             "test_adversarial.cscript:P20-05",
             "test/test_phase5.py::TestByFacetingSecurity::test_by_shell_injection_blocked",
+            "test_json_escaping.cscript:JSE-29",
         ],
         "injection": [
             "test/test_phase5.py::TestByFacetingSecurity::test_by_import_injection_blocked",
@@ -378,6 +388,7 @@ SURFACES = {
             "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_the_saved_card_and_its_rebuild",
             "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_the_served_card_before_and_after_a_filter_moves",
             "test/test_kpi_security.py::TestKpiTextIsNeverMarkupOrMaths::test_a_hostile_name_stays_inside_its_attribute",
+            "test_json_escaping.cscript:JSE-32",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P19-01",
@@ -411,6 +422,7 @@ SURFACES = {
             "test/test_filter_exclude.py::TestTheSavedPageLeavesAnExcludedGraphAlone::test_an_excluded_link_group_is_left_alone",
             "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_numeric_variable",
             "test/test_filter_widget_data.py::TestOneWidgetWhateverTheGraphsSelect::test_a_string_variable_is_refused_by_both",
+            "test_json_escaping.cscript:JSE-37",
         ],
         "injection": [
             "test_adversarial.cscript:P2-84",

@@ -44,7 +44,16 @@
 *! foreign was not exported, and the saved page and the served app each
 *! warned "if_expr filter skipped" and drew all 74 cars instead of 22.
 *!
-*! Tests: JSE-01 through JSE-19
+*! THE QUALIFIER THAT NEVER REACHED IT.  dash scatter ... if make != "AMC
+*! Concord" & foreign == 1 stored "if_expr":"" (the qualifier handed to
+*! _dash_json_str in plain quotes), a KPI's qualifier was read back cut at
+*! its first quote, and _dash_json_str lost any text holding "' -- so both
+*! modes drew all 74 cars, and a compound-quoted title() was stored empty.
+*! JSE-20..31 run the commands as typed; JSE-32..36 are CLAUDE.md rule 18
+*! cases whose literals hold Python code, SMCL, markup, JSON punctuation and
+*! 20,000 characters, each of which must be data in both render modes.
+*!
+*! Tests: JSE-01 through JSE-37
 *!
 *! Usage:  do test/test_json_escaping.cscript
 *! Version: 1.1  23sep2026
@@ -432,20 +441,610 @@ assert `jse_t18' < 30
 display "JSE-18 PASS: a 620,000-character qualifier is read whole in bounded time"
 
 // JSE-19 -- a value that names nothing: one word, and not a name (a number,
-// a Python constant, ~foreign).  It is read and passed over, and the other
+// a Python constant, -.5).  It is read and passed over, and the other
 // values' names still come back.  The linear rewrite of the reader died
 // here with a conformability error, r(3200), before any user saw it:
 // select() of one word, not kept, is 0 x 1, not 1 x 0.  Measured on
-// dash scatter mpg weight if ~foreign.
+// dash scatter mpg weight if ~foreign, when ~ was not read as Stata's not;
+// it is now (JSE-30), so -.5 stands in for it.
 local jse_v19 ""
 mata: _dash_extract_qual_vars("{" + char(34) + "plots" + char(34) + ":[{" + ///
     char(34) + "if_expr" + char(34) + ":" + char(34) + "1" + char(34) + "},{" + ///
-    char(34) + "if_expr" + char(34) + ":" + char(34) + "~foreign" + char(34) + "},{" + ///
+    char(34) + "if_expr" + char(34) + ":" + char(34) + "-.5" + char(34) + "},{" + ///
     char(34) + "if_expr" + char(34) + ":" + char(34) + "mpg > 1" + char(34) + "}]," + ///
     char(34) + "if_expr" + char(34) + ":" + char(34) + "True" + char(34) + "}", "jse_v19")
 display as text "  read: [`jse_v19']"
 assert "`jse_v19'" == "mpg"
 display "JSE-19 PASS: a value that names nothing is passed over, not refused"
+
+
+// ================================================================
+// JSE-20..37 -- a qualifier holding a string literal, and other text with
+// quotes in it, through the commands a user types
+// ================================================================
+// JSE-11..19 read a qualifier as the registry would hold it once escaped.
+// It never held it.  Measured 23sep2026 at ad13a0f, Stata's own counts the
+// oracle:
+//   * dash scatter mpg weight if make != "AMC Concord" & foreign == 1
+//     stored "if_expr":"".  _dash_process_segment handed the qualifier to
+//     _dash_json_str inside plain double quotes and -args- split it at its
+//     first inner quote, so both modes drew all 74 cars, not 22, without a
+//     word -- the immediate route too.  make != "<b>" stopped with "_<
+//     invalid name": the word after the quote was the NAME the result was
+//     stored under.
+//   * _dash_prepare_spec read a KPI's qualifier back with  local _kifx =
+//     "${...}", which ended at its first quote: if make != "AMC" &
+//     rep78 == 3 exported no rep78 and both modes showed 6165.26 for
+//     Stata's 6429.23; "AMC Concord" stopped dash build, r(198) "invalid
+//     'Concord'".
+//   * _dash_json_str lost any text holding "': title(`"A "B" C"') stored
+//     "title":"", legend(label(1 `"L "q""')) stored label(1 ), and a
+//     compound-quoted literal was cut out of a qualifier.
+//   * if ~foreign named no variable (the reader's operators had ~= and no
+//     ~), nor did an if on a Unicode name (its pattern was ASCII).
+qui sysuse auto, clear
+capture dash clear
+quietly count if make != "AMC Concord" & foreign == 1
+local j2_n22 = r(N)
+assert `j2_n22' == 22
+quietly summarize price if make != "AMC Concord" & rep78 == 3, meanonly
+local j2_k25 : display %9.2f r(mean)
+local j2_k25 = strtrim("`j2_k25'")
+quietly summarize price if make != "AMC" & rep78 == 3, meanonly
+local j2_k26 : display %9.2f r(mean)
+local j2_k26 = strtrim("`j2_k26'")
+_dash_find_render
+global J2_RENDER `"`r(fn)'"'
+
+// Helpers.  Both render modes on the spec and data named by J2_SPEC and
+// J2_DATA -- the saved page is DashRenderer, the served app the generated
+// app's make_document on a fresh Document -- with the renderer dash itself
+// uses, loaded by path and registered while used (ServerAppBuilder copies
+// helpers from its own source through sys.modules).  Results come back as
+// globals.  No backslash, backtick or dollar sign is written in the block,
+// and every call's value is assigned: a python block echoes a bare
+// expression's value.
+python:
+import html as _j2_html
+import importlib.util as _j2_il
+import json as _j2_json
+import re as _j2_re
+import sys as _j2_sys
+import warnings as _j2_w
+from sfi import Macro as _j2_M
+
+def _j2_dr():
+    name = "_j2_dash_render"
+    if name not in _j2_sys.modules:
+        spec = _j2_il.spec_from_file_location(name, _j2_M.getGlobal("J2_RENDER"))
+        mod = _j2_il.module_from_spec(spec)
+        _j2_sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    return _j2_sys.modules[name]
+
+def _j2_scatter_rows(roots):
+    from bokeh.models import GlyphRenderer, Plot
+    out = []
+    for root in roots:
+        for fig in root.select({"type": Plot}):
+            for r in fig.renderers:
+                if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter":
+                    out.append(max((len(v) for v in r.data_source.data.values()), default=0))
+    return " ".join(str(n) for n in out)
+
+def _j2_kpi_values(roots):
+    from bokeh.models import Div
+    out = []
+    for root in roots:
+        for d in root.select({"type": Div}):
+            m = _j2_re.search('id="kpi_val_[^"]*"[^>]*>([^<]*)<', d.text or "")
+            if m:
+                out.append(m.group(1).strip())
+    return " ".join(out)
+
+def _j2_modes():
+    dr = _j2_dr()
+    sp, dp, ap = (_j2_M.getGlobal(k) for k in ("J2_SPEC", "J2_DATA", "J2_APP"))
+    msgs = []
+    with _j2_w.catch_warnings(record=True) as caught:
+        _j2_w.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        page = r.render()
+        built = dr.ServerAppBuilder(sp, dp).build(ap)
+    msgs += [str(x.message) for x in caught]
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "_j2_app"}
+    with _j2_w.catch_warnings():
+        _j2_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_j2_app.py", "exec"), ns)
+    from bokeh.document import Document
+    with _j2_w.catch_warnings(record=True) as caught:
+        _j2_w.simplefilter("always")
+        doc = Document()
+        made = ns["make_document"](doc)
+    msgs += [str(x.message) for x in caught]
+    _j2_M.setGlobal("J2_SAVED_ROWS", _j2_scatter_rows([r._last_layout_root]))
+    _j2_M.setGlobal("J2_SERVED_ROWS", _j2_scatter_rows(doc.roots))
+    _j2_M.setGlobal("J2_SAVED_KPI", _j2_kpi_values([r._last_layout_root]))
+    _j2_M.setGlobal("J2_SERVED_KPI", _j2_kpi_values(doc.roots))
+    _j2_M.setGlobal("J2_SKIPPED", str(sum(1 for m in msgs if "filter skipped" in m)))
+
+def _j2_page_rows():
+    with open(_j2_M.getGlobal("J2_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    m = _j2_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _j2_re.S)
+    docs = _j2_json.loads(_j2_html.unescape(m.group(1)))
+    objs, stack = {}, [docs]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    def ref(v):
+        return objs.get(v["id"], v) if isinstance(v, dict) and "id" in v else v
+    out = []
+    for o in objs.values():
+        if o["name"] != "GlyphRenderer":
+            continue
+        a = o.get("attributes", {})
+        if ref(a.get("glyph", {})).get("name") != "Scatter":
+            continue
+        data = ref(a.get("data_source", {})).get("attributes", {}).get("data", {})
+        n = 0
+        for key, val in data.get("entries", []):
+            if isinstance(val, dict) and val.get("type") == "ndarray":
+                n = max(n, int(val.get("shape", [0])[0]))
+            elif isinstance(val, list):
+                n = max(n, len(val))
+        out.append(n)
+    _j2_M.setGlobal("J2_PAGE_ROWS", " ".join(str(n) for n in out))
+
+def _j2_json_field():
+    data = _j2_json.loads(_j2_M.getGlobal(_j2_M.getGlobal("J2_FROM")))
+    for part in _j2_M.getGlobal("J2_PATH").split():
+        data = data[int(part)] if part.isdigit() else data[part]
+    _j2_M.setGlobal("J2_OK", "1" if data == _j2_M.getGlobal("J2_WANT") else "0")
+
+def _j2_round_trip():
+    raw, esc = _j2_M.getGlobal("J2_V"), _j2_M.getGlobal("J2_E")
+    ok = (_j2_json.loads(chr(34) + esc + chr(34)) == raw
+          and not any(ch in esc for ch in (chr(39), chr(96), chr(36))))
+    _j2_M.setGlobal("J2_OK", "1" if ok else "0")
+end
+
+// One command with its output captured to a log: r(rc), r(log).  Run from
+// a program, so the log holds what the command printed and not its text.
+capture program drop _j2_run
+program define _j2_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_jse_run.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _j2log
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_j2log) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _j2log
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// JSE-20 -- a one-segment qualifier with a string literal, stored whole at
+// the plot and at the graph level.
+dash scatter mpg weight if make != "AMC Concord" & foreign == 1, name(jse20)
+global J2_FROM "dash_json_jse20"
+global J2_WANT `"make != "AMC Concord" & foreign == 1"'
+global J2_PATH "plots 0 if_expr"
+python: _j2_json_field()
+local j2_ok1 "$J2_OK"
+global J2_PATH "if_expr"
+python: _j2_json_field()
+local j2_ok2 "$J2_OK"
+display as text "  stored whole -- plot level: `j2_ok1'  graph level: `j2_ok2'"
+assert "`j2_ok1'" == "1"
+assert "`j2_ok2'" == "1"
+display "JSE-20 PASS: a qualifier holding a string literal is stored whole, at both levels"
+capture dash clear
+
+// JSE-21 -- two segments: each plot keeps its own qualifier whole, and the
+// graph level stays empty.
+dash (scatter mpg weight if make != "AMC Concord" & foreign == 1) (scatter price weight if rep78 == 3), name(jse21)
+global J2_FROM "dash_json_jse21"
+global J2_WANT `"make != "AMC Concord" & foreign == 1"'
+global J2_PATH "plots 0 if_expr"
+python: _j2_json_field()
+local j2_ok1 "$J2_OK"
+global J2_WANT "rep78 == 3"
+global J2_PATH "plots 1 if_expr"
+python: _j2_json_field()
+local j2_ok2 "$J2_OK"
+global J2_WANT ""
+global J2_PATH "if_expr"
+python: _j2_json_field()
+local j2_ok3 "$J2_OK"
+display as text "  plot 1: `j2_ok1'  plot 2: `j2_ok2'  graph level empty: `j2_ok3'"
+assert "`j2_ok1'" == "1" & "`j2_ok2'" == "1" & "`j2_ok3'" == "1"
+display "JSE-21 PASS: two plots keep their own qualifiers whole"
+capture dash clear
+
+// JSE-22 -- a compound-quoted literal, the only way a Stata literal holds a
+// double quote: stored whole, and the reader finds the names around it.
+dash scatter mpg weight if make != `"AMC Concord"' & foreign == 1, name(jse22)
+global J2_FROM "dash_json_jse22"
+global J2_WANT `"make != `"AMC Concord"' & foreign == 1"'
+global J2_PATH "plots 0 if_expr"
+python: _j2_json_field()
+local j2_ok1 "$J2_OK"
+global J2_PATH "if_expr"
+python: _j2_json_field()
+local j2_ok2 "$J2_OK"
+local j2_v22 ""
+mata: _dash_extract_qual_vars(st_global("dash_json_jse22"), "j2_v22")
+display as text "  stored whole: `j2_ok1' `j2_ok2'  read: [`j2_v22']"
+assert "`j2_ok1'" == "1" & "`j2_ok2'" == "1"
+assert `: list posof "make" in j2_v22' > 0 & `: list posof "foreign" in j2_v22' > 0
+display "JSE-22 PASS: a compound-quoted literal is stored whole"
+capture dash clear
+
+// JSE-23 -- dash build, end to end, on the command as typed: foreign is
+// exported, both modes draw Stata's 22 rows, nothing is reported skipped.
+dash scatter mpg weight if make != "AMC Concord" & foreign == 1, name(jse23)
+tempfile j2_s23 j2_d23 j2_a23
+_dash_prepare_spec, specpath("`j2_s23'") datapath("`j2_d23'")
+local j2_x23 `"`r(vars)'"'
+display as text "  exported: [`j2_x23']"
+assert `: list posof "foreign" in j2_x23' > 0
+global J2_SPEC "`j2_s23'"
+global J2_DATA "`j2_d23'"
+global J2_APP  "`j2_a23'"
+python: _j2_modes()
+display as text "  saved rows: [$J2_SAVED_ROWS]  served rows: [$J2_SERVED_ROWS]  skipped: [$J2_SKIPPED]"
+assert "$J2_SAVED_ROWS" == "`j2_n22'"
+assert "$J2_SERVED_ROWS" == "`j2_n22'"
+assert "$J2_SKIPPED" == "0"
+_j2_run `"dash build, saving("`j2_s23'.html") replace nobrowser"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("filter skipped")
+assert r(found) == 0
+capture erase "`j2_s23'.html"
+display "JSE-23 PASS: dash build exports the qualifier's variable and draws Stata's rows"
+capture dash clear
+
+// JSE-24 -- the immediate route: the saved page draws Stata's 22 rows.
+tempfile j2_p24
+global J2_PAGE "`j2_p24'.html"
+dash scatter mpg weight if make != "AMC Concord" & foreign == 1, saving("`j2_p24'.html")
+python: _j2_page_rows()
+display as text "  page rows: [$J2_PAGE_ROWS]"
+assert "$J2_PAGE_ROWS" == "`j2_n22'"
+capture erase "`j2_p24'.html"
+display "JSE-24 PASS: the immediate route draws Stata's rows"
+capture dash clear
+
+// JSE-25 -- a KPI's qualifier with a blank inside its literal: dash build's
+// export step runs, rep78 is exported, and both modes show Stata's value.
+dash scatter mpg weight, name(jse25g)
+dash kpi mean(price) if make != "AMC Concord" & rep78 == 3, title("P") fmt(%9.2f) name(jse25)
+tempfile j2_s25 j2_d25 j2_a25
+capture noisily _dash_prepare_spec, specpath("`j2_s25'") datapath("`j2_d25'")
+local j2_rc25 = _rc
+local j2_x25 `"`r(vars)'"'
+display as text "  rc: `j2_rc25'  exported: [`j2_x25']"
+assert `j2_rc25' == 0
+assert `: list posof "rep78" in j2_x25' > 0
+global J2_SPEC "`j2_s25'"
+global J2_DATA "`j2_d25'"
+global J2_APP  "`j2_a25'"
+python: _j2_modes()
+display as text "  KPI saved: [$J2_SAVED_KPI]  served: [$J2_SERVED_KPI]  Stata: [`j2_k25']"
+assert "$J2_SAVED_KPI" == "`j2_k25'"
+assert "$J2_SERVED_KPI" == "`j2_k25'"
+assert "$J2_SKIPPED" == "0"
+display "JSE-25 PASS: a KPI qualifier with a blank in its literal builds and shows Stata's value"
+capture dash clear
+
+// JSE-26 -- and without a blank, where it was cut rather than refused.
+dash scatter mpg weight, name(jse26g)
+dash kpi mean(price) if make != "AMC" & rep78 == 3, title("P") fmt(%9.2f) name(jse26)
+tempfile j2_s26 j2_d26 j2_a26
+_dash_prepare_spec, specpath("`j2_s26'") datapath("`j2_d26'")
+local j2_x26 `"`r(vars)'"'
+assert `: list posof "rep78" in j2_x26' > 0
+global J2_SPEC "`j2_s26'"
+global J2_DATA "`j2_d26'"
+global J2_APP  "`j2_a26'"
+python: _j2_modes()
+display as text "  KPI saved: [$J2_SAVED_KPI]  served: [$J2_SERVED_KPI]  Stata: [`j2_k26']"
+assert "$J2_SAVED_KPI" == "`j2_k26'"
+assert "$J2_SERVED_KPI" == "`j2_k26'"
+display "JSE-26 PASS: a KPI qualifier is read whole"
+capture dash clear
+
+// JSE-27 -- _dash_json_str keeps a text holding "' -- a compound-quoted
+// title, "'quoted'", a compound literal in a qualifier -- and a backtick,
+// apostrophe and dollar sign, which it now writes as \u escapes so that no
+// spec line's compound quotes can be ended or expanded by them.  Each text
+// is made in Mata, never typed, and must come back from Python's JSON
+// reader exactly.  It is handed over through macval(), as dash's
+// validators hand over a value: a substituted macro's own ` and $ are
+// otherwise read again as references.
+mata: st_local("j2_t1", char(96) + char(34) + "A " + char(34) + "B" + char(34) + " C" + char(34) + char(39))
+mata: st_local("j2_t2", char(34) + char(39) + "quoted" + char(39) + char(34))
+mata: st_local("j2_t3", "make == " + char(96) + char(34) + "AMC" + char(34) + char(39) + " & foreign == 1")
+mata: st_local("j2_t4", "a" + char(96) + "b" + char(39) + " c" + char(36) + "x")
+forvalues j = 1/4 {
+    local j2_e ""
+    _dash_json_str `"`macval(j2_t`j')'"' j2_e
+    mata: st_global("J2_V", st_local("j2_t`j'"))
+    mata: st_global("J2_E", st_local("j2_e"))
+    python: _j2_round_trip()
+    local j2_ok`j' "$J2_OK"
+}
+display as text "  round trips: `j2_ok1' `j2_ok2' `j2_ok3' `j2_ok4'"
+assert "`j2_ok1'`j2_ok2'`j2_ok3'`j2_ok4'" == "1111"
+display "JSE-27 PASS: _dash_json_str keeps text holding quote-apostrophe, backtick and dollar"
+
+// JSE-28 -- _dash_json_get_str decodes every escape JSON has, so what
+// _dash_json_str writes comes back whole; and a saving() path holding an
+// apostrophe, which travels through both, is written where it was asked.
+mata: st_local("j2_ok28", strofreal(1))
+mata: _j2_bs = char(92)
+mata: _j2_j = "{" + char(34) + "k" + char(34) + ":" + char(34) + "a" + _j2_bs + "u0027b" + _j2_bs + "u0060c" + _j2_bs + "u0024d" + _j2_bs + "u0001e" + _j2_bs + "bf" + _j2_bs + "fg" + _j2_bs + "/h" + _j2_bs + "u00e9i" + char(34) + "}"
+mata: _dash_json_get_str(_j2_j, "k", "j2_g28")
+mata: st_local("j2_ok28", strofreal(st_local("j2_g28") == "a" + char(39) + "b" + char(96) + "c" + char(36) + "d" + char(1) + "e" + char(8) + "f" + char(12) + "g/h" + uchar(233) + "i"))
+mata: mata drop _j2_bs _j2_j
+display as text "  every escape decoded: `j2_ok28'"
+assert `j2_ok28' == 1
+forvalues j = 1/4 {
+    _dash_json_str `"`macval(j2_t`j')'"' j2_e
+    mata: _dash_json_get_str("{" + char(34) + "k" + char(34) + ":" + char(34) + st_local("j2_e") + char(34) + "}", "k", "j2_back")
+    mata: st_local("j2_rt", strofreal(st_local("j2_back") == st_local("j2_t`j'")))
+    assert `j2_rt' == 1
+}
+local j2_ap "`c(tmpdir)'jse28_o'brien.html"
+capture erase "`j2_ap'"
+dash scatter mpg weight, saving("`j2_ap'")
+confirm file "`j2_ap'"
+capture erase "`j2_ap'"
+display "JSE-28 PASS: _dash_json_get_str decodes every JSON escape; an apostrophe path survives"
+capture dash clear
+
+// JSE-29 -- title(), note(), a legend label and a by() title written with
+// compound quotes are stored whole (_dash_json_str returned "" for each).
+dash scatter mpg weight, title(`"A "B" C"') note(`"n "q""') legend(label(1 `"L "q""')) name(jse29)
+global J2_FROM "dash_json_jse29"
+global J2_PATH "graph_options title"
+global J2_WANT `"`"A "B" C"'"'
+python: _j2_json_field()
+local j2_ok1 "$J2_OK"
+global J2_PATH "graph_options note"
+global J2_WANT `"`"n "q""'"'
+python: _j2_json_field()
+local j2_ok2 "$J2_OK"
+global J2_PATH "graph_options legend"
+global J2_WANT `"label(1 `"L "q""')"'
+python: _j2_json_field()
+local j2_ok3 "$J2_OK"
+dash scatter mpg weight, by(foreign, title(`"By "origin""')) name(jse29b)
+global J2_FROM "dash_json_jse29b"
+global J2_PATH "graph_options by"
+global J2_WANT `"foreign, title(`"By "origin""')"'
+python: _j2_json_field()
+local j2_ok4 "$J2_OK"
+display as text "  title: `j2_ok1'  note: `j2_ok2'  legend: `j2_ok3'  by: `j2_ok4'"
+assert "`j2_ok1'`j2_ok2'`j2_ok3'`j2_ok4'" == "1111"
+display "JSE-29 PASS: compound-quoted title, note, legend label and by() title are stored whole"
+capture dash clear
+
+// JSE-30 -- ~ is Stata's not: if ~foreign names foreign, and it is exported.
+dash scatter mpg weight if ~foreign, name(jse30)
+local j2_v30 ""
+mata: _dash_extract_qual_vars(st_global("dash_json_jse30"), "j2_v30")
+tempfile j2_s30 j2_d30
+_dash_prepare_spec, specpath("`j2_s30'") datapath("`j2_d30'")
+local j2_x30 `"`r(vars)'"'
+display as text "  read: [`j2_v30']  exported: [`j2_x30']"
+assert `: list posof "foreign" in j2_v30' > 0
+assert `: list posof "foreign" in j2_x30' > 0
+display "JSE-30 PASS: if ~foreign exports foreign"
+capture dash clear
+
+// JSE-31 -- a Unicode variable name, e-acute + "tranger", is read,
+// exported, and both modes draw Stata's rows.  Made with uchar(233), so
+// this file stays ASCII.
+local j2_u = uchar(233) + "tranger"
+rename foreign `j2_u'
+quietly count if `j2_u' == 1
+local j2_n31 = r(N)
+dash scatter mpg weight if `j2_u' == 1, name(jse31)
+local j2_v31 ""
+mata: _dash_extract_qual_vars(st_global("dash_json_jse31"), "j2_v31")
+tempfile j2_s31 j2_d31 j2_a31
+_dash_prepare_spec, specpath("`j2_s31'") datapath("`j2_d31'")
+local j2_x31 `"`r(vars)'"'
+global J2_SPEC "`j2_s31'"
+global J2_DATA "`j2_d31'"
+global J2_APP  "`j2_a31'"
+python: _j2_modes()
+rename `j2_u' foreign
+display as text "  read: [`j2_v31']  exported: [`j2_x31']  rows: [$J2_SAVED_ROWS] [$J2_SERVED_ROWS] of `j2_n31'"
+assert `: list posof "`j2_u'" in j2_v31' > 0
+assert `: list posof "`j2_u'" in j2_x31' > 0
+assert "$J2_SAVED_ROWS" == "`j2_n31'" & "$J2_SERVED_ROWS" == "`j2_n31'"
+assert "$J2_SKIPPED" == "0"
+display "JSE-31 PASS: a Unicode variable name in a qualifier is exported and applied"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-32..36 -- adversarial string literals (CLAUDE.md rule 18): each is
+// data.  Stata's own count is the oracle; both modes must give it, nothing
+// may run, and nothing may be echoed as markup or SMCL.
+// ----------------------------------------------------------------
+
+// JSE-32 -- Python code in a literal, in a graph's and a KPI's qualifier.
+// The code would create a file; it must not exist afterwards.
+local j2_sent "`c(tmpdir)'jse32_executed"
+capture erase "`j2_sent'"
+local j2_L1 "__import__('os').system('touch `j2_sent'')"
+quietly count if make != "`j2_L1'" & foreign == 1
+local j2_n32 = r(N)
+quietly summarize price if make != "`j2_L1'" & rep78 == 3, meanonly
+local j2_k32 : display %9.2f r(mean)
+local j2_k32 = strtrim("`j2_k32'")
+dash scatter mpg weight if make != "`j2_L1'" & foreign == 1, name(jse32)
+dash kpi mean(price) if make != "`j2_L1'" & rep78 == 3, title("K") fmt(%9.2f) name(jse32k)
+global J2_FROM "dash_json_jse32"
+global J2_WANT `"make != "`j2_L1'" & foreign == 1"'
+global J2_PATH "plots 0 if_expr"
+python: _j2_json_field()
+local j2_ok1 "$J2_OK"
+tempfile j2_s32 j2_d32 j2_a32
+_dash_prepare_spec, specpath("`j2_s32'") datapath("`j2_d32'")
+global J2_SPEC "`j2_s32'"
+global J2_DATA "`j2_d32'"
+global J2_APP  "`j2_a32'"
+python: _j2_modes()
+display as text "  stored: `j2_ok1'  rows: [$J2_SAVED_ROWS] [$J2_SERVED_ROWS] of `j2_n32'  KPI: [$J2_SAVED_KPI] [$J2_SERVED_KPI] of `j2_k32'"
+assert "`j2_ok1'" == "1"
+assert "$J2_SAVED_ROWS" == "`j2_n32'" & "$J2_SERVED_ROWS" == "`j2_n32'"
+assert "$J2_SAVED_KPI" == "`j2_k32'" & "$J2_SERVED_KPI" == "`j2_k32'"
+assert "$J2_SKIPPED" == "0"
+capture confirm file "`j2_sent'"
+assert _rc != 0
+display "JSE-32 PASS: Python code in a literal is data in both modes and runs nowhere"
+capture dash clear
+
+// JSE-33 -- SMCL in a literal.  Registered and applied, never echoed: dash
+// prints nothing of it, and {stata dash clear} clears nothing.
+local j2_L4 "{err}{browse http://example.com}{stata dash clear}"
+quietly count if make != "`j2_L4'" & foreign == 1
+local j2_n33 = r(N)
+_j2_run `"dash scatter mpg weight if make != "`j2_L4'" & foreign == 1, name(jse33)"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("example.com")
+assert r(found) == 0
+tempfile j2_s33 j2_d33 j2_a33
+_j2_run `"_dash_prepare_spec, specpath("`j2_s33'") datapath("`j2_d33'")"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("example.com")
+assert r(found) == 0
+assert "${dash_graph_registry}" == "jse33"
+global J2_SPEC "`j2_s33'"
+global J2_DATA "`j2_d33'"
+global J2_APP  "`j2_a33'"
+python: _j2_modes()
+display as text "  rows: [$J2_SAVED_ROWS] [$J2_SERVED_ROWS] of `j2_n33'"
+assert "$J2_SAVED_ROWS" == "`j2_n33'" & "$J2_SERVED_ROWS" == "`j2_n33'"
+assert "$J2_SKIPPED" == "0"
+display "JSE-33 PASS: SMCL in a literal is data, applied and never echoed"
+capture dash clear
+
+// JSE-34 -- markup in a literal, on the immediate route: the page draws
+// Stata's rows and carries no script the literal could have written.
+local j2_L5 "</script><script>alert(1)</script>"
+quietly count if make != "`j2_L5'" & foreign == 1
+local j2_n34 = r(N)
+tempfile j2_p34
+global J2_PAGE "`j2_p34'.html"
+_j2_run `"dash scatter mpg weight if make != "`j2_L5'" & foreign == 1, saving("`j2_p34'.html")"'
+assert r(rc) == 0
+python: _j2_page_rows()
+display as text "  page rows: [$J2_PAGE_ROWS] of `j2_n34'"
+assert "$J2_PAGE_ROWS" == "`j2_n34'"
+cert_file_has "`j2_p34'.html", needle("<script>alert(1)")
+assert r(found) == 0
+capture erase "`j2_p34'.html"
+display "JSE-34 PASS: markup in a literal is data on the saved page"
+capture dash clear
+
+// JSE-35 -- JSON's own punctuation in a literal: }, ], a comma, a brace and
+// a backslash give Stata's rows in both modes; and a double quote, which
+// only a compound-quoted literal can hold, is stored whole with the names
+// around it read.
+local j2_L7 "}, \ ] ,{"
+quietly count if make != "`j2_L7'" & foreign == 1
+local j2_n35 = r(N)
+dash scatter mpg weight if make != "`j2_L7'" & foreign == 1, name(jse35)
+global J2_FROM "dash_json_jse35"
+global J2_WANT `"make != "`j2_L7'" & foreign == 1"'
+global J2_PATH "plots 0 if_expr"
+python: _j2_json_field()
+local j2_ok1 "$J2_OK"
+tempfile j2_s35 j2_d35 j2_a35
+_dash_prepare_spec, specpath("`j2_s35'") datapath("`j2_d35'")
+global J2_SPEC "`j2_s35'"
+global J2_DATA "`j2_d35'"
+global J2_APP  "`j2_a35'"
+python: _j2_modes()
+local j2_L3 `"x"}, \ ]"'
+dash scatter mpg weight if make != `"`j2_L3'"' & foreign == 1, name(jse35c)
+global J2_FROM "dash_json_jse35c"
+global J2_WANT `"make != `"`j2_L3'"' & foreign == 1"'
+python: _j2_json_field()
+local j2_ok2 "$J2_OK"
+local j2_v35 ""
+mata: _dash_extract_qual_vars(st_global("dash_json_jse35c"), "j2_v35")
+display as text "  stored: `j2_ok1' `j2_ok2'  rows: [$J2_SAVED_ROWS] [$J2_SERVED_ROWS] of `j2_n35'  read: [`j2_v35']"
+assert "`j2_ok1'`j2_ok2'" == "11"
+assert "$J2_SAVED_ROWS" == "`j2_n35'" & "$J2_SERVED_ROWS" == "`j2_n35'"
+assert "$J2_SKIPPED" == "0"
+assert `: list posof "make" in j2_v35' > 0 & `: list posof "foreign" in j2_v35' > 0
+display "JSE-35 PASS: JSON punctuation in a literal is data"
+capture dash clear
+
+// JSE-36 -- a literal of 20,000 characters: registered, exported and drawn
+// with Stata's rows in both modes, in bounded time.
+local j2_L6 = 20000 * "x"
+quietly count if make != "`j2_L6'" & foreign == 1
+local j2_n36 = r(N)
+timer clear 36
+timer on 36
+dash scatter mpg weight if make != "`j2_L6'" & foreign == 1, name(jse36)
+tempfile j2_s36 j2_d36 j2_a36
+_dash_prepare_spec, specpath("`j2_s36'") datapath("`j2_d36'")
+global J2_SPEC "`j2_s36'"
+global J2_DATA "`j2_d36'"
+global J2_APP  "`j2_a36'"
+python: _j2_modes()
+timer off 36
+quietly timer list 36
+local j2_t36 = r(t36)
+display as text "  rows: [$J2_SAVED_ROWS] [$J2_SERVED_ROWS] of `j2_n36' in `j2_t36' s"
+assert "$J2_SAVED_ROWS" == "`j2_n36'" & "$J2_SERVED_ROWS" == "`j2_n36'"
+assert "$J2_SKIPPED" == "0"
+assert `j2_t36' < 120
+display "JSE-36 PASS: a 20,000-character literal is data, in bounded time"
+capture dash clear
+
+// JSE-37 -- a filter() label written with compound quotes, as dash build
+// hands filter() on: _dash_json_str returned label() for it -- the label
+// gone, rc 0 (measured at ad13a0f) -- and it is now kept whole.
+dash scatter mpg weight, name(jse37)
+local j2_f `"weight, type(range) label(`"Curb "weight""')"'
+tempfile j2_s37 j2_d37
+_dash_prepare_spec, cmdname("dash build") specpath("`j2_s37'") datapath("`j2_d37'") filter(`"`j2_f'"')
+mata: st_global("J2_SPECTXT", invtokens(cat(st_local("j2_s37"))', ""))
+global J2_FROM "J2_SPECTXT"
+global J2_PATH "build_options filter"
+global J2_WANT `"`j2_f'"'
+python: _j2_json_field()
+local j2_ok37 "$J2_OK"
+display as text "  filter kept whole: `j2_ok37'"
+assert "`j2_ok37'" == "1"
+display "JSE-37 PASS: a compound-quoted filter() label is stored whole"
+capture dash clear
+
+python: _j2_gone = _j2_sys.modules.pop("_j2_dash_render", None)
+macro drop J2_*
 
 display ""
 display "All JSON escaping tests PASSED."

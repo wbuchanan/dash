@@ -207,7 +207,7 @@ program define _dash_require_mata
     // one would pass a library that compiled half way.
     local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
-        _dash_is_digits _dash_item_globals _dash_json_get_str ///
+        _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_layout_cells _dash_layout_refusal _dash_option_names ///
         _dash_immediate _dash_say _dash_split_segs _dash_undrawn_plottype
 
@@ -465,13 +465,12 @@ end
 
 
 // ================================================================
-// _dash_json_str  — simple JSON string escaping in pure Stata
-// Usage:  _dash_json_str `"`raw'"' "_escaped"
-// After: local escaped contains the JSON-safe string (no surrounding quotes)
+// _dash_json_str  -- JSON string escaping, the text read by value in Mata
+// Usage:  _dash_json_str `"`raw'"' _escaped
+// After: local _escaped contains the JSON-safe string (no surrounding quotes)
 // ================================================================
 program define _dash_json_str
     version 16.0
-    args raw_val out_macro
 
     // JSON forbids EVERY unescaped byte below 0x20 inside a string, not just
     // the three that have short forms.  This escaped backslash, quote, TAB,
@@ -485,31 +484,18 @@ program define _dash_json_str
     // dashboard is the better of the two.  A stray control character pasted
     // in from a web page now survives into the title intact.
     //
-    // Backslash first, always: every escape below introduces one.
-    local v = subinstr(`"`raw_val'"', `"\"', `"\\"', .)
-    local v = subinstr(`"`v'"', `"""', `"\""', .)
-
-    // The five with short forms, which are what a reader expects to see.
-    local v = subinstr(`"`v'"', char(8),  `"\b"', .)
-    local v = subinstr(`"`v'"', char(9),  `"\t"', .)
-    local v = subinstr(`"`v'"', char(10), `"\n"', .)
-    local v = subinstr(`"`v'"', char(12), `"\f"', .)
-    local v = subinstr(`"`v'"', char(13), `"\r"', .)
-
-    // Everything else below 0x20, as \u00XX.  char(0) is not reachable: a
-    // Stata string cannot carry a NUL, so it can never appear in `raw_val'.
-    // Stata has no hex display format -- `: display %02x' is r(120) -- so
-    // the two digits are taken from a digit string.
-    local _hexdigits "0123456789abcdef"
-    foreach _c of numlist 1/7 11 14/31 {
-        if strpos(`"`v'"', char(`_c')) > 0 {
-            local _hi = substr("`_hexdigits'", int(`_c'/16) + 1, 1)
-            local _lo = substr("`_hexdigits'", mod(`_c', 16) + 1, 1)
-            local v = subinstr(`"`v'"', char(`_c'), "\u00`_hi'`_lo'", .)
-        }
-    }
-
-    c_local `out_macro' `"`v'"'
+    // The text is read and escaped in Mata, by value (_dash_json_str_args in
+    // dash_parse.mata).  It was read with -args- and escaped by subinstr()
+    // calls in compound quotes, and a text holding "' -- a compound-quoted
+    // title(), note() or legend label, a compound-quoted literal in a
+    // qualifier -- ended those quotes early: it came back empty or cut, with
+    // rc 0 (measured 23sep2026 at ad13a0f: title(`"A "B" C"') stored
+    // "title":"").  The result holds no backtick, dollar sign or
+    // apostrophe -- each is written as its JSON escape, backslash u 0060,
+    // 0024 and 0027 -- so every spec line can expand it inside compound
+    // quotes.
+    mata: _dash_json_str_args()
+    c_local `_dash_jsn' `"`_dash_jsv'"'
 end
 
 
@@ -2800,9 +2786,15 @@ program define _dash_process_segment, rclass
     // Options JSON
     _dash_plot_opts_to_json _opts_json
 
-    // if/in
-    _dash_json_str "`if_expr'" _jif
-    _dash_json_str "`in_expr'" _jin
+    // if/in, in compound quotes.  In plain quotes a qualifier holding a
+    // double quote was split at it: -args- in _dash_json_str took the text
+    // before the first inner quote as the value and the word after it as
+    // the name to store under, so  if make != "AMC Concord" & foreign == 1
+    // stored "if_expr":"" -- the qualifier gone, every row drawn, no word
+    // (measured 23sep2026 at ad13a0f) -- and  make != "<b>"  stopped with
+    // "_< invalid name".
+    _dash_json_str `"`if_expr'"' _jif
+    _dash_json_str `"`in_expr'"' _jin
 
     // Assemble.  A standard varlist with several y-variables produces ONE plot
     // object per y-variable; they are comma-joined here and the caller splices
@@ -4281,8 +4273,16 @@ program define _dash_prepare_spec, rclass
             // A KPI qualifier may name variables that appear nowhere else
             // (dash kpi mean(mpg) if foreign==1 needs foreign serialised, or
             // the renderer cannot reproduce the conditional value).
-            local _kifx = "${dash_kpi_`gname'__if}"
-            if `"`_kifx'"' != "" {
+            // Read whole, by copy.  It was  local _kifx = "${...}", an
+            // expression in plain quotes, which ended at the qualifier's
+            // first double quote: if make != "AMC" & rep78 == 3 came
+            // through as  make != , so rep78 was not exported and both
+            // modes showed the unconditional mean, and a literal with a
+            // blank in it -- "AMC Concord" -- stopped dash build with
+            // r(198) "invalid 'Concord'" (measured 23sep2026 at ad13a0f).
+            local _kifx : copy global dash_kpi_`gname'__if
+            local _kifl : length local _kifx
+            if `_kifl' > 0 {
                 _dash_json_str `"`_kifx'"' _kifx_esc
                 local kqvars ""
                 mata: _dash_extract_qual_vars(`"{"if_expr":"`_kifx_esc'"}"', "kqvars")
