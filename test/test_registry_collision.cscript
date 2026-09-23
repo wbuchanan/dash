@@ -1,4 +1,4 @@
-*! test_registry_collision.cscript  v1.1
+*! test_registry_collision.cscript  v1.2
 *! Certification script for the graph/KPI registry namespace.
 *!
 *! Graphs and KPIs share one registry and one namespace.  `dash' checked for
@@ -31,10 +31,18 @@
 *! dropped the AB card or died with r(7102) and a JSONDecodeError.  REG-18
 *! through REG-28.
 *!
-*! Tests: REG-01 through REG-28
+*! And text anywhere in the command could grant a replace.  The graph
+*! registrar searched the WHOLE command for name(...,replace) whenever
+*! name()'s own text held no replace, so a re-used name whose title, note,
+*! caption, text() or if qualifier held those characters overwrote the
+*! registered graph -- measured 23sep2026 at ad13a0f, rc 0 in silence where
+*! twoway refuses with r(110).  Only name()'s own text decides a replace
+*! now, for a graph and a KPI card alike.  REG-29 through REG-36.
+*!
+*! Tests: REG-01 through REG-36
 *!
 *! Usage:  do test/test_registry_collision.cscript
-*! Version: 1.1  23sep2026
+*! Version: 1.2  23sep2026
 
 cscript "graph and KPI share one namespace" adodir ".."
 
@@ -741,6 +749,387 @@ local left : all globals "dash_kpi_*"
 assert "`left'" == ""
 display "REG-28 PASS: a KPI entry with no statistic or variable is refused with a message, not drawn blank"
 
+// ================================================================
+// REG-29..36 -- only name()'s own text decides a replace
+// ================================================================
+// _dash_register_graph read a replace from name()'s own text and, when
+// that held none, from a search of the WHOLE command for name(...,replace)
+// -- lower-cased, anywhere, rename( included.  So any text holding those
+// characters overwrote a registered graph.  Measured 23sep2026 at ad13a0f,
+// after `dash scatter mpg weight, name(g1)', each of these returned rc 0
+// and stored price over g1 without a word:
+//     dash scatter price weight, name(g1) title("see name(x, replace)")
+//     ... note("rename(v, replace)"), subtitle("name(x,replace)"),
+//     caption("NAME(x, replace)"), text(20 3000 "name(a, replace)"),
+//     if make != "name(a, replace)", and an uppercase NAME(x, replace)
+//     option that dash itself reported as unsupported
+// as did both paren forms and several || segments.  twoway refuses every
+// one of them with r(110) "graph g1 already exists", and replaces through
+// name()'s own replace on every route (measured the same day).  A graph
+// given KPI k1's name with "name(k1, replace)" in its title deleted the
+// KPI card.  The search was the registrar's first way of reading replace
+// (25mar2026, the first commit): meant to read name()'s value, it read the
+// whole command, and the name check before it refused any name() text
+// holding a replace, so it only ever acted on text outside name().  Stata's
+// name(string) has captured name()'s whole text on every route since
+// 27mar2026 and the split that reads it came on 18sep2026; after that the
+// search decided only commands name()'s own text said no to.  A command
+// with two name() options was one of those: the name() dash reads said no
+// and the other said replace.  twoway refuses all three such forms below
+// (r(198) twice, r(110) once).
+//
+// Each refusal is judged by what it printed and by every global the item
+// owns and the registry, before and after; every failed check is collected
+// and named before the case fails.
+
+capture mata: mata drop _reg_item_values()
+capture mata: mata drop _reg_snap()
+capture mata: mata drop _reg_same()
+capture mata: mata drop _reg_is_new()
+capture mata: mata drop _reg_is_old()
+capture mata: mata drop _reg_copy_program()
+mata:
+// Every global item <nm> owns, sorted, as (name, value) rows: dash_json_,
+// dash_spec_, a KPI's marker and a KPI's __-fields.
+string matrix _reg_item_values(string scalar nm)
+{
+    string colvector all
+    string matrix    out
+    string scalar    p
+    real scalar      i
+    out = J(0, 2, "")
+    p   = "dash_kpi_" + nm + "__"
+    all = st_dir("global", "macro", "dash_*")
+    if (length(all) == 0) return(out)
+    all = sort(all, 1)
+    for (i = 1; i <= length(all); i++) {
+        if (all[i] == "dash_json_" + nm | all[i] == "dash_spec_" + nm |
+            all[i] == "dash_kpi_" + nm | substr(all[i], 1, strlen(p)) == p) {
+            out = out \ (all[i], st_global(all[i]))
+        }
+    }
+    return(out)
+}
+
+void _reg_snap(string scalar nm)
+{
+    external string matrix _reg_snapshot
+    _reg_snapshot = _reg_item_values(nm)
+}
+
+// 1 when item <nm> holds exactly the globals, with exactly the values, it
+// held at the last _reg_snap().
+real scalar _reg_same(string scalar nm)
+{
+    external string matrix _reg_snapshot
+    string matrix now
+    now = _reg_item_values(nm)
+    if (rows(now) != rows(_reg_snapshot)) return(0)
+    if (rows(now) == 0) return(1)
+    return(now == _reg_snapshot)
+}
+
+// 1 when graph <nm> is a replacing command's graph: stored under <nm>, it
+// draws price, where the graph it replaces drew mpg.
+real scalar _reg_is_new(string scalar nm)
+{
+    string scalar js, q
+    q  = char(34)
+    js = st_global("dash_json_" + nm)
+    return(strpos(js, q + "yvar" + q + ":" + q + "price" + q) > 0 &
+           strpos(js, q + "yvar" + q + ":" + q + "mpg" + q) == 0 &
+           strpos(js, q + "name" + q + ":" + q + nm + q) > 0)
+}
+
+// 1 when graph <nm> is still the one _reg_fresh registered.
+real scalar _reg_is_old(string scalar nm)
+{
+    string scalar js, q
+    q  = char(34)
+    js = st_global("dash_json_" + nm)
+    return(strpos(js, q + "yvar" + q + ":" + q + "mpg" + q) > 0 &
+           strpos(js, q + "yvar" + q + ":" + q + "price" + q) == 0 &
+           strpos(js, "Old G1") > 0)
+}
+
+// Copy program <prog>'s definition from <src> into <dst>, verbatim: from
+// its `program define' line to the first `end' after it.
+void _reg_copy_program(string scalar src, string scalar prog, string scalar dst)
+{
+    real scalar   fh, oh, on
+    string scalar line
+    if (fileexists(dst)) unlink(dst)
+    fh = fopen(src, "r")
+    oh = fopen(dst, "w")
+    on = 0
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (!on & strtrim(line) == "program define " + prog) on = 1
+        if (on) fput(oh, line)
+        if (on & strtrim(line) == "end") break
+    }
+    fclose(fh)
+    fclose(oh)
+}
+end
+
+// A fresh registry holding graph g1 -- y mpg, titled "Old G1" -- the graph
+// every refusal below must leave exactly as it is.
+capture program drop _reg_fresh
+program define _reg_fresh
+    quietly dash clear
+    quietly dash scatter mpg weight, name(g1) title("Old G1")
+end
+
+// Run <cmd>, which re-uses registered name <nm> with no replace in the
+// name() dash reads, logging what it prints.  Anything wrong is appended to
+// the global REG_BAD: a return code other than 198, no refusal naming <nm>
+// -- a graph's refusal, or for <kind> kpi a KPI card's -- or any change to
+// a global <nm> owns or to the registry.
+capture program drop _reg_refused
+program define _reg_refused
+    args kind nm cmd
+    local lg "`c(tmpdir)'dash_reg_refused.log"
+    if "`kind'" == "kpi" {
+        local msg "dash kpi: name '`nm'' already exists. Use name(`nm', replace) to overwrite."
+    }
+    else {
+        local msg "dash: graph name '`nm'' already exists. Use name(`nm', replace) to overwrite."
+    }
+    mata: _reg_snap("`nm'")
+    local reg0 "${dash_graph_registry}"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _regref
+    capture erase "`lg'"
+    quietly log using "`lg'", replace text name(_regref)
+    capture noisily `cmd'
+    local rc = _rc
+    quietly log close _regref
+    set linesize `ls'
+    mata: st_local("said", strofreal(_reg_log_has("`lg'", st_local("msg"))))
+    mata: st_local("same", strofreal(_reg_same("`nm'")))
+    local why ""
+    if `rc' != 198 local why "`why' rc=`rc'"
+    if `said' != 1 local why "`why' no-refusal"
+    if `same' != 1 local why "`why' `nm'-changed"
+    if "${dash_graph_registry}" != "`reg0'" local why "`why' registry=[${dash_graph_registry}]"
+    if "`why'" != "" {
+        mata: st_global("REG_BAD", st_global("REG_BAD") + " | " + st_local("cmd") + " ->" + st_local("why"))
+    }
+end
+
+// Run <cmd>, which replaces registered graph <nm> through a replace in the
+// name() dash reads.  Anything wrong is appended to REG_BAD: a return code
+// other than 0, a stored graph that is not the new one, or a registry that
+// changed.
+capture program drop _reg_replaced
+program define _reg_replaced
+    args nm cmd
+    local reg0 "${dash_graph_registry}"
+    capture noisily `cmd'
+    local rc = _rc
+    mata: st_local("new", strofreal(_reg_is_new("`nm'")))
+    local why ""
+    if `rc' != 0 local why "`why' rc=`rc'"
+    if `new' != 1 local why "`why' not-replaced"
+    if "${dash_graph_registry}" != "`reg0'" local why "`why' registry=[${dash_graph_registry}]"
+    if "`why'" != "" {
+        mata: st_global("REG_BAD", st_global("REG_BAD") + " | " + st_local("cmd") + " ->" + st_local("why"))
+    }
+end
+
+// Appends to REG_BAD unless g1 is still the graph _reg_fresh registered.
+capture program drop _reg_still_g1
+program define _reg_still_g1
+    mata: st_local("old", strofreal(_reg_is_old("g1")))
+    if `old' != 1 {
+        mata: st_global("REG_BAD", st_global("REG_BAD") + " | g1 is no longer the graph first registered")
+    }
+end
+
+// Fails case <id>, naming everything REG_BAD collected, or returns.
+capture program drop _reg_verdict
+program define _reg_verdict
+    args id
+    mata: st_local("nbad", strofreal(strlen(st_global("REG_BAD"))))
+    if `nbad' > 0 {
+        mata: errprintf("%s FAIL:%s\n", st_local("id"), st_global("REG_BAD"))
+        exit 9
+    }
+end
+
+// ---- REG-29 -- title(), subtitle(), note() and caption() text ----
+// The spellings the search matched: spaced, unspaced, inside rename(),
+// upper case, and the graph's own name as a note would give it.
+_reg_fresh
+global REG_BAD ""
+_reg_refused graph g1 `"dash scatter price weight, name(g1) title("see name(x, replace)")"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) subtitle("name(x,replace)")"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) note("rename(v, replace)")"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) caption("NAME(x, replace)")"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) note("Run it again with name(g1, replace) to update it.")"'
+_reg_refused graph g1 `"dash scatter price weight, title("name(g1, replace)") name(g1)"'
+_reg_still_g1
+_reg_verdict REG-29
+display "REG-29 PASS: name(x, replace) in title(), subtitle(), note() or caption() text grants no replace"
+
+// ---- REG-30 -- both paren forms ----
+// name() and the text in one group; both after the comma; the text in a
+// group with name() after the comma; name() in a group with the text after
+// the comma; and || between the groups.
+_reg_fresh
+global REG_BAD ""
+_reg_refused graph g1 `"dash (scatter price weight, name(g1) title("name(x, replace)"))"'
+_reg_refused graph g1 `"dash (scatter price weight) (line price weight), name(g1) note("name(x, replace)")"'
+_reg_refused graph g1 `"dash (scatter price weight, title("name(x, replace)")) (line price weight), name(g1)"'
+_reg_refused graph g1 `"dash (scatter price weight, name(g1)) (line price weight), caption("rename(v, replace)")"'
+_reg_refused graph g1 `"dash (scatter price weight, name(g1)) || (line price weight, subtitle("name(x, replace)"))"'
+_reg_still_g1
+_reg_verdict REG-30
+display "REG-30 PASS: in either paren form, text holding name(x, replace) grants no replace"
+
+// ---- REG-31 -- several || segments ----
+_reg_fresh
+global REG_BAD ""
+_reg_refused graph g1 `"dash scatter price weight, name(g1) || line price weight, title("name(x, replace)")"'
+_reg_refused graph g1 `"dash scatter price weight, note("name(x, replace)") || line price weight, name(g1)"'
+_reg_refused graph g1 `"dash scatter price weight || line price weight || lfit price weight, name(g1) subtitle("name(x,replace)")"'
+_reg_still_g1
+_reg_verdict REG-31
+display "REG-31 PASS: across || segments, text holding name(x, replace) grants no replace"
+
+// ---- REG-32 -- text that is no title, and a KPI's name ----
+// text(), an axis title and a legend label, an if qualifier's string, an
+// uppercase NAME() option (reported as unsupported), and a graph given a
+// KPI card's name: the card must survive whole.
+_reg_fresh
+quietly dash kpi mean(mpg), name(k1) title("A")
+global REG_BAD ""
+_reg_refused graph g1 `"dash scatter price weight, name(g1) text(20 3000 "name(a, replace)")"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) ytitle("name(a, replace)") legend(label(1 "name(b, replace)"))"'
+_reg_refused graph g1 `"dash scatter price weight if make != "name(a, replace)", name(g1)"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) NAME(x, replace)"'
+_reg_refused graph k1 `"dash scatter price weight, name(k1) title("name(k1, replace)")"'
+_reg_still_g1
+if "${dash_kpi_k1}" != "1" | "${dash_kpi_k1__var}" != "mpg" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | KPI k1 is no longer the card first registered")
+}
+_reg_verdict REG-32
+display "REG-32 PASS: name(x, replace) in text(), an axis title, a legend, an if qualifier or a NAME() option grants no replace, and a KPI keeps its name"
+
+// ---- REG-33 -- two name() options: the one dash reads decides ----
+// dash reads the last group's name(), the one after the comma over a
+// group's, and the first of one option list (the second is reported as
+// unsupported).  A replace in the other one is text like any other.
+_reg_fresh
+global REG_BAD ""
+_reg_refused graph g1 `"dash (scatter price weight, name(g1, replace)) (line price weight, name(g1))"'
+_reg_refused graph g1 `"dash (scatter price weight, name(g1, replace)), name(g1)"'
+_reg_refused graph g1 `"dash scatter price weight, name(g1) name(g1, replace)"'
+_reg_still_g1
+_reg_verdict REG-33
+display "REG-33 PASS: of two name() options, a replace in the one dash does not read grants none"
+
+// ---- REG-34 -- name()'s own replace replaces, on every route ----
+// Comma form, spaced, first and last paren group, after a paren command's
+// comma, first and last || segment, and beside text that holds the words:
+// each draws price over g1, under g1, with the registry unchanged.  A new
+// name whose text names g1 registers beside it and leaves g1 alone.
+global REG_BAD ""
+_reg_fresh
+_reg_replaced g1 `"dash scatter price weight, name(g1, replace)"'
+_reg_fresh
+_reg_replaced g1 `"dash scatter price weight, name( g1 ,replace )"'
+_reg_fresh
+_reg_replaced g1 `"dash (scatter price weight, name(g1, replace)) (line price weight)"'
+_reg_fresh
+_reg_replaced g1 `"dash (scatter price weight) (line price weight, name(g1, replace))"'
+_reg_fresh
+_reg_replaced g1 `"dash (scatter price weight) (line price weight), name(g1, replace)"'
+_reg_fresh
+_reg_replaced g1 `"dash scatter price weight, name(g1, replace) || line price weight"'
+_reg_fresh
+_reg_replaced g1 `"dash scatter price weight || line price weight, name(g1, replace)"'
+_reg_fresh
+_reg_replaced g1 `"dash scatter price weight, name(g1, replace) title("name(x, replace)")"'
+_reg_fresh
+capture noisily dash scatter price weight, name(g2) title("name(g1, replace)")
+if _rc != 0 | "${dash_graph_registry}" != "g1 g2" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | a new name g2 did not register beside g1")
+}
+_reg_still_g1
+_reg_verdict REG-34
+display "REG-34 PASS: a replace in name() itself replaces on every route, and a new name registers"
+
+// ---- REG-35 -- a KPI card reads name() by the same rule ----
+// dash kpi never searched the command, and must not start: text holding
+// name(x, replace) grants no replace over a card or a graph, and name()'s
+// own replace, spaced as a graph's may be, replaces the card.
+_reg_fresh
+quietly dash kpi mean(mpg), name(k1) title("A")
+global REG_BAD ""
+_reg_refused kpi k1 `"dash kpi mean(price), name(k1) title("see name(x, replace)")"'
+_reg_refused kpi k1 `"dash kpi mean(price), name(k1) title("B") subtitle("rename(v, replace)")"'
+_reg_refused kpi g1 `"dash kpi mean(price), name(g1) title("NAME(g1, replace)")"'
+capture noisily dash kpi mean(price), name( k1 ,replace ) title("B")
+if _rc != 0 | "${dash_kpi_k1__var}" != "price" | "${dash_graph_registry}" != "g1 k1" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | name( k1 ,replace ) did not replace KPI k1")
+}
+_reg_still_g1
+_reg_verdict REG-35
+display "REG-35 PASS: a KPI card takes a replace from name() alone"
+
+// ---- REG-36 -- _dash_name_split alone decides a replace ----
+// A stand-in that never grants one: it hands back the text before the
+// comma, flag 0, and notes each text it was asked about.  Every registrar
+// must refuse name(g1, replace) and name(k1, replace) then, having asked
+// it: the whole-command search granted the graph a replace behind the
+// rule's back, and _dash_kpi kept a copy of the rule of its own.  The real
+// program is put back from dash.ado before the verdict.
+dash clear
+quietly dash scatter mpg weight, name(g1) title("Old G1")
+quietly dash kpi mean(mpg), name(k1) title("A")
+capture program drop _dash_name_split
+program define _dash_name_split
+    args raw name_macro flag_macro
+    mata: st_global("REG_SEEN", st_global("REG_SEEN") + "[" + st_local("raw") + "]")
+    local nm = strtrim(`"`raw'"')
+    local cp = strpos(`"`nm'"', ",")
+    if `cp' > 0 local nm = strtrim(substr(`"`nm'"', 1, `cp' - 1))
+    c_local `name_macro' `"`nm'"'
+    c_local `flag_macro' 0
+end
+global REG_BAD ""
+global REG_SEEN ""
+_reg_refused graph g1 `"dash scatter price weight, name(g1, replace)"'
+_reg_refused kpi   k1 `"dash kpi mean(price), name(k1, replace) title("B")"'
+mata: st_local("r36g", strofreal(strpos(st_global("REG_SEEN"), "[g1, replace]") > 0))
+mata: st_local("r36k", strofreal(strpos(st_global("REG_SEEN"), "[k1, replace]") > 0))
+if `r36g' != 1 {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | the graph's name() never reached _dash_name_split")
+}
+if `r36k' != 1 {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | the KPI's name() never reached _dash_name_split")
+}
+local r36src "`c(tmpdir)'dash_reg_name_split.do"
+mata: _reg_copy_program("../dash.ado", "_dash_name_split", st_local("r36src"))
+capture program drop _dash_name_split
+run "`r36src'"
+capture erase "`r36src'"
+_dash_name_split " a , replace " _r36n _r36f
+if "`_r36n'" != "a" | "`_r36f'" != "1" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | the real _dash_name_split was not restored")
+}
+_reg_verdict REG-36
+display "REG-36 PASS: every registrar takes its name and its replace from _dash_name_split alone"
+
+dash clear
+macro drop REG_BAD REG_SEEN
+capture program drop _reg_fresh
+capture program drop _reg_refused
+capture program drop _reg_replaced
+capture program drop _reg_still_g1
+capture program drop _reg_verdict
 capture program drop _reg_count
 capture program drop _reg_build
 capture program drop _reg_spec

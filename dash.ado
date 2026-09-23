@@ -3126,7 +3126,7 @@ program define _dash_plot
     // both renderers key every item by the stored name: written as
     // "g1, replace" it matched nothing layout(), tabs(), link() or exclude()
     // named (P20-33).  _dash_register_graph is still handed name()'s own
-    // text, below, and decides replace from it as it always has.
+    // text, below, and decides replace from that text alone.
     local _g_name_text `"`g_name'"'
     if `"`g_name'"' != "" {
         _dash_name_split `"`g_name'"' g_name _g_name_replace
@@ -3182,7 +3182,8 @@ program define _dash_plot
     // ---- Route: named or immediate ----
     // name()'s own text, ", replace" and all: _dash_register_graph splits
     // it by the same rule and needs the sub-option to decide whether an
-    // existing name may be overwritten.
+    // existing name may be overwritten.  The whole command, handed over as
+    // well, is stored for the record and never read for a replace.
     local graph_name `"`_g_name_text'"'
 
     if `"`graph_name'"' != "" {
@@ -3306,7 +3307,13 @@ end
 // below g2, tabs(A: g1) built no tabs, link(g1 g2) left two sources,
 // exclude(g1) did not protect it, and a plain build drew it last.  Both
 // programs now read the name here (test_adversarial.cscript P20-33,
-// test_registry_collision.cscript REG-17).
+// test_registry_collision.cscript REG-17), and so does _dash_kpi, which
+// kept a copy of the regex of its own until 23sep2026.
+//
+// The flag is the only word on replace.  _dash_register_graph also
+// searched the whole command for name(...,replace) when the flag said no,
+// so a re-used name whose title or note held those characters overwrote
+// the graph it named (test_registry_collision.cscript REG-29 to REG-36).
 //
 // Spaces around the comma are allowed, as twoway allows them: name(g1
 // ,replace) and name( g1 , replace ) are g1 and a replace.  Anything else
@@ -3342,7 +3349,9 @@ program define _dash_register_graph
     // name regex below -- so name(g1, replace) was impossible, and the error
     // message further down told the user to type the very syntax that could
     // not work.  _dash_plot splits the stored graph's name by the same rule,
-    // so the name registered here is the name the stored JSON carries.
+    // so the name registered here is the name the stored JSON carries, and
+    // the flag is the only word on replace (see below).  raw_spec, the
+    // whole command, is stored and never read for it.
     _dash_name_split `"`name'"' _nm replace_flag
     local name `"`_nm'"'
 
@@ -3392,14 +3401,24 @@ program define _dash_register_graph
         exit(198)
     }
 
-    // Paren-mode fallback: the sub-option may have been written on the graph
-    // suffix rather than captured in name().
-    if `replace_flag' == 0 {
-        local raw_lower = lower(`"`raw_spec'"')
-        if regexm(`"`raw_lower'"', "name\([^)]*,[ \t]*replace") {
-            local replace_flag = 1
-        }
-    }
+    // name()'s own text, split above, is the only thing that decides a
+    // replace.  This program also searched the WHOLE command for
+    // name(...,replace) whenever that text held none -- lower-cased and
+    // anywhere, rename( included -- so a re-used name overwrote the graph
+    // it named when a title, note, caption, text(), an if qualifier or an
+    // unsupported NAME() option held those characters.  Measured 23sep2026
+    // at ad13a0f: rc 0 in silence, and a graph given a KPI's name deleted
+    // the card, where twoway refuses every one with r(110).  The search was
+    // this program's first way of reading replace (25mar2026, the first
+    // commit): meant to read name()'s value, it read the whole command, and
+    // the name check before it refused any name() text holding a replace,
+    // so it only ever acted on text outside name().
+    // Stata's name(string) captures name()'s whole text on every route --
+    // a plot's options, a paren command's graph options, any || segment --
+    // so the search decided nothing that text did not, except to say yes
+    // where it said no: text elsewhere, or a second name() dash does not
+    // read, which twoway refuses as well (test_registry_collision.cscript
+    // REG-29 to REG-36).
 
     // Check if name already in registry
     local registry = "${dash_graph_registry}"
@@ -3771,15 +3790,14 @@ program define _dash_kpi
 
     confirm variable `kpi_var'
 
-    // Split off a ", replace" sub-option BEFORE validating the name, exactly
-    // as _dash_register_graph does: syntax's name(string) captures the whole
-    // of "k1, replace", which would then fail the name regex below.
-    local replace_flag = 0
-    local _nm = strtrim(`"`name'"')
-    if regexm(`"`_nm'"', "^([^,]+)[ \t]*,[ \t]*replace[ \t]*$") {
-        local _nm = strtrim(regexs(1))
-        local replace_flag = 1
-    }
+    // Split off a ", replace" sub-option BEFORE validating the name, by the
+    // rule the graph registrar applies: syntax's name(string) captures the
+    // whole of "k1, replace", which would then fail the name regex below.
+    // This program kept a copy of that rule's regex; it reads name() through
+    // _dash_name_split now, so one rule reads it for a graph and a KPI card
+    // alike, and its flag is the only word on replace
+    // (test_registry_collision.cscript REG-35, REG-36).
+    _dash_name_split `"`name'"' _nm replace_flag
     local name `"`_nm'"'
 
     // The graph registrar's rule, without bounded repetition (see there).
