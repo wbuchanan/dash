@@ -350,6 +350,9 @@ SURFACES = {
             "test_registry_collision.cscript:REG-33",
             "test_registry_collision.cscript:REG-35",
             "test_registry_collision.cscript:REG-36",
+            "test_registry_collision.cscript:REG-37",
+            "test_registry_collision.cscript:REG-38",
+            "test_registry_collision.cscript:REG-40",
         ],
         "injection": [
             "test_adversarial.cscript:P19-25",
@@ -359,11 +362,13 @@ SURFACES = {
             "test_registry_collision.cscript:REG-29",
             "test_registry_collision.cscript:REG-32",
             "test/test_reserved_names.py::TestAdversarialReservedNames::test_injection_a_refused_name_is_inert_text",
+            "test_registry_collision.cscript:REG-39",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P20-21",
             "test_adversarial.cscript:P19-01",
             "test/test_reserved_names.py::TestAdversarialReservedNames::test_exhaustion_many_refused_names_make_one_bounded_report",
+            "test_registry_collision.cscript:REG-41",
         ],
     },
     # saving(path) on a plot and on dash build (.html and .py).

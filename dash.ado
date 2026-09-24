@@ -207,7 +207,7 @@ program define _dash_require_mata
     // one would pass a library that compiled half way.
     local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
-        _dash_filter_refusal _dash_filter_setvars ///
+        _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile ///
         _dash_layout_cells _dash_layout_refusal _dash_option_names ///
@@ -2963,6 +2963,11 @@ program define _dash_process_segment, rclass
     // rules run on every segment; the parser takes an empty option list.
     if `"`opts_exp'"' != "" | `"`_seg_weight'"' != "" {
         _dash_parse_plot_opts , `opts_exp'
+        // A second name() in this option list: -syntax- binds the first to
+        // NAMe() and leaves any other to the catch-all, which is read by
+        // value -- it is the user's text.
+        mata: st_local("_seg_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
+        if `_seg_name2' _dash_refuse_second_name
         _dash_fold_bw "`ptype'"
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
@@ -3001,6 +3006,10 @@ program define _dash_process_segment, rclass
     local _seg_wtok ""
     if `"`_seg_weight'"' != "" & !`: list ptype in _wt_honoured' local _seg_wtok `" [`_seg_weight']"'
     c_local _seg_ignored_out `"`s(_pending)' `s(_unknown)'`_seg_wtok'"'
+    // Whether this segment gave name(): _dash_plot counts them across the
+    // command and refuses a second (_dash_refuse_second_name).
+    mata: st_local("_seg_named", strofreal(st_global("s(g_name)") != ""))
+    c_local _seg_named_out `_seg_named'
 
     // Accumulate graph-level options found in this segment into g_* locals
     // (these live in _dash_plot's frame, not here — use c_local to propagate)
@@ -3278,6 +3287,11 @@ program define _dash_plot
         local gopts_exp ""
         local gopts_exp `"`gopts_raw'"'  
         _dash_parse_graph_opts , `gopts_exp'
+        // A second name() in the options after the comma, and whether they
+        // gave one at all: a group's name() is then a second one too.
+        mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
+        if `_g_name2' _dash_refuse_second_name
+        mata: st_local("_g_names_n", strofreal(st_global("s(name)") != ""))
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
@@ -3310,6 +3324,7 @@ program define _dash_plot
     }
 
     local _dash_ignored_acc `"`_dash_gopt_ignored'"'
+    if "`_g_names_n'" == "" local _g_names_n 0
 
     // ---- Parse each plot segment ----
     // WP-19: a graph holds at most `plots' plot entries -- one per y
@@ -3328,7 +3343,15 @@ program define _dash_plot
 
         local _seg_ignored_out ""
         local _seg_nplots_out  1
+        local _seg_named_out   0
         _dash_process_segment `"`seg'"' _pt_k _json_k `n_segs'
+
+        // A graph takes one name(): a second, in another group or ||
+        // segment than the first, or beside the one after the comma, is
+        // refused as twoway refuses it -- before this segment's name() can
+        // overwrite the first and before anything is registered.
+        local _g_names_n = `_g_names_n' + `_seg_named_out'
+        if `_g_names_n' > 1 _dash_refuse_second_name
 
         local _dash_nplots = `_dash_nplots' + `_seg_nplots_out'
         if `_dash_nplots' > `_dash_plot_lim' {
@@ -3630,6 +3653,29 @@ program define _dash_name_split
     }
     c_local `name_macro' `"`_nm'"'
     c_local `flag_macro' `_rep'
+end
+
+// ================================================================
+// _dash_refuse_second_name  -- a command gives name() more than once
+// ================================================================
+// twoway refuses a second name() wherever it is written -- in another plot
+// group, after a paren command's comma, in another || segment or in the
+// same option list, spelled name() or nam(), naming the same graph or two --
+// with "option name() not allowed", r(198).  Measured 24sep2026: only when
+// its FIRST name() names a graph it already holds, without replace, does it
+// say "graph g1 already exists", r(110), instead, and when the first says
+// replace it drops that graph before it refuses.  dash took one of the two
+// -- the last group's, the one after the comma over a group's, the first of
+// one list -- and named the other in its ignoring note, so a command twoway
+// refuses replaced a registered graph, or registered a name twoway never
+// would (test_registry_collision.cscript REG-37 to REG-41).  Refused here
+// in twoway's words, before anything is registered or dropped.  The words
+// hold no user text.
+program define _dash_refuse_second_name
+    version 16.0
+    display as error "option name() not allowed"
+    display as error "      A graph takes one name(); this command gives it more than once, which twoway refuses as well."
+    exit 198
 end
 
 

@@ -275,6 +275,18 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:name(}{it:name}{cmd:, replace)}, which retires whatever held the
     name before.  {cmd:dash clear} empties the registry.
 
+{phang2}    {ul:One name() per command.}  A graph takes one {cmd:name()}.  A
+    second -- in another plot group, after a parenthesised command's comma,
+    in another {cmd:||} segment or in the same option list, written in
+    full or abbreviated ({cmd:nam}), even naming the same graph -- is refused
+    as {cmd:twoway} refuses it, with {cmd:option name() not allowed},
+    {cmd:r(198)}, and nothing is registered or replaced.  ({cmd:twoway}
+    says the graph already exists, {cmd:r(110)}, instead when its first
+    {cmd:name()} names a graph it holds without {cmd:replace}; and when
+    that first one says {cmd:replace}, it drops the old graph before it
+    refuses, which {cmd:dash} does not.)  {cmd:dash kpi} takes one
+    {cmd:name()} too.
+
 {phang2}    {ul:What a name may be.}  A name starts with a letter or an
     underscore and holds only letters, digits and underscores: at most 22
     characters for a graph and 18 for a KPI card.  {cmd:dash} keeps each

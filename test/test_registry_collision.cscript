@@ -1,4 +1,4 @@
-*! test_registry_collision.cscript  v1.2
+*! test_registry_collision.cscript  v1.3
 *! Certification script for the graph/KPI registry namespace.
 *!
 *! Graphs and KPIs share one registry and one namespace.  `dash' checked for
@@ -39,10 +39,19 @@
 *! twoway refuses with r(110).  Only name()'s own text decides a replace
 *! now, for a graph and a KPI card alike.  REG-29 through REG-36.
 *!
-*! Tests: REG-01 through REG-36
+*! And a command could give name() twice.  twoway refuses any command with
+*! a second name() -- in another plot group, after the comma, in another
+*! || segment or in the same option list, spelled name() or nam(), even
+*! naming the same graph -- with "option name() not allowed", r(198).  dash
+*! took one of them (the last group's, the one after the comma, the first
+*! of one list), called the other an unsupported option, and so replaced a
+*! registered graph twoway leaves alone, or registered a name twoway never
+*! would (measured 24sep2026 at 68327a8).  REG-37 through REG-41.
+*!
+*! Tests: REG-01 through REG-41
 *!
 *! Usage:  do test/test_registry_collision.cscript
-*! Version: 1.2  23sep2026
+*! Version: 1.3  24sep2026
 
 cscript "graph and KPI share one namespace" adodir ".."
 
@@ -889,8 +898,17 @@ capture program drop _reg_refused
 program define _reg_refused
     args kind nm cmd
     local lg "`c(tmpdir)'dash_reg_refused.log"
+    // kind twice: a command giving name() more than once, refused with
+    // twoway's own words -- "option name() not allowed", or "option nam()
+    // not allowed" where Stata's syntax names the abbreviation it was given
+    // (a KPI's second name() is refused by -syntax- itself).
+    local msg2 ""
     if "`kind'" == "kpi" {
         local msg "dash kpi: name '`nm'' already exists. Use name(`nm', replace) to overwrite."
+    }
+    else if "`kind'" == "twice" {
+        local msg  "option name() not allowed"
+        local msg2 "option nam() not allowed"
     }
     else {
         local msg "dash: graph name '`nm'' already exists. Use name(`nm', replace) to overwrite."
@@ -907,6 +925,15 @@ program define _reg_refused
     quietly log close _regref
     set linesize `ls'
     mata: st_local("said", strofreal(_reg_log_has("`lg'", st_local("msg"))))
+    if `said' != 1 & `"`msg2'"' != "" {
+        mata: st_local("said", strofreal(_reg_log_has("`lg'", st_local("msg2"))))
+    }
+    // A refused second name() is refused before the note that names the
+    // options dash does not honour, which used to call it "name()".
+    if "`kind'" == "twice" {
+        mata: st_local("noted", strofreal(_reg_log_has("`lg'", "ignoring unsupported option")))
+        if `noted' == 1 local said 0
+    }
     mata: st_local("same", strofreal(_reg_same("`nm'")))
     local why ""
     if `rc' != 198 local why "`why' rc=`rc'"
@@ -1017,18 +1044,19 @@ if "${dash_kpi_k1}" != "1" | "${dash_kpi_k1__var}" != "mpg" {
 _reg_verdict REG-32
 display "REG-32 PASS: name(x, replace) in text(), an axis title, a legend, an if qualifier or a NAME() option grants no replace, and a KPI keeps its name"
 
-// ---- REG-33 -- two name() options: the one dash reads decides ----
-// dash reads the last group's name(), the one after the comma over a
-// group's, and the first of one option list (the second is reported as
-// unsupported).  A replace in the other one is text like any other.
+// ---- REG-33 -- two name() options: a replace in either grants none ----
+// Written when dash read one of the two -- the last group's name(), the one
+// after the comma over a group's, the first of one option list -- and these
+// three were refused only because the one it read held no replace.  A
+// second name() is refused as such now (REG-37), before either is read.
 _reg_fresh
 global REG_BAD ""
-_reg_refused graph g1 `"dash (scatter price weight, name(g1, replace)) (line price weight, name(g1))"'
-_reg_refused graph g1 `"dash (scatter price weight, name(g1, replace)), name(g1)"'
-_reg_refused graph g1 `"dash scatter price weight, name(g1) name(g1, replace)"'
+_reg_refused twice g1 `"dash (scatter price weight, name(g1, replace)) (line price weight, name(g1))"'
+_reg_refused twice g1 `"dash (scatter price weight, name(g1, replace)), name(g1)"'
+_reg_refused twice g1 `"dash scatter price weight, name(g1) name(g1, replace)"'
 _reg_still_g1
 _reg_verdict REG-33
-display "REG-33 PASS: of two name() options, a replace in the one dash does not read grants none"
+display "REG-33 PASS: of two name() options, a replace in either grants none"
 
 // ---- REG-34 -- name()'s own replace replaces, on every route ----
 // Comma form, spaced, first and last paren group, after a paren command's
@@ -1122,6 +1150,148 @@ if "`_r36n'" != "a" | "`_r36f'" != "1" {
 }
 _reg_verdict REG-36
 display "REG-36 PASS: every registrar takes its name and its replace from _dash_name_split alone"
+
+// ================================================================
+// REG-37..41 -- a second name() is refused, as twoway refuses it
+// ================================================================
+// Measured 24sep2026 at 68327a8 with the console binary.  twoway refuses a
+// command that gives name() twice -- in another plot group, after a paren
+// command's comma, in another || segment, or twice in one option list,
+// spelled name() or nam(), naming the same graph or two -- with "option
+// name() not allowed", r(198); only when the first name() names a graph it
+// already holds without replace does it say "graph g1 already exists",
+// r(110), first, and when the first says replace it drops the old graph
+// before it refuses.  dash took one of the two -- the last group's, the one
+// after the comma over a group's, the first of one list -- called the other
+// "ignoring unsupported option(s): name()", and went on: so
+//     dash (scatter price weight, name(g1)) (line price weight, name(g1, replace))
+// replaced a registered g1 (rc 0), as did the after-comma, || and
+// replace-first forms, and with no g1 registered every such command
+// registered a graph, the second of two different names among them.  A
+// second name() is refused now in every form, with twoway's words, before
+// anything is registered or dropped: the registry and every global the
+// item owns are left exactly as they were.
+
+// ---- REG-37 -- every form of a second name(), with g1 registered ----
+// The four forms that replaced g1, and the abbreviation, in one list and
+// across ||, and both name()s saying replace.
+_reg_fresh
+global REG_BAD ""
+_reg_refused twice g1 `"dash (scatter price weight, name(g1)) (line price weight, name(g1, replace))"'
+_reg_refused twice g1 `"dash (scatter price weight, name(g1)), name(g1, replace)"'
+_reg_refused twice g1 `"dash scatter price weight, name(g1, replace) name(g1)"'
+_reg_refused twice g1 `"dash scatter price weight, name(g1) || line price weight, name(g1, replace)"'
+_reg_refused twice g1 `"dash scatter price weight, name(g1) nam(g1, replace)"'
+_reg_refused twice g1 `"dash scatter price weight, nam(g1, replace) || line price weight, name(g1)"'
+_reg_refused twice g1 `"dash (scatter price weight, name(g1, replace)) (line price weight), nam(g1, replace)"'
+_reg_still_g1
+_reg_verdict REG-37
+display "REG-37 PASS: a second name() is refused in every form, and the registered graph is left as it was"
+
+// ---- REG-38 -- a second name() with nothing registered under either ----
+// twoway refuses these too, r(198).  dash registered one of them -- a2,
+// the last group's, from the first command -- and so a name no other
+// command gave it.
+_reg_fresh
+global REG_BAD ""
+_reg_refused twice a1 `"dash (scatter price weight, name(a1)) (line price weight, name(a2))"'
+_reg_refused twice a1 `"dash scatter price weight, name(a1) name(a2)"'
+_reg_refused twice a1 `"dash scatter price weight, name(a1) name(a1)"'
+_reg_refused twice a1 `"dash (scatter price weight, name(a1)) (line price weight), name(a1)"'
+_reg_refused twice a1 `"dash scatter price weight, name(a1) || line price weight, name(a1)"'
+_reg_refused twice a1 `"dash scatter price weight, name(a1, replace) name(a1, replace)"'
+if `"${dash_json_a1}${dash_json_a2}${dash_spec_a1}${dash_spec_a2}"' != "" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | a1 or a2 left globals behind")
+}
+_reg_still_g1
+_reg_verdict REG-38
+display "REG-38 PASS: two name()s naming nothing registered are refused, and neither is registered"
+
+// ---- REG-39 -- one name() still names the graph, wherever it is written ----
+// The positive control: a single name() in the first group, in the last,
+// after a paren command's comma, after an || command's last comma, or
+// abbreviated, registers the graph under that name; and text that only
+// looks like name() is not a second one -- a title or a note holding
+// "name(x)", or an option spelled NAME(), which is not name() (Stata's
+// options are case-sensitive; dash names NAME() in its note, as it names
+// any option it does not know).
+dash clear
+global REG_BAD ""
+foreach c in ///
+    `"dash (scatter price weight, name(b1)) (line price weight)"' ///
+    `"dash (scatter price weight) (line price weight, name(b2))"' ///
+    `"dash (scatter price weight) (line price weight), name(b3)"' ///
+    `"dash scatter price weight || line price weight, name(b4)"' ///
+    `"dash scatter price weight, nam(b5)"' ///
+    `"dash scatter price weight, name(b6) title("name(x) and nam(y)") note("name(z, replace)")"' ///
+    `"dash scatter price weight, name(b7) NAME(zz)"' {
+    capture noisily `c'
+    local rc39 = _rc
+    if `rc39' != 0 {
+        mata: st_global("REG_BAD", st_global("REG_BAD") + " | " + st_local("c") + " -> rc " + st_local("rc39"))
+    }
+}
+if "${dash_graph_registry}" != "b1 b2 b3 b4 b5 b6 b7" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | registry [" + st_global("dash_graph_registry") + "]")
+}
+_reg_verdict REG-39
+display "REG-39 PASS: one name() names the graph wherever it is written, and text or NAME() is not a second"
+
+// ---- REG-40 -- a KPI card takes one name() too ----
+// dash kpi declares no catch-all, so Stata's own -syntax- refuses a second
+// name() there, in the same words (measured: "option name() not allowed",
+// or "option nam() not allowed" when the abbreviation is given).
+_reg_fresh
+quietly dash kpi mean(mpg), name(k1) title("A")
+global REG_BAD ""
+_reg_refused twice k9 `"dash kpi mean(price), name(k9) name(k8) title("K")"'
+_reg_refused twice k1 `"dash kpi mean(price), name(k1) nam(k1, replace) title("K")"'
+if "${dash_kpi_k1__var}" != "mpg" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | KPI k1 is no longer the card first registered")
+}
+_reg_still_g1
+_reg_verdict REG-40
+display "REG-40 PASS: a KPI card refuses a second name() as a graph does"
+
+// ---- REG-41 -- a flood of name()s is refused at once ----
+// Resource exhaustion: a hundred name() options in one list, and sixty plot
+// groups each with its own, are refused as the second is seen, registering
+// nothing, in bounded time.  Four hundred in one list are past what Stata's
+// -syntax- reads in one option list: twoway and dash alike refuse them with
+// Stata's own r(1003), "too many options", before either looks at a name()
+// (measured 24sep2026; a hundred are refused r(198) by both).
+_reg_fresh
+global REG_BAD ""
+local r41many ""
+forvalues i = 1/100 {
+    local r41many "`r41many' name(g1, replace)"
+}
+local r41groups ""
+forvalues i = 1/60 {
+    local r41groups "`r41groups' (scatter price weight, name(c`i'))"
+}
+local r41flood ""
+forvalues i = 1/400 {
+    local r41flood "`r41flood' name(g1, replace)"
+}
+timer clear 41
+timer on 41
+_reg_refused twice g1 `"dash scatter price weight, `r41many'"'
+_reg_refused twice c1 `"dash `r41groups'"'
+local r41reg "${dash_graph_registry}"
+capture dash scatter price weight, `r41flood'
+local r41rc = _rc
+timer off 41
+if `r41rc' != 1003 | "${dash_graph_registry}" != "`r41reg'" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | four hundred name()s: rc " + st_local("r41rc") + ", registry [" + st_global("dash_graph_registry") + "]")
+}
+quietly timer list 41
+if r(t41) > 30 {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | took " + strofreal(st_numscalar("r(t41)")) + " s")
+}
+_reg_still_g1
+_reg_verdict REG-41
+display "REG-41 PASS: a hundred name()s in one list, sixty groups each with one, and four hundred are refused at once"
 
 dash clear
 macro drop REG_BAD REG_SEEN

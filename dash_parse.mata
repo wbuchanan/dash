@@ -56,6 +56,10 @@
 *!   _dash_pc_immediate(vals)
 *!       _dash_immediate(vals, 4).
 *!
+*!   _dash_has_name_opt(s)
+*!       1 when the option text s holds a name() option (spelled name or
+*!       nam) at the top level: a second name(), which dash.ado refuses.
+*!
 *!   _dash_comma_pos(input, out_macro)
 *!       Position (1-based) of the first top-level comma, or "0".
 *!
@@ -2751,6 +2755,29 @@ void _dash_option_names(string scalar in_macro, string scalar out_macro)
     }
 
     st_local(out_macro, out)
+}
+
+// _dash_has_name_opt(s) -- 1 when the option text s holds a name() option.
+//
+// Stata's -syntax- binds the first name() of an option list to NAMe() and
+// leaves any later one in the list's catch-all, so a name() found in the
+// catch-all is always a second one -- which twoway refuses, "option name()
+// not allowed", r(198).  Options are case-sensitive and NAMe() admits the
+// spellings nam and name only, so only those count: NAME() is an option
+// dash does not know, and "name(x)" written inside another option's
+// argument -- a title(), a note() -- is stepped over, since the scan reads
+// top-level option names alone, quotes and parentheses honoured.  Linear in
+// the length of s.
+real scalar _dash_has_name_opt(string scalar s)
+{
+    string rowvector names
+    real scalar      unbalanced
+
+    unbalanced = 0
+    names = tokens(_dash_option_names_scan(s, 1, unbalanced))
+    if (unbalanced) names = tokens(_dash_option_names_scan(s, 0, unbalanced))
+    if (cols(names) == 0) return(0)
+    return(anyof(names, "name") | anyof(names, "nam"))
 }
 
 end
