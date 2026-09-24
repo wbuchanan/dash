@@ -99,27 +99,30 @@ assert strpos(`"`_graph_opts_raw'"', "title") > 0
 display "P1A-25 PASS: paren syntax trailing graph opts stored in _graph_opts_raw"
 
 // ================================================================
-// P1A-26 — _dash_first_comma_pos: finds first top-level comma
+// P1A-26 — _dash_comma_pos: finds first top-level comma
 // ================================================================
+// P1A-26..28 were labelled _dash_first_comma_pos, which does not exist
+// (24sep2026, TR-25.7).  They call _dash_comma_pos, the wrapper that
+// stores _first_comma_pos()'s answer in the local it is given.
 local cpos = 0
 mata: _dash_comma_pos("scatter mpg weight, mc(red)", "cpos")
 // "scatter mpg weight" is 18 chars (7+1+3+1+6), comma is at position 19.
 // The function returns the index of the comma character itself.
 // Production code uses: substr(input,1,comma_pos-1) and substr(input,comma_pos+1,.)
 assert `cpos' == 19
-display "P1A-26 PASS: _dash_first_comma_pos finds position 19 (comma index)"
+display "P1A-26 PASS: _dash_comma_pos finds position 19 (comma index)"
 
 // ================================================================
-// P1A-27 — _dash_first_comma_pos: comma inside parens NOT top-level
+// P1A-27 — _dash_comma_pos: comma inside parens NOT top-level
 // ================================================================
 local cpos2 = 0
 mata: _dash_comma_pos("scatter mpg weight, mc(red,blue)", "cpos2")
 // First top-level comma is at position 19, not the comma inside mc()
 assert `cpos2' == 19
-display "P1A-27 PASS: comma inside parens not returned by _dash_first_comma_pos"
+display "P1A-27 PASS: comma inside parens not returned by _dash_comma_pos"
 
 // ================================================================
-// P1A-28 — _dash_first_comma_pos: no comma returns 0
+// P1A-28 — _dash_comma_pos: no comma returns 0
 // ================================================================
 local cpos3 = 0
 mata: _dash_comma_pos("scatter mpg weight", "cpos3")

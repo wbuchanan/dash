@@ -2170,19 +2170,38 @@ tracks skips separately and exits 1 if nothing passed. On this machine only
 
 The gaps:
 
-### L1. No CI, no Makefile, no pytest config — S2, MEASURED
+### L1. No CI, no Makefile, no pytest config — S2, MEASURED, CLOSED by WP-25
 
 No `.github`, `.gitlab`, `travis` or `circle` config; no `pytest.ini`,
 `pyproject.toml` or `setup.cfg`. Both suites are invoked by hand. **Nothing
 enforces that either runs before a commit.**
 
-### L2. The two suites run under different interpreters — S2, MEASURED
+**Closed by WP-25** (24sep2026): the maintainer chose local CI -- GitHub's
+runners have no Stata, and `wbuchanan/dash` is private with nothing pushed
+to it -- so `make check` runs pytest under the Python Stata ships and under
+the development interpreter, both strict, then the certification suite,
+judged from its log by `scripts/cert_verdict.py`; `make hooks` has `git
+push` run it first (`scripts/git-hooks/pre-push`), and `pyproject.toml` is
+the committed pytest configuration.  Held by `test/test_cert_verdict.py`
+and `test/test_strict_mode.py`.
+
+### L2. The two suites run under different interpreters — S2, MEASURED, CLOSED by WP-25
 
 pytest runs on `/opt/homebrew/bin/python3` 3.14.5 (bokeh 3.9.0, pandas 3.0.1);
 Stata's `c(python_exec)` is `/opt/anaconda3/bin/python3` (bokeh 3.8.0, pandas
 2.3.3). `conftest.py:41-52` documents this exactly and only `warnings.warn`s.
 **A green pytest run does not prove the Stata path works against the libraries
 it actually loads.**
+
+**Closed by WP-25** (24sep2026): `make test` runs the whole pytest suite
+under Stata's `c(python_exec)`, read from Stata itself, and `make test-dev`
+under the development interpreter; under `DASH_STRICT=1` conftest.py stops a
+run whose environment differs from its baseline (`stata` or `dev`) and fails
+any skip.  The first run under Stata's Python found six failures the
+development interpreter never showed -- the served app's origin check
+admitting `localhost.evil.example` under bokeh 3.8, a date column blanked by
+one far-future value under pandas 2.3, and three tests that depended on the
+environment -- each fixed (BUGS.md).
 
 ### L3. The UTF-8 guard's rejection branch has never executed — S1, READ, CLOSED by 7ddbc08 and WP-24 (WP-08's test_utf8_validation.cscript, and WP-24's UTF-13 and exact gates)
 
@@ -2314,7 +2333,7 @@ every renderer function, each measured to fail when the function's body is
 skipped; their guards fail on a unit with no test.  `dash serve`'s happy
 path is C2's, closed by WP-23.
 
-### L8. Dead test assets — S3, MEASURED
+### L8. Dead test assets — S3, MEASURED, CLOSED by WP-25
 
 15 of 17 `.do` files in `test/` are referenced by nothing
 (`test_build_s3.do`, `test_r_trace{,2..6}.do`, `test_if_expr{,2}.do`, …).
@@ -2337,6 +2356,17 @@ reading the key back out of the emitted JSON): `xl`→`xlabel`, `yl`→`ylabel`,
 colordis colorv mlabg mlabp mlabs xt yt`. The fixture is a **stale pre-fix
 record, not current behaviour**, and should say so — otherwise the next
 auditor re-reports 25 resolved items as live gaps.
+
+**Closed by WP-25** (24sep2026): the 15 dead `.do` files are deleted -- none
+held an assertion, and the certification suite holds what they probed
+(JSE-12, HC1-05 and QL-01 fail with the March strip restored).
+`scheme_visual/` -- 8 PNGs, not 9, and `truth.json` -- is read by
+`test/test_scheme_visual_truth.py`, which holds the scheme parser's colours,
+symbols, patterns and sizes, not only their presence, to what Stata drew,
+and each PNG to its record; it found two disagreements, pinned as strict
+xfails (BUGS.md).  `test/test_fixtures_are_committed.py` fails any fixture
+no test names and any `.do` file nothing runs.  `abbrev_truth.json`'s
+`_meta.status` says it is the pre-fix record.
 
 ### L9. Bug-regression convention — S3, READ, CLOSED by WP-24
 

@@ -1249,6 +1249,15 @@ It is not an access control: a client that is not a browser can omit the
 header or forge an accepted one.  There is no password.
 
 {pstd}
+An origin is admitted only when its host matches an allowed one label for
+label: {cmd:localhost.example.com} is not {cmd:localhost}.  Bokeh before 3.9
+matched only the first labels, so a page from any name that begins with an
+allowed host was admitted; the app checks origins itself whatever Bokeh it
+runs under, and says so when it starts under such a Bokeh.
+{cmd:bokeh serve app.py} uses Bokeh's own check, so run it under Bokeh 3.9
+or later.
+
+{pstd}
 Bokeh's environment variable {cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set,
 replaces that allow-list: Bokeh admits the origins it names {it:instead of}
 {cmd:localhost}, {cmd:127.0.0.1} and {cmd:--allow-websocket-origin}.  The
@@ -2768,7 +2777,7 @@ Python you install and link yourself:
 {phang2}{ul:Python 3.8+} -- linked to Stata; see {helpb python}.
 
 {phang2}{ul:Python packages, required} -- bokeh>=3.0, numpy>=1.23,
-    pandas>=1.5.
+    pandas>=2.0.
 
 {phang2}{ul:Python packages, optional} -- none.  Every statistical
     layer is computed with numpy: {cmd:lfitci} and {cmd:mspline} no

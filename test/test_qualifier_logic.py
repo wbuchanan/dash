@@ -816,13 +816,19 @@ class TestAdversarialLogicalOperators:
         Measured with tracemalloc 24sep2026: the peak is 9.5 bytes per
         character of input, most of it _mask_string_literals' list of
         characters, for all three; it is held to 16, and the time to a few
-        seconds."""
+        seconds.  The time is taken on a call of its own, outside
+        tracemalloc, whose bookkeeping it would otherwise measure: under
+        the Python Stata ships (3.13.9) the translation takes 1.3 s and
+        tracemalloc turned that into 9 to 11 s, past the bound, while
+        adding nothing to what the call itself costs (measured 24sep2026,
+        WP-25)."""
         import tracemalloc
+        t0 = time.monotonic()
+        out = dr._stata_if_to_pandas(qualifier)
+        took = time.monotonic() - t0
         tracemalloc.start()
         try:
-            t0 = time.monotonic()
-            out = dr._stata_if_to_pandas(qualifier)
-            took = time.monotonic() - t0
+            dr._stata_if_to_pandas(qualifier)
             _cur, peak = tracemalloc.get_traced_memory()
         finally:
             tracemalloc.stop()

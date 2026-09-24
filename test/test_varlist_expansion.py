@@ -141,6 +141,7 @@ _UUID_RE = re.compile(
     r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
     r"-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
 )
+_DOC_VERSION_RE = re.compile(r'("UUID":\{"version":")[^"]*(")')
 _DOC_JSON_RE = re.compile(
     r'<script type="application/json"[^>]*>(.*?)</script>', re.S
 )
@@ -161,6 +162,11 @@ def normalise_bokeh_html(html: str) -> str:
     doc = match.group(1)
     doc = _BOKEH_ID_RE.sub("ID", doc)
     doc = _UUID_RE.sub("UUID", doc)
+    # The document records the Bokeh version that wrote it, and that is
+    # the only difference between this page under bokeh 3.8.0 (the version
+    # Stata's Python ships) and 3.9.0 (the development interpreter's):
+    # measured 24sep2026, WP-25, when the suite first ran under both.
+    doc = _DOC_VERSION_RE.sub(r"\1VERSION\2", doc)
     return doc.strip()
 
 
@@ -307,8 +313,16 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               -- the grid toolbar's BoxZoomTool with its default overlay,
 #               its UndoTool and RedoTool, its merged SaveTool with filename
 #               "dashboard", and the figure's own four new tools.  Intended.
+#   6f400f84  WP-25.  The document's Bokeh version is normalised away: it
+#               was the only difference between this page under bokeh 3.8.0
+#               (Stata's Python) and 3.9.0 (the development interpreter),
+#               so the test failed under the interpreter Stata ships for no
+#               change of dash's.  Diffed before re-baselining: the
+#               normalised text is 20a7cb46's with "version":"3.9.0" read
+#               as "version":"VERSION", and is identical under both
+#               interpreters.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "20a7cb462ec5fe934835671e0578513cb5801ae04f2eb9e39db928c92cc84407"
+    "6f400f8402af3204bf8de50cd5a046fd1039d36938adcc8ddd4de8738dbf38f5"
 )
 
 
@@ -343,6 +357,18 @@ def test_normalisation_makes_two_runs_of_one_command_comparable():
         "exercising the id normalisation it claims to"
     )
     assert normalise_bokeh_html(a) == normalise_bokeh_html(b)
+
+
+def test_the_bokeh_version_is_normalised_away():
+    """The same document written by two Bokeh versions normalises alike, so
+    the baseline is a check on what dash generates under either (WP-25)."""
+    page = _single_y_html()
+    m = re.search(r'"version":"([^"]+)"', page)
+    assert m, "the page records no Bokeh version"
+    other = page.replace('"version":"%s"' % m.group(1),
+                         '"version":"%s.1"' % m.group(1), 1)
+    assert other != page
+    assert normalise_bokeh_html(other) == normalise_bokeh_html(page)
 
 
 def test_single_y_output_matches_prefix_baseline():

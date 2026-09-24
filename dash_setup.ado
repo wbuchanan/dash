@@ -143,7 +143,9 @@ program define dash_setup
     local pkg_list "bokeh numpy pandas"
     local min_bokeh       "3.0"
     local min_numpy       "1.23"
-    local min_pandas      "1.5"
+    // pandas 2.0: dash_render.py holds Stata dates as datetime64[ms],
+    // which pandas 1.x cannot store (WP-25, 24sep2026).
+    local min_pandas      "2.0"
 
     foreach pkg of local pkg_list {
         // Try importing the package; if it fails, pip-install it

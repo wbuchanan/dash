@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+# The suite is CPU-bound and single-threaded per test: 25 minutes serially,
+# under two minutes on twelve workers.  Parallel is the default; pass -n0 to
+# run in one process (for --pdb).  loadgroup keeps each parity corpus entry
+# on one worker so it renders once (see test_mode_parity.py).
+addopts = "-n auto --dist loadgroup"
+testpaths = ["test"]

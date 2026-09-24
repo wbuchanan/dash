@@ -45,7 +45,8 @@
     "stata_born_date": "12 Aug 2026",
     "stata_edition": "MP",
     "stata_flavor": "IC",
-    "stata_version": "19.5"
+    "stata_version": "19.5",
+    "status": "PRE-FIX RECORD, not current behaviour (annotated 24sep2026, ROADMAP TR-25.5).  The `dash` fields (each option's and plot type's `dash` object, abbrev_resolution's dash_maps_to), the dash_* lists and the counts of them in _meta.counts record dash as probed on 18 Sep 2026, before the abbreviation fix this file was committed with (896d117; BR-04.1 and BR-04.2 in test/test_abbreviations.py).  All 25 failures they list are fixed: the 7 mis-mappings in dash_mismaps (xl, yl, m, mlc, mlw, mls, mlp) and the 18 declared options in dash_rejects_min_abbrev_option_declared_by_dash that rejected Stata's minimum abbreviation.  What holds today's declarations to this file's Stata fields is test/test_abbreviations.py: test_declared_minimums_cover_stata_minimums (all 93 options) and test_declarations_resolve_abbreviations_like_twoway (39 spellings, the 7 among them).  scripts/extract_abbrev_truth.do writes no status key, so regenerating the file removes this note with the record it describes."
   },
   "abbrev_resolution": {
     "asp": {

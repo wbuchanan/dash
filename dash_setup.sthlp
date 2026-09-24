@@ -82,7 +82,7 @@ starts, so without any of them {cmd:dash} cannot draw anything at all:
 {synoptset 20 tabbed}{...}
 {synopt:{opt bokeh}}3.0 or later{p_end}
 {synopt:{opt numpy}}1.23 or later{p_end}
-{synopt:{opt pandas}}1.5 or later{p_end}
+{synopt:{opt pandas}}2.0 or later{p_end}
 {synoptline}
 
 {pstd}Nothing else is needed.  Earlier versions listed {cmd:scipy} and

@@ -231,6 +231,46 @@ def test_fixture_is_self_consistent(truth):
             % (name, e["min_abbrev"]))
 
 
+#: The two tests below that hold today's declarations to the fixture's
+#: Stata fields, which the fixture's _meta.status names.
+_TESTS_OF_THE_STATA_FIELDS = (
+    "test_declared_minimums_cover_stata_minimums",
+    "test_declarations_resolve_abbreviations_like_twoway",
+)
+
+
+def test_fixture_says_its_dash_fields_are_the_pre_fix_record(truth):
+    """GAPS.md L8, ROADMAP TR-25.5.  The fixture was probed on 18 Sep 2026,
+    before the abbreviation fix it was committed with (896d117): its `dash'
+    fields and dash_* lists record 7 mis-mappings and 18 declared options
+    that rejected Stata's minimum abbreviation, and all 25 are fixed
+    (measured 24sep2026 against today's declarations; the two tests the
+    note names compare them).  Unannotated, the next audit re-reports 25
+    resolved items as live gaps, so while the file is that record its
+    _meta.status says so.  The extractor writes no status key: a
+    regenerated file records dash as it is and carries no note."""
+    meta = truth["_meta"]
+    if meta["run_date"] == "18 Sep 2026":
+        note = meta.get("status", "")
+        assert note.startswith("PRE-FIX RECORD, not current behaviour"), note
+        for name in _TESTS_OF_THE_STATA_FIELDS:
+            assert name in note, name
+            assert callable(globals().get(name)), (
+                "the note names %s, which is not a test in this file" % name)
+        assert "scripts/extract_abbrev_truth.do" in note
+        # What the note says the record holds is what it holds.
+        mismapped = [r.split(":", 1)[0].strip() for r in truth["dash_mismaps"]]
+        assert sorted(mismapped) == sorted(
+            ["xl", "yl", "m", "mlc", "mlw", "mls", "mlp"]), mismapped
+        assert "(xl, yl, m, mlc, mlw, mls, mlp)" in note
+        declared = truth["dash_rejects_min_abbrev_option_declared_by_dash"]
+        assert len(declared) == 18 and "the 18 declared options" in note
+    else:
+        assert "status" not in meta, (
+            "a regenerated abbrev_truth.json records dash as it is; the "
+            "pre-fix note does not belong on it: %r" % meta["status"])
+
+
 # ============================================================
 # 2. dash.ado must permit every abbreviation twoway permits   (BR-04.1)
 # ============================================================

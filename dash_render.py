@@ -229,7 +229,24 @@ _STATA_DATE_KINDS = frozenset({"tc", "tC", "td", "th", "tm", "tq", "tw", "ty"})
 # different formats -- optionally followed by a custom date picture.
 _DATE_FMT_RE = re.compile(r"^%-?t([cCdhmqwy])")
 
-_STATA_EPOCH = pd.Timestamp("1960-01-01")
+# Stata's own date range, measured 24sep2026 with the console binary
+# (arch -arm64 stata-mp -b).  Every date format runs from 01jan0100 to
+# 31dec9999: %td -679350 to 2936549, %tc -58695840000000 to 253717919999999
+# (%tC ends 27 leap seconds later, 253717920026999), %tw -96720 to 418079,
+# %tm -22320 to 96479, %tq -7440 to 32159, %th -3720 to 16079 and %ty 100
+# to 9999.  Past either end Stata prints the bare number, not a date
+# (`display %td 2936550' prints 2936550, `display %td -679351' -679351).
+# pandas' nanosecond datetime64 holds only 1677-09-21 to 2262-04-11 --
+# %td 1000000, 27nov4697, did not fit, and under pandas 2.3 that one value
+# emptied its whole column -- so dash holds dates in MILLISECONDS, which
+# hold all of Stata's range and are %tc's own unit.
+_STATA_YEAR_MIN = 100
+_STATA_YEAR_MAX = 9999
+_STATA_MS_MIN = -58_695_840_000_000     # tc(01jan0100 00:00:00)
+_STATA_MS_MAX = 253_717_919_999_999     # tc(31dec9999 23:59:59.999)
+# 01jan1960 in milliseconds after 01jan1970, the epoch numpy, pandas and
+# Bokeh count from: 3,653 days.
+_STATA_EPOCH_UNIX_MS = -315_619_200_000
 
 
 def _tooltip_precision(values) -> str:
@@ -264,21 +281,47 @@ def _tooltip_precision(values) -> str:
 def _format_date_value_standalone(value, kind: str) -> str:
     """Render one date value; the module-level twin of
     :meth:`DashRenderer._format_date_value`, for callers that have no
-    renderer instance (the glyph mapper builds marker labels on its own)."""
+    renderer instance (the glyph mapper builds marker labels on its own).
+
+    A number is epoch MILLISECONDS -- a KPI's min, max, mean or percentile
+    of a date variable reaches here as one.  It is read as an integer
+    count: pandas 2.3 refuses ``pd.Timestamp(<float>, unit="ms")`` for any
+    date after 2262-04-11 and gave the card the bare number
+    (253402214400000.0 for 31dec9999), where the integer form converts
+    (measured 24sep2026).  Only Stata's own range, 01jan0100 to 31dec9999,
+    is read as a date; a number beyond it is written as it is, as Stata
+    writes one.
+    """
     try:
-        ts = (pd.Timestamp(value) if not isinstance(value, (int, float))
-              else pd.Timestamp(float(value), unit="ms"))
+        if isinstance(value, (int, float, np.integer, np.floating)):
+            f = float(value)
+            if math.isnan(f):
+                return ""
+            ms = math.floor(f)
+            if not (_STATA_MS_MIN + _STATA_EPOCH_UNIX_MS <= ms
+                    <= _STATA_MS_MAX + _STATA_EPOCH_UNIX_MS):
+                return str(value)
+            ts = pd.Timestamp(np.datetime64(ms, "ms"))
+        else:
+            ts = pd.Timestamp(value)
     except (TypeError, ValueError, OverflowError):
         return str(value)
     if pd.isna(ts):
         return ""
-    if kind == "ty":
-        return f"{ts.year}"
-    if kind in ("tc", "tC"):
-        return ts.strftime("%d %b %Y %H:%M:%S")
-    if kind in ("tm", "tq", "th"):
-        return ts.strftime("%b %Y")
-    return ts.strftime("%d %b %Y")
+    try:
+        # The year in four digits, as Stata writes it (`display %td
+        # -679350' is 01jan0100, `display %ty 100' is 0100), rather than
+        # through strftime's %Y, whose padding below 1000 is the platform's.
+        year = f"{ts.year:04d}"
+        if kind == "ty":
+            return year
+        if kind in ("tc", "tC"):
+            return f"{ts.strftime('%d %b')} {year} {ts.strftime('%H:%M:%S')}"
+        if kind in ("tm", "tq", "th"):
+            return f"{ts.strftime('%b')} {year}"
+        return f"{ts.strftime('%d %b')} {year}"
+    except (ValueError, OverflowError):
+        return str(value)
 
 
 def _datetime_formatter_for(kind: str):
@@ -325,7 +368,7 @@ def _stata_date_kind(fmt: "str | None") -> "str | None":
 
 
 def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
-    """Convert Stata SIF values of a given date *kind* to datetime64.
+    """Convert Stata SIF values of a given date *kind* to datetime64[ms].
 
     ``%tw``, ``%tm``, ``%tq`` and ``%th`` count CALENDAR periods, not
     fixed-length intervals, so they cannot be converted by multiplication;
@@ -333,15 +376,50 @@ def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
     itself and is not offset from 1960 at all (verified: ``display %ty 38``
     prints ``38``).
 
+    Element by element: each value is converted, or found unconvertible, on
+    its own, with numpy arithmetic and a mask rather than one pandas call
+    over the column -- under pandas 2.3 a single date past 2262 made
+    ``pd.to_timedelta`` raise, and the handler emptied every date of the
+    column (a 31dec9999 "no end date" placeholder took the whole axis, its
+    tooltips and its filter with it).  The result is millisecond datetime64
+    under pandas 2.3 and 3.0 alike, which holds Stata's whole range,
+    01jan0100 to 31dec9999.  As Stata displays them (measured 24sep2026): a
+    fraction is floored to the millisecond (%tc 1.9999 is .001, -0.5 is
+    23:59:59.999) or to the period that holds it (%tm 745.5 is 2022m2); a
+    %td fraction keeps its time of day, as the value's place on an axis;
+    and the calendar is proleptic Gregorian, as numpy's is
+    (``mdy(10,15,1582) - mdy(10,4,1582)`` is 11).
+
     Args:
         values: Numeric Stata values.
         kind:   One of :data:`_STATA_DATE_KINDS`.
 
     Returns:
-        A datetime64 Series; unconvertible entries are ``NaT``.
+        A datetime64[ms] Series with a fresh RangeIndex.  A missing value is
+        ``NaT``, and so, alone, is a value outside Stata's date range, which
+        Stata itself prints as a bare number; those are counted in a
+        warning.
     """
-    v = pd.to_numeric(pd.Series(values).reset_index(drop=True),
-                      errors="coerce")
+    series = pd.Series(values).reset_index(drop=True)
+    try:
+        raw = pd.to_numeric(series, errors="coerce").to_numpy(
+            dtype="float64", na_value=np.nan)
+    except (OverflowError, TypeError, ValueError):
+        # pandas raises for the whole column on one integer too large for a
+        # double (errors="coerce" does not cover it).  Such an integer is a
+        # value, not a missing one: it becomes an infinity, which fails the
+        # range test below and is counted.
+        floats = []
+        for x in series.tolist():
+            try:
+                floats.append(float(x))
+            except OverflowError:
+                floats.append((math.inf if x > 0 else -math.inf)
+                              if isinstance(x, int) else math.nan)
+            except (TypeError, ValueError):
+                floats.append(math.nan)
+        raw = np.array(floats, dtype="float64")
+    n = len(raw)
 
     if kind == "tC":
         warnings.warn(
@@ -353,59 +431,115 @@ def _stata_dates_to_datetime(values: "pd.Series", kind: str) -> "pd.Series":
         )
 
     def _from_parts(year, month):
-        frame = pd.DataFrame({
-            "year": year, "month": month,
-            "day": np.ones(len(year), dtype="float64"),
-        })
-        ok = frame["year"].notna()
-        out = pd.Series(pd.NaT, index=frame.index, dtype="datetime64[ns]")
-        if ok.any():
-            out.loc[ok] = pd.to_datetime(frame.loc[ok].astype("int64"),
-                                          errors="coerce")
-        return out
+        # Days after 01jan1960 of the first day of each (year, month): the
+        # months after 1970m1 read as numpy months, whose first days numpy
+        # counts in days after 01jan1970 on the proleptic Gregorian
+        # calendar Stata uses.  Every year here is already within
+        # 100..9999, so nothing can overflow.
+        months = ((np.asarray(year, dtype=np.int64) - 1970) * 12
+                  + (np.asarray(month, dtype=np.int64) - 1))
+        days_1970 = months.astype("datetime64[M]").astype(
+            "datetime64[D]").astype(np.int64)
+        return days_1970 - _STATA_EPOCH_UNIX_MS // 86_400_000
 
-    try:
+    # Milliseconds after 01jan1960, NaN where there is no date.  numpy's
+    # own warnings for NaN, an infinity or 1e300 are the mask's business.
+    ms = np.full(n, np.nan)
+    per_year = {"tw": 52, "tm": 12, "tq": 4, "th": 2}
+    with np.errstate(invalid="ignore", over="ignore"):
         if kind in ("tc", "tC"):
-            out = _STATA_EPOCH + pd.to_timedelta(v, unit="ms", errors="coerce")
+            ms = np.floor(raw)
         elif kind == "td":
-            out = _STATA_EPOCH + pd.to_timedelta(v, unit="D", errors="coerce")
-        elif kind == "ty":
-            out = _from_parts(v, pd.Series(np.ones(len(v))))
-        elif kind == "tm":
-            idx = np.floor(v)
-            out = _from_parts(1960 + np.floor(idx / 12.0), (idx % 12) + 1)
-        elif kind == "tq":
-            idx = np.floor(v)
-            out = _from_parts(1960 + np.floor(idx / 4.0), 3 * (idx % 4) + 1)
-        elif kind == "th":
-            idx = np.floor(v)
-            out = _from_parts(1960 + np.floor(idx / 2.0), 6 * (idx % 2) + 1)
-        elif kind == "tw":
-            # Stata's weeks restart every year: week 52 is the last one, and
-            # week 0 of a year is 1 January.  They are not 7-day offsets from
-            # a single epoch.
-            idx = np.floor(v)
-            years = 1960 + np.floor(idx / 52.0)
-            weeks = idx % 52
-            base = _from_parts(years, pd.Series(np.ones(len(v))))
-            out = base + pd.to_timedelta(weeks * 7, unit="D", errors="coerce")
-        else:
-            return pd.Series(pd.NaT, index=v.index, dtype="datetime64[ns]")
-    except (OverflowError, ValueError, pd.errors.OutOfBoundsDatetime):
-        out = pd.Series(pd.NaT, index=v.index, dtype="datetime64[ns]")
+            ms = np.floor(raw * 86_400_000.0)
+        elif kind == "ty" or kind in per_year:
+            idx = np.floor(raw)
+            if kind == "ty":
+                year, sub = idx, np.zeros(n)
+            else:
+                year = 1960.0 + np.floor(idx / per_year[kind])
+                sub = idx - (year - 1960.0) * per_year[kind]
+            fits = (np.isfinite(year) & (year >= _STATA_YEAR_MIN)
+                    & (year <= _STATA_YEAR_MAX))
+            if fits.any():
+                y = year[fits].astype(np.int64)
+                s = sub[fits].astype(np.int64)
+                if kind == "tm":
+                    days = _from_parts(y, s + 1)
+                elif kind == "tq":
+                    days = _from_parts(y, 3 * s + 1)
+                elif kind == "th":
+                    days = _from_parts(y, 6 * s + 1)
+                elif kind == "tw":
+                    # Stata's weeks restart every year: week 52 is the last
+                    # one, and week 0 of a year is 1 January.  They are not
+                    # 7-day offsets from a single epoch.
+                    days = _from_parts(y, np.ones_like(y)) + 7 * s
+                else:
+                    days = _from_parts(y, np.ones_like(y))
+                ms[fits] = days * 86_400_000.0
+    # The range test is the one Stata applies, 01jan0100 00:00:00.000 to
+    # 31dec9999 23:59:59.999.  An unknown kind leaves every value NaN.
+    ok = np.isfinite(ms) & (ms >= _STATA_MS_MIN) & (ms <= _STATA_MS_MAX)
+    unix_ms = np.zeros(n, dtype=np.int64)
+    unix_ms[ok] = ms[ok].astype(np.int64) + _STATA_EPOCH_UNIX_MS
+    stamps = unix_ms.astype("datetime64[ms]")
+    stamps[~ok] = np.datetime64("NaT", "ms")
+    out = pd.Series(stamps)
 
-    out = pd.Series(out).reset_index(drop=True)
-    lost = int((v.notna() & out.isna()).sum())
+    lost = int((~np.isnan(raw) & ~ok).sum()) if kind in _STATA_DATE_KINDS \
+        else 0
     if lost:
-        # Stata's date range is wider than pandas' nanosecond datetime64
-        # (1677-2262).  Coerce rather than raise, but never silently.
+        # Coerce rather than raise, but never silently, and count only the
+        # values that are not dates: a missing value was never one.
         warnings.warn(
-            f"dash: {lost} value(s) of a %{kind} variable fall outside the "
-            f"range of dates this renderer can represent (roughly 1677-2262) "
-            f"and are shown as missing.",
+            f"dash: {lost} value(s) of a %{kind} variable fall outside "
+            f"Stata's date range, 01jan0100 to 31dec9999, where Stata shows "
+            f"the number rather than a date; they are shown as missing.",
             UserWarning, stacklevel=3,
         )
     return out
+
+
+def _dash_float_values(col, coerce: bool = False) -> "np.ndarray":
+    """*col* as a float array; a date column as epoch MILLISECONDS.
+
+    Every layer that computes from a column read it with
+    ``np.asarray(col, dtype=float)``, which reads a datetime64 column in
+    its own unit and turns NaT into -9.2e18 (int64's minimum), not NaN.
+    Measured 24sep2026: over a %td x variable, a fit, smoother, density,
+    histogram, area, spike or range layer beside a scatter was drawn in
+    NANOseconds under pandas 2.3 and in microseconds under 3.0 -- a million
+    or a thousand times off the axis the scatter is drawn on in
+    milliseconds -- and one missing date drew it out to -9.2e18.  A date
+    column is held in milliseconds now, and this reads it in them, NaT as
+    NaN; any other column is read exactly as before.
+
+    Args:
+        col:    A list, array or Series.
+        coerce: Read a non-date column as ``pd.to_numeric(...,
+                errors="coerce")`` does -- text as NaN -- rather than
+                raising.
+
+    Returns:
+        A float64 array.
+    """
+    try:
+        arr = (col.to_numpy() if isinstance(col, pd.Series)
+               else np.asarray(col))
+    except ValueError:
+        # A ragged column numpy will not shape; read element by element.
+        arr = np.empty(len(col), dtype=object)
+        arr[:] = list(col)
+    if arr.dtype.kind == "M":
+        out = arr.astype("datetime64[ms]").astype(np.int64).astype(float)
+        out[np.isnat(arr)] = np.nan
+        return out
+    if coerce:
+        return np.asarray(pd.to_numeric(pd.Series(arr), errors="coerce"),
+                          dtype=float)
+    # The array already made, not the list read a second time: the same
+    # values and the same refusals as np.asarray(col, dtype=float).
+    return arr.astype(float, copy=False)
 
 
 def _parse_stata_numeric_fmt(fmt: "str | None") -> "tuple | None":
@@ -1388,6 +1522,70 @@ def _dash_server_transforms(settings: "dict | None" = None) -> list:
         out.append(GZipContentEncoding)
     out.append(_DashSecurityHeaders)
     return out
+
+
+def _dash_strict_match_host(host: str, pattern: str) -> bool:
+    """Whether *host* matches the allowed-host *pattern*, label for label.
+
+    Bokeh's ``bokeh.server.util.match_host`` follows these rules from 3.9
+    on.  Before 3.9 it compared only as many dot-separated labels as the
+    pattern has, so ``localhost.evil.example:5006`` matched
+    ``localhost:5006`` and ``127.0.0.1.nip.io:5006`` matched
+    ``127.0.0.1:5006``: measured 24sep2026 under bokeh 3.8.0, the version
+    Stata's Python ships, the served app opened a websocket session for a
+    page from either name, so a site whose DNS name begins with localhost,
+    or a rebinding service's name for 127.0.0.1, could read the dashboard.
+    The rules: ``*`` matches every host; a port in the pattern must equal
+    the host's (``*`` matches any port); each label must equal the
+    pattern's or the pattern's be ``*``; and the counts must be equal.
+
+    Args:
+        host: ``name[:port]``, as Bokeh's origin check passes it.
+        pattern: An allowed-host pattern.
+
+    Returns:
+        True when the host matches the pattern.
+    """
+    if pattern == "*":
+        return True
+    host_port = None
+    if ":" in host:
+        host, host_port = host.rsplit(":", 1)
+    pattern_port = None
+    if ":" in pattern:
+        pattern, pattern_port = pattern.rsplit(":", 1)
+        if pattern_port == "*":
+            pattern_port = None
+    if pattern_port is not None and host_port != pattern_port:
+        return False
+    if pattern == "*":
+        return True
+    host_parts = host.split(".")
+    pattern_parts = pattern.split(".")
+    if len(host_parts) != len(pattern_parts):
+        return False
+    return all(h == p or p == "*" for h, p in zip(host_parts, pattern_parts))
+
+
+def _dash_harden_origin_check() -> bool:
+    """Put _dash_strict_match_host in the place of a lenient Bokeh matcher.
+
+    Bokeh's websocket handler checks each handshake's origin with
+    ``bokeh.server.util.check_allowlist``, which calls that module's
+    ``match_host`` -- its one caller, and the handler its only one, in
+    bokeh 3.8 and 3.9 alike.  Bokeh's own matcher is asked about a host it
+    must refuse, and only when it admits it is it replaced, so a Bokeh that
+    already matches label for label is left as it is.
+
+    Returns:
+        True when the matcher was replaced.
+    """
+    import bokeh.server.util as _bokeh_util
+    if not _bokeh_util.match_host("localhost.dash-origin-check.invalid:1",
+                                  "localhost:1"):
+        return False
+    _bokeh_util.match_host = _dash_strict_match_host
+    return True
 
 
 # The saved page's <meta>, written into both standalone pages: the layout(bs)
@@ -3960,8 +4158,11 @@ def _compute_secondary_range(
             continue
         varname = plot.get(var_key, "")
         if varname and varname in df.columns:
-            col = pd.to_numeric(df[varname], errors="coerce").dropna()
-            vals.extend(col.tolist())
+            # A date in milliseconds, a missing one dropped: to_numeric
+            # read a date in its own unit and a missing one as -9.2e18
+            # (24sep2026).
+            col = _dash_float_values(df[varname], coerce=True)
+            vals.extend(col[~np.isnan(col)].tolist())
     if not vals:
         return 0.0, 1.0
     lo, hi = float(np.min(vals)), float(np.max(vals))
@@ -4108,12 +4309,18 @@ class GlyphMapper:
 
         seed_val: int | None = _jitter_seed(options)
 
-        x_arr = np.asarray(source.data[xvar], dtype=float)
-        y_arr = np.asarray(source.data[yvar], dtype=float)
+        # A date in milliseconds, NaT as NaN (24sep2026): the jittered
+        # points were drawn in the column's own unit, off the date axis.
+        x_arr = _dash_float_values(source.data[xvar])
+        y_arr = _dash_float_values(source.data[yvar])
         x_jit, y_jit = _apply_jitter(x_arr, y_arr, jitter_pct, seed_val)
 
-        # Build new data dict preserving all original columns
-        new_data = {k: list(v) for k, v in source.data.items()}
+        # Build new data dict preserving all original columns.  A date
+        # column stays an array: a list of datetimes holding NaT is written
+        # by Bokeh as a bare NaN, which JSON refuses, and the page failed.
+        new_data = {k: (np.array(v) if getattr(v, "dtype", None) is not None
+                        and v.dtype.kind == "M" else list(v))
+                    for k, v in source.data.items()}
         new_data["_x_jit"] = x_jit.tolist()
         new_data["_y_jit"] = y_jit.tolist()
         return ColumnDataSource(new_data), "_x_jit", "_y_jit"
@@ -4768,9 +4975,9 @@ class GlyphMapper:
             except ValueError:
                 cuts = None
 
-        # Determine whether the column is numeric
+        # Determine whether the column is numeric (a date, in milliseconds)
         try:
-            col_vals = np.array(raw_col, dtype=float)
+            col_vals = _dash_float_values(raw_col)
             is_numeric = not np.all(np.isnan(col_vals))
         except (ValueError, TypeError):
             is_numeric = False
@@ -5778,7 +5985,13 @@ class GlyphMapper:
         _bar_n = len(_bar_cols[xvar])
         for _bk, _bv in dict(source.data or {}).items():
             if _bk not in _bar_cols and len(_bv) == _bar_n:
-                _bar_cols[_bk] = list(_bv)
+                # A date column as its array: pandas 2.3 reads a LIST of
+                # millisecond datetimes back as nanoseconds, or as objects
+                # once one is past 2262, and a missing one then failed the
+                # page's JSON (measured 24sep2026).
+                _bar_cols[_bk] = (_bv if getattr(_bv, "dtype", None)
+                                  is not None and _bv.dtype.kind == "M"
+                                  else list(_bv))
         df = pd.DataFrame(_bar_cols)
         _bar_sel = self._view_mask(view, len(df))
         if _bar_sel is not None:
@@ -5787,7 +6000,12 @@ class GlyphMapper:
         clean_source = ColumnDataSource(df)
 
         try:
-            x_vals = sorted(set(float(v) for v in df[xvar]))
+            # A date x in milliseconds, its axis's unit: float() refused
+            # its Timestamps and the bars were drawn 0.8 ms wide, too thin
+            # to see (24sep2026).
+            _bx = (_dash_float_values(df[xvar])
+                   if df[xvar].dtype.kind == "M" else df[xvar])
+            x_vals = sorted(set(float(v) for v in _bx))
         except (ValueError, TypeError):
             # String xvar: use uniform spacing (bar width = 0.8)
             x_vals = list(range(len(df[xvar].unique())))
@@ -6018,9 +6236,11 @@ class GlyphMapper:
         caller relied on when it did this inline.
 
         Returns:
-            One float array per name in *varnames*, in order.
+            One float array per name in *varnames*, in order; a date in
+            epoch milliseconds, the unit its axis is drawn in, and a
+            missing date NaN, so it is dropped with the others (24sep2026).
         """
-        cols = [np.asarray(source.data[v], dtype=float) for v in varnames]
+        cols = [_dash_float_values(source.data[v]) for v in varnames]
         n = len(cols[0]) if cols else 0
 
         sel = GlyphMapper._view_mask(view, n)
@@ -6071,7 +6291,7 @@ class GlyphMapper:
                 f"{wexp!r}, so the layer is drawn unweighted.")
             return (*GlyphMapper._masked(source, view, *varnames), None, None)
         try:
-            np.asarray(source.data[wexp], dtype=float)
+            _dash_float_values(source.data[wexp])
         except (TypeError, ValueError):
             # dash.ado refuses a string weight as twoway does (r(109)
             # "type mismatch"); a hand-written spec could still reach here,
@@ -6146,7 +6366,7 @@ class GlyphMapper:
         an mlabel, or a variable ``hover()`` names -- through the same
         selection; ``_masked`` coerces everything to float and cannot.
         """
-        cols = [np.asarray(source.data[v], dtype=float) for v in varnames]
+        cols = [_dash_float_values(source.data[v]) for v in varnames]
         n = len(cols[0]) if cols else 0
         idx = np.arange(n)
 
@@ -6170,7 +6390,7 @@ class GlyphMapper:
         """
         idx = GlyphMapper._masked_index(source, view, xvar, *others)
         if len(idx):
-            xs = np.asarray(source.data[xvar], dtype=float)[idx]
+            xs = _dash_float_values(source.data[xvar])[idx]
             idx = idx[np.argsort(xs, kind="stable")]
         return idx
 
@@ -6556,7 +6776,7 @@ class GlyphMapper:
         if str(options.get("adjust", "") or "").strip():
             y_all = None
             if self.dataset is not None and yvar in getattr(self.dataset, "columns", ()):
-                y_all = np.asarray(self.dataset[yvar], dtype=float)
+                y_all = _dash_float_values(self.dataset[yvar])
             if y_all is None or not np.isfinite(y_all).any():
                 y_all = y
             _ms = float(np.nanmean(y_lw)) if np.isfinite(y_lw).any() else np.nan
@@ -7785,7 +8005,7 @@ class GlyphMapper:
         # rebuilt rather than sorted in place, because the source is shared.
         _ord = self._masked_order(source, view, xvar, y1var, y2var)
         _cols = {
-            v: np.asarray(source.data[v], dtype=float)[_ord]
+            v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
         }
         source = ColumnDataSource(_cols)
@@ -7846,7 +8066,7 @@ class GlyphMapper:
         # but the spacing was taken from the whole column, and a qualifier
         # then changed how WIDE the bars were as well as which appeared.
         # Measured: 0.8 where plotting the same subset alone gives 8.0.
-        _rb_x = np.asarray(source.data[xvar], dtype=float)
+        _rb_x = _dash_float_values(source.data[xvar])
         _rb_sel = self._view_mask(view, len(_rb_x))
         if _rb_sel is not None:
             _rb_x = _rb_x[_rb_sel]
@@ -7967,9 +8187,9 @@ class GlyphMapper:
         Returns:
             List with [spine_renderer, bottom_cap_renderer, top_cap_renderer].
         """
-        x_arr = np.array(source.data[xvar], dtype=float)
-        y1_arr = np.array(source.data[y1var], dtype=float)
-        y2_arr = np.array(source.data[y2var], dtype=float)
+        x_arr = np.array(_dash_float_values(source.data[xvar]))
+        y1_arr = np.array(_dash_float_values(source.data[y1var]))
+        y2_arr = np.array(_dash_float_values(source.data[y2var]))
 
         # The width is DERIVED from the data, so it must come from the rows
         # this layer draws.  The source below keeps every row -- so the
@@ -8055,7 +8275,7 @@ class GlyphMapper:
         # rows are already the selected ones.
         _ord = self._masked_order(source, view, xvar, y1var, y2var)
         _cols = {
-            v: np.asarray(source.data[v], dtype=float)[_ord]
+            v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
         }
         source = ColumnDataSource(_cols)
@@ -8183,8 +8403,8 @@ class GlyphMapper:
         Returns:
             List with [segment_renderer, scatter_renderer].
         """
-        x_arr = np.array(source.data[xvar], dtype=float)
-        y_arr = np.array(source.data[yvar], dtype=float)
+        x_arr = np.array(_dash_float_values(source.data[xvar]))
+        y_arr = np.array(_dash_float_values(source.data[yvar]))
         mask = ~(np.isnan(x_arr) | np.isnan(y_arr))
         x_arr, y_arr = x_arr[mask], y_arr[mask]
         # base(#): the value the drops run to, 0 by default
@@ -8212,6 +8432,13 @@ class GlyphMapper:
             "x": x_plot, "y": y_plot, "y0": zeros,
             xvar: x_arr, yvar: y_arr,
         }
+        # A date variable's own column stays dates, masked alike, for the
+        # label and the tooltip that read it: as floats its milliseconds
+        # were read as Stata days and every mlabel() was "." (24sep2026).
+        for _dv in (xvar, yvar):
+            _dcol = np.asarray(source.data[_dv])
+            if _dcol.dtype.kind == "M":
+                _dl_cols[_dv] = _dcol[mask]
         # _apply_mlabel_opts reads the label column out of THIS source, and
         # the figure's hover tool reads the variables hover() names out of
         # it too, so a source carrying only the two plot variables meant
@@ -8284,9 +8511,9 @@ class GlyphMapper:
             List of five renderers:
             [spine, bot_cap, top_cap, bot_scatter, top_scatter].
         """
-        x_arr  = np.array(source.data[xvar],  dtype=float)
-        y1_arr = np.array(source.data[y1var], dtype=float)
-        y2_arr = np.array(source.data[y2var], dtype=float)
+        x_arr  = np.array(_dash_float_values(source.data[xvar]))
+        y1_arr = np.array(_dash_float_values(source.data[y1var]))
+        y2_arr = np.array(_dash_float_values(source.data[y2var]))
 
         # The width is DERIVED from the data, so it must come from the rows
         # this layer draws.  The source below keeps every row -- so the
@@ -8638,7 +8865,13 @@ class GlyphMapper:
         _lab = _dash_mlabel_names(options)[0]
         _has_lab = bool(_lab) and _lab in source.data
         if _has_lab:
-            clean["__mlabel_values__"] = list(source.data[_lab])
+            # A date column goes in as its array: pandas 2.3 reads a LIST
+            # of millisecond datetimes back as nanoseconds, or as objects
+            # once one is past 2262 (measured 24sep2026).
+            _lv = source.data[_lab]
+            clean["__mlabel_values__"] = (
+                _lv if getattr(_lv, "dtype", None) is not None
+                and _lv.dtype.kind == "M" else list(_lv))
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
@@ -8659,11 +8892,17 @@ class GlyphMapper:
             _n = len(clean)
             _nan = np.full(_n, np.nan)
             _pc_cols["__mlabel_x__"] = np.concatenate(
-                [clean[x1var].to_numpy(dtype=float), _nan])
+                [_dash_float_values(clean[x1var]), _nan])
             _pc_cols["__mlabel_y__"] = np.concatenate(
-                [clean[y1var].to_numpy(dtype=float), _nan])
-            _labs = list(clean["__mlabel_values__"])
-            _pc_cols["__mlabel_values__"] = _labs + _labs
+                [_dash_float_values(clean[y1var]), _nan])
+            if clean["__mlabel_values__"].dtype.kind == "M":
+                # An array, not Timestamps: Bokeh writes a Timestamp
+                # through its nanosecond value, which raises past 2262.
+                _labs = clean["__mlabel_values__"].to_numpy()
+                _pc_cols["__mlabel_values__"] = np.concatenate([_labs, _labs])
+            else:
+                _labs = list(clean["__mlabel_values__"])
+                _pc_cols["__mlabel_values__"] = _labs + _labs
         pc_source = ColumnDataSource(_pc_cols)
 
         _pcsc_kwargs: dict = dict(source=pc_source,
@@ -8700,7 +8939,10 @@ class GlyphMapper:
         coords = list(clean.columns)
         _lab = _dash_mlabel_names(options)[0]
         if _lab and _lab in source.data and _lab not in clean.columns:
-            clean[_lab] = list(source.data[_lab])
+            # A date column as its array, as map_pcscatter's (24sep2026).
+            _lv = source.data[_lab]
+            clean[_lab] = (_lv if getattr(_lv, "dtype", None) is not None
+                           and _lv.dtype.kind == "M" else list(_lv))
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
@@ -8779,10 +9021,13 @@ class GlyphMapper:
                 line_color=color,
                 line_width=arrow_lw,
             )
-            for ys, xs, ye, xe in zip(clean[y1var].tolist(),
-                                      clean[x1var].tolist(),
-                                      clean[y2var].tolist(),
-                                      clean[x2var].tolist())
+            # Through _dash_float_values: a date coordinate is a Timestamp
+            # here, which float() refused, and the whole figure was lost
+            # (measured 24sep2026); in milliseconds it lands on its axis.
+            for ys, xs, ye, xe in zip(_dash_float_values(clean[y1var]).tolist(),
+                                      _dash_float_values(clean[x1var]).tolist(),
+                                      _dash_float_values(clean[y2var]).tolist(),
+                                      _dash_float_values(clean[x2var]).tolist())
         ]
         if _heads:
             fig.center = list(fig.center) + _heads
@@ -8850,15 +9095,19 @@ class GlyphMapper:
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
 
-        # Add bidirectional Arrow annotations for each row
-        for _, row in clean.iterrows():
+        # Add bidirectional Arrow annotations for each row, a date
+        # coordinate in milliseconds, as map_pcarrow's (24sep2026).
+        for ys, xs, ye, xe in zip(_dash_float_values(clean[y1var]).tolist(),
+                                  _dash_float_values(clean[x1var]).tolist(),
+                                  _dash_float_values(clean[y2var]).tolist(),
+                                  _dash_float_values(clean[x2var]).tolist()):
             arrow = Arrow(
                 end=NormalHead(size=10, line_color=color),
                 start=NormalHead(size=10, line_color=color),
-                x_start=float(row[x1var]),
-                y_start=float(row[y1var]),
-                x_end=float(row[x2var]),
-                y_end=float(row[y2var]),
+                x_start=float(xs),
+                y_start=float(ys),
+                x_end=float(xe),
+                y_end=float(ye),
                 line_color=color,
                 line_width=arrow_lw,
             )
@@ -8918,7 +9167,13 @@ class GlyphMapper:
         # label never decides which rows are drawn.
         _lab, _ = _dash_mlabel_names(options)
         if _lab and _lab in source.data and _lab not in clean.columns:
-            clean[_lab] = list(source.data[_lab])
+            # A date column as its array: pandas 2.3 reads a LIST of
+            # millisecond datetimes back as objects once one is past 2262,
+            # and the array below then carried a missing one to JSON as a
+            # bare NaN (measured 24sep2026).
+            _lv = source.data[_lab]
+            clean[_lab] = (_lv if getattr(_lv, "dtype", None) is not None
+                           and _lv.dtype.kind == "M" else list(_lv))
         # Masked by the layer's own view BEFORE the rows are dropped: the
         # view's filter is sized to the caller's source, and Bokeh applies
         # it by position (see map_pcspike).
@@ -9229,9 +9484,9 @@ class GlyphMapper:
         Returns:
             List with the single scatter GlyphRenderer.
         """
-        x_arr = np.array(source.data[xvar], dtype=float)
-        y1_arr = np.array(source.data[y1var], dtype=float)
-        y2_arr = np.array(source.data[y2var], dtype=float)
+        x_arr = np.array(_dash_float_values(source.data[xvar]))
+        y1_arr = np.array(_dash_float_values(source.data[y1var]))
+        y2_arr = np.array(_dash_float_values(source.data[y2var]))
         # The marker-label values, when mlabel() names a column the data
         # has; stacked below exactly as the points are.
         _lab = _dash_mlabel_names(options)[0]
@@ -9273,6 +9528,12 @@ class GlyphMapper:
         if lab_vals is not None:
             _rs_cols["__mlabel_values__"] = [
                 v for v, keep in zip(lab_vals + lab_vals, mask) if keep]
+            if np.asarray(source.data[_lab]).dtype.kind == "M":
+                # A date label column as an array: in a list, a missing
+                # date is written by Bokeh as a bare NaN, which JSON
+                # refuses, and the page failed (measured 24sep2026).
+                _rs_cols["__mlabel_values__"] = np.array(
+                    _rs_cols["__mlabel_values__"], dtype="datetime64[ms]")
         rs_source = ColumnDataSource(_rs_cols)
         _rs_kwargs: dict = dict(source=rs_source,
                                  size=self.scheme.default_marker_size(color_idx),
@@ -11505,11 +11766,17 @@ def _dash_json_value(v):
     if isinstance(v, (pd.Timestamp, np.datetime64)) or hasattr(v, "year"):
         try:
             ts = pd.Timestamp(v)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return str(v)
         if pd.isna(ts):
             return None
-        return float(ts.value // 1_000_000)
+        # Cast from the stamp's own unit, flooring as `value // 1_000_000'
+        # did.  ts.value is NANOseconds, and a date variable is held in
+        # milliseconds since it holds Stata's whole range (24sep2026):
+        # ts.value raised OverflowError for any date after 2262-04-11, so
+        # a 31dec9999 placeholder stopped the served download.
+        return float(ts.to_datetime64().astype("datetime64[ms]")
+                     .astype(np.int64))
     try:
         f = float(v)
         if math.isnan(f) or math.isinf(f):
@@ -12158,22 +12425,25 @@ function dash_apply_kpis(data_obj, kpi_config, kpi_divs, ROW_ID) {
             const d = new Date(result);
             const MON = ['Jan','Feb','Mar','Apr','May','Jun',
                          'Jul','Aug','Sep','Oct','Nov','Dec'];
+            // The year in four digits, as Stata and the first render write
+            // it: 01jan0100, not 01 Jan 100 (24sep2026).
+            const Y = String(d.getUTCFullYear()).padStart(4, '0');
             if (isNaN(d.getTime())) {
                 fmt = '—';
             } else if (k.datekind === 'ty') {
-                fmt = String(d.getUTCFullYear());
+                fmt = Y;
             } else if (k.datekind === 'tc' || k.datekind === 'tC') {
                 fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
-                      ' ' + d.getUTCFullYear() + ' ' +
+                      ' ' + Y + ' ' +
                       ('0' + d.getUTCHours()).slice(-2) + ':' +
                       ('0' + d.getUTCMinutes()).slice(-2) + ':' +
                       ('0' + d.getUTCSeconds()).slice(-2);
             } else if (k.datekind === 'tm' || k.datekind === 'tq' ||
                        k.datekind === 'th') {
-                fmt = MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+                fmt = MON[d.getUTCMonth()] + ' ' + Y;
             } else {
                 fmt = ('0' + d.getUTCDate()).slice(-2) + ' ' + MON[d.getUTCMonth()] +
-                      ' ' + d.getUTCFullYear();
+                      ' ' + Y;
             }
         } else {
             if (isNaN(result)) {
@@ -13775,7 +14045,8 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
             g.grid_line_color = None
     elif mode == "minmax":
         if values is not None:
-            vals = pd.to_numeric(pd.Series(values), errors="coerce").dropna()
+            # A date in milliseconds, a missing one dropped (24sep2026).
+            vals = pd.Series(_dash_float_values(values, coerce=True)).dropna()
             if len(vals):
                 axis_obj.ticker = FixedTicker(
                     ticks=[float(vals.min()), float(vals.max())])
@@ -13896,7 +14167,8 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
         args["every"] = BasicTicker(desired_num_ticks=spec["count"])
         minor = _DASH_TICK_EVERY_JS
     elif mode == "minmax" and values is not None:
-        vals = pd.to_numeric(pd.Series(values), errors="coerce").dropna()
+        # A date in milliseconds, a missing one dropped (24sep2026).
+        vals = pd.Series(_dash_float_values(values, coerce=True)).dropna()
         if not len(vals):
             return
         args["extra"] = [float(vals.min()), float(vals.max())]
@@ -14034,8 +14306,10 @@ def _dash_secondary_values(fig, range_attr, name):
             if field:
                 if field not in data:
                     continue
-                col = np.asarray(pd.to_numeric(pd.Series(list(data[field])),
-                                               errors="coerce"), dtype=float)
+                # Not through a list: pandas 2.3 reads a list of millisecond
+                # datetimes back as nanoseconds, or as objects once one is
+                # past 2262 (measured 24sep2026).
+                col = _dash_float_values(data[field], coerce=True)
                 sel = col[list(rows)] if len(col) else col
                 cols.extend(float(x) for x in sel if np.isfinite(x))
                 continue
@@ -15666,7 +15940,9 @@ def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar):
         cur_lo, cur_hi = getattr(cur, "start", None), getattr(cur, "end", None)
         if lo is None or hi is None:
             if var and var in cols:
-                v = pd.to_numeric(frame[var], errors="coerce").dropna()
+                # A date in milliseconds, a missing one dropped (24sep2026).
+                v = pd.Series(_dash_float_values(frame[var],
+                                                 coerce=True)).dropna()
                 if len(v):
                     cur_lo, cur_hi = float(v.min()), float(v.max())
         new_lo = lo if lo is not None else cur_lo
@@ -17293,6 +17569,10 @@ class DashRenderer:
                 # `dash line close date` came to produce an empty dashboard.
                 converted = pd.to_datetime(raw.astype(str).str.strip(),
                                             errors="coerce")
+                # The unit every date column is held in (24sep2026), so
+                # no consumer meets a second one: pandas parses to
+                # nanoseconds under 2.3 and to whatever it infers under 3.
+                converted = pd.Series(converted).astype("datetime64[ms]")
                 if converted.isna().all() and raw.notna().any():
                     warnings.warn(
                         f"dash: variable '{col}' has display format "
@@ -17357,13 +17637,19 @@ class DashRenderer:
         if not pd.api.types.is_datetime64_any_dtype(col):
             return col
         if str(stat).lower().strip() == "sum":
+            # 01jan1970, the epoch the milliseconds count from (the page's
+            # callback sums the same numbers); this said 01jan1960.
             warnings.warn(
                 f"dash: sum({varname}) adds up dates, which has no meaning. "
                 f"The result is shown as a number of milliseconds since "
-                f"01jan1960.",
+                f"01jan1970.",
                 UserWarning,
             )
-        return col.dropna().astype("datetime64[ms]").astype("int64")
+        # As floats, which hold every millisecond of Stata's range exactly
+        # (under 2**53): an int64 sum wrapped silently past 9.2e18, about
+        # 36,000 dates in 9999 (24sep2026).
+        return (col.dropna().astype("datetime64[ms]").astype("int64")
+                .astype("float64"))
 
     @staticmethod
     def _kpi_statistic(col: "pd.Series", stat: str) -> float:
@@ -20392,7 +20678,14 @@ class ServerAppBuilder:
                       # served frame's Stata dates for it.
                       "_DASH_CSV_SERVED_JS", "_DASH_CSV_FILENAME",
                       "_DASH_CSV_BUTTON_WIDTH", "_DASH_CSV_RATE",
-                      "_DASH_CSV_BURST", "_STATA_EPOCH", "_STATA_DATE_KINDS",
+                      "_DASH_CSV_BURST", "_STATA_DATE_KINDS",
+                      # ... Stata's date range, in years and in
+                      # milliseconds, which it and
+                      # _format_date_value_standalone hold a date to, and
+                      # 01jan1960 in epoch milliseconds, which replaced the
+                      # Timestamp _STATA_EPOCH (24sep2026).
+                      "_STATA_YEAR_MIN", "_STATA_YEAR_MAX", "_STATA_MS_MIN",
+                      "_STATA_MS_MAX", "_STATA_EPOCH_UNIX_MS",
                       # The toolbar every figure carries and the names its
                       # save button writes (WP-21), read by the figure
                       # block and by _dash_save_filename.
@@ -20444,6 +20737,10 @@ class ServerAppBuilder:
                          # them: the lines and the sub-option comma.
                          "_textbox_lines", "_textbox_string_end",
                          "_extract_finite", "_apply_jitter",
+                         # The one float reader of a column, a date in
+                         # milliseconds (24sep2026): GlyphMapper's masks
+                         # and the axis helpers call it.
+                         "_dash_float_values",
                          "_with_color_alias", "_jitter_seed", "_floats_only",
                          "_parse_stata_numeric_fmt", "_format_stata_numeric",
                          # _dash_build_hover's own callees. A copied
@@ -20543,6 +20840,10 @@ class ServerAppBuilder:
                          # (WP-20).
                          "_dash_csp_meta", "_dash_served_template",
                          "_dash_server_transforms",
+                         # The websocket origin check made exact under a
+                         # Bokeh whose matcher is not (bokeh 3.8).
+                         "_dash_strict_match_host",
+                         "_dash_harden_origin_check",
                          # The resource limits, read from the spec and
                          # applied where the app groups and lists (WP-19).
                          "_dash_limits", "_dash_limit_hint",
@@ -23117,6 +23418,15 @@ class ServerAppBuilder:
             "    import mimetypes as _mimetypes",
             "    _mimetypes.add_type('text/javascript', '.js')",
             "    _mimetypes.add_type('text/css', '.css')",
+            "    # Bokeh before 3.9 matched a websocket origin by its first",
+            "    # labels only: localhost.evil.example was admitted as",
+            "    # localhost and 127.0.0.1.nip.io as 127.0.0.1 (measured",
+            "    # 24sep2026 under bokeh 3.8.0, which Stata's Python ships).",
+            "    if _dash_harden_origin_check():",
+            "        print('dash: this Bokeh admits a websocket origin that '",
+            "              'only begins with an allowed host; dash checks '",
+            "              'each websocket origin label for label instead.',",
+            "              flush=True)",
             "    return Server(",
             "        {'/': Application(FunctionHandler(make_document))},",
             "        port=_p,",

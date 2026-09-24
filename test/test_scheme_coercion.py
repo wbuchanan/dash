@@ -447,7 +447,11 @@ class TestInitProperties:
     @pytest.mark.parametrize("name", ["stcolor", "s2color", "economist",
                                       "s1mono"])
     def test_no_translated_scheme_renders_everything_black(self, name):
-        """The stcolor symptom, as a standing check on all fourteen."""
+        """The stcolor symptom -- every series drawn black -- as a standing
+        check on the four schemes parametrized here: stcolor, s2color,
+        economist and s1mono.  Each must give its first five series five
+        different colours, as the fixture does, and all but s1mono must not
+        draw them all black."""
         parser = SchemeParser(name)
         colours = [parser.default_color(i, "scatter") for i in range(5)]
         # Each of the four draws five different colours for its first five

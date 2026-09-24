@@ -150,7 +150,7 @@ from conftest import make_data_json  # noqa: E402
 
 #: The bokeh versions the behaviour described above was verified on.  See
 #: TestBokehVersion for what "verified" means and how to extend this set.
-VERIFIED_BOKEH = {"3.9.0"}
+VERIFIED_BOKEH = {"3.8.0", "3.9.0"}
 
 # ---------------------------------------------------------------------------
 # Payloads
@@ -1158,8 +1158,15 @@ class TestBokehVersion:
         ``Select`` options, the Legend's labels and title, the tooltip's
         label cell and HTML-parsed field, and ``core/dom``'s
         ``createTextNode`` for string children are the same code as 3.9.0's.
-        Steps 2 and 3 were run on 3.9.0 only, so 3.8.0 is not in
-        ``VERIFIED_BOKEH``.
+        Steps 2 and 3 were run on 3.8.0 on 24sep2026 (WP-25, when the suite
+        first ran under Stata's interpreter): pages built by
+        ``/opt/anaconda3/bin/python3`` with bokeh 3.8.0 and the label above
+        on ``y``, a saved page and the served app run as ``dash serve``
+        runs it (MathJax loaded), were opened in Chromium and a point
+        hovered.  In both the axis title showed the literal text, the
+        legend entry and the tooltip's label cell were text nodes inside
+        DIVs reading it, there was no IMG element anywhere (shadow roots
+        included), and ``document.title`` stayed ``dash``.
 
         To re-verify after a Bokeh upgrade:
 

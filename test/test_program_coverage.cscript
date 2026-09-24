@@ -734,7 +734,7 @@ if `match' != 1 {
 assert `rc' == 0
 foreach p in "packaging .......... missing" "could not install" ///
     "(not verified against 3.0)" "(not verified against 1.23)" ///
-    "(not verified against 1.5)" "dash_setup complete, with 1 warning(s)." ///
+    "(not verified against 2.0)" "dash_setup complete, with 1 warning(s)." ///
     "Warned:  packaging (version checks approximate)" {
     _pc_said "`p'"
     assert r(found) == 1

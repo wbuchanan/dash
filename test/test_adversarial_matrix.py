@@ -654,6 +654,13 @@ SURFACES = {
             "test_program_coverage.cscript:PC-03",
             "test/test_server.py::TestDropdownSentinelCollision::test_standalone_sentinel_unique_when_data_has_all_value",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_label_keyed_by_another_spelling_is_not_matched",
+            # WP-25 (24sep2026): a date value outside Stata's range, or no
+            # number at all, is one missing point, counted, never a crash
+            # and never the whole column (pandas 2.3 and 3.0 alike).
+            "test/test_date_range.py::TestHostileDateValues::test_non_finite_and_huge_values_are_missing_and_counted",
+            "test/test_date_range.py::TestHostileDateValues::test_an_integer_too_large_for_a_double_is_counted_not_raised",
+            "test/test_date_range.py::TestTheConversionHoldsStatasWholeRange::test_the_first_and_last_date_convert_and_one_past_is_missing",
+            "test/test_date_range.py::TestTheConversionHoldsStatasWholeRange::test_a_fraction_below_the_first_day_is_no_date",
         ],
         "injection": [
             "test_adversarial.cscript:P4-86",
@@ -663,6 +670,7 @@ SURFACES = {
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_markup_in_a_value_label_is_carried_as_text",
             "test_program_coverage.cscript:PC-09",
             "test_program_coverage.cscript:PC-10",
+            "test/test_date_range.py::TestHostileDateValues::test_a_hostile_date_in_the_data_file_is_one_missing_point",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P19-11",
@@ -671,6 +679,7 @@ SURFACES = {
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_huge_label_set_is_read_at_once",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_number_stata_would_write_long_is_bounded",
             "test/test_help_claims_5.py::TestAdversarialLabelPlacement::test_a_date_no_calendar_holds_is_a_dot_not_a_crash",
+            "test/test_date_range.py::TestHostileDateValues::test_two_million_values_convert_in_bounded_time_and_memory",
         ],
     },
     # The spec JSON and data JSON dash_render.py reads -- written by
@@ -734,6 +743,10 @@ SURFACES = {
         "bypass": [
             _M + "TestSessionOrigin::test_a_foreign_origin_is_refused",
             "test/test_server_rate_limit.py::TestTheHeaderIsNotTrustedByDefault::test_the_header_is_ignored",
+            # WP-25 (24sep2026): under a Bokeh that admits a host which
+            # only begins with an allowed one (3.8, which Stata's Python
+            # ships), the origin is still refused.
+            _M + "TestSessionOriginUnderALenientBokeh::test_a_host_that_begins_with_an_allowed_one_is_refused",
         ],
         "injection": [
             "test/test_server_rate_limit.py::TestAForwardedTokenIsOneBoundedKeyPerAddress::test_a_control_character_is_not_a_key",
@@ -2493,6 +2506,149 @@ class TestSessionOrigin:
         assert "429" in text
         assert "10.66.66.66" not in text
         assert "xff" not in text and "<script" not in text
+
+
+# Bokeh 3.8.0's host matcher, in behaviour (bokeh/server/util.py
+# match_host): it compares only as many dot-separated labels as the pattern
+# has, so a host that merely BEGINS with an allowed one matches it.  Bokeh
+# 3.9 requires the counts to be equal.  Planted into the app's own process,
+# ahead of the app, so the development interpreter's Bokeh 3.9 cannot hide
+# what the one Stata's Python ships does.
+_LENIENT_BOKEH_APP = """\
+import runpy
+import sys
+
+import bokeh.server.util as _bokeh_util
+
+
+def _lenient_match_host(host, pattern):
+    host_port = None
+    if ':' in host:
+        host, host_port = host.rsplit(':', 1)
+    pattern_port = None
+    if ':' in pattern:
+        pattern, pattern_port = pattern.rsplit(':', 1)
+        if pattern_port == '*':
+            pattern_port = None
+    if pattern_port is not None and host_port != pattern_port:
+        return False
+    host_parts = host.split('.')
+    pattern_parts = pattern.split('.')
+    if len(pattern_parts) > len(host_parts):
+        return False
+    return all(h == p or p == '*' for h, p in zip(host_parts, pattern_parts))
+
+
+_bokeh_util.match_host = _lenient_match_host
+_app = __APP__
+sys.argv = [_app] + sys.argv[1:]
+runpy.run_path(_app, run_name='__main__')
+"""
+
+
+@pytest.fixture(scope="class")
+def lenient_live_app(tmp_path_factory):
+    """The served app running itself with Bokeh 3.8's host matcher."""
+    tmp = tmp_path_factory.mktemp("lenient_origin")
+    _app_source(tmp, make_spec([dict(_SCATTER)]))
+    app = os.path.join(str(tmp), "app.py")
+    wrapper = os.path.join(str(tmp), "lenient_app.py")
+    with open(wrapper, "w", encoding="utf-8") as fh:
+        fh.write(_LENIENT_BOKEH_APP.replace("__APP__", repr(app)))
+    with _LiveApp(wrapper) as live:
+        yield live
+
+
+class TestSessionOriginUnderALenientBokeh:
+    """Bokeh before 3.9 admitted a websocket origin whose host merely
+    begins with an allowed one.  Measured 24sep2026 with pytest under
+    Stata's own interpreter, /opt/anaconda3/bin/python3 with bokeh 3.8.0:
+    TestSessionOrigin's handshakes from http://localhost.evil.example:<port>
+    and http://127.0.0.1.nip.io:<port> were answered 101 and ACK -- a page
+    from a DNS name that starts with localhost, or from a rebinding
+    service's name for 127.0.0.1, opened a session and could read the
+    dashboard -- where the development interpreter's bokeh 3.9 refuses
+    them.  dash checks origins label for label itself
+    (_dash_harden_origin_check), whatever Bokeh it runs under."""
+
+    @pytest.mark.serve
+    @pytest.mark.parametrize("origin", [
+        "http://localhost.evil.example:{P}",
+        "http://127.0.0.1.nip.io:{P}",
+        "http://127.0.0.1.evil.example:{P}",
+        "http://localhost.localhost:{P}",
+    ])
+    def test_a_host_that_begins_with_an_allowed_one_is_refused(
+            self, lenient_live_app, origin):
+        sent = origin.format(P=lenient_live_app.port)
+        assert lenient_live_app.session(sent) == (403, None), sent
+        assert lenient_live_app.session(
+            "http://localhost:%d" % lenient_live_app.port) == (101, "ACK")
+
+    @pytest.mark.serve
+    def test_the_launcher_says_it_checks_origins_itself(self,
+                                                        lenient_live_app):
+        said = _launcher_said(lenient_live_app)
+        assert "checks each websocket origin label for label" in said, said
+
+
+class TestTheStrictHostMatcher:
+    """_dash_strict_match_host holds Bokeh 3.9's rules, and
+    _dash_harden_origin_check installs it only over a lenient matcher."""
+
+    @pytest.mark.parametrize("host, pattern, want", [
+        # Bokeh 3.9's own documented examples.
+        ("192.168.0.1:80", "192.168.0.1:80", True),
+        ("192.168.0.1:80", "192.168.0.1", True),
+        ("192.168.0.1:80", "192.168.0.1:8080", False),
+        ("192.168.0.1", "192.168.0.2", False),
+        ("192.168.0.1", "192.168.*.*", True),
+        ("alice", "alice", True),
+        ("alice:80", "alice", True),
+        ("alice", "bob", False),
+        ("example.com", "example.com.net", False),
+        ("example.com.bad.com", "example.com", False),
+        ("alice", "*", True),
+        ("alice", "*:*", True),
+        ("alice:80", "*", True),
+        ("alice:80", "*:80", True),
+        ("alice:8080", "*:80", False),
+        # The hosts Bokeh 3.8 admitted.
+        ("localhost.evil.example:5006", "localhost:5006", False),
+        ("127.0.0.1.nip.io:5006", "127.0.0.1:5006", False),
+        ("localhost.:5006", "localhost:5006", False),
+        # Loopback and an IPv6 literal, exactly.
+        ("localhost:5006", "localhost:5006", True),
+        ("127.0.0.1:5006", "127.0.0.1:5006", True),
+        ("[::1]:5006", "[::1]:5006", True),
+        ("[::1]:5007", "[::1]:5006", False),
+    ])
+    def test_a_host_matches_label_for_label(self, host, pattern, want):
+        assert dr._dash_strict_match_host(host, pattern) is want
+
+    def test_a_lenient_matcher_is_replaced(self, monkeypatch):
+        import bokeh.server.util as bokeh_util
+
+        def lenient(host, pattern):
+            return host.split(":")[0].startswith(pattern.split(":")[0])
+
+        monkeypatch.setattr(bokeh_util, "match_host", lenient)
+        assert dr._dash_harden_origin_check() is True
+        assert bokeh_util.match_host is dr._dash_strict_match_host
+        assert not bokeh_util.check_allowlist(
+            "localhost.evil.example:5006", ["localhost:5006"])
+        assert bokeh_util.check_allowlist("localhost:5006",
+                                          ["localhost:5006"])
+
+    def test_a_strict_matcher_is_left_alone(self, monkeypatch):
+        import bokeh.server.util as bokeh_util
+
+        def strict(host, pattern):
+            return dr._dash_strict_match_host(host, pattern)
+
+        monkeypatch.setattr(bokeh_util, "match_host", strict)
+        assert dr._dash_harden_origin_check() is False
+        assert bokeh_util.match_host is strict
 
 
 def _widget(doc, cls):

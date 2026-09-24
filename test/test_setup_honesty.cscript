@@ -531,7 +531,7 @@ _hon_has "`h21log'" "with 1 warning" h21warn
 _hon_has "`h21log'" "All dependencies are satisfied" h21ok
 _hon_has "`h21log'" "(not verified against 3.0)" h21v1
 _hon_has "`h21log'" "(not verified against 1.23)" h21v2
-_hon_has "`h21log'" "(not verified against 1.5)" h21v3
+_hon_has "`h21log'" "(not verified against 2.0)" h21v3
 _hon_has "`h21log'" "bokeh ............. OK" h21k1
 _hon_has "`h21log'" "numpy ............. OK" h21k2
 _hon_has "`h21log'" "pandas ............. OK" h21k3
@@ -714,7 +714,7 @@ assert `h26m' == 1
 assert `h26rc' == 0
 foreach p in "packaging .......... missing" "packaging .......... could not install" ///
     "(not verified against 3.0)" "(not verified against 1.23)" ///
-    "(not verified against 1.5)" "dash_setup complete, with 1 warning(s)." {
+    "(not verified against 2.0)" "dash_setup complete, with 1 warning(s)." {
     cert_log_has "`h26log'", needle("`p'")
     assert r(count) == 1
 }

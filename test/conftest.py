@@ -8,6 +8,12 @@ import sys
 import os
 import json
 import tempfile
+import time
+
+try:
+    import fcntl
+except ImportError:          # Windows: no advisory locks, no guard
+    fcntl = None
 
 import numpy as np
 import pandas as pd
@@ -35,31 +41,174 @@ def pytest_configure(config):
         "serve: starts a real `bokeh serve` subprocess; slow. "
         "Deselect with -m 'not serve'.",
     )
+    if not config.pluginmanager.hasplugin("xdist"):
+        # xdist registers this itself; without xdist the marks on the parity
+        # corpus must still be known, or every run warns.
+        config.addinivalue_line(
+            "markers", "xdist_group(name): run these tests on one worker")
+
+
+# ============================================================
+# One full-suite run at a time
+# ============================================================
+# A full run is CPU-bound and, under xdist, saturates every core: two at
+# once each take twice as long, and agents were launching a second run to
+# "check on" the first.  The invocation that covers the whole suite takes a
+# per-user, machine-wide advisory lock at session start and a second one
+# exits at once, naming the holder.  A targeted run (a file, a node id, -k,
+# --lf) or a collect-only run never takes it.  xdist workers never take it;
+# the controller holds it for them.
+
+_SUITE_LOCK = os.environ.get(
+    "DASH_SUITE_LOCK",
+    os.path.join("/tmp", "dash-full-suite-%s.lock" % os.getuid()),
+)
+
+
+def _covers_whole_suite(args, rootpath, *, keyword="", lastfailed=False,
+                        collectonly=False):
+    """True when a pytest invocation runs the entire suite.
+
+    ``args`` are the positional arguments pytest received (``config.args``)
+    and ``rootpath`` is ``config.rootpath``.  No arguments means the root,
+    which is the whole suite; so is the ``test`` directory.  A file, a node
+    id, ``-k``, ``--lf`` or ``--collect-only`` is not.
+    """
+    if keyword or lastfailed or collectonly:
+        return False
+    root = os.path.abspath(str(rootpath))
+    whole = {root, os.path.join(root, "test")}
+    for a in (args or [root]):
+        p = os.path.abspath(str(a).split("::", 1)[0].rstrip("/"))
+        if p not in whole:
+            return False
+    return True
+
+
+def pytest_sessionstart(session):
+    cfg = session.config
+    # Strict mode (WP-25): a run under another environment than its
+    # baseline stops before any test.  The controller decides; xdist
+    # workers inherit its verdict by never starting.
+    if _strict() and not hasattr(cfg, "workerinput"):
+        problem = _drift_problem(_running_env(),
+                                 os.environ.get("DASH_BASELINE", ""))
+        if problem:
+            raise pytest.UsageError("strict mode (DASH_STRICT=1): " + problem)
+    if fcntl is None or hasattr(cfg, "workerinput"):
+        return
+    if not _covers_whole_suite(
+            cfg.args, cfg.rootpath,
+            keyword=cfg.getoption("keyword", ""),
+            lastfailed=cfg.getoption("lf", False),
+            collectonly=cfg.getoption("collectonly", False)):
+        return
+    fh = open(_SUITE_LOCK, "a+")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        fh.seek(0)
+        holder = fh.read().strip() or "unknown"
+        fh.close()
+        raise pytest.UsageError(
+            "a full test-suite run is already in progress (%s). Wait for it "
+            "and read its log, or run only the tests you changed: a file, a "
+            "node id, -k, or --lf." % holder)
+    fh.seek(0)
+    fh.truncate()
+    fh.write("pid %d, started %s, argv %s" % (
+        os.getpid(), time.strftime("%Y-%m-%d %H:%M:%S"),
+        " ".join(sys.argv[1:])[:200]))
+    fh.flush()
+    cfg._dash_suite_lock = fh
+
+
+def pytest_sessionfinish(session, exitstatus):
+    # Strict mode (WP-25): any skip turns a run that passed red.
+    cfg = session.config
+    if _strict() and not hasattr(cfg, "workerinput"):
+        lines = _strict_verdict(_SKIPPED)
+        if lines:
+            tr = cfg.pluginmanager.get_plugin("terminalreporter")
+            for line in lines:
+                if tr is not None:
+                    tr.write_line(line)
+                else:
+                    print(line)
+            if session.exitstatus == 0:
+                session.exitstatus = pytest.ExitCode.TESTS_FAILED
+    fh = getattr(session.config, "_dash_suite_lock", None)
+    if fh is not None:
+        try:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+            fh.close()
+        except OSError:
+            pass
+
+
+
+def pytest_collection_modifyitems(items):
+    """Keep every comparison of one parity corpus entry on one xdist worker.
+
+    test_mode_parity.py renders each corpus entry once per process and
+    compares it eleven ways.  Spread across twelve workers under the default
+    distribution each entry was rendered about seven times.  With
+    ``--dist loadgroup`` (pyproject.toml) a group runs on a single worker,
+    so an entry renders once.  A test module cannot implement this hook;
+    only a conftest can.
+    """
+    for item in items:
+        if not item.nodeid.startswith("test/test_mode_parity.py"):
+            continue
+        params = getattr(getattr(item, "callspec", None), "params", {})
+        name = params.get("name")
+        if name:
+            item.add_marker(pytest.mark.xdist_group(name="parity:" + str(name)))
+
+# ============================================================
+# An empty global Bokeh document for every test
+# ============================================================
+# A generated server app calls make_document(curdoc()) when it is imported,
+# so each app a test exec's leaves 1 root and about 46 models in the
+# process-global document.  Nothing cleared it, Bokeh walks it on every
+# later operation, and the served render path slowed from 0.19 s to about
+# 1.8 s per test over a run.  See test_bokeh_document_hygiene.py.
+
+@pytest.fixture(autouse=True)
+def _clear_bokeh_curdoc():
+    yield
+    try:
+        from bokeh.io import curdoc
+        curdoc().clear()
+    except Exception:
+        pass
 
 
 # ============================================================
 # Environment pinning
 # ============================================================
-# The pytest suite and the Stata certification suite run under DIFFERENT
-# Python interpreters, with different library versions:
+# The suite runs under two interpreters, with different libraries (WP-25):
 #
-#   pytest        /opt/homebrew/bin/python3.14
-#   Stata's       /opt/anaconda3/bin/python3   (set python_exec)
+#   stata   /opt/anaconda3/bin/python3, Stata's c(python_exec): the Python
+#           every Stata-built dashboard is rendered with, so the one that
+#           ships
+#   dev     /opt/homebrew/bin/python3, the development interpreter
 #
-# A green pytest run therefore does NOT prove the Stata path works, and a
-# library difference between them can make a defect reproduce in one and not
-# the other.  This fixture records what pytest actually ran under and warns
-# when it drifts from the values captured in .ultraplan/BASELINE.md.
-#
-# A warning, not a failure: a developer on another machine is legitimately on
-# a different build.  But it is never silent.
+# A green run under one proves nothing about the other.  Measured 24sep2026,
+# the first time the suite ran under Stata's Python: its bokeh 3.8 let the
+# served app admit a websocket origin bokeh 3.9 refuses, and its pandas 2.3
+# blanked a whole date column over one far-future value.  Each run is held
+# to the baseline DASH_BASELINE names, or else to the one whose Python it
+# runs.  Outside strict mode a drift is a warning -- a developer on another
+# machine is legitimately on another build -- but never silent.  In strict
+# mode (DASH_STRICT=1, which `make check' sets) it stops the run before any
+# test, and any skip turns the run red at its end: a skip is not a pass.
 
-_BASELINE_ENV = {
-    "python": "3.14",       # major.minor only — patch drift is not interesting
-    "bokeh": "3.9",
-    "pandas": "3.0",
-    "numpy": "2.4",
-    "scipy": "1.17",
+_BASELINES = {
+    "stata": {"python": "3.13", "bokeh": "3.8", "pandas": "2.3",
+              "numpy": "2.3", "scipy": "1.16"},
+    "dev": {"python": "3.14", "bokeh": "3.9", "pandas": "3.0",
+            "numpy": "2.4", "scipy": "1.17"},
 }
 
 
@@ -69,11 +218,9 @@ def _mm(version: str) -> str:
     return ".".join(parts[:2])
 
 
-@pytest.fixture(scope="session", autouse=True)
-def pinned_environment():
-    """Warn when the interpreter or its libraries drift from the baseline."""
+def _running_env() -> dict:
+    """The major.minor of the running Python and of each pinned library."""
     import importlib
-    import warnings
 
     actual = {"python": _mm("%d.%d" % sys.version_info[:2])}
     for pkg in ("bokeh", "pandas", "numpy", "scipy"):
@@ -81,21 +228,94 @@ def pinned_environment():
             actual[pkg] = _mm(importlib.import_module(pkg).__version__)
         except Exception:
             actual[pkg] = "missing"
+    return actual
 
-    drifted = {
-        k: (v, actual[k]) for k, v in _BASELINE_ENV.items() if actual[k] != v
-    }
-    if drifted:
-        detail = ", ".join(
-            f"{k}: baseline {want}, running {got}" for k, (want, got) in drifted.items()
-        )
-        warnings.warn(
-            "dash test suite: environment differs from the recorded baseline "
-            f"({detail}). See .ultraplan/BASELINE.md. Results may not be "
-            "comparable to it, and the Stata certification suite runs under a "
-            "different interpreter again (/opt/anaconda3/bin/python3).",
-            UserWarning,
-        )
+
+def _baseline_name(actual: dict, requested: str = "") -> str:
+    """The baseline to hold *actual* to: *requested* (DASH_BASELINE) when
+    given, else the one whose Python matches, else "dev"."""
+    if requested:
+        return requested
+    for name, env in _BASELINES.items():
+        if env["python"] == actual.get("python"):
+            return name
+    return "dev"
+
+
+def _env_drift(actual: dict, baseline: dict) -> dict:
+    """``{pin: (baseline, running)}`` for each pin *actual* misses; empty
+    when the running environment matches *baseline*."""
+    return {k: (v, actual.get(k, "missing")) for k, v in baseline.items()
+            if actual.get(k, "missing") != v}
+
+
+def _strict() -> bool:
+    """Whether this run is strict: DASH_STRICT=1."""
+    return os.environ.get("DASH_STRICT", "") == "1"
+
+
+def _drift_problem(actual: dict, requested: str = "") -> str:
+    """Why *actual* fails its baseline, or "" when it does not."""
+    name = _baseline_name(actual, requested)
+    if name not in _BASELINES:
+        return ("DASH_BASELINE=%s names no baseline; the baselines are %s "
+                "(test/conftest.py)." % (name, ", ".join(sorted(_BASELINES))))
+    drift = _env_drift(actual, _BASELINES[name])
+    if not drift:
+        return ""
+    return ("the environment differs from the %s baseline (%s); see "
+            "_BASELINES in test/conftest.py." % (name, ", ".join(
+                f"{k}: baseline {want}, running {got}"
+                for k, (want, got) in drift.items())))
+
+
+def _skip_reason(report) -> str:
+    """The reason a skipped report gives."""
+    longrepr = report.longrepr
+    if isinstance(longrepr, tuple) and len(longrepr) == 3:
+        return str(longrepr[2])
+    return str(longrepr)
+
+
+#: (node id, reason) for every test or module skipped in this process.
+_SKIPPED: "list[tuple[str, str]]" = []
+
+
+def pytest_runtest_logreport(report):
+    """Record each skipped test for strict mode's verdict.  Under xdist the
+    controller receives every worker's reports through this hook."""
+    if report.skipped and not hasattr(report, "wasxfail"):
+        _SKIPPED.append((report.nodeid, _skip_reason(report)))
+
+
+def pytest_collectreport(report):
+    """Record a module skipped whole at collection (``importorskip``)."""
+    if report.skipped:
+        _SKIPPED.append((report.nodeid, _skip_reason(report)))
+
+
+def _strict_verdict(skipped: "list[tuple[str, str]]") -> "list[str]":
+    """Strict mode's report on the skips of a run: empty when there were
+    none, else the lines to print."""
+    if not skipped:
+        return []
+    lines = ["strict mode (DASH_STRICT=1): %d test(s) skipped, and a skip is "
+             "not a pass:" % len(skipped)]
+    lines += ["  %s -- %s" % (nodeid, reason) for nodeid, reason in skipped]
+    return lines
+
+
+@pytest.fixture(scope="session", autouse=True)
+def pinned_environment():
+    """Warn when the interpreter or its libraries drift from their baseline.
+    In strict mode the drift has already stopped the run (pytest_sessionstart)."""
+    import warnings
+
+    actual = _running_env()
+    problem = _drift_problem(actual, os.environ.get("DASH_BASELINE", ""))
+    if problem:
+        warnings.warn("dash test suite: " + problem + " Results may not be "
+                      "comparable to a run under the baseline.", UserWarning)
     return actual
 
 

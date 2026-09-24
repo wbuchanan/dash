@@ -2027,7 +2027,11 @@ one-mode change there would have been invisible.
 - `gsize note` is declared by every scheme and read by no Stata textbox;
   the note textbox is `small_body`. dash's `note_font_size` read the wrong
   key, and any fix that wired it would have drawn economist's notes at
-  14pt where Stata draws 8pt.
+  14pt where Stata draws 8pt.  *Corrected by WP-25 (24sep2026):* Stata's
+  own drawing (`test/fixtures/scheme_visual/truth.json`) has economist's
+  note at medlarge, 4.1660% of the graph height, in white: economist routes
+  `note()` through `textboxstyle note reverse_big`, a filled box (BUGS.md,
+  "economist's note() is drawn as a small black body note").
 - economist's y axis is `axisstyle vertical_default vertical_nolinetick`,
   whose style file reads `draw_major_nlt_vgrid`/`draw_minor_nlt_vgrid`, not
   `draw_major_vgrid`; the same yes/no by coincidence, so the fixture now
@@ -3828,9 +3832,109 @@ The first part was committed at `7c28802` after its own full runs
 
 ---
 
-## WP-25 · Test infrastructure
+## WP-25 · Test infrastructure — DONE
 
 **Gaps closed:** L1, L2, L8 · **Severity:** S2 · **Effort:** M · **Depends on:** WP-24
+
+> **Changed by the maintainer's decisions and by measurement (24sep2026).**
+> The maintainer chose **local CI**: `make check` and a versioned pre-push
+> hook run both suites under both interpreters; no hosted workflow, because
+> GitHub's runners have no Stata and `wbuchanan/dash` is private and has
+> never been pushed to (no branch on the remote, measured).  The maintainer
+> also chose to commit the uncommitted test infrastructure already on the
+> working tree -- `pyproject.toml` (the pytest configuration, parallel by
+> default), `test/conftest.py`'s full-suite lock, parity grouping and
+> Bokeh-document clearing, `test/test_suite_lock.py` and
+> `test/test_bokeh_document_hygiene.py` -- so TR-25.3's configuration is
+> `pyproject.toml`, which `.git/info/exclude` does not drop, and no
+> `pytest.ini` is added (one would override it).  Measured before this
+> package: `packaging` is installed under both interpreters, so TR-25.6's
+> seven `lowess` skips no longer occur (0 skipped under the development
+> interpreter); Stata's `c(python_exec)`, `/opt/anaconda3/bin/python3`
+> 3.13.9 (bokeh 3.8.0, pandas 2.3.3), already carries pytest 8.4.2 and
+> pytest-xdist 3.8.0; `test/fixtures/scheme_visual/` holds 8 PNGs and
+> `truth.json`, and the one high-severity disagreement `truth.json` records
+> (s1mono's line colours) is fixed.  The maintainer then asked for the
+> Python Stata ships to be the reference: `make test` runs it first, and the
+> development interpreter follows in `make check`.
+>
+> **What running under Stata's Python found (24sep2026).**  The first full
+> pytest run under `/opt/anaconda3/bin/python3` gave 6 failed, 15220
+> passed, 0 skipped -- failures the development interpreter never showed.
+> Two were a security hole: under bokeh 3.8 the served app admitted a
+> websocket origin whose host only begins with an allowed one
+> (`localhost.evil.example`, `127.0.0.1.nip.io`), fixed in dash whatever
+> Bokeh it runs under.  One was a defect: under pandas 2.3 one far-future
+> date blanked a whole date column.  Three were the tests' own: a page hash
+> that recorded the Bokeh version, a time bound measured inside tracemalloc,
+> and a text-sink safety gate that needed its browser checks run on bokeh
+> 3.8.0, which were run.  BUGS.md records each.
+
+#### The plan in detail
+
+**US-25.1** As a maintainer, I run one command and learn whether both
+suites pass under both interpreters, and a push cannot leave with either
+red.  **US-25.2** As the next auditor, every test asset I find is read by a
+test, and every fixture says what it is.
+
+**TR-25.1 (L1), local CI.**  A `Makefile` at the package root:
+`make test` (pytest under Stata's `c(python_exec)`, read from Stata itself
+by `scripts/stata_python_exec.sh` through the console binary), `make
+test-dev` (pytest under the development interpreter), `make cert`
+(`scripts/run_cert_suite.sh`: the certification runner from a scratch
+directory with its own `STATATMP`, judged from its log by
+`scripts/cert_verdict.py`, which passes only when every script the runner
+registers passed and none skipped, since Stata's batch mode returns no exit
+status), `make check` (all three, in that order), and `make hooks` (points
+`core.hooksPath` at `scripts/git-hooks`, whose `pre-push` runs `make
+check`; opt-in, since it changes the clone's git configuration).  Both
+pytest targets set `DASH_STRICT=1`.
+
+**TR-25.2 (L2), both interpreters, strict.**  Under `DASH_STRICT=1`,
+`test/conftest.py` (a) refuses to start, `pytest.UsageError`, when the
+interpreter or its libraries differ from the baseline `DASH_BASELINE`
+names -- `dev` (Python 3.14, bokeh 3.9, pandas 3.0, numpy 2.4, scipy 1.17)
+or `stata` (the versions Stata's interpreter carries, measured) -- and (b)
+turns the run red when any test skips, naming each skip and its reason.
+Without `DASH_STRICT` both stay warnings, as today.  The baselines live in
+conftest.py itself; its pointer to `.ultraplan/BASELINE.md`, a file no
+longer in the tree, goes.
+
+**TR-25.3** `pyproject.toml` is committed as the pytest configuration.
+
+**TR-25.4 (L8).**  The 15 unreferenced `.do` files in `test/` are deleted:
+March 2026 diagnostics with hard-coded paths and no assertion, for a
+defect the certification suite covers.  `scheme_visual/truth.json` is
+wired into `test/test_scheme_visual_truth.py`, which holds the scheme
+parser's colours, symbols and patterns for each of the four schemes to what
+Stata drew, and each PNG to the graph size the record gives it.  A guard
+in `test/test_fixtures_are_committed.py` requires every file under
+`test/fixtures` to be named by a test and every `.do` file in `test/` to be
+named by the runner or a script, and its message no longer claims every
+fixture is read.
+
+**TR-25.5 (L8)** `abbrev_truth.json`'s `_meta` gains a `status` note: its
+`dash` fields and `dash_*` lists record dash on 18 Sep 2026, before BR-04's
+fix, and `test_abbreviations.py` holds today's declarations to its Stata
+fields.
+
+**TR-25.6** Measured resolved; recorded.
+
+**TR-25.7** The two mislabels are corrected.
+
+#### Test plan
+
+- Each strict rule has a unit test on its helper (drift, skips), and a
+  subprocess test running a throwaway suite: a skip turns it red under
+  `DASH_STRICT=1` and not without it; a drifted baseline refuses to start.
+- `scripts/run_cert_suite.sh`'s verdict is unit-tested on runner logs: all
+  passed, one failed, one skipped, a truncated log, a missing script.
+- The self-verifying run of this package's own plan: `make check` on the
+  clean tree is green; on a scratch copy with a deliberately failing
+  pytest test, a deliberately skipping one, and a deliberately failing
+  certification case, each is red.
+- `test/test_scheme_visual_truth.py` fails when a scheme colour, symbol or
+  pattern is changed from what Stata drew (mutation in a scratch copy).
 
 > **User story.** As a maintainer, I want both suites to run automatically,
 > under the interpreter that actually ships.
@@ -3882,6 +3986,28 @@ The first part was committed at `7c28802` after its own full runs
 
 Self-verifying: CI's first green run on a branch with a deliberately broken
 test must be red.
+
+### Acceptance, measured (24sep2026)
+
+- **AC-25.1**, local as the maintainer chose.  `make check` on the finished
+  tree: pytest under Stata's Python 15690 passed, 13 xfailed, 0 skipped;
+  under the development interpreter 15690 passed, 13 xfailed, 0 skipped;
+  the certification suite 61 of 63 -- the two red scripts,
+  `test_setup_honesty` (HON-21, HON-22) and `test_program_coverage`
+  (PC-18), pinned the pandas minimum this package raised to 2.0; corrected,
+  they pass, 28 and 31 cases.  The self-verification: on a trimmed copy
+  with the same Makefile, scripts and conftest.py, `make test` and `make
+  test-dev` went red (exit 2) on a failing test and on a skipped one, and
+  `make cert` on a failing and on a skipping script, green otherwise.
+  `make hooks` is left to the maintainer: it changes the clone's git
+  configuration.
+- **AC-25.2** Both pytest targets run the whole suite, strict, and the
+  first run under Stata's Python is what found the defects recorded above.
+- **AC-25.3** `test/test_fixtures_are_committed.py` fails any fixture no
+  test names and any `.do` file nothing runs; no fixture docstring is
+  false.
+- TR-25.6 was resolved before this package (`packaging` under both
+  interpreters); TR-25.7's comment is at `test_scheme_coercion.py:449` now.
 
 ---
 
