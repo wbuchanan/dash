@@ -467,9 +467,10 @@ class TestTheFunctionExpressionWhitelist:
         # Positive control: the identical escape writes when eval'd with real
         # builtins, so the served absence is the sandbox, not an inert
         # payload.  (The served app's own two guards, whitelist and empty
-        # builtins, must both fail for the marker to appear; the served
-        # 0-points check above and TestTheServedAppRefuses... cover the
-        # whitelist.)
+        # builtins, must both fail for the marker to appear.  The whitelist
+        # alone is test_the_served_app_refuses_the_same_constructs': with it
+        # disabled, its comprehension and walrus cases fail -- measured
+        # 24sep2026.)
         ctl = tmp_path / "FN_SERVED_CONTROL"
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
