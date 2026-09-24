@@ -507,13 +507,22 @@ def test_mata_option_key_table_is_removed():
 # ============================================================
 _PARSERS = ("_dash_parse_plot_opts", "_dash_parse_graph_opts")
 
-#: `if `"`a'"' != "" & `"`t'"' == "" local t `"`a'"'` -- alias a folded into t.
-_FOLD = re.compile(r"""if `"`(\w+)'"' != "" & `"`(\w+)'"' == "" local \2 `"`\1'"'""")
+#: `if `: length local a' & !`: length local t' local t : copy local a` --
+#: alias a folded into t, read and copied by value.  The form it replaced
+#: (24sep2026), `if `"`a'"' != "" & `"`t'"' == "" local t `"`a'"'`, put the
+#: user's text back on a command line, where a macro in it was expanded a
+#: second time (test_json_escaping.cscript JSE-65).  Both forms are matched,
+#: so a fold written the old way is still one the checks below see.
+_FOLD = re.compile(
+    r"""if `: length local (\w+)' & !`: length local (\w+)' """
+    r"""local \2 : copy local \1\b"""
+    r"""|if `"`(\w+)'"' != "" & `"`(\w+)'"' == "" local \4 `"`\3'"'""")
 
 
 def _folds(body):
     """[(alias, target), ...], one per fold statement in `body', in order."""
-    return _FOLD.findall(body)
+    return [(m.group(1) or m.group(3), m.group(2) or m.group(4))
+            for m in _FOLD.finditer(body)]
 
 
 def _bodies(programs=None):
@@ -546,8 +555,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     assert len(with_syntax) >= 6
     assert len(with_syntax) == 11, with_syntax
     assert "_dash_open_page" in with_syntax, with_syntax
-    # The comment lines the duplicate-block scan reads, per parser: 85 in
-    # the plot parser and 63 in the graph parser (measured 24sep2026).  It
+    # The comment lines the duplicate-block scan reads, per parser: 87 in
+    # the plot parser and 71 in the graph parser (measured 24sep2026, after
+    # the note on why the text options are declared asis).  It
     # was ">= 20", for the plot parser alone, and the plot parser split in
     # two -- its second half moved into a program of its own, a pasted
     # duplicate comment block with it -- still showed the scan 38 comment
@@ -556,8 +566,14 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     comments = {prog: sum(1 for ln in body.split("\n")
                           if ln.strip().startswith("//"))
                 for prog, body in bodies.items()}
-    assert comments == {"_dash_parse_plot_opts": 85,
-                        "_dash_parse_graph_opts": 63}, comments
+    assert comments == {"_dash_parse_plot_opts": 87,
+                        "_dash_parse_graph_opts": 71}, comments
+    # Every fold, in either form: 11 in the plot parser and 7 in the graph
+    # parser (measured 24sep2026).  A fold the pattern stopped matching --
+    # rewritten in a third form -- would leave the fold checks below
+    # nothing to look at.
+    assert len(folds) == 11, folds
+    assert len(_folds(bodies["_dash_parse_graph_opts"])) == 7
 
 
 def test_no_comment_block_is_repeated_in_a_parser():

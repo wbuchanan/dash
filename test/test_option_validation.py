@@ -356,31 +356,89 @@ class TestTheNewProgramsKeepTheirConstraints:
 
     @pytest.mark.parametrize("program", PROGRAMS)
     @pytest.mark.parametrize("forbidden", [
-        "foreach gk in", "foreach gkey in", "sreturn clear", "mata:",
+        "foreach gk in", "foreach gkey in", "sreturn clear",
     ])
     def test_it_contains_no_forbidden_text(self, program, forbidden):
         """A structural guard over dash.ado's text, deliberately: the
         validators' charter (no `sreturn clear', no hand-kept graph-key
-        list, no Mata but the echo) is a property of their source; the
-        refusals themselves run in test_option_validation.cscript."""
+        list, no Mata validation -- test_its_mata_only_moves_tests_or_echoes
+        _text) is a property of their source; the refusals themselves run
+        in test_option_validation.cscript."""
         body = _program_body(_ado(), program) or ""
-        # Validation is Stata's; Mata holds character-level helpers only
-        # (dash_parse.mata's charter).  _dash_say is one: WP-20 routes every
-        # echo of the user's text through it, so a refused value is shown as
-        # typed instead of drawn as SMCL (P20-02..06).  Its calls are the one
-        # Mata these programs may make -- no Mata validation.
-        if forbidden == "mata:":
-            body = re.sub(r'mata: _dash_say\("err", ', "", body)
         assert forbidden not in body, f"{program} contains {forbidden!r}"
 
-    def test_the_only_mata_in_the_validator_is_the_echo(self):
+    #: The Mata functions the validators may call.  Validation is Stata's;
+    #: Mata holds character-level helpers only (dash_parse.mata's charter).
+    #: _dash_say is the echo: WP-20 routes every echo of the user's text
+    #: through it, so a refused value is shown as typed instead of drawn as
+    #: SMCL (P20-02..06).  The rest read and hand on the user's text by
+    #: value -- _dash_text_args, st_local, st_global, st_strscalar -- or
+    #: test its characters -- strtrim, strpos, char, strofreal: in quotes,
+    #: in an -args- list or in a Stata expression a value holding "' ended
+    #: the quotes, and a copy through them expanded a macro in it again
+    #: (24sep2026; test_json_escaping.cscript JSE-46, JSE-47, JSE-69).  No
+    #: regular expression and no number parsing: those stay Stata's.
+    _MATA_ALLOWED = frozenset({
+        "_dash_say", "_dash_text_args", "st_local", "st_global",
+        "st_strscalar", "strofreal", "strtrim", "strpos", "char",
+    })
+
+    @staticmethod
+    def _mata_calls(body):
+        """[(statement, [function, ...]), ...] for every `mata:' line in
+        `body', continuation lines joined, string literals left out."""
+        out = []
+        lines = body.split("\n")
+        i = 0
+        while i < len(lines):
+            ln = lines[i].strip()
+            i += 1
+            if not ln.startswith("mata:"):
+                continue
+            stmt = ln
+            while stmt.endswith("///") and i < len(lines):
+                stmt = stmt[:-3] + " " + lines[i].strip()
+                i += 1
+            code = re.sub(r'"[^"]*"', '""', stmt[len("mata:"):])
+            out.append((stmt, re.findall(r"\b([A-Za-z_]\w*)\s*\(", code)))
+        return out
+
+    @pytest.mark.parametrize("program", PROGRAMS)
+    def test_its_mata_only_moves_tests_or_echoes_text(self, program):
         """A structural guard over dash.ado's text, deliberately (the
-        charter above): validation is Stata's, and the one Mata call is the
-        echo, _dash_say, whose behaviour is P20-02..06."""
+        charter above): every Mata call in a validator moves the user's
+        text by value, tests its characters or echoes it."""
+        body = _program_body(_ado(), program) or ""
+        bad = ["%s: %s" % (sorted(set(fns) - self._MATA_ALLOWED), stmt)
+               for stmt, fns in self._mata_calls(body)
+               if set(fns) - self._MATA_ALLOWED]
+        assert not bad, "%s calls Mata beyond the charter:\n  %s" % (
+            program, "\n  ".join(bad))
+
+    def test_the_charter_scan_sees_what_it_looks_for(self):
+        """The scan above is vacuous if it finds no Mata, or cannot tell a
+        forbidden call inside an allowed one."""
+        body = _program_body(_ado(), "_dash_validate_value") or ""
+        found = self._mata_calls(body)
+        fns = {f for _, calls in found for f in calls}
+        # The echo and the by-value reading are there (measured 24sep2026).
+        assert {"_dash_say", "_dash_text_args", "st_strscalar"} <= fns, fns
+        # A validation hidden inside an allowed call is still seen, and a
+        # function named inside a message is not one.
+        probe = ('    mata: st_local("ok", strofreal(regexm(st_local("v"), ///\n'
+                 '        "^[0-9]+$")))\n'
+                 '    mata: _dash_say("err", "x() must be a number (got: ", '
+                 'st_local("value"), ")")')
+        calls = [c for _, c in self._mata_calls(probe)]
+        assert calls == [["st_local", "strofreal", "regexm", "st_local"],
+                         ["_dash_say", "st_local"]], calls
+
+    def test_the_validator_still_echoes_through_say(self):
+        """The refusals echo the user's text through _dash_say, whose
+        behaviour is P20-02..06."""
         body = _program_body(_ado(), "_dash_validate_value") or ""
         calls = re.findall(r"mata:\s*(\w+)\(", body)
-        assert calls, "the refusals no longer echo through _dash_say"
-        assert set(calls) == {"_dash_say"}, calls
+        assert "_dash_say" in calls, calls
 
     @pytest.mark.parametrize("program", PROGRAMS)
     def test_it_has_no_syntax_line(self, program):
@@ -414,17 +472,33 @@ class TestTheNewProgramsKeepTheirConstraints:
 
     def test_kpi_validates_fmt_before_it_displays(self):
         body = _program_body(_ado(), "_dash_kpi")
-        call = re.search(r"^\s*if .*_dash_validate_value\b", body, re.M)
+        # On its own line, in a block: a one-line `if exp command' expands
+        # its command a second time, so fmt(\$m) reached the validator as
+        # what $m holds (measured 24sep2026, JSE-58).
+        call = re.search(r'^\s*_dash_validate_value "dash kpi" "fmt"', body,
+                         re.M)
         assert call, (
             "_dash_kpi does not validate fmt() through _dash_validate_value")
         # The formatter itself, not a comment that mentions it.
         shown = re.search(r"^\s*local \w+\s*:\s*display\b", body, re.M)
         assert shown, "_dash_kpi no longer formats through `: display'"
         assert call.start() < shown.start()
-        # Contract section 2: the fmt() test at the display site is
-        # compound-quoted, so a quote inside the value cannot end it early.
-        assert re.search(r'if `"`fmt\'"\' != ""', body), (
-            "the fmt() test at the display site is not compound-quoted")
+        # Contract section 2: no fmt() test puts the value inside quotes,
+        # where a quote in it could end them early.  It was compound-quoted;
+        # since 24sep2026 fmt() is measured by length and both the check and
+        # the display site test the length.
+        length = re.search(r"^\s*local (\w+)\s*:\s*length local fmt\s*$",
+                           body, re.M)
+        assert length, "fmt() is no longer measured by length"
+        guards = [m.start() for m in re.finditer(
+            r"^\s*if `%s' > 0 \{\s*$" % re.escape(length.group(1)), body,
+            re.M)]
+        assert any(g < call.start() for g in guards), (
+            "the fmt() check is not guarded by its length")
+        assert any(call.start() < g < shown.start() for g in guards), (
+            "the fmt() display site is not guarded by its length")
+        assert not re.search(r'"`fmt\'"', body), (
+            "a fmt() test puts the value inside quotes")
 
     def test_no_message_calls_a_refused_value_unsupported(self):
         """test_option_surface counts 'unsupported option' lines as the

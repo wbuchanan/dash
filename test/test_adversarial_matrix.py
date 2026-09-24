@@ -89,6 +89,8 @@ _M = "test/test_adversarial_matrix.py::"
 _BS = "test/test_served_bs_layout.py::TestAdversarialServedBs::"
 # WP-22 TR-22.3: clcolor()/clpattern()/clwidth(), mlabangle(), mlabformat().
 _TW = "test/test_twoway_option_parity.py::TestAdversarialTwowayOptions::"
+# The renderer's text boxes, read as Stata reads them (24sep2026).
+_TBX = "test/test_textbox_multiline.py::TestTextboxAdversarial::"
 
 SURFACES = {
     # `dash <plot> varlist, ...' -- the plot-type token and the varlist.
@@ -172,6 +174,9 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-35",
             "test_help_claims_1.cscript:HC1-21",
             "test_help_claims_1.cscript:HC1-04",
+            # A plot's or the graph's qualifier that closes its quote and
+            # writes name() and saving(): text, naming and writing nothing.
+            "test_json_escaping.cscript:JSE-47",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
@@ -181,6 +186,12 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-32",
             "test_json_escaping.cscript:JSE-34",
             "test_help_claims_1.cscript:HC1-22",
+            # SMCL, markup, Python code and an =exp behind a quote and an
+            # apostrophe; a global, an =exp that writes a file and a macro
+            # reference, never expanded a second time: the typed text is
+            # the sample the rows, a weight and start() are judged over.
+            "test_json_escaping.cscript:JSE-48",
+            "test_json_escaping.cscript:JSE-66",
         ],
         "exhaustion": [
             _M + "TestIfQualifierExhaustion::test_a_run_of_negations_is_skipped_not_raised",
@@ -189,6 +200,9 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-18",
             "test_json_escaping.cscript:JSE-36",
             "test_help_claims_1.cscript:HC1-23",
+            # A literal of 20,000 apostrophes, stored whole and applied in
+            # bounded time.
+            "test_json_escaping.cscript:JSE-49",
         ],
     },
     # jitter(), level(), bin(), n(), bwidth(), bands(), xsize() ...
@@ -277,6 +291,13 @@ SURFACES = {
             "test_json_escaping.cscript:JSE-29",
             "test/test_help_claims_2.py::TestAnUnknownStyleInsideAStructuredOption::test_one_note_and_the_schemes_default_in_both_modes",
             "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_direction_word_in_any_spelling_is_not_a_placement",
+            # The renderer's text boxes: text a string or a parenthesis
+            # holds is never read as a sub-option (24sep2026).
+            _TBX + "test_text_inside_a_string_never_becomes_a_suboption",
+            "test_json_escaping.cscript:JSE-63",
+            # A title that closes its quote and writes name() and saving(),
+            # and values holding the quote, meeting dash's own checks.
+            "test_json_escaping.cscript:JSE-47",
         ],
         "injection": [
             "test_adversarial.cscript:P2-78",
@@ -284,10 +305,24 @@ SURFACES = {
             "test/test_html_output.py::TestAdversarialPlotOptions::test_xss_in_note_option_escaped",
             "test_json_escaping.cscript:JSE-27",
             "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_label_text_is_a_label_and_never_read",
+            _TBX + "test_macro_smcl_markup_and_python_in_a_string_arrive_as_written",
+            "test_json_escaping.cscript:JSE-64",
+            # SMCL, markup, Python code and an =exp behind a quote and an
+            # apostrophe; then a global, an =exp that writes a file and a
+            # macro reference, in the titles, the text options, a legend
+            # label, the paren, || and one-line forms and the values dash
+            # checks, never expanded a second time.
+            "test_json_escaping.cscript:JSE-48",
+            "test_json_escaping.cscript:JSE-65",
+            "test_json_escaping.cscript:JSE-67",
+            "test_json_escaping.cscript:JSE-69",
         ],
         "exhaustion": [
             _M + "TestGraphTextBounds::test_a_long_title_is_drawn_once_in_bounded_time",
             "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_ten_thousand_word_legend_is_read_in_bounded_time",
+            _TBX + "test_long_runs_of_quotes_and_apostrophes_are_read_in_bounded_time",
+            # A title of 5,000 strings each an apostrophe.
+            "test_json_escaping.cscript:JSE-49",
         ],
     },
     # xlabel() / ylabel(): numlists, a(b)c, #N, value "label" pairs, format().
@@ -362,6 +397,9 @@ SURFACES = {
             "test_registry_collision.cscript:REG-37",
             "test_registry_collision.cscript:REG-38",
             "test_registry_collision.cscript:REG-40",
+            # name(\$m) is not the name $m holds, and name(`"q"7"') is no
+            # name: each is dash's refusal, and nothing registers.
+            "test_json_escaping.cscript:JSE-68",
         ],
         "injection": [
             "test_adversarial.cscript:P19-25",
@@ -372,6 +410,9 @@ SURFACES = {
             "test_registry_collision.cscript:REG-32",
             "test/test_reserved_names.py::TestAdversarialReservedNames::test_injection_a_refused_name_is_inert_text",
             "test_registry_collision.cscript:REG-39",
+            # A global, a macro reference and an =exp that writes a file in
+            # name(), never expanded or evaluated.
+            "test_json_escaping.cscript:JSE-68",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P20-21",
@@ -429,8 +470,16 @@ SURFACES = {
             "test_adversarial.cscript:P20-27",
             "test/test_kpi_security.py::TestKpiColourIsSanitisedOnTheInitialRender::test_the_rendered_value_is_what_the_sanitiser_would_give",
             "test_help_claims_4.cscript:HC4-06",
+            # update() and name() holding quotes; a title that closes its
+            # quote and names another KPI and update() (24sep2026).
+            "test_json_escaping.cscript:JSE-55",
+            "test_json_escaping.cscript:JSE-57",
         ],
         "injection": [
+            # $name, `=exp', a file-writing function, SMCL, markup and
+            # Python code in a title, a subtitle, a qualifier's literal and
+            # the validated options: data, as written (24sep2026).
+            "test_json_escaping.cscript:JSE-58",
             "test_adversarial.cscript:P9-11",
             "test_adversarial.cscript:P9-12",
             "test_adversarial.cscript:P9-13",
@@ -450,6 +499,9 @@ SURFACES = {
             _M + "TestNumericFormatBounds::test_a_hand_edited_kpi_format_is_bounded",
             "test/test_kpi_security.py::TestAKpiFormatCannotBuildAHugeCard::test_both_modes_before_and_after_a_filter_moves",
             "test_help_claims_4.cscript:HC4-06",
+            # A title of 20,000 "'90s" strings and a qualifier literal of
+            # 20,000 apostrophes, stored whole in bounded time (24sep2026).
+            "test_json_escaping.cscript:JSE-59",
         ],
     },
     # dash build: title(), subtitle(), layout(), link(), filter() (its
@@ -481,6 +533,12 @@ SURFACES = {
             "test/test_help_claims_3.py::TestAdversarialFilterText::test_bypass_a_label_cannot_add_a_group",
             "test_help_claims_3.cscript:HC3-20",
             "test_help_claims_3.cscript:HC3-08",
+            # filterposition(), link() and exclude() holding quotes; a
+            # filter() label that closed the quotes dash build handed it on
+            # in and became csv and title() options (24sep2026).
+            "test_json_escaping.cscript:JSE-55",
+            "test_json_escaping.cscript:JSE-56",
+            "test_json_escaping.cscript:JSE-57",
         ],
         "injection": [
             "test_adversarial.cscript:P2-84",
@@ -493,8 +551,14 @@ SURFACES = {
             "test/test_help_claims_3.py::TestAnApostropheInALabelLeavesExcludeAlone::test_served",
             "test_help_claims_3.cscript:HC3-06",
             "test_help_claims_3.cscript:HC3-09",
+            # $name, `=exp' and a file-writing function in a title, a
+            # subtitle, a tab, a filter label, a scheme file's name,
+            # saving(), link() and filterposition() (24sep2026).
+            "test_json_escaping.cscript:JSE-58",
         ],
         "exhaustion": [
+            # A dashboard title of 20,000 "'90s" strings (24sep2026).
+            "test_json_escaping.cscript:JSE-59",
             "test_adversarial.cscript:P20-25",
             _M + "TestLayoutGridBound::test_the_saved_page_draws_it_as_auto",
             _M + "TestARepeatedLayoutNameIsPlacedOnce::test_the_saved_page_embeds_a_repeated_item_once",
@@ -515,14 +579,23 @@ SURFACES = {
             "test_adversarial.cscript:P20-14",
             "test_adversarial.cscript:P20-26",
             "test_echo_text.cscript:ECH-05",
+            # The build options dash serve hands on: a filter() label that
+            # closed the quotes it was handed on in (24sep2026).
+            "test_json_escaping.cscript:JSE-57",
         ],
         "injection": [
             "test_adversarial.cscript:P4-84",
             "test_adversarial.cscript:P20-13",
             "test_echo_text.cscript:ECH-03",
+            # An inherited and a restated title holding $name and `=exp',
+            # and a scheme file's name holding $, served as written
+            # (24sep2026).
+            "test_json_escaping.cscript:JSE-58",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P20-19",
+            # A served title of 20,000 "'90s" strings (24sep2026).
+            "test_json_escaping.cscript:JSE-59",
         ],
     },
     # global dash_max_cells, dash_max_graphs ... (WP-19).

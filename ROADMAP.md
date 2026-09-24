@@ -3640,7 +3640,12 @@ AC-to-test mapping; WP-03's C1 and C2 are closed here, and its AC-03.4 has
 no regression test (BUGS.md, the "file not found" entry).  *Since then:*
 WP-24 mapped every acceptance criterion of WP-01 to WP-04 to a test that
 goes red when the criterion is broken, and all four are DONE; AC-03.4 is
-held by `test/test_bug_regressions.cscript` BR-02.
+held by `test/test_bug_regressions.cscript` BR-02.  A title or qualifier
+holding an apostrophe after a double quote is stored as typed, and user
+text is expanded once, where the user typed it, since 24sep2026 (BUGS.md,
+"Any dash command holding a double quote followed by an apostrophe
+stopped at the entry" and "dash expanded macros in user text a second
+time"; `test/test_json_escaping.cscript` JSE-42 to JSE-70).
 
 ### Verification, measured
 

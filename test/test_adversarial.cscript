@@ -1514,8 +1514,14 @@ display "P20-17 PASS: a backslash in layout() never reaches the spec: refused, n
 
 // P20-18 — a compound-quote breakout inside an option value.  If "' could
 // end the quotes a value is expanded in, what followed would be read as
-// display directives (the fmt() hole P9-11..14 closed).  It is stopped at
-// the first line that expands the command, and no directive runs.
+// display directives (the fmt() hole P9-11..14 closed).  No directive runs.
+// dash used to stop at the first line that put the command inside quotes;
+// it reads the command by value now (test_json_escaping.cscript
+// JSE-42..49), and Stata's own syntax does not take this text for
+// jitter()'s value -- it leaves the whole option to the catch-all
+// (measured 24sep2026 with syntax [, JITter(string) *]) -- so the graph
+// registers with jitter() named in the note and not applied.  twoway
+// stops, r(109).
 capture dash clear
 local p2018 = "x" + char(34) + char(39) + " _dup(3) " + char(34) + "INJ" + char(34) + " " + char(96) + char(34)
 local p2018lg "`c(tmpdir)'dash_adv_p20.log"
@@ -1528,12 +1534,17 @@ capture noisily dash scatter mpg weight, name(p2018) jitter(`p2018')
 local p2018rc = _rc
 quietly log close _p20log
 set linesize `p2018ls'
-assert `p2018rc' != 0
+assert `p2018rc' == 0
 cert_file_has "`p2018lg'", needle("INJINJINJ")
 assert r(found) == 0
-assert "${dash_graph_registry}" == ""
+cert_file_has "`p2018lg'", needle("ignoring unsupported option(s): jitter()")
+assert r(found) == 1
+assert "${dash_graph_registry}" == "p2018"
+mata: st_local("p2018j", strofreal(strpos(st_global("dash_json_p2018"), char(34) + "jitter" + char(34)) > 0))
+assert `p2018j' == 0
 capture erase "`p2018lg'"
-display "P20-18 PASS: a quote breakout in an option value runs no directive and registers nothing"
+capture dash clear
+display "P20-18 PASS: a quote breakout in an option value runs no directive, and the option is named, not applied"
 
 // P20-19 — timeout() of 400 digits.  Measured: accepted with rc 0; the
 // launcher multiplies it by 60 into a float and the app died with

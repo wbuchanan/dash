@@ -89,22 +89,32 @@ program define dash
     // Extract the subcommand name: everything up to the first space or
     // comma.  This handles both "dash kpi ..." and "dash build, ..."
     // (where the comma immediately follows the subcommand name).
-    // Compound quotes are used with regexm/substr so that double-quoted
-    // option values like title("My Title") are handled safely.
-    local _subcmd ""
-    if regexm(`"`0'"', "^([a-zA-Z][a-zA-Z0-9_]*)") {
-        local _subcmd = regexs(1)
-    }
-    // Remaining text after the subcommand word (may start with , or space)
-    local _subcmd_len = strlen("`_subcmd'")
-    local _args = substr(`"`0'"', `_subcmd_len' + 1, .)
+    //
+    // Read by value, in Mata.  The command was put inside compound quotes
+    // in regexm() and substr(), and a text holding "' -- title("'90s
+    // cars"), a qualifier's literal "' or 1 or '" -- ended those quotes
+    // early: `dash kpi mean(price), title("'90s price")' stopped here with
+    // r(100) ") required", and nothing was registered (measured 24sep2026).
+    //
+    // The rest of the command is forwarded as a command line, through
+    // macval().  A command line built from a macro is expanded again, so
+    // text Stata had already expanded once, where the user typed it, was
+    // expanded a second time: a title typed Cost in \$US was stored with the
+    // global's value, and an =exp typed \`=...' to reach dash as written was
+    // evaluated -- \`=filewrite(...)' wrote its file (measured 24sep2026;
+    // test_json_escaping.cscript JSE-65..69 for a plot).  macval() hands
+    // the text on as the subcommand's `0', as written.
+    mata: st_local("_subcmd", ustrregexm(st_local("0"),                   ///
+        "^[a-zA-Z][a-zA-Z0-9_]*") ? ustrregexs(0) : "")
+    mata: st_local("_args", substr(st_local("0"),                         ///
+        strlen(st_local("_subcmd")) + 1, .))
 
     if "`_subcmd'" == "kpi" {
-        _dash_kpi `_args'
+        _dash_kpi `macval(_args)'
         exit
     }
     if "`_subcmd'" == "build" {
-        _dash_build `_args'
+        _dash_build `macval(_args)'
         exit
     }
     if "`_subcmd'" == "clear" {
@@ -112,14 +122,14 @@ program define dash
         exit
     }
     if "`_subcmd'" == "serve" {
-        _dash_serve `_args'
+        _dash_serve `macval(_args)'
         exit
     }
 
     // ----------------------------------------------------------------
     // Plot definition  (pass full args including plot-type word)
     // ----------------------------------------------------------------
-    _dash_plot `0'
+    _dash_plot `macval(0)'
 end
 
 
@@ -215,9 +225,10 @@ program define _dash_require_mata
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile _json_escape _dash_path_badchar ///
-        _dash_layout_cells _dash_layout_refusal _dash_option_names ///
+        _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
+        _dash_option_names ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
-        _dash_undrawn_plottype
+        _dash_text_args _dash_undrawn_plottype
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -369,6 +380,10 @@ program define _dash_do_render
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
             [MODE(string)]
 
+    // The directory the page or the app goes in must exist: refused here,
+    // before Python, on every route, with twoway's r(603) (JSE-52).
+    _dash_saving_dir `"`output'"'
+
     // Before `python:', not after: a user with no linked Python used to get
     // a raw Stata Python error naming neither dash nor the remedy.
     _dash_require_python
@@ -509,6 +524,52 @@ end
 
 
 // ================================================================
+// _dash_saving_dir  -- the directory a saving() path writes into exists
+// ================================================================
+// dash creates no directory, and twoway creates none either: twoway
+// scatter ..., saving("/nonexistent/x.gph") is r(603), "file
+// /nonexistent/x.gph could not be opened".  dash handed such a path to the
+// renderer, which died in Python, r(7102) FileNotFoundError, on dash
+// build, dash build, server and the one-line form alike --
+// saving('/abs/path/x.html) among them, whose directory is '/abs/path --
+// and dash build without replace said the file "already exists" (measured
+// 24sep2026; test_json_escaping.cscript JSE-52).  Refused before anything
+// is rendered, with twoway's code, naming the directory.
+//
+// Apart from _dash_validate_path, which judges a path's text alone and is
+// certified on paths of other machines (test_path_validation.cscript
+// PV-07's C:/Program Files (x86)/out.html).  dash build calls this before
+// it looks for the file; _dash_do_render, which every route that writes a
+// page or an app passes before Python, calls it for the one-line form.
+//
+// The directory is the path up to its last separator: / everywhere, and \
+// on Windows as well -- elsewhere a \ is a character of a file name
+// (JSE-09 writes js_a\b.html).  A path with no separator is written in the
+// working directory.  Read in Mata, by value, and shown as written.
+//
+// Usage:  _dash_saving_dir `"<path _dash_validate_path has passed>"'
+// ================================================================
+program define _dash_saving_dir
+    version 16.0
+    args fpath
+
+    mata: st_local("_sd_dir", ustrregexm(st_local("fpath"), ///
+        c("os") == "Windows" ? "^.*[/\\]" : "^.*/") ? ustrregexs(0) : "")
+    local _sd_len : length local _sd_dir
+    if `_sd_len' == 0 exit
+    mata: st_local("_sd_ok", strofreal(direxists(st_local("_sd_dir"))))
+    if `_sd_ok' exit
+    // Named without its trailing separator.
+    mata: st_local("_sd_dir", substr(st_local("_sd_dir"), 1, ///
+        strlen(st_local("_sd_dir")) - 1))
+    mata: _dash_say("err", "dash: file ", st_local("fpath"), " could not be opened:")
+    mata: _dash_say("err", "      the directory ", st_local("_sd_dir"), ///
+        " does not exist.  Create it first, or save in a directory that exists.")
+    exit 603
+end
+
+
+// ================================================================
 // _dash_json_str  -- JSON string escaping, the text read by value in Mata
 // Usage:  _dash_json_str `"`raw'"' _escaped
 // After: local _escaped contains the JSON-safe string (no surrounding quotes)
@@ -593,30 +654,38 @@ program define _dash_parse_graph_opts, sclass
     // do-file.  dash.sthlp has always claimed copy-pasted twoway commands
     // still run; without this they did not.  Unmatched options are
     // reported by name, once per command -- never silently dropped.
+    // Every text option is string asis, as title() is, so the quotes the
+    // user typed reach the spec and the renderer reads the text as twoway's
+    // textbox does.  xtitle(), ytitle(), xtitle2(), ytitle2() (and xti2(),
+    // yti2()) and t1title() .. r2title() were declared string, and Stata
+    // stripped the quotes before the spec was written: ytitle("line 1"
+    // "line 2") was stored, and drawn, as one line where twoway draws two,
+    // and xtitle(`"a "b" c"') lost the quotes around b (measured 24sep2026;
+    // test_json_escaping.cscript JSE-46).
     syntax [, ///
         TItle(string asis)        SUBtitle(string asis)     NOTE(string asis) ///
         CAPtion(string asis)      NAMe(string)              SAVing(string) ///
-        XTitle(string)            YTitle(string)            XLabel(string asis) ///
+        XTitle(string asis)       YTitle(string asis)       XLabel(string asis) ///
         YLabel(string asis)       XLIne(string asis)        YLIne(string asis) ///
         LEGend(string asis)       BY(string asis)           XSCale(string asis) ///
         YSCale(string asis)       ASPectratio(string)       SCHeme(string) ///
         PLOTRegion(string asis)   GRAPHRegion(string asis)  BGColor(string) ///
         PLOTBGCOLOR(string)       LINK(string)              FILTer(string asis) ///
-        YTITLE2(string)           XTITLE2(string)           YLABEL2(string asis) ///
+        YTITLE2(string asis)      XTITLE2(string asis)      YLABEL2(string asis) ///
         XLABEL2(string asis)      YSCALE2(string asis)      XSCALE2(string asis) ///
         XSIZe(string)             YSIZe(string)             FXSIZE(string) ///
         FYSIZE(string)            SCALE(string)             TEXT(string asis) ///
         HOVer(string)             ///
         XTICk(string asis)        YTICk(string asis)        XMTick(string asis) ///
         YMTick(string asis)       XMLabel(string asis)      YMLabel(string asis) ///
-        T1title(string)           T2title(string)           B1title(string) ///
-        B2title(string)           L1title(string)           L2title(string) ///
-        R1title(string)           R2title(string)           TITLE2(string) ///
+        T1title(string asis)      T2title(string asis)      B1title(string asis) ///
+        B2title(string asis)      L1title(string asis)      L2title(string asis) ///
+        R1title(string asis)      R2title(string asis)      TITLE2(string) ///
         SUBTITLE2(string)         NODRAW                    PLAY(string) ///
         XOVERHANGs                YOVERHANGs ///
         PBGC(string)              XLA2(string asis)         XSC2(string asis) ///
-        XTI2(string)              YLA2(string asis)         YSC2(string asis) ///
-        YTI2(string) ///
+        XTI2(string asis)         YLA2(string asis)         YSC2(string asis) ///
+        YTI2(string asis) ///
         * ///
     ]
 
@@ -635,13 +704,13 @@ program define _dash_parse_graph_opts, sclass
     // cannot express them; they are declared above and merged here.
     // twoway accepts none of them, so this is a superset and cannot
     // break drop-in parity, but it keeps existing dash do-files working.
-    if `"`pbgc'"' != "" & `"`plotbgcolor'"' == "" local plotbgcolor `"`pbgc'"'
-    if `"`xla2'"' != "" & `"`xlabel2'"' == "" local xlabel2 `"`xla2'"'
-    if `"`xsc2'"' != "" & `"`xscale2'"' == "" local xscale2 `"`xsc2'"'
-    if `"`xti2'"' != "" & `"`xtitle2'"' == "" local xtitle2 `"`xti2'"'
-    if `"`yla2'"' != "" & `"`ylabel2'"' == "" local ylabel2 `"`yla2'"'
-    if `"`ysc2'"' != "" & `"`yscale2'"' == "" local yscale2 `"`ysc2'"'
-    if `"`yti2'"' != "" & `"`ytitle2'"' == "" local ytitle2 `"`yti2'"'
+    if `: length local pbgc' & !`: length local plotbgcolor' local plotbgcolor : copy local pbgc
+    if `: length local xla2' & !`: length local xlabel2' local xlabel2 : copy local xla2
+    if `: length local xsc2' & !`: length local xscale2' local xscale2 : copy local xsc2
+    if `: length local xti2' & !`: length local xtitle2' local xtitle2 : copy local xti2
+    if `: length local yla2' & !`: length local ylabel2' local ylabel2 : copy local yla2
+    if `: length local ysc2' & !`: length local yscale2' local yscale2 : copy local ysc2
+    if `: length local yti2' & !`: length local ytitle2' local ytitle2 : copy local yti2
 
     // Options dash accepts but does not yet honour.  Each supplied one
     // is recorded by name so it is reported rather than silently
@@ -663,95 +732,95 @@ program define _dash_parse_graph_opts, sclass
     // output does not change.  Implement one and forget to remove it
     // here, and that test fails.
     local _dash_pending ""
-    if `"`b1title'"' != "" local _dash_pending `"`_dash_pending' b1title"'
-    if `"`b2title'"' != "" local _dash_pending `"`_dash_pending' b2title"'
+    if `: length local b1title' local _dash_pending `"`_dash_pending' b1title"'
+    if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
     // link() and filter() belong to `dash build' and `dash serve', where
     // the link group and the filter widgets are made.  Written on a graph
     // they were stored in graph_options and read by nothing -- measured
     // 22sep2026: name(g1) link(g1) registered, built one source, said
     // nothing.  Named here, so nothing is dropped in silence.
-    if `"`filter'"' != "" local _dash_pending `"`_dash_pending' filter"'
-    if `"`fxsize'"' != "" local _dash_pending `"`_dash_pending' fxsize"'
-    if `"`fysize'"' != "" local _dash_pending `"`_dash_pending' fysize"'
-    if `"`l1title'"' != "" local _dash_pending `"`_dash_pending' l1title"'
-    if `"`l2title'"' != "" local _dash_pending `"`_dash_pending' l2title"'
-    if `"`link'"' != "" local _dash_pending `"`_dash_pending' link"'
-    if `"`play'"' != "" local _dash_pending `"`_dash_pending' play"'
-    if `"`r1title'"' != "" local _dash_pending `"`_dash_pending' r1title"'
-    if `"`r2title'"' != "" local _dash_pending `"`_dash_pending' r2title"'
-    if `"`scale'"' != "" local _dash_pending `"`_dash_pending' scale"'
-    if `"`subtitle2'"' != "" local _dash_pending `"`_dash_pending' subtitle2"'
-    if `"`t1title'"' != "" local _dash_pending `"`_dash_pending' t1title"'
-    if `"`t2title'"' != "" local _dash_pending `"`_dash_pending' t2title"'
-    if `"`text'"' != "" local _dash_pending `"`_dash_pending' text"'
-    if `"`title2'"' != "" local _dash_pending `"`_dash_pending' title2"'
-    if `"`xmlabel'"' != "" local _dash_pending `"`_dash_pending' xmlabel"'
-    if `"`xmtick'"' != "" local _dash_pending `"`_dash_pending' xmtick"'
+    if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
+    if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
+    if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
+    if `: length local l1title' local _dash_pending `"`_dash_pending' l1title"'
+    if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
+    if `: length local link' local _dash_pending `"`_dash_pending' link"'
+    if `: length local play' local _dash_pending `"`_dash_pending' play"'
+    if `: length local r1title' local _dash_pending `"`_dash_pending' r1title"'
+    if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
+    if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
+    if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
+    if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
+    if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
+    if `: length local text' local _dash_pending `"`_dash_pending' text"'
+    if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
+    if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
+    if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs, after the comma.
-    if `"`xoverhangs'"' != "" local _dash_pending `"`_dash_pending' xoverhangs"'
-    if `"`ymlabel'"' != "" local _dash_pending `"`_dash_pending' ymlabel"'
-    if `"`ymtick'"' != "" local _dash_pending `"`_dash_pending' ymtick"'
-    if `"`yoverhangs'"' != "" local _dash_pending `"`_dash_pending' yoverhangs"'
+    if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
+    if `: length local ymlabel' local _dash_pending `"`_dash_pending' ymlabel"'
+    if `: length local ymtick' local _dash_pending `"`_dash_pending' ymtick"'
+    if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
     // Whatever Stata could not match at all, via the trailing *.
-    local _dash_unknown `"`options'"'
+    local _dash_unknown : copy local options
 
-    sreturn local title        `"`title'"'
-    sreturn local subtitle     `"`subtitle'"'
-    sreturn local note         `"`note'"'
-    sreturn local caption      `"`caption'"'
-    sreturn local name         `"`name'"'
-    sreturn local saving       `"`saving'"'
-    sreturn local xtitle       `"`xtitle'"'
-    sreturn local ytitle       `"`ytitle'"'
-    sreturn local xlabel       `"`xlabel'"'
-    sreturn local ylabel       `"`ylabel'"'
-    sreturn local xline        `"`xline'"'
-    sreturn local yline        `"`yline'"'
-    sreturn local legend       `"`legend'"'
-    sreturn local by           `"`by'"'
-    sreturn local xscale       `"`xscale'"'
-    sreturn local yscale       `"`yscale'"'
-    sreturn local aspectratio  `"`aspectratio'"'
-    sreturn local scheme       `"`scheme'"'
-    sreturn local plotregion   `"`plotregion'"'
-    sreturn local graphregion  `"`graphregion'"'
-    sreturn local bgcolor      `"`bgcolor'"'
-    sreturn local plotbgcolor  `"`plotbgcolor'"'
-    sreturn local link         `"`link'"'
-    sreturn local filter       `"`filter'"'
-    sreturn local ytitle2      `"`ytitle2'"'
-    sreturn local xtitle2      `"`xtitle2'"'
-    sreturn local ylabel2      `"`ylabel2'"'
-    sreturn local xlabel2      `"`xlabel2'"'
-    sreturn local yscale2      `"`yscale2'"'
-    sreturn local xscale2      `"`xscale2'"'
-    sreturn local xsize        `"`xsize'"'
-    sreturn local ysize        `"`ysize'"'
-    sreturn local fxsize       `"`fxsize'"'
-    sreturn local fysize       `"`fysize'"'
-    sreturn local scale        `"`scale'"'
-    sreturn local hover        `"`hover'"'
-    sreturn local text         `"`text'"'
-    sreturn local xtick        `"`xtick'"'
-    sreturn local ytick        `"`ytick'"'
-    sreturn local xmtick       `"`xmtick'"'
-    sreturn local ymtick       `"`ymtick'"'
-    sreturn local xmlabel      `"`xmlabel'"'
-    sreturn local ymlabel      `"`ymlabel'"'
-    sreturn local t1title      `"`t1title'"'
-    sreturn local t2title      `"`t2title'"'
-    sreturn local b1title      `"`b1title'"'
-    sreturn local b2title      `"`b2title'"'
-    sreturn local l1title      `"`l1title'"'
-    sreturn local l2title      `"`l2title'"'
-    sreturn local r1title      `"`r1title'"'
-    sreturn local r2title      `"`r2title'"'
-    sreturn local title2       `"`title2'"'
-    sreturn local subtitle2    `"`subtitle2'"'
-    sreturn local nodraw       `"`nodraw'"'
-    sreturn local play         `"`play'"'
-    sreturn local _pending  `"`_dash_pending'"'
-    sreturn local _unknown  `"`_dash_unknown'"'
+    sreturn local title        : copy local title
+    sreturn local subtitle     : copy local subtitle
+    sreturn local note         : copy local note
+    sreturn local caption      : copy local caption
+    sreturn local name         : copy local name
+    sreturn local saving       : copy local saving
+    sreturn local xtitle       : copy local xtitle
+    sreturn local ytitle       : copy local ytitle
+    sreturn local xlabel       : copy local xlabel
+    sreturn local ylabel       : copy local ylabel
+    sreturn local xline        : copy local xline
+    sreturn local yline        : copy local yline
+    sreturn local legend       : copy local legend
+    sreturn local by           : copy local by
+    sreturn local xscale       : copy local xscale
+    sreturn local yscale       : copy local yscale
+    sreturn local aspectratio  : copy local aspectratio
+    sreturn local scheme       : copy local scheme
+    sreturn local plotregion   : copy local plotregion
+    sreturn local graphregion  : copy local graphregion
+    sreturn local bgcolor      : copy local bgcolor
+    sreturn local plotbgcolor  : copy local plotbgcolor
+    sreturn local link         : copy local link
+    sreturn local filter       : copy local filter
+    sreturn local ytitle2      : copy local ytitle2
+    sreturn local xtitle2      : copy local xtitle2
+    sreturn local ylabel2      : copy local ylabel2
+    sreturn local xlabel2      : copy local xlabel2
+    sreturn local yscale2      : copy local yscale2
+    sreturn local xscale2      : copy local xscale2
+    sreturn local xsize        : copy local xsize
+    sreturn local ysize        : copy local ysize
+    sreturn local fxsize       : copy local fxsize
+    sreturn local fysize       : copy local fysize
+    sreturn local scale        : copy local scale
+    sreturn local hover        : copy local hover
+    sreturn local text         : copy local text
+    sreturn local xtick        : copy local xtick
+    sreturn local ytick        : copy local ytick
+    sreturn local xmtick       : copy local xmtick
+    sreturn local ymtick       : copy local ymtick
+    sreturn local xmlabel      : copy local xmlabel
+    sreturn local ymlabel      : copy local ymlabel
+    sreturn local t1title      : copy local t1title
+    sreturn local t2title      : copy local t2title
+    sreturn local b1title      : copy local b1title
+    sreturn local b2title      : copy local b2title
+    sreturn local l1title      : copy local l1title
+    sreturn local l2title      : copy local l2title
+    sreturn local r1title      : copy local r1title
+    sreturn local r2title      : copy local r2title
+    sreturn local title2       : copy local title2
+    sreturn local subtitle2    : copy local subtitle2
+    sreturn local nodraw       : copy local nodraw
+    sreturn local play         : copy local play
+    sreturn local _pending  : copy local _dash_pending
+    sreturn local _unknown  : copy local _dash_unknown
 end
 
 
@@ -783,6 +852,8 @@ program define _dash_parse_plot_opts, sclass
     // option written bare, sort, or with an argument, sort(varlist).
     // XOVERHANGs and YOVERHANGs are advanced_options.sthlp's xoverhangs and
     // yoverhangs; twoway's measured minimum is xoverhang and yoverhang.
+    // The text options are string asis, as in _dash_parse_graph_opts (see
+    // the note there on xtitle(), ytitle() and t1title() .. r2title()).
     syntax [, ///
         MColor(string)            Msymbol(string)           MSIze(string) ///
         MSAngle(string)           MFColor(string)           MLColor(string) ///
@@ -817,28 +888,28 @@ program define _dash_parse_plot_opts, sclass
         YOVERHANGs ///
         JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
         NOTE(string asis)         CAPtion(string asis)      NAMe(string) ///
-        SAVing(string)            XTitle(string)            YTitle(string) ///
+        SAVing(string)            XTitle(string asis)       YTitle(string asis) ///
         XLabel(string asis)       YLabel(string asis)       XLIne(string asis) ///
         YLIne(string asis)        LEGend(string asis)       BY(string asis) ///
         XSCale(string asis)       YSCale(string asis)       ASPectratio(string) ///
         SCHeme(string)            PLOTRegion(string asis)   GRAPHRegion(string asis) ///
         BGColor(string)           PLOTBGCOLOR(string)       LINK(string) ///
-        FILTer(string asis)       YTITLE2(string)           XTITLE2(string) ///
+        FILTer(string asis)       YTITLE2(string asis)      XTITLE2(string asis) ///
         YLABEL2(string asis)      XLABEL2(string asis)      YSCALE2(string asis) ///
         XSCALE2(string asis)      XSIZe(string)             YSIZe(string) ///
         FXSIZE(string)            FYSIZE(string)            SCALE(string) ///
         TEXT(string asis)         XTICk(string asis)        YTICk(string asis) ///
         HOVer(string)             ///
         XMTick(string asis)       YMTick(string asis)       XMLabel(string asis) ///
-        YMLabel(string asis)      T1title(string)           T2title(string) ///
-        B1title(string)           B2title(string)           L1title(string) ///
-        L2title(string)           R1title(string)           R2title(string) ///
+        YMLabel(string asis)      T1title(string asis)      T2title(string asis) ///
+        B1title(string asis)      B2title(string asis)      L1title(string asis) ///
+        L2title(string asis)      R1title(string asis)      R2title(string asis) ///
         TITLE2(string)            SUBTITLE2(string)         NODRAW ///
         PLAY(string) ///
         BW(string)                MLG(string)               CV(string) ///
         COLV(string)              PBGC(string)              XLA2(string asis) ///
-        XSC2(string asis)         XTI2(string)              YLA2(string asis) ///
-        YSC2(string asis)         YTI2(string) ///
+        XSC2(string asis)         XTI2(string asis)         YLA2(string asis) ///
+        YSC2(string asis)         YTI2(string asis) ///
         * ///
     ]
     /* ---- plot-level ---- */
@@ -851,7 +922,7 @@ program define _dash_parse_plot_opts, sclass
     // b() is not a third spelling of it: twoway reads b(5) as b1title(5),
     // on histogram as everywhere else (measured: the default eight bars,
     // under a bottom title "5"), and so does dash.
-    if `"`bins'"' != "" & `"`bin'"' == "" local bin `"`bins'"'
+    if `: length local bins' & !`: length local bin' local bin : copy local bins
 
     // level() is no longer checked here: its rule (level=num,0,100,x) lives
     // in _dash_option_rules and runs in _dash_validate_opts, once per segment.
@@ -868,16 +939,16 @@ program define _dash_parse_plot_opts, sclass
     // cannot express them; they are declared above and merged here.
     // twoway accepts none of them, so this is a superset and cannot
     // break drop-in parity, but it keeps existing dash do-files working.
-    if `"`mlg'"' != "" & `"`mlabgap'"' == "" local mlabgap `"`mlg'"'
-    if `"`cv'"' != "" & `"`colorvar'"' == "" local colorvar `"`cv'"'
-    if `"`colv'"' != "" & `"`colorvar'"' == "" local colorvar `"`colv'"'
-    if `"`pbgc'"' != "" & `"`plotbgcolor'"' == "" local plotbgcolor `"`pbgc'"'
-    if `"`xla2'"' != "" & `"`xlabel2'"' == "" local xlabel2 `"`xla2'"'
-    if `"`xsc2'"' != "" & `"`xscale2'"' == "" local xscale2 `"`xsc2'"'
-    if `"`xti2'"' != "" & `"`xtitle2'"' == "" local xtitle2 `"`xti2'"'
-    if `"`yla2'"' != "" & `"`ylabel2'"' == "" local ylabel2 `"`yla2'"'
-    if `"`ysc2'"' != "" & `"`yscale2'"' == "" local yscale2 `"`ysc2'"'
-    if `"`yti2'"' != "" & `"`ytitle2'"' == "" local ytitle2 `"`yti2'"'
+    if `: length local mlg' & !`: length local mlabgap' local mlabgap : copy local mlg
+    if `: length local cv' & !`: length local colorvar' local colorvar : copy local cv
+    if `: length local colv' & !`: length local colorvar' local colorvar : copy local colv
+    if `: length local pbgc' & !`: length local plotbgcolor' local plotbgcolor : copy local pbgc
+    if `: length local xla2' & !`: length local xlabel2' local xlabel2 : copy local xla2
+    if `: length local xsc2' & !`: length local xscale2' local xscale2 : copy local xsc2
+    if `: length local xti2' & !`: length local xtitle2' local xtitle2 : copy local xti2
+    if `: length local yla2' & !`: length local ylabel2' local ylabel2 : copy local yla2
+    if `: length local ysc2' & !`: length local yscale2' local yscale2 : copy local ysc2
+    if `: length local yti2' & !`: length local ytitle2' local ytitle2 : copy local yti2
 
     // Options dash accepts but does not yet honour.  Each supplied one
     // is recorded by name so it is reported rather than silently
@@ -899,59 +970,59 @@ program define _dash_parse_plot_opts, sclass
     // output does not change.  Implement one and forget to remove it
     // here, and that test fails.
     local _dash_pending ""
-    if `"`at'"' != "" local _dash_pending `"`_dash_pending' at"'
-    if `"`b1title'"' != "" local _dash_pending `"`_dash_pending' b1title"'
-    if `"`b2title'"' != "" local _dash_pending `"`_dash_pending' b2title"'
-    if `"`blabel'"' != "" local _dash_pending `"`_dash_pending' blabel"'
-    if `"`ciopts'"' != "" local _dash_pending `"`_dash_pending' ciopts"'
-    if `"`cmissing'"' != "" local _dash_pending `"`_dash_pending' cmissing"'
-    if `"`colorlist'"' != "" local _dash_pending `"`_dash_pending' colorlist"'
-    if `"`coloruseplegend'"' != "" local _dash_pending `"`_dash_pending' coloruseplegend"'
-    if `"`connect'"' != "" local _dash_pending `"`_dash_pending' connect"'
+    if `: length local at' local _dash_pending `"`_dash_pending' at"'
+    if `: length local b1title' local _dash_pending `"`_dash_pending' b1title"'
+    if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
+    if `: length local blabel' local _dash_pending `"`_dash_pending' blabel"'
+    if `: length local ciopts' local _dash_pending `"`_dash_pending' ciopts"'
+    if `: length local cmissing' local _dash_pending `"`_dash_pending' cmissing"'
+    if `: length local colorlist' local _dash_pending `"`_dash_pending' colorlist"'
+    if `: length local coloruseplegend' local _dash_pending `"`_dash_pending' coloruseplegend"'
+    if `: length local connect' local _dash_pending `"`_dash_pending' connect"'
     // As in the graph-level block: build-time options written on a graph.
-    if `"`filter'"' != "" local _dash_pending `"`_dash_pending' filter"'
-    if `"`fitopts'"' != "" local _dash_pending `"`_dash_pending' fitopts"'
-    if `"`fxsize'"' != "" local _dash_pending `"`_dash_pending' fxsize"'
-    if `"`fysize'"' != "" local _dash_pending `"`_dash_pending' fysize"'
-    if `"`horizontal'"' != "" local _dash_pending `"`_dash_pending' horizontal"'
-    if `"`l1title'"' != "" local _dash_pending `"`_dash_pending' l1title"'
-    if `"`l2title'"' != "" local _dash_pending `"`_dash_pending' l2title"'
-    if `"`link'"' != "" local _dash_pending `"`_dash_pending' link"'
-    if `"`lineopts'"' != "" local _dash_pending `"`_dash_pending' lineopts"'
-    if `"`lstyle'"' != "" local _dash_pending `"`_dash_pending' lstyle"'
+    if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
+    if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
+    if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
+    if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
+    if `: length local horizontal' local _dash_pending `"`_dash_pending' horizontal"'
+    if `: length local l1title' local _dash_pending `"`_dash_pending' l1title"'
+    if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
+    if `: length local link' local _dash_pending `"`_dash_pending' link"'
+    if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
+    if `: length local lstyle' local _dash_pending `"`_dash_pending' lstyle"'
     // WP-22: mlabtextstyle() names a text style in a .scheme file, and
     // mlabvposition() a variable of clock positions, one per observation;
     // dash draws a layer's labels at one position in the scheme's style.
-    if `"`mlabtextstyle'"' != "" local _dash_pending `"`_dash_pending' mlabtextstyle"'
-    if `"`mlabvposition'"' != "" local _dash_pending `"`_dash_pending' mlabvposition"'
-    if `"`mlabwidth'"' != "" local _dash_pending `"`_dash_pending' mlabwidth"'
-    if `"`mlpattern'"' != "" local _dash_pending `"`_dash_pending' mlpattern"'
-    if `"`mlstyle'"' != "" local _dash_pending `"`_dash_pending' mlstyle"'
-    if `"`mstyle'"' != "" local _dash_pending `"`_dash_pending' mstyle"'
-    if `"`play'"' != "" local _dash_pending `"`_dash_pending' play"'
-    if `"`pstyle'"' != "" local _dash_pending `"`_dash_pending' pstyle"'
-    if `"`r1title'"' != "" local _dash_pending `"`_dash_pending' r1title"'
-    if `"`r2title'"' != "" local _dash_pending `"`_dash_pending' r2title"'
-    if `"`recast'"' != "" local _dash_pending `"`_dash_pending' recast"'
-    if `"`scale'"' != "" local _dash_pending `"`_dash_pending' scale"'
+    if `: length local mlabtextstyle' local _dash_pending `"`_dash_pending' mlabtextstyle"'
+    if `: length local mlabvposition' local _dash_pending `"`_dash_pending' mlabvposition"'
+    if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
+    if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
+    if `: length local mlstyle' local _dash_pending `"`_dash_pending' mlstyle"'
+    if `: length local mstyle' local _dash_pending `"`_dash_pending' mstyle"'
+    if `: length local play' local _dash_pending `"`_dash_pending' play"'
+    if `: length local pstyle' local _dash_pending `"`_dash_pending' pstyle"'
+    if `: length local r1title' local _dash_pending `"`_dash_pending' r1title"'
+    if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
+    if `: length local recast' local _dash_pending `"`_dash_pending' recast"'
+    if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
     // sort and sort(varlist) are named alike, as sort(): the argument form
     // arrives in `sort1', the name -syntax- gives it, which is Stata's
     // plumbing and not a name the user wrote.
-    if `"`sort'`sort1'"' != "" local _dash_pending `"`_dash_pending' sort"'
-    if `"`subtitle2'"' != "" local _dash_pending `"`_dash_pending' subtitle2"'
-    if `"`t1title'"' != "" local _dash_pending `"`_dash_pending' t1title"'
-    if `"`t2title'"' != "" local _dash_pending `"`_dash_pending' t2title"'
-    if `"`text'"' != "" local _dash_pending `"`_dash_pending' text"'
-    if `"`title2'"' != "" local _dash_pending `"`_dash_pending' title2"'
-    if `"`vertical'"' != "" local _dash_pending `"`_dash_pending' vertical"'
-    if `"`xmlabel'"' != "" local _dash_pending `"`_dash_pending' xmlabel"'
-    if `"`xmtick'"' != "" local _dash_pending `"`_dash_pending' xmtick"'
+    if `: length local sort' | `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
+    if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
+    if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
+    if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
+    if `: length local text' local _dash_pending `"`_dash_pending' text"'
+    if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
+    if `: length local vertical' local _dash_pending `"`_dash_pending' vertical"'
+    if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
+    if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
     // region so an end tick label does not run off the edge.
-    if `"`xoverhangs'"' != "" local _dash_pending `"`_dash_pending' xoverhangs"'
-    if `"`ymlabel'"' != "" local _dash_pending `"`_dash_pending' ymlabel"'
-    if `"`ymtick'"' != "" local _dash_pending `"`_dash_pending' ymtick"'
-    if `"`yoverhangs'"' != "" local _dash_pending `"`_dash_pending' yoverhangs"'
+    if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
+    if `: length local ymlabel' local _dash_pending `"`_dash_pending' ymlabel"'
+    if `: length local ymtick' local _dash_pending `"`_dash_pending' ymtick"'
+    if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
     // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
     // are twoway GRAPH-level options, and this program promotes them --
     // `sreturn local g_xsize' and friends just above, picked up by the
@@ -961,86 +1032,86 @@ program define _dash_parse_plot_opts, sclass
     //     dash scatter mpg weight, xsize(10) ysize(2)
     // that dash had ignored two options it had just applied.
     // Whatever Stata could not match at all, via the trailing *.
-    local _dash_unknown `"`options'"'
+    local _dash_unknown : copy local options
 
-    sreturn local mcolor           `"`mcolor'"'
-    sreturn local msymbol          `"`msymbol'"'
-    sreturn local msize            `"`msize'"'
-    sreturn local msangle          `"`msangle'"'
-    sreturn local mfcolor          `"`mfcolor'"'
-    sreturn local mlcolor          `"`mlcolor'"'
-    sreturn local mlabel           `"`mlabel'"'
-    sreturn local mlabcolor        `"`mlabcolor'"'
-    sreturn local mlabsize         `"`mlabsize'"'
-    sreturn local mlabposition     `"`mlabposition'"'
-    sreturn local mlabgap          `"`mlabgap'"'
-    sreturn local mlabwidth        `"`mlabwidth'"'
-    sreturn local malpha           `"`malpha'"'
-    sreturn local marker           `"`marker'"'
-    sreturn local lcolor           `"`lcolor'"'
-    sreturn local lwidth           `"`lwidth'"'
-    sreturn local lpattern         `"`lpattern'"'
-    sreturn local lalpha           `"`lalpha'"'
-    sreturn local fcolor           `"`fcolor'"'
-    sreturn local fintensity       `"`fintensity'"'
-    sreturn local falpha           `"`falpha'"'
-    sreturn local barwidth         `"`barwidth'"'
-    sreturn local base             `"`base'"'
-    sreturn local blcolor          `"`blcolor'"'
-    sreturn local bfcolor          `"`bfcolor'"'
-    sreturn local jitter           `"`jitter'"'
-    sreturn local jseed            `"`jseed'"'
-    sreturn local yaxis            `"`yaxis'"'
-    sreturn local xaxis            `"`xaxis'"'
-    sreturn local colorvar         `"`colorvar'"'
-    sreturn local colpalette       `"`colpalette'"'
-    sreturn local colordiscrete    `"`colordiscrete'"'
-    sreturn local coloruseplegend  `"`coloruseplegend'"'
-    sreturn local colornlevels     `"`colornlevels'"'
-    sreturn local colorcuts        `"`colorcuts'"'
-    sreturn local colormissing     `"`colormissing'"'
-    sreturn local bwidth           `"`bwidth'"'
-    sreturn local bw               `"`bw'"'
-    sreturn local degree           `"`degree'"'
-    sreturn local pstyle           `"`pstyle'"'
-    sreturn local cmissing         `"`cmissing'"'
-    sreturn local recast           `"`recast'"'
-    sreturn local connect          `"`connect'"'
-    sreturn local bin              `"`bin'"'
-    sreturn local width            `"`width'"'
-    sreturn local start            `"`start'"'
-    sreturn local percent          `"`percent'"'
-    sreturn local frequency        `"`frequency'"'
-    sreturn local density          `"`density'"'
-    sreturn local fraction         `"`fraction'"'
-    sreturn local kernel           `"`kernel'"'
-    sreturn local n                `"`n'"'
-    sreturn local level            `"`level'"'
-    sreturn local bands            `"`bands'"'
-    sreturn local at               `"`at'"'
-    sreturn local ciopts           `"`ciopts'"'
-    sreturn local lineopts         `"`lineopts'"'
-    sreturn local fitopts          `"`fitopts'"'
-    sreturn local color            `"`color'"'
-    sreturn local mlwidth          `"`mlwidth'"'
-    sreturn local mstyle           `"`mstyle'"'
-    sreturn local lstyle           `"`lstyle'"'
-    sreturn local mlstyle          `"`mlstyle'"'
-    sreturn local mlpattern        `"`mlpattern'"'
-    sreturn local blabel           `"`blabel'"'
-    sreturn local horizontal       `"`horizontal'"'
-    sreturn local vertical         `"`vertical'"'
-    sreturn local sort             `"`sort'"'
-    sreturn local range            `"`range'"'
-    sreturn local colorlist        `"`colorlist'"'
-    sreturn local jitterseed       `"`jitterseed'"'
+    sreturn local mcolor           : copy local mcolor
+    sreturn local msymbol          : copy local msymbol
+    sreturn local msize            : copy local msize
+    sreturn local msangle          : copy local msangle
+    sreturn local mfcolor          : copy local mfcolor
+    sreturn local mlcolor          : copy local mlcolor
+    sreturn local mlabel           : copy local mlabel
+    sreturn local mlabcolor        : copy local mlabcolor
+    sreturn local mlabsize         : copy local mlabsize
+    sreturn local mlabposition     : copy local mlabposition
+    sreturn local mlabgap          : copy local mlabgap
+    sreturn local mlabwidth        : copy local mlabwidth
+    sreturn local malpha           : copy local malpha
+    sreturn local marker           : copy local marker
+    sreturn local lcolor           : copy local lcolor
+    sreturn local lwidth           : copy local lwidth
+    sreturn local lpattern         : copy local lpattern
+    sreturn local lalpha           : copy local lalpha
+    sreturn local fcolor           : copy local fcolor
+    sreturn local fintensity       : copy local fintensity
+    sreturn local falpha           : copy local falpha
+    sreturn local barwidth         : copy local barwidth
+    sreturn local base             : copy local base
+    sreturn local blcolor          : copy local blcolor
+    sreturn local bfcolor          : copy local bfcolor
+    sreturn local jitter           : copy local jitter
+    sreturn local jseed            : copy local jseed
+    sreturn local yaxis            : copy local yaxis
+    sreturn local xaxis            : copy local xaxis
+    sreturn local colorvar         : copy local colorvar
+    sreturn local colpalette       : copy local colpalette
+    sreturn local colordiscrete    : copy local colordiscrete
+    sreturn local coloruseplegend  : copy local coloruseplegend
+    sreturn local colornlevels     : copy local colornlevels
+    sreturn local colorcuts        : copy local colorcuts
+    sreturn local colormissing     : copy local colormissing
+    sreturn local bwidth           : copy local bwidth
+    sreturn local bw               : copy local bw
+    sreturn local degree           : copy local degree
+    sreturn local pstyle           : copy local pstyle
+    sreturn local cmissing         : copy local cmissing
+    sreturn local recast           : copy local recast
+    sreturn local connect          : copy local connect
+    sreturn local bin              : copy local bin
+    sreturn local width            : copy local width
+    sreturn local start            : copy local start
+    sreturn local percent          : copy local percent
+    sreturn local frequency        : copy local frequency
+    sreturn local density          : copy local density
+    sreturn local fraction         : copy local fraction
+    sreturn local kernel           : copy local kernel
+    sreturn local n                : copy local n
+    sreturn local level            : copy local level
+    sreturn local bands            : copy local bands
+    sreturn local at               : copy local at
+    sreturn local ciopts           : copy local ciopts
+    sreturn local lineopts         : copy local lineopts
+    sreturn local fitopts          : copy local fitopts
+    sreturn local color            : copy local color
+    sreturn local mlwidth          : copy local mlwidth
+    sreturn local mstyle           : copy local mstyle
+    sreturn local lstyle           : copy local lstyle
+    sreturn local mlstyle          : copy local mlstyle
+    sreturn local mlpattern        : copy local mlpattern
+    sreturn local blabel           : copy local blabel
+    sreturn local horizontal       : copy local horizontal
+    sreturn local vertical         : copy local vertical
+    sreturn local sort             : copy local sort
+    sreturn local range            : copy local range
+    sreturn local colorlist        : copy local colorlist
+    sreturn local jitterseed       : copy local jitterseed
     // WP-22: the honoured F3 options.  The connecting-line triple is kept
     // or dropped by plot type in _dash_fold_cl, once the type is known.
-    sreturn local clcolor          `"`clcolor'"'
-    sreturn local clpattern        `"`clpattern'"'
-    sreturn local clwidth          `"`clwidth'"'
-    sreturn local mlabangle        `"`mlabangle'"'
-    sreturn local mlabformat       `"`mlabformat'"'
+    sreturn local clcolor          : copy local clcolor
+    sreturn local clpattern        : copy local clpattern
+    sreturn local clwidth          : copy local clwidth
+    sreturn local mlabangle        : copy local mlabangle
+    sreturn local mlabformat       : copy local mlabformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
     // minimum abbreviations (twoway_histogram_parse.class DISCrete;
     // twoway_lfitci_parse.class STDP STDF STDR, none abbreviable;
@@ -1049,72 +1120,72 @@ program define _dash_parse_plot_opts, sclass
     // declares Msymbol(), and test_abbreviations.py refuses a prefix two
     // options could claim.  Which type each belongs to is enforced by the
     // flag rules in _dash_option_rules, not here.
-    sreturn local discrete         `"`discrete'"'
-    sreturn local stdp             `"`stdp'"'
-    sreturn local stdf             `"`stdf'"'
-    sreturn local stdr             `"`stdr'"'
-    sreturn local mean             `"`mean'"'
-    sreturn local noweight         `"`noweight'"'
-    sreturn local adjust           `"`adjust'"'
-    sreturn local logit            `"`logit'"'
+    sreturn local discrete         : copy local discrete
+    sreturn local stdp             : copy local stdp
+    sreturn local stdf             : copy local stdf
+    sreturn local stdr             : copy local stdr
+    sreturn local mean             : copy local mean
+    sreturn local noweight         : copy local noweight
+    sreturn local adjust           : copy local adjust
+    sreturn local logit            : copy local logit
     /* ---- graph-level (returned separately so _dash_plot can accumulate them) ---- */
-    sreturn local g_title        `"`title'"'
-    sreturn local g_subtitle     `"`subtitle'"'
-    sreturn local g_note         `"`note'"'
-    sreturn local g_caption      `"`caption'"'
-    sreturn local g_name         `"`name'"'
-    sreturn local g_saving       `"`saving'"'
-    sreturn local g_xtitle       `"`xtitle'"'
-    sreturn local g_ytitle       `"`ytitle'"'
-    sreturn local g_xlabel       `"`xlabel'"'
-    sreturn local g_ylabel       `"`ylabel'"'
-    sreturn local g_xline        `"`xline'"'
-    sreturn local g_yline        `"`yline'"'
-    sreturn local g_legend       `"`legend'"'
-    sreturn local g_by           `"`by'"'
-    sreturn local g_xscale       `"`xscale'"'
-    sreturn local g_yscale       `"`yscale'"'
-    sreturn local g_aspectratio  `"`aspectratio'"'
-    sreturn local g_scheme       `"`scheme'"'
-    sreturn local g_plotregion   `"`plotregion'"'
-    sreturn local g_graphregion  `"`graphregion'"'
-    sreturn local g_bgcolor      `"`bgcolor'"'
-    sreturn local g_plotbgcolor  `"`plotbgcolor'"'
-    sreturn local g_link         `"`link'"'
-    sreturn local g_filter       `"`filter'"'
-    sreturn local g_ytitle2      `"`ytitle2'"'
-    sreturn local g_xtitle2      `"`xtitle2'"'
-    sreturn local g_ylabel2      `"`ylabel2'"'
-    sreturn local g_xlabel2      `"`xlabel2'"'
-    sreturn local g_yscale2      `"`yscale2'"'
-    sreturn local g_xscale2      `"`xscale2'"'
-    sreturn local g_xsize        `"`xsize'"'
-    sreturn local g_ysize        `"`ysize'"'
-    sreturn local g_fxsize       `"`fxsize'"'
-    sreturn local g_fysize       `"`fysize'"'
-    sreturn local g_scale        `"`scale'"'
-    sreturn local g_hover        `"`hover'"'
-    sreturn local g_text         `"`text'"'
-    sreturn local g_xtick        `"`xtick'"'
-    sreturn local g_ytick        `"`ytick'"'
-    sreturn local g_xmtick       `"`xmtick'"'
-    sreturn local g_ymtick       `"`ymtick'"'
-    sreturn local g_xmlabel      `"`xmlabel'"'
-    sreturn local g_ymlabel      `"`ymlabel'"'
-    sreturn local g_t1title      `"`t1title'"'
-    sreturn local g_t2title      `"`t2title'"'
-    sreturn local g_b1title      `"`b1title'"'
-    sreturn local g_b2title      `"`b2title'"'
-    sreturn local g_l1title      `"`l1title'"'
-    sreturn local g_l2title      `"`l2title'"'
-    sreturn local g_r1title      `"`r1title'"'
-    sreturn local g_r2title      `"`r2title'"'
-    sreturn local g_title2       `"`title2'"'
-    sreturn local g_subtitle2    `"`subtitle2'"'
-    sreturn local g_nodraw       `"`nodraw'"'
-    sreturn local g_play         `"`play'"'
-    sreturn local _pending  `"`_dash_pending'"'
-    sreturn local _unknown  `"`_dash_unknown'"'
+    sreturn local g_title        : copy local title
+    sreturn local g_subtitle     : copy local subtitle
+    sreturn local g_note         : copy local note
+    sreturn local g_caption      : copy local caption
+    sreturn local g_name         : copy local name
+    sreturn local g_saving       : copy local saving
+    sreturn local g_xtitle       : copy local xtitle
+    sreturn local g_ytitle       : copy local ytitle
+    sreturn local g_xlabel       : copy local xlabel
+    sreturn local g_ylabel       : copy local ylabel
+    sreturn local g_xline        : copy local xline
+    sreturn local g_yline        : copy local yline
+    sreturn local g_legend       : copy local legend
+    sreturn local g_by           : copy local by
+    sreturn local g_xscale       : copy local xscale
+    sreturn local g_yscale       : copy local yscale
+    sreturn local g_aspectratio  : copy local aspectratio
+    sreturn local g_scheme       : copy local scheme
+    sreturn local g_plotregion   : copy local plotregion
+    sreturn local g_graphregion  : copy local graphregion
+    sreturn local g_bgcolor      : copy local bgcolor
+    sreturn local g_plotbgcolor  : copy local plotbgcolor
+    sreturn local g_link         : copy local link
+    sreturn local g_filter       : copy local filter
+    sreturn local g_ytitle2      : copy local ytitle2
+    sreturn local g_xtitle2      : copy local xtitle2
+    sreturn local g_ylabel2      : copy local ylabel2
+    sreturn local g_xlabel2      : copy local xlabel2
+    sreturn local g_yscale2      : copy local yscale2
+    sreturn local g_xscale2      : copy local xscale2
+    sreturn local g_xsize        : copy local xsize
+    sreturn local g_ysize        : copy local ysize
+    sreturn local g_fxsize       : copy local fxsize
+    sreturn local g_fysize       : copy local fysize
+    sreturn local g_scale        : copy local scale
+    sreturn local g_hover        : copy local hover
+    sreturn local g_text         : copy local text
+    sreturn local g_xtick        : copy local xtick
+    sreturn local g_ytick        : copy local ytick
+    sreturn local g_xmtick       : copy local xmtick
+    sreturn local g_ymtick       : copy local ymtick
+    sreturn local g_xmlabel      : copy local xmlabel
+    sreturn local g_ymlabel      : copy local ymlabel
+    sreturn local g_t1title      : copy local t1title
+    sreturn local g_t2title      : copy local t2title
+    sreturn local g_b1title      : copy local b1title
+    sreturn local g_b2title      : copy local b2title
+    sreturn local g_l1title      : copy local l1title
+    sreturn local g_l2title      : copy local l2title
+    sreturn local g_r1title      : copy local r1title
+    sreturn local g_r2title      : copy local r2title
+    sreturn local g_title2       : copy local title2
+    sreturn local g_subtitle2    : copy local subtitle2
+    sreturn local g_nodraw       : copy local nodraw
+    sreturn local g_play         : copy local play
+    sreturn local _pending  : copy local _dash_pending
+    sreturn local _unknown  : copy local _dash_unknown
 end
 
 
@@ -1130,10 +1201,18 @@ program define _dash_parse_varpart_std, sclass
     // leaves the expression in `exp' WITH its leading `= ' (measured:
     // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
-    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
+    // The expression is stripped in Mata, by value: in compound quotes inside
+    // regexr() a weight holding "' -- [aw=cond(make=="'x",1,2)] -- ended
+    // them (test_json_escaping.cscript JSE-47).  It and the qualifier go
+    // back by `: copy local': through compound quotes a macro in them was
+    // expanded again (JSE-66, JSE-69).
+    if `: length local exp' {
+        mata: st_local("_wx0", strtrim(regexr(st_local("exp"), "^[ ]*=[ ]*", "")))
+        sreturn local _wexp : copy local _wx0
+    }
     sreturn local varlist    "`varlist'"
-    sreturn local if_clause  `"`if'"'
-    sreturn local in_clause  `"`in'"'
+    sreturn local if_clause  : copy local if
+    sreturn local in_clause  : copy local in
 end
 
 // ================================================================
@@ -1147,10 +1226,18 @@ program define _dash_parse_varpart_1v, sclass
     // leaves the expression in `exp' WITH its leading `= ' (measured:
     // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
-    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
+    // The expression is stripped in Mata, by value: in compound quotes inside
+    // regexr() a weight holding "' -- [aw=cond(make=="'x",1,2)] -- ended
+    // them (test_json_escaping.cscript JSE-47).  It and the qualifier go
+    // back by `: copy local': through compound quotes a macro in them was
+    // expanded again (JSE-66, JSE-69).
+    if `: length local exp' {
+        mata: st_local("_wx0", strtrim(regexr(st_local("exp"), "^[ ]*=[ ]*", "")))
+        sreturn local _wexp : copy local _wx0
+    }
     sreturn local varlist    "`varlist'"
-    sreturn local if_clause  `"`if'"'
-    sreturn local in_clause  `"`in'"'
+    sreturn local if_clause  : copy local if
+    sreturn local in_clause  : copy local in
 end
 
 // ================================================================
@@ -1164,10 +1251,18 @@ program define _dash_parse_varpart_3v, sclass
     // leaves the expression in `exp' WITH its leading `= ' (measured:
     // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
-    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
+    // The expression is stripped in Mata, by value: in compound quotes inside
+    // regexr() a weight holding "' -- [aw=cond(make=="'x",1,2)] -- ended
+    // them (test_json_escaping.cscript JSE-47).  It and the qualifier go
+    // back by `: copy local': through compound quotes a macro in them was
+    // expanded again (JSE-66, JSE-69).
+    if `: length local exp' {
+        mata: st_local("_wx0", strtrim(regexr(st_local("exp"), "^[ ]*=[ ]*", "")))
+        sreturn local _wexp : copy local _wx0
+    }
     sreturn local varlist    "`varlist'"
-    sreturn local if_clause  `"`if'"'
-    sreturn local in_clause  `"`in'"'
+    sreturn local if_clause  : copy local if
+    sreturn local in_clause  : copy local in
 end
 
 // ================================================================
@@ -1181,10 +1276,18 @@ program define _dash_parse_varpart_4v, sclass
     // leaves the expression in `exp' WITH its leading `= ' (measured:
     // `[aw=price]' gives exp `= price'); that is stripped here.
     if `"`weight'"' != "" sreturn local _weight `"`weight'"'
-    if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
+    // The expression is stripped in Mata, by value: in compound quotes inside
+    // regexr() a weight holding "' -- [aw=cond(make=="'x",1,2)] -- ended
+    // them (test_json_escaping.cscript JSE-47).  It and the qualifier go
+    // back by `: copy local': through compound quotes a macro in them was
+    // expanded again (JSE-66, JSE-69).
+    if `: length local exp' {
+        mata: st_local("_wx0", strtrim(regexr(st_local("exp"), "^[ ]*=[ ]*", "")))
+        sreturn local _wexp : copy local _wx0
+    }
     sreturn local varlist    "`varlist'"
-    sreturn local if_clause  `"`if'"'
-    sreturn local in_clause  `"`in'"'
+    sreturn local if_clause  : copy local if
+    sreturn local in_clause  : copy local in
 end
 
 // ================================================================
@@ -1221,15 +1324,20 @@ program define _dash_parse_varpart_any, sclass
     if _rc == 101 {
         syntax [anything(name=vals equalok)] [if] [in] [aweight fweight pweight]
         if `"`weight'"' != "" sreturn local _weight `"`weight'"'
-        if `"`exp'"' != "" sreturn local _wexp = strtrim(regexr(`"`exp'"', "^[ ]*=[ ]*", ""))
+        if `: length local exp' {
+            mata: st_local("_wx0", strtrim(regexr(st_local("exp"), "^[ ]*=[ ]*", "")))
+            sreturn local _wexp : copy local _wx0
+        }
     }
     else if _rc {
         // Anything else is reported by syntax itself, as it always was.
         syntax [anything(name=vals equalok)] [if] [in]
     }
-    sreturn local vals       `"`vals'"'
-    sreturn local if_clause  `"`if'"'
-    sreturn local in_clause  `"`in'"'
+    // By value, as _dash_parse_varpart_std hands its back: a scatteri label
+    // and a qualifier are the user's text (JSE-69).
+    sreturn local vals       : copy local vals
+    sreturn local if_clause  : copy local if
+    sreturn local in_clause  : copy local in
 end
 
 // ================================================================
@@ -1253,12 +1361,15 @@ end
 program define _dash_graph_qualifier
     version 16.0
     syntax [if] [in]
-    local _gi ""
-    local _gn ""
-    if `"`if'"' != "" local _gi = strtrim(regexr(`"`if'"', "^[ ]*if", ""))
-    if `"`in'"' != "" local _gn = strtrim(regexr(`"`in'"', "^[ ]*in", ""))
-    c_local _gq_if `"`_gi'"'
-    c_local _gq_in `"`_gn'"'
+    // The keyword comes off in Mata, by value, and the result goes back by
+    // `: copy local'.  In compound quotes inside regexr() a qualifier
+    // holding "' ended the quote: if make != "'x" came back as  make !=,
+    // with rc 0 (measured 24sep2026; test_json_escaping.cscript JSE-45); and
+    // a copy through them expanded a macro in it again (JSE-66).
+    mata: st_local("_gi", strtrim(regexr(st_local("if"), "^[ ]*if", "")))
+    mata: st_local("_gn", strtrim(regexr(st_local("in"), "^[ ]*in", "")))
+    c_local _gq_if : copy local _gi
+    c_local _gq_in : copy local _gn
 end
 
 
@@ -1293,9 +1404,14 @@ program define _dash_fold_bw, sclass
     // Measured 23sep2026: `twoway kdensity mpg, width(2)' plots bwidth(2)'s
     // serset.  dash's width() is histogram's bin width, and on kdensity it
     // reached the renderer as "width" and changed nothing (WP-23).
-    local _kw `"`s(width)'"'
-    if "`ptype'" == "kdensity" & `"`macval(_kw)'"' != "" {
-        if `"`s(bwidth)'`s(bw)'"' != "" {
+    // The values are the user's text, read from s() by value and put back by
+    // `: copy local', or through macval() as bwidth() always was: read as
+    // `"`s(bw)'"', bw("\`x'") was expanded to nothing and dropped with rc 0
+    // (measured 24sep2026; test_json_escaping.cscript JSE-69).
+    mata: st_local("_kw", st_global("s(width)"))
+    if "`ptype'" == "kdensity" & `: length local _kw' {
+        mata: st_local("_fb", strofreal(st_global("s(bwidth)") + st_global("s(bw)") != ""))
+        if `_fb' {
             display as error "options width() and bwidth() may not be combined"
             exit 198
         }
@@ -1304,23 +1420,26 @@ program define _dash_fold_bw, sclass
         sreturn local bwidth `"`macval(_kw)'"'
         sreturn local width ""
     }
-    local bw `"`s(bw)'"'
-    if `"`bw'"' == "" exit
+    mata: st_local("bw", st_global("s(bw)"))
+    if !`: length local bw' exit
     local bandwidth_types "lpoly lpolyci lowess kdensity"
     local bar_types       "bar rbar histogram dot spike"
     if `: list ptype in bandwidth_types' {
-        if `"`s(bwidth)'"' != "" {
+        mata: st_local("_fb", strofreal(st_global("s(bwidth)") != ""))
+        if `_fb' {
             // twoway: the same option twice.  Measured r(198).
             display as error "option bwidth() may not be repeated: bw() is its abbreviation"
             exit 198
         }
-        sreturn local bwidth `"`bw'"'
+        sreturn local bwidth : copy local bw
     }
     else if `: list ptype in bar_types' {
-        if `"`s(barwidth)'"' == "" sreturn local barwidth `"`bw'"'
+        mata: st_local("_fb", strofreal(st_global("s(barwidth)") == ""))
+        if `_fb' sreturn local barwidth : copy local bw
     }
     else {
-        sreturn local _unknown `"`s(_unknown)' bw(`bw')"'
+        mata: st_local("_fb", st_global("s(_unknown)") + " bw(" + st_local("bw") + ")")
+        sreturn local _unknown : copy local _fb
     }
     sreturn local bw ""
 end
@@ -1387,14 +1506,19 @@ end
 // either.
 //
 // Called by _dash_fold_bw, after _dash_fold_cl and before
-// _dash_validate_opts.  The value is only ever expanded through macval(),
-// so a backtick in it cannot become a macro reference.
+// _dash_validate_opts.  The value is read from s() by value and only ever
+// put on a command line through macval(), so a backtick or a dollar sign
+// in it cannot become a macro reference.
 // ================================================================
 program define _dash_fold_mlab, sclass
     version 16.0
     args ptype
-    local v `"`s(mlabel)'"'
-    if `"`macval(v)'"' == "" exit
+    // By value: read as `"`s(mlabel)'"', mlabel("\`x'") was expanded to
+    // nothing, so on histogram it was not dropped and the value rules
+    // refused it, r(111), where twoway accepts it (measured 24sep2026;
+    // test_json_escaping.cscript JSE-69).
+    mata: st_local("v", st_global("s(mlabel)"))
+    if !`: length local v' exit
     local mlab_unread  "histogram function"
     local mlab_refused "mspline mband"
     if `: list ptype in mlab_unread' {
@@ -1450,16 +1574,23 @@ program define _dash_fold_typed, sclass
     local named ""
     local cv_types "scatter connected rconnected dot"
     local cv_drawn = 0
-    if `: list ptype in cv_types' & `"`s(colorvar)'"' != "" local cv_drawn = 1
+    // Whether each option was given, read by value: tested as
+    // `"`s(colormissing)'"', colormissing("\`x'") was expanded to nothing
+    // and went unnamed (test_json_escaping.cscript JSE-69).
+    mata: st_local("_ft", strofreal(st_global("s(colorvar)") != ""))
+    if `: list ptype in cv_types' & `_ft' local cv_drawn = 1
     if !`cv_drawn' {
         foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing {
-            if `"`s(`o')'"' != "" local named "`named' `o'"
+            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
+            if `_ft' local named "`named' `o'"
         }
     }
     local jit_undrawn "rscatter rcapsym pcscatter pccapsym"
-    if `: list ptype in jit_undrawn' & `"`s(jitter)'"' != "" {
+    mata: st_local("_ft", strofreal(st_global("s(jitter)") != ""))
+    if `: list ptype in jit_undrawn' & `_ft' {
         foreach o in jitter jitterseed jseed {
-            if `"`s(`o')'"' != "" local named "`named' `o'"
+            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
+            if `_ft' local named "`named' `o'"
         }
     }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
@@ -1491,12 +1622,19 @@ end
 // ================================================================
 program define _dash_check_legend
     version 16.0
-    args legval
+    // The argument is read by value (_dash_text_args), and neither the text
+    // nor a token is put inside quotes in a test: -args- and the tests cut
+    // legend(label(1 "'90s") top) at its "', and the top beside it, which
+    // twoway refuses, went through with rc 0 (measured 24sep2026;
+    // test_json_escaping.cscript JSE-47).  A token is one of the four
+    // keywords only when Mata says it is.
+    mata: _dash_text_args(0, 0, 0)
+    local legval : copy local _dash_txt
     local rest `"`macval(legval)'"'
-    while `"`macval(rest)'"' != "" {
+    while `: length local rest' {
         gettoken tok rest : rest, bind quotes
-        foreach kw in top bottom left right {
-            if `"`macval(tok)'"' != "`kw'" continue
+        mata: st_local("_kwhit", anyof(("top", "bottom", "left", "right"), st_local("tok")) ? st_local("tok") : "")
+        foreach kw in `_kwhit' {
             if "`kw'" == "top"    local _clk "12"
             if "`kw'" == "top"    local _where "above"
             if "`kw'" == "bottom" local _clk "6"
@@ -1669,7 +1807,18 @@ end
 // ----------------------------------------------------------------
 program define _dash_validate_value, rclass
     version 16.0
-    args prefix opt spec value ptype
+    // The arguments are read by value (_dash_text_args): prefix, opt, spec
+    // and ptype are dash's own words and the value the user's text, which
+    // -args- cut at a "' in it -- by(foreign, title(`"'90s bc"')) stopped
+    // with r(133) (measured 24sep2026; test_json_escaping.cscript JSE-46).
+    // Every test below reads the value through the string scalars V and T,
+    // never inside quotes.
+    mata: _dash_text_args(3, 1, 0)
+    local prefix `"`_dash_a1'"'
+    local opt    `"`_dash_a2'"'
+    local spec   `"`_dash_a3'"'
+    local ptype  `"`_dash_a4'"'
+    local value : copy local _dash_txt
 
     local kind ""
     local p1 ""
@@ -1692,14 +1841,17 @@ program define _dash_validate_value, rclass
     // spelling Python's float() reads back; `numlike' says it is made of
     // digits, signs, dots and exponent letters only (1e400, 1d3), so that a
     // style kind can tell an overflow from a name.
-    local tv = ustrtrim(`"`macval(value)'"')
+    tempname V T
+    mata: st_strscalar(st_local("V"), st_local("value"))
+    scalar `T' = ustrtrim(scalar(`V'))
+    mata: st_local("tv", st_strscalar(st_local("T")))
     tempname R
     scalar `R' = .
-    capture scalar `R' = real(`"`macval(tv)'"')
+    capture scalar `R' = real(scalar(`T'))
     if _rc scalar `R' = .
     local isnum = (`R' < .)
-    local plain   = regexm(`"`macval(tv)'"', "^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?$")
-    local numlike = regexm(`"`macval(tv)'"', "^[-+.0-9eEdD]*[0-9][-+.0-9eEdD]*$")
+    local plain   = regexm(scalar(`T'), "^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?$")
+    local numlike = regexm(scalar(`T'), "^[-+.0-9eEdD]*[0-9][-+.0-9eEdD]*$")
 
     // Where the bound is dash's own and not twoway's, the message says so.
     local extra ""
@@ -1744,8 +1896,9 @@ program define _dash_validate_value, rclass
         if `ok' {
             local bad ""
             // As written when Python parses it; a Stata-only spelling
-            // such as 1d3 goes out as the number it read.
-            if `plain' local norm `"`macval(tv)'"'
+            // such as 1d3 goes out as the number it read.  A copy, not
+            // macval() on a one-line if, whose command Stata expands again.
+            if `plain' local norm : copy local tv
             else       local norm = strtrim(string(`R', "%21.0g"))
         }
     }
@@ -1784,7 +1937,7 @@ program define _dash_validate_value, rclass
         }
         if `ok' {
             local bad ""
-            if `plain' local norm `"`macval(tv)'"'
+            if `plain' local norm : copy local tv
             else       local norm = strtrim(string(`R', "%21.0g"))
         }
     }
@@ -1812,13 +1965,15 @@ program define _dash_validate_value, rclass
         else if `numlike' local bad "a name or an integer between `p1' and `p2'"
     }
     else if "`kind'" == "enum" {
-        local lv = lower(`"`macval(tv)'"')
+        tempname L
+        scalar `L' = lower(scalar(`T'))
+        local lv = scalar(`L')
         local choices : subinstr local p1 "|" " ", all
         local hit = 0
         foreach c of local choices {
-            if `"`macval(lv)'"' == "`c'" local hit = 1
+            if scalar(`L') == "`c'" local hit = 1
         }
-        if `hit' local norm `"`macval(lv)'"'
+        if `hit' local norm : copy local lv
         else {
             local pretty : subinstr local p1 "|" ", ", all
             local bad "one of `pretty'"
@@ -1828,8 +1983,15 @@ program define _dash_validate_value, rclass
         if "`p2'" == ""                      local bad "a list of at least `p1' numbers"
         else if "`p1'" == "`p2'"             local bad "a list of exactly `p1' numbers"
         else                                 local bad "a list of between `p1' and `p2' numbers"
-        capture numlist `"`macval(value)'"'
-        if !_rc {
+        // A numlist holds no double quote; one that does is not one, and is
+        // never put on numlist's command line, where a "' in it would end
+        // the quotes and let the rest be read as numlist's own options.
+        local _nlrc 7
+        if !strpos(scalar(`V'), char(34)) {
+            capture numlist `"`macval(value)'"'
+            local _nlrc = _rc
+        }
+        if !`_nlrc' {
             local cnt : word count `r(numlist)'
             local ok = (`cnt' >= `p1')
             if "`p2'" != "" {
@@ -1850,28 +2012,31 @@ program define _dash_validate_value, rclass
         local hastail = 0
         if "`kind'" == "byvarlist" {
             // Split at the first comma outside parentheses: the by-variables
-            // come before it, the sub-options (kept verbatim) after it.
-            local len = strlen(`"`macval(value)'"')
+            // come before it, the sub-options (kept verbatim) after it.  The
+            // value is read through V: by(foreign, title("'90s by")) is
+            // twoway's own form.
+            local len = strlen(scalar(`V'))
             local depth = 0
             local cut = 0
             forvalues i = 1/`len' {
-                if substr(`"`macval(value)'"', `i', 1) == "(" {
+                if substr(scalar(`V'), `i', 1) == "(" {
                     local depth = `depth' + 1
                 }
-                else if substr(`"`macval(value)'"', `i', 1) == ")" {
+                else if substr(scalar(`V'), `i', 1) == ")" {
                     local depth = `depth' - 1
                 }
-                else if substr(`"`macval(value)'"', `i', 1) == "," & `depth' == 0 {
+                else if substr(scalar(`V'), `i', 1) == "," & `depth' == 0 {
                     local cut = `i'
                     continue, break
                 }
             }
             if `cut' > 0 {
-                local head = substr(`"`macval(value)'"', 1, `cut' - 1)
-                local tail = strltrim(substr(`"`macval(value)'"', `cut' + 1, .))
+                local head = substr(scalar(`V'), 1, `cut' - 1)
+                local tail = strltrim(substr(scalar(`V'), `cut' + 1, .))
                 local hastail = 1
             }
-            if strtrim(`"`macval(head)'"') == "" {
+            mata: st_local("_bynone", strofreal(strtrim(st_local("head")) == ""))
+            if `_bynone' {
                 mata: _dash_say("err", "dash: by() must name at least one variable (got: ", st_local("value"), ")")
                 exit 198
             }
@@ -1891,14 +2056,23 @@ program define _dash_validate_value, rclass
         if _rc {
             capture tsrevar `macval(head)', list
             local ists = (_rc == 0)
-            local badvar = strtrim(`"`macval(head)'"')
+            mata: st_local("badvar", strtrim(st_local("head")))
             local tsop = 0
-            foreach tok of local head {
-                capture confirm variable `macval(tok)'
-                if _rc {
-                    local badvar `"`macval(tok)'"'
-                    if regexm(`"`macval(tok)'"', "^[LlFfDdSs][LlFfDdSs0-9()/]*\.[A-Za-z_]") local tsop = 1
-                    continue, break
+            // Token by token, only when the head holds no double quote: a
+            // quoted head is no varlist and is named whole, as it was
+            // (by("foreign") names "foreign").  A token is tested through a
+            // string scalar, never in quotes.
+            mata: st_local("_hdq", strofreal(strpos(st_local("head"), char(34)) > 0))
+            if !`_hdq' {
+                tempname K
+                foreach tok of local head {
+                    capture confirm variable `macval(tok)'
+                    if _rc {
+                        local badvar `"`macval(tok)'"'
+                        mata: st_strscalar(st_local("K"), st_local("tok"))
+                        if regexm(scalar(`K'), "^[LlFfDdSs][LlFfDdSs0-9()/]*\.[A-Za-z_]") local tsop = 1
+                        continue, break
+                    }
                 }
             }
             if `ists' & `tsop' {
@@ -1913,7 +2087,13 @@ program define _dash_validate_value, rclass
             exit 198
         }
         local norm `"`vv'"'
-        if `hastail' local norm `"`vv', `macval(tail)'"'
+        // A block, not a one-line if, whose command Stata expands again,
+        // macval() or not: by(foreign, title("b\$G \`=exp'")) was stored
+        // with $G's value and the =exp evaluated (measured 24sep2026;
+        // test_json_escaping.cscript JSE-69).
+        if `hastail' {
+            local norm `"`vv', `macval(tail)'"'
+        }
     }
     else if "`kind'" == "scheme" {
         // WP-17: a shipped translation or a theme alias, by name and
@@ -1929,7 +2109,8 @@ program define _dash_validate_value, rclass
         // working directory is looked for (third-party schemes in PLUS/s
         // included: WP-05, the letter directories are shared).
         _dash_shipped_schemes
-        local lv = lower(`"`macval(tv)'"')
+        tempname L B
+        scalar `L' = lower(scalar(`T'))
         // A shipped name written WITH the extension -- scheme(s2color.scheme),
         // in any case -- is the shipped scheme: the renderer's _resolve_path
         // reads that spelling from the package's schemes/ too, so no file
@@ -1938,24 +2119,28 @@ program define _dash_validate_value, rclass
         // and scheme(s2color.scheme) was refused although the renderer
         // would have drawn it.  The extension is dropped for the list test
         // only: a theme is not a file and takes no extension, and a name
-        // that is not shipped still needs the file (below).
-        local lbase `"`macval(lv)'"'
-        if substr(`"`macval(lv)'"', -7, .) == ".scheme" {
-            local lbase = substr(`"`macval(lv)'"', 1, strlen(`"`macval(lv)'"') - 7)
+        // that is not shipped still needs the file (below).  Read through
+        // the string scalars T, L (lower case) and B (without .scheme).
+        scalar `B' = scalar(`L')
+        if substr(scalar(`L'), -7, .) == ".scheme" {
+            scalar `B' = substr(scalar(`L'), 1, strlen(scalar(`L')) - 7)
         }
         local hit = 0
         foreach c of local _dash_schemes {
-            if `"`macval(lbase)'"' == "`c'" local hit = 1
+            if scalar(`B') == "`c'" local hit = 1
         }
         foreach c of local _dash_themes {
-            if `"`macval(lv)'"' == "`c'" local hit = 1
+            if scalar(`L') == "`c'" local hit = 1
         }
-        if !`hit' & `"`macval(tv)'"' != "" {
-            local unsafe = strpos(`"`macval(tv)'"', "/") | ///
-                           strpos(`"`macval(tv)'"', char(92)) | ///
-                           strpos(`"`macval(tv)'"', "..")
+        if !`hit' & scalar(`T') != "" {
+            // A double quote is refused with the separators: a file name
+            // put on confirm's command line must not end its quotes.
+            local unsafe = strpos(scalar(`T'), "/") | ///
+                           strpos(scalar(`T'), char(92)) | ///
+                           strpos(scalar(`T'), "..") | ///
+                           strpos(scalar(`T'), char(34))
             if !`unsafe' {
-                if substr(`"`macval(lv)'"', -7, .) == ".scheme" {
+                if substr(scalar(`L'), -7, .) == ".scheme" {
                     capture confirm file `"`macval(tv)'"'
                 }
                 else {
@@ -1977,7 +2162,7 @@ program define _dash_validate_value, rclass
         // can stay the formatter (strofreal() returns "" for a bad format
         // without a word, so it is NOT a validator).
         local ok = 0
-        if regexm(`"`macval(value)'"', "^%[A-Za-z0-9_.,:!/+-]+$") & strlen(`"`macval(value)'"') <= 60 {
+        if regexm(scalar(`V'), "^%[A-Za-z0-9_.,:!/+-]+$") & strlen(scalar(`V')) <= 60 {
             capture confirm numeric format `macval(value)'
             if !_rc local ok = 1
         }
@@ -2018,9 +2203,12 @@ program define _dash_validate_opts, sclass
     args ptype
     _dash_option_rules
 
+    // The snapshot, the values and the restore are read and written by
+    // value: s() holds the user's text, and a copy through compound quotes
+    // expanded a macro in it again (test_json_escaping.cscript JSE-69).
     local _keys : s(macros)
     foreach _k of local _keys {
-        local _snap_`_k' `"`s(`_k')'"'
+        mata: st_local("_snap_" + st_local("_k"), st_global("s(" + st_local("_k") + ")"))
     }
 
     // ---- The statistical flags (WP-18) ----
@@ -2079,7 +2267,8 @@ program define _dash_validate_opts, sclass
             exit 198
         }
     }
-    if `"`s(discrete)'"' != "" & `"`s(bin)'"' != "" {
+    mata: st_local("_dbin", strofreal(st_global("s(discrete)") != "" & st_global("s(bin)") != ""))
+    if `_dbin' {
         display as error "options discrete and bins() may not be combined"
         exit 198
     }
@@ -2109,15 +2298,21 @@ program define _dash_validate_opts, sclass
         local o    = substr("`body'", 1, `eq' - 1)
         local spec = substr("`body'", `eq' + 1, .)
         if !`at' & `: list o in typed' continue
-        local v `"`s(`o')'"'
-        if `"`macval(v)'"' == "" continue
+        mata: st_local("v", st_global("s(" + st_local("o") + ")"))
+        // The tests read the values by value: in the quotes they were
+        // compared in, a title holding "' beside an option with a rule --
+        // title("'90s cars") msize(small) -- ended them
+        // (test_json_escaping.cscript JSE-42).  The restore is a copy: a
+        // one-line if expands its command again, macval() or not.
+        if !`: length local v' continue
         _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'"
         foreach _k of local _keys {
-            if `"`s(`_k')'"' == "" & `"`macval(_snap_`_k')'"' != "" {
-                sreturn local `_k' `"`macval(_snap_`_k')'"'
-            }
+            if !`: length local _snap_`_k'' continue
+            mata: st_local("_lost", strofreal(st_global("s(" + st_local("_k") + ")") == ""))
+            if `_lost' sreturn local `_k' : copy local _snap_`_k'
         }
-        if `"`macval(_dash_vnorm)'"' != `"`macval(v)'"' {
+        mata: st_local("_chg", strofreal(st_local("_dash_vnorm") != st_local("v")))
+        if `_chg' {
             sreturn local `o' `"`macval(_dash_vnorm)'"'
         }
     }
@@ -2129,15 +2324,16 @@ program define _dash_validate_opts, sclass
         local eq   = strpos("`tok'", "=")
         local o    = substr("`tok'", 1, `eq' - 1)
         local spec = substr("`tok'", `eq' + 1, .)
-        local v `"`s(g_`o')'"'
-        if `"`macval(v)'"' == "" continue
+        mata: st_local("v", st_global("s(g_" + st_local("o") + ")"))
+        if !`: length local v' continue
         _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' ""
         foreach _k of local _keys {
-            if `"`s(`_k')'"' == "" & `"`macval(_snap_`_k')'"' != "" {
-                sreturn local `_k' `"`macval(_snap_`_k')'"'
-            }
+            if !`: length local _snap_`_k'' continue
+            mata: st_local("_lost", strofreal(st_global("s(" + st_local("_k") + ")") == ""))
+            if `_lost' sreturn local `_k' : copy local _snap_`_k'
         }
-        if `"`macval(_dash_vnorm)'"' != `"`macval(v)'"' {
+        mata: st_local("_chg", strofreal(st_local("_dash_vnorm") != st_local("v")))
+        if `_chg' {
             sreturn local g_`o' `"`macval(_dash_vnorm)'"'
         }
     }
@@ -2145,8 +2341,10 @@ program define _dash_validate_opts, sclass
     // legend(top), (bottom), (left) and (right) inside this segment:
     // refused as twoway refuses them, even where an after-comma legend()
     // outranks this one (WP-23).  _dash_plot checks the value it writes.
-    local _leg `"`s(g_legend)'"'
-    if `"`macval(_leg)'"' != "" _dash_check_legend `"`macval(_leg)'"'
+    mata: st_local("_leg", st_global("s(g_legend)"))
+    if `: length local _leg' {
+        _dash_check_legend `"`macval(_leg)'"'
+    }
 end
 // END option-validation table (WP-15)
 
@@ -2444,9 +2642,13 @@ program define _dash_plot_opts_to_json, rclass
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    weight wexp {
-        local val `"`s(`key')'"'
-        if `"`val'"' != "" {
-            _dash_json_str `"`val'"' _jv
+        // Read by value and measured, never copied or compared in quotes: a
+        // copy through them expanded a macro in the value again --
+        // mcolor("\$G") was stored as $G's value (measured 24sep2026;
+        // test_json_escaping.cscript JSE-69).
+        mata: st_local("val", st_global("s(" + st_local("key") + ")"))
+        if `: length local val' {
+            _dash_json_str `"`macval(val)'"' _jv
             if `nparts' > 0 local parts `"`parts',"'
             local parts `"`parts'"`key'":"`_jv'""'
             local nparts = `nparts' + 1
@@ -2554,7 +2756,21 @@ end
 // ================================================================
 program define _dash_process_segment, rclass
     version 16.0
-    args seg_text plottype_out json_out nsegs
+    // The segment is read by value (_dash_text_args in dash_parse.mata): its
+    // text, less the quotes around it, then the two output names and the
+    // optional count.  -args- read it inside the compound quotes it was
+    // handed in, so a segment holding "' -- title("'90s cars"), if make ==
+    // "' or 1 or '" -- was cut at the quote and its next words became the
+    // output names: r(100) ") required" and r(198) (measured 24sep2026;
+    // test_json_escaping.cscript JSE-42, JSE-44).  The segment's text is
+    // then never put inside quotes in an expression or a Mata line, where
+    // title(`"'90s cars"') stopped with r(133) (JSE-42): it is measured with
+    // `: length local' and cut in Mata.
+    mata: _dash_text_args(0, 2, 1)
+    local seg_text : copy local _dash_txt
+    local plottype_out `_dash_a1'
+    local json_out     `_dash_a2'
+    local nsegs        `_dash_a3'
     if "`nsegs'" == "" local nsegs 1
 
     // ---- extract plot type (first word) ----
@@ -2614,24 +2830,24 @@ program define _dash_process_segment, rclass
 
     // ---- find comma separating varpart from options ----
     local comma_pos = 0
-    mata: _dash_comma_pos(`"`rest'"', "comma_pos")
+    mata: _dash_comma_pos(st_local("rest"), "comma_pos")
 
     if `comma_pos' > 0 {
-        local varpart  = strtrim(substr(`"`rest'"', 1, `comma_pos' - 1))
-        local opts_raw = strtrim(substr(`"`rest'"', `comma_pos' + 1, .))
+        mata: st_local("varpart", strtrim(substr(st_local("rest"), 1, `comma_pos' - 1)))
+        mata: st_local("opts_raw", strtrim(substr(st_local("rest"), `comma_pos' + 1, .)))
     }
     else {
-        local varpart  = strtrim(`"`rest'"')
+        mata: st_local("varpart", strtrim(st_local("rest")))
         local opts_raw ""
     }
 
     // ---- pre-expand option abbreviations ----
     local opts_exp ""
-    if `"`opts_raw'"' != "" {
+    if `: length local opts_raw' {
         // Option keys used to be rewritten here by Mata before -syntax- saw
         // them.  That pre-pass is gone: dash.ado now declares Stata's own
         // measured minimum abbreviations, so Stata resolves prefixes itself.
-        local opts_exp `"`opts_raw'"'  
+        local opts_exp : copy local opts_raw
     }
 
     // ---- parse varlist + if/in using type-appropriate syntax program ----
@@ -2682,13 +2898,13 @@ program define _dash_process_segment, rclass
     local in_cl ""
 
     if `: list ptype in _pt_univar' {
-        _dash_parse_varpart_1v `varpart'
+        _dash_parse_varpart_1v `macval(varpart)'
         local yvar    = word("`s(varlist)'", 1)
-        local if_cl   `"`s(if_clause)'"'
-        local in_cl   `"`s(in_clause)'"'
+        mata: st_local("if_cl", st_global("s(if_clause)"))
+        mata: st_local("in_cl", st_global("s(in_clause)"))
     }
     else if `: list ptype in _pt_range' {
-        _dash_parse_varpart_3v `varpart'
+        _dash_parse_varpart_3v `macval(varpart)'
         local vl = "`s(varlist)'"
         local yvar1 = word("`vl'", 1)
         local yvar2 = word("`vl'", 2)
@@ -2716,25 +2932,27 @@ program define _dash_process_segment, rclass
             }
             local xvar `"`_dta[_TStvar]'"'
         }
-        local if_cl `"`s(if_clause)'"'
-        local in_cl `"`s(in_clause)'"'
+        mata: st_local("if_cl", st_global("s(if_clause)"))
+        mata: st_local("in_cl", st_global("s(in_clause)"))
     }
     else if `: list ptype in _pt_pc' {
-        _dash_parse_varpart_4v `varpart'
+        _dash_parse_varpart_4v `macval(varpart)'
         local vl = "`s(varlist)'"
         local y1var = word("`vl'", 1)
         local x1var = word("`vl'", 2)
         local y2var = word("`vl'", 3)
         local x2var = word("`vl'", 4)
-        local if_cl `"`s(if_clause)'"'
-        local in_cl `"`s(in_clause)'"'
+        mata: st_local("if_cl", st_global("s(if_clause)"))
+        mata: st_local("in_cl", st_global("s(in_clause)"))
     }
     else if `: list ptype in _pt_literal' {
-        _dash_parse_varpart_any `varpart'
+        _dash_parse_varpart_any `macval(varpart)'
         if "`ptype'" == "function" {
-            // Remove optional "y=" prefix
-            local vals = regexr(strtrim(`"`s(vals)'"'), "^[a-zA-Z][a-zA-Z0-9_]*[ ]*=[ ]*", "")
-            local expr `"`vals'"'
+            // Remove optional "y=" prefix, in Mata: an expression holding "'
+            // -- strlen("'x") -- ended the compound quotes it was cut in
+            // (test_json_escaping.cscript JSE-47).
+            mata: st_local("vals", regexr(strtrim(st_global("s(vals)")), "^[a-zA-Z][a-zA-Z0-9_]*[ ]*=[ ]*", ""))
+            local expr : copy local vals
             // No expression is refused in twoway's words: "expression
             // required", r(100), and after a `y =', "nothing found where
             // expression expected", r(111) -- with the comma glued, spaced
@@ -2742,8 +2960,9 @@ program define _dash_process_segment, rclass
             // in or a weight (measured 24sep2026; P1A-71).  dash said
             // "something required", r(100), for the first, and registered
             // `function y =' with rc 0, drawn as an empty layer.
-            if `"`expr'"' == "" {
-                if `"`s(vals)'"' == "" {
+            if !`: length local expr' {
+                mata: st_local("_fn_none", strofreal(st_global("s(vals)") == ""))
+                if `_fn_none' {
                     display as error "expression required"
                     exit 100
                 }
@@ -2752,10 +2971,10 @@ program define _dash_process_segment, rclass
             }
         }
         else {
-            local vals `"`s(vals)'"'
+            mata: st_local("vals", st_global("s(vals)"))
         }
-        local if_cl `"`s(if_clause)'"'
-        local in_cl `"`s(in_clause)'"'
+        mata: st_local("if_cl", st_global("s(if_clause)"))
+        mata: st_local("in_cl", st_global("s(in_clause)"))
         if `: list ptype in _pt_imm' {
             // twoway's immediate values, one record each:
             //     scatteri  #y #x            [(#clockpos)] ["text for label"]
@@ -2843,7 +3062,7 @@ program define _dash_process_segment, rclass
         // smoothers and tsline likewise -- and the bare `dash scatter' was
         // refused as "no variables identified in plot specification",
         // r(198) (measured 24sep2026; test_parser.cscript P1A-69).
-        _dash_parse_varpart_std `varpart'
+        _dash_parse_varpart_std `macval(varpart)'
         local vl = "`s(varlist)'"
         local nv : word count `vl'
         local yvar = word("`vl'", 1)
@@ -2908,29 +3127,25 @@ program define _dash_process_segment, rclass
             display as error "dash: `ptype' requires a y and an x variable (got: `vl')"
             exit(102)
         }
-        local if_cl `"`s(if_clause)'"'
-        local in_cl `"`s(in_clause)'"'
+        mata: st_local("if_cl", st_global("s(if_clause)"))
+        mata: st_local("in_cl", st_global("s(in_clause)"))
     }
 
     // Strip the "if"/"in" keyword prefix that syntax leaves in the macros.
     // Stata may store `if' as either " if <expr>" (with leading space) or
     // "if <expr>" (without leading space) depending on the context.
-    // Using regexr() to strip the prefix robustly handles both cases.
-    local if_expr ""
-    local in_expr ""
-    if `"`if_cl'"' != "" {
-        local if_expr = strtrim(regexr(`"`if_cl'"', "^[ ]*if[ ]+", ""))
-    }
-    if `"`in_cl'"' != "" {
-        local in_expr = strtrim(regexr(`"`in_cl'"', "^[ ]*in[ ]+", ""))
-    }
+    // Using regexr() to strip the prefix robustly handles both cases.  In
+    // Mata, by value: in compound quotes,  if make == "' or 1 or '"  ended
+    // them (measured 24sep2026; test_json_escaping.cscript JSE-44).
+    mata: st_local("if_expr", strtrim(regexr(st_local("if_cl"), "^[ ]*if[ ]+", "")))
+    mata: st_local("in_expr", strtrim(regexr(st_local("in_cl"), "^[ ]*in[ ]+", "")))
 
     // ---- parse options (clear stale sreturn values first) ----
     // The varpart parsers sreturn the weight TYPE in s(_weight) and the
     // weight EXPRESSION, without its leading `=', in s(_wexp).  Both are
     // saved before the clear below destroys them.
-    local _seg_weight `"`s(_weight)'"'
-    local _seg_wexp   `"`s(_wexp)'"'
+    mata: st_local("_seg_weight", st_global("s(_weight)"))
+    mata: st_local("_seg_wexp", st_global("s(_wexp)"))
 
     // ---- weights (WP-18) ----
     // Which type honours which weight is twoway's own acceptance table,
@@ -2986,7 +3201,9 @@ program define _dash_process_segment, rclass
         // Unicode included, and nothing else.
         local _wx ""
         capture confirm name `macval(_seg_wexp)'
-        if !_rc capture unab _wx : `macval(_seg_wexp)'
+        if !_rc {
+            capture unab _wx : `macval(_seg_wexp)'
+        }
         if _rc | `: word count `_wx'' != 1 {
             // The expression is echoed through _dash_say: read by value,
             // shown as written (a brace or a quote in it is the user's text).
@@ -3010,8 +3227,12 @@ program define _dash_process_segment, rclass
         // whose y is missing still refuses, one outside the if does not --
         // and a missing weight drops its observation without an error.
         local _wq ""
-        if `"`macval(if_expr)'"' != "" local _wq `"if (`macval(if_expr)')"'
-        if `"`macval(in_expr)'"' != "" local _wq `"`macval(_wq)' in `macval(in_expr)'"'
+        if `: length local if_expr' {
+            local _wq `"if (`macval(if_expr)')"'
+        }
+        if `: length local in_expr' {
+            local _wq `"`macval(_wq)' in `macval(in_expr)'"'
+        }
         local _w_neg ""
         if "`_seg_weight'" == "fweight" local _w_neg "lpoly lpolyci histogram kdensity"
         if "`_seg_weight'" == "aweight" local _w_neg "lpoly lpolyci kdensity"
@@ -3038,8 +3259,8 @@ program define _dash_process_segment, rclass
     // A weight-only segment goes through the parser and the validation
     // too, so the weight keys are in s() for the JSON writer and the flag
     // rules run on every segment; the parser takes an empty option list.
-    if `"`opts_exp'"' != "" | `"`_seg_weight'"' != "" {
-        _dash_parse_plot_opts , `opts_exp'
+    if `: length local opts_exp' | `"`_seg_weight'"' != "" {
+        _dash_parse_plot_opts , `macval(opts_exp)'
         // A second name() in this option list: -syntax- binds the first to
         // NAMe() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.
@@ -3061,8 +3282,12 @@ program define _dash_process_segment, rclass
         // every bar (the WP-18 review, 23sep2026).
         if "`ptype'" == "histogram" & `"`s(start)'"' != "" {
             local _hq ""
-            if `"`macval(if_expr)'"' != "" local _hq `"if (`macval(if_expr)')"'
-            if `"`macval(in_expr)'"' != "" local _hq `"`macval(_hq)' in `macval(in_expr)'"'
+            if `: length local if_expr' {
+                local _hq `"if (`macval(if_expr)')"'
+            }
+            if `: length local in_expr' {
+                local _hq `"`macval(_hq)' in `macval(in_expr)'"'
+            }
             quietly summarize `yvar' `macval(_hq)', meanonly
             if r(N) > 0 {
                 if r(min) < `s(start)' & reldif(r(min), `s(start)') > 1e-5 {
@@ -3082,7 +3307,8 @@ program define _dash_process_segment, rclass
     // (`_wt_honoured') it is written to the spec and nothing is named.
     local _seg_wtok ""
     if `"`_seg_weight'"' != "" & !`: list ptype in _wt_honoured' local _seg_wtok `" [`_seg_weight']"'
-    c_local _seg_ignored_out `"`s(_pending)' `s(_unknown)'`_seg_wtok'"'
+    mata: st_local("_seg_ign", st_global("s(_pending)") + " " + st_global("s(_unknown)") + st_local("_seg_wtok"))
+    c_local _seg_ignored_out : copy local _seg_ign
     // Whether this segment gave name(): _dash_plot counts them across the
     // command and refuses a second (_dash_refuse_second_name).
     mata: st_local("_seg_named", strofreal(st_global("s(g_name)") != ""))
@@ -3097,9 +3323,9 @@ program define _dash_process_segment, rclass
             scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 nodraw play {
-        local gval `"`s(g_`gkey')'"'
-        if `"`gval'"' != "" {
-            c_local g_`gkey' `"`gval'"'
+        mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
+        if `: length local gval' {
+            c_local g_`gkey' : copy local gval
         }
     }
 
@@ -3125,7 +3351,7 @@ program define _dash_process_segment, rclass
         local vfields `""y1var":"`_jy1'","x1var":"`_jx1'","y2var":"`_jy2'","x2var":"`_jx2'""'
     }
     else if "`ptype'" == "function" {
-        _dash_json_str `"`expr'"' _jex
+        _dash_json_str `"`macval(expr)'"' _jex
         local vfields `""expr":"`_jex'""'
     }
     else if `: list ptype in _pt_imm' {
@@ -3154,8 +3380,8 @@ program define _dash_process_segment, rclass
     // stored "if_expr":"" -- the qualifier gone, every row drawn, no word
     // (measured 23sep2026 at ad13a0f) -- and  make != "<b>"  stopped with
     // "_< invalid name".
-    _dash_json_str `"`if_expr'"' _jif
-    _dash_json_str `"`in_expr'"' _jin
+    _dash_json_str `"`macval(if_expr)'"' _jif
+    _dash_json_str `"`macval(in_expr)'"' _jin
 
     // Assemble.  A standard varlist with several y-variables produces ONE plot
     // object per y-variable; they are comma-joined here and the caller splices
@@ -3346,7 +3572,11 @@ end
 // ================================================================
 program define _dash_report_ignored
     version 16.0
-    args raw
+    // Read by value (_dash_text_args): the unmatched options are the user's
+    // text, and -args- cut foo("'x") bar(1) at its "', so bar() went
+    // unnamed (test_json_escaping.cscript JSE-46).
+    mata: _dash_text_args(0, 0, 0)
+    local raw : copy local _dash_txt
 
     // `raw' mixes bare option names (pending, from the declared set) with the
     // verbatim text Stata could not match (unknown, from the trailing *).  Cut
@@ -3360,29 +3590,28 @@ program define _dash_report_ignored
     //     dash: ignoring unsupported option(s): addplot() y2() x)()
     // naming two options that do not exist.
     mata: _dash_option_names("raw", "_dash_optnames")
-    local raw `"`_dash_optnames'"'
+    local raw : copy local _dash_optnames
 
-    local seen ""
+    // Each name is cut, compared and joined in Mata, by value: a name is the
+    // user's text -- a bare string dash could not match, "\$G", is one --
+    // and in the quotes it was tested and copied in, a macro in it was
+    // expanded again (test_json_escaping.cscript JSE-69).
+    local seen " "
     local out  ""
     foreach tok of local raw {
-        local ppos = strpos("`tok'", "(")
-        if `ppos' > 0 local tok = substr("`tok'", 1, `ppos' - 1)
-        local tok = strtrim("`tok'")
-        if "`tok'" == "" continue
-
-        local dup = 0
-        foreach prev of local seen {
-            if "`prev'" == "`tok'" local dup = 1
-        }
+        mata: st_local("tok", strtrim(st_local("tok")))
+        mata: st_local("tok", strtrim(substr(st_local("tok"), 1, ///
+            (strpos(st_local("tok"), "(") ? strpos(st_local("tok"), "(") - 1 : .))))
+        if !`: length local tok' continue
+        mata: st_local("dup", strofreal(strpos(st_local("seen"), " " + st_local("tok") + " ") > 0))
         if `dup' continue
-
-        local seen `"`seen' `tok'"'
+        mata: st_local("seen", st_local("seen") + st_local("tok") + " ")
         // A weight is not an option and takes no argument: [aweight], not
         // aweight().
-        if substr("`tok'", 1, 1) == "[" local out `"`out' `tok'"'
-        else                            local out `"`out' `tok'()"'
+        mata: st_local("out", st_local("out") + " " + st_local("tok") + ///
+            (substr(st_local("tok"), 1, 1) == "[" ? "" : "()"))
     }
-    if `"`out'"' == "" exit
+    if !`: length local out' exit
 
     // The names are the user's text: shown as written, never as SMCL.
     mata: _dash_say("txt", "dash: ignoring unsupported option(s):", st_local("out"), "")
@@ -3395,14 +3624,30 @@ program define _dash_plot
     version 16.0
 
     // ---- UTF-8 safety check ----
-    mata: _dash_check_utf8(strtrim(`"`0'"'))
+    // The command is read by value, here and at every command's gate: put
+    // inside compound quotes in the Mata line, a text holding "' --
+    // title(`"'90s cars"') -- ended them early, and the command stopped
+    // with a Mata syntax error before anything was stored (measured
+    // 24sep2026: r(3000) "'90s' found where almost anything else expected").
+    mata: _dash_check_utf8(strtrim(st_local("0")))
 
     // ---- Split on || / () into segments + graph opts ----
-    mata: _dash_split_segs(strtrim(`"`0'"'))
+    mata: _dash_split_segs(strtrim(st_local("0")))
     // Now locals _n_segs, _seg_1 .. _seg_N, _graph_opts_raw are set.
 
+    // From here to the registry every piece of the command is the user's
+    // text, and it is handed on by value.  Tested as  if `"`x'"' != "",  a
+    // text holding "' -- title("'90s cars"), if make == "' or 1 or '" --
+    // ended the quotes early, and the command stopped with r(109) or r(198),
+    // or ran on with the test wrong (measured 24sep2026;
+    // test_json_escaping.cscript JSE-42..49).  Copied as  local y `"`x'"'
+    // or handed to a program on a command line, a macro in it was expanded
+    // a second time (JSE-65..69).  So emptiness is `: length local', a copy
+    // is `: copy local' or read in Mata, and a text handed to a program goes
+    // through macval(), never on a one-line if, whose command Stata expands
+    // again.
     local n_segs   = `_n_segs'
-    local gopts_raw `"`_graph_opts_raw'"'
+    local gopts_raw : copy local _graph_opts_raw
 
     // ---- The qualifier written between or after the plot groups ----
     // `dash (scatter y x) (line y x) if foreign==1': twoway applies it to
@@ -3415,8 +3660,8 @@ program define _dash_plot
     // in the || form a qualifier is the plot's own, as in twoway.
     local _gq_if ""
     local _gq_in ""
-    if `"`_graph_qual_raw'"' != "" {
-        _dash_graph_qualifier `_graph_qual_raw'
+    if `: length local _graph_qual_raw' {
+        _dash_graph_qualifier `macval(_graph_qual_raw)'
     }
 
     // ---- Initialise graph-level option accumulators ----
@@ -3431,11 +3676,9 @@ program define _dash_plot
     }
 
     // ---- Parse graph-level opts from paren-mode suffix (if any) ----
-    if `"`gopts_raw'"' != "" {
-        // Pre-expand abbreviations
-        local gopts_exp ""
-        local gopts_exp `"`gopts_raw'"'  
-        _dash_parse_graph_opts , `gopts_exp'
+    if `: length local gopts_raw' {
+        local gopts_exp : copy local gopts_raw
+        _dash_parse_graph_opts , `macval(gopts_exp)'
         // A second name() in the options after the comma, and whether they
         // gave one at all: a group's name() is then a second one too.
         mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
@@ -3448,8 +3691,9 @@ program define _dash_plot
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 nodraw play {
-            if `"`s(`gk')'"' != "" {
-                local g_`gk' `"`s(`gk')'"'
+            mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
+            if `: length local _gv' {
+                local g_`gk' : copy local _gv
                 // Remembered so the segment loop below cannot overwrite it.
                 // An option written after the top-level comma applies to the
                 // GRAPH, and twoway lets it beat one written inside a plot:
@@ -3457,7 +3701,7 @@ program define _dash_plot
                 // stores "AFTER" -- measured from the saved .gph.  dash
                 // stored "INSIDE", because these accumulators are filled here
                 // first and _dash_process_segment then c_locals over them.
-                local _gafter_`gk' `"`s(`gk')'"'
+                local _gafter_`gk' : copy local _gv
             }
         }
         // The graph-level options dash cannot honour, captured HERE.
@@ -3469,10 +3713,10 @@ program define _dash_plot
         // an unsupported graph-level option was dropped in complete
         // silence, which is the one thing the reporter exists to prevent,
         // while the identical option in comma mode was named correctly.
-        local _dash_gopt_ignored `"`s(_pending)' `s(_unknown)'"'
+        mata: st_local("_dash_gopt_ignored", st_global("s(_pending)") + " " + st_global("s(_unknown)"))
     }
 
-    local _dash_ignored_acc `"`_dash_gopt_ignored'"'
+    local _dash_ignored_acc : copy local _dash_gopt_ignored
     if "`_g_names_n'" == "" local _g_names_n 0
 
     // ---- Parse each plot segment ----
@@ -3488,12 +3732,12 @@ program define _dash_plot
     local _dash_nplots    = 0
     local plots_json ""
     forvalues k = 1/`n_segs' {
-        local seg `"`_seg_`k''"'
+        local seg : copy local _seg_`k'
 
         local _seg_ignored_out ""
         local _seg_nplots_out  1
         local _seg_named_out   0
-        _dash_process_segment `"`seg'"' _pt_k _json_k `n_segs'
+        _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
 
         // A graph takes one name(): a second, in another group or ||
         // segment than the first, or beside the one after the comma, is
@@ -3511,8 +3755,8 @@ program define _dash_plot
             else _dash_plot_cap_refuse `_dash_plot_lim' `_dash_plot_ceil'
         }
 
-        if `"`_seg_ignored_out'"' != "" {
-            local _dash_ignored_acc `"`_dash_ignored_acc' `_seg_ignored_out'"'
+        if `: length local _seg_ignored_out' {
+            mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " " + st_local("_seg_ignored_out"))
         }
 
         // _dash_process_segment pushes any found graph-level opts
@@ -3535,7 +3779,7 @@ program define _dash_plot
               scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 nodraw play {
-        if `"`_gafter_`gk''"' != "" local g_`gk' `"`_gafter_`gk''"'
+        if `: length local _gafter_`gk'' local g_`gk' : copy local _gafter_`gk'
     }
 
     // ---- Validate the graph-level values (WP-15) ----
@@ -3548,15 +3792,18 @@ program define _dash_plot
         local _veq   = strpos("`_vrule'", "=")
         local _vopt  = substr("`_vrule'", 1, `_veq' - 1)
         local _vspec = substr("`_vrule'", `_veq' + 1, .)
-        local _vval `"`g_`_vopt''"'
-        if `"`macval(_vval)'"' == "" continue
+        local _vval : copy local g_`_vopt'
+        if !`: length local _vval' continue
         _dash_validate_value "dash" "`_vopt'" "`_vspec'" `"`macval(_vval)'"' ""
-        local g_`_vopt' `"`macval(_dash_vnorm)'"'
+        local g_`_vopt' : copy local _dash_vnorm
     }
     // legend()'s direction words, refused as twoway refuses them -- here for
     // the legend() written after the graph's comma, which no segment's
-    // validation sees (WP-23).
-    if `"`macval(g_legend)'"' != "" _dash_check_legend `"`macval(g_legend)'"'
+    // validation sees (WP-23).  A block, not a one-line if: Stata expands a
+    // one-line if's command again, macval() or not (JSE-69).
+    if `: length local g_legend' {
+        _dash_check_legend `"`macval(g_legend)'"'
+    }
 
     // ---- Report unsupported options, once, naming every one ----
     // dash accepts every twoway option so a pasted command never aborts; an
@@ -3567,11 +3814,11 @@ program define _dash_plot
     // saving(x.html) registered g3, wrote nothing and said nothing.  Named
     // here rather than on a pending list, because the immediate route
     // honours it and the note must not say otherwise there.
-    if `"`g_name'"' != "" & `"`g_saving'"' != "" {
-        local _dash_ignored_acc `"`_dash_ignored_acc' saving"'
+    if `: length local g_name' & `: length local g_saving' {
+        mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " saving")
     }
-    if `"`_dash_ignored_acc'"' != "" {
-        _dash_report_ignored `"`_dash_ignored_acc'"'
+    if `: length local _dash_ignored_acc' {
+        _dash_report_ignored `"`macval(_dash_ignored_acc)'"'
     }
 
     // ---- The graph's name, as it will be registered ----
@@ -3582,9 +3829,20 @@ program define _dash_plot
     // "g1, replace" it matched nothing layout(), tabs(), link() or exclude()
     // named (P20-33).  _dash_register_graph is still handed name()'s own
     // text, below, and decides replace from that text alone.
-    local _g_name_text `"`g_name'"'
-    if `"`g_name'"' != "" {
-        _dash_name_split `"`g_name'"' g_name _g_name_replace
+    //
+    // name[, replace] is letters, digits, _, blanks and a comma, and a text
+    // holding anything else is no name: it is left whole, for
+    // _dash_register_graph to refuse, and never put on _dash_name_split's
+    // command line, where a macro in it is expanded again and an =exp
+    // evaluated -- name(\`=filewrite(...)') wrote its file (measured
+    // 24sep2026; test_json_escaping.cscript JSE-68).  The KPI registrar
+    // reads name() the same way.
+    local _g_name_text : copy local g_name
+    if `: length local g_name' {
+        mata: st_local("_g_name_ok", strofreal(!ustrregexm(st_local("g_name"), "[^A-Za-z0-9_, \t]")))
+        if `_g_name_ok' {
+            _dash_name_split `"`g_name'"' g_name _g_name_replace
+        }
     }
 
     // ---- Assemble graph_options JSON ----
@@ -3598,9 +3856,9 @@ program define _dash_plot
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 nodraw play {
-        local gv `"`g_`gk''"'
-        if `"`gv'"' != "" {
-            _dash_json_str `"`gv'"' _gjv
+        local gv : copy local g_`gk'
+        if `: length local gv' {
+            _dash_json_str `"`macval(gv)'"' _gjv
             if !`gfirst' local gopts_json `"`gopts_json',"'
             local gopts_json `"`gopts_json'"`gk'":"`_gjv'""'
             local gfirst = 0
@@ -3624,9 +3882,9 @@ program define _dash_plot
     // own on top of it, as twoway does -- `(scatter y x if mpg>25)
     // (line y x) if foreign==1' draws 7 foreign cars and 22 (measured).
     // The layers keep their own; nothing is promoted over it.
-    if `"`_gq_if'`_gq_in'"' != "" {
-        local if_expr `"`_gq_if'"'
-        local in_expr `"`_gq_in'"'
+    if `: length local _gq_if' | `: length local _gq_in' {
+        local if_expr : copy local _gq_if
+        local in_expr : copy local _gq_in
     }
     // Otherwise promote only when there is ONE segment, in which case the
     // qualifier was written on the command as a whole.  With several
@@ -3639,8 +3897,8 @@ program define _dash_plot
         mata: _dash_json_get_str(`"`plots_json'"', "if_expr", "if_expr")
         mata: _dash_json_get_str(`"`plots_json'"', "in_expr", "in_expr")
     }
-    _dash_json_str `"`if_expr'"' _jif_top
-    _dash_json_str `"`in_expr'"' _jin_top
+    _dash_json_str `"`macval(if_expr)'"' _jif_top
+    _dash_json_str `"`macval(in_expr)'"' _jin_top
 
     local graph_json `"{"plots":[`plots_json'],"graph_options":`gopts_json',"if_expr":"`_jif_top'","in_expr":"`_jin_top'"}"'
 
@@ -3649,13 +3907,28 @@ program define _dash_plot
     // it by the same rule and needs the sub-option to decide whether an
     // existing name may be overwritten.  The whole command, handed over as
     // well, is stored for the record and never read for a replace.
-    local graph_name `"`_g_name_text'"'
+    //
+    // The three go to _dash_register_graph in string scalars, read there by
+    // value.  They were three compound-quoted arguments read with -args-,
+    // so a command holding "' ended the second early and the next of its
+    // words became the third: after the plot groups  if make != "'x"
+    // registered, rc 0, with the graph stored as the one word x and the
+    // command cut at the quote (measured 24sep2026;
+    // test_json_escaping.cscript JSE-45, JSE-47).  The immediate route
+    // reads the graph JSON alone, which holds no apostrophe, backtick or
+    // dollar sign; the command was handed to it as well, read by nothing,
+    // and on its command line an =exp in it was evaluated (JSE-67).
+    local graph_name : copy local _g_name_text
 
-    if `"`graph_name'"' != "" {
-        _dash_register_graph `"`graph_name'"' `"`0'"' `"`graph_json'"'
+    if `: length local graph_name' {
+        tempname _rg_name _rg_json _rg_spec
+        mata: st_strscalar(st_local("_rg_name"), st_local("graph_name"))
+        mata: st_strscalar(st_local("_rg_json"), st_local("graph_json"))
+        mata: st_strscalar(st_local("_rg_spec"), st_local("0"))
+        _dash_register_graph `_rg_name' `_rg_json' `_rg_spec'
     }
     else {
-        _dash_render_immediate `"`graph_json'"' `"`0'"'
+        _dash_render_immediate `"`graph_json'"'
     }
 end
 
@@ -3910,9 +4183,19 @@ program define _dash_refuse_second_name
 end
 
 
+// _dash_register_graph <name text> <graph JSON> <command>, each argument the
+// name of a string scalar holding it.  All three are read by value: they
+// were three compound-quoted arguments read with -args-, and a command
+// holding "' ended the second early, its next word becoming the third --
+// if make != "'x" after the plot groups registered with rc 0, the graph
+// stored as the one word x and the command cut at the quote (measured
+// 24sep2026; test_json_escaping.cscript JSE-45, JSE-47).
 program define _dash_register_graph
     version 16.0
-    args name raw_spec json_spec
+    args name_sc json_sc spec_sc
+    mata: st_local("name", st_strscalar(st_local("name_sc")))
+    mata: st_local("json_spec", st_strscalar(st_local("json_sc")))
+    mata: st_local("raw_spec", st_strscalar(st_local("spec_sc")))
 
     // Split off a ", replace" sub-option BEFORE validating the name.  Stata's
     // name(string) captures the whole of "g1, replace", which then failed the
@@ -3922,8 +4205,18 @@ program define _dash_register_graph
     // so the name registered here is the name the stored JSON carries, and
     // the flag is the only word on replace (see below).  raw_spec, the
     // whole command, is stored and never read for it.
-    _dash_name_split `"`name'"' _nm replace_flag
-    local name `"`_nm'"'
+    //
+    // Only a text that can be name[, replace] -- letters, digits, _, blanks
+    // and a comma -- is split; any other is refused below as the name it is
+    // not.  Split, it was expanded again on _dash_name_split's command line:
+    // name(\$m) registered under whatever $m held, and an =exp in it was
+    // evaluated (measured 24sep2026; test_json_escaping.cscript JSE-68).
+    mata: st_local("_nm_raw_ok", strofreal(!ustrregexm(st_local("name"), "[^A-Za-z0-9_, \t]")))
+    local replace_flag 0
+    if `_nm_raw_ok' {
+        _dash_name_split `"`name'"' _nm replace_flag
+        local name `"`_nm'"'
+    }
 
     // Validate name format.  No bounded repetition such as {0,31}: regexm()
     // follows the CALLER's user version, and below 18 it runs Stata's old
@@ -3932,8 +4225,15 @@ program define _dash_register_graph
     // checked on its own, and it is 22, not 32: the name becomes part of the
     // globals dash_json_<name> and dash_spec_<name>, and a global's name is
     // at most 32 characters.  A 23- to 32-character name used to pass here
-    // and then fail on the global with Stata's bare "invalid name".
-    if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]*$") | strlen("`name'") > 22 {
+    // and then fail on the global with Stata's bare "invalid name".  Until
+    // it passes, the name is read through a string scalar: in plain quotes a
+    // name holding a double quote ended them -- name(`"q"7"') stopped with
+    // r(303), "equation [a-zA-Z_] not found" (measured 24sep2026;
+    // test_json_escaping.cscript JSE-47, JSE-68).  After, it is letters,
+    // digits and underscores.
+    tempname NS
+    mata: st_strscalar(st_local("NS"), st_local("name"))
+    if !`_nm_raw_ok' | !regexm(scalar(`NS'), "^[a-zA-Z_][a-zA-Z0-9_]*$") | strlen(scalar(`NS')) > 22 {
         // Echoed as text: a refused name may hold anything, and shown raw
         // name(a{bf:X}) printed a bold X -- the user's text drawn as SMCL.
         mata: st_local("_name_safe", ustrregexra(usubstr( ///
@@ -4016,9 +4316,10 @@ program define _dash_register_graph
         _dash_drop_item "`name'"
     }
 
-    // Store spec and JSON
-    global dash_spec_`name' `"`raw_spec'"'
-    global dash_json_`name' `"`json_spec'"'
+    // Store spec and JSON, by value: through compound quotes the command
+    // was expanded again, and an =exp in it evaluated (JSE-67).
+    mata: st_global("dash_spec_" + st_local("name"), st_local("raw_spec"))
+    mata: st_global("dash_json_" + st_local("name"), st_local("json_spec"))
 
     // Update registry
     if `already' == 0 {
@@ -4039,7 +4340,9 @@ end
 // ================================================================
 program define _dash_render_immediate
     version 16.0
-    args json_spec raw_spec
+    // The graph JSON alone; the command, handed over as well, was read by
+    // nothing (see _dash_plot).
+    args json_spec
 
     // ---- Extract saving() path from JSON ----
     local saving_path ""
@@ -4059,15 +4362,20 @@ program define _dash_render_immediate
     // is the same reader dash uses for every other spec value.
     mata: _dash_json_get_str(st_local("json_spec"), "saving", "saving_path")
 
-    if `"`saving_path'"' != "" {
+    if `: length local saving_path' {
         // twoway accepts saving(name), saving(name.gph) and
         // saving(name, replace).  Normalise all three to a .html path BEFORE
         // validating: validation demands a .html suffix, and it used to run
         // before the suffix was appended, so every twoway-shaped saving()
-        // aborted with r(198).
-        local _sv = strtrim(`"`saving_path'"')
-        if regexm(`"`_sv'"', "^(.+)[ \t]*,[ \t]*replace[ \t]*$") {
-            local _sv = strtrim(regexs(1))
+        // aborted with r(198).  The path is the user's text, read through
+        // the string scalar P until the validator has judged it: a macro in
+        // it was expanded again here, so saving("\$D/x.html") wrote the page
+        // where $D pointed (measured 24sep2026; test_json_escaping.cscript
+        // JSE-68).
+        tempname P
+        mata: st_strscalar(st_local("P"), strtrim(st_local("saving_path")))
+        if regexm(scalar(`P'), "^(.+)[ \t]*,[ \t]*replace[ \t]*$") {
+            scalar `P' = strtrim(regexs(1))
             local replace = "replace"
         }
         // The .gph note is shown only once the path is validated, and
@@ -4075,13 +4383,13 @@ program define _dash_render_immediate
         // so a double quote in the name ended the string and what followed
         // ran as display directives, and a brace drew SMCL.
         local _gph = 0
-        if regexm(lower(`"`_sv'"'), "\.gph$") {
-            local _sv = substr(`"`_sv'"', 1, strlen(`"`_sv'"') - 4)
+        if regexm(lower(scalar(`P')), "\.gph$") {
+            scalar `P' = substr(scalar(`P'), 1, strlen(scalar(`P')) - 4)
             local _gph = 1
         }
-        if !regexm(lower(`"`_sv'"'), "\.html$") local _sv `"`_sv'.html"'
-        local saving_path `"`_sv'"'
-        _dash_validate_path `"`saving_path'"'
+        if !regexm(lower(scalar(`P')), "\.html$") scalar `P' = scalar(`P') + ".html"
+        mata: st_local("saving_path", st_strscalar(st_local("P")))
+        _dash_validate_path `"`macval(saving_path)'"'
         local saving_path `"`_dash_vpath'"'   // `~/' expanded, if it was there
         if `_gph' {
             mata: _dash_say("txt", "dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
@@ -4332,7 +4640,7 @@ program define _dash_kpi
     // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
     // filter labels had no gate at all, and a malformed sequence in any of
     // them went straight to Python.
-    mata: _dash_check_utf8(strtrim(`"`0'"'))
+    mata: _dash_check_utf8(strtrim(st_local("0")))
 
     syntax anything(name=statspec) [if] [in] , ///
         TItle(string)           ///
@@ -4344,13 +4652,19 @@ program define _dash_kpi
           UPDate(string)        ///
         ]
 
-    // The statistic may carry a point: p97.5 (below).
-    if !regexm(`"`statspec'"', "^([a-zA-Z0-9.]+)\(([a-zA-Z_][a-zA-Z0-9_]*)\)$") {
+    // The statistic may carry a point: p97.5 (below).  Read by value, in
+    // Mata, in one statement so regexs() reads this match: expanded in the
+    // expression, a statistic holding $name or `...' was read again for
+    // macros and taken for what it expanded to -- mean(\$v) for mean(price)
+    // (measured 24sep2026; test_json_escaping.cscript JSE-58).
+    mata: st_local("_kst_ok", strofreal(regexm(st_local("statspec"), ///
+        "^([a-zA-Z0-9.]+)\(([a-zA-Z_][a-zA-Z0-9_]*)\)$"))); ///
+        st_local("stat", st_local("_kst_ok") == "1" ? regexs(1) : ""); ///
+        st_local("kpi_var", st_local("_kst_ok") == "1" ? regexs(2) : "")
+    if !`_kst_ok' {
         display as error "dash kpi: syntax is stat(varname), e.g. mean(mpg)."
         exit(198)
     }
-    local stat    = regexs(1)
-    local kpi_var = regexs(2)
 
     local valid_stats "mean sum count dcount min max median sd var cv iqr skewness p25 p50 p75"
     // p# for any percentile Stata's _pctile computes -- p10, p97.5, p0.5 --
@@ -4411,14 +4725,31 @@ program define _dash_kpi
     // _dash_name_split now, so one rule reads it for a graph and a KPI card
     // alike, and its flag is the only word on replace
     // (test_registry_collision.cscript REG-35, REG-36).
-    _dash_name_split `"`name'"' _nm replace_flag
-    local name `"`_nm'"'
+    //
+    // name() is read by value.  name[, replace] is made of letters,
+    // digits, _, blanks and a comma, and a text holding anything else is
+    // refused below as the name it is not -- before _dash_name_split, which
+    // takes its text as an argument, reads it: expanded in the name check,
+    // name(`"q"7"') stopped here with r(303) "equation [a-zA-Z_] not
+    // found", and name(\$m) was read again for macros and registered under
+    // whatever $m held (measured 24sep2026; test_json_escaping.cscript
+    // JSE-58).  twoway refuses a name holding a quote, r(198) (measured).
+    mata: st_local("_nm_raw_ok", ///
+        strofreal(!ustrregexm(st_local("name"), "[^A-Za-z0-9_, \t]")))
+    local replace_flag 0
+    if `_nm_raw_ok' {
+        _dash_name_split `"`name'"' _nm replace_flag
+        local name `"`_nm'"'
+    }
 
     // The graph registrar's rule, without bounded repetition (see there).
     // A KPI's longest globals are its fields, dash_kpi_<name>__<field> with
     // a field of three letters (_dash_kpi_fields in dash_parse.mata): 14
     // characters around the name, so its limit is 18.
-    if !regexm("`name'", "^[a-zA-Z_][a-zA-Z0-9_]*$") | strlen("`name'") > 18 {
+    mata: st_local("_nm_ok", strofreal(st_local("_nm_raw_ok") == "1" & ///
+        regexm(st_local("name"), "^[a-zA-Z_][a-zA-Z0-9_]*$") & ///
+        strlen(st_local("name")) <= 18))
+    if !`_nm_ok' {
         // Echoed as text, as the graph registrar does (see there).
         mata: st_local("_name_safe", ustrregexra(usubstr( ///
             st_local("name"), 1, 40), "[^A-Za-z0-9_.\-]", "?"))
@@ -4447,14 +4778,31 @@ program define _dash_kpi
     // had already dropped the old KPI's globals while the registry still
     // listed k, and the next `dash build' died on the corrupt registry
     // with a JSON traceback (update(bogus) did the same).
-    if "`update'" == "" local update "filter"
-    if !inlist("`update'", "filter", "brush", "both") {
+    //
+    // update() is read by value: compared inside quotes, update(`"a"b"')
+    // stopped with r(132) "too few quotes" and update(`"filter" name(x)"')
+    // with r(109) "type mismatch", and update(\$m) was taken for whatever
+    // $m held (measured 24sep2026; test_json_escaping.cscript JSE-55,
+    // JSE-58).
+    local _ulen : length local update
+    if `_ulen' == 0 local update "filter"
+    mata: st_local("_upd_ok", ///
+        strofreal(anyof(("filter", "brush", "both"), st_local("update"))))
+    if !`_upd_ok' {
         display as error "dash kpi: update() must be filter, brush, or both."
         exit(198)
     }
     // fmt() is proven a single numeric display format here, before any
     // computation, so `: display' below can stay the formatter (WP-15).
-    if `"`fmt'"' != "" _dash_validate_value "dash kpi" "fmt" "format" `"`fmt'"' ""
+    // Measured by length and handed over through macval(), so a fmt(\$m)
+    // is judged as the text it is, not as what $m holds (JSE-58).  In a
+    // block: the one-line form `if exp command' expands its command a
+    // second time, and macval() protects only the first -- measured
+    // 24sep2026, fmt(\$m) reached the validator as %9.2f that way.
+    local _fmlen : length local fmt
+    if `_fmlen' > 0 {
+        _dash_validate_value "dash kpi" "fmt" "format" `"`macval(fmt)'"' ""
+    }
 
     // Graphs and KPIs share ONE registry and one namespace.
     // _dash_register_graph has always refused a duplicate unless replace was
@@ -4488,10 +4836,15 @@ program define _dash_kpi
         _dash_drop_item "`name'"
     }
 
+    // The qualifier is handed to each command through macval(), as typed:
+    // expanded plainly, it was read again for macros, so if make !=
+    // "\$m" was computed as make != <whatever $m held> while Stata's own
+    // summarize, given the same line, compares make with the text $m
+    // (measured 24sep2026; test_json_escaping.cscript JSE-58).
     local kpi_value ""
 
     if inlist("`stat'", "mean", "sum", "min", "max", "sd") {
-        quietly summarize `kpi_var' `if' `in'
+        quietly summarize `kpi_var' `macval(if)' `macval(in)'
         if      "`stat'" == "mean"  local kpi_value = r(mean)
         else if "`stat'" == "sum"   local kpi_value = r(sum)
         else if "`stat'" == "min"   local kpi_value = r(min)
@@ -4503,7 +4856,7 @@ program define _dash_kpi
         // number that is summarize's r(N), and a string, which summarize
         // skips, has its values that are not "" counted too.
         tempvar _dash_nm
-        quietly generate byte `_dash_nm' = !missing(`kpi_var') `if' `in'
+        quietly generate byte `_dash_nm' = !missing(`kpi_var') `macval(if)' `macval(in)'
         quietly count if `_dash_nm' == 1
         local kpi_value = r(N)
     }
@@ -4515,34 +4868,34 @@ program define _dash_kpi
         // once r(levels) exceeds c(macrolen).  egen group() has no ceiling,
         // works for string and numeric alike, and was the fastest measured.
         tempvar _dash_grp
-        quietly egen `_dash_grp' = group(`kpi_var') `if' `in'
+        quietly egen `_dash_grp' = group(`kpi_var') `macval(if)' `macval(in)'
         quietly summarize `_dash_grp', meanonly
         local kpi_value = cond(r(N) == 0, 0, r(max))
     }
     else if "`stat'" == "median" {
-        quietly _pctile `kpi_var' `if' `in', p(50)
+        quietly _pctile `kpi_var' `macval(if)' `macval(in)', p(50)
         local kpi_value = r(r1)
     }
     else if "`stat'" == "iqr" {
-        quietly _pctile `kpi_var' `if' `in', p(25 75)
+        quietly _pctile `kpi_var' `macval(if)' `macval(in)', p(25 75)
         local kpi_value = r(r2) - r(r1)
     }
     else if `is_pctile' {
         // Any percentile, not the three p(25 50 75) was frozen at.  The
         // number as _dash_kpi_pctile wrote it, which is the text the
         // renderers parse, so all three read the same double.
-        quietly _pctile `kpi_var' `if' `in', p(`_pct_num')
+        quietly _pctile `kpi_var' `macval(if)' `macval(in)', p(`_pct_num')
         local kpi_value = r(r1)
     }
     else if inlist("`stat'", "var", "cv", "skewness") {
-        quietly summarize `kpi_var' `if' `in', detail
+        quietly summarize `kpi_var' `macval(if)' `macval(in)', detail
         if      "`stat'" == "var"      local kpi_value = r(Var)
         else if "`stat'" == "cv"       local kpi_value = cond(r(mean)==0, ., r(sd)/r(mean))
         else if "`stat'" == "skewness" local kpi_value = r(skewness)
     }
 
     local kpi_display = "`kpi_value'"
-    if `"`fmt'"' != "" {
+    if `_fmlen' > 0 {
         local kpi_display : display `fmt' `kpi_value'
         local kpi_display = strtrim("`kpi_display'")
     }
@@ -4564,20 +4917,28 @@ program define _dash_kpi
     global dash_kpi_`name'__var  "`kpi_var'"
     global dash_kpi_`name'__val  "`kpi_value'"
     global dash_kpi_`name'__dsp  "`kpi_display'"
-    global dash_kpi_`name'__fmt  "`fmt'"
-    global dash_kpi_`name'__tit  "`title'"
-    global dash_kpi_`name'__sub  "`subtitle'"
-    global dash_kpi_`name'__col  "`color'"
-    global dash_kpi_`name'__bg   "`bgcolor'"
     global dash_kpi_`name'__upd  "`update'"
+    // The user's text is stored by value, from Mata.  global ... "`title'"
+    // read it again for macros -- A\$g B \`=1+1' C was stored as "A<what $g
+    // held> B 2 C", and a \`=filewrite(...)' in a title wrote a file -- and
+    // the qualifier was cut where a "' closed the compound quotes it was
+    // put in: if make == "' or 1 or '" was stored as "make ==", and the
+    // saved page, finding no qualifier it could read, showed the
+    // unconditional mean, 6165.26, where Stata's summarize gives .
+    // (measured 24sep2026; test_json_escaping.cscript JSE-51, JSE-58).
+    mata: st_global("dash_kpi_" + st_local("name") + "__fmt", st_local("fmt"))
+    mata: st_global("dash_kpi_" + st_local("name") + "__tit", st_local("title"))
+    mata: st_global("dash_kpi_" + st_local("name") + "__sub", st_local("subtitle"))
+    mata: st_global("dash_kpi_" + st_local("name") + "__col", st_local("color"))
+    mata: st_global("dash_kpi_" + st_local("name") + "__bg",  st_local("bgcolor"))
     // The KPI's own if/in.  Stata computes the right value above and
     // stores it, but the renderer recomputes from the full frame, so
     // without these `dash kpi mean(mpg) if foreign==1` displayed the
     // UNCONDITIONAL mean.
-    local _kif = strtrim(regexr(`"`if'"', "^[ ]*if[ ]+", ""))
-    local _kin = strtrim(regexr(`"`in'"', "^[ ]*in[ ]+", ""))
-    global dash_kpi_`name'__if   `"`_kif'"'
-    global dash_kpi_`name'__in   `"`_kin'"'
+    mata: st_global("dash_kpi_" + st_local("name") + "__if", ///
+        strtrim(regexr(st_local("if"), "^[ ]*if[ ]+", "")))
+    mata: st_global("dash_kpi_" + st_local("name") + "__in", ///
+        strtrim(regexr(st_local("in"), "^[ ]*in[ ]+", "")))
 
     local registry = "${dash_graph_registry}"
     local already  = 0
@@ -4641,7 +5002,20 @@ program define _dash_prepare_spec, rclass
     // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
     // filter labels had no gate at all, and a malformed sequence in any of
     // them went straight to Python.
-    mata: _dash_check_utf8(strtrim(`"`0'"'))
+    mata: _dash_check_utf8(strtrim(st_local("0")))
+
+    // filter() is taken out of the command here, by _dash_extract_filters,
+    // which reads quotes -- the way dash build and dash serve take it out
+    // of the user's command -- and not by -syntax-.  They hand it on as
+    // filter(<the text as the user wrote it>).  It went in filter(`"..."'),
+    // and a group holding "' closed that compound quote: label("'90s") was
+    // lost, rc 0, and a label could put the rest of its text on this
+    // command line as options -- label("') csv title(pwned) subtitle(")
+    // titled the page "pwned" and turned the CSV download of every row on
+    // (measured 24sep2026; test_json_escaping.cscript JSE-57).  FILTer()
+    // stays declared, and never sees a value.
+    mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
+    local 0 : copy local _cmd_nofilter
 
     syntax [, ///
         CMDname(string)         ///
@@ -4663,6 +5037,7 @@ program define _dash_prepare_spec, rclass
         FILTERPOSition(string)  ///
         CSV                     ///
     ]
+    local filter : copy local _filter_parts
 
     if `"`cmdname'"' == "" local cmdname "dash build"
 
@@ -4673,14 +5048,17 @@ program define _dash_prepare_spec, rclass
     // it was before.  Read through Mata rather than by expanding the
     // global inside quotes: these carry the user's own title() and
     // label() text, and expanding a value containing a double quote is
-    // the failure this file has already been bitten by twice.
+    // the failure this file has already been bitten by twice.  Kept by
+    // copy: local `_bo' `"`_bo_val'"' read the value again for macros, so
+    // an inherited title holding $m or `...' was expanded after all
+    // (measured 24sep2026; test_json_escaping.cscript JSE-58).
     if "`inherit'" != "" {
         foreach _bo in title subtitle layout link theme scheme tabs filterposition filter csv {
             local _cur : length local `_bo'
             if `_cur' == 0 {
                 mata: st_local("_bo_val", st_global("dash_opts_" + st_local("_bo")))
                 local _bolen : length local _bo_val
-                if `_bolen' > 0 local `_bo' `"`_bo_val'"'
+                if `_bolen' > 0 local `_bo' : copy local _bo_val
             }
         }
     }
@@ -4773,8 +5151,15 @@ program define _dash_prepare_spec, rclass
     }
 
     // ---- validate filter_position ----
-    if "`filterposition'" == "" local filterposition "top"
-    if "`filterposition'" != "top" & "`filterposition'" != "left" {
+    // By value: compared inside quotes, filterposition(`"le"ft"') stopped
+    // dash build with r(132) "too few quotes", and filterposition(\$m) was
+    // taken for whatever $m held (measured 24sep2026;
+    // test_json_escaping.cscript JSE-55, JSE-58).
+    local _fplen : length local filterposition
+    if `_fplen' == 0 local filterposition "top"
+    mata: st_local("_fpok", ///
+        strofreal(anyof(("top", "left"), st_local("filterposition"))))
+    if !`_fpok' {
         // The option is declared FILTERPOSition(); naming it filter_position()
         // here sent the user to an option -syntax- does not accept.
         display as error "`cmdname': filterposition() must be 'top' (default) or 'left' (sidebar)."
@@ -4806,21 +5191,23 @@ program define _dash_prepare_spec, rclass
     }
 
     // ---- validate link() names ----
-    if "`link'" != "" & "`link'" != "_all" {
-        local ntok_link : word count `link'
-        forvalues k = 1/`ntok_link' {
-            local lname : word `k' of `link'
-            // _all links every graph, so beside names it is a contradiction,
-            // and it used to be refused as a name the registry lacked.
-            if "`lname'" == "_all" {
-                display as error "`cmdname': link(_all) links every graph; give it alone, or name the graphs to link."
-                exit(198)
-            }
-            if !`: list lname in registry' {
-                // Shown as written, never as SMCL (P20-09).
-                mata: _dash_say("err", "`cmdname': link() name '", st_local("lname"), "' not found in registry.")
-                exit(198)
-            }
+    // Read by value, word by word as the renderer reads them, in Mata
+    // (_dash_link_refusal): compared inside quotes and split by Stata's
+    // word functions, link(`"g1"x"') stopped dash build with r(132) "too
+    // few quotes" and link(`"g1" "g2"') with r(109) "type mismatch", and
+    // link(`""g1""') passed as g1 while the renderer looks for a graph
+    // named "g1", quotes and all (measured 24sep2026;
+    // test_json_escaping.cscript JSE-56).
+    // _all links every graph, so beside names it is a contradiction.  The
+    // refusal is shown as written, never as SMCL (P20-09).
+    local _lklen : length local link
+    if `_lklen' > 0 {
+        mata: st_local("_lkref", _dash_link_refusal(st_local("link"), ///
+            st_local("registry")))
+        local _lkreflen : length local _lkref
+        if `_lkreflen' > 0 {
+            mata: _dash_say("err", "`cmdname': ", st_local("_lkref"), "")
+            exit(198)
         }
     }
 
@@ -4900,7 +5287,8 @@ program define _dash_prepare_spec, rclass
             local _kifx : copy global dash_kpi_`gname'__if
             local _kifl : length local _kifx
             if `_kifl' > 0 {
-                _dash_json_str `"`_kifx'"' _kifx_esc
+                // macval(): a string literal holding $m is text (JSE-58).
+                _dash_json_str `"`macval(_kifx)'"' _kifx_esc
                 local kqvars ""
                 mata: _dash_extract_qual_vars(`"{"if_expr":"`_kifx_esc'"}"', "kqvars")
                 foreach v of local kqvars {
@@ -5106,20 +5494,28 @@ program define _dash_prepare_spec, rclass
         // Read each KPI field from its dedicated global (preserves multi-word values)
         // then JSON-escape the string fields before insertion.  The fields
         // are dash_kpi_<name>__<field> (_dash_kpi_fields in dash_parse.mata).
-        local kstat   = "${dash_kpi_`gname'__sta}"
-        local kvar    = "${dash_kpi_`gname'__var}"
-        local kval    = "${dash_kpi_`gname'__val}"
-        local kdisp   = "${dash_kpi_`gname'__dsp}"
-        local kfmt    = "${dash_kpi_`gname'__fmt}"
-        _dash_json_str `"${dash_kpi_`gname'__tit}"' _ktitle_esc
-        _dash_json_str `"${dash_kpi_`gname'__sub}"' _ksub_esc
-        _dash_json_str `"${dash_kpi_`gname'__col}"' _kcol_esc
-        _dash_json_str `"${dash_kpi_`gname'__bg}"'  _kbg_esc
-        local kupdate = "${dash_kpi_`gname'__upd}"
-        _dash_json_str `"${dash_kpi_`gname'__if}"' _kif_esc
-        _dash_json_str `"${dash_kpi_`gname'__in}"' _kin_esc
-        _dash_json_str `"`kdisp'"' _kdisp_esc
-        _dash_json_str `"`kfmt'"'  _kfmt_esc
+        //
+        // Every field is read and escaped by value, in Mata.  Expanded into
+        // a command line, "${dash_kpi_<name>__tit}" was read again for
+        // macros, so a title dash kpi had stored as written -- A$m B
+        // `=1+1' C -- reached the spec expanded, and ran; so did a string
+        // literal in the qualifier (measured 24sep2026;
+        // test_json_escaping.cscript JSE-58).  _json_escape writes ` $ and '
+        // as \u escapes, so each can be expanded inside the compound quotes
+        // of the line below.  The statistic, variable, value and update()
+        // are dash's own words, and are escaped all the same.
+        mata: st_local("kstat",       _json_escape(st_global("dash_kpi_" + st_local("gname") + "__sta")))
+        mata: st_local("kvar",        _json_escape(st_global("dash_kpi_" + st_local("gname") + "__var")))
+        mata: st_local("kval",        _json_escape(st_global("dash_kpi_" + st_local("gname") + "__val")))
+        mata: st_local("_kdisp_esc",  _json_escape(st_global("dash_kpi_" + st_local("gname") + "__dsp")))
+        mata: st_local("_kfmt_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__fmt")))
+        mata: st_local("_ktitle_esc", _json_escape(st_global("dash_kpi_" + st_local("gname") + "__tit")))
+        mata: st_local("_ksub_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__sub")))
+        mata: st_local("_kcol_esc",   _json_escape(st_global("dash_kpi_" + st_local("gname") + "__col")))
+        mata: st_local("_kbg_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__bg")))
+        mata: st_local("kupdate",     _json_escape(st_global("dash_kpi_" + st_local("gname") + "__upd")))
+        mata: st_local("_kif_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__if")))
+        mata: st_local("_kin_esc",    _json_escape(st_global("dash_kpi_" + st_local("gname") + "__in")))
 
         if `n_kpis' > 0 local kpis_json `"`kpis_json', "'
         local kpis_json `"`kpis_json'{"name":"`gname'","stat":"`kstat'","var":"`kvar'","value":"`kval'","display":"`_kdisp_esc'","fmt":"`_kfmt_esc'","title":"`_ktitle_esc'","subtitle":"`_ksub_esc'","color":"`_kcol_esc'","bgcolor":"`_kbg_esc'","update":"`kupdate'","if_expr":"`_kif_esc'","in_expr":"`_kin_esc'"}"'
@@ -5135,14 +5531,26 @@ program define _dash_prepare_spec, rclass
     // `: length local' rather than a comparison: the value contains the
     // user's label("...") text, and expanding it inside an expression is the
     // hazard this file has already been bitten by twice.
+    //
+    // The user's text reaches _dash_json_str through macval(), here and
+    // below: expanded plainly, the command line read it again for macros,
+    // so a title holding $m or `=1+1' reached the page expanded and a
+    // `=filewrite(...)' in one ran (measured 24sep2026;
+    // test_json_escaping.cscript JSE-58).  layout(), link() and
+    // filterposition() are proven to hold neither before this point, and
+    // theme() to be one of its six names.
+    // In a block, as the one-line `if exp command' expands its command a
+    // second time (see _dash_kpi's fmt()).
     local _flen : length local filter
-    if `_flen' > 0 _dash_json_str `"`filter'"' filter_json
+    if `_flen' > 0 {
+        _dash_json_str `"`macval(filter)'"' filter_json
+    }
 
     // Escape build-level title and subtitle for JSON safety
-    _dash_json_str `"`title'"'    _title_esc
-    _dash_json_str `"`subtitle'"' _subtitle_esc
+    _dash_json_str `"`macval(title)'"'    _title_esc
+    _dash_json_str `"`macval(subtitle)'"' _subtitle_esc
     // Escape tabs string for JSON embedding
-    _dash_json_str `"`tabs'"' _tabs_esc
+    _dash_json_str `"`macval(tabs)'"' _tabs_esc
     // Carry the session confidence level so the renderer does not have to
     // assume 95.  A per-plot level() overrides it.
     local _dash_lvl = c(level)
@@ -5151,7 +5559,9 @@ program define _dash_prepare_spec, rclass
     // session that ignored it.  An explicit scheme() or theme() still wins --
     // the renderer applies them in that order.
     local _dash_sess_scheme = c(scheme)
-    _dash_json_str `"`scheme'"'            _scheme_esc
+    // scheme() may be a .scheme file of the working directory, whose name
+    // is the user's text: through macval() as well (JSE-58).
+    _dash_json_str `"`macval(scheme)'"'    _scheme_esc
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
     // theme() was the one user string on the master-spec line that went in
     // raw while every other went through _dash_json_str.  Measured:
@@ -5201,7 +5611,7 @@ program define _dash_build
     // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
     // filter labels had no gate at all, and a malformed sequence in any of
     // them went straight to Python.
-    mata: _dash_check_utf8(strtrim(`"`0'"'))
+    mata: _dash_check_utf8(strtrim(st_local("0")))
 
     // Pre-extract ALL filter() options from `0' before -syntax- runs.
     // Stata's -syntax- only accepts one option of a given name; using two
@@ -5209,10 +5619,15 @@ program define _dash_build
     // _dash_extract_filters() scans `0', removes every filter(...) group,
     // joins their contents with " || ", and stores them in `_filter_parts'.
     // The cleaned command is stored in `_cmd_nofilter' and assigned back to
-    // `0' so that -syntax- sees only the remaining options.
+    // `0' so that -syntax- sees only the remaining options.  Both by copy:
+    // local 0 `"`_cmd_nofilter'"' read the whole command again for macros,
+    // so link(\$m), filterposition(\$m) and saving(\$m/x.html) were taken
+    // for whatever $m held and a `=filewrite(...)' in a title ran, and local
+    // filter `"`_filter_parts'"' drew a label holding $m as what $m held
+    // (measured 24sep2026; test_json_escaping.cscript JSE-58).
     mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
-    local filter `"`_filter_parts'"'
-    local 0      `"`_cmd_nofilter'"'
+    local filter : copy local _filter_parts
+    local 0      : copy local _cmd_nofilter
 
     syntax [, ///
         SAVing(string)          ///
@@ -5255,13 +5670,19 @@ program define _dash_build
         // saving("my..report.py") server was refused, r(198), where
         // saving("my..report.html") builds.  The validator's rule, a '..'
         // path segment, is the one rule now (PV-20; ROADMAP AC-08.4).
-        _dash_validate_path `"`saving'"' "py"
+        // The path goes to the validator as written, through macval(): a
+        // saving(\$m/x.html) was read again for macros and written wherever
+        // $m pointed, where the validator refuses a $ (JSE-58).
+        _dash_validate_path `"`macval(saving)'"' "py"
         local saving `"`_dash_vpath'"'
     }
     else {
-        _dash_validate_path `"`saving'"' "html"
+        _dash_validate_path `"`macval(saving)'"' "html"
         local saving `"`_dash_vpath'"'
     }
+    // Before the file is looked for: a directory that does not exist is
+    // not a file that "already exists" (JSE-52).
+    _dash_saving_dir `"`saving'"'
 
     if "`replace'" == "" {
         capture confirm new file "`saving'"
@@ -5295,9 +5716,16 @@ program define _dash_build
     local _fwd_opts : copy local 0
     local _fwd_opts : subinstr local _fwd_opts "," ""
 
+    // Everything is handed on as the user wrote it: the options through
+    // macval(), so the line is not read again for macros, and filter() as
+    // filter(<its text>), which _dash_prepare_spec takes out again with
+    // the same scanner.  It went in filter(`"..."'), and a group holding "'
+    // closed that compound quote: label("'90s") was lost, and label("')
+    // csv title(pwned) subtitle(") put csv and title(pwned) on this line
+    // (measured 24sep2026; test_json_escaping.cscript JSE-57).
     _dash_prepare_spec, cmdname("dash build") ///
         specpath("`master_json_path'") datapath("`data_json_path'") ///
-        filter(`"`filter'"') `_fwd_opts'
+        filter(`macval(filter)') `macval(_fwd_opts)'
 
     // ---- remember these for a later dash serve ----
     //
@@ -5305,16 +5733,18 @@ program define _dash_build
     // with a bare `dash serve, port()'.  That only means anything if the
     // options survive the first command, so they are recorded here and
     // `dash serve' inherits any the user does not restate.
-    global dash_opts_title          `"`title'"'
-    global dash_opts_subtitle       `"`subtitle'"'
+    //
+    // The user's text is recorded by value, from Mata: global ...
+    // `"`title'"' read it again for macros, so a title holding $m or
+    // `=1+1' was recorded expanded, and a `=filewrite(...)' in one ran
+    // (measured 24sep2026; test_json_escaping.cscript JSE-58).  layout()
+    // and filterposition() come back from _dash_prepare_spec validated.
     global dash_opts_layout         `"`r(layout)'"'
-    global dash_opts_link           `"`link'"'
-    global dash_opts_theme          `"`theme'"'
-    global dash_opts_scheme         `"`scheme'"'
-    global dash_opts_tabs           `"`tabs'"'
     global dash_opts_filterposition `"`r(filterposition)'"'
     global dash_opts_csv            "`csv'"
-    global dash_opts_filter         `"`filter'"'
+    foreach _bo in title subtitle link theme scheme tabs filter {
+        mata: st_global("dash_opts_" + st_local("_bo"), st_local(st_local("_bo")))
+    }
 
     // ---- Locate dash_render.py ----
     _dash_find_render
@@ -5378,14 +5808,15 @@ program define _dash_serve_spec, rclass
     // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
     // filter labels had no gate at all, and a malformed sequence in any of
     // them went straight to Python.
-    mata: _dash_check_utf8(strtrim(`"`0'"'))
+    mata: _dash_check_utf8(strtrim(st_local("0")))
 
     // Pre-extract every filter() group before -syntax- runs, exactly as
     // `dash build' does: -syntax- accepts one option of a given name, and
-    // a dashboard may legitimately have several filters.
+    // a dashboard may legitimately have several filters.  Both by copy, as
+    // dash build takes them (see there; JSE-58).
     mata: _dash_extract_filters("_filter_parts", "_cmd_nofilter")
-    local filter `"`_filter_parts'"'
-    local 0      `"`_cmd_nofilter'"'
+    local filter : copy local _filter_parts
+    local 0      : copy local _cmd_nofilter
 
     // Only the options `dash serve' owns are named here.  The trailing *
     // collects every build option into `options' exactly as the user
@@ -5444,10 +5875,14 @@ program define _dash_serve_spec, rclass
     // inherit: reuse the options of a `dash build' earlier in this session
     // for anything not restated here.  dash.sthlp documents exactly that
     // sequence, and without this the served dashboard silently lost the
-    // filter the documented example builds it with.
+    // filter the documented example builds it with.  Handed on as written,
+    // as dash build hands them on (see there): through macval(), and
+    // filter(<its text>), which label("') csv title(pwned) subtitle(")
+    // could close as filter(`"..."') (measured 24sep2026;
+    // test_json_escaping.cscript JSE-57, JSE-58).
     _dash_prepare_spec, cmdname("dash serve") inherit ///
         specpath(`"`specpath'"') datapath(`"`datapath'"') ///
-        filter(`"`filter'"') `options'
+        filter(`macval(filter)') `macval(options)'
 
     return local master_json_path `"`specpath'"'
     return local data_json_path   `"`datapath'"'
@@ -5470,7 +5905,7 @@ program define _dash_serve
     // _dash_plot -- so KPI titles, build titles and subtitles, tabs() and
     // filter labels had no gate at all, and a malformed sequence in any of
     // them went straight to Python.
-    mata: _dash_check_utf8(strtrim(`"`0'"'))
+    mata: _dash_check_utf8(strtrim(st_local("0")))
 
     tempfile data_json_path master_json_path
 
@@ -5490,7 +5925,10 @@ program define _dash_serve
     local _srv_fwd : copy local 0
     local _srv_fwd : subinstr local _srv_fwd "," ""
 
-    _dash_serve_spec, specpath("`master_json_path'") datapath("`data_json_path'") `_srv_fwd'
+    // Through macval(), so the line is not read again for macros: a
+    // title(\$m) was served as whatever $m held (measured 24sep2026;
+    // test_json_escaping.cscript JSE-58).
+    _dash_serve_spec, specpath("`master_json_path'") datapath("`data_json_path'") `macval(_srv_fwd)'
 
     local port_int   "`r(port)'"
     local timeout    "`r(timeout)'"

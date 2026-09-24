@@ -1534,14 +1534,57 @@ _TEXTBOX_SUBOPT_RE = re.compile(
     r",\s*(?=(?:" + "|".join(_TEXTBOX_SUBOPTS) + r")\b)", re.I)
 
 
+def _textbox_string_end(text: str, i: int) -> "tuple[int, int, int]":
+    """``(start, end, after)`` of the Stata string that opens at ``text[i]``.
+
+    ``text[start:end]`` is the string's text and *after* the index just past
+    its closing quote.  A compound string opens with a backtick and a double
+    quote and closes at the double quote and apostrophe that match it,
+    nested pairs counted, so it holds double quotes, apostrophes and
+    compound strings of its own; a plain string opens with a double quote
+    and closes at the next one.  An unclosed string runs to the end, as
+    gettoken reads one (measured 24sep2026: textbox.class's loop reads
+    ``"a b`` and `` `"a b`` as the line ``a b``).  One pass, no recursion.
+
+    Args:
+        text: The text.
+        i: The index of the string's opening quote.
+
+    Returns:
+        ``(start, end, after)``.
+    """
+    n = len(text)
+    if text.startswith('`"', i):
+        depth = 1
+        for m in re.compile(r'`"|"\'').finditer(text, i + 2):
+            if m.group() == '`"':
+                depth += 1
+                continue
+            depth -= 1
+            if depth == 0:
+                return i + 2, m.start(), m.end()
+        return i + 2, n, n
+    j = text.find('"', i + 1)
+    if j < 0:
+        return i + 1, n, n
+    return i + 1, j, j + 1
+
+
 def _textbox_split_point(text: str) -> int:
     """Index of the comma that starts a textbox's sub-options, or ``-1``.
 
     Stata writes a textbox option as ``text[, suboptions]``, but the text is
-    the user's and may contain commas of its own.  Only a comma outside the
-    quoted text can be the separator, so the scan tracks quote state rather
-    than letting a regex match anywhere -- the same discipline the Mata
-    scanners in ``dash_parse.mata`` apply to the command line.
+    the user's and may contain commas of its own.  twoway splits it with
+    ``_parse comma`` (_fr_title_parse_and_log.ado), at the first comma
+    outside every string and every parenthesis, so this does too, and only
+    at one followed by a sub-option name (``_TEXTBOX_SUBOPT_RE``).
+
+    The scan used to toggle on each double quote, which is not how Stata
+    reads a compound string: an odd number of double quotes inside one left
+    its comma outside, and a comma in parentheses was outside too.
+    Measured 24sep2026, ``title(`"a "b, color(red)"')`` drew ``a `` in red
+    and ``title(x (a, color(red)) y)`` drew ``x (a`` in red, in both modes;
+    twoway draws each whole, in the scheme's colour.
 
     Args:
         text: The raw option value, quotes included.
@@ -1549,14 +1592,75 @@ def _textbox_split_point(text: str) -> int:
     Returns:
         The index of the separating comma, or ``-1`` when there is none.
     """
-    in_quote = False
-    for i, ch in enumerate(text):
-        if ch == '"':
-            in_quote = not in_quote
-        elif ch == "," and not in_quote:
-            if _TEXTBOX_SUBOPT_RE.match(text, i):
-                return i
-    return -1
+    depth = 0
+    at = re.compile(r'`"|["(),]')
+    i = 0
+    while True:
+        m = at.search(text, i)
+        if m is None:
+            return -1
+        tok, i = m.group(), m.start()
+        if tok in ('"', '`"'):
+            i = _textbox_string_end(text, i)[2]
+            continue
+        if tok == "(":
+            depth += 1
+        elif tok == ")":
+            # -syntax- refuses an unbalanced parenthesis, so only a spec
+            # written by hand holds a stray one; it closes nothing.
+            depth = max(depth - 1, 0)
+        elif depth == 0 and _TEXTBOX_SUBOPT_RE.match(text, i):
+            return i
+        i += 1
+
+
+def _textbox_lines(text: str) -> "list[str]":
+    """The lines of a textbox's text, its sub-options already cut off.
+
+    textbox.class (StataNow 19.5, lines 84-104) reads the text whole when
+    it holds no double quote; otherwise each token ``gettoken`` returns is a
+    line, until the first empty one.  A token is a string -- its quotes
+    off, so a compound string keeps the double quotes it holds -- or a word
+    running to the next blank, with any string inside it kept as written.
+    Blanks separate tokens; a tab does not.  Measured 24sep2026 by twoway's
+    drawing: ``title(`"a "b" c"')`` is one line, ``a "b" c``;
+    ``title(a "b" c)`` three, ``a``, ``b`` and ``c``; ``title(a"b"c)`` one,
+    ``a"b"c``; ``title("a" "" "b")`` the one line ``a``.
+
+    Args:
+        text: The text, as the spec carries it.
+
+    Returns:
+        The lines, possibly none.
+    """
+    if '"' not in text:
+        return [text] if text else []
+    lines: "list[str]" = []
+    blanks = re.compile(r" *")
+    word_stop = re.compile(r' |`"|"')
+    i, n = 0, len(text)
+    while True:
+        i = blanks.match(text, i).end()
+        if i >= n:
+            return lines
+        if text[i] == '"' or text.startswith('`"', i):
+            start, end, i = _textbox_string_end(text, i)
+            line = text[start:end]
+        else:
+            j = i
+            while True:
+                m = word_stop.search(text, j)
+                if m is None:
+                    j = n
+                    break
+                if m.group() == " ":
+                    j = m.start()
+                    break
+                j = _textbox_string_end(text, m.start())[2]
+            line, i = text[i:j], j
+        if not line:
+            return lines
+        lines.append(line)
 
 
 def _textbox_size(opts: dict, default: "float | None") -> "float | None":
@@ -1645,16 +1749,21 @@ def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
     # and Label -- verified visually against bokeh 3.9, not inferred from the
     # model accepting the character.
     #
-    # A single quoted string joins to itself, so the ordinary case is
-    # untouched and cannot gain a stray break.
-    quoted = re.findall(r'"([^"]*)"', text)
-    if quoted:
-        text = "\n".join(quoted)
-    else:
-        text = text.strip('"').strip()
+    # The lines are the strings as Stata reads them (_textbox_lines).  Every
+    # plain-quoted run used to be a line, so a compound string lost what it
+    # holds: title(`"a "b" c"') drew "a " and " c" and not "b", in both
+    # modes, where twoway draws a "b" c (measured 24sep2026).
+    text = "\n".join(_textbox_lines(text))
 
+    # A sub-option's argument runs to the first ")" after its "(", so no
+    # match can end past the last ")".  The pattern was searched over the
+    # whole tail, and each "name(" with no ")" after it scanned to the end
+    # and failed: quadratic, 32.5 s for '"x", size(' and 50,000 "a(", and
+    # 71.6 s for 40,000 "a( " (measured 24sep2026).  Cut there, every
+    # attempt that reaches its "(" matches.
     opts: dict = {}
-    for m2 in re.finditer(r"\b([A-Za-z_]+)\s*\(\s*([^)]*?)\s*\)", tail):
+    scan = tail[:tail.rfind(")") + 1]
+    for m2 in re.finditer(r"\b([A-Za-z_]+)\s*\(([^)]*)\)", scan):
         opts[m2.group(1).lower()] = m2.group(2).strip()
     for flag in ("span", "box", "nobox"):
         if re.search(r"\b" + flag + r"\b", tail, re.I):
@@ -19888,6 +19997,9 @@ class ServerAppBuilder:
             _l.split("(")[0][4:] for _l in _already if _l.startswith("def ")
         }
         for _fn_name in ("_parse_textbox_opt", "_textbox_split_point",
+                         # The strings of a text, read as Stata reads
+                         # them: the lines and the sub-option comma.
+                         "_textbox_lines", "_textbox_string_end",
                          "_extract_finite", "_apply_jitter",
                          "_with_color_alias", "_jitter_seed", "_floats_only",
                          "_parse_stata_numeric_fmt", "_format_stata_numeric",

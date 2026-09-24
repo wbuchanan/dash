@@ -398,20 +398,29 @@ def _fold_aliases():
     ``if "`a'" != "" & "`t'" == "" local t "`a'"`` folds of the two option
     parsers, and the s() folds of the _dash_fold_* programs, which read an
     option's value out of s() and write it back under another name once the
-    plot type is known -- bw() into bwidth() or barwidth()."""
+    plot type is known -- bw() into bwidth() or barwidth().  Each is read in
+    the form that copies through compound quotes and in the form that
+    copies by value (``mata: st_local("v", st_global("s(o)"))``,
+    ``sreturn local t : copy local v``), which dash.ado uses since
+    24sep2026: a copy through the quotes expanded a macro in the user's
+    text again (test_json_escaping.cscript JSE-69)."""
     src = _ado_text()
     out = {}
     for prog in ("_dash_parse_plot_opts", "_dash_parse_graph_opts"):
         for alias, target in _folds(_program_body(src, prog)):
             out.setdefault(alias, set()).add(target)
+    reads = (r"""^\s*local (\w+) `"`s\((\w+)\)'"'""",
+             r"""^\s*mata: st_local\("(\w+)", st_global\("s\((\w+)\)"\)\)""")
+    writes = (r"""\bsreturn local (\w+)\s+`"`%s'"'""",
+              r"""\bsreturn local (\w+)\s+: copy local %s\b""")
     for prog in re.findall(r"^program define (_dash_fold_\w+)", src, re.M):
         body = _program_body(src, prog)
-        for loc, opt in re.findall(r"""^\s*local (\w+) `"`s\((\w+)\)'"'""",
-                                   body, re.M):
-            for target in re.findall(r"""\bsreturn local (\w+)\s+`"`%s'"'"""
-                                     % re.escape(loc), body):
-                if target != opt:
-                    out.setdefault(opt, set()).add(target)
+        for rd in reads:
+            for loc, opt in re.findall(rd, body, re.M):
+                for wr in writes:
+                    for target in re.findall(wr % re.escape(loc), body):
+                        if target != opt:
+                            out.setdefault(opt, set()).add(target)
     return out
 
 

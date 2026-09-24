@@ -53,11 +53,26 @@
 *! cases whose literals hold Python code, SMCL, markup, JSON punctuation and
 *! 20,000 characters, each of which must be data in both render modes.
 *!
-*! Tests: JSE-01 through JSE-41.  JSE-38 reads every C0 escape back;
-*! JSE-39..41 write a ~/ saving() path on each of the three routes.
+*! Tests: JSE-01 through JSE-70.  JSE-38 reads every C0 escape back;
+*! JSE-39..41 write a ~/ saving() path on each of the three routes.  The
+*! rest are 24sep2026's.  JSE-42..49 run text holding a quote and an
+*! apostrophe ("'90s cars", "' or 1 or '") through the plot commands as
+*! typed -- titles, text options, a plot's and a graph's qualifier, the
+*! one-line form -- and JSE-47..49 are the rule-18 bypass, injection and
+*! exhaustion cases.  JSE-50..59: dash kpi, dash build and dash serve take
+*! the user's text as written -- a KPI's title and qualifier, a dashboard's
+*! title, update(), filterposition(), link(), filter() and saving() holding
+*! "' or macro characters -- with CLAUDE.md rule 18's bypass, injection and
+*! exhaustion cases for those surfaces.  JSE-60..64 hold the renderer to
+*! twoway's reading of a text -- title(`"a "b" c"') is the one line a "b" c,
+*! in both modes -- and are CLAUDE.md rule 18 cases for it.  JSE-65..69
+*! hold the plot commands to expanding a macro in the user's text once,
+*! where the user typed it, and never again; JSE-70 holds the dash entry
+*! to the same when it hands dash kpi, dash build and dash serve their
+*! text.
 *!
 *! Usage:  do test/test_json_escaping.cscript
-*! Version: 1.1  23sep2026
+*! Version: 1.2  24sep2026
 
 cscript "every spec string is valid JSON on the way out" adodir ".."
 
@@ -1169,11 +1184,13 @@ capture dash clear
 
 // JSE-37 -- a filter() label written with compound quotes, as dash build
 // hands filter() on: _dash_json_str returned label() for it -- the label
-// gone, rc 0 (measured at ad13a0f) -- and it is now kept whole.
+// gone, rc 0 (measured at ad13a0f) -- and it is now kept whole.  dash build
+// hands the text on as written, filter(<text>) through macval(), since a
+// "' in a label closed the filter(`"<text>"') it used (JSE-57).
 dash scatter mpg weight, name(jse37)
 local j2_f `"weight, type(range) label(`"Curb "weight""')"'
 tempfile j2_s37 j2_d37
-_dash_prepare_spec, cmdname("dash build") specpath("`j2_s37'") datapath("`j2_d37'") filter(`"`j2_f'"')
+_dash_prepare_spec, cmdname("dash build") specpath("`j2_s37'") datapath("`j2_d37'") filter(`macval(j2_f)')
 mata: st_global("J2_SPECTXT", invtokens(cat(st_local("j2_s37"))', ""))
 global J2_FROM "J2_SPECTXT"
 global J2_PATH "build_options filter"
@@ -1255,6 +1272,2624 @@ display "JSE-40 PASS: dash build writes saving(~/x.html) under HOME"
 assert `jse41rc' == 0
 assert `jse_w41' == 1
 display "JSE-41 PASS: dash build, server writes saving(~/x.py) under HOME"
+
+
+// ================================================================
+// JSE-42..49 -- text holding a double quote and an apostrophe, through
+// the plot commands, as typed
+// ================================================================
+// A text that opens with an apostrophe inside double quotes -- the title
+// "'90s cars", the literal "' or 1 or '" -- holds a double quote followed
+// by an apostrophe, which is what closes a compound quote.  The plot chain
+// put the command inside compound quotes at every step: the segment handed
+// to _dash_process_segment's -args-, the Mata line that finds the options'
+// comma, if tests of the form  if `"`x'"' != "",  _dash_graph_qualifier's
+// regexr(), _dash_register_graph's -args-.  Measured 24sep2026, with the
+// entry and the UTF-8 gates already reading the command by value:
+//   * title("'90s cars") r(100) ") required" and its compound form r(133)
+//     "unknown function ()" -- in comma mode, in a plot group, after || and
+//     on the one-line form; after a paren command's comma r(109).
+//     subtitle(), note(), caption() and a legend label alike.
+//   * if make == "' or 1 or '" on a plot: r(198) "invalid syntax".
+//   * after the plot groups, if make != "'x" registered with rc 0 -- the
+//     qualifier cut to  make !=  and the graph stored as the one word x.
+// twoway, measured the same day, refuses most of the plain forms --
+// title("'90s cars") r(109), subtitle("'90s") and a legend label r(100),
+// if make == "' or 1 or '" r(109), if make != "'x" & foreign == 1 r(198)
+// -- and takes the compound ones, except  if make != `"'x"' & foreign == 1,
+// r(133).  After the plot groups it takes  if make != "'x" & foreign == 1
+// (rc 0) and refuses  if make == "' or 1 or '"  (r(109)).  dash stores
+// every one as typed, plain and compound (the maintainer's request), and
+// Stata's own count is the qualifier's oracle.  Each case asserts what the
+// registry holds and what the saved page draws, read from its document.
+qui sysuse auto, clear
+capture dash clear
+do "cert_helpers.do"
+global dash_nobrowser 1
+
+// Helpers.  JG_PAGE names a saved page; _jg_models() reads its embedded
+// document back as the browser reads it (HTML-unescaped, parsed) and
+// indexes every model by id -- none when there is no page, so a case whose
+// command failed reports what it drew, nothing, rather than stopping.
+//   _jg_count()             JG_N: how many models of kind JG_KIND (Title,
+//                           Label, LegendItem, LinearAxis -- an axis's
+//                           title) draw exactly JG_WANT
+//   _jg_title_apostrophes() JG_N: the apostrophes the page's titles draw;
+//                           JG_OK: 1 when they draw nothing else but blanks
+//                           and line breaks
+//   _jg_rows()              JG_ROWS: the rows each Scatter glyph draws,
+//                           sorted -- through its view: a layer's own
+//                           qualifier in a graph of several layers is a
+//                           BooleanFilter over the graph's shared rows
+//                           (measured 24sep2026: 22 of 74), and a view
+//                           this does not know draws -1
+//   _jg_field()             JG_OK: 1 when the registry global named by
+//                           JG_FROM, read as JSON and walked down JG_PATH, is
+//                           exactly JG_WANT; 0 when it differs, is missing or
+//                           is not JSON
+// No backslash, backtick or dollar sign is written in the block, and every
+// call's value is assigned.  The block is read as an interactive session
+// reads it, so it holds no comment line between definitions -- one there
+// left the next definition open, and the last one never ran (measured
+// 24sep2026) -- and it ends on a statement, not a definition.
+python:
+import base64 as _jg_b64
+import html as _jg_html
+import json as _jg_json
+import re as _jg_re
+from sfi import Macro as _jg_M
+
+def _jg_models():
+    try:
+        with open(_jg_M.getGlobal("JG_PAGE"), encoding="utf-8") as fh:
+            page = fh.read()
+    except OSError:
+        page = ""
+    m = _jg_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _jg_re.S)
+    objs, stack = {}, ([_jg_json.loads(_jg_html.unescape(m.group(1)))] if m else [])
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return objs
+
+def _jg_text(o):
+    a = o.get("attributes", {})
+    if o["name"] == "LegendItem":
+        t = a.get("label")
+    elif "axis_label" in a:
+        t = a.get("axis_label")
+    else:
+        t = a.get("text")
+    return t.get("value") if isinstance(t, dict) else t
+
+def _jg_count():
+    kind, want = _jg_M.getGlobal("JG_KIND"), _jg_M.getGlobal("JG_WANT")
+    n = sum(1 for o in _jg_models().values() if o["name"] == kind and _jg_text(o) == want)
+    _jg_M.setGlobal("JG_N", str(n))
+
+def _jg_title_apostrophes():
+    texts = [_jg_text(o) or "" for o in _jg_models().values() if o["name"] == "Title"]
+    joined = "".join(texts)
+    _jg_M.setGlobal("JG_N", str(joined.count(chr(39))))
+    _jg_M.setGlobal("JG_OK", "1" if joined.replace(chr(39), "").split() == [] else "0")
+
+def _jg_flags(v):
+    if isinstance(v, dict) and v.get("type") == "ndarray":
+        raw = v.get("array", {})
+        if isinstance(raw, dict) and raw.get("type") == "bytes":
+            return list(_jg_b64.b64decode(raw.get("data", "")))
+        return list(raw) if isinstance(raw, list) else []
+    return list(v) if isinstance(v, list) else []
+
+def _jg_rows():
+    objs = _jg_models()
+    def ref(v):
+        return objs.get(v["id"], v) if isinstance(v, dict) and "id" in v else v
+    out = []
+    for o in objs.values():
+        if o["name"] != "GlyphRenderer":
+            continue
+        a = o.get("attributes", {})
+        if ref(a.get("glyph", {})).get("name") != "Scatter":
+            continue
+        data = ref(a.get("data_source", {})).get("attributes", {}).get("data", {})
+        n = 0
+        for key, val in data.get("entries", []):
+            if isinstance(val, dict) and val.get("type") == "ndarray":
+                n = max(n, int(val.get("shape", [0])[0]))
+            elif isinstance(val, list):
+                n = max(n, len(val))
+        filt = ref(ref(a.get("view", {})).get("attributes", {}).get("filter", {}))
+        kind, fa = filt.get("name", "AllIndices"), filt.get("attributes", {})
+        if kind == "BooleanFilter":
+            n = sum(1 for f in _jg_flags(fa.get("booleans", []))[:n] if f)
+        elif kind == "IndexFilter":
+            n = len(_jg_flags(fa.get("indices", [])))
+        elif kind != "AllIndices":
+            n = -1
+        out.append(n)
+    _jg_M.setGlobal("JG_ROWS", " ".join(str(n) for n in sorted(out)))
+
+def _jg_field():
+    try:
+        v = _jg_json.loads(_jg_M.getGlobal(_jg_M.getGlobal("JG_FROM")))
+        for part in _jg_M.getGlobal("JG_PATH").split():
+            v = v[int(part)] if part.isdigit() else v[part]
+        ok = v == _jg_M.getGlobal("JG_WANT")
+    except (ValueError, KeyError, IndexError, TypeError):
+        ok = False
+    _jg_M.setGlobal("JG_OK", "1" if ok else "0")
+
+_jg_ready = True
+end
+
+// r(ok): the named graph's stored value at the path is exactly JG_WANT.
+// A python line inside a program runs in a namespace of its own, where the
+// block above defined nothing (measured 24sep2026: NameError, r(7102)), so
+// the three programs reach the helpers through __main__.
+capture program drop _jg_stored
+program define _jg_stored, rclass
+    version 16.0
+    args g path
+    global JG_FROM "dash_json_`g'"
+    global JG_PATH "`path'"
+    python: __import__("__main__")._jg_field()
+    return local ok "$JG_OK"
+end
+
+// r(n): how many models of the kind named on the page JG_PAGE names draw
+// exactly JG_WANT.
+capture program drop _jg_drawn
+program define _jg_drawn, rclass
+    version 16.0
+    args kind
+    global JG_KIND "`kind'"
+    python: __import__("__main__")._jg_count()
+    return local n "$JG_N"
+end
+
+// r(rc), r(rows): dash build of the whole registry to the page named, and
+// the rows its scatter glyphs draw.  JG_PAGE is left naming the page.
+capture program drop _jg_build
+program define _jg_build, rclass
+    version 16.0
+    args page
+    capture erase "`page'"
+    capture noisily dash build, saving("`page'") replace nobrowser
+    local rc = _rc
+    global JG_PAGE "`page'"
+    global JG_ROWS ""
+    if `rc' == 0 python: __import__("__main__")._jg_rows()
+    return scalar rc = `rc'
+    return local rows "$JG_ROWS"
+end
+
+// _jg_log_on / _jg_log_off: what the commands between them print, in the
+// log named, at linesize 255.  The commands are typed between the two, at
+// the top level, because no program can be handed a command holding "' in
+// compound quotes -- the very defect these cases are about.
+capture program drop _jg_log_on
+program define _jg_log_on
+    version 16.0
+    args logfile
+    capture log close _jglog
+    capture erase "`logfile'"
+    global JG_LS = c(linesize)
+    set linesize 255
+    quietly log using "`logfile'", name(_jglog) text replace
+end
+capture program drop _jg_log_off
+program define _jg_log_off
+    version 16.0
+    quietly log close _jglog
+    set linesize $JG_LS
+end
+
+// The texts the cases expect, made from char() so no expected value is
+// typed inside the quotes it is about: _jg_pq() puts a text in plain
+// quotes, _jg_cq() in compound quotes.
+mata:
+string scalar _jg_pq(string scalar s)
+{
+    return(char(34) + s + char(34))
+}
+string scalar _jg_cq(string scalar s)
+{
+    return(char(96) + char(34) + s + char(34) + char(39))
+}
+end
+
+quietly count if make == "' or 1 or '"
+local jg_n0 = r(N)
+quietly count if make != "'x" & foreign == 1
+local jg_n22 = r(N)
+quietly count if make != `"'x"' & foreign == 1
+local jg_n22c = r(N)
+assert `jg_n0' == 0 & `jg_n22' == 22 & `jg_n22c' == 22
+
+// ----------------------------------------------------------------
+// JSE-42 -- the graph title, comma mode, || mode and the one-line form
+// ----------------------------------------------------------------
+capture dash clear
+capture noisily dash scatter mpg weight, title("'90s cars") name(jg42a)
+local jg_r1 = _rc
+capture noisily dash scatter mpg weight, title(`"'90s cars"') name(jg42b)
+local jg_r2 = _rc
+capture noisily dash scatter mpg weight, title("'90s cars") || line mpg weight, name(jg42c)
+local jg_r3 = _rc
+capture noisily dash scatter mpg weight || line mpg weight, title(`"'90s cars"') name(jg42d)
+local jg_r4 = _rc
+// Beside an option with a rule, whose check snapshots and compares every
+// option of the segment (_dash_validate_opts).
+capture noisily dash scatter mpg weight, title("'90s cars") msize(small) name(jg42e)
+local jg_r7 = _rc
+mata: st_global("JG_WANT", _jg_pq(char(39) + "90s cars"))
+_jg_stored jg42a "graph_options title"
+local jg_s1 "`r(ok)'"
+_jg_stored jg42c "graph_options title"
+local jg_s3 "`r(ok)'"
+_jg_stored jg42e "graph_options title"
+local jg_s5 "`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s cars"))
+_jg_stored jg42b "graph_options title"
+local jg_s2 "`r(ok)'"
+_jg_stored jg42d "graph_options title"
+local jg_s4 "`r(ok)'"
+tempfile jg_p42
+_jg_build "`jg_p42'.html"
+local jg_rb = r(rc)
+mata: st_global("JG_WANT", char(39) + "90s cars")
+_jg_drawn Title
+local jg_d = r(n)
+capture erase "`jg_p42'.html"
+// The one-line form: nothing is registered, the page is written.
+capture dash clear
+local jg_d1 = 0
+local jg_d2 = 0
+capture erase "`jg_p42'a.html"
+capture noisily dash scatter mpg weight, title("'90s cars") saving("`jg_p42'a.html")
+local jg_r5 = _rc
+if `jg_r5' == 0 {
+    global JG_PAGE "`jg_p42'a.html"
+    _jg_drawn Title
+    local jg_d1 = r(n)
+}
+capture erase "`jg_p42'b.html"
+capture noisily dash scatter mpg weight, title(`"'90s cars"') saving("`jg_p42'b.html")
+local jg_r6 = _rc
+if `jg_r6' == 0 {
+    global JG_PAGE "`jg_p42'b.html"
+    _jg_drawn Title
+    local jg_d2 = r(n)
+}
+capture erase "`jg_p42'a.html"
+capture erase "`jg_p42'b.html"
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r7'  stored: `jg_s1' `jg_s2' `jg_s3' `jg_s4' `jg_s5'  build: `jg_rb'  drawn: `jg_d' of 5"
+display as text "  one-line rc: `jg_r5' `jg_r6'  drawn: `jg_d1' `jg_d2'"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0 & `jg_r7' == 0
+assert "`jg_s1'`jg_s2'`jg_s3'`jg_s4'`jg_s5'" == "11111"
+assert `jg_rb' == 0 & "`jg_d'" == "5"
+assert `jg_r5' == 0 & `jg_r6' == 0
+assert "`jg_d1'`jg_d2'" == "11"
+display "JSE-42 PASS: a title holding quote-apostrophe is stored as typed and drawn -- comma, || and one-line, plain and compound"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-43 -- the graph title in paren mode: in a plot group, after the
+// command's comma, and the maintainer's command with saving()
+// ----------------------------------------------------------------
+capture noisily dash (scatter mpg weight, title("'90s cars")) (line mpg weight), name(jg43a)
+local jg_r1 = _rc
+capture noisily dash (scatter mpg weight, title(`"'90s cars"')) (line mpg weight), name(jg43b)
+local jg_r2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), title("'90s cars") name(jg43c)
+local jg_r3 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), title(`"'90s cars"') name(jg43d)
+local jg_r4 = _rc
+mata: st_global("JG_WANT", _jg_pq(char(39) + "90s cars"))
+_jg_stored jg43a "graph_options title"
+local jg_s1 "`r(ok)'"
+_jg_stored jg43c "graph_options title"
+local jg_s3 "`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s cars"))
+_jg_stored jg43b "graph_options title"
+local jg_s2 "`r(ok)'"
+_jg_stored jg43d "graph_options title"
+local jg_s4 "`r(ok)'"
+tempfile jg_p43
+_jg_build "`jg_p43'.html"
+local jg_rb = r(rc)
+mata: st_global("JG_WANT", char(39) + "90s cars")
+_jg_drawn Title
+local jg_d = r(n)
+capture erase "`jg_p43'.html"
+capture dash clear
+local jg_d1 = 0
+local jg_d2 = 0
+capture erase "`jg_p43'a.html"
+capture noisily dash (scatter mpg weight, title("'90s cars")) (line mpg weight), saving("`jg_p43'a.html")
+local jg_r5 = _rc
+if `jg_r5' == 0 {
+    global JG_PAGE "`jg_p43'a.html"
+    _jg_drawn Title
+    local jg_d1 = r(n)
+}
+capture erase "`jg_p43'b.html"
+capture noisily dash (scatter mpg weight, title(`"'90s cars"')) (line mpg weight), saving("`jg_p43'b.html")
+local jg_r6 = _rc
+if `jg_r6' == 0 {
+    global JG_PAGE "`jg_p43'b.html"
+    _jg_drawn Title
+    local jg_d2 = r(n)
+}
+capture erase "`jg_p43'a.html"
+capture erase "`jg_p43'b.html"
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4'  stored: `jg_s1' `jg_s2' `jg_s3' `jg_s4'  build: `jg_rb'  drawn: `jg_d' of 4"
+display as text "  one-line rc: `jg_r5' `jg_r6'  drawn: `jg_d1' `jg_d2'"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
+assert "`jg_s1'`jg_s2'`jg_s3'`jg_s4'" == "1111"
+assert `jg_rb' == 0 & "`jg_d'" == "4"
+assert `jg_r5' == 0 & `jg_r6' == 0
+assert "`jg_d1'`jg_d2'" == "11"
+display "JSE-43 PASS: a title holding quote-apostrophe in paren mode is stored as typed and drawn, plain and compound"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-44 -- a plot's qualifier holding quote-apostrophe: stored whole and
+// applied as Stata counts it, registered, in a plot group and one-line
+// ----------------------------------------------------------------
+capture noisily dash scatter mpg weight if make == "' or 1 or '", name(jg44a)
+local jg_r1 = _rc
+capture noisily dash scatter mpg weight if make == `"' or 1 or '"', name(jg44b)
+local jg_r2 = _rc
+capture noisily dash scatter mpg weight if make != "'x" & foreign == 1, name(jg44c)
+local jg_r3 = _rc
+capture noisily dash scatter mpg weight if make != `"'x"' & foreign == 1, name(jg44d)
+local jg_r4 = _rc
+capture noisily dash (scatter mpg weight if make != "'x" & foreign == 1) (line mpg weight), name(jg44e)
+local jg_r5 = _rc
+// A frequency-weighted fit and a histogram's start() check their values
+// over the plot's own sample, the qualifier read again (twoway refuses
+// both commands, r(198)); each draws no scatter, so the rows below are the
+// five above.
+capture noisily dash lfit mpg weight [fw=rep78] if make != "'x" & foreign == 1, name(jg44f)
+local jg_r9 = _rc
+capture noisily dash histogram mpg if make != "'x" & foreign == 1, start(10) name(jg44g)
+local jg_r10 = _rc
+local jg_ok ""
+mata: st_global("JG_WANT", "make == " + _jg_pq(char(39) + " or 1 or " + char(39)))
+foreach jg_p in "plots 0 if_expr" "if_expr" {
+    _jg_stored jg44a "`jg_p'"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+mata: st_global("JG_WANT", "make == " + _jg_cq(char(39) + " or 1 or " + char(39)))
+foreach jg_p in "plots 0 if_expr" "if_expr" {
+    _jg_stored jg44b "`jg_p'"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+mata: st_global("JG_WANT", "make != " + _jg_pq(char(39) + "x") + " & foreign == 1")
+foreach jg_p in "plots 0 if_expr" "if_expr" {
+    _jg_stored jg44c "`jg_p'"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+_jg_stored jg44e "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_stored jg44f "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_stored jg44g "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make != " + _jg_cq(char(39) + "x") + " & foreign == 1")
+foreach jg_p in "plots 0 if_expr" "if_expr" {
+    _jg_stored jg44d "`jg_p'"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+// In a group of two, the qualifier is the plot's alone.
+global JG_WANT ""
+_jg_stored jg44e "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+tempfile jg_p44
+_jg_build "`jg_p44'.html"
+local jg_rb = r(rc)
+local jg_rows "`r(rows)'"
+capture erase "`jg_p44'.html"
+capture dash clear
+local jg_row1 ""
+local jg_row2 ""
+local jg_row3 ""
+capture erase "`jg_p44'a.html"
+capture noisily dash scatter mpg weight if make == "' or 1 or '", saving("`jg_p44'a.html")
+local jg_r6 = _rc
+if `jg_r6' == 0 {
+    global JG_PAGE "`jg_p44'a.html"
+    python: _jg_rows()
+    local jg_row1 "$JG_ROWS"
+}
+capture erase "`jg_p44'b.html"
+capture noisily dash scatter mpg weight if make != "'x" & foreign == 1, saving("`jg_p44'b.html")
+local jg_r7 = _rc
+if `jg_r7' == 0 {
+    global JG_PAGE "`jg_p44'b.html"
+    python: _jg_rows()
+    local jg_row2 "$JG_ROWS"
+}
+capture erase "`jg_p44'c.html"
+capture noisily dash scatter mpg weight if make == `"' or 1 or '"', saving("`jg_p44'c.html")
+local jg_r8 = _rc
+if `jg_r8' == 0 {
+    global JG_PAGE "`jg_p44'c.html"
+    python: _jg_rows()
+    local jg_row3 "$JG_ROWS"
+}
+capture erase "`jg_p44'a.html"
+capture erase "`jg_p44'b.html"
+capture erase "`jg_p44'c.html"
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r5' `jg_r9' `jg_r10'  stored: `jg_ok'  build: `jg_rb'  rows: [`jg_rows'] of Stata's `jg_n0' `jg_n0' `jg_n22' `jg_n22' `jg_n22'"
+display as text "  one-line rc: `jg_r6' `jg_r7' `jg_r8'  rows: [`jg_row1'] [`jg_row2'] [`jg_row3']"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0 & `jg_r5' == 0
+assert `jg_r9' == 0 & `jg_r10' == 0
+assert "`jg_ok'" == "111111111111"
+assert `jg_rb' == 0
+assert "`jg_rows'" == "`jg_n0' `jg_n0' `jg_n22' `jg_n22' `jg_n22'"
+assert `jg_r6' == 0 & `jg_r7' == 0 & `jg_r8' == 0
+assert "`jg_row1'" == "`jg_n0'" & "`jg_row2'" == "`jg_n22'" & "`jg_row3'" == "`jg_n0'"
+display "JSE-44 PASS: a plot qualifier holding quote-apostrophe is stored whole and draws Stata's rows, plain and compound"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-45 -- the qualifier after the plot groups: the graph's own, stored
+// whole, the command stored whole beside it, and Stata's rows drawn
+// ----------------------------------------------------------------
+capture noisily dash (scatter mpg weight) (line mpg weight) if make != "'x" & foreign == 1, name(jg45a)
+local jg_r1 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight) if make != `"'x"' & foreign == 1, name(jg45b)
+local jg_r2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight) if make == "' or 1 or '", name(jg45c)
+local jg_r3 = _rc
+local jg_ok ""
+mata: st_global("JG_WANT", "make != " + _jg_pq(char(39) + "x") + " & foreign == 1")
+_jg_stored jg45a "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make != " + _jg_cq(char(39) + "x") + " & foreign == 1")
+_jg_stored jg45b "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make == " + _jg_pq(char(39) + " or 1 or " + char(39)))
+_jg_stored jg45c "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+// The plots carry none of it: the graph's qualifier applies to both.
+global JG_WANT ""
+foreach jg_g in jg45a jg45b jg45c {
+    _jg_stored `jg_g' "plots 0 if_expr"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+// The command, stored for the record, is the command as typed.
+mata: st_local("jg_sp", strofreal( ///
+    st_global("dash_spec_jg45a") == "(scatter mpg weight) (line mpg weight) if make != " + _jg_pq(char(39) + "x") + " & foreign == 1, name(jg45a)" & ///
+    st_global("dash_spec_jg45b") == "(scatter mpg weight) (line mpg weight) if make != " + _jg_cq(char(39) + "x") + " & foreign == 1, name(jg45b)" & ///
+    st_global("dash_spec_jg45c") == "(scatter mpg weight) (line mpg weight) if make == " + _jg_pq(char(39) + " or 1 or " + char(39)) + ", name(jg45c)"))
+tempfile jg_p45
+_jg_build "`jg_p45'.html"
+local jg_rb = r(rc)
+local jg_rows "`r(rows)'"
+capture erase "`jg_p45'.html"
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3'  stored: `jg_ok'  command stored whole: `jg_sp'  build: `jg_rb'  rows: [`jg_rows'] of Stata's `jg_n0' `jg_n22' `jg_n22'"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0
+assert "`jg_ok'" == "111111"
+assert `jg_sp' == 1
+assert `jg_rb' == 0
+assert "`jg_rows'" == "`jg_n0' `jg_n22' `jg_n22'"
+display "JSE-45 PASS: a qualifier after the plot groups holding quote-apostrophe is the graph's, stored whole, and draws Stata's rows"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-46 -- the other texts a title shares its path with: subtitle(),
+// note(), caption() and a legend label, in comma mode and after a paren
+// command's comma; by()'s title(); text(), at() and options dash does not
+// know, which it keeps and names; an alias folded onto its option; and the
+// axis and side titles, xtitle() .. ytitle2() and t1title() .. r2title()
+// ----------------------------------------------------------------
+// Each text is its own, so each count names one option in one form.  A
+// compound-quoted legend label is stored and not asserted drawn: the
+// renderer does not apply one (measured 24sep2026: it draws the variable's
+// label, where twoway's exported SVG draws '90s lc) -- a defect of the
+// renderer's legend reader, outside this chain, reported with this work.
+// by()'s title() is stored and not drawn -- dash draws by()'s cols(),
+// missing and total and names the rest -- so its case holds the facets
+// drawn, Stata's 52 and 22 rows.  The compound form is stored and built
+// after the page: the renderer's by() reader takes its backtick for an
+// injection pattern and draws no facets, one panel of 74, without a word
+// (measured 24sep2026, _dash_parse_by), where twoway draws the two -- a
+// defect of the renderer, outside this chain, reported with this work.
+// twoway, measured the same day: the plain
+// subtitle, caption, legend label and text() r(100) in comma mode and a
+// legend label or text() r(109) after a paren command's comma; by(foreign,
+// title("'90s by")) r(109); foo("'x") r(100); each compound form rc 0.
+quietly count if foreign == 0
+local jg_nd = r(N)
+quietly count if foreign == 1
+local jg_nf = r(N)
+capture noisily dash scatter mpg weight, subtitle("'90s sp") note(`"'90s nc"') caption("'90s cp") legend(label(1 "'90s lp")) name(jg46a)
+local jg_r1 = _rc
+capture noisily dash scatter mpg weight, subtitle(`"'90s sc"') note("'90s np") caption(`"'90s cc"') legend(label(1 `"'90s lc"')) name(jg46b)
+local jg_r2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), legend(label(1 "'90s lq")) name(jg46c)
+local jg_r3 = _rc
+capture noisily dash scatter mpg weight, by(foreign, title("'90s by")) name(jg46d)
+local jg_r4 = _rc
+capture noisily dash scatter mpg weight, xla2(3000 "'3k") name(jg46f)
+local jg_r6 = _rc
+local jg_l46 "`c(tmpdir)'dash_jse46.log"
+_jg_log_on "`jg_l46'"
+capture noisily dash scatter mpg weight, text(30 3000 "'90s tp") at(1 "'x") foo("'90s fp") bar(1) name(jg46g)
+local jg_r7 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 "'90s tq") name(jg46h)
+local jg_r8 = _rc
+_jg_log_off
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() text() foo() bar()")
+local jg_m1 = r(count)
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): text()")
+local jg_m2 = r(count)
+capture erase "`jg_l46'"
+local jg_ok ""
+foreach jg_o in "subtitle sp" "caption cp" {
+    gettoken jg_k jg_v : jg_o
+    mata: st_global("JG_WANT", _jg_pq(char(39) + "90s" + st_local("jg_v")))
+    _jg_stored jg46a "graph_options `jg_k'"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s nc"))
+_jg_stored jg46a "graph_options note"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "label(1 " + _jg_pq(char(39) + "90s lp") + ")")
+_jg_stored jg46a "graph_options legend"
+local jg_ok "`jg_ok'`r(ok)'"
+foreach jg_o in "subtitle sc" "caption cc" {
+    gettoken jg_k jg_v : jg_o
+    mata: st_global("JG_WANT", _jg_cq(char(39) + "90s" + st_local("jg_v")))
+    _jg_stored jg46b "graph_options `jg_k'"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+mata: st_global("JG_WANT", _jg_pq(char(39) + "90s np"))
+_jg_stored jg46b "graph_options note"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "label(1 " + _jg_cq(char(39) + "90s lc") + ")")
+_jg_stored jg46b "graph_options legend"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "label(1 " + _jg_pq(char(39) + "90s lq") + ")")
+_jg_stored jg46c "graph_options legend"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "foreign, title(" + _jg_pq(char(39) + "90s by") + ")")
+_jg_stored jg46d "graph_options by"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "3000 " + _jg_pq(char(39) + "3k"))
+_jg_stored jg46f "graph_options xlabel2"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "30 3000 " + _jg_pq(char(39) + "90s tp"))
+_jg_stored jg46g "graph_options text"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "1 " + _jg_pq(char(39) + "x"))
+_jg_stored jg46g "plots 0 options at"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "30 3000 " + _jg_pq(char(39) + "90s tq"))
+_jg_stored jg46h "graph_options text"
+local jg_ok "`jg_ok'`r(ok)'"
+tempfile jg_p46
+_jg_build "`jg_p46'.html"
+local jg_rb = r(rc)
+local jg_rows "`r(rows)'"
+local jg_dr ""
+foreach jg_v in sp sc np nc cp cc {
+    mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
+    _jg_drawn Label
+    local jg_dr "`jg_dr'`r(n)'"
+}
+foreach jg_v in lp lq {
+    mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
+    _jg_drawn LegendItem
+    local jg_dr "`jg_dr'`r(n)'"
+}
+capture erase "`jg_p46'.html"
+// by()'s compound-quoted title, stored as typed and built (see above).
+capture noisily dash scatter mpg weight, by(foreign, title(`"'90s bc"')) name(jg46e)
+local jg_r5 = _rc
+mata: st_global("JG_WANT", "foreign, title(" + _jg_cq(char(39) + "90s bc") + ")")
+_jg_stored jg46e "graph_options by"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_build "`jg_p46'.html"
+local jg_rb2 = r(rc)
+capture erase "`jg_p46'.html"
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r5' `jg_r6' `jg_r7' `jg_r8'  stored: `jg_ok'  build: `jg_rb' `jg_rb2'  drawn (sp sc np nc cp cc lp lq): `jg_dr'"
+display as text "  rows: [`jg_rows'] of Stata's `jg_nf' `jg_nd' and six of 74  named in the note: `jg_m1' `jg_m2'"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
+assert `jg_r5' == 0 & `jg_r6' == 0 & `jg_r7' == 0 & `jg_r8' == 0
+assert "`jg_ok'" == "111111111111111"
+assert `jg_rb' == 0 & `jg_rb2' == 0
+assert "`jg_dr'" == "11111111"
+assert "`jg_rows'" == "`jg_nf' `jg_nd' 74 74 74 74 74 74"
+assert `jg_m1' == 1 & `jg_m2' == 1
+// The axis and side titles are declared as title() is, string asis, so the
+// quotes the user typed reach the spec.  Declared string, Stata stripped
+// them: ytitle("line 1" "line 2") was stored, and drawn, as one line, and
+// xtitle(`"a "b" c"') as a "b" c, its own quotes gone (measured 24sep2026).
+// twoway's SVG export, measured the same day, draws the first as two
+// lines, "line 1" and "line 2", the second as a "b" c, and each '90s
+// title below as '90s x, '90s y ...; it refuses the plain xtitle("'90s x")
+// and t1title("'90s t1"), r(109).  The page is held to what this tree's
+// renderer draws as twoway does; a "b" c is the renderer's own text
+// reader's to draw (test_textbox_multiline.py) and is held here to what is
+// stored.  t1title() .. r2title() are stored and named, not drawn.
+capture dash clear
+capture noisily dash scatter mpg weight, ytitle("line 1" "line 2") xtitle(`"a "b" c"') name(jg46i)
+local jg_t1 = _rc
+capture noisily dash scatter mpg weight, xtitle("'90s x") ytitle(`"'90s y"') t1title("'90s t1") b2title(`"'90s b2"') name(jg46j)
+local jg_t2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), ytitle2("line 1" "line 2") xtitle2(`"a "b" c"') name(jg46k)
+local jg_t3 = _rc
+local jg_tk ""
+mata: st_global("JG_WANT", _jg_pq("line 1") + " " + _jg_pq("line 2"))
+_jg_stored jg46i "graph_options ytitle"
+local jg_tk "`jg_tk'`r(ok)'"
+_jg_stored jg46k "graph_options ytitle2"
+local jg_tk "`jg_tk'`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq("a " + _jg_pq("b") + " c"))
+_jg_stored jg46i "graph_options xtitle"
+local jg_tk "`jg_tk'`r(ok)'"
+_jg_stored jg46k "graph_options xtitle2"
+local jg_tk "`jg_tk'`r(ok)'"
+mata: st_global("JG_WANT", _jg_pq(char(39) + "90s x"))
+_jg_stored jg46j "graph_options xtitle"
+local jg_tk "`jg_tk'`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s y"))
+_jg_stored jg46j "graph_options ytitle"
+local jg_tk "`jg_tk'`r(ok)'"
+mata: st_global("JG_WANT", _jg_pq(char(39) + "90s t1"))
+_jg_stored jg46j "graph_options t1title"
+local jg_tk "`jg_tk'`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq(char(39) + "90s b2"))
+_jg_stored jg46j "graph_options b2title"
+local jg_tk "`jg_tk'`r(ok)'"
+_jg_build "`jg_p46'.html"
+local jg_rb3 = r(rc)
+local jg_ta ""
+mata: st_global("JG_WANT", "line 1" + char(10) + "line 2")
+_jg_drawn LinearAxis
+local jg_ta "`jg_ta'`r(n)'"
+foreach jg_v in x y {
+    mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
+    _jg_drawn LinearAxis
+    local jg_ta "`jg_ta'`r(n)'"
+}
+capture erase "`jg_p46'.html"
+display as text "  axis titles -- rc: `jg_t1' `jg_t2' `jg_t3'  stored: `jg_tk'  build: `jg_rb3'  drawn (two lines, '90s x, '90s y): `jg_ta'"
+assert `jg_t1' == 0 & `jg_t2' == 0 & `jg_t3' == 0
+assert "`jg_tk'" == "11111111"
+assert `jg_rb3' == 0
+assert "`jg_ta'" == "111"
+display "JSE-46 PASS: subtitle, note, caption, a legend label, by()'s title, text(), an unknown option and the axis and side titles are stored as typed, drawn or named"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-47 -- CLAUDE.md rule 18, bypass: a title and a qualifier that close
+// their quote and write name() and saving() after it.  Each is text: the
+// graph keeps its own name, no graph of the other name exists, and no file
+// is written at the path the text names.  Before, the command's words past
+// the "' became -args-' next arguments: after the plot groups the graph was
+// registered holding one of the user's words as its JSON (measured
+// 24sep2026, the word x).  twoway refuses the title, r(109).  Then values
+// dash checks -- a weight, a legend, by(), a function -- holding the quote.
+// ----------------------------------------------------------------
+local jg_pwn1 "`c(tmpdir)'jse47_pwn1.html"
+local jg_pwn2 "`c(tmpdir)'jse47_pwn2.html"
+local jg_pwn3 "`c(tmpdir)'jse47_pwn3.html"
+foreach jg_f in "`jg_pwn1'" "`jg_pwn2'" "`jg_pwn3'" {
+    capture erase "`jg_f'"
+}
+quietly count if make == "', name(jgpwn) saving(`jg_pwn2') '"
+local jg_n47b = r(N)
+quietly count if make == "' name(jgpwn) '"
+local jg_n47c = r(N)
+capture noisily dash scatter mpg weight, title("' name(jgpwn) saving(`jg_pwn1') '") name(jg47a)
+local jg_r1 = _rc
+capture noisily dash scatter mpg weight if make == "', name(jgpwn) saving(`jg_pwn2') '", name(jg47b)
+local jg_r2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight) if make == "' name(jgpwn) '", name(jg47c)
+local jg_r3 = _rc
+local jg_ok ""
+mata: st_global("JG_WANT", _jg_pq(char(39) + " name(jgpwn) saving(" + st_local("jg_pwn1") + ") " + char(39)))
+_jg_stored jg47a "graph_options title"
+local jg_ok "`jg_ok'`r(ok)'"
+global JG_WANT "jg47a"
+_jg_stored jg47a "graph_options name"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make == " + _jg_pq(char(39) + ", name(jgpwn) saving(" + st_local("jg_pwn2") + ") " + char(39)))
+_jg_stored jg47b "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+global JG_WANT "jg47b"
+_jg_stored jg47b "graph_options name"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make == " + _jg_pq(char(39) + " name(jgpwn) " + char(39)))
+_jg_stored jg47c "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+global JG_WANT "jg47c"
+_jg_stored jg47c "graph_options name"
+local jg_ok "`jg_ok'`r(ok)'"
+// Neither graph options holds a saving() the text wrote.
+mata: st_local("jg_nosave", strofreal(!strpos(st_global("dash_json_jg47a"), char(34) + "saving" + char(34)) & !strpos(st_global("dash_json_jg47b"), char(34) + "saving" + char(34))))
+local jg_reg "${dash_graph_registry}"
+local jg_pj `"${dash_json_jgpwn}"'
+tempfile jg_p47
+_jg_build "`jg_p47'.html"
+local jg_rb = r(rc)
+local jg_rows "`r(rows)'"
+capture erase "`jg_p47'.html"
+// The one-line form: the page is written where saving() says, and nowhere
+// the title says.
+capture dash clear
+capture erase "`jg_p47'o.html"
+local jg_d1 = 0
+capture noisily dash scatter mpg weight, title("' saving(`jg_pwn3') name(jgpwn) '") saving("`jg_p47'o.html")
+local jg_r4 = _rc
+if `jg_r4' == 0 {
+    global JG_PAGE "`jg_p47'o.html"
+    mata: st_global("JG_WANT", char(39) + " saving(" + st_local("jg_pwn3") + ") name(jgpwn) " + char(39))
+    _jg_drawn Title
+    local jg_d1 = r(n)
+}
+local jg_reg1 "${dash_graph_registry}"
+capture erase "`jg_p47'o.html"
+local jg_w ""
+foreach jg_f in "`jg_pwn1'" "`jg_pwn2'" "`jg_pwn3'" {
+    capture confirm file "`jg_f'"
+    local jg_w "`jg_w'`=(_rc == 0)'"
+}
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4'  stored: `jg_ok'  no saving: `jg_nosave'  registry: [`jg_reg'] then [`jg_reg1']"
+display as text "  build: `jg_rb'  rows: [`jg_rows'] of Stata's `jg_n47b' `jg_n47c' 74  one-line title drawn: `jg_d1'  files written at the texts' paths: `jg_w'"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
+assert "`jg_ok'" == "111111"
+assert `jg_nosave' == 1
+assert "`jg_reg'" == "jg47a jg47b jg47c" & `"`jg_pj'"' == "" & "`jg_reg1'" == ""
+assert `jg_n47b' == 0 & `jg_n47c' == 0
+assert `jg_rb' == 0 & "`jg_rows'" == "`jg_n47b' `jg_n47c' 74"
+assert `jg_d1' == 1
+assert "`jg_w'" == "000"
+// The same quote in a value dash checks meets dash's check, never a raw
+// Stata error, and does not get past it: a weight expression is refused as
+// one dash cannot evaluate (twoway: r(132) "too few quotes"); a legend
+// direction word beside a quoted label is refused as twoway refuses the
+// word, in a segment and after a paren command's comma (twoway refuses the
+// plain label itself, r(100)); by() on a variable that does not exist is
+// twoway's r(111); a name holding a double quote is refused as a name; and
+// a function's expression holding one is stored whole (twoway: r(198)).
+// Measured 24sep2026.
+local jg_l47 "`c(tmpdir)'dash_jse47.log"
+_jg_log_on "`jg_l47'"
+capture noisily dash lfit mpg weight [aw=cond(make=="'x",1,2)], name(jg47w)
+local jg_q1 = _rc
+capture noisily dash scatter mpg weight, legend(label(1 "'90s") top) name(jg47l)
+local jg_q2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), legend(label(1 "'90s") top) name(jg47m)
+local jg_q3 = _rc
+capture noisily dash scatter mpg weight, by(nosuch, title("'x")) name(jg47n)
+local jg_q4 = _rc
+capture noisily dash scatter mpg weight, name(`"a"b"')
+local jg_q7 = _rc
+_jg_log_off
+cert_log_has "`jg_l47'", needle("must name one variable; dash cannot evaluate a weight expression")
+local jg_k1 = r(count)
+// The refusal shows the expression whole, past its quote: cut at the "',
+// it showed [aweight=cond(make==] (measured 24sep2026).
+cert_log_has "`jg_l47'", needle(`"x",1,2)] must name one variable"')
+local jg_k1 = `jg_k1' + r(count)
+cert_log_has "`jg_l47'", needle("option top not allowed")
+local jg_k2 = r(count)
+cert_log_has "`jg_l47'", needle("by(): variable nosuch not found")
+local jg_k3 = r(count)
+cert_log_has "`jg_l47'", needle("dash: invalid graph name")
+local jg_k4 = r(count)
+capture erase "`jg_l47'"
+capture noisily dash function y = strlen("'x"), range(0 1) name(jg47f)
+local jg_q5 = _rc
+mata: st_global("JG_WANT", "strlen(" + _jg_pq(char(39) + "x") + ")")
+_jg_stored jg47f "plots 0 expr"
+local jg_q6 "`r(ok)'"
+local jg_reg2 "${dash_graph_registry}"
+display as text "  refused: `jg_q1' `jg_q2' `jg_q3' `jg_q4' `jg_q7'  in dash's words: `jg_k1' `jg_k2' `jg_k3' `jg_k4'  function rc: `jg_q5' stored whole: `jg_q6'  registry: [`jg_reg2']"
+assert `jg_q1' == 198 & `jg_q2' == 198 & `jg_q3' == 198 & `jg_q4' == 111 & `jg_q7' == 198
+assert `jg_k1' == 2 & `jg_k2' == 2 & `jg_k3' == 1 & `jg_k4' == 1
+assert `jg_q5' == 0 & "`jg_q6'" == "1"
+assert "`jg_reg2'" == "jg47f"
+display "JSE-47 PASS: a title, qualifier or value that closes its quote is text or meets dash's own check, and names and writes nothing"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-48 -- CLAUDE.md rule 18, injection: a title and a qualifier holding
+// SMCL, markup, Python code, JSON punctuation and an =exp, behind a quote
+// and an apostrophe.  Each arrives as written -- nothing evaluated, run or
+// drawn as markup -- is drawn as text, and the qualifier gives Stata's
+// rows: in comma mode, in a plot's qualifier, after a paren command's
+// comma, as the graph's qualifier after the plot groups, and on the
+// one-line form.  A macro reference in the text is not among them: the
+// entry hands the command on as a command line, which expands one again,
+// and that is its own work, with its own tests.
+// ----------------------------------------------------------------
+local jg_sent "`c(tmpdir)'jse48_executed"
+capture erase "`jg_sent'"
+mata: st_local("jg_t", char(39) + " {err}{stata dash clear} </script><script>alert(1)</script> " + ///
+    "__import__('os').system('touch " + st_local("jg_sent") + "') }],{x:1} =1+1")
+quietly count if make != "`jg_t'" & foreign == 1
+local jg_n48 = r(N)
+capture dash clear
+quietly dash scatter mpg weight, name(jg48k)
+capture noisily dash scatter mpg weight, title("`jg_t'") name(jg48a)
+local jg_r1 = _rc
+capture noisily dash scatter mpg weight if make != "`jg_t'" & foreign == 1, name(jg48b)
+local jg_r2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), title("`jg_t'") name(jg48c)
+local jg_r3 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight) if make != "`jg_t'" & foreign == 1, name(jg48d)
+local jg_r4 = _rc
+local jg_ok ""
+mata: st_global("JG_WANT", _jg_pq(st_local("jg_t")))
+_jg_stored jg48a "graph_options title"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_stored jg48c "graph_options title"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make != " + _jg_pq(st_local("jg_t")) + " & foreign == 1")
+_jg_stored jg48b "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_stored jg48d "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+local jg_reg "${dash_graph_registry}"
+tempfile jg_p48
+_jg_build "`jg_p48'.html"
+local jg_rb = r(rc)
+local jg_rows "`r(rows)'"
+mata: st_global("JG_WANT", st_local("jg_t"))
+_jg_drawn Title
+local jg_d = r(n)
+cert_file_has "`jg_p48'.html", needle("<script>alert(1)")
+local jg_mk = r(found)
+capture erase "`jg_p48'.html"
+// The one-line form, the title and the qualifier together.
+capture dash clear
+capture erase "`jg_p48'o.html"
+local jg_d1 = 0
+local jg_row1 ""
+local jg_mk1 = 1
+capture noisily dash scatter mpg weight if make != "`jg_t'" & foreign == 1, title("`jg_t'") saving("`jg_p48'o.html")
+local jg_r5 = _rc
+if `jg_r5' == 0 {
+    global JG_PAGE "`jg_p48'o.html"
+    _jg_drawn Title
+    local jg_d1 = r(n)
+    python: _jg_rows()
+    local jg_row1 "$JG_ROWS"
+    cert_file_has "`jg_p48'o.html", needle("<script>alert(1)")
+    local jg_mk1 = r(found)
+}
+capture erase "`jg_p48'o.html"
+capture confirm file "`jg_sent'"
+local jg_ran = (_rc == 0)
+display as text "  rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r5'  stored as written: `jg_ok'  registry: [`jg_reg']  build: `jg_rb'"
+display as text "  rows: [`jg_rows'] of Stata's `jg_n48' `jg_n48' 74 74 74  titles drawn as written: `jg_d'  one-line: `jg_d1' [`jg_row1']  markup on the pages: `jg_mk' `jg_mk1'  code ran: `jg_ran'"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0 & `jg_r5' == 0
+assert "`jg_ok'" == "1111"
+assert "`jg_reg'" == "jg48k jg48a jg48b jg48c jg48d"
+assert `jg_rb' == 0
+assert `jg_n48' == `jg_n22'
+assert "`jg_rows'" == "`jg_n48' `jg_n48' 74 74 74"
+assert "`jg_d'" == "2" & "`jg_d1'" == "1" & "`jg_row1'" == "`jg_n48'"
+assert `jg_mk' == 0 & `jg_mk1' == 0 & `jg_ran' == 0
+display "JSE-48 PASS: SMCL, markup, Python code, JSON punctuation and an =exp in a title or qualifier arrive as written and run nowhere"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-49 -- CLAUDE.md rule 18, exhaustion: a title of 5,000 strings each
+// an apostrophe, "'" "'" ..., and a qualifier literal of 20,000
+// apostrophes -- about 40,000 characters, every one of them a quote or an
+// apostrophe -- registered, stored whole and built in bounded time.
+// ----------------------------------------------------------------
+mata: st_local("jg_t49", invtokens(J(1, 5000, char(34) + char(39) + char(34)), " "))
+mata: st_local("jg_q49", 20000 * char(39))
+quietly count if make != "`macval(jg_q49)'" & foreign == 1
+local jg_n49 = r(N)
+capture dash clear
+timer clear 49
+timer on 49
+capture noisily dash scatter mpg weight if make != "`macval(jg_q49)'" & foreign == 1, title(`macval(jg_t49)') name(jg49)
+local jg_r1 = _rc
+tempfile jg_p49
+_jg_build "`jg_p49'.html"
+local jg_rb = r(rc)
+local jg_rows "`r(rows)'"
+timer off 49
+quietly timer list 49
+local jg_tm = r(t49)
+local jg_ok ""
+mata: st_global("JG_WANT", st_local("jg_t49"))
+_jg_stored jg49 "graph_options title"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make != " + _jg_pq(st_local("jg_q49")) + " & foreign == 1")
+_jg_stored jg49 "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+local jg_na = 0
+local jg_only = 0
+if `jg_rb' == 0 {
+    python: _jg_title_apostrophes()
+    local jg_na = $JG_N
+    local jg_only = $JG_OK
+}
+capture erase "`jg_p49'.html"
+display as text "  rc: `jg_r1'  stored whole: `jg_ok'  build: `jg_rb' in `jg_tm' s  rows: [`jg_rows'] of Stata's `jg_n49'  title apostrophes drawn: `jg_na' (nothing else: `jg_only')"
+assert `jg_r1' == 0
+assert "`jg_ok'" == "11"
+assert `jg_rb' == 0
+assert "`jg_rows'" == "`jg_n49'"
+assert `jg_na' == 5000 & `jg_only' == 1
+assert `jg_tm' < 120
+display "JSE-49 PASS: 40,000 characters of quotes and apostrophes in a title and a qualifier are stored whole and built in bounded time"
+capture dash clear
+
+
+// ================================================================
+// JSE-50..59 -- dash kpi, dash build and dash serve take the user's text
+// as written (24sep2026)
+// ================================================================
+// dash put the user's text inside quotes in Stata expressions and command
+// lines: `if "`update'" == ""', `inlist("`update'", ...)', `local _kif =
+// regexr(`"`if'"', ...)', `global dash_kpi_<name>__tit "`title'"', and
+// filter(`"`filter'"') handed on to _dash_prepare_spec.  A text holding
+// "' -- one that opens with an apostrophe inside double quotes, "'90s
+// price", or the literal "' or 1 or '" -- ended the quote early; and every
+// such expansion read the text again for macros, so a literal $name or
+// `=exp' in it was replaced by its value, and ran.  Measured 24sep2026,
+// StataNow 19.5, console:
+//   * at 2df1900: dash kpi ..., title("'90s price") r(100), the compound
+//     form r(133); dash kpi ... if make == "' or 1 or '" r(198); dash
+//     build, title("'90s cars") r(100), the compound form r(133) -- the
+//     command's own entry, since read by value.  The compound-quoted
+//     qualifiers registered, whole, already.
+//   * past the entry: the plain-quoted KPI qualifier was stored cut --
+//     "make ==", "make !=" -- and the saved page showed the unconditional
+//     mean, 6165.26, where Stata's summarize gives . and 6384.68;
+//     update(`"a"b"') and filterposition(`"le"ft"') stopped with r(132)
+//     "too few quotes", link(`"g1"x"') r(132), link(`"g1" "g2"') r(109)
+//     "type mismatch"; a KPI name(`"q"7"') r(303) "equation [a-zA-Z_] not
+//     found"; filter(foreign, label("'90s")) built with the label gone, and
+//     a label closed the `"..."' it was handed on in and became options:
+//     label("') csv title(pwned) subtitle(") titled the page "pwned";
+//     exclude("g1") passed dash's check and the renderer, reading the
+//     quotes, built no widget; saving() into a directory that does not
+//     exist ended in Python, r(7102) FileNotFoundError, on every route; and
+//     A$J5_G B `=1+1' C in a KPI's or a dashboard's title became "A<the
+//     global> B 2 C", and `=filewrite(...)' in one wrote a file.
+// The commands below are written as a user types them.  Where the text
+// holds $ or `, dash's own programs (_dash_kpi, _dash_build, _dash_serve)
+// are called: the entry, `dash', hands them the rest of its command as a
+// command line, which Stata reads again for macros before they see it.
+qui sysuse auto, clear
+capture dash clear
+_dash_find_render
+global J5_RENDER `"`r(fn)'"'
+
+// Helpers.  Pages are read as the browser reads them: the embedded
+// document HTML-unescaped and parsed, every string walked.  A KPI card is
+// the Div holding id="kpi_val_<name>"; its title and value are that card's
+// two text divs, HTML-unescaped.  Every text is compared by value -- set
+// and read through sfi.Macro, never expanded.  No backslash, backtick or
+// dollar sign is written in the block: Stata reads its lines for macros.
+python:
+import html as _j5_html
+import importlib.util as _j5_il
+import json as _j5_json
+import re as _j5_re
+import sys as _j5_sys
+import warnings as _j5_w
+from sfi import Macro as _j5_M
+
+def _j5_strings(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    m = _j5_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _j5_re.S)
+    out = []
+    stack = [_j5_json.loads(_j5_html.unescape(m.group(1)))] if m else []
+    while stack:
+        v = stack.pop()
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, dict):
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return out
+
+def _j5_card_in(texts, name):
+    key = 'id="kpi_val_' + name + '"'
+    for s in texts:
+        if key in s:
+            t = _j5_re.search('margin-bottom:6px;">(.*?)</div>', s, _j5_re.S)
+            v = _j5_re.search(_j5_re.escape(key) + '[^>]*>(.*?)</div>', s, _j5_re.S)
+            return (_j5_html.unescape(t.group(1)) if t else None,
+                    _j5_html.unescape(v.group(1)) if v else None)
+    return (None, None)
+
+def _j5_set(got_t, got_v, ok):
+    _j5_M.setGlobal("J5_GOT_T", "" if got_t is None else got_t)
+    _j5_M.setGlobal("J5_GOT_V", "" if got_v is None else got_v)
+    _j5_M.setGlobal("J5_OK", "1" if ok else "0")
+
+# J5_OK: the saved page J5_PAGE has card J5_KPI, titled J5_WANT_T,
+# showing J5_WANT_V.
+def _j5_card():
+    t, v = _j5_card_in(_j5_strings(_j5_M.getGlobal("J5_PAGE")), _j5_M.getGlobal("J5_KPI"))
+    _j5_set(t, v, t is not None and t == _j5_M.getGlobal("J5_WANT_T")
+            and v == _j5_M.getGlobal("J5_WANT_V"))
+
+def _j5_dr():
+    name = "_j5_dash_render"
+    if name not in _j5_sys.modules:
+        spec = _j5_il.spec_from_file_location(name, _j5_M.getGlobal("J5_RENDER"))
+        mod = _j5_il.module_from_spec(spec)
+        _j5_sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    return _j5_sys.modules[name]
+
+# The served app of J5_SPEC and J5_DATA, built once per call of this: the
+# generated app's make_document on a fresh Document, as JSE-16 builds it.
+_j5_served = []
+def _j5_serve_build():
+    from bokeh.document import Document
+    from bokeh.models import Div
+    dr = _j5_dr()
+    sp, dp, ap = (_j5_M.getGlobal(k) for k in ("J5_SPEC", "J5_DATA", "J5_APP"))
+    with _j5_w.catch_warnings():
+        _j5_w.simplefilter("ignore")
+        built = dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "_j5_app"}
+    doc = Document()
+    with _j5_w.catch_warnings():
+        _j5_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_j5_app.py", "exec"), ns)
+        made = ns["make_document"](doc)
+    _j5_served[:] = [d.text or "" for root in doc.roots for d in root.select({"type": Div})]
+
+def _j5_served_card():
+    t, v = _j5_card_in(_j5_served, _j5_M.getGlobal("J5_KPI"))
+    _j5_set(t, v, t is not None and t == _j5_M.getGlobal("J5_WANT_T")
+            and v == _j5_M.getGlobal("J5_WANT_V"))
+
+# J5_OK: the page's header title is J5_WANT_T; an empty J5_WANT_T wants no
+# header title at all.  J5_GOT_V is the header's subtitle, "" for none.
+def _j5_header():
+    got, sub = None, None
+    for s in _j5_strings(_j5_M.getGlobal("J5_PAGE")):
+        m = _j5_re.search('<h2 class="db-title"[^>]*>(.*?)</h2>', s, _j5_re.S)
+        if m and got is None:
+            got = _j5_html.unescape(m.group(1))
+        m = _j5_re.search('<p class="db-subtitle"[^>]*>(.*?)</p>', s, _j5_re.S)
+        if m and sub is None:
+            sub = _j5_html.unescape(m.group(1))
+    want = _j5_M.getGlobal("J5_WANT_T")
+    _j5_set(got, sub, (got == want) if want != "" else (got is None))
+
+# J5_OK: a string of the page's document is exactly J5_NEEDLE.
+def _j5_page_has():
+    needle = _j5_M.getGlobal("J5_NEEDLE")
+    _j5_set(None, None, any(s == needle for s in _j5_strings(_j5_M.getGlobal("J5_PAGE"))))
+
+# J5_OK: the JSON file J5_SPECFILE holds J5_WANT_T at the keys J5_PATH.
+def _j5_spec_field():
+    with open(_j5_M.getGlobal("J5_SPECFILE"), encoding="utf-8") as fh:
+        data = _j5_json.load(fh)
+    for part in _j5_M.getGlobal("J5_PATH").split():
+        data = data[int(part)] if part.isdigit() else data[part]
+    _j5_set(str(data), None, data == _j5_M.getGlobal("J5_WANT_T"))
+end
+
+// The command in $J5_CMD, read by value and run -- macval() keeps a $ or
+// ` in it as written -- with its output logged: r(rc), r(log).
+capture program drop _j5_run
+program define _j5_run, rclass
+    version 16.0
+    mata: st_local("cmd", st_global("J5_CMD"))
+    local logfile "`c(tmpdir)'dash_jse5_run.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _j5log
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_j5log) text replace
+    capture noisily `macval(cmd)'
+    local rc = _rc
+    quietly log close _j5log
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// A stand-in dash_render.py, first on the ado-path while a serve runs (the
+// method of test_serve_launch.cscript SRV-17): `dash serve' runs whole --
+// options, inheritance, spec, the handoff -- and the stand-in copies the
+// spec it is handed to spec.json beside itself and exits, so no server
+// starts, and none could if a check below broke.
+tempfile j5_sb
+local j5_stub "`j5_sb'_stub"
+capture mkdir "`j5_stub'"
+tempname j5_fh
+file open `j5_fh' using "`j5_stub'/dash_render.py", write text replace
+file write `j5_fh' `"import os, shutil, sys"' _n
+file write `j5_fh' `"_a = sys.argv[1:]"' _n
+file write `j5_fh' `"_d = os.path.dirname(os.path.abspath(__file__))"' _n
+file write `j5_fh' `"shutil.copyfile(_a[_a.index("--spec") + 1], os.path.join(_d, "spec.json"))"' _n
+file write `j5_fh' `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("# app")"' _n
+file close `j5_fh'
+global J5_SPECFILE "`j5_stub'/spec.json"
+capture program drop _j5_serve
+program define _j5_serve, rclass
+    version 16.0
+    // Runs $J5_CMD with the stand-in first on the ado-path: r(rc), and
+    // r(stub) 1 when the renderer dash located was the stand-in.
+    local stub "`1'"
+    capture erase "`stub'/spec.json"
+    adopath ++ "`stub'"
+    capture noisily {
+        _dash_find_render
+        local found `"`r(fn)'"'
+        mata: st_local("cmd", st_global("J5_CMD"))
+        capture noisily `macval(cmd)'
+        local rc = _rc
+    }
+    local rc2 = _rc
+    adopath - "`stub'"
+    if `rc2' local rc = `rc2'
+    mata: st_local("isstub", strofreal(strpos(st_local("found"), "_stub") > 0))
+    return scalar rc   = `rc'
+    return scalar stub = `isstub'
+end
+
+// ----------------------------------------------------------------
+// JSE-50 -- a KPI title holding "', plain and compound-quoted, is stored
+// as typed, and the saved page's card shows it with Stata's value.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j50g)
+capture noisily dash kpi mean(price), title("'90s price") fmt(%9.2f) name(j50p)
+local j5_rc1 = _rc
+capture noisily dash kpi mean(price), title(`"'90s price"') fmt(%9.2f) name(j50c)
+local j5_rc2 = _rc
+display as text "  rc: `j5_rc1' `j5_rc2'"
+assert `j5_rc1' == 0 & `j5_rc2' == 0
+mata: st_global("J5_WANT_T", char(39) + "90s price")
+mata: st_local("j5_ok1", strofreal(st_global("dash_kpi_j50p__tit") == st_global("J5_WANT_T")))
+mata: st_local("j5_ok2", strofreal(st_global("dash_kpi_j50c__tit") == st_global("J5_WANT_T")))
+quietly summarize price
+local j5_v : display %9.2f r(mean)
+global J5_WANT_V = strtrim("`j5_v'")
+tempfile j5_p50
+capture noisily dash build, saving("`j5_p50'.html") replace nobrowser
+assert _rc == 0
+global J5_PAGE "`j5_p50'.html"
+global J5_KPI "j50p"
+python: _j5_card()
+local j5_ok3 "$J5_OK"
+global J5_KPI "j50c"
+python: _j5_card()
+local j5_ok4 "$J5_OK"
+mata: _dash_say("txt", "  card: [", st_global("J5_GOT_T"), "] [" + st_global("J5_GOT_V") + "]")
+display as text "  stored: `j5_ok1' `j5_ok2'  cards: `j5_ok3' `j5_ok4'"
+assert "`j5_ok1'`j5_ok2'`j5_ok3'`j5_ok4'" == "1111"
+capture erase "`j5_p50'.html"
+display "JSE-50 PASS: a KPI title holding a quote and an apostrophe is stored and drawn as typed"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-51 -- a KPI qualifier holding "', plain and compound-quoted, one
+// that selects no row and one that selects 22: stored whole, and the card
+// shows Stata's summarize over the rows it selects -- . when there are
+// none -- on the saved page and in the served app.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+dash scatter mpg weight, name(j51g)
+capture noisily dash kpi mean(price) if make == "' or 1 or '", title("K") fmt(%9.2f) name(j51a)
+local j5_rc1 = _rc
+capture noisily dash kpi mean(price) if make == `"' or 1 or '"', title("K") fmt(%9.2f) name(j51b)
+local j5_rc2 = _rc
+capture noisily dash kpi mean(price) if make != "'x" & foreign == 1, title("K") fmt(%9.2f) name(j51c)
+local j5_rc3 = _rc
+capture noisily dash kpi mean(price) if make != `"'x"' & foreign == 1, title("K") fmt(%9.2f) name(j51d)
+local j5_rc4 = _rc
+display as text "  rc: `j5_rc1' `j5_rc2' `j5_rc3' `j5_rc4'"
+assert `j5_rc1' == 0 & `j5_rc2' == 0 & `j5_rc3' == 0 & `j5_rc4' == 0
+// Stata's own answers, the oracle.
+quietly summarize price if make == "' or 1 or '"
+local j5_n0 = r(N)
+local j5_m0 : display %9.2f r(mean)
+local j5_m0 = strtrim("`j5_m0'")
+quietly summarize price if make != "'x" & foreign == 1
+local j5_n1 = r(N)
+local j5_m1 : display %9.2f r(mean)
+local j5_m1 = strtrim("`j5_m1'")
+quietly summarize price if make == `"' or 1 or '"'
+assert r(N) == `j5_n0'
+quietly summarize price if make != `"'x"' & foreign == 1
+assert r(N) == `j5_n1'
+display as text "  Stata: `j5_n0' rows, `j5_m0'; `j5_n1' rows, `j5_m1'"
+assert `j5_n0' == 0 & `j5_n1' == 22
+// What is stored: the qualifier as typed, less its "if".
+mata: _j5_a = char(34) + char(39) + " or 1 or " + char(39) + char(34)
+mata: _j5_c = char(96) + _j5_a + char(39)
+mata: _j5_x = char(34) + char(39) + "x" + char(34)
+mata: st_local("j5_s", strofreal(st_global("dash_kpi_j51a__if") == "make == " + _j5_a) + ///
+    strofreal(st_global("dash_kpi_j51b__if") == "make == " + _j5_c) + ///
+    strofreal(st_global("dash_kpi_j51c__if") == "make != " + _j5_x + " & foreign == 1") + ///
+    strofreal(st_global("dash_kpi_j51d__if") == "make != " + char(96) + _j5_x + char(39) + " & foreign == 1"))
+mata: mata drop _j5_a _j5_c _j5_x
+mata: _dash_say("txt", "  stored: [", st_global("dash_kpi_j51a__if"), "] [" + st_global("dash_kpi_j51c__if") + "]")
+display as text "  stored whole: `j5_s'  values: [${dash_kpi_j51a__dsp}] [${dash_kpi_j51b__dsp}] [${dash_kpi_j51c__dsp}] [${dash_kpi_j51d__dsp}]"
+assert "`j5_s'" == "1111"
+assert "${dash_kpi_j51a__dsp}" == "`j5_m0'" & "${dash_kpi_j51b__dsp}" == "`j5_m0'"
+assert "${dash_kpi_j51c__dsp}" == "`j5_m1'" & "${dash_kpi_j51d__dsp}" == "`j5_m1'"
+// The saved page.
+tempfile j5_p51
+capture noisily dash build, saving("`j5_p51'.html") replace nobrowser
+assert _rc == 0
+global J5_PAGE "`j5_p51'.html"
+global J5_WANT_T "K"
+local j5_ok ""
+foreach k in a b c d {
+    global J5_KPI "j51`k'"
+    global J5_WANT_V = cond(inlist("`k'", "a", "b"), "`j5_m0'", "`j5_m1'")
+    python: _j5_card()
+    local j5_ok "`j5_ok'$J5_OK"
+    display as text "  saved j51`k': [$J5_GOT_V]"
+}
+// And the served app, from what dash serve and dash build both prepare.
+tempfile j5_s51 j5_d51 j5_a51
+_dash_prepare_spec, specpath("`j5_s51'") datapath("`j5_d51'")
+global J5_SPEC "`j5_s51'"
+global J5_DATA "`j5_d51'"
+global J5_APP  "`j5_a51'"
+python: _j5_serve_build()
+foreach k in a b c d {
+    global J5_KPI "j51`k'"
+    global J5_WANT_V = cond(inlist("`k'", "a", "b"), "`j5_m0'", "`j5_m1'")
+    python: _j5_served_card()
+    local j5_ok "`j5_ok'$J5_OK"
+    display as text "  served j51`k': [$J5_GOT_V]"
+}
+display as text "  cards, saved then served: `j5_ok'"
+assert "`j5_ok'" == "11111111"
+capture erase "`j5_p51'.html"
+display "JSE-51 PASS: a KPI qualifier holding a quote and an apostrophe is stored whole and applied as Stata applies it"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-52 -- saving() into a directory that does not exist is refused by
+// dash before anything is rendered, as twoway refuses it: r(603), "file
+// ... could not be opened", naming the directory -- on dash build, with
+// and without replace, dash build, server, and the one-line form.
+// twoway answers saving("/nonexistent/x.gph") with r(603) "file
+// /nonexistent/x.gph could not be opened" (measured 24sep2026); dash
+// ended in Python, r(7102) FileNotFoundError, and without replace said
+// the file "already exists".
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j52)
+tempfile j5_b52
+local j5_nd "`j5_b52'_nodir"
+capture rmdir "`j5_nd'"
+mata: st_local("j5_there", strofreal(direxists(st_local("j5_nd"))))
+assert `j5_there' == 0
+local j5_bad ""
+local j5_i = 0
+foreach j5_c in ///
+    `"dash build, saving("`j5_nd'/j52.html") replace nobrowser"' ///
+    `"dash build, saving("`j5_nd'/j52.html") nobrowser"' ///
+    `"dash build, saving("`j5_nd'/j52.py") server replace"' ///
+    `"dash scatter mpg weight, saving("`j5_nd'/j52i.html")"' ///
+    `"dash build, saving('`j5_nd'/j52a.html) replace nobrowser"' {
+    local ++j5_i
+    global J5_CMD `"`j5_c'"'
+    _j5_run
+    local j5_rc = r(rc)
+    local j5_lg "`r(log)'"
+    cert_log_has "`j5_lg'", needle("could not be opened")
+    local j5_m1 = r(found)
+    cert_log_has "`j5_lg'", needle("`j5_nd'")
+    local j5_m2 = r(found)
+    cert_log_has "`j5_lg'", needle("does not exist")
+    local j5_m3 = r(found)
+    cert_log_has "`j5_lg'", needle("Traceback")
+    local j5_tb = r(found)
+    display as text "  case `j5_i': rc `j5_rc', message `j5_m1'`j5_m2'`j5_m3', traceback `j5_tb'"
+    if `j5_rc' != 603 | `j5_m1' != 1 | `j5_m2' != 1 | `j5_m3' != 1 | `j5_tb' != 0 {
+        local j5_bad "`j5_bad' `j5_i'"
+    }
+}
+mata: st_local("j5_there", strofreal(direxists(st_local("j5_nd"))))
+display as text "  failing cases: [`j5_bad']  directory made: `j5_there'"
+assert "`j5_bad'" == ""
+assert `j5_there' == 0
+// A directory that exists still takes the file.
+capture erase "`j5_b52'_ok.html"
+capture noisily dash build, saving("`j5_b52'_ok.html") replace nobrowser
+assert _rc == 0
+confirm file "`j5_b52'_ok.html"
+capture erase "`j5_b52'_ok.html"
+display "JSE-52 PASS: saving() into a directory that does not exist is dash's r(603) naming it, on every route"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-53 -- dash build, title("'90s cars") and the compound form: the page
+// header shows the title as typed, and dash build records it for dash
+// serve as typed.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j53)
+tempfile j5_p53
+mata: st_global("J5_WANT_T", char(39) + "90s cars")
+local j5_ok ""
+capture noisily dash build, title("'90s cars") saving("`j5_p53'a.html") replace nobrowser
+local j5_rc1 = _rc
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("dash_opts_title") == st_global("J5_WANT_T")))
+capture noisily dash build, title(`"'90s cars"') saving("`j5_p53'b.html") replace nobrowser
+local j5_rc2 = _rc
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("dash_opts_title") == st_global("J5_WANT_T")))
+display as text "  rc: `j5_rc1' `j5_rc2'"
+assert `j5_rc1' == 0 & `j5_rc2' == 0
+foreach j5_f in a b {
+    global J5_PAGE "`j5_p53'`j5_f'.html"
+    python: _j5_header()
+    local j5_ok "`j5_ok'$J5_OK"
+    mata: _dash_say("txt", "  header: [", st_global("J5_GOT_T"), "]")
+}
+display as text "  recorded, header: `j5_ok'"
+assert "`j5_ok'" == "1111"
+capture erase "`j5_p53'a.html"
+capture erase "`j5_p53'b.html"
+display "JSE-53 PASS: a dashboard title holding a quote and an apostrophe is drawn as typed"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-54 -- dash serve with such a title, and with such a KPI title, and
+// inheriting such a title from dash build: the spec it hands the renderer
+// holds each as typed.  Run whole against the stand-in renderer.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j54)
+dash kpi mean(price), title("'90s price") name(j54k)
+local j5_ok ""
+forvalues j5_i = 1/2 {
+    // title("'90s cars"), then title(`"'90s cars"'): made with char(), as
+    // no compound quote can hold the "' of the first.
+    mata: st_global("J5_CMD", "dash serve, title(" + ("`j5_i'" == "2" ? char(96) : "") + ///
+        char(34) + char(39) + "90s cars" + char(34) + ("`j5_i'" == "2" ? char(39) : "") + ") nobrowser")
+    _j5_serve "`j5_stub'"
+    local j5_rc = r(rc)
+    local j5_st = r(stub)
+    display as text "  serve `j5_i': rc `j5_rc', the stand-in ran: `j5_st'"
+    assert `j5_rc' == 0 & `j5_st' == 1
+    confirm file "$J5_SPECFILE"
+    mata: st_global("J5_WANT_T", char(39) + "90s cars")
+    global J5_PATH "build_options title"
+    python: _j5_spec_field()
+    local j5_ok "`j5_ok'$J5_OK"
+    mata: st_global("J5_WANT_T", char(39) + "90s price")
+    global J5_PATH "kpis 0 title"
+    python: _j5_spec_field()
+    local j5_ok "`j5_ok'$J5_OK"
+}
+// A bare dash serve inherits the title of the dash build before it.
+tempfile j5_p54
+capture noisily dash build, title("'90s cars") saving("`j5_p54'.html") replace nobrowser
+assert _rc == 0
+global J5_CMD "dash serve, nobrowser"
+_j5_serve "`j5_stub'"
+assert r(rc) == 0 & r(stub) == 1
+mata: st_global("J5_WANT_T", char(39) + "90s cars")
+global J5_PATH "build_options title"
+python: _j5_spec_field()
+local j5_ok "`j5_ok'$J5_OK"
+display as text "  served spec: `j5_ok'"
+assert "`j5_ok'" == "11111"
+capture erase "`j5_p54'.html"
+display "JSE-54 PASS: dash serve hands on a title and a KPI title holding a quote and an apostrophe as typed"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-55 -- update() and filterposition() holding quotes are read by value:
+// a value that is not one of their words is dash's own refusal, r(198),
+// where it was r(132) "too few quotes"; a quoted valid word is accepted.
+// An odd quote is Stata's syntax's "unmatched quote", r(198), before dash
+// runs -- twoway's answer to title(a"b) is r(198) too, "parentheses do not
+// balance" (measured 24sep2026).
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j55g)
+local j5_bad ""
+foreach j5_c in `"dash kpi mean(price), title("U") update(`"a"b"') name(j55a)"' ///
+    `"dash kpi mean(price), title("U") update(`"filter" name(j55x)"') name(j55b)"' {
+    global J5_CMD `"`j5_c'"'
+    _j5_run
+    local j5_rc = r(rc)
+    cert_log_has "`r(log)'", needle("update() must be filter, brush, or both")
+    local j5_m = r(found)
+    display as text "  update(): rc `j5_rc', dash's refusal `j5_m'"
+    if `j5_rc' != 198 | `j5_m' != 1 local j5_bad "`j5_bad' [`j5_rc' `j5_m']"
+}
+capture noisily dash kpi mean(price), title("U") update(br"ush) name(j55c)
+if _rc != 198 local j5_bad "`j5_bad' [odd `=_rc']"
+// A KPI name holding a quote is dash's refusal too; it was r(303)
+// "equation [a-zA-Z_] not found".  twoway refuses name(`"q"7"'), r(198)
+// (measured 24sep2026).
+global J5_CMD `"dash kpi mean(price), title("N") name(`"q"7"')"'
+_j5_run
+local j5_rc = r(rc)
+cert_log_has "`r(log)'", needle("dash kpi: invalid name")
+local j5_m = r(found)
+display as text "  name(): rc `j5_rc', dash's refusal `j5_m'"
+if `j5_rc' != 198 | `j5_m' != 1 local j5_bad "`j5_bad' [name `j5_rc' `j5_m']"
+assert "${dash_graph_registry}" == "j55g"
+assert "${dash_kpi_j55a}${dash_kpi_j55b}${dash_kpi_j55x}${dash_kpi_j55c}" == ""
+dash kpi mean(price), title("U") update("brush") name(j55d)
+dash kpi mean(price), title("U") update(`"both"') name(j55e)
+assert "${dash_kpi_j55d__upd}" == "brush" & "${dash_kpi_j55e__upd}" == "both"
+tempfile j5_p55
+global J5_CMD `"dash build, filter(foreign) filterposition(`"le"ft"') saving("`j5_p55'.html") replace nobrowser"'
+capture erase "`j5_p55'.html"
+_j5_run
+local j5_rc = r(rc)
+cert_log_has "`r(log)'", needle("filterposition() must be 'top' (default) or 'left' (sidebar)")
+local j5_m = r(found)
+capture confirm file "`j5_p55'.html"
+local j5_w = (_rc == 0)
+display as text "  filterposition(): rc `j5_rc', dash's refusal `j5_m', page written `j5_w'"
+if `j5_rc' != 198 | `j5_m' != 1 | `j5_w' != 0 local j5_bad "`j5_bad' [fpos `j5_rc' `j5_m' `j5_w']"
+capture noisily dash build, filter(foreign) filterposition("left") saving("`j5_p55'.html") replace nobrowser
+if _rc != 0 | "${dash_opts_filterposition}" != "left" local j5_bad "`j5_bad' [left]"
+display as text "  failures: [`j5_bad']"
+assert "`j5_bad'" == ""
+capture erase "`j5_p55'.html"
+display "JSE-55 PASS: update() and filterposition() holding quotes are dash's refusal, or accepted where valid"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-56 -- link() and a filter's exclude() are registry names, read as
+// the renderer reads them: split at blanks, quotes kept.  Stata's word
+// functions stripped the quotes, so link(`""j56a""') passed as j56a where
+// the renderer, splitting with str.split(), looks for a graph named
+// "j56a", quotes and all; exclude("j56a") passed and the renderer built no
+// widget (measured 24sep2026, for exclude("g1"): "exclude() names
+// ['"g1"'] are not valid names; no widget was built"); link(`"j56a"x"')
+// was r(132) and link(`"j56a" "j56b"') r(109) "type mismatch".  Each is
+// dash's own refusal now, r(198); a quoted name syntax unquotes is
+// accepted.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j56a)
+dash scatter price weight, name(j56b)
+tempfile j5_p56
+local j5_bad ""
+local j5_i = 0
+foreach j5_c in `"dash build, link(`"j56a"x"') saving("`j5_p56'.html") replace nobrowser"' ///
+    `"dash build, link(`"j56a" "j56b"') saving("`j5_p56'.html") replace nobrowser"' ///
+    `"dash build, link(`""j56a""') saving("`j5_p56'.html") replace nobrowser"' ///
+    `"dash build, link(j56a `""j56b""') saving("`j5_p56'.html") replace nobrowser"' ///
+    `"dash build, filter(foreign, exclude("j56a")) saving("`j5_p56'.html") replace nobrowser"' {
+    local ++j5_i
+    capture erase "`j5_p56'.html"
+    global J5_CMD `"`j5_c'"'
+    _j5_run
+    local j5_rc = r(rc)
+    cert_log_has "`r(log)'", needle("not found in registry")
+    local j5_m = r(found)
+    capture confirm file "`j5_p56'.html"
+    local j5_w = (_rc == 0)
+    display as text "  case `j5_i': rc `j5_rc', dash's refusal `j5_m', page written `j5_w'"
+    if `j5_rc' != 198 | `j5_m' != 1 | `j5_w' != 0 local j5_bad "`j5_bad' `j5_i'"
+}
+capture noisily dash build, link("j56a" "j56b") saving("`j5_p56'.html") replace nobrowser
+if _rc != 0 | "${dash_opts_link}" != "j56a j56b" local j5_bad "`j5_bad' quoted"
+capture noisily dash build, filter(foreign, exclude(j56a)) saving("`j5_p56'.html") replace nobrowser
+if _rc != 0 local j5_bad "`j5_bad' exclude"
+// The widget is a Select: the model's type name is a string of the page's
+// document when one was built.
+global J5_PAGE "`j5_p56'.html"
+global J5_NEEDLE "Select"
+python: _j5_page_has()
+display as text "  failures: [`j5_bad']  exclude(j56a)'s widget on the page: $J5_OK"
+assert "`j5_bad'" == ""
+assert "$J5_OK" == "1"
+capture erase "`j5_p56'.html"
+display "JSE-56 PASS: link() and exclude() names are read as the renderer reads them, quotes and all"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-57 -- bypass (CLAUDE.md rule 18): text that closes its quote to
+// become another option stays the text it is.
+//   * a filter() label that closed the `"..."' dash build handed it on in:
+//     label("') csv title(pwned) subtitle(") titled the page "pwned" and
+//     turned on the CSV download of every row (measured 24sep2026).
+//   * a KPI title that closes its quote and names another KPI and
+//     another update(); a dashboard title that adds saving().
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j57g)
+tempfile j5_p57
+capture noisily dash build, filter(foreign, label("') csv title(pwned) subtitle(")) saving("`j5_p57'.html") replace nobrowser
+assert _rc == 0
+global J5_PAGE "`j5_p57'.html"
+global J5_WANT_T ""
+python: _j5_header()
+local j5_ok1 "$J5_OK"
+global J5_NEEDLE "dash_csv_download"
+python: _j5_page_has()
+local j5_ok2 = 1 - $J5_OK
+mata: st_global("J5_NEEDLE", char(39) + ") csv title(pwned) subtitle(")
+python: _j5_page_has()
+local j5_ok3 "$J5_OK"
+// The controls: the same page asked for a title and the download has them.
+capture noisily dash build, title("pwned") csv filter(foreign) saving("`j5_p57'c.html") replace nobrowser
+assert _rc == 0
+global J5_PAGE "`j5_p57'c.html"
+global J5_WANT_T "pwned"
+python: _j5_header()
+local j5_c1 "$J5_OK"
+global J5_NEEDLE "dash_csv_download"
+python: _j5_page_has()
+local j5_c2 "$J5_OK"
+display as text "  label stayed a label -- no title `j5_ok1', no download `j5_ok2', label whole `j5_ok3'; controls `j5_c1' `j5_c2'"
+assert "`j5_ok1'`j5_ok2'`j5_ok3'" == "111"
+assert "`j5_c1'`j5_c2'" == "11"
+// And through dash serve, which hands filter() on the same way -- after
+// dash clear, so it inherits nothing from the control's title and csv.
+capture dash clear
+dash scatter mpg weight, name(j57g)
+mata: st_global("J5_CMD", "dash serve, filter(foreign, label(" + char(34) + char(39) + ///
+    ") csv title(pwned) subtitle(" + char(34) + ")) nobrowser")
+_j5_serve "`j5_stub'"
+assert r(rc) == 0 & r(stub) == 1
+global J5_WANT_T ""
+global J5_PATH "build_options title"
+python: _j5_spec_field()
+local j5_s1 "$J5_OK"
+global J5_WANT_T "0"
+global J5_PATH "build_options csv"
+python: _j5_spec_field()
+local j5_s2 "$J5_OK"
+mata: st_global("J5_WANT_T", "foreign, label(" + char(34) + char(39) + ///
+    ") csv title(pwned) subtitle(" + char(34) + ")")
+global J5_PATH "build_options filter"
+python: _j5_spec_field()
+local j5_s3 "$J5_OK"
+display as text "  served spec -- no title `j5_s1', no download `j5_s2', filter whole `j5_s3'"
+assert "`j5_s1'`j5_s2'`j5_s3'" == "111"
+// A KPI title that closes its quote and adds name() and update().
+capture noisily dash kpi mean(price), title(`"a" name(j57x) update(both) "b"') name(j57k)
+assert _rc == 0
+assert "${dash_kpi_j57x}" == "" & "${dash_kpi_j57k__upd}" == "filter"
+mata: st_local("j5_ok4", strofreal(st_global("dash_kpi_j57k__tit") == "a" + char(34) + " name(j57x) update(both) " + char(34) + "b"))
+// A dashboard title that adds saving() and replace.
+local j5_evil "`j5_p57'_evil.html"
+capture erase "`j5_evil'"
+capture noisily dash build, title(`"x" saving("`j5_evil'") replace "y"') saving("`j5_p57'.html") replace nobrowser
+assert _rc == 0
+capture confirm file "`j5_evil'"
+local j5_ok5 = (_rc != 0)
+global J5_PAGE "`j5_p57'.html"
+mata: st_global("J5_WANT_T", "x" + char(34) + " saving(" + char(34) + st_local("j5_evil") + char(34) + ") replace " + char(34) + "y")
+python: _j5_header()
+local j5_ok6 "$J5_OK"
+display as text "  KPI title kept `j5_ok4'; no second page `j5_ok5', title kept `j5_ok6'"
+assert "`j5_ok4'`j5_ok5'`j5_ok6'" == "111"
+capture erase "`j5_p57'.html"
+capture erase "`j5_p57'c.html"
+display "JSE-57 PASS: a label or a title that closes its quote cannot become an option"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-58 -- injection (CLAUDE.md rule 18): Stata's macro characters, an
+// =exp, a function that writes a file, SMCL, markup and Python code are
+// data.  Stata's own summarize is the oracle for the qualifier: typed in
+// a do-file, make != "\$J5_G" compares make with the six characters
+// $J5_G.  Nothing may be expanded, nothing may run, and each text arrives
+// as written in the registry, the spec and the page.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+global J5_G "Audi 5000"
+local j5_sent1 "`c(tmpdir)'jse58_filewrite"
+local j5_sent2 "`c(tmpdir)'jse58_python"
+capture erase "`j5_sent1'"
+capture erase "`j5_sent2'"
+mata: st_global("J5_TXT", "A" + char(36) + "J5_G B " + char(96) + "=1+1" + char(39) + " C " + ///
+    char(96) + "=filewrite(" + char(34) + st_local("j5_sent1") + char(34) + "," + char(34) + "x" + ///
+    char(34) + ")" + char(39) + " D")
+dash scatter mpg weight, name(j58g)
+// A KPI's title, subtitle and qualifier.
+capture noisily _dash_kpi mean(price), title(`"A\$J5_G B \`=1+1' C \`=filewrite("`j5_sent1'","x")' D"') subtitle(`"s\$J5_G"') fmt(%9.2f) name(j58k)
+assert _rc == 0
+capture noisily _dash_kpi mean(price) if make != "\$J5_G" & foreign == 1, title("Q") fmt(%9.2f) name(j58q)
+assert _rc == 0
+quietly summarize price if make != "\$J5_G" & foreign == 1
+local j5_n = r(N)
+local j5_m : display %9.2f r(mean)
+local j5_m = strtrim("`j5_m'")
+quietly summarize price if make != "$J5_G" & foreign == 1
+local j5_mx : display %9.2f r(mean)
+local j5_mx = strtrim("`j5_mx'")
+display as text "  Stata, as written: `j5_n' rows, `j5_m'; with the global expanded: `j5_mx'"
+assert `j5_n' == 22 & "`j5_m'" != "`j5_mx'"
+mata: st_local("j5_ok", strofreal(st_global("dash_kpi_j58k__tit") == st_global("J5_TXT")) + ///
+    strofreal(st_global("dash_kpi_j58k__sub") == "s" + char(36) + "J5_G") + ///
+    strofreal(st_global("dash_kpi_j58q__if") == "make != " + char(34) + char(36) + "J5_G" + char(34) + " & foreign == 1") + ///
+    strofreal(st_global("dash_kpi_j58q__dsp") == st_local("j5_m")))
+mata: _dash_say("txt", "  stored title: [", st_global("dash_kpi_j58k__tit"), "]")
+display as text "  stored as written: `j5_ok'"
+// SMCL, markup and Python code, through the command a user types.
+local j5_L4 "{err}{browse http://example.com}<script>alert(1)</script>__import__('os').system('touch `j5_sent2'')"
+dash kpi mean(price), title("`j5_L4'") fmt(%9.2f) name(j58s)
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("dash_kpi_j58s__tit") == st_local("j5_L4")))
+// A dashboard's title and a filter() label, built by _dash_build.
+tempfile j5_p58
+capture noisily _dash_build, title(`"A\$J5_G B \`=1+1' C \`=filewrite("`j5_sent1'","x")' D"') subtitle(`"s\$J5_G \`=1+1'"') filter(foreign, label(`"L\$J5_G \`=1+1'"')) saving("`j5_p58'.html") replace nobrowser
+assert _rc == 0
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("dash_opts_title") == st_global("J5_TXT")))
+mata: st_global("J5_SUB", "s" + char(36) + "J5_G " + char(96) + "=1+1" + char(39))
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("dash_opts_subtitle") == st_global("J5_SUB")))
+global J5_PAGE "`j5_p58'.html"
+mata: st_global("J5_WANT_T", st_global("J5_TXT"))
+python: _j5_header()
+local j5_ok "`j5_ok'$J5_OK"
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("J5_GOT_V") == st_global("J5_SUB")))
+global J5_KPI "j58k"
+global J5_WANT_V ""
+python: _j5_card()
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("J5_GOT_T") == st_global("J5_TXT")))
+global J5_KPI "j58q"
+global J5_WANT_T "Q"
+global J5_WANT_V "`j5_m'"
+python: _j5_card()
+local j5_ok "`j5_ok'$J5_OK"
+global J5_KPI "j58s"
+mata: st_global("J5_WANT_T", st_local("j5_L4"))
+python: _j5_card()
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("J5_GOT_T") == st_local("j5_L4")))
+mata: st_global("J5_NEEDLE", "L" + char(36) + "J5_G " + char(96) + "=1+1" + char(39))
+python: _j5_page_has()
+local j5_ok "`j5_ok'$J5_OK"
+// dash serve inherits that title, and takes a title and a filter() label
+// of its own, as written.
+global J5_CMD "_dash_serve, nobrowser"
+_j5_serve "`j5_stub'"
+assert r(rc) == 0 & r(stub) == 1
+mata: st_global("J5_WANT_T", st_global("J5_TXT"))
+global J5_PATH "build_options title"
+python: _j5_spec_field()
+local j5_ok "`j5_ok'$J5_OK"
+mata: st_global("J5_CMD", "_dash_serve, title(" + char(34) + "B" + char(36) + "J5_G" + char(34) + ///
+    ") filter(foreign, label(" + char(96) + char(34) + "L" + char(36) + "J5_G" + char(34) + char(39) + ")) nobrowser")
+_j5_serve "`j5_stub'"
+assert r(rc) == 0 & r(stub) == 1
+mata: st_global("J5_WANT_T", "B" + char(36) + "J5_G")
+python: _j5_spec_field()
+local j5_ok "`j5_ok'$J5_OK"
+mata: st_global("J5_WANT_T", "foreign, label(" + char(96) + char(34) + "L" + char(36) + "J5_G" + char(34) + char(39) + ")")
+global J5_PATH "build_options filter"
+python: _j5_spec_field()
+local j5_ok "`j5_ok'$J5_OK"
+global J5_PATH "build_options title"
+// The export step reads a KPI qualifier's variables as written: were the
+// literal "$J5_Q" expanded there, it would name rep78, which nothing else
+// here does, and rep78 would be exported with the data.
+global J5_Q `"x" | rep78 == 3 | "y"'
+capture noisily _dash_kpi mean(price) if make != "\$J5_Q", title("E") name(j58e)
+assert _rc == 0
+tempfile j5_s58 j5_d58
+_dash_prepare_spec, specpath("`j5_s58'") datapath("`j5_d58'")
+local j5_x58 `"`r(vars)'"'
+display as text "  exported: [`j5_x58']"
+local j5_pr : list posof "rep78" in j5_x58
+local j5_pm : list posof "make" in j5_x58
+local j5_ok "`j5_ok'`=(`j5_pr' == 0 & `j5_pm' > 0)'"
+// A tab's title -- tabs(Title: names), unquoted, as tabs() is read asis --
+// and a scheme() naming a .scheme file of the working directory whose name
+// holds a $: each reaches the page or the spec as written.  The file is made in a directory of its own, the working
+// directory while dash serve runs (test_custom_scheme.cscript works the
+// same way), through macval(), which keeps its $ as written.
+capture noisily _dash_build, tabs(T\$J5_G \`=1+1': j58g) saving("`j5_p58't.html") replace nobrowser
+assert _rc == 0
+global J5_PAGE "`j5_p58't.html"
+mata: st_global("J5_NEEDLE", "T" + char(36) + "J5_G " + char(96) + "=1+1" + char(39))
+python: _j5_page_has()
+local j5_ok "`j5_ok'$J5_OK"
+capture erase "`j5_p58't.html"
+tempfile j5_sd
+local j5_sdir "`j5_sd'_scheme"
+capture mkdir "`j5_sdir'"
+mata: st_local("j5_sfile", st_local("j5_sdir") + "/j58" + char(36) + "J5_G.scheme")
+copy "../schemes/s1rcolor.scheme" `"`macval(j5_sfile)'"', replace
+mata: st_local("j5_sthere", strofreal(fileexists(st_local("j5_sfile"))))
+assert `j5_sthere' == 1
+local j5_here "`c(pwd)'"
+quietly cd "`j5_sdir'"
+mata: st_global("J5_CMD", "_dash_serve, scheme(j58" + char(36) + "J5_G) nobrowser")
+_j5_serve "`j5_stub'"
+local j5_rc = r(rc)
+local j5_st = r(stub)
+quietly cd "`j5_here'"
+assert `j5_rc' == 0 & `j5_st' == 1
+mata: st_global("J5_WANT_T", "j58" + char(36) + "J5_G")
+global J5_PATH "build_options scheme"
+python: _j5_spec_field()
+local j5_ok "`j5_ok'$J5_OK"
+mata: _dash_say("txt", "  served scheme: [", st_global("J5_GOT_T"), "]")
+mata: st_local("j5_rm", strofreal(_unlink(st_local("j5_sfile"))))
+capture rmdir "`j5_sdir'"
+// The validated options are validated as written: a macro that expands to
+// a valid value is not that value.
+global J5_U "brush"
+global J5_V "price"
+global J5_N "j58n"
+global J5_FMT "%9.2f"
+global J5_L "j58g"
+global J5_F "left"
+local j5_r ""
+capture noisily _dash_kpi mean(price), title("U") update(\$J5_U) name(j58u)
+local j5_r "`j5_r' `=_rc'"
+capture noisily _dash_kpi mean(\$J5_V), title("V") name(j58v)
+local j5_r "`j5_r' `=_rc'"
+capture noisily _dash_kpi mean(price), title("N") name(\$J5_N)
+local j5_r "`j5_r' `=_rc'"
+capture noisily _dash_kpi mean(price), title("F") fmt(\$J5_FMT) name(j58f)
+local j5_r "`j5_r' `=_rc'"
+capture noisily _dash_build, link(\$J5_L) saving("`j5_p58'.html") replace nobrowser
+local j5_r "`j5_r' `=_rc'"
+capture noisily _dash_build, filter(foreign) filterposition(\$J5_F) saving("`j5_p58'.html") replace nobrowser
+local j5_r "`j5_r' `=_rc'"
+global J5_Y "1 1"
+capture noisily _dash_build, layout(\$J5_Y) saving("`j5_p58'.html") replace nobrowser
+local j5_r "`j5_r' `=_rc'"
+// saving() through a macro naming a directory that exists: refused for its
+// $, not written there.
+global J5_DIR "`c(tmpdir)'"
+capture erase "`c(tmpdir)'j58dir.html"
+capture noisily _dash_build, saving("\$J5_DIR/j58dir.html") replace nobrowser
+local j5_r "`j5_r' `=_rc'"
+capture confirm file "`c(tmpdir)'j58dir.html"
+local j5_r "`j5_r' `=(_rc == 0)'"
+assert "${dash_kpi_j58u}${dash_kpi_j58v}${dash_kpi_j58n}${dash_kpi_j58f}" == ""
+capture confirm file "`j5_sent1'"
+local j5_ran1 = (_rc == 0)
+capture confirm file "`j5_sent2'"
+local j5_ran2 = (_rc == 0)
+display as text "  as written: `j5_ok'  refusals:`j5_r'  ran: `j5_ran1' `j5_ran2'"
+assert "`j5_ok'" == "1111111111111111111"
+assert "`j5_r'" == " 198 198 198 198 198 198 198 198 0"
+assert `j5_ran1' == 0 & `j5_ran2' == 0
+capture erase "`j5_p58'.html"
+display "JSE-58 PASS: macro characters, =exp, SMCL, markup and Python code are data, as written, and nothing runs"
+capture dash clear
+
+// ----------------------------------------------------------------
+// JSE-59 -- exhaustion (CLAUDE.md rule 18): a KPI title, a dashboard title
+// and a served title of 20,000 "'90s" strings, and a KPI qualifier whose
+// literal is 20,000 apostrophes, are stored whole, drawn and handed on, in
+// bounded time.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(j59g)
+mata: _j5_w = char(34) + char(39) + "90s" + char(34)
+mata: st_global("J5_WANT_T", invtokens(J(1, 20000, char(39) + "90s")))
+mata: st_global("J5_LIT", 20000 * char(39))
+timer clear 59
+timer on 59
+mata: st_global("J5_CMD", "dash kpi mean(price), title(" + invtokens(J(1, 20000, _j5_w)) + ") fmt(%9.2f) name(j59k)")
+_j5_run
+local j5_rc1 = r(rc)
+mata: st_global("J5_CMD", "dash kpi mean(price) if make != " + char(34) + st_global("J5_LIT") + char(34) + " & foreign == 1, title(" + char(34) + "L" + char(34) + ") fmt(%9.2f) name(j59q)")
+_j5_run
+local j5_rc2 = r(rc)
+tempfile j5_p59
+mata: st_global("J5_CMD", "dash build, title(" + invtokens(J(1, 20000, _j5_w)) + ") saving(" + char(34) + st_local("j5_p59") + ".html" + char(34) + ") replace nobrowser")
+_j5_run
+local j5_rc3 = r(rc)
+mata: st_global("J5_CMD", "dash serve, title(" + invtokens(J(1, 20000, _j5_w)) + ") nobrowser")
+_j5_serve "`j5_stub'"
+local j5_rc4 = r(rc)
+local j5_st4 = r(stub)
+timer off 59
+quietly timer list 59
+local j5_t = r(t59)
+mata: mata drop _j5_w
+quietly summarize price if make != "$J5_LIT" & foreign == 1
+local j5_m : display %9.2f r(mean)
+global J5_WANT_V = strtrim("`j5_m'")
+mata: st_local("j5_ok", strofreal(st_global("dash_kpi_j59k__tit") == st_global("J5_WANT_T")) + ///
+    strofreal(st_global("dash_kpi_j59q__if") == "make != " + char(34) + st_global("J5_LIT") + char(34) + " & foreign == 1") + ///
+    strofreal(st_global("dash_opts_title") == st_global("J5_WANT_T")))
+mata: st_local("j5_len", strofreal(strlen(st_global("dash_kpi_j59k__tit"))))
+global J5_PAGE "`j5_p59'.html"
+python: _j5_header()
+local j5_ok "`j5_ok'$J5_OK"
+global J5_KPI "j59k"
+python: _j5_card()
+mata: st_local("j5_ok", st_local("j5_ok") + strofreal(st_global("J5_GOT_T") == st_global("J5_WANT_T")))
+global J5_PATH "build_options title"
+python: _j5_spec_field()
+local j5_ok "`j5_ok'$J5_OK"
+global J5_KPI "j59q"
+global J5_WANT_T "L"
+python: _j5_card()
+local j5_ok "`j5_ok'$J5_OK"
+display as text "  rc: `j5_rc1' `j5_rc2' `j5_rc3' `j5_rc4' (stand-in `j5_st4')  title of `j5_len' characters  whole: `j5_ok'  in `j5_t' s"
+assert `j5_rc1' == 0 & `j5_rc2' == 0 & `j5_rc3' == 0 & `j5_rc4' == 0 & `j5_st4' == 1
+assert `j5_len' == 99999
+assert "`j5_ok'" == "1111111"
+assert `j5_t' < 120
+capture erase "`j5_p59'.html"
+display "JSE-59 PASS: 100,000-character texts of quotes and apostrophes are stored whole and drawn in bounded time"
+capture dash clear
+
+capture erase "`j5_stub'/spec.json"
+capture erase "`j5_stub'/dash_render.py"
+capture rmdir "`j5_stub'"
+capture program drop _j5_run
+capture program drop _j5_serve
+python: _j5_gone = _j5_sys.modules.pop("_j5_dash_render", None)
+macro drop J5_*
+
+
+// ================================================================
+// JSE-60..64 -- the renderer reads a text as Stata reads it
+// ================================================================
+// The spec carries a text option as typed, and the renderer took every
+// plain-quoted run in it for a line, so a compound-quoted string lost what
+// it holds.  Measured 24sep2026 with the quoted-text base patch, on the
+// saved page's document:
+//   * title(`"a "b" c"') drew the two lines "a " and " c" -- the "b" lost
+//     -- where twoway draws the one line a "b" c (graph export .svg);
+//   * title(`"a "b""' "second") drew "a ", "" and "second";
+//   * title(`"a "b, color(red) size(huge)"') drew "a " in red, and
+//     title(x (a, color(red) size(huge)) y) drew "x (a" in red: the
+//     sub-option comma was found by toggling on each double quote, and no
+//     parenthesis was read.  twoway draws both whole, in the colour and
+//     size title("T") gets;
+//   * a title holding SMCL, markup and Python code between double quotes
+//     was cut at each of them.
+// The renderer now reads a text as textbox.class does; each form is in
+// test_textbox_multiline.py, measured against twoway.  No text here holds
+// a backtick or a dollar sign: dash's entry forwards the command as a
+// command line, which expands `x', $x and `=exp' before the renderer is
+// reached (measured 24sep2026: title(`"`x' $HOME `=2+2' end"'), handed
+// over by macval(), is stored as "  4 end").  The renderer's half of that
+// case is test_textbox_multiline.py's TestTextboxAdversarial.
+qui sysuse auto, clear
+capture dash clear
+_dash_find_render
+global JR_RENDER `"`r(fn)'"'
+display as text "  renderer: $JR_RENDER"
+
+// Helpers.  JR_PAGE's document read back as the browser reads it --
+// HTML-unescaped, then parsed -- and the text its Title and Labels hold;
+// and both render modes on JR_SPEC and JR_DATA, with the renderer dash
+// itself uses, loaded by path.  The wanted texts are made in Mata, never
+// typed, and compared in Python by value: JR_WANT the title, JR_L1 ..
+// JR_L<JR_NL> the Labels.  JR_OK comes back "1" or "0", JR_STYLE a digest
+// of the Title's colour and size.  No backslash, backtick or dollar sign
+// is written in the block, and every call's value is assigned.
+python:
+import hashlib as _jr_hash
+import html as _jr_html
+import importlib.util as _jr_il
+import json as _jr_json
+import re as _jr_re
+import sys as _jr_sys
+import warnings as _jr_w
+from sfi import Macro as _jr_M
+
+def _jr_dr():
+    name = "_jr_dash_render"
+    if name not in _jr_sys.modules:
+        spec = _jr_il.spec_from_file_location(name, _jr_M.getGlobal("JR_RENDER"))
+        mod = _jr_il.module_from_spec(spec)
+        _jr_sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    return _jr_sys.modules[name]
+
+def _jr_wanted():
+    labels = [_jr_M.getGlobal("JR_L" + str(k))
+              for k in range(1, int(_jr_M.getGlobal("JR_NL") or "0") + 1)]
+    return _jr_M.getGlobal("JR_WANT"), sorted(labels)
+
+def _jr_say(text):
+    if _jr_M.getGlobal("JR_QUIET") != "1":
+        print(text)
+
+def _jr_page_check():
+    with open(_jr_M.getGlobal("JR_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    blocks = _jr_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _jr_re.S)
+    titles, labels, style = [], [], []
+    stack = [_jr_json.loads(_jr_html.unescape(b)) for b in blocks]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and v.get("name") in ("Title", "Label"):
+                a = v.get("attributes", {})
+                if v["name"] == "Title":
+                    titles.append(a.get("text"))
+                    style.append(repr(a.get("text_color")) + repr(a.get("text_font_size")))
+                else:
+                    labels.append(a.get("text"))
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    title, want = _jr_wanted()
+    ok = len(blocks) == 1 and titles == [title] and sorted(labels) == want
+    _jr_M.setGlobal("JR_OK", "1" if ok else "0")
+    _jr_M.setGlobal("JR_STYLE", _jr_hash.sha1(ascii(style).encode()).hexdigest()[:12])
+    _jr_say("  titles " + ascii(titles) + " labels " + ascii(sorted(labels)) + " style " + ascii(style))
+
+def _jr_stored():
+    data = _jr_json.loads(_jr_M.getGlobal(_jr_M.getGlobal("JR_FROM")))
+    got = data.get("graph_options", {}).get(_jr_M.getGlobal("JR_KEY"))
+    _jr_M.setGlobal("JR_OK", "1" if got == _jr_M.getGlobal("JR_TYPED") else "0")
+    _jr_say("  stored " + ascii(got))
+
+def _jr_modes():
+    dr = _jr_dr()
+    sp, dp, ap = (_jr_M.getGlobal(k) for k in ("JR_SPEC", "JR_DATA", "JR_APP"))
+    with _jr_w.catch_warnings():
+        _jr_w.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        page = r.render()
+        built = dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    from bokeh.document import Document
+    from bokeh.models import Title
+    ns = {"__name__": "_jr_app"}
+    doc = Document()
+    with _jr_w.catch_warnings():
+        _jr_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_jr_app.py", "exec"), ns)
+        made = ns["make_document"](doc)
+    title, _ = _jr_wanted()
+    saved = [f.title.text for f in r.figures.values()]
+    served = [t.text for t in doc.select({"type": Title})]
+    _jr_M.setGlobal("JR_OK", "1" if saved == [title] and served == [title] else "0")
+    _jr_say("  saved " + ascii(saved) + " served " + ascii(served))
+end
+global JR_QUIET 0
+
+// JSE-60 -- the one-line form: title(`"a "b" c"') is the saved page's one
+// Title, the one line a "b" c.
+mata: st_global("JR_WANT", "a " + char(34) + "b" + char(34) + " c")
+global JR_NL 0
+tempfile jr_p60
+global JR_PAGE "`jr_p60'.html"
+dash scatter mpg weight, title(`"a "b" c"') saving("$JR_PAGE")
+python: _jr_page_check()
+local jr_ok60 "$JR_OK"
+capture erase "$JR_PAGE"
+assert "`jr_ok60'" == "1"
+display "JSE-60 PASS: a compound-quoted title holding double quotes is one line on the saved page"
+
+// JSE-61 -- and the served app draws the same line.  The title is stored
+// as typed, and the saved renderer and the generated app's make_document --
+// which copies the renderer's reader -- both draw a "b" c.
+capture dash clear
+dash scatter mpg weight, title(`"a "b" c"') name(jse61)
+global JR_FROM "dash_json_jse61"
+global JR_KEY "title"
+mata: st_global("JR_TYPED", char(96) + char(34) + "a " + char(34) + "b" + char(34) + " c" + char(34) + char(39))
+python: _jr_stored()
+local jr_st61 "$JR_OK"
+tempfile jr_s61 jr_d61 jr_a61
+_dash_prepare_spec, specpath("`jr_s61'") datapath("`jr_d61'")
+global JR_SPEC "`jr_s61'"
+global JR_DATA "`jr_d61'"
+global JR_APP  "`jr_a61'"
+python: _jr_modes()
+local jr_md61 "$JR_OK"
+display as text "  stored as typed: `jr_st61'  drawn so in both modes: `jr_md61'"
+assert "`jr_st61'`jr_md61'" == "11"
+display "JSE-61 PASS: the served app draws the title the saved page draws"
+capture dash clear
+
+// JSE-62 -- a multi-line mix and texts holding apostrophes:
+// title(`"a "b""' "second") draws a "b" and second, subtitle(`"x"' "y") x
+// and y, note(`"it's"') it's, and caption(`"the 90s'"') the 90s', as
+// twoway draws them.  Measured before: the title drew "a ", "" and
+// "second".
+mata: st_global("JR_WANT", "a " + char(34) + "b" + char(34) + char(10) + "second")
+global JR_NL 3
+mata: st_global("JR_L1", "x" + char(10) + "y")
+mata: st_global("JR_L2", "it" + char(39) + "s")
+mata: st_global("JR_L3", "the 90s" + char(39))
+tempfile jr_p62
+global JR_PAGE "`jr_p62'.html"
+dash scatter mpg weight, title(`"a "b""' "second") subtitle(`"x"' "y") note(`"it's"') caption(`"the 90s'"') saving("$JR_PAGE")
+python: _jr_page_check()
+local jr_ok62 "$JR_OK"
+capture erase "$JR_PAGE"
+assert "`jr_ok62'" == "1"
+display "JSE-62 PASS: a multi-line mix and texts holding apostrophes are drawn as typed"
+
+// JSE-63 -- text inside a string never becomes a sub-option (CLAUDE.md
+// rule 18, bypass): each attempt is the Title's text, in the colour and
+// size title("T") gets, and a real color(red) size(huge) is seen to change
+// them.  Measured before: "a " and "x (a", each in red.  The page is
+// erased before each render, so no check can read the one before.
+global JR_NL 0
+global JR_WANT "T"
+tempfile jr_p63
+global JR_PAGE "`jr_p63'.html"
+capture erase "$JR_PAGE"
+dash scatter mpg weight, title("T") saving("$JR_PAGE")
+python: _jr_page_check()
+local jr_c63 "$JR_OK"
+local jr_s63c "$JR_STYLE"
+capture erase "$JR_PAGE"
+dash scatter mpg weight, title("T", color(red) size(huge)) saving("$JR_PAGE")
+python: _jr_page_check()
+local jr_r63 "$JR_OK"
+local jr_s63r "$JR_STYLE"
+mata: st_global("JR_WANT", "a " + char(34) + "b, color(red) size(huge)")
+capture erase "$JR_PAGE"
+dash scatter mpg weight, title(`"a "b, color(red) size(huge)"') saving("$JR_PAGE")
+python: _jr_page_check()
+local jr_a63 "$JR_OK"
+local jr_s63a "$JR_STYLE"
+global JR_WANT "x (a, color(red) size(huge)) y"
+capture erase "$JR_PAGE"
+dash scatter mpg weight, title(x (a, color(red) size(huge)) y) saving("$JR_PAGE")
+python: _jr_page_check()
+local jr_b63 "$JR_OK"
+local jr_s63b "$JR_STYLE"
+capture erase "$JR_PAGE"
+display as text "  drawn: `jr_c63' `jr_r63' `jr_a63' `jr_b63'  style: `jr_s63c' `jr_s63r' `jr_s63a' `jr_s63b'"
+assert "`jr_c63'`jr_r63'`jr_a63'`jr_b63'" == "1111"
+assert "`jr_s63r'" != "`jr_s63c'"
+assert "`jr_s63a'" == "`jr_s63c'" & "`jr_s63b'" == "`jr_s63c'"
+display "JSE-63 PASS: text inside a string or parentheses is drawn as text, never read as a sub-option"
+
+// JSE-64 -- SMCL, markup, JSON punctuation and Python code between double
+// quotes, in a compound-quoted title and note (CLAUDE.md rule 18,
+// injection), are drawn exactly as typed, and nothing runs.  Measured
+// before: the text was cut at each double quote.
+local jr_sent "`c(tmpdir)'jse64_executed"
+capture erase "`jr_sent'"
+mata: st_local("jr_t64", "{bf:" + char(34) + "z" + char(34) + "} {stata dash clear} <script>alert(" + char(34) + "x" + char(34) + ")</script> <b>'q'</b> & &amp; }, ] {" + char(34) + "k" + char(34) + ": 1} __import__('os').system('touch " + st_local("jr_sent") + "')")
+mata: st_global("JR_WANT", st_local("jr_t64"))
+global JR_NL 1
+mata: st_global("JR_L1", st_local("jr_t64"))
+global JR_QUIET 1
+tempfile jr_p64
+global JR_PAGE "`jr_p64'.html"
+dash scatter mpg weight, title(`"`jr_t64'"') note(`"`jr_t64'"') saving("$JR_PAGE")
+python: _jr_page_check()
+local jr_ok64 "$JR_OK"
+global JR_QUIET 0
+capture erase "$JR_PAGE"
+capture confirm file "`jr_sent'"
+local jr_ran64 = (_rc == 0)
+capture erase "`jr_sent'"
+display as text "  drawn as typed: `jr_ok64'  code ran: `jr_ran64'"
+assert "`jr_ok64'" == "1"
+assert `jr_ran64' == 0
+display "JSE-64 PASS: SMCL, markup, JSON and Python code in a title and note are drawn as typed and run nowhere"
+
+python: _jr_gone = _jr_sys.modules.pop("_jr_dash_render", None)
+macro drop JR_*
+capture dash clear
+
+
+// ================================================================
+// JSE-65..69 -- a macro in the user's text is expanded once, by Stata, where
+// the user typed it, and never again by dash
+// ================================================================
+// dash forwarded its command as a command line -- _dash_plot `0' -- and a
+// command line built from a macro is expanded again, as was every copy of
+// the text through compound quotes after it and the command of a one-line
+// if: text typed escaped, so that it reaches dash as written -- a title
+// Cost in \$US, a \`=exp' -- was expanded a second time, the global's value
+// stored and the =exp evaluated (measured 24sep2026: \`=filewrite()' in a
+// title wrote its file).  Each case types the text as a user keeps it
+// literal: \$J6_G a global, \`=1+1' and \`=filewrite(...)' an =exp, the
+// second writing a file whose absence is checked, and \`jgnone' a local
+// reference to nothing.  What dash must receive is built in Mata.  Stata's
+// own count on the same typed qualifier is the oracle for the rows.  twoway
+// expands each of them again (measured 24sep2026): it draws $J6_G's value.
+
+// ----------------------------------------------------------------
+// JSE-65 -- a macro in a title, the text options, a legend label and an
+// axis title, in comma mode: stored and drawn as typed, and nothing runs.
+// yti2() is folded into ytitle2() by the plot parser: the fold hands the
+// text on by value too (a copy through compound quotes expanded it again).
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+global J6_G "Audi 5000"
+local jg_sent "`c(tmpdir)'j65"
+capture erase "`jg_sent'"
+mata: st_local("jg_M", "A" + char(36) + "J6_G B " + char(96) + "=1+1" + char(39) + " C " + ///
+    char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(53),char(120))" + char(39) + ///
+    " D " + char(96) + "jgnone" + char(39) + " E")
+capture dash clear
+capture noisily dash scatter mpg weight, title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(53),char(120))' D \`jgnone' E") subtitle("s\$J6_G \`=1+1'") note(`"n\`jgnone' \$J6_G"') caption("c\$J6_G") legend(label(1 "l\$J6_G")) xtitle("x\$J6_G \`=1+1'") yti2("y2\$J6_G \`jgnone'") name(jg65a)
+local jg_r1 = _rc
+local jg_ok ""
+mata: st_global("JG_WANT", _jg_pq(st_local("jg_M")))
+_jg_stored jg65a "graph_options title"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", _jg_pq("s" + char(36) + "J6_G " + char(96) + "=1+1" + char(39)))
+_jg_stored jg65a "graph_options subtitle"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", _jg_cq("n" + char(96) + "jgnone" + char(39) + " " + char(36) + "J6_G"))
+_jg_stored jg65a "graph_options note"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", _jg_pq("c" + char(36) + "J6_G"))
+_jg_stored jg65a "graph_options caption"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "label(1 " + _jg_pq("l" + char(36) + "J6_G") + ")")
+_jg_stored jg65a "graph_options legend"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", _jg_pq("x" + char(36) + "J6_G " + char(96) + "=1+1" + char(39)))
+_jg_stored jg65a "graph_options xtitle"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", _jg_pq("y2" + char(36) + "J6_G " + char(96) + "jgnone" + char(39)))
+_jg_stored jg65a "graph_options ytitle2"
+local jg_ok "`jg_ok'`r(ok)'"
+tempfile jg_p65
+_jg_build "`jg_p65'.html"
+local jg_rb = r(rc)
+local jg_dr ""
+mata: st_global("JG_WANT", st_local("jg_M"))
+_jg_drawn Title
+local jg_dr "`jg_dr'`r(n)'"
+foreach jg_x in "s" "n" "c" {
+    if "`jg_x'" == "s" mata: st_global("JG_WANT", "s" + char(36) + "J6_G " + char(96) + "=1+1" + char(39))
+    if "`jg_x'" == "n" mata: st_global("JG_WANT", "n" + char(96) + "jgnone" + char(39) + " " + char(36) + "J6_G")
+    if "`jg_x'" == "c" mata: st_global("JG_WANT", "c" + char(36) + "J6_G")
+    _jg_drawn Label
+    local jg_dr "`jg_dr'`r(n)'"
+}
+mata: st_global("JG_WANT", "l" + char(36) + "J6_G")
+_jg_drawn LegendItem
+local jg_dr "`jg_dr'`r(n)'"
+mata: st_global("JG_WANT", "x" + char(36) + "J6_G " + char(96) + "=1+1" + char(39))
+_jg_drawn LinearAxis
+local jg_dr "`jg_dr'`r(n)'"
+capture erase "`jg_p65'.html"
+capture confirm file "`jg_sent'"
+local jg_ran = (_rc == 0)
+display as text "  macro -- rc: `jg_r1'  stored as typed (title sub note cap legend xtitle yti2): `jg_ok'  build: `jg_rb'  drawn as typed (title sub note cap legend xtitle): `jg_dr'  filewrite ran: `jg_ran'"
+assert `jg_r1' == 0
+assert "`jg_ok'" == "1111111"
+assert `jg_rb' == 0
+assert "`jg_dr'" == "111111"
+assert `jg_ran' == 0
+display "JSE-65 PASS: a global, an =exp and a macro reference in a title, text option, legend label, axis title or folded alias are stored and drawn as typed, and nothing runs"
+capture dash clear
+macro drop J6_*
+
+// ----------------------------------------------------------------
+// JSE-66 -- a macro in a plot's qualifier, a plot group's and the graph's:
+// stored as typed, applied as Stata applies the typed text, nothing runs
+// ----------------------------------------------------------------
+global J6_G "Audi 5000"
+local jg_sent "`c(tmpdir)'j66"
+capture erase "`jg_sent'"
+quietly count if make != "\$J6_G" & foreign == 1
+local jg_nl = r(N)
+quietly count if make != "$J6_G" & foreign == 1
+local jg_nx = r(N)
+quietly count if make != "\`=filewrite(c(tmpdir)+char(106)+char(54)+char(54),char(120))'" & foreign == 1
+local jg_nf = r(N)
+capture confirm file "`jg_sent'"
+local jg_ranc = (_rc == 0)
+capture dash clear
+capture noisily dash scatter mpg weight if make != "\$J6_G" & foreign == 1, name(jg66a)
+local jg_r1 = _rc
+capture noisily dash (scatter mpg weight if make != "\$J6_G" & foreign == 1) (line mpg weight), name(jg66b)
+local jg_r2 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight) if make != "\$J6_G" & foreign == 1, name(jg66c)
+local jg_r3 = _rc
+capture noisily dash scatter mpg weight if make != "\`=filewrite(c(tmpdir)+char(106)+char(54)+char(54),char(120))'" & foreign == 1, name(jg66d)
+local jg_r4 = _rc
+capture noisily dash scatter mpg weight if make != "\`jgnone'" & foreign == 1, name(jg66e)
+local jg_r5 = _rc
+local jg_ok ""
+mata: st_global("JG_WANT", "make != " + _jg_pq(char(36) + "J6_G") + " & foreign == 1")
+_jg_stored jg66a "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_stored jg66a "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_stored jg66b "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+_jg_stored jg66c "if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make != " + _jg_pq(char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(54),char(120))" + char(39)) + " & foreign == 1")
+_jg_stored jg66d "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "make != " + _jg_pq(char(96) + "jgnone" + char(39)) + " & foreign == 1")
+_jg_stored jg66e "plots 0 if_expr"
+local jg_ok "`jg_ok'`r(ok)'"
+tempfile jg_p66
+_jg_build "`jg_p66'.html"
+local jg_rb = r(rc)
+local jg_rows "`r(rows)'"
+capture erase "`jg_p66'.html"
+// The typed qualifier is also the sample dash checks a weight and start()
+// over.  Peugeot 604, the one foreign car below 15 mpg, is in the sample
+// the typed text selects -- no make is the text $J6_P -- so a negative
+// weight on its row and a start() above its mpg are refused, as twoway
+// refuses them over a sample holding it: r(402) and r(198).  With the
+// global expanded the car left the sample and both were accepted.
+global J6_P "Peugeot 604"
+quietly generate double jg_w66 = cond(make == "Peugeot 604", -1, 1)
+quietly summarize mpg if make != "\$J6_P" & foreign == 1
+local jg_min = r(min)
+quietly count if jg_w66 < 0 & make != "\$J6_P" & foreign == 1
+local jg_neg = r(N)
+capture noisily dash lpoly mpg weight [aw=jg_w66] if make != "\$J6_P" & foreign == 1, name(jg66f)
+local jg_r6 = _rc
+capture noisily dash histogram mpg if make != "\$J6_P" & foreign == 1, start(15) name(jg66g)
+local jg_r7 = _rc
+drop jg_w66
+local jg_reg "${dash_graph_registry}"
+capture confirm file "`jg_sent'"
+local jg_ran = (_rc == 0)
+display as text "  macro -- rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4' `jg_r5'  stored as typed: `jg_ok'  build: `jg_rb'  rows: [`jg_rows'] of Stata's `jg_nl' as typed (`jg_nx' with the global expanded)  filewrite ran: `jg_ranc' `jg_ran'"
+display as text "  over the typed sample (min mpg `jg_min', negative weights `jg_neg') -- weight rc: `jg_r6'  start() rc: `jg_r7'  registry: [`jg_reg']"
+assert `jg_nl' == 22 & `jg_nx' == 21 & `jg_nf' == 22 & `jg_ranc' == 0
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0 & `jg_r5' == 0
+assert "`jg_ok'" == "111111"
+assert `jg_rb' == 0
+assert "`jg_rows'" == "`jg_nl' `jg_nl' `jg_nl' `jg_nl' `jg_nl'"
+assert `jg_min' == 14 & `jg_neg' == 1
+assert `jg_r6' == 402 & `jg_r7' == 198
+assert "`jg_reg'" == "jg66a jg66b jg66c jg66d jg66e"
+assert `jg_ran' == 0
+display "JSE-66 PASS: a macro in a plot's, a group's or the graph's qualifier is stored as typed, gives Stata's rows and is the sample a weight and start() are checked over, and nothing runs"
+capture dash clear
+macro drop J6_*
+
+// ----------------------------------------------------------------
+// JSE-67 -- a macro in a title in a plot group, after a paren command's
+// comma, in || mode and on the one-line form: stored and drawn as typed.
+// After the comma, xti2() is folded into xtitle2() by the graph parser,
+// by value.
+// ----------------------------------------------------------------
+global J6_G "Audi 5000"
+local jg_sent "`c(tmpdir)'j67"
+capture erase "`jg_sent'"
+mata: st_local("jg_M", "A" + char(36) + "J6_G B " + char(96) + "=1+1" + char(39) + " C " + ///
+    char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))" + char(39) + ///
+    " D " + char(96) + "jgnone" + char(39) + " E")
+quietly count if make != "\$J6_G" & foreign == 1
+local jg_nl = r(N)
+capture dash clear
+capture noisily dash (scatter mpg weight, title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E")) (line mpg weight), name(jg67a)
+local jg_r1 = _rc
+capture noisily dash (scatter mpg weight) (line mpg weight), title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E") xti2("x2\$J6_G \`jgnone'") name(jg67b)
+local jg_r2 = _rc
+capture noisily dash scatter mpg weight, title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E") || line mpg weight, name(jg67c)
+local jg_r3 = _rc
+local jg_ok ""
+mata: st_global("JG_WANT", _jg_pq(st_local("jg_M")))
+foreach jg_g in jg67a jg67b jg67c {
+    _jg_stored `jg_g' "graph_options title"
+    local jg_ok "`jg_ok'`r(ok)'"
+}
+mata: st_global("JG_WANT", _jg_pq("x2" + char(36) + "J6_G " + char(96) + "jgnone" + char(39)))
+_jg_stored jg67b "graph_options xtitle2"
+local jg_ok "`jg_ok'`r(ok)'"
+tempfile jg_p67
+_jg_build "`jg_p67'.html"
+local jg_rb = r(rc)
+mata: st_global("JG_WANT", st_local("jg_M"))
+_jg_drawn Title
+local jg_d = r(n)
+capture erase "`jg_p67'.html"
+capture dash clear
+capture erase "`jg_p67'o.html"
+local jg_d1 = 0
+local jg_row1 ""
+capture noisily dash scatter mpg weight if make != "\$J6_G" & foreign == 1, title("A\$J6_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(54)+char(55),char(120))' D \`jgnone' E") saving("`jg_p67'o.html")
+local jg_r4 = _rc
+if `jg_r4' == 0 {
+    global JG_PAGE "`jg_p67'o.html"
+    mata: st_global("JG_WANT", st_local("jg_M"))
+    _jg_drawn Title
+    local jg_d1 = r(n)
+    python: _jg_rows()
+    local jg_row1 "$JG_ROWS"
+}
+capture erase "`jg_p67'o.html"
+capture confirm file "`jg_sent'"
+local jg_ran = (_rc == 0)
+display as text "  macro -- rc: `jg_r1' `jg_r2' `jg_r3' `jg_r4'  stored as typed (3 titles, xti2): `jg_ok'  build: `jg_rb'  drawn as typed: `jg_d' of 3  one-line: `jg_d1' [`jg_row1'] of Stata's `jg_nl'  filewrite ran: `jg_ran'"
+assert `jg_r1' == 0 & `jg_r2' == 0 & `jg_r3' == 0 & `jg_r4' == 0
+assert "`jg_ok'" == "1111"
+assert `jg_rb' == 0 & "`jg_d'" == "3"
+assert "`jg_d1'" == "1" & "`jg_row1'" == "`jg_nl'"
+assert `jg_ran' == 0
+display "JSE-67 PASS: a macro in a title in paren and || mode and on the one-line form is stored and drawn as typed, and nothing runs"
+capture dash clear
+macro drop J6_*
+
+// ----------------------------------------------------------------
+// JSE-68 -- name() and saving() holding a macro, or a quote: the text as
+// typed is judged, never what a global holds
+// ----------------------------------------------------------------
+// name(\$J6_N) was expanded and the graph registered under what J6_N held;
+// name(`"q"7"') stopped with Stata's r(303), "equation [a-zA-Z_] not
+// found"; saving("\$J6_D...") was expanded, so the page was written where
+// J6_D pointed (measured 24sep2026).  Each is now dash's own refusal: a
+// name is letters, digits and underscores, and a path holding $ is refused
+// by the path check.  twoway expands name(\$J6_N) and names the graph
+// hijack, rc 0; it refuses name(`"q"7"'), r(198).  A name holding an =exp
+// is refused before any command line could evaluate it: the file it would
+// write is checked for.
+global J6_N "hijack"
+global J6_D "`c(tmpdir)'"
+capture erase "`c(tmpdir)'jse68.html"
+local jg_sent "`c(tmpdir)'j68"
+capture erase "`jg_sent'"
+capture dash clear
+local jg_l68 "`c(tmpdir)'dash_jse68.log"
+_jg_log_on "`jg_l68'"
+capture noisily dash scatter mpg weight, name(\$J6_N)
+local jg_n1 = _rc
+capture noisily dash scatter mpg weight, name(`"q"7"')
+local jg_n2 = _rc
+capture noisily dash scatter mpg weight, name(\`jgnone')
+local jg_n3 = _rc
+capture noisily dash scatter mpg weight, saving("\$J6_D/jse68.html")
+local jg_n4 = _rc
+capture noisily dash scatter mpg weight, name(\`=filewrite(c(tmpdir)+char(106)+char(54)+char(56),char(120))')
+local jg_n5 = _rc
+_jg_log_off
+cert_log_has "`jg_l68'", needle("dash: invalid graph name")
+local jg_c1 = r(count)
+cert_log_has "`jg_l68'", needle("saving() path contains disallowed characters")
+local jg_c2 = r(count)
+capture erase "`jg_l68'"
+capture confirm file "`c(tmpdir)'jse68.html"
+local jg_w = (_rc == 0)
+capture erase "`c(tmpdir)'jse68.html"
+capture confirm file "`jg_sent'"
+local jg_ran = (_rc == 0)
+local jg_reg "${dash_graph_registry}"
+local jg_hj `"${dash_json_hijack}"'
+display as text "  name -- rc: `jg_n1' `jg_n2' `jg_n3' `jg_n4' `jg_n5'  refused in dash's words: `jg_c1' `jg_c2'  registry: [`jg_reg']  page written where J6_D points: `jg_w'  filewrite ran: `jg_ran'"
+assert `jg_n1' == 198 & `jg_n2' == 198 & `jg_n3' == 198 & `jg_n4' == 198 & `jg_n5' == 198
+assert `jg_c1' == 4 & `jg_c2' == 1
+assert "`jg_reg'" == "" & `"`jg_hj'"' == ""
+assert `jg_w' == 0
+assert `jg_ran' == 0
+display "JSE-68 PASS: a name() or saving() holding a macro, an =exp or a quote is judged as typed and refused in dash's words, and nothing runs"
+capture dash clear
+macro drop J6_*
+
+// ----------------------------------------------------------------
+// JSE-69 -- a macro in the values dash checks or keeps: by()'s title, a
+// legend() word, text(), bw(), mlabel(), colormissing(), a weight and a
+// weight expression, a scatteri label and mcolor()
+// ----------------------------------------------------------------
+// Each value is judged as typed: by()'s title and text() are kept, with no
+// =exp run; legend(\$J6_T) is not the word top that J6_T holds, so it is
+// kept, where twoway expands it and refuses top, r(198); bw() and mlabel()
+// are refused showing the text, where both were expanded to nothing and
+// dropped with rc 0; colormissing() is named in the note; a weight
+// [aw=\$J6_W] is not the variable J6_W holds -- Stata's syntax refuses the
+// text as typed, "$J6_W invalid name", r(198) -- where it weighted by price
+// with rc 0; a weight expression is refused showing the text as typed,
+// where it showed J6_G's value; a scatteri label and
+// mcolor() are kept as typed; a bare string after the comma, kept by
+// the catch-all, is named as typed; and mlabel() on histogram, which
+// twoway never reads, is dropped, where read again it was refused, r(111)
+// (measured 24sep2026).
+global J6_G "Audi 5000"
+global J6_T "top"
+global J6_W "price"
+local jg_sent "`c(tmpdir)'j69"
+capture erase "`jg_sent'"
+capture dash clear
+local jg_l69 "`c(tmpdir)'dash_jse69.log"
+_jg_log_on "`jg_l69'"
+capture noisily dash scatter mpg weight, by(foreign, title("b\$J6_G \`=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))'")) name(jg69a)
+local jg_v1 = _rc
+capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G") legend(\$J6_T) name(jg69b)
+local jg_v2 = _rc
+capture noisily dash lpoly mpg weight, bw("\`jgnone'") name(jg69c)
+local jg_v3 = _rc
+capture noisily dash scatter mpg weight, mlabel("\`jgnone'") name(jg69d)
+local jg_v4 = _rc
+capture noisily dash line mpg weight, colormissing("\`jgnone'") name(jg69e)
+local jg_v5 = _rc
+capture noisily dash lfit mpg weight [aw=\$J6_W], name(jg69f)
+local jg_v6 = _rc
+capture noisily dash scatteri 20 3000 "s\$J6_G", name(jg69g)
+local jg_v7 = _rc
+capture noisily dash scatter mpg weight, mcolor("\$J6_G") name(jg69h)
+local jg_v8 = _rc
+// A bare string after the comma is kept by dash's catch-all and named in
+// the note, as typed, never as the value J6_G holds.
+capture noisily dash scatter mpg weight, "\$J6_G" name(jg69i)
+local jg_v9 = _rc
+// A weight expression is refused as one dash cannot evaluate, and shown as
+// typed; mlabel() on histogram, which twoway never reads, is dropped
+// before the value rules, so a reference to nothing is not refused there
+// (twoway: rc 0).
+capture noisily dash lfit mpg weight [aw=cond(make=="\$J6_G",1,2)], name(jg69j)
+local jg_v10 = _rc
+capture noisily dash histogram mpg, mlabel("\`jgnone'") name(jg69k)
+local jg_v11 = _rc
+_jg_log_off
+cert_log_has "`jg_l69'", needle("J6_G()")
+local jg_w6 = r(count)
+cert_log_has "`jg_l69'", needle("Audi 5000")
+local jg_w7 = r(count)
+cert_log_has "`jg_l69'", needle("bwidth() must be a positive number (got: ")
+local jg_w1 = r(count)
+cert_log_has "`jg_l69'", needle("mlabel(): variable ")
+local jg_w2 = r(count)
+// Shown as typed, in dash's words: the refusals end "jgnone')" and
+// "jgnone' not found", which the echoed commands -- "jgnone'")" -- do not.
+cert_log_has "`jg_l69'", needle("jgnone')")
+local jg_w3 = r(count)
+cert_log_has "`jg_l69'", needle("jgnone' not found")
+local jg_w3 = `jg_w3' + r(count)
+cert_log_has "`jg_l69'", needle("ignoring unsupported option(s): colormissing()")
+local jg_w4 = r(count)
+cert_log_has "`jg_l69'", needle("J6_W invalid name")
+local jg_w5 = r(count)
+cert_log_has "`jg_l69'", needle(`"J6_G",1,2)] must name one variable"')
+local jg_w8 = r(count)
+capture erase "`jg_l69'"
+local jg_ok ""
+mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("b" + char(36) + "J6_G " + char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))" + char(39)) + ")")
+_jg_stored jg69a "graph_options by"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "30 3000 " + _jg_pq("t" + char(36) + "J6_G"))
+_jg_stored jg69b "graph_options text"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", char(36) + "J6_T")
+_jg_stored jg69b "graph_options legend"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", "s" + char(36) + "J6_G")
+_jg_stored jg69g "plots 0 values 0 2"
+local jg_ok "`jg_ok'`r(ok)'"
+mata: st_global("JG_WANT", char(36) + "J6_G")
+_jg_stored jg69h "plots 0 options mcolor"
+local jg_ok "`jg_ok'`r(ok)'"
+local jg_reg "${dash_graph_registry}"
+capture confirm file "`jg_sent'"
+local jg_ran = (_rc == 0)
+display as text "  values -- rc: `jg_v1' `jg_v2' `jg_v3' `jg_v4' `jg_v5' `jg_v6' `jg_v7' `jg_v8' `jg_v9' `jg_v10' `jg_v11'  in dash's words: `jg_w1' `jg_w2' `jg_w4' `jg_w5'  shown as typed: `jg_w3' `jg_w6' `jg_w8'  the global's value shown: `jg_w7'  stored as typed: `jg_ok'  registry: [`jg_reg']  filewrite ran: `jg_ran'"
+assert `jg_v1' == 0 & `jg_v2' == 0 & `jg_v3' == 198 & `jg_v4' == 111
+assert `jg_v5' == 0 & `jg_v6' == 198 & `jg_v7' == 0 & `jg_v8' == 0 & `jg_v9' == 0
+assert `jg_v10' == 198 & `jg_v11' == 0
+assert `jg_w1' == 1 & `jg_w2' == 1 & `jg_w4' == 1 & `jg_w5' == 1 & `jg_w3' == 2
+assert `jg_w6' == 1 & `jg_w7' == 0 & `jg_w8' == 1
+assert "`jg_ok'" == "11111"
+assert "`jg_reg'" == "jg69a jg69b jg69e jg69g jg69h jg69i jg69k"
+assert `jg_ran' == 0
+display "JSE-69 PASS: a macro in a value dash checks or keeps is judged and kept as typed, and nothing runs"
+capture dash clear
+macro drop J6_*
+
+macro drop JG_*
+
+
+// ================================================================
+// JSE-70 -- the dash entry hands dash kpi, dash build and dash serve
+// their text as written
+// ================================================================
+// The entry forwards each subcommand as a command line built from a
+// macro -- _dash_kpi `_args', _dash_build `_args', _dash_serve `_args' --
+// and a command line built from a macro is expanded again: text a user
+// typed escaped, so that it reaches dash as written, was expanded a
+// second time before the subcommand saw it.  macval() hands it on as
+// written.  JSE-65..69 hold the plot route to that; JSE-58 drives
+// _dash_kpi and _dash_build directly, past the entry.  Here each of the
+// three is typed through the entry: a global, an =exp, an =exp that
+// would write a file and a local reference to nothing, in a KPI title,
+// a dashboard title and subtitle, and dash serve's title.  What dash
+// must receive is built in Mata; the file must not exist afterwards.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+global J7_G "Audi 5000"
+local j7_sent "`c(tmpdir)'j70"
+capture erase "`j7_sent'"
+confirm new file "`j7_sent'"
+mata: st_global("J7_WANT", "A" + char(36) + "J7_G B " + char(96) + "=1+1" + char(39) + " C " + ///
+    char(96) + "=filewrite(c(tmpdir)+char(106)+char(55)+char(48),char(120))" + char(39) + ///
+    " D " + char(96) + "j7none" + char(39) + " E")
+mata: st_global("J7_WSUB", "s" + char(36) + "J7_G " + char(96) + "=1+1" + char(39))
+capture dash clear
+dash scatter mpg weight, name(j70g)
+capture noisily dash kpi mean(price), title("A\$J7_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(55)+char(48),char(120))' D \`j7none' E") fmt(%9.2f) name(j70k)
+local j7_r1 = _rc
+mata: st_local("j7_ok", strofreal(st_global("dash_kpi_j70k__tit") == st_global("J7_WANT")))
+mata: _dash_say("txt", "  kpi title stored: [", st_global("dash_kpi_j70k__tit"), "]")
+tempfile j7_p
+capture noisily dash build, title("A\$J7_G B \`=1+1' C \`=filewrite(c(tmpdir)+char(106)+char(55)+char(48),char(120))' D \`j7none' E") subtitle("s\$J7_G \`=1+1'") saving("`j7_p'.html") replace nobrowser
+local j7_r2 = _rc
+mata: st_local("j7_ok", st_local("j7_ok") + strofreal(st_global("dash_opts_title") == st_global("J7_WANT")))
+mata: st_local("j7_ok", st_local("j7_ok") + strofreal(st_global("dash_opts_subtitle") == st_global("J7_WSUB")))
+mata: _dash_say("txt", "  build title stored: [", st_global("dash_opts_title"), "]")
+// dash serve, run whole against a stand-in renderer that copies the spec
+// it is handed to spec.json beside itself and exits (JSE-54's method), so
+// no server starts.  The command is built in Mata, as the user's typed
+// text reaches dash, and run through macval().
+tempfile j7_sb
+local j7_stub "`j7_sb'_stub"
+capture mkdir "`j7_stub'"
+tempname j7_fh
+file open `j7_fh' using "`j7_stub'/dash_render.py", write text replace
+file write `j7_fh' `"import os, shutil, sys"' _n
+file write `j7_fh' `"_a = sys.argv[1:]"' _n
+file write `j7_fh' `"_d = os.path.dirname(os.path.abspath(__file__))"' _n
+file write `j7_fh' `"shutil.copyfile(_a[_a.index("--spec") + 1], os.path.join(_d, "spec.json"))"' _n
+file write `j7_fh' `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("# app")"' _n
+file close `j7_fh'
+capture erase "`j7_stub'/spec.json"
+global J7_SPECFILE "`j7_stub'/spec.json"
+mata: st_local("j7_cmd", "dash serve, title(" + char(34) + st_global("J7_WANT") + char(34) + ") nobrowser")
+adopath ++ "`j7_stub'"
+capture noisily {
+    _dash_find_render
+    local j7_found `"`r(fn)'"'
+    capture noisily `macval(j7_cmd)'
+    local j7_r3 = _rc
+}
+local j7_r4 = _rc
+adopath - "`j7_stub'"
+mata: st_local("j7_isstub", strofreal(strpos(st_local("j7_found"), "_stub") > 0))
+python:
+import json as _j7_json
+from sfi import Macro as _j7_M
+try:
+    with open(_j7_M.getGlobal("J7_SPECFILE"), encoding="utf-8") as _j7_fh:
+        _j7_spec = _j7_json.load(_j7_fh)
+    _j7_M.setGlobal("J7_OK", "1" if _j7_spec["build_options"]["title"] == _j7_M.getGlobal("J7_WANT") else "0")
+except (OSError, ValueError, KeyError, TypeError):
+    _j7_M.setGlobal("J7_OK", "0")
+end
+local j7_ok "`j7_ok'$J7_OK"
+capture confirm file "`j7_sent'"
+local j7_ran = (_rc == 0)
+display as text "  rc: `j7_r1' `j7_r2' `j7_r3' `j7_r4'  stand-in ran: `j7_isstub'  stored as typed: `j7_ok'  filewrite ran: `j7_ran'"
+assert `j7_r1' == 0 & `j7_r2' == 0 & `j7_r3' == 0 & `j7_r4' == 0
+assert `j7_isstub' == 1
+assert "`j7_ok'" == "1111"
+assert `j7_ran' == 0
+capture erase "`j7_p'.html"
+capture erase "`j7_stub'/spec.json"
+display "JSE-70 PASS: the dash entry hands kpi, build and serve their text as written, and nothing runs"
+capture dash clear
+macro drop J7_*
 
 display ""
 display "All JSON escaping tests PASSED."

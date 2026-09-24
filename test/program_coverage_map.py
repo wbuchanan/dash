@@ -50,6 +50,9 @@ COVERAGE = {
         # e2e: the page it renders is searched for Bokeh's embed.
         "_dash_do_render": ("test_e2e_single.cscript:P1C-15c",
                             "test_render_locate.cscript:LOC-08"),
+        # e2e: saving() into a directory that does not exist is twoway's
+        # r(603), naming it, on every route, before rendering.
+        "_dash_saving_dir": ("test_json_escaping.cscript:JSE-52",),
         "_dash_validate_path": ("test_path_validation.cscript:PV-01",
                                 "test_path_validation.cscript:PV-02",
                                 "test_path_validation.cscript:PV-04"),
@@ -309,6 +312,15 @@ COVERAGE = {
         # e2e: through _dash_filter_refusal and _dash_filter_setvars.
         "_dash_filter_items": ("test_program_coverage.cscript:PC-12",
                                "test_help_claims_3.cscript:HC3-08"),
+        # e2e: link() and exclude() names split at blanks with their quotes,
+        # as the renderer splits them, and refused by dash by name.
+        "_dash_blank_words": ("test_json_escaping.cscript:JSE-56",),
+        "_dash_link_refusal": ("test_json_escaping.cscript:JSE-56",),
+        # e2e: a program's own arguments and the user's text between them,
+        # read by value -- a title, a qualifier and values holding "'.
+        "_dash_text_args": ("test_json_escaping.cscript:JSE-42",
+                            "test_json_escaping.cscript:JSE-46",
+                            "test_json_escaping.cscript:JSE-47"),
         "_dash_filter_refusal": ("test_help_claims_3.cscript:HC3-20",
                                  "test_help_claims_3.cscript:HC3-08"),
         "_dash_filter_setvars": ("test_program_coverage.cscript:PC-12",

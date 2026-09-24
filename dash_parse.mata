@@ -79,6 +79,12 @@
 *!       dash.ado's _dash_json_str: its `0' read by value, the text
 *!       JSON-escaped into the local _dash_jsv, the name into _dash_jsn.
 *!
+*!   _dash_text_args(nlead, ntail, optnum)
+*!       A program's `0' read by value: its first nlead and last ntail
+*!       arguments (dash's own words) into _dash_a1, _dash_a2, ..., their
+*!       count into _dash_na, and the one user text between them, less one
+*!       pair of enclosing quotes, into _dash_txt.
+*!
 *!   _dash_json_get_str(json_str, key, out_macro)
 *!       Extract a JSON string field value by key, correctly handling \"
 *!       escape sequences inside the value.  Used by _dash_render_immediate.
@@ -207,6 +213,103 @@ void _dash_json_str_args()
         t = substr(t, 2, n - 2)
     }
     st_local("_dash_jsv", _json_escape(t))
+}
+
+// _dash_text_args(nlead, ntail, optnum) -- a program's arguments read by
+// value, around ONE text that may hold anything.
+//
+// The plot chain handed user text to its helpers as an argument --
+//     _dash_process_segment `"<segment>"' _pt_k _json_k 2
+//     _dash_validate_value "dash" "by" "byvarlist" `"<value>"' ""
+// -- and read it with -args-, which parses the text as Stata.  A text
+// holding "' -- title("'90s cars"), the literal of if make == "' or 1 or
+// '" -- ended the compound quote around it: the text came back cut, and the
+// words after the cut became the arguments that followed it (measured
+// 24sep2026: dash scatter mpg weight, title("'90s cars") stopped with
+// r(100) ") required", its segment cut at the quote).  This is
+// _dash_json_str_args() for any number of arguments.
+//
+// The calling program's `0' is read as a value.  Its first nlead and last
+// ntail arguments are dash's own words -- a name, a plot type, an option
+// name, a count, or a plain-quoted word holding no quote of its own, such
+// as "dash kpi" or "" -- and the text is what lies between them, less one
+// pair of enclosing quotes, compound or plain.  With optnum set, one more
+// last argument is taken when it is all digits: an optional count.  Sets
+// the caller's locals _dash_txt (the text), _dash_a1, _dash_a2, ... (the
+// arguments, the leading ones first, each without its quotes) and _dash_na
+// (how many there are).  Only the arguments are scanned, byte by byte; the
+// text is cut out by position, in time linear in its length.
+void _dash_text_args(real scalar nlead, real scalar ntail, real scalar optnum)
+{
+    string scalar    z, t
+    string rowvector a, b
+    real scalar      i, j, k, n, want
+
+    z = st_local("0")
+    a = J(1, 0, "")
+    b = J(1, 0, "")
+
+    // The leading arguments.
+    for (i = 1; i <= nlead; i++) {
+        n = strlen(z)
+        k = 1
+        while (k <= n & (substr(z, k, 1) == " " | substr(z, k, 1) == char(9))) k++
+        z = substr(z, k, .)
+        if (substr(z, 1, 1) == char(34)) {
+            j = strpos(substr(z, 2, .), char(34))
+            if (j == 0) j = strlen(z)
+            a = a, substr(z, 2, j - 1)
+            z = substr(z, j + 2, .)
+        }
+        else {
+            n = strlen(z)
+            j = 1
+            while (j <= n & substr(z, j, 1) != " " & substr(z, j, 1) != char(9)) j++
+            a = a, substr(z, 1, j - 1)
+            z = substr(z, j, .)
+        }
+    }
+
+    // The trailing arguments, the last first.
+    want = ntail + (optnum != 0)
+    for (i = 1; i <= want; i++) {
+        n = strlen(z)
+        while (n > 0 & (substr(z, n, 1) == " " | substr(z, n, 1) == char(9))) n--
+        z = substr(z, 1, n)
+        if (n > 0 & substr(z, n, 1) == char(34)) {
+            j = n - 1
+            while (j > 0 & substr(z, j, 1) != char(34)) j--
+            t = substr(z, j + 1, n - j - 1)
+            k = j - 1
+        }
+        else {
+            j = n
+            while (j > 0 & substr(z, j, 1) != " " & substr(z, j, 1) != char(9)) j--
+            t = substr(z, j + 1, n - j)
+            k = j
+        }
+        // The optional count is taken only when it is one.
+        if (i == 1 & optnum) {
+            if (!_dash_is_digits(t, .)) continue
+        }
+        b = t, b
+        z = substr(z, 1, max((k, 0)))
+    }
+
+    // The text, less one pair of enclosing quotes.
+    t = strtrim(z)
+    n = strlen(t)
+    if (n >= 4 & substr(t, 1, 2) == char(96) + char(34) &
+        substr(t, n - 1, 2) == char(34) + char(39)) {
+        t = substr(t, 3, n - 4)
+    }
+    else if (n >= 2 & substr(t, 1, 1) == char(34) & substr(t, n, 1) == char(34)) {
+        t = substr(t, 2, n - 2)
+    }
+    st_local("_dash_txt", t)
+    a = a, b
+    for (i = 1; i <= cols(a); i++) st_local("_dash_a" + strofreal(i), a[i])
+    st_local("_dash_na", strofreal(cols(a)))
 }
 
 // UTF-8 byte validation
@@ -2270,6 +2373,45 @@ string scalar _dash_blank_trim(string scalar s) {
     return(substr(s, i, j - i + 1))
 }
 
+// The words of s between runs of ASCII blanks, quotes and all -- as
+// dash_render.py reads link() and exclude(), with str.split().  Mata's
+// tokens() binds a quoted run into one word and drops its quotes, so a name
+// written "g1" was g1 to dash, which accepted it, and "g1" to the renderer:
+// for exclude("g1") it built no widget, rc 0 (measured 24sep2026;
+// test_json_escaping.cscript JSE-56), and for link() it looks for a graph
+// named "g1", quotes and all.  Every word dash accepts is a name,
+// which holds no blank of any kind, so the renderer's wider set of blanks
+// cannot split it further.  Two passes, so a long text costs linear time.
+string rowvector _dash_blank_words(string scalar s) {
+    string rowvector out
+    real scalar      n, i, k, st, inw
+
+    n   = strlen(s)
+    k   = 0
+    inw = 0
+    for (i = 1; i <= n; i++) {
+        if (_dash_is_blank(substr(s, i, 1))) inw = 0
+        else if (!inw) {
+            inw = 1
+            k++
+        }
+    }
+    out = J(1, k, "")
+    k   = 0
+    st  = 0
+    for (i = 1; i <= n + 1; i++) {
+        if (i > n | _dash_is_blank(substr(s, i, 1))) {
+            if (st) {
+                k++
+                out[k] = substr(s, st, i - st)
+                st = 0
+            }
+        }
+        else if (!st) st = i
+    }
+    return(out)
+}
+
 // The pieces of s between its separators, each trimmed, empty ones left
 // out.  A separator counts only outside quotes -- "..." and `"..."', read
 // by _dash_quote_step -- and outside parentheses.  With groups != 0 the
@@ -2366,7 +2508,10 @@ string scalar _dash_filter_refusal(string scalar filter,
             if (substr(inner, strlen(inner), 1) == ")") {
                 inner = substr(inner, 1, strlen(inner) - 1)
             }
-            names = tokens(inner)
+            // Split as the renderer splits it, quotes kept: tokens() took
+            // exclude("g1") for g1, and the renderer, reading "g1", built
+            // no widget, rc 0 (measured 24sep2026; JSE-56).
+            names = _dash_blank_words(inner)
             for (k = 1; k <= cols(names); k++) {
                 if (!anyof(reg, names[k])) {
                     return("filter exclude() name '" + names[k] +
@@ -2389,6 +2534,35 @@ string scalar _dash_filter_refusal(string scalar filter,
         vars = vars, v
     }
     st_local(vars_out, invtokens(vars))
+    return("")
+}
+
+// "" when link() is _all alone or names only graphs the registry holds,
+// its words read as the renderer reads them (_dash_blank_words); otherwise
+// the refusal, without the command's name.  dash.ado compared the value
+// inside quotes and split it with Stata's word functions: link(`"g1"x"')
+// stopped dash build with r(132) "too few quotes", link(`"g1" "g2"') with
+// r(109) "type mismatch", and link(`""g1""') was accepted as g1, where the
+// renderer, splitting with str.split(), looks for a graph named "g1",
+// quotes and all; and a link(\$m) was accepted as whatever $m held
+// (measured 24sep2026; test_json_escaping.cscript JSE-56, JSE-58).  Read
+// here by value.
+string scalar _dash_link_refusal(string scalar link, string scalar registry) {
+    string rowvector words, reg
+    real scalar      k
+
+    if (link == "_all") return("")
+    words = _dash_blank_words(link)
+    reg   = tokens(registry)
+    for (k = 1; k <= cols(words); k++) {
+        // _all links every graph, so beside names it is a contradiction.
+        if (words[k] == "_all") {
+            return("link(_all) links every graph; give it alone, or name the graphs to link.")
+        }
+        if (!anyof(reg, words[k])) {
+            return("link() name '" + words[k] + "' not found in registry.")
+        }
+    }
     return("")
 }
 
