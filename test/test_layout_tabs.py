@@ -26,6 +26,7 @@ requiring that ``render()`` and ``_build_figures()`` agree. Deleting is one way
 to get there; making ``render()`` use them is another, and it keeps the
 figures reachable for testing.
 """
+import html
 import json
 import os
 import re
@@ -35,6 +36,8 @@ import tempfile
 import numpy as np
 import pandas as pd
 import pytest
+from bokeh.document import Document
+from bokeh.models import Plot, Tabs
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -44,6 +47,58 @@ import dash_render
 from dash_render import DashRenderer
 
 from conftest import make_spec, make_data_json
+
+
+def _page_docs(out):
+    """The Bokeh documents a saved page embeds, read back as models.
+
+    A needle searched in the page text is not enough: the page inlines
+    BokehJS, and "Group", "Alpha" and "Beta" are in it -- measured
+    24sep2026 in a page with no tabs() at all, under auto, bs and "2 1".
+    file_html (every layout but bs) puts the document in a <script
+    type="application/json"> block; components() (layout(bs)) puts it in
+    the JS string ``const docs_json = '...'``, whose backslashes are
+    doubled.  Both are HTML-escaped."""
+    texts = [html.unescape(b) for b in re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        out, re.S)]
+    texts += [html.unescape(m.group(1).replace("\\\\", "\\"))
+              for m in re.finditer(r"const docs_json = '(.*?)';", out, re.S)]
+    return [Document.from_json(d) for t in texts
+            for d in json.loads(t).values()]
+
+
+def _tab_titles(out):
+    """The titles of the tabs the page's Tabs models carry, in order."""
+    return [p.title for d in _page_docs(out)
+            for t in d.select({"type": Tabs}) for p in t.tabs]
+
+
+def _placements(out):
+    """{figure id: how many times the page's layouts place it} -- every
+    root of every embedded document walked through its layout children
+    (a Tabs' panels, a grid's cells), counting each figure reached."""
+    counts = {}
+
+    def visit(m):
+        if isinstance(m, (list, tuple)):
+            for x in m:
+                if x is not None and not isinstance(x, (int, float, str)):
+                    visit(x)
+            return
+        if m is None:
+            return
+        if isinstance(m, Plot):
+            counts[m.id] = counts.get(m.id, 0) + 1
+        for attr in ("children", "tabs", "child"):
+            k = getattr(m, attr, None)
+            if k is not None:
+                visit(k)
+
+    for d in _page_docs(out):
+        for root in d.roots:
+            visit(root)
+    return counts
 
 
 def _df(n=30):
@@ -143,6 +198,9 @@ class TestNamedPlacementLayout:
     def test_a_graph_the_spec_omits_is_still_placed(self):
         """The Bootstrap path appends omitted names; match that."""
         out, dr = _render(_THREE, "s1:0,0 s2:0,1")
+        # Every graph was built: the loop below sees only what was, so a
+        # graph never built passed it.
+        assert set(dr.figures) == {"s1", "s2", "s3"}, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, (
                 f"{name} was omitted from the placement spec and then "
@@ -166,9 +224,10 @@ class TestNamedPlacementLayout:
 class TestTabsAreNotSilentlyConditional:
 
     def test_tabs_under_bootstrap_build_a_widget(self):
-        """The control."""
+        """The control.  Read from the page's document: "Group" is in the
+        inlined BokehJS of every page, tabs() or not (see _page_docs)."""
         out, dr = _render(_THREE, "bs", tabs="Group: s1 s2")
-        assert "Group" in out
+        assert _tab_titles(out) == ["Group"]
 
     def test_tabs_under_auto_are_not_silently_discarded(self):
         """Either build them or say why — never drop them in silence."""
@@ -176,7 +235,9 @@ class TestTabsAreNotSilentlyConditional:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             out, dr = _render(_THREE, "auto", tabs="Group: s1 s2")
-        built = "Group" in out
+        # A tab in the page's document, not the word in its text: "Group"
+        # in the page was always true, so `warned' was never needed.
+        built = _tab_titles(out) == ["Group"]
         warned = any("tab" in str(w.message).lower() for w in caught)
         assert built or warned, (
             "tabs() under layout(auto) produced neither a tab widget nor a "
@@ -185,6 +246,7 @@ class TestTabsAreNotSilentlyConditional:
 
     def test_no_graph_is_lost_when_tabs_are_used(self):
         out, dr = _render(_THREE, "auto", tabs="Group: s1 s2")
+        assert set(dr.figures) == {"s1", "s2", "s3"}, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, f"{name} vanished when tabs() was used"
 
@@ -224,6 +286,9 @@ class TestLinkedBrushDimming:
     """_NONSELECTION_ALPHA has never shipped."""
 
     def test_the_constant_exists_in_exactly_one_place(self):
+        """A structural guard, deliberately: ONE definition of the dimming
+        constant.  Two equal copies draw the same page, so no drawing can
+        show a second one until the two drift."""
         src = open(os.path.join(_HERE, "..", "dash_render.py")).read()
         code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
         assert code.count("_NONSELECTION_ALPHA =") == 1, (
@@ -328,13 +393,24 @@ class TestThereIsOneRenderPath:
         setup = inspect.getsource(DashRenderer._setup_sources)
         build = inspect.getsource(DashRenderer._build_figures)
         render = inspect.getsource(DashRenderer.render)
+        # The one implementation, which all three call.  It was not in the
+        # scan, so the marker was found nowhere (n == 0, measured
+        # 24sep2026) and a second copy grown in any ONE of the three
+        # passed `n <= 1'.
+        one = inspect.getsource(DashRenderer._build_sources_and_figures)
+        for s, who in ((setup, "_setup_sources"), (build, "_build_figures"),
+                       (render, "render")):
+            assert ("self._build_sources_and_figures(" in s
+                    or "self._setup_sources()" in s), (
+                f"{who}() no longer goes through the one implementation")
         # A duplicated implementation shows up as the same distinctive
         # expression appearing in both.
         marker = "linked_source = self._make_source"
-        n = sum(marker in s for s in (setup, build, render))
-        assert n <= 1, (
-            f"{n} of render()/_setup_sources()/_build_figures() build a "
-            f"linked source of their own; there must be one implementation"
+        n = sum(marker in s for s in (setup, build, render, one))
+        assert marker in one and n == 1, (
+            f"{n} of render()/_setup_sources()/_build_figures()/"
+            f"_build_sources_and_figures() build a linked source of their "
+            f"own; there must be one implementation"
         )
 
 
@@ -393,6 +469,8 @@ class TestTabsHoldFacetedGraphs:
     @pytest.mark.parametrize("layout", ["auto", "bs"])
     def test_every_figure_reaches_the_document(self, layout):
         out, dr = self._tabbed(layout)
+        assert set(dr.figures) == {"plain", "faceted__by__0",
+                                   "faceted__by__1"}, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, (
                 f"layout({layout}): figure {name!r} was built but never "
@@ -423,9 +501,21 @@ class TestTabsHoldFacetedGraphs:
 
     def test_a_tabbed_graph_is_not_also_drawn_in_the_grid(self):
         """It is placed once, in the tab — not twice."""
+        # Counted in the page's layouts: `out.count(fig.id) >= 1' held for a
+        # figure placed twice as well.
         out, dr = self._tabbed("bs")
+        assert set(dr.figures) == {"plain", "faceted__by__0",
+                                   "faceted__by__1"}, sorted(dr.figures)
+        placed = _placements(out)
         for name, fig in dr.figures.items():
             assert out.count(fig.id) >= 1, name
+            assert placed.get(fig.id) == 1, (
+                f"{name} is placed {placed.get(fig.id, 0)} times")
+        # ...and that one place is the tab.
+        tabs = [t for d in _page_docs(out) for t in d.select({"type": Tabs})]
+        assert len(tabs) == 1
+        in_tabs = {m.id for m in tabs[0].select({"type": Plot})}
+        assert in_tabs == {f.id for f in dr.figures.values()}, in_tabs
 
 
 # ======================================================================
@@ -473,10 +563,15 @@ class TestTabsWorkUnderEveryLayout:
     def test_the_tab_titles_reach_the_document(self, layout):
         out, _ = _render(_THREE, layout, tabs="Alpha: s1 / Beta: s2 s3")
         assert "Alpha" in out and "Beta" in out, layout
+        # Both words are in the inlined BokehJS of a page with no tabs, so
+        # the line above cannot fail; the titles of the page's Tabs model
+        # can.
+        assert _tab_titles(out) == ["Alpha", "Beta"], layout
 
     @pytest.mark.parametrize("layout", ["auto", "bs", "2 1"])
     def test_every_graph_still_reaches_the_document(self, layout):
         out, dr = _render(_THREE, layout, tabs="One: s1 / Two: s2 s3")
+        assert set(dr.figures) == {"s1", "s2", "s3"}, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, (
                 f"layout({layout}): figure {name!r} vanished once it was "
@@ -486,6 +581,7 @@ class TestTabsWorkUnderEveryLayout:
     def test_a_graph_left_out_of_every_tab_is_still_drawn(self):
         """Naming two of three graphs must not lose the third."""
         out, dr = _render(_THREE, "auto", tabs="Only: s1")
+        assert set(dr.figures) == {"s1", "s2", "s3"}, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, name
 
@@ -528,5 +624,6 @@ class TestFilterPositionWorksUnderEveryLayout:
     @pytest.mark.parametrize("layout", ["auto", "bs"])
     def test_every_graph_still_reaches_the_document(self, layout):
         out, dr = self._go(layout, "left")
+        assert set(dr.figures) == {"s1", "s2", "s3"}, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, f"layout({layout}): {name}"

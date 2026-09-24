@@ -567,6 +567,13 @@ FLAGGED = (
      "names a sub-option as ignored"),
     (re.compile(r"\w*Warning:"),
      "prints a warning"),
+    # Python's logging, in its basic format -- LEVEL:logger:message -- which
+    # is how Bokeh prints a validation warning or error to stderr
+    # (bokeh/util/logconfig.py: "WARNING:bokeh.core.validation.check:W-1005
+    # ...", "ERROR:...:E-1001 ...").  The pattern above is case-sensitive
+    # and never matched them (24sep2026).
+    (re.compile(r"^(?:WARNING|ERROR|CRITICAL):[A-Za-z_][\w.]*:"),
+     "prints a logged warning or error"),
     (re.compile(r"Traceback \(most recent call last\)"),
      "prints a Python traceback"),
 )
@@ -1184,7 +1191,12 @@ def rendered_problems(text, n_examples, limit=3):
 
     Every example line must render as a line of its own that starts with the
     prompt, and none may hold a "{" (in the marked copy, only a directive
-    that did not render can leave one).  Measured on dash.sthlp at 4ede074:
+    that did not render can leave one).  As many lines render with the
+    prompt as the file has example lines, no fewer and no more: a line
+    written ``{input}. dash ...`` or ``{cmd}. dash ...`` renders with the
+    prompt, but neither the reader nor the plain scan (both look for
+    ``{cmd:.``) sees it, so it would never run -- until 24sep2026 only too
+    few lines failed here.  Measured on dash.sthlp at 4ede074:
     a paragraph left open before an example -- ``{pstd}`` /
     ``{it:Example:}`` / ``{phang2}{cmd:. ...}{p_end}`` -- made the renderer
     show every directive after it as text, so the first example after it
@@ -1194,7 +1206,7 @@ def rendered_problems(text, n_examples, limit=3):
     """
     shown = rendered_prompt_lines(text)
     problems = []
-    if len(shown) < n_examples:
+    if len(shown) != n_examples:
         problems.append("%d example lines rendered as lines of their own; "
                         "the file has %d" % (len(shown), n_examples))
     problems.extend("rendered with a directive in it: %s"

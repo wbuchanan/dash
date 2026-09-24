@@ -99,8 +99,26 @@ class TestFunctionOperatorAndDomain:
         ys = list(fig.renderers[-1].data_source.data["y_fn"])
         np.testing.assert_allclose(ys, [0.0, 6.25, 25.0, 56.25, 100.0])
 
-    def test_caret_translation_does_not_loosen_the_whitelist(self, mapper):
+    def test_caret_translation_does_not_loosen_the_whitelist(self, mapper,
+                                                             monkeypatch):
         """Rewriting ^ must not become a hole in the AST validator."""
+        # "Drew nothing" alone cannot fail for five of these six: evaluation
+        # swallows its own errors into the same empty curve (the names are
+        # absent from the evaluation namespace, and a bare `x.__class__' is
+        # no array of numbers), so only `(lambda: 1)()' drew when the
+        # whitelist was bypassed (measured 24sep2026).  The validator's own
+        # verdict is read instead: map_function hands a tree to
+        # _floats_only only after the whitelist accepted it, so every
+        # hostile expression must reach it zero times -- and `x^2', the
+        # positive control, once.
+        accepted = []
+        real = dash_render._floats_only
+
+        def verdict(tree):
+            accepted.append(tree)
+            return real(tree)
+
+        monkeypatch.setattr(dash_render, "_floats_only", verdict)
         fig = figure()
         for hostile in (
             "__import__('os').system('true')",
@@ -117,6 +135,12 @@ class TestFunctionOperatorAndDomain:
             assert list(r.data_source.data["y_fn"]) == [], (
                 f"hostile expression {hostile!r} was evaluated"
             )
+            assert not accepted, (
+                f"hostile expression {hostile!r} passed the whitelist")
+        mapper.map_function(fig, "x^2", (0.0, 1.0), 3)
+        assert len(accepted) == 1, "the verdict count saw no accepted tree"
+        assert list(fig.renderers[-1].data_source.data["y_fn"]) == \
+            pytest.approx([0.0, 0.25, 1.0])
 
     def test_default_grid_is_300_points(self):
         """Stata's ``twoway function`` default is n(300); dash uses 200."""
@@ -434,19 +458,61 @@ class TestFpfitConsistency:
 
 class TestBootstrapConfiguration:
 
+    @staticmethod
+    def _bootstrap_calls_with_n_boot(src):
+        """Every ``_bootstrap_ci(...)`` call in *src* that passes an
+        ``n_boot=`` keyword, as (lineno, literal-or-None).
+
+        Read with ``ast``, not a regex: the old pattern balanced one level
+        of parentheses and could not see past the qfitci fallback's own
+        ``np.polyval(np.polyfit(xi, yi, 2), xg)`` argument, so an
+        ``n_boot=500`` added THERE was invisible to it (measured
+        24sep2026).  A keyword whose value is not a plain literal is
+        reported as None, which still counts as an override.
+        """
+        import ast
+        out = []
+        for node in ast.walk(ast.parse(src)):
+            if not isinstance(node, ast.Call):
+                continue
+            f = node.func
+            name = (f.attr if isinstance(f, ast.Attribute)
+                    else f.id if isinstance(f, ast.Name) else "")
+            if name != "_bootstrap_ci":
+                continue
+            for kw in node.keywords:
+                if kw.arg == "n_boot":
+                    lit = (kw.value.value
+                           if isinstance(kw.value, ast.Constant) else None)
+                    out.append((node.lineno, lit))
+        return out
+
     def test_all_ci_layers_use_the_same_resample_count(self):
         """200 in three call sites and 500 in a fourth is drift, not design."""
-        import re
         src = open(
             os.path.join(os.path.dirname(__file__), "..", "dash_render.py")
         ).read()
-        overrides = re.findall(r"_bootstrap_ci\((?:[^()]|\([^()]*\))*?"
-                               r"n_boot\s*=\s*(\d+)", src, re.S)
+        overrides = self._bootstrap_calls_with_n_boot(src)
         assert not overrides, (
             f"call sites override the bootstrap resample count: {overrides} — "
             "one constant must decide it for every CI layer"
         )
         assert "n_boot: int = _N_BOOT_DEFAULT" in src
+
+    def test_the_override_scan_catches_an_added_n_boot(self):
+        """Positive control: the scan must SEE an n_boot= at the very call
+        site the old regex could not reach -- the qfitci fallback, whose
+        argument nests ``np.polyval(np.polyfit(...), xg)``.  Without this,
+        `not overrides' above passed on a scanner that matched nothing."""
+        planted = (
+            "y_lower, y_upper = GlyphMapper._bootstrap_ci(\n"
+            "    x, y, x_fit,\n"
+            "    lambda xi, yi, xg: np.polyval(np.polyfit(xi, yi, 2), xg),\n"
+            "    fallback=y_fit, seed=1, n_boot=500,\n"
+            ")\n"
+        )
+        found = self._bootstrap_calls_with_n_boot(planted)
+        assert found == [(1, 500)], found
 
     def test_default_matches_the_documented_default(self):
         import inspect
@@ -771,8 +837,11 @@ class TestKdensityRange:
     def test_a_reversed_or_malformed_range_is_reported_not_fatal(self):
         for bad in ("30 10", "10", "", "a b", "10 20 30"):
             x = self._curve({"range": bad})
-            assert len(x) > 1 and np.all(np.isfinite(x)), (
-                f"range({bad}) produced an unusable grid"
+            # A malformed range falls back to the default span at the
+            # default n() of 300 (measured 24sep2026), not to some short
+            # degenerate grid: `len(x) > 1' passed a two-point stub.
+            assert len(x) == 300 and np.all(np.isfinite(x)), (
+                f"range({bad}) produced an unusable grid of {len(x)} points"
             )
 
     def test_range_is_not_reported_as_unsupported(self):
@@ -783,6 +852,13 @@ class TestKdensityRange:
         i = src.index("program define _dash_parse_plot_opts")
         j = src.index("local _dash_unknown", i)
         pending = _re.findall(r"_dash_pending' (\w+)\"", src[i:j])
+        # The regex must actually have matched the pending list, or
+        # "range not in pending" holds vacuously: `_dash_parse_plot_opts'
+        # carries 44 pending options (measured 24sep2026), among them the
+        # genuinely-unsupported sort/text/scale, and never `range'.
+        assert len(pending) == 44, (len(pending), pending)
+        for really_pending in ("sort", "text", "scale"):
+            assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (
             "range() sets a function plot's domain and a kdensity's "
             "estimation span, but dash.ado still names it in the "

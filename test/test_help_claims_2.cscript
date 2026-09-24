@@ -311,16 +311,23 @@ program define _hc2_reg
 end
 
 // A refusal from the value rules ends in "(got: <value>)" and nothing
-// after it -- no second sentence -- or in exactly `tail'.
+// after it -- no second sentence -- or in exactly `tail'.  `value' is the
+// value the command gave, which the refusal echoes.
 capture program drop _hc2_tail
 program define _hc2_tail
     version 16.0
-    args id opt tail
+    args id opt tail value
     _hc2_said "dash: `opt'() must be"
     local line `"`r(line)'"'
     local line = strrtrim(`"`macval(line)'"')
     if `"`macval(tail)'"' == "" {
-        local ok = (substr(`"`macval(line)'"', -1, 1) == ")" & strpos(`"`macval(line)'"', "(got: ") > 0)
+        // The line ends in exactly "(got: <value>)".  Until 24sep2026 any
+        // line ending in ")" and holding "(got: " passed, so a second
+        // sentence that closed a parenthesis -- ". dash draws up to 300
+        // (twoway's bound)" -- read as no second sentence at all.
+        local want `"(got: `macval(value)')"'
+        local n = strlen(`"`macval(want)'"')
+        local ok = (`"`macval(value)'"' != "" & substr(`"`macval(line)'"', -`n', .) == `"`macval(want)'"')
         _hc2_ok "`id'" `ok' `"`opt'(): the refusal has no second sentence: `macval(line)'"'
     }
     else {
@@ -491,26 +498,26 @@ _hc2_expect "HC2-12s" 125 `"twoway scatter mpg weight, xaxis(10)"'
 _hc2_expect "HC2-13a" 198 `"twoway mspline mpg weight, n(301)"' "n must be between 1 and 300"
 _hc2_expect "HC2-13b" 0   `"twoway mspline mpg weight, n(1)"'
 _hc2_dash   "HC2-13c" 198 `"dash mspline mpg weight, n(301) name(hc)"'
-_hc2_tail   "HC2-13d" n ""
+_hc2_tail   "HC2-13d" n "" 301
 
 // HC2-14 -- dash's own bounds with no second sentence; twoway takes each
 // value, and has no such option at all for the rest.
 _hc2_dash "HC2-14a" 198 `"dash scatter mpg weight, jitter(101) name(hc)"'
-_hc2_tail "HC2-14b" jitter ""
+_hc2_tail "HC2-14b" jitter "" 101
 _hc2_dash "HC2-14c" 198 `"dash lfitci mpg weight, level(100) name(hc)"'
-_hc2_tail "HC2-14d" level ""
+_hc2_tail "HC2-14d" level "" 100
 _hc2_dash "HC2-14e" 198 `"dash bar mpg weight, barwidth(0) name(hc)"'
-_hc2_tail "HC2-14f" barwidth ""
+_hc2_tail "HC2-14f" barwidth "" 0
 _hc2_dash "HC2-14g" 198 `"dash scatter mpg weight, aspectratio(-1) name(hc)"'
-_hc2_tail "HC2-14h" aspectratio ""
+_hc2_tail "HC2-14h" aspectratio "" -1
 _hc2_dash "HC2-14i" 198 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(hc)"'
-_hc2_tail "HC2-14j" jitterseed ""
+_hc2_tail "HC2-14j" jitterseed "" -1
 _hc2_dash "HC2-14k" 198 `"dash kdensity mpg, bwidth(0) name(hc)"'
-_hc2_tail "HC2-14l" bwidth ""
+_hc2_tail "HC2-14l" bwidth "" 0
 _hc2_dash "HC2-14m" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(1) name(hc)"'
-_hc2_tail "HC2-14n" colornlevels ""
+_hc2_tail "HC2-14n" colornlevels "" 1
 _hc2_dash "HC2-14o" 198 `"dash scatter mpg weight, jitter(5) jseed(-1) name(hc)"'
-_hc2_tail "HC2-14p" jseed ""
+_hc2_tail "HC2-14p" jseed "" -1
 _hc2_expect "HC2-14q" 0 `"twoway scatter mpg weight, jitter(101)"'
 _hc2_expect "HC2-14r" 0 `"twoway lfitci mpg weight, level(100)"'
 _hc2_expect "HC2-14s" 0 `"twoway lfitci mpg weight, level(0)"'
@@ -530,7 +537,7 @@ _hc2_expect "HC2-14D" 198 `"twoway lpoly mpg weight, bwidth(0)"' "bwidth() must 
 _hc2_expect "HC2-15a" 198 `"twoway mband mpg weight, bands(201)"' "bands must be between 1 and 200"
 _hc2_expect "HC2-15b" 198 `"twoway mband mpg weight, bands(0)"' "bands must be between 1 and 200"
 _hc2_dash   "HC2-15c" 198 `"dash mband mpg weight, bands(201) name(hc)"'
-_hc2_tail   "HC2-15d" bands ""
+_hc2_tail   "HC2-15d" bands "" 201
 
 // HC2-16 -- values twoway refuses and dash accepts.
 _hc2_expect "HC2-16a" 198 `"twoway kdensity mpg, kernel(GAUSSIAN)"' "invalid kernel function"
@@ -694,11 +701,14 @@ cert_file_has "`hc2mj'", needle(`""title":"Built""')
 _hc2_ok "HC2-26c" `=r(found) == 1' "and its title"
 
 // HC2-27, HC2-28 -- dash clear.
+// The build gives filter() too: HC2-28a holds dash clear to dropping
+// dash_opts_filter, and until 24sep2026 no build before it gave one, so
+// that global was empty whether or not dash clear dropped it.
 global dash_max_cells 6000000
 quietly dash kpi mean(price), name(k1) title("K")
 local hc2out "`hc2f'_27.html"
-_hc2_expect "HC2-27a" 0 `"dash build, saving("`hc2out'") replace csv title("Before")"'
-_hc2_ok "HC2-27b" `="${dash_opts_title}" == "Before" & "${dash_opts_csv}" == "csv"' "dash build remembers its options"
+_hc2_expect "HC2-27a" 0 `"dash build, saving("`hc2out'") replace csv title("Before") filter(foreign)"'
+_hc2_ok "HC2-27b" `="${dash_opts_title}" == "Before" & "${dash_opts_csv}" == "csv" & "${dash_opts_filter}" == "foreign"' "dash build remembers its options"
 quietly dash clear
 quietly dash scatter mpg weight, name(s2)
 _hc2_run `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'")"'

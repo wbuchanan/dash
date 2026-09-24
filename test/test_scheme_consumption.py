@@ -102,6 +102,51 @@ def _scatter_glyphs(dr):
     return out
 
 
+def _scheme_attr_reads(attr):
+    """Line numbers in dash_render.py that READ the scheme attribute *attr*.
+
+    A read is a load of ``self.<attr>`` inside class SchemeParser, of
+    ``scheme.<attr>`` or ``<anything>.scheme.<attr>`` (``self.scheme``,
+    ``self.mapper.scheme``) elsewhere, or ``getattr(<same>, "<attr>")``.
+    Assignments are stores and do not count, and neither does a Bokeh
+    property that shares the name (``glyph.fill_alpha = ...``,
+    ``fig.title.text_font_size = ...``): its base is no scheme.
+    """
+    import ast
+    with open(os.path.join(_HERE, "..", "dash_render.py"),
+              encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
+
+    def _is_scheme(node, in_parser):
+        if isinstance(node, ast.Name):
+            return node.id == "scheme" or (in_parser and node.id == "self")
+        return isinstance(node, ast.Attribute) and node.attr == "scheme"
+
+    reads = []
+
+    def _walk(node, in_parser):
+        for child in ast.iter_child_nodes(node):
+            inside = in_parser
+            if isinstance(child, ast.ClassDef):
+                inside = child.name == "SchemeParser"
+            if (isinstance(child, ast.Attribute) and child.attr == attr
+                    and isinstance(child.ctx, ast.Load)
+                    and _is_scheme(child.value, inside)):
+                reads.append(child.lineno)
+            if (isinstance(child, ast.Call)
+                    and isinstance(child.func, ast.Name)
+                    and child.func.id == "getattr"
+                    and len(child.args) >= 2
+                    and isinstance(child.args[1], ast.Constant)
+                    and child.args[1].value == attr
+                    and _is_scheme(child.args[0], inside)):
+                reads.append(child.lineno)
+            _walk(child, inside)
+
+    _walk(tree, False)
+    return reads
+
+
 # ======================================================================
 # The per-series style cycle
 # ======================================================================
@@ -169,10 +214,18 @@ class TestPerSeriesStyleCycle:
                 g = getattr(r, "glyph", None)
                 if g is not None and type(g).__name__ == "Line":
                     dashes.append(str(g.line_dash))
-        assert len(dashes) >= 3, dashes
-        assert len(set(dashes)) >= 2, (
+        # Three lines, three patterns: s2mono declares p1lineplot solid,
+        # p2lineplot dash and p3lineplot vshortdash, and dash drew
+        # ['[]', '[8, 4]', '[3, 3]'] (measured 24sep2026).  The floors of
+        # three lines and two patterns passed a third line that repeated
+        # the second's dash.
+        assert len(dashes) == 3, dashes
+        assert len(set(dashes)) == 3, (
             f"every line used the same dash pattern {dashes}"
         )
+        sp = SchemeParser("s2mono")
+        assert dashes == [str(sp.default_line_pattern(i))
+                          for i in range(3)], dashes
 
     def test_a_colour_scheme_draws_every_series_with_a_circle(self):
         """Measured: stcolor, s2color and economist all use circle for p1-p3.
@@ -204,10 +257,17 @@ class TestPerSeriesStyleCycle:
                 g = getattr(r, "glyph", None)
                 if g is not None and type(g).__name__ == "Line":
                     colours.append(str(g.line_color).lower())
-        assert len(colours) >= 3
+        assert len(colours) == 3, colours
         assert not all(c in ("#000000", "black") for c in colours), (
             f"every line is black; s1mono's color p#line was applied to a "
             f"plain line chart, where Stata reads color p#: {colours}"
+        )
+        # The colours Stata draws, from the docstring's measurement.  Not
+        # all black passed a chart whose third line alone took p3line's
+        # black (24sep2026).
+        assert colours == ["#606060", "#a0a0a0", "#808080"], (
+            f"s1mono's line chart is drawn {colours}; Stata draws "
+            f"#606060 / #a0a0a0 / #808080 from color p#"
         )
 
     def test_marker_size_comes_from_the_scheme_not_a_literal(self):
@@ -328,10 +388,16 @@ class TestSchemeSelection:
                 os.unlink(p)
             except OSError:
                 pass
-        colours = {str(g.fill_color) for g in _scatter_glyphs(dr)}
+        colours = [str(g.fill_color) for g in _scatter_glyphs(dr)]
         econ = SchemeParser("economist")
-        want = {econ.default_color(i, "scatter") for i in range(3)}
-        assert colours & want, (
+        want = [econ.default_color(i, "scatter") for i in range(3)]
+        # All three series, in order: an overlap of one colour passed a
+        # graph whose scheme reached its first series only (24sep2026).
+        # economist's first three colours are none of s2color's, the
+        # build's scheme here, so this cannot pass by the build's.
+        assert not set(want) & {SchemeParser("s2color").default_color(
+            i, "scatter") for i in range(3)}
+        assert colours == want, (
             f"graph-level scheme(economist) had no effect: drew {colours}, "
             f"economist would give {want}"
         )
@@ -451,29 +517,122 @@ class TestNoParsedKeyIsDiscarded:
         from bokeh.models import CategoricalColorMapper
         mappers = [m for fig in dr.figures.values()
                    for m in fig.select({"type": CategoricalColorMapper})]
-        if not mappers:
-            pytest.skip("no categorical mapper was built")
-        pal = set(mappers[0].palette)
-        sch = set(dr.scheme.p_colors)
-        assert pal & sch, (
-            f"the discrete palette {sorted(pal)[:4]} ignores the scheme's "
-            f"{sorted(sch)[:4]}"
+        # colorvar() with colordiscrete builds one categorical mapper
+        # (measured 24sep2026).  This used to skip when none was built, so
+        # losing the mapper -- the very thing under test -- read as a skip.
+        assert len(mappers) == 1, (
+            f"colorvar(length) colordiscrete built {len(mappers)} "
+            f"categorical colour mappers, not one"
         )
+        pal = list(mappers[0].palette)
+        sch = list(dr.scheme.p_colors)
+        # The palette is the scheme's p# cycle, one colour per factor in
+        # order and wrapping at fifteen: the thirty lengths drew economist's
+        # fifteen twice.  One shared colour passed a palette that took a
+        # single colour from the scheme.
+        n = len(mappers[0].factors)
+        assert n == 30, n
+        assert pal == [sch[i % 15] for i in range(n)], (
+            f"the discrete palette {pal[:4]} ignores the scheme's "
+            f"{sch[:4]}"
+        )
+
+    def test_a_schemes_area_intensity_and_minor_grid_reach_both_modes(
+            self, tmp_path, monkeypatch):
+        """`intensity area' and `color minor_grid' reach the figure, in both
+        modes.  They were checked only by counting `.area_alpha' and
+        `.minor_grid_color' in dash_render.py's text (below), because no
+        shipped scheme can show either: every one says `intensity area
+        full', which is Bokeh's own default, and none draws a minor grid.
+        So a scheme written here says otherwise (WP-24)."""
+        import warnings
+        from bokeh.document import Document
+        from bokeh.models import GlyphRenderer, Plot
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "wp24probe.scheme").write_text(
+            "#include s2color\n"
+            "intensity area inten40\n"
+            "yesno draw_minor_hgrid yes\n"
+            "color minor_grid red\n", encoding="utf-8")
+        spec = make_spec([{"type": "area", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}])
+        spec["build_options"]["scheme"] = "wp24probe"
+        sp, dp, ap = (str(tmp_path / n) for n in ("s.json", "d.json", "app.py"))
+        with open(sp, "w") as f:
+            json.dump(spec, f)
+        with open(dp, "w") as f:
+            json.dump(make_data_json(_df()), f)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr = DashRenderer(sp, dp)
+            dr.render()
+            dash_render.ServerAppBuilder(sp, dp).build(ap)
+        with open(ap, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        assert attach in src
+        ns = {"__name__": "_wp24_scheme_app"}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            exec(compile(src.replace(attach, "pass"), "_wp24_scheme_app.py",
+                         "exec"), ns)
+            doc = Document()
+            ns["make_document"](doc)
+        served = [f for root in doc.roots for f in root.select({"type": Plot})]
+        assert len(served) == 1, served
+        for mode, fig in (("saved", dr.figures["g1"]), ("served", served[0])):
+            areas = [r.glyph for r in fig.renderers
+                     if isinstance(r, GlyphRenderer)
+                     and type(r.glyph).__name__ == "VArea"]
+            assert [a.fill_alpha for a in areas] == [0.4], (mode, areas)
+            # draw_minor_hgrid is the HORIZONTAL axis's grid: the x grid.
+            assert [str(g.minor_grid_line_color) for g in fig.xgrid] == \
+                ["#ff0000"], (mode, [g.minor_grid_line_color for g in fig.xgrid])
+            assert [g.minor_grid_line_color for g in fig.ygrid] == [None], mode
 
     @pytest.mark.parametrize("attr", [
         "fill_alpha", "bar_alpha", "area_alpha", "minor_grid_color",
-        "text_font_size", "title_color", "heading_font_size",
+        pytest.param("text_font_size", marks=pytest.mark.xfail(
+            strict=True,
+            reason="PRODUCT FINDING 24sep2026: SchemeParser.text_font_size "
+                   "(`gsize text') is parsed and read by nothing -- no "
+                   "scheme.text_font_size, self.scheme.text_font_size or "
+                   "SchemeParser self.text_font_size load anywhere in "
+                   "dash_render.py since the legend moved to key_label.  "
+                   "The old `.text_font_size' count passed on Bokeh's "
+                   "fig.title.text_font_size.  Strict: a consumer, or a "
+                   "decision to retire the key, must remove this mark.")),
+        "title_color", "heading_font_size",
     ])
     def test_the_key_is_read_somewhere(self, attr):
-        """A parsed key with no consumer is a key that does nothing."""
+        """A parsed key with no consumer is a key that does nothing.
+
+        Read from dash_render.py's syntax tree: a load of the SCHEME's
+        attribute, not a count of the bare name.  area_alpha and
+        minor_grid_color, which only this covered, are also run by the test
+        above, since no shipped scheme can show either.
+
+        text_font_size (`gsize text') is read by nothing: the legend takes
+        key_label's size (_dash_scheme_chrome) and dash draws no text() box,
+        so it is parsed and drawn from nowhere, as note_font_size is.  It
+        passed the old count only because `.text_font_size' is also Bokeh's
+        own name (fig.title.text_font_size, twice), which a count cannot
+        tell apart (WP-24, 24sep2026).  It is a strict xfail, BUGS.md's open
+        entry "The scheme's gsize text is parsed and read by nothing"."""
         sp = SchemeParser("s2color")
-        if not hasattr(sp, attr):
-            pytest.skip(f"SchemeParser does not parse {attr}")
-        src = open(os.path.join(_HERE, "..", "dash_render.py")).read()
-        code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
-        assert code.count(f".{attr}") >= 2, (
-            f"scheme.{attr} is parsed and never read"
+        # A rename used to skip here, silently dropping the attribute from
+        # the check; the list names what SchemeParser must parse.
+        assert hasattr(sp, attr), (
+            f"SchemeParser no longer parses {attr}; update this list"
         )
+        # The reads of the SCHEME's attribute, not of any attribute that
+        # happens to share its name: `.fill_alpha' occurs in eleven
+        # glyph.fill_alpha writes and `.text_font_size' in Bokeh's
+        # fig.title.text_font_size, so the old count of the bare name
+        # (>= 2, the definition included) could not fail for either
+        # (measured 24sep2026).
+        reads = _scheme_attr_reads(attr)
+        assert reads, f"scheme.{attr} is parsed and never read"
 
 
 # ======================================================================

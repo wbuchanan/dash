@@ -67,21 +67,34 @@ program define _hc4_run, rclass
     return local  log "`logfile'"
 end
 
-// The longest line of a file, in bytes: an echo of a refused statistic
-// must be bounded, whatever its length.
+// The longest LOGICAL line of a Stata log, in bytes: an echo of a refused
+// statistic must be bounded, whatever its length.  Each "> " continuation
+// is appended to the line it continues, as cert_log_has rebuilds them.
+// Measured 24sep2026: the physical lines of a log written at linesize 255
+// are never longer than 255, so the longest of them could not reach the
+// old bound of 400 -- with the 40-character cut in dash.ado removed, the
+// 5,001-character statistic came back as twenty lines of at most 255 and
+// HC4-07 passed.
 capture mata: mata drop _hc4_longest()
 mata:
 real scalar _hc4_longest(string scalar path)
 {
     real scalar fh, n
-    string scalar line
+    string scalar line, full
 
     fh = _fopen(path, "r")
     if (fh < 0) return(-1)
     n = 0
+    full = ""
     while ((line = fget(fh)) != J(0, 0, "")) {
-        if (strlen(line) > n) n = strlen(line)
+        if (substr(line, 1, 2) == "> ") {
+            full = full + substr(line, 3, .)
+            continue
+        }
+        if (strlen(full) > n) n = strlen(full)
+        full = line
     }
+    if (strlen(full) > n) n = strlen(full)
     _fclose(fh)
     return(n)
 }
@@ -109,7 +122,7 @@ local hc402 = r(r1)
 _hc4_run `"dash kpi p97.5(price), name(k2) title("P")"'
 assert r(rc) == 0
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash: KPI 'k2' registered (p97.5(price) = `hc402').")
+cert_log_has "`lg'", needle("dash: KPI 'k2' registered (p97.5(price) = `hc402').")
 assert r(found) == 1
 display "HC4-02 PASS: the console reads p97.5(price) = `hc402'"
 
@@ -206,23 +219,31 @@ display "HC4-06 PASS: p0, p100, p1e2, p97.5.5, p-1, p 97.5, pnan, other digits a
 _hc4_run "dash kpi p100(price), name(k1) title(P)"
 assert r(rc) == 198
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("percentile must be greater than 0 and less than 100")
+cert_log_has "`lg'", needle("percentile must be greater than 0 and less than 100")
 assert r(found) == 1
 _hc4_run "dash kpi p97.5.5(price), name(k1) title(P)"
 assert r(rc) == 198
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("is not a percentile")
+cert_log_has "`lg'", needle("is not a percentile")
 assert r(found) == 1
 _hc4_run "dash kpi p0.000000000000001(price), name(k1) title(P)"
 assert r(rc) == 198
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("more than 15 digits")
+cert_log_has "`lg'", needle("more than 15 digits")
 assert r(found) == 1
 _hc4_run `"dash kpi `hc406_l1'(price), name(k1) title(P)"'
 assert r(rc) == 198
 local lg "`r(log)'"
 mata: st_local("hc407n", strofreal(_hc4_longest(st_local("lg"))))
-assert `hc407n' > 0 & `hc407n' < 400
+// The logical line, below the log's linesize: the refusal with its echo
+// cut to 40 characters and "..." is 98 bytes, and with the whole
+// statistic echoed it is 5,056 (both measured 24sep2026).
+assert `hc407n' > 0 & `hc407n' < 200
+// And the echo is exactly the cut dash.ado makes: the first 40
+// characters, then "...".
+mata: st_local("hc407w", "dash kpi: the percentile in 'p" + 39 * "9" + "...' has more than 15 digits.")
+cert_log_has "`lg'", needle("`hc407w'")
+assert r(count) == 1
 display "HC4-07 PASS: each refusal names its rule; a 5,000-digit statistic is echoed in `hc407n' bytes at most"
 
 // ================================================================
@@ -331,7 +352,7 @@ local hc412 = strtrim("`hc412'")
 _hc4_run `"dash kpi mean(price), ti("Average") nam(k1) fmt(%12.0fc) sub("dollars") color(navy) bgcolor(#eeeeee) upd(brush)"'
 assert r(rc) == 0
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("(mean(price) = `hc412').")
+cert_log_has "`lg'", needle("(mean(price) = `hc412').")
 assert r(found) == 1
 assert `"${dash_kpi_k1__tit}"' == "Average"
 assert `"${dash_kpi_k1__sub}"' == "dollars"
@@ -379,7 +400,7 @@ foreach s in mean sum min max median sd var cv iqr skewness p25 p97.5 {
 }
 _hc4_run "dash kpi mean(make), name(k9) title(T)"
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("needs a numeric variable")
+cert_log_has "`lg'", needle("needs a numeric variable")
 assert r(found) == 1
 restore
 display "HC4-14 PASS: mean(make) and the other numeric statistics refuse a string variable, r(109)"

@@ -15,7 +15,7 @@
       "kpi_statistics_per_scope": 14,
       "scopes": 2,
       "dcount_commands_tested": 7,
-      "dcount_variables": 2,
+      "dcount_variables": 3,
       "unicode_names_tested": 18,
       "percentile_probes": 6,
       "scale_probes": 6,
@@ -530,6 +530,23 @@
         "cmd": "count if missing(make) -> r(N)",
         "value": 0
       },
+      "mpg_distinct_nonmissing": {
+        "cmd": "sysuse auto ; egen g = group(mpg) ; summarize g, meanonly -> r(max)",
+        "value": 21
+      },
+      "mpg_distinct_levelsof": {
+        "cmd": "sysuse auto ; levelsof mpg -> r(r)",
+        "value": 21
+      },
+      "mpg_missing_in_1_5_distinct_nonmissing": {
+        "cmd": "sysuse auto ; replace mpg = . in 1/5 ; egen g = group(mpg) ; summarize g, meanonly -> r(max)",
+        "value": 21
+      },
+      "mpg_missing_in_1_5_distinct_including_missing": {
+        "cmd": "sysuse auto ; replace mpg = . in 1/5 ; levelsof mpg, missing -> r(r)",
+        "value": 22
+      },
+      "mpg_measured": "24 Sep 2026, StataNow 19.5 MP (born 12 Aug 2026), batch mode; egen group() with summarize r(max) is the method dash.ado's _dash_kpi uses for dcount. The mpg entries were added after the 19 Sep 2026 probe run, because test/fixtures/data/auto.csv carries mpg and weight only.",
       "note": "'distinct' here means distinct non-missing values, which is what codebook, levelsof, egen group() and pandas .nunique() all mean by default, and what a JavaScript Set over the non-null values gives."
     },
     "what_each_command_returns": {

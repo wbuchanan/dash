@@ -64,12 +64,13 @@ def _fig(plots, gopts=None, df=None, **kw):
     return dr._build_figures()["g1"], dr
 
 
-def _fig_with_gopts(plots, gopts, df=None):
-    """Build one figure with arbitrary graph_options."""
+def _fig_with_gopts(plots, gopts, df=None, build=None):
+    """Build one figure with arbitrary graph_options (and build_options)."""
     import tempfile
     df = _auto() if df is None else df
     spec = make_spec(plots)
     spec["graphs"][0]["graph_options"].update(gopts)
+    spec["build_options"].update(build or {})
     sp = tempfile.mkstemp(".json")[1]
     dp = tempfile.mkstemp(".json")[1]
     op = tempfile.mkstemp(".html")[1]
@@ -625,6 +626,41 @@ class TestReferenceLines:
         assert str(s.line_color).lower() not in ("grey", "gray", "#808080"), (
             f"the reference line is still forced grey: {s.line_color}"
         )
+        # "Not grey" alone let a red, p1-coloured or solid line pass.  The
+        # measurement is the fixture's e_xline_default, `twoway scatter mpg
+        # weight, xline(3000)' under the scheme it records (stcolor): of the
+        # lines drawn at x = 3000, the one spanning the plot region that is
+        # not the gridline.  So compare under that scheme.  (Under s2color,
+        # the "default" theme above, twoway draws the line cranberry
+        # #C10534 and solid and dash draws it black and dashed: measured
+        # 24sep2026 from graph export .svg, reported, not fixed here.)
+        scheme = truth["_meta"]["scheme_in_force"]
+        probe = truth["probes"]["e_xline_default"]
+        xa = probe["x_axis"]
+        at = xa["tick_px"][xa["tick_values"].index(3000.0)]
+        top = probe["plotregion_px"]["top"]
+        bottom = probe["plotregion_px"]["bottom"]
+        grid = {g[0].lower() for g in xa["gridline_style"]}
+        ref = [g for g in probe["svg_line_groups"]["vertical"]
+               if abs(g["px"] - at) < 0.5
+               and g["span_from"] <= top + 1 and g["span_to"] >= bottom - 1
+               and g["stroke"].lower() not in grid]
+        assert len(ref) == 1, f"the fixture's xline(3000) is not one line: {ref}"
+        fig, dr = _fig_with_gopts(_SCATTER, {"xline": "3000"},
+                                  build={"scheme": scheme})
+        assert dr.scheme.name == scheme, dr.scheme.name
+        spans = self._spans(fig)
+        assert len(spans) == 1, f"xline(3000) drew {len(spans)} lines"
+        s = spans[0]
+        assert str(s.line_color).lower() == ref[0]["stroke"].lower(), (
+            f"dash draws xline(3000) in {s.line_color}; Stata in "
+            f"{ref[0]['stroke']}"
+        )
+        dashed = s.line_dash not in ("solid", "", None, [])
+        assert dashed is ref[0]["dashed"], (
+            f"dash's line_dash {s.line_dash!r}; Stata's dashed is "
+            f"{ref[0]['dashed']}"
+        )
 
     def test_multiple_values_draw_multiple_lines(self):
         fig, _ = _fig_with_gopts(_SCATTER, {"xline": "2000 3000 4000"})
@@ -733,6 +769,16 @@ class TestMarkerAndFillOptions:
             assert nan_c != "eltblue", (
                 "colormissing reached Bokeh untranslated"
             )
+        # The loop skips a mapper with no nan_color and refuses only the
+        # untranslated word, so a colormissing() ignored outright -- the
+        # mapper keeping dash's own #808080 -- passed it (measured
+        # 24sep2026).  Stata's eltblue is RGB 130 192 233
+        # (color-eltblue.style), #82c0e9, and every mapper paints missing so.
+        nans = [str(getattr(m, "nan_color", "") or "").lower()
+                for m in mappers]
+        assert nans and all(n == "#82c0e9" for n in nans), (
+            f"colormissing(eltblue) painted missing values {nans}"
+        )
 
     def test_colormissing_with_an_unknown_colour_does_not_kill_the_render(self):
         """It used to raise out of the mapper and take the whole figure down."""
@@ -777,32 +823,45 @@ class TestIfQualifierFunctions:
                 return len(data["weight"])
         return None
 
+    # The exact row counts, measured 24sep2026 on _auto(): rep78 cycles
+    # 1 2 3 4 5 missing, so 12 of the 74 rows are missing and 26 are 1 or 2;
+    # weight is linspace(1760, 4840, 74), so 24 rows lie in [2000, 3000] and
+    # 37 rows above 3000 have rep78.  "0 < n < 74" -- the range these
+    # replaced -- passed a qualifier translated wrongly, as long as it kept
+    # some rows and dropped others.
+
     def test_baseline_is_all_rows(self):
         assert self._n_rows("") == 74
 
     def test_not_missing(self):
         n = self._n_rows("!missing(rep78)")
         assert n is not None and 0 < n < 74, n
+        assert n == 62, n
 
     def test_missing_directly(self):
         n = self._n_rows("missing(rep78)")
         assert n is not None and 0 < n < 74, n
+        assert n == 12, n
 
     def test_inlist(self):
         n = self._n_rows("inlist(rep78,1,2)")
         assert n is not None and 0 < n < 74, n
+        assert n == 26, n
 
     def test_inrange(self):
         n = self._n_rows("inrange(weight,2000,3000)")
         assert n is not None and 0 < n < 74, n
+        assert n == 24, n
 
     def test_stata_missing_idiom_less_than_dot(self):
         n = self._n_rows("rep78 < .")
         assert n is not None and 0 < n < 74, n
+        assert n == 62, n
 
     def test_combined_with_ordinary_comparisons(self):
         n = self._n_rows("!missing(rep78) & weight > 3000")
         assert n is not None and 0 < n < 74, n
+        assert n == 37, n
 
 
 class TestIfQualifierWhitelistIsNotWeakened:

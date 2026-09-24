@@ -549,6 +549,7 @@ SURFACES = {
             "test_setup_injection.cscript:INJ-02",
             "test_setup_injection.cscript:INJ-10",
             "test_setup_injection.cscript:INJ-11",
+            "test_program_coverage.cscript:PC-22",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P20-23",
@@ -560,6 +561,7 @@ SURFACES = {
     "data_content": {
         "bypass": [
             "test_adversarial.cscript:P20-28",
+            "test_program_coverage.cscript:PC-03",
             "test/test_server.py::TestDropdownSentinelCollision::test_standalone_sentinel_unique_when_data_has_all_value",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_a_label_keyed_by_another_spelling_is_not_matched",
         ],
@@ -569,6 +571,8 @@ SURFACES = {
             "test/test_filters.py::TestFilterSecurity::test_filter_values_are_text_and_never_code",
             "test/test_server.py::test_escape_chars_in_data_do_not_break_syntax",
             "test/test_marker_label_parity.py::TestAdversarialMarkerLabels::test_markup_in_a_value_label_is_carried_as_text",
+            "test_program_coverage.cscript:PC-09",
+            "test_program_coverage.cscript:PC-10",
         ],
         "exhaustion": [
             "test_adversarial.cscript:P19-11",

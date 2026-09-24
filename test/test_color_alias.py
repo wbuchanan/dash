@@ -23,6 +23,7 @@ Stata does not define it at all.
 import os
 import re
 import sys
+import warnings
 
 import numpy as np
 import pytest
@@ -112,11 +113,25 @@ class TestColorReachesTheCommonPlotTypes:
         glyph = r.glyph if not isinstance(r, list) else r[0].glyph
         assert glyph.fill_color == _hex(_ALIAS)
 
-    def test_a_bad_colour_name_does_not_take_the_render_down(self, gm, src):
-        gm.map_scatter(figure(), src, "mpg", "weight",
-                       {"color": "not_a_colour"})
-        gm.map_line(figure(), src, "mpg", "weight",
-                    {"color": "not_a_colour"})
+    @pytest.mark.parametrize("mapper,prop,kind", [
+        ("map_scatter", "fill_color", "scatter"),
+        ("map_line", "line_color", "line"),
+    ])
+    def test_a_bad_colour_name_does_not_take_the_render_down(
+            self, gm, src, mapper, prop, kind):
+        """It draws the scheme's default and says so -- what twoway does
+        with a colour it cannot read ("named style ... not found in class
+        color, default attributes used")."""
+        dr._dash_reset_notes()          # the note is made once per render
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            r = getattr(gm, mapper)(figure(), src, "mpg", "weight",
+                                    {"color": "not_a_colour"})
+        glyph = (r[0] if isinstance(r, list) else r).glyph
+        assert getattr(glyph, prop) == gm.scheme.default_color(0, kind)
+        assert ("dash: color(not_a_colour) is not a recognised colour; "
+                "using the scheme's default.") in \
+            [str(c.message) for c in caught]
 
 
 def _pending(prog):
@@ -127,15 +142,33 @@ def _pending(prog):
     return re.findall(r"_dash_pending' (\w+)\"", s[i:j])
 
 
+def _plot_pending():
+    """_dash_parse_plot_opts's pending names, with a positive control.
+
+    An absence check on an empty list passes whatever dash.ado says: were
+    the local renamed, or its lines reworded, the reader above would find
+    nothing and "color not in []" would hold.  at() and b1title() are
+    pending on every plot type -- 44 names in all, measured 24sep2026 -- so
+    the reader must find them before its silence about color() means
+    anything.
+    """
+    pending = _pending("_dash_parse_plot_opts")
+    assert {"at", "b1title"} <= set(pending), (
+        f"the pending-list reader no longer finds options that are pending: "
+        f"{pending}"
+    )
+    return pending
+
+
 class TestTheNoteNoLongerNamesThem:
     def test_color_is_not_reported_unsupported(self):
-        assert "color" not in _pending("_dash_parse_plot_opts"), (
+        assert "color" not in _plot_pending(), (
             "color() sets the series colour, but dash.ado still names it in "
             "the ignoring-unsupported note"
         )
 
     def test_bands_is_not_reported_unsupported(self):
-        assert "bands" not in _pending("_dash_parse_plot_opts"), (
+        assert "bands" not in _plot_pending(), (
             "bands() sets the median-band count, but dash.ado still names it "
             "in the ignoring-unsupported note"
         )

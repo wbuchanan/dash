@@ -222,5 +222,61 @@ assert _rc == 0
 assert `"`_dash_vpath'"' == "/tmp/plain.html"
 display "PV-19 PASS: an unchanged path is published unchanged"
 
+// ----------------------------------------------------------------
+// PV-20 -- dash build, server takes a file name holding '..', as the HTML
+// route does, and still refuses a '..' segment
+// ----------------------------------------------------------------
+// Measured 24sep2026 at a2c7502 by WP-24: _dash_build's server branch kept
+// the old rule, regexm("`saving'", "\.\."), in front of the validator, so
+// saving("my..report.py") server was refused, r(198), where
+// saving("my..report.html") builds (PV-13; ROADMAP AC-08.4).
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(pvg20)
+local pv20 "`c(tmpdir)'my..report.py"
+capture erase "`pv20'"
+capture noisily dash build, saving("`pv20'") server replace
+assert _rc == 0
+confirm file "`pv20'"
+capture erase "`pv20'"
+capture noisily dash build, saving("`c(tmpdir)'../pv20.py") server replace
+assert _rc == 198
+capture dash clear
+display "PV-20 PASS: dash build, server takes my..report.py, as the HTML route takes my..report.html, and still refuses a '..' segment"
+
+// ----------------------------------------------------------------
+// PV-21 -- a double quote in dash build's saving() is refused by the
+// validator, r(198), on both routes
+// ----------------------------------------------------------------
+// Measured 24sep2026 at a2c7502 by WP-24: _dash_build read saving() inside
+// plain quotes before the validator -- `if "`saving'" == ""' -- so a
+// double quote in it died there, r(132) "too few quotes", on the HTML and
+// the server route alike, and the validator's "disallowed characters" was
+// never reached (the trap PV-02 records for the validator itself).
+do "cert_helpers.do"
+qui sysuse auto, clear
+capture dash clear
+dash scatter mpg weight, name(pvg21)
+local dq21 = "`c(tmpdir)'pv" + char(34) + "21"
+local lg21 "`c(tmpdir)'pv21.log"
+foreach mode in html server {
+    local ext21 = cond("`mode'" == "html", "html", "py")
+    local srv21 = cond("`mode'" == "html", "", "server")
+    capture erase "`lg21'"
+    capture log close _pv21
+    quietly log using "`lg21'", text replace name(_pv21)
+    capture noisily dash build, saving(`"`dq21'.`ext21'"') `srv21' replace
+    local rc21 = _rc
+    quietly log close _pv21
+    cert_file_has "`lg21'", needle("disallowed characters")
+    if `rc21' != 198 | r(found) != 1 {
+        display as error "PV-21: the `mode' route gave rc `rc21', not the validator's r(198)"
+        exit 9
+    }
+}
+capture erase "`lg21'"
+capture dash clear
+display "PV-21 PASS: a double quote in dash build's saving() is refused by the validator, r(198), on the HTML and the server route"
+
 display ""
 display "test_path_validation.cscript: ALL CHECKS PASSED"

@@ -10,6 +10,7 @@ import sys
 import os
 import json
 import math
+import re
 import numpy as np
 import pandas as pd
 import pytest
@@ -122,6 +123,8 @@ class TestAutoLayout:
         rows, cols = renderer._compute_grid(3, "auto")
         assert rows * cols >= 3
         assert cols >= 2
+        # The grid itself, not only a floor under it (measured 24sep2026).
+        assert (rows, cols) == (2, 2)
 
     def test_auto_4_graphs(self):
         renderer = _make_renderer(4)
@@ -143,6 +146,7 @@ class TestAutoLayout:
         renderer = _make_renderer(6)
         rows, cols = renderer._compute_grid(6, "auto")
         assert rows * cols >= 6
+        assert (rows, cols) == (2, 3)
 
     def test_auto_9_graphs(self):
         renderer = _make_renderer(9)
@@ -335,13 +339,25 @@ class TestLayoutOverflow:
 
     def test_layout_with_exact_fit_unchanged(self):
         """layout(2 2) with exactly 4 items still produces 2×2 grid (no change)."""
+        from bokeh.models import GridPlot
         renderer = _make_renderer(4, layout="2 2")
         html = renderer.render()
-        # All 4 figures should be in the HTML
-        for i in range(1, 5):
-            assert f"g{i}" in html or len(renderer.figures) == 4, (
-                f"Figure g{i} missing from HTML with layout(2 2)"
+        # All 4 figures should be in the HTML.  This asked for "g<i>" in
+        # the page OR four figures built -- the second is true of any
+        # render that built them, placed or not -- so it is asked of each
+        # figure's own id, and of the grid it sits in: row by row, a 2x2.
+        assert sorted(renderer.figures) == ["g1", "g2", "g3", "g4"]
+        for name, fig in renderer.figures.items():
+            assert fig.id in html, (
+                f"Figure {name} missing from HTML with layout(2 2)"
             )
+        grids = list(renderer._last_layout_root.select({"type": GridPlot}))
+        assert len(grids) == 1, grids
+        at = {id(f): n for n, f in renderer.figures.items()}
+        cells = sorted((c[1], c[2], at.get(id(c[0]))) for c in
+                       grids[0].children)
+        assert cells == [(0, 0, "g1"), (0, 1, "g2"), (1, 0, "g3"),
+                         (1, 1, "g4")], cells
 
     def test_layout_with_fewer_items_pads(self):
         """layout(3 2) with 4 items pads remaining 2 cells with None (no overflow)."""
@@ -382,6 +398,8 @@ class TestBootstrapLayout:
         rows = DashRenderer._auto_bs_layout(["g1"], [])
         assert len(rows) >= 1
         assert rows[0][0][0] == "g1"
+        # One graph fills its row.
+        assert rows == [[("g1", 12)]], rows
 
     def test_auto_bs_layout_kpis_first_row(self):
         rows = DashRenderer._auto_bs_layout(["k1", "k2", "g1", "g2"], ["k1", "k2"])
@@ -391,16 +409,18 @@ class TestBootstrapLayout:
         assert "k2" in first_row_names
 
     def test_auto_bs_layout_spans_sum_le_12_per_row(self):
-        rows = DashRenderer._auto_bs_layout(
-            ["k1", "k2", "k3", "k4", "g1", "g2", "g3", "g4"],
-            ["k1", "k2", "k3", "k4"],
-        )
+        names = ["k1", "k2", "k3", "k4", "g1", "g2", "g3", "g4"]
+        rows = DashRenderer._auto_bs_layout(names, ["k1", "k2", "k3", "k4"])
+        # Every item placed once, so the loop below has a layout to read:
+        # an empty one passed it.
+        assert sorted(n for row in rows for n, _ in row) == sorted(names)
         for row in rows:
             total_span = sum(span for _, span in row)
             assert total_span <= 12, f"Row spans {total_span} exceed 12: {row}"
 
     def test_auto_bs_layout_spans_are_valid(self):
         rows = DashRenderer._auto_bs_layout(["g1", "g2", "g3"], [])
+        assert sorted(n for row in rows for n, _ in row) == ["g1", "g2", "g3"]
         for row in rows:
             for name, span in row:
                 assert 1 <= span <= 12, f"Invalid span {span} for {name}"
@@ -422,6 +442,9 @@ class TestBootstrapLayout:
         rows = DashRenderer._parse_bs_layout("bs", all_names, ["k1"])
         assert len(rows) >= 1
         assert all(isinstance(r, list) for r in rows)
+        # Bare `bs' is the automatic layout: the card's row, then the
+        # graph's, each item a full row (measured 24sep2026).
+        assert rows == [[("k1", 12)], [("s1", 12)]], rows
 
     def test_parse_bs_layout_unknown_names_dropped(self):
         all_names = ["s1", "s2"]
@@ -432,6 +455,8 @@ class TestBootstrapLayout:
         )
         flat_names = [name for row in rows for name, _ in row]
         assert "__evil__" not in flat_names
+        # ...and the rest of the spec is drawn as written.
+        assert rows == [[("s1", 6)], [("s2", 12)]], rows
 
     def test_parse_bs_layout_spans_clamped(self):
         all_names = ["s1", "s2"]
@@ -443,6 +468,9 @@ class TestBootstrapLayout:
         flat = {name: span for row in rows for name, span in row}
         assert flat.get("s1", 6) <= 12
         assert flat.get("s2", 6) >= 1
+        # The spans the clamp gives, both there: the defaults of 6 above
+        # passed for a name the parse had dropped.
+        assert flat == {"s1": 12, "s2": 1}, flat
 
     def test_parse_bs_layout_unplaced_names_appended(self):
         all_names = ["k1", "s1", "s2"]
@@ -456,18 +484,30 @@ class TestBootstrapLayout:
         assert "s2" in flat_names
 
     # ---- BS-04: render() with layout(bs) returns HTML ----
+    # "db-container", "db-row" and "db-col-md-6" are all in _DASH_GRID_CSS,
+    # which every bs page embeds, so a search for the bare word is answered
+    # by the stylesheet whether the grid's markup is there or not.  The
+    # markup is read as markup (a div's class), the stylesheet as rules.
+    _CELL = re.compile(r'<div class="(db-col-12 [^"]*)"')
+
     def test_render_bs_auto_returns_html(self):
         r = _make_renderer(2, layout="bs")
         html = r.render()
         assert "<!DOCTYPE html>" in html
         assert "db-container" in html
         assert "db-row" in html
+        assert html.count('<div class="db-container">') == 1
+        assert html.count('<div class="db-row db-section">') == 1
+        assert len(self._CELL.findall(html)) == 2, self._CELL.findall(html)
 
     def test_render_bs_explicit_returns_html(self):
         r = _make_renderer(2, layout="bs: g1=6 g2=6")
         html = r.render()
         assert "<!DOCTYPE html>" in html
         assert "db-col-md-6" in html
+        cells = self._CELL.findall(html)
+        assert len(cells) == 2 and all(
+            "db-col-md-6" in c.split() for c in cells), cells
 
     def test_render_bs_contains_bokeh_script(self):
         r = _make_renderer(2, layout="bs")
@@ -479,6 +519,10 @@ class TestBootstrapLayout:
         r = _make_renderer(2, layout="bs")
         html = r.render()
         assert "db-col-md-" in html or "db-col-12" in html
+        # The words are the cells' classes as well; a RULE is the
+        # stylesheet's alone.
+        assert re.search(r"\.db-col-md-6\s*\{", html)
+        assert re.search(r"\.db-row\s*\{", html)
 
     def test_render_bs_csp_meta_present(self):
         r = _make_renderer(2, layout="bs")

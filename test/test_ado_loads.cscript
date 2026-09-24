@@ -65,6 +65,11 @@ display "P15-03 PASS: dash clear executed without error"
 // _dash_render_immediate were available. Programs defined after it
 // (_dash_do_render, _dash_render_immediate, _dash_clear, _dash_kpi,
 //  _dash_build, _dash_serve) were missing.
+//
+// _dash_formats_json, _dash_date_fmts_swap and _dash_date_fmts_restore
+// were the three this loop left out and no test file named (GAPS.md L7);
+// test_program_coverage.cscript PC-01..11 tests what they do.  Every
+// program's test is named in test/program_coverage_map.py.
 // ================================================================
 foreach prog in dash _dash_validate_path _dash_json_str _dash_kv_json  ///
     _dash_parse_graph_opts _dash_parse_plot_opts                        ///
@@ -72,6 +77,7 @@ foreach prog in dash _dash_validate_path _dash_json_str _dash_kv_json  ///
     _dash_parse_varpart_3v  _dash_parse_varpart_4v                      ///
     _dash_parse_varpart_any _dash_plot_opts_to_json                     ///
     _dash_graph_opts_to_json _dash_process_segment                      ///
+    _dash_formats_json _dash_date_fmts_swap _dash_date_fmts_restore     ///
     _dash_plot _dash_register_graph _dash_do_render                     ///
     _dash_render_immediate _dash_clear _dash_kpi _dash_build            ///
     _dash_serve {

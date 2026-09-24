@@ -194,40 +194,56 @@ end
 // ================================================================
 // _dash_require_mata  — refuse to start rather than fail on a missing function
 // ================================================================
-// Two checks, because neither covers the other.  The recorded load error is
-// the only witness to a PARTIAL compile -- `run' returned 199 while the
-// functions were still present -- and `mata describe' is the only witness to
-// a library that was never loaded or has since been cleared, which `run'
-// never gets to report.
+// `mata describe' of every function dash.ado calls is the witness, for a
+// library never loaded, since cleared, or loaded only in part.  The return
+// code of `run' is not (see the table at the top of this file): it is 3000
+// for a healthy reload and for a total failure alike.  (This header said a
+// "recorded load error" witnessed a partial compile; nothing records one,
+// and the one-function check that followed passed a partial library --
+// WP-24, test_env_guards.cscript ENV-23, test_mata_library_guard.cscript.)
 // ================================================================
 program define _dash_require_mata
     version 16.0
 
     // Every Mata function dash.ado calls, named once.  Checking a single
-    // one would pass a library that compiled half way.
+    // one would pass a library that compiled half way.  _dash_path_badchar
+    // was missing, so a library without it passed and the first saving()
+    // ended in r(3499) naming it (test_program_coverage.cscript PC-30);
+    // test_program_coverage_map.py now fails a call this list does not name.
     local _needed _dash_check_utf8 _dash_comma_pos _dash_expand_plottype ///
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
         _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
-        _dash_kpi_pctile ///
+        _dash_kpi_pctile _json_escape _dash_path_badchar ///
         _dash_layout_cells _dash_layout_refusal _dash_option_names ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
         _dash_undrawn_plottype
 
-    // The common case, and the cheap one.
-    quietly capture mata: mata describe _dash_check_utf8()
-    if _rc == 0 exit
+    // Every one of them, not one.  The check asked for _dash_check_utf8
+    // alone and took the library for whole when it was there, so a library
+    // in memory only in part -- a copy whose compile stopped half way, or a
+    // function defined by hand -- passed, and the first command died in
+    // Mata with r(3499), "_dash_split_segs() not found" (measured 24sep2026;
+    // test_env_guards.cscript ENV-23).  Asking for all of them costs 0.13
+    // ms a command (measured, 1000 runs).
+    local _missing ""
+    foreach f of local _needed {
+        quietly capture mata: mata describe `f'()
+        if _rc != 0 local _missing `"`_missing' `f'()"'
+    }
+    if `"`_missing'"' == "" exit
 
-    // Not loaded.  REPAIR rather than refuse: measured, the library is
-    // routinely absent at this point through no fault of the install --
-    // `clear all' drops it, `dash clear' never needed it, and dash.ado's
-    // own top-level loader does not always run before the first command
-    // when the file is reached through the ado-path.  A guard that simply
-    // vetoed here failed test_examples_run.cscript, which runs `clear all'
-    // before each of the eleven shipped examples.
+    // Not loaded, or loaded in part.  REPAIR rather than refuse: measured,
+    // the library is routinely absent at this point through no fault of the
+    // install -- `clear all' drops it, `dash clear' never needed it, and
+    // dash.ado's own top-level loader does not always run before the first
+    // command when the file is reached through the ado-path.  A guard that
+    // simply vetoed here failed test_examples_run.cscript, which runs
+    // `clear all' before each of the eleven shipped examples.
+    local _src ""
     capture findfile dash_parse.mata
     if _rc == 0 {
-        capture run `"`r(fn)'"'
+        local _src `"`r(fn)'"'
     }
     else {
         capture findfile dash.ado
@@ -236,8 +252,22 @@ program define _dash_require_mata
             local _beside = substr(`"`_ado'"', 1, ///
                 strlen(`"`_ado'"') - strlen("dash.ado")) + "dash_parse.mata"
             capture confirm file `"`_beside'"'
-            if _rc == 0 capture run `"`_beside'"'
+            if _rc == 0 local _src `"`_beside'"'
         }
+    }
+    if `"`_src'"' != "" {
+        // A function already defined stops `run' at its definition, r(3000),
+        // so over a library in memory in part the file would define nothing
+        // it lacks.  What is there is dropped first -- the library's own
+        // names only, which are _dash_* and the five below
+        // (test_program_coverage_map.py holds the list to dash_parse.mata),
+        // and only when there is a file to load it back from.
+        capture mata: mata drop _dash_*()
+        foreach f in _expand_plottype_str _first_comma_pos _html_escape ///
+                _is_utf8 _json_escape {
+            capture mata: mata drop `f'()
+        }
+        capture run `"`_src'"'
     }
 
     // Only now is it a real failure.  Without this the user got
@@ -252,8 +282,18 @@ program define _dash_require_mata
     if `"`_missing'"' != "" {
         display as error "dash: dash's Mata library could not be loaded."
         display as error "      Missing:`_missing'"
-        display as error "      dash_parse.mata is not on the ado-path and " ///
-            "not beside dash.ado."
+        // Where the file was found, the report says so: it said the library
+        // "is not on the ado-path and not beside dash.ado" when it had just
+        // been loaded from there (measured 24sep2026; ENV-22).  The path is
+        // shown as text, _asis, never as SMCL.
+        if `"`_src'"' == "" {
+            display as error "      dash_parse.mata is not on the ado-path and " ///
+                "not beside dash.ado."
+        }
+        else {
+            display as error "      dash_parse.mata was found but did not load completely."
+            display as error "      It is an older or damaged copy, loaded from " _asis `"`_src'"'
+        }
         display as error "      Reinstall dash, or run {cmd:dash_setup}."
         exit 198
     }
@@ -3166,23 +3206,41 @@ program define _dash_formats_json
     local parts ""
     local nparts = 0
     local datevars ""
+    local seen ""
 
     foreach v of local varlist_in {
         capture confirm variable `v'
         if _rc continue
-        local f : format `v'
-        if `"`f'"' == "" continue
+        // The variable as Stata stores it, once.  A qualifier may
+        // abbreviate one -- `if dis > 100' reads displacement -- and the
+        // words of a qualifier's string literal are among the names read,
+        // so `if make != "d"' names d too.  st_varformat() takes no
+        // abbreviation, and every render of such a command stopped with
+        // r(3500) "invalid Stata variable name" (measured 24sep2026,
+        // test_program_coverage.cscript PC-31).  The format is keyed by
+        // the stored name, the column the renderer reads.
+        capture unab v : `v', max(1)
+        if _rc continue
+        if `: list v in seen' continue
+        local seen `seen' `v'
 
-        _dash_json_str `"`f'"' _fjv
+        // The format is read, escaped and classified in Mata, by value,
+        // never as macro text.  A display format is user text: Stata
+        // accepts %td!" and %td!` (a ! puts any character into a date
+        // picture) and %tdDD!$DD.  Read with `: format', the backtick
+        // opened a compound quote that the test below never closed --
+        // r(132), "too few quotes", on every render of the variable -- and
+        // $DD was expanded as a global, so the spec said %tdDD! (measured
+        // 24sep2026; test_program_coverage.cscript PC-03).
+        mata: st_local("_fjv", _json_escape(st_varformat(st_local("v"))))
+        // %t and %-t followed by one of the eight kind letters, case
+        // sensitively: %tc and %tC are different formats.
+        mata: st_local("_fdate", strofreal(regexm(st_varformat(st_local("v")), "^%-?t[cCdhmqwy]")))
+
         if `nparts' > 0 local parts `"`parts',"'
         local parts `"`parts'"`v'":"`_fjv'""'
         local nparts = `nparts' + 1
-
-        // %t and %-t followed by one of the eight kind letters, case
-        // sensitively: %tc and %tC are different formats.
-        if regexm(`"`f'"', "^%-?t[cCdhmqwy]") {
-            local datevars `"`datevars' `v'"'
-        }
+        if `_fdate' local datevars `"`datevars' `v'"'
     }
 
     c_local `out_macro'      `"{`parts'}"'
@@ -3226,28 +3284,58 @@ end
 // original format is restored immediately afterwards and travels
 // separately in the "formats" map.
 // ================================================================
+//
+// Each saved format is its bytes as decimal codes joined by dots (%td is
+// 37.116.100), written and read back in Mata -- never as macro text.  A
+// display format is user text: %td!" ended the plain quotes the saved list
+// is passed to the restore in, so the restore read the wrong format and
+// left the variable %12.0g; %td!` and %tdDD!$DD were cut or expanded on
+// the way the same (measured 24sep2026; test_program_coverage.cscript
+// PC-07, PC-09).  Digits and dots survive any quoting.  A variable named
+// twice is swapped once: the second swap saved the %12.0g the first had
+// set as the "original", and the restore ended on it (PC-06).
 program define _dash_date_fmts_swap
     version 16.0
     args datevars
 
+    // Each variable as Stata stores it, once: st_varformat() takes no
+    // abbreviation (PC-31).  The restore resolves the list the same way,
+    // so the saved formats line up with it.
+    local names ""
+    foreach v of local datevars {
+        capture unab u : `v', max(1)
+        if _rc == 0 local names `names' `u'
+    }
+    local datevars : list uniq names
     local saved ""
     foreach v of local datevars {
-        local f : format `v'
-        local saved `"`saved' `f'"'
+        mata: st_local("_fe", invtokens(strofreal(ascii(st_varformat(st_local("v")))), "."))
+        local saved "`saved' `_fe'"
         format `v' %12.0g
     }
-    c_local _dash_saved_fmts `"`saved'"'
+    c_local _dash_saved_fmts "`saved'"
 end
 
 program define _dash_date_fmts_restore
     version 16.0
     args datevars saved
 
+    // Resolved as the swap resolved it.  With an abbreviation the restore,
+    // which runs under capture, set nothing, and the variable was left
+    // %12.0g after the render (PC-31).
+    local names ""
+    foreach v of local datevars {
+        capture unab u : `v', max(1)
+        if _rc == 0 local names `names' `u'
+    }
+    local datevars : list uniq names
     local i = 0
     foreach v of local datevars {
         local ++i
-        local f : word `i' of `saved'
-        if `"`f'"' != "" capture format `v' `f'
+        local fe : word `i' of `saved'
+        if "`fe'" != "" {
+            capture mata: st_varformat(st_local("v"), char(strtoreal(tokens(subinstr(st_local("fe"), ".", " ")))))
+        }
     }
 end
 
@@ -4014,6 +4102,7 @@ program define _dash_render_immediate
     // Collect display formats, and transport date variables as
     // numbers so jsonio does not render them to text.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
+    local _dash_jrc = 0
     if `_varfree' {
         _dash_empty_data "`data_json_path'"
     }
@@ -4022,9 +4111,15 @@ program define _dash_render_immediate
         if `"`_dash_date_vars'"' != "" {
             _dash_date_fmts_swap "`_dash_date_vars'"
         }
-        quietly jsonio out `needed_vars', ///
+        // Captured, so the restore below runs when jsonio fails too: it was
+        // not, and a jsonio that failed ended this program with every date
+        // variable left %12.0g (measured 24sep2026;
+        // test_program_coverage.cscript PC-11).  jsonio's own message is
+        // still shown and its code still returned.
+        capture noisily quietly jsonio out `needed_vars', ///
             what(all) filenm("`data_json_path'") ///
             metaprint(varnames varlabels vallabs labelnames)
+        local _dash_jrc = _rc
 
         // Restore the user's formats immediately, whether or not
         // jsonio succeeded: the data in memory is theirs.
@@ -4032,6 +4127,7 @@ program define _dash_render_immediate
             _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
         }
     }
+    if `_dash_jrc' exit `_dash_jrc'
 
     // jsonio returns non-zero _rc as part of normal operation (internal Stata
     // commands like restore set _rc).  Check for actual failure by verifying
@@ -4869,6 +4965,7 @@ program define _dash_prepare_spec, rclass
     // Collect display formats, and transport date variables as
     // numbers so jsonio does not render them to text.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
+    local _dash_jrc = 0
     if `_novars' {
         _dash_empty_data "`datapath'"
     }
@@ -4877,9 +4974,11 @@ program define _dash_prepare_spec, rclass
         if `"`_dash_date_vars'"' != "" {
             _dash_date_fmts_swap "`_dash_date_vars'"
         }
-        quietly jsonio out `all_vars', ///
+        // Captured for the same reason as on the immediate route (PC-11).
+        capture noisily quietly jsonio out `all_vars', ///
             what(all) filenm("`datapath'") ///
             metaprint(varnames varlabels vallabs labelnames)
+        local _dash_jrc = _rc
 
         // Restore the user's formats immediately, whether or not
         // jsonio succeeded: the data in memory is theirs.
@@ -4887,6 +4986,7 @@ program define _dash_prepare_spec, rclass
             _dash_date_fmts_restore "`_dash_date_vars'" "`_dash_saved_fmts'"
         }
     }
+    if `_dash_jrc' exit `_dash_jrc'
 
     capture confirm file "`datapath'"
     if _rc != 0 {
@@ -5063,18 +5163,24 @@ program define _dash_build
     }
 
     // ---- validate saving() ----
-    if "`saving'" == "" {
+    // Measured by its length, never read inside quotes before the validator
+    // has seen it: `if "`saving'" == ""' ended its quotes at a double quote
+    // in the path, r(132) "too few quotes", on both routes, and the
+    // validator's "disallowed characters" was never reached (measured
+    // 24sep2026; test_path_validation.cscript PV-21).
+    local _svl : length local saving
+    if `_svl' == 0 {
         display as error "dash build: saving() is required."
         exit(198)
     }
     if "`server'" != "" {
-        if regexm("`saving'", "\.\.") {
-            display as error "dash build: saving() path may not contain '..' (path traversal not allowed)."
-            exit(198)
-        }
         // The same validator, asked for .py.  This branch used to check the
         // extension and nothing else, so a server-mode path skipped the
-        // traversal, metacharacter and quote checks entirely.
+        // traversal, metacharacter and quote checks entirely.  It also kept
+        // the old traversal rule, a '..' anywhere, in front of it: so
+        // saving("my..report.py") server was refused, r(198), where
+        // saving("my..report.html") builds.  The validator's rule, a '..'
+        // path segment, is the one rule now (PV-20; ROADMAP AC-08.4).
         _dash_validate_path `"`saving'"' "py"
         local saving `"`_dash_vpath'"'
     }

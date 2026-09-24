@@ -50,7 +50,8 @@
 *!           changes from one draw to the next.
 *!   HC8-16  dash build takes nobrowser, not nodraw.
 *!   HC8-17  jsonio is required: with it off the ado-path dash refuses,
-*!           r(198), naming it.
+*!           r(198), naming it -- on the immediate route and (HC8-17b) on
+*!           dash build's, writing nothing.
 *!   HC8-18  every Also see target resolves to a help file.
 *!   HC8-19  dash_setup's summary: an unmet requirement is r(198) and says
 *!           dash_setup did not complete; a warning completes; a clean run
@@ -711,6 +712,35 @@ else {
     _hc_done "HC8-17" "without jsonio dash refuses, r(198), and names it"
 }
 
+// HC8-17b -- and on the dash build route, which dash serve's export shares
+// (_dash_prepare_spec): registering needs no jsonio, the build refuses the
+// same way and writes nothing.  test_help_claims_8.py found the build
+// route's refusal only by counting `capture which jsonio' in dash.ado
+// (WP-24).
+global S_ADO "BASE;SITE;."
+capture which jsonio
+local hidden = (_rc != 0)
+if `hidden' {
+    capture erase "`hc_dir'/hc17b.html"
+    _hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc17b.html") replace nobrowser"'
+    local rc = r(rc)
+    local prc = r(prc)
+    local lf "`r(logfile)'"
+    capture confirm file "`hc_dir'/hc17b.html"
+    local wrote = (_rc == 0)
+}
+global S_ADO `"`hc_ado'"'
+if !`hidden' {
+    display as text "HC8-17b SKIP: jsonio is still found on BASE;SITE;."
+}
+else {
+    _hc_expect "HC8-17b" "(`prc' == 0)" "registering without jsonio: rc `prc'"
+    _hc_expect "HC8-17b" "(`rc' == 198)" "dash build without jsonio: rc `rc'"
+    _hc_expect "HC8-17b" "(`wrote' == 0)" "dash build without jsonio wrote a page"
+    _hc_log "HC8-17b" "`lf'" "dash: jsonio is required but not found. Run dash_setup first." 1 1
+    _hc_done "HC8-17b" "without jsonio dash build refuses, r(198), names it and writes nothing"
+}
+
 // ================================================================
 // HC8-18 -- every Also see target resolves
 // ================================================================
@@ -721,12 +751,19 @@ foreach f in dash_setup.sthlp graph_twoway.sthlp pystata_integration.sthlp jsoni
     capture findfile `f'
     _hc_expect "HC8-18" "(_rc == 0)" "`f' is not on the ado-path"
 }
+// Both steps are required: until 24sep2026 an alias table findfile could
+// not find, or a Mata error reading it, skipped the check in silence.
 foreach pair in "t/thelp_alias.maint twoway graph_twoway" "p/phelp_alias.maint python pystata_integration" {
     tokenize `pair'
     capture findfile `1'
-    if _rc == 0 {
-        capture mata: st_local("amatch", strofreal(any(regexm(cat(st_global("r(fn)")), "^`2'[ \t]+`3'[ \t]*$"))))
-        if _rc == 0 _hc_expect "HC8-18" "(`amatch' == 1)" "`1' does not map `2' to `3'"
+    local frc = _rc
+    local afn `"`r(fn)'"'
+    _hc_expect "HC8-18" "(`frc' == 0)" "`1', Stata's alias table, is not on the ado-path"
+    local amatch 0
+    if `frc' == 0 {
+        capture mata: st_local("amatch", strofreal(any(regexm(cat(st_local("afn")), "^`2'[ \t]+`3'[ \t]*$"))))
+        local mrc = _rc
+        _hc_expect "HC8-18" "(`mrc' == 0 & `amatch' == 1)" "`1' does not map `2' to `3' (Mata rc `mrc')"
     }
 }
 _hc_done "HC8-18" "dash_setup, twoway, jsonio and python all resolve"

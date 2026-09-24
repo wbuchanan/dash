@@ -263,9 +263,17 @@ capture twoway line mpg weight, cl(red) nodraw
 local tw_rc = _rc
 _ztp_run `"dash line mpg weight, cl(red) name(zqtp)"' "`logfile'"
 local drc = r(rc)
+// The positive control for every r(note) == 0 in TP-01 to TP-05: the same
+// helper and needle ("ignoring unsupported", _dash_report_ignored's own
+// words), on a command that must print the note.  Until 24sep2026 nothing
+// in this file asserted the note present -- TP-02, TP-06 and TP-07 looked
+// for option names only -- so a reworded note left every one of those
+// checks nothing to find, and clcolor(), mlabangle() or mlabformat() could
+// have been named in it unseen.
+local dnote = r(note)
 _ztp_logged "`logfile'" "cl()"
-if `tw_rc' != 198 | `drc' != 0 | r(found) != 1 {
-    display as error "TP-02 FAIL: cl(red) is r(`tw_rc') in twoway; dash rc=`drc', named cl()=`r(found)'"
+if `tw_rc' != 198 | `drc' != 0 | `dnote' != 1 | r(found) != 1 {
+    display as error "TP-02 FAIL: cl(red) is r(`tw_rc') in twoway; dash rc=`drc', note=`dnote', named cl()=`r(found)'"
     local bad = 1
 }
 if `bad' {
@@ -422,10 +430,12 @@ forvalues i = 1/`n6' {
     local tw_rc = _rc
     _ztp_run `"`c6_`i''"' "`logfile'"
     local drc = r(rc)
+    // In the note: the note itself is printed (as TP-02's control).
+    local dnote = r(note)
     _ztp_logged "`logfile'" "`w6_`i''"
     local named = r(found)
-    if `tw_rc' != 0 | `drc' != 0 | `named' != 1 {
-        display as error `"TP-06 FAIL: `c6_`i'' -- twoway r(`tw_rc'), dash rc `drc', `w6_`i'' named=`named'"'
+    if `tw_rc' != 0 | `drc' != 0 | `dnote' != 1 | `named' != 1 {
+        display as error `"TP-06 FAIL: `c6_`i'' -- twoway r(`tw_rc'), dash rc `drc', note `dnote', `w6_`i'' named=`named'"'
         local nfail = `nfail' + 1
         local faillist "`faillist' TP-06(`i')"
     }
@@ -447,6 +457,21 @@ if r(found) != 0 {
     local nfail = `nfail' + 1
     local faillist "`faillist' TP-06(sort1-note)"
 }
+// ... and it IS reported.  The two checks above pass just as well when
+// sort(mpg) is dropped in silence, so the note must name sort() -- on one
+// line, the note's, and once in the whole log (measured 24sep2026: "dash:
+// ignoring unsupported option(s): sort()", 44 characters, under the 79
+// columns cscript sets, so the count cannot be split by a wrap).
+cert_log_has "`logfile'", needle("ignoring unsupported option(s): sort()")
+local nsort = r(count)
+cert_file_count "`logfile'", needle("sort()")
+local msort = r(count)
+if `nsort' != 1 | `msort' != 1 {
+    display as error "TP-06 FAIL: sort sort(mpg) is not reported as sort() once: `nsort' note line(s) name it, sort() is written `msort' time(s)"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-06(sort-named)"
+}
+else display as text "TP-06 PASS: sort sort(mpg) is named sort(), once, in the note"
 
 // ----------------------------------------------------------------
 // TP-07 -- what twoway refuses stays unknown, named as typed.
@@ -459,10 +484,11 @@ foreach o in xreverse yreverse xalternate yalternate xcommon ycommon lockaspect 
     local tw_rc = _rc
     _ztp_run `"dash scatter mpg weight, `o' name(zqtp)"' "`logfile'"
     local drc = r(rc)
+    local dnote = r(note)
     _ztp_logged "`logfile'" "`nm'()"
     local named = r(found)
-    if `tw_rc' != 198 | `drc' != 0 | `named' != 1 {
-        display as error "TP-07 FAIL: `nm' -- twoway r(`tw_rc'), dash rc `drc', named=`named'"
+    if `tw_rc' != 198 | `drc' != 0 | `dnote' != 1 | `named' != 1 {
+        display as error "TP-07 FAIL: `nm' -- twoway r(`tw_rc'), dash rc `drc', note `dnote', named=`named'"
         local nfail = `nfail' + 1
         local faillist "`faillist' TP-07(`nm')"
     }
@@ -651,6 +677,13 @@ else display as text "TP-09 PASS: marker labels drawn on exactly the plot types 
 
 // ----------------------------------------------------------------
 // TP-10 -- a value-labelled variable is labelled with its value labels.
+// Both labels, as many times as twoway draws each: this checked for at
+// least one ZQFOR, and auto has 22 foreign cars, so a mapping that
+// labelled only some values, or only some rows, passed -- ZQDOM was never
+// looked for.  Measured 24sep2026, twoway's SVG and the saved page alike:
+// scatter and pccapsym ZQFOR 22, ZQDOM 52; rscatter 44 and 104 (a label
+// at each end).  A label reaches the page once per labelled point, as a
+// string in the LabelSet's source.
 // ----------------------------------------------------------------
 local bad = 0
 capture label drop zqorigin
@@ -668,19 +701,24 @@ foreach spec in "scatter mpg weight" "rscatter lo hi weight" "pccapsym mpg weigh
     capture graph drop _all
     _ztp_count "`svgfile'" ">ZQFOR<"
     local tw_n = r(n)
+    _ztp_count "`svgfile'" ">ZQDOM<"
+    local tw_m = r(n)
     capture erase "`htmlfile'"
     _ztp_run `"dash `spec', mlabel(zqf) saving("`htmlfile'")"' "`logfile'"
     local drc = r(rc)
     _ztp_count "`htmlfile'" "ZQFOR"
     local d_n = r(n)
-    if `tw_rc' != 0 | `tw_n' < 1 {
-        display as error "TP-10 FAIL `tt': the twoway oracle drew no value label, r(`tw_rc')"
+    _ztp_count "`htmlfile'" "ZQDOM"
+    local d_m = r(n)
+    if `tw_rc' != 0 | `tw_n' < 1 | `tw_m' < 1 {
+        display as error "TP-10 FAIL `tt': the twoway oracle did not draw both value labels (ZQFOR `tw_n', ZQDOM `tw_m'), r(`tw_rc')"
         local bad = 1
     }
-    else if `drc' != 0 | `d_n' < 1 {
-        display as error "TP-10 FAIL `tt': twoway labels with ZQFOR; the saved dashboard (rc `drc') holds it `d_n' time(s)"
+    else if `drc' != 0 | `d_n' != `tw_n' | `d_m' != `tw_m' {
+        display as error "TP-10 FAIL `tt': twoway draws ZQFOR `tw_n' and ZQDOM `tw_m' time(s); the saved dashboard (rc `drc') holds them `d_n' and `d_m' time(s)"
         local bad = 1
     }
+    else display as text "TP-10 `tt': ZQFOR `d_n' and ZQDOM `d_m' time(s), as twoway draws them"
 }
 label values zqf
 capture label drop zqorigin
@@ -741,6 +779,16 @@ capture erase "`htmlfile'"
 // (test_adversarial.cscript P9-04, P9-05).
 // ----------------------------------------------------------------
 local bad = 0
+// "Registers nothing" below is read from ${dash_graph_registry}.  The
+// control: a command twoway accepts leaves exactly its name there, so an
+// empty registry after a refusal is the refusal's doing and not a global
+// dash no longer writes (nothing in this file registered-and-checked it
+// before 24sep2026, so a renamed global left both checks nothing to see).
+_ztp_run `"dash mspline mpg weight, name(zqtp)"' "`logfile'"
+if r(rc) != 0 | "${dash_graph_registry}" != "zqtp" {
+    display as error "TP-12 FAIL: the control dash mspline mpg weight, name(zqtp) returned rc `r(rc)' and left the registry [${dash_graph_registry}], not [zqtp]"
+    local bad = 1
+}
 local _ztp_long ""
 forvalues i = 1/400 {
     local _ztp_long "`_ztp_long' make"

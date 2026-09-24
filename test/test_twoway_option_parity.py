@@ -93,6 +93,29 @@ def _write(spec):
     return tag, sp, dp
 
 
+def _decoded_document_blob(page: str) -> str:
+    """The page's embedded Bokeh document JSON, decoded back to raw text.
+
+    Bokeh escapes ``<``, ``>`` and ``&`` when it writes the document into
+    the ``<script type="application/json">`` block, so a search of the page
+    source for a raw ``<script>`` can never match.  ``json.loads`` reverses
+    that escaping: a user value that reached any model is a plain string in
+    the result, exactly as it would be if the browser rebuilt the model.
+    Returns every such block re-serialised, joined -- so a payload that
+    survived into a title, a Div or a label field would appear verbatim.
+    """
+    import re as _re
+    blobs = []
+    for raw in _re.findall(
+            r'<script type="application/json"[^>]*>(.*?)</script>',
+            page, _re.S):
+        try:
+            blobs.append(json.dumps(json.loads(raw)))
+        except ValueError:
+            continue
+    return "\n".join(blobs)
+
+
 def _both(plots, go=None):
     """(renderer, document, standalone warnings, served warnings)."""
     spec = tp._spec(plots, None, go)
@@ -650,7 +673,24 @@ class TestAdversarialTwowayOptions:
         r, doc, std_w, srv_w = _both([plot_for("scatter", opts)])
         assert std_w == srv_w and len(std_w) == 1, std_w
         page = tp._standalone_page(tp._spec([plot_for("scatter", opts)]))[2]
-        assert "<script>alert(1)" not in page
+        # The page-string search `"<script>alert(1)" not in page' could never
+        # fail: Bokeh HTML-escapes the document JSON on the way into the page
+        # (bokeh/embed/elements.py), so a raw "<script>" never reaches it,
+        # and two of the three payloads do not even contain that needle
+        # (24sep2026).  The security property is read on the DECODED
+        # document instead -- json.loads reverses Bokeh's escaping, so a
+        # payload that had reached any model would be a raw string there --
+        # and the decode is its own positive control: it must reconstruct
+        # the Scatter this graph draws, or it proves nothing.
+        blob = _decoded_document_blob(page)
+        assert "Scatter" in blob, (
+            "the page's Bokeh document did not decode; the absence check "
+            "below would be vacuous"
+        )
+        assert value not in blob, (
+            f"the payload {value!r} survived into the served document"
+        )
+        assert "<script>alert(1)" not in blob and "os.system" not in blob
         for fig in _figures(r, doc):
             ls = _labelset(fig)
             assert float(ls.angle) == 0.0

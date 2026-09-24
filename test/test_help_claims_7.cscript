@@ -10,6 +10,9 @@
 *! twoway is asked first and dash must do what twoway did.
 *!
 *! Cases:
+*!   HC7-00  the positive control for every "not in the note" below: the
+*!           ignoring note is seen, by the same helper and needle, where
+*!           dash must print it.
 *!   HC7-01  legend(top), legend(bottom), legend(left) and legend(right)
 *!           are refused as twoway refuses them ("option top not allowed",
 *!           r(198)) -- after the graph's comma, inside a segment, in comma
@@ -135,7 +138,7 @@ program define _zh7_run, rclass
     capture noisily `cmdtext'
     local rc = _rc
     log close _zh7log
-    cert_file_has "`logpath'", needle("ignoring unsupported")
+    cert_log_has "`logpath'", needle("ignoring unsupported")
     return scalar note = r(found)
     return scalar rc   = `rc'
 end
@@ -144,12 +147,35 @@ end
 capture program drop _zh7_logged
 program define _zh7_logged, rclass
     args logpath needle
-    cert_file_has "`logpath'", needle(`"`needle'"')
+    cert_log_has "`logpath'", needle(`"`needle'"')
     return scalar found = r(found)
 end
 
 local nfail = 0
 local faillist ""
+
+// ----------------------------------------------------------------
+// HC7-00 -- the positive control for every r(note) == 0 below.
+// ----------------------------------------------------------------
+// HC7-02, 03, 05, 07 and 08 require r(note) == 0 52 times, and
+// until 24sep2026 nothing in this file required r(note) == 1: had
+// dash.ado's note stopped saying "ignoring unsupported", every one of
+// those checks would have passed without looking.  The same helper, the
+// same needle, on options the note must name: colorvar() on line, which
+// dash does not draw (HC7-02), and an option no plot type has.
+local bad = 0
+foreach cmd in "line mpg weight, colorvar(price)" "scatter mpg weight, zq7nosuchopt(1)" {
+    _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
+    if r(rc) != 0 | r(note) != 1 {
+        display as error "HC7-00 FAIL `cmd': rc `r(rc)', the ignoring note seen `r(note)' (want 1)"
+        local bad = 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' HC7-00"
+}
+else display as text "HC7-00 PASS: the ignoring note is seen where it must be printed, so r(note) == 0 below can fail"
 
 // ----------------------------------------------------------------
 // HC7-01 -- legend()'s direction words, refused as twoway refuses them.

@@ -475,6 +475,7 @@ class TestNoServedViewPointsPastItsSource:
     def test_after_each_move(self, tmp_path, case):
         graphs, _ = _CASES[case]
         doc = _served_doc(tmp_path, _spec(graphs(), [_filter("range")]))
+        checked = 0
         for value in [(4000.0, 5000.0), (3000.0, 12000.0), (4500.0, 4800.0)]:
             _fire(doc, "price", value)
             for title, fig in _served_figures(doc).items():
@@ -483,10 +484,18 @@ class TestNoServedViewPointsPastItsSource:
                     if not isinstance(flt, IndexFilter) or \
                             flt.indices is None:
                         continue
+                    checked += 1
                     n = len(next(iter(r.data_source.data.values())))
                     past = [i for i in flt.indices if not 0 <= i < n]
                     assert not past, "%s after %s: %s past %d rows" % (
                         title, value, past, n)
+        # Every case builds at least one IndexFilter view whose indices the
+        # recompute rewrites (1 or 2 per case, x3 moves; measured
+        # 24sep2026).  Without this the loop's `continue' let a case that
+        # built no IndexFilter -- the very view this test guards -- pass
+        # having inspected nothing.
+        assert checked >= 3, (
+            "%s: no served IndexFilter view was examined" % case)
 
 
 # ---------------------------------------------------------------------------

@@ -138,6 +138,36 @@ print("RETURNED")
 '''
 
 
+#: Import a generated app and build its document, in a child process so a
+#: hang can be timed out; prints, per glyph, its type, its rows and how many
+#: of its y values are finite (drawn), and dash's notes.
+_SERVED_PROBE = r'''
+import importlib.util, json, math, sys, warnings
+sys.path.insert(0, %r)
+from bokeh.document import Document
+from bokeh.models import GlyphRenderer
+ms = importlib.util.spec_from_file_location("_rl_served_probe", %r)
+mod = importlib.util.module_from_spec(ms)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    ms.loader.exec_module(mod)          # importing runs make_document too
+doc = Document()
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    mod.make_document(doc)
+drawn = []
+for m in doc.models:
+    if isinstance(m, GlyphRenderer):
+        data = m.data_source.data
+        ys = data.get(m.glyph.y, []) if isinstance(m.glyph.y, str) else []
+        drawn.append([type(m.glyph).__name__,
+                      max((len(v) for v in data.values()), default=0),
+                      sum(1 for v in ys if math.isfinite(float(v)))])
+print(json.dumps({"drawn": sorted(drawn),
+                  "notes": [str(c.message) for c in caught]}))
+'''
+
+
 def _run_probe(expr, timeout=25):
     repo = os.path.join(_HERE, "..")
     p = subprocess.run(
@@ -273,13 +303,11 @@ class TestTheServedAppHasTheSameBounds:
                    .get("x_fn", [])) == 5
 
     def test_a_power_tower_does_not_hang_the_served_app(self, tmp_path):
-        import importlib.util
         import itertools
         import json
         import warnings as _w
         import pandas as pd
         sys.path.insert(0, _HERE)
-        from bokeh.document import Document
         from conftest import make_data_json
         tag = next(itertools.count(9000))
         sp = tmp_path / "s.json"
@@ -301,12 +329,29 @@ class TestTheServedAppHasTheSameBounds:
         with _w.catch_warnings():
             _w.simplefilter("ignore")
             dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-        ms = importlib.util.spec_from_file_location(f"_rl_{tag}", str(ap))
-        mod = importlib.util.module_from_spec(ms)
-        with _w.catch_warnings():
-            _w.simplefilter("ignore")
-            ms.loader.exec_module(mod)
-            mod.make_document(Document())     # must return, not hang
+        # In a child process with a timeout: this ran in-process with no
+        # assertion and no timeout, so a hang -- the defect -- hung the
+        # suite rather than failing it, and the GIL-holding integer power
+        # it guards against cannot be interrupted from inside the process.
+        try:
+            p = subprocess.run(
+                [sys.executable, "-c", _SERVED_PROBE % (
+                    os.path.abspath(os.path.join(_HERE, "..")), str(ap))],
+                capture_output=True, text=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            pytest.fail("the served app did not return within 60s from "
+                        "function 9^9^9^9: an integer power bomb reached its "
+                        "evaluator")
+        assert p.returncode == 0, p.stderr[-1500:]
+        got = json.loads(p.stdout.strip().splitlines()[-1])
+        # Measured 24sep2026 at a2c7502: the scatter draws both rows; the
+        # function is drawn at each of its 300 x with every y missing, and
+        # nothing is said -- twoway's own answer, since 9^9^9^9 overflows
+        # and is missing in Stata, which twoway draws as nothing, in
+        # silence (test_the_served_evaluator_does_not_compute_integer_powers
+        # pins the same for the shared map_function).
+        assert got["drawn"] == [["Line", 300, 0], ["Scatter", 2, 2]], got
+        assert not [n for n in got["notes"] if n.startswith("dash")], got
 
 
 # ===========================================================================
@@ -505,7 +550,12 @@ class TestAnOversizedDatasetIsRefused:
     """AC-19.3: refused with a clear message, not written at 95 MB."""
 
     def test_at_the_limit_nothing_is_raised(self):
-        dr._dash_refuse_oversized(50, 2, {"cells": 100}, "dashboard")
+        """100 cells against a limit of 100: returned, and nothing said.
+        The next test is the control -- one row more is refused."""
+        got, msgs = _warns(lambda: dr._dash_refuse_oversized(
+            50, 2, {"cells": 100}, "dashboard"))
+        assert got is None
+        assert msgs == []
 
     def test_over_the_limit_the_message_says_what_and_how(self):
         with pytest.raises(dr.DashLimitError) as exc:
@@ -1029,12 +1079,102 @@ class TestTheBoundsThatAlreadyWorkedAreKept:
                      "_WEBGL_THRESHOLD", "_DASH_LIMITS"):
             assert getattr(mod, name) == getattr(dr, name), name
 
-    def test_the_port_is_clamped_in_every_place_it_is_read(self):
-        import inspect
-        src = inspect.getsource(dr)
-        # main(), the launcher, and the generated app's own flag.
-        assert src.count("max(1024, min(") >= 3, (
-            "a port read somewhere without the 1024..65535 clamp")
+    @pytest.mark.parametrize("given,bound", [(99999, 65535), (80, 1024)])
+    def test_the_port_is_clamped_in_every_place_it_is_read(
+            self, tmp_path, monkeypatch, given, bound):
+        """main(), dash_render.py's --launch launcher, and the generated
+        app's own --port each clamp an out-of-range port to 1024..65535.
+
+        This counted "max(1024, min(" at least three times in the module's
+        text, which any three such expressions satisfy, wherever they are.
+        Each site is now driven on its own (WP-24): main()'s port becomes
+        the app's --port default; the app run as `python app.py --port N'
+        hands its server the clamped port (bokeh's Server replaced by a
+        recorder, nothing listens); and the --launch launcher starts the
+        app with the clamped --port (Popen replaced by a recorder)."""
+        import runpy
+        import subprocess as _sp
+        import bokeh.server.server as bss
+        spec = _spec([_graph("g1")])
+        _, sp, dp = _write(tmp_path, spec, _frame())
+
+        # main(): the port it is handed is what the app offers by default.
+        app = str(tmp_path / "app_main.py")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.main(sp, dp, app, mode="server", port=given)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = {"__name__": "_rl_port_app"}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            exec(compile(src.replace(attach, "pass"), "_rl_port_app.py",
+                         "exec"), ns)
+        assert ns["_dash_arg_parser"]().parse_args([]).port == bound, (
+            "main() embedded an unbindable port")
+
+        # The app's own --port: what the launcher hands the server.
+        seen = {}
+
+        class _Loop:
+            def add_callback(self, *a):
+                pass
+
+            def call_later(self, *a):
+                pass
+
+            def start(self):
+                pass
+
+            def stop(self):
+                pass
+
+        class _Server:
+            def __init__(self, apps, **kw):
+                seen["port"] = kw.get("port")
+                self.io_loop = _Loop()
+
+            def start(self):
+                pass
+
+            def show(self, *a):
+                pass
+
+            def stop(self):
+                pass
+
+        monkeypatch.setattr(bss, "Server", _Server)
+        monkeypatch.setattr(sys, "argv", ["app.py", "--port", str(given)])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            exec(compile(src, "app.py", "exec"), {"__name__": "__main__"})
+        assert seen.get("port") == bound, (
+            f"the app served --port {given} on {seen.get('port')}")
+
+        # dash_render.py --launch: the port it starts the app with.
+        started = {}
+
+        class _Proc:
+            def __init__(self, cmd, *a, **k):
+                started["cmd"] = list(cmd)
+
+            def wait(self):
+                return 0
+
+        monkeypatch.setattr(_sp, "Popen", _Proc)
+        monkeypatch.setattr(sys, "argv", [
+            "dash_render.py", "--spec", sp, "--data", dp,
+            "--output", str(tmp_path / "app_launch.py"), "--mode", "server",
+            "--launch", "--no-browser", "--port", str(given)])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            runpy.run_path(os.path.join(_HERE, "..", "dash_render.py"),
+                           run_name="__main__")
+        cmd = started.get("cmd") or []
+        assert "--port" in cmd, cmd
+        assert cmd[cmd.index("--port") + 1] == str(bound), (
+            f"--launch started the app with {cmd}")
 
 
 class TestTheHelpersOneByOne:

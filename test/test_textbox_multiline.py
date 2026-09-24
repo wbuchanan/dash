@@ -243,5 +243,11 @@ class TestMultilineReachesTheDocument:
         consumed by the parser rather than drawn on the page.
         """
         r = _render(tmp_path, {"note": '"N text"', "caption": '"C text"'})
-        for text in _labels(r):
+        labels = _labels(r)
+        # The note and caption must actually be drawn, or the loop below
+        # runs zero times and the "no stray quote" property is asserted
+        # against nothing (measured 24sep2026: the render draws
+        # ['N text', 'C text']).
+        assert "N text" in labels and "C text" in labels, labels
+        for text in labels:
             assert '"' not in (text or ""), text

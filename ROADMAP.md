@@ -85,6 +85,24 @@ M1 ─ WP-01 ──┐
 
 **Gaps closed:** A6, A7, A8 · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
+> **DONE** (24sep2026, on WP-24's mapping).  Every acceptance criterion holds
+> on `a2c7502`, each by a test that goes red when the criterion is broken on
+> a copy of the tree (WP-24's mutation campaign):
+>
+> * **AC-01.1** P1B-01..08, and P1B-35 end to end (two layers drawn, no
+>   "ignoring" note).  **TR-01.1**'s comma half had no test that could fail
+>   -- P1B-09..12 find the comma before any quote -- and has P1B-31, P1B-32
+>   and P1B-38.
+> * **AC-01.2** P1B-19..22e, P1B-33, P1B-34, and test_e2e_filters.cscript
+>   FL-QT-1/2 (the title drawn as written, no widget).
+> * **AC-01.3** P1B-13, test_help_claims_1.cscript HC1-21, and P1B-36 (r(198)
+>   and "unbalanced parentheses"); **AC-01.4** P1B-15..17, HC1-04/06/21, and
+>   P1B-37 (the criterion's own input, twoway's return code and message).
+> * **AC-01.5** test_tokenizer.cscript P1A-20..28; **TR-01.5** P1B-23..25.
+>
+> With all of 9c7dbf7 reverted at once, P1B-02, HC1-04/06/21, every new P1B
+> case and FL-QT-1 fail.
+
 > **User story.** As a Stata user, when I write a perfectly legal `twoway`
 > command, I want every plot I asked for to be drawn and my title text left
 > alone — and if `dash` cannot parse something, I want it to say so rather
@@ -150,6 +168,25 @@ M1 ─ WP-01 ──┐
 ## WP-02 · Computed layers must honour their rows
 
 **Gaps closed:** A1, A2 · **Severity:** S1 · **Effort:** M · **Depends on:** —
+
+> **DONE** (24sep2026, on WP-24's mapping).  Every acceptance criterion holds
+> on `a2c7502`, each by a test that goes red when the criterion is broken on
+> a copy of the tree (WP-24's mutation campaign):
+>
+> * **AC-02.1, AC-02.2** test_computed_layer_rows.py's mapper-level tests and
+>   its spec-level `TestAQualifiedSpecComputesFromItsRows` (fourteen layers,
+>   saved and served) and `test_ac_02_1`, with test_help_claims_6's kdensity
+>   and lpoly `if` cases.  A dispatch that handed computed layers no view left
+>   every mapper-level test green; the spec-level tests catch it, in each
+>   mode.
+> * **AC-02.3** `TestLinkedFacetsComputeSeparately`, `test_ac_02_3`
+>   (`link(_all)' on auto) and `TestLinkAll`.
+> * **AC-02.4** `test_ac_02_4`, saved and served, against the fixture's
+>   `regress`, and test_e2e_single.cscript P1C-19, end to end through Stata
+>   against a live `regress` -- the test_qualified_layers GAPS.md A1 said was
+>   never written.
+> * **TR-02.1, TR-02.4** `TestTheMaskHelperDegradesSafely`; the follow-up
+>   fixes 9179359 and 7c6a2fe, test_view_alignment.py.
 
 > **User story.** As an analyst, when I write `(lfit mpg weight if foreign==1)`
 > or facet a histogram with `by(foreign) link(_all)`, I want the fit and the
@@ -241,6 +278,23 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 
 **Gaps closed:** C1, C2, C3 · **Severity:** S1 · **Effort:** S · **Depends on:** —
 
+> **DONE** (24sep2026, on WP-24's mapping).  Every acceptance criterion holds
+> on `a2c7502`, each by a test that goes red when the criterion is broken on
+> a copy of the tree (WP-24's mutation campaign):
+>
+> * **AC-03.1** test_serve_launch.cscript SRV-01..04; test_help_claims_4
+>   HC4-17 (stub) and HC4-19/20/21 (a real launch); and, in
+>   test_server.py, `TestTheOutputPathRule` and `TestTheRealHandoffServes`.
+> * **AC-03.2** SRV-18 (a graph registered, r(198) and the range message);
+>   P20-26 and P4-75 check the return code only, and SRV-09/10 passed with
+>   the range check removed, because an empty registry exits 198 on its own.
+> * **AC-03.3** SRV-17 (a build with a filter, then a bare `dash serve': the
+>   spec carries the filter and the served document has the dropdown),
+>   test_serve_options' inherit cases and HC2-26b/c.
+> * **AC-03.4** test_bug_regressions.cscript BR-02 (`dash build', the
+>   immediate route and `dash serve' up to its launch, each under its own
+>   log).  **TR-03.4** SRV-13..15.
+
 > **User story.** As a user following the help, I want `dash serve, port(5006)`
 > to start a server on port 5006.
 
@@ -292,6 +346,20 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 ## WP-04 · Registry integrity
 
 **Gaps closed:** K1, K2, K3 · **Severity:** S1 · **Effort:** S · **Depends on:** —
+
+> **DONE** (24sep2026, on WP-24's mapping).  Every acceptance criterion holds
+> on `a2c7502`, each by a test that goes red when the criterion is broken on
+> a copy of the tree (WP-24's mutation campaign):
+>
+> * **AC-04.1** test_registry_collision.cscript REG-01, REG-02 and REG-35
+>   (the message).
+> * **AC-04.2** REG-04..06, REG-12, and REG-42 (the build draws the KPI card
+>   and no orphaned graph, and says nothing about "both").
+> * **AC-04.3** REG-15, REG-27, REG-28, and REG-43 (the warning names the
+>   entry: with its name dropped from the warning, REG-15 stayed green).
+> * **TR-04.2** REG-11; **TR-04.4** (K3) GOS-01..10 and HC1-20.  A second
+>   name() in one command, refused as twoway refuses it since `a17c552`, is
+>   held by REG-33, REG-37, REG-38 and REG-41.
 
 > **User story.** As a user building a multi-graph dashboard, if I reuse a
 > name by mistake I want to be told — not to have a graph vanish from the

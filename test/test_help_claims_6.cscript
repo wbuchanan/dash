@@ -937,7 +937,11 @@ local nn = r(n)
 local _v ""
 mata: _dash_extract_vars(st_global("dash_json_hc6"), "_v")
 local ex : list posof "price" in _v
-local bad = (`nc' != 3 | `d' != 0 | `nn' != 1 | `ex' != 0)
+// price is absent from a list that holds the graph's own variables: the
+// extraction names exactly mpg and weight.  An empty list -- no spec, or
+// an extraction that read nothing -- holds no price either, and passed
+// until 24sep2026.
+local bad = (`nc' != 3 | `d' != 0 | `nn' != 1 | `ex' != 0 | "`_v'" != "mpg weight")
 if `bad' display as error "HC6-47 FAIL: twoway serset columns `nc'; dash rc=`d' note=`nn' exported=`_v'"
 _hc6_tally HC6-47 `bad' "scatter [aw]: twoway reads the weight (its serset carries it); dash names [aweight] and does not export price"
 

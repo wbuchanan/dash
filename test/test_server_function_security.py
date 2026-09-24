@@ -68,8 +68,39 @@ def _spec(expr):
                               "scheme": "", "session_scheme": ""}}
 
 
-def _build_and_run(tmp_path, expr):
-    """Build the server app for *expr* and execute its make_document."""
+class _ValidatorVerdict:
+    """Counts the function() expressions map_function's whitelist ACCEPTED.
+
+    map_function parses the expression, walks it against the whitelist,
+    and only then hands the tree to ``_floats_only`` and compiles it; a
+    refusal returns an empty layer before ``_floats_only`` is reached.  So a
+    call of ``_floats_only`` is the validator's "accepted", read without
+    evaluating anything it refused.
+
+    "Drew nothing" cannot tell the two apart: map_function swallows an
+    evaluation error into the same empty layer, and ``_floats_only`` turns
+    every integer literal into a float, so a subscript such as ``[0]`` fails
+    at evaluation whatever the validator said (measured 24sep2026: with the
+    ``node.keywords`` branch deleted, every keyword expression below still
+    drew nothing and wrote no marker, and the old tests stayed green).
+    """
+
+    def __init__(self):
+        self.real = None
+        self.accepted = 0
+
+    def __call__(self, tree):
+        self.accepted += 1
+        return self.real(tree)
+
+
+def _build_and_run(tmp_path, expr, verdict=None):
+    """Build the server app for *expr* and execute its make_document.
+
+    With *verdict*, the app's own ``_floats_only`` -- the copy its
+    GlyphMapper calls -- is wrapped for the document build, so the served
+    validator's verdict is counted in the served code itself.
+    """
     tag = next(_SEQ)
     sp = tmp_path / f"s_{tag}.json"
     dp = tmp_path / f"d_{tag}.json"
@@ -86,12 +117,15 @@ def _build_and_run(tmp_path, expr):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ms.loader.exec_module(mod)
+        if verdict is not None:
+            verdict.real = mod._floats_only
+            mod._floats_only = verdict
         doc = Document()
         mod.make_document(doc)
     return doc
 
 
-def _standalone(tmp_path, expr):
+def _standalone(tmp_path, expr, verdict=None):
     tag = next(_SEQ)
     sp = tmp_path / f"ss_{tag}.json"
     dp = tmp_path / f"sd_{tag}.json"
@@ -99,44 +133,86 @@ def _standalone(tmp_path, expr):
     dp.write_text(json.dumps(make_data_json(
         __import__("pandas").DataFrame({"x": [0.0, 0.5, 1.0],
                                         "yv": [1.0, 2.0, 3.0]}))))
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        dr.DashRenderer(str(sp), str(dp)).render()
+    if verdict is not None:
+        verdict.real = dr._floats_only
+        dr._floats_only = verdict
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.DashRenderer(str(sp), str(dp)).render()
+    finally:
+        if verdict is not None:
+            dr._floats_only = verdict.real
 
 
 class TestAKeywordArgumentCannotExecute:
     def test_the_served_app_does_not_run_a_keyword_payload(self, tmp_path):
         marker = tmp_path / "PWN_SERVER.txt"
         expr = "sin(x, out=" + (_ESCAPE % str(marker)) + ")"
-        _build_and_run(tmp_path, expr)
+        verdict = _ValidatorVerdict()
+        _build_and_run(tmp_path, expr, verdict)
         assert not marker.exists(), (
             f"`dash serve' executed arbitrary Python from a function() "
             f"expression: {marker} was written with "
             f"{marker.read_text() if marker.exists() else ''!r}"
         )
+        # The marker cannot fail on its own (see _ValidatorVerdict): the
+        # served validator must REFUSE the expression, and -- the positive
+        # control -- the same count must see it accept a plain one.
+        assert verdict.accepted == 0, (
+            "the served validator accepted a keyword argument; only the "
+            "evaluation failing kept the payload from running")
+        control = _ValidatorVerdict()
+        _build_and_run(tmp_path, "sin(x)", control)
+        assert control.accepted == 1, control.accepted
 
     def test_the_standalone_renderer_does_not_either(self, tmp_path):
         """The control: the two modes must agree about what is safe."""
         marker = tmp_path / "PWN_STANDALONE.txt"
         expr = "sin(x, out=" + (_ESCAPE % str(marker)) + ")"
-        _standalone(tmp_path, expr)
+        verdict = _ValidatorVerdict()
+        _standalone(tmp_path, expr, verdict)
         assert not marker.exists()
+        assert verdict.accepted == 0, (
+            "the standalone validator accepted a keyword argument")
+        control = _ValidatorVerdict()
+        _standalone(tmp_path, "sin(x)", control)
+        assert control.accepted == 1, control.accepted
 
     @pytest.mark.parametrize("expr", [
         "sin(x, out=1)",
         "sin(x, out=().__class__)",
         "sin(x, **{'out': 1})",
         "abs(x, out=[c for c in ().__class__.__bases__[0].__subclasses__()][0])",
+        # The one keyword call that DRAWS if accepted: `out=None' is numpy's
+        # own default, so the curve check below is live for it.  The four
+        # above raise inside numpy and draw nothing either way (24sep2026).
+        "sin(x, out=None)",
     ])
     def test_no_call_with_keywords_is_accepted(self, tmp_path, expr):
         """A keyword value is an arbitrary expression; none may be walked."""
-        doc = _build_and_run(tmp_path, expr)
+        verdict = _ValidatorVerdict()
+        doc = _build_and_run(tmp_path, expr, verdict)
         from bokeh.models import ColumnDataSource
         fn = [m for m in doc.select({"type": ColumnDataSource})
               if "x_fn" in m.data and len(m.data["x_fn"])]
         assert not fn, (
             f"{expr!r} was accepted and evaluated by the served app"
         )
+        assert verdict.accepted == 0, (
+            f"{expr!r} was accepted by the served validator")
+
+    @pytest.mark.parametrize("mode", ["served", "standalone"])
+    def test_the_verdict_count_sees_an_accepted_expression(self, tmp_path,
+                                                           mode):
+        """Positive control for every ``accepted == 0`` above: the count
+        is read where the served (or saved) mapper really calls it."""
+        verdict = _ValidatorVerdict()
+        if mode == "served":
+            _build_and_run(tmp_path, "sin(x)", verdict)
+        else:
+            _standalone(tmp_path, "sin(x)", verdict)
+        assert verdict.accepted == 1, verdict.accepted
 
     def test_the_emitted_validator_names_keywords(self):
         """Source-level guard: the branch must exist, not just happen to fail.

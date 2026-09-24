@@ -111,11 +111,18 @@ def _visible_count(renderer):
         return len(filt.indices or [])
     if isinstance(filt, BooleanFilter):
         return int(sum(1 for b in (filt.booleans or []) if b))
-    # Unknown filter type — compute it the way Bokeh would, if possible.
+    # Unknown filter type — compute it the way Bokeh would.  A failure here
+    # used to `return n_rows', i.e. report every row as visible, which is
+    # exactly the expected count for the unqualified layers this helper
+    # also measures (~372, ~393): a filter whose indices could not be
+    # computed would then pass those assertions silently.  A count that
+    # cannot be determined must fail, not default to "all of them".
     try:
         return int(len(filt.compute_indices(renderer.data_source)))
-    except Exception:  # pragma: no cover - defensive
-        return n_rows
+    except Exception as exc:  # pragma: no cover - defensive
+        raise AssertionError(
+            f"_visible_count cannot measure a {type(filt).__name__}: {exc}"
+        ) from exc
 
 
 def _all_label_sets(fig):

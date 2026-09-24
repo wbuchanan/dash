@@ -232,6 +232,11 @@ class TestAdversarialFilterText:
 
 class TestTheCopiedParserBringsItsHelpers:
     def test_the_app_carries_them(self, tmp_path):
+        """A structural guard over the app's text, deliberately: the filter
+        text helpers are the renderer's own, copied verbatim.  (Measured,
+        WP-24: nothing in the app calls these copies -- the served filters
+        are parsed at build time by the renderer -- so what this pins is
+        text the app carries, not text it runs.)"""
         src = _app_source(tmp_path, _two_graphs("price, type(range)"))
         for fn in (dr._dash_filter_split, dr._dash_filter_label,
                    dr._dash_parse_filter_raw):
@@ -532,6 +537,10 @@ class TestTheAutomaticGridIsOneRuleInBothModes:
         assert dr._dash_auto_grid_cols(4, {"a": _F(None)}) == 2
 
     def test_the_app_carries_the_rule_verbatim(self, tmp_path):
+        """A structural guard over the app's text, deliberately: ONE
+        automatic-grid rule, the renderer's, copied verbatim and called
+        where the served grid is built.  What the rule draws is
+        TestTheAutomaticGridIsOneRuleInBothModes."""
         src = _app_source(tmp_path, _two_graphs(""))
         assert inspect.getsource(dr._dash_auto_grid_cols).strip() in src
         assert "_dash_auto_grid_cols(len(grid_names), figures)" in src

@@ -45,6 +45,29 @@ def _set(sp, **props):
     return sp
 
 
+def _scheme_truth(name):
+    """One scheme's record in fixtures/scheme_truth.json, the ground truth
+    extracted from Stata's own scheme and style files."""
+    import json
+    with open(os.path.join(_HERE, "fixtures", "scheme_truth.json"),
+              encoding="utf-8") as fh:
+        return json.load(fh)[name]
+
+
+def _scheme_warnings(caught):
+    """The messages of the warnings a scheme's own tokens raised.
+
+    Every token emitter in SchemeParser starts its message "dash scheme:"
+    (colour, size, line pattern, line width, a bounded count, an #include
+    too deep), and the shipped-scheme check below keeps only those.  The
+    filter is one function so that the positive control,
+    test_the_filter_sees_every_token_emitter, exercises the very predicate
+    the absence check relies on.
+    """
+    return [str(w.message) for w in caught
+            if "dash scheme" in str(w.message)]
+
+
 # ======================================================================
 # _color — where the silent-black failure lived
 # ======================================================================
@@ -362,8 +385,14 @@ class TestInitProperties:
 
     def test_p_colors_is_a_non_trivial_cycle(self):
         parser = SchemeParser("s2color")
-        assert len(parser.p_colors) >= 3
-        assert len(set(parser.p_colors)) >= 3, (
+        # s2color's cycle is fifteen different colours, p1 navy through
+        # p15, in Stata's own file and in fixtures/scheme_truth.json.  The
+        # old floors (three entries, three distinct) passed a cycle cut to
+        # three or repeating after the third (24sep2026).
+        truth = _scheme_truth("s2color")["p_colors"]
+        assert len(truth) == len(set(truth)) == 15
+        assert len(parser.p_colors) == 15
+        assert len(set(parser.p_colors)) == 15, (
             f"the colour cycle repeats itself: {parser.p_colors}"
         )
 
@@ -374,11 +403,46 @@ class TestInitProperties:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             SchemeParser(name)
-        scheme_warnings = [str(w.message) for w in caught
-                           if "dash scheme" in str(w.message)]
+        scheme_warnings = _scheme_warnings(caught)
         assert not scheme_warnings, (
             f"{name} contains tokens dash cannot resolve: {scheme_warnings}"
         )
+
+    def test_the_filter_sees_every_token_emitter(self, tmp_path,
+                                                 monkeypatch):
+        """Positive control for the absence check above.
+
+        That check keeps only messages holding "dash scheme", and nothing
+        in this file asserted the emitters say it: renaming the prefix in
+        any one of them would have let a shipped scheme's unresolvable
+        token through it silently (measured 24sep2026 with the colour
+        emitter's prefix changed and `color p1 stc99' planted in
+        s2color.scheme: the check still passed).  A user scheme planting
+        one bad token per emitter must raise six warnings, each seen by the
+        same filter and naming its token.
+        """
+        monkeypatch.chdir(tmp_path)
+        depth = dash_render._MAX_SCHEME_INCLUDE_DEPTH
+        for i in range(depth + 1):
+            (tmp_path / f"chain{i}.scheme").write_text(
+                f"#include chain{i + 1}\n" if i < depth else "")
+        (tmp_path / "bad.scheme").write_text(
+            "#include chain0\n"
+            "color background stc99\n"
+            "gsize heading 1e9\n"
+            "linepattern p1line squiggle\n"
+            "linewidth major_grid -4\n"
+            "clockdir legend_position 99\n")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            SchemeParser("bad")
+        seen = _scheme_warnings(caught)
+        assert len(seen) == 6, seen
+        for needle in (f"nested more than {depth} files deep",
+                       "colour 'stc99'", "size '1e9'",
+                       "line pattern 'squiggle'", "line width '-4'",
+                       "clock position '99'"):
+            assert sum(needle in m for m in seen) == 1, (needle, seen)
 
     @pytest.mark.parametrize("name", ["stcolor", "s2color", "economist",
                                       "s1mono"])
@@ -386,7 +450,13 @@ class TestInitProperties:
         """The stcolor symptom, as a standing check on all fourteen."""
         parser = SchemeParser(name)
         colours = [parser.default_color(i, "scatter") for i in range(5)]
-        assert len(set(colours)) > 1, (
+        # Each of the four draws five different colours for its first five
+        # series, as fixtures/scheme_truth.json records them (s1mono's are
+        # five greys).  `> 1' passed a scheme whose cycle had collapsed to
+        # two colours (24sep2026).
+        truth = _scheme_truth(name)["p_colors"][:5]
+        assert len(set(truth)) == 5
+        assert len(set(colours)) == 5, (
             f"{name} gives every series the same colour: {colours}"
         )
         if name != "s1mono":

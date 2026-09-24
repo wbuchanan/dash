@@ -834,6 +834,12 @@ class TestAFacetedGraphInALinkGroup:
                 assert any(isinstance(t, BoxSelectTool) for t in f.tools)
             panel_views = [rr.view for f in figs[:2] for rr in f.renderers
                            if type(rr.glyph).__name__ == "Scatter"]
+            # One marker renderer a panel, two panels (measured 24sep2026,
+            # every type here, both modes): `panel_views and' passed a
+            # panel that drew no markers at all.
+            assert len(panel_views) == 2, [
+                [type(rr.glyph).__name__ for rr in f.renderers]
+                for f in figs[:2]]
             assert panel_views and all(
                 type(v.filter).__name__ in ("BooleanFilter", "IndexFilter")
                 for v in panel_views), [type(v.filter).__name__
@@ -894,6 +900,52 @@ def _marker_points(fig):
             if math.isfinite(fx) and math.isfinite(fy):
                 pts.add((round(fx, 6), round(fy, 6)))
     return pts
+
+
+def _drawn_ends(fig):
+    """``{kind: set of (x, y)}``: every end a paired-coordinate layer draws,
+    by what draws it -- "Scatter" for markers, "Segment" for a segment's two
+    ends, "Arrow" for an arrow annotation's two ends.
+
+    _marker_points reads Scatter renderers only, and pcarrow and pcbarrow
+    draw none: a Segment and one Arrow annotation per observation, whose
+    ends are literal numbers, not columns (measured 24sep2026).  A segment
+    or an arrow counts only when all four of its coordinates are finite,
+    since only then does BokehJS draw it."""
+    from bokeh.models import Arrow
+
+    def rows(values, data):
+        """The rows four coordinates give: a number is every row's, a
+        field is a column of *data*."""
+        cols = [data[_field(v)] if not isinstance(v, (int, float)) else None
+                for v in values]
+        n = max([len(c) for c in cols if c is not None] or [1])
+        return [[v if c is None else c[i] for v, c in zip(values, cols)]
+                for i in range(n)]
+
+    def ends(row):
+        e = [float(v) for v in row]
+        if not all(math.isfinite(v) for v in e):
+            return []
+        e = [round(v, 6) for v in e]
+        return [(e[0], e[1]), (e[2], e[3])]
+
+    out = {}
+    for rr in fig.renderers:
+        g, d = rr.glyph, rr.data_source.data
+        kind = type(g).__name__
+        if kind == "Scatter":
+            for row in rows([g.x, g.y, g.x, g.y], d):
+                out.setdefault(kind, set()).update(ends(row)[:1])
+        elif kind == "Segment":
+            for row in rows([g.x0, g.y0, g.x1, g.y1], d):
+                out.setdefault(kind, set()).update(ends(row))
+    for a in fig.center:
+        if isinstance(a, Arrow):
+            data = a.source.data if a.source is not None else {}
+            for row in rows([a.x_start, a.y_start, a.x_end, a.y_end], data):
+                out.setdefault("Arrow", set()).update(ends(row))
+    return out
 
 
 class TestEachEndOfARangeIsLabelledOnItsOwn:
@@ -968,6 +1020,23 @@ class TestAPairedCoordinateObservationWithAMissingPoint:
             assert len(drawn) == len(df) - 1, (ptype, len(drawn))
             assert "AMC Concord" not in [d[2] for d in drawn], ptype
             assert (2930.0, 22.0) not in _marker_points(fig), ptype
+            # The check above reads markers, and pcarrow and pcbarrow draw
+            # none, so for them it held over an empty set and the AMC's
+            # segment and arrow were never looked at.  Every end each glyph
+            # draws is read instead: the kinds each type draws (measured
+            # 24sep2026), the other eleven cars' ends -- both ends of each,
+            # and the second car's first point as the control that the
+            # reading sees that glyph -- and never the AMC's first point.
+            ends = _drawn_ends(fig)
+            assert set(ends) == self._DRAWS[ptype], (ptype, sorted(ends))
+            for kind, pts in ends.items():
+                assert (3350.0, 17.0) in pts, (ptype, kind)
+                assert (2930.0, 22.0) not in pts, (ptype, kind)
+                assert len(pts) == 2 * (len(df) - 1), (ptype, kind, len(pts))
+
+    #: What each type draws its ends with.
+    _DRAWS = {"pcscatter": {"Scatter"}, "pccapsym": {"Segment", "Scatter"},
+              "pcarrow": {"Segment", "Arrow"}, "pcbarrow": {"Segment", "Arrow"}}
 
 
 # ===========================================================================

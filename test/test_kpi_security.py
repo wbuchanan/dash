@@ -37,11 +37,13 @@ value's colour from theirs once the value's default IS that colour.
 Written before the fix, per project rule 8; the adversarial cases are project
 rule 18.
 """
+import functools
 import json
 import os
 import re
 import sys
 import tempfile
+from html.parser import HTMLParser
 
 import numpy as np
 import pandas as pd
@@ -112,6 +114,76 @@ def _kpi_value_color(dr):
     return mc.group(1).strip() if mc else None
 
 
+class _CardTags(HTMLParser):
+    """The card's start tags, PARSED: [(tag, [(attribute, value), ...])].
+
+    Parsed rather than searched, so a payload that broke out of
+    style="..." is seen as the attribute it became (onload=...), and a
+    declaration smuggled into a colour is seen as a declaration.  A
+    substring test over the page cannot see either: two of the payloads
+    below carry none of its needles, and the colours go into the style
+    attribute unescaped (_dash_kpi_card_html interpolates the sanitiser's
+    verdict, not html.escape's), so the sanitiser is the only guard."""
+
+    def __init__(self, text):
+        super().__init__(convert_charrefs=True)
+        self.tags = []
+        self.feed(text or "")
+        self.close()
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.append((tag, attrs))
+
+
+def _declarations(attrs):
+    """[(property, value)] of an element's style attribute, split on ';'."""
+    style = dict(attrs).get("style") or ""
+    out = []
+    for decl in style.split(";"):
+        if decl.strip():
+            prop, _, val = decl.partition(":")
+            out.append((prop.strip().lower(), val.strip()))
+    return out
+
+
+# A colour and nothing else: hex, a word, or rgb()/hsl() of numbers.  The
+# test's own grammar, so a sanitiser that regressed is not also the judge.
+_ONLY_A_COLOUR = re.compile(
+    r"#[0-9a-fA-F]{3,8}|[A-Za-z]{2,30}"
+    r"|(?:rgb|rgba|hsl|hsla)\(\s*[0-9.]+%?(?:\s*,\s*[0-9.]+%?){2,3}\s*\)")
+
+
+@functools.lru_cache(maxsize=None)
+def _honest_card_tags():
+    """The shape of a card whose color() and bgcolor() are honest."""
+    _, dr = _render_kpi(color="red", bgcolor="blue")
+    return tuple((t, tuple(a)) for t, a in _CardTags(_kpi_div_text(dr)).tags)
+
+
+def _assert_card_is_inert(dr, what):
+    """A hostile colour left the card the shape an honest one has: the same
+    elements, no attribute and no CSS property beyond theirs (none twice),
+    and nothing but a colour in a color or background declaration."""
+    want = _honest_card_tags()
+    got = _CardTags(_kpi_div_text(dr)).tags
+    assert [t for t, _ in got] == [t for t, _ in want], (
+        f"{what}: the card's elements changed: {got}")
+    for (tag, attrs), (_, ref) in zip(got, want):
+        names = [a for a, _ in attrs]
+        assert (set(names) <= {a for a, _ in ref}
+                and len(names) == len(set(names))), (
+            f"{what}: a <{tag}> gained an attribute: {attrs}")
+        decls = _declarations(attrs)
+        props = [p for p, _ in decls]
+        assert (set(props) <= {p for p, _ in _declarations(ref)}
+                and len(props) == len(set(props))), (
+            f"{what}: a <{tag}>'s style gained a declaration: {decls}")
+        for prop, val in decls:
+            if prop in ("color", "background"):
+                assert _ONLY_A_COLOUR.fullmatch(val), (
+                    f"{what}: {prop}:{val!r} is not a colour")
+
+
 # ======================================================================
 # The injection itself
 # ======================================================================
@@ -138,20 +210,28 @@ class TestKpiColourIsSanitisedOnTheInitialRender:
 
     @pytest.mark.parametrize("payload", _CSS_PAYLOADS)
     def test_color_payload_does_not_reach_the_document(self, payload):
-        out, _ = _render_kpi(color=payload)
+        out, dr = _render_kpi(color=payload)
         assert "evil.example" not in out, (
             f"color({payload!r}) reached the document and can make an "
             f"outbound request"
         )
         assert "expression(" not in out
         assert "body{display:none" not in out
+        # The attribute breakout and the escaped semicolon hold none of the
+        # three needles, so for them only the card's parsed markup can fail.
+        _assert_card_is_inert(dr, f"color({payload!r})")
 
     @pytest.mark.parametrize("payload", _CSS_PAYLOADS)
     def test_bgcolor_payload_does_not_reach_the_document(self, payload):
-        out, _ = _render_kpi(bgcolor=payload)
+        out, dr = _render_kpi(bgcolor=payload)
         assert "evil.example" not in out
         assert "expression(" not in out
         assert "body{display:none" not in out
+        # bgcolor() has no sanitiser-agreement test of its own, and nothing
+        # html-escapes it on its way into style="...": measured 24sep2026,
+        # with the sanitiser bypassed '#fff" onload="alert(1)' became an
+        # onload attribute of the card and this test still passed.
+        _assert_card_is_inert(dr, f"bgcolor({payload!r})")
 
     @pytest.mark.parametrize("payload", _CSS_PAYLOADS)
     def test_the_rendered_value_is_what_the_sanitiser_would_give(self,
@@ -173,13 +253,19 @@ class TestKpiColourIsSanitisedOnTheInitialRender:
         )
 
     def test_a_semicolon_can_never_appear_inside_a_style_attribute_value(self):
-        """The general property, not one payload at a time."""
+        """The general property, not one payload at a time.
+
+        This searched each colour's value for "url(" and "expression(" with
+        a capture that stopped at the first ';' -- neither payload holds
+        either word, and the injected declaration lies past the ';', so it
+        could not fail (measured 24sep2026: it passed with both colours
+        written into the card raw).  The card is parsed instead: a
+        semicolon that got through is a declaration the honest card does
+        not have (background on the value div, content on the card)."""
         _, dr = _render_kpi(color="red; background:red",
                             bgcolor="blue; content:'x'")
-        text = _kpi_div_text(dr)
-        for m in re.finditer(r'(?:background|color)\s*:\s*([^;"\n]*)', text):
-            val = m.group(1).strip()
-            assert "url(" not in val and "expression(" not in val, val
+        _assert_card_is_inert(dr, "color(red; background:red) "
+                                  "bgcolor(blue; content:'x')")
 
 
 class TestLegitimateColoursStillWork:
@@ -452,11 +538,22 @@ class TestKpiTextIsNeverMarkupOrMaths:
         r = _saved(tmp_path, _kpi_spec(name=name))
         text = "\n".join(d.text for d in r.kpi_divs.values())
         assert _tags(text) == {"div"}, text
+        # The name did reach the card -- in the value div's id, escaped --
+        # or the check above would be about a card that dropped it.
+        assert f'id="kpi_val_{_html.escape(name)}"' in text, text
         cfg = json.loads(r.filter_callbacks[0].args["kpi_config_json"])
         assert cfg[0]["name_html"] == _html.escape(name)
         doc = _served_doc(tmp_path, _kpi_spec(name=name))
         _pick_foreign_one(doc)
-        for div in _cards(doc):
+        # A served app that drew no card for this name passed the loop
+        # below with nothing in it; the card must be there, rebuilt by the
+        # recompute (its value is the foreign == 1 mean), holding the name.
+        cards = _cards(doc)
+        assert cards, "no KPI card in the served document"
+        served = " ".join(d.text for d in cards)
+        assert _FOREIGN_MEAN in served, "the recompute did not run"
+        assert f'id="kpi_val_{_html.escape(name)}"' in served, served
+        for div in cards:
             assert _tags(div.text) == {"div"}, div.text
 
 
@@ -470,6 +567,10 @@ class TestAKpiFormatCannotBuildAHugeCard:
                                      "%99999999999.1f", "%9.30fc"])
     def test_both_modes_before_and_after_a_filter_moves(self, tmp_path, fmt):
         r = _saved(tmp_path, _kpi_spec(fmt=fmt))
+        # The card is held to the bounds, not dropped: an empty kpi_divs
+        # made the all() below true, where the served half already asks
+        # for its card.
+        assert r.kpi_divs, f"fmt({fmt}) left the saved page with no card"
         assert all(len(d.text) < 5000 for d in r.kpi_divs.values())
         doc = _served_doc(tmp_path, _kpi_spec(fmt=fmt))
         _pick_foreign_one(doc)

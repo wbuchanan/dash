@@ -47,8 +47,8 @@ extractor explicitly said it could not derive.
 
 COVERAGE HARNESS
 ----------------
-``test_scheme_coverage`` reports two fractions per scheme over the same 132
-property units:
+``test_scheme_coverage`` reports two fractions per scheme over the same 133
+property units (``expected_units``):
 
   * ``supplied``  — the translated ``.scheme`` file contains a directive that
                     resolves the property through Stata's documented stub
@@ -285,7 +285,8 @@ INT_SCALARS = {
     "legend_rows":     ["numstyle legend_rows"],
 }
 
-#: Total property units per scheme: 6 lists x 15 + 42 scalars = 132.
+#: Total property units per scheme: 6 lists x 15 + 43 scalars = 133
+#: (expected_units(); it read 132 before a colour scalar was added).
 N_PLOTS = 15
 
 
@@ -547,6 +548,29 @@ def format_check(chk):
     return f"    {chk.label}: expected {chk.expected!r}, got {chk.actual!r}{tail}"
 
 
+def expected_units(truth):
+    """How many Check records evaluate_scheme must return for *truth*.
+
+    One unit per list entry and per scalar the property maps name: 6 lists
+    x 15 + 43 scalars = 133, and each of the twenty schemes returned exactly
+    133 (measured 24sep2026).  The one unit evaluate_scheme may rightly
+    skip is a colour Stata writes as 'none', which the fixture records as a
+    PRESENT JSON null (_meta.color_none).  A missing key, a missing
+    'alpha' / 'name' sub-key or a list shorter than 15 is fixture drift,
+    and evaluate_scheme skips those in silence -- so they count here, and a
+    check that silently fell away shows up as a short total.
+    """
+    n = (len(COLOR_LISTS) + len(NAME_LISTS)) * N_PLOTS + sum(
+        len(m) for m in (COLOR_SCALARS, ALPHA_SCALARS, STYLE_NAME_SCALARS,
+                         YESNO_SCALARS, NUMERIC_SCALARS, INT_SCALARS))
+    n -= sum(1 for p in COLOR_SCALARS if p in truth and truth[p] is None)
+    for p in COLOR_LISTS:
+        entries = truth.get(p)
+        if isinstance(entries, list) and len(entries) == N_PLOTS:
+            n -= sum(1 for v in entries if v is None)
+    return n
+
+
 def coverage(checks):
     """Return (n_total, n_supplied, n_faithful)."""
     return (
@@ -680,6 +704,13 @@ def test_scheme_property_fidelity(name):
     except Exception as exc:
         pytest.fail(f"SchemeParser('{name}') raised {type(exc).__name__}: {exc}")
 
+    # Every unit must have been checked: an empty or shortened list of
+    # checks has no unfaithful entry either, and passed below.
+    want = expected_units(truth_for(name))
+    assert len(checks) == want, (
+        f"scheme '{name}': {len(checks)} properties were evaluated, not "
+        f"{want}; evaluate_scheme skipped fixture entries in silence"
+    )
     bad = [c for c in checks if not c.faithful]
     if bad:
         total, supplied, faithful = coverage(checks)
@@ -744,20 +775,21 @@ def test_color_does_not_swallow_unresolvable_token():
     every single series black.  Swallowing the failure is the defect: an
     unresolvable colour token must either resolve or be reported, never be
     silently recoloured black.
+
+    Both halves are asserted as measured (24sep2026).  This used to catch
+    any exception and return -- "reporting the bad token is an acceptable
+    outcome" -- so a ``_color`` that crashed passed; ``_color`` reports an
+    unresolvable token with a warning, not an exception, and resolves stc1.
     """
+    import warnings
+
     sp = SchemeParser("s2color")
     sp._props = dict(sp._props)
     sp._props["color p1"] = "stc1"
 
-    resolved = None
-    raised = None
-    try:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
         resolved = sp._color("color p1")
-    except Exception as exc:
-        raised = exc
-
-    if raised is not None:
-        return          # reporting the bad token is an acceptable outcome
 
     assert resolved != BLACK, (
         "SchemeParser._color('color p1') silently returned "
@@ -770,6 +802,19 @@ def test_color_does_not_swallow_unresolvable_token():
         f"'stc1' resolved to {resolved!r}, expected {ANCHOR_STCOLOR_P1} "
         "(color-stc1.style)"
     )
+    assert not [str(w.message) for w in caught], (
+        "stc1 resolved, and a note still claimed it could not be: %r"
+        % [str(w.message) for w in caught])
+
+    # A token no colour table knows is reported by name, not recoloured in
+    # silence.
+    sp._props["color p1"] = "definitely_not_a_colour"
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        sp._color("color p1")
+    notes = [str(w.message) for w in caught]
+    assert any("'definitely_not_a_colour'" in m and "'color p1'" in m
+               for m in notes), notes
 
 
 def test_stcolor_p1_is_not_black():
@@ -845,6 +890,13 @@ def test_scheme_coverage(name):
 
     total, n_supplied, n_faithful = coverage(checks)
     assert total, f"no properties were evaluated for scheme '{name}'"
+    # `total' alone passed one check out of 133 -- and a fraction is only
+    # as honest as its denominator.
+    want = expected_units(truth_for(name))
+    assert total == want, (
+        f"scheme '{name}': {total} properties were evaluated, not {want}; "
+        "evaluate_scheme skipped fixture entries in silence"
+    )
 
     frac_faithful = n_faithful / total
     frac_supplied = n_supplied / total
@@ -878,6 +930,14 @@ def test_translator_can_express_scheme_symbols_and_patterns(name):
     substitutes a circle.
     """
     truth = truth_for(name)
+
+    # A missing or empty fixture list made both loops run zero times and
+    # the test pass having translated nothing (24sep2026).
+    for key in ("p_symbols", "p_line_patterns"):
+        assert len(truth.get(key) or []) == N_PLOTS, (
+            f"scheme '{name}': fixture {key} is {truth.get(key)!r}, not a "
+            f"{N_PLOTS}-entry list"
+        )
 
     bad_symbols, bad_patterns = [], []
     for sym in dict.fromkeys(truth.get("p_symbols") or []):
@@ -1093,6 +1153,9 @@ def test_sttrans_opacity_is_recorded_not_flagged():
     for key in ("p_colors", "p_line_colors", "p_bar_colors", "p_mark_colors",
                 "p_lineplot_colors"):
         assert t[key + "_opacity"] == [ANCHOR_STTRANS_OPACITY] * N_PLOTS, key
+        # Fifteen hex colours beside the fifteen opacities: all() over an
+        # empty list passed (24sep2026).
+        assert len(t[key]) == N_PLOTS, (key, t[key])
         assert all(hex_to_rgb(v) is not None for v in t[key]), key
     assert t["unresolvable"] == []
     # An opaque scheme records None, not 100.

@@ -877,9 +877,16 @@ class TestTicksWithoutLabels:
     @pytest.mark.parametrize("mode", _MODES)
     def test_grid_draws_gridlines_at_the_ticks(self, mode):
         fig, _ = _render(mode, [plot_for("scatter")], {"ytick": "20, grid"})
+        # One y grid on the figure's own range in both renders (measured
+        # 24sep2026, both modes); an all() over none held with the grid
+        # gone or moved to another range.
+        own = [g for g in fig.ygrid if g.y_range_name == "default"]
+        assert len(own) == 1, [g.y_range_name for g in fig.ygrid]
         assert all(g.minor_grid_line_color is not None for g in fig.ygrid
                    if g.y_range_name == "default")
         plain, _ = _render(mode, [plot_for("scatter")], {"ytick": "20"})
+        own = [g for g in plain.ygrid if g.y_range_name == "default"]
+        assert len(own) == 1, [g.y_range_name for g in plain.ygrid]
         assert all(g.minor_grid_line_color is None for g in plain.ygrid
                    if g.y_range_name == "default")
 
@@ -990,6 +997,11 @@ class TestTheSecondAxisIsItsOwn:
                                                      "mlabel": "rep"},
                                          yvar="price"), plot_for("line")],
                          {"legend": "ring(0) pos(3)"})
+        # One legend, keying both layers (measured 24sep2026, both modes):
+        # an all() over no legend held with the legend gone from the
+        # figure, the very thing this test's name says cannot happen.
+        assert len(fig.legend) == 1, len(fig.legend)
+        assert len(fig.legend[0].items) == 2, fig.legend[0].items
         assert all(lg.y_range_name == "default" for lg in fig.legend)
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -1218,6 +1230,12 @@ class TestAdversarialLegendAxesRegions:
             assert not isinstance(_axis2(fig, "y2").ticker, FixedTicker)
             assert type(_primary(fig, "x").ticker).__name__ != "CustomJSTicker"
             assert sum("more than 2,000 ticks" in w for w in caught) >= 1
+            # One note each: ylabel2() and xtick() are read apart and each
+            # names its own (measured 24sep2026 -- one alone gives one, the
+            # two give two, in both modes; `caught' keeps repeats).  At
+            # least one passed a tick that kept its default in silence.
+            assert sum("more than 2,000 ticks" in w for w in caught) == 2, (
+                mode, caught)
 
     def test_axis_label_text_is_data_never_code(self):
         """Injection: a value label on the second axis travels in the
@@ -1273,6 +1291,11 @@ class TestAdversarialLegendAxesRegions:
                                   {"plotregion": 'color("255 0 0)'})
             assert fig.background_fill_color == base.background_fill_color
             assert caught
+            # Any warning passed `assert caught'.  The note that names the
+            # colour is knowable (measured 24sep2026, both modes, the only
+            # warning this render raises).
+            assert any('plotregion(color("255 0 0)) is not a recognised '
+                       'colour' in w for w in caught), caught
 
     def test_a_hundred_thousand_character_colour_is_named_quickly(self):
         """Exhaustion: an enormous colour name is judged and named in
@@ -1284,3 +1307,11 @@ class TestAdversarialLegendAxesRegions:
                                   {"plotregion": "color(%s)" % ("a" * 100000)})
             assert time.perf_counter() - t0 < 30, mode
             assert caught
+            # Named means this note, not any warning (measured 24sep2026,
+            # both modes: the only one, 161 characters -- the name shown
+            # cut short, never all 100,000 of it).
+            notes = [w for w in caught
+                     if "plotregion(color(aaaa" in w
+                     and "is not a recognised colour" in w]
+            assert len(notes) == 1, caught
+            assert len(notes[0]) < 1000, len(notes[0])

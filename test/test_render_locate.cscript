@@ -37,7 +37,10 @@
 *! `confirm file' is an existence check, not a trust check, so inventing new
 *! directories to run Python out of would widen what dash executes.
 *!
-*! Tests: LOC-01 through LOC-09
+*! Tests: LOC-01 through LOC-17 (LOC-17 runs before LOC-12, which replaces
+*! the locator with a stand-in and removes it).  LOC-10..11 run the shipped locator with the
+*! ado-path cut to Stata's own directories; LOC-12 runs the three callers;
+*! LOC-13..16 run a real `net install' into a scratch PLUS and use it.
 *!
 *! Usage:  do test/test_render_locate.cscript
 *! Version: 1.0  21sep2026
@@ -59,24 +62,11 @@ if "`c(python_exec)'" == "" {
 qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
+// cert_log_has reads a captured log as a value in Mata, so nothing the
+// message contains can end a Stata string or be parsed as code (LOC-09).
+do "cert_helpers.do"
 
-// Read a captured log in Mata: a line of it is a value there, so nothing the
-// message contains can end a Stata string or be parsed as code.  The serve
-// and registry cscripts take the same approach.
 mata:
-real scalar _loc_log_has(string scalar fn, string scalar needle)
-{
-    real scalar   fh, found
-    string scalar line
-    found = 0
-    fh = fopen(fn, "r")
-    while ((line = fget(fh)) != J(0,0,"")) {
-        if (strpos(strlower(line), strlower(needle))) found = 1
-    }
-    fclose(fh)
-    return(found)
-}
-
 // Count occurrences in CODE only.  The locator's own header quotes the line
 // it replaced, so a plain text search would match the comment that explains
 // the fix and the assertions below would be unsatisfiable.
@@ -167,13 +157,381 @@ else {
 }
 
 // ================================================================
+// LOC-17 -- the path the locator returns is handed to Python as data
+// ================================================================
+// BUGS.md "Python command injection risk from unescaped file paths in
+// embedded python: lines" (BUG-SEC-1): _dash_do_render wrote the renderer's
+// path and the output path into python: lines inside raw r"..." literals,
+// so a double quote in either ended the literal and the rest ran as Python.
+// Its regression tests (test_server.py TestPathInjectionHardening) only
+// found the escaping helper's NAME in dash.ado.  This runs it: the renderer
+// is copied into a directory whose name is a Python payload, the page is
+// written to a file whose name is another, and both are handed to
+// _dash_do_render exactly as the locator's answer and saving() are.  Each
+// payload is valid Python where it lands if its quote ends the literal --
+// measured (WP-24): with either path interpolated raw into its python:
+// line, as before the fix, the payload runs.  The render must succeed,
+// write that page, and run nothing; the payload would create loc10_sent in
+// the working directory, which is the temporary directory while it runs.
+capture which jsonio
+if _rc == 0 {
+    local l10b "`c(tmpdir)'"
+    local l10p `"q" if __import__("os").system("touch loc10_sent") else ""'
+    local l10d `"`l10b'`l10p'"'
+    capture mkdir `"`l10d'"'
+    copy "../dash_render.py" `"`l10d'/dash_render.py"', replace
+    dash clear
+    dash scatter mpg weight, name(l10)
+    tempfile l10s l10a
+    _dash_prepare_spec, specpath("`l10s'") datapath("`l10a'")
+    local l10o `"`l10b'x", __import__("os").system("touch loc10_sent"), "y.html"'
+    capture erase `"`l10o'"'
+    local l10here "`c(pwd)'"
+    quietly cd "`l10b'"
+    capture erase "loc10_sent"
+    capture noisily _dash_do_render, spec("`l10s'") data("`l10a'") ///
+        output(`"`l10o'"') renderpy(`"`l10d'/dash_render.py"')
+    local l17rc = _rc
+    capture confirm file "loc10_sent"
+    local l17ran = (_rc == 0)
+    capture erase "loc10_sent"
+    quietly cd "`l10here'"
+    display as text "  LOC-17 rc `l17rc', payload ran `l17ran'"
+    assert `l17ran' == 0
+    assert `l17rc' == 0
+    confirm file `"`l10o'"'
+    capture erase `"`l10o'"'
+    capture erase `"`l10d'/dash_render.py"'
+    capture rmdir `"`l10d'"'
+    dash clear
+    display "LOC-17 PASS: a renderer path and an output path holding quotes and code are data"
+}
+else {
+    display "LOC-17 SKIP: jsonio not installed"
+}
+
+// ================================================================
+// LOC-10..11 -- the SHIPPED locator, on a tree where it finds nothing
+// ================================================================
+// LOC-09 drove a stand-in until WP-24, so it asserted what a failing locator
+// must look like, not that this one fails that way.  Measured under WP-24:
+// with the shipped failure branch made silent (rc 0 and no path), or with
+// the beside-dash.ado candidate returned without `confirm file', LOC-01..09
+// all passed.  (LOC-09 now drives the real locator too.)  $S_ADO is the
+// ado-path itself.  Cutting it to Stata's own BASE and SITE leaves findfile
+// nothing to find -- what an install without dash_render.py looks like --
+// and it is put back before anything is asserted, so a failure here cannot
+// leave the path cut for the next script.
+capture which jsonio
+local _loc_jsonio = (_rc == 0)
+mata: st_local("_loc_sado", st_global("S_ADO"))
+
+tempname llf10
+tempfile llg10
+quietly log using "`llg10'", replace text name(`llf10')
+mata: st_global("S_ADO", "BASE;SITE")
+capture noisily _dash_find_render
+local lrc10 = _rc
+mata: st_global("S_ADO", st_local("_loc_sado"))
+quietly log close `llf10'
+cert_log_has "`llg10'", needle("cannot locate dash_render.py") lower
+local _loc_said10 = r(found)
+assert `lrc10' == 601
+assert `_loc_said10' == 1
+display "LOC-10 PASS: with nothing on the ado-path the locator exits 601, in dash's words"
+
+// A dash.ado that findfile finds, with no dash_render.py beside it: the
+// second candidate is confirmed before it is returned, because the caller
+// hands it straight to Python.
+tempfile loc11base
+local loc11dir "`loc11base'_d"
+mata: mkdir(st_local("loc11dir"))
+tempname loc11fh
+file open `loc11fh' using "`loc11dir'/dash.ado", write text replace
+file write `loc11fh' "* a dash.ado with no renderer beside it" _n
+file close `loc11fh'
+tempname llf11
+tempfile llg11
+quietly log using "`llg11'", replace text name(`llf11')
+// In the compound-quoted form $S_ADO writes a directory in.
+mata: st_global("S_ADO", "BASE;SITE;" + char(96) + char(34) + st_local("loc11dir") + char(34) + char(39))
+capture noisily _dash_find_render
+local lrc11 = _rc
+mata: st_global("S_ADO", st_local("_loc_sado"))
+quietly log close `llf11'
+capture erase "`loc11dir'/dash.ado"
+capture rmdir "`loc11dir'"
+cert_log_has "`llg11'", needle("cannot locate dash_render.py") lower
+local _loc_said11 = r(found)
+assert `lrc11' == 601
+assert `_loc_said11' == 1
+display "LOC-11 PASS: a dash.ado with no renderer beside it is refused, not handed to Python"
+
+
+// ================================================================
+// LOC-13..16 -- a real `net install', into a scratch PLUS
+// ================================================================
+// test_installed_layout.py and test_help_claims_8.py stage the layout one
+// real install was measured, by hand, to produce.  These run the real
+// thing -- net from this tree, net install dash -- into a PLUS made for the
+// purpose, so the layout checked is Stata's own: the renderer in PLUS/py,
+// where findfile finds it (the premise of TR-05.3's correction), each scheme
+// the manifest ships in its letter directory, the installed renderer reading
+// every one without a fallback (AC-05.2), and a build through it drawing
+// s1color with no fallback warning (AC-05.1).  No committed cscript ran a
+// net install before WP-24.  PLUS is moved only once it is confirmed to be
+// the scratch directory, so nothing can be installed anywhere else, and
+// PLUS and $S_ADO are put back before anything is asserted.
+local loc13plus0 "`c(sysdir_plus)'"
+tempfile loc13b
+local loc13plus "`loc13b'_plus"
+mata: mkdir(st_local("loc13plus"))
+local loc13plus "`loc13plus'/"
+quietly cd ..
+local loc13src "`c(pwd)'"
+quietly cd "`loc13src'/test"
+capture findfile jsonio.ado
+local loc13jrc = _rc
+local loc13jfn `"`r(fn)'"'
+local loc13jdir ""
+if `loc13jrc' == 0 {
+    mata: _l13d = ""; _l13f = ""; pathsplit(st_local("loc13jfn"), _l13d, _l13f); st_local("loc13jdir", _l13d)
+}
+local loc13rc = -1
+local loc13ffrc = -1
+local loc13frrc = -1
+local loc13brc = -1
+local loc13ff ""
+local loc13fr ""
+tempfile loc13html
+local loc13html "`loc13html'.html"
+capture erase "`loc13html'"
+tempname llf13
+tempfile llg13
+sysdir set PLUS "`loc13plus'"
+local loc13moved = ("`c(sysdir_plus)'" == "`loc13plus'")
+if `loc13moved' {
+    capture noisily net from "`loc13src'"
+    if _rc == 0 {
+        capture noisily net install dash, replace
+    }
+    local loc13rc = _rc
+    // Only Stata's own directories and the scratch PLUS on the path, and
+    // jsonio's directory for the build.
+    mata: st_global("S_ADO", "BASE;SITE;PLUS" + (st_local("loc13jdir") != "" ? ";" + char(96) + char(34) + st_local("loc13jdir") + char(34) + char(39) : ""))
+    capture findfile dash_render.py
+    local loc13ffrc = _rc
+    local loc13ff `"`r(fn)'"'
+    capture noisily _dash_find_render
+    local loc13frrc = _rc
+    local loc13fr `"`r(fn)'"'
+    if `_loc_jsonio' & "`loc13jdir'" != "" {
+        capture dash clear
+        qui sysuse auto, clear
+        capture noisily dash scatter mpg weight, name(l16) scheme(s1color)
+        quietly log using "`llg13'", replace text name(`llf13')
+        // The page takes s1color too: c(scheme) is whatever this session
+        // was given, and s2color's own background is the fallback's.
+        capture noisily dash build, saving("`loc13html'") replace nobrowser scheme(s1color)
+        local loc13brc = _rc
+        quietly log close `llf13'
+        capture dash clear
+    }
+    mata: st_global("S_ADO", st_local("_loc_sado"))
+}
+sysdir set PLUS "`loc13plus0'"
+local loc13back = ("`c(sysdir_plus)'" == "`loc13plus0'")
+mata: st_local("loc13sado", strofreal(st_global("S_ADO") == st_local("_loc_sado")))
+
+// What the install wrote, and what its renderer makes of it.  Read in
+// Python: dash.pkg's lines hold quotes, and the renderer is loaded from the
+// installed file with the working directory moved to an empty one, so no
+// scheme can be found anywhere but where net install put it.
+python:
+import importlib.util as _l13_iu, os as _l13_os, tempfile as _l13_tf, warnings as _l13_w
+from sfi import Macro as _l13_M
+_l13_plus = _l13_M.getLocal("loc13plus")
+_l13_miss, _l13_fb, _l13_nw, _l13_n, _l13_root = [], [], -1, 0, ""
+with open(_l13_os.path.join("..", "dash.pkg"), encoding="utf-8") as _l13_fh:
+    for _l13_ln in _l13_fh:
+        _l13_p = _l13_ln.split()
+        if len(_l13_p) == 2 and _l13_p[0] == "f" and _l13_p[1].startswith("schemes/"):
+            _l13_n += 1
+            _l13_b = _l13_p[1][len("schemes/"):]
+            if not _l13_os.path.isfile(_l13_os.path.join(_l13_plus, _l13_b[0], _l13_b)):
+                _l13_miss.append(_l13_b)
+_l13_py = _l13_os.path.join(_l13_plus, "py", "dash_render.py")
+if _l13_os.path.isfile(_l13_py):
+    _l13_cwd = _l13_os.getcwd()
+    _l13_os.chdir(_l13_tf.mkdtemp())
+    try:
+        _l13_sp = _l13_iu.spec_from_file_location("_dash_loc13_installed", _l13_py)
+        _l13_m = _l13_iu.module_from_spec(_l13_sp)
+        _l13_sp.loader.exec_module(_l13_m)
+        _l13_root = _l13_m.SchemeParser._PLUS_ROOT or ""
+        with _l13_w.catch_warnings(record=True) as _l13_c:
+            _l13_w.simplefilter("always")
+            for _l13_nm in sorted(_l13_m.SchemeParser._BUILTIN_NAMES):
+                _l13_s = _l13_m.SchemeParser.resolve_or_fallback(_l13_nm, "LOC-15")
+                if _l13_s.is_fallback or _l13_s.name != _l13_nm:
+                    _l13_fb.append(_l13_nm)
+        _l13_nw = len(_l13_c)
+    finally:
+        _l13_os.chdir(_l13_cwd)
+_l13_rp = _l13_os.path.realpath
+_l13_M.setLocal("loc13nsch", str(_l13_n))
+_l13_M.setLocal("loc13miss", " ".join(_l13_miss))
+_l13_M.setLocal("loc13py", "1" if _l13_os.path.isfile(_l13_py) else "0")
+_l13_M.setLocal("loc13d", "1" if _l13_os.path.exists(_l13_os.path.join(_l13_plus, "d", "dash_render.py")) else "0")
+_l13_M.setLocal("loc13rootok", "1" if _l13_root and _l13_rp(_l13_root) == _l13_rp(_l13_plus) else "0")
+_l13_M.setLocal("loc13fb", " ".join(_l13_fb))
+_l13_M.setLocal("loc13nw", str(_l13_nw))
+_l13_M.setLocal("loc13ffok", "1" if _l13_M.getLocal("loc13ff") and _l13_rp(_l13_M.getLocal("loc13ff")) == _l13_rp(_l13_py) else "0")
+_l13_M.setLocal("loc13frok", "1" if _l13_M.getLocal("loc13fr") and _l13_rp(_l13_M.getLocal("loc13fr")) == _l13_rp(_l13_py) else "0")
+end
+
+local loc13warned 0
+local loc13s2 0
+if `loc13brc' == 0 {
+    foreach w13 in "was not found" "could be resolved" "UserWarning" {
+        cert_log_has "`llg13'", needle("`w13'") lower
+        if r(found) local loc13warned 1
+    }
+    cert_file_has "`loc13html'", needle("#eaf2f3") lower
+    local loc13s2 = r(found)
+}
+capture erase "`loc13html'"
+
+assert `loc13moved' == 1
+assert `loc13back' == 1
+assert `loc13sado' == 1
+assert `loc13rc' == 0
+assert `loc13nsch' > 0
+assert "`loc13miss'" == ""
+assert `loc13py' == 1
+assert `loc13d' == 0
+display "LOC-13 PASS: net install files the renderer in PLUS/py and each of the `loc13nsch' shipped schemes in its letter directory"
+assert `loc13ffrc' == 0 & `loc13ffok' == 1
+assert `loc13frrc' == 0 & `loc13frok' == 1
+display "LOC-14 PASS: findfile, and the locator, find the installed renderer in PLUS/py"
+assert `loc13rootok' == 1
+assert "`loc13fb'" == ""
+assert `loc13nw' == 0
+display "LOC-15 PASS: the installed renderer reads every shipped scheme where net install put it, with no fallback and no warning"
+if `_loc_jsonio' & "`loc13jdir'" != "" {
+    assert `loc13brc' == 0
+    assert `loc13warned' == 0
+    assert `loc13s2' == 0
+    display "LOC-16 PASS: a build through the installed renderer draws scheme(s1color) with no fallback warning and none of s2color's background"
+}
+else {
+    display "LOC-16 SKIP: jsonio not installed"
+}
+
+
+// ================================================================
 // LOC-09 — a missing renderer is dash's error, not Python's
 // ================================================================
-// Driven by redefining the locator to fail, which is the only way to reach
-// the branch without uninstalling dash: on any real tree findfile succeeds.
-// What is asserted is the CONTRACT the callers rely on -- a non-zero return
-// and a dash-authored message -- not the internals of the search.
-capture program drop _dash_find_render_real
+// Driven through the REAL locator and a real caller.  For the length of the
+// case the ado-path is narrowed to BASE, a directory holding a copy of
+// dash.ado and no dash_render.py, and the directory jsonio is in (the
+// callers serialise the data with jsonio before they look for the
+// renderer): findfile then finds no dash_render.py, and the one beside
+// dash.ado does not exist -- the case _dash_find_render's refusal is for.
+// What is asserted is the CONTRACT the callers rely on -- rc 601, not
+// Python's r(7102), a dash-authored message, and no dashboard written.
+//
+// Until 24sep2026 this case redefined _dash_find_render as a stub that
+// printed the message and exited 601, and asserted the stub's own output,
+// on the belief that the branch could not be reached "without uninstalling
+// dash": neither the real refusal nor any caller ever ran.  Measured
+// 24sep2026 with the ado-path narrowed so: _dash_find_render rc 601,
+// "dash: cannot locate dash_render.py."; dash build and an immediate
+// dash scatter ..., saving() rc 601 with the same message, and no file.
+// Every result is read into a local, inside a captured block, before the
+// ado-path is put back, so a failure cannot leave it narrowed.
+tempfile lnop
+local ldir "`lnop'_loc09"
+capture mkdir "`ldir'"
+copy "../dash.ado" "`ldir'/dash.ado", replace
+// The directory is named from a tempfile, whose name is handed out again
+// once its do-file ends: nothing left there may pass for this build's page.
+capture erase "`ldir'/l9.html"
+// jsonio's directory, unless the renderer is findable there too (a jsonio
+// kept beside dash's renderer): then only the locator can be driven.
+local ljdir ""
+capture findfile jsonio.ado
+if _rc == 0 {
+    local ljfn `"`r(fn)'"'
+    local ljdir = substr(`"`ljfn'"', 1, strlen(`"`ljfn'"') - strlen("jsonio.ado"))
+    capture findfile dash_render.py, path(`"`ljdir'"')
+    if _rc == 0 local ljdir ""
+}
+local lcaller = (`"`ljdir'"' != "")
+if `lcaller' {
+    dash clear
+    dash scatter mpg weight, name(l9)
+}
+mata: st_local("lsado", st_global("S_ADO"))
+local lrc   = -1
+local lsaid = 0
+local brc   = -1
+local bsaid = 0
+capture noisily {
+    mata: st_global("S_ADO", "BASE;" + char(96) + char(34) + st_local("ldir") + char(34) + char(39) + ///
+        (st_local("ljdir") != "" ? ";" + char(96) + char(34) + st_local("ljdir") + char(34) + char(39) : ""))
+    tempname llf
+    tempfile llg
+    quietly log using "`llg'", replace text name(`llf')
+    capture noisily _dash_find_render
+    local lrc = _rc
+    quietly log close `llf'
+    cert_log_has "`llg'", needle("dash: cannot locate dash_render.py.")
+    local lsaid = r(found)
+    if `lcaller' {
+        tempname lbf
+        tempfile lbg
+        quietly log using "`lbg'", replace text name(`lbf')
+        capture noisily dash build, saving("`ldir'/l9.html") replace nobrowser
+        local brc = _rc
+        quietly log close `lbf'
+        cert_log_has "`lbg'", needle("dash: cannot locate dash_render.py.")
+        local bsaid = r(found)
+    }
+}
+local lblk = _rc
+mata: st_global("S_ADO", st_local("lsado"))
+capture confirm file "`ldir'/l9.html"
+local lfile = (_rc == 0)
+capture erase "`ldir'/l9.html"
+capture erase "`ldir'/dash.ado"
+capture rmdir "`ldir'"
+
+assert `lblk' == 0
+assert `lrc' == 601
+assert `lsaid' == 1
+local lhow "the locator and from dash build"
+if `lcaller' {
+    assert `brc' == 601
+    assert `bsaid' == 1
+    assert `lfile' == 0
+}
+else local lhow "the locator (dash build not driven: jsonio is not installed apart from a dash_render.py)"
+display "LOC-09 PASS: a missing renderer gives rc 601 and a dash message, from `lhow'"
+
+// ================================================================
+// LOC-12 -- every caller stops on it, before Python and before announcing
+// ================================================================
+// The contract LOC-09 states is only worth what the callers do with it.
+// Before WP-05 `dash serve' printed "starting Bokeh Server on port NNNN.
+// Stata is blocked until the server stops" and only then found it had no
+// renderer; with that order restored, LOC-01..11 passed (WP-24).  With a
+// stand-in in place of the locator -- one that fails as LOC-09 shows the
+// real one failing, rc 601 in dash's words -- all three routes must end at
+// its 601, write nothing, and -- for serve -- announce nothing.  (LOC-09
+// drives dash build through the real locator; serve and the one-line form
+// are driven here.)  The stand-in is dropped before anything is asserted,
+// so a failure cannot leave it in memory for the next script.
 capture program drop _dash_find_render
 program define _dash_find_render, rclass
     display as error "dash: cannot locate dash_render.py."
@@ -182,20 +540,62 @@ program define _dash_find_render, rclass
     exit 601
 end
 
-tempname llf
-tempfile llg
-quietly log using "`llg'", replace text name(`llf')
-capture noisily _dash_find_render
-local lrc = _rc
-quietly log close `llf'
-mata: st_local("_loc_said", strofreal(_loc_log_has("`llg'", "cannot locate dash_render.py")))
-assert `lrc' == 601
-assert `_loc_said' == 1
-display "LOC-09 PASS: a missing renderer gives rc 601 and a dash message"
+if `_loc_jsonio' {
+    dash clear
+    qui sysuse auto, clear
+    dash scatter mpg weight, name(l12)
+    tempfile l12out
+    // A tempfile's name is handed out again once the do-file that held it
+    // has ended, and earlier scripts in the runner leave pages under such
+    // names plus .html -- one was read as a page ENV-18 had written
+    // (test_env_guards.cscript, 24sep2026).  The pages are planted, as an
+    // earlier script would leave them, and cleared, so the checks below
+    // that nothing was written fail if the clearing is ever lost.
+    foreach sfx in ".html" "_i.html" {
+        tempname sf12
+        file open `sf12' using "`l12out'`sfx'", write text replace
+        file write `sf12' "a page an earlier script left" _n
+        file close `sf12'
+        capture erase "`l12out'`sfx'"
+    }
+    tempname llf12
+    tempfile llg12
+    quietly log using "`llg12'", replace text name(`llf12')
+    capture noisily dash build, saving("`l12out'.html") replace nobrowser
+    local lrc12b = _rc
+    capture noisily dash serve
+    local lrc12s = _rc
+    capture noisily dash scatter mpg weight, saving("`l12out'_i.html") replace
+    local lrc12i = _rc
+    quietly log close `llf12'
+    capture confirm file "`l12out'.html"
+    local l12wrote_b = (_rc == 0)
+    capture confirm file "`l12out'_i.html"
+    local l12wrote_i = (_rc == 0)
+    cert_log_has "`llg12'", needle("starting Bokeh Server") lower
+    local _loc_ann = r(found)
+    cert_log_has "`llg12'", needle("Traceback") lower
+    local _loc_tb = r(found)
+    dash clear
+}
 
 // Drop the stub.  Nothing follows, so the real one is not reloaded: `do'ing
 // dash.ado again over the programs already in memory is r(110).
 capture program drop _dash_find_render
+
+if `_loc_jsonio' {
+    assert `lrc12b' == 601
+    assert `l12wrote_b' == 0
+    assert `lrc12s' == 601
+    assert `_loc_ann' == 0
+    assert `lrc12i' == 601
+    assert `l12wrote_i' == 0
+    assert `_loc_tb' == 0
+    display "LOC-12 PASS: build, serve and the one-line form stop at the locator's 601; serve announces nothing"
+}
+else {
+    display "LOC-12 SKIP: jsonio not installed"
+}
 
 display ""
 display "All renderer-locator tests PASSED."

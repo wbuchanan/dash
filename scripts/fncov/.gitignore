@@ -1,0 +1,2 @@
+# test/test_function_test_map.py imports these modules on every run.
+__pycache__/

@@ -1,0 +1,316 @@
+*! test_mata_library_guard.cscript  v1.0
+*! Certification script: _dash_require_mata refuses a reloaded Mata library
+*! that lacks ANY function dash.ado calls, and names the one it lacks.
+*!
+*! WHY THIS EXISTS
+*!
+*! _dash_require_mata runs at the entry to every dash command.  When dash's
+*! Mata library is not in memory it reloads dash_parse.mata, then checks
+*! every function in its list `_needed' -- "Every Mata function dash.ado
+*! calls, named once.  Checking a single one would pass a library that
+*! compiled half way."  A function missing from that list is one a
+*! half-compiled library can lack while the guard passes, and the user
+*! meets it later as "<istmt>: 3499 _dash_...() not found", the failure the
+*! guard exists to replace.
+*!
+*! That list was tested by reading it:
+*! test_security_surface.py::test_the_echo_helper_is_in_the_library_dash_requires
+*! asserted that four WP-20 helpers appeared in the TEXT of `_needed', and
+*! test_env_guards.cscript leaves the refusal itself "verified by hand",
+*! because a script cannot take its own package off the ado-path.  It does
+*! not need to.  A stub dash_parse.mata placed FIRST on the ado-path is what
+*! the guard's `findfile' returns, so the guard's reload runs the stub, and
+*! the stub can lack exactly one function.
+*!
+*! Written this way it found two holes (measured 24sep2026):
+*!   * dash.ado calls 23 library functions from Mata and `_needed' named 22
+*!     -- _dash_path_badchar, the saving() path check, was missing: a
+*!     reloaded library without it passed the guard with rc 0, and
+*!     `dash scatter mpg weight, saving(...)' then stopped on "<istmt>:
+*!     3499 _dash_path_badchar() not found".
+*!   * the list was read only after a reload: the guard's first check asked
+*!     for _dash_check_utf8() alone, so a library IN MEMORY that lacked any
+*!     other function passed (MLG-06).
+*!
+*! The oracle is dash.ado itself: every function dash_parse.mata defines that
+*! is called on a `mata:' line (continuation lines joined, comment lines
+*! skipped), whatever its name.  It read only _dash_* names at first, so when
+*! dash.ado began calling _json_escape() from Mata the stub left it out and
+*! MLG-02 failed for a complete library.  A function called there and not
+*! checked by the guard fails MLG-03, whoever adds it.
+*!
+*! Mata is cleared here, which drops dash's library and this script's own
+*! helpers; MLG-05 and MLG-06 put the real library back before the script
+*! ends.
+*!
+*! Tests: MLG-01 through MLG-06
+*!
+*! Usage:  do test/test_mata_library_guard.cscript
+*! Version: 1.0  24sep2026
+
+cscript "the Mata library guard refuses a library missing any function dash calls" adodir ".."
+
+// `cscript' drops every global macro, the runner's $dash_nobrowser with them.
+// Nothing here builds a dashboard; it is set so nothing ever could open one.
+global dash_nobrowser 1
+
+do "../dash_parse.mata"
+do "../dash.ado"
+
+
+// ================================================================
+// MLG-01 -- the oracle: the library functions dash.ado calls from Mata
+// ================================================================
+// Read with Mata's built-ins before anything is cleared.  "/" is written
+// as char(47) so that no // or /// in a string here can be read as a
+// comment or a continuation by the do-file reader.
+capture mata: mata drop _mlg_called()
+mata:
+string rowvector _mlg_called(string scalar adofile, string scalar libfile,
+                             real scalar ndefined)
+{
+    string colvector L
+    string rowvector out, defined
+    string scalar    s, t, fn, sl, cont, sig, call
+    real scalar      i, p
+
+    // The functions the library defines: a signature at the start of a
+    // line, a type word, any further words, then the name and "(" -- the
+    // rule test_program_coverage_map.py reads them by.
+    sig = "^(real|string|void|transmorphic|pointer|numeric|complex|" +
+          "matrix|struct|class)([ \t]+[A-Za-z_][A-Za-z0-9_]*)*" +
+          "[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*[(]"
+    L       = cat(libfile)
+    defined = J(1, 0, "")
+    for (i = 1; i <= rows(L); i++) {
+        if (ustrregexm(L[i], sig)) {
+            fn = ustrregexs(3)
+            if (!anyof(defined, fn)) defined = defined, fn
+        }
+    }
+    ndefined = cols(defined)
+
+    // Every one of them that dash.ado calls on a `mata:' line, whatever its
+    // name: the guard must check _json_escape as surely as _dash_*.
+    sl   = char(47)
+    cont = sl + sl + sl + "[ \t]*$"
+    call = "(^|[^A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)[ \t]*[(]"
+    L    = cat(adofile)
+    out  = J(1, 0, "")
+    s    = ""
+    for (i = 1; i <= rows(L); i++) {
+        t = L[i]
+        if (ustrregexm(t, cont)) {
+            s = s + ustrregexra(t, cont, "") + " "
+            continue
+        }
+        s = strtrim(s + t)
+        if (substr(s, 1, 2) != sl + sl & substr(s, 1, 1) != "*" &
+            ustrregexm(s, "(^|[^A-Za-z0-9_])mata[ \t]*:")) {
+            while (ustrregexm(s, call)) {
+                fn = ustrregexs(2)
+                if (anyof(defined, fn) & !anyof(out, fn)) out = out, fn
+                p = strpos(s, fn)
+                s = substr(s, p + strlen(fn), .)
+            }
+        }
+        s = ""
+    }
+    return(out)
+}
+end
+
+mata: _mlg_nd = .
+mata: st_global("MLG_CALLED", invtokens(_mlg_called("../dash.ado",       ///
+    "../dash_parse.mata", _mlg_nd)))
+mata: st_local("n_defined", strofreal(_mlg_nd))
+mata: mata drop _mlg_nd
+local n_called : word count $MLG_CALLED
+display as text "dash_parse.mata defines `n_defined' functions"
+display as text "dash.ado calls `n_called' of them from Mata: $MLG_CALLED"
+// The extraction itself must work, or every check below is vacuous: the
+// library's signatures are read, and calls are found under both kinds of
+// name.
+assert `n_defined' >= 50
+assert `n_called' >= 20
+assert strpos(" $MLG_CALLED ", " _dash_check_utf8 ") > 0
+assert strpos(" $MLG_CALLED ", " _dash_split_segs ") > 0
+local unprefixed ""
+foreach f of global MLG_CALLED {
+    if substr("`f'", 1, 6) != "_dash_" local unprefixed "`unprefixed' `f'"
+}
+display as text "called without the _dash_ prefix:`unprefixed'"
+// Each is a function of the real library: a call to a name the library
+// does not define would fail for every user, not only a half-loaded one.
+local undefined ""
+foreach f of global MLG_CALLED {
+    capture mata: mata describe `f'()
+    if _rc != 0 local undefined "`undefined' `f'"
+}
+if "`undefined'" != "" {
+    display as error "dash.ado calls functions dash_parse.mata does not define:`undefined'"
+}
+assert "`undefined'" == ""
+display "MLG-01 PASS: dash.ado calls `n_called' functions of dash's Mata library"
+
+
+// ================================================================
+// The stub library, first on the ado-path
+// ================================================================
+// Defines every function in $MLG_CALLED except `omit', plus a marker that
+// only the stub defines, so a check can tell the stub was what reloaded.
+capture program drop _mlg_write_stub
+program define _mlg_write_stub
+    version 16.0
+    args path omit
+    tempname fh
+    file open `fh' using `"`path'"', write text replace
+    file write `fh' "mata:" _n
+    file write `fh' "void _mlg_stub_marker() {}" _n
+    foreach f of global MLG_CALLED {
+        if "`f'" != "`omit'" {
+            file write `fh' "void `f'() {}" _n
+        }
+    }
+    file write `fh' "end" _n
+    file close `fh'
+end
+
+tempfile stubbase
+local stubdir "`stubbase'_mlg_stub"
+capture mkdir "`stubdir'"
+local stub "`stubdir'/dash_parse.mata"
+// With an extension of its own: `log using' adds .log to a name without one.
+local guardlog "`stubdir'/guard.log"
+
+// Everything that runs with the stub on the ado-path runs inside one
+// capture block, so the stub comes off on every path: left on, it would
+// stand in for dash's library in every script the runner runs after this.
+adopath ++ "`stubdir'"
+capture noisily {
+    // MLG-02 -- the control: a stub with every function passes, and it IS
+    // the stub that the guard reloaded.
+    _mlg_write_stub "`stub'" ""
+    capture mata: mata clear
+    capture noisily _dash_require_mata
+    assert _rc == 0
+    capture mata: mata describe _mlg_stub_marker()
+    assert _rc == 0
+    display "MLG-02 PASS: the guard reloads the stub, and a complete library passes"
+
+    // MLG-03 and MLG-04 -- one function missing at a time.
+    local unlisted ""
+    local unnamed ""
+    local notstub ""
+    foreach f of global MLG_CALLED {
+        _mlg_write_stub "`stub'" "`f'"
+        capture mata: mata clear
+        quietly log using "`guardlog'", text replace name(mlg)
+        capture noisily _dash_require_mata
+        local rc_f = _rc
+        quietly log close mlg
+        capture mata: mata describe _mlg_stub_marker()
+        if _rc != 0 local notstub "`notstub' `f'"
+        if `rc_f' != 198 local unlisted "`unlisted' `f'"
+        // Built-ins only: `mata clear' dropped every helper.
+        mata: st_local("_named", strofreal(strpos(                      ///
+            invtokens(cat(st_local("guardlog"))'),                         ///
+            "Missing: " + st_local("f") + "()") > 0))
+        if `_named' == 0 local unnamed "`unnamed' `f'"
+    }
+    if "`notstub'" != "" {
+        display as error "the guard did not reload the stub for:`notstub'"
+    }
+    assert "`notstub'" == ""
+    if "`unlisted'" != "" {
+        display as error "a reloaded library lacking one of these passes the guard:`unlisted'"
+    }
+    assert "`unlisted'" == ""
+    display "MLG-03 PASS: a library lacking any one of the `n_called' functions is refused, r(198)"
+    if "`unnamed'" != "" {
+        display as error "the refusal does not name the missing function for:`unnamed'"
+    }
+    assert "`unnamed'" == ""
+    display "MLG-04 PASS: the refusal names the one function the library lacks"
+}
+local rc_mlg = _rc
+
+// Restore, whatever happened above: the stub off the ado-path and off the
+// disk.
+adopath - "`stubdir'"
+capture log close mlg
+capture erase "`stub'"
+capture erase "`guardlog'"
+capture rmdir "`stubdir'"
+capture program drop _mlg_write_stub
+if `rc_mlg' {
+    display as error "test_mata_library_guard: a check above failed (rc=`rc_mlg')"
+    capture mata: mata clear
+    capture _dash_require_mata
+    exit `rc_mlg'
+}
+
+// ================================================================
+// MLG-05 -- the stub is gone; the guard repairs from the real library
+// ================================================================
+capture mata: mata clear
+capture noisily _dash_require_mata
+assert _rc == 0
+capture mata: mata describe _mlg_stub_marker()
+assert _rc != 0
+foreach f of global MLG_CALLED {
+    capture mata: mata describe `f'()
+    assert _rc == 0
+}
+display "MLG-05 PASS: with the stub gone the guard reloads dash's real library"
+
+
+// ================================================================
+// MLG-06 -- a library already IN MEMORY that lacks one function
+// ================================================================
+// The guard's first check asked for _dash_check_utf8() alone and returned
+// when it was there, so a library in memory that lacked any other function
+// passed, and the command stopped later on "<istmt>: 3499 ... not found"
+// (measured 24sep2026: _dash_split_segs() dropped, guard rc 0, `dash
+// scatter mpg weight' r(3499)).  Re-running dash_parse.mata over such a
+// library defines nothing -- it stops at the first function that already
+// exists, r(3000) -- so the guard drops the library's own functions before
+// it runs the file again, and the real library, which is on the ado-path
+// here, mends it: the guard passes and the function is back.  Where no file
+// can be found the part library is refused by name (test_env_guards.cscript
+// ENV-23b).
+tempfile g6
+local guardlog6 "`g6'.log"
+local refused6 ""
+local notback6 ""
+foreach f of global MLG_CALLED {
+    capture mata: mata drop `f'()
+    quietly log using "`guardlog6'", text replace name(mlg6)
+    capture noisily _dash_require_mata
+    local rc_f = _rc
+    quietly log close mlg6
+    if `rc_f' != 0 local refused6 "`refused6' `f'"
+    mata: st_local("_named", strofreal(strpos(                          ///
+        invtokens(cat(st_local("guardlog6"))'),                            ///
+        "Missing:") > 0))
+    if `_named' local refused6 "`refused6' `f'"
+    capture mata: mata describe `f'()
+    if _rc != 0 local notback6 "`notback6' `f'"
+    // The whole library back before the next function is dropped.
+    capture mata: mata clear
+    capture _dash_require_mata
+}
+capture erase "`guardlog6'"
+if "`refused6'" != "" {
+    display as error "a library in memory lacking one of these was refused, not mended:`refused6'"
+}
+assert "`refused6'" == ""
+if "`notback6'" != "" {
+    display as error "the guard passed without putting back:`notback6'"
+}
+assert "`notback6'" == ""
+display "MLG-06 PASS: a library in memory lacking any one function is mended from the file on the ado-path, and the guard passes"
+
+macro drop MLG_CALLED
+display ""
+display "All Mata library guard tests PASSED."

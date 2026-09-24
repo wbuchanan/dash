@@ -1168,6 +1168,14 @@ class TestTheSavedPageRecountsALayersOwnRows:
         out = _run_js_full(cb.args, cb.code)["sources"]
         layers = _agg_renderers(r.figures.values())
         assert layers, "no aggregate layer was drawn"
+        # `assert layers' passed a by() case that drew one panel's layer of
+        # the two, and the missing panel was never recounted.  Measured
+        # 24sep2026: one aggregate layer a panel -- titled "0" and "1" under
+        # by(foreign) -- and one untitled layer in every other case.
+        want_titles = ["0", "1"] if _AGG_CASES[case][1] else [""]
+        assert sorted(t for t, _rr in layers) == want_titles, (
+            "aggregate layers drawn, by panel title: %s"
+            % sorted(t for t, _rr in layers))
         bad = []
         for title, rr in layers:
             src = rr.data_source
@@ -1639,7 +1647,22 @@ class TestTheLauncherServes:
         from test_server_serves import _Launched, _build_app
         app = _build_app(str(tmp_path))
         with _Launched(app) as srv:
-            _status, page = srv.get("/")
+            status, page = srv.get("/")
+        # The absence is read on the dashboard's own page, or it proves
+        # nothing.  A 4xx or 5xx raises out of get() (a make_document that
+        # raises is a 500, measured 24sep2026), but a 200 page that is not
+        # the dashboard has no viewport either: a session the limiter
+        # refuses is served, with 200, as a page holding only the refusal
+        # (test_a_refused_session_gets_the_refusal_page).  Measured
+        # 24sep2026: 200, 3564 bytes, the session Bokeh embeds (its token)
+        # and the title the app sets, and a charset and a CSP <meta>.
+        assert status == 200, status
+        assert "Bokeh.embed.embed_items" in page and '"token"' in page, (
+            page[:600])
+        assert "<title>Served Dashboard</title>" in page, page[:600]
+        # The control: the same pattern finds the viewport the saved page
+        # declares, in the form dash writes it.
+        assert re.search(r'<meta[^>]+name="viewport"', dr._CSP_META)
         assert not re.search(r'<meta[^>]+name="viewport"', page)
 
 

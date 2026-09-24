@@ -22,10 +22,13 @@ master JSON **unescaped**, so the double quotes in ``label("Curb weight")``
 broke the JSON document. Parsing ``label()`` without fixing that would make
 the feature reachable and immediately fatal, so both are tested here.
 """
+import html
 import json
 import os
+import re
 import sys
 import tempfile
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -133,8 +136,54 @@ class TestTheWidgetGetsTheLabel:
         assert dr.filter_widgets[0].title == "weight"
 
 
+def _document_widget_titles(page):
+    """Every widget title in the Bokeh document embedded in *page*.
+
+    Bokeh writes the document as JSON inside ``<script
+    type="application/json">`` and escapes the markup characters in it, so
+    this reads the document the way BokehJS will: unescaped and parsed.
+    """
+    m = re.search(r'<script type="application/json"[^>]*>(.*?)</script>',
+                  page, re.DOTALL)
+    assert m, "the page carries no Bokeh document"
+    doc = json.loads(html.unescape(m.group(1)))
+    titles = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("name") in ("RangeSlider", "Slider", "Select"):
+                titles.append(node.get("attributes", {}).get("title"))
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(doc)
+    return titles
+
+
 class TestTheLabelIsNotAnInjectionVector:
     """It reaches a widget title that is rendered into the document."""
+
+    _WIDGET = {"range": "RangeSlider", "slider": "Slider",
+               "dropdown": "Select"}
+
+    #: What each payload does, measured 24sep2026 at 68327a8.  None is
+    #: refused outright and no render raises: the label is text, and a
+    #: widget title is text.  The second payload loses its leading double
+    #: quote, which _dash_filter_label strips as Stata's optional quotes
+    #: around a label.  The third payload's ")" closes ``label(`` --
+    #: Stata's own parenthesis rule, which _dash_filter_split follows -- so
+    #: its label is the apostrophe before it, and each ";" after it parts
+    #: another filter() group, refused aloud because "alert(1)" and "//)"
+    #: are not variable names.  payload -> (widget title, refused groups).
+    _OUTCOME = {
+        "<script>alert(1)</script>": ("<script>alert(1)</script>", []),
+        '"><img src=x onerror=alert(1)>':
+            ("><img src=x onerror=alert(1)>", []),
+        "');alert(1);//": ("'", ["alert(1)", "//)"]),
+    }
 
     @pytest.mark.parametrize("payload", [
         "<script>alert(1)</script>",
@@ -148,6 +197,11 @@ class TestTheLabelIsNotAnInjectionVector:
         Bokeh renders a widget title as text and escapes it on the way in,
         so the model may legitimately hold the raw string; what must never
         appear is executable markup in the emitted HTML.
+
+        This used to wrap the render in ``except Exception: return``
+        ("rejected outright is also a correct outcome"), so any exception
+        at all -- a crash included -- passed.  Nothing is rejected outright:
+        the outcome of every payload is measured and asserted as it is.
         """
         var = "foreign" if ftype == "dropdown" else "weight"
         df = pd.DataFrame({
@@ -156,25 +210,36 @@ class TestTheLabelIsNotAnInjectionVector:
             "foreign": np.array([0.0, 1.0] * 10),
         })
         raw = "%s, type(%s) label(%s)" % (var, ftype, payload)
-        import warnings as _w
-        with _w.catch_warnings(record=True) as caught:
-            _w.simplefilter("always")
-            try:
-                dr = _render_raw(raw, df=df)
-            except Exception:
-                return          # rejected outright is also a correct outcome
-        # Since WP-14 a refused filter group is refused ALOUD: the parser
-        # names the group and the reason rather than dropping it in
-        # silence.  The payload with the ';' splits into groups whose
-        # variable tokens are not names, and each is refused with a
-        # warning.  Either outcome -- a widget whose title Bokeh escapes,
-        # or a named refusal -- is correct; silence is not.
-        refused = [str(c.message) for c in caught
-                   if "filter(" in str(c.message) and "refused" in str(c.message)]
-        assert dr.filter_widgets or refused, (raw, [str(c.message) for c in caught])
-        if dr.filter_widgets:
-            assert payload not in dr.rendered_html, (
-                "the payload reached the document unescaped")
+        label, refused_groups = self._OUTCOME[payload]
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dr = _render_raw(raw, df=df)
+        msgs = [str(c.message) for c in caught]
+        # Since WP-14 a refused filter group is refused ALOUD, named with
+        # the reason, never dropped in silence.
+        refused = [m for m in msgs
+                   if m.startswith("dash: filter(") and " refused: " in m]
+        assert refused == [
+            "dash: filter(%s) refused: %r is not a valid variable name; no "
+            "widget was built." % (g, g) for g in refused_groups], msgs
+
+        assert [type(w).__name__ for w in dr.filter_widgets] == \
+            [self._WIDGET[ftype]], (raw, msgs)
+        title = dr.filter_widgets[0].title
+        # A one-sided slider appends its own operator to the title.
+        want = label + " \u2265" if ftype == "slider" else label
+        assert title == want, (raw, title)
+
+        page = dr.rendered_html
+        assert payload not in page, (
+            "the payload reached the document unescaped")
+        for markup in ("<script>alert(1)", "<img src=x"):
+            assert markup not in page, (
+                "executable markup %r reached the document" % markup)
+        # The title did reach the document -- as data, which BokehJS sets
+        # as text -- so the absence above is escaping at work and not a
+        # title that never arrived.
+        assert _document_widget_titles(page) == [want], raw
 
 
 class TestTheTitleIsNotDoubleEscaped:

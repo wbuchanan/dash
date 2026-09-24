@@ -48,10 +48,15 @@
 *! registered graph twoway leaves alone, or registered a name twoway never
 *! would (measured 24sep2026 at 68327a8).  REG-37 through REG-41.
 *!
-*! Tests: REG-01 through REG-41
+*! And two of ROADMAP WP-04's acceptance criteria were held only in part:
+*! AC-04.2 in the globals, never in a build, and AC-04.3 by the word "both"
+*! in a log, whatever the warning named (WP-24's mutation check,
+*! 24sep2026).  REG-42 and REG-43.
+*!
+*! Tests: REG-01 through REG-43
 *!
 *! Usage:  do test/test_registry_collision.cscript
-*! Version: 1.3  24sep2026
+*! Version: 1.4  24sep2026
 
 cscript "graph and KPI share one namespace" adodir ".."
 
@@ -193,6 +198,9 @@ display "REG-03 PASS: the graph still builds after a refused KPI"
 // ================================================================
 dash clear
 dash scatter mpg weight, name(g1)
+// The two globals REG-05 requires gone are there to begin with: were the
+// graph never to write dash_spec_g1, that check could not fail.
+assert `"${dash_json_g1}"' != "" & `"${dash_spec_g1}"' != ""
 capture noisily dash kpi mean(mpg), name(g1, replace) title("Avg")
 assert _rc == 0
 display "REG-04 PASS: name(g1, replace) lets a KPI take a graph's name"
@@ -252,10 +260,20 @@ dash clear
 dash scatter mpg weight, name(g2)
 _reg_count g2
 local before = r(n)
-assert `before' > 0
+// A graph owns two, dash_json_g2 and dash_spec_g2 (_dash_register_graph):
+// so the absences below are of globals that were there.
+assert `before' == 2
+assert `"${dash_json_g2}"' != "" & `"${dash_spec_g2}"' != ""
 capture noisily dash kpi mean(mpg), name(g2, replace) title("K")
 assert _rc == 0
 _reg_count g2
+local after = r(n)
+display as text "  globals g2 owns -- the graph: `before'  the KPI replacing it: `after'"
+// The count after the replace used to be taken and never read.  A KPI
+// given a title and nothing else owns seven -- its marker and __sta,
+// __var, __val, __dsp, __tit and __upd, as REG-20 counts for KPI a -- so
+// an eighth the replace leaves behind is seen here (24sep2026).
+assert `after' == 7
 // Only the KPI's own globals remain: no dash_json_g2, no dash_spec_g2.
 assert `"${dash_json_g2}"' == ""
 assert `"${dash_spec_g2}"' == ""
@@ -311,7 +329,12 @@ tempfile out3
 capture noisily dash build, saving("`out3'.html") replace nobrowser
 local brc = _rc
 quietly log close `blf'
-mata: st_local("_reg_warned", strofreal(_reg_log_has("`blg'", "both")))
+// The words and the entry's name, as the PASS line claims, searched with
+// the log's wrapping undone.  The needle was "both", anywhere, in any case:
+// a message that named no entry, or any other line holding the word,
+// passed.
+cert_log_has "`blg'", needle("dash build: 'b1' is registered as both a graph and a KPI")
+local _reg_warned = r(found)
 assert `brc' == 0
 assert `_reg_warned' == 1
 display "REG-15 PASS: an entry registered as both is named in the output"
@@ -1292,6 +1315,68 @@ if r(t41) > 30 {
 _reg_still_g1
 _reg_verdict REG-41
 display "REG-41 PASS: a hundred name()s in one list, sixty groups each with one, and four hundred are refused at once"
+
+// ================================================================
+// REG-42..43 -- ROADMAP WP-04's AC-04.2 and AC-04.3 as written
+// ================================================================
+// Added by WP-24's mutation check of WP-04.  REG-04 to REG-06 hold AC-04.2
+// in the globals but never build: no case built a dashboard after a KPI
+// took a graph's name.  REG-15 holds AC-04.3 by the word "both" in the log,
+// which passes whatever the warning names -- measured, with the entry's
+// name taken out of the warning, REG-15 still passed.
+
+// ---- REG-42 -- AC-04.2: with replace, the build holds the KPI card and
+// no trace of the graph it replaced ----
+dash clear
+dash scatter mpg weight, name(g1) title("Graph g1")
+capture noisily dash kpi mean(mpg), name(g1, replace) title("Avg")
+assert _rc == 0
+assert `"${dash_json_g1}"' == ""
+assert "${dash_graph_registry}" == "g1"
+_reg_spec r42
+assert r(rc) == 0
+local sp "`r(spec)'"
+cert_file_has "`sp'", needle(`""graphs":[]"')
+assert r(found) == 1
+cert_file_has "`sp'", needle(`"{"name":"g1","stat":"mean","var":"mpg""')
+assert r(found) == 1
+_reg_build r42
+assert r(rc) == 0
+local pg "`r(page)'"
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("registered as both")
+assert r(found) == 0
+cert_file_has "`pg'", needle(`"kpi_val_g1\""')
+assert r(found) == 1
+cert_file_has "`pg'", needle("&gt;Avg&lt;")
+assert r(found) == 1
+cert_file_has "`pg'", needle("Graph g1")
+assert r(found) == 0
+display "REG-42 PASS: AC-04.2 -- after name(g1, replace) the build draws the KPI card, holds no graph g1 and warns of no entry held twice"
+
+// ---- REG-43 -- AC-04.3: an entry the build draws only half of is named
+// in the warning ----
+// The state no registrar can reach, set by hand as REG-15 sets it.
+dash clear
+dash scatter mpg weight, name(b1) title("Graph b1")
+global dash_kpi_b1      "1"
+global dash_kpi_b1__sta "mean"
+global dash_kpi_b1__var "mpg"
+global dash_kpi_b1__val "21"
+global dash_kpi_b1__dsp "21"
+global dash_kpi_b1__tit "forced"
+global dash_kpi_b1__upd "filter"
+_reg_build r43
+assert r(rc) == 0
+local pg "`r(page)'"
+local lg "`r(log)'"
+cert_file_has "`lg'", needle("dash build: 'b1' is registered as both a graph and a KPI; drawing the KPI.")
+assert r(found) == 1
+cert_file_has "`pg'", needle("&gt;forced&lt;")
+assert r(found) == 1
+cert_file_has "`pg'", needle("Graph b1")
+assert r(found) == 0
+display "REG-43 PASS: AC-04.3 -- the build names b1, the entry it skips the graph of, and draws its KPI card"
 
 dash clear
 macro drop REG_BAD REG_SEEN

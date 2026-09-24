@@ -43,7 +43,7 @@
 *! NUL is absent throughout: a Stata string cannot carry one, so such a case
 *! would measure Stata's string handling rather than the validator.
 *!
-*! Tests: UTF-01 through UTF-12
+*! Tests: UTF-01 through UTF-13
 *!
 *! Usage:  do test/test_utf8_validation.cscript
 *! Version: 1.0  22sep2026
@@ -67,7 +67,9 @@ string scalar _u8_bytes(string scalar spec)
 
 // Compare the validator against the fixture, and report how far apart they
 // are.  Returns the number of mismatches; writes the first few to a file so
-// a failure says WHICH sequence, not merely that one exists.
+// a failure says WHICH sequence, not merely that one exists.  The number
+// of sequences compared goes to the local _u8_ntot, for UTF-10 to hold
+// exact: zero mismatches out of zero sequences is no comparison.
 real scalar _u8_diff(string scalar infile, string scalar outfile)
 {
     real scalar   fh, oh, nbad, ntot, want, got
@@ -94,6 +96,7 @@ real scalar _u8_diff(string scalar infile, string scalar outfile)
     fclose(fh)
     fclose(oh)
     printf("  fixture: %f sequences, %f mismatch(es)\n", ntot, nbad)
+    st_local("_u8_ntot", strofreal(ntot))
     return(nbad)
 }
 end
@@ -181,18 +184,32 @@ display "UTF-09 PASS: control bytes are well-formed and left to the escaper"
 // ================================================================
 // UTF-10 — the differential, against Python's own decoder
 // ================================================================
+// The fixture is committed beside this script, so its absence is a broken
+// checkout, not a missing dependency: a failure, never the SKIP (222) it
+// was, which the runner counted as "dependency unavailable" -- and which
+// skipped UTF-11 and UTF-12 with it.
 capture confirm file "fixtures/utf8_cases.txt"
 if _rc != 0 {
-    display as error "SKIP: test/fixtures/utf8_cases.txt is missing."
-    exit 222
+    display as error "UTF-10 FAIL: test/fixtures/utf8_cases.txt is missing; it is part of the repository."
+    exit 601
 }
 tempfile _u8_bad
+local _u8_ntot = -1
 mata: st_local("_u8_nbad", strofreal(_u8_diff("fixtures/utf8_cases.txt", "`_u8_bad'")))
 if `_u8_nbad' != 0 {
     display as error "dash's validator disagrees with Python on `_u8_nbad' sequence(s):"
     type "`_u8_bad'"
 }
 assert `_u8_nbad' == 0
+// Every sequence was compared: 2,245 -- the fixture's 2,251 lines less its
+// six comment lines, as scripts/gen_utf8_cases.py writes them from a fixed
+// seed (measured 24sep2026).  The count was printed and never checked, so
+// a fixture cut short, or one whose separator this reader does not split
+// on, compared nothing and passed.
+if `_u8_ntot' != 2245 {
+    display as error "UTF-10 FAIL: compared `_u8_ntot' fixture sequence(s), not 2245"
+}
+assert `_u8_ntot' == 2245
 display "UTF-10 PASS: agrees with Python's decoder on every fixture sequence"
 
 
@@ -201,26 +218,97 @@ display "UTF-10 PASS: agrees with Python's decoder on every fixture sequence"
 // ================================================================
 // It was called at exactly one entry point, so KPI titles, build titles and
 // subtitles, tabs() and filter labels had no gate at all.
+//
+// Held exact, and per program (24sep2026).  `>= 6' equalled the six gates
+// there are -- one in each of _dash_plot, _dash_kpi, _dash_prepare_spec,
+// _dash_build, _dash_serve_spec and _dash_serve -- and a count cannot see
+// WHERE a gate is: one moved out of _dash_kpi into a second line of
+// _dash_plot left six.  Nor could it see a gate commented out with `*',
+// which the counter read as code (it skipped only `//' and `*!' lines).
+// Comment lines of every kind -- //, * and /* */ -- are skipped now.  A new
+// entry point must add its gate here as well as in dash.ado.
 mata:
+// 1 if `line' is a comment, not code: a // or * line, or a line of a /* */
+// comment -- `inblock' carries such a comment across lines.
+real scalar _u8_is_comment(string scalar line, real scalar inblock)
+{
+    string scalar t
+    t = strtrim(line)
+    if (inblock) {
+        if (strpos(t, "*/")) inblock = 0
+        return(1)
+    }
+    if (substr(t, 1, 2) == "/*") {
+        if (!strpos(substr(t, 3, .), "*/")) inblock = 1
+        return(1)
+    }
+    return(substr(t, 1, 2) == "//" | substr(t, 1, 1) == "*")
+}
+
 real scalar _u8_code_has(string scalar fn, string scalar needle)
 {
-    real scalar   fh, n
-    string scalar line, trimmed
+    real scalar   fh, n, inblock
+    string scalar line
     n = 0
+    inblock = 0
     fh = fopen(fn, "r")
     while ((line = fget(fh)) != J(0,0,"")) {
-        trimmed = strltrim(line)
-        if (substr(trimmed, 1, 2) == "//") continue
-        if (substr(trimmed, 1, 2) == "*!") continue
+        if (_u8_is_comment(line, inblock)) continue
         if (strpos(line, needle)) n = n + 1
     }
     fclose(fh)
     return(n)
 }
+
+// The program each code line holding `needle' sits in, in file order,
+// space-separated: one name per gate.
+string scalar _u8_code_sites(string scalar fn, string scalar needle)
+{
+    real scalar   fh, inblock, k
+    string scalar line, t, prog, out
+    prog = ""
+    out = ""
+    inblock = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (_u8_is_comment(line, inblock)) continue
+        t = strtrim(line)
+        if (substr(t, 1, 15) == "program define ") {
+            prog = strtrim(substr(t, 16, .))
+            k = strpos(prog, ",")
+            if (k) prog = strtrim(substr(prog, 1, k - 1))
+        }
+        if (strpos(line, needle)) out = out + " " + prog
+    }
+    fclose(fh)
+    return(strtrim(out))
+}
+
+// 1 if any line of a captured log contains needle.
+real scalar _u8_log_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, found
+    string scalar line
+    found = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0,0,"")) {
+        if (strpos(line, needle)) found = 1
+    }
+    fclose(fh)
+    return(found)
+}
 end
 mata: st_local("_u8_gates", strofreal(_u8_code_has("../dash.ado", ///
     "_dash_check_utf8(strtrim")))
-assert `_u8_gates' >= 6
+mata: st_local("_u8_sites", _u8_code_sites("../dash.ado", ///
+    "_dash_check_utf8(strtrim"))
+local _u8_want "_dash_plot _dash_kpi _dash_prepare_spec _dash_build _dash_serve_spec _dash_serve"
+if `"`_u8_sites'"' != "`_u8_want'" {
+    display as error "UTF-11 FAIL: the gate is in: `_u8_sites'"
+    display as error "             expected in:  `_u8_want'"
+}
+assert `_u8_gates' == 6
+assert `"`_u8_sites'"' == "`_u8_want'"
 display "UTF-11 PASS: the gate runs at every command entry point, not one"
 
 // And the validator itself is reached through that gate, not bypassed.
@@ -229,6 +317,29 @@ assert _rc == 0
 capture mata: _dash_check_utf8(_u8_bytes("237,160,128"))
 assert _rc != 0
 display "UTF-12 PASS: the gate rejects a surrogate and passes ordinary text"
+
+// ================================================================
+// UTF-13 -- a clean r(198) naming the problem (AC-08.1)
+// ================================================================
+// UTF-12 asks only for a non-zero code.  Measured under WP-24: with the
+// gate's message reduced to "invalid input", UTF-01..12 and P8-86..89 all
+// passed, and with its exit code changed UTF-01..12 did.  Every sequence the
+// GAPS A9 table lists goes through the gate itself here.
+tempname u13lf
+tempfile u13lg
+local u13bad ""
+foreach seq in "224,128,175" "224,159,191" "237,160,128" "237,176,128" ///
+        "240,128,128,128" "244,144,128,128" {
+    quietly log using "`u13lg'", replace text name(`u13lf')
+    capture noisily mata: _dash_check_utf8("x" + _u8_bytes("`seq'") + "y")
+    local u13rc = _rc
+    quietly log close `u13lf'
+    mata: st_local("u13said", strofreal(_u8_log_has(st_local("u13lg"), "non-UTF-8")))
+    if `u13rc' != 198 | `u13said' != 1 local u13bad "`u13bad' [`seq': rc `u13rc', named `u13said']"
+}
+if "`u13bad'" != "" display as error "not a clean r(198) naming the bytes:`u13bad'"
+assert "`u13bad'" == ""
+display "UTF-13 PASS: every A9 sequence is r(198) with a message naming non-UTF-8 input"
 
 capture program drop _u8
 

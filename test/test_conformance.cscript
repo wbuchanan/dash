@@ -14,15 +14,32 @@
 *! incapable of noticing -- which is exactly what `pci' and `pcscatter' did,
 *! for as long as the package has existed, without one test failing.
 *!
-*! So this script registers a corpus covering every plot type dash advertises
-*! and every option family, then renders all of it in ONE `dash build', and
-*! asserts three things:
+*! So this script registers a corpus covering every plot type dash draws --
+*! exactly the renderer's own list, _dash_plot_type_names() -- and every
+*! option family, then renders all of it in ONE `dash build', and asserts
+*! three things:
 *!
 *!   1. no command is rejected          -- rc 0 on every registration
-*!   2. no graph is silently dropped    -- every name reaches the output
-*!   3. no layer silently draws nothing -- the renderer reports an empty
-*!                                         layer by graph and plot number,
-*!                                         and the log must hold none
+*!   2. no graph is silently dropped    -- the saved page holds one grid
+*!                                         cell per registered name, in
+*!                                         registry order, each a figure
+*!   3. no layer silently draws nothing -- in the saved page every corpus
+*!                                         figure draws, per layer its spec
+*!                                         holds, a visible glyph with a
+*!                                         finite value; and the renderer's
+*!                                         own per-layer report names none
+*!
+*! 2 and 3 are read off what was DRAWN -- the page's Bokeh document, against
+*! each graph's spec in the registry -- not off a message.  C-03 used to pass
+*! when the build log held no line containing "drew nothing", so a reworded
+*! report, or one that Stata's log wrapping split (a Python warning starts
+*! with the path to dash_render.py, so where it wraps depends on where the
+*! checkout lives), passed whatever was drawn (GAPS.md L6).  The report is
+*! still read, as a second witness, and two control layers that draw
+*! nothing -- one for each form the report takes -- are rendered in the same
+*! build, so its wording and its way into the log are proved on every run:
+*! a reworded report fails a control rather than passing the corpus.  C-00
+*! holds the readers themselves to what they claim.
 *!
 *! One build renders the whole corpus, so the cost is one Python invocation
 *! rather than one per command.
@@ -59,6 +76,76 @@ global dash_nobrowser 1
 
 capture program drop cert_file_has
 quietly do "cert_helpers.do"
+
+// ----------------------------------------------------------------
+// C-00 -- the readers every verdict below rests on.
+// ----------------------------------------------------------------
+// C-03..C-05 judge a log and the saved page by searching them, so the
+// searches (cert_helpers.do) are held to what they claim first, on files
+// whose contents are known:
+//   * cert_file_has finds a needle that straddles the 32,768-character
+//     pieces fget() reads a long line in -- a saved dashboard's lines run
+//     to ~100,000 characters -- and cert_file_count counts every copy;
+//   * cert_log_has finds a message that Stata's own log wrapping broke
+//     mid-word, in a log Stata wrote, where a search of the raw lines does
+//     not, and counts logical lines, not physical ones;
+//   * each reports a file it cannot open as r(603), never as "absent".
+tempfile c0a c0b
+mata:
+_c0 = fopen(st_local("c0a"), "w")
+fput(_c0, ("a" * 32765) + "NEEDLE" + ("b" * 40000) + "NEEDLE" + ("c" * 30000) + "NEEDLE")
+fclose(_c0)
+_c0 = fopen(st_local("c0b"), "w")
+fput(_c0, ("a" * 32765) + "NEEDLE" + ("b" * 100))
+fclose(_c0)
+mata drop _c0
+end
+// c0b's one NEEDLE sits at 32,766..32,771: across the first piece's end.
+cert_file_has "`c0b'", needle("NEEDLE")
+assert r(found) == 1
+cert_file_has "`c0b'", needle("needle") lower
+assert r(found) == 1
+cert_file_has "`c0b'", needle("NEEDLES")
+assert r(found) == 0
+cert_file_count "`c0a'", needle("NEEDLE")
+assert r(count) == 3
+cert_file_count "`c0b'", needle("NEEDLE")
+assert r(count) == 1
+
+// A log Stata wraps: at linesize 80 the message breaks inside "global".
+// The command is spelled so that its echo never holds the needle whole.
+local c0log "`c(tmpdir)'dash_cf_c00.log"
+capture log close _c0log
+quietly log using "`c0log'", text replace name(_c0log)
+local c0ls = c(linesize)
+set linesize 80
+display ("x" * 70) + " Set glo" + "bal dash_max_by_groups to draw more."
+display ("again: Set glo" + "bal dash_max_by_groups to draw more.")
+set linesize `c0ls'
+quietly log close _c0log
+cert_file_has "`c0log'", needle("global dash_max_by_groups to draw more")
+local c0raw = r(found)
+cert_log_has "`c0log'", needle("global dash_max_by_groups to draw more")
+assert r(found) == 1
+assert r(count) == 2
+cert_log_has "`c0log'", needle("GLOBAL DASH_MAX_BY_GROUPS") lower
+assert r(count) == 2
+cert_log_has "`c0log'", needle("dash_max_by_groups to draw less")
+assert r(found) == 0 & r(count) == 0
+// The first copy is wrapped, so a raw search finds only the second.  Were
+// neither wrapped, the check above would not have tested the re-join.
+mata: st_local("c0phys", strofreal(sum(strpos(cat(st_local("c0log")), "global dash_max_by_groups to draw more") :> 0)))
+assert `c0raw' == 1 & `c0phys' == 1
+capture erase "`c0log'"
+
+// A file that cannot be opened is an error, not "absent".
+local c0none "`c(tmpdir)'dash_cf_c00_no_such_file.txt"
+capture erase "`c0none'"
+foreach c0cmd in cert_file_has cert_log_has cert_file_count {
+    capture `c0cmd' "`c0none'", needle("x")
+    assert _rc == 603
+}
+display "C-00 PASS: the file, log and count readers find what the file holds, across fget's pieces and Stata's wrapping"
 
 sysuse auto, clear
 generate double lo   = mpg - 3
@@ -114,12 +201,72 @@ while r(eof) == 0 {
 }
 file close `fh'
 
+// The controls: two layers dash accepts and draws nothing for, one in each
+// form of the renderer's report (_dash_report_empty_layer, through the one
+// rule both modes run, _dash_note_empty_layer):
+//   ctl   a function whose expression the whitelist refuses -- it is not a
+//         function dash knows -- reported whatever the data:
+//           dash: graph 'ctl' plot 1 (function) drew nothing.
+//         (twoway refuses this command, r(133) "unknown function";
+//         measured 24sep2026.  Were dash to refuse it too, ctl_rc below
+//         fails, and a function drawn empty must be found another way.)
+//   ctl2  a scatter of a variable missing on every observation -- twoway
+//         draws it, empty and silent (rc 0, measured 24sep2026) -- which
+//         the renderer reports with the rows it had:
+//           dash: graph 'ctl2' plot 1 (scatter) drew nothing from 74
+//           observations.
+// C-03 requires these to be the only figures with nothing on them and the
+// only layers reported: that proves, on every run, that the page check can
+// see an empty figure and that each form of the report reaches this log in
+// the words C-03 reads.
+quietly generate double allmiss = .
+capture noisily dash function y = nosuchfunction(x), range(0 10) name(ctl)
+local ctl_rc = _rc
+capture noisily dash scatter allmiss weight, name(ctl2)
+local ctl_rc = max(`ctl_rc', _rc)
+
+// Every command was read: the loop ran once per line the fixture holds,
+// counted here without it.  (It was held only to a floor of 55, so a loop
+// that stopped early lost the rest of the corpus without a word.)
+mata: st_local("c1_lines", strofreal(sum(cat("fixtures/conformance_corpus.txt") :!= "")))
 
 display ""
-display "C-01: `n_cmd' commands registered, `n_bad' rejected"
-assert `n_cmd' >= 55
+display "C-01: `n_cmd' commands registered of `c1_lines' in the corpus, `n_bad' rejected"
+assert `n_cmd' == `c1_lines'
 assert `n_bad' == 0
-display "C-01 PASS: every corpus command was accepted"
+assert `ctl_rc' == 0
+
+// The corpus covers every plot type the renderer draws, and nothing else:
+// the types in the registered specs against _dash_plot_type_names(), the
+// list read off the dispatch tables both render modes use.
+capture findfile dash_render.py
+assert _rc == 0
+local renderpy `"`r(fn)'"'
+python:
+import importlib.util
+import json
+from sfi import Macro
+_c1s = importlib.util.spec_from_file_location("_dash_render_c01",
+                                              Macro.getLocal("renderpy"))
+_c1m = importlib.util.module_from_spec(_c1s)
+_c1s.loader.exec_module(_c1m)
+_c1drawn = set(_c1m._dash_plot_type_names())
+_c1types = set()
+for _c1n in Macro.getLocal("names").split():
+    for _c1p in json.loads(Macro.getGlobal("dash_json_" + _c1n))["plots"]:
+        _c1types.add(_c1p["type"])
+Macro.setLocal("c1_missing", " ".join(sorted(_c1drawn - _c1types)))
+Macro.setLocal("c1_extra", " ".join(sorted(_c1types - _c1drawn)))
+Macro.setLocal("c1_ntypes", str(len(_c1drawn)))
+del _c1s, _c1m
+end
+if "`c1_missing'`c1_extra'" != "" {
+    display as error "C-01 FAIL: plot types dash draws that the corpus never renders: `c1_missing'"
+    display as error "           types in the corpus the renderer does not list: `c1_extra'"
+}
+assert "`c1_missing'`c1_extra'" == ""
+assert `c1_ntypes' > 0
+display "C-01 PASS: all `n_cmd' corpus commands were accepted, covering all `c1_ntypes' plot types dash draws"
 
 // ----------------------------------------------------------------
 // C-02 — render the whole corpus in one build, capturing the log.
@@ -136,63 +283,151 @@ assert `build_rc' == 0
 display "C-02 PASS: the corpus rendered (rc 0)"
 
 // ----------------------------------------------------------------
-// C-03 — no layer drew nothing.
+// C-03 and C-04 -- what the saved page draws.
 // ----------------------------------------------------------------
-// The renderer names an empty layer by graph and plot number.  Anything
-// reported here is a command dash accepted and then did not draw.
-tempname lg
-local n_empty = 0
-local emptylist ""
-file open `lg' using "`buildlog'", read text
-file read `lg' line
-while r(eof) == 0 {
-    if strpos(`"`macval(line)'"', "drew nothing") > 0 {
-        local ++n_empty
-        local emptylist `"`emptylist' | `macval(line)'"'
-    }
-    file read `lg' line
-}
-file close `lg'
+// The page's one Bokeh document is read back with Bokeh.  Its layout is a
+// grid with one cell per registered name, placed in registry order (no
+// layout() is given), so each cell is matched to its graph's spec in the
+// registry ($dash_json_<name>).  A cell is a figure, or a sub-grid of
+// figures for a by() graph.  What a figure DRAWS is its visible glyph
+// renderers whose data holds a finite value -- the legend swatches a
+// colorvar() graph adds are invisible and are not counted, and a column of
+// missing values draws nothing.
+//
+//   C-04: the grid has one cell per registered name, each a figure;
+//   C-03: every corpus figure draws at least as many glyphs as its spec
+//         has layers, and the controls' figures draw none.
+local c3page "`outhtml'.html"
+python:
+import json
+import math
+import re
+import numpy as np
+from sfi import Macro
+from bokeh.document import Document
+from bokeh.models import GlyphRenderer, GridPlot, Plot
 
-if `n_empty' > 0 {
-    display as error "C-03 FAIL: `n_empty' layer(s) drew nothing:"
-    display as error `"`emptylist'"'
-}
-assert `n_empty' == 0
-display "C-03 PASS: every layer in the corpus drew something"
 
-// ----------------------------------------------------------------
-// C-04 — no graph was silently dropped.
-// ----------------------------------------------------------------
-// The renderer names any registered graph that did not become a figure.
-// A graph dropped between the registry and the dashboard leaves no other
-// trace: the file is written, rc is 0, and the user counts the panels.
-tempname lg2
-local n_drop = 0
-local droplist ""
-file open `lg2' using "`buildlog'", read text
-file read `lg2' line
-while r(eof) == 0 {
-    if strpos(`"`macval(line)'"', "did not reach") > 0 {
-        local ++n_drop
-        local droplist `"`droplist' | `macval(line)'"'
-    }
-    file read `lg2' line
-}
-file close `lg2'
+def _c3_finite(value):
+    # How many finite numbers a column holds, looking inside nested lists
+    # and arrays (a patch or multi-line glyph keeps one list per shape).
+    n, stack = 0, [value]
+    while stack:
+        x = stack.pop()
+        if x is None or isinstance(x, (str, bytes, bool)):
+            continue
+        if isinstance(x, np.ndarray):
+            if x.dtype.kind in "fiu":
+                n += int(np.isfinite(x.astype(float)).sum())
+            elif x.dtype.kind == "O":
+                stack.extend(x.tolist())
+        elif isinstance(x, (list, tuple)):
+            stack.extend(x)
+        elif isinstance(x, (int, float)) and math.isfinite(x):
+            n += 1
+    return n
 
-if `n_drop' > 0 {
-    display as error "C-04 FAIL: a registered graph was dropped:"
-    display as error `"`droplist'"'
-}
-assert `n_drop' == 0
+
+def _c3_drawn(fig):
+    return sum(1 for r in fig.renderers
+               if isinstance(r, GlyphRenderer) and r.visible
+               and any(_c3_finite(c) for c in r.data_source.data.values()))
+
+
+def _c3_grid(doc):
+    # The dashboard's grid: the first GridPlot below the roots.
+    todo = list(doc.roots)
+    while todo:
+        m = todo.pop(0)
+        if isinstance(m, GridPlot):
+            return m
+        todo.extend(getattr(m, "children", None) or [])
+    return None
+
+
+with open(Macro.getLocal("c3page"), encoding="utf-8") as _c3fh:
+    _c3html = _c3fh.read()
+_c3blocks = re.findall(
+    r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+    _c3html, re.S)
+_c3docs = [d for b in _c3blocks for d in json.loads(b).values()]
+_c3grid = _c3_grid(Document.from_json(_c3docs[0])) if len(_c3docs) == 1 else None
+_c3reg = Macro.getGlobal("dash_graph_registry").split()
+_c3cells = ([c[0] for c in sorted(_c3grid.children, key=lambda c: (c[1], c[2]))]
+            if _c3grid is not None else [])
+_c4bad, _c3bad = [], []
+if len(_c3docs) != 1 or _c3grid is None:
+    _c4bad.append("the page holds %d Bokeh documents, and no grid was found "
+                  "in the first" % len(_c3docs))
+elif len(_c3cells) != len(_c3reg):
+    _c4bad.append("%d grid cells for %d registered names"
+                  % (len(_c3cells), len(_c3reg)))
+for _c3name, _c3cell in zip(_c3reg, _c3cells):
+    if isinstance(_c3cell, Plot):
+        _c3figs = [_c3cell]
+    elif isinstance(_c3cell, GridPlot):
+        _c3figs = [c[0] for c in _c3cell.children if isinstance(c[0], Plot)]
+    else:
+        _c3figs = []
+    if not _c3figs:
+        _c4bad.append("%s: its cell holds no figure (%s)"
+                      % (_c3name, type(_c3cell).__name__))
+        continue
+    _c3layers = len(json.loads(Macro.getGlobal("dash_json_" + _c3name))["plots"])
+    _c3counts = [_c3_drawn(f) for f in _c3figs]
+    if _c3name in ("ctl", "ctl2"):
+        if any(_c3counts):
+            _c3bad.append("%s: the control drew %s, where it draws nothing"
+                          % (_c3name, _c3counts))
+    elif min(_c3counts) < _c3layers:
+        _c3bad.append("%s: %d layer(s), glyphs drawn per figure %s"
+                      % (_c3name, _c3layers, _c3counts))
+for _c3line in _c4bad + _c3bad:
+    print("C-03/C-04: " + _c3line)
+Macro.setLocal("c4_ncells", str(len(_c3cells)))
+Macro.setLocal("c4_nbad", str(len(_c4bad)))
+Macro.setLocal("c3_nbad", str(len(_c3bad)))
+del _c3html, _c3blocks, _c3docs, _c3grid, _c3cells
+end
+local n_reg : word count ${dash_graph_registry}
+display "C-04: `c4_ncells' grid cells in the page for `n_reg' registered names"
+assert `c4_nbad' == 0
+assert `c4_ncells' == `n_reg' & `n_reg' == `n_cmd' + 2
+
+// The renderer's own report of a graph dropped between the registry and the
+// page, read as a second witness: none.  The words read are held to the
+// line that emits them, so rewording the report fails here instead of
+// passing unseen.
+cert_file_has "`renderpy'", needle("registered graph(s) did not reach ")
+assert r(found) == 1
+cert_log_has "`buildlog'", needle("registered graph(s) did not reach")
+assert r(count) == 0
 
 // And the file is real, not an empty shell.
 capture confirm file "`outhtml'.html"
 assert _rc == 0
 checksum "`outhtml'.html"
 assert r(filelen) > 100000
-display "C-04 PASS: all `n_cmd' graphs reached the rendered dashboard"
+display "C-04 PASS: all `n_reg' registered graphs reached the page, each as a figure in its own cell"
+
+// C-03: what was drawn, then what the renderer said.  The report names an
+// empty layer by graph, plot number and type, "(<type>) drew nothing" in
+// both of its forms; the controls' must be the only two, each in exactly
+// its own words.
+cert_log_has "`buildlog'", needle(") drew nothing")
+local c3_nrep = r(count)
+cert_log_has "`buildlog'", needle("dash: graph 'ctl' plot 1 (function) drew nothing.")
+local c3_nctl = r(count)
+cert_log_has "`buildlog'", needle("dash: graph 'ctl2' plot 1 (scatter) drew nothing from 74 observations.")
+local c3_nctl2 = r(count)
+display "C-03: `c3_nbad' figure(s) drew less than they should; `c3_nrep' empty-layer report(s), `c3_nctl' + `c3_nctl2' of them the controls'"
+if `c3_nbad' > 0 | `c3_nrep' != 2 | `c3_nctl' != 1 | `c3_nctl2' != 1 {
+    display as error "C-03 FAIL: a corpus layer drew nothing, or a control was not seen; the build log:"
+    type "`buildlog'"
+}
+assert `c3_nbad' == 0
+assert `c3_nrep' == 2 & `c3_nctl' == 1 & `c3_nctl2' == 1
+display "C-03 PASS: every corpus figure drew a glyph per layer; only the two controls drew nothing, and each was reported"
 
 // ----------------------------------------------------------------
 // C-05 — every documented example parses clean.
@@ -266,26 +501,51 @@ program define _cf_help_register
     c_local n_hbad `n_hbad'
 end
 
+// The control, registered under the same log: an option twoway has and
+// dash does not draw, so the note must name it.  It proves on every run
+// that the note reaches this log in the words read below -- the check used
+// to pass whenever no line held "ignoring unsupported", so a reworded note
+// passed every example unread.
+capture program drop _cf_help_control
+program define _cf_help_control
+    version 16.0
+    capture noisily dash scatter mpg weight, addplot(line mpg weight) name(hctl)
+    c_local n_hctl_rc = _rc
+end
+
+// An empty registry: the corpus is done with, and left registered it put
+// the examples within two graphs of the 100 a dashboard draws (71 + 27 =
+// 98), so two more corpus lines -- or the controls -- got an example or the
+// control refused for the registry being full rather than for itself.
+quietly dash clear
+
 local helplog "`c(tmpdir)'dash_cf_help.log"
 capture log close _cfhelp
 capture erase "`helplog'"
 quietly log using "`helplog'", replace text name(_cfhelp)
 _cf_help_register
+_cf_help_control
 capture quietly log close _cfhelp
 
+// Every example was read: one registration per line the fixture holds.
+mata: st_local("c5_lines", strofreal(sum(cat("fixtures/help_examples.txt") :!= "")))
+
 display ""
-display "C-05: `n_help' documented examples registered, `n_hbad' rejected"
-assert `n_help' >= 25
+display "C-05: `n_help' documented examples registered of `c5_lines', `n_hbad' rejected"
+assert `n_help' == `c5_lines'
 assert `n_hbad' == 0
-cert_file_has "`helplog'", needle("ignoring unsupported")
-local n_noted = r(found)
-if `n_noted' != 0 {
-    display as error "C-05 FAIL: a documented example drew the unsupported-option note:"
+assert `n_hctl_rc' == 0
+cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s):")
+local n_noted = r(count)
+cert_log_has "`helplog'", needle("dash: ignoring unsupported option(s): addplot()")
+local n_ctl = r(count)
+if `n_noted' != 1 | `n_ctl' != 1 {
+    display as error "C-05 FAIL: `n_noted' unsupported-option note(s), `n_ctl' of them the control's; the log:"
     type "`helplog'"
 }
-assert `n_noted' == 0
+assert `n_noted' == 1 & `n_ctl' == 1
 capture erase "`helplog'"
-display "C-05 PASS: every documented example parses clean, with nothing dropped"
+display "C-05 PASS: every documented example parses clean, with nothing dropped; only the control drew the note"
 
 // ----------------------------------------------------------------
 // C-06 -- pccapsym and pcarrowi each build on their own (WP-22 TR-22.1).

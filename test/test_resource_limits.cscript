@@ -39,8 +39,20 @@ qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
 
-// The notes are read back from a log; at the batch default of 80 columns
-// Stata wraps them mid-phrase.
+// The notes are read back from a log with cert_log_has, which undoes
+// Stata's wrapping: a note is a Python warning, whose line starts with the
+// path to dash_render.py, so where it wraps depends on where the checkout
+// lives.  Searched line by line, even at linesize 255 RL-06 failed in a
+// worktree (.claude/worktrees/agent-*), where the path pushed "global
+// dash_max_by_groups" across the break, and an absence check could pass
+// because its phrase was split.  The wide linesize only keeps the log
+// readable.
+//
+// What a limit does is read off the page as well: the number of figures
+// (one per by() group drawn), so a note reworded or lost cannot pass a
+// clamp that did not happen, or one that happened unasked.  An absence
+// check reads only words another check here finds present, so a reworded
+// note fails that check instead of passing this one.
 set linesize 255
 global dash_nobrowser 1
 capture macro drop dash_max_*
@@ -76,11 +88,11 @@ capture noisily dash build, saving("`out1'.html") replace nobrowser ///
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("filter(price) has 74 distinct values")
+cert_log_has "`rllog'", needle("filter(price) has 74 distinct values")
 assert r(found) == 1
-cert_file_has "`rllog'", needle("drawn as type(range)")
+cert_log_has "`rllog'", needle("drawn as type(range)")
 assert r(found) == 1
-cert_file_has "`rllog'", needle("set global dash_max_filter_options")
+cert_log_has "`rllog'", needle("set global dash_max_filter_options")
 assert r(found) == 1
 cert_file_has "`out1'.html", needle(`""name":"RangeSlider""')
 assert r(found) == 1
@@ -97,7 +109,7 @@ capture noisily dash build, saving("`app2'.py") replace server ///
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("filter(price) has 74 distinct values")
+cert_log_has "`rllog'", needle("filter(price) has 74 distinct values")
 assert r(found) == 1
 cert_file_has "`app2'.py", needle("'type': 'range'")
 assert r(found) == 1
@@ -112,9 +124,9 @@ capture noisily dash build, saving("`out3'.html") replace nobrowser ///
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("filter(make) has 74 distinct values")
+cert_log_has "`rllog'", needle("filter(make) has 74 distinct values")
 assert r(found) == 1
-cert_file_has "`rllog'", needle("the first 10 in sort order are listed")
+cert_log_has "`rllog'", needle("the first 10 in sort order are listed")
 assert r(found) == 1
 cert_file_has "`out3'.html", needle(`""name":"Select""')
 assert r(found) == 1
@@ -132,7 +144,7 @@ capture noisily dash build, saving("`out4'.html") replace nobrowser ///
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("distinct values")
+cert_log_has "`rllog'", needle("distinct values")
 assert r(found) == 0
 cert_file_has "`out4'.html", needle(`""name":"Select""')
 assert r(found) == 1
@@ -159,11 +171,14 @@ capture noisily dash build, saving("`out6'.html") replace nobrowser
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("by(rep78) on graph 'b1' has 5 groups")
+cert_log_has "`rllog'", needle("by(rep78) on graph 'b1' has 5 groups")
 assert r(found) == 1
-cert_file_has "`rllog'", needle("global dash_max_by_groups to draw more")
+cert_log_has "`rllog'", needle("global dash_max_by_groups to draw more")
 assert r(found) == 1
-display "RL-06 PASS: by() over the limit is named, with its graph and global"
+// Drawn: the first 3 groups, a figure each.
+cert_file_count "`out6'.html", needle(`""name":"Figure""')
+assert r(count) == 3
+display "RL-06 PASS: by() over the limit draws 3 of 5 groups, and is named with its graph and global"
 
 // The one-line form goes through the same limit.
 tempfile out7
@@ -173,8 +188,10 @@ capture noisily dash scatter mpg weight, by(rep78) saving("`out7'.html")
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("by(rep78) has 5 groups")
+cert_log_has "`rllog'", needle("by(rep78) has 5 groups")
 assert r(found) == 1
+cert_file_count "`out7'.html", needle(`""name":"Figure""')
+assert r(count) == 3
 display "RL-07 PASS: the one-line form is limited and says so"
 
 // Raising the limit past the groups draws them all, silently.
@@ -186,7 +203,12 @@ capture noisily dash build, saving("`out8'.html") replace nobrowser
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("groups, more than")
+// All 5 groups are drawn, and the note RL-06 read, in the words it read,
+// is not given.  (This read "groups, more than", which no check here found
+// present: a reworded note would have passed it while it still fired.)
+cert_file_count "`out8'.html", needle(`""name":"Figure""')
+assert r(count) == 5
+cert_log_has "`rllog'", needle("by(rep78) on graph 'b1' has 5 groups")
 assert r(found) == 0
 macro drop dash_max_by_groups
 display "RL-08 PASS: a raised limit is honoured"
@@ -206,9 +228,9 @@ capture noisily dash build, saving("`out9'.html") replace nobrowser ///
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("tabs() has 2 tabs, more than the 1")
+cert_log_has "`rllog'", needle("tabs() has 2 tabs, more than the 1")
 assert r(found) == 1
-cert_file_has "`rllog'", needle("global dash_max_tabs to draw more")
+cert_log_has "`rllog'", needle("global dash_max_tabs to draw more")
 assert r(found) == 1
 macro drop dash_max_tabs
 display "RL-09 PASS: tabs() over the limit is named"
@@ -222,9 +244,9 @@ capture noisily dash build, saving("`out10'.html") replace nobrowser ///
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("2 filters, more than the 1")
+cert_log_has "`rllog'", needle("2 filters, more than the 1")
 assert r(found) == 1
-cert_file_has "`rllog'", needle("global dash_max_filters to build more")
+cert_log_has "`rllog'", needle("global dash_max_filters to build more")
 assert r(found) == 1
 macro drop dash_max_filters
 display "RL-10 PASS: filters over the limit are named"
@@ -243,7 +265,7 @@ capture noisily dash build, saving("`app11'.py") replace server
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("by(rep78) on graph 's1' has 5 groups")
+cert_log_has "`rllog'", needle("by(rep78) on graph 's1' has 5 groups")
 assert r(found) == 1
 cert_file_has "`app11'.py", needle("_dash_by_groups(")
 assert r(found) == 1
@@ -258,8 +280,15 @@ capture noisily dash build, saving("`out12'.html") replace nobrowser
 local rc = _rc
 _rl_off
 assert `rc' == 0
-cert_file_has "`rllog'", needle("more than the")
+// No note: "more than the" is in every limit note (RL-09 and RL-10 find
+// it), and the by() note for s1 is the one RL-11 found.  And s1 draws all
+// 5 of its groups.
+cert_log_has "`rllog'", needle("more than the")
 assert r(found) == 0
+cert_log_has "`rllog'", needle("by(rep78) on graph 's1' has 5 groups")
+assert r(found) == 0
+cert_file_count "`out12'.html", needle(`""name":"Figure""')
+assert r(count) == 5
 display "RL-12 PASS: with no settings, an ordinary dashboard draws no note"
 
 // ================================================================
@@ -280,13 +309,19 @@ _rl_off
 assert `rc' == 0
 cert_file_has "`out13'.html", needle("bokeh")
 assert r(found) == 1
-cert_file_has "`rllog'", needle("would embed")
+cert_log_has "`rllog'", needle("would embed")
 assert r(found) == 0
 display "RL-13 PASS: a function graph is not refused for data it never reads"
 
-// A graph that does read variables is still held to the limit.
+// A graph that does read variables is still held to the limit -- with the
+// refusal RL-13 reads for, in the words it reads.
+_rl_on "`rllog'"
 capture noisily dash scatter mpg weight, saving("`out13'.html")
-assert _rc == 134
+local rc = _rc
+_rl_off
+assert `rc' == 134
+cert_log_has "`rllog'", needle("would embed")
+assert r(found) == 1
 macro drop dash_max_cells
 display "RL-14 PASS: a graph of variables is still held to the cell limit"
 

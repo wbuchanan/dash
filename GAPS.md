@@ -82,7 +82,7 @@ from the wrong input: the computed layers ignore the rows they were given
 (A1–A5), and the Mata parser discards or edits the command text before
 anything downstream sees it (A6–A9).
 
-### A1. Per-plot `if`/`in` is dropped before every statistical computation — S1, MEASURED, CLOSED by 8efee0b (WP-02)
+### A1. Per-plot `if`/`in` is dropped before every statistical computation — S1, MEASURED, CLOSED by WP-02 (8efee0b)
 
 `dash.ado` does its part: the qualifier is parsed, stripped and written into
 each plot object as `if_expr` (`dash.ado:1098-1109`, emitted at `:1240`).
@@ -131,7 +131,7 @@ equals the same mapper on the pre-filtered rows) and
 `test/test_view_alignment.py`.  ROADMAP.md does not yet head WP-02 DONE;
 its planned `test_qualified_layers.cscript` was never written.
 
-### A2. The same defect makes linked `by()` facets identical — S1, MEASURED, CLOSED by 8efee0b (WP-02)
+### A2. The same defect makes linked `by()` facets identical — S1, MEASURED, CLOSED by WP-02 (8efee0b)
 
 `_linked_graph_views` builds a per-panel `BooleanFilter`/`CDSView`
 (`dash_render.py:11466-11480`) which the computed mappers then discard.
@@ -304,7 +304,7 @@ stdp names the default), the parity corpus (`lfitci stdf`, `qfitci stdr`,
 `test_statistical_options.cscript`. The verification tally is ROADMAP.md
 WP-18's.
 
-### A6. A paren inside a quoted option value deletes every later `||` segment — S1, MEASURED, CLOSED by 9c7dbf7 (WP-01)
+### A6. A paren inside a quoted option value deletes every later `||` segment — S1, MEASURED, CLOSED by WP-01 (9c7dbf7)
 
 `_dash_split_segs` gates its double-quote and compound-quote checks on
 `depth == 0` (`dash_parse.mata:468, 473`). Paren mode (`:410, 415`) has **no
@@ -342,7 +342,7 @@ prints no "ignoring unsupported option(s)" note.  Certified by
 `test/test_parser_integrity.cscript` P1B-01 to P1B-12 (re-run at `4ede074`:
 passed).  ROADMAP.md does not yet head WP-01 DONE.
 
-### A7. `filter(` inside a quoted title becomes a real filter and is cut from the text — S1, MEASURED, CLOSED by 9c7dbf7 (WP-01)
+### A7. `filter(` inside a quoted title becomes a real filter and is cut from the text — S1, MEASURED, CLOSED by WP-01 (9c7dbf7)
 
 `_dash_extract_filters` (`dash_parse.mata:752-828`) scans the raw `0` for
 `filt|filte|filter` with only a preceding-character word-boundary test
@@ -372,7 +372,7 @@ is `Q1 filter(foreign) report` and which holds no Select or RangeSlider
 widget.  Certified by `test/test_parser_integrity.cscript` P1B-19 to P1B-22
 (passed at `4ede074`).
 
-### A8. The splitter accepts malformed input that `twoway` rejects — S2, MEASURED, CLOSED by 9c7dbf7 (WP-01)
+### A8. The splitter accepts malformed input that `twoway` rejects — S2, MEASURED, CLOSED by WP-01 (9c7dbf7)
 
 Paren mode `break`s at the first top-level comma (`dash_parse.mata:439`), so
 anything after it is treated as graph options regardless of shape:
@@ -599,7 +599,7 @@ correct and minimal.
 
 ## C. `dash serve` — every documented option aborts the command
 
-### C1. The option string is forwarded with its leading comma — S1, CLOSED by WP-23 (fixed by 81ebbc5, broken again by 7ddbc08)
+### C1. The option string is forwarded with its leading comma — S1, CLOSED by WP-03 and WP-23 (fixed by 81ebbc5, broken again by 7ddbc08, fixed again by WP-23)
 
 `_dash_serve` forwards `` `0' `` verbatim at `dash.ado:2601`:
 
@@ -657,7 +657,7 @@ timeout(1)` answers `/health` with 200 while it blocks, returns rc 0 after
 (test/test_help_claims_4.cscript HC4-19 to HC4-21, test/test_help_claims_4.py
 `TestTheOutputPathRule` and `TestTheRealHandoffServes`).
 
-### C2. Nothing could catch it — S2, CLOSED by WP-23
+### C2. Nothing could catch it — S2, CLOSED by WP-03 and WP-23 (the command run by 81ebbc5's test_serve_launch.cscript, the real launch by WP-23)
 
 `test_serve_options.cscript` deliberately calls `_dash_serve_spec` *directly*
 (`:55, 99, 113, 137-146`), bypassing the only line where the defect lives.
@@ -682,7 +682,7 @@ after the timeout, and no app file left behind -- at the cost of the
 minute a launch takes; test/test_help_claims_4.py `TestTheRealHandoffServes`
 runs the renderer exactly as `_dash_serve` does and stops it with SIGINT.
 
-### C3. An unexplained diagnostic on the bare form — S3, MEASURED, CLOSED by 81ebbc5 (WP-03)
+### C3. An unexplained diagnostic on the bare form — S3, MEASURED, CLOSED by WP-03 (81ebbc5)
 
 Bare `dash serve` prints `(file /var/…/S_26952.000002 not found)` before
 starting the server, and starts it anyway. The same message appears on a
@@ -697,6 +697,12 @@ Measured 23sep2026 at `4ede074`: `capture noisily dash build` prints only
 "dash: dashboard saved to ...".  No regression test reads a build log for
 the note (BUGS.md, "Every successful `dash build' prints an unexplained
 'file not found'", records that).
+
+**Regression test, WP-24.**  test/test_bug_regressions.cscript BR-02 reads
+the logs of `capture noisily dash build`, of the immediate route and of
+`capture noisily dash serve` up to its launch for the note, after showing
+that its search finds the note itself; with `quietly` taken off either spec
+writer on a copy of the tree, it fails (ROADMAP WP-03's AC-03.4).
 
 ---
 
@@ -2038,11 +2044,12 @@ both numbered 3 (now 1-6). Rollback is NOT addressed and remains open.
 
 Re-measured 23sep2026 at `4ede074`: `dash_setup.ado` and its help still
 contain no rollback or uninstall path, so the heading marks this gap closed
-except for rollback.  ROADMAP.md WP-06 lists J6 under "Gaps closed" without
-that exception, although its own DONE note says rollback is not addressed;
-the two documents disagree there until ROADMAP.md says which it is.  The
-closed rows are certified by `test/test_setup_honesty.cscript` HON-01 to
-HON-18 (re-run at `4ede074`: passed).
+except for rollback, and ROADMAP.md WP-06 lists it the same way, "J6 (all but
+rollback)".  The closed rows are certified by
+`test/test_setup_honesty.cscript` HON-01 to HON-18 (re-run at `4ede074`:
+passed), and since WP-24 by HON-19 to HON-25, which run `dash_setup` itself
+with pip replaced by a recorder, and test_program_coverage.cscript PC-15 to
+PC-26, which run it end to end in a sandbox that starts no process.
 
 - **`dash_setup` has no `syntax` line at all** (`:15-17`), so
   `dash_setup, garbage(1)` runs normally, silently ignoring the input.
@@ -2069,7 +2076,7 @@ HON-18 (re-run at `4ede074`: passed).
 
 ## K. State management
 
-### K1. A KPI silently erases a graph of the same name — S1, MEASURED, CLOSED by ab19c74 (WP-04)
+### K1. A KPI silently erases a graph of the same name — S1, MEASURED, CLOSED by WP-04 (ab19c74)
 
 `_dash_register_graph` (`dash.ado:1556-1575`) refuses a duplicate name unless
 `name(g1, replace)` is given. **`_dash_kpi` has no such check** — it writes
@@ -2104,7 +2111,7 @@ weight, name(g1)`, `dash kpi mean(mpg), name(g1) title("Avg")` is r(198)
 `test/test_registry_collision.cscript` REG-01 to REG-15 (re-run at
 `4ede074`: passed).  ROADMAP.md does not yet head WP-04 DONE.
 
-### K2. The registry lives in user-writable globals, read back unvalidated — S3, READ, CLOSED by ab19c74 (WP-04, a documented limitation)
+### K2. The registry lives in user-writable globals, read back unvalidated — S3, READ, CLOSED by WP-04 (ab19c74, a documented limitation)
 
 `dash_json_*`, `dash_opts_*`, `dash_graph_registry` and `dash_kpi_*` are
 ordinary Stata globals, read back at `dash.ado:2038, 2159, 2167` and flowed
@@ -2122,7 +2129,7 @@ a graph and a KPI is named at build time rather than skipped
 (`test/test_registry_collision.cscript` REG-15).  Moving session state out
 of globals stays out of scope, as TR-04.5 records.
 
-### K3. Graph-level option precedence across segments — S3, MEASURED, CLOSED by ce65324 (WP-04's TR-04.4)
+### K3. Graph-level option precedence across segments — S3, MEASURED, CLOSED by WP-04 (ce65324, its TR-04.4)
 
 Was: "`dash.ado:1125-1133` propagates only non-empty values, so a later segment
 can override an earlier one but never clear it, silently." Half right, and it
@@ -2428,7 +2435,7 @@ finds its tenth member.
 
 | Item | Location | Evidence |
 |---|---|---|
-| `_dash_graph_opts_to_json` | `dash.ado:891-913` | Zero callers. Graph JSON is assembled inline at `:1462-1480`. The dead helper emits a *smaller* key set, so it is a trap: an auditor reading it would report ~26 false inert options. |
+| `_dash_graph_opts_to_json` | `dash.ado:891-913` | Zero callers. Graph JSON is assembled inline at `:1462-1480`. The dead helper emits a *smaller* key set, so it is a trap: an auditor reading it would report ~26 false inert options. Corrected 24sep2026 by WP-24's program coverage: it emits nothing at all -- it reads the `g_*` locals of its own scope, which are always empty, so it returns `{}` whatever its caller holds (test/program_coverage_map.py records it). |
 | `_dash_kv_json` | `dash.ado:242-251` | Zero callers. |
 | `_json_escape`, `_html_escape` | `dash_parse.mata:53, 71` | Called only by `_dash_json_esc`/`_dash_html_esc`… |
 | `_dash_json_esc`, `_dash_html_esc` | `dash_parse.mata:82, 85` | …which have zero callers anywhere. `dash.ado` escapes in `_dash_json_str` (`:224`) instead. |

@@ -77,7 +77,7 @@ def _standalone_html(tmp_path, spec):
     return dr.DashRenderer(sp, dp).render()
 
 
-def _server_divs(tmp_path, spec):
+def _server_doc(tmp_path, spec):
     tag, sp, dp = _paths(tmp_path, spec)
     ap = tmp_path / f"a_{tag}.py"
     dr.ServerAppBuilder(sp, dp).build(str(ap))
@@ -86,6 +86,11 @@ def _server_divs(tmp_path, spec):
     ms.loader.exec_module(mod)
     doc = Document()
     mod.make_document(doc)
+    return doc
+
+
+def _server_divs(tmp_path, spec):
+    doc = _server_doc(tmp_path, spec)
     out, seen = [], set()
 
     def walk(m):
@@ -181,5 +186,21 @@ class TestAPlotOfAVariableAgainstItself:
         spec = _spec()
         spec["graphs"][0]["plots"] = [{"type": "scatter", "yvar": "mpg",
                                        "xvar": "mpg", "options": {}}]
-        _standalone_html(tmp_path, spec)   # must not raise
-        _server_divs(tmp_path, spec)       # must not raise
+        from bokeh.models import GlyphRenderer
+        want = list(_DF["mpg"])
+        _t, sp, dp = _paths(tmp_path, spec)
+        std = dr.DashRenderer(sp, dp)
+        std.render()                                   # must not raise
+        drawn = {}
+        for mode, renderers in (
+                ("saved", std.figures["g1"].renderers),
+                ("served", [m for m in _server_doc(tmp_path, spec).models
+                            if isinstance(m, GlyphRenderer)])):
+            # Both modes draw the four points on the diagonal: x and y are
+            # the one column.
+            assert [type(r.glyph).__name__ for r in renderers] == \
+                ["Scatter"], mode
+            glyph, data = renderers[0].glyph, renderers[0].data_source.data
+            drawn[mode] = ([float(v) for v in data[glyph.x]],
+                           [float(v) for v in data[glyph.y]])
+        assert drawn["saved"] == drawn["served"] == (want, want), drawn

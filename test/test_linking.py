@@ -145,6 +145,7 @@ class TestLinkedBrushing:
         sources = renderer._setup_sources()
 
         # Rebuild with shared source
+        dimmed = set()
         for name in ["s1", "s2"]:
             fig = figs[name]
             for r in fig.renderers:
@@ -154,6 +155,11 @@ class TestLinkedBrushing:
                         assert ns_glyph.fill_alpha == pytest.approx(0.15, abs=0.01), (
                             f"nonselection fill_alpha={ns_glyph.fill_alpha}, expected 0.15"
                         )
+                        dimmed.add(name)
+        # Each assertion above sits behind a guard, so a linked figure with
+        # no nonselection glyph to read -- nothing dims when the other is
+        # brushed -- ran none of them.  Both figures' markers dim.
+        assert dimmed == {"s1", "s2"}, dimmed
 
     # ----------------------------------------------------------------
     # P1B-40 — single link group enforced (no second link() group)

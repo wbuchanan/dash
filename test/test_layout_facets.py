@@ -110,6 +110,11 @@ def _two_graphs():
     ]
 
 
+#: The figures _two_graphs() builds: the plain graph, and the by(foreign)
+#: graph's two panels.
+_FIGURE_KEYS = ["faceted__by__0", "faceted__by__1", "plain"]
+
+
 # ======================================================================
 # The blocker
 # ======================================================================
@@ -168,6 +173,18 @@ class TestFacetedGraphSurvivesEveryLayout:
         cells = re.findall(r'class="(db-col-12[^"]*)"', out)
         assert cells, "no Bootstrap cells were emitted"
         assert any("db-col-lg-6" in c for c in cells), cells[:4]
+        # The plain graph's cell is lg-6 as well, so the line above never
+        # read the faceted one.  Two cells, told apart by what each embeds:
+        # the plain figure's, and the faceted graph's sub-grid.
+        by_root = dict((root, cls.split()) for cls, root in re.findall(
+            r'class="(db-col-12[^"]*)"><div id="[^"]*" data-root-id="([^"]+)"',
+            out))
+        plain = dr.figures["plain"].id
+        assert len(by_root) == 2 and plain in by_root, by_root
+        [faceted] = [r for r in by_root if r != plain]
+        assert "db-col-lg-6" in by_root[plain], by_root
+        assert "db-col-lg-6" in by_root[faceted], (
+            f"the faceted graph's cell is {by_root[faceted]}")
 
     def test_a_faceted_graph_alone_under_bootstrap(self):
         """No plain graph to mask the omission."""
@@ -192,6 +209,10 @@ class TestNoGraphVanishes:
         out, dr = _render(_two_graphs(), layout,
                           value_labels=_LABELS,
                           value_label_names=_LABEL_NAMES)
+        # The loop reads the figures that were built: one never built
+        # passed it.  Every registered graph is built, the by() graph as
+        # its two panels.
+        assert sorted(dr.figures) == _FIGURE_KEYS, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, (
                 f"layout({layout}): figure {name!r} was built but never "
@@ -207,6 +228,7 @@ class TestNoGraphVanishes:
         out, dr = _render(_two_graphs(), "bs: plain=12",
                           value_labels=_LABELS, value_label_names=_LABEL_NAMES)
         assert "Faceted graph" in out
+        assert sorted(dr.figures) == _FIGURE_KEYS, sorted(dr.figures)
         for name, fig in dr.figures.items():
             assert fig.id in out, name
 
@@ -242,9 +264,18 @@ class TestNoGraphVanishes:
         assert "faceted" in msg and "third" in msg, msg
 
     def test_the_guard_is_silent_when_everything_was_placed(self):
+        """Silent means both: nothing raised and nothing said.  The two
+        tests above are the control -- the same guard, a graph short,
+        raises."""
+        import warnings
         _, dr = _render(_two_graphs(), "bs",
                         value_labels=_LABELS, value_label_names=_LABEL_NAMES)
-        dr._assert_every_graph_was_placed(set(dr.figures))
+        assert len(dr.figures) > 1, "a faceted dashboard with one figure"
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            got = dr._assert_every_graph_was_placed(set(dr.figures))
+        assert got is None
+        assert not caught, [str(w.message) for w in caught]
 
 
 # ======================================================================

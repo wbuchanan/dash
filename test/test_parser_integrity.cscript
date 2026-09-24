@@ -22,10 +22,23 @@
 *!   A8  Neither mode checked its state at end of scan, so an unclosed '(' or
 *!       an unterminated '"' yielded one segment and no message.
 *!
-*! Tests: P1B-01 through P1B-22
+*! Tests: P1B-01 through P1B-38
+*!
+*! P1B-31 to P1B-38 were added by ROADMAP WP-24, which reverted each part of
+*! 9c7dbf7 in a scratch copy of the tree and ran this script against it
+*! (24sep2026).  Three parts of the fix had no case that failed when they were
+*! taken out, because every earlier case put its quote where the old code
+*! handled it anyway: _first_comma_pos meets a quote only BEFORE the option
+*! comma (P1B-31, P1B-32, P1B-38), _dash_extract_filters needs its quote
+*! tracking only when a ')' inside a quote would close the option around it
+*! (P1B-33), and its inner matcher only for an unbalanced '(' inside the
+*! filter's own quoted label (P1B-34).  P1B-35 to P1B-37 hold AC-01.1, AC-01.3
+*! and AC-01.4 as ROADMAP writes them, through dash itself: the cases above
+*! call the scanners, and P1B-13 and P1B-16 ask only for a non-zero return
+*! code where the criteria ask for r(198) and a message.
 *!
 *! Usage:  do test/test_parser_integrity.cscript
-*! Version: 1.0  21sep2026
+*! Version: 1.1  24sep2026
 
 cscript "dash_parse.mata scanner quote handling" adodir ".."
 
@@ -183,26 +196,30 @@ display "P1B-12 PASS: regression — comma inside real parens still not top-leve
 // ================================================================
 // A8 — unbalanced input is an error, not a silent single segment
 // ================================================================
+// Each refusal below is dash's own: a message naming the fault and r(198),
+// twoway's code (measured 24sep2026, all six).  They were held to _rc != 0,
+// which a Mata crash in the scanner -- r(3301), a subscript out of range --
+// passes as readily as the refusal.
 
 // ----------------------------------------------------------------
 // P1B-13 — an unclosed '(' must not silently swallow the rest
 // ----------------------------------------------------------------
 capture mata: _dash_split_segs(`"scatter mpg weight, legend(off || line mpg weight"')
-assert _rc != 0
+assert _rc == 198
 display "P1B-13 PASS: an unclosed '(' is an error, not one silent segment"
 
 // ----------------------------------------------------------------
 // P1B-14 — an unterminated '"' must not silently swallow the rest
 // ----------------------------------------------------------------
 capture mata: _dash_split_segs(`"scatter mpg weight, title("oops || line mpg weight"')
-assert _rc != 0
+assert _rc == 198
 display "P1B-14 PASS: an unterminated quote is an error, not one silent segment"
 
 // ----------------------------------------------------------------
 // P1B-15 — an unmatched ')' in paren mode is an error
 // ----------------------------------------------------------------
 capture mata: _dash_split_segs("(scatter mpg weight)) (line mpg weight)")
-assert _rc != 0
+assert _rc == 198
 display "P1B-15 PASS: an unmatched ')' in paren mode is an error"
 
 // ----------------------------------------------------------------
@@ -211,21 +228,21 @@ display "P1B-15 PASS: an unmatched ')' in paren mode is an error"
 // An extra ')' never leaves depth non-zero, so the end-of-scan balance
 // check cannot catch it.  twoway returns r(198); dash used to return 0.
 capture mata: _dash_split_segs(`"scatter mpg weight, title("ok"))"')
-assert _rc != 0
+assert _rc == 198
 display "P1B-15b PASS: an unmatched ')' in flat mode is an error"
 
 // ----------------------------------------------------------------
 // P1B-16 — stray text between paren groups is an error
 // ----------------------------------------------------------------
 capture mata: _dash_split_segs("(scatter mpg weight) junk (line mpg weight)")
-assert _rc != 0
+assert _rc == 198
 display "P1B-16 PASS: stray text between paren groups is an error"
 
 // ----------------------------------------------------------------
 // P1B-17 — a plot group after the top-level comma is an error
 // ----------------------------------------------------------------
 capture mata: _dash_split_segs("(scatter mpg weight), (line mpg weight)")
-assert _rc != 0
+assert _rc == 198
 display "P1B-17 PASS: a paren group after the graph-option comma is an error"
 
 // ----------------------------------------------------------------
@@ -304,6 +321,10 @@ local 0 `", filter(foreign, type(dropdown)) saving(x.html)"'
 mata: _dash_extract_filters("_fp", "_cmd")
 assert `"`_fp'"' == "foreign, type(dropdown)"
 assert strpos(`"`_cmd'"', "filter") == 0
+// And only the filter: the option after it is still there (_cmd is
+// ", saving(x.html)", measured 24sep2026).  The check above alone passed a
+// harvest that cut from filter( to the end of the command.
+assert strpos(`"`_cmd'"', "saving(x.html)") > 0
 display "P1B-19 PASS: control — a real filter() is harvested and removed"
 
 // ----------------------------------------------------------------
@@ -463,6 +484,181 @@ mata:
 end
 assert "`_jv4'" == ""
 display "P1B-30 PASS: a missing key returns empty"
+
+
+// ================================================================
+// A6 -- _first_comma_pos, with the quote INSIDE parentheses
+// ================================================================
+// P1B-09 to P1B-12 all find the option comma before they reach any quote,
+// so they pass whether or not a quote is tracked at depth > 0 -- measured:
+// with 9c7dbf7's depth gate put back into _first_comma_pos they stay green.
+// The gate bites when a quoted value holding a parenthesis sits inside a
+// function call in the qualifier, before the option comma: the parenthesis
+// in the quote moves the depth, the closing quote is then read as opening
+// one, and the comma is never found.
+
+// ----------------------------------------------------------------
+// P1B-31 -- a ')' inside a quote inside inlist()
+// ----------------------------------------------------------------
+local cp5 = -1
+mata: _dash_comma_pos(`"scatter mpg weight if inlist(make, "a ) b"), title(x)"', "cp5")
+assert `cp5' == 44
+display "P1B-31 PASS: a ')' quoted inside a function call does not hide the option comma"
+
+// ----------------------------------------------------------------
+// P1B-32 -- a '(' inside a quote inside strpos()
+// ----------------------------------------------------------------
+local cp6 = -1
+mata: _dash_comma_pos(`"scatter mpg weight if strpos(make, "(") > 0, title(x)"', "cp6")
+assert `cp6' == 44
+display "P1B-32 PASS: a '(' quoted inside a function call does not hide the option comma"
+
+
+// ================================================================
+// A7 -- the two parts of the extractor fix no case above needs
+// ================================================================
+
+// ----------------------------------------------------------------
+// P1B-33 -- a ')' inside the quote must not close the option around it
+// ----------------------------------------------------------------
+// P1B-20 and P1B-21 pass on the depth test alone: their filter( sits
+// inside title( and note(, so it is never at depth 0.  A quoted ')' before
+// it takes the depth back to 0 unless the quote is tracked -- measured, with
+// the quote tracking taken out of _dash_extract_filters, `foreign' was
+// harvested as a filter and cut out of this title.
+local 0 `", title("Q1 ) filter(foreign) report") saving(x.html)"'
+mata: _dash_extract_filters("_fp8", "_cmd8")
+assert `"`_fp8'"' == ""
+assert strpos(`"`_cmd8'"', "Q1 ) filter(foreign) report") > 0
+local 0 `", title(`"Q1 ) filter(foreign) "report""') saving(x.html)"'
+mata: _dash_extract_filters("_fp9", "_cmd9")
+assert `"`_fp9'"' == ""
+assert strpos(`"`_cmd9'"', "filter(foreign)") > 0
+display "P1B-33 PASS: a quoted ')' before filter( does not make it a filter, in plain or compound quotes"
+
+// ----------------------------------------------------------------
+// P1B-34 -- a filter whose own quoted label holds an unbalanced '('
+// ----------------------------------------------------------------
+// P1B-22e's label, "a (b)", is balanced, so the inner matcher closes the
+// group whether or not it tracks the quote.  "a (b" is not: an untracked
+// '(' leaves the group open to the end of the command, nothing is
+// extracted, and the filter() reaches -syntax- unextracted.
+local 0 `", filter(foreign, label("a (b")) saving(y.html)"'
+mata: _dash_extract_filters("_fp10", "_cmd10")
+assert `"`_fp10'"' == `"foreign, label("a (b")"'
+assert strpos(`"`_cmd10'"', "filter") == 0
+assert strpos(`"`_cmd10'"', "saving(y.html)") > 0
+display "P1B-34 PASS: a filter whose quoted label holds an unbalanced '(' is extracted whole"
+
+
+// ================================================================
+// AC-01.1, AC-01.3 and AC-01.4 through dash itself
+// ================================================================
+// Registration and the refusals run in Stata alone: no Python, no jsonio.
+// Each command's output goes to a log that Mata reads by value, so nothing
+// dash prints can end a Stata string.
+do "../dash.ado"
+global dash_nobrowser 1
+
+capture mata: mata drop _p1b_log_has()
+mata:
+real scalar _p1b_log_has(string scalar fn, string scalar needle)
+{
+    real scalar   fh, found
+    string scalar line
+    found = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strpos(line, needle)) found = 1
+    }
+    fclose(fh)
+    return(found)
+}
+end
+
+capture program drop _p1b_run
+program define _p1b_run, rclass
+    args cmdtext
+    // A tempfile's name comes round again on the next call, and the log
+    // beside it is not erased with it; the caller has read the last one.
+    tempfile lg
+    capture erase "`lg'.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _p1blog
+    quietly log using "`lg'.log", text name(_p1blog)
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _p1blog
+    set linesize `ls'
+    return scalar rc = `rc'
+    return local log "`lg'.log"
+end
+
+// ----------------------------------------------------------------
+// P1B-35 -- AC-01.1: two plot layers and no note about options
+// ----------------------------------------------------------------
+dash clear
+_p1b_run `"dash scatter mpg weight, title("a ( b") name(g) || line mpg weight"'
+local rc35 = r(rc)
+local lg35 "`r(log)'"
+assert `rc35' == 0
+assert "${dash_graph_registry}" == "g"
+mata: st_local("p35s", strofreal(strpos(st_global("dash_json_g"), char(34) + "type" + char(34) + ":" + char(34) + "scatter" + char(34)) > 0))
+mata: st_local("p35l", strofreal(strpos(st_global("dash_json_g"), char(34) + "type" + char(34) + ":" + char(34) + "line" + char(34)) > 0))
+mata: st_local("p35t", strofreal(strpos(st_global("dash_json_g"), "a ( b") > 0))
+assert `p35s' == 1 & `p35l' == 1 & `p35t' == 1
+mata: st_local("p35n", strofreal(_p1b_log_has(st_local("lg35"), "ignoring unsupported")))
+assert `p35n' == 0
+display "P1B-35 PASS: AC-01.1 -- a title() holding a ( b before || registers the scatter and the line, and names no option"
+
+// ----------------------------------------------------------------
+// P1B-36 -- AC-01.3: an unclosed '(' is r(198), naming the parenthesis
+// ----------------------------------------------------------------
+dash clear
+_p1b_run `"dash scatter mpg weight, legend(off || line price weight"'
+local rc36 = r(rc)
+local lg36 "`r(log)'"
+assert `rc36' == 198
+mata: st_local("p36m", strofreal(_p1b_log_has(st_local("lg36"), "unbalanced parentheses")))
+assert `p36m' == 1
+assert "${dash_graph_registry}" == ""
+display "P1B-36 PASS: AC-01.3 -- legend(off || line ... exits 198 naming the unbalanced parentheses, and registers nothing"
+
+// ----------------------------------------------------------------
+// P1B-37 -- AC-01.4: stray text between groups is r(198), as in twoway
+// ----------------------------------------------------------------
+dash clear
+capture twoway (scatter mpg weight) junk (line price weight), nodraw
+local tw37 = _rc
+_p1b_run `"dash (scatter mpg weight) junk (line price weight)"'
+local rc37 = r(rc)
+local lg37 "`r(log)'"
+assert `tw37' == 198
+assert `rc37' == 198
+mata: st_local("p37m", strofreal(_p1b_log_has(st_local("lg37"), "unexpected text between plot groups: 'junk'")))
+assert `p37m' == 1
+assert "${dash_graph_registry}" == ""
+display "P1B-37 PASS: AC-01.4 -- (a) junk (b) exits 198, as twoway does, naming the stray word"
+
+// ----------------------------------------------------------------
+// P1B-38 -- the qualifier of P1B-31's shape, through dash
+// ----------------------------------------------------------------
+// twoway draws it (rc 0), and so must dash, with the qualifier whole.
+dash clear
+capture twoway scatter mpg weight if inlist(make, "x (y", "AMC Pacer"), nodraw
+local tw38 = _rc
+_p1b_run `"dash scatter mpg weight if inlist(make, "x (y", "AMC Pacer"), name(pq1)"'
+local rc38 = r(rc)
+assert `tw38' == 0
+assert `rc38' == 0
+assert "${dash_graph_registry}" == "pq1"
+mata: st_local("p38q", strofreal(strpos(st_global("dash_json_pq1"), "inlist(make, ") > 0 & strpos(st_global("dash_json_pq1"), "AMC Pacer") > 0))
+assert `p38q' == 1
+display "P1B-38 PASS: a quoted '(' inside the qualifier's function call leaves the option comma where it is"
+
+dash clear
+capture program drop _p1b_run
 
 
 display ""

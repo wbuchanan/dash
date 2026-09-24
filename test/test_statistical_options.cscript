@@ -171,11 +171,18 @@
 *!     SO-88 mspline, n(301)            r(198): twoway's "n must be between
 *!                                      1 and 300"; SO-88d: the refusal
 *!                                      does not call the bound dash's
+*!     SO-69d SO-68m SO-32w             positive controls: "dash evaluates
+*!                                      up to", "must be" and "not found"
+*!                                      found present where they must be,
+*!                                      by the scanner that requires them
+*!                                      absent elsewhere (24sep2026)
 *!     SO-89 histogram mpg, start(15)   r(198) "option start() may not be
 *!                                      larger than minimum of mpg"
 *!     SO-90 ... discrete start(15)     r(198) likewise
 *!     SO-91 histogram mpg, start(12)   rc 0 (start equal to the minimum)
 *!     SO-92 histogram mpg if mpg >= 20, start(15)   rc 0 (the plot's sample)
+*!     SO-97..100 histogram mpg, density / fraction / frequency / percent
+*!                                      rc 0, no note, the flag registered
 *!   The data export:
 *!     SO-73 _dash_extract_vars on a weighted lfit's spec lists price: the
 *!           weight column is serialised on the build and the immediate route
@@ -330,6 +337,13 @@ program define _so_probe, rclass
         }
     }
     else {
+        // Each needle is found PRESENT, by this same scanner, in a case
+        // that must print it -- not allowed SO-16w, may not SO-34w, must
+        // name SO-29w, must be SO-68m, not found SO-32w, encountered
+        // SO-40w -- so a reworded refusal cannot leave one of these
+        // absences with nothing to find.  (SO-68m and SO-32w were added
+        // 24sep2026; until then nothing asserted "must be" or "not found"
+        // present.)
         foreach needle in "not allowed" "may not" "must name" "must be" "not found" "encountered" {
             _so_count "`logfile'" "`needle'"
             if r(n) > 0 {
@@ -475,7 +489,11 @@ _so_case SO-30u `"dash lfit mpg weight [aw=größe], name(so30u)"' 0 "" `""weigh
 drop größe
 _so_case SO-31 `"dash scatter mpg weight [aw=price+1], name(so31)"' 0 "[aweight]" `"!"wexp":"'
 _so_case SO-32 `"dash lfit mpg weight [aw=nosuchvar], name(so32)"' 111
-_so_case SO-33 `"dash lfit mpg weight [aw=mpg-price], name(so33)"' 198
+// SO-32w: "nosuchvar not found" (measured 24sep2026) -- the positive
+// control for the "not found" _so_probe requires absent from every
+// accepted command.
+_so_said SO-32w "not found"
+_so_case SO-33`"dash lfit mpg weight [aw=mpg-price], name(so33)"' 198
 _so_said SO-33w "must name one variable"
 // unab reads a varlist, not a name: `price-price' is the one-variable
 // range price, and `price - price' too.  twoway weights by the
@@ -560,8 +578,19 @@ _so_case SO-66 `"dash histogram rep78, discrete width(2) name(so66)"' 0 "" `""di
 _so_case SO-67 `"dash mspline mpg weight, n(1) name(so67)"' 0 "" `""n":"1""'
 _so_case SO-68 `"dash mspline mpg weight, n(0) name(so68)"' 198
 _so_said SO-68w "n()"
+// SO-68m: "dash: n() must be an integer between 1 and 300 (got: 0)"
+// (measured 24sep2026) -- the positive control for the "must be" that
+// _so_probe requires absent from every accepted command.
+_so_said SO-68m "must be"
 _so_case SO-69 `"dash kdensity mpg, n(1) name(so69)"' 198
 _so_said SO-69w "n()"
+// SO-69d: the positive control for SO-88d below -- the same scanner and
+// the same words, from the same message.  Off mspline the n() refusal
+// ends ". dash evaluates up to 10000 points." (measured 24sep2026, wrapped
+// by the log after "up to"); SO-88d requires those words absent from
+// mspline's.  With nothing asserting them present, a reworded message
+// left SO-88d nothing to find, and it passed whatever mspline said.
+_so_said SO-69d "dash evaluates up to"
 _so_case SO-70 `"dash mspline mpg weight, bands(5) n(4) name(so70)"' 0 "" `""bands":"5""' `""n":"4""'
 
 // Together.  stdf with an aweight is r(135) in twoway (below), so the
@@ -657,6 +686,20 @@ _so_case SO-95a `"dash histogram mpg [aw=price], name(so95a)"' 101
 _so_case SO-95 `"dash scatter mpg weight, name(so95)"' 0 ""
 _so_case SO-96a `"dash lfit mpg weight [fw=gear_ratio], name(so96a)"' 401
 _so_case SO-96 `"dash (qfit mpg weight) (scatter mpg weight), name(so96)"' 0 "" `"!"weight":"' `"!"wexp":"'
+
+// ================================================================
+// histogram's y-axis flags are honoured, so none is named in the
+// "ignoring unsupported option(s)" note.  density() was: it drew a density
+// and then said density() had been ignored -- density is the default, so
+// the output did not move and a render-diff could not see it.
+// test_unsupported_report_is_true.py read the flag list out of the
+// renderer's source and dash.ado's pending list out of its text; these
+// run the commands (WP-24).
+// ================================================================
+_so_case SO-97 `"dash histogram mpg, density name(so97)"' 0 "" `""density":"density""'
+_so_case SO-98 `"dash histogram mpg, fraction name(so98)"' 0 "" `""fraction":"fraction""'
+_so_case SO-99 `"dash histogram mpg, frequency name(so99)"' 0 "" `""frequency":"frequency""'
+_so_case SO-100 `"dash histogram mpg, percent name(so100)"' 0 "" `""percent":"percent""'
 
 // ================================================================
 // The data export: the weight column is a plot variable on both routes.

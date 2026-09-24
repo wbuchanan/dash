@@ -225,13 +225,24 @@ display "INJ-09 PASS: a real below-minimum version is still below"
 // The path comes from `findfile'.  A directory whose NAME closes the raw
 // string and injects `sfi.Macro.setGlobal("DASH_INJ_PWNED","1")' ran that
 // call before the fix (measured).  A directory name cannot contain '/', so
-// the witness is a Stata global rather than a file.  The stub renderer only
-// has to exist for `findfile' to return it.
+// the witness is a Stata global rather than a file.
+//
+// The case proves nothing unless the hostile path is the one the probe
+// loads: were the stub not what findfile returned, the probe would load a
+// benign renderer and the injection would never be tried -- and until
+// 24sep2026 nothing here checked, so a vulnerable probe could pass.  Two
+// guards: findfile returns the stub (compared by value -- the path holds
+// quotes), and the stub itself RAN, setting $DASH_INJ_STUB from inside
+// the module the probe loaded.  The directory name carries ";" -- the
+// ado-path separator -- and double quotes; measured 24sep2026 (StataNow
+// 19.5), $S_ADO keeps such an entry whole in compound quotes and findfile
+// returns the stub.
 //
 // Everything is captured into locals and the hostile ado-path entry removed
 // BEFORE any assert, so a failure here cannot leak the entry into later
 // scripts.
 global DASH_INJ_PWNED ""
+global DASH_INJ_STUB ""
 mata:
 // mkdir() errors if the directory already exists (it is not `mkdir -p'), and
 // this script runs many times, so create each level only when absent.
@@ -244,6 +255,8 @@ _fh = fopen(_hd + "/dash_render.py", "w")
 fput(_fh, "class SchemeParser:")
 fput(_fh, "    @staticmethod")
 fput(_fh, "    def resolve_or_fallback(a, b):")
+fput(_fh, "        import sfi")
+fput(_fh, "        sfi.Macro.setGlobal('DASH_INJ_STUB', '1')")
 fput(_fh, "        class R:")
 fput(_fh, "            is_fallback = False")
 fput(_fh, "        return R()")
@@ -252,14 +265,21 @@ st_local("hd", _hd)
 end
 
 adopath ++ `"`hd'"'
+capture findfile dash_render.py
+mata: st_local("probe_isstub", strofreal(st_global("r(fn)") == st_local("hd") + "/dash_render.py"))
 capture noisily _dash_setup_check_files
 local probe_rc = _rc
 // Remove the hostile entry no matter what happened above.
 capture adopath - `"`hd'"'
 local probe_pwned "$DASH_INJ_PWNED"
+local probe_stub  "$DASH_INJ_STUB"
 capture erase `"`hd'/dash_render.py"'
 
+// The injection first, so an executed payload is reported as one; then
+// the two guards, without which its absence proves nothing.
 assert "`probe_pwned'" == ""
+assert `probe_isstub' == 1
+assert "`probe_stub'" == "1"
 assert `probe_rc' == 0
 display "INJ-10 PASS: a hostile renderer path is data, not code"
 
@@ -326,6 +346,7 @@ display "INJ-11 PASS: a version that is not made of version characters comes bac
 
 capture program drop _inj_gate
 global DASH_INJ_PWNED ""
+global DASH_INJ_STUB ""
 
 display ""
 display "test_setup_injection.cscript: ALL CHECKS PASSED"

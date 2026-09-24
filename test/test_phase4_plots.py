@@ -184,10 +184,10 @@ class TestMapPcarrow:
 
     def test_pcarrow_lcolor_option(self, fig, pc_cds, gm):
         """P4-14: lcolor option is applied to the Arrow annotation line color."""
-        result = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lcolor": "navy"})
+        result = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lcolor": "magenta"})
         from bokeh.models import Arrow
         arrow_layouts = fig.select({"type": Arrow})
-        assert arrow_layouts[0].line_color == "#1a476f"
+        assert arrow_layouts[0].line_color == "#ff00ff"
 
 
 # ================================================================
@@ -476,8 +476,8 @@ class TestMapMspline:
 
     def test_mspline_lcolor_option_applied(self, fig, ts_cds, gm):
         """P4-38: lcolor option overrides the default spline color."""
-        result = gm.map_mspline(fig, ts_cds, "yval", "t", {"lcolor": "navy"})
-        assert result[0].glyph.line_color == "#1a476f"
+        result = gm.map_mspline(fig, ts_cds, "yval", "t", {"lcolor": "magenta"})
+        assert result[0].glyph.line_color == "#ff00ff"
 
     def test_mspline_is_the_natural_spline_through_the_cross_medians(self, gm):
         """P4-39: the curve is the natural cubic spline through the knots.
@@ -538,6 +538,8 @@ class TestMapFunction:
         """P4-44: map_function evaluates correctly for a constant expression."""
         result = gm.map_function(fig, "pi", (0, 1), 10, {})
         src = result[0].data_source.data
+        # The loop below is over the points drawn: none drew, none failed.
+        assert len(src["y_fn"]) == 10, len(src["y_fn"])
         for y in src["y_fn"]:
             assert abs(float(y) - math.pi) < 1e-9
 
@@ -545,6 +547,7 @@ class TestMapFunction:
         """P4-45: map_function evaluates x*x correctly."""
         result = gm.map_function(fig, "x * x", (0, 4), 5, {})
         src = result[0].data_source.data
+        assert len(src["y_fn"]) == 5, len(src["y_fn"])
         x_vals = src["x_fn"]
         y_vals = src["y_fn"]
         for x, y in zip(x_vals, y_vals):
@@ -563,6 +566,9 @@ class TestMapFunction:
         """P4-47: map_function evaluates cos(x) correctly."""
         result = gm.map_function(fig, "cos(x)", (0, math.pi), 50, {})
         src = result[0].data_source.data
+        # np.allclose of two empty arrays is True: an expression the mapper
+        # refused drew nothing and passed.  Every point is drawn.
+        assert len(src["y_fn"]) == 50, len(src["y_fn"])
         x_vals = np.array(src["x_fn"])
         y_vals = np.array(src["y_fn"])
         assert np.allclose(y_vals, np.cos(x_vals), atol=1e-12)
@@ -571,6 +577,7 @@ class TestMapFunction:
         """P4-48: map_function evaluates exp(x) correctly."""
         result = gm.map_function(fig, "exp(x)", (0, 2), 10, {})
         src = result[0].data_source.data
+        assert len(src["y_fn"]) == 10, len(src["y_fn"])
         x_vals = np.array(src["x_fn"])
         y_vals = np.array(src["y_fn"])
         assert np.allclose(y_vals, np.exp(x_vals), atol=1e-12)
@@ -579,6 +586,7 @@ class TestMapFunction:
         """P4-49: map_function evaluates log(x) correctly for x>0."""
         result = gm.map_function(fig, "log(x)", (1, math.e), 10, {})
         src = result[0].data_source.data
+        assert len(src["y_fn"]) == 10, len(src["y_fn"])
         x_vals = np.array(src["x_fn"])
         y_vals = np.array(src["y_fn"])
         assert np.allclose(y_vals, np.log(x_vals), atol=1e-12)
@@ -587,6 +595,7 @@ class TestMapFunction:
         """P4-50: map_function evaluates sqrt(x) correctly."""
         result = gm.map_function(fig, "sqrt(x)", (0, 4), 5, {})
         src = result[0].data_source.data
+        assert len(src["y_fn"]) == 5, len(src["y_fn"])
         x_vals = np.array(src["x_fn"])
         y_vals = np.array(src["y_fn"])
         assert np.allclose(y_vals, np.sqrt(x_vals), atol=1e-12)
@@ -595,6 +604,7 @@ class TestMapFunction:
         """P4-51: map_function evaluates a combined expression correctly."""
         result = gm.map_function(fig, "sin(x) + cos(x)", (0, math.pi), 20, {})
         src = result[0].data_source.data
+        assert len(src["y_fn"]) == 20, len(src["y_fn"])
         x_vals = np.array(src["x_fn"])
         y_vals = np.array(src["y_fn"])
         expected = np.sin(x_vals) + np.cos(x_vals)
@@ -624,49 +634,95 @@ class TestMapFunction:
 
     def test_function_lcolor_option(self, fig, gm):
         """P4-53: lcolor option overrides the default function line color."""
-        result = gm.map_function(fig, "x", (0, 1), 10, {"lcolor": "navy"})
-        assert result[0].glyph.line_color == "#1a476f"
+        result = gm.map_function(fig, "x", (0, 1), 10, {"lcolor": "magenta"})
+        assert result[0].glyph.line_color == "#ff00ff"
 
     # ----------------------------------------------------------------
     # Security: AST whitelist enforcement
     # ----------------------------------------------------------------
+    # "Drew nothing" alone proves nothing about the whitelist: the mapper
+    # evaluates with empty builtins and swallows every evaluation error,
+    # so __import__, open, eval, range and an unknown name all fail AT
+    # EVALUATION whatever the validator does (measured 24sep2026: with the
+    # validator bypassed, six of these seven payloads still drew nothing).
+    # The verdict is read where the docstring puts it -- no unvalidated
+    # expression reaches eval() -- through a spy on the eval() map_function
+    # calls; and each test beside it runs a payload that WOULD draw if the
+    # whitelist let it through.
 
-    def test_function_rejects_import_expression(self, fig, gm):
+    @pytest.fixture
+    def evaluated(self, monkeypatch):
+        """The expressions map_function handed to eval(), by source."""
+        import builtins
+        import dash_render as _dr
+        seen = []
+
+        def spy(code, *a, **k):
+            if getattr(code, "co_filename", "") == "<function>":
+                seen.append(code)
+            return builtins.eval(code, *a, **k)
+
+        monkeypatch.setattr(_dr, "eval", spy, raising=False)
+        return seen
+
+    def test_the_eval_spy_sees_an_accepted_expression(self, fig, gm,
+                                                      evaluated):
+        """Guards the guard: a spy that never fires would pass every
+        rejection below."""
+        result = gm.map_function(fig, "sin(x)", (0, 1), 10, {})
+        assert len(result[0].data_source.data["y_fn"]) == 10
+        assert len(evaluated) == 1
+
+    def test_function_rejects_import_expression(self, fig, gm, evaluated):
         """P4-54: map_function rejects expressions containing 'import'."""
         result = gm.map_function(fig, "__import__('os')", (0, 1), 10, {})
         # Must not raise; returns empty renderer
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
+        assert not evaluated, "__import__ reached eval()"
 
-    def test_function_rejects_open_builtin(self, fig, gm):
+    def test_function_rejects_open_builtin(self, fig, gm, evaluated):
         """P4-55: map_function rejects expressions that call 'open'."""
         result = gm.map_function(fig, "open('/etc/passwd')", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
+        assert not evaluated, "open() reached eval()"
 
-    def test_function_rejects_attribute_access(self, fig, gm):
+    def test_function_rejects_attribute_access(self, fig, gm, evaluated):
         """P4-56: map_function rejects attribute access (e.g., os.getcwd)."""
         result = gm.map_function(fig, "x.real", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
+        # A call through an attribute of an allowed function draws the
+        # function if accepted.
+        result = gm.map_function(fig, "sin.__call__(x)", (0, 1), 10, {})
+        assert len(result[0].data_source.data["x_fn"]) == 0
+        assert not evaluated, "an attribute access reached eval()"
 
-    def test_function_rejects_unknown_name(self, fig, gm):
+    def test_function_rejects_unknown_name(self, fig, gm, evaluated):
         """P4-57: map_function rejects expressions containing disallowed names."""
         result = gm.map_function(fig, "os", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
+        assert not evaluated, "an unknown name reached eval()"
 
-    def test_function_rejects_disallowed_function_call(self, fig, gm):
+    def test_function_rejects_disallowed_function_call(self, fig, gm,
+                                                       evaluated):
         """P4-58: map_function rejects calls to functions not in the whitelist."""
         result = gm.map_function(fig, "eval('1+1')", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
+        assert not evaluated, "eval() reached eval()"
 
-    def test_function_rejects_list_comprehension(self, fig, gm):
+    def test_function_rejects_list_comprehension(self, fig, gm, evaluated):
         """P4-59: map_function rejects list comprehension expressions."""
         result = gm.map_function(fig, "[i for i in range(10)]", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
+        # One that needs no builtin draws ten points if accepted.
+        result = gm.map_function(fig, "[sin(v) for v in x]", (0, 1), 10, {})
+        assert len(result[0].data_source.data["x_fn"]) == 0
+        assert not evaluated, "a comprehension reached eval()"
 
     def test_function_rejects_syntax_error(self, fig, gm):
         """P4-60: map_function handles syntax errors gracefully (returns empty renderer)."""
@@ -680,11 +736,15 @@ class TestMapFunction:
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
 
-    def test_function_rejects_keyword_args(self, fig, gm):
+    def test_function_rejects_keyword_args(self, fig, gm, evaluated):
         """P4-62: map_function rejects function calls with keyword arguments."""
         result = gm.map_function(fig, "sin(x=x)", (0, 1), 10, {})
         src = result[0].data_source.data
         assert len(src["x_fn"]) == 0
+        # numpy takes out=None, so this one draws sin(x) if accepted.
+        result = gm.map_function(fig, "sin(x, out=None)", (0, 1), 10, {})
+        assert len(result[0].data_source.data["x_fn"]) == 0
+        assert not evaluated, "a keyword argument reached eval()"
 
     def test_function_pi_constant_accessible(self, fig, gm):
         """P4-63: map_function makes pi constant available in expressions."""
@@ -699,6 +759,7 @@ class TestMapFunction:
         """P4-64: map_function makes e constant available in expressions."""
         result = gm.map_function(fig, "e * x", (1, 3), 3, {})
         src = result[0].data_source.data
+        assert len(src["y_fn"]) == 3, len(src["y_fn"])
         x_vals = np.array(src["x_fn"])
         y_vals = np.array(src["y_fn"])
         assert np.allclose(y_vals, math.e * x_vals, atol=1e-12)

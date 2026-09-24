@@ -273,6 +273,20 @@ class TestAPlacementNamingABsGraph:
         doc, built = _served(tmp_path, spec)
         assert _served_cells(doc) == want
         assert not [m for m in built if "layout(" in m]
+        # Nor a word under any other spelling: a report on a layout quotes
+        # it.  And the needles are live -- the same placement with a name
+        # the registry lacks is reported, in both modes, as
+        # "dash: layout(<it>): ...", so an emitter that changed its words
+        # cannot leave the two checks above looking at nothing.
+        placed = f"{first}:1,1"
+        assert not [m for m in msgs + built if placed in m], msgs + built
+        control = _spec([_graph(first), _graph("g2")],
+                        layout=f"{first}:1,1 nosuch:1,2")
+        _, _, c_msgs = _saved(tmp_path, control)
+        _, c_built = _served(tmp_path, control)
+        for got in (c_msgs, c_built):
+            said = [m for m in got if "layout(" in m and placed in m]
+            assert len(said) == 1, got
 
     @pytest.mark.parametrize("layout, bs", [
         ("bs", True), ("BS", True), (" bs ", True), ("bs:", True),
@@ -353,6 +367,23 @@ class TestExcludeAByGraph:
         assert panel_srcs and not (panel_srcs & filtered)
         assert id(r.sources["g2"]) in filtered
         assert not (panel_aggs & {id(s) for s in cb.args["agg_sources"]})
+        # A scatter panel has no aggregate, so for it the line above is
+        # about nothing; the histogram's two panels each carry one, or it
+        # is about nothing there too.
+        assert len(panel_aggs) == (2 if plots else 0), len(panel_aggs)
+        # The control: exclude(g2) leaves g1 filtered, and the same panels'
+        # sources and aggregates ARE in the callback -- so their absence
+        # above is exclude(g1)'s doing.
+        r2, _, _ = _saved(tmp_path, self._spec(plots, "g2"))
+        [cb2] = _callbacks(r2)
+        srcs2 = {id(r2.sources[k]) for k in r2.sources
+                 if k.startswith("g1__by__")}
+        aggs2 = {id(cds) for k, lst in r2.agg_source_registry.items()
+                 if k.startswith("g1__by__") for cds, _ in lst}
+        assert srcs2 and srcs2 <= {id(s) for s in
+                                   cb2.args["all_graph_sources"]}
+        assert aggs2 <= {id(s) for s in cb2.args["agg_sources"]}
+        assert len(aggs2) == len(panel_aggs)
 
     @pytest.mark.parametrize("plots", [None, [_HIST]],
                              ids=["scatter", "histogram"])
@@ -365,8 +396,11 @@ class TestExcludeAByGraph:
         g1 = [t for t in before if t.startswith("g1")]
         assert len(g1) == 2
         assert {t: after[t] for t in g1} == {t: before[t] for t in g1}
-        if plots is None:
-            assert after["g2"] != before["g2"], "the filter moved nothing"
+        # In both cases: g2 is a scatter in each, and a filter that moved
+        # nothing leaves g1's panels alone as well.  It was asked of the
+        # scatter case only (measured 24sep2026: g2 goes from 10 rows to 4
+        # in the histogram case too).
+        assert after["g2"] != before["g2"], "the filter moved nothing"
 
     @pytest.mark.parametrize("key, owner, want", [
         ("g1", {}, True), ("g1__by__0", {"g1__by__0": "g1"}, True),

@@ -1339,6 +1339,58 @@ _DATE_GAP = {
     "a date-valued KPI": {"tree", "kpi"},
 }
 
+#: The entries a report is the point of, with the report each must make.
+#: test_same_warnings compared the two modes' lists alone, so an entry
+#: whose report both modes stopped making compared [] with [] and passed.
+#: Measured 24sep2026: these eleven are every entry that reports anything
+#: but a layer drawn empty (the lpoly entries' "drew nothing" is not what
+#: they exist for).
+_MUST_WARN = {
+    "line, a colour clcolor() cannot name":
+        "dash: clcolor(notacolour) is not a recognised colour",
+    "a format mlabformat() cannot reproduce":
+        "dash: mlabformat(%9.3g) is not a display format dash reproduces",
+    "scatteri with labels, clock positions and a missing point":
+        "dash: scatteri clock position(s) 3.5 are not a whole number",
+    "note, caption and subtitle with sub-options":
+        "dash: subtitle() sub-option(s) not implemented and ignored: span",
+    "graph title with sub-options":
+        "dash: title() sub-option(s) not implemented and ignored: box",
+    "legend with an unimplemented sub-option":
+        "dash: legend() sub-option(s) not implemented and ignored: "
+        "span holes(1)",
+    "xscale(range()) and yscale with an unimplemented sub-option":
+        "dash: yscale() sub-option(s) not implemented and ignored: noline",
+    "xline with an unimplemented sub-option":
+        "dash: xline() sub-option(s) not implemented and ignored: "
+        "lstyle(foreground)",
+    "xlabel with an unimplemented sub-option":
+        "dash: xlabel() sub-option(s) not implemented and ignored: "
+        "valuelabel",
+    "by() with an unimplemented sub-option":
+        "dash: by() sub-option(s) not implemented and ignored: "
+        "rows(2) compact",
+    "filter() with an unknown type":
+        "dash: filter(price, type(bogus)): type() must be one of",
+}
+
+#: The filter types that build a widget (dash.sthlp); a filter() group of
+#: any other type is reported and builds none.
+_WIDGET_TYPES = ("dropdown", "range", "slider")
+
+
+def _widgets_wanted(spec):
+    """How many filter widgets *spec*'s filter() builds: one per group whose
+    type() is one of _WIDGET_TYPES, or that names no type."""
+    groups = [g for g in re.split(r"\|\||;",
+                                  spec["build_options"].get("filter") or "")
+              if g.strip()]
+    n = 0
+    for g in groups:
+        t = re.search(r"\btype\((\w+)\)", g)
+        n += (t is None) or (t.group(1) in _WIDGET_TYPES)
+    return n
+
 
 class _Agree:
     """The comparisons; parametrised by the classes below."""
@@ -1410,12 +1462,23 @@ class _Agree:
 
     def test_same_kpi_cards(self, name, spec):
         pair = _render_pair(name, spec)
+        # One card per KPI the spec holds, found in the saved document:
+        # a _kpi_card that stopped matching made every entry compare []
+        # with [].
+        cards = sorted(k[0] for k in pair["std"]["kpis"])
+        assert cards == sorted(k["name"] for k in spec.get("kpis", [])), (
+            f"{name}: the saved document's KPI cards are {cards}")
         assert pair["std"]["kpis"] == pair["srv"]["kpis"], (
             f"{name}: KPI cards differ\n  standalone {pair['std']['kpis']}"
             f"\n  server     {pair['srv']['kpis']}")
 
     def test_same_widgets(self, name, spec):
         pair = _render_pair(name, spec)
+        # One widget per filter() group that builds one, likewise.
+        got = len(pair["std"]["widgets"])
+        assert got == _widgets_wanted(spec), (
+            f"{name}: the saved document has {got} filter widget(s), its "
+            f"filter() builds {_widgets_wanted(spec)}")
         diffs = _diff(pair["std"]["widgets"], pair["srv"]["widgets"])
         assert not diffs, _explain(name, "filter widgets", diffs)
 
@@ -1426,6 +1489,12 @@ class _Agree:
         assert pair["std"]["warnings"] == pair["srv"]["warnings"], (
             f"{name}: warnings differ\n  standalone {pair['std']['warnings']}"
             f"\n  server     {pair['srv']['warnings']}")
+        # ...and an entry that exists for a report makes it (_MUST_WARN).
+        want = _MUST_WARN.get(name)
+        if want is not None:
+            assert [w for w in pair["std"]["warnings"] if want in w], (
+                f"{name}: neither mode reported {want!r}: "
+                f"{pair['std']['warnings']}")
 
     def test_the_profile_is_not_empty(self, name, spec):
         """Guards the guard: comparing two empty lists proves nothing."""
@@ -1442,6 +1511,12 @@ class _Agree:
 @pytest.mark.parametrize("name,spec", CORPUS)
 class TestTheTwoModesAgree(_Agree):
     pass
+
+
+def test_every_must_warn_entry_is_in_the_corpus():
+    """A renamed entry would leave its _MUST_WARN line checking nothing."""
+    names = {p.values[0] for p in CORPUS + DATE_CORPUS}
+    assert set(_MUST_WARN) <= names, sorted(set(_MUST_WARN) - names)
 
 
 @pytest.mark.parametrize("name,spec", DATE_CORPUS)
@@ -1595,6 +1670,19 @@ _MOVES = [
 _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "lpoly", "rarea", "pcspike", "function", "connected"]
 
+#: The plot types twoway draws mlabel() on (test_marker_label_parity.py's
+#: measured partition; not imported, since that file imports this one).
+_LABELLING_TYPES = ("scatter", "connected", "bar", "dot", "dropline",
+                    "rcapsym", "rconnected", "rscatter", "pcscatter",
+                    "pccapsym", "pcarrow", "pcbarrow")
+
+
+def _labels_a_layer(spec):
+    """Does *spec* hold a layer that twoway draws marker labels on?"""
+    return any(p.get("type") in _LABELLING_TYPES
+               and (p.get("options") or {}).get("mlabel")
+               for g in spec["graphs"] for p in g.get("plots") or [])
+
 
 def _move_case(name, move, plots=None, go=None, graphs=None, kpis=None,
                if_expr="", bo=None):
@@ -1609,6 +1697,11 @@ MOVE_CORPUS = [
       for t in _MOVED_LAYERS for m in _MOVES],
     _move_case("line with marker labels, dropdown", _MOVES[0],
                [plot_for("line", {"mlabel": "rep"})]),
+    # twoway draws no marker label on a line (test_marker_label_parity.py),
+    # so the entry above compares no label with no label; this one draws
+    # them, and test_same_labels_after_the_move asks that it does.
+    _move_case("scatter with marker labels, dropdown", _MOVES[0],
+               [plot_for("scatter", {"mlabel": "rep"})]),
     # by(rep), not by(foreign): a panel whose group the move empties stays
     # on the served page as an empty panel, and the saved renderer given
     # the qualifier never builds it -- so the groups must all survive.
@@ -1676,16 +1769,31 @@ class TestAFilterMoveAgrees:
     def test_same_labels_after_the_move(self, name, spec, action, oracle):
         srv, _ = _served_after_move(spec, action)
         std, _ = _saved_with_qualifier(spec, oracle)
+        # zip() stops at the shorter list: a figure one mode lost would
+        # have had its labels compared with nothing.
+        assert len(std) == len(srv), f"{name}: figure counts differ"
+        drawn = 0
         for i, (a, b) in enumerate(zip(std, srv)):
             la = [x for x in a["annotations"] if x["kind"] == "LabelSet"]
             lb = [x for x in b["annotations"] if x["kind"] == "LabelSet"]
+            drawn += len(la)
             diffs = _diff(la, lb)
             assert not diffs, _explain(name, f"figure {i} labels after the "
                                              f"move", diffs)
+        # An entry with a layer twoway labels draws labels, or the check
+        # above compared [] with [] -- as every entry did (measured
+        # 24sep2026: the one labelled entry labelled a line).
+        if _labels_a_layer(spec):
+            assert drawn, f"{name}: no marker labels drawn after the move"
 
     def test_same_kpi_cards_after_the_move(self, name, spec, action, oracle):
         _, srv = _served_after_move(spec, action)
         _, std = _saved_with_qualifier(spec, oracle)
+        # One card per KPI, each a card: [] == [] passed for a KPI both
+        # modes stopped drawing.
+        assert None not in std and sorted(c[0] for c in std) == sorted(
+            k["name"] for k in spec.get("kpis", [])), (
+            f"{name}: the saved cards are {std}")
         assert std == srv, (f"{name}: KPI cards after the move\n  standalone "
                             f"{std}\n  server     {srv}")
 
@@ -1975,12 +2083,25 @@ class TestTheCopiedHelpersBringTheirCallees:
             f"A helper copied by _shared_stat_lines must bring its callees.")
 
     def test_the_scan_found_the_copied_helpers(self):
-        """Guards the guard: an app with no copied functions proves nothing."""
+        """Guards the guard: an app with no copied functions proves nothing.
+
+        Read from the generated module the scan above reads, as well as
+        from _shared_stat_lines' source: a name can stay in that source --
+        in a comment, or in an import line it writes -- after the app stops
+        carrying a copy the scan can see (the scan reads only functions the
+        app itself defines)."""
         import inspect
+        import types
         src = inspect.getsource(dr.ServerAppBuilder._shared_stat_lines)
+        mod = self._app_module()
         for name in ("_stata_if_to_pandas", "_resolve_seed", "_bootstrap_ci",
                      "_kpi_statistic"):
             assert name in src, f"{name} is no longer copied into the app"
+            fn = vars(mod).get(name)
+            assert (isinstance(fn, types.FunctionType)
+                    and fn.__module__ == mod.__name__), (
+                f"{name} is not a function the generated app defines, so "
+                f"the scan never read it: {fn!r}")
 
 
 # ---------------------------------------------------------------------------

@@ -47,13 +47,17 @@
 *! reported as OK.
 *!
 *! HOW THIS IS TESTED WITHOUT INSTALLING ANYTHING.  dash_setup pip-installs
-*! into the user's real environment, so no test here may run it end to end.
+*! into the user's real environment, so no test here may let it reach pip.
 *! The summary and the gate are therefore separate programs -- `_dash_setup_summary'
 *! and `_dash_setup_gate' -- which these cases call directly with the state
 *! they want to test.  That refactor is what makes the requirement testable
-*! at all; before it, the summary was four inline `display' lines.
+*! at all; before it, the summary was four inline `display' lines.  HON-19..25
+*! run the command itself, with pip replaced by a recorder in Stata's Python
+*! for exactly the length of each run, so it can reach pip and install
+*! nothing (WP-24: the helpers alone left the body's wiring untested).
 *!
-*! Tests: HON-01 through HON-18
+*! Tests: HON-01 through HON-25.  HON-19..25 run dash_setup itself with pip
+*! replaced by a recorder, so nothing is installed (see the section header).
 *!
 *! Usage:  do test/test_setup_honesty.cscript
 *! Version: 1.0  21sep2026
@@ -66,10 +70,14 @@ if "`c(python_exec)'" == "" {
 }
 
 qui do "../dash_setup.ado"
+// cert_log_has, for HON-16/17's captured log: it re-joins the lines a log
+// wraps, which a line-by-line search cannot.
+do "cert_helpers.do"
 
 // Read a captured log in Mata: a line of it is a value there, so nothing a
-// message contains can end a Stata string or be parsed as code.  The serve,
-// registry and locator cscripts use the same helper.
+// message contains can end a Stata string or be parsed as code.  The
+// registry cscript uses the same helper (the serve and locator cscripts
+// moved to cert_log_has, 24sep2026).
 mata:
 real scalar _hon_log_has(string scalar fn, string scalar needle)
 {
@@ -137,7 +145,12 @@ display "HON-01 PASS: a clean run still reports success"
 
 _hon_summary 1 0 "Python"
 assert r(claimed) == 0
-display "HON-02 PASS: a failure suppresses the success banner"
+// ... and says so, in the words HON-01 requires absent from a clean run:
+// the positive control for its r(failed) == 0.  No case asserted "did not
+// complete" present before 24sep2026, so a reworded failure line left
+// HON-01's check nothing to find.
+assert r(failed) == 1
+display "HON-02 PASS: a failure suppresses the success banner and says the setup did not complete"
 
 _hon_summary 1 0 "Python"
 assert r(rc) != 0
@@ -242,6 +255,10 @@ display "HON-15 PASS: a stray argument on dash_setup is r(101)"
 // whether dash_render.py or the schemes were reachable.  That is why an
 // install whose fourteen schemes all fell back was reported as "All
 // dependencies are satisfied".
+//
+// _hon_files runs the check with its output captured.  Until 24sep2026 it
+// was defined here and never called: HON-16 asserted rc 0 alone, which a
+// check that printed and counted nothing passed as well.
 capture program drop _hon_files
 program define _hon_files, rclass
     tempname lf
@@ -249,21 +266,78 @@ program define _hon_files, rclass
     quietly log using "`lg'", replace text name(`lf')
     capture noisily _dash_setup_check_files
     local rc = _rc
+    // Read at once: the next rclass call replaces r().
+    local nf = r(failures)
     quietly log close `lf'
-    mata: st_local("_hon_r", strofreal(_hon_log_has("`lg'", "dash_render.py")))
-    mata: st_local("_hon_s", strofreal(_hon_log_has("`lg'", "scheme")))
+    cert_log_has "`lg'", needle("dash_render.py") lower
+    local said_r = r(found)
+    cert_log_has "`lg'", needle("scheme") lower
+    local said_s = r(found)
+    cert_log_has "`lg'", needle("not found") lower
+    local said_nf = r(found)
     return scalar rc       = `rc'
-    return scalar failures = `=r(failures)'
-    return scalar said_r   = `_hon_r'
-    return scalar said_s   = `_hon_s'
+    return scalar failures = `nf'
+    return scalar said_r   = `said_r'
+    return scalar said_s   = `said_s'
+    return scalar said_nf  = `said_nf'
 end
-capture noisily _dash_setup_check_files
-assert _rc == 0
+
+// Both cases run on an ado-path narrowed to BASE and ONE directory, so
+// what the check finds is that directory's and no other copy's.  On the
+// ado-path the script is given, findfile answers with whichever dash comes
+// first -- test_setup_python_gate.cscript found it returning an installed
+// copy under the full runner -- and a check that found another copy passed
+// for a tree whose own renderer was missing.
+//   (a) this tree: both files present, reachable and OK;
+//   (b) a directory holding a copy of dash.ado and no dash_render.py: the
+//       renderer on no ado-path and not beside dash.ado, which must be
+//       counted as one failure and said ("not found").
+// No case drove (b) before 24sep2026, so a check that counted nothing
+// passed HON-17.  Every result is read into a local, inside a captured
+// block, before the ado-path is put back: a failure cannot leave it
+// narrowed for the scripts the runner runs after this one.
+local _hon_here "`c(pwd)'"
+quietly cd ..
+local _hon_tree "`c(pwd)'"
+quietly cd "`_hon_here'"
+tempfile _hon_tmp
+local _hon_nodash "`_hon_tmp'_hon17"
+capture mkdir "`_hon_nodash'"
+copy "../dash.ado" "`_hon_nodash'/dash.ado", replace
+mata: st_local("_hon_sado", st_global("S_ADO"))
+local a_rc = -1
+local b_rc = -1
+capture noisily {
+    mata: st_global("S_ADO", "BASE;" + char(96) + char(34) + st_local("_hon_tree") + char(34) + char(39))
+    _hon_files
+    local a_rc = r(rc)
+    local a_nf = r(failures)
+    local a_r  = r(said_r)
+    local a_s  = r(said_s)
+    mata: st_global("S_ADO", "BASE;" + char(96) + char(34) + st_local("_hon_nodash") + char(34) + char(39))
+    _hon_files
+    local b_rc = r(rc)
+    local b_nf = r(failures)
+    local b_nd = r(said_nf)
+}
+local _hon_blk = _rc
+mata: st_global("S_ADO", st_local("_hon_sado"))
+capture erase "`_hon_nodash'/dash.ado"
+capture rmdir "`_hon_nodash'"
+
+assert `_hon_blk' == 0
+assert `a_rc' == 0
+assert `a_r' == 1
+assert `a_s' == 1
 display "HON-16 PASS: dash_setup checks its own renderer and schemes"
 
-// In this tree both are present, so the check must find them.
-assert `=r(failures)' == 0
-display "HON-17 PASS: a healthy tree reports no missing files"
+// In this tree both are present, so the check must find them -- and where
+// the renderer is missing, it must count it and say so.
+assert `a_nf' == 0
+assert `b_rc' == 0
+assert `b_nf' == 1
+assert `b_nd' == 1
+display "HON-17 PASS: a healthy tree reports no missing files, and a missing renderer is one"
 
 
 // ================================================================
@@ -277,9 +351,268 @@ mata: st_local("_hon_n", strofreal(_hon_code_has("../dash_setup.ado", ///
 assert `_hon_n' == 1
 display "HON-18 PASS: the success banner is written in exactly one place"
 
+
+// ================================================================
+// HON-19..25 -- dash_setup itself, run end to end, installing nothing
+// ================================================================
+// HON-01..18 drive the helpers, and nothing ran dash_setup's own body, so
+// the wiring from each branch to the counters was untested.  Measured under
+// WP-24, each of these left HON-01..18 green: Python below the minimum
+// printed and not counted (the J1 defect itself), a required package below
+// its minimum not counted, pip handed the bare name, the --user retry
+// removed, pip's output for `packaging' discarded, an unverified version
+// displayed as "OK (version unknown)", _dash_setup_check_files never
+// called, its scheme probe never failing, and a missing renderer reported
+// as present.
+//
+// dash_setup runs for real here, with pip replaced by a recorder in Stata's
+// Python for exactly the length of the run (_hon_run_setup): every call is
+// written down, nothing is installed, and every call "fails", so a missing
+// package stays missing.  A missing package is made by putting None in
+// sys.modules, which Python's import refuses, and the module is put back
+// before anything is asserted.  jsonio must be found, or dash_setup would
+// reach for SSC; _hon_run_setup refuses to start without it.  The logs are
+// read line by line, so they are written at full width, and the session's
+// width is put back at the end.
+local _hon_ls = c(linesize)
+set linesize 255
+local _hon_live 1
+capture which jsonio
+if _rc local _hon_live 0
+// An import can only be asked by importing, and the first python call of a
+// session can fail under the runner whatever it asks: warm up, ask, and ask
+// once more before concluding a module is missing.
+capture python: pass
+foreach m in packaging bokeh numpy pandas {
+    capture python: import `m'
+    if _rc capture python: import `m'
+    if _rc local _hon_live 0
+}
+
+// Put dash_setup's programs back after a case replaced one with a stub.
+capture program drop _hon_reload
+program define _hon_reload
+    foreach p in dash_setup _dash_pymin _dash_pyver_ok _dash_pkg_version ///
+            _dash_setup_summary _dash_setup_gate _dash_setup_check_files {
+        capture program drop `p'
+    }
+    quietly do "../dash_setup.ado"
+end
+
+// Run dash_setup with pip recorded, optionally with one module made
+// unimportable; hand back its rc, its log and the pip calls it made
+// (each without the interpreter path, "|"-separated).
+capture program drop _hon_run_setup
+program define _hon_run_setup, rclass
+    args block
+    capture which jsonio
+    if _rc {
+        display as error "_hon_run_setup: jsonio is not on the ado-path; dash_setup would install it"
+        exit 459
+    }
+    local lg "`c(tmpdir)'dash_hon_setup.log"
+    capture erase "`lg'"
+    python: import subprocess as _hon_sp; _hon_real_run = _hon_sp.run; _hon_calls = []
+    python: import subprocess as _hon_sp; _hon_sp.run = lambda args, **kw: (_hon_calls.append([str(a) for a in args]), type("_HonPip", (), {"returncode": 1, "stdout": "HONPIPOUT", "stderr": "HONPIPERR"})())[1]
+    if "`block'" != "" {
+        python: import sys, sfi; _hon_b = sfi.Macro.getLocal("block"); _hon_saved = sys.modules.get(_hon_b); sys.modules[_hon_b] = None
+    }
+    tempname lf
+    quietly log using "`lg'", replace text name(`lf')
+    capture noisily dash_setup
+    local rc = _rc
+    quietly log close `lf'
+    if "`block'" != "" {
+        python: import sys; (sys.modules.__setitem__(_hon_b, _hon_saved) if _hon_saved is not None else sys.modules.pop(_hon_b, None))
+    }
+    python: import subprocess as _hon_sp, sfi; _hon_sp.run = _hon_real_run; sfi.Macro.setLocal("calls", " | ".join(" ".join(c[1:]) for c in _hon_calls))
+    return scalar rc = `rc'
+    return local log "`lg'"
+    return local calls `"`calls'"'
+end
+
+capture program drop _hon_has
+program define _hon_has
+    args fn needle out
+    mata: st_local("_hh", strofreal(_hon_log_has(st_local("fn"), st_local("needle"))))
+    c_local `out' `_hh'
+end
+
+// Without all five, dash_setup would try to install what is missing, and
+// the cases below would measure the recorder rather than the command.
+// (A program cannot be defined inside braces, hence the early exit.)
+if !`_hon_live' {
+    display "HON-19..25 SKIP: jsonio, packaging, bokeh, numpy and pandas must all be present to run dash_setup without installing"
+    foreach p in _hon_summary _hon_gate _hon_files _hon_run_setup _hon_reload _hon_has {
+        capture program drop `p'
+    }
+    set linesize `_hon_ls'
+    display ""
+    display "All dash_setup honesty tests PASSED."
+    exit
+}
+
+// ---- HON-19: Python below the minimum (J1, AC-06.1) ----
+// The real comparator runs, under dash_setup's own `version 16.0', against
+// a minimum no interpreter meets.
+capture program drop _dash_pymin
+program define _dash_pymin, rclass
+    return local pymin "99.0"
+end
+_hon_run_setup
+local h19rc = r(rc)
+local h19log "`r(log)'"
+local h19calls `"`r(calls)'"'
+_hon_reload
+_hon_has "`h19log'" "is below the minimum 99.0" h19below
+_hon_has "`h19log'" "(needs 99.0)" h19unmet
+_hon_has "`h19log'" "All dependencies are satisfied" h19ok
+assert `h19rc' == 198
+assert `h19below' == 1
+assert `h19unmet' == 1
+assert `h19ok' == 0
+assert `"`h19calls'"' == ""
+display "HON-19 PASS: Python below the minimum is counted: r(198), named, no success banner"
+
+// ---- HON-20: a required package below its minimum (AC-06.2) ----
+capture program drop _dash_pkg_version
+program define _dash_pkg_version
+    args pkg outmac
+    if "`pkg'" == "bokeh" {
+        c_local `outmac' "2.4"
+    }
+    else {
+        c_local `outmac' "99.0"
+    }
+end
+_hon_run_setup
+local h20rc = r(rc)
+local h20log "`r(log)'"
+local h20calls `"`r(calls)'"'
+_hon_reload
+_hon_has "`h20log'" "(below minimum 3.0)" h20below
+_hon_has "`h20log'" "--upgrade 'bokeh>=3.0'" h20cmd
+_hon_has "`h20log'" "bokeh 2.4 (needs 3.0)" h20unmet
+_hon_has "`h20log'" "All dependencies are satisfied" h20ok
+assert `h20rc' == 198
+assert `h20below' == 1
+assert `h20cmd' == 1
+assert `h20unmet' == 1
+assert `h20ok' == 0
+assert `"`h20calls'"' == ""
+display "HON-20 PASS: bokeh 2.4 is reported unmet with the upgrade command, and not upgraded"
+
+// ---- HON-21: packaging unavailable (AC-06.3, TR-06.7) ----
+_hon_run_setup packaging
+local h21rc = r(rc)
+local h21log "`r(log)'"
+local h21calls `"`r(calls)'"'
+_hon_has "`h21log'" "HONPIPOUT" h21out
+_hon_has "`h21log'" "with 1 warning" h21warn
+_hon_has "`h21log'" "All dependencies are satisfied" h21ok
+_hon_has "`h21log'" "(not verified against 3.0)" h21v1
+_hon_has "`h21log'" "(not verified against 1.23)" h21v2
+_hon_has "`h21log'" "(not verified against 1.5)" h21v3
+_hon_has "`h21log'" "bokeh ............. OK" h21k1
+_hon_has "`h21log'" "numpy ............. OK" h21k2
+_hon_has "`h21log'" "pandas ............. OK" h21k3
+assert `h21rc' == 0
+assert `"`h21calls'"' == "-m pip install packaging"
+assert `h21out' == 1
+assert `h21warn' == 1
+assert `h21ok' == 0
+assert `h21v1' == 1 & `h21v2' == 1 & `h21v3' == 1
+assert `h21k1' == 0 & `h21k2' == 0 & `h21k3' == 0
+display "HON-21 PASS: without packaging no package is OK, pip's own output is shown, one warning"
+
+// ---- HON-22: a missing package (TR-06.2, TR-06.6) ----
+_hon_run_setup bokeh
+local h22rc = r(rc)
+local h22log "`r(log)'"
+local h22calls `"`r(calls)'"'
+_hon_has "`h22log'" "bokeh (could not install)" h22unmet
+_hon_has "`h22log'" "All dependencies are satisfied" h22ok
+assert `h22rc' == 198
+assert `"`h22calls'"' == "-m pip install bokeh>=3.0 | -m pip install --user bokeh>=3.0"
+assert `h22unmet' == 1
+assert `h22ok' == 0
+display "HON-22 PASS: pip is asked for bokeh>=3.0, then again with --user, and the failure is fatal"
+
+// ---- HON-23..24: _dash_setup_check_files on two broken trees (AC-06.4) ----
+// $S_ADO is the ado-path itself; it is put back before any assert.
+mata: st_local("_hon_sado", st_global("S_ADO"))
+local lg23 "`c(tmpdir)'dash_hon_files.log"
+capture erase "`lg23'"
+tempname lf23
+quietly log using "`lg23'", replace text name(`lf23')
+mata: st_global("S_ADO", "BASE;SITE")
+capture noisily _dash_setup_check_files
+local h23rc = _rc
+local h23f = r(failures)
+mata: st_global("S_ADO", st_local("_hon_sado"))
+quietly log close `lf23'
+_hon_has "`lg23'" "dash_render.py ..... not found" h23nf
+_hon_has "`lg23'" "dash_render.py ..... OK" h23okr
+assert `h23rc' == 0
+assert `h23f' == 1
+assert `h23nf' == 1
+assert `h23okr' == 0
+display "HON-23 PASS: no renderer on the ado-path is one failure, named"
+
+// A copy of the renderer with no schemes anywhere it looks.
+tempfile h24b
+local h24dir "`h24b'_r"
+mata: mkdir(st_local("h24dir"))
+copy "../dash_render.py" "`h24dir'/dash_render.py"
+local lg24 "`c(tmpdir)'dash_hon_files24.log"
+capture erase "`lg24'"
+tempname lf24
+quietly log using "`lg24'", replace text name(`lf24')
+mata: st_global("S_ADO", "BASE;SITE;" + char(96) + char(34) + st_local("h24dir") + char(34) + char(39))
+capture noisily _dash_setup_check_files
+local h24rc = _rc
+local h24f = r(failures)
+mata: st_global("S_ADO", st_local("_hon_sado"))
+quietly log close `lf24'
+_hon_has "`lg24'" "schemes ............ unreachable" h24un
+_hon_has "`lg24'" "dash_render.py ..... OK" h24okr
+assert `h24rc' == 0
+assert `h24f' == 1
+assert `h24un' == 1
+assert `h24okr' == 1
+display "HON-24 PASS: a renderer that can read no scheme is one failure, named"
+
+// ---- HON-25: and dash_setup acts on it ----
+// The copy goes FIRST on the full path, so jsonio is still found.
+mata: st_global("S_ADO", char(96) + char(34) + st_local("h24dir") + char(34) + char(39) + ";" + st_local("_hon_sado"))
+capture noisily _hon_run_setup
+local h25run = _rc
+local h25rc = r(rc)
+local h25log "`r(log)'"
+local h25calls `"`r(calls)'"'
+mata: st_global("S_ADO", st_local("_hon_sado"))
+capture erase "`h24dir'/dash_render.py"
+capture rmdir "`h24dir'"
+assert `h25run' == 0
+_hon_has "`h25log'" "dash's own files" h25unmet
+_hon_has "`h25log'" "All dependencies are satisfied" h25ok
+assert `h25rc' == 198
+assert `h25unmet' == 1
+assert `h25ok' == 0
+assert `"`h25calls'"' == ""
+display "HON-25 PASS: dash_setup fails when its own renderer can read no scheme"
+
+capture erase "`c(tmpdir)'dash_hon_setup.log"
+capture erase "`lg23'"
+capture erase "`lg24'"
+
 capture program drop _hon_summary
 capture program drop _hon_gate
 capture program drop _hon_files
+capture program drop _hon_run_setup
+capture program drop _hon_reload
+capture program drop _hon_has
+set linesize `_hon_ls'
 
 display ""
 display "All dash_setup honesty tests PASSED."

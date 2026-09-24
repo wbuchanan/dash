@@ -148,5 +148,65 @@ assert _rc == 111
 
 display as result "  [5/5] dash serve validates like dash build: PASS"
 
+// ---------------------------------------------------------------
+// 6. link() and theme() given on dash serve reach build_options
+//    -- the two of test_serve_options.py's eight "could not reach the
+//    server" options that [1/5] does not give.  That pytest file only
+//    finds them in _dash_prepare_spec's syntax block; this runs them.
+// ---------------------------------------------------------------
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(s1)
+dash scatter price weight, name(s2)
+tempfile mj6 dj6
+_dash_serve_spec, specpath("`mj6'") datapath("`dj6'") port(5006) timeout(0) ///
+    link(s1 s2) theme(dark)
+local mj "`r(master_json_path)'"
+cert_file_has "`mj'", needle(`""link":"s1 s2""')
+assert r(found) == 1
+cert_file_has "`mj'", needle(`""theme":"dark""')
+assert r(found) == 1
+
+display as result "  [6/7] link() and theme() on dash serve reach build_options: PASS"
+
+// ---------------------------------------------------------------
+// 7. Every option dash build takes, given to dash serve at once, is
+//    accepted, and each dashboard option reaches the served spec.  And
+//    dash build takes the same list.  test_serve_options.py holds the two
+//    option lists equal by reading them out of dash.ado; this is the
+//    behaviour that equality is for -- an option one command took and the
+//    other did not was r(198) "option ... not allowed" on the other.  (The
+//    note naming saving(), replace and server as build-only on dash serve
+//    is test_help_claims_2.cscript HC2-25c.)
+// ---------------------------------------------------------------
+tempfile mj7 dj7 h7
+local _tl `"Main: s1 s2"'
+capture noisily _dash_serve_spec, specpath("`mj7'") datapath("`dj7'") ///
+    port(5006) timeout(0) saving("`h7'.html") replace server ///
+    title("T7") subtitle("S7") layout(1 2) link(s1 s2) theme(dark) ///
+    scheme(economist) tabs(`"`_tl'"') filterposition(left) csv ///
+    filter(foreign, type(dropdown))
+assert _rc == 0
+local mj "`r(master_json_path)'"
+foreach nd in `""title":"T7""' `""subtitle":"S7""' `""layout":"1 2""' ///
+        `""link":"s1 s2""' `""theme":"dark""' `""scheme":"economist""' ///
+        `""filter_position":"left""' `""csv":"1""' `""filter":"foreign"' {
+    cert_file_has "`mj'", needle(`"`nd'"')
+    if r(found) != 1 display as error `"  not in the served spec: `nd'"'
+    assert r(found) == 1
+}
+cert_file_has "`mj'", needle("Main: s1 s2")
+assert r(found) == 1
+capture erase "`h7'.html"
+capture noisily dash build, saving("`h7'.html") replace nobrowser ///
+    title("T7") subtitle("S7") layout(1 2) link(s1 s2) theme(dark) ///
+    scheme(economist) tabs(`"`_tl'"') filterposition(left) csv ///
+    filter(foreign, type(dropdown))
+assert _rc == 0
+confirm file "`h7'.html"
+capture erase "`h7'.html"
+
+display as result "  [7/7] dash serve and dash build take every build option: PASS"
+
 dash clear
 display as result "test_serve_options.cscript: ALL PASS"

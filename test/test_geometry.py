@@ -176,7 +176,11 @@ class TestSchemeGraphsize:
                                                           want):
         sp = SchemeParser(scheme)
         if not (sp.graphsize_x and sp.graphsize_y):
-            pytest.skip(f"{scheme} records no graphsize")
+            # A failure, not a skip: this test says the scheme carries its
+            # own size, and each of the four does (measured 24sep2026 --
+            # stcolor 7.5 x 4.5, s2color 5.5 x 4, economist 2.2 x 2.2, sj
+            # 3.575 x 2.6).  A skip here passed a scheme that lost it.
+            pytest.fail(f"{scheme} records no graphsize")
         dr, _ = _render(build={"scheme": scheme})
         assert _ratio(dr.figures["g1"]) == pytest.approx(want, rel=1e-3)
 
@@ -188,12 +192,19 @@ class TestSchemeGraphsize:
 
     def test_the_scheme_values_match_stata(self, truth):
         """SchemeParser must agree with Stata's own defaults."""
+        compared, sizeless = [], []
         for name, rec in truth["scheme_defaults"].items():
             sp = SchemeParser(name)
             if sp.graphsize_x is None:
+                sizeless.append(name)
                 continue
             assert sp.graphsize_x == pytest.approx(rec["xsize"]), name
             assert sp.graphsize_y == pytest.approx(rec["ysize"]), name
+            compared.append(name)
+        # The `continue' passed a scheme that lost its size, and every one
+        # of them at once.  Measured 24sep2026: the fixture records Stata's
+        # size for 14 schemes and dash carries a size for all 14.
+        assert not sizeless and len(compared) == 14, (compared, sizeless)
 
 
 # ======================================================================
@@ -318,11 +329,16 @@ class TestBootstrapLayout:
         import re
         _, html_text = _render(
             build={"layout": "bs: g1=3 g2=3 g3=3 g4=3"}, n_graphs=4)
+        checked = 0
         for c in self._emitted(html_text):
             md = re.search(r"db-col-md-(\d+)", c)
             lg = re.search(r"db-col-lg-(\d+)", c)
             if md and lg and int(lg.group(1)) <= 4:
                 assert int(md.group(1)) > int(lg.group(1)), c
+                checked += 1
+        # The four cells are narrow ones (measured 24sep2026: md-6 lg-3
+        # each); a cell that lost its md or lg class was never asked.
+        assert checked == 4, (checked, self._emitted(html_text))
 
     def test_a_graph_cell_takes_its_height_from_the_figure(self):
         """Every cell used to get the same height regardless of its span.
@@ -368,6 +384,10 @@ class TestBootstrapLayout:
         kpi_cells = [c for c in self._emitted(html_text) if "db-cell-h-" in c]
         assert kpi_cells, "KPI cells carry no height class"
         assert all("db-cell-h-sm" in c for c in kpi_cells), kpi_cells
+        # One card of four with a height passed the two checks above.
+        # Measured 24sep2026: each of the four KPI cells carries it, and
+        # the graph's cell (the fifth) none.
+        assert len(kpi_cells) == 4, self._emitted(html_text)
 
     def test_a_wide_panel_gets_its_own_row(self):
         """And does not push every other graph onto a row of its own."""

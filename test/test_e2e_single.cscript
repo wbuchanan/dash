@@ -1,7 +1,7 @@
 *! test_e2e_single.cscript
 *! End-to-end certification script for single-graph dash output.
 *!
-*! Tests: P1C-15 through P1C-18
+*! Tests: P1C-15 through P1C-19
 *!
 *! Usage:  do test/test_e2e_single.cscript
 *!
@@ -105,24 +105,82 @@ dash (scatter mpg weight) (lfit mpg weight), saving("`outpath2'")
 capture confirm file "`outpath2'"
 assert _rc == 0
 
-// The HTML should be larger than a single-plot HTML (more data/renderers)
-// We check size by reading line count.  This loop counts lines and never
-// expands `ln3' into an expression, so the quote characters in the HTML
-// cannot reach the parser; it is left as it stands.
-tempname fh3
-file open `fh3' using "`outpath2'", read text
-local lc2 = 0
-local ln3 ""
-file read `fh3' ln3
-while r(eof) == 0 {
-    local lc2 = `lc2' + 1
-    file read `fh3' ln3
-}
-file close `fh3'
+// This counted the page's lines and asserted more than 50, on the theory
+// that a second layer makes a longer file.  It could not fail: the page is
+// mostly the BokehJS it inlines, and measured 24sep2026 the page of a
+// scatter alone and the page of this (scatter)(lfit) pair are both 819
+// lines.  The layer itself is read from the page's Bokeh document instead
+// -- decoded as BokehJS decodes it (JSON.parse of the unescaped block) and
+// read with Document.from_json, as test_conformance.cscript C-03 does.  The
+// figure draws two layers: the scatter, a Scatter glyph over the 74
+// observations, and the fit, a Line glyph whose every point lies on the
+// line regress fits, from the smallest weight to the largest -- twoway
+// lfit predicts over the range of the data.
+quietly regress mpg weight
+// Scalars, not macros, so Python reads the coefficients in full precision.
+scalar p116_b0 = _b[_cons]
+scalar p116_b1 = _b[weight]
+quietly summarize weight
+local p116_lo = r(min)
+local p116_hi = r(max)
+local p116page "`outpath2'"
+python:
+import json
+import re
+from sfi import Macro, Scalar
+from bokeh.document import Document
+from bokeh.models import GlyphRenderer, Line, Scatter
 
-// A multi-plot file should have at least 50 lines
-assert `lc2' > 50
-display "P1C-16 PASS: (scatter)(lfit) HTML exists and is non-trivially large"
+
+def _p116_doc(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    blocks = re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, re.S)
+    docs = [d for b in blocks
+            for d in json.loads(re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                                       lambda m: ents[m.group(1)], b)).values()]
+    return Document.from_json(docs[0]) if len(docs) == 1 else None
+
+
+_p116 = _p116_doc(Macro.getLocal("p116page"))
+_p116r = ([m for m in _p116.models if isinstance(m, GlyphRenderer)]
+          if _p116 is not None else [])
+_p116s = [r for r in _p116r if isinstance(r.glyph, Scatter)]
+_p116l = [r for r in _p116r if isinstance(r.glyph, Line)]
+Macro.setLocal("p116_nrend", str(len(_p116r)))
+Macro.setLocal("p116_nscat", str(len(_p116s)))
+Macro.setLocal("p116_nline", str(len(_p116l)))
+Macro.setLocal("p116_nobs", str(len(_p116s[0].data_source.data[_p116s[0].glyph.x.field])
+                                if len(_p116s) == 1 else -1))
+_p116ok = "0"
+if len(_p116l) == 1:
+    _p116x = [float(v) for v in _p116l[0].data_source.data[_p116l[0].glyph.x.field]]
+    _p116y = [float(v) for v in _p116l[0].data_source.data[_p116l[0].glyph.y.field]]
+    _p116b0 = Scalar.getValue("p116_b0")
+    _p116b1 = Scalar.getValue("p116_b1")
+    _p116dev = max([abs(y - (_p116b0 + _p116b1 * x)) for x, y in zip(_p116x, _p116y)] or [1e300])
+    Macro.setLocal("p116_npts", str(len(_p116x)))
+    Macro.setLocal("p116_dev", repr(_p116dev))
+    Macro.setLocal("p116_xlo", repr(min(_p116x) if _p116x else 1e300))
+    Macro.setLocal("p116_xhi", repr(max(_p116x) if _p116x else -1e300))
+    _p116ok = "1"
+Macro.setLocal("p116_ok", _p116ok)
+del _p116, _p116r, _p116s, _p116l
+end
+display "P1C-16: `p116_nrend' glyph renderers (`p116_nscat' scatter over `p116_nobs' rows, `p116_nline' line)"
+assert `p116_nrend' == 2 & `p116_nscat' == 1 & `p116_nline' == 1
+assert `p116_nobs' == 74
+assert `p116_ok' == 1
+display "P1C-16: the fit line has `p116_npts' points from `p116_xlo' to `p116_xhi', off the regress line by at most `p116_dev'"
+assert `p116_npts' >= 2
+assert `p116_dev' < 1e-9 * max(1, abs(scalar(p116_b0)))
+assert reldif(`p116_xlo', `p116_lo') < 1e-12 & reldif(`p116_xhi', `p116_hi') < 1e-12
+scalar drop p116_b0 p116_b1
+display "P1C-16 PASS: (scatter)(lfit) draws the scatter and the regress fit over the range of weight"
 
 // ================================================================
 // P1C-17 — variable label "Mileage (mpg)" appears in output HTML as axis title
@@ -188,6 +246,81 @@ cert_file_has "`outpath3b'", needle("Domestic")
 assert r(found) == 1
 display "P1C-18c PASS: the one-line form and dash build agree on by()"
 dash clear
+
+// ================================================================
+// P1C-19 -- a qualified fit is the line regress reports (ROADMAP WP-02
+// AC-02.4)
+// ================================================================
+// `dash (scatter mpg weight) (lfit mpg weight if foreign==1)' must draw the
+// line `regress mpg weight if foreign==1' reports, over the foreign cars'
+// weights.  Measured before 8efee0b: the all-cars line (slope -0.0060
+// where the foreign cars give -0.0104), drawn as the foreign one, rc 0.
+// The graph is registered, its spec written by _dash_prepare_spec -- the
+// assembly dash build and dash serve share -- and drawn by this tree's
+// renderer in Stata's own Python; the line is held to regress, run in the
+// same session.  Added by ROADMAP WP-24, which measured it failing with
+// 8efee0b's change put back in a copy of the tree, and with the plot's
+// qualifier dropped from the spec dash.ado writes.
+dash clear
+sysuse auto, clear
+quietly regress mpg weight if foreign==1
+local p19b = _b[weight]
+local p19a = _b[_cons]
+quietly summarize weight if foreign==1
+local p19lo = r(min)
+local p19hi = r(max)
+dash (scatter mpg weight) (lfit mpg weight if foreign==1), name(q19)
+tempfile p19s p19d
+_dash_prepare_spec, cmdname("dash build") specpath("`p19s'") datapath("`p19d'")
+global P1C19_SPEC "`p19s'"
+global P1C19_DATA "`p19d'"
+global P1C19_OUT ""
+python:
+import importlib.util as _p19_il
+import os as _p19_os
+import sys as _p19_sys
+import warnings as _p19_w
+from sfi import Macro as _p19_M
+from bokeh.models import GlyphRenderer as _p19_GR
+
+# This tree's renderer, loaded by path under a name of its own.
+_p19_spec = _p19_il.spec_from_file_location("_p1c19_dash_render", _p19_os.path.abspath("../dash_render.py"))
+_p19_dr = _p19_il.module_from_spec(_p19_spec)
+_p19_sys.modules["_p1c19_dash_render"] = _p19_dr
+_p19_spec.loader.exec_module(_p19_dr)
+with _p19_w.catch_warnings():
+    _p19_w.simplefilter("ignore")
+    _p19_r = _p19_dr.DashRenderer(_p19_M.getGlobal("P1C19_SPEC"), _p19_M.getGlobal("P1C19_DATA"))
+    _p19_r.render()
+# The fit is the one source holding x and y and nothing else; the scatter
+# draws from the data's own columns.
+_p19_lines = []
+for _p19_g in _p19_r._last_layout_root.select({"type": _p19_GR}):
+    _p19_d = _p19_g.data_source.data
+    if sorted(_p19_d.keys()) == ["x", "y"]:
+        _p19_lines.append((list(_p19_d["x"]), list(_p19_d["y"])))
+if len(_p19_lines) == 1:
+    _p19_x, _p19_y = _p19_lines[0]
+    _p19_b = (_p19_y[-1] - _p19_y[0]) / (_p19_x[-1] - _p19_x[0])
+    _p19_M.setGlobal("P1C19_OUT", " ".join(repr(float(v)) for v in (_p19_b, _p19_y[0] - _p19_b * _p19_x[0], _p19_x[0], _p19_x[-1])))
+else:
+    _p19_M.setGlobal("P1C19_OUT", "fit-lines-found=%d" % len(_p19_lines))
+_p19_gone = _p19_sys.modules.pop("_p1c19_dash_render", None)
+end
+display as text "     drawn: slope, intercept, first and last x = ${P1C19_OUT}"
+display as text "     regress: slope `p19b', intercept `p19a', weights `p19lo' to `p19hi'"
+local p19n : word count ${P1C19_OUT}
+assert `p19n' == 4
+local p19db : word 1 of ${P1C19_OUT}
+local p19da : word 2 of ${P1C19_OUT}
+local p19x0 : word 3 of ${P1C19_OUT}
+local p19x1 : word 4 of ${P1C19_OUT}
+assert reldif(`p19db', `p19b') < 1e-9
+assert reldif(`p19da', `p19a') < 1e-9
+assert `p19x0' == `p19lo' & `p19x1' == `p19hi'
+display "P1C-19 PASS: (lfit mpg weight if foreign==1) is the line regress mpg weight if foreign==1 reports, over the foreign cars' weights"
+dash clear
+macro drop P1C19_*
 
 display ""
 display "All single-graph E2E tests PASSED."

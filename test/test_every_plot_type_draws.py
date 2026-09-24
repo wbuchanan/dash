@@ -1,4 +1,4 @@
-"""Every plot type dash advertises must actually draw something.
+"""Every plot type dash draws must actually draw something.
 
 `dash.ado` prints a list of supported plot types when it does not recognise
 one. That list is the package's promise, and two entries on it -- `pci` and
@@ -11,10 +11,29 @@ warning until this test existed. Nothing noticed, because:
   * the pytest coverage for those two was at the `GlyphMapper` level, which
     is downstream of the dispatch that never reached them.
 
-So this test reads the promise out of `dash.ado` rather than restating it,
-builds a minimal spec for each type in the shape `dash.ado` itself writes,
-renders it, and asserts a glyph came out. A plot type added to that list
-without a render path fails here.
+So this test builds a minimal spec for each type in the shape `dash.ado`
+itself writes, renders it, and asserts a glyph came out -- a glyph over real
+data.
+
+WHICH types: the dispatch table itself.  ``dr._dash_plot_type_names()``
+reads the tables both render modes dispatch through (``_dash_glyph_dispatch``
+and ``_dash_pc_dispatch``) and the literal types.  The list used to be
+parsed out of the "Supported:" message dash.ado prints -- a regex over prose,
+so a reflowed message dropped a type from the parametrization without a
+word, under a ``>= 30`` floor that would not notice one or two going
+(GAPS.md L6).  The registry is held equal, both ways, to the two places
+dash.ado names plot types:
+
+  * the Mata table ``_expand_plottype_str`` (dash_parse.mata) -- every name
+    a user's spelling can become, so no type dash.ado accepts goes untested
+    here, and none the registry lists is unreachable;
+  * the family lists of ``_dash_plottype_families`` (dash.ado), which decide
+    the shape of the spec dash.ado writes for a type -- each spec here is
+    built in that shape, read from those lists rather than restated.
+
+test_plottype_families.py holds those families to the renderer's own
+categories; the "Supported:" message is held to the registry by
+test_mode_parity.py (TestTheCorpusIsComplete) and test_help_claims_1.py.
 """
 import json
 import os
@@ -31,6 +50,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 import dash_render as dr
 
 _ADO = os.path.join(_HERE, "..", "dash.ado")
+_MATA = os.path.join(_HERE, "..", "dash_parse.mata")
 
 # One tsset-style panel, wide enough for every smoother to have something to
 # fit and every range type to have two bounds.
@@ -46,10 +66,42 @@ _DATA = {
     ],
 }
 
-_RANGE_TYPES = {"rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
-                "rcapsym", "rscatter", "tsrline"}
-_PC_VAR_TYPES = {"pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym"}
-_UNIVARIATE = {"histogram", "kdensity"}
+
+def _ado_families():
+    """``{family: frozenset(types)}`` from dash.ado's _dash_plottype_families.
+
+    Code, not prose: the program's own ``c_local`` word lists, each read
+    whole.  test_plottype_families.py holds the same lists to the
+    renderer's ``_DASH_*_TYPES``.
+    """
+    with open(_ADO, encoding="utf-8") as fh:
+        src = fh.read()
+    m = re.search(r"^program define _dash_plottype_families\b(.*?)^end\b",
+                  src, re.S | re.M)
+    assert m, "dash.ado defines no _dash_plottype_families program"
+    return {name: frozenset(words.split())
+            for name, words in re.findall(
+                r'^\s*c_local\s+(_pt_\w+)\s+"([^"]*)"', m.group(1), re.M)}
+
+
+def _mata_expanded_types():
+    """The full names ``_expand_plottype_str`` can return: its table's first
+    column, and the two spellings it maps outside the table."""
+    with open(_MATA, encoding="utf-8") as fh:
+        src = fh.read()
+    k = src.index("string scalar _expand_plottype_str(")
+    body = src[k:src.index("\n}\n", k)]
+    table = re.search(r"tbl = (.*?)\n\s*\n", body, re.S)
+    assert table, "_expand_plottype_str has no tbl = ... table"
+    names = set(re.findall(r'\("([a-z]+)","[a-z]+"\)', table.group(1)))
+    names |= set(re.findall(r'return\("([a-z]+)"\)', body))
+    return frozenset(names)
+
+
+_FAMILIES = _ado_families()
+
+#: The types this file renders: the registry, every one of them.
+_TYPES = sorted(dr._dash_plot_type_names())
 
 # Layers that need an OPTIONAL package. dash_setup installs these, and
 # dash.sthlp says a missing one degrades that layer to an empty glyph with a
@@ -97,7 +149,13 @@ def _missing_dep(ptype):
 
 
 def _advertised_plot_types():
-    """The list dash.ado prints when it rejects an unknown plot type."""
+    """The list dash.ado prints when it rejects an unknown plot type.
+
+    The user-facing promise, parsed out of a message.  Nothing here is
+    parametrized over it: test_mode_parity.py compares it, as a set, with
+    ``_dash_plot_type_names()``, so a message that stops parsing fails that
+    comparison instead of dropping a type unseen.
+    """
     with open(_ADO, encoding="utf-8") as fh:
         src = fh.read()
     # Start at the "Supported:" literal, not at the message above it: the
@@ -117,32 +175,36 @@ def _advertised_plot_types():
 
 
 def _plot_for(ptype):
-    if ptype in _UNIVARIATE:
+    """A one-layer plot spec for *ptype*, in the shape dash.ado writes it:
+    its varlist keys chosen by the family dash.ado routes it through."""
+    if ptype in _FAMILIES["_pt_univar"]:
         return {"type": ptype, "yvar": "y", "xvar": "", "options": {}}
-    if ptype in _RANGE_TYPES:
-        return {"type": ptype, "yvar1": "lo", "yvar2": "hi", "xvar": "x",
+    if ptype in _FAMILIES["_pt_range"]:
+        # tsrline is a range type whose x is the time variable.
+        xvar = "t" if ptype in _FAMILIES["_pt_ts"] else "x"
+        return {"type": ptype, "yvar1": "lo", "yvar2": "hi", "xvar": xvar,
                 "options": {}}
-    if ptype in _PC_VAR_TYPES:
+    if ptype in _FAMILIES["_pt_pc"]:
         return {"type": ptype, "y1var": "y", "x1var": "x",
                 "y2var": "y2", "x2var": "x2", "options": {}}
-    if ptype == "scatteri":
-        return {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
-                "options": {}}
-    if ptype == "pci":
-        # One record per segment, y1 x1 y2 x2, as dash.ado writes
-        # `pci 20 3000 30 4000' (the record pcarrowi's is).
-        return {"type": ptype, "values": [[20.0, 3000.0, 30.0, 4000.0]],
-                "options": {}}
-    if ptype == "pcarrowi":
-        # One record per arrow, y1 x1 y2 x2, as dash.ado writes
-        # `pcarrowi 20 3000 30 4000'.
-        return {"type": ptype, "values": [[20.0, 3000.0, 30.0, 4000.0]],
-                "options": {}}
-    if ptype == "function":
-        return {"type": ptype, "expr": "x", "options": {"range": "0 10"}}
-    if ptype in ("tsline", "tsrline"):
-        return {"type": ptype, "yvar": "y", "xvar": "t", "options": {}}
-    return {"type": ptype, "yvar": "y", "xvar": "x", "options": {}}
+    if ptype in _FAMILIES["_pt_literal"]:
+        # Literal values or an expression, a shape per type; a literal type
+        # added to the family without one here fails rather than being
+        # drawn from a variable spec it would never be given.
+        if ptype == "scatteri":
+            return {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
+                    "options": {}}
+        if ptype in ("pci", "pcarrowi"):
+            # One record per segment or arrow, y1 x1 y2 x2, as dash.ado
+            # writes `pci 20 3000 30 4000' and `pcarrowi 20 3000 30 4000'.
+            return {"type": ptype, "values": [[20.0, 3000.0, 30.0, 4000.0]],
+                    "options": {}}
+        if ptype == "function":
+            return {"type": ptype, "expr": "x", "options": {"range": "0 10"}}
+        raise AssertionError(
+            f"{ptype} is a literal type with no spec shape in _plot_for")
+    xvar = "t" if ptype in _FAMILIES["_pt_ts"] else "x"
+    return {"type": ptype, "yvar": "y", "xvar": xvar, "options": {}}
 
 
 def _render(plot):
@@ -161,30 +223,47 @@ def _render(plot):
     return r.figures["g1"]
 
 
-def test_the_advertised_list_was_found():
-    """Guards the guard: an empty list would make every check below vacuous."""
-    types = _advertised_plot_types()
-    assert len(types) >= 30, (
-        f"only {len(types)} plot types parsed out of dash.ado's own list: "
-        f"{types}"
-    )
-    for expected in ("scatter", "line", "histogram", "pci", "pcscatter",
-                     "function", "mband"):
-        assert expected in types, f"{expected} missing from the parsed list"
+class TestTheListIsTheDispatchTable:
+    """Guards the guard: the tests below run once per type in ``_TYPES``, so
+    a type missing from it is a type never rendered here."""
+
+    def test_the_registry_is_every_type_dash_ado_accepts(self):
+        """Both ways: a type the Mata table expands to and the registry
+        lacks would never be drawn by this file (a dispatch entry whose
+        method is not named map_<type> drops out of the registry); a
+        registry type the table cannot produce is one no command reaches."""
+        mata, code = _mata_expanded_types(), frozenset(_TYPES)
+        assert mata == code, (
+            f"only in _expand_plottype_str: {sorted(mata - code)}; only in "
+            f"_dash_plot_type_names(): {sorted(code - mata)}")
+
+    def test_every_family_member_is_in_the_list(self):
+        for fam in ("_pt_univar", "_pt_range", "_pt_pc", "_pt_literal",
+                    "_pt_ts"):
+            assert _FAMILIES.get(fam), f"dash.ado defines no {fam}"
+            stray = sorted(_FAMILIES[fam] - set(_TYPES))
+            assert not stray, f"{fam} names types the registry lacks: {stray}"
+
+    def test_the_parametrization_is_the_list(self):
+        """What pytest collects below is ``_TYPES`` itself: no floor, no
+        subset, no duplicate."""
+        assert len(_TYPES) == len(set(_TYPES)) == len(dr._dash_plot_type_names())
+        for expected in ("scatter", "line", "histogram", "pci", "pcscatter",
+                         "function", "mband"):
+            assert expected in _TYPES
 
 
-@pytest.mark.parametrize("ptype", _advertised_plot_types())
-def test_an_advertised_plot_type_draws_a_glyph(ptype):
+@pytest.mark.parametrize("ptype", _TYPES)
+def test_a_plot_type_draws_a_glyph(ptype):
     fig = _render(_plot_for(ptype))
     assert len(fig.renderers) >= 1, (
-        f"`dash {ptype} ...' is in the list of supported plot types "
-        f"dash.ado prints, and it draws nothing: an empty plot region, "
-        f"rc 0, no warning"
+        f"`dash {ptype} ...' is a plot type dash draws, and it draws "
+        f"nothing: an empty plot region, rc 0, no warning"
     )
 
 
-@pytest.mark.parametrize("ptype", _advertised_plot_types())
-def test_an_advertised_plot_type_draws_real_data(ptype):
+@pytest.mark.parametrize("ptype", _TYPES)
+def test_a_plot_type_draws_real_data(ptype):
     """A renderer over an empty source is a plot type that failed quietly."""
     dep = _missing_dep(ptype)
     if dep:

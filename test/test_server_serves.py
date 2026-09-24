@@ -362,7 +362,6 @@ class TestHealthOnTheLauncher:
         app = _build_app(app_dir)
         with _Launched(app) as srv:
             assert srv.status("/health") == 200
-            assert srv.port != 5006 or True   # the port is chosen free
             _, body = srv.get("/health")
             assert json.loads(body)
 
@@ -422,6 +421,13 @@ class TestTheGeneratedSourceBindsAtModuleScope:
             lines = fh.read().splitlines()
         guard = next((i for i, l in enumerate(lines)
                       if l.startswith("if __name__ ==")), len(lines))
+        # The guard must actually be there: with the `next(..., len(lines))'
+        # fallback, a generated app that dropped its `if __name__' block
+        # would make `before' the WHOLE file, and "curdoc() in before" pass
+        # on the very binding that then sits under no guard (24sep2026).
+        assert guard < len(lines), (
+            "the generated app has no `if __name__ == \"__main__\"' guard; "
+            "the split below would read the whole file")
         before = "\n".join(lines[:guard])
         assert "curdoc()" in before, (
             "the document is attached only inside `if __name__ == "
@@ -435,6 +441,9 @@ class TestTheGeneratedSourceBindsAtModuleScope:
             lines = fh.read().splitlines()
         guard = next((i for i, l in enumerate(lines)
                       if l.startswith("if __name__ ==")), len(lines))
+        assert guard < len(lines), (
+            "the generated app has no `if __name__ == \"__main__\"' guard; "
+            "the split below would read the whole file")
         before = "\n".join(lines[:guard])
         assert "/health" in before, (
             "/health is registered only under the __main__ guard"

@@ -287,45 +287,37 @@ real scalar _dsp_names_opt(string scalar note, string scalar key)
 }
 
 // ----------------------------------------------------------------
-// _dsp_json_ar -- pull the "accept-and-report" dispositions out of
-// rejected_options.json.  The file is pretty printed one key per line, so a
-// line scan is enough and no JSON parser is needed.  Within an entry the
-// keys run option -> ... -> disposition -> probes[].dash_command, so the
-// option name is already known when the disposition is seen.
-//
-// Sets: dsp_ar_n, and dsp_ar_opt_# / dsp_ar_cmd_# for # = 1..dsp_ar_n.
+// _dsp_corpus_counts -- the corpus's probe lines, counted from its text
+// without the walk below: every line whose first word is dashprobe or
+// dashonlyprobe (dsp_want_probe), and those whose options argument is
+// empty and whose plot spec carries no weight (dsp_want_zero).  Read by
+// Mata's tokens(), which binds "..." and compound quotes as -args- does,
+// and with no program/end state, so the walk's own parsing and skipping
+// decide neither number.
 // ----------------------------------------------------------------
-void _dsp_json_ar(string scalar fn)
+void _dsp_corpus_counts(string scalar fn)
 {
-    real scalar   fh, n, pending
-    string scalar line, curopt, q, pat_opt, pat_cmd
+    string colvector L
+    string rowvector t
+    string scalar    spec, opts
+    real scalar      i, np, nz
 
-    q       = char(34)
-    pat_opt = "^[ ]*" + q + "option" + q + "[ ]*:[ ]*" + q + "([^" + q + "]*)" + q
-    pat_cmd = "^[ ]*" + q + "dash_command" + q + "[ ]*:[ ]*" + q + "(.*)" + q
-
-    n       = 0
-    pending = 0
-    curopt  = ""
-    fh = fopen(fn, "r")
-    while ((line = fget(fh)) != J(0, 0, "")) {
-        if (regexm(line, pat_opt)) {
-            curopt  = regexs(1)
-            pending = 0
-        }
-        if (strpos(line, q + "disposition" + q) > 0 &
-            strpos(line, "accept-and-report") > 0) {
-            pending = 1
-        }
-        if (pending == 1 & regexm(line, pat_cmd)) {
-            n = n + 1
-            st_local("dsp_ar_opt_" + strofreal(n), curopt)
-            st_local("dsp_ar_cmd_" + strofreal(n), regexs(1))
-            pending = 0
-        }
+    L  = cat(fn)
+    np = 0
+    nz = 0
+    for (i = 1; i <= rows(L); i++) {
+        t = tokens(L[i])
+        if (cols(t) < 1) continue
+        if (t[1] != "dashprobe" & t[1] != "dashonlyprobe") continue
+        np = np + 1
+        spec = ""
+        opts = ""
+        if (cols(t) >= 3) spec = t[3]
+        if (cols(t) >= 4) opts = t[4]
+        if (opts == "" & !strpos(spec, "weight=")) nz = nz + 1
     }
-    fclose(fh)
-    st_local("dsp_ar_n", strofreal(n))
+    st_local("dsp_want_probe", strofreal(np))
+    st_local("dsp_want_zero",  strofreal(nz))
 }
 
 end
@@ -496,8 +488,19 @@ while r(eof) == 0 {
 }
 file close `CF'
 
-display as text "  corpus commands replayed : `nprobe'"
-display as text "  zero-option commands     : `nzeroopt'"
+// Both numbers are held to the corpus's own count, not to a floor: O2-01
+// asked only for one probe line and O2-02 for none, so a walk that passed
+// over probe lines -- or took every command for one with options -- still
+// reported every command it saw as passing.  In this corpus a program/end
+// state left open swallows all that follows line 68, which the empty-walk
+// check does catch; a walk that drops one KIND of probe line (the 18
+// dashonlyprobe lines, say) caught nothing.  Measured 24sep2026: 299 probe
+// lines (summary.commands_probed in rejected_options.json), 42 of them with
+// no option and no weight -- the 43 empty-option lines less ctl_aweight.
+mata: _dsp_corpus_counts(st_local("corpus"))
+
+display as text "  corpus commands replayed : `nprobe' (probe lines in the corpus: `dsp_want_probe')"
+display as text "  zero-option commands     : `nzeroopt' (in the corpus: `dsp_want_zero')"
 display as text "  O2-01 aborts             : `nrcfail'"
 display as text "  O2-02 spurious notes     : `nnotefail'"
 
@@ -506,25 +509,47 @@ if `nprobe' == 0 {
     local nfail = `nfail' + 1
     local faillist `"`faillist' O2-01(empty-corpus)"'
 }
-else if `nrcfail' != 0 {
-    display as error "O2-01 FAIL: `nrcfail' of `nprobe' corpus commands abort;" ///
-        " dash.sthlp:668-673 promises none do."
-    display as error "  failing:`rcfailids'"
-    local nfail = `nfail' + 1
-    local faillist `"`faillist' O2-01"'
-}
 else {
-    display as text "O2-01 PASS: all `nprobe' corpus commands return rc=0"
+    local o2_bad = 0
+    if `nprobe' != `dsp_want_probe' {
+        display as error "O2-01 FAIL: the walk replayed `nprobe' commands;" ///
+            " the corpus holds `dsp_want_probe' probe lines."
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' O2-01(count)"'
+        local o2_bad = 1
+    }
+    if `nrcfail' != 0 {
+        display as error "O2-01 FAIL: `nrcfail' of `nprobe' corpus commands abort;" ///
+            " dash.sthlp:668-673 promises none do."
+        display as error "  failing:`rcfailids'"
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' O2-01"'
+        local o2_bad = 1
+    }
+    if `o2_bad' == 0 {
+        display as text "O2-01 PASS: all `nprobe' corpus commands return rc=0"
+    }
 }
 
-if `nprobe' > 0 & `nnotefail' != 0 {
-    display as error "O2-02 FAIL: `nnotefail' command(s) with no options emitted a note."
-    display as error "  failing:`notefailids'"
-    local nfail = `nfail' + 1
-    local faillist `"`faillist' O2-02"'
-}
-else if `nprobe' > 0 {
-    display as text "O2-02 PASS: all `nzeroopt' zero-option commands emit no note"
+if `nprobe' > 0 {
+    local o2_bad = 0
+    if `dsp_want_zero' == 0 | `nzeroopt' != `dsp_want_zero' {
+        display as error "O2-02 FAIL: the walk took `nzeroopt' commands for ones with no" ///
+            " option and no weight; the corpus holds `dsp_want_zero', and must hold some."
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' O2-02(count)"'
+        local o2_bad = 1
+    }
+    if `nnotefail' != 0 {
+        display as error "O2-02 FAIL: `nnotefail' command(s) with no options emitted a note."
+        display as error "  failing:`notefailids'"
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' O2-02"'
+        local o2_bad = 1
+    }
+    if `o2_bad' == 0 {
+        display as text "O2-02 PASS: all `nzeroopt' zero-option commands emit no note"
+    }
 }
 
 // ================================================================
@@ -535,16 +560,55 @@ else if `nprobe' > 0 {
 // ================================================================
 qui sysuse auto, clear
 
-local dsp_ar_n = 0
-mata: _dsp_json_ar(st_local("rejjson"))
+// The dispositions are read by Python's JSON parser, as the other scripts
+// read their JSON fixtures (test_abbreviations.cscript).  A line regex read
+// them, relying on the file's pretty printing and on each entry's keys
+// running option ... disposition ... dash_command: an entry written in
+// another order, or on fewer lines, was passed over without a word, and
+// O2-03 had only to find one.  The number read must be the fixture's own
+// tally, summary.by_disposition's "accept-and-report" -- 3 on 24sep2026:
+// play, xoverhangs and yoverhangs.  Each entry's option and the
+// dash_command of its first probe come back as DSP_AR_OPT_# and
+// DSP_AR_CMD_#, copied into locals through Mata so that nothing in them is
+// expanded.
+global DSP_REJJSON "`rejjson'"
+python:
+import json as _dsp_json
+from sfi import Macro as _dsp_M
+with open(_dsp_M.getGlobal("DSP_REJJSON"), encoding="utf-8") as _dsp_fh:
+    _dsp_d = _dsp_json.load(_dsp_fh)
+_dsp_ar = [o for o in _dsp_d.get("rejected_options", [])
+           if isinstance(o, dict) and o.get("disposition") == "accept-and-report"]
+_dsp_M.setGlobal("DSP_AR_N", str(len(_dsp_ar)))
+for _dsp_i, _dsp_o in enumerate(_dsp_ar, 1):
+    _dsp_p = _dsp_o.get("probes") or [{}]
+    _dsp_M.setGlobal("DSP_AR_OPT_" + str(_dsp_i), str(_dsp_o.get("option", "")))
+    _dsp_M.setGlobal("DSP_AR_CMD_" + str(_dsp_i), str(_dsp_p[0].get("dash_command", "")))
+_dsp_M.setGlobal("DSP_AR_WANT", str(_dsp_d.get("summary", {}).get("by_disposition", {}).get("accept-and-report", "")))
+end
+local dsp_ar_n = ${DSP_AR_N}
+local dsp_ar_want "${DSP_AR_WANT}"
+forvalues i = 1/`dsp_ar_n' {
+    mata: st_local("dsp_ar_opt_`i'", st_global("DSP_AR_OPT_`i'"))
+    mata: st_local("dsp_ar_cmd_`i'", st_global("DSP_AR_CMD_`i'"))
+}
+macro drop DSP_*
 
 display as text ""
-display as text "O2-03: accept-and-report options from rejected_options.json (`dsp_ar_n' found)"
+display as text "O2-03: accept-and-report options from rejected_options.json (`dsp_ar_n' found; the fixture's tally: `dsp_ar_want')"
 
+local ar_count_bad = 0
 if `dsp_ar_n' == 0 {
     display as error "O2-03 FAIL: no accept-and-report dispositions found in the fixture."
     local nfail = `nfail' + 1
     local faillist `"`faillist' O2-03(no-fixture-rows)"'
+}
+else if "`dsp_ar_n'" != "`dsp_ar_want'" {
+    display as error "O2-03 FAIL: `dsp_ar_n' accept-and-report entries were read;" ///
+        " the fixture's summary counts `dsp_ar_want'."
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' O2-03(count)"'
+    local ar_count_bad = 1
 }
 
 local ar_optlist ""
@@ -558,8 +622,12 @@ forvalues i = 1/`dsp_ar_n' {
     // "dash <spec>, <opts> name(g1)"  ->  spec / opts, with name(g1) removed
     local body  = substr(`"`macval(cmd)'"', 6, .)
     local cpos  = strpos(`"`macval(body)'"', ",")
+    // An entry that cannot be probed fails: it used to be skipped and left
+    // out of the tally, and the summary still said "all accepted and
+    // reported" of a set it had not probed.
     if `cpos' == 0 {
-        display as error "O2-03 SKIP `key': fixture dash_command has no option list."
+        display as error `"O2-03 FAIL `key': the fixture's dash_command has no option list to probe: `macval(cmd)'"'
+        local n_ar_fail = `n_ar_fail' + 1
         continue
     }
     local spec  = substr(`"`macval(body)'"', 1, `cpos' - 1)
@@ -602,7 +670,7 @@ if `dsp_ar_n' > 0 {
         local nfail = `nfail' + 1
         local faillist `"`faillist' O2-03"'
     }
-    else {
+    else if `ar_count_bad' == 0 {
         display as text "O2-03 PASS: all `dsp_ar_n' accept-and-report options accepted and reported"
     }
 }
@@ -916,6 +984,12 @@ else {
         display as error `"AC-13.1 FAIL: the note does not name the weight type: `macval(pnote)'"'
         local bad = 1
     }
+    // In brackets, as the PASS line says: a whole word is also satisfied by
+    // aweight(), the form of an option, which a weight is not.
+    if strpos(`"`macval(pnote)'"', "[aweight]") == 0 {
+        display as error `"AC-13.1 FAIL: the note does not name the type as [aweight]: `macval(pnote)'"'
+        local bad = 1
+    }
     _dsp_names `"`macval(pnote)'"' "price"
     if r(found) != 0 {
         display as error `"AC-13.1 FAIL: the note names the weight variable: `macval(pnote)'"'
@@ -950,6 +1024,13 @@ foreach case in "(scatter mpg weight [aw=price]) (line mpg weight)" ///
             display as error `"AC-13.1b FAIL: the note does not name aweight: `macval(pnote)'"'
             local bad = 1
         }
+        // Once: present, and not again after the first is removed.  The
+        // removal alone passed a note with no [aweight] at all -- one that
+        // said aweight() -- since the whole-word check above accepts that.
+        if strpos(`"`macval(pnote)'"', "[aweight]") == 0 {
+            display as error `"AC-13.1b FAIL: the note does not name the type as [aweight]: `macval(pnote)'"'
+            local bad = 1
+        }
         local once = subinstr(`"`macval(pnote)'"', "[aweight]", "", 1)
         if strpos(`"`macval(once)'"', "[aweight]") > 0 {
             display as error `"AC-13.1b FAIL: [aweight] is named more than once: `macval(pnote)'"'
@@ -979,6 +1060,10 @@ else {
     _dsp_names `"`macval(pnote)'"' "fweight"
     if r(found) != 1 {
         display as error `"AC-13.1c FAIL: the note does not name fweight: `macval(pnote)'"'
+        local bad = 1
+    }
+    if strpos(`"`macval(pnote)'"', "[fweight]") == 0 {
+        display as error `"AC-13.1c FAIL: the note does not name the type as [fweight]: `macval(pnote)'"'
         local bad = 1
     }
     _dsp_names `"`macval(pnote)'"' "aweight"

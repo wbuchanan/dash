@@ -228,7 +228,10 @@ void _hx_pins_check()
 }
 
 // Lines of the file holding "{cmd:. " -- a plain scan, independent of the
-// reader, which must have read as many.
+// reader, which must have read as many.  Both look for {cmd:., so an
+// example written {input}. or {cmd}. escapes both; Stata's rendering is
+// the witness for those (the render check below counts the lines that
+// render with the prompt, and wants exactly this many).
 real scalar _hx_count_prompts(string scalar path)
 {
     real scalar   fh, n
@@ -275,6 +278,26 @@ void _hx_filter_needle()
     }
     f = strtrim(tokens(subinstr(f, ",", " "))[1])
     st_local("hx_fneedle", char(34) + "filter" + char(34) + ":" + char(34) + f)
+}
+
+// What the help itself says the build before example c of group g gave:
+// local hx_wantf is the variable the last `dash build' before it in the
+// group filters on (filter() abbreviates to filt()), or "" when that build
+// gives no filter() or no build comes before it.
+void _hx_filter_before(real scalar g, real scalar c)
+{
+    real scalar   k
+    string scalar t
+    st_local("hx_wantf", "")
+    for (k = c - 1; k >= 1; k--) {
+        t = st_global("hx_g" + strofreal(g) + "_c" + strofreal(k))
+        if (ustrregexm(t, "^dash\s+build\b")) {
+            if (ustrregexm(t, "\bfilt(?:e(?:r)?)?\(\s*([A-Za-z_][A-Za-z0-9_]*)")) {
+                st_local("hx_wantf", ustrregexs(1))
+            }
+            return
+        }
+    }
 }
 end
 
@@ -343,7 +366,7 @@ end
 capture program drop _hx_serve
 program define _hx_serve, rclass
     version 16.0
-    args file lno logf gdir
+    args file lno logf gdir wantf
     mata: _hx_serve_opts(st_global("hx_cmd"))
     if "`hx_sform'" != "1" {
         display as error "HX FAIL `file':`lno': the serve check reads dash serve [, options] only"
@@ -365,6 +388,14 @@ program define _hx_serve, rclass
             local ++bad
         }
         mata: _hx_filter_needle()
+        // Which filter is read from the help's own build (`wantf', from
+        // _hx_filter_before), so the check runs wherever the help makes the
+        // claim.  Until 24sep2026 it ran only when $dash_opts_filter was
+        // set: a build that forgot its filter() switched the check off, and
+        // the example passed serving no filter at all.
+        if "`wantf'" != "" {
+            local hx_fneedle = char(34) + "filter" + char(34) + ":" + char(34) + "`wantf'"
+        }
         if `"`hx_fneedle'"' != "" {
             global hx_j_path "`mj'"
             mata: st_global("hx_j_needle", st_local("hx_fneedle"))
@@ -373,6 +404,7 @@ program define _hx_serve, rclass
                 display as error "HX FAIL `file':`lno': the served spec lost the filter the build before it gave"
                 local ++bad
             }
+            else display as text `"HX   `file':`lno': the served spec carries `hx_fneedle'"'
         }
         _dash_find_render
         local rpy `"`r(fn)'"'
@@ -576,7 +608,9 @@ mkdir "${hx_root}"
 //   * every example line is a line of its own starting with the prompt,
 //     and holds no "{" -- a paragraph left open before an example made
 //     everything after it render as raw SMCL, measured at 4ede074 from the
-//     Faceting example to the end of dash.sthlp;
+//     Faceting example to the end of dash.sthlp -- and exactly as many
+//     lines render with the prompt as the reader read, so an example the
+//     reader cannot see ({input}. dash ...) fails rather than never runs;
 //   * no line anywhere holds a "{", and every {title:} heading is a line
 //     of its own, in order -- a failure can drop text rather than show it;
 //   * render_problems(), the Python twin test_help_examples.py runs,
@@ -624,7 +658,8 @@ forvalues g = 1/`hx_ng' {
         if "`hx_ex'" == "" local hx_ex 0
         local logf "${hx_root}/cmd.log"
         if "`hx_sp'" == "serve" {
-            _hx_serve "`file'" "`lno'" "`logf'" "`gdir'"
+            mata: _hx_filter_before(`g', `c')
+            _hx_serve "`file'" "`lno'" "`logf'" "`gdir'" "`hx_wantf'"
             local bad = r(nbad)
             local how "special serve"
             local ++hx_nspecial

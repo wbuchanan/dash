@@ -65,10 +65,53 @@ def mapper():
     return GlyphMapper(OptionTranslator(), SchemeParser("s2color"))
 
 
+def test_every_probe_dataset_is_present(truth, datasets):
+    """The four probe CSVs load, so no per-dataset loop below can shrink
+    without saying so.
+
+    ``datasets`` drops a name whose CSV is absent (the fixture reads the
+    directory and ``continue``s), and every comparison loop then skips it in
+    silence; before this, three of the four vanishing would still leave a
+    green run.  The CSVs are checked in, so their set must be exactly the
+    fixture's, at the recorded row counts."""
+    assert set(datasets) == set(truth["datasets"]), (
+        "probe CSVs under test/fixtures/data/ do not match the fixture: "
+        f"{sorted(set(truth['datasets']) ^ set(datasets))}"
+    )
+    for name, (y, x) in datasets.items():
+        n = truth["datasets"][name]["N_xy_nonmissing"]
+        assert len(y) == len(x) == n, (
+            f"{name}: loaded {len(y)} rows, fixture records {n}"
+        )
+
+
 def _need(datasets, name):
+    # All four probe CSVs are checked in under test/fixtures/data/ and
+    # test_every_probe_dataset_is_present asserts they load, so a name that
+    # is absent here is a broken fixture, not a legitimate skip: a skip hid
+    # the whole dataset's comparisons (measured 24sep2026, the vacuous
+    # form).
     if name not in datasets:
-        pytest.skip(f"fixture data for {name} is not checked in")
+        pytest.fail(f"fixture data for {name} is not checked in; "
+                    "test/fixtures/data/ must carry all four probe CSVs")
     return datasets[name]
+
+
+def _rec(truth, section, key):
+    """A fixture record that MUST be present, failing loudly if it is not.
+
+    The tests below used ``truth[section].get(key)`` then ``pytest.skip``
+    when it came back None, so a fixture regenerated without a key turned
+    the comparison it drives into a silent pass.  Every key these callers
+    ask for is in the checked-in stat_truth.json (measured 24sep2026), so
+    absence is a defect to report, not a case to skip.
+    """
+    section_map = truth.get(section, {})
+    assert key in section_map, (
+        f"stat_truth.json['{section}'] has no '{key}'; regenerate the "
+        "fixture with scripts/ -- a missing probe must fail, not skip"
+    )
+    return section_map[key]
 
 
 # ======================================================================
@@ -94,7 +137,11 @@ class TestHistogramAgainstStata:
                 f"{rec['stata_bin']} (cmd: {rec['cmd']})"
             )
             checked += 1
-        assert checked >= 2, "no histogram bin probes were checked"
+        # Exactly three of the eight bin probes are y-columns whose data is
+        # checked in (auto:mpg, nlsw88:wage, sp500:close; census's y `death'
+        # has no bin probe): measured 24sep2026.  `>= 2' passed if a
+        # dataset silently dropped out.
+        assert checked == 3, f"checked {checked} histogram bin probes, not 3"
 
     def test_the_rule_reproduces_every_recorded_bin_count(self, truth):
         """Check the FORMULA against all 8 probes, not just the two datasets."""
@@ -115,9 +162,7 @@ class TestHistogramAgainstStata:
     def test_bin_option_reproduces_statas_bar_heights(self, truth, datasets,
                                                      mapper):
         """auto/mpg with bin(20): compare the actual bar heights."""
-        rec = truth["histogram"].get("auto:mpg:bin20")
-        if rec is None:
-            pytest.skip("auto:mpg:bin20 not in the fixture")
+        rec = _rec(truth, "histogram", "auto:mpg:bin20")
         y, _ = _need(datasets, "auto")
         src = ColumnDataSource({"v": list(y)})
         r = mapper.map_histogram(figure(), src, "v", {"bin": "20"})
@@ -178,9 +223,7 @@ class TestKdensityAgainstStata:
                                                      mapper, name):
         """kdensity ..., bwidth(2) — compare the density at Stata's own x."""
         var = truth["datasets"][name]["y"] if name in truth["datasets"] else ""
-        rec = truth["kdensity"].get(f"{name}:{var}:bwidth2")
-        if rec is None:
-            pytest.skip(f"{name}:bwidth2 not in the fixture")
+        rec = _rec(truth, "kdensity", f"{name}:{var}:bwidth2")
         y, _ = _need(datasets, name)
         want_x = np.asarray(rec["kde_x"], float)
         want_y = np.asarray(rec["kde_y"], float)
@@ -228,12 +271,12 @@ class TestLpolyAgainstStata:
         This is the assertion that matters: with bwidth() given, dash must
         agree with Stata, because both are then fully specified.
         """
-        checked = 0
+        examined = 0
+        compared = 0
         for name in ("auto", "census", "sp500", "nlsw88"):
-            rec = truth["lpoly"].get(f"{name}:bwidth5")
-            if rec is None or name not in datasets:
-                continue
-            y, x = datasets[name]
+            rec = _rec(truth, "lpoly", f"{name}:bwidth5")
+            y, x = _need(datasets, name)
+            examined += 1
             want_x = np.asarray(rec["lpoly_x"], float)
             want_y = np.array([np.nan if v is None else float(v)
                                for v in rec["lpoly_y"]])
@@ -242,12 +285,23 @@ class TestLpolyAgainstStata:
             ])
             both = np.isfinite(want_y) & np.isfinite(got)
             if both.sum() == 0:
+                # Measured 24sep2026: at bwidth(5) Stata reports missing at
+                # every sampled x for auto/census/sp500 (their x range is far
+                # wider than 5), so there is nothing to compare there -- but
+                # the dataset was still LOOKED AT, which `examined' records.
                 continue
             np.testing.assert_allclose(
                 got[both], want_y[both], rtol=1e-6, atol=1e-9,
                 err_msg=f"{name}: dash disagrees with {rec['cmd']}")
-            checked += 1
-        assert checked >= 1, "no lpoly bwidth(5) probe could be checked"
+            compared += 1
+        # All four datasets and their bwidth5 probes are present, so all four
+        # are examined (a silently dropped dataset is a fail via _need/_rec,
+        # not a skip); nlsw88 is the one whose sampled x have a finite fit,
+        # so at least one real value comparison must run.  `checked >= 1'
+        # passed having compared a single dataset while the other three
+        # vanished (24sep2026).
+        assert examined == 4, f"examined {examined} lpoly bwidth(5) probes"
+        assert compared >= 1, "no lpoly bwidth(5) probe had finite overlap"
 
     def test_default_bandwidth_is_within_the_documented_tolerance(
         self, truth, datasets
@@ -264,16 +318,17 @@ class TestLpolyAgainstStata:
         worst = 0.0
         report = []
         for name, (y, x) in datasets.items():
-            rec = truth["lpoly"].get(f"{name}:default")
-            if rec is None or "bwidth" not in rec:
-                continue
+            rec = _rec(truth, "lpoly", f"{name}:default")
+            assert "bwidth" in rec, f"{name}:default has no bwidth"
             want = float(rec["bwidth"])
             got = GlyphMapper._default_lpoly_bwidth(x, y)
             err = abs(got - want) / want
             report.append(f"{name}: dash {got:.6g} vs Stata {want:.6g} "
                           f"({err:+.1%})")
             worst = max(worst, err)
-        assert report, "no lpoly default bandwidths could be compared"
+        # One row per dataset, all four present: `assert report' (non-empty)
+        # passed on a single dataset (24sep2026).
+        assert len(report) == 4, (len(report), report)
         assert worst <= 0.20, (
             "the default lpoly bandwidth drifted further from Stata than the "
             "documented tolerance:\n  " + "\n  ".join(report)
@@ -325,10 +380,8 @@ class TestMbandAgainstStata:
         dash plotted the band MIDPOINT as x, which with unevenly spread x can
         sit where there is no data at all.
         """
-        rec = truth["mband"].get(f"{name}:bands{bands}")
-        if rec is None or name not in datasets:
-            pytest.skip(f"{name} mband bands({bands}) not available")
-        y, x = datasets[name]
+        rec = _rec(truth, "mband", f"{name}:bands{bands}")
+        y, x = _need(datasets, name)
         rs = mapper.map_mband(
             figure(), ColumnDataSource({"y": list(y), "x": list(x)}),
             "y", "x", {"bands": str(bands)})
@@ -416,10 +469,8 @@ class TestConfidenceBandsAgainstStata:
     @pytest.mark.parametrize("name", ["auto", "census", "sp500"])
     def test_lfitci_matches_statas_band(self, truth, datasets, mapper, name,
                                         level):
-        rec = truth["ci_bands"].get(f"{name}:lfitci:level{level}")
-        if rec is None or name not in datasets:
-            pytest.skip(f"{name} lfitci level{level} not available")
-        y, x = datasets[name]
+        rec = _rec(truth, "ci_bands", f"{name}:lfitci:level{level}")
+        y, x = _need(datasets, name)
         gx, gy, glo, ghi = self._band(mapper, y, x, {"level": str(level)})
         wx = np.asarray(rec["fit_x"], float)
         for key, got in (("fit", gy), ("lower", glo), ("upper", ghi)):
@@ -438,10 +489,8 @@ class TestConfidenceBandsAgainstStata:
         assert gx[-1] == pytest.approx(float(x.max()), rel=1e-9)
 
     def test_no_level_option_uses_c_level(self, truth, datasets, mapper):
-        rec95 = truth["ci_bands"].get("auto:lfitci:level95")
-        recdef = truth["ci_bands"].get("auto:lfitci:no_level_option")
-        if rec95 is None or recdef is None:
-            pytest.skip("level probes not available")
+        rec95 = _rec(truth, "ci_bands", "auto:lfitci:level95")
+        recdef = _rec(truth, "ci_bands", "auto:lfitci:no_level_option")
         np.testing.assert_allclose(np.asarray(recdef["lower"], float),
                                    np.asarray(rec95["lower"], float),
                                    rtol=1e-9)
@@ -463,10 +512,8 @@ class TestConfidenceBandsAgainstStata:
         A bootstrap band is close in shape but never equal, and it moves
         between runs unless the seed is pinned.
         """
-        rec = truth["ci_bands"].get(f"{name}:qfitci:level{level}")
-        if rec is None or name not in datasets:
-            pytest.skip(f"{name} qfitci level{level} not available")
-        y, x = datasets[name]
+        rec = _rec(truth, "ci_bands", f"{name}:qfitci:level{level}")
+        y, x = _need(datasets, name)
         gx, gy, glo, ghi = self._qband(mapper, y, x, {"level": str(level)})
         wx = np.asarray(rec["fit_x"], float)
         for key, got in (("fit", gy), ("lower", glo), ("upper", ghi)):
@@ -1642,9 +1689,18 @@ class TestLpolyNullRule:
         opts["n"] = "20"
         gx20, _ = _lpoly_draw(mapper, x, y, opts)
         grid20 = np.linspace(float(rec["x_min"]), float(rec["x_max"]), 20)
-        assert len(gx20) <= 20 and all(
-            np.isclose(grid20, v, rtol=1e-9, atol=0).any() for v in gx20), (
-            "n(20) did not set the lpoly grid")
+        # n(20) draws the finite-fit subset of the 20-point grid (18 points
+        # on auto/mpg, measured 24sep2026).  `<= 20' alone passed an empty
+        # draw; require a non-empty grid, still no more than 20, every point
+        # on the 20-point linspace, and -- so "n() ignored" (which would
+        # redraw the default min(N,50)=50-point grid) cannot slip through --
+        # strictly fewer than that default.
+        assert 0 < len(gx20) <= 20, f"n(20) drew {len(gx20)} points"
+        assert len(gx20) < rec["ngrid"], (
+            f"n(20) drew {len(gx20)} points, not fewer than the default "
+            f"{rec['ngrid']}-point grid: n() was ignored")
+        assert all(np.isclose(grid20, v, rtol=1e-9, atol=0).any()
+                   for v in gx20), "n(20) did not set the lpoly grid"
 
 
 # ======================================================================

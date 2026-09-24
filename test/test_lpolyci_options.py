@@ -157,4 +157,8 @@ class TestTheBandSurroundsTheLineThatIsDrawn:
         y = np.asarray(band["y_lp"], float)
         ok = ~(np.isnan(lo) | np.isnan(hi) | np.isnan(y))
         assert ok.sum() > 10
+        # The whole grid: lpoly's n() defaults to min(N, 50), and with a
+        # seeded bootstrap every one of the 50 points has its band (measured
+        # 24sep2026).  A band missing over most of the grid passed "> 10".
+        assert len(y) == 50 and int(ok.sum()) == 50, (len(y), int(ok.sum()))
         assert np.all(lo[ok] - 1e-9 <= y[ok]) and np.all(y[ok] <= hi[ok] + 1e-9)

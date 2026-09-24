@@ -10,6 +10,7 @@ import sys
 import os
 import json
 import math
+import re
 import numpy as np
 import pandas as pd
 import pytest
@@ -221,6 +222,9 @@ class TestKpiFormatting:
         value = renderer_with_data._compute_kpi_stat("count", "mpg")
         formatted = renderer_with_data._format_kpi_value(value, "%9.0fc")
         assert "." not in formatted
+        # The whole value: "." is not in an empty string either.  74 rows,
+        # none missing mpg, too few for a thousands comma.
+        assert formatted == "74", formatted
 
 
 # ================================================================
@@ -479,6 +483,10 @@ class TestKpiInitialValueComputed:
         div_html = r.kpi_divs["k1"].text
         # 8 observations — should appear as "8" (no comma needed for small N)
         assert "8" in div_html, f"Count KPI must show '8', got: {div_html!r}"
+        # ...in the value div: the card's own border-radius:8px made the
+        # line above true of any card at all.
+        shown = re.search(r'id="kpi_val_k1"[^>]*>([^<]*)<', div_html)
+        assert shown and shown.group(1).strip() == "8", div_html
 
 
 # ================================================================
@@ -663,6 +671,10 @@ class TestKpiEmptyColorFallback:
         outer = re.search(r"<div\b([^>]*)>", div_html)
         assert outer and 'class="db-kpi-card"' in outer.group(1), div_html[:400]
         style = re.search(r'style="([^"]*)"', outer.group(1))
+        # The card always carries its layout inline (border-radius,
+        # padding): a style this search cannot read -- quoted another way,
+        # say -- made `inline' empty and the check below true of anything.
+        assert style and "border-radius" in style.group(1), outer.group(1)
         inline = style.group(1) if style else ""
         assert not re.search(r"(?:^|[;\s])background(?:-color)?\s*:", inline), (
             f"an empty bgcolor() must leave the card to the scheme's class "

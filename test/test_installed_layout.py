@@ -64,7 +64,9 @@ tests cannot catch it: they use a name that is not one of the fourteen, and
 they run in the dev layout where the installed lookup is inert.
 ``TestTheInstalledLookupDoesNotWidenWhatElseIsReadable`` closes exactly that.
 
-Tests: INST-01 through INST-16.
+Tests: INST-01 through INST-18.  INST-01..02 run over every scheme dash.pkg
+ships (twenty since WP-17), not only the fourteen measured; INST-18 holds
+the help text B3 was closed by.
 """
 from __future__ import annotations
 
@@ -80,9 +82,10 @@ sys.path.insert(0, _HERE)
 
 from test_packaging import REPO_ROOT, SCHEMES_DIR, load_staged_render  # noqa: E402
 
-#: Every scheme dash ships, and the letter directory Stata files it under.
-#: Taken from the measured install, not from the manifest.
-INSTALLED_SCHEMES = {
+#: The fourteen schemes shipped when the install was measured, and the letter
+#: directory Stata filed each one under -- taken from that install, not from
+#: the manifest.
+MEASURED_INSTALL = {
     "economist": "e",
     "s1color": "s", "s1mono": "s", "s1rcolor": "s",
     "s2color": "s", "s2gcolor": "s", "s2mono": "s",
@@ -90,6 +93,31 @@ INSTALLED_SCHEMES = {
     "stcolor": "s", "stcolor_alt": "s", "stgcolor": "s",
     "stmono1": "s", "stmono2": "s", "stsj": "s",
 }
+
+
+def _manifest_schemes():
+    """Every scheme ``dash.pkg`` ships, with the letter directory it lands in.
+
+    The rule is the one measured above -- Stata files a ``.scheme`` by its
+    first letter -- applied to the manifest, so a scheme shipped later is
+    held too.  Six were added after the measurement (WP-17), and with the
+    lookup narrowed back to the measured fourteen, INST-01..16 all passed
+    (WP-24); only test_help_claims_8.py's all-twenty staging noticed.
+    """
+    out = {}
+    with open(os.path.join(REPO_ROOT, "dash.pkg"), encoding="utf-8") as fh:
+        for raw in fh:
+            parts = raw.split()
+            if (len(parts) == 2 and parts[0] == "f"
+                    and parts[1].startswith("schemes/")
+                    and parts[1].endswith(".scheme")):
+                name = parts[1][len("schemes/"):-len(".scheme")]
+                out[name] = name[0]
+    return out
+
+
+#: Every scheme dash ships, and the letter directory Stata files it under.
+INSTALLED_SCHEMES = _manifest_schemes()
 
 #: Files a Stata PLUS directory holds that belong to OTHER packages.  Planted
 #: so the containment tests have something real to try to reach.
@@ -179,6 +207,22 @@ class TestAnInstalledTreeResolvesItsOwnSchemes:
         module, _root, _cwd = installed
         _f, _n, n_warn = _resolve(module, name)
         assert n_warn == 0, "%s warned %d time(s) on a healthy install" % (name, n_warn)
+
+    def test_the_manifest_ships_every_built_in_name_and_the_measured_ones(
+            self):
+        """INST-17. The list INST-01..02 run over is complete.
+
+        Every name the renderer treats as built in is shipped, every shipped
+        name is one it treats as built in, and each of the fourteen measured
+        in the real install is still shipped, to the directory measured.
+        """
+        import dash_render as dr
+        assert set(INSTALLED_SCHEMES) == set(dr.SchemeParser._BUILTIN_NAMES), (
+            "dash.pkg and SchemeParser._BUILTIN_NAMES disagree: %r"
+            % (set(INSTALLED_SCHEMES) ^ set(dr.SchemeParser._BUILTIN_NAMES),)
+        )
+        for name, letter in MEASURED_INSTALL.items():
+            assert INSTALLED_SCHEMES.get(name) == letter, name
 
     def test_the_default_scheme_is_the_real_s2color(self, installed):
         """INST-03. The fallback mimics s2color, so only provenance separates them."""
@@ -273,12 +317,21 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         os.remove(shipped)
         os.symlink(outside, shipped)
 
-        is_fallback, _name, n_warn = _resolve(module, "s2color")
-        assert is_fallback is True, (
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            scheme = module.SchemeParser.resolve_or_fallback("s2color", "a test")
+        assert scheme.is_fallback is True, (
             "a scheme file symlinked out of the install was READ; the "
             "realpath check is no longer applied to the installed candidate"
         )
-        assert n_warn >= 1, "a tampered install must not be silent"
+        # Said in so many words.  The fallback's own two warnings say the
+        # scheme was "not found", which is false -- the file is there and
+        # points elsewhere -- so a count of warnings passed with the
+        # tampering message deleted (WP-24).
+        text = " ".join(str(w.message) for w in caught)
+        assert "resolves outside" in text and "was not read" in text, (
+            "a tampered install is not reported as tampered: %s" % text
+        )
 
     def test_the_cwd_still_wins_over_the_install(self, installed):
         """INST-08. dash.sthlp documents a .scheme file in the working directory.
@@ -439,3 +492,33 @@ class TestTheDiagnosticsNameWhereItLooked:
         inst = module.SchemeParser.__new__(module.SchemeParser)
         with pytest.raises(ValueError, match="Built-in schemes"):
             inst._resolve_path("nosuchscheme")
+
+
+# ==========================================================================
+# INST-18 -- the decision GAPS B3 was closed by is written where users read
+# ==========================================================================
+
+class TestTheHelpStatesTheInstalledLayout:
+
+    def test_the_help_says_where_an_install_puts_them_and_why_they_keep_their_names(
+            self):
+        """INST-18. TR-05.7 closed B3 as a documented limitation: the plain
+        ``<name>.scheme`` names are kept, deliberately, and the clash with
+        another package's bare ``<name>.scheme`` is accepted.  The
+        documentation IS the deliverable, so it is held here.  Measured under
+        WP-24: with either of the two paragraphs deleted from dash.sthlp,
+        every help and tracking test passed.  Whitespace is normalised
+        because SMCL wraps the sentences over lines.
+        """
+        with open(os.path.join(REPO_ROOT, "dash.sthlp"), encoding="utf-8") as fh:
+            text = " ".join(fh.read().split())
+        for phrase in (
+            "{ul:Where the shipped schemes live after an install.}",
+            "{cmd:dash_render.py} goes to {cmd:PLUS/py/}",
+            "{ul:They are named without Stata's {cmd:scheme-} prefix, deliberately.}",
+            "the clash is accepted as a known limitation",
+        ):
+            assert phrase in text, (
+                "dash.sthlp no longer states %r; GAPS B3 was closed by "
+                "documenting it" % (phrase,)
+            )

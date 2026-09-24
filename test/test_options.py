@@ -251,12 +251,49 @@ class TestColorEdgeCases:
         """translate_lcolor should produce same hex as translate_mcolor."""
         assert OptionTranslator.translate_lcolor("blue") == OptionTranslator.translate_mcolor("blue")
 
-    def test_rgb_clamps_at_255(self):
-        """RGB values are clamped to 0-255 range."""
-        # Out-of-range values should either clamp or raise
-        try:
-            result = OptionTranslator.translate_mcolor("300 0 0")
-            # If it succeeds, the result should be a hex code
-            assert re.match(r"^#[0-9a-fA-F]{6}$", result)
-        except (ValueError, AssertionError):
-            pass  # raising is also acceptable behaviour
+    @pytest.mark.parametrize("value", ["300 0 0", "256 0 0", "-1 0 0",
+                                       "0 300 0", "300.5 0 0"])
+    def test_an_out_of_range_rgb_is_refused_not_clamped(self, value):
+        """Stata does not clamp an out-of-range triplet: it refuses it.
+
+        This was ``test_rgb_clamps_at_255``, and it could not fail: it caught
+        ``(ValueError, AssertionError)`` around its own assertion, so a
+        clamp, a refusal, a wrong hex and a failed assertion all passed.
+        Nothing clamps.  Measured 24sep2026 in StataNow 19.5 MP, for each of
+        these values ``twoway scatter mpg weight, mcolor("300 0 0")`` notes
+
+            (note:  named style 300 0 0 not found in class color, default
+                attributes used)
+
+        and draws the default colour, rc 0.  The translator refuses the value
+        the same way, naming it; the mapper turns the refusal into the
+        scheme's default and a note (the test below).
+        """
+        want = re.escape("Unknown Stata color: '%s'" % value)
+        with pytest.raises(ValueError, match=want):
+            OptionTranslator.translate_mcolor(value)
+        with pytest.raises(ValueError, match=want):
+            OptionTranslator.translate_lcolor(value)
+
+    def test_the_rgb_bounds_are_inclusive(self):
+        """0 and 255 are colours; the refusal starts one step outside."""
+        assert OptionTranslator.translate_mcolor("255 255 255") == "#ffffff"
+        assert OptionTranslator.translate_mcolor("0 0 0") == "#000000"
+        assert OptionTranslator.translate_mcolor("255 0 0") == "#ff0000"
+
+    def test_an_out_of_range_rgb_draws_the_default_with_a_note(self):
+        """Stata's "default attributes used", and dash's note saying so."""
+        import warnings
+        import dash_render as dr
+        from bokeh.models import ColumnDataSource
+        from bokeh.plotting import figure
+        gm = dr.GlyphMapper()
+        src = ColumnDataSource({"x": [1.0, 2.0, 3.0], "y": [3.0, 1.0, 2.0]})
+        dr._dash_reset_notes()        # the note is made once per render
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            r = gm.map_scatter(figure(), src, "y", "x", {"mcolor": "300 0 0"})
+        glyph = (r[0] if isinstance(r, list) else r).glyph
+        assert glyph.fill_color == gm.scheme.default_color(0, "scatter")
+        assert "dash: mcolor(300 0 0) is not a recognised colour; using the " \
+               "scheme's default." in [str(c.message) for c in caught]

@@ -260,9 +260,11 @@ class TestPciDrawsItsRecords:
 
     def test_the_line_options_style_the_segment(self):
         gm, _, (r,), _ = _draw("map_pci_literal", [[0, 0, 1, 1]],
-                               {"lcolor": "navy", "lwidth": "thick"})
+                               {"lcolor": "magenta", "lwidth": "thick"})
         assert _col(r, "x0") == [0.0] and _col(r, "y1") == [1.0]
-        assert r.glyph.line_color == "#1a476f"
+        # Magenta, in no s2color slot: this set navy, the segment's own
+        # default, and passed with lcolor() taken away (measured 24sep2026).
+        assert r.glyph.line_color == "#ff00ff"
         assert r.glyph.line_width == gm.tr.translate_lwidth("thick")
 
     def test_a_hundred_thousand_records_are_read_in_bounded_time(self):

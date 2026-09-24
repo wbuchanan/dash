@@ -16,7 +16,6 @@ that does notice is the documented non-blocking one::
 which serves on 5006 regardless.
 """
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -47,10 +46,53 @@ _SPEC = {
 }
 
 
-def _embedded_port(source: str) -> int:
-    m = re.search(r"^_port = (\d+)$", source, re.MULTILINE)
-    assert m, "the generated app has no _port literal"
-    return int(m.group(1))
+def _bound_port(source: str, monkeypatch, argv=("app.py",)) -> int:
+    """The port the generated app, run as ``python app.py``, hands the
+    server -- read from the launcher itself, with bokeh's Server replaced
+    by a recorder so nothing listens.
+
+    These tests used to read the ``_port = N`` line out of the app's text.
+    That line is the parser's default; what reaches the socket is the
+    launcher's own reading of it, which it clamps again, so the text could
+    say one port while the app bound another (WP-24)."""
+    import warnings
+    import bokeh.server.server as bss
+    seen = {}
+
+    class _Loop:
+        def add_callback(self, fn, *a):
+            pass
+
+        def call_later(self, delay, fn):
+            pass
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    class _Server:
+        def __init__(self, apps, **kw):
+            seen["kw"] = kw
+            self.io_loop = _Loop()
+
+        def start(self):
+            pass
+
+        def show(self, *a):
+            pass
+
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(bss, "Server", _Server)
+    monkeypatch.setattr(sys, "argv", list(argv))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(source, "app.py", "exec"), {"__name__": "__main__"})
+    assert "kw" in seen, "the launcher never built a server"
+    return int(seen["kw"]["port"])
 
 
 def _write_inputs(tmp_path):
@@ -62,7 +104,7 @@ def _write_inputs(tmp_path):
 
 
 class TestPortReachesTheGeneratedApp:
-    def test_the_cli_port_is_embedded(self, tmp_path):
+    def test_the_cli_port_is_embedded(self, tmp_path, monkeypatch):
         spec, data = _write_inputs(tmp_path)
         out = tmp_path / "app.py"
         r = subprocess.run(
@@ -72,9 +114,9 @@ class TestPortReachesTheGeneratedApp:
             capture_output=True, text=True, timeout=180,
         )
         assert r.returncode == 0, r.stderr
-        assert _embedded_port(out.read_text()) == 8123
+        assert _bound_port(out.read_text(), monkeypatch) == 8123
 
-    def test_the_default_is_still_5006(self, tmp_path):
+    def test_the_default_is_still_5006(self, tmp_path, monkeypatch):
         spec, data = _write_inputs(tmp_path)
         out = tmp_path / "app2.py"
         r = subprocess.run(
@@ -84,10 +126,10 @@ class TestPortReachesTheGeneratedApp:
             capture_output=True, text=True, timeout=180,
         )
         assert r.returncode == 0, r.stderr
-        assert _embedded_port(out.read_text()) == 5006
+        assert _bound_port(out.read_text(), monkeypatch) == 5006
 
     def test_a_port_in_build_options_still_wins_for_the_ado_path(
-            self, tmp_path):
+            self, tmp_path, monkeypatch):
         """build_options['port'] is the older route and must keep working."""
         spec = tmp_path / "spec3.json"
         data = tmp_path / "data3.json"
@@ -98,17 +140,37 @@ class TestPortReachesTheGeneratedApp:
         out = tmp_path / "app3.py"
         dr.main(str(spec), str(data), str(out), mode="server",
                             port=7777)
-        assert _embedded_port(out.read_text()) == 9001
+        assert _bound_port(out.read_text(), monkeypatch) == 9001
 
-    def test_main_takes_a_port(self, tmp_path):
+    def test_main_takes_a_port(self, tmp_path, monkeypatch):
         spec, data = _write_inputs(tmp_path)
         out = tmp_path / "app4.py"
         dr.main(spec, data, str(out), mode="server", port=8500)
-        assert _embedded_port(out.read_text()) == 8500
+        assert _bound_port(out.read_text(), monkeypatch) == 8500
 
-    def test_an_out_of_range_port_is_clamped_not_embedded_raw(self, tmp_path):
-        """A port below 1024 or above 65535 cannot be bound."""
+    def test_an_out_of_range_port_is_clamped_not_embedded_raw(
+            self, tmp_path, monkeypatch):
+        """A port below 1024 or above 65535 cannot be bound: whatever main()
+        is handed, the app binds the nearest port it can."""
         spec, data = _write_inputs(tmp_path)
-        out = tmp_path / "app5.py"
-        dr.main(spec, data, str(out), mode="server", port=99999)
-        assert 1024 <= _embedded_port(out.read_text()) <= 65535
+        for given, bound in ((99999, 65535), (80, 1024)):
+            out = tmp_path / ("app5_%d.py" % given)
+            dr.main(spec, data, str(out), mode="server", port=given)
+            assert _bound_port(out.read_text(), monkeypatch) == bound, given
+
+    def test_an_out_of_range_port_in_build_options_is_clamped_too(
+            self, tmp_path, monkeypatch):
+        """build_options['port'] takes the other road into the app: the
+        builder reads it with int() alone, not through main()'s clamp, so
+        only the app's own launcher stands between it and the socket
+        (WP-24).  Whatever the spec says, the app binds a port it can."""
+        data = tmp_path / "data6.json"
+        data.write_text(json.dumps(make_data_json(_DF)))
+        for given, bound in (("99999", 65535), ("80", 1024)):
+            spec = tmp_path / ("spec6_%s.json" % given)
+            s = json.loads(json.dumps(_SPEC))
+            s["build_options"]["port"] = given
+            spec.write_text(json.dumps(s))
+            out = tmp_path / ("app6_%s.py" % given)
+            dr.main(str(spec), str(data), str(out), mode="server")
+            assert _bound_port(out.read_text(), monkeypatch) == bound, given

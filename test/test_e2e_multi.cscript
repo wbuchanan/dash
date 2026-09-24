@@ -121,15 +121,59 @@ display "P1B-68 PASS: all three registered graphs reach the dashboard"
 // verdict for the same reason as P1B-68: the double quotes in the Bokeh
 // document end the compound quotes the line is expanded in, and Stata then
 // parses the rest of the line as code.  Three calls combined with max()
-// preserve the original any-one-of-three assertion, case-insensitively as
+// preserved the original any-one-of-three assertion, case-insensitively as
 // lower() made it.
-cert_file_has "`outpath'", needle("gridplot") lower
-local found_grid = r(found)
-cert_file_has "`outpath'", needle("grid_plot") lower
-local found_grid = max(`found_grid', r(found))
-cert_file_has "`outpath'", needle("gridlayout") lower
-local found_grid = max(`found_grid', r(found))
-assert `found_grid' == 1
+//
+// And the first of the three decided it alone.  Measured 24sep2026:
+// gridplot, lower-cased, occurs 6 times in the BokehJS the page inlines --
+// BokehJS's own name for its GridPlot model and module -- and grid_plot
+// once, so the max() was 1 on any Bokeh page whatever its layout, while
+// gridlayout occurs nowhere.  The grid is read from the model now.  The page
+// writes its GridPlot once: "name":"GridPlot" occurs once, and never in the
+// library.  And the document's grid holds the three figures in the cells
+// layout(2 2) gives them, filled a row at a time: MPG vs Weight at (0,0),
+// MPG vs Length at (0,1), MPG Distribution at (1,0).  The document is
+// decoded as BokehJS decodes it (JSON.parse of the unescaped block) and
+// read with Document.from_json, as test_conformance.cscript C-03 does.
+cert_file_count "`outpath'", needle(`""name":"GridPlot""')
+assert r(count) == 1
+local p169page "`outpath'"
+python:
+import json
+import re
+from sfi import Macro
+from bokeh.document import Document
+from bokeh.models import GridPlot, Plot
+
+
+def _p169_doc(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    blocks = re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, re.S)
+    docs = [d for b in blocks
+            for d in json.loads(re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                                       lambda m: ents[m.group(1)], b)).values()]
+    return Document.from_json(docs[0]) if len(docs) == 1 else None
+
+
+_p169 = _p169_doc(Macro.getLocal("p169page"))
+_p169g = ([m for m in _p169.models if isinstance(m, GridPlot)]
+          if _p169 is not None else [])
+_p169c = sorted((c[1], c[2], c[0].title.text
+                 if isinstance(c[0], Plot) and c[0].title is not None
+                 else type(c[0]).__name__)
+                for g in _p169g for c in g.children)
+Macro.setLocal("p169_ngrid", str(len(_p169g)))
+Macro.setLocal("p169_cells", "|".join("%d,%d %s" % c for c in _p169c))
+del _p169, _p169g, _p169c
+end
+display `"P1B-69: grid cells `p169_cells'"'
+assert `p169_ngrid' == 1
+assert "`p169_cells'" == "0,0 MPG vs Weight|0,1 MPG vs Length|1,0 MPG Distribution"
 display "P1B-69 PASS: HTML contains Bokeh gridplot structure"
 
 // ================================================================

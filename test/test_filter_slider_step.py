@@ -96,7 +96,11 @@ def _step_days(w):
 def _notches(w):
     """How many positions the user can actually move the handle to."""
     step = _step_days(w)
-    return _span_days(w) / step if step else float("inf")
+    # A step of zero moves the handle nowhere.  This returned inf for it,
+    # which passed every ">= 50" below (Bokeh accepts step=0; measured
+    # 24sep2026).
+    assert step > 0, f"the widget's step is {w.step!r}"
+    return _span_days(w) / step
 
 
 # --- fixtures in Stata SIF units ---
@@ -141,17 +145,27 @@ class TestAClockFilterIsUsable:
             f"a clock filter spanning {_span_days(w):.3f} days has only "
             f"{_notches(w):.1f} notches at step={w.step}"
         )
+        # The target is the numeric path's hundred: step = span / 100, in
+        # whole milliseconds (846000 here, measured 24sep2026).  ">= 50"
+        # alone let the count fall by nearly half.
+        assert _notches(w) == pytest.approx(100.0), (
+            f"{_notches(w):.2f} notches at step={w.step}"
+        )
 
     def test_a_clock_filter_may_step_below_a_day(self):
         dr = _render(_CLOCK, "%tc")
-        # The widget is typed in milliseconds, so compare in days.
-        assert _step_days(dr.filter_widgets[0]) < 1.0
+        # The widget is typed in milliseconds, so compare in days -- and a
+        # step of zero is below a day too, so it must be positive.
+        assert 0 < _step_days(dr.filter_widgets[0]) < 1.0
 
     def test_the_slider_form_too(self):
         dr = _render(_CLOCK, "%tc", ftype="slider")
         w = dr.filter_widgets[0]
         assert _notches(w) >= 50, (
             f"{_notches(w):.1f} notches at step={w.step}"
+        )
+        assert _notches(w) == pytest.approx(100.0), (
+            f"{_notches(w):.2f} notches at step={w.step}"
         )
 
 

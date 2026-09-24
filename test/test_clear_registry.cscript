@@ -40,25 +40,75 @@ qui do "../dash.ado"
 
 qui sysuse auto, clear
 
+mata:
+// The dash_opts_* globals `dash build' records, read from dash.ado's own
+// `global dash_opts_<name>' lines so that the list cannot go stale.
+string scalar _clr_opts_names(string scalar fn)
+{
+    real scalar   fh
+    string scalar line, t, nm, out
+    out = ""
+    fh  = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        t = strtrim(line)
+        if (substr(t, 1, 17) != "global dash_opts_") continue
+        nm  = substr(t, 8, .)
+        out = out + " " + substr(nm, 1, strpos(nm + " ", " ") - 1)
+    }
+    fclose(fh)
+    return(strtrim(out))
+}
+end
+
 // ----------------------------------------------------------------
 // CLR-01 — the enumerated per-graph globals are dropped
 // ----------------------------------------------------------------
 dash scatter mpg weight, name(g1)
 dash kpi mean(mpg), name(k1) title("Mean")
+
+// What registration set, so that the emptiness asserted after the clear is
+// a change and not the state these globals were always in.  (The loop
+// below also names combinations nothing sets -- a graph has no dash_kpi_
+// fields and a KPI no spec -- which are empty before the clear as after.)
+local clr01_spec : strlen global dash_spec_g1
+local clr01_json : strlen global dash_json_g1
+assert `clr01_spec' > 0 & `clr01_json' > 0
+assert "${dash_kpi_k1}" == "1"
+assert "${dash_kpi_k1__sta}" == "mean" & "${dash_kpi_k1__var}" == "mpg"
+assert "${dash_kpi_k1__tit}" == "Mean"
+assert "${dash_graph_registry}" == "g1 k1"
+
+// The loop used to assert dash_opts_g1 and dash_opts_k1 empty as well, and
+// nothing ever sets either: dash_opts_* are keyed by BUILD option --
+// dash_opts_title, dash_opts_layout, ... -- and written by `dash build'
+// (dash.ado, "remember these for a later dash serve"), so that line held
+// whatever `dash clear' did.  This script needs nothing beyond Stata and so
+// runs no build; the globals are set here under the names dash.ado itself
+// records them by, and the sweep is held to dropping every one.
+mata: st_local("clr01_opts", _clr_opts_names("../dash.ado"))
+local clr01_nopts : word count `clr01_opts'
+assert `clr01_nopts' > 0
+foreach o of local clr01_opts {
+    global `o' "x"
+}
+local clr01_set : all globals "dash_opts_*"
+assert `: word count `clr01_set'' == `clr01_nopts'
+
 dash clear
 
 foreach g in g1 k1 {
     foreach suffix in "" __sta __var __val __dsp __fmt __tit __sub __col __bg __upd __if __in {
         assert "${dash_spec_`g'}"      == ""
         assert "${dash_json_`g'}"      == ""
-        assert "${dash_opts_`g'}"      == ""
         assert "${dash_kpi_`g'`suffix'}" == ""
     }
 }
 local clr01 : all globals "dash_kpi_*"
 assert "`clr01'" == ""
+local clr01 : all globals "dash_opts_*"
+assert "`clr01'" == ""
 assert "${dash_graph_registry}" == ""
-display "CLR-01 PASS: the enumerated per-graph globals are dropped"
+display "CLR-01 PASS: the enumerated per-graph globals are dropped, and the `clr01_nopts' dash_opts_* globals dash build records"
 
 // ----------------------------------------------------------------
 // CLR-02 — a KPI's own if/in qualifier is dropped too

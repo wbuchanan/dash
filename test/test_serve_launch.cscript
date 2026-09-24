@@ -30,10 +30,13 @@
 *! they did not -- and costs nothing.  A real launch was verified by hand
 *! against this fix; see the BUGS.md entry.
 *!
-*! Tests: SRV-01 through SRV-16
+*! Tests: SRV-01 through SRV-19 (SRV-17 to SRV-19, added by ROADMAP WP-24,
+*! drive `dash serve' with a graph registered, against a stub renderer that
+*! starts no server; SRV-19 checks the app file it is handed is a tempfile
+*! of this session, BUG-47)
 *!
 *! Usage:  do test/test_serve_launch.cscript
-*! Version: 1.0  21sep2026
+*! Version: 1.1  24sep2026
 
 cscript "dash serve accepts its own options" adodir ".."
 
@@ -53,6 +56,7 @@ if "`c(python_exec)'" == "" {
 qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
+do "cert_helpers.do"
 
 // Run `dash serve' with whatever options are given, on an EMPTY registry,
 // and hand back the return code and the message.  Options are parsed before
@@ -68,31 +72,28 @@ program define _srv_try, rclass
     capture noisily dash serve, `opts'
     local rc = _rc
     quietly log close `lf'
-    // Read the captured output from Mata: a line of it is a value there, so
-    // nothing the message contains can end a Stata string or be parsed as
-    // code.  cert_helpers.do takes the same approach for generated HTML.
-    mata: st_local("_srv_invalid",  strofreal(_srv_file_has("`lg'", "invalid")))
-    mata: st_local("_srv_noregist", strofreal(_srv_file_has("`lg'", "no graphs registered")))
-    mata: st_local("_srv_buildonly", strofreal(_srv_file_has("`lg'", "only apply to")))
+    // Searched with cert_log_has (case-insensitively, as the line-by-line
+    // Mata reader this replaced did, 24sep2026): the log is read as a value
+    // in Mata, so nothing a message contains can end a Stata string or be
+    // parsed as code, and a line Stata wrapped at the column is searched
+    // re-joined.  Each result is read into a local at once: every call
+    // replaces r().
+    cert_log_has "`lg'", needle("invalid") lower
+    local invalid = r(found)
+    cert_log_has "`lg'", needle("no graphs registered") lower
+    local noregist = r(found)
+    cert_log_has "`lg'", needle("only apply to") lower
+    local buildonly = r(found)
+    // The port check's own refusal: "dash serve: port() must be between
+    // 1024 and 65535 (got: 80)", "... must be a positive integer (got:
+    // abc)" (measured 24sep2026).
+    cert_log_has "`lg'", needle("port() must be") lower
+    local portmsg = r(found)
     return scalar rc        = `rc'
-    return scalar invalid   = `_srv_invalid'
-    return scalar noregist  = `_srv_noregist'
-    return scalar buildonly = `_srv_buildonly'
-end
-
-mata:
-real scalar _srv_file_has(string scalar fn, string scalar needle)
-{
-    real scalar fh, found
-    string scalar line
-    found = 0
-    fh = fopen(fn, "r")
-    while ((line = fget(fh)) != J(0,0,"")) {
-        if (strpos(strlower(line), strlower(needle))) found = 1
-    }
-    fclose(fh)
-    return(found)
-}
+    return scalar invalid   = `invalid'
+    return scalar noregist  = `noregist'
+    return scalar buildonly = `buildonly'
+    return scalar portmsg   = `portmsg'
 end
 
 
@@ -153,17 +154,30 @@ display "SRV-08 PASS: serve options and build options mix"
 // SRV-09..11 — validation must still reject bad values
 // ================================================================
 // The fix must not turn a rejected value into an accepted one.
+//
+// ... and each must be refused BY THE PORT CHECK.  rc 198 alone could not
+// say so: the empty-registry refusal is r(198) too, and every _srv_try runs
+// on an empty registry, so these three passed with port() validation
+// deleted (found 24sep2026).  The refusal names port(), and comes before
+// the registry is looked at -- the "no graphs registered" that SRV-01..08
+// and SRV-12 find present is absent.
 
 _srv_try "port(80)"
 assert r(rc) == 198
+assert r(portmsg) == 1
+assert r(noregist) == 0
 display "SRV-09 PASS: port() below 1024 is still rejected"
 
 _srv_try "port(70000)"
 assert r(rc) == 198
+assert r(portmsg) == 1
+assert r(noregist) == 0
 display "SRV-10 PASS: port() above 65535 is still rejected"
 
 _srv_try "port(abc)"
 assert r(rc) == 198
+assert r(portmsg) == 1
+assert r(noregist) == 0
 display "SRV-11 PASS: a non-numeric port() is still rejected"
 
 // ================================================================
@@ -218,6 +232,212 @@ assert "`r(port)'" == "5099"
 assert "`r(timeout)'" == "1"
 assert "`r(nobrowser)'" == "nobrowser"
 display "SRV-16 PASS: _dash_serve_spec still parses the same options directly"
+
+// ================================================================
+// SRV-17..18 -- ROADMAP WP-03's AC-03.3 and AC-03.2 through dash serve
+// ================================================================
+// Added by WP-24, whose mutation check of WP-03 found both criteria held
+// only below the command: test_serve_options.cscript [3/5] calls
+// _dash_serve_spec directly (with port() and timeout(), never bare), and
+// SRV-09 to SRV-11 above run against an EMPTY registry, which exits 198
+// on its own -- measured, with the port() range check deleted from
+// _dash_serve_spec, SRV-09 still passed.
+//
+// A stub dash_render.py placed first on the ado-path (the method of
+// test_help_claims_4.cscript HC4-16 and test_serve_browser.cscript) stands
+// in for the renderer.  `dash serve' runs whole -- options, inheritance,
+// spec, browser decision, the handoff -- and the stub copies the spec and
+// the data it is handed and exits, so no server starts, and none could
+// start if a check below broke.  The served document is then built from
+// exactly what dash serve handed over, by the real renderer.
+global dash_nobrowser 1
+tempfile srvbase
+local srvstub "`srvbase'_srv_stub"
+capture mkdir "`srvstub'"
+tempname sfh
+file open `sfh' using "`srvstub'/dash_render.py", write text replace
+file write `sfh' `"import os, shutil, sys"' _n
+file write `sfh' `"_a = sys.argv[1:]"' _n
+file write `sfh' `"_d = os.path.dirname(os.path.abspath(__file__))"' _n
+file write `sfh' `"shutil.copyfile(_a[_a.index("--spec") + 1], os.path.join(_d, "spec.json"))"' _n
+file write `sfh' `"shutil.copyfile(_a[_a.index("--data") + 1], os.path.join(_d, "data.json"))"' _n
+file write `sfh' `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("# app")"' _n
+file close `sfh'
+global SRV_STUB "`srvstub'"
+
+// SRV-17 -- AC-03.3: `dash build, filter(...)' and then a bare `dash serve'
+// serves a dashboard carrying that filter.
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(sv17)
+tempfile b17
+capture noisily dash build, saving("`b17'.html") replace nobrowser ///
+    filter(foreign, type(dropdown))
+assert _rc == 0
+capture erase "`srvstub'/spec.json"
+capture erase "`srvstub'/data.json"
+adopath ++ "`srvstub'"
+capture noisily {
+    _dash_find_render
+    assert strpos(`"`r(fn)'"', "_srv_stub") > 0
+    capture noisily dash serve
+    assert _rc == 0
+}
+local rc17 = _rc
+adopath - "`srvstub'"
+assert `rc17' == 0
+confirm file "`srvstub'/spec.json"
+cert_file_has "`srvstub'/spec.json", needle(`""filter":"foreign, type(dropdown)""') lower
+local s17f = r(found)
+assert `s17f' == 1
+global SRV17_NSEL ""
+global SRV17_FOREIGN ""
+python:
+import importlib.util as _s17_il
+import os as _s17_os
+import sys as _s17_sys
+import warnings as _s17_w
+from sfi import Macro as _s17_M
+from bokeh.document import Document as _s17_Doc
+from bokeh.models import Select as _s17_Select
+
+# The real renderer of this tree, registered while it is used:
+# ServerAppBuilder copies helpers into the app from its own source, which
+# it finds through sys.modules (test_json_escaping.cscript does the same).
+_s17_spec = _s17_il.spec_from_file_location("_srv17_dash_render", _s17_os.path.abspath("../dash_render.py"))
+_s17_dr = _s17_il.module_from_spec(_s17_spec)
+_s17_sys.modules["_srv17_dash_render"] = _s17_dr
+_s17_spec.loader.exec_module(_s17_dr)
+_s17_dir = _s17_M.getGlobal("SRV_STUB")
+_s17_app = _s17_os.path.join(_s17_dir, "app.py")
+with _s17_w.catch_warnings():
+    _s17_w.simplefilter("ignore")
+    _s17_dr.ServerAppBuilder(_s17_os.path.join(_s17_dir, "spec.json"), _s17_os.path.join(_s17_dir, "data.json")).build(_s17_app)
+with open(_s17_app, encoding="utf-8") as _s17_fh:
+    _s17_src = _s17_fh.read()
+_s17_attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+assert _s17_attach in _s17_src, "the generated app's curdoc attach moved"
+_s17_ns = {"__name__": "_srv17_app"}
+with _s17_w.catch_warnings():
+    _s17_w.simplefilter("ignore")
+    exec(compile(_s17_src.replace(_s17_attach, "pass"), "_srv17_app.py", "exec"), _s17_ns)
+    _s17_doc = _s17_Doc()
+    _s17_ns["make_document"](_s17_doc)
+_s17_sel = list(_s17_doc.select({"type": _s17_Select}))
+_s17_opts = [str(o[1]) if isinstance(o, (list, tuple)) else str(o) for s in _s17_sel for o in s.options]
+_s17_M.setGlobal("SRV17_NSEL", str(len(_s17_sel)))
+_s17_M.setGlobal("SRV17_FOREIGN", "1" if ("Foreign" in _s17_opts and "Domestic" in _s17_opts) else "0")
+_s17_gone = _s17_sys.modules.pop("_srv17_dash_render", None)
+end
+display as text "     served document: ${SRV17_NSEL} Select widget(s); Foreign and Domestic among its options: ${SRV17_FOREIGN}"
+assert "${SRV17_NSEL}" == "1"
+assert "${SRV17_FOREIGN}" == "1"
+display "SRV-17 PASS: AC-03.3 -- a bare dash serve after dash build, filter() serves the build's dropdown"
+
+// SRV-18 -- AC-03.2: `dash serve, port(80)' exits 198 with the range
+// message, with a graph registered, so the registry check cannot answer
+// for the port() check; the stub is first on the path, so a broken check
+// could not start a server.
+dash clear
+dash scatter mpg weight, name(sv18)
+capture erase "`srvstub'/spec.json"
+adopath ++ "`srvstub'"
+local s18bad ""
+local s18ls = c(linesize)
+set linesize 255
+foreach p in 80 65536 {
+    tempname lf18
+    tempfile lg18
+    quietly log using "`lg18'", replace text name(`lf18')
+    capture noisily dash serve, port(`p') nobrowser
+    local rc18 = _rc
+    quietly log close `lf18'
+    cert_log_has "`lg18'", needle("port() must be between 1024 and 65535 (got: `p')") lower
+    local s18m = r(found)
+    capture confirm file "`srvstub'/spec.json"
+    local s18ran = (_rc == 0)
+    if `rc18' != 198 | `s18m' != 1 | `s18ran' != 0 {
+        local s18bad "`s18bad' [port(`p'): rc `rc18', range message `s18m', renderer ran `s18ran']"
+    }
+}
+set linesize `s18ls'
+adopath - "`srvstub'"
+if "`s18bad'" != "" {
+    display as error "SRV-18 FAIL:`s18bad'"
+    exit 9
+}
+display "SRV-18 PASS: AC-03.2 -- dash serve, port(80) and port(65536) exit 198 with the range message, a graph registered"
+
+capture erase "`srvstub'/spec.json"
+capture erase "`srvstub'/data.json"
+capture erase "`srvstub'/app.py"
+capture erase "`srvstub'/dash_render.py"
+capture rmdir "`srvstub'"
+macro drop SRV_STUB SRV17_*
+dash clear
+
+// ================================================================
+// SRV-19 -- dash serve writes its app to a tempfile of this session
+// ================================================================
+// BUGS.md BUG-47: dash serve wrote every app to one fixed name,
+// dash_serve_app.py, so two sessions serving at once overwrote each other's
+// file.  test_server.py read _dash_serve's text for `tempfile ...
+// serve_app'; this runs dash serve.  The launch is the renderer's, so the
+// locator is stubbed -- as LOC-09 does -- to hand dash serve a renderer that
+// records the arguments it was run with and returns instead of serving.
+// The app file it was handed must be a tempfile of THIS session: in the
+// temporary directory and named with the session's own tempfile prefix,
+// which is what keeps two sessions' files apart.  (Not "two runs, two
+// names": a session reuses a tempfile's name once the file is released,
+// and one session's runs cannot overlap -- dash serve blocks.)
+// Last in the script: the stub replaces the real locator for good.
+// The stand-in and its record are named from a tempfile too, so two
+// sessions running this script at once cannot write into each other's.
+tempfile s19base
+local s19fake "`s19base'.py"
+global SRV19_FAKE "`s19fake'"
+global SRV19_BASE "`s19base'"
+global SRV19_REC  "`s19base'.argv"
+capture erase "$SRV19_REC"
+tempname s19fh
+quietly file open `s19fh' using "`s19fake'", write replace text
+file write `s19fh' "import json, os, sys" _n
+file write `s19fh' `"_p = os.path.splitext(os.path.abspath(__file__))[0] + ".argv""' _n
+file write `s19fh' `"with open(_p, "a", encoding="utf-8") as _fh:"' _n
+file write `s19fh' "    _fh.write(json.dumps(sys.argv) + chr(10))" _n
+file close `s19fh'
+capture program drop _dash_find_render
+program define _dash_find_render, rclass
+    return local fn "$SRV19_FAKE"
+end
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(sv17)
+capture noisily dash serve, port(5099) timeout(1) nobrowser
+assert _rc == 0
+python:
+import json as _s19_json
+import os as _s19_os
+from sfi import Macro as _s19_M
+with open(_s19_M.getGlobal("SRV19_REC"), encoding="utf-8") as _s19_fh:
+    _s19_runs = [_s19_json.loads(_s19_l) for _s19_l in _s19_fh if _s19_l.strip()]
+_s19_outs = [_s19_os.path.normpath(_s19_r[_s19_r.index("--output") + 1]) for _s19_r in _s19_runs]
+_s19_base = _s19_os.path.normpath(_s19_M.getGlobal("SRV19_BASE"))
+_s19_pref = _s19_base.rstrip("0123456789")
+_s19_ok = (len(_s19_outs) == 1 and len(_s19_pref) < len(_s19_base)
+           and _s19_outs[0].startswith(_s19_pref) and _s19_outs[0] != _s19_base)
+_s19_M.setGlobal("SRV19_OUT", _s19_outs[0] if _s19_outs else "")
+_s19_M.setGlobal("SRV19_PREF", _s19_pref)
+_s19_M.setGlobal("SRV19_OK", "1" if _s19_ok else "0")
+end
+display as text "  SRV-19 app file: [$SRV19_OUT]  session prefix: [$SRV19_PREF]"
+assert "$SRV19_OK" == "1"
+capture erase "$SRV19_REC"
+capture erase "`s19fake'"
+capture program drop _dash_find_render
+dash clear
+macro drop SRV19_*
+display "SRV-19 PASS: dash serve writes its app to a tempfile of this session"
 
 capture program drop _srv_try
 

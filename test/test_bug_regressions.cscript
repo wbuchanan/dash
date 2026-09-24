@@ -1,0 +1,644 @@
+*! test_bug_regressions.cscript
+*! Certification: the regression tests three closed BUGS.md entries lacked.
+*!
+*! Usage:  do test/test_bug_regressions.cscript   (run from test/, as the
+*!         runner does)
+*!
+*! Requires: dash_setup completed (jsonio, Python and bokeh).
+*! Version: 1.0.0  24sep2026
+*!
+*! WHY THIS EXISTS
+*!
+*! CLAUDE.md rule 8 asks for a test for every fixed defect, one that fails if
+*! the defect comes back.  WP-23 reconciled BUGS.md (TR-23.5) and found
+*! three closed entries with none (GAPS.md L9; ROADMAP WP-24, AC-24.4);
+*! test/test_tracking_documents.py listed them in CLOSED_WITHOUT_A_TEST.
+*! Two can be tested only from Stata, and the third is tested here against
+*! a live twoway as well as in test/test_bug_regressions.py:
+*!
+*!   BR-01  "Eight fills in comprehensive_demo.do render at a hundredth of
+*!          the intended opacity" (fixed in b917c33).  falpha() is a
+*!          percentage, and the example wrote fa(0.4), fa(0.3), fa(0.25) and
+*!          fa(0.5), so fa(0.4) drew fill_alpha 0.004.  The example is run
+*!          as shipped; the fills are read from the page it saves and from
+*!          the document the served app builds from the spec `dash serve'
+*!          would hand it.  Seven of the eight sites draw a fill.  The
+*!          eighth, b6, puts fa(25) on an mband, which draws a line: no
+*!          fill in dash, and none in twoway either (measured 24sep2026:
+*!          the SVG of `twoway (scatter mpg weight) (mband mpg weight,
+*!          fc(ltblue%25))' is byte-identical to the one without fc()).
+*!
+*!   BR-02  "Every successful `dash build' prints an unexplained "file not
+*!          found"" (fixed in 81ebbc5), and ROADMAP WP-03's AC-03.4: under
+*!          capture noisily, neither dash build nor dash serve emits a "file
+*!          not found" diagnostic.  Both spec writers opened a fresh
+*!          tempfile with `write replace', and Stata notes the missing file
+*!          on every run.  Each route is run under a named log -- dash
+*!          build, the immediate route (the other writer) and dash serve up
+*!          to its launch, against a stub renderer that writes the app and
+*!          exits -- and the log is searched with Stata's wrapped lines
+*!          rejoined.  BR-02a first shows that the search finds the note
+*!          itself, produced the way the defect produced it.
+*!
+*!   BR-03  "ylabel(#5, grid) was silently ignored" (fixed in cc3c4ac).
+*!          The comma of the stripped sub-option was left behind, so `#5,'
+*!          matched no keyword form and the count was dropped.  twoway is
+*!          measured live -- its .gph records the rule, its SVG the labels
+*!          and gridlines -- and dash's saved page and served document are
+*!          held to it: the count twoway records reaches the y axis, and
+*!          the grid is drawn at the labels in the colour twoway draws it.
+*!          The tick positions are Bokeh's and are not compared: measured
+*!          24sep2026, dash's #5 on this data draws 15(5)40 where twoway
+*!          draws 10(10)40 (test_bug_regressions.py says more).
+*!
+*! Each case was run with its defect restored, on a copy of the tree, and
+*! failed there (24sep2026):
+*!   BR-01  comprehensive_demo.do given b917c33's change in reverse, the
+*!          eight values back to fa(0.4) ... fa(0.3): BR-01a finds the
+*!          fractions, and BR-01b and BR-01c every fill drawn at a hundredth
+*!          (0.004, 0.005, 0.003) in each mode.
+*!   BR-02  `quietly' taken off the spec writer in _dash_prepare_spec: the
+*!          dash build and dash serve logs each hold one note, and BR-02b
+*!          stops the script.  Taken off the writer in _dash_render_immediate
+*!          instead: the immediate route's log holds one, and BR-02c stops
+*!          it.
+*!   BR-03  `.rstrip(",")' taken out of _dash_parse_axis_spec: BR-03b and
+*!          BR-03c report desired_num_ticks 6 where twoway records 5, and
+*!          BR-03b stops the script; BR-03a, the twoway oracle, passes.
+
+cscript "dash bug regressions" adodir ".."
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+
+// See test_cscript_hygiene.py: do NOT probe Python by running it.
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+capture python: pass
+capture python: import bokeh
+if _rc != 0 capture python: import bokeh
+if _rc != 0 {
+    display as error "SKIP: bokeh not installed. Run dash_setup first."
+    exit 222
+}
+
+qui do "../dash.ado"
+
+// cscript drops every global; the runner's setting does not reach here.
+global dash_nobrowser 1
+
+// ----------------------------------------------------------------
+// Shared helpers
+// ----------------------------------------------------------------
+
+// The number of times `pattern' (an ICU regular expression, lower case)
+// occurs in a log.  A line Stata wraps goes on in the next after "> ",
+// indented inside a paragraph, so a long tempfile path can carry "not found"
+// onto a line of its own or split a word: continuations are rejoined and
+// runs of white space made one blank before the search.  Mata strings are
+// values, so nothing read from the log is expanded as Stata code.
+capture mata: mata drop _br_count()
+mata:
+real scalar _br_count(string scalar fn, string scalar pattern)
+{
+    string colvector lines
+    string scalar    s, hit
+    real scalar      n
+
+    lines = cat(fn)
+    if (rows(lines) == 0) return(0)
+    s = invtokens(lines', char(10))
+    s = ustrregexra(s, char(10) + "[ \t]*> ", "")
+    s = ustrlower(ustrregexra(s, "\s+", " "))
+    n = 0
+    while (ustrregexm(s, pattern)) {
+        hit = ustrregexs(0)
+        s = usubstr(s, ustrpos(s, hit) + ustrlen(hit), .)
+        n = n + 1
+    }
+    return(n)
+}
+end
+
+// Python: a module loaded from a path, the figures of a saved page (rebuilt
+// by Bokeh from the page's own JSON), and the figures of the document a
+// served app builds.  No backtick or dollar sign below: Stata would expand
+// them inside a python block.
+python:
+import html, importlib.util, json, os, re, sys, warnings
+from bokeh.document import Document
+from bokeh.models import Plot
+from sfi import Macro
+
+def _br_module(path, name):
+    # Registered before it runs: ServerAppBuilder copies helpers out of its
+    # own module's source, which it finds through sys.modules.
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+def _br_plots(roots):
+    seen, out = set(), []
+    for root in roots:
+        for m in root.references():
+            if isinstance(m, Plot) and m.id not in seen:
+                seen.add(m.id)
+                out.append(m)
+    return out
+
+def _br_by_title(figs):
+    return {getattr(f.title, "text", None): f for f in figs}
+
+def _br_saved(page_path):
+    # Bokeh embeds the document one of two ways: file_html puts it in a
+    # script element of type application/json, HTML-escaped; components(),
+    # which a layout(bs) page uses, in a JavaScript string that also
+    # doubles each backslash.  BokehJS undoes the escaping; so does this.
+    page = open(page_path, encoding="utf-8").read()
+    m = re.search(r'<script type="application/json" id="[^"]*">(.*?)</script>',
+                  page, re.S)
+    if m is not None:
+        docs = json.loads(html.unescape(m.group(1)))
+    else:
+        m = re.search(r"const docs_json = '(.*?)';", page, re.S)
+        if m is None:
+            return {}
+        bs = chr(92)
+        docs = json.loads(html.unescape(m.group(1).replace(bs + bs, bs)))
+    figs = []
+    for dj in docs.values():
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            figs += _br_plots(Document.from_json(dj).roots)
+    return _br_by_title(figs)
+
+def _br_served(render_py, spec, data, app, tag):
+    # Imported, the generated app attaches itself to curdoc(); as in
+    # test_json_escaping.cscript that line is run as pass, so this session's
+    # curdoc keeps nothing for a later script, and the renderer module is
+    # dropped from sys.modules once the app is built.
+    name = "_br_render_" + tag
+    attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+    try:
+        rmod = _br_module(render_py, name)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            rmod.ServerAppBuilder(spec, data).build(app)
+            src = open(app, encoding="utf-8").read()
+            if attach not in src:
+                raise AssertionError("the generated app's curdoc attach moved")
+            ns = {"__name__": "_br_app_" + tag}
+            exec(compile(src.replace(attach, "pass"), app, "exec"), ns)
+            doc = Document()
+            ns["make_document"](doc)
+    finally:
+        sys.modules.pop(name, None)
+    return _br_by_title(_br_plots(doc.roots))
+
+def _br_value(v):
+    v = getattr(v, "value", v)
+    if isinstance(v, dict):
+        v = v.get("value")
+    return v
+end
+
+
+// ================================================================
+// BR-01 -- the fills of comprehensive_demo.do render at the opacity the
+// example writes, in the saved page and in the served document
+// ================================================================
+local br01_here "`c(pwd)'"
+local br01_ex "`br01_here'/../examples/comprehensive_demo.do"
+confirm file "`br01_ex'"
+tempfile br01base br01_spec br01_data br01_a
+local br01_dir "`br01base'_br01"
+capture mkdir "`br01_dir'"
+capture erase "`br01_dir'/comprehensive_demo.html"
+local br01_app "`br01_a'.py"
+capture erase "`br01_app'"
+
+// The example saves comprehensive_demo.html in the working directory.
+quietly cd "`br01_dir'"
+capture noisily do "`br01_ex'"
+local br01_rc = _rc
+quietly cd "`br01_here'"
+assert `br01_rc' == 0
+confirm file "`br01_dir'/comprehensive_demo.html"
+
+// The spec `dash serve' would serve after the example: its registry, with
+// the example's build options inherited.
+_dash_serve_spec, specpath("`br01_spec'") datapath("`br01_data'")
+_dash_find_render
+global br01_render `"`r(fn)'"'
+global br01_page "`br01_dir'/comprehensive_demo.html"
+global br01_spec "`br01_spec'"
+global br01_data "`br01_data'"
+global br01_app "`br01_app'"
+
+python:
+# The eight sites, as the fix wrote them (BUGS.md): fa() is 0 to 100.
+_br01_want = {"u3": 40, "b6": 25, "b9": 50, "b13": 40,
+              "m2": 30, "m3": 30, "m4": 30, "m5": 30}
+# b6 is an mband: a line, with no fill in dash or in twoway (measured).
+_br01_nofill = {"b6"}
+
+_br01_spec = json.load(open(Macro.getGlobal("br01_spec"), encoding="utf-8"))
+_br01_written, _br01_title = {}, {}
+for _g in _br01_spec["graphs"]:
+    _go = _g.get("graph_options") or {}
+    _t = str(_go.get("title", "")).strip()
+    if len(_t) >= 2 and _t[0] == '"' and _t[-1] == '"':
+        _t = _t[1:-1]
+    _br01_title[_go.get("name")] = _t
+    for _p in _g.get("plots") or []:
+        _fa = (_p.get("options") or {}).get("falpha")
+        if _fa not in (None, ""):
+            _br01_written[_go.get("name")] = (_p.get("type"), float(_fa))
+
+_br01_a = []
+if {k: v[1] for k, v in _br01_written.items()} != {k: float(v) for k, v in _br01_want.items()}:
+    _br01_a.append("the example asks for falpha %s, where the fix wrote %s"
+                   % (sorted((k, v[1]) for k, v in _br01_written.items()),
+                      sorted(_br01_want.items())))
+
+def _br01_fills(fig):
+    # Area fills: glyphs with a fill that are not markers.  A marker has a
+    # fill too (the scatter layers under the bands), and is not a fill.
+    out = []
+    for r in fig.renderers:
+        gl = getattr(r, "glyph", None)
+        if gl is None or not hasattr(gl, "fill_alpha"):
+            continue
+        if type(gl).__name__ == "Scatter":
+            continue
+        out.append((type(gl).__name__, float(_br_value(gl.fill_alpha))))
+    for an in fig.center:
+        if type(an).__name__ == "Band":
+            out.append(("Band", float(_br_value(an.fill_alpha))))
+    return out
+
+def _br01_check(figs, mode):
+    bad, n = [], 0
+    for name in sorted(_br01_want):
+        title = _br01_title.get(name)
+        fig = figs.get(title)
+        if fig is None:
+            bad.append("%s: no figure titled %r" % (mode, title))
+            continue
+        fills = _br01_fills(fig)
+        if name in _br01_nofill:
+            if fills:
+                bad.append("%s %s: the mband drew a fill %s" % (mode, name, fills))
+            continue
+        want = _br01_want[name] / 100.0
+        if not fills:
+            bad.append("%s %s: no fill drawn" % (mode, name))
+        for kind, a in fills:
+            if abs(a - want) > 1e-9:
+                bad.append("%s %s: %s drawn at fill_alpha %g, not %g"
+                           % (mode, name, kind, a, want))
+        n += len(fills)
+    return bad, n
+
+_br01_b, _br01_nb = _br01_check(_br_saved(Macro.getGlobal("br01_page")), "saved")
+_br01_c, _br01_nc = _br01_check(
+    _br_served(Macro.getGlobal("br01_render"), Macro.getGlobal("br01_spec"),
+               Macro.getGlobal("br01_data"), Macro.getGlobal("br01_app"),
+               "br01"), "served")
+for _line in _br01_a + _br01_b + _br01_c:
+    print("BR-01 problem: " + _line)
+Macro.setGlobal("br01_a", str(len(_br01_a)))
+Macro.setGlobal("br01_b", str(len(_br01_b)))
+Macro.setGlobal("br01_c", str(len(_br01_c)))
+Macro.setGlobal("br01_nb", str(_br01_nb))
+Macro.setGlobal("br01_nc", str(_br01_nc))
+end
+
+capture erase "`br01_app'"
+capture erase "`br01_dir'/comprehensive_demo.html"
+capture rmdir "`br01_dir'"
+
+assert ${br01_a} == 0
+display "BR-01a PASS: the example asks for falpha 40, 25, 50, 40 and 30 four times, as the fix wrote them"
+assert ${br01_b} == 0
+assert ${br01_nb} == 7
+display "BR-01b PASS: the saved page draws the seven fills at 0.40, 0.50, 0.40 and 0.30 four times, and b6's mband none"
+assert ${br01_c} == 0
+assert ${br01_nc} == 7
+display "BR-01c PASS: the served document draws the same seven fills at the same opacities, and b6's mband none"
+display "BR-01 PASS: comprehensive_demo.do's fills render at the opacity it intends, in both modes"
+macro drop br01_*
+
+
+// ================================================================
+// BR-02 -- no "not found" from a successful dash build, the immediate
+// route or dash serve, under capture noisily
+// ================================================================
+// Each log is opened without `replace': `log using ..., replace' on a new
+// file prints its own note, before the log opens.
+
+// BR-02a: the search finds the note, made the way the defect made it -- a
+// fresh tempfile opened with `write replace' -- and wrapped as Stata wraps
+// it.
+tempfile br02_fresh br02_l0
+local br02_log0 "`br02_l0'.log"
+capture erase "`br02_log0'"
+capture log close br02
+log using "`br02_log0'", name(br02) text
+tempname br02_fh
+file open `br02_fh' using "`br02_fresh'", write replace text
+file close `br02_fh'
+log close br02
+mata: st_local("br02_n0", strofreal(_br_count(st_local("br02_log0"), "not ?found")))
+display as text "     notes found in the injected log: `br02_n0'"
+assert `br02_n0' == 1
+display "BR-02a PASS: the log search finds the note Stata prints for a fresh tempfile opened with write replace"
+
+// The three routes run first and are judged after, so that a restored
+// defect shows in every route's count before the first assertion stops
+// the script.
+
+// Route b: dash build (the spec writer in _dash_prepare_spec).
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(g1)
+tempfile br02_o1 br02_l1
+local br02_html1 "`br02_o1'.html"
+local br02_log1 "`br02_l1'.log"
+capture erase "`br02_html1'"
+capture erase "`br02_log1'"
+log using "`br02_log1'", name(br02) text
+capture noisily dash build, saving("`br02_html1'")
+local br02_rc1 = _rc
+log close br02
+capture confirm file "`br02_html1'"
+local br02_f1 = (_rc == 0)
+mata: st_local("br02_s1", strofreal(_br_count(st_local("br02_log1"), "dashboard saved to")))
+mata: st_local("br02_n1", strofreal(_br_count(st_local("br02_log1"), "not ?found")))
+display as text "     dash build: rc `br02_rc1', file written `br02_f1', `br02_s1' saved line(s), `br02_n1' not-found note(s)"
+
+// Route c: the immediate route (the spec writer in _dash_render_immediate).
+tempfile br02_o2 br02_l2
+local br02_html2 "`br02_o2'.html"
+local br02_log2 "`br02_l2'.log"
+capture erase "`br02_html2'"
+capture erase "`br02_log2'"
+log using "`br02_log2'", name(br02) text
+capture noisily dash scatter mpg weight, saving("`br02_html2'")
+local br02_rc2 = _rc
+log close br02
+capture confirm file "`br02_html2'"
+local br02_f2 = (_rc == 0)
+mata: st_local("br02_s2", strofreal(_br_count(st_local("br02_log2"), "dashboard saved to")))
+mata: st_local("br02_n2", strofreal(_br_count(st_local("br02_log2"), "not ?found")))
+display as text "     immediate route: rc `br02_rc2', file written `br02_f2', `br02_s2' saved line(s), `br02_n2' not-found note(s)"
+
+// Route d: dash serve, up to its launch.  A stub dash_render.py first on
+// the ado-path (the method of test_help_claims_4.cscript HC4-16) writes the
+// app where the renderer would and records the path it was given, so the
+// command runs whole -- spec, browser decision, launch handoff -- and no
+// server starts.
+tempfile br02_sb br02_l3
+local br02_stubdir "`br02_sb'_br02_stub"
+capture mkdir "`br02_stubdir'"
+local br02_stub "`br02_stubdir'/dash_render.py"
+local br02_rec "`br02_stubdir'/output_path.txt"
+local br02_log3 "`br02_l3'.log"
+capture erase "`br02_stub'"
+capture erase "`br02_rec'"
+capture erase "`br02_log3'"
+tempname br02_sh
+file open `br02_sh' using "`br02_stub'", write text
+file write `br02_sh' `"import os, sys"' _n
+file write `br02_sh' `"_a = sys.argv[1:]"' _n
+file write `br02_sh' `"_o = _a[_a.index("--output") + 1]"' _n
+file write `br02_sh' `"open(_o, "w", encoding="utf-8").write("# app")"' _n
+file write `br02_sh' `"_r = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output_path.txt")"' _n
+file write `br02_sh' `"open(_r, "w", encoding="utf-8").write(_o)"' _n
+file close `br02_sh'
+adopath ++ "`br02_stubdir'"
+local br02_rc3 = -1
+local br02_s3 = -1
+local br02_n3 = -1
+capture noisily {
+    _dash_find_render
+    assert strpos(`"`r(fn)'"', "_br02_stub") > 0
+    dash clear
+    dash scatter mpg weight, name(sv1)
+    log using "`br02_log3'", name(br02) text
+    capture noisily dash serve, port(5097) timeout(1) nobrowser
+    local br02_rc3 = _rc
+    log close br02
+}
+local br02_rcd = _rc
+capture log close br02
+capture confirm file "`br02_rec'"
+local br02_f3 = (_rc == 0)
+if `br02_rcd' == 0 {
+    mata: st_local("br02_s3", strofreal(_br_count(st_local("br02_log3"), "starting bokeh server on port 5097")))
+    mata: st_local("br02_n3", strofreal(_br_count(st_local("br02_log3"), "not ?found")))
+}
+display as text "     dash serve: rc `br02_rc3', app handed over `br02_f3', `br02_s3' launch line(s), `br02_n3' not-found note(s)"
+adopath - "`br02_stubdir'"
+capture erase "`br02_rec'"
+capture erase "`br02_stub'"
+capture rmdir "`br02_stubdir'"
+capture dash clear
+_dash_find_render
+assert strpos(`"`r(fn)'"', "_br02_stub") == 0
+assert `br02_rcd' == 0
+
+assert `br02_rc1' == 0 & `br02_f1' == 1 & `br02_s1' == 1
+assert `br02_n1' == 0
+display "BR-02b PASS: capture noisily dash build saves the dashboard and prints no not-found note"
+assert `br02_rc2' == 0 & `br02_f2' == 1 & `br02_s2' == 1
+assert `br02_n2' == 0
+display "BR-02c PASS: capture noisily dash scatter ..., saving() saves the dashboard and prints no not-found note"
+assert `br02_rc3' == 0 & `br02_f3' == 1 & `br02_s3' == 1
+assert `br02_n3' == 0
+display "BR-02d PASS: capture noisily dash serve runs to its launch and prints no not-found note"
+display "BR-02 PASS: neither dash build, the immediate route nor dash serve prints a not-found note (ROADMAP AC-03.4)"
+
+
+// ================================================================
+// BR-03 -- ylabel(#5, grid): the rule and the grid, held to what twoway
+// draws, in the saved page and in the served document
+// ================================================================
+// s1color draws no y grid of its own, so a grid is the sub-option's doing.
+sysuse auto, clear
+tempfile br03t br03_o br03_spec br03_data br03_a
+// A tempfile name carries a dot, which graph export and graph save would
+// read as the file's suffix; twoway's files go in a directory instead.
+local br03_dir "`br03t'_br03"
+capture mkdir "`br03_dir'"
+local br03_gsvg "`br03_dir'/grid.svg"
+local br03_ggph "`br03_dir'/grid.gph"
+local br03_psvg "`br03_dir'/plain.svg"
+local br03_pgph "`br03_dir'/plain.gph"
+local br03_html "`br03_o'.html"
+local br03_app "`br03_a'.py"
+foreach f in br03_gsvg br03_ggph br03_psvg br03_pgph br03_html br03_app {
+    capture erase "``f''"
+}
+quietly twoway scatter mpg weight, ylabel(#5, grid) scheme(s1color) name(br03, replace)
+quietly graph export "`br03_gsvg'", as(svg)
+quietly graph save br03 "`br03_ggph'"
+quietly twoway scatter mpg weight, ylabel(#5) scheme(s1color) name(br03, replace)
+quietly graph export "`br03_psvg'", as(svg)
+quietly graph save br03 "`br03_pgph'"
+graph drop br03
+
+dash clear
+dash scatter mpg weight, ylabel(#5, grid) title("grid") name(g1)
+dash scatter mpg weight, ylabel(#5) title("plain") name(g2)
+dash build, saving("`br03_html'") scheme(s1color)
+confirm file "`br03_html'"
+_dash_serve_spec, specpath("`br03_spec'") datapath("`br03_data'")
+_dash_find_render
+global br03_render `"`r(fn)'"'
+global br03_gsvg "`br03_gsvg'"
+global br03_ggph "`br03_ggph'"
+global br03_psvg "`br03_psvg'"
+global br03_pgph "`br03_pgph'"
+global br03_html "`br03_html'"
+global br03_spec "`br03_spec'"
+global br03_data "`br03_data'"
+global br03_app "`br03_app'"
+
+python:
+def _br03_svg(path):
+    # The y labels and the horizontal gridlines of a twoway SVG.  The y axis
+    # is the longest vertical black line; a y label is a number written left
+    # of it; a gridline is a horizontal line in any colour but black that
+    # spans at least half the canvas.
+    txt = open(path, encoding="utf-8").read()
+    def attrs(s):
+        return dict(re.findall(r'([A-Za-z0-9:_-]+)="([^"]*)"', s))
+    width = float(re.search(r'viewBox="0 0 ([0-9.]+) ', txt).group(1))
+    lines = []
+    for m in re.finditer(r"<line ([^>]*)/>", txt):
+        a = attrs(m.group(1))
+        st = dict(kv.split(":", 1) for kv in a.get("style", "").split(";") if ":" in kv)
+        lines.append((float(a["x1"]), float(a["y1"]), float(a["x2"]),
+                      float(a["y2"]), st.get("stroke", "").lower()))
+    vert = [l for l in lines if abs(l[0] - l[2]) < 0.01 and l[4] == "#000000"]
+    axis_x = max(vert, key=lambda l: abs(l[3] - l[1]))[0]
+    labels = []
+    for m in re.finditer(r"<text ([^>]*)>([^<]*)</text>", txt):
+        a = attrs(m.group(1))
+        try:
+            v = float(m.group(2).replace(",", ""))
+        except ValueError:
+            continue
+        if float(a["x"]) < axis_x:
+            labels.append((round(float(a["y"]), 2), v))
+    grid = [(round(l[1], 2), l[4]) for l in lines
+            if abs(l[1] - l[3]) < 0.01 and l[4] != "#000000"
+            and abs(l[2] - l[0]) >= 0.5 * width]
+    return sorted(labels), sorted(grid)
+
+def _br03_gph(path):
+    txt = open(path, "rb").read().decode("latin-1")
+    m = re.search(r"[.]yaxis1[.]major[.]suggest_ticks ([0-9]+)", txt)
+    grid = re.search(r"[.]yaxis1[.]style[.]editstyle draw_major_grid[(]yes[)]", txt)
+    return (int(m.group(1)) if m else None), grid is not None
+
+_br03_a = []
+_br03_gl, _br03_gg = _br03_svg(Macro.getGlobal("br03_gsvg"))
+_br03_pl, _br03_pg = _br03_svg(Macro.getGlobal("br03_psvg"))
+_br03_gn, _br03_gdraw = _br03_gph(Macro.getGlobal("br03_ggph"))
+_br03_pn, _br03_pdraw = _br03_gph(Macro.getGlobal("br03_pgph"))
+print("twoway ylabel(#5, grid): labels %s, gridlines %s, .gph suggest_ticks %s, draw_major_grid(yes) %s"
+      % (_br03_gl, _br03_gg, _br03_gn, _br03_gdraw))
+print("twoway ylabel(#5):       labels %s, gridlines %s, .gph suggest_ticks %s, draw_major_grid(yes) %s"
+      % (_br03_pl, _br03_pg, _br03_pn, _br03_pdraw))
+_br03_colours = sorted({c for _y, c in _br03_gg})
+if _br03_gn != 5 or _br03_pn != 5:
+    _br03_a.append("twoway records suggest_ticks %s and %s, not 5" % (_br03_gn, _br03_pn))
+if not _br03_gdraw or _br03_pdraw:
+    _br03_a.append("twoway's .gph records the grid as %s with grid and %s without"
+                   % (_br03_gdraw, _br03_pdraw))
+if len(_br03_gl) < 2 or _br03_gl != _br03_pl:
+    _br03_a.append("the labels are %s with grid and %s without" % (_br03_gl, _br03_pl))
+if sorted(y for y, _c in _br03_gg) != sorted(y for y, _v in _br03_gl):
+    _br03_a.append("the gridlines sit at %s, the labels at %s" % (_br03_gg, _br03_gl))
+if len(_br03_colours) != 1:
+    _br03_a.append("the gridlines are drawn in %s" % _br03_colours)
+if _br03_pg:
+    _br03_a.append("without grid twoway drew gridlines %s" % _br03_pg)
+_br03_count = _br03_gn
+_br03_colour = _br03_colours[0] if len(_br03_colours) == 1 else None
+
+def _br03_check(figs, mode):
+    bad = []
+    for title, want_grid in (("grid", True), ("plain", False)):
+        fig = figs.get(title)
+        if fig is None:
+            bad.append("%s: no figure titled %r" % (mode, title))
+            continue
+        axes = [a for a in fig.left if hasattr(a, "ticker")]
+        grids = [g for g in fig.center
+                 if type(g).__name__ == "Grid" and g.dimension == 1]
+        if len(axes) != 1 or len(grids) != 1:
+            bad.append("%s %s: %d y axes and %d y grids" % (mode, title, len(axes), len(grids)))
+            continue
+        axis, g = axes[0], grids[0]
+        t = axis.ticker
+        if type(t).__name__ != "BasicTicker" or t.desired_num_ticks != _br03_count:
+            bad.append("%s %s: the y axis asks for %s %s ticks where twoway records %s"
+                       % (mode, title, type(t).__name__,
+                          getattr(t, "desired_num_ticks", None), _br03_count))
+        colour = g.grid_line_color
+        if want_grid:
+            if colour is None or str(colour).lower() != _br03_colour:
+                bad.append("%s %s: the y grid is %s where twoway draws %s"
+                           % (mode, title, colour, _br03_colour))
+            if not ((g.ticker is None and g.axis is axis) or g.ticker is t):
+                bad.append("%s %s: the y grid is not drawn at the y axis's ticks" % (mode, title))
+        elif colour is not None:
+            bad.append("%s %s: a y grid in %s where twoway draws none" % (mode, title, colour))
+    return bad
+
+_br03_b = _br03_check(_br_saved(Macro.getGlobal("br03_html")), "saved")
+_br03_c = _br03_check(
+    _br_served(Macro.getGlobal("br03_render"), Macro.getGlobal("br03_spec"),
+               Macro.getGlobal("br03_data"), Macro.getGlobal("br03_app"),
+               "br03"), "served")
+for _line in _br03_a + _br03_b + _br03_c:
+    print("BR-03 problem: " + _line)
+Macro.setGlobal("br03_a", str(len(_br03_a)))
+Macro.setGlobal("br03_b", str(len(_br03_b)))
+Macro.setGlobal("br03_c", str(len(_br03_c)))
+end
+
+foreach f in br03_gsvg br03_ggph br03_psvg br03_pgph br03_html br03_app {
+    capture erase "``f''"
+}
+capture rmdir "`br03_dir'"
+capture dash clear
+
+assert ${br03_a} == 0
+display "BR-03a PASS: twoway records suggest_ticks 5 for ylabel(#5, grid) and draws a gridline at each y label, none without grid"
+assert ${br03_b} == 0
+display "BR-03b PASS: the saved page asks the y axis for twoway's count and draws the grid at the labels in twoway's colour, none without grid"
+assert ${br03_c} == 0
+display "BR-03c PASS: the served document does the same"
+display "BR-03 PASS: ylabel(#5, grid) keeps its count and its grid, as twoway draws them, in both modes"
+macro drop br03_*
+
+// ----------------------------------------------------------------
+// Cleanup
+// ----------------------------------------------------------------
+capture dash clear
+capture mata: mata drop _br_count()
+
+display ""
+display "test_bug_regressions.cscript: ALL CHECKS PASSED"

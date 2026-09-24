@@ -40,7 +40,9 @@
 *! wrapped word -- and asserts that no logical line carries "UserWarning".
 *! A session scheme dash cannot translate is still one warning
 *! (test_custom_scheme.cscript CS-10); this script asserts that the scheme
-*! cscript sets is not such a scheme.
+*! cscript sets is not such a scheme.  Check 5 is check 4's control: a
+*! render under such a scheme, counted by the same scanner, must show its
+*! one warning (24sep2026).
 
 cscript "render log clean" adodir ".."
 
@@ -113,7 +115,7 @@ assert _rc == 0
 cert_file_has "`outhtml'.html", needle("bokeh") lower
 assert r(found) == 1
 
-display as result "  [1/4] the dashboard was rendered: PASS"
+display as result "  [1/5] the dashboard was rendered: PASS"
 
 // ---------------------------------------------------------------
 // 2. No Python namespace dump
@@ -125,7 +127,7 @@ assert r(found) == 0
 cert_file_has "`logfile'", needle("GlyphMapper")
 assert r(found) == 0
 
-display as result "  [2/4] no Python namespace in the log: PASS"
+display as result "  [2/5] no Python namespace in the log: PASS"
 
 // ---------------------------------------------------------------
 // 3. The log stays small.  653 lines for one command was the
@@ -143,7 +145,7 @@ file close `fh'
 display as text "     log lines for one render: `nlines'"
 assert `nlines' < 60
 
-display as result "  [3/4] the log is short: PASS"
+display as result "  [3/5] the log is short: PASS"
 
 // ---------------------------------------------------------------
 // 4. No Python warning.  The session scheme cscript sets (s2color8)
@@ -154,7 +156,53 @@ mata: st_local("nwarn", strofreal(_rlc_count(st_local("logfile"), "UserWarning")
 display as text "     UserWarning lines in the log (wrapped lines re-joined): `nwarn'"
 assert `nwarn' == 0
 
-display as result "  [4/4] no Python warning in the log: PASS"
+display as result "  [4/5] no Python warning in the log: PASS"
+
+// ---------------------------------------------------------------
+// 5. The control for check 4: a render that must warn does, and the
+//    same counter counts it.  Without one (until 24sep2026 the only
+//    control was test_custom_scheme.cscript CS-10's), check 4 could
+//    not fail on a warning that never reached the log -- a filter
+//    silencing Python's warnings for the session passes it whatever
+//    the renderer says, as dash_setup's scheme probe once did,
+//    leaving warnings.simplefilter("ignore") installed for every
+//    later render.  A session scheme dash cannot translate is one
+//    warning (CS-10): zzdashrlc, a scheme file in a scratch working
+//    directory that includes s2color, so that `set scheme' takes it
+//    and the renderer does not.
+// ---------------------------------------------------------------
+local rlc_home    "`c(pwd)'"
+local rlc_scheme0 "`c(scheme)'"
+local rlc_dir     "`logdir'dash_rlc_wd"
+local ctlfile     "`logdir'dash_render_log_clean_ctl.log"
+capture mkdir "`rlc_dir'"
+tempname sfh
+file open `sfh' using "`rlc_dir'/scheme-zzdashrlc.scheme", write text replace
+file write `sfh' "#include s2color" _n
+file close `sfh'
+capture erase "`ctlfile'"
+quietly cd "`rlc_dir'"
+capture noisily set scheme zzdashrlc
+local src = _rc
+dash clear
+capture log close _dashctl
+log using "`ctlfile'", name(_dashctl) text replace
+capture noisily dash scatter mpg weight, saving("`outhtml'_ctl.html") replace
+local crc = _rc
+log close _dashctl
+capture set scheme `rlc_scheme0'
+quietly cd "`rlc_home'"
+capture erase "`rlc_dir'/scheme-zzdashrlc.scheme"
+capture rmdir "`rlc_dir'"
+capture erase "`outhtml'_ctl.html"
+
+mata: st_local("nctl", strofreal(_rlc_count(st_local("ctlfile"), "UserWarning")))
+display as text "     UserWarning lines in the control's log: `nctl'"
+assert `src' == 0
+assert `crc' == 0
+assert `nctl' == 1
+
+display as result "  [5/5] a render that must warn is counted: PASS"
 
 dash clear
 display as result "test_render_log_clean.cscript: ALL PASS"

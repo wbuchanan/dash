@@ -1,7 +1,7 @@
 *! test_e2e_filters.cscript
 *! End-to-end certification script for filter widgets in dashboard output.
 *!
-*! Tests: P2-73 through P2-75
+*! Tests: P2-73 through P2-75, FL-EX-1, FL-CP-1, FL-QT-1 and FL-QT-2
 *!
 *! Usage:  do test/test_e2e_filters.cscript
 *!
@@ -86,15 +86,18 @@ assert _rc == 0
 // is embedded in -- bokeh.min.js registers the class as o("Select", ...) and
 // sets __name__="Select", so the bare quoted name below is present in every
 // Bokeh document whether or not a widget was built.
-cert_file_has "`outpath'", needle(`":"select""') lower
-local found_select = r(found)
-cert_file_has "`outpath'", needle(`""select""') lower
-local found_select = max(`found_select', r(found))
-cert_file_has "`outpath'", needle("bk-select") lower
-local found_select = max(`found_select', r(found))
-cert_file_has "`outpath'", needle("select_widget") lower
-local found_select = max(`found_select', r(found))
-assert `found_select' == 1
+//
+// And so the max() of the four could not fail.  Measured 24sep2026 on the
+// page these two graphs build WITHOUT filter(): "select" in quotes, lower-
+// cased, occurs 5 times -- all in the BokehJS the page inlines -- so
+// found_select was 1 with no widget at all, while bk-select and
+// select_widget occur on neither page.  The model is what is counted now,
+// exactly: Bokeh 3 (dash.pkg requires 3.0 or later) writes each model once
+// as "type":"object","name":"<Model>", and the one dropdown filter builds
+// one Select -- "name":"Select" occurs once on this page and not at all on
+// the page without the filter.
+cert_file_count "`outpath'", needle(`""name":"Select""')
+assert r(count) == 1
 display "P2-73 PASS: HTML contains Bokeh Select widget for foreign filter"
 
 // ================================================================
@@ -117,13 +120,19 @@ display "P2-74 PASS: value labels 'Domestic' and 'Foreign' in filter widget HTML
 // ================================================================
 // The same substitution.  "All" is the label Bokeh writes for the sentinel
 // option the dropdown opens on, and it appears as an option value or label
-// in the Select widget JSON.  The loop OR'd a quoted needle with a bare one;
-// both are kept, so the assertion is neither widened nor narrowed here.
+// in the Select widget JSON.  The loop OR'd a quoted needle with a bare one,
+// and the bare one decided the verdict alone: measured 24sep2026, All
+// occurs 17 times in the inlined BokehJS of the page built without a filter
+// (23 in that page), so the OR was 1 on any dashboard.  The two are asserted
+// separately now.  The quoted "All" occurs once on this page and not at all
+// on the page without the filter.  And the option itself: the Select's
+// options open with the pair [sentinel, label], ["__all__","All"] -- the
+// value the dropdown opens on, then the text it shows -- once on this page
+// and nowhere on the page without.
 cert_file_has "`outpath'", needle(`""All""')
-local found_all = r(found)
-cert_file_has "`outpath'", needle("All")
-local found_all = max(`found_all', r(found))
-assert `found_all' == 1
+assert r(found) == 1
+cert_file_count "`outpath'", needle(`"["__all__","All"]"')
+assert r(count) == 1
 display "P2-75 PASS: 'All' option present in filter widget HTML"
 
 // ================================================================
@@ -165,9 +174,69 @@ dash scatter mpg weight, name(gB)
 tempfile cpfile
 capture dash build,saving("`cpfile'.html") replace filter(foreign, type(dropdown))
 assert _rc == 0
-cert_file_has "`cpfile'.html", needle("Select")
-assert r(found) == 1
+// This searched for Select, which occurs 143 times in this graph's page
+// built with no filter at all (measured 24sep2026: 140 in the inlined
+// BokehJS, 3 in the names of BoxSelectTool, LassoSelectTool and Selection),
+// so it found the library and the toolbar, not the widget.  The model is
+// counted, as at P2-73.
+cert_file_count "`cpfile'.html", needle(`""name":"Select""')
+assert r(count) == 1
+// The command above puts saving() after the comma and filter() after a
+// blank, `replace filter(', so the boundary this case is named for is not
+// the one it reads: measured 24sep2026, with the comma taken out of
+// _dash_extract_filters' boundary test it still built its widget.  Here
+// filter() is the first thing after the comma.
+tempfile cpfile2
+capture dash build,filter(foreign, type(dropdown)) saving("`cpfile2'.html") replace
+assert _rc == 0
+cert_file_count "`cpfile2'.html", needle(`""name":"Select""')
+assert r(count) == 1
 display "FL-CP-1 PASS: filter() directly after the comma builds its widget"
+
+// ================================================================
+// FL-QT-1..2 -- filter( inside a quoted title is the title's text
+// ================================================================
+// ROADMAP WP-01 AC-01.2: `dash build, title("Q1 filter(foreign) report")'
+// renders the title as written and creates no filter widget.  Measured
+// before 9c7dbf7: rc 0, the title drawn as "Q1 report" and a live
+// dropdown on foreign that nobody asked for.  test_parser_integrity.cscript
+// P1B-20 and P1B-33 hold the extractor itself; these hold the command, so
+// a regression anywhere between the extractor and the page shows.  WP-24
+// measured them against 9c7dbf7's extractor change put back in a copy of
+// the tree: every check below failed there, and passed here.
+dash clear
+sysuse auto, clear
+dash scatter mpg weight, name(gQ)
+
+// FL-QT-1: the title of AC-01.2, word for word.
+tempfile qtfile
+capture erase "`qtfile'.html"
+capture noisily dash build, saving("`qtfile'.html") replace nobrowser ///
+    title("Q1 filter(foreign) report")
+assert _rc == 0
+cert_file_has "`qtfile'.html", needle("Q1 filter(foreign) report")
+assert r(found) == 1
+// A widget is looked for as a MODEL, a colon and its quoted name, as P2-73
+// looks for it: Bokeh's own script, inlined in every page, spells both
+// class names bare (measured: "RangeSlider" is in a page with no filter).
+cert_file_has "`qtfile'.html", needle(`":"select""') lower
+assert r(found) == 0
+cert_file_has "`qtfile'.html", needle(`":"rangeslider""') lower
+assert r(found) == 0
+display "FL-QT-1 PASS: the title Q1 filter(foreign) report is drawn as written, with no filter widget"
+
+// FL-QT-2: a ')' in the quote before the word, which closes title( for any
+// scan that does not track the quote.
+tempfile qtfile2
+capture erase "`qtfile2'.html"
+capture noisily dash build, saving("`qtfile2'.html") replace nobrowser ///
+    title("Q1 ) filter(foreign) report")
+assert _rc == 0
+cert_file_has "`qtfile2'.html", needle("Q1 ) filter(foreign) report")
+assert r(found) == 1
+cert_file_has "`qtfile2'.html", needle(`":"select""') lower
+assert r(found) == 0
+display "FL-QT-2 PASS: a quoted ')' before filter( in the title is text too"
 
 // ----------------------------------------------------------------
 // Cleanup

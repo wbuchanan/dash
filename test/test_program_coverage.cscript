@@ -1,0 +1,1092 @@
+*! test_program_coverage.cscript
+*! WP-24 AC-24.3 (every program define and every Mata function has a
+*! behavioural test) and GAPS.md L7: tests for the programs and functions
+*! the certification suite never executed, or executed without an
+*! assertion that would fail if they broke.
+*!
+*! Usage:  do test/test_program_coverage.cscript  (from test/, through the
+*!         runner, which puts dash's directory on the ado-path)
+*!
+*! Requires: Python configured (c(python_exec)), bokeh, numpy, pandas and
+*!           packaging importable there, and jsonio.
+*! Version: 1.0.0  24sep2026
+*!
+*! HOW THE GAPS WERE MEASURED
+*!
+*! scripts/measure_stata_coverage.py ran every certification script once
+*! (59 passed, 0 failed, 0 skipped at 68327a8) on a scratch copy of the tree
+*! in which each ado program and each Mata function records its entry.
+*! Stata's profiler could not do it: clear all, clear and discard each
+*! destroy its counts, and every script starts with cscript's clear all.
+*! Of 63 ado programs 61 were entered -- _dash_kv_json and
+*! _dash_graph_opts_to_json never -- and dash_setup only by
+*! test_setup_honesty's HON-14/15, which its syntax line refuses: its body
+*! never ran.  Of 55 Mata functions 52 ran; _html_escape, _dash_json_esc
+*! and _dash_html_esc never did.  test/program_coverage_map.py names the
+*! test that exercises every unit and test_program_coverage_map.py holds it
+*! to the sources.
+*!
+*! WHAT THIS SCRIPT HOLDS
+*!
+*!   PC-01..04  _dash_formats_json: the formats map and the date variables,
+*!              ordinary, edge and hostile display formats
+*!   PC-05..07  _dash_date_fmts_swap / _dash_date_fmts_restore
+*!   PC-08..11  the routes that use them: dash <plot>, saving() and
+*!              dash build, with ordinary and hostile formats, and with a
+*!              jsonio that fails
+*!   PC-12..13  _dash_filter_setvars, which the whole suite called once
+*!   PC-14      the sandbox dash_setup runs in (test/setup_sandbox.py)
+*!   PC-15..26  dash_setup end to end, through every branch this machine
+*!              can reach, installing nothing
+*!   PC-27..29  the never-executed escape helpers and _dash_kv_json
+*!   PC-30      the Mata library check names _dash_path_badchar, which
+*!              dash.ado calls and the check left out
+*!   PC-31      a variable named by an abbreviation -- in a qualifier, or
+*!              among the words of its string literal -- on both routes
+*!
+*! A DISPLAY FORMAT IS USER TEXT.  Stata accepts %td!" and %td!` (a !
+*! escapes any character into a date picture) and %tdDD!$DD, and all three
+*! reached dash.ado as macro text: the first lost the variable's format on
+*! every render (the saved list was passed in plain quotes), the second
+*! refused every render with r(132) "too few quotes", and the third was
+*! written to the spec as %tdDD! -- the $DD expanded as a global -- and lost
+*! too.  A jsonio that failed left every date variable %12.0g.  Measured
+*! 24sep2026 at 68327a8: `dash scatter y d, saving()' and `dash build',
+*! with d %td!" or %tdDD!$DD, returned rc 0 and left d %12.0g, and with d
+*! %td!` both were refused r(132) -- what PC-09 and PC-10 check.  PC-03,
+*! PC-06, PC-07, PC-11 and PC-30 each fail with its fix reverted (BUGS.md).
+*!
+*! Hostile strings are assembled in Mata, where a string is a value, and
+*! compared there or in Python: nothing here expands one as macro text.
+
+cscript "every program and function has a behavioural test" adodir ".."
+
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+// Sets $dash_nobrowser (cscript dropped it) and defines cert_file_has.
+do "cert_helpers.do"
+do "../dash_parse.mata"
+do "../dash.ado"
+quietly do "../dash_setup.ado"
+
+local ls0 = c(linesize)
+set linesize 255
+
+// The hostile display formats, each accepted by Stata (measured with
+// st_varformat, 24sep2026): a double quote, a backslash escaped and raw, a
+// backtick, an apostrophe, a dollar alone and before a name, braces, a
+// less-than, a </script> picture, one mixing a quote and a backtick, and
+// the longest format Stata takes (49 characters).
+mata:
+_pc_hostile = ("%td!" + char(34),
+               "%td!" + char(92),
+               "%td" + char(92),
+               "%td!" + char(96),
+               "%td!" + char(39),
+               "%td!" + char(36),
+               "%tdDD!" + char(36) + "DD",
+               "%td!{",
+               "%td!}",
+               "%td!<",
+               "%td!<!/!s!c!r!i!p!t!>",
+               "%tcHH!:MM!" + char(34) + "!" + char(96),
+               "%td" + 23 * "!x")
+st_numscalar("pc_nhostile", cols(_pc_hostile))
+end
+local nhost = pc_nhostile
+
+// Python helpers.  No backslash, backtick or dollar sign is written in this
+// block (the do-file expands them), and every call's value is assigned: a
+// python block echoes a bare expression's value.
+python:
+import json as _pc_json
+import os as _pc_os
+import sys as _pc_sys
+from sfi import Data as _pc_Data, Macro as _pc_M
+
+def _pc_formats_ok():
+    # pc_j: the map _dash_formats_json wrote; pc_vars: the variables it
+    # should hold, in order.  Each value must be the variable's format as
+    # Stata holds it, read here through sfi, not through dash.
+    ok, why = 0, ""
+    try:
+        got = _pc_json.loads(_pc_M.getLocal("pc_j"))
+        names = _pc_M.getLocal("pc_vars").split()
+        want = [(n, _pc_Data.getVarFormat(n)) for n in names]
+        ok = int(list(got.items()) == want)
+        if not ok:
+            why = repr((list(got.items()), want))
+    except Exception as exc:
+        why = repr(exc)
+    _pc_M.setLocal("pc_ok", str(ok))
+    _pc_M.setLocal("pc_why", why[:900])
+
+_pc_sys.path.insert(0, _pc_os.getcwd())
+import setup_sandbox
+end
+
+// Report a failed check by value (the reason may hold any character) and
+// stop the script.
+capture program drop _pc_fail
+program define _pc_fail
+    args id
+    mata: printf("{err}%s FAIL: %s\n", st_local("id"), st_global("PC_WHY"))
+    exit 9
+end
+
+
+// ================================================================
+// PC-01 -- _dash_formats_json: the map and the date variables
+// ================================================================
+clear
+quietly set obs 3
+generate double y = _n / 3
+format y %9.2f
+generate double d = mdy(1, _n, 2020)
+format d %tdDD/NN/CCYY
+generate double t = clock("2020-01-0" + string(_n) + " 10:30", "YMDhm")
+format t %tcHH:MM
+generate str8 s = "a"
+format s %-8s
+_dash_formats_json "y d t s" pc_j pc_dv
+local pc_vars "y d t s"
+python: _pc_formats_ok()
+if "`pc_ok'" != "1" {
+    mata: st_global("PC_WHY", st_local("pc_why"))
+    _pc_fail PC-01
+}
+// The date variables, in order, and no other.
+local pc_dv = strtrim("`pc_dv'")
+assert "`pc_dv'" == "d t"
+display "PC-01 PASS: the formats map holds each variable's format in order, and names d and t as dates"
+
+
+// ================================================================
+// PC-02 -- edge input: no variables, a name that is not one, every
+//          date kind, and formats that are not dates
+// ================================================================
+_dash_formats_json "" pc_j pc_dv
+assert `"`pc_j'"' == "{}"
+assert strtrim("`pc_dv'") == ""
+// A name that is not a variable is skipped, not written.
+_dash_formats_json "y nosuchvariable d" pc_j pc_dv
+local pc_vars "y d"
+python: _pc_formats_ok()
+assert "`pc_ok'" == "1"
+assert strtrim("`pc_dv'") == "d"
+// %t or %-t, then exactly one of the eight kind letters, case sensitively.
+clear
+quietly set obs 2
+local k = 0
+foreach f in %tc %tC %td %tw %tm %tq %th %ty %-tdCCYY-NN-DD %tg %9.0gc %10.0e %-20s {
+    local ++k
+    if "`f'" == "%-20s" {
+        quietly generate str20 v`k' = "x"
+    }
+    else {
+        quietly generate double v`k' = _n
+    }
+    format v`k' `f'
+}
+_dash_formats_json "v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13" pc_j pc_dv
+local pc_vars "v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13"
+python: _pc_formats_ok()
+assert "`pc_ok'" == "1"
+assert strtrim("`pc_dv'") == "v1 v2 v3 v4 v5 v6 v7 v8 v9"
+display "PC-02 PASS: no variables give {}, a non-variable is skipped, the eight date kinds and %-t are dates and %tg is not"
+
+
+// ================================================================
+// PC-03 -- hostile formats reach the map exactly, as valid JSON
+// ================================================================
+clear
+quietly set obs 3
+generate double y = _n
+generate double d = mdy(1, _n, 2020)
+local pc_vars "y d"
+forvalues i = 1/`nhost' {
+    mata: st_varformat("d", _pc_hostile[`i'])
+    capture noisily _dash_formats_json "y d" pc_j pc_dv
+    local rc = _rc
+    if `rc' != 0 {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": rc " + st_local("rc"))
+        _pc_fail PC-03
+    }
+    python: _pc_formats_ok()
+    if "`pc_ok'" != "1" {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": " + st_local("pc_why"))
+        _pc_fail PC-03
+    }
+    if strtrim("`pc_dv'") != "d" {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + " was not taken for a date")
+        _pc_fail PC-03
+    }
+}
+display "PC-03 PASS: `nhost' hostile formats each reach the map exactly, and each is a date"
+
+
+// ================================================================
+// PC-04 -- a Unicode variable name is a key as written
+// ================================================================
+clear
+quietly set obs 2
+mata: st_local("uvar", "caf" + char(195) + char(169))
+quietly generate double `uvar' = _n
+format `uvar' %9.1f
+_dash_formats_json "`uvar'" pc_j pc_dv
+local pc_vars "`uvar'"
+python: _pc_formats_ok()
+assert "`pc_ok'" == "1"
+display "PC-04 PASS: a Unicode variable name keys its format as written"
+
+
+// ================================================================
+// PC-05 -- swap and restore: numbers for the export, formats back after
+// ================================================================
+clear
+quietly set obs 3
+generate double y = _n / 3
+format y %9.2f
+generate double d = mdy(1, _n, 2020)
+format d %tdDD/NN/CCYY
+generate double t = clock("2020-01-0" + string(_n) + " 10:30", "YMDhm")
+format t %tcHH:MM
+quietly datasignature
+local sig0 "`r(datasignature)'"
+_dash_date_fmts_swap "d t"
+local fd : format d
+local ft : format t
+local fy : format y
+assert "`fd'" == "%12.0g"
+assert "`ft'" == "%12.0g"
+assert "`fy'" == "%9.2f"
+quietly datasignature
+assert "`r(datasignature)'" == "`sig0'"
+_dash_date_fmts_restore "d t" "`_dash_saved_fmts'"
+local fd : format d
+local ft : format t
+assert "`fd'" == "%tdDD/NN/CCYY"
+assert "`ft'" == "%tcHH:MM"
+display "PC-05 PASS: the swap gives each date %12.0g and nothing else, the values stay, and the restore gives the formats back"
+
+
+// ================================================================
+// PC-06 -- edge input: nothing to swap, a variable named twice, a
+//          saved list shorter than the variables
+// ================================================================
+_dash_date_fmts_swap ""
+assert `"`_dash_saved_fmts'"' == ""
+_dash_date_fmts_restore "" ""
+local fd : format d
+assert "`fd'" == "%tdDD/NN/CCYY"
+// Named twice: the second swap would otherwise save %12.0g as the
+// "original", and the restore would end on it.
+_dash_date_fmts_swap "d d"
+_dash_date_fmts_restore "d d" "`_dash_saved_fmts'"
+local fd : format d
+assert "`fd'" == "%tdDD/NN/CCYY"
+// A restore with nothing saved for a variable leaves it as it is.
+format t %12.0g
+_dash_date_fmts_restore "d t" ""
+local fd : format d
+local ft : format t
+assert "`fd'" == "%tdDD/NN/CCYY"
+assert "`ft'" == "%12.0g"
+display "PC-06 PASS: an empty list is a no-op, a variable named twice keeps its format, and nothing saved means nothing changed"
+
+
+// ================================================================
+// PC-07 -- hostile formats survive the swap and the restore exactly
+// ================================================================
+clear
+quietly set obs 3
+generate double d = mdy(1, _n, 2020)
+forvalues i = 1/`nhost' {
+    mata: st_varformat("d", _pc_hostile[`i'])
+    capture noisily _dash_date_fmts_swap "d"
+    local rc1 = _rc
+    local fd : format d
+    capture noisily _dash_date_fmts_restore "d" "`_dash_saved_fmts'"
+    local rc2 = _rc
+    mata: st_local("same", strofreal(st_varformat("d") == _pc_hostile[`i']))
+    if `rc1' != 0 | `rc2' != 0 | "`fd'" != "%12.0g" | "`same'" != "1" {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": swap rc " + st_local("rc1") + ", restore rc " + st_local("rc2") + ", now " + st_varformat("d"))
+        _pc_fail PC-07
+    }
+}
+display "PC-07 PASS: `nhost' hostile formats each come back exactly after the swap"
+
+
+// ================================================================
+// PC-08 -- the immediate route carries a date format and restores it
+// ================================================================
+clear
+quietly set obs 5
+generate double y = _n
+generate double d = mdy(1, _n, 2020)
+format d %tdDD/NN/CCYY
+quietly datasignature
+local sig0 "`r(datasignature)'"
+local pg "`c(tmpdir)'pc08.html"
+capture erase "`pg'"
+local lg "`c(tmpdir)'pc08.log"
+capture log close _pc08
+quietly log using "`lg'", text replace name(_pc08)
+capture noisily dash scatter y d, saving("`pg'")
+local rc = _rc
+quietly log close _pc08
+assert `rc' == 0
+confirm file "`pg'"
+local fd : format d
+assert "`fd'" == "%tdDD/NN/CCYY"
+quietly datasignature
+assert "`r(datasignature)'" == "`sig0'"
+// The date reached the renderer as a number and its format as a date
+// format: the x axis is a date axis, and no "arrived as text" note.
+cert_file_has "`pg'", needle("DatetimeAxis")
+assert r(found) == 1
+cert_file_has "`lg'", needle("arrived as text")
+assert r(found) == 0
+capture erase "`pg'"
+display "PC-08 PASS: dash scatter y d draws a date axis and leaves d's format and the data as they were"
+
+
+// ================================================================
+// PC-09 -- the immediate route with hostile formats
+// ================================================================
+forvalues i = 1/`nhost' {
+    mata: st_varformat("d", _pc_hostile[`i'])
+    capture erase "`pg'"
+    capture noisily dash scatter y d, saving("`pg'")
+    local rc = _rc
+    mata: st_local("same", strofreal(st_varformat("d") == _pc_hostile[`i']))
+    capture confirm file "`pg'"
+    local made = (_rc == 0)
+    if `rc' != 0 | "`same'" != "1" | `made' != 1 {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": rc " + st_local("rc") + ", format now " + st_varformat("d") + ", page written " + st_local("made"))
+        _pc_fail PC-09
+    }
+    cert_file_has "`pg'", needle("DatetimeAxis")
+    if r(found) != 1 {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": no date axis")
+        _pc_fail PC-09
+    }
+    quietly datasignature
+    assert "`r(datasignature)'" == "`sig0'"
+}
+capture erase "`pg'"
+display "PC-09 PASS: `nhost' hostile date formats each draw a date axis on the immediate route and come back exactly"
+
+
+// ================================================================
+// PC-10 -- dash build with hostile formats
+// ================================================================
+forvalues i = 1/`nhost' {
+    dash clear
+    mata: st_varformat("d", _pc_hostile[`i'])
+    quietly dash scatter y d, name(pc10)
+    capture erase "`pg'"
+    capture noisily dash build, saving("`pg'") replace
+    local rc = _rc
+    mata: st_local("same", strofreal(st_varformat("d") == _pc_hostile[`i']))
+    capture confirm file "`pg'"
+    local made = (_rc == 0)
+    if `rc' != 0 | "`same'" != "1" | `made' != 1 {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": rc " + st_local("rc") + ", format now " + st_varformat("d") + ", page written " + st_local("made"))
+        _pc_fail PC-10
+    }
+    cert_file_has "`pg'", needle("DatetimeAxis")
+    if r(found) != 1 {
+        mata: st_global("PC_WHY", "format " + _pc_hostile[`i'] + ": no date axis")
+        _pc_fail PC-10
+    }
+}
+dash clear
+capture erase "`pg'"
+display "PC-10 PASS: `nhost' hostile date formats each draw a date axis through dash build and come back exactly"
+
+
+// ================================================================
+// PC-11 -- a jsonio that fails leaves the formats as they were
+// A program in memory is found before an ado-file, so this stand-in is
+// what dash's `jsonio out' reaches; `which jsonio' still finds the real
+// one on the ado-path.
+// ================================================================
+capture program drop jsonio
+program define jsonio
+    display as error "pc11: this jsonio fails on purpose"
+    exit 459
+end
+// Captured as a whole, so the stand-in is dropped whatever happens: left
+// in memory it would fail every later export of the session.
+local rc1 = -1
+local rc2 = -1
+capture noisily {
+    format d %tdDD/NN/CCYY
+    capture erase "`pg'"
+    capture noisily dash scatter y d, saving("`pg'")
+    local rc1 = _rc
+    local fd1 : format d
+    format d %tdDD/NN/CCYY
+    dash clear
+    quietly dash scatter y d, name(pc11)
+    capture noisily dash build, saving("`pg'") replace
+    local rc2 = _rc
+    local fd2 : format d
+}
+local pc11rc = _rc
+capture program drop jsonio
+dash clear
+capture erase "`pg'"
+assert `pc11rc' == 0
+// The failure is still the failure -- jsonio's own code -- and the format
+// is the user's again.
+assert `rc1' == 459
+assert `rc2' == 459
+assert "`fd1'" == "%tdDD/NN/CCYY"
+assert "`fd2'" == "%tdDD/NN/CCYY"
+quietly datasignature
+assert "`r(datasignature)'" == "`sig0'"
+display "PC-11 PASS: when jsonio fails, both routes fail with its code and give the date format back"
+
+
+// ================================================================
+// PC-12 -- _dash_filter_setvars: each group's variable replaced by the
+//          next full name, the rest of the group as written
+// The whole suite called it once (test_help_claims_3.cscript HC3-16, one
+// group with a comma): its no-comma branch, a second group, the ";"
+// separator and a group with no name left had never run.
+// ================================================================
+mata:
+_q = char(34)
+_e = J(0, 1, .)
+// One group, with and without its sub-options; blanks around the name.
+_e = _e \ (_dash_filter_setvars("fore, type(dropdown)", "foreign") == "foreign, type(dropdown)")
+_e = _e \ (_dash_filter_setvars("fore", "foreign") == "foreign")
+_e = _e \ (_dash_filter_setvars("  fore  , type(dropdown)", "foreign") == "foreign, type(dropdown)")
+_e = _e \ (_dash_filter_setvars("fore type(dropdown)", "foreign") == "foreign type(dropdown)")
+// Two groups, by || and by ;, joined again with " || ".
+_e = _e \ (_dash_filter_setvars("fore || rep, type(range)", "foreign rep78") == "foreign || rep78, type(range)")
+_e = _e \ (_dash_filter_setvars("fore; rep", "foreign rep78") == "foreign || rep78")
+// A label holding the separators, a comma or quotes stays whole.
+_e = _e \ (_dash_filter_setvars("rep, label(" + _q + "A || B; C, D" + _q + ")", "rep78") == "rep78, label(" + _q + "A || B; C, D" + _q + ")")
+_e = _e \ (_dash_filter_setvars("rep, label(" + char(96) + _q + "a " + _q + "b" + _q + " c" + _q + char(39) + ")", "rep78") == "rep78, label(" + char(96) + _q + "a " + _q + "b" + _q + " c" + _q + char(39) + ")")
+// Macro and markup characters are data.
+_e = _e \ (_dash_filter_setvars("rep, label(" + char(96) + "x" + char(39) + char(36) + "y{bf:z})", "rep78") == "rep78, label(" + char(96) + "x" + char(39) + char(36) + "y{bf:z})")
+// More groups than names: the rest are kept as written.
+_e = _e \ (_dash_filter_setvars("fore || rep || x", "foreign rep78") == "foreign || rep78 || x")
+// No names, or no groups.
+_e = _e \ (_dash_filter_setvars("fore, type(dropdown)", "") == "fore, type(dropdown)")
+_e = _e \ (_dash_filter_setvars("", "foreign") == "")
+// Its blanks are the six ASCII ones (_dash_is_blank, _dash_blank_trim):
+// HC3-19 held the split to Python's with spaces alone.
+for (_b = 9; _b <= 13; _b++) _e = _e \ (_dash_is_blank(char(_b)) == 1)
+_e = _e \ (_dash_is_blank(" ") == 1)
+_e = _e \ (_dash_is_blank("a") == 0)
+_e = _e \ (_dash_is_blank("") == 0)
+_e = _e \ (_dash_is_blank("  ") == 0)
+_e = _e \ (_dash_is_blank(char(8)) == 0)
+_e = _e \ (_dash_is_blank(char(194) + char(160)) == 0)
+_e = _e \ (_dash_blank_trim(char(9) + char(10) + " a  b " + char(11) + char(12) + char(13)) == "a  b")
+_e = _e \ (_dash_blank_trim(char(9) + " " + char(13)) == "")
+_e = _e \ (_dash_blank_trim("") == "")
+_e = _e \ (_dash_filter_setvars(char(9) + "fore" + char(13) + "," + char(10) + "type(range)", "foreign") == "foreign," + char(10) + "type(range)")
+st_local("pc12", strofreal(all(_e)))
+st_local("pc12n", strofreal(rows(_e)))
+end
+assert `pc12' == 1
+display "PC-12 PASS: _dash_filter_setvars names each group by its full variable and keeps the rest of it whole, blanks being the six ASCII ones (`pc12n' checks)"
+
+
+// ================================================================
+// PC-13 -- dash build: abbreviated filter() variables, one with no
+//          sub-option and one whose label holds || and ;, filter on the
+//          variables they abbreviate
+// ================================================================
+sysuse auto, clear
+dash clear
+quietly dash scatter mpg weight, name(pc13)
+local pg "`c(tmpdir)'pc13.html"
+capture erase "`pg'"
+local lg "`c(tmpdir)'pc13.log"
+capture log close _pc13
+quietly log using "`lg'", text replace name(_pc13)
+capture noisily dash build, saving("`pg'") replace filter(fore) filter(rep, type(range) label("A || B; C"))
+local rc = _rc
+quietly log close _pc13
+dash clear
+assert `rc' == 0
+cert_file_has "`lg'", needle("not in the data")
+assert r(found) == 0
+// foreign's dropdown, titled by its variable label, with its value labels
+mata: st_local("f1", strofreal(_cert_file_has(st_local("pg"), char(34) + "title" + char(34) + ":" + char(34) + "Car origin" + char(34) + "," + char(34) + "options" + char(34) + ":[[" + char(34) + "__all__" + char(34) + "," + char(34) + "All" + char(34) + "],[" + char(34) + "0" + char(34) + "," + char(34) + "Domestic" + char(34) + "]", 0)))
+// rep78's range slider, 1 to 5, titled by the label, whole
+mata: st_local("f2", strofreal(_cert_file_has(st_local("pg"), char(34) + "title" + char(34) + ":" + char(34) + "A || B; C" + char(34) + "," + char(34) + "value" + char(34) + ":[1.0,5.0]", 0)))
+assert `f1' == 1
+assert `f2' == 1
+capture erase "`pg'"
+display "PC-13 PASS: filter(fore) and filter(rep, type(range) label(A || B; C)) filter on foreign and rep78"
+
+
+// ================================================================
+// dash_setup end to end
+// ================================================================
+// dash_setup installs through two doors: pip, run by subprocess.run inside
+// python:, and `ssc install jsonio'.  test/setup_sandbox.py closes the
+// first before each run (every process start is recorded and none is
+// made; sys.executable and PATH lead to recording stubs) and this ssc
+// stands in for the second.  A program in memory is found before an
+// ado-file, so dash_setup's `capture ssc install jsonio, replace' reaches
+// it.  Its return code is $PC_SSC_RC.
+capture program drop ssc
+program define ssc
+    mata: st_global("PC_SSC_CALLS", st_global("PC_SSC_CALLS") + "[" + strtrim(st_local("0")) + "]")
+    exit ${PC_SSC_RC}
+end
+
+// The directory jsonio.ado is found in, and a stand-in renderer whose
+// scheme parser can read no scheme (PC-26).  Each is written into an
+// ado-path in compound quotes, as adopath writes a directory, so a path
+// with a space in it stays one entry.
+quietly findfile jsonio.ado
+local pc_jsonio_fn "`r(fn)'"
+local pc_jsonio_dir = substr("`pc_jsonio_fn'", 1, strlen("`pc_jsonio_fn'") - strlen("jsonio.ado"))
+local pc_stubr "`c(tmpdir)'pc_stub_render"
+capture mkdir "`pc_stubr'"
+mata:
+// A run that stopped early leaves it behind, and fopen(, "w") will not
+// replace a file.
+if (fileexists(st_local("pc_stubr") + "/dash_render.py")) unlink(st_local("pc_stubr") + "/dash_render.py")
+_fh = fopen(st_local("pc_stubr") + "/dash_render.py", "w")
+fput(_fh, "class _Fallback:")
+fput(_fh, "    is_fallback = True")
+fput(_fh, "class SchemeParser:")
+fput(_fh, "    @staticmethod")
+fput(_fh, "    def resolve_or_fallback(name, who):")
+fput(_fh, "        return _Fallback()")
+fclose(_fh)
+_q = char(96) + char(34)
+_qq = char(34) + char(39)
+st_local("pc_ado_nodash", "BASE;" + _q + st_local("pc_jsonio_dir") + _qq)
+st_local("pc_ado_stubr", "BASE;" + _q + st_local("pc_jsonio_dir") + _qq + ";" + _q + st_local("pc_stubr") + "/" + _qq)
+end
+
+// One run of dash_setup inside the sandbox.
+//   $PC_SB_SPEC   the simulated state (JSON; see setup_sandbox.install)
+//   $PC_SB_ADO    the ado-path to run under ("" keeps it)
+//   $PC_SSC_RC    the stand-in ssc's return code
+//   $PC_SB_EXPECT the argument vectors pip is expected to be run with
+// Returns r(rc), r(match) (1 when the recorded process starts are exactly
+// $PC_SB_EXPECT and no PATH stub ran) and r(ncalls); $PC_SSC_CALLS holds
+// the ssc calls and $PC_SB_WHY what was recorded when r(match) is 0.  The
+// log is `c(tmpdir)'pc_setup.log.
+capture program drop _pc_setup
+program define _pc_setup, rclass
+    local lg "`c(tmpdir)'pc_setup.log"
+    capture erase "`lg'"
+    global PC_SSC_CALLS ""
+    python: import setup_sandbox; setup_sandbox.stata_install()
+    if "`pc_sb_ok'" != "1" {
+        mata: printf("{err}the sandbox refused to install: %s\n", st_local("pc_sb_why"))
+        exit 9
+    }
+    // Everything between the install and the restore is captured, so the
+    // ado-path and Python are put back whatever happens in it.
+    mata: st_local("ado0", st_global("S_ADO"))
+    local rc = -1
+    capture noisily {
+        if `"$PC_SB_ADO"' != "" {
+            mata: st_global("S_ADO", st_global("PC_SB_ADO"))
+        }
+        capture log close _pcsetup
+        quietly log using "`lg'", text replace name(_pcsetup)
+        capture noisily dash_setup
+        local rc = _rc
+        quietly log close _pcsetup
+    }
+    local brc = _rc
+    capture log close _pcsetup
+    mata: st_global("S_ADO", st_local("ado0"))
+    python: import setup_sandbox; setup_sandbox.stata_verdict()
+    python: import setup_sandbox; setup_sandbox.restore()
+    python: import setup_sandbox; setup_sandbox.stata_restored()
+    mata: st_global("PC_SB_WHY", st_local("pc_sb_mwhy"))
+    if "`pc_sb_clean'" != "1" {
+        display as error "the sandbox did not restore Python"
+        exit 9
+    }
+    if `brc' != 0 {
+        exit `brc'
+    }
+    return scalar rc = `rc'
+    return scalar match = `pc_sb_match'
+    return scalar ncalls = `pc_sb_n'
+end
+
+// Does the setup log hold a phrase?  Searched in Mata, by value.
+capture program drop _pc_said
+program define _pc_said, rclass
+    args phrase
+    mata: st_local("n", strofreal(_cert_file_has(st_global("PC_SETUP_LOG"), st_local("phrase"), 0)))
+    return scalar found = `n'
+end
+global PC_SETUP_LOG "`c(tmpdir)'pc_setup.log"
+
+
+// ================================================================
+// PC-14 -- the sandbox itself: a process start is recorded, not made,
+//          and restore gives Python back
+// ================================================================
+global PC_SB_SPEC "{}"
+python: setup_sandbox.stata_install()
+assert "`pc_sb_ok'" == "1"
+local mk "`c(tmpdir)'pc12_marker"
+capture erase "`mk'"
+python: import subprocess as _pc_sp, sfi as _pc_sfi; _pc_r = _pc_sp.run([_pc_sys.executable, "-c", "open(" + repr(_pc_sfi.Macro.getLocal("mk")) + ", 'w').close()"], capture_output=True, text=True)
+global PC_SB_EXPECT `"[["PYTHON", "-c", "open('`mk'', 'w').close()"]]"'
+python: setup_sandbox.stata_verdict()
+python: setup_sandbox.restore()
+python: setup_sandbox.stata_restored()
+capture confirm file "`mk'"
+assert _rc != 0
+assert "`pc_sb_match'" == "1"
+assert "`pc_sb_clean'" == "1"
+display "PC-14 PASS: inside the sandbox a process start is recorded and not made, and restore puts subprocess and sys.executable back"
+
+
+// ================================================================
+// PC-15 -- every dependency present: dash_setup verifies and reports,
+//          and starts no process and no ssc
+// ================================================================
+global PC_SB_SPEC "{}"
+global PC_SB_ADO ""
+global PC_SSC_RC 0
+global PC_SB_EXPECT "[]"
+_pc_setup
+local rc = r(rc)
+local match = r(match)
+assert `rc' == 0
+assert `match' == 1
+assert `"$PC_SSC_CALLS"' == ""
+foreach p in "Python ............. OK (version" "bokeh ............. OK (version" ///
+    "numpy ............. OK (version" "pandas ............. OK (version" ///
+    "jsonio ............. OK" "dash_render.py ..... OK" "schemes ............ OK" ///
+    "dash_setup complete. All dependencies are satisfied." {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+display "PC-15 PASS: with every dependency present dash_setup reports each OK, exits 0 and installs nothing"
+
+
+// ================================================================
+// PC-16 -- Python below the minimum is counted, and the run goes on
+// ================================================================
+global PC_SB_SPEC `"{"pyversion": "3.7.9 (dash test sandbox)"}"'
+_pc_setup
+local rc = r(rc)
+local match = r(match)
+assert `rc' == 198
+assert `match' == 1
+foreach p in "version 3.7.9 is below the minimum 3.8." ///
+    "bokeh ............. OK (version" "jsonio ............. OK" ///
+    "dash_setup did not complete: 1 unmet requirement(s)." ///
+    "Unmet:  Python 3.7.9 (needs 3.8)" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+_pc_said "All dependencies are satisfied"
+assert r(found) == 0
+display "PC-16 PASS: Python 3.7.9 is reported below 3.8, every other check still runs, and the run fails naming it"
+
+
+// ================================================================
+// PC-17 -- a Python version that cannot be read is not a failure
+// ================================================================
+global PC_SB_SPEC `"{"pyversion": "abc (dash test sandbox)"}"'
+_pc_setup
+local rc = r(rc)
+assert `rc' == 0
+assert r(match) == 1
+_pc_said "OK (version abc; could not be compared to 3.8)"
+assert r(found) == 1
+display "PC-17 PASS: an unreadable Python version is reported as such and does not fail the run"
+
+
+// ================================================================
+// PC-18 -- packaging missing: one pip install, then a warning
+// ================================================================
+global PC_SB_SPEC `"{"block": ["packaging"]}"'
+global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"]]"'
+_pc_setup
+local rc = r(rc)
+local match = r(match)
+if `match' != 1 {
+    _pc_fail PC-18
+}
+assert `rc' == 0
+foreach p in "packaging .......... missing" "could not install" ///
+    "(not verified against 3.0)" "(not verified against 1.23)" ///
+    "(not verified against 1.5)" "dash_setup complete, with 1 warning(s)." ///
+    "Warned:  packaging (version checks approximate)" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+display "PC-18 PASS: without packaging, pip is asked for it once, versions are unverified, and the run ends with one warning"
+
+
+// ================================================================
+// PC-19 -- bokeh missing and not installable: the minimum reaches pip,
+//          --user is tried once, and the run stops there
+// ================================================================
+global PC_SB_SPEC `"{"block": ["bokeh"]}"'
+global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.0"], ["PYTHON", "-m", "pip", "install", "--user", "bokeh>=3.0"]]"'
+_pc_setup
+local rc = r(rc)
+local match = r(match)
+if `match' != 1 {
+    _pc_fail PC-19
+}
+assert `rc' == 198
+foreach p in "bokeh ............. missing" "retrying with --user..." ///
+    "Failed to install bokeh. Please install manually:" ///
+    "python -m pip install bokeh>=3.0" ///
+    "Unmet:  bokeh (could not install)" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+_pc_said "numpy ............."
+assert r(found) == 0
+display "PC-19 PASS: a bokeh pip cannot install is asked for as bokeh>=3.0, retried with --user, and stops the run"
+
+
+// ================================================================
+// PC-20 -- bokeh missing and installed: one pip run, no retry
+// ================================================================
+global PC_SB_SPEC `"{"block": ["bokeh"], "unblock_on_install": ["bokeh"]}"'
+global PC_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "bokeh>=3.0"]]"'
+_pc_setup
+local rc = r(rc)
+local match = r(match)
+if `match' != 1 {
+    _pc_fail PC-20
+}
+assert `rc' == 0
+_pc_said "bokeh ............. OK (version"
+assert r(found) == 1
+_pc_said "retrying with --user"
+assert r(found) == 0
+display "PC-20 PASS: a bokeh that installs is installed once, never retried, and reported OK"
+
+
+// ================================================================
+// PC-21 -- bokeh below its minimum is reported, not upgraded
+// ================================================================
+global PC_SB_SPEC `"{"fake": [["bokeh", "2.4.3"]]}"'
+global PC_SB_EXPECT "[]"
+_pc_setup
+local rc = r(rc)
+local match = r(match)
+assert `match' == 1
+assert `rc' == 198
+foreach p in "2.4.3 (below minimum 3.0)" ///
+    "To upgrade: python -m pip install --upgrade 'bokeh>=3.0'" ///
+    "Unmet:  bokeh 2.4.3 (needs 3.0)" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+display "PC-21 PASS: bokeh 2.4.3 is reported below 3.0 with the upgrade command, and nothing is installed"
+
+
+// ================================================================
+// PC-22 -- a hostile installed version is not shown, and not SMCL
+// ================================================================
+global PC_SB_SPEC `"{"fake": [["bokeh", "3.9{bf:PCVERMARK}x"]]}"'
+_pc_setup
+local rc = r(rc)
+assert `rc' == 0
+assert r(match) == 1
+_pc_said "bokeh ............. installed (version could not be read)"
+assert r(found) == 1
+_pc_said "PCVERMARK"
+assert r(found) == 0
+display "PC-22 PASS: a version that is not made of version characters is reported unreadable and never displayed"
+
+
+// ================================================================
+// PC-23 -- jsonio missing and SSC failing
+// ================================================================
+global PC_SB_SPEC "{}"
+global PC_SB_EXPECT "[]"
+global PC_SB_ADO "BASE"
+global PC_SSC_RC 631
+_pc_setup
+local rc = r(rc)
+assert `rc' == 198
+assert r(match) == 1
+assert `"$PC_SSC_CALLS"' == "[install jsonio, replace]"
+foreach p in "jsonio ............. missing" "Failed to install jsonio from SSC." ///
+    "Unmet:  jsonio (could not install)" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+display "PC-23 PASS: a missing jsonio is asked of SSC once, and SSC failing fails the run naming it"
+
+
+// ================================================================
+// PC-24 -- jsonio "installed" but still not on the ado-path
+// ================================================================
+global PC_SSC_RC 0
+_pc_setup
+local rc = r(rc)
+assert `rc' == 198
+assert `"$PC_SSC_CALLS"' == "[install jsonio, replace]"
+foreach p in "jsonio installed but not found on adopath. Restart Stata." ///
+    "Unmet:  jsonio (not on the ado-path)" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+display "PC-24 PASS: an SSC install that leaves jsonio unfindable fails the run and says to restart Stata"
+
+
+// ================================================================
+// PC-25 -- dash's renderer not reachable
+// ================================================================
+mata: st_global("PC_SB_ADO", st_local("pc_ado_nodash"))
+_pc_setup
+local rc = r(rc)
+assert `rc' == 198
+assert `"$PC_SSC_CALLS"' == ""
+foreach p in "jsonio ............. OK" "dash_render.py ..... not found" ///
+    "Unmet:  dash's own files" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+display "PC-25 PASS: a dash_render.py that is not on the ado-path fails the run naming dash's own files"
+
+
+// ================================================================
+// PC-26 -- a renderer that can read no scheme
+// ================================================================
+mata: st_global("PC_SB_ADO", st_local("pc_ado_stubr"))
+_pc_setup
+local rc = r(rc)
+assert `rc' == 198
+foreach p in "dash_render.py ..... OK" "schemes ............ unreachable" ///
+    "Unmet:  dash's own files" {
+    _pc_said "`p'"
+    assert r(found) == 1
+}
+display "PC-26 PASS: a renderer that falls back for every scheme fails the run"
+
+global PC_SB_ADO ""
+capture program drop ssc
+capture erase "`pc_stubr'/dash_render.py"
+capture rmdir "`pc_stubr'"
+python: setup_sandbox.stata_restored()
+assert "`pc_sb_clean'" == "1"
+
+
+// ================================================================
+// PC-27 -- _html_escape and _dash_html_esc (no caller; WP-26)
+// ================================================================
+mata:
+_e = J(0, 1, .)
+_e = _e \ (_html_escape("<a href=" + char(34) + "x" + char(34) + ">&'") == "&lt;a href=&quot;x&quot;&gt;&amp;&#39;")
+_e = _e \ (_html_escape("") == "")
+_e = _e \ (_html_escape("plain 100%") == "plain 100%")
+// & first: an entity is escaped once, never twice.
+_e = _e \ (_html_escape("&lt;") == "&amp;lt;")
+// UTF-8 and macro characters are kept as they are.
+_e = _e \ (_html_escape("caf" + char(195) + char(169) + char(96) + char(36)) == "caf" + char(195) + char(169) + char(96) + char(36))
+_e = _e \ (_html_escape("</script><script>alert(1)</script>") == "&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;")
+_dash_html_esc("<b>" + char(34) + "'", "pc25")
+_e = _e \ (st_local("pc25") == "&lt;b&gt;&quot;&#39;")
+st_local("pc25ok", strofreal(all(_e)))
+st_local("pc25n", strofreal(rows(_e)))
+end
+assert `pc25ok' == 1
+display "PC-27 PASS: _html_escape escapes & < > quote and apostrophe once each and keeps everything else (`pc25n' checks)"
+
+
+// ================================================================
+// PC-28 -- _dash_json_esc (no caller; WP-26): _json_escape into a local,
+//          valid JSON for every byte below 0x20 and the macro characters
+// ================================================================
+mata:
+_s = "a" + char(34) + "b" + char(92) + "c" + char(96) + char(36) + char(39)
+for (_c = 1; _c <= 31; _c++) _s = _s + char(_c)
+_dash_json_esc(_s, "pc26")
+st_local("pc26same", strofreal(st_local("pc26") == _json_escape(_s)))
+st_global("PC26_RAW", _s)
+st_global("PC26_ESC", st_local("pc26"))
+_dash_json_esc("", "pc26e")
+st_local("pc26empty", strofreal(st_local("pc26e") == ""))
+end
+assert `pc26same' == 1
+assert `pc26empty' == 1
+python: _pc_M.setLocal("pc26rt", str(int(_pc_json.loads(chr(34) + _pc_M.getGlobal("PC26_ESC") + chr(34)) == _pc_M.getGlobal("PC26_RAW"))))
+assert "`pc26rt'" == "1"
+// No raw control byte, backtick, dollar or apostrophe is left.
+mata: st_local("pc26raw", strofreal(regexm(st_global("PC26_ESC"), "[" + char(1) + "-" + char(31) + char(96) + char(36) + char(39) + "]")))
+assert `pc26raw' == 0
+macro drop PC26_RAW PC26_ESC
+display "PC-28 PASS: _dash_json_esc writes _json_escape's text, which JSON reads back as the original"
+
+
+// ================================================================
+// PC-29 -- _dash_kv_json (no caller; WP-26): one key:value fragment
+// ================================================================
+_dash_kv_json title "A b" pc27
+assert `"`pc27'"' == `""title":"A b""'
+_dash_kv_json title "" pc27
+assert `"`pc27'"' == ""
+mata: st_local("pc27v", "a" + char(34) + "q" + char(92) + "b{bf:x}<" + char(39))
+_dash_kv_json k `"`pc27v'"' pc27
+mata: st_global("PC27_FRAG", st_local("pc27"))
+python: _pc_M.setLocal("pc27rt", str(int(_pc_json.loads("{" + _pc_M.getGlobal("PC27_FRAG") + "}") == {"k": "a" + chr(34) + "q" + chr(92) + "b{bf:x}<" + chr(39)})))
+assert "`pc27rt'" == "1"
+macro drop PC27_FRAG
+display "PC-29 PASS: _dash_kv_json writes a fragment JSON reads back, and nothing for an empty value"
+
+
+// ================================================================
+// PC-30 -- the Mata library check names every function dash.ado calls
+// _dash_require_mata reloads dash's Mata library when it is gone and then
+// checks, by name, that every function dash.ado calls is there.  Its list
+// left out _dash_path_badchar, which _dash_validate_path calls, so a
+// library that compiled without it passed the check and the first saving()
+// ended in "_dash_path_badchar() not found", r(3499), naming an internal
+// function (measured 24sep2026).  A copy of the library that lacks only
+// that function is staged first on the ado-path, and Mata is cleared, so
+// the check loads the copy the way it loads a partial install.  Last,
+// because `mata clear' drops this script's Mata helpers too.
+// ================================================================
+local stage "`c(tmpdir)'pc30_lib"
+capture mkdir "`stage'"
+mata:
+_src = fopen("../dash_parse.mata", "r")
+_dfn = st_local("stage") + "/dash_parse.mata"
+if (fileexists(_dfn)) unlink(_dfn)
+_dst = fopen(_dfn, "w")
+_n = 0
+while ((_l = fget(_src)) != J(0, 0, "")) {
+    if (strpos(_l, "real scalar _dash_path_badchar(")) {
+        _l = subinstr(_l, "_dash_path_badchar(", "_pc30_not_badchar(")
+        _n = _n + 1
+    }
+    fput(_dst, _l)
+}
+fclose(_src)
+fclose(_dst)
+st_local("pc30n", strofreal(_n))
+end
+assert `pc30n' == 1
+local pg "`c(tmpdir)'pc30.html"
+capture erase "`pg'"
+local lg "`c(tmpdir)'pc30.log"
+mata: st_local("ado0", st_global("S_ADO"))
+local rc = -1
+// Captured as a whole, so the ado-path and dash's library are put back
+// whatever happens: left as they are here, every later script would fail.
+capture noisily {
+    mata: st_global("S_ADO", char(96) + char(34) + st_local("stage") + "/" + char(34) + char(39) + ";BASE")
+    capture mata: mata clear
+    capture log close _pc30
+    quietly log using "`lg'", text replace name(_pc30)
+    capture noisily dash scatter mpg weight, saving("`pg'")
+    local rc = _rc
+    quietly log close _pc30
+}
+local pc30rc = _rc
+capture log close _pc30
+mata: st_global("S_ADO", st_local("ado0"))
+// dash's real library, and the helpers, back before anything is asserted.
+capture mata: mata clear
+quietly run "../dash_parse.mata"
+quietly run "cert_helpers.do"
+capture erase "`stage'/dash_parse.mata"
+capture rmdir "`stage'"
+assert `pc30rc' == 0
+assert `rc' == 198
+cert_file_has "`lg'", needle("dash's Mata library could not be loaded.")
+assert r(found) == 1
+cert_file_has "`lg'", needle("Missing: _dash_path_badchar()")
+assert r(found) == 1
+cert_file_has "`lg'", needle("_dash_path_badchar() not found")
+assert r(found) == 0
+capture confirm file "`pg'"
+assert _rc != 0
+display "PC-30 PASS: a library without _dash_path_badchar is refused by name, r(198), not r(3499) at the first saving()"
+
+
+// ================================================================
+// PC-31 -- a variable named by an abbreviation
+// ================================================================
+// A qualifier may abbreviate a variable, as Stata's own do: `if dis > 100'
+// reads displacement.  The formats are read with st_varformat(), which
+// takes no abbreviation, while `confirm variable' takes one -- so `dash
+// scatter mpg weight if dis > 100, saving()' stopped with r(3500) "invalid
+// Stata variable name", on both routes, where 68327a8 drew it (measured
+// 24sep2026).  So did `if make != "d"': the words of a qualifier's string
+// literal are among the names read, and d abbreviates displacement.  An
+// abbreviated date variable was worse: the restore runs under capture, so
+// the variable was left %12.0g after the render.  Each name is read, and
+// keyed, as Stata stores it -- the column the renderer reads -- and once.
+sysuse auto, clear
+_dash_formats_json "dis mpg displacement" pc31_j pc31_dv
+local pc31_want `"{"displacement":"%8.0g","mpg":"%8.0g"}"'
+if `"`pc31_j'"' != `"`pc31_want'"' {
+    display as error `"PC-31 map: `pc31_j'"'
+}
+assert `"`pc31_j'"' == `"`pc31_want'"'
+generate double tdate = mdy(1, 1, 2000) + _n
+format tdate %tdDD/NN/CCYY
+_dash_formats_json "tda" pc31_j pc31_dv
+assert strtrim("`pc31_dv'") == "tdate"
+// The swap and the restore take the abbreviation as well.
+_dash_date_fmts_swap "tda"
+local fsw : format tdate
+assert "`fsw'" == "%12.0g"
+_dash_date_fmts_restore "tda" "`_dash_saved_fmts'"
+local frs : format tdate
+assert "`frs'" == "%tdDD/NN/CCYY"
+// Both routes, with each qualifier, draw, and leave the date's format.
+local pc31n = 0
+foreach q in `"dis > 100"' `"make != "d""' `"tda > 0"' {
+    local ++pc31n
+    local pg "`c(tmpdir)'pc31_`pc31n'.html"
+    capture erase "`pg'"
+    dash clear
+    capture noisily dash scatter mpg weight if `q', saving("`pg'") replace
+    local rci = _rc
+    capture confirm file "`pg'"
+    local wrote_i = (_rc == 0)
+    capture erase "`pg'"
+    dash scatter mpg weight if `q', name(pc31)
+    capture noisily dash build, saving("`pg'") replace nobrowser
+    local rcb = _rc
+    capture confirm file "`pg'"
+    local wrote_b = (_rc == 0)
+    capture erase "`pg'"
+    local fq : format tdate
+    if `rci' | `rcb' | !`wrote_i' | !`wrote_b' | "`fq'" != "%tdDD/NN/CCYY" {
+        display as error `"PC-31 [if `q']: immediate rc `rci' wrote `wrote_i', build rc `rcb' wrote `wrote_b', tdate `fq'"'
+    }
+    assert `rci' == 0 & `wrote_i' == 1
+    assert `rcb' == 0 & `wrote_b' == 1
+    assert "`fq'" == "%tdDD/NN/CCYY"
+}
+dash clear
+display "PC-31 PASS: an abbreviated variable, in a qualifier or its string literal, is read as the variable it names, on both routes, and a date's format comes back"
+
+set linesize `ls0'
+macro drop PC_SB_SPEC PC_SB_ADO PC_SSC_RC PC_SB_EXPECT PC_SSC_CALLS PC_SB_WHY PC_SETUP_LOG PC_WHY
+capture program drop _pc_fail
+capture program drop _pc_setup
+capture program drop _pc_said
+
+display ""
+display "test_program_coverage.cscript: ALL CHECKS PASSED"

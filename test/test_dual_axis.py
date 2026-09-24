@@ -229,6 +229,14 @@ class TestMultiLayerSecondaryAxis:
         y2_renderers = [r for r in fig.renderers
                         if getattr(r, "y_range_name", None) == "y2"]
         assert len(y2_renderers) >= 2
+        # Layer by layer, not by count: ">= 2" held just as well with the
+        # primary layer moved to y2 too (three).  One renderer per layer
+        # here, measured 24sep2026: the y1 scatter stays on the default
+        # range, the y2 line and the y3 scatter are on y2.
+        placed = sorted((r.glyph.y, r.y_range_name) for r in fig.renderers)
+        assert placed == [("y1", "default"), ("y2", "y2"), ("y3", "y2")], (
+            placed
+        )
 
     def test_single_right_axis_with_multiple_secondary_layers(self):
         """DAX-11: only one right-side axis added, not one per layer."""

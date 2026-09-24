@@ -76,7 +76,19 @@ def _build(n_filters, tmp_path):
 @pytest.fixture(scope="module")
 def sizes(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("payload")
-    return {k: len(_build(k, tmp_path)[1]) for k in (0, 1, 3, 5)}
+    out = {}
+    for k in (0, 1, 3, 5):
+        r, html = _build(k, tmp_path)
+        # Each document must hold the filters it is measured for (it does,
+        # measured 24sep2026).  Were only the first filter built, the 1-, 3-
+        # and 5-filter documents would be one size, and both growth checks
+        # below would pass however many copies of the data one filter made.
+        assert len(r.filter_callbacks) == k, (
+            f"the {k}-filter document built {len(r.filter_callbacks)} "
+            f"filter(s)"
+        )
+        out[k] = len(html)
+    return out
 
 
 class TestTheDataIsNotCopiedPerFilter:

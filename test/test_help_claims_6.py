@@ -670,6 +670,11 @@ class TestLpolyciBand:
         assert grids[0] is None, "the point estimate builds its own grid"
         resamples = grids[1:]
         assert len(resamples) >= 100, len(resamples)
+        # Every resample, not a hundred of them: the band is the percentiles
+        # of n_boot rows, and a row no fit filled stays zero and drags the
+        # band down.  Measured 24sep2026: 201 fits, the point estimate and
+        # then _N_BOOT_DEFAULT (200) resamples, each on the drawn grid.
+        assert len(resamples) == dr._N_BOOT_DEFAULT, len(resamples)
         for g in resamples:
             np.testing.assert_array_equal(np.asarray(g, float), drawn)
 

@@ -13,6 +13,7 @@ import os
 import json
 import tempfile
 import re
+from html import unescape as _unescape
 import numpy as np
 import pandas as pd
 import pytest
@@ -60,6 +61,122 @@ def _extract_model_json(html: str) -> str:
     if end == -1:
         return html[start:]
     return html[start:end]
+
+
+def _figure_colors(html: str, prop: str) -> list:
+    """The value each Figure in the page's Bokeh document gives *prop*.
+
+    Read from the document itself -- unescaped and parsed, as BokehJS reads
+    it -- so a colour is found on the property it was meant for and not
+    anywhere in the page.  None where the property is left at Bokeh's
+    default, which the document does not write.
+    """
+    doc = json.loads(_unescape(_extract_model_json(html)))
+    out = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            attrs = node.get("attributes")
+            if node.get("name") == "Figure" and isinstance(attrs, dict):
+                out.append(attrs.get(prop))
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(doc)
+    return out
+
+
+def _page_models(html: str) -> dict:
+    """``{model name: [attributes, ...]}`` for every model in the page's
+    embedded Bokeh document.
+
+    A model's name searched in the page's text cannot fail: the page embeds
+    BokehJS whole, and its code names every model -- "Scatter", "Quad",
+    "Segment", "VArea", "Span" and "LogScale" are on the page of a graph
+    that draws none of them (measured 24sep2026).  The document is read
+    instead, unescaped and parsed as BokehJS reads it.
+    """
+    doc = json.loads(_unescape(_extract_model_json(html)))
+    out = {}
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and "name" in node:
+                out.setdefault(node["name"], []).append(
+                    node.get("attributes", {}))
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(doc)
+    return out
+
+
+def _figure_glyphs(html: str) -> list:
+    """For each figure in the page's document, in order, the glyph type of
+    each visible renderer it holds with at least one row of data -- what
+    the page draws, panel by panel.
+
+    A renderer anywhere in the document is not enough: one a legend item or
+    a hover tool still refers to is written into the document though no
+    figure draws it.  Measured 24sep2026: a scatter taken off its figure
+    left "Plot has no renderers" and its red Scatter glyph in the document,
+    through the legend.  Nor is a renderer with no rows: a refused function
+    expression leaves its Line on the figure, drawing nothing.  A model is
+    written out once and referred to by id after that, so every reference
+    is resolved by id.
+    """
+    doc = json.loads(_unescape(_extract_model_json(html)))
+    byid = {}
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and "name" in node:
+                byid[node.get("id")] = node
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(doc)
+
+    def resolve(ref):
+        return byid.get(ref.get("id"), {}) if isinstance(ref, dict) else {}
+
+    def rows(source):
+        # A column is written as a list, or as an ndarray with its shape.
+        data = resolve(source).get("attributes", {}).get("data", {})
+        n = 0
+        for _name, col in (data.get("entries", []) if isinstance(data, dict)
+                           else []):
+            if isinstance(col, list):
+                n = max(n, len(col))
+            elif isinstance(col, dict) and col.get("shape"):
+                n = max(n, int(col["shape"][0]))
+        return n
+
+    out = []
+    for fig in [m for m in byid.values() if m["name"] == "Figure"]:
+        drawn = []
+        for ref in fig.get("attributes", {}).get("renderers", []):
+            r = resolve(ref)
+            attrs = r.get("attributes", {})
+            if r.get("name") == "GlyphRenderer" and attrs.get("visible", True) \
+                    and rows(attrs.get("data_source")):
+                drawn.append(resolve(attrs.get("glyph")).get("name"))
+        out.append(drawn)
+    return out
+
+
+def _drawn_glyphs(html: str) -> list:
+    """Every glyph type the page draws, figure after figure, in order."""
+    return [g for fig in _figure_glyphs(html) for g in fig]
 
 
 def _render_to_html(master_spec: dict, data_json: dict) -> str:
@@ -178,7 +295,7 @@ class TestScatterHtmlOutput:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
         # Bokeh embeds glyph type names in the model JSON
-        assert "Scatter" in html or "scatter" in html.lower()
+        assert "Scatter" in _drawn_glyphs(html)
 
     def test_scatter_html_non_empty(self):
         """scatter HTML output is non-trivial."""
@@ -192,7 +309,7 @@ class TestLineHtmlOutput:
         """line plot HTML references Line glyph."""
         spec, data = _single_graph_spec("line", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestHistogramHtmlOutput:
@@ -200,7 +317,7 @@ class TestHistogramHtmlOutput:
         """histogram HTML contains Quad glyph (used for bars)."""
         spec, data = _single_graph_spec("histogram", {"var": "y"})
         html = _render_to_html(spec, data)
-        assert "Quad" in html or '"quad"' in html.lower()
+        assert "Quad" in _drawn_glyphs(html)
 
 
 class TestBarHtmlOutput:
@@ -208,7 +325,7 @@ class TestBarHtmlOutput:
         """bar plot HTML contains VBar glyph."""
         spec, data = _single_graph_spec("bar", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "VBar" in html or '"vbar"' in html.lower()
+        assert "VBar" in _drawn_glyphs(html)
 
 
 class TestSpikeHtmlOutput:
@@ -216,7 +333,7 @@ class TestSpikeHtmlOutput:
         """spike plot HTML contains Segment glyph."""
         spec, data = _single_graph_spec("spike", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Segment" in html or '"segment"' in html.lower()
+        assert "Segment" in _drawn_glyphs(html)
 
 
 class TestLfitHtmlOutput:
@@ -224,7 +341,7 @@ class TestLfitHtmlOutput:
         """lfit plot HTML contains a Line glyph (fitted line)."""
         spec, data = _single_graph_spec("lfit", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestRareaHtmlOutput:
@@ -234,7 +351,7 @@ class TestRareaHtmlOutput:
             "rarea", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "VArea" in html or '"varea"' in html.lower()
+        assert "VArea" in _drawn_glyphs(html)
 
 
 class TestDroplineHtmlOutput:
@@ -242,7 +359,7 @@ class TestDroplineHtmlOutput:
         """dropline HTML contains Segment glyph."""
         spec, data = _single_graph_spec("dropline", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Segment" in html or '"segment"' in html.lower()
+        assert "Segment" in _drawn_glyphs(html)
 
 
 class TestMsplineHtmlOutput:
@@ -250,7 +367,7 @@ class TestMsplineHtmlOutput:
         """mspline HTML contains a Line glyph."""
         spec, data = _single_graph_spec("mspline", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestFunctionHtmlOutput:
@@ -262,7 +379,7 @@ class TestFunctionHtmlOutput:
             options={"range": "0 6.28"},
         )
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 # ================================================================
@@ -274,8 +391,8 @@ class TestConnectedHtmlOutput:
         """connected plot HTML references both Line and Scatter glyphs."""
         spec, data = _single_graph_spec("connected", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert ("Line" in html or '"line"' in html.lower()), "connected must have Line glyph"
-        assert ("Scatter" in html or '"scatter"' in html.lower()), "connected must have Scatter glyph"
+        assert "Line" in _drawn_glyphs(html), "connected must have Line glyph"
+        assert "Scatter" in _drawn_glyphs(html), "connected must have Scatter glyph"
 
 
 class TestAreaHtmlOutput:
@@ -283,7 +400,7 @@ class TestAreaHtmlOutput:
         """area plot HTML contains VArea glyph."""
         spec, data = _single_graph_spec("area", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "VArea" in html or '"varea"' in html.lower()
+        assert "VArea" in _drawn_glyphs(html)
 
 
 class TestQfitHtmlOutput:
@@ -291,7 +408,7 @@ class TestQfitHtmlOutput:
         """qfit plot HTML contains Line glyph (quadratic fitted line)."""
         spec, data = _single_graph_spec("qfit", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestLfitciHtmlOutput:
@@ -299,8 +416,8 @@ class TestLfitciHtmlOutput:
         """lfitci plot HTML contains both VArea (CI band) and Line glyphs."""
         spec, data = _single_graph_spec("lfitci", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "VArea" in html or '"varea"' in html.lower(), "lfitci must have VArea CI band"
-        assert "Line" in html or '"line"' in html.lower(), "lfitci must have Line glyph"
+        assert "VArea" in _drawn_glyphs(html), "lfitci must have VArea CI band"
+        assert "Line" in _drawn_glyphs(html), "lfitci must have Line glyph"
 
 
 class TestQfitciHtmlOutput:
@@ -308,8 +425,8 @@ class TestQfitciHtmlOutput:
         """qfitci plot HTML contains both VArea (CI band) and Line glyphs."""
         spec, data = _single_graph_spec("qfitci", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "VArea" in html or '"varea"' in html.lower(), "qfitci must have VArea CI band"
-        assert "Line" in html or '"line"' in html.lower(), "qfitci must have Line glyph"
+        assert "VArea" in _drawn_glyphs(html), "qfitci must have VArea CI band"
+        assert "Line" in _drawn_glyphs(html), "qfitci must have Line glyph"
 
 
 class TestLowessHtmlOutput:
@@ -317,7 +434,7 @@ class TestLowessHtmlOutput:
         """lowess plot HTML contains Line glyph (smoothed line)."""
         spec, data = _single_graph_spec("lowess", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestKdensityHtmlOutput:
@@ -325,7 +442,7 @@ class TestKdensityHtmlOutput:
         """kdensity plot HTML contains Line glyph (density curve)."""
         spec, data = _single_graph_spec("kdensity", {"var": "y"})
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestRbarHtmlOutput:
@@ -335,7 +452,7 @@ class TestRbarHtmlOutput:
             "rbar", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "VBar" in html or '"vbar"' in html.lower()
+        assert "VBar" in _drawn_glyphs(html)
 
 
 class TestRspikeHtmlOutput:
@@ -345,7 +462,7 @@ class TestRspikeHtmlOutput:
             "rspike", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "Segment" in html or '"segment"' in html.lower()
+        assert "Segment" in _drawn_glyphs(html)
 
 
 class TestRcapHtmlOutput:
@@ -355,7 +472,7 @@ class TestRcapHtmlOutput:
             "rcap", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "Segment" in html or '"segment"' in html.lower()
+        assert "Segment" in _drawn_glyphs(html)
 
 
 class TestRlineHtmlOutput:
@@ -365,7 +482,7 @@ class TestRlineHtmlOutput:
             "rline", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestRconnectedHtmlOutput:
@@ -375,8 +492,8 @@ class TestRconnectedHtmlOutput:
             "rconnected", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower(), "rconnected must have Line glyph"
-        assert "Scatter" in html or '"scatter"' in html.lower(), "rconnected must have Scatter glyph"
+        assert "Line" in _drawn_glyphs(html), "rconnected must have Line glyph"
+        assert "Scatter" in _drawn_glyphs(html), "rconnected must have Scatter glyph"
 
 
 class TestDotHtmlOutput:
@@ -384,7 +501,7 @@ class TestDotHtmlOutput:
         """dot plot HTML contains Scatter glyph."""
         spec, data = _single_graph_spec("dot", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Scatter" in html or '"scatter"' in html.lower()
+        assert "Scatter" in _drawn_glyphs(html)
 
 
 class TestRcapsymHtmlOutput:
@@ -394,8 +511,8 @@ class TestRcapsymHtmlOutput:
             "rcapsym", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "Segment" in html or '"segment"' in html.lower(), "rcapsym must have Segment glyph"
-        assert "Scatter" in html or '"scatter"' in html.lower(), "rcapsym must have Scatter glyph"
+        assert "Segment" in _drawn_glyphs(html), "rcapsym must have Segment glyph"
+        assert "Scatter" in _drawn_glyphs(html), "rcapsym must have Scatter glyph"
 
 
 class TestScatteriHtmlOutput:
@@ -406,7 +523,7 @@ class TestScatteriHtmlOutput:
             {"values": [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]},
         )
         html = _render_to_html(spec, data)
-        assert "Scatter" in html or '"scatter"' in html.lower()
+        assert "Scatter" in _drawn_glyphs(html)
 
     def test_scatteri_coordinates_embedded_in_json(self):
         """scatteri literal coordinate values must appear in the Bokeh JSON model."""
@@ -460,7 +577,7 @@ class TestPcspikeHtmlOutput:
             },
         }
         html = _render_to_html(spec, data_json)
-        assert "Segment" in html or '"segment"' in html.lower()
+        assert "Segment" in _drawn_glyphs(html)
 
 
 class TestTslineHtmlOutput:
@@ -468,7 +585,7 @@ class TestTslineHtmlOutput:
         """tsline plot HTML contains Line glyph."""
         spec, data = _single_graph_spec("tsline", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestTsrlineHtmlOutput:
@@ -478,7 +595,7 @@ class TestTsrlineHtmlOutput:
             "tsrline", {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
 
 class TestXssInHtmlOutput:
@@ -525,7 +642,11 @@ class TestPcarrowHtmlOutput:
         html = _render_to_html(spec, data_json)
         # pcarrow uses segment shaft + Arrow annotation; check glyph or non-empty
         assert len(html) > 500, "pcarrow should produce non-trivial HTML"
-        assert "Segment" in html or "Arrow" in html or '"segment"' in html.lower()
+        # Both, measured 24sep2026: the shaft is a Segment glyph and the
+        # head an Arrow annotation, one for each of the 10 arrows.
+        assert "Segment" in _drawn_glyphs(html)
+        heads = len(_page_models(html).get("Arrow", []))
+        assert heads == 10, f"{heads} arrowheads for 10 arrows"
 
 
 # ================================================================
@@ -553,7 +674,9 @@ class TestPcbarrowHtmlOutput:
         }}
         html = _render_to_html(spec, data_json)
         assert len(html) > 500, "pcbarrow should produce non-trivial HTML"
-        assert "Segment" in html or "Arrow" in html or '"segment"' in html.lower()
+        assert "Segment" in _drawn_glyphs(html)
+        heads = len(_page_models(html).get("Arrow", []))
+        assert heads == 10, f"{heads} two-headed arrows for 10 arrows"
 
 
 # ================================================================
@@ -609,8 +732,11 @@ class TestGraphOptionsInHtml:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["xlabel"] = "2 6 10 14 18"
         html = _render_to_html(spec, data)
-        # FixedTicker tick values should be embedded in the model JSON
-        assert "FixedTicker" in html or '"ticks"' in html, \
+        # FixedTicker tick values should be embedded in the model JSON --
+        # read from the document: "FixedTicker" and "ticks" are words the
+        # page's BokehJS carries whatever the axes do.
+        assert [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])] \
+            == [[2.0, 6.0, 10.0, 14.0, 18.0]], \
             "xlabel() must embed FixedTicker (with ticks) in model JSON"
 
     def test_ylabel_tick_values_in_html(self):
@@ -618,7 +744,8 @@ class TestGraphOptionsInHtml:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["ylabel"] = "5 10 15 20"
         html = _render_to_html(spec, data)
-        assert "FixedTicker" in html or '"ticks"' in html, \
+        assert [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])] \
+            == [[5.0, 10.0, 15.0, 20.0]], \
             "ylabel() must embed FixedTicker (with ticks) in model JSON"
 
     def test_xlabel_labeled_ticks_in_html(self):
@@ -626,8 +753,14 @@ class TestGraphOptionsInHtml:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["xlabel"] = '1 "Low" 10 "Mid" 20 "High"'
         html = _render_to_html(spec, data)
-        assert "CustomJSTickFormatter" in html or "Low" in html, \
+        models = _page_models(html)
+        fmts = models.get("CustomJSTickFormatter", [])
+        assert len(fmts) == 1, \
             "xlabel labeled ticks must produce CustomJSTickFormatter in model JSON"
+        labels = json.loads(dict(fmts[0]["args"]["entries"])["labels"])
+        assert labels == {"1.0": "Low", "10.0": "Mid", "20.0": "High"}, labels
+        assert [t.get("ticks") for t in models.get("FixedTicker", [])] == \
+            [[1.0, 10.0, 20.0]]
 
     def test_title_xss_not_in_html_unescaped(self):
         """XSS payload in title does not appear as a raw <script> tag in output."""
@@ -654,13 +787,18 @@ class TestPlotOptionsInHtml:
         html = _render_to_html(spec, data)
         assert "#ff0000" in html, "mcolor(red) should produce #ff0000 in Bokeh JSON"
 
-    def test_mcolor_navy_appears_in_scatter_html(self):
-        """mcolor(navy) produces #1a476f in scatter HTML Bokeh JSON."""
+    def test_mcolor_named_colour_appears_in_scatter_html(self):
+        """mcolor(magenta) produces #ff00ff in scatter HTML Bokeh JSON.
+
+        This was mcolor(navy) and #1a476f -- s2color's first series colour,
+        in the page whether or not the option was read.  Magenta is in no
+        s2color slot (see TestTheColoursUnderTestAreNotDrawnByDefault).
+        """
         spec, data = _single_graph_spec(
-            "scatter", {"yvar": "y", "xvar": "x"}, options={"mcolor": "navy"}
+            "scatter", {"yvar": "y", "xvar": "x"}, options={"mcolor": "magenta"}
         )
         html = _render_to_html(spec, data)
-        assert "#1a476f" in html, "mcolor(navy) should produce #1a476f in Bokeh JSON"
+        assert "#ff00ff" in html, "mcolor(magenta) should produce #ff00ff in Bokeh JSON"
 
     def test_mcolor_rgb_triplet_in_scatter_html(self):
         """mcolor with RGB triplet produces correct hex in HTML."""
@@ -670,13 +808,14 @@ class TestPlotOptionsInHtml:
         html = _render_to_html(spec, data)
         assert "#0000ff" in html, "mcolor(0 0 255) should produce #0000ff"
 
-    def test_lcolor_navy_appears_in_line_html(self):
-        """lcolor(navy) produces #1a476f in line HTML Bokeh JSON."""
+    def test_lcolor_named_colour_appears_in_line_html(self):
+        """lcolor(magenta) produces #ff00ff in line HTML Bokeh JSON (it was
+        navy, the default, which passed with the option ignored)."""
         spec, data = _single_graph_spec(
-            "line", {"yvar": "y", "xvar": "x"}, options={"lcolor": "navy"}
+            "line", {"yvar": "y", "xvar": "x"}, options={"lcolor": "magenta"}
         )
         html = _render_to_html(spec, data)
-        assert "#1a476f" in html, "lcolor(navy) should produce #1a476f in Bokeh JSON"
+        assert "#ff00ff" in html, "lcolor(magenta) should produce #ff00ff in Bokeh JSON"
 
     def test_fcolor_maroon_appears_in_area_html(self):
         """fcolor(maroon) produces #90353b in area HTML Bokeh JSON."""
@@ -708,7 +847,65 @@ class TestPlotOptionsInHtml:
         )
         html = _render_to_html(spec, data)
         assert "#ff0000" in html, "mcolor(red) hex should appear"
-        assert "Scatter" in html or '"scatter"' in html.lower()
+        assert "Scatter" in _drawn_glyphs(html)
+
+
+# ================================================================
+# The colours the tests look for are not drawn without the option
+# ================================================================
+_ONE_Y = {"yvar": "y", "xvar": "x"}
+_RANGE_Y = {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
+
+
+class TestTheColoursUnderTestAreNotDrawnByDefault:
+    """Guards the guards: a test that sets a colour and finds its hex in the
+    page proves the option was read only if the hex is absent without it.
+
+    Navy failed this for every plot type below -- #1a476f is s2color's first
+    series colour -- so every navy test in this file passed with the option
+    ignored.  Each hex another test here looks for is checked on the same
+    plot drawn with no colour option at all.
+    """
+
+    @pytest.mark.parametrize("ptype,extra,hexes", [
+        ("scatter", _ONE_Y, ["#ff00ff", "#ff0000", "#0000ff"]),
+        ("line", _ONE_Y, ["#ff00ff"]),
+        ("area", _ONE_Y, ["#90353b"]),
+        ("bar", _ONE_Y, ["#ff00ff", "#55752f", "#ff0000"]),
+        ("spike", _ONE_Y, ["#ff00ff"]),
+        ("lfit", _ONE_Y, ["#ff00ff"]),
+        ("qfit", _ONE_Y, ["#ff00ff"]),
+        ("lowess", _ONE_Y, ["#ff00ff"]),
+        ("kdensity", {"var": "y"}, ["#ff00ff"]),
+        ("rline", _RANGE_Y, ["#ff00ff"]),
+        ("rspike", _RANGE_Y, ["#ff00ff"]),
+        ("rcap", _RANGE_Y, ["#ff00ff"]),
+        ("tsline", _ONE_Y, ["#ff00ff"]),
+        ("tsrline", _RANGE_Y, ["#ff00ff"]),
+        ("mspline", _ONE_Y, ["#ff00ff"]),
+        ("function", {"expr": "x", "range": [0, 10]}, ["#ff00ff"]),
+        ("dropline", _ONE_Y, ["#ff00ff"]),
+        ("pcspike", {"y1var": "y", "x1var": "x", "y2var": "hi",
+                     "x2var": "lo"}, ["#ff00ff"]),
+        ("connected", _ONE_Y, ["#ff00ff"]),
+        ("dot", _ONE_Y, ["#ff00ff"]),
+        ("rcapsym", _RANGE_Y, ["#ff00ff"]),
+        ("rconnected", _RANGE_Y, ["#ff00ff"]),
+        ("scatteri", {"values": [[1.0, 2.0], [3.0, 4.0]]}, ["#ff00ff"]),
+        ("rbar", _RANGE_Y, ["#ff00ff"]),
+        ("histogram", {"var": "y"}, ["#ff00ff"]),
+        ("lfitci", _ONE_Y, ["#ff00ff"]),
+        ("qfitci", _ONE_Y, ["#ff00ff"]),
+        ("rarea", _RANGE_Y, ["#ff00ff"]),
+    ])
+    def test_the_colour_is_absent_without_the_option(self, ptype, extra,
+                                                     hexes):
+        spec, data = _single_graph_spec(ptype, extra)
+        html = _render_to_html(spec, data).lower()
+        drawn = [h for h in hexes if h in html]
+        assert not drawn, (
+            "%s draws %s with no colour option, so a test that sets it and "
+            "finds it proves nothing" % (ptype, drawn))
 
 
 # ================================================================
@@ -717,12 +914,21 @@ class TestPlotOptionsInHtml:
 # ================================================================
 class TestColorRenderingAllPlotTypes:
     """Verify lcolor/mcolor/fcolor option produces correct hex in HTML JSON
-    for the 26 plot types not covered by TestPlotOptionsInHtml."""
+    for the 26 plot types not covered by TestPlotOptionsInHtml.
 
-    _NAVY = "#1a476f"   # translate_mcolor("navy")
+    These set navy and looked for #1a476f anywhere in the page.  Navy is
+    s2color's first series colour, so every one of them passed with the
+    option ignored: measured 24sep2026, #1a476f is in the page of every
+    one of these plot types drawn with no colour option at all.  Magenta
+    is in no slot of the s2color palette, and
+    TestTheColoursUnderTestAreNotDrawnByDefault checks it is absent
+    until the option asks for it.
+    """
+
+    _HEX = "#ff00ff"    # translate_mcolor("magenta")
     _RED  = "#ff0000"   # translate_mcolor("red")
 
-    def _html(self, ptype, extra_keys, option_key, option_val="navy"):
+    def _html(self, ptype, extra_keys, option_key, option_val="magenta"):
         spec, data = _single_graph_spec(ptype, extra_keys, options={option_key: option_val})
         return _render_to_html(spec, data)
 
@@ -730,61 +936,61 @@ class TestColorRenderingAllPlotTypes:
 
     def test_spike_lcolor_in_html(self):
         html = self._html("spike", {"yvar": "y", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "spike lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "spike lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_lfit_lcolor_in_html(self):
         html = self._html("lfit", {"yvar": "y", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "lfit lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "lfit lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_qfit_lcolor_in_html(self):
         html = self._html("qfit", {"yvar": "y", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "qfit lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "qfit lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_lowess_lcolor_in_html(self):
         # No statsmodels skip: lowess is Stata's smoother in numpy (WP-18).
         html = self._html("lowess", {"yvar": "y", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "lowess lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "lowess lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_kdensity_lcolor_in_html(self):
         html = self._html("kdensity", {"var": "y"}, "lcolor")
-        assert self._NAVY in html, "kdensity lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "kdensity lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_rline_lcolor_in_html(self):
         html = self._html("rline",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "rline lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "rline lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_rspike_lcolor_in_html(self):
         html = self._html("rspike",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "rspike lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "rspike lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_rcap_lcolor_in_html(self):
         html = self._html("rcap",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "rcap lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "rcap lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_tsline_lcolor_in_html(self):
         html = self._html("tsline", {"yvar": "y", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "tsline lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "tsline lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_tsrline_lcolor_in_html(self):
         html = self._html("tsrline",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "tsrline lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "tsrline lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_mspline_lcolor_in_html(self):
         html = self._html("mspline", {"yvar": "y", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "mspline lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "mspline lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_function_lcolor_in_html(self):
         html = self._html("function",
                           {"expr": "x", "range": [0, 10]}, "lcolor")
-        assert self._NAVY in html, "function lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "function lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_dropline_lcolor_in_html(self):
         html = self._html("dropline", {"yvar": "y", "xvar": "x"}, "lcolor")
-        assert self._NAVY in html, "dropline lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "dropline lcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_pcspike_lcolor_in_html(self):
         base = {
@@ -794,58 +1000,58 @@ class TestColorRenderingAllPlotTypes:
         data = _make_data_json(base)
         spec, _ = _single_graph_spec("pcspike", {
             "y1var": "y", "x1var": "x", "y2var": "hi", "x2var": "lo"
-        }, options={"lcolor": "navy"})
+        }, options={"lcolor": "magenta"})
         html = _render_to_html(spec, data)
-        assert self._NAVY in html, "pcspike lcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "pcspike lcolor(magenta) must embed #ff00ff in model JSON"
 
     # --- scatter-type plot types (mcolor) ---
 
     def test_connected_mcolor_in_html(self):
         html = self._html("connected", {"yvar": "y", "xvar": "x"}, "mcolor")
-        assert self._NAVY in html, "connected mcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "connected mcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_dot_mcolor_in_html(self):
         html = self._html("dot", {"yvar": "y", "xvar": "x"}, "mcolor")
-        assert self._NAVY in html, "dot mcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "dot mcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_rcapsym_mcolor_in_html(self):
         html = self._html("rcapsym",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "mcolor")
-        assert self._NAVY in html, "rcapsym mcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "rcapsym mcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_rconnected_mcolor_in_html(self):
         html = self._html("rconnected",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "mcolor")
-        assert self._NAVY in html, "rconnected mcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "rconnected mcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_scatteri_mcolor_in_html(self):
         html = self._html("scatteri",
                           {"values": [[1.0, 2.0], [3.0, 4.0]]}, "mcolor")
-        assert self._NAVY in html, "scatteri mcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "scatteri mcolor(magenta) must embed #ff00ff in model JSON"
 
     # --- fill-type plot types (fcolor) ---
 
     def test_rbar_fcolor_in_html(self):
         html = self._html("rbar",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "fcolor")
-        assert self._NAVY in html, "rbar fcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "rbar fcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_histogram_fcolor_in_html(self):
         html = self._html("histogram", {"var": "y"}, "fcolor")
-        assert self._NAVY in html, "histogram fcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "histogram fcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_lfitci_fcolor_in_html(self):
         html = self._html("lfitci", {"yvar": "y", "xvar": "x"}, "fcolor")
-        assert self._NAVY in html, "lfitci fcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "lfitci fcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_qfitci_fcolor_in_html(self):
         html = self._html("qfitci", {"yvar": "y", "xvar": "x"}, "fcolor")
-        assert self._NAVY in html, "qfitci fcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "qfitci fcolor(magenta) must embed #ff00ff in model JSON"
 
     def test_rarea_fcolor_in_html(self):
         html = self._html("rarea",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "fcolor")
-        assert self._NAVY in html, "rarea fcolor(navy) must embed #1a476f in model JSON"
+        assert self._HEX in html, "rarea fcolor(magenta) must embed #ff00ff in model JSON"
 
 
 # ================================================================
@@ -862,7 +1068,7 @@ class TestAdversarialPlotOptions:
         )
         html = _render_to_html(spec, data)
         assert len(html) > 500, "Render must succeed despite invalid mcolor"
-        assert "Scatter" in html or '"scatter"' in html.lower()
+        assert "Scatter" in _drawn_glyphs(html)
         # Injected string must NOT appear literally in output HTML
         assert "os.system" not in html
 
@@ -874,7 +1080,7 @@ class TestAdversarialPlotOptions:
         )
         html = _render_to_html(spec, data)
         assert len(html) > 500, "Render must succeed despite invalid lcolor"
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
     def test_invalid_msymbol_falls_back_to_default(self):
         """Invalid msymbol value falls back to default circle marker."""
@@ -883,7 +1089,7 @@ class TestAdversarialPlotOptions:
             options={"msymbol": "'; import os'"},
         )
         html = _render_to_html(spec, data)
-        assert "Scatter" in html or '"scatter"' in html.lower()
+        assert "Scatter" in _drawn_glyphs(html)
 
     def test_huge_histogram_bin_count_is_bounded(self):
         """Extremely large bin count is capped to prevent resource exhaustion."""
@@ -891,7 +1097,7 @@ class TestAdversarialPlotOptions:
                                         options={"bin": "99999999"})
         html = _render_to_html(spec, data)
         assert len(html) > 500, "Histogram must render with large bin count"
-        assert "Quad" in html or '"quad"' in html.lower()
+        assert "Quad" in _drawn_glyphs(html)
 
     def test_extreme_msize_does_not_crash(self):
         """Extremely large msize value must not crash the renderer."""
@@ -901,7 +1107,7 @@ class TestAdversarialPlotOptions:
         )
         html = _render_to_html(spec, data)
         assert len(html) > 500, "Render must succeed with extreme msize"
-        assert "Scatter" in html or '"scatter"' in html.lower()
+        assert "Scatter" in _drawn_glyphs(html)
 
     def test_extreme_lwidth_does_not_crash(self):
         """Extremely large lwidth value must not crash the renderer."""
@@ -911,7 +1117,7 @@ class TestAdversarialPlotOptions:
         )
         html = _render_to_html(spec, data)
         assert len(html) > 500, "Render must succeed with extreme lwidth"
-        assert "Line" in html or '"line"' in html.lower()
+        assert "Line" in _drawn_glyphs(html)
 
     def test_unicode_in_title_does_not_crash(self):
         """Unicode characters in title option must not crash the renderer."""
@@ -969,25 +1175,26 @@ class TestHtmlModelDataContent:
             "mcolor(red) must produce #ff0000 in HTML"
 
     def test_lcolor_hex_in_html(self):
-        """lcolor(navy) produces #1a476f hex in the Bokeh model JSON."""
+        """lcolor(magenta) produces #ff00ff hex in the Bokeh model JSON (it
+        was navy, the default, which passed with the option ignored)."""
         spec, data = _single_graph_spec("line", {"yvar": "y", "xvar": "x"},
-                                        options={"lcolor": "navy"})
+                                        options={"lcolor": "magenta"})
         html = _render_to_html(spec, data)
-        assert "#1a476f" in html.lower() or "1a476f" in html.lower(), \
-            "lcolor(navy) must produce #1a476f in HTML"
+        assert "#ff00ff" in html.lower(), \
+            "lcolor(magenta) must produce #ff00ff in HTML"
 
     def test_histogram_quad_data_embedded(self):
         """Histogram HTML embeds top/left/right arrays for the Quad glyph."""
         spec, data = _single_graph_spec("histogram", {"var": "y"})
         html = _render_to_html(spec, data)
-        assert "Quad" in html or "quad" in html.lower(), \
+        assert "Quad" in _drawn_glyphs(html), \
             "histogram must embed Quad glyph type in HTML model"
 
     def test_line_glyph_type_in_json(self):
         """Line plot HTML contains 'Line' glyph type in model JSON."""
         spec, data = _single_graph_spec("line", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert '"Line"' in html or '"line"' in html.lower(), \
+        assert "Line" in _drawn_glyphs(html), \
             "line plot must embed Line glyph in HTML model"
 
     def test_varea_glyph_type_in_json(self):
@@ -996,14 +1203,14 @@ class TestHtmlModelDataContent:
             "rarea", extra_keys={"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert "VArea" in html or "varea" in html.lower(), \
+        assert "VArea" in _drawn_glyphs(html), \
             "rarea plot must embed VArea glyph in HTML model"
 
     def test_segment_glyph_for_spike(self):
         """spike plot HTML contains Segment glyph type in model JSON."""
         spec, data = _single_graph_spec("spike", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert "Segment" in html or "segment" in html.lower(), \
+        assert "Segment" in _drawn_glyphs(html), \
             "spike plot must embed Segment glyph in HTML model"
 
 
@@ -1031,12 +1238,22 @@ class TestBgcolorPlotbgcolor:
             "plotbgcolor(#112233) must appear as background_fill_color in Bokeh model JSON"
 
     def test_bgcolor_named_color_translates(self):
-        """bgcolor(navy) must translate to #1a476f and appear in HTML."""
+        """bgcolor(navy) must translate to #1a476f -- on the figure border.
+
+        This looked for #1a476f anywhere in the page.  Navy is s2color's
+        first series colour, so the markers alone passed it whatever the
+        background was (measured 24sep2026: six copies with no bgcolor() at
+        all).  The property is read now, and the control is that the
+        border is not navy without the option.
+        """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        before = _figure_colors(_render_to_html(spec, data),
+                                "border_fill_color")
         spec["graphs"][0]["graph_options"]["bgcolor"] = "navy"
         html = _render_to_html(spec, data)
-        assert "#1a476f" in html, \
-            "bgcolor(navy) must translate to #1a476f and appear in Bokeh JSON"
+        assert _figure_colors(html, "border_fill_color") == ["#1a476f"], \
+            "bgcolor(navy) must set the figure's border_fill_color to #1a476f"
+        assert before != ["#1a476f"], before
 
     def test_plotbgcolor_named_color_translates(self):
         """plotbgcolor(ltblue) must translate and appear in HTML."""
@@ -1044,7 +1261,7 @@ class TestBgcolorPlotbgcolor:
         spec["graphs"][0]["graph_options"]["plotbgcolor"] = "ltblue"
         html = _render_to_html(spec, data)
         # ltblue translates to some hex; just verify no crash and HTML valid
-        assert "Scatter" in html, \
+        assert "Scatter" in _drawn_glyphs(html), \
             "plotbgcolor with named color must not crash rendering"
 
     def test_bgcolor_invalid_no_crash(self):
@@ -1052,7 +1269,7 @@ class TestBgcolorPlotbgcolor:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["bgcolor"] = "not_a_color_xyz"
         html = _render_to_html(spec, data)
-        assert "Scatter" in html, \
+        assert "Scatter" in _drawn_glyphs(html), \
             "invalid bgcolor must fall back gracefully"
 
 
@@ -1087,7 +1304,7 @@ class TestXrangeYrange:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["xrange"] = "bad_value"
         html = _render_to_html(spec, data)
-        assert "Scatter" in html or "scatter" in html.lower(), \
+        assert "Scatter" in _drawn_glyphs(html), \
             "invalid xrange must fall back gracefully"
 
     def test_yrange_invalid_ignores_gracefully(self):
@@ -1110,17 +1327,22 @@ class TestLogScaleHtml:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["xscale"] = "log"
         html = _render_to_html(spec, data)
-        # Bokeh serializes log axis as "LogScale" in model JSON
-        has_log = "LogScale" in html or '"log"' in html or "log_scale" in html.lower()
-        assert has_log, "xscale(log) must produce log axis marker in HTML model JSON"
+        # The figure's own scales, read from the document: "LogScale" and
+        # "log" are in the page's BokehJS whatever the axes are.
+        scales = [(f["x_scale"]["name"], f["y_scale"]["name"])
+                  for f in _page_models(html)["Figure"]]
+        assert scales == [("LogScale", "LinearScale")], \
+            "xscale(log) must produce log axis marker in HTML model JSON"
 
     def test_yscale_log_html_contains_log_type(self):
         """yscale(log) must embed LogScale marker in Bokeh JSON."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["yscale"] = "log"
         html = _render_to_html(spec, data)
-        has_log = "LogScale" in html or '"log"' in html or "log_scale" in html.lower()
-        assert has_log, "yscale(log) must produce log axis marker in HTML model JSON"
+        scales = [(f["x_scale"]["name"], f["y_scale"]["name"])
+                  for f in _page_models(html)["Figure"]]
+        assert scales == [("LinearScale", "LogScale")], \
+            "yscale(log) must produce log axis marker in HTML model JSON"
 
     def test_no_log_scale_by_default(self):
         """Without xscale/yscale, HTML must NOT contain LogScale in model JSON."""
@@ -1379,15 +1601,17 @@ class TestNewOptionHtml:
             "bfcolor(red) must embed #ff0000 as fill_color in bar glyph model"
 
     def test_blcolor_bar_line_in_html(self):
-        """bar with blcolor(navy) must embed #1a476f as line_color in Bokeh JSON."""
+        """bar with blcolor(magenta) must embed #ff00ff as line_color in
+        Bokeh JSON (it was navy, the default, which passed with the option
+        ignored)."""
         spec, data = _single_graph_spec(
             "bar",
             extra_keys={"yvar": "y", "xvar": "x"},
-            options={"blcolor": "navy"},
+            options={"blcolor": "magenta"},
         )
         html = _render_to_html(spec, data)
-        assert "#1a476f" in html, \
-            "blcolor(navy) must embed #1a476f as line_color in bar glyph model"
+        assert "#ff00ff" in html, \
+            "blcolor(magenta) must embed #ff00ff as line_color in bar glyph model"
 
 
 class TestLineWidthPatternHtml:
@@ -1476,10 +1700,12 @@ class TestXlineYlineHtml:
         # Inject xline into graph_options
         spec["graphs"][0]["graph_options"]["xline"] = "5"
         html = _render_to_html(spec, data)
-        assert "Span" in html or '"renderers"' in html, \
-            "xline must add a Span annotation; model JSON must be non-empty"
-        # More specific: Bokeh serialises Span model type as "Span"
-        assert "Span" in html, \
+        # Read from the document: "Span" is a word the page's BokehJS
+        # carries whatever the figure holds.  A vertical line spans the
+        # height, at x = 5 (a Span left at Bokeh's default is "width").
+        spans = [(s.get("dimension", "width"), s.get("location"))
+                 for s in _page_models(html).get("Span", [])]
+        assert spans == [("height", 5.0)], \
             "xline must produce a Bokeh Span annotation in the HTML model"
 
     def test_yline_produces_span_in_html(self):
@@ -1490,7 +1716,9 @@ class TestXlineYlineHtml:
         )
         spec["graphs"][0]["graph_options"]["yline"] = "10"
         html = _render_to_html(spec, data)
-        assert "Span" in html, \
+        spans = [(s.get("dimension", "width"), s.get("location"))
+                 for s in _page_models(html).get("Span", [])]
+        assert spans == [("width", 10.0)], \
             "yline must produce a Bokeh Span annotation in the HTML model"
 
     def test_xline_yline_both_present(self):
@@ -1502,7 +1730,11 @@ class TestXlineYlineHtml:
         spec["graphs"][0]["graph_options"]["xline"] = "5"
         spec["graphs"][0]["graph_options"]["yline"] = "10"
         html = _render_to_html(spec, data)
-        assert html.count("Span") >= 2, \
+        # Counted in the document: the page's BokehJS names "Span" many
+        # times over whatever the figure holds.
+        spans = sorted((s.get("dimension", "width"), s.get("location"))
+                       for s in _page_models(html).get("Span", []))
+        assert spans == [("height", 5.0), ("width", 10.0)], \
             "Both xline and yline must each produce a Span annotation"
 
 
@@ -1549,10 +1781,13 @@ class TestByFacetingHtmlOutput:
         """by(grp) with 2 groups → HTML contains Scatter glyph for each facet."""
         spec, data = _by_facet_spec("grp")
         html = _render_to_html(spec, data)
-        # Should have at least 2 Scatter glyph references
-        scatter_count = html.lower().count('"scatter"')
-        assert scatter_count >= 2, (
-            f"Expected >=2 Scatter glyph refs, got {scatter_count}"
+        # One panel for each of grp's two groups, a Scatter drawn in each,
+        # read from the document.  The page's BokehJS spells '"scatter"'
+        # twice itself, so counting it in the page text passed ">= 2" on a
+        # page with no scatter at all (measured 24sep2026).
+        panels = _figure_glyphs(html)
+        assert panels == [["Scatter"], ["Scatter"]], (
+            f"Expected a Scatter in each of 2 panels, got {panels}"
         )
 
     def test_by_facet_titles_in_html(self):
@@ -1583,9 +1818,10 @@ class TestByFacetingHtmlOutput:
             {"type": "line", "yvar": "y", "xvar": "x", "options": {}}
         )
         html = _render_to_html(spec, data)
-        # Should have both Scatter and Line glyph types
-        assert "Scatter" in html, "Scatter glyph not in HTML"
-        assert "Line" in html, "Line glyph not in HTML"
+        # Both glyph types in each of grp's two panels, read from the
+        # document rather than from page text BokehJS already names them in.
+        panels = [sorted(p) for p in _figure_glyphs(html)]
+        assert panels == [["Line", "Scatter"], ["Line", "Scatter"]], panels
 
     def test_by_html_non_empty(self):
         """by(grp) → HTML output is non-trivial."""
@@ -1631,12 +1867,22 @@ class TestPlotregionGraphregion:
             "plotregion(color(#aabbcc)) must set background_fill_color"
 
     def test_plotregion_named_color(self):
-        """plotregion(color(navy)) must translate to #1a476f in HTML."""
+        """plotregion(color(navy)) must translate to #1a476f -- on the plot
+        region.
+
+        This looked for #1a476f anywhere in the page, where s2color's navy
+        markers put it with no plotregion() at all (measured 24sep2026), so
+        it passed whatever the region colour was.  The property is read
+        now, and the control is that the region is not navy without it.
+        """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        before = _figure_colors(_render_to_html(spec, data),
+                                "background_fill_color")
         spec["graphs"][0]["graph_options"]["plotregion"] = "color(navy)"
         html = _render_to_html(spec, data)
-        assert "#1a476f" in html, \
-            "plotregion(color(navy)) must translate to #1a476f"
+        assert _figure_colors(html, "background_fill_color") == ["#1a476f"], \
+            "plotregion(color(navy)) must set background_fill_color #1a476f"
+        assert before != ["#1a476f"], before
 
     def test_graphregion_color_sets_border(self):
         """graphregion(color(#112233)) must embed sentinel hex in HTML."""
@@ -1659,14 +1905,14 @@ class TestPlotregionGraphregion:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["plotregion"] = "color(not_a_real_color_xyz)"
         html = _render_to_html(spec, data)
-        assert "Scatter" in html, "invalid plotregion color must fall back gracefully"
+        assert "Scatter" in _drawn_glyphs(html), "invalid plotregion color must fall back gracefully"
 
     def test_graphregion_invalid_no_crash(self):
         """graphregion with invalid color must not crash."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["graphregion"] = "color(notacolor)"
         html = _render_to_html(spec, data)
-        assert "Scatter" in html, "invalid graphregion color must fall back gracefully"
+        assert "Scatter" in _drawn_glyphs(html), "invalid graphregion color must fall back gracefully"
 
 
 # ================================================================

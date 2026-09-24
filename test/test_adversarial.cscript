@@ -73,7 +73,11 @@ dash scatter mpg weight, name(s1) title(`"<script>alert(1)</script>"')
 tempfile xss_out
 local xss_path = "`xss_out'.html"
 capture erase "`xss_path'"
-dash build, saving("`xss_path'") replace
+// The payload goes in the dashboard's own title() too.  That title is drawn
+// in the page header, a Div, whose text a browser parses as HTML -- the one
+// title on the page that reaches markup; a graph's title is text drawn on a
+// canvas.
+dash build, saving("`xss_path'") replace title(`"<script>alert(1)</script>"')
 
 // Scan the output file for the raw payload — it must NOT be present.
 //
@@ -91,9 +95,10 @@ dash build, saving("`xss_path'") replace
 // it writes itself, Bokeh's own serializer for text carried inside the
 // document JSON), so the payload is EXPECTED to be present in the file in
 // escaped form -- as HTML entities (&lt; and &gt;) where dash writes the
-// text itself, or as JSON unicode escapes for the angle brackets where
-// Bokeh serialises it into the document blob.  Neither escaped form
-// contains the raw literal we search for.  An escaped payload
+// text itself, and as HTML entities again where Bokeh writes the document
+// blob (measured 24sep2026: "text":"&lt;script&gt;alert(1)&lt;/script&gt;"
+// in the Title model; it is not written as JSON unicode escapes).  Neither
+// escaped form contains the raw literal we search for.  An escaped payload
 // therefore passes, which is the correct verdict: escaped, it is inert
 // text.  Only a payload that arrived as executable markup fails.  The
 // search is CASE-SENSITIVE: the question is whether the exact bytes that
@@ -102,15 +107,66 @@ dash build, saving("`xss_path'") replace
 //
 // The limit of the check, stated rather than papered over: it asserts the
 // payload is not present raw, not that the title reached the document at
-// all, so a renderer that silently dropped the title would also pass.  The
-// positive half -- that the escaped form IS present -- is asserted by the
-// Python suite (test_html_output.py, TestXssInHtmlOutput), which can look
-// at the rendered string directly.  What this check no longer does is pass
-// when there is no file to read: cert_file_has exits 603 on a file it
-// cannot open.
+// all, so a renderer that silently dropped the title would also pass -- the
+// document checks after it close that gap.  What this check no longer does
+// is pass when there is no file to read: cert_file_has exits 603 on a file
+// it cannot open.
 cert_file_has "`xss_path'", needle("<script>alert(1)")
 local found_raw_xss = r(found)
 assert `found_raw_xss' == 0
+
+// And that search cannot fail on the document: Bokeh HTML-escapes the whole
+// embedded JSON (bokeh/embed/elements.py), so no text inside a model ever
+// reaches the page as raw <script> -- measured 24sep2026, with the header's
+// html.escape removed the payload became live markup in the header Div and
+// the search above still passed.  It keeps its use for the page around the
+// document (its <title> carries this title, escaped by the page template).
+// The document is read back instead, decoded as BokehJS
+// decodes it (JSON.parse of the unescaped block) and read with
+// Document.from_json: the graph's Title model holds the payload as its
+// literal text, so the title reached the canvas intact; no HTML-rendering
+// model -- Div, Paragraph, PreText -- holds it literally; and the header
+// Div holds it escaped, so the one markup sink was reached, as text.
+local p278page "`xss_path'"
+python:
+import html
+import json
+import re
+from sfi import Macro
+from bokeh.document import Document
+from bokeh.models import Div, Markup, Title
+
+
+def _p278_doc(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    blocks = re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, re.S)
+    docs = [d for b in blocks
+            for d in json.loads(re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                                       lambda m: ents[m.group(1)], b)).values()]
+    return Document.from_json(docs[0]) if len(docs) == 1 else None
+
+
+_p278pl = "<script>alert(1)</script>"
+_p278 = _p278_doc(Macro.getLocal("p278page"))
+_p278all = list(_p278.models) if _p278 is not None else []
+_p278t = [m.text for m in _p278all if isinstance(m, Title) and m.text]
+_p278mk = [m for m in _p278all if isinstance(m, Markup)]
+Macro.setLocal("p278_ndoc", "1" if _p278 is not None else "0")
+Macro.setLocal("p278_title", "1" if _p278t == [_p278pl] else "0")
+Macro.setLocal("p278_raw", str(sum(_p278pl in (m.text or "") for m in _p278mk)))
+Macro.setLocal("p278_esc", str(sum(html.escape(_p278pl) in (m.text or "")
+                                   for m in _p278mk if isinstance(m, Div))))
+del _p278, _p278all, _p278t, _p278mk
+end
+assert `p278_ndoc' == 1
+assert `p278_title' == 1
+assert `p278_raw' == 0
+assert `p278_esc' == 1
 display "P2-78 PASS: XSS title not present unescaped in HTML output"
 dash clear
 
@@ -121,12 +177,35 @@ dash clear
 // A semicolon in what looks like a varname is not a valid variable;
 // confirm variable will reject it, guaranteeing no shell execution.
 qui sysuse auto, clear
+
+// Runs one command with its output logged to the caller's <logfile> and
+// returns its code in r(rc).  P2-79, P2-82, P2-83 and P2-84 asserted only
+// rc != 0, which a crash passes as readily as a refusal -- a Mata error
+// (3xxx) or a Python traceback is not "graceful".  Each now asserts the
+// code the refusal gives and the words it says, read back from the log
+// with cert_log_has, which re-joins the lines Stata wraps.
+capture program drop _adv_log_run
+program define _adv_log_run, rclass
+    version 16.0
+    args logfile cmdtext
+    tempname lh
+    quietly log using "`logfile'", text replace name(`lh')
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close `lh'
+    return scalar rc = `rc'
+end
+
 // "mpg;" is not a valid Stata variable — confirm variable will reject it
-capture dash scatter mpg; weight, saving(`"_tmp_p279.html"')
-local p279_rc = _rc
+// (measured 24sep2026: syntax's own "; invalid name", r(198)).
+tempfile p279log
+_adv_log_run "`p279log'" `"dash scatter mpg; weight, saving(`"_tmp_p279.html"')"'
+local p279_rc = r(rc)
 // Clean up any accidental output
 capture erase "_tmp_p279.html"
-assert `p279_rc' != 0
+assert `p279_rc' == 198
+cert_log_has "`p279log'", needle("; invalid name")
+assert r(count) == 1
 display "P2-79 PASS: injection chars in varname rejected (rc=`p279_rc')"
 
 // ================================================================
@@ -174,7 +253,28 @@ if `p281_rc' == 0 {
     assert `found_exec' == 0
 }
 capture erase "`inject_path'"
-display "P2-81 PASS: Python injection in option value treated as literal (rc=`p281_rc')"
+
+// An execution marker, checked whatever the return code.  The check above
+// runs only when the build succeeded and reads only the page, so a payload
+// that ran at build time and left nothing in the page -- or that made the
+// build fail -- was never seen.  This payload creates a file if Python ever
+// evaluates or executes the option value; the file must not exist
+// afterwards, rc 0 or not.  The control: the same text handed to exec()
+// here does create it, so the marker is one Python can set.  (P20-22 uses a
+// global the same way.)
+tempfile p281m
+local p281mk "`p281m'.marker"
+capture erase "`p281mk'"
+local inject_mk `"__import__('pathlib').Path('`p281mk'').touch()"'
+capture dash scatter mpg weight, mc(`"`inject_mk'"') saving("`inject_path'")
+local p281b_rc = _rc
+capture erase "`inject_path'"
+capture confirm file "`p281mk'"
+assert _rc != 0
+python: exec(__import__("sfi").Macro.getLocal("inject_mk"))
+confirm file "`p281mk'"
+erase "`p281mk'"
+display "P2-81 PASS: Python injection in option value treated as literal (rc=`p281_rc', marker payload rc=`p281b_rc')"
 
 // ================================================================
 // P2-82 — Resource exhaustion: large varlist → graceful error
@@ -186,11 +286,15 @@ forvalues i = 1/100 {
     local biglist "`biglist' novar`i'"
 }
 // The Mata parser (confirm variable) should reject non-existent vars
-// and return a non-zero rc without crashing or hanging
-capture dash scatter `biglist', saving("_tmp_p282.html")
-local p282_rc = _rc
+// and return a non-zero rc without crashing or hanging -- measured
+// 24sep2026, at the first of them: "variable novar1 not found", r(111).
+tempfile p282log
+_adv_log_run "`p282log'" `"dash scatter `biglist', saving("_tmp_p282.html")"'
+local p282_rc = r(rc)
 capture erase "_tmp_p282.html"
-assert `p282_rc' != 0
+assert `p282_rc' == 111
+cert_log_has "`p282log'", needle("variable novar1 not found")
+assert r(count) == 1
 display "P2-82 PASS: resource exhaustion (100 bogus vars) → graceful error (rc=`p282_rc')"
 
 // ================================================================
@@ -204,10 +308,17 @@ forvalues i = 1/50 {
     local oparens "`oparens'("
     local cparens "`cparens')"
 }
-capture dash `oparens'scatter mpg weight`cparens', saving("_tmp_p283.html")
-local p283_rc = _rc
+// dash reads one level of parentheses as a plot group; what is left is
+// refused by name (measured 24sep2026): the plot type it cannot recognise
+// is the 49 remaining "(" and scatter, r(198).
+tempfile p283log
+_adv_log_run "`p283log'" `"dash `oparens'scatter mpg weight`cparens', saving("_tmp_p283.html")"'
+local p283_rc = r(rc)
 capture erase "_tmp_p283.html"
-assert `p283_rc' != 0
+assert `p283_rc' == 198
+local p283msg = "dash: unrecognised plot type '" + substr("`oparens'", 2, .) + "scatter'."
+cert_log_has "`p283log'", needle("`p283msg'")
+assert r(count) == 1
 display "P2-83 PASS: 50-level nested parens → graceful error (rc=`p283_rc')"
 
 // ================================================================
@@ -220,11 +331,15 @@ display "P2-83 PASS: 50-level nested parens → graceful error (rc=`p283_rc')"
 qui sysuse auto, clear
 dash scatter mpg weight, name(s1)
 // "<script>" is not a valid Stata variable name — expect failure
-capture dash build, saving("_tmp_p284.html") ///
-    filter(<script>alert, type(dropdown)) replace
-local p284_rc = _rc
+// (measured 24sep2026, r(198)).  The refusal names the filter with every
+// character that is not part of a name shown as ?, so the echo is text.
+tempfile p284log
+_adv_log_run "`p284log'" `"dash build, saving("_tmp_p284.html") filter(<script>alert, type(dropdown)) replace"'
+local p284_rc = r(rc)
 capture erase "_tmp_p284.html"
-assert `p284_rc' != 0
+assert `p284_rc' == 198
+cert_log_has "`p284log'", needle("dash build: filter() names '?script?alert', which is not a valid Stata variable name.")
+assert r(count) == 1
 display "P2-84 PASS: JS injection in filter varname rejected (rc=`p284_rc')"
 dash clear
 
@@ -879,6 +994,15 @@ assert r(found) == 1
 // if/in reduce nothing that is exported, so they are not offered.
 cert_file_has "`lg'", needle("if/in")
 assert r(found) == 0
+// Nothing writes "if/in" here -- dash.ado names it only in the comment
+// above _dash_cell_cap, and the refusal came in without it, beside this
+// check (72d94e5) -- and a remedy in other words, "an if qualifier", would
+// pass the search.  So the refusal is held to its
+// whole output: the log holds these two lines and nothing else (measured
+// 24sep2026, 2 lines at linesize 255), so no third remedy can be added in
+// any wording without failing here.
+mata: st_local("p1911n", strofreal(rows(cat(st_local("lg")))))
+assert `p1911n' == 2
 capture confirm file "`p19cf'"
 assert _rc != 0
 quietly datasignature
@@ -2241,8 +2365,18 @@ local p2036t = r(t36)
 display "P20-36: 20,000 points and a 200,000-character label encoded in `p2036t' s"
 assert `p2036t' < 30
 assert "`_pci_err'" == "" & `_pci_n' == 20000 & `_pci_nlab' == 1
+// Exactly what was read in, not a floor.  The 20,000 points alone write
+// 120,001 characters and the label adds its length and 8 more, so "more
+// than 200,000" held for any label of 79,992 characters or longer -- a
+// label cut to 100,000 passed.  The expected list is built from the input:
+// 19,999 [1,2] and the last point with its label and a null clock
+// position (320,009 characters).
+mata: _p2036w = "[" + ("[1,2]," * 19999) + "[1,2," + char(34) + ("x" * 200000) + char(34) + ",null]]"
 mata: st_local("p2036len", strofreal(strlen(st_local("_pci_json"))))
-assert `p2036len' > 200000
+mata: st_local("p2036want", strofreal(strlen(_p2036w)))
+mata: st_local("p2036eq", strofreal(st_local("_pci_json") == _p2036w))
+display "P20-36: `p2036len' characters written, `p2036want' expected"
+assert `p2036len' == `p2036want' & `p2036eq' == 1
 mata: _p2036p = ("0 0 0 1 (3) " * 20000)
 timer clear 37
 timer on 37
@@ -2369,8 +2503,18 @@ display "P22-03: 20,000 arrows and a 200,000-character label encoded in `p2203t'
 assert `p2203t' < 30
 assert "`_pci_err'" == ""
 assert `_pci_n' == 20000
+// "More than 200,000 characters" held with no label at all: the 20,000
+// arrows alone write 200,001.  And the label count was never read.  Both
+// are exact now: one label, and the list built from the input -- 19,999
+// [0,0,0,1] and the last arrow with its label and a null clock position
+// (400,009 characters).
+assert `_pci_nlab' == 1
+mata: _p2203w = "[" + ("[0,0,0,1]," * 19999) + "[0,0,0,1," + char(34) + ("x" * 200000) + char(34) + ",null]]"
 mata: st_local("p2203len", strofreal(strlen(st_local("_pci_json"))))
-assert `p2203len' > 200000
+mata: st_local("p2203want", strofreal(strlen(_p2203w)))
+mata: st_local("p2203eq", strofreal(st_local("_pci_json") == _p2203w))
+display "P22-03: `p2203len' characters written, `p2203want' expected"
+assert `p2203len' == `p2203want' & `p2203eq' == 1
 mata: st_local("p2203cmd", "dash pcarrowi " + ("1 2 3 4 " * 2000) + ", name(p2203)")
 capture dash clear
 _adv_p19_run `"`p2203cmd'"'

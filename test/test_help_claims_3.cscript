@@ -108,11 +108,11 @@ program define _hc3_twice
 end
 _hc3_run `"_hc3_twice, filter(a) filter(b)"'
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("option filter() not allowed")
+cert_log_has "`r(log)'", needle("option filter() not allowed")
 assert r(found) == 1
 _hc3_run `"dash build, saving("`hc3'02.html") replace link(g1) link(g2)"'
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("option link() not allowed")
+cert_log_has "`r(log)'", needle("option link() not allowed")
 assert r(found) == 1
 display "HC3-02 PASS: syntax refuses a repeated option; a second link() is r(198)"
 
@@ -182,15 +182,15 @@ display "HC3-07 PASS: each group keeps its text and its exclude(), saved and ser
 // ----------------------------------------------------------------
 _hc3_run `"dash build, saving("`hc3'08.html") replace filter(foreign, label("a;b")) filter(weight, type(range) exclude(nosuch))"'
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("dash build: filter exclude() name 'nosuch' not found in registry.")
+cert_log_has "`r(log)'", needle("dash build: filter exclude() name 'nosuch' not found in registry.")
 assert r(found) == 1
 _hc3_run `"dash build, saving("`hc3'08.html") replace filter(foreign, label("a;b")) filter(1bad, type(range))"'
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("dash build: filter() names '1bad', which is not a valid Stata variable name.")
+cert_log_has "`r(log)'", needle("dash build: filter() names '1bad', which is not a valid Stata variable name.")
 assert r(found) == 1
 _hc3_run `"dash build, saving("`hc3'08.html") replace filter(foreign, label("a;b")) filter(nosuchvar, type(range))"'
 assert r(rc) == 111
-cert_file_has "`r(log)'", needle("dash build: filter() variable nosuchvar not found.")
+cert_log_has "`r(log)'", needle("dash build: filter() variable nosuchvar not found.")
 assert r(found) == 1
 display "HC3-08 PASS: an unregistered exclude() or a bad name is r(198); a variable not in the data r(111)"
 
@@ -229,6 +229,22 @@ assert r(found) == 1
 display "HC3-11 PASS: a top-level semicolon still separates two filters"
 
 // ----------------------------------------------------------------
+// HC3-11b -- and the variable of the group after the semicolon is
+// exported even when no graph draws it.  HC3-11's second filter is
+// weight, which g1 and g2 draw, so its column reached the page whatever
+// dash build made of the second group; the only other check read
+// dash.ado's text (test_server.py BUG-45-1a, WP-24).  Nothing registered
+// here draws trunk, and tru abbreviates it.
+// ----------------------------------------------------------------
+foreach v in trunk tru {
+    _hc3_run `"dash build, saving("`hc3'11b_`v'.html") replace filter(foreign, type(dropdown) label(Origin); `v', type(range) label(Trunk))"'
+    assert r(rc) == 0
+    cert_file_has "`hc3'11b_`v'.html", needle(`""title":"Trunk","value""')
+    assert r(found) == 1
+}
+display "HC3-11b PASS: the variable of a group after a top-level semicolon is exported, abbreviated or not"
+
+// ----------------------------------------------------------------
 // HC3-12 -- type() may be left out: the widget is a dropdown
 // ----------------------------------------------------------------
 _hc3_run `"dash build, saving("`hc3'12.html") replace filter(foreign)"'
@@ -243,13 +259,13 @@ display "HC3-12 PASS: filter(varname) with no type() is a dropdown, titled by th
 // ----------------------------------------------------------------
 _hc3_run `"dash build, saving("`hc3'13.html") replace filter(foreign, type(checkbox))"'
 assert r(rc) == 0
-// Two needles: the warning follows the renderer's path, and on a long
-// path the log wraps the line before its end.  cert_file_has replaces
-// r(), so the log's name is kept first.
+// The warning follows the renderer's path, so on a long path the log
+// wraps it before its end; cert_log_has searches the line with the wrap
+// undone, so the whole sentence is one needle.  (It used to be two, and
+// "no widget was built." ends three of the renderer's warnings.)  The
+// helpers replace r(), so the log's name is kept first.
 local hc3log "`r(log)'"
-cert_file_has "`hc3log'", needle("filter(foreign, type(checkbox)): type() must be one of")
-assert r(found) == 1
-cert_file_has "`hc3log'", needle("no widget was built.")
+cert_log_has "`hc3log'", needle("filter(foreign, type(checkbox)): type() must be one of dropdown, range, slider; no widget was built.")
 assert r(found) == 1
 cert_file_has "`hc3'13.html", needle(`""options":[["__all__","All"]"')
 assert r(found) == 0
@@ -260,7 +276,7 @@ display "HC3-13 PASS: an unknown type() is named in a warning and builds no widg
 // ----------------------------------------------------------------
 _hc3_run `"dash build, saving("`hc3'14.html") replace filter(foreign, type(dropdown) bogus(1) width(3))"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("filter() sub-option(s) not implemented and ignored: bogus(1) width(3)")
+cert_log_has "`r(log)'", needle("filter() sub-option(s) not implemented and ignored: bogus(1) width(3)")
 assert r(found) == 1
 cert_file_has "`hc3'14.html", needle(`""title":"Car origin","options":[["__all__","All"]"')
 assert r(found) == 1
@@ -277,7 +293,7 @@ forvalues i = 1/21 {
 }
 _hc3_run `"dash build, saving("`hc3'15.html") replace `f21'"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("21 filters, more than the 20 a dashboard builds; the first 20 are built.")
+cert_log_has "`r(log)'", needle("21 filters, more than the 20 a dashboard builds; the first 20 are built.")
 assert r(found) == 1
 cert_file_has "`hc3'15.html", needle(`""title":"F20 "')
 assert r(found) == 1
@@ -290,7 +306,7 @@ display "HC3-15 PASS: twenty filters are built and the rest named in a note"
 // ----------------------------------------------------------------
 _hc3_run `"dash build, saving("`hc3'16.html") replace filter(fore, type(dropdown))"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("not in the data")
+cert_log_has "`r(log)'", needle("not in the data")
 assert r(found) == 0
 cert_file_has "`hc3'16.html", needle(`""title":"Car origin","options":[["__all__","All"]"')
 assert r(found) == 1
@@ -304,12 +320,28 @@ _hc3_run `"dash build, saving("`hc3'17.html") replace link(k1 g1)"'
 assert r(rc) == 0
 _hc3_run `"dash build, saving("`hc3'17b.html") replace tabs(A: g1 nosuch / B: g2 / C: nosuch2)"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("nosuch")
+cert_log_has "`r(log)'", needle("nosuch")
 assert r(found) == 0
 cert_file_has "`hc3'17b.html", needle(`""title":"C""')
 assert r(found) == 0
+// Tab C is missing because its only name is unknown, not because no tab
+// was built: A and B are there, two TabPanel models and no third.
+// Nothing checked that (24sep2026), and tabs() dropped under layout(auto)
+// -- as it once was, byte-identical page and rc 0 -- left "C" absent too.
+cert_file_count "`hc3'17b.html", needle(`""name":"TabPanel""')
+assert r(count) == 2
+cert_file_count "`hc3'17b.html", needle(`""title":"A""')
+assert r(count) == 1
+cert_file_count "`hc3'17b.html", needle(`""title":"B""')
+assert r(count) == 1
 dash build, saving("`hc3'17c.html") replace
 assert "$dash_opts_layout" == "auto"
+// The control: the same registry built without tabs() holds none of those
+// needles, so neither the inlined BokehJS nor any other model matches them.
+foreach hc3n in `""name":"TabPanel""' `""title":"A""' `""title":"B""' {
+    cert_file_count "`hc3'17c.html", needle(`"`hc3n'"')
+    assert r(count) == 0
+}
 display "HC3-17 PASS: link() takes a KPI name, tabs() skips unknown names, layout() is auto by default"
 
 // ----------------------------------------------------------------

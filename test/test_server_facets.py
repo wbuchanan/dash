@@ -213,6 +213,15 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
                 "%s: served panel %r has no glyph" % (ptype, f.title.text))
         assert not [w for w in warns if "no glyph mapper" in w], warns
 
+    def test_the_no_glyph_mapper_needle_is_live(self, tmp_path):
+        """Positive control for the absence check above: an unknown plot
+        type must actually emit "no glyph mapper", or that check could never
+        fire (measured 24sep2026 -- the phrase is dash_render.py's own)."""
+        spec = by_spec("scatter")
+        spec["graphs"][0]["plots"][0]["type"] = "notaplottype"
+        _, _, warns = served(tmp_path, spec)
+        assert [w for w in warns if "no glyph mapper" in w], warns
+
     @pytest.mark.parametrize("ptype", ["scatter", "lfitci", "rarea", "pci",
                                        "function", "histogram", "pcspike",
                                        "rscatter"])
@@ -221,7 +230,11 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
         std = profiles_std(tmp_path, spec)
         srv = profiles_srv(tmp_path, spec)
         assert std == srv, "%s: saved %s, served %s" % (ptype, std, srv)
-        assert [p["title"] for p in srv][-1] == "Total"
+        # by(foreign, total) draws three panels -- the two levels then the
+        # pooled Total.  Checking only that the LAST title is "Total" passed
+        # a run that dropped a level panel; pin the whole sequence.
+        assert [p["title"] for p in srv] == ["Domestic", "Foreign", "Total"], (
+            [p["title"] for p in srv])
 
     def test_two_by_variables_agree(self, tmp_path):
         spec = by_spec("scatter", by="foreign rep")
@@ -536,6 +549,11 @@ class TestAnUnimplementedBySuboptionIsNamed:
 class TestTheGeneratedAppHasOneDispatch:
     def test_no_facet_chain_remains(self, tmp_path):
         src = app_source(tmp_path, by_spec("scatter"))
+        # Positive control: the app must carry the ONE shared dispatch that
+        # replaced the hand-written facet branches, or the absence of the
+        # old markers proves only that the app is empty.
+        assert "_dash_figure_for(" in src
+        assert src.count("for pi, plot in enumerate(plots):") == 1
         for marker in ("_fac_fig.scatter(", "_tot_fig.scatter(",
                        "size=6, color=color", "width=0.8, color=color",
                        "legend_label=f'lfit", "_fac_gdf", "_tot_src"):
@@ -544,6 +562,10 @@ class TestTheGeneratedAppHasOneDispatch:
                 "branch: %r" % marker)
 
     def test_the_plot_loop_is_written_once(self, tmp_path):
+        """A structural guard over the app's text, deliberately: ONE plot
+        loop, through _dash_figure_for, for a graph and each of its panels.
+        A second, equal loop draws the same panels, so no drawing shows it
+        until the two drift; the drawing is this module's other classes."""
         src = app_source(tmp_path, by_spec("scatter"))
         assert src.count("for pi, plot in enumerate(plots):") == 1, (
             "more than one plot loop in the generated app")

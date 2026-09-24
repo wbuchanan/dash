@@ -112,9 +112,9 @@ class TestMapPccapsym:
         assert dots.glyph.size == gm.scheme.default_marker_size(1)
 
     def test_line_options_style_the_spike_and_not_the_markers(self):
-        gm, _, (seg, dots) = self._draw({"lcolor": "navy", "lwidth": "thick",
+        gm, _, (seg, dots) = self._draw({"lcolor": "magenta", "lwidth": "thick",
                                          "lpattern": "dash"})
-        assert seg.glyph.line_color == "#1a476f"
+        assert seg.glyph.line_color == "#ff00ff"
         assert seg.glyph.line_width == gm.tr.translate_lwidth("thick")
         assert list(seg.glyph.line_dash) == list(gm.tr.translate_lpattern("dash"))
         # twoway: lcolor() and lwidth() are the spike's; the marker outline
@@ -236,13 +236,13 @@ class TestMapPcarrowi:
 
     def test_it_honours_the_options_pcarrow_honours(self):
         gm, fig, (seg,), _ = self._draw([[0, 0, 1, 1]],
-                                        {"lcolor": "navy", "lwidth": "thick",
+                                        {"lcolor": "magenta", "lwidth": "thick",
                                          "lpattern": "dash"})
-        assert seg.glyph.line_color == "#1a476f"
+        assert seg.glyph.line_color == "#ff00ff"
         assert seg.glyph.line_width == gm.tr.translate_lwidth("thick")
         assert list(seg.glyph.line_dash) == list(gm.tr.translate_lpattern("dash"))
         (head,) = fig.select({"type": Arrow})
-        assert head.line_color == "#1a476f"
+        assert head.line_color == "#ff00ff"
 
     def test_the_default_colour_is_pcarrows(self):
         gm, _, (seg,), _ = self._draw([[0, 0, 1, 1]], color_idx=3)

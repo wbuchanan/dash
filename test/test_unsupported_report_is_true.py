@@ -219,8 +219,16 @@ class TestTheListIsCoveredAndHonest:
         )
 
     def test_the_blocks_were_actually_found(self):
-        assert len(_plot_pending()) > 5
-        assert len(_graph_pending()) > 5
+        """Guards the guard: the pending-list scanner still finds its blocks
+        in dash.ado, so the tests that use its lists cannot pass on
+        nothing."""
+        # Exact counts, measured 24sep2026: _dash_parse_plot_opts names 44
+        # pending options and _dash_parse_graph_opts 23.  `> 5' passed after
+        # a refactor dropped most of a block from the regex's reach, which
+        # would turn every "reported unsupported really is" case below into
+        # a silent no-op.
+        assert len(_plot_pending()) == 44, sorted(_plot_pending())
+        assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -303,6 +311,13 @@ def test_the_y_axis_family_was_actually_found():
 
 @pytest.mark.parametrize("flag", _ymode_flags() or ["NOT_FOUND"])
 def test_a_histogram_y_axis_flag_is_never_reported_unsupported(flag):
+    """A structural guard, deliberately: every flag the RENDERER reads,
+    taken from its own source, is off dash.ado's pending list -- so a
+    fifth flag added to the renderer cannot be left on it.  The behaviour
+    for today's four is test_statistical_options.cscript SO-97..100, which
+    runs `dash histogram mpg, <flag>' and requires no note and the flag in
+    the registry (measured, WP-24: density put back on the list fails
+    SO-97)."""
     assert flag not in _plot_pending(), (
         f"_histogram_grid reads {flag}() and sets the y axis from it, but "
         f"dash.ado still names {flag}() in the ignoring-unsupported note"
@@ -538,8 +553,15 @@ def _graph_live():
 
 class TestEveryDeclaredOptionIsClassified:
     def test_the_syntax_blocks_were_actually_found(self):
-        assert len(_declared_plot()) >= 130
-        assert len(_declared_graph()) >= 60
+        """Guards the guard: the syntax-block scanner still finds dash.ado's
+        declarations, so the classification below cannot pass on
+        nothing."""
+        # Exact, measured 24sep2026: the plot syntax block declares 155
+        # options and the graph block 64.  The `>= 130'/`>= 60' floors let a
+        # syntax block shrink by twenty options -- silently un-classifying
+        # them -- and still pass.
+        assert len(_declared_plot()) == 155, len(_declared_plot())
+        assert len(_declared_graph()) == 64, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no
@@ -554,11 +576,19 @@ class TestEveryDeclaredOptionIsClassified:
             f"_dash_pending block and PLOT_VALUES)")
 
     def test_no_option_is_both_pending_and_live(self):
+        """A structural guard over dash.ado's text and this file's tables,
+        deliberately: no option is both named as ignored and expected to
+        work.  For density -- the default, so a render cannot tell --
+        this and test_a_histogram_y_axis_flag_is_never_reported_unsupported
+        are the text-level half of SO-97."""
         both = sorted(set(LIVE_VALUES)
                       & (set(_plot_pending()) | set(_graph_pending())))
         assert not both, f"reported as ignored AND expected to work: {both}"
 
     def test_every_live_option_is_still_declared(self):
+        """Table hygiene, deliberately over text: LIVE_VALUES names only
+        options dash.ado still declares, so the render-diff tests driven by
+        it are not probing options that no longer exist."""
         declared = set(_declared_plot()) | set(_declared_graph())
         gone = sorted(set(LIVE_VALUES) - declared)
         assert not gone, f"LIVE_VALUES names options dash.ado no longer declares: {gone}"

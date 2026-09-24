@@ -37,8 +37,12 @@ import pytest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
+# test/ as well, before conftest is imported: once, here, rather than inside
+# each helper after an import that needed it (test_security_surface_alone.py).
+sys.path.insert(0, _HERE)
 
 import dash_render as dr
+from conftest import make_data_json  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -52,8 +56,6 @@ class TestServeBindsLoopbackByDefault:
         import json
         import warnings
         import pandas as pd
-        sys.path.insert(0, _HERE)
-        from conftest import make_data_json
         sp = tmp_path / "s.json"
         dp = tmp_path / "d.json"
         sp.write_text(json.dumps({
@@ -254,9 +256,6 @@ def _build_served_module(tmp_path, spec, df):
     document.  A payload that executes therefore fires at import, before any
     assertion -- which is exactly what the file-marker pins rely on.
     """
-    from conftest import make_data_json
-    if _HERE not in sys.path:
-        sys.path.insert(0, _HERE)
     tag = next(_APP_SEQ)
     sp = tmp_path / f"sec_s_{tag}.json"
     dp = tmp_path / f"sec_d_{tag}.json"
@@ -566,12 +565,9 @@ class TestTheIfQualifierWhitelist:
         saved = dr._validate_if_expr
         dr._validate_if_expr = lambda e, c: True
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                try:
-                    dr._dash_qualified_frame(df, "@_tr205_if_sentinel()", "")
-                except Exception:
-                    pass
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                out = dr._dash_qualified_frame(df, "@_tr205_if_sentinel()", "")
         finally:
             dr._validate_if_expr = saved
             del dr._tr205_if_sentinel
@@ -579,6 +575,14 @@ class TestTheIfQualifierWhitelist:
             "the payload did not run even with the validator disabled, so "
             "this control proves nothing about the validator"
         )
+        # The call used to sit in `except Exception: pass'.  Nothing raises
+        # (measured 24sep2026): pandas cannot use the payload's True as a
+        # row mask, so the frame comes back whole and the skip is reported,
+        # which is _dash_qualified_frame's contract for any qualifier it
+        # cannot apply.
+        assert len(out) == len(df)
+        assert any("if_expr filter skipped" in str(w.message)
+                   for w in caught), [str(w.message) for w in caught]
 
     def test_a_hostile_per_graph_if_does_not_execute_when_served(self, tmp_path):
         """The served app copies _dash_qualified_frame; a graph-level `if'
@@ -771,9 +775,6 @@ class TestAColourNeverBreaksOutOfItsRule:
 
     def test_a_hostile_bgcolor_does_not_reach_the_rendered_card(self, tmp_path):
         """End to end: the payload must be absent from the saved HTML."""
-        import pandas as pd
-        sys.path.insert(0, os.path.join(_HERE, ".."))
-        from conftest import make_data_json
         spec = _sec_spec(
             [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
             kpis=[{"name": "k1", "stat": "mean", "var": "y", "fmt": "%9.1f",
@@ -919,7 +920,6 @@ class TestTheGeneratedAppBindsLoopbackAtRuntime:
 # User text is echoed as text (WP-20, P20-01..14 and P20-29)
 # ---------------------------------------------------------------------------
 _ADO = os.path.join(_HERE, "..", "dash.ado")
-_MATA = os.path.join(_HERE, "..", "dash_parse.mata")
 _SETUP = os.path.join(_HERE, "..", "dash_setup.ado")
 
 # Locals that hold what the user typed, in the programs that echo them: an
@@ -991,16 +991,14 @@ class TestUserTextIsEchoedAsText:
         assert found[3] == {"saving"}
         assert found[5] == {"_safe"}
 
-    def test_the_echo_helper_is_in_the_library_dash_requires(self):
-        with open(_MATA, encoding="utf-8") as fh:
-            mata = fh.read()
-        with open(_ADO, encoding="utf-8") as fh:
-            ado = fh.read()
-        for fn in ("_dash_say", "_dash_is_digits", "_dash_layout_cells",
-                   "_dash_layout_refusal"):
-            assert re.search(r"^\S.*\b%s\(" % fn, mata, re.M), fn
-            block = ado[ado.index("local _needed"):ado.index("quietly capture mata: mata describe _dash_check_utf8()")]
-            assert fn in block, f"{fn} is not in _dash_require_mata's list"
+    # test_the_echo_helper_is_in_the_library_dash_requires asserted that four
+    # WP-20 helpers (_dash_say among them) appeared in the TEXT of
+    # _dash_require_mata's list.  test_mata_library_guard.cscript runs the
+    # guard instead (WP-24): MLG-03..06 refuse a library lacking any one of
+    # the functions dash.ado calls, the four included, and name it.  Run,
+    # the list was one short (_dash_path_badchar) and the guard passed any
+    # library in memory that still held _dash_check_utf8() -- neither of
+    # which the text test could see.
 
     def test_port_and_timeout_are_not_proven_by_a_regex(self):
         """StataNow's regexm() matches ^[0-9]+$ against "7" + char(10)."""

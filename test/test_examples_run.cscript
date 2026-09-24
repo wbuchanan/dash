@@ -10,9 +10,9 @@
 *!
 *! Project rule 4 asks for end-to-end tests proving a user can use every
 *! feature without error.  examples/ is exactly that corpus -- between them
-*! the eleven do-files exercise every plot type, KPIs, filters, linking,
-*! tabs, faceting, both layouts, dates and the Bootstrap grid -- and nothing
-*! ran them.
+*! the do-files (eleven then, twelve on 24sep2026) exercise every plot type,
+*! KPIs, filters, linking, tabs, faceting, both layouts, dates and the
+*! Bootstrap grid -- and nothing ran them.
 *!
 *! Measured on 2026-09-19, the first time they were run as a set:
 *! examples/comprehensive_demo.do aborted with
@@ -59,7 +59,11 @@ local files : list sort files
 local nfiles : word count `files'
 
 // A corpus that has silently emptied would otherwise pass this script.
-assert `nfiles' >= 10
+// Exactly, not at least: the floor this was, 10, let two of the twelve
+// examples go missing with the certificate still green, and EX-01 below
+// only holds for whatever files are left.  Adding or removing an example
+// changes this count on purpose.
+assert `nfiles' == 12
 display "EX-00 PASS: `nfiles' example do-files found"
 
 local n_ok  = 0

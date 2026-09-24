@@ -31,6 +31,7 @@ in Stata with the command recorded beside it.
 """
 import json
 import os
+import re
 import sys
 import tempfile
 
@@ -231,17 +232,30 @@ class TestEveryStatisticMatchesStata:
             f"{stat} is not supported; expected {want:.6f}"
         )
 
-    def test_dcount_returns_a_number(self, truth, auto):
-        """codebook leaves r() empty, so dcount has always been missing."""
-        want = float(truth["dcount"]["truth"]["make_distinct"]) \
-            if "make_distinct" in truth["dcount"].get("truth", {}) else None
-        dr = _render_kpi(auto, stat="dcount", var="mpg", fmt="%9.0f")
+    @pytest.mark.parametrize("key,missing_rows", [
+        ("mpg_distinct_nonmissing", 0),
+        ("mpg_missing_in_1_5_distinct_nonmissing", 5),
+    ])
+    def test_dcount_returns_a_number(self, truth, auto, key, missing_rows):
+        """codebook leaves r() empty, so dcount has always been missing.
+
+        Compared with Stata's own count now.  This read a fixture key,
+        ``make_distinct``, that does not exist, so its "want" was always
+        None and unused, and it compared the card with pandas' nunique --
+        the renderer's own arithmetic, checked against itself.  With the
+        first five mpg values missing, Stata counts 21 distinct values, 22
+        if missing counted as one: dcount must not count it.
+        """
+        entry = truth["dcount"]["truth"][key]
+        want = int(entry["value"])
+        df = auto.copy()
+        df.loc[df.index[:missing_rows], "mpg"] = np.nan
+        dr = _render_kpi(df, stat="dcount", var="mpg", fmt="%9.0f")
         text = _card_text(dr)
-        assert "." not in text.replace("<div", "").replace("</div", "") \
-            or any(ch.isdigit() for ch in text), text[:200]
-        assert str(int(auto["mpg"].nunique())) in text, (
-            f"dcount showed no usable value; card: {text[:200]}"
-        )
+        shown = re.findall(r'id="kpi_val_k1"[^>]*>([^<]*)<', text)
+        assert shown == [str(want)], (
+            f"dcount shows {shown}; Stata's `{entry['cmd']}' gives {want}; "
+            f"card: {text[:300]}")
 
 
 # ======================================================================

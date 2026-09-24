@@ -269,6 +269,38 @@ dash build, saving("`outpath5'") server replace
 cert_file_has "`outpath5'", needle("allow_websocket_origin")
 local found_wso = r(found)
 assert `found_wso' == 1
+
+// The needle cannot see the keyword argument go.  The generator also writes
+// allow_websocket_origin into _dash_server_app's docstring and into a
+// comment in its body, so with the argument deleted the search
+// above still finds it (measured 24sep2026), and the value -- which origins
+// the websocket admits -- is never read.  So the app's own launcher is run
+// with Server replaced by a recorder: nothing binds a port, and what Server
+// would have been handed is read back.  The origins must be exactly the two
+// spellings of loopback on the port asked for.
+local p482app "`outpath5'"
+global ZSRV_WSO ""
+python:
+import importlib.util
+import sfi
+
+try:
+    _p482s = importlib.util.spec_from_file_location(
+        "_test_serve_p482", sfi.Macro.getLocal("p482app"))
+    _p482m = importlib.util.module_from_spec(_p482s)
+    _p482s.loader.exec_module(_p482m)
+    _p482kw = {}
+    _p482m.Server = lambda *a, **k: _p482kw.update(k)
+    _p482m._dash_server_app(port=5006)
+    sfi.Macro.setGlobal("ZSRV_WSO", repr(_p482kw.get("allow_websocket_origin")))
+    del _p482s, _p482m, _p482kw
+except Exception as _p482e:
+    sfi.Macro.setGlobal("ZSRV_WSO", "error: " + repr(_p482e))
+end
+local p482wso `"$ZSRV_WSO"'
+macro drop ZSRV_WSO
+display `"P4-82: the launcher hands Server allow_websocket_origin=`p482wso'"'
+assert `"`p482wso'"' == `"['localhost:5006', '127.0.0.1:5006']"'
 display "P4-82 PASS: generated .py contains 'allow_websocket_origin'"
 
 dash clear
@@ -293,30 +325,57 @@ dash build, saving("`outpath6'") server replace
 // script would have run off the end reporting success without ever calling
 // make_document.  Run it at the top level and let Python report its own
 // failure through a global.
+//
+// "Has roots" could not fail: the served app always adds one root, its
+// layout, whatever went into it -- measured 24sep2026, with the KPI left
+// out of that layout make_document still added one root.  What was
+// registered is checked instead: one root, one figure drawing one Scatter
+// of mpg against weight over the 74 observations, and one KPI card, k1's,
+// titled Avg MPG and reading the mean as Stata's %9.1f writes it.
+quietly summarize mpg
+local p483mean : display %9.1f r(mean)
+local p483mean = strtrim("`p483mean'")
 local make_doc_rc = 0
 global ZSRV_MAKEDOC_RC "0"
 python:
 import importlib.util, sys
+import re
 import sfi
 from bokeh.document import Document
+from bokeh.models import Div, GlyphRenderer, Plot, Scatter
 
 try:
     _spec = importlib.util.spec_from_file_location("_test_serve_app", r"`outpath6'")
     _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
-
     _doc = Document()
     _mod.make_document(_doc)
-    assert len(_doc.roots) > 0, "make_document produced no roots"
-    del _spec, _mod, _doc
-except Exception:
+    assert len(_doc.roots) == 1, "make_document produced %d roots" % len(_doc.roots)
+    _figs = [m for m in _doc.models if isinstance(m, Plot)]
+    _rends = [m for m in _doc.models if isinstance(m, GlyphRenderer)]
+    _divs = [m for m in _doc.models if isinstance(m, Div)]
+    assert len(_figs) == 1, "%d figures" % len(_figs)
+    assert len(_rends) == 1 and isinstance(_rends[0].glyph, Scatter), \
+        "renderers: %r" % [type(r.glyph).__name__ for r in _rends]
+    _g = _rends[0].glyph
+    # A live document keeps the column name as given; a decoded one, as a field.
+    assert tuple(getattr(v, "field", v) for v in (_g.x, _g.y)) == \
+        ("weight", "mpg"), (_g.x, _g.y)
+    assert len(_rends[0].data_source.data["weight"]) == 74, "not 74 rows"
+    assert len(_divs) == 1, "%d Divs" % len(_divs)
+    _kv = re.findall(r'<div id="kpi_val_([^"]*)"[^>]*>([^<]*)</div>', _divs[0].text)
+    assert _kv == [("k1", sfi.Macro.getLocal("p483mean"))], "card: %r" % _kv
+    assert ">Avg MPG</div>" in _divs[0].text, "the card has no title Avg MPG"
+    del _spec, _mod, _doc, _figs, _rends, _divs, _g, _kv
+except Exception as _p483e:
+    print("P4-83: " + repr(_p483e))
     sfi.Macro.setGlobal("ZSRV_MAKEDOC_RC", "1")
 end
 local make_doc_rc = $ZSRV_MAKEDOC_RC
 macro drop ZSRV_MAKEDOC_RC
 
 assert `make_doc_rc' == 0
-display "P4-83 PASS: make_document callable with Bokeh Document; has roots"
+display "P4-83 PASS: make_document builds one root holding the registered scatter and KPI card"
 
 dash clear
 
@@ -333,5 +392,5 @@ display "  P4-78: dash build server → .py file created"
 display "  P4-79: generated .py passes ast.parse()"
 display "  P4-80: generated .py contains make_document"
 display "  P4-81: generated .py contains Server"
-display "  P4-82: generated .py contains allow_websocket_origin"
-display "  P4-83: make_document callable; Document has roots"
+display "  P4-82: generated .py contains allow_websocket_origin; Server admits localhost and 127.0.0.1 only"
+display "  P4-83: make_document builds the registered scatter and KPI card"

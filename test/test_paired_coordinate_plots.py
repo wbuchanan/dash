@@ -20,7 +20,15 @@ dash.ado routed it through the literal-coordinate parser it uses for
 
 which is not even valid JSON: the variable names are bare identifiers inside
 an array. It is now parsed as the four-variable plot it is, alongside
-pcspike, pcarrow and pcbarrow.
+pcspike, pcarrow and pcbarrow.  That half is Stata's, and is certified by
+running it: test_parser.cscript P1A-56 hands `pcscatter mpg weight turn
+length' to dash.ado's own segment parser and requires the four keys y1var,
+x1var, y2var and x2var in the JSON it writes -- measured (WP-24) to fail
+when pcscatter is moved back to the literal family.  This file used to
+check the routing by reading dash.ado as text for the family each parser's
+branch names; P1A-56 fails on the same change, so those two source-shape
+tests were removed rather than kept as a second, weaker copy.  The tests
+below are the renderer's half: the spec as dash.ado writes it draws.
 
 `pci` takes literal coordinates -- `pci 20 3000 30 4000' -- which dash.ado
 then wrote as `"values":[[20,3000],[30,4000]]'. The renderer had no branch
@@ -133,41 +141,3 @@ class TestEveryPairedCoordinateTypeDraws:
     def test_no_values_draws_nothing_without_raising(self):
         fig = _render({"type": "pci", "values": [], "options": {}})
         assert isinstance(len(fig.renderers), int)
-
-
-def _branch_family(src, parser):
-    """The plot types the branch that calls *parser* is chosen for.
-
-    Since WP-22 (TR-22.4) each branch tests a family list,
-    `` `: list ptype in _pt_pc' ``, defined once in
-    ``_dash_plottype_families``, rather than a string inlist() of names --
-    so the names are read from the family the branch names."""
-    import re
-    i = src.index(parser + " `varpart'")
-    fams = re.findall(r"`: list ptype in (_pt_\w+)'", src[max(0, i - 300):i])
-    assert fams, f"the branch calling {parser} is not chosen by a family list"
-    m = re.search(r'^\s*c_local\s+%s\s+"([^"]*)"' % re.escape(fams[-1]),
-                  src, re.M)
-    assert m, f"family {fams[-1]} is not defined"
-    return m.group(1).split()
-
-
-class TestDashAdoRoutesPcscatterAsVariables:
-    def test_pcscatter_is_parsed_with_the_four_variable_types(self):
-        with open(os.path.join(_HERE, "..", "dash.ado"),
-                  encoding="utf-8") as fh:
-            src = fh.read()
-        assert "pcscatter" in _branch_family(src, "_dash_parse_varpart_4v"), (
-            "pcscatter is still routed to the literal-coordinate parser, so "
-            "its variable names are written into the spec as bare "
-            "identifiers inside a JSON array"
-        )
-
-    def test_pcscatter_is_not_in_the_literal_list(self):
-        with open(os.path.join(_HERE, "..", "dash.ado"),
-                  encoding="utf-8") as fh:
-            src = fh.read()
-        assert "pcscatter" not in _branch_family(src,
-                                                 "_dash_parse_varpart_any"), (
-            "pcscatter takes four variables, not literal coordinates"
-        )

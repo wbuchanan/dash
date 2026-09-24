@@ -141,24 +141,185 @@ def cscript(request):
         return request.param, fh.read()
 
 
+def _read(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+# The guards below keyed on literal text -- "capture python: pass",
+# "capture python:", "SKIP: Python not available" -- and every one of them
+# let the same command or message through in another spelling (measured
+# 24sep2026): `cap python: pass' is Stata's own abbreviation, and seven
+# scripts say "SKIP: no Python is linked to this Stata.", so the setting
+# check skipped them.  One reading of each, self-tested below.
+
+#: `capture' in every spelling Stata accepts, cap to capture.
+_CAP = r"\bcap(?:t(?:u(?:r(?:e)?)?)?)?\s+"
+#: Any quietly/noisily prefixes after it, in every spelling.
+_QN = (r"(?:(?:qui(?:e(?:t(?:l(?:y)?)?)?)?|n(?:o(?:i(?:s(?:i(?:l(?:y)?)?)?)?)?)?)"
+       r"\s+)*")
+#: A bare warm-up call, `capture python: pass'.
+_WARM_UP = re.compile(_CAP + _QN + r"python\s*:\s*pass\b")
+#: A captured python one-liner as the import-probe rule counts one: capture
+#: directly before `python:', as the literal it replaces.  Not `capture
+#: noisily python:', which the rule has never read as a probe (SVG-05 in
+#: test_setup_version_gate.cscript is one, after its own warm-up).
+_CAPTURED_PY = re.compile(_CAP + r"python\s*:")
+#: Any captured python call at all: a one-liner or `python query'.
+_ANY_CAPTURED_PY = re.compile(_CAP + _QN + r"python\b")
+#: A script's message that it skipped for want of Python.  Two wordings are
+#: in use: "SKIP: Python not available" (35 scripts) and "SKIP: no Python is
+#: linked to this Stata." (7).
+_SKIPS_FOR_PYTHON = re.compile(r"SKIP[^\"\n]*\bPython\b")
+#: A script's words for "Python is missing", in either wording.
+_SAYS_NO_PYTHON = re.compile(r"(?i)\bpython\b[^\"\n]*\bnot\b|\bno\s+python\b")
+#: A shipped ado file's words for it ("Python is not available to Stata.").
+_ADO_SAYS_NO_PYTHON = re.compile(r"(?i)not available|python is not"
+                                 r"|\bno\s+python\b")
+
+
+def _decides_from_a_warm_up(lines, says):
+    """1-based numbers of the lines that hold a bare warm-up call followed,
+    within four lines, by *says*: "Python is missing" concluded from the rc
+    of a call that fails under the runner whatever Python's state."""
+    bad = []
+    for i, line in enumerate(lines):
+        if not _WARM_UP.search(line):
+            continue
+        if says.search("\n".join(lines[i + 1:i + 5])):
+            bad.append(i + 1)
+    return bad
+
+
+def _import_probes(src):
+    """``(probes, bad)``: the 0-based lines of every captured python call
+    that imports, and the 1-based lines of those with no warm-up and retry
+    -- fewer than three captured python calls in the six lines around."""
+    code = [l.split("//", 1)[0] for l in src.splitlines()]
+    probes = [i for i, l in enumerate(code)
+              if _CAPTURED_PY.search(l) and "import" in l]
+    bad = [i + 1 for i in probes
+           if len(_CAPTURED_PY.findall(
+               "\n".join(code[max(0, i - 3):i + 3]))) < 3]
+    return probes, bad
+
+
+class TestTheGuardReadersReadEverySpelling:
+    """The readers above, on text they must and must not flag."""
+
+    def test_a_warm_up_that_decides_python_is_missing_is_flagged(self):
+        for text in (
+                'capture python: pass\nif _rc {\n'
+                '    display as error "SKIP: Python not available"\n'
+                '    exit 222\n}\n',
+                'cap python: pass\nif _rc {\n'
+                '    display as text "SKIP: no Python is linked to this '
+                'Stata."\n}\n',
+                'capture quietly python: pass\n'
+                'if _rc display "SKIP: Python is not configured"\n'):
+            assert _decides_from_a_warm_up(text.splitlines(),
+                                           _SAYS_NO_PYTHON) == [1], text
+
+    def test_a_warm_up_before_a_real_probe_is_not(self):
+        text = ('if `"`c(python_exec)\'"\' == "" {\n'
+                '    display as error "SKIP: Python not available."\n'
+                '    exit 222\n}\n'
+                'capture python: pass\n'
+                'capture python: import bokeh\n'
+                'if _rc != 0 capture python: import bokeh\n'
+                'if _rc != 0 {\n'
+                '    display as error "SKIP: bokeh not installed."\n}\n')
+        assert _decides_from_a_warm_up(text.splitlines(),
+                                       _SAYS_NO_PYTHON) == []
+
+    def test_the_ado_wording_is_flagged(self):
+        text = ('capt python: pass\nif _rc {\n'
+                '    display as error "Python is not available to Stata."\n'
+                '}\n')
+        assert _decides_from_a_warm_up(text.splitlines(),
+                                       _ADO_SAYS_NO_PYTHON) == [1]
+
+    def test_an_import_probe_needs_a_warm_up_and_a_retry(self):
+        bare = ('cap python: import bokeh\nif _rc {\n'
+                '    display "SKIP: bokeh not installed"\n}\n')
+        assert _import_probes(bare) == ([0], [1])
+        good = ('capt python: pass\ncap python: import bokeh\n'
+                'if _rc != 0 capture python: import bokeh\n')
+        assert _import_probes(good) == ([1, 2], [])
+        # SVG-05's shape: an operation after a warm-up, not a probe.
+        assert _import_probes('capture python: pass\ncapture noisily '
+                              'python: from x import y; z = 1\n') == ([], [])
+
+    def test_every_spelling_of_a_captured_python_call_is_seen(self):
+        for text in ("capture python: pass", "cap python: pass",
+                     "capture noisily python: pass", "capt python query",
+                     "cap qui python: import bokeh"):
+            assert _ANY_CAPTURED_PY.search(text), text
+        assert not _ANY_CAPTURED_PY.search('display "python: pass"')
+
+    def test_a_python_command_is_read_in_every_prefix_spelling(self):
+        """The in-string macro rule reads python: commands through _PREFIX;
+        a spelling it did not strip hid the whole command."""
+        for prefix in ("", "capture ", "capt ", "cap noisily ",
+                       "capture n ", "quie ", "qui cap "):
+            cmds = _python_command_sources(prefix + 'python: x = "`m\'"\n')
+            assert len(cmds) == 1, prefix
+            assert _macros_inside_string_literals(cmds[0][1]) == {"m"}, prefix
+
+    def test_both_skip_wordings_are_read(self):
+        for text in ('display as error "SKIP: Python not available"',
+                     'display as text "SKIP: no Python is linked to this '
+                     'Stata."'):
+            assert _SKIPS_FOR_PYTHON.search(text), text
+        assert not _SKIPS_FOR_PYTHON.search(
+            'display as error "SKIP: jsonio not installed."')
+
+
+class TestTheChecksReachEveryScript:
+    """A per-script check that finds nothing to check passes.  These pin how
+    much each reader finds, measured 24sep2026."""
+
+    def test_the_glob_finds_every_script(self):
+        # 63 certification scripts, each also named by run_all_cscripts.do
+        # (59, and WP-24's test_bug_regressions, test_program_coverage,
+        # test_qualifier_literals and test_mata_library_guard).  An empty
+        # glob would leave every per-script test above with no parameters,
+        # and pytest reports that as a skip, not a failure.
+        assert len(_CSCRIPTS) == 63, (
+            f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
+        )
+
+    def test_every_script_that_skips_for_python_is_read(self):
+        names = {_name(p) for p in _CSCRIPTS
+                 if _SKIPS_FOR_PYTHON.search(_read(p))}
+        linked = {"test_custom_scheme.cscript", "test_help_claims_2.cscript",
+                  "test_help_claims_8.cscript", "test_nodraw_honoured.cscript",
+                  "test_option_validation.cscript",
+                  "test_statistical_options.cscript",
+                  "test_suboption_reporting.cscript"}
+        assert linked <= names, sorted(linked - names)
+        # 42, and three of WP-24's new scripts: test_mata_library_guard
+        # runs no Python.
+        assert len(names) == 45, f"{len(names)}: {sorted(names)}"
+
+    def test_the_import_probes_are_found(self):
+        with_probes = [_name(p) for p in _CSCRIPTS
+                       if _import_probes(_read(p))[0]]
+        # 11, and WP-24's test_bug_regressions and test_setup_honesty
+        # (HON-19..25 probe the four packages dash_setup checks).
+        assert len(with_probes) == 13, with_probes
+
+
 class TestTheAvailabilityGuardIsReliable:
 
     def test_no_script_probes_python_by_executing_it(self, cscript):
         path, src = cscript
         code = "\n".join(l.split("//", 1)[0] for l in src.splitlines())
         lines = code.splitlines()
-        bad = []
-        for i, line in enumerate(lines):
-            if "capture python: pass" not in line:
-                continue
-            # A bare warm-up is fine and is in fact required; what is not
-            # fine is deciding anything from its rc.
-            # A bare warm-up before a real probe is fine and is in fact
-            # required; what is not fine is concluding "Python is missing"
-            # from its rc.
-            after = "\n".join(lines[i + 1:i + 5])
-            if "Python not available" in after:
-                bad.append(i + 1)
+        # A bare warm-up before a real probe is fine and is in fact
+        # required; what is not fine is concluding "Python is missing" from
+        # its rc -- in any spelling of the warm-up, in either wording.
+        bad = _decides_from_a_warm_up(lines, _SAYS_NO_PYTHON)
         assert not bad, (
             f"{_name(path)} lines {bad}: decides whether Python is available "
             f"by running it; measured, that reports a nonzero rc under the "
@@ -175,29 +336,42 @@ class TestTheAvailabilityGuardIsReliable:
         installed reports bokeh missing and the script skips.
         """
         path, src = cscript
-        code = [l.split("//", 1)[0] for l in src.splitlines()]
-        probes = [i for i, l in enumerate(code)
-                  if "capture python:" in l and "import" in l]
+        # `cap python: import bokeh' is a probe as much as the spelled-out
+        # form, and counts toward the warm-up and retry the same way.
+        probes, bad = _import_probes(src)
         if not probes:
             pytest.skip("this script runs no import probe")
-        for i in probes:
-            window = "\n".join(code[max(0, i - 3):i + 3])
-            assert window.count("capture python:") >= 3, (
-                f"{_name(path)} line {i + 1}: an import probe with no "
-                f"warm-up and no retry; the first python call of the "
-                f"session fails under the runner regardless of the import"
-            )
+        assert not bad, (
+            f"{_name(path)} line(s) {bad}: an import probe with no "
+            f"warm-up and no retry; the first python call of the "
+            f"session fails under the runner regardless of the import"
+        )
 
     def test_the_runner_does_not_probe_python_by_executing_it(self):
+        """A structural guard over the runner's text, deliberately: a probe
+        that runs Python fails under the runner on a machine where Python
+        works, and what follows is a silent SKIP of every script -- which no
+        behavioural test sees, because a skipped suite is a green one."""
         with open(_RUNNER, encoding="utf-8") as fh:
             src = fh.read()
         code = "\n".join(l.split("//", 1)[0] for l in src.splitlines())
         assert "capture python" not in code, _RUNNER
+        # `cap python: pass' and `capture noisily python: pass' are the same
+        # probe in other spellings.
+        hit = _ANY_CAPTURED_PY.search(code)
+        assert not hit, f"{_RUNNER}: {hit.group(0) if hit else ''}"
 
     def test_a_script_that_needs_python_says_so_through_the_setting(self,
                                                                     cscript):
+        """A lint over the certification scripts' text, deliberately: a
+        script that can skip for want of Python decides it from
+        c(python_exec), which is configuration -- the no-Python state
+        cannot be produced in a test (see the module docstring)."""
         path, src = cscript
-        if "SKIP: Python not available" not in src:
+        # Either wording: seven scripts say "SKIP: no Python is linked to
+        # this Stata." and were skipped here while this read only "SKIP:
+        # Python not available".
+        if not _SKIPS_FOR_PYTHON.search(src):
             pytest.skip("this script does not depend on Python")
         assert "c(python_exec)" in src, (
             f"{_name(path)} reports Python as unavailable without consulting "
@@ -293,13 +467,10 @@ class TestTheShippedAdoFilesFollowTheSameRule:
     def test_a_bare_python_pass_is_not_used_as_a_probe(self, ado):
         path, src = ado
         lines = self._code(src)
-        bad = []
-        for i, line in enumerate(lines):
-            if "capture python: pass" not in line:
-                continue
-            after = "\n".join(lines[i + 1:i + 5])
-            if "not available" in after or "Python is not" in after:
-                bad.append(i + 1)
+        # Any spelling of the warm-up (`cap python: pass' slipped past the
+        # literal this read), self-tested in TestTheGuardReadersReadEvery-
+        # Spelling.
+        bad = _decides_from_a_warm_up(lines, _ADO_SAYS_NO_PYTHON)
         assert not bad, (
             f"{os.path.basename(path)} lines {bad}: concludes Python is "
             f"missing from the rc of a bare warm-up call"
@@ -326,11 +497,28 @@ class TestTheShippedAdoFilesFollowTheSameRule:
         base = os.path.basename(path)
         allowed = _ALLOWED_INLINE_PY_MACROS.get(base, {})
         bad = []
-        for start, py in _python_command_sources(src):
-            for macro in sorted(_macros_inside_string_literals(py)):
+        commands = _python_command_sources(src)
+        # A reader that finds no python: command checks nothing and passes.
+        # Measured 24sep2026: 7 in dash.ado, 12 in dash_setup.ado.
+        assert commands, f"{base}: no python: command was found to check"
+        found = set()
+        for start, py in commands:
+            macros = _macros_inside_string_literals(py)
+            found |= macros
+            for macro in sorted(macros):
                 if macro not in allowed:
                     bad.append(f"{base}:{start}: `{macro}' inside a Python "
                                f"string literal")
+        # The positive control: every allowlisted macro is one the scanner
+        # finds inside a string literal -- the reason it is on the list.  A
+        # scanner that never entered a string, or a reader that missed the
+        # lines, fails here instead of passing; so does a stale entry, which
+        # would wave a reintroduced site through unread.
+        stale = sorted(set(allowed) - found)
+        assert not stale, (
+            f"{base}: allowlisted but not found inside a Python string "
+            f"literal on any python: line: {stale}"
+        )
         assert not bad, (
             "a Stata macro is expanded inside a Python string literal on a "
             "python: line; a quote in the value ends the string and the rest "
@@ -433,7 +621,12 @@ def _stata_logical_lines(src):
     return out
 
 
-_PREFIX = re.compile(r"^(?:(?:capture|cap|noisily|noi|quietly|qui|n)\b\s*:?\s*)+")
+#: capture, noisily and quietly in every spelling Stata accepts (cap...,
+#: n..., qui...).  It listed seven, so `capt python: ...' was not seen as a
+#: python: command at all, and a macro inlined into it went unchecked.
+_PREFIX = re.compile(r"^(?:(?:cap(?:t(?:u(?:r(?:e)?)?)?)?"
+                     r"|n(?:o(?:i(?:s(?:i(?:l(?:y)?)?)?)?)?)?"
+                     r"|qui(?:e(?:t(?:l(?:y)?)?)?)?)\b\s*:?\s*)+")
 _DISPLAY = re.compile(r"^di(s(p(l(a(y)?)?)?)?)?\b")
 _BLOCK = re.compile(r"^(python|mata)\s*:?\s*$")
 _ONE_LINER = re.compile(r"^(python|mata)\s*:")
@@ -580,6 +773,9 @@ class TestNoScriptBuildsWithTheBrowserAllowed:
     `cscript' line, itself or through cert_helpers.do."""
 
     def test_cert_helpers_sets_the_global(self):
+        """A structural guard over the harness's text, deliberately: a
+        certification run that opens a browser window per dashboard still
+        passes, so only reading cert_helpers.do can hold it to the rule."""
         assert _helpers_set_the_global(), (
             "cert_helpers.do does not set `global dash_nobrowser 1'; the "
             "scripts that load it right after `cscript' then build with "
@@ -587,6 +783,10 @@ class TestNoScriptBuildsWithTheBrowserAllowed:
         )
 
     def test_no_build_runs_with_the_browser_allowed(self, cscript):
+        """A structural guard over each script's text, deliberately, for the
+        same reason: the build succeeds whether or not a window opens, so
+        the rule is read from the script (by the reader the class above
+        tests), not observed."""
         path, src = cscript
         bad = _builds_with_the_browser_allowed(src, _helpers_set_the_global())
         assert not bad, (

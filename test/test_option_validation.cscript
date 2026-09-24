@@ -239,10 +239,19 @@
 *!   OV-155 mlabangle(abc)            rc 0   (a name: twoway notes it)
 *!   OV-156 line mlabangle(400)       rc 0   (twoway draws no marker
 *!                                    labels on line, so never evaluates it)
+*! The words the absence checks search for, each found where it must be
+*! (24sep2026):
+*!   OV-09m                           OV-09's refusal says "must be", which
+*!                                    no accepted case may print
+*!   OV-157 notarealoption(3)         rc 0, and OV-157m: the log says
+*!                                    "unsupported option", which no
+*!                                    refusal may print ("not found" is
+*!                                    found at OV-134m)
 *! The corpus arbiter:
 *!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
 *!          with rc 0 and no refusal -- the table accepts every value the
-*!          documented corpus writes.
+*!          documented corpus writes -- and CV-count: every line was probed,
+*!          as many as the fixture holds.
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -391,7 +400,11 @@ program define _ov_probe, rclass
         local bad = 1
     }
     if `expected' != 0 {
-        _ov_count "`logfile'" "`opt'()"
+        // With the blank before it: every refusal reads "dash: <opt>() ..."
+        // (fmt()'s, "dash kpi: fmt() ..."), and without it "width()" was
+        // found in "barwidth()" and "n()" in "bin()", so a refusal naming
+        // the wrong option passed.
+        _ov_count "`logfile'" " `opt'()"
         if r(n) == 0 {
             display as error `"`id' FAIL: the refusal does not name `opt'()"'
             local bad = 1
@@ -537,6 +550,9 @@ _ov_case OV-06 `"dash scatter mpg weight, mlabel(make) mlabgap(abc) name(ov6)"' 
 _ov_case OV-07 `"dash line mpg weight, sort lwidth(thick) name(ov7)"' 0 ""
 _ov_case OV-08 `"dash line mpg weight, sort lwidth(0) name(ov8)"' 0 ""
 _ov_case OV-09 `"dash line mpg weight, sort lwidth(-1) name(ov9)"' 198 lwidth
+// The words every accepted case is searched for and must not print: a
+// refusal says "must be" -- found here, in one that must.
+_ov_said OV-09m "must be"
 _ov_case OV-10 `"dash line mpg weight, sort lwidth(abc) name(ov10)"' 0 ""
 _ov_case OV-11 `"dash scatter mpg weight, mlwidth(0.5) name(ov11)"' 0 ""
 _ov_case OV-12 `"dash scatter mpg weight, mlwidth(-1) name(ov12)"' 198 mlwidth
@@ -806,6 +822,16 @@ _ov_case OV-155 `"dash scatter mpg weight, mlabel(make) mlabangle(abc) name(ov15
 _ov_case OV-156 `"dash line mpg weight, mlabel(make) mlabangle(400) name(ov156)"' 0 ""
 
 // ----------------------------------------------------------------
+// OV-157: the words of the ignoring note.  Every refusal above is searched
+// for "unsupported option" and must not hold it (_ov_probe, _ov_refused);
+// the note is found here, by the same scanner, for an option dash does not
+// know, so that search can fail.  "must be" is found at OV-09m and
+// "not found" at OV-134m.
+// ----------------------------------------------------------------
+_ov_case OV-157 `"dash scatter mpg weight, notarealoption(3) name(ov157)"' 0 ""
+_ov_said OV-157m "unsupported option"
+
+// ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must
 // register with rc 0 and no refusal: the table accepts every value the
 // documented corpus writes.  Read with `file read' as
@@ -831,12 +857,18 @@ while r(eof) == 0 {
     file read `fh' line
 }
 file close `fh'
-if `ncv' < 55 {
-    display as error "CV FAIL: only `ncv' corpus lines were read; the corpus holds at least 55"
+// Every line was probed: the loop ran once per line the fixture holds,
+// counted here without it, as test_conformance.cscript C-01 counts them.
+// It was held to a floor of 55 while the fixture holds 71 lines, none of
+// them blank (measured 24sep2026), so a loop that stopped early lost the
+// rest of the corpus without a word.
+mata: st_local("cv_lines", strofreal(sum(cat("fixtures/conformance_corpus.txt") :!= "")))
+if `cv_lines' == 0 | `ncv' != `cv_lines' {
+    display as error "CV FAIL: `ncv' corpus lines were probed; the corpus holds `cv_lines'"
     global ov_nfail    = ${ov_nfail} + 1
     global ov_faillist "${ov_faillist} CV-count"
 }
-else display as text "CV: `ncv' corpus lines probed"
+else display as text "CV: all `ncv' corpus lines probed"
 
 // ----------------------------------------------------------------
 // Summary

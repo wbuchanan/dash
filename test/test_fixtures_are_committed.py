@@ -54,12 +54,25 @@ def _fixture_files():
     return sorted(out)
 
 
-def test_the_scan_found_the_fixtures():
-    """Guards the guard: an empty list would pass every check below."""
+def test_the_scan_found_the_fixtures(tracked):
+    """Guards the guard: an empty list would pass every check below, and so
+    would a partial one -- a file the scan misses is never checked."""
     found = _fixture_files()
-    assert len(found) >= 8, (
-        f"only {len(found)} files found under test/fixtures; the checks "
-        f"below would be vacuous"
+    # Measured 24sep2026: git tracks 32 files under test/fixtures, 13 of
+    # them in data/ and scheme_visual/.  The floor this replaced, 8, passed
+    # a scan that never left the top directory (19 files), and then no file
+    # below it was asked about.  Every file git holds there must be one the
+    # scan found; the parametrized test below asks the converse.  Outside a
+    # git working tree `tracked' skips this, as it skips every check it
+    # guards.
+    prefix = os.path.join("test", "fixtures", "")
+    under = {f for f in tracked if f.startswith(prefix)}
+    assert under, "git tracks no file under test/fixtures"
+    missed = sorted(under - set(found))
+    assert not missed, (
+        f"the scan found {len(found)} files under test/fixtures and missed "
+        f"{len(missed)} that git tracks there, so the checks below never "
+        f"see them: {missed}"
     )
     assert any(f.endswith("stat_truth.json") for f in found)
 

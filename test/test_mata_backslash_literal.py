@@ -131,12 +131,33 @@ class TestNoCharacterIsComparedWithABackslashLiteral:
 
     def test_the_scan_reads_the_mata_code(self, mata_src):
         """Guards the guard: a scan that found nothing would pass anything."""
-        lits = [t for kind, _l, t in _mata_segments(mata_src) if kind == "str"]
+        segs = _mata_segments(mata_src)
+        lits = [t for kind, _l, t in segs if kind == "str"]
         assert len(lits) > 200, len(lits)
         for want in ("True", "if_expr", "0123456789abcdef"):
             assert want in lits, want
         # Comment text is not code: this file's own comments quote "\\".
         assert not any("strlen(" in t for t in lits)
+        # The count and the three literals prove the scan reached line
+        # 2023 of 2820 (measured 24sep2026), not _dash_json_get_str at
+        # 2447, one of the three functions that shipped the idiom.  It must
+        # read every one of them, and on to the file's LAST `end' -- so an
+        # early `end', or a second Mata block, cannot leave code unread.
+        code = "".join(t for kind, _l, t in segs if kind == "code")
+        for fn in ("string scalar _json_escape(",
+                   "void _dash_extract_qual_vars(",
+                   "void _dash_json_get_str("):
+            assert fn in code, f"the scan never read {fn}...)"
+        # A literal never spans lines: one that does ran past its closing
+        # quote and swallowed the code after it.
+        assert not any("\n" in t for t in lits), [
+            t[:60] for t in lits if "\n" in t]
+        last_end = max(i for i, l in enumerate(mata_src.split("\n"), 1)
+                       if l.strip() == "end")
+        kind, start, text = segs[-1]
+        assert start + text.count("\n") >= last_end - 1, (
+            f"the scan stops at line {start + text.count(chr(10))}; the "
+            f"Mata code runs to line {last_end}")
 
     def test_the_detector_flags_the_idiom_and_nothing_else(self):
         bs = _BS

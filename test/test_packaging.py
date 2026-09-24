@@ -285,8 +285,12 @@ def _referenced_repo_files() -> set[str]:
     found: set[str] = set()
     for source in SHIPPED_SOURCES:
         source_path = os.path.join(REPO_ROOT, source)
+        # A source that is not there was skipped in silence, and every file
+        # only it names dropped out of the required set with it.
         if not os.path.isfile(source_path):
-            continue
+            pytest.fail(f"shipped source {source} is missing, so the files "
+                        f"it names are no longer required; update "
+                        f"SHIPPED_SOURCES")
         with open(source_path, encoding="utf-8", errors="replace") as fh:
             text = fh.read()
         for match in pattern.finditer(text):
@@ -294,6 +298,35 @@ def _referenced_repo_files() -> set[str]:
             if basename in index:
                 found.add(index[basename])
     return found
+
+
+#: The package's own files, required whatever the sources' text says: the
+#: two commands, their help files (``help dash``, ``help dash_setup``), the
+#: Mata source dash.ado compiles and the renderer it runs.  The help files
+#: were required only because comments name them -- measured 24sep2026,
+#: every mention of dash.sthlp and dash_setup.sthlp in the shipped sources
+#: is a comment -- so a manifest that dropped one would pass the day those
+#: comments were reworded.
+_PACKAGE_FILES = ("dash.ado", "dash_setup.ado", "dash.sthlp",
+                  "dash_setup.sthlp", "dash_parse.mata", "dash_render.py")
+
+
+def _findfile_targets() -> set[str]:
+    """The files the shipped ado sources locate with ``findfile`` at run
+    time, read from their code (comments dropped)."""
+    import re
+
+    out: set[str] = set()
+    for source in SHIPPED_SOURCES:
+        if not source.endswith(".ado"):
+            continue
+        with open(os.path.join(REPO_ROOT, source), encoding="utf-8") as fh:
+            for line in fh:
+                if line.lstrip().startswith("*"):
+                    continue
+                out.update(re.findall(r"\bfindfile\s+([A-Za-z0-9_][\w.\-]*)",
+                                      line.split("//", 1)[0]))
+    return out
 
 
 def _required_runtime_files() -> set[str]:
@@ -304,6 +337,22 @@ def _required_runtime_files() -> set[str]:
     manifest requirement automatically, with no edit to this test.
     """
     required: set[str] = set()
+
+    # The package's own files and what its code findfile()s, named here and
+    # not left to the text scan -- which is guarded by them: it must see
+    # every file the code locates, or it has gone blind (a pattern that no
+    # longer matches found nothing, and nothing here said so).
+    referenced = _referenced_repo_files()  # fails first on a lost source
+    targets = _findfile_targets()
+    assert targets, "the shipped ado files findfile nothing any more"
+    for name in _PACKAGE_FILES + tuple(sorted(targets)):
+        assert os.path.isfile(os.path.join(REPO_ROOT, name)), name
+        required.add(name)
+    seen = {os.path.basename(r) for r in referenced}
+    unseen = sorted(targets - seen)
+    assert not unseen, (
+        f"the reference scan does not see {unseen}, which the code "
+        f"locates at run time")
 
     scheme_files = set()
     for dirpath, dirnames, filenames in os.walk(SCHEMES_DIR):
@@ -321,7 +370,7 @@ def _required_runtime_files() -> set[str]:
     )
 
     required |= scheme_files
-    required |= _referenced_repo_files()
+    required |= referenced
     return required
 
 
@@ -391,15 +440,23 @@ class TestNoUnsuppressableBrowserWindow:
         """
         lines = self._ado_lines()
         unguarded = []
+        launchers = 0
         for i, line in enumerate(lines):
             code = line.split("//", 1)[0]
             if not any(l in code for l in self._LAUNCHERS):
                 continue
+            launchers += 1
             # Look back for the decision that guards it, in code.
             window = "\n".join(l.split("//", 1)[0]
                                for l in lines[max(0, i - 12):i])
             if not any(d in window for d in self._DECIDERS):
                 unguarded.append(f"dash.ado:{i + 1}: {line.strip()}")
+        # The scan found them all: three platforms' openers on each of the
+        # two paths (the one-line form; dash build and dash serve), 6 as
+        # measured 24sep2026.  A launcher the needles do not match -- `!'
+        # is Stata's shorthand for shell -- would not be counted, and none
+        # found passed the check below.
+        assert launchers == 6, f"{launchers} browser launchers found"
         assert not unguarded, (
             "a browser launcher runs with nothing able to suppress it:\n"
             + "\n".join(unguarded)

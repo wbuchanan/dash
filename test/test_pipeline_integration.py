@@ -138,6 +138,16 @@ class TestPipelineHistogram:
         assert len(fig.renderers) >= 1, (
             f"Expected >=1 renderer for histogram, got {len(fig.renderers)}"
         )
+        # ...and its bars.  A histogram with nothing to bin draws an empty
+        # quad placeholder, which the count above cannot tell from one that
+        # drew.  mpg is 1..20: Stata's default is min(sqrt(20),
+        # 10*log10(20)) -> 4 bins of width 4.75 from 1, five cars in each,
+        # density 5 / (20 * 4.75).
+        [quad] = fig.renderers
+        data = quad.data_source.data
+        assert list(data["left"]) == [1.0, 5.75, 10.5, 15.25], data
+        assert list(data["right"]) == [5.75, 10.5, 15.25, 20.0], data
+        assert np.allclose(data["top"], [5 / (20 * 4.75)] * 4), data
 
 
 # ================================================================
@@ -347,6 +357,11 @@ class TestPipelineScatteri:
         assert "si1" in figs
         fig = figs["si1"]
         assert len(fig.renderers) >= 1
+        # The three points, y then x as scatteri reads them: a renderer
+        # holding fewer, or none, passed the count above.
+        [pts] = fig.renderers
+        assert list(pts.data_source.data["y"]) == [1.0, 3.0, 5.0]
+        assert list(pts.data_source.data["x"]) == [2.0, 4.0, 6.0]
 
 
 # ================================================================
@@ -661,89 +676,169 @@ class TestEdgeCaseData:
                 except OSError: pass
         return dr
 
-    def test_ec01_empty_dataframe_scatter_no_crash(self):
-        """EC-01: n=0 scatter renders without crash."""
-        self._render_spec(
-            plots=[{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            values=[],
-            varnames=["mpg", "weight"],
-        )
+    # The "does not crash" cases below assert what the render DID, measured
+    # 24sep2026 at 68327a8, beside what twoway does with the same data
+    # (StataNow 19.5 MP, `twoway <plot> ..., nodraw').  They asserted
+    # nothing, so a render that drew garbage, or drew nothing and said
+    # nothing, passed as long as it returned.
 
-    def test_ec01_empty_dataframe_histogram_no_crash(self):
-        """EC-01: n=0 histogram renders without crash."""
-        self._render_spec(
-            plots=[{"type": "histogram", "yvar": "mpg", "options": {}}],
-            values=[],
-            varnames=["mpg"],
-        )
+    def _render_noted(self, **kw):
+        """``(renderer, dash's notes)`` for one render."""
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dr = self._render_spec(**kw)
+        return dr, [str(c.message) for c in caught
+                    if str(c.message).startswith("dash")]
 
-    def test_ec01_empty_dataframe_lfit_no_crash(self):
-        """EC-01: n=0 lfit renders without crash."""
-        self._render_spec(
-            plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            values=[],
-            varnames=["mpg", "weight"],
-        )
+    @staticmethod
+    def _drawn(dr):
+        """``[(glyph type, rows)]`` for every renderer of the one graph."""
+        assert list(dr.figures) == ["g1"], list(dr.figures)
+        out = []
+        for r in dr.figures["g1"].renderers:
+            data = r.data_source.data
+            out.append((type(r.glyph).__name__,
+                        max((len(v) for v in data.values()), default=0)))
+        return out
 
-    def test_ec02_single_row_scatter_no_crash(self):
-        """EC-02: n=1 scatter renders without crash."""
-        self._render_spec(
+    @pytest.mark.parametrize("plot", [
+        {"type": "scatter", "yvar": "mpg", "xvar": "weight"},
+        {"type": "histogram", "yvar": "mpg"},
+        {"type": "lfit", "yvar": "mpg", "xvar": "weight"},
+    ], ids=["scatter", "histogram", "lfit"])
+    def test_ec01_an_empty_dataset_builds_the_graph_and_draws_nothing(
+            self, plot):
+        """EC-01: n=0 renders the graph and draws no point.
+
+        twoway on no observations: scatter draws nothing, rc 0, in silence;
+        lfit notes "regress could not fit model", rc 0; histogram stops with
+        r(198).  dash keeps the dashboard -- the one graph is built -- and
+        draws nothing.  What it says is left unasserted on purpose: today
+        it is "variable(s) [...] not found in data source", which is wrong
+        about variables that are there (reported as a defect), and silence,
+        twoway's answer for scatter, would be as right as a correct note.
+        """
+        dr, _notes = self._render_noted(
+            plots=[dict(plot, options={})], values=[],
+            varnames=[v for k, v in plot.items() if k != "type"])
+        assert all(rows == 0 for _g, rows in self._drawn(dr))
+
+    def test_ec02_single_row_scatter_draws_its_point(self):
+        """EC-02: n=1 scatter draws the one point, as twoway does (rc 0)."""
+        dr, notes = self._render_noted(
             plots=[{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
             values=[{"mpg": 22.0, "weight": 2500.0}],
             varnames=["mpg", "weight"],
         )
+        assert self._drawn(dr) == [("Scatter", 1)]
+        r = dr.figures["g1"].renderers[0]
+        data = r.data_source.data
+        assert list(data[r.glyph.x]) == [2500.0]
+        assert list(data[r.glyph.y]) == [22.0]
+        assert notes == []
 
     def test_ec02_single_row_lfit_returns_empty(self):
-        """EC-02: n=1 lfit returns empty (needs 2+ points), no crash."""
-        dr = self._render_spec(
+        """EC-02: n=1 lfit returns empty (needs 2+ points), no crash.
+
+        twoway lfit refuses one observation -- "insufficient observations",
+        r(2001) -- and dash keeps the dashboard and names the empty layer.
+        This asserted only ``fig is not None``, which any figure satisfies.
+        """
+        dr, notes = self._render_noted(
             plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
             values=[{"mpg": 22.0, "weight": 2500.0}],
             varnames=["mpg", "weight"],
         )
-        fig = list(dr.figures.values())[0]
-        # Should have rendered a figure with at least one renderer (empty line)
-        assert fig is not None
+        assert self._drawn(dr) == [("Line", 0)]
+        assert notes == ["dash: graph 'g1' plot 1 (lfit) drew nothing from 1 "
+                         "observations."]
 
-    def test_ec03_all_nan_column_no_crash(self):
-        """EC-03: all-NaN column renders without crash."""
-        import math
-        self._render_spec(
-            plots=[{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            values=[{"mpg": None, "weight": float("nan")} for _ in range(5)],
-            varnames=["mpg", "weight"],
-        )
+    @pytest.mark.parametrize("ptype,glyph", [("scatter", "Scatter"),
+                                             ("histogram", "Quad")])
+    def test_ec03_an_all_missing_column_draws_nothing_and_says_so(
+            self, ptype, glyph):
+        """EC-03: all-NaN renders, draws nothing, and names the layer.
 
-    def test_ec03_all_nan_histogram_no_crash(self):
-        """EC-03: histogram with all-NaN column renders without crash."""
-        self._render_spec(
-            plots=[{"type": "histogram", "yvar": "mpg", "options": {}}],
-            values=[{"mpg": None} for _ in range(5)],
-            varnames=["mpg"],
-        )
+        twoway scatter and twoway histogram both draw nothing here (rc 0).
+        """
+        plot = {"type": ptype, "yvar": "mpg", "options": {}}
+        values = [{"mpg": None} for _ in range(5)]
+        varnames = ["mpg"]
+        if ptype == "scatter":
+            plot["xvar"] = "weight"
+            values = [{"mpg": None, "weight": float("nan")} for _ in range(5)]
+            varnames = ["mpg", "weight"]
+        dr, notes = self._render_noted(plots=[plot], values=values,
+                                       varnames=varnames)
+        assert self._drawn(dr) == [(glyph, 0)]
+        assert notes == ["dash: graph 'g1' plot 1 (%s) drew nothing from 5 "
+                         "observations." % ptype]
 
-    def test_ec04_constant_x_lfit_no_crash(self):
-        """EC-04: constant-x lfit degrades gracefully (std==0)."""
-        self._render_spec(
+    _CONST_X = [{"mpg": float(20 + i), "weight": 2500.0} for i in range(10)]
+
+    def test_ec04_constant_x_lfit_passes_through_the_mean(self):
+        """EC-04: constant-x lfit degrades gracefully (std==0).
+
+        With no variation in x, Stata's regress omits x and predicts the
+        mean of y: twoway lfit draws its points at (2500, 24.5).  dash's fit
+        starts there too.  Where it goes after that is the next test.
+        """
+        dr, _notes = self._render_noted(
             plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            values=[{"mpg": float(20 + i), "weight": 2500.0} for i in range(10)],
-            varnames=["mpg", "weight"],
-        )
+            values=self._CONST_X, varnames=["mpg", "weight"])
+        assert self._drawn(dr) == [("Line", 100)]
+        data = dr.figures["g1"].renderers[0].data_source.data
+        assert data["x"][0] == 2500.0
+        assert data["y"][0] == pytest.approx(24.5, abs=1e-9)
 
-    def test_ec04_constant_x_lowess_no_crash(self):
-        """EC-04: constant-x lowess returns empty renderer, no crash."""
-        self._render_spec(
+    @pytest.mark.xfail(strict=True, reason=(
+        "open defect, measured 24sep2026: _fit_grid widens a zero-width x "
+        "range to [x, x+1] and np.polyfit's minimum-norm solution gives the "
+        "segment a slope, so dash draws a sloped line from (2500, 24.5) to "
+        "(2501, 24.505) where twoway lfit draws every point at (2500, 24.5); "
+        "numpy's 'Polyfit may be poorly conditioned' reaches the user too"))
+    def test_ec04_constant_x_lfit_draws_what_twoway_draws(self):
+        """EC-04, against Stata: `twoway lfit mpg weight' on a constant
+        weight -- serset points all (2500, 24.5), and no note."""
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            dr = self._render_spec(
+                plots=[{"type": "lfit", "yvar": "mpg", "xvar": "weight",
+                        "options": {}}],
+                values=self._CONST_X, varnames=["mpg", "weight"])
+        data = dr.figures["g1"].renderers[0].data_source.data
+        assert set(np.round(np.asarray(data["x"], float), 9)) == {2500.0}
+        assert np.allclose(np.asarray(data["y"], float), 24.5)
+        assert not [str(c.message) for c in caught
+                    if "poorly conditioned" in str(c.message)]
+
+    def test_ec04_constant_x_lowess_draws_nothing_and_says_so(self):
+        """EC-04: constant-x lowess draws nothing, as twoway lowess does
+        (``lowess, generate()`` gives all missing and the serset is empty),
+        and dash says so."""
+        dr, notes = self._render_noted(
             plots=[{"type": "lowess", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            values=[{"mpg": float(20 + i), "weight": 2500.0} for i in range(10)],
-            varnames=["mpg", "weight"],
-        )
+            values=self._CONST_X, varnames=["mpg", "weight"])
+        assert self._drawn(dr) == [("Line", 0)]
+        assert notes == ["dash: graph 'g1' plot 1 (lowess) drew nothing from "
+                         "10 observations."]
 
-    def test_ec05_constant_y_kdensity_no_crash(self):
-        """EC-05: constant y (std==0) kdensity returns empty renderer."""
-        self._render_spec(
+    def test_ec05_constant_y_kdensity_draws_nothing_and_says_so(self):
+        """EC-05: constant y (std==0) kdensity draws nothing and says so.
+
+        twoway kdensity puts all 300 of its points at (22, 0) -- a line of
+        no length and no height, so nothing shows either way.
+        """
+        dr, notes = self._render_noted(
             plots=[{"type": "kdensity", "yvar": "mpg", "options": {}}],
             values=[{"mpg": 22.0} for _ in range(10)],
             varnames=["mpg"],
         )
+        assert self._drawn(dr) == [("Line", 0)]
+        assert notes == ["dash: graph 'g1' plot 1 (kdensity) drew nothing "
+                         "from 10 observations."]
 
     def test_ec06_missing_yvar_column_warns_no_keyerror(self):
         """EC-06: missing yvar emits warning and does not raise KeyError."""

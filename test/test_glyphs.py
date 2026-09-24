@@ -54,6 +54,28 @@ def fig():
     return figure()
 
 
+#: Every plot type whose colour option a test here sets.  The colour those
+#: tests set is magenta (#ff00ff): a test that sets navy and finds #1a476f
+#: proves nothing, because navy is s2color's first series colour and the
+#: glyph is drawn in it with the option ignored (measured 24sep2026: twelve
+#: tests here passed with their colour option taken away).
+_COLOURED_KINDS = ("bar", "rarea", "rcap", "rline", "lfitci", "qfitci",
+                   "tsline", "function", "fpfit", "mspline", "pcarrow",
+                   "pccapsym", "pcarrowi", "scatter", "line")
+
+
+def test_the_colour_under_test_is_no_default_of_the_scheme():
+    """Guards the guards: magenta is in no slot of the default scheme, so a
+    colour test here that finds it proves the option was read.
+    test_phase4_plots.py, test_pccapsym_pcarrowi.py,
+    test_html_verification.py and test_server.py rely on the same fact."""
+    gm = GlyphMapper()
+    drawn = [(kind, i) for kind in _COLOURED_KINDS for i in range(15)
+             if gm.scheme.default_color(i, kind) == "#ff00ff"]
+    assert not drawn, drawn
+    assert OptionTranslator.translate_mcolor("magenta") == "#ff00ff"
+
+
 @pytest.fixture
 def gm():
     """GlyphMapper instance."""
@@ -195,7 +217,13 @@ class TestMapConnected:
         assert len(renderers) == 2
         types = {type(r.glyph).__name__ for r in renderers}
         # Should include at least one multi-line or line-like glyph and one circle/marker
-        assert len(types) >= 1
+        # -- which `len(types) >= 1' never checked: two renderers have at
+        # least one glyph type whatever they are, so once the count above
+        # held it could not fail, and a connected plot of two lines and no
+        # markers passed (24sep2026).  Measured: map_connected returns
+        # [Line, Scatter].
+        assert types == {"Line", "Scatter"}, (
+            f"connected must draw a line and markers, got {sorted(types)}")
 
     def test_connected_data_sorted(self, fig, cds, gm):
         """Connected: x data in line component is sorted."""
@@ -227,7 +255,16 @@ class TestMapArea:
         # y1 should be a column of zeros OR the literal "y1" column containing zeros
         y1 = glyph.y1
         if isinstance(y1, str):
-            data = renderer.data_source.data.get(y1, [])
+            # The baseline column is there, one value per observation:
+            # auto_df's 74 rows, none missing in mpg or weight (measured
+            # 24sep2026: y1 names "mpg_base", 74 zeros).  .get(y1, []) and
+            # all() alone passed when the column was absent or the area drew
+            # nothing, since all() of nothing is true.
+            assert y1 in renderer.data_source.data, (
+                f"VArea y1 names column {y1!r}, which its source lacks")
+            data = renderer.data_source.data[y1]
+            assert len(data) == 74, (
+                f"VArea baseline holds {len(data)} values, not 74")
             assert all(v == 0 for v in data), "VArea y1 baseline is not 0"
         else:
             assert y1 == 0
@@ -291,7 +328,14 @@ class TestMapSpike:
         glyph = renderer.glyph
         y0 = glyph.y0
         if isinstance(y0, str):
-            data = renderer.data_source.data.get(y0, [])
+            # One origin per observation, auto_df's 74 (measured 24sep2026:
+            # y0 names "y0", 74 zeros).  .get(y0, []) and all() alone passed
+            # when the column was absent or the spike drew nothing.
+            assert y0 in renderer.data_source.data, (
+                f"Segment y0 names column {y0!r}, which its source lacks")
+            data = renderer.data_source.data[y0]
+            assert len(data) == 74, (
+                f"spike y0 holds {len(data)} values, not 74")
             assert all(v == 0 for v in data), "Spike y0 is not 0"
         else:
             assert y0 == 0
@@ -330,6 +374,13 @@ class TestNaNExclusion:
         renderer = gm.map_scatter(fig, cds_nan, "y", "x", {})
         y_data = renderer.data_source.data["y"]
         x_data = renderer.data_source.data["x"]
+        # The two complete rows, (1, 1) and (5, 5), and only those
+        # (measured 24sep2026).  The NaN checks alone passed on an empty
+        # source -- not any() of nothing is true -- so a scatter that
+        # dropped EVERY row on meeting a missing value passed them.
+        assert list(y_data) == [1.0, 5.0] and list(x_data) == [1.0, 5.0], (
+            f"scatter must keep the complete rows, got y={list(y_data)} "
+            f"x={list(x_data)}")
         assert not any(math.isnan(v) for v in y_data), "NaN in y after scatter"
         assert not any(math.isnan(v) for v in x_data), "NaN in x after scatter"
 
@@ -342,6 +393,11 @@ class TestNaNExclusion:
         cds_nan = ColumnDataSource(df_with_nan)
         renderer = gm.map_line(fig, cds_nan, "y", "x", {})
         y_data = renderer.data_source.data["y"]
+        # Rows 0 and 2 are the complete ones, y = [1, 3] (measured
+        # 24sep2026); without this the check below passed on a line that
+        # drew nothing.
+        assert list(y_data) == [1.0, 3.0], (
+            f"line must keep the complete rows, got y={list(y_data)}")
         assert not any(math.isnan(v) for v in y_data), "NaN in y after line"
 
     def test_all_glyphs_exclude_nan(self, gm):
@@ -369,6 +425,16 @@ class TestNaNExclusion:
                 renderer = result[0]
             else:
                 renderer = result
+            # Rows 0, 2 and 4 are the complete ones, so every column holds
+            # exactly three values (measured 24sep2026, all five mappers).
+            # The loop below checks the values it is given and nothing
+            # else: a glyph that drew nothing, or that drew a missing value
+            # as 0 (five rows and no NaN), passed it.
+            lengths = {col_name: len(col_data) for col_name, col_data
+                       in renderer.data_source.data.items()}
+            assert lengths and set(lengths.values()) == {3}, (
+                f"{method_name}: expected the 3 complete rows in every "
+                f"column, got {lengths}")
             for col_name, col_data in renderer.data_source.data.items():
                 for v in col_data:
                     if isinstance(v, float):
@@ -683,6 +749,11 @@ class TestMapDropline:
         result = gm.map_dropline(fig, std_cds, "y", "x", {})
         seg = result[0]
         y0_data = seg.data_source.data["y0"]
+        # One drop per observation: std_df's 15 rows, none missing
+        # (measured 24sep2026).  all() alone passed on a dropline that drew
+        # nothing.
+        assert len(y0_data) == 15, (
+            f"dropline drew {len(y0_data)} drops, not 15")
         assert all(v == 0.0 for v in y0_data)
 
 
@@ -773,8 +844,8 @@ class TestFillOptions:
     def test_map_bar_fcolor(self, fig, std_cds):
         """fcolor option sets fill_color on VBar glyph."""
         gm = GlyphMapper()
-        r = gm.map_bar(fig, std_cds, "y", "x", {"fcolor": "navy"})
-        assert r.glyph.fill_color == "#1a476f"
+        r = gm.map_bar(fig, std_cds, "y", "x", {"fcolor": "magenta"})
+        assert r.glyph.fill_color == "#ff00ff"
 
     def test_map_bar_fintensity(self, fig, std_cds):
         """fintensity option sets fill_alpha on VBar glyph."""
@@ -797,9 +868,9 @@ class TestFillOptions:
     def test_map_rarea_fcolor(self, fig, range_cds):
         """fcolor option sets fill_color on rarea VArea glyph."""
         gm = GlyphMapper()
-        result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "navy"})
+        result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "magenta"})
         r = result[0] if isinstance(result, list) else result
-        assert r.glyph.fill_color == "#1a476f"
+        assert r.glyph.fill_color == "#ff00ff"
 
     def test_map_rarea_fintensity(self, fig, range_cds):
         """fintensity option sets fill_alpha on rarea VArea glyph."""
@@ -1108,10 +1179,10 @@ class TestMapRcapOptions:
     def test_rcap_lcolor_applied_to_caps(self, fig, range_cds_small, gm):
         """lcolor must be applied to both horizontal cap segments."""
         renderers = gm.map_rcap(fig, range_cds_small, "lo", "hi", "xvar",
-                                {"lcolor": "navy"})
+                                {"lcolor": "magenta"})
         bot_cap, top_cap = renderers[1], renderers[2]
-        assert bot_cap.glyph.line_color == "#1a476f"
-        assert top_cap.glyph.line_color == "#1a476f"
+        assert bot_cap.glyph.line_color == "#ff00ff"
+        assert top_cap.glyph.line_color == "#ff00ff"
 
     def test_rcap_lwidth_applied(self, fig, range_cds_small, gm):
         """lwidth option must be applied to all rcap segments."""
@@ -1133,10 +1204,10 @@ class TestFitCIFillOptions:
 
     def test_lfitci_fcolor_applied_to_band(self, fig, fit_cds, gm):
         """fcolor option must set fill_color on the VArea CI band."""
-        renderers = gm.map_lfitci(fig, fit_cds, "y", "x", {"fcolor": "navy"})
+        renderers = gm.map_lfitci(fig, fit_cds, "y", "x", {"fcolor": "magenta"})
         band_r = renderers[1]   # band is second renderer
-        assert band_r.glyph.fill_color == "#1a476f", (
-            f"Expected #1a476f, got {band_r.glyph.fill_color!r}"
+        assert band_r.glyph.fill_color == "#ff00ff", (
+            f"Expected #ff00ff, got {band_r.glyph.fill_color!r}"
         )
 
     def test_lfitci_fintensity_applied_to_band(self, fig, fit_cds, gm):
@@ -1245,8 +1316,8 @@ class TestMapQfitci:
 
     def test_qfitci_lcolor_applied_to_line(self, fig, fit_cds, gm):
         """lcolor option must be applied to the fit line."""
-        result = gm.map_qfitci(fig, fit_cds, "y", "x", {"lcolor": "navy"})
-        assert result[0].glyph.line_color == "#1a476f"
+        result = gm.map_qfitci(fig, fit_cds, "y", "x", {"lcolor": "magenta"})
+        assert result[0].glyph.line_color == "#ff00ff"
 
 
 class TestMapLowess:
@@ -1292,8 +1363,8 @@ class TestMapRarea:
     def test_rarea_fcolor_applied(self, fig, std_cds_small, gm):
         """fcolor option applied to rarea VArea fill."""
         result = gm.map_rarea(fig, std_cds_small, "lo", "hi", "x",
-                              {"fcolor": "navy"})
-        assert result[0].glyph.fill_color == "#1a476f"
+                              {"fcolor": "magenta"})
+        assert result[0].glyph.fill_color == "#ff00ff"
 
 
 class TestMapRbar:
@@ -1385,9 +1456,9 @@ class TestMapRline:
     def test_rline_lcolor_applied(self, fig, std_cds_small, gm):
         """lcolor option applied to both rline renderers."""
         result = gm.map_rline(fig, std_cds_small, "lo", "hi", "x",
-                              {"lcolor": "navy"})
+                              {"lcolor": "magenta"})
         for r in result:
-            assert r.glyph.line_color == "#1a476f"
+            assert r.glyph.line_color == "#ff00ff"
 
     def test_rline_lpattern_applied_to_both_lines(self, fig, std_cds_small, gm):
         """lpattern applied to both rline boundary lines."""
@@ -1404,14 +1475,21 @@ class TestMapRconnected:
         """map_rconnected returns a list of renderers."""
         result = gm.map_rconnected(fig, std_cds_small, "lo", "hi", "x", {})
         assert isinstance(result, list)
-        assert len(result) >= 2
+        # A line and its markers for each end, [Line, Scatter, Line,
+        # Scatter] (measured 24sep2026).  `>= 2' passed with the upper end
+        # gone.
+        assert len(result) == 4
 
     def test_rconnected_has_lines(self, fig, std_cds_small, gm):
         """map_rconnected includes Line glyphs."""
         from bokeh.models.glyphs import Line
         result = gm.map_rconnected(fig, std_cds_small, "lo", "hi", "x", {})
         lines = [r for r in result if isinstance(r.glyph, Line)]
-        assert len(lines) >= 1
+        # One connecting line per end, drawn through lo and through hi
+        # (measured 24sep2026).  `>= 1' passed with either one missing, or
+        # with both drawn through the same end.
+        assert len(lines) == 2
+        assert sorted(r.glyph.y for r in lines) == ["hi", "lo"]
 
 
 class TestMapPcspike:
@@ -1561,8 +1639,8 @@ class TestMapTsline:
 
     def test_tsline_lcolor_applied(self, fig, cds, gm):
         """lcolor option applied via tsline."""
-        r = gm.map_tsline(fig, cds, "mpg", "weight", {"lcolor": "navy"})
-        assert r.glyph.line_color == "#1a476f"
+        r = gm.map_tsline(fig, cds, "mpg", "weight", {"lcolor": "magenta"})
+        assert r.glyph.line_color == "#ff00ff"
 
 
 class TestMapTsrline:
@@ -1578,7 +1656,11 @@ class TestMapTsrline:
         from bokeh.models.glyphs import Line
         result = gm.map_tsrline(fig, std_cds_small, "lo", "hi", "x", {})
         lines = [r for r in result if isinstance(r.glyph, Line)]
-        assert len(lines) >= 1
+        # One line per boundary, through lo and through hi, as map_rline
+        # draws them (measured 24sep2026).  `>= 1' passed on one boundary
+        # alone.
+        assert len(lines) == 2
+        assert sorted(r.glyph.y for r in lines) == ["hi", "lo"]
 
 
 class TestMapMspline:
@@ -1669,8 +1751,8 @@ class TestMapFunction:
 
     def test_function_lcolor_applied(self, fig, gm):
         """lcolor option applied to function line."""
-        result = gm.map_function(fig, "x", (0.0, 1.0), 50, {"lcolor": "navy"})
-        assert result[0].glyph.line_color == "#1a476f"
+        result = gm.map_function(fig, "x", (0.0, 1.0), 50, {"lcolor": "magenta"})
+        assert result[0].glyph.line_color == "#ff00ff"
 
 
 # ================================================================
@@ -1920,17 +2002,17 @@ class TestBarOptions:
             "bfcolor must set bar fill_color"
 
     def test_blcolor_sets_line(self, fig, cds, gm):
-        """blcolor(navy) must set bar line_color to navy hex."""
-        r = gm.map_bar(fig, cds, "mpg", "weight", {"blcolor": "navy"})
-        assert r.glyph.line_color == "#1a476f", \
+        """blcolor(magenta) must set bar line_color to magenta hex."""
+        r = gm.map_bar(fig, cds, "mpg", "weight", {"blcolor": "magenta"})
+        assert r.glyph.line_color == "#ff00ff", \
             "blcolor must set bar line_color"
 
     def test_blcolor_bfcolor_independent(self, fig, cds, gm):
         """blcolor and bfcolor must be settable independently."""
         r = gm.map_bar(fig, cds, "mpg", "weight",
-                       {"bfcolor": "red", "blcolor": "navy"})
+                       {"bfcolor": "red", "blcolor": "magenta"})
         assert r.glyph.fill_color == "#ff0000"
-        assert r.glyph.line_color == "#1a476f"
+        assert r.glyph.line_color == "#ff00ff"
 
 
 class TestAreaBase:
@@ -1944,13 +2026,21 @@ class TestAreaBase:
         # Column is named "{yvar}_base" since renaming for hover tool support
         y1_col = "mpg_base"
         y1_vals = src.data[y1_col]
+        # One value per observation, auto_df's 74 (measured 24sep2026):
+        # all() of an empty column is true, so an area that drew nothing
+        # passed.
+        assert len(y1_vals) == 74, (
+            f"area baseline holds {len(y1_vals)} values, not 74")
         assert all(v == 5.0 for v in y1_vals), \
             "base option must set lower area boundary to specified value"
 
     def test_base_default_is_zero(self, fig, cds, gm):
         """Absent base must default to 0 (all yvar_base == 0)."""
         r = gm.map_area(fig, cds, "mpg", "weight", {})
-        assert all(v == 0 for v in r.data_source.data["mpg_base"])
+        base = r.data_source.data["mpg_base"]
+        # 74 values, as above: all() alone passed on an empty area.
+        assert len(base) == 74, f"area baseline holds {len(base)} values, not 74"
+        assert all(v == 0 for v in base)
 
 
 class TestSpikeBase:
@@ -1960,13 +2050,21 @@ class TestSpikeBase:
         """base(3) must set segment y0 values to 3."""
         r = gm.map_spike(fig, cds, "mpg", "weight", {"base": "3"})
         y0_vals = r.data_source.data["y0"]
+        # One origin per observation, auto_df's 74 (measured 24sep2026):
+        # all() of an empty column is true, so a spike plot that drew
+        # nothing passed.
+        assert len(y0_vals) == 74, (
+            f"spike y0 holds {len(y0_vals)} values, not 74")
         assert all(v == 3.0 for v in y0_vals), \
             "base option must set spike y0 (origin) to specified value"
 
     def test_base_default_is_zero(self, fig, cds, gm):
         """Absent base must default spike y0 to 0."""
         r = gm.map_spike(fig, cds, "mpg", "weight", {})
-        assert all(v == 0 for v in r.data_source.data["y0"])
+        y0_vals = r.data_source.data["y0"]
+        # 74 values, as above: all() alone passed on an empty spike plot.
+        assert len(y0_vals) == 74, f"spike y0 holds {len(y0_vals)} values, not 74"
+        assert all(v == 0 for v in y0_vals)
 
 
 class TestBarLineOpts:
@@ -2022,9 +2120,16 @@ class TestAreaBorderLine:
         from bokeh.models.glyphs import Line
         renderers_before = len(fig.renderers)
         gm.map_area(fig, cds, "mpg", "weight", {"lcolor": "red"})
+        # The area and then its one border, drawn over it (measured
+        # 24sep2026: [VArea, Line]).  renderers_before was taken and never
+        # read, and `>= 1' passed with the border drawn twice, or drawn
+        # UNDER the fill, which hides it.
+        added = [type(r.glyph).__name__ for r in fig.renderers[renderers_before:]]
+        assert added == ["VArea", "Line"], (
+            f"lcolor must add the area, then one border line over it: {added}")
         line_renderers = [r for r in fig.renderers
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
-        assert len(line_renderers) >= 1, \
+        assert len(line_renderers) == 1, \
             "lcolor option must add a Line renderer as area border"
         assert line_renderers[-1].glyph.line_color == "#ff0000", \
             "border line must use the specified lcolor"
@@ -2033,10 +2138,16 @@ class TestAreaBorderLine:
         """lwidth(thick) must set border line line_width."""
         from bokeh.models import GlyphRenderer
         from bokeh.models.glyphs import Line
+        renderers_before = len(fig.renderers)
         gm.map_area(fig, cds, "mpg", "weight", {"lwidth": "thick"})
+        # [VArea, Line], as for lcolor above: `>= 1' passed with the border
+        # drawn twice or under the fill (24sep2026).
+        added = [type(r.glyph).__name__ for r in fig.renderers[renderers_before:]]
+        assert added == ["VArea", "Line"], (
+            f"lwidth must add the area, then one border line over it: {added}")
         line_renderers = [r for r in fig.renderers
                           if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
-        assert len(line_renderers) >= 1, "lwidth must trigger border line"
+        assert len(line_renderers) == 1, "lwidth must trigger border line"
         assert line_renderers[-1].glyph.line_width > 1.0, \
             "border line_width must be > default"
 
@@ -2162,6 +2273,18 @@ class TestNewPlotTypes:
         n_raw = len(xy_cds.data["x"])
         n_band = len(line_rs[0].data_source.data["x_mb"])
         assert n_band <= n_raw
+        # ... which held with no aggregation at all: the 20 raw points pass
+        # 20 <= 20 (24sep2026).  Stata's default is round(min(sqrt(20),
+        # 10*log10(20))) = 4 equal-width bands, and 20 evenly spaced x put
+        # 5 rows in each, so the line joins 4 cross medians: the medians of
+        # rows 0-4, 5-9, 10-14 and 15-19 (measured, all four exactly).
+        assert n_band == 4, f"expected 4 band medians, got {n_band} points"
+        xs = np.asarray(xy_cds.data["x"], dtype=float)
+        ys = np.asarray(xy_cds.data["y"], dtype=float)
+        assert list(line_rs[0].data_source.data["x_mb"]) == pytest.approx(
+            [float(np.median(xs[k:k + 5])) for k in range(0, n_raw, 5)])
+        assert list(line_rs[0].data_source.data["y_mb"]) == pytest.approx(
+            [float(np.median(ys[k:k + 5])) for k in range(0, n_raw, 5)])
 
     def test_map_mband_too_few_rows_returns_empty(self):
         """map_mband() with few rows draws what twoway draws (no crash).
@@ -2461,8 +2584,8 @@ class TestLpolyFpfit:
 
     def test_map_fpfit_line_color(self, fig, xy_src):
         gm = GlyphMapper()
-        r = gm.map_fpfit(fig, xy_src, "y", "x", {"lcolor": "navy"})
-        assert r.glyph.line_color == "#1a476f"
+        r = gm.map_fpfit(fig, xy_src, "y", "x", {"lcolor": "magenta"})
+        assert r.glyph.line_color == "#ff00ff"
 
     def test_map_fpfitci_returns_list(self, fig, xy_src):
         gm = GlyphMapper()
@@ -2647,6 +2770,23 @@ def _renderer_has_col(renderer, col: str) -> bool:
             col in renderer.data_source.data)
 
 
+def _hover_scope(tool, fig) -> list:
+    """The renderers *tool* answers for.
+
+    A HoverTool's renderers are a list, or "auto" -- Bokeh's default --
+    which is every renderer on the figure.  Three of the tests below used
+    to `continue' past "auto" and past an empty list, and "auto" is exactly
+    the tool that covers a fit line and prints ??? there: dash scopes every
+    tool it builds (measured 24sep2026: scatter+lfit carries one HoverTool,
+    bound to the scatter alone), so the skip hid the one regression the
+    tests are named for.  An empty list is an empty scope, not "auto": a
+    tool bound to nothing shows nothing.
+    """
+    if tool.renderers == "auto":
+        return list(fig.renderers)
+    return list(tool.renderers or [])
+
+
 class TestHoverToolRendererScope:
     """BF-11: HoverTool must be scoped to renderers that carry the columns."""
 
@@ -2674,6 +2814,16 @@ class TestHoverToolRendererScope:
                         assert _renderer_has_col(rend, col), (
                             f"HoverTool renderer {rend} missing col '{col}'"
                         )
+        # The scatter itself is in a tool's scope.  The loop above checks
+        # the tools it finds, so it passed on a figure with no HoverTool,
+        # and it read an empty renderer list as "every renderer", so a tool
+        # bound to nothing -- no tooltip at all -- passed too (24sep2026).
+        scoped = [r for t in fig.tools if isinstance(t, HoverTool)
+                  for r in _hover_scope(t, fig)]
+        scatter = [r for r in fig.renderers
+                   if type(r.glyph).__name__ == "Scatter"]
+        assert scatter and all(any(s is r for r in scoped) for s in scatter), (
+            "no HoverTool answers for the scatter")
 
     def test_scatter_lfit_no_question_marks(self):
         """BF-11b: scatter+lfit figure hover must not reference lfit's CDS.
@@ -2693,12 +2843,16 @@ class TestHoverToolRendererScope:
         assert hover_cols, "Expected at least one HoverTool with tooltip fields"
 
         # Every HoverTool must only include renderers that carry ALL hover cols
+        scoped = []
         for tool in fig.tools:
             if not isinstance(tool, HoverTool):
                 continue
-            if not tool.renderers or tool.renderers == "auto":
-                continue  # unrestricted — validate no missing cols
-            for rend in tool.renderers:
+            # "auto" is every renderer on the figure, the lfit line
+            # included: the failure this test is named for, which the
+            # `continue' that stood here skipped (24sep2026).
+            scope = _hover_scope(tool, fig)
+            scoped += scope
+            for rend in scope:
                 for col in {f[1][2:-1] for f in tool.tooltips
                             if isinstance(f, (list, tuple))
                             and f[1].startswith("@{") and f[1].endswith("}")}:
@@ -2706,6 +2860,10 @@ class TestHoverToolRendererScope:
                         f"HoverTool renderer {rend} missing col '{col}'. "
                         "lfit renderer must not be included in hover renderers."
                     )
+        # ... and the scatter is in one of them: a tool bound to no renderer
+        # left the loop above nothing to check.
+        assert any(_renderer_has_col(r, "mpg") for r in scoped), (
+            "no HoverTool answers for the scatter")
 
     def test_lfit_renderer_not_in_hover_renderers(self):
         """BF-11c: the lfit line renderer must not appear in any HoverTool."""
@@ -2725,15 +2883,23 @@ class TestHoverToolRendererScope:
         ]
         assert lfit_renderers, "Expected to find an lfit renderer in the figure"
 
+        scoped = []
         for tool in fig.tools:
             if not isinstance(tool, HoverTool):
                 continue
-            if not tool.renderers or tool.renderers == "auto":
-                continue
+            # "auto" covers every renderer, the lfit line included: the
+            # failure named here, which the `continue' that stood here
+            # skipped (24sep2026).
+            scope = _hover_scope(tool, fig)
+            scoped += scope
             for lfit_r in lfit_renderers:
-                assert lfit_r not in tool.renderers, (
+                assert lfit_r not in scope, (
                     "lfit renderer must NOT be in any HoverTool's renderer list"
                 )
+        # The positive control: the scatter IS in a tool's scope, so the
+        # absence above is read from a tool that answers for something.
+        assert any(_renderer_has_col(r, "mpg") for r in scoped), (
+            "no HoverTool answers for the scatter")
 
     def test_histogram_hover_uses_fallback_tooltip(self):
         """BF-11d: histogram figure must get a fallback bin/count tooltip."""
@@ -2759,9 +2925,11 @@ class TestHoverToolRendererScope:
         # Extract column names from Bokeh field refs: @{colname} or @{col}{fmt}
         _field_pat = _re.compile(r"@\{([^}]+)\}")
         for tool in hover_tools:
-            if not tool.renderers or tool.renderers == "auto":
-                continue
-            for rend in tool.renderers:
+            # "auto" is every renderer on the figure, the bins included, and
+            # a tool reading @{mpg} there prints ??? on every bar: the
+            # failure named below, which a `continue' here skipped
+            # (24sep2026).
+            for rend in _hover_scope(tool, fig):
                 for _, val_spec in tool.tooltips:
                     for col in _field_pat.findall(val_spec):
                         assert col in rend.data_source.data, (

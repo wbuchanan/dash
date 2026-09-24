@@ -214,6 +214,9 @@ class TestAKpiNamedLikeACard:
         doc, built, session = _served(tmp_path, self._spec())
         assert all(title != "PLAIN"
                    for _, title in _cards(doc.select({"type": Div})))
+        # ...and k1 is drawn, as on the saved page: the all() above held
+        # for a served document with no card at all.
+        assert _cards(doc.select({"type": Div})) == [("k1", "K1")]
         _one_refusal(built, "KPI", "k1__by__0")
         assert _refusals(session) == []
 

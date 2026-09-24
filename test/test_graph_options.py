@@ -216,6 +216,10 @@ class TestCaption:
         fig = _get_figure({"note": "Note text", "caption": "Caption text"})
         labels = [r for r in fig.below if isinstance(r, Label)]
         assert len(labels) >= 2
+        # Two labels of any text passed: a caption drawn with the note's
+        # text, say.  Measured 24sep2026: exactly these two, below.
+        assert sorted(lbl.text for lbl in labels) == ["Caption text",
+                                                      "Note text"]
 
 
 # ================================================================
@@ -225,7 +229,10 @@ class TestLegend:
     def test_legend_off_hides(self):
         """P6-06: legend(off) sets legend.visible=False."""
         fig = _get_figure({"legend": "off"})
-        # If there is a legend, it should be hidden
+        # The figure keeps its one legend, hidden (measured 24sep2026); an
+        # `if fig.legend:' passed a figure whose legend was dropped, which
+        # hides nothing and leaves legend(on) nothing to show.
+        assert len(fig.legend) == 1, len(fig.legend)
         if fig.legend:
             assert fig.legend[0].visible is False
 
@@ -259,6 +266,10 @@ class TestXlineYline:
         fig = _get_figure({"xline": "2 7 12"})
         spans = _get_spans(fig, "height")
         assert len(spans) >= 3, f"Expected >=3 xline Spans, got {len(spans)}"
+        # Three spans anywhere passed; one at each position asked for
+        # (measured 24sep2026: 2, 7, 12, in order).
+        assert [s.location for s in spans] == [2.0, 7.0, 12.0], (
+            [s.location for s in spans])
 
     def test_yline_adds_span(self):
         """P6-07: yline option (string from parser) adds a horizontal Span to the figure."""
@@ -279,6 +290,9 @@ class TestXlineYline:
         fig = _get_figure({"xline_values": [3.0, 6.0]})
         spans = _get_spans(fig, "height")
         assert len(spans) >= 2
+        # At the two positions given, and no more (measured 24sep2026).
+        assert [s.location for s in spans] == [3.0, 6.0], (
+            [s.location for s in spans])
 
 
 # ================================================================
@@ -712,6 +726,10 @@ class TestByFaceting:
         figs = r._build_figures()
         # Falls back to no faceting
         assert "g1" in figs or len(figs) >= 1
+        # The line above held for any figure at all -- a facet included.
+        # No faceting is the one figure under the graph's own name
+        # (measured 24sep2026: ["g1"]; by(foreign) gives g1__by__0, 1).
+        assert sorted(figs) == ["g1"], sorted(figs)
 
     def test_by_single_unique_value(self):
         """by(var) where var has only 1 unique value → 1 facet."""
@@ -1235,15 +1253,21 @@ class TestAxisLabelAngle:
 class TestLegendColsRows:
     """legend(cols(#)) and legend(rows(#)) must set ncols/nrows on the Bokeh Legend."""
 
+    # Each figure here has its one legend (measured 24sep2026, hidden: a
+    # single scatter has one key).  `if fig.legend:' skipped the check on
+    # a figure whose legend was dropped, so the legend is asserted first.
+
     def test_legend_cols_sets_ncols(self):
         """legend(cols(2)) must set fig.legend[0].ncols = 2."""
         fig = _get_figure({"legend": "cols(2)"})
+        assert len(fig.legend) == 1, len(fig.legend)
         if fig.legend:
             assert fig.legend[0].ncols == 2
 
     def test_legend_rows_sets_nrows(self):
         """legend(rows(3)) must set fig.legend[0].nrows = 3."""
         fig = _get_figure({"legend": "rows(3)"})
+        assert len(fig.legend) == 1, len(fig.legend)
         if fig.legend:
             assert fig.legend[0].nrows == 3
 
@@ -1258,6 +1282,7 @@ class TestLegendColsRows:
     def test_legend_rows_and_cols_combined(self):
         """legend(cols(2) rows(4)) must set both ncols and nrows."""
         fig = _get_figure({"legend": "cols(2) rows(4)"})
+        assert len(fig.legend) == 1, len(fig.legend)
         if fig.legend:
             assert fig.legend[0].ncols == 2
             assert fig.legend[0].nrows == 4
@@ -1541,6 +1566,10 @@ class TestByLinkIntegration:
                     masks.append(renderer.view.filter.booleans)
                     break
         assert len(masks) == 2
+        # One entry a row of the shared source, in each mask (measured
+        # 24sep2026: 20 and 20, ten true each): zip() stops at the shorter,
+        # so an empty or short mask made no comparison at all.
+        assert [len(m) for m in masks] == [20, 20], [len(m) for m in masks]
         for i, (a, b) in enumerate(zip(masks[0], masks[1])):
             assert not (a and b), f"Row {i} is in both facet masks — masks must be disjoint"
 
@@ -1558,6 +1587,9 @@ class TestByLinkIntegration:
                     masks.append(list(renderer.view.filter.booleans))
                     break
         assert len(masks) == 2
+        # Measured 24sep2026: 20 and 20.  An empty first mask made range(0)
+        # and checked no row.
+        assert [len(m) for m in masks] == [20, 20], [len(m) for m in masks]
         n = len(masks[0])
         for i in range(n):
             assert masks[0][i] or masks[1][i], (
@@ -1587,6 +1619,12 @@ class TestByLinkIntegration:
             fig = figs[fkey]
             title = fig.title.text if fig.title else ""
             assert len(title) > 0, f"{fkey}: facet figure must have a non-empty title"
+        # Non-empty is not the group value, and no facet at all checked
+        # nothing.  Measured 24sep2026: two panels titled by foreign's
+        # values, "0" and "1" (the data has no value labels).
+        assert facet_keys == ["g1__by__0", "g1__by__1"], facet_keys
+        assert [figs[k].title.text for k in facet_keys] == ["0", "1"], (
+            [figs[k].title.text for k in facet_keys])
 
     def test_bl_10_render_produces_valid_html(self):
         """BL-10: render() with by()+link() must produce valid non-trivial HTML."""

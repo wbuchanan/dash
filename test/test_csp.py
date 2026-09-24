@@ -503,6 +503,9 @@ class TestTheServedApp:
                                       "_dash_served_template",
                                       "_dash_server_transforms"])
     def test_the_helpers_are_the_renderers_own_text(self, app, name):
+        """A structural guard, deliberately: the app carries each helper
+        once, as the renderer's own text -- which is what lets the tests
+        that run the renderer's copies certify the app's."""
         defs = [n for n in ast.parse(app.src).body
                 if isinstance(n, ast.FunctionDef) and n.name == name]
         assert len(defs) == 1, f"{name} is defined {len(defs)} times"

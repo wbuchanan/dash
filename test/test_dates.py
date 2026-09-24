@@ -136,6 +136,7 @@ class TestEpochConversion:
 
     def test_tc_milliseconds(self, truth):
         rec = truth["date_formats"]["%tc"]
+        checked = 0
         for v in rec["values"]:
             iso = v.get("iso")
             if not iso:
@@ -143,6 +144,17 @@ class TestEpochConversion:
             got = dash_render._stata_dates_to_datetime(
                 pd.Series([float(v["value"])]), "tc")
             assert str(got.iloc[0].date()) == iso[:10], v["display_cmd"]
+            # To the millisecond, as the test's name says: a conversion that
+            # dropped the milliseconds kept every date above (-1 is still
+            # 31dec1959).  Stata's ISO is YYYY-MM-DDTHH:MM:SS.mmm.
+            ts = got.iloc[0]
+            mine = (ts.strftime("%Y-%m-%dT%H:%M:%S.")
+                    + f"{ts.microsecond // 1000:03d}")
+            assert mine == iso, f"{v['display_cmd']}: dash {mine}, Stata {iso}"
+            checked += 1
+        # The fixture holds 10 %tc values, each with Stata's ISO (measured
+        # 24sep2026); a renamed "iso" key would otherwise skip them all.
+        assert checked == 10, f"{checked} %tc values checked"
 
     def test_tC_differs_from_tc_by_the_accumulated_leap_seconds(self, truth):
         """Leap-second data IS available; treating %tC as %tc is wrong.
@@ -433,7 +445,10 @@ class TestNumericDisplayFormats:
 
     def test_every_measured_f_and_fc_value_is_reproduced(self, truth):
         cases = self._cases(truth)
-        assert len(cases) >= 40, f"only {len(cases)} cases found in the fixture"
+        # Exactly 56, measured 24sep2026: seven f/fc formats x 8 non-missing
+        # values (32 f, 24 fc).  The floor this replaced (>= 40) let two
+        # whole formats' worth of cases vanish unnoticed.
+        assert len(cases) == 56, f"{len(cases)} cases found in the fixture"
         wrong = []
         for fmt, value, want in cases:
             got = dash_render._format_stata_numeric(value, fmt)
@@ -673,15 +688,31 @@ class TestDateFilterActuallyFilters:
     def test_every_per_source_snapshot_agrees_too(self, tmp_path):
         dr = self._rendered(tmp_path)
         cb = dr.filter_callbacks[0]
-        for raw in cb.args.get("all_graph_sources_orig_json", []):
-            snap = json.loads(raw)
-            if "date" not in snap:
-                continue
-            vals = [v for v in snap["date"] if v is not None]
+        # The per-source snapshots are ColumnDataSource models under
+        # "all_graph_sources_orig", one per entry of "all_graph_sources".
+        # This test used to loop over "all_graph_sources_orig_json", a key
+        # the renderer no longer writes, so the loop ran zero times and the
+        # test checked nothing (measured 24sep2026).  One line graph over
+        # the date: exactly one snapshot, holding the 12 dates.
+        snaps = cb.args["all_graph_sources_orig"]
+        assert len(snaps) == len(cb.args["all_graph_sources"]) == 1, (
+            f"{len(snaps)} per-source snapshots for "
+            f"{len(cb.args['all_graph_sources'])} graph sources"
+        )
+        dated = [s for s in snaps if "date" in s.data]
+        assert dated, "no per-source snapshot carries the date column"
+        whole = [v for v in cb.args["orig_source"].data["date"]
+                 if v is not None]
+        for snap in dated:
+            vals = [v for v in snap.data["date"] if v is not None]
+            assert len(vals) == 12, f"{len(vals)} dates in the snapshot"
             assert all(isinstance(v, (int, float)) for v in vals), (
                 f"a per-source snapshot serialised dates as "
                 f"{type(vals[0]).__name__}"
             )
+            # The same epoch milliseconds as the whole-frame snapshot the
+            # slider bounds come from, or the filter misses every row.
+            assert vals == whole, (vals[:2], whole[:2])
 
     def test_the_slider_bounds_and_the_snapshot_are_on_the_same_scale(
         self, tmp_path

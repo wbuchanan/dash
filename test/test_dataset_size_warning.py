@@ -82,6 +82,9 @@ class TestALargeDatasetIsReported:
         )
 
     def test_the_threshold_is_a_documented_constant(self):
+        """A documentation guard over dash_render.py's text, deliberately:
+        the comment that says why the threshold is that number is not
+        behaviour, and no run can show it."""
         import inspect
         src = inspect.getsource(dr)
         i = src.index("_LARGE_DATASET_CELLS")

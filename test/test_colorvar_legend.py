@@ -48,6 +48,8 @@ from conftest import make_spec, make_data_json
 _VL = {"repair": {"1": "Poor", "2": "Fair", "3": "Avg", "4": "Good",
                   "5": "Exc"}}
 _VLN = {"rep78": "repair"}
+#: The colour key's labels, in order: every category of _VL.
+_CATEGORIES = ["Poor", "Fair", "Avg", "Good", "Exc"]
 
 
 def _df(n=20):
@@ -149,6 +151,12 @@ class TestTheSchemeChromeIsStillApplied:
         fig, dr = _render(_DISCRETE, scheme="economist")
         want = dr.scheme.legend_bg_color
         assert want
+        # The loop below passed with no legend to check.  The colour key
+        # must be one it checks -- under economist it is the only legend
+        # (measured 24sep2026).
+        assert [l for l in _legends(fig) if _labels(l) == _CATEGORIES], (
+            [_labels(l) for l in _legends(fig)]
+        )
         for leg in _legends(fig):
             assert str(leg.background_fill_color) == want, (
                 f"legend background {leg.background_fill_color} is not the "
@@ -159,6 +167,9 @@ class TestTheSchemeChromeIsStillApplied:
         fig, dr = _render(_DISCRETE, scheme="economist")
         want = dr.scheme.legend_border_color
         assert want
+        assert [l for l in _legends(fig) if _labels(l) == _CATEGORIES], (
+            [_labels(l) for l in _legends(fig)]
+        )
         for leg in _legends(fig):
             assert str(leg.border_line_color) == want
 
@@ -186,6 +197,9 @@ class TestTheMixedCase:
             f"the colour key lost its categories: "
             f"{[_labels(l) for l in _legends(fig)]}"
         )
+        # All five, in order: the two ends alone passed a key that had
+        # dropped Fair, Avg and Good.
+        assert _labels(cv[0]) == _CATEGORIES, _labels(cv[0])
 
     def test_the_plot_legend_is_separate_and_keys_the_series(self):
         fig, _ = _render(self._MIXED)
@@ -201,6 +215,9 @@ class TestTheMixedCase:
         assert len(_legends(fig)) >= 2, (
             "the colour key and the series key were merged into one legend"
         )
+        # Exactly the two (measured 24sep2026); a duplicated key passed
+        # ">= 2".
+        assert len(_legends(fig)) == 2, [_labels(l) for l in _legends(fig)]
 
 
 class TestTheContinuousPathIsUnchanged:

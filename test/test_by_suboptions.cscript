@@ -121,16 +121,22 @@ display "BYS-01 PASS: by(foreign, cols(1) total) is not warned about"
 // ================================================================
 // BYS-02..03 — an unimplemented sub-option is named, once
 // ================================================================
+// Once means one logical line of the log, so the counts below are exact.
+// They were `>= 1', which a render reporting the same sub-options twice
+// also passes -- and the saved renderer did report them twice, parsing a
+// graph's by() once to group the frame and again for the layout, until
+// _dash_parse_by grew warn=False for the second parse (dash_render.py).
+// Measured 24sep2026: each render below writes the warning exactly once.
 _bys_render "foreign, rows(2)"
 _bys_take
 display `"  read: `macval(_bys_line)'"'
-assert `_bys_n' >= 1
+assert `_bys_n' == 1
 assert strpos(`"`macval(_bys_line)'"', "rows(2)") > 0
 display "BYS-02 PASS: by(foreign, rows(2)) names rows(2)"
 
 _bys_render "foreign, rows(2) compact"
 _bys_take
-assert `_bys_n' >= 1
+assert `_bys_n' == 1
 assert strpos(`"`_bys_line'"', "rows(2)") > 0
 assert strpos(`"`_bys_line'"', "compact") > 0
 display "BYS-03 PASS: two unimplemented sub-options are named in one line"
@@ -141,7 +147,7 @@ display "BYS-03 PASS: two unimplemented sub-options are named in one line"
 // ================================================================
 _bys_render "foreign, cols(2) holes(1)"
 _bys_take
-assert `_bys_n' >= 1
+assert `_bys_n' == 1
 assert strpos(`"`_bys_line'"', "holes(1)") > 0
 assert strpos(`"`_bys_line'"', "cols") == 0
 display "BYS-04 PASS: cols(2) is not reported alongside holes(1)"
@@ -171,7 +177,7 @@ qui do "../dash_setup.ado"
 capture noisily _dash_setup_check_files
 _bys_render "foreign, rows(2)"
 _bys_take
-assert `_bys_n' >= 1
+assert `_bys_n' == 1
 assert strpos(`"`_bys_line'"', "rows(2)") > 0
 display "BYS-06 PASS: the report is still printed after dash_setup's probe"
 

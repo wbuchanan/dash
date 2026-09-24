@@ -520,7 +520,12 @@ class TestAPerPlotQualifierIsRead:
         std = drawn_rows(standalone(tmp_path, spec)[0])
         srv = drawn_rows(served(tmp_path, spec)[0])
         assert std == srv, "%s: saved %r, served %r" % (ptype, std, srv)
-        assert all(n == 5 for _, n in srv), (
+        # One renderer per layer (connected and dropline draw two: the line
+        # or stem and the markers), each over the five foreign cars
+        # (measured 24sep2026).  all() alone passed a layer that drew no
+        # renderer in either mode.
+        layers = {"connected": 2, "dropline": 2}.get(ptype, 1)
+        assert [n for _, n in srv] == [5] * layers, (
             "%s drew %r rows under `if foreign==1'; five observations "
             "satisfy it" % (ptype, srv)
         )
@@ -544,14 +549,23 @@ class TestAPerPlotQualifierIsRead:
         evil = ("foreign == __import__('os').system('touch %s')"
                 % str(marker))
         spec = make_spec([plot_for("scatter", if_expr=evil)])
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            try:
-                served(tmp_path, spec)
-            except Exception:
-                pass
+        # This sat in `except Exception: pass', so an app that crashed --
+        # before or after reaching the qualifier -- passed.  Nothing raises
+        # (measured 24sep2026): the whitelist refuses the qualifier aloud and
+        # the layer keeps every row, the contract of _dash_qualified_frame.
+        figs, _doc, msgs = served(tmp_path, spec)
         assert not marker.exists(), (
             "a per-plot if() expression executed arbitrary Python")
+        assert ("dash: graph 'g1' plot 1 if_expr filter skipped -- invalid "
+                "syntax (<unknown>, line 1)") in msgs, msgs
+        assert drawn_rows(figs) == [("Scatter", len(_DF))]
+        # The gate's own verdict, beside a qualifier it must accept: with
+        # the whitelist accepting everything pandas still refuses this
+        # payload, so no marker appears either way (measured 24sep2026).
+        cols = list(_DF.columns)
+        assert dr._validate_if_expr(
+            dr._stata_if_to_pandas("foreign==1"), cols) is True
+        assert dr._validate_if_expr(dr._stata_if_to_pandas(evil), cols) is False
 
 
 class TestAKpiQualifierIsApplied:
@@ -603,13 +617,14 @@ class TestAKpiQualifierIsApplied:
         evil = "foreign == __import__('os').system('touch %s')" % str(marker)
         spec = make_spec([plot_for("scatter")],
                          kpis=[self._kpi(if_expr=evil)])
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            try:
-                served(tmp_path, spec)
-            except Exception:
-                pass
+        # Refused aloud, measured 24sep2026, and the card is still built;
+        # this used to sit in `except Exception: pass'.
+        _figs, doc, msgs = served(tmp_path, spec)
         assert not marker.exists()
+        assert ("dash: kpi 'k1' if_expr filter skipped -- invalid syntax "
+                "(<unknown>, line 1)") in msgs, msgs
+        assert any(_kpi_value_in(getattr(m, "text", None), "k1") is not None
+                   for m in _walk(doc)), "the KPI card was not built"
 
 
 # ===========================================================================
@@ -847,25 +862,39 @@ class TestTabsAreWhereTheHelpSaysTheyAre:
     ``layout(bs)``, which drew the unassigned items above the tabs.
     """
 
-    def _bs_html(self, tmp_path):
+    def _bs_spec(self):
         spec = make_spec(
             [plot_for("scatter")],
             {"layout": "bs", "tabs": "One: g1", "registry": "g1 g2"})
         spec["graphs"].append({
             "name": "g2", "graph_options": {"name": "g2"}, "options": {},
             "plots": [plot_for("line")]})
-        return standalone(tmp_path, spec)[1]
+        return spec
 
     def test_the_unassigned_item_is_below_the_tabs(self, tmp_path):
-        html = self._bs_html(tmp_path)
-        tabs_at = html.find("db-section")
-        grid_at = html.find("db-grid")
-        assert tabs_at >= 0, "no tabs section was rendered"
-        if grid_at >= 0:
-            assert tabs_at < grid_at, (
-                "under layout(bs) the unassigned items are drawn ABOVE the "
-                "tabs; dash.sthlp says below"
-            )
+        # This compared html.find("db-section") with html.find("db-grid").
+        # No page carries "db-grid" (the renderer emits it nowhere), so the
+        # ordering assert under `if grid_at >= 0' never ran, and the first
+        # "db-section" is the stylesheet's `.db-section{margin-bottom:16px}'
+        # rule, found on every page (measured 24sep2026).  The page BODY is
+        # read instead: the tabs cell -- the one wrapper the renderer writes
+        # only for the tab strip -- and g2's own root div, by its model id.
+        _, sp, dp = _write(tmp_path, self._bs_spec())
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(sp, dp)
+            html = r.render()
+        body = html[html.index('<div class="db-container">'):]
+        tabs_cell = '<div class="db-row db-section"><div class="db-col-md-12">'
+        g1_root = 'data-root-id="%s"' % r.figures["g1"].id
+        g2_root = 'data-root-id="%s"' % r.figures["g2"].id
+        assert body.count(tabs_cell) == 1, "no tabs section was rendered"
+        assert body.count(g2_root) == 1, "the unassigned g2 was not placed"
+        assert g1_root not in body, "the tabbed g1 was also placed outside"
+        assert body.index(tabs_cell) < body.index(g2_root), (
+            "under layout(bs) the unassigned items are drawn ABOVE the "
+            "tabs; dash.sthlp says below"
+        )
 
 
 # ===========================================================================

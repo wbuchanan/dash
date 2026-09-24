@@ -572,13 +572,18 @@ class TestLabelsUsedAutomatically:
         for fig in (_saved_figure(r), _served_figure(doc)):
             legs = [x for x in fig.renderers + list(fig.center)
                     + list(fig.right) if isinstance(x, Legend)]
-            got = set()
+            items = []
             for leg in legs:
                 for it in leg.items:
                     lab = it.label
-                    got.add(lab.get("value") if isinstance(lab, dict)
-                            else getattr(lab, "value", str(lab)))
+                    items.append(lab.get("value") if isinstance(lab, dict)
+                                 else getattr(lab, "value", str(lab)))
+            got = set(items)
             assert {"Domestic", "Foreign"} <= got, got
+            # A superset passed a leftover layer item ("mpg") or the raw
+            # codes beside the labels.  Measured 24sep2026: one legend, two
+            # items, the two labels, in both modes.
+            assert sorted(items) == ["Domestic", "Foreign"], items
 
     def test_an_axis_is_labelled_with_numbers(self, tmp_path):
         spec = _spec([plot_for("scatter", xvar="foreign")])

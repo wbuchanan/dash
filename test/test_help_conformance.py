@@ -499,6 +499,19 @@ class TestTheParsersFoundSomething:
             f"only {len(found)} options parsed out of dash.sthlp; the naive "
             f"regexes found 9-17, so this parser has regressed to one of them"
         )
+        # The floor above only tells this parser from the naive ones.
+        # Measured 24sep2026: 134 names, and losing any one of its readers
+        # still clears 50 -- 116 without {cmd:name(} (eighteen names, among
+        # them graphregion, plotregion, lcolor and format, which no other
+        # guard here looks for), 76 without the space form of {opt}, 85
+        # without the {phang} entries, 90 without the {synopt} rows.  The
+        # count is pinned: a change to the help that adds or drops a
+        # definition moves it on purpose, and is re-measured here.
+        assert len(found) == 134, (
+            f"{len(found)} options parsed out of dash.sthlp, 134 measured "
+            f"24sep2026: a reader of the parser lost a form, or the help "
+            f"gained or lost a definition and this count must follow it"
+        )
 
     def test_the_help_parser_handles_a_paren_carrying_tail(self):
         """{cmdab:ml:abel(} -- the construct that defeats a brace anchor."""
@@ -516,10 +529,31 @@ class TestTheParsersFoundSomething:
         """{cmdab:fmt:} means fmt, which admits no abbreviation."""
         assert "fmt" in _help_options()
 
-    def test_the_help_parser_excludes_the_statistic_table(self):
+    def test_the_help_parser_excludes_the_statistic_table(self, monkeypatch):
         """The KPI statistic rows are values, not options."""
         found = _help_options()
         assert "dcount" not in found and "median" not in found
+        # The table writes its rows {synopt:{cmd:dcount}}, and no reader of
+        # _help_options takes a bare {cmd:name} -- its {cmd: form wants the
+        # "(" -- so the check above held with the exclusion of the table
+        # deleted (measured 24sep2026: the same 134 names either way).  The
+        # exclusion is what keeps the rows out once a reader takes them, as
+        # _TOKEN already does, so it is tried on a row every reader takes:
+        # {opt dcount} under {marker kpi} must be dropped, and the same row
+        # under another section read -- the control that the row is seen.
+        def parsed(section):
+            text = ("{marker syntax}\n{marker description}\n"
+                    "{marker %s}\n{synopt:{opt dcount}}number of distinct "
+                    "non-missing values{p_end}\n" % section)
+            monkeypatch.setattr(sys.modules[__name__], "_help_text",
+                                lambda: text)
+            return _help_options()
+        assert "dcount" in parsed("filters"), (
+            "the control row {synopt:{opt dcount}} was not read at all, so "
+            "the exclusion below proves nothing")
+        assert "dcount" not in parsed("kpi"), (
+            "a {synopt} row of the KPI statistic table was read as an "
+            "option: the exclusion of the table no longer holds")
 
     def test_the_ado_parser_finds_the_whole_surface(self):
         assert len(_ado_declarations()) >= 120
@@ -559,6 +593,16 @@ class TestTheParsersFoundSomething:
         mins = _plottype_minimums()
         assert len(mins) >= 38, f"only {len(mins)} plot types read"
         assert mins.get("scatter") == "sc" and mins.get("pcarrowi") == "pcarrowi"
+        # Measured 24sep2026: 40 rows, one for each of the 40 plot types
+        # the renderer draws, so the floor of 38 passed with two rows gone
+        # and a type whose row is missing is never asked about below.  The
+        # table read must name exactly the types dash draws.
+        import dash_render as dr
+        drawn = dr._dash_plot_type_names()
+        assert set(mins) == drawn, (
+            f"plot types dash draws with no row read from "
+            f"_expand_plottype_str: {sorted(drawn - set(mins))}; rows for "
+            f"types it does not draw: {sorted(set(mins) - drawn)}")
 
     def test_the_spelling_fixture_was_found(self):
         st = _spelling_truth()
@@ -776,9 +820,14 @@ class TestKpiStatisticsAreDocumented:
         return m.group(1).split()
 
     def test_the_list_was_found(self):
+        """Guards the guard below: a moved `valid_stats' list must fail
+        here rather than let the table check pass on nothing."""
         assert len(self._valid_stats()) >= 10
 
     def test_every_accepted_statistic_is_in_the_table(self):
+        """A help-to-code consistency guard, deliberately over text: every
+        statistic dash.ado's `valid_stats' accepts is in the help's KPI
+        table, so a statistic added to the code cannot go undocumented."""
         h = _help_text()
         i = h.index("{marker kpi}")
         j = h.index("{marker server_mode}", i)

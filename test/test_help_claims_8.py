@@ -238,6 +238,9 @@ class TestXtickDrawsMarksWithoutLabels:
     def test_no_grid_line_is_drawn_at_a_mark(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"ytick": "15 25 35"}),
                       tag="grid")
+        # The figure's one y grid (measured 24sep2026, both modes): an
+        # all() over no grid held with the grid gone.
+        assert len(fig.ygrid) == 1, len(fig.ygrid)
         assert all(g.minor_grid_line_color is None for g in fig.ygrid)
 
     def test_xtick_none_changes_nothing(self, tmp_path, mode):
@@ -262,6 +265,28 @@ class TestTheTickMarkCodeCarriesNoUserText:
         fig, html, _w = _saved_figure(tmp_path, _scatter({"xtick": evil}))
         assert "<script>alert(1)" not in html
         assert _tick_plan(fig.xaxis[0])[1] == [2500.0, 3500.0]
+        # The check on the page above cannot see a model: Bokeh escapes the
+        # document it embeds, so a label a model carries reaches the page
+        # as &lt;script&gt;alert(1)...  Measured 24sep2026 with the same
+        # label in xlabel(), where labels are drawn: it is in the axis's
+        # major_label_overrides and the CustomJSTickFormatter's args, the
+        # page holds "alert(1)" twice -- and "<script>alert(1)" not once.
+        # So the models are read, and the page for "alert(1)", which the
+        # escaping leaves as it is; the xlabel() page is the control that
+        # both readings find the label when a model does carry it.
+        def carriers(f):
+            return sorted({(type(m).__name__, k) for m in f.references()
+                           for k, v in m.properties_with_values(
+                               include_defaults=False).items()
+                           if "alert(1)" in str(v)})
+        assert carriers(fig) == [], carriers(fig)
+        assert "alert(1)" not in html
+        ctl, ctl_html, _w = _saved_figure(tmp_path / "control",
+                                          _scatter({"xlabel": evil}))
+        assert carriers(ctl) == [("CustomJSTickFormatter", "args"),
+                                 ("LinearAxis", "major_label_overrides")]
+        assert ctl_html.count("alert(1)") == 2
+        assert "<script>alert(1)" not in ctl_html
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_huge_request_is_bounded(self, tmp_path, mode):
@@ -477,6 +502,11 @@ class TestNoLayerNeedsScipyOrStatsmodels:
         ran = {k.split()[0] for k in blocked["counts"]}
         assert ran == set(dr._dash_plot_type_names())
         assert len(blocked["counts"]) >= 70, len(blocked["counts"])
+        # Every row ran: a layer that raises is left out of `counts', so
+        # the floor passed with three of them gone.  Measured 24sep2026:
+        # one row a plot type (40) and the 33 of _DEP_SCRIPT's VARIANTS.
+        assert len(blocked["counts"]) == len(dr._dash_plot_type_names()) + 33, (
+            sorted(blocked["counts"]))
 
     def test_an_installed_copy_is_not_read(self, watched):
         """With scipy and statsmodels importable, nothing imports them --
@@ -569,11 +599,20 @@ _S2MONO_FAMILY = ("s2mono", "s2manual", "s2gmanual", "sj", "stsj", "stmono2")
 
 
 class TestTheSchemeTableSaysWhatStataSays:
-    """Each row is read against Stata's own help and scheme files."""
+    """Each row is read against Stata's own help and scheme files.
+
+    _stata_file skips its test on a machine without Stata, and each test
+    here read Stata's file first -- so the half of it that reads only
+    dash's own help, shipped schemes and constants was skipped with it,
+    and on such a machine a wrong row or a wrong size passed unseen
+    (24sep2026).  That half is a test of its own, ``..._in_dash``, which
+    needs no Stata and runs everywhere."""
 
     def test_stcolor_is_the_default_as_of_stata_18(self):
         assert ("default scheme as of Stata 18"
                 in _flat(_stata_file("s/scheme_st.sthlp")))
+
+    def test_stcolor_is_the_default_as_of_stata_18_in_dash(self):
         assert "as of Stata 18" in _scheme_row("stcolor")
 
     def test_s2color_was_the_default_before_stata_18(self):
@@ -583,6 +622,8 @@ class TestTheSchemeTableSaysWhatStataSays:
         assert ("Scheme s2color was Stata's default scheme prior to Stata 18"
                 in re.sub(r"\{cmd:([^}]*)\}", r"\1",
                           _flat(_stata_file("s/scheme_s2.sthlp"))))
+
+    def test_s2color_was_the_default_before_stata_18_in_dash(self):
         row = _scheme_row("s2color")
         assert "before Stata 18" in row and "Stata 10" not in row
 
@@ -591,12 +632,17 @@ class TestTheSchemeTableSaysWhatStataSays:
         assert "s2manual is the scheme used in the Stata manuals prior to Stata 13" in s2
         assert ("s2gmanual is the scheme used in the Stata Graphics Reference "
                 "Manual prior to Stata 13") in s2
+
+    def test_s2manual_and_s2gmanual_are_the_manuals_before_stata_13_in_dash(
+            self):
         assert "before Stata 13" in _scheme_row("s2manual")
         assert "before Stata 13" in _scheme_row("s2gmanual")
 
     def test_stgcolor_alt_is_stcolor_alt_at_the_manuals_size(self):
         st = _flat(_stata_file("s/scheme_st.sthlp"))
         assert "3.588 and 2.392 inches" in st
+
+    def test_stgcolor_alt_is_stcolor_alt_at_the_manuals_size_in_dash(self):
         sch = dr.SchemeParser("stgcolor_alt")
         assert (sch.graphsize_x, sch.graphsize_y) == (3.588, 2.392)
         assert "stcolor_alt" in _scheme_row("stgcolor_alt")
@@ -615,6 +661,13 @@ class TestTheSchemeTableSaysWhatStataSays:
             r, g, b = (int(v) for v in stata_p["p%d" % i].split()[:3])
             assert ours["color p%d" % i].lower() == (
                 "#%02x%02x%02x%%20" % (r, g, b)), i
+
+    def test_sttrans_is_s2color_restyled_with_tols_muted_colours_in_dash(
+            self):
+        ours = dict(_directives(os.path.join(_SCHEMES, "sttrans.scheme")))
+        # Every p1..p15 at twenty percent in dash's file too.
+        assert all(ours["color p%d" % i].endswith("%20")
+                   for i in range(1, 16))
         # p2..p9 are Tol's muted rose, sand, green, cyan, wine, teal,
         # olive and purple; p1 stays Stata blue.
         tol = ["#cc6677", "#ddcc77", "#117733", "#88ccee", "#882255",
@@ -634,6 +687,8 @@ class TestTheSchemeTableSaysWhatStataSays:
     def test_s1manual_is_s1mono_smaller_with_larger_markers(self):
         s1 = _smcl_text(_stata_file("s/scheme_s1.sthlp"))
         assert "s1manual is the same as s1mono but presents graphs at a smaller overall size" in s1
+
+    def test_s1manual_is_s1mono_smaller_with_larger_markers_in_dash(self):
         man, mono = dr.SchemeParser("s1manual"), dr.SchemeParser("s1mono")
         assert (man.graphsize_x, man.graphsize_y) == (3.12, 2.392)
         assert man.marker_size > mono.marker_size
@@ -974,6 +1029,13 @@ class TestTheShippedFiles:
         src = _stata_file("s/scheme-s2color.scheme")
         assert re.search(r"^color refline\s", src, re.M)
         assert re.search(r"^color ci_area\s", src, re.M)
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_some_uncarried_directives_govern_what_dash_draws_its_own_way_in_dash(
+            self, tmp_path, mode):
+        """The half that needs no Stata (see TestTheSchemeTableSaysWhat-
+        StataSays): no shipped file carries either directive, and xline()
+        is drawn black and dashed."""
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys = {k for k, _v in _directives(
                 os.path.join(_SCHEMES, name + ".scheme"))}
@@ -1043,10 +1105,16 @@ class TestTheUnitsAreStatas:
         assert ("size 100 = minimum of width and height of graph"
                 in _flat(_stata_file("s/size.sthlp")))
 
+    # Each test that reads Stata's style files has an ``..._in_dash``
+    # sibling for the half that reads only dash (see TestTheSchemeTable-
+    # SaysWhatStataSays): it was skipped with the Stata half.
+
     def test_medium_text_is_3_8194_or_11_point(self):
         src = _stata_file("style/gsize-medium.style")
         assert re.search(r"set val\s+3\.8194\b", src)
         assert "11 pt based on a 4 inch high graph" in src
+
+    def test_medium_text_is_3_8194_or_11_point_in_dash(self):
         assert dr.SchemeParser._GSIZE_NUMERIC_PT_PER_UNIT == 2.88
         assert round(3.8194 * 2.88, 1) == 11.0
         assert round(6.0 * 2.88, 2) == 17.28
@@ -1057,12 +1125,16 @@ class TestTheUnitsAreStatas:
         lv = float(re.search(r"set val\s+([\d.]+)", large).group(1))
         mv = float(re.search(r"set val\s+([\d.]+)", medium).group(1))
         assert round(lv * 2.88, 1) == 7.0 and round(mv * 2.88, 1) == 4.4
+
+    def test_a_large_marker_is_7_point_and_medium_4_4_in_dash(self):
         assert dr.SchemeParser._SYMBOLSIZE_PT["large"] == 7.0
         assert dr.SchemeParser._SYMBOLSIZE_PT["medium"] == 4.4
 
     def test_a_medium_line_is_0_30(self):
         src = _stata_file("style/linewidth-medium.style")
         assert re.search(r"set val\s+\.30\b", src)
+
+    def test_a_medium_line_is_0_30_in_dash(self):
         assert "linewidth p" in dict(_directives(
             os.path.join(_SCHEMES, "economist.scheme")))
 
@@ -1072,12 +1144,15 @@ class TestTheUnitsAreStatas:
         of Stata's twenty declares `linewidth p<N>' (economist's p<N>solid
         are a different style, all medium)."""
         for name in dr.SchemeParser._BUILTIN_NAMES:
+            src = _stata_file("s/scheme-%s.scheme" % name)
+            assert not re.search(r"^linewidth p\d+\s", src, re.M), name
+
+    def test_the_series_share_one_line_width_in_dash(self):
+        for name in dr.SchemeParser._BUILTIN_NAMES:
             keys = {k for k, _v in _directives(
                 os.path.join(_SCHEMES, name + ".scheme"))}
             assert not [k for k in keys
                         if re.fullmatch(r"linewidth p\d+", k)], name
-            src = _stata_file("s/scheme-%s.scheme" % name)
-            assert not re.search(r"^linewidth p\d+\s", src, re.M), name
         sec = _flat(_help_between("{marker scheme}", "{marker unsupported}"))
         assert "line-width cycles" not in sec
         assert "the line width ({cmd:linewidth p})" in sec
@@ -1321,6 +1396,11 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
                    "fitopts", "at", "blabel"):
             assert "{opt %s(" % nm in s, nm
         assert s.count("r(198)") >= 3
+        # Measured 24sep2026: six, one for each refusal the section names
+        # -- title2()/subtitle2(), mlabwidth(), ciopts()/lineopts()/
+        # fitopts(), blabel()/at(), link()/filter() -- and the note's.  At
+        # least three passed with half of them dropped.
+        assert s.count("r(198)") == 6, s.count("r(198)")
 
     def test_the_other_commands_named_are_statas(self):
         """ciopts() is marginsplot's and sts graph's, lineopts() the stcox
@@ -1335,6 +1415,10 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
                         os.path.join(dirpath, f)).lower():
                     hits.append(f)
         assert hits == [], hits
+
+    def test_the_other_commands_named_are_statas_in_dash(self):
+        """The help's half, which needs no Stata: it was skipped with the
+        Stata half above on a machine without Stata (24sep2026)."""
         s = self._sec()
         assert "{cmd:marginsplot}" in s and "{cmd:sts graph}" in s
 
@@ -1412,9 +1496,16 @@ class TestTheDependenciesAreOneList:
         assert {"bokeh", "numpy", "pandas"} <= top
 
     def test_jsonio_is_what_dash_exports_the_data_with(self):
+        """Text only: dash.ado exports with jsonio and refuses without it.
+        The refusal itself runs in test_help_claims_8.cscript -- HC8-17 on
+        the immediate route and HC8-17b on dash build's (WP-24; the build
+        route's check removed fails HC8-17b)."""
         ado = _read(_ADO)
         assert ado.count("capture which jsonio") >= 2
-        assert re.search(r"^\s*quietly jsonio out\b", ado, re.M)
+        # Both exports, captured so the date formats are restored when
+        # jsonio fails (test_program_coverage.cscript PC-11).
+        assert len(re.findall(r"^\s*capture noisily quietly jsonio out\b",
+                              ado, re.M)) == 2
         assert ("dash: jsonio is required but not found. Run dash_setup "
                 "first.") in ado
 
@@ -1428,12 +1519,36 @@ class TestDashSetupHelpMatchesTheAdo:
 
     def test_availability_is_the_setting_not_python_query(self):
         """The help said setup verified Python "via python query"; the ado
-        reads c(python_exec) and never runs python query."""
+        reads c(python_exec) and never runs python query.
+
+        A structural guard over dash_setup.ado's text, deliberately:
+        availability is decided from configuration, and the no-Python state
+        cannot be produced in a test (c() is read-only; see
+        test_cscript_hygiene.py's TestTheShippedAdoFilesFollowTheSameRule)."""
         help_ = _flat(_read(_SETUP_HELP))
         code = "\n".join(ln.split("//", 1)[0]
                          for ln in _read(_SETUP_ADO).splitlines())
         assert 'if `"`c(python_exec)\'"\' == ""' in code
         assert not re.search(r"^\s*(capture\s+)?python query", code, re.M)
+        # The pattern above sees a bare or a capture'd `python query' at a
+        # line's start.  Stata runs it under any prefix and takes `query'
+        # down to `q' -- measured 24sep2026, StataNow 19.5 console: python
+        # q, python qu, python quer, quietly/qui/cap/capture quietly/
+        # noisily/n python query are all rc 0; py and pyth are r(199).  So
+        # the word is looked for anywhere in the code, comments dropped
+        # first (the *! header names python query), and the pattern is
+        # shown to find every spelling Stata runs.
+        pyq = re.compile(r"\bpython\s+q(?:u(?:e(?:r(?:y)?)?)?)?\b")
+        for form in ("python query", "python q", "python quer",
+                     "quietly python query", "qui python query",
+                     "cap python query", "capture quietly python query",
+                     "noisily python query", "n python qu"):
+            assert pyq.search(form), form
+        bare = re.sub(r"/\*.*?\*/", " ", code, flags=re.S)
+        bare = "\n".join(ln for ln in bare.splitlines()
+                         if not ln.lstrip().startswith("*"))
+        found = pyq.search(bare)
+        assert not found, bare[max(0, found.start() - 80):found.end() + 20]
         assert "via {cmd:python query}" not in help_
 
     def test_the_steps_are_the_ados_steps(self):

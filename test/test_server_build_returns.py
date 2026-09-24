@@ -76,11 +76,17 @@ class TestBuildingDoesNotLaunch:
         assert os.path.getsize(op) > 1000
 
     def test_the_file_it_writes_is_valid_python(self, spec_and_data):
+        """Parsed, and the app bokeh serve expects: its entry point is
+        defined."""
         import ast
         sp, dp, op = spec_and_data
-        _run(["--spec", sp, "--data", dp, "--output", op, "--mode", "server"])
+        proc = _run(["--spec", sp, "--data", dp, "--output", op,
+                     "--mode", "server"])
+        assert proc.returncode == 0, proc.stderr[-2000:]
         with open(op, encoding="utf-8") as fh:
-            ast.parse(fh.read())
+            tree = ast.parse(fh.read())
+        assert "make_document" in {
+            n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
 
     def test_no_process_is_left_running(self, spec_and_data):
         """A build that leaves a server behind is a build that launched one.

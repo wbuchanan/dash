@@ -154,6 +154,9 @@ class TestPerGraphIfFilter:
         sources = renderer._setup_sources()
         y_vals = sources["g1"].data["y"]
         assert all(v > 10 for v in y_vals), "Not all values satisfy y > 10"
+        # The rows themselves: all() of no rows is true, so a qualifier that
+        # kept nothing passed.  y is 1..20, so y > 10 keeps 11..20.
+        assert sorted(y_vals) == [float(i) for i in range(11, 21)], y_vals
 
     def test_if_expr_empty_returns_all(self):
         """P5-06: empty if_expr → source has all rows."""
@@ -212,6 +215,9 @@ class TestPerGraphIfFilter:
         y1 = set(sources["g1"].data["y"])
         y2 = set(sources["g2"].data["y"])
         assert y1.isdisjoint(y2), "Graphs with opposite if_expr should have disjoint data"
+        # Disjoint is true of an empty set too: each graph holds its ten.
+        assert sorted(y1) == [float(i) for i in range(1, 11)], sorted(y1)
+        assert sorted(y2) == [float(i) for i in range(11, 21)], sorted(y2)
 
 
 # ================================================================

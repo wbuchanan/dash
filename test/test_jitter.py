@@ -11,6 +11,8 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# This directory too, for test_abbreviations' syntax reader.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dash_render import GlyphMapper, OptionTranslator, DashRenderer
 
 from bokeh.plotting import figure
@@ -343,10 +345,25 @@ class TestStatasOwnSeedSpelling:
         i = src.index("program define _dash_parse_plot_opts")
         j = src.index("local _dash_unknown", i)
         pending = _re.findall(r"_dash_pending' (\w+)\"", src[i:j])
+        # The regex read the whole list -- one name per line that appends
+        # to it (44, measured 24sep2026) -- or the absence below is of a
+        # list it never saw.
+        appends = _re.findall(r"^\s*if .*local _dash_pending\b", src[i:j],
+                              _re.M)
+        assert pending and len(pending) == len(appends), (
+            len(pending), len(appends))
         assert "jitterseed" not in pending, (
             "jitterseed() seeds the jitter, but dash.ado still names it in "
             "the ignoring-unsupported note"
         )
+        # Nor may the trailing `*' take it: an option the syntax does not
+        # declare lands in _dash_unknown, the note's other half.
+        from test_abbreviations import _program_body, _syntax_options
+        body = _program_body(src, "_dash_parse_plot_opts")
+        declared = {full for _, full in _syntax_options(body)}
+        assert "jitterseed" in declared and "jseed" in declared, (
+            "jitterseed() or jseed() is no longer declared, so the syntax's "
+            "trailing * reports it as unsupported")
 
 
 class TestEverySeedSiteReadsBothSpellings:
@@ -400,12 +417,32 @@ class TestEverySeedSiteReadsBothSpellings:
         assert _dr._resolve_seed({}, default=42) == 42
         assert _dr._resolve_seed({"jseed": "not a number"}, default=42) == 42
 
-    def test_a_non_numeric_seed_does_not_crash_dropline(self, gm, auto_df):
-        """`int(float(options["jseed"]))` raised on any non-numeric value."""
+    @pytest.mark.parametrize("key", ["jseed", "jitterseed"])
+    def test_a_non_numeric_seed_does_not_crash_dropline(self, gm, auto_df,
+                                                        key):
+        """`int(float(options["jseed"]))` raised on any non-numeric value.
+
+        What it does instead, measured 24sep2026: the value is named in a
+        note and the layer is drawn unseeded -- every row, each moved within
+        the jitter band, none left where it was.
+        """
+        import warnings
+        import dash_render as _dr
         from bokeh.plotting import figure
         src = _make_source(auto_df, "weight", "mpg")
-        gm.map_dropline(figure(), src, "mpg", "weight",
-                        {"jitter": "5", "jseed": "abc"})
+        _dr._dash_reset_notes()         # the note is made once per render
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            rs = gm.map_dropline(figure(), src, "mpg", "weight",
+                                 {"jitter": "5", key: "abc"})
+        assert ("dash: %s(abc) must be a non-negative integer; drawing "
+                "unseeded." % key) in [str(c.message) for c in caught]
+        x = np.asarray(rs[0].data_source.data["x"], dtype=float)
+        w = auto_df["weight"].to_numpy(dtype=float)
+        half = 0.05 * (w.max() - w.min()) / 2.0     # jitter(5): 5% of range
+        assert len(x) == len(w)
+        assert np.all(np.abs(x - w) <= half + 1e-9), "moved past the band"
+        assert not np.any(x == w), "a row was not jittered at all"
 
     def test_the_served_app_reads_jitterseed(self, tmp_path):
         """A served scatter must jitter reproducibly, as a saved one does.

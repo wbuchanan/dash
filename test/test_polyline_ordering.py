@@ -204,7 +204,13 @@ def test_a_range_path_keeps_its_pairing(name):
     renderers = result if isinstance(result, (list, tuple)) else [result]
     want1 = dict(zip(_RX, _RY1))
     want2 = dict(zip(_RX, _RY2))
-    checked = 0
+    # Every renderer, and both bounds.  This returned after the first
+    # renderer that held either bound -- map_rconnected draws y1 and y2 as
+    # separate lines, so its y2 line was never read (measured 24sep2026) --
+    # and SKIPPED a mapper whose columns it could not find, which is the
+    # one case where the pairing is not checked at all.  No other test
+    # checks range pairing.
+    checked = set()
     for rend in renderers:
         data = getattr(getattr(rend, "data_source", None), "data", {})
         xkey = next((k for k in data if k.startswith("x")
@@ -221,11 +227,10 @@ def test_a_range_path_keeps_its_pairing(name):
                     "%s paired x=%s with %s=%s; expected %s"
                     % (name, xv, ykey, yv, want[float(xv)])
                 )
-            checked += 1
-        if checked:
-            return
-    if not checked:
-        pytest.skip("%s exposes no comparable x/y columns" % name)
+            checked.add(ykey)
+    if checked != {"y1", "y2"}:
+        pytest.fail("%s exposes no comparable x/%s columns"
+                    % (name, "/".join(sorted({"y1", "y2"} - checked))))
 
 
 # ==========================================================================

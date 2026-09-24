@@ -235,9 +235,11 @@ def test_fixture_is_self_consistent(truth):
 def test_declared_minimums_cover_stata_minimums(truth, plot_decls):
     declared = dict((full, mn) for mn, full in plot_decls)
     bad = []
+    checked = 0
     for name, e in sorted(truth["options"].items()):
         if name not in declared:
             continue                       # option dash does not have: S05
+        checked += 1
         want, got = e["min_abbrev"], declared[name]
         # No exception for t(), b(), l() and r(): a digit ends the run of
         # capitals, so T1title's minimum is t itself (see _syntax_options),
@@ -246,6 +248,13 @@ def test_declared_minimums_cover_stata_minimums(truth, plot_decls):
             continue
         bad.append("%s(): dash needs %r, declaration only allows %r"
                    % (name, want, got))
+    # dash declares all 93 of the fixture's options, so all 93 are compared
+    # (measured 24sep2026).  The skip above passed a reader that found no
+    # declaration, or fixture keys that no longer match one, with nothing
+    # compared at all.
+    assert checked == 93, (
+        "%d of the fixture's %d options were compared with a declaration"
+        % (checked, len(truth["options"])))
     assert not bad, (
         "%d option(s) reject an abbreviation twoway accepts.\n  "
         % len(bad)) + "\n  ".join(bad)
@@ -257,15 +266,23 @@ def test_declared_minimums_cover_stata_minimums(truth, plot_decls):
 def test_declarations_resolve_abbreviations_like_twoway(truth, plot_decls):
     declared = set(full for _, full in plot_decls)
     bad = []
+    checked = 0
     for ab, r in sorted(truth["abbrev_resolution"].items()):
         want = r.get("stata_resolves_to")
         if not want or want not in declared:
             continue
+        checked += 1
         got = _resolves_to(ab, plot_decls)
         if got != want:
             where = "reject it outright" if got is None else "bind it to %s()" % got
             bad.append("%s(): twoway binds it to %s(), dash's declarations %s"
                        % (ab, want, where))
+    # 39 of the 61 recorded spellings have a twoway binding to an option dash
+    # declares; the other 22 record no binding (measured 24sep2026).  As
+    # above, the skip let a test with nothing compared pass.
+    assert checked == 39, (
+        "%d of %d recorded spellings were compared"
+        % (checked, len(truth["abbrev_resolution"])))
     assert not bad, (
         "%d abbreviation(s) do not land where twoway lands.\n  "
         % len(bad)) + "\n  ".join(bad)
@@ -427,6 +444,11 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
             bad.append("%s() is documented as an abbreviation of %s(), which "
                        "dash does not declare anywhere" % (mn, full))
 
+    # dash.sthlp's 75 {cmdab:} tokens hold 47 distinct spellings this checks
+    # (measured 24sep2026).  Markup that stopped matching the pattern --
+    # {opt}, say -- would leave the loop nothing to check.
+    assert len(seen) == 47, (
+        "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
         % len(bad)) + "\n  ".join(bad)
@@ -445,6 +467,20 @@ def test_mata_option_key_table_is_removed():
         if re.search(r"^\s*(?:string scalar|void|real scalar)\s+%s\s*\(" % n,
                      src, re.M)
     ]
+    # Any Mata return type, not three: a table brought back as, say,
+    # `string rowvector _expand_optkey(' or `function _expand_optkey(' was
+    # not a definition to the pattern above.  dash_parse.mata declares
+    # real scalar, string scalar, string rowvector and void today.
+    _type = (r"(?:transmorphic|numeric|real|complex|string|pointer(?:\([^)]*\))?"
+             r"|struct\s+\w+|class\s+\w+|void|function"
+             r"|scalar|vector|rowvector|colvector|matrix)")
+    leftovers += [
+        n for n in ("_expand_optkey", "_dash_expand_opts_str")
+        if n not in leftovers
+        and re.search(r"^\s*(?:%s\s+)+%s\s*\(" % (_type, n), src, re.M)
+    ]
+    assert re.search(r"^\s*(?:%s\s+)+_dash_\w+\s*\(" % _type, src, re.M), (
+        "the definition pattern matches no function in dash_parse.mata")
     assert not leftovers, (
         "dash_parse.mata still defines %s.  TR-04.2: once the syntax "
         "declarations carry the minimum abbreviations, the hard-coded table "
@@ -498,14 +534,24 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     folds = _folds(bodies["_dash_parse_plot_opts"])
     assert ("mlg", "mlabgap") in folds and ("pbgc", "plotbgcolor") in folds
     assert ("pbgc", "plotbgcolor") in _folds(bodies["_dash_parse_graph_opts"])
-    assert sum(1 for b in _bodies().values() if _syntax_options(b)) >= 6
+    # Exactly 10 programs declare options with -syntax- (measured 24sep2026:
+    # _dash_do_render, the two parsers, _dash_limit, _dash_browser_wanted,
+    # _dash_dashboard_browser, _dash_kpi, _dash_prepare_spec, _dash_build,
+    # _dash_serve_spec).  ">= 6" let four of them drop out of every
+    # whole-file scan below -- a `program' written without `define' does.
+    with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
+    assert len(with_syntax) >= 6
+    assert len(with_syntax) == 10, with_syntax
     lines = [ln.strip() for ln in bodies["_dash_parse_plot_opts"].split("\n")]
     assert sum(1 for ln in lines if ln.startswith("//")) >= 20
 
 
 def test_no_comment_block_is_repeated_in_a_parser():
     """Three or more comment lines appearing twice in one parser is a pasted
-    duplicate (the generator NOTE was, in both)."""
+    duplicate (the generator NOTE was, in both).
+
+    A structural guard over dash.ado's text, deliberately: a comment exists
+    only in the source, so no run of the parser can show a pasted one."""
     bad = []
     for prog, body in _bodies(_PARSERS).items():
         lines = [ln.strip() for ln in body.split("\n")]

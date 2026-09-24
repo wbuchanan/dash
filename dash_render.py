@@ -10699,56 +10699,92 @@ def _stata_expr_to_python(expr: str) -> str:
 _LITERAL_MARK = "\x01"
 
 
-def _mask_string_literals(expr: str) -> "tuple[str, list[str]]":
-    """Replace every quoted literal with a placeholder the rewrites ignore.
+def _mask_string_literals(expr: str) -> "tuple[str, list[tuple]]":
+    """Replace every string literal with a placeholder the rewrites ignore.
 
     Returns ``(masked, literals)``.  The placeholder is ``\x01<i>\x01``:
     it carries no operator, no comma and no identifier, so none of the
     qualifier rewrites can match inside it, and ``inlist(x, <ph>, <ph>)``
-    still splits on its commas exactly as before.
+    still splits on its commas exactly as before.  Each literal is
+    ``(value, text)``: the string it stands for, and the text it was
+    written as.
 
-    An unterminated quote is masked to the end of the string.  Leaving it
-    unmasked would mean the one case where the user most likely mistyped is
-    also the one case the rewrites are free to alter.
+    The literals are read by STATA's rules, because the qualifier is
+    Stata's: a plain literal in double quotes, or a compound one opened by
+    a backtick and a double quote and closed by a double quote and an
+    apostrophe, which nests; and neither has an escape character.  This
+    read them by Python's -- a backslash escaped the next character and a
+    compound quote was not a quote -- and put each one back as Python
+    source, so (measured 24sep2026, both modes) ``make == "C:\\"`` was an
+    unterminated Python string and the compound ``x"y`` ended at its inner
+    quote, each drawing every row with a "filter skipped" warning, while
+    ``make == "n\\n"`` and ``make == "a\\u0022b"`` were read as a newline
+    and a quote and silently drew the rows of other makes.  A literal in
+    single quotes is not Stata's, but a spec written by hand may carry
+    one; it is read by the same rule, to the next apostrophe.
+
+    An unterminated literal is masked to the end of the string, and its
+    value is None: it goes back exactly as written, so it cannot parse and
+    the qualifier is refused, as Stata refuses it.  Leaving it unmasked
+    would mean the one case where the user most likely mistyped is also
+    the one case the rewrites are free to alter; completing it would turn
+    a qualifier Stata rejects into one that filters.
     """
     out: "list[str]" = []
-    lits: "list[str]" = []
-    buf = ""
-    quote = ""
+    lits: "list[tuple]" = []
+    n = len(expr)
     i = 0
-    while i < len(expr):
+    while i < n:
         ch = expr[i]
-        if quote:
-            buf += ch
-            if ch == "\\" and i + 1 < len(expr):
-                buf += expr[i + 1]
-                i += 2
-                continue
-            if ch == quote:
-                out.append(f"{_LITERAL_MARK}{len(lits)}{_LITERAL_MARK}")
-                lits.append(buf)
-                buf = ""
-                quote = ""
-            i += 1
+        if expr.startswith('`"', i):            # compound: nests
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if expr.startswith('`"', j):
+                    depth, j = depth + 1, j + 2
+                elif expr.startswith('"\'', j):
+                    depth, j = depth - 1, j + 2
+                else:
+                    j += 1
+            out.append(f"{_LITERAL_MARK}{len(lits)}{_LITERAL_MARK}")
+            if depth:                           # unterminated
+                lits.append((None, expr[i:]))
+                break
+            lits.append((expr[i + 2:j - 2], expr[i:j]))
+            i = j
             continue
-        if ch in ("'", '"'):
-            quote = ch
-            buf = ch
-            i += 1
+        if ch in ('"', "'"):
+            j = expr.find(ch, i + 1)
+            out.append(f"{_LITERAL_MARK}{len(lits)}{_LITERAL_MARK}")
+            if j < 0:                           # unterminated
+                lits.append((None, expr[i:]))
+                break
+            lits.append((expr[i + 1:j], expr[i:j + 1]))
+            i = j + 1
             continue
         out.append(ch)
         i += 1
-    if buf:                                   # unterminated quote
-        out.append(f"{_LITERAL_MARK}{len(lits)}{_LITERAL_MARK}")
-        lits.append(buf)
     return "".join(out), lits
 
 
-def _unmask_string_literals(expr: str, literals: "list[str]") -> str:
-    """Put the literals masked by :func:`_mask_string_literals` back."""
-    for i, lit in enumerate(literals):
-        expr = expr.replace(f"{_LITERAL_MARK}{i}{_LITERAL_MARK}", lit)
-    return expr
+def _unmask_string_literals(expr: str, literals: "list[tuple]") -> str:
+    """Put the literals masked by :func:`_mask_string_literals` back, each
+    as a Python string literal of the SAME value.
+
+    ``json.dumps`` writes one: a double-quoted string whose every escape --
+    ``\\"``, ``\\\\``, ``\\n``, ``\\uXXXX`` -- Python reads exactly as JSON
+    does, so a quote or a backslash in the value is data and can never end
+    the literal or begin an escape.  Non-ASCII text is written as itself
+    (``ensure_ascii=False``): as ``\\uXXXX`` pairs a character past U+FFFF
+    would come back as two surrogates and match nothing.  An unterminated
+    literal goes back as written.  One pass, so a literal's value can never
+    be read as another's placeholder.
+    """
+    def _put(m):
+        value, text = literals[int(m.group(1))]
+        return text if value is None else json.dumps(value,
+                                                      ensure_ascii=False)
+    return re.sub(re.escape(_LITERAL_MARK) + r"(\d+)" +
+                  re.escape(_LITERAL_MARK), _put, expr)
 
 
 def _stata_if_to_pandas(expr: str) -> str:
@@ -10768,7 +10804,9 @@ def _stata_if_to_pandas(expr: str) -> str:
     test/test_axis_options.py.
 
     Quoted string literals are masked out before any rewrite and restored
-    afterwards, so a literal is data and not syntax.  Without that,
+    afterwards, each as a Python literal of the value Stata reads -- see
+    :func:`_mask_string_literals` -- so a literal is data and not syntax.
+    Without that,
 
         if make == "Wow!"
 
@@ -10801,13 +10839,24 @@ def _stata_if_to_pandas(expr: str) -> str:
 
     out = re.sub(r"\binlist\s*\(([^()]*)\)", _inlist, out)
 
-    # inrange(x, a, b) -> ((x >= a) & (x <= b))
+    # inrange(x, a, b) -> ((x >= a) & (x <= b)).  A missing bound is no
+    # bound, by Stata's own rules: inrange(x, ., b) is x <= b, inrange(x,
+    # a, .) is x >= a, and inrange(x, ., .) is every non-missing x.  A
+    # missing x is never in range, which a comparison with NaN already
+    # says.  The bound used to be written through as `x >= .', which the
+    # missing idioms below read as "x is missing", so inrange(x, ., 3)
+    # selected no row at all where Stata selects x <= 3 (measured,
+    # StataNow 19.5, 24sep2026; test_function_audit.py).
     def _inrange(m):
         parts = [p.strip() for p in m.group(1).split(",")]
         if len(parts) != 3 or not all(parts):
             return m.group(0)
         v, lo, hi = parts
-        return f"(({v} >= {lo}) & ({v} <= {hi}))"
+        conds = [f"({v} {op} {b})" for op, b in ((">=", lo), ("<=", hi))
+                 if not re.fullmatch(r"\.[a-z]?", b)]
+        if not conds:
+            return f"({v} == {v})"
+        return "(" + " & ".join(conds) + ")"
 
     out = re.sub(r"\binrange\s*\(([^()]*)\)", _inrange, out)
 
@@ -16144,8 +16193,11 @@ def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
     if _if:
         # Stata's qualifier idioms -- missing(), inlist(), inrange() and the
         # "< ." missing test -- become plain comparisons BEFORE validation,
-        # so the whitelist sees the whole expression.
-        pandas_expr = _stata_if_to_pandas(_if.replace("~=", "!="))
+        # so the whitelist sees the whole expression.  ~= is among them, and
+        # is rewritten there, outside the literals: rewriting it here first,
+        # over the whole text, turned make == "a~=b" into a match for the
+        # make "a!=b" (measured 24sep2026).
+        pandas_expr = _stata_if_to_pandas(_if)
         _label = (" " + where) if where else ""
         if not _validate_if_expr(pandas_expr, out.columns):
             warnings.warn(
@@ -21956,41 +22008,21 @@ class ServerAppBuilder:
             "                    _gdf = fdf",
             "                # Reapply graph-level if_expr/in_expr qualifier so that",
             "                # rows excluded by the qualifier are not reintroduced after",
-            "                # each filter interaction (Bug #33 fix).",
+            "                # each filter interaction (Bug #33 fix).  Through the",
+            "                # helper the first draw uses: this block was a copy of its",
+            "                # own, and it read `in' by position in the FILTERED rows",
+            "                # (in 3/8 after a move drew the move's 3rd to 8th rows,",
+            "                # not observations 3 to 8), translated ~= inside string",
+            "                # literals, and its whitelist caught SyntaxError alone, so",
+            "                # a qualifier too deep to parse raised MemoryError out of",
+            "                # every move (measured 24sep2026).",
             "                _orig_gn_cb = _gfac_to_orig.get(gname, gname)",
             "                _qual_cb = _gquals.get(_orig_gn_cb, {})",
             "                _in_cb = _qual_cb.get('in_expr', '').strip()",
             "                _if_cb = _qual_cb.get('if_expr', '').strip()",
-            "                if _in_cb:",
-            "                    import re as _re_cb",
-            "                    _m_cb = _re_cb.match(r'^(\\d+)/(\\d+)$', _in_cb)",
-            "                    if _m_cb:",
-            "                        _lo_cb = max(0, int(_m_cb.group(1)) - 1)",
-            "                        _hi_cb = int(_m_cb.group(2))",
-            "                        _gdf = _gdf.iloc[_lo_cb:_hi_cb]",
-            "                if _if_cb:",
-            "                    import ast as _ast_cb",
-            "                    _ALLOW_CB = frozenset({_ast_cb.Expression, _ast_cb.BoolOp,",
-            "                        _ast_cb.And, _ast_cb.Or, _ast_cb.BinOp, _ast_cb.BitAnd,",
-            "                        _ast_cb.BitOr, _ast_cb.Compare, _ast_cb.Eq, _ast_cb.NotEq,",
-            "                        _ast_cb.Lt, _ast_cb.LtE, _ast_cb.Gt, _ast_cb.GtE,",
-            "                        _ast_cb.In, _ast_cb.NotIn, _ast_cb.UnaryOp, _ast_cb.Not,",
-            "                        _ast_cb.Invert, _ast_cb.USub, _ast_cb.Constant,",
-            "                        _ast_cb.Name, _ast_cb.Tuple, _ast_cb.List, _ast_cb.Load})",
-            "                    _SNAMES_CB = frozenset({'True','False','None','nan','NaN','inf'})",
-            "                    def _safe_g_cb(expr, cols):",
-            "                        if '@' in expr: return False",
-            "                        try: tree = _ast_cb.parse(expr, mode='eval')",
-            "                        except SyntaxError: return False",
-            "                        cs = frozenset(str(c) for c in cols)",
-            "                        for nd in _ast_cb.walk(tree):",
-            "                            if type(nd) not in _ALLOW_CB: return False",
-            "                            if isinstance(nd, _ast_cb.Name) and nd.id not in cs and nd.id not in _SNAMES_CB: return False",
-            "                        return True",
-            "                    _px_cb = _stata_if_to_pandas(_if_cb.replace('~=', '!='))",
-            "                    if _safe_g_cb(_px_cb, _gdf.columns):",
-            "                        try: _gdf = _gdf.query(_px_cb, engine='python')",
-            "                        except Exception: pass",
+            "                if _in_cb or _if_cb:",
+            "                    _gdf = _dash_layer_frame(_df_ref, _gdf, _if_cb, _in_cb,",
+            "                                             'graph %r' % _orig_gn_cb)",
             "                for src in srcs:",
             "                    if id(src) in _redrawn:",
             "                        # A mapper-built source; the redraw below",

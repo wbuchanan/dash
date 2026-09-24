@@ -64,6 +64,7 @@ modes at ad13a0f:
 The served app copies ``GlyphMapper`` by source, so every drawing check runs
 in both render modes and asserts they agree.
 """
+import html
 import importlib.util
 import itertools
 import json
@@ -176,7 +177,12 @@ def _labelsets(fig):
 
 
 def _field(spec):
-    return spec if isinstance(spec, str) else spec.get("field")
+    if isinstance(spec, str):
+        return spec
+    if isinstance(spec, dict):
+        return spec.get("field")
+    # A document read back from a page's JSON holds a Field object.
+    return getattr(spec, "field", None)
 
 
 def _drawn_labels(fig):
@@ -630,7 +636,9 @@ class TestTheColumnReader:
 
     def test_strings(self):
         is_text, miss = dr.GlyphMapper._mlabel_column_kind(["a", ""])
-        assert is_text is True and not miss.any()
+        # One flag per row, as for every other kind: `not miss.any()' alone
+        # was true of a zero-length mask too.
+        assert is_text is True and list(miss) == [False, False]
         assert dr.GlyphMapper._mlabel_column_kind(
             pd.Series(["a", "b"]))[0] is True
 
@@ -888,14 +896,32 @@ class TestAdversarialMarkerLabels:
         """A LabelSet is canvas text: the label is drawn as written and
         never reaches the page as markup."""
         bad = "</script><script>alert(1)</script>"
+        hostile = {"origin": {"0": bad, "1": "Foreign"}}
         std, srv, _, _ = _both([plot_for("scatter", {"mlabel": "foreign"})],
-                               value_labels={"origin": {"0": bad,
-                                                        "1": "Foreign"}})
+                               value_labels=hostile)
         for fig in (std, srv):
             assert bad in _texts_of(fig)
-        page = tp._standalone_page(tp._spec([plot_for(
-            "scatter", {"mlabel": "foreign"})]))[2]
-        assert "<script>alert(1)" not in page
+        # The page is written from the SAME hostile labels.  It was
+        # test_mode_parity's page, whose data labels foreign
+        # Domestic/Foreign, so the payload never entered it and the absence
+        # check below could not fail (measured 24sep2026).
+        spec = tp._spec([plot_for("scatter", {"mlabel": "foreign"})])
+        _, sp, dp = _write(spec, _DF, hostile, {"foreign": "origin"})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            page = dr.DashRenderer(sp, dp).render()
+        assert bad not in page and "<script>alert(1)" not in page
+        # ...and it is IN the page, as text: the embedded document (which
+        # Bokeh HTML-escapes, so only its decoded form holds the raw text)
+        # draws it, or the absence above is of a label that was dropped.
+        blocks = re.findall(r'<script type="application/json" id="[^"]+">'
+                            r'\s*(.*?)\s*</script>', page, re.S)
+        docs = [d for b in blocks
+                for d in json.loads(html.unescape(b)).values()]
+        assert len(docs) == 1, f"{len(docs)} embedded documents"
+        figs = [m for m in tp._walk_models(Document.from_json(docs[0]))
+                if type(m).__name__ == "figure"]
+        assert figs and bad in _texts_of(figs[0])
 
     # ---- exhaustion: a label set or a label built to cost ------------------
     def test_a_huge_label_set_is_read_at_once(self):

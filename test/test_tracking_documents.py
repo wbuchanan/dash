@@ -72,12 +72,7 @@ ROADMAP_CORRECTIONS_PENDING = {}
 #: "No regression test covers this" in its Resolution; writing the test
 #: and naming it there removes the entry from this list (GAPS.md L9,
 #: WP-24).
-CLOSED_WITHOUT_A_TEST = frozenset({
-    "Eight fills in comprehensive_demo.do render at a hundredth of the "
-    "intended opacity",
-    "Every successful `dash build' prints an unexplained \"file not found\"",
-    "ylabel(#5, grid) was silently ignored",
-})
+CLOSED_WITHOUT_A_TEST = frozenset()
 
 _NO_TEST_PHRASE = "No regression test covers this"
 
@@ -689,8 +684,12 @@ class TestGapsAndRoadmapAgree:
                 for _w, ss in (([v["full"]] if v["full"] else [])
                                + (v["partial"] or []))
                 for s in ss}
-        if not shas:
-            return
+        # GAPS.md closes ten gaps by a named commit (measured 24sep2026).
+        # None found is a parser that stopped reading them, not a document
+        # with nothing to check: this returned green on it.
+        assert shas, "no gap heading names a closing commit"
+        # Environmental: a copy with no .git (an unpacked package) has no
+        # history to check the names against.
         if _git("rev-parse", "--git-dir").returncode != 0:
             pytest.skip("not a git working tree")
         bad = sorted("%s names %s" % (g, s) for g, s in shas

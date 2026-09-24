@@ -14,8 +14,10 @@
 *!
 *!   ND-01  an immediate render with nodraw emits no ignoring note and still
 *!          writes the file.
-*!   ND-02  a real unsupported option beside it is still named; nodraw is not.
-*!   ND-03  paren mode: the plot-level list does not name it either.
+*!   ND-02  a real unsupported option beside it is still named; nodraw is not
+*!          -- in the note's own words, which ND-01 searches for.
+*!   ND-03  paren mode: the plot-level list does not name it either, and
+*!          does name play() written beside it.
 *!   ND-04  the launch decision itself, through its seam: nodraw keeps the
 *!          browser shut, so does saving(), so does $dash_nobrowser; with
 *!          none of them the window would open.  Nothing is launched: the
@@ -67,11 +69,12 @@ end
 // ----------------------------------------------------------------
 local out1 "`c(tmpdir)'nd_01.html"
 capture erase "`out1'"
+// The logs are searched with cert_log_has, which undoes Stata's wrapping.
 _nd_note_for `"dash scatter mpg weight, nodraw saving("`out1'")"' "`logfile'"
 assert r(rc) == 0
-cert_file_has "`logfile'", needle("ignoring unsupported")
+cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 0
-cert_file_has "`logfile'", needle("nodraw()")
+cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0
 confirm file "`out1'"
 display as text "ND-01 PASS: nodraw emits no note and the file is written"
@@ -79,11 +82,16 @@ display as text "ND-01 PASS: nodraw emits no note and the file is written"
 // ----------------------------------------------------------------
 // ND-02
 // ----------------------------------------------------------------
+// The note ND-01 must not print is printed here, in the words ND-01
+// searches for: without this, that absence could be of words dash no
+// longer uses (nothing in this file found them before 24sep2026).
 _nd_note_for `"dash scatter mpg weight, play(x) nodraw saving("`out1'")"' "`logfile'"
 assert r(rc) == 0
-cert_file_has "`logfile'", needle("play()")
+cert_log_has "`logfile'", needle("ignoring unsupported")
 assert r(found) == 1
-cert_file_has "`logfile'", needle("nodraw()")
+cert_log_has "`logfile'", needle("play()")
+assert r(found) == 1
+cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0
 display as text "ND-02 PASS: play() is named, nodraw is not"
 
@@ -92,7 +100,18 @@ display as text "ND-02 PASS: play() is named, nodraw is not"
 // ----------------------------------------------------------------
 _nd_note_for `"dash (scatter mpg weight, nodraw), saving("`out1'")"' "`logfile'"
 assert r(rc) == 0
-cert_file_has "`logfile'", needle("nodraw()")
+cert_log_has "`logfile'", needle("nodraw()")
+assert r(found) == 0
+// And paren mode does report a plot group's options: play() in the group
+// is named, nodraw beside it is not.  Without this a paren mode that
+// reported nothing at all passed.
+_nd_note_for `"dash (scatter mpg weight, play(x) nodraw), saving("`out1'")"' "`logfile'"
+assert r(rc) == 0
+cert_log_has "`logfile'", needle("ignoring unsupported")
+assert r(found) == 1
+cert_log_has "`logfile'", needle("play()")
+assert r(found) == 1
+cert_log_has "`logfile'", needle("nodraw()")
 assert r(found) == 0
 display as text "ND-03 PASS: paren mode does not name nodraw either"
 

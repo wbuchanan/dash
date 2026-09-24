@@ -208,6 +208,19 @@ class TestTheSyntaxDiagram:
         for ln in _syntax().split("\n"):
             if "{it:plot_specs} {ifin}" in ln:
                 assert "{weight}" not in ln, ln
+        # The loop above asserts only on a line that reads exactly
+        # "{it:plot_specs} {ifin}", so a diagram rewritten as
+        # "{it:plot_specs} {weight} {ifin}" was never looked at.  Measured
+        # 24sep2026: two diagrams write {it:plot_specs} (the single graph
+        # and the named graph), each a {p} paragraph of two lines; each
+        # whole paragraph is read, and there must be two.
+        paras = [p for p in re.split(r"\n\s*\n", _syntax())
+                 if "{cmd:dash} {it:plot_specs}" in p]
+        assert len(paras) == 2, (
+            f"{len(paras)} Syntax diagrams write {{cmd:dash}} "
+            f"{{it:plot_specs}}, two measured: {paras}")
+        for p in paras:
+            assert "{weight}" not in p, p
 
     def test_the_plot_specification_carries_the_weight(self):
         assert re.search(r"\{it:plottype varlist\} \{ifin\} \{weight\}",
@@ -249,7 +262,18 @@ class TestTheSyntaxDiagram:
         src = _read(_ADO)
         own = {full for _mn, full in
                _syntax_options(_program_body(src, "_dash_serve_spec"))}
+        # An empty set asserts nothing below: _syntax_options returns []
+        # when no line of the body begins with `syntax' (a `capture
+        # syntax', say), and the diagram was then held to nothing.
+        # Measured 24sep2026: specpath() and datapath() -- the plumbing
+        # every version declares -- and port(), nobrowser and timeout().
+        # The plumbing proves the declaration was read; the three are the
+        # floor of what it must yield, and any option added later is held
+        # to the diagram by the loop.
+        assert {"specpath", "datapath"} <= own, (
+            f"_dash_serve_spec's syntax statement was not read: {own}")
         own -= {"specpath", "datapath", "*"}
+        assert {"port", "nobrowser", "timeout"} <= own, own
         block = _between(_syntax(), "{ul:Launch Bokeh Server", "{ul:Clear")
         for opt in own:
             assert "{cmd:%s" % opt in block, opt
@@ -661,14 +685,29 @@ class TestTheFallbackTooltipIsSafe:
 
     _BAD = "x}<img src=x onerror=alert(1)>"
 
-    def _spec_and_df(self):
+    def _spec_and_df(self, name=None):
+        name = name or self._BAD
         df = tp._DF.copy()
-        df[self._BAD] = df["price"]
+        df[name] = df["price"]
         plot = {"type": "pcspike", "y1var": "mpg", "x1var": "weight",
-                "y2var": self._BAD, "x2var": "foreign", "options": {}}
+                "y2var": name, "x2var": "foreign", "options": {}}
         return tp._spec([plot]), df
 
     def test_no_field_holds_the_name(self, tmp_path, monkeypatch):
+        # The control: the same pcspike with a plain name where the hostile
+        # one goes is given the segment's tooltip, its four ends as fields,
+        # in both modes -- so the reading below does see a segment's fields
+        # when dash writes them.
+        spec, df = self._spec_and_df("y2plain")
+        monkeypatch.setattr(tp, "_DF", df)
+        r, _w = tp._standalone(spec)
+        doc, _w2 = tp._served(spec)
+        for figs in (_saved_figures(r), _served_figures(doc)):
+            tools = [t for f in figs for t in f.tools
+                     if isinstance(t, HoverTool)]
+            assert len(tools) == 1, tools
+            assert _fields(tools[0]) == {"mpg", "weight", "y2plain",
+                                         "foreign"}, tools[0].tooltips
         spec, df = self._spec_and_df()
         monkeypatch.setattr(tp, "_DF", df)
         r, _w = tp._standalone(spec)
@@ -678,7 +717,25 @@ class TestTheFallbackTooltipIsSafe:
                 for t in fig.tools:
                     if isinstance(t, HoverTool):
                         assert "<img" not in str(t.tooltips), t.tooltips
-                        assert self._BAD not in _fields(t)
+                        # `self._BAD not in _fields(t)' stood here, and
+                        # could not fail: _fields reads up to the first
+                        # `}', so it never returns a string holding one,
+                        # and _BAD holds one.  A field built from the name
+                        # reads what BokehJS would, "x" -- a column no
+                        # renderer carries.  Every field must be one its
+                        # renderers carry, and never the hostile column.
+                        # (Measured 24sep2026: dash builds no tooltip for
+                        # this figure at all, in either mode, since one of
+                        # the segment's four ends cannot be a field.)
+                        carried = set()
+                        for rd in (t.renderers
+                                   if isinstance(t.renderers, list) else []):
+                            carried |= set(rd.data_source.data)
+                        fields = _fields(t)
+                        assert fields and fields <= carried - {self._BAD}, (
+                            f"tooltip fields {sorted(fields)} beside the "
+                            f"columns its renderers carry {sorted(carried)}"
+                            f": {t.tooltips}")
 
 
 class TestTooltipsBesideADataLayer:

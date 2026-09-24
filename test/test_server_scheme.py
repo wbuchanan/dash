@@ -169,11 +169,21 @@ class TestSchemeChrome:
     def test_a_scheme_that_draws_a_grid_draws_it(self, tmp_path):
         doc = _build_doc(tmp_path, {"scheme": "s2color"})
         fig = _figures(doc)[0]
-        sch = dr.SchemeParser("s2color")
+        # The expected value comes from the ground-truth fixture, NOT from
+        # SchemeParser("s2color") -- the very parser the served app uses.
+        # Comparing the served grid against the parser's own reading passed
+        # even if the parser were wrong about the grid, since both sides
+        # would then agree (24sep2026).  Stata's s2color draws the y-axis
+        # (vertical) major grid and not the x-axis one.
+        with open(os.path.join(os.path.dirname(__file__), "fixtures",
+                               "scheme_truth.json"), encoding="utf-8") as fh:
+            truth = json.load(fh)["s2color"]
+        expect_grid = (truth["draw_major_hgrid"] == "yes"
+                       or truth["draw_major_vgrid"] == "yes")
+        assert expect_grid is True          # s2color draws its vgrid
         drawn = [g.grid_line_color for g in fig.xgrid] + \
                 [g.grid_line_color for g in fig.ygrid]
-        assert any(c is not None for c in drawn) == (
-            sch.draw_major_hgrid or sch.draw_major_vgrid)
+        assert any(c is not None for c in drawn) == expect_grid
 
 
 class TestPrecedenceIsSharedWithStandalone:

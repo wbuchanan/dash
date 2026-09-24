@@ -27,7 +27,8 @@
 *!       (this is what "abbreviation" means; dash's table accepts exactly one
 *!       short form per option, so mlab(), xlab(), scat() all fail today).
 *!   A3  the seven mis-mappings, called out by name and by value.
-*!   A4  every abbreviation dash.sthlp documents is accepted by dash.
+*!   A4  every abbreviation dash.sthlp documents is accepted by dash (A4b:
+*!       the ones that belong to dash build, on dash build).
 *!   A5  every plot type's minimum abbreviation is accepted and yields that
 *!       plot type.
 *!   A6  the plot-type prefix ladder (scat, conn, lin, ...).
@@ -219,6 +220,11 @@ with open(FX) as fh:
 OPTS = D["options"]
 PTS  = D["plottypes"]
 RES  = D["abbrev_resolution"]
+# The fixture's own record of its size, written with the data by the
+# extraction (scripts/extract_abbrev_truth.do): the per-group checks after
+# the loop compare A1, A3 and A5 with it, so a truncated or partly
+# regenerated fixture runs fewer cases and FAILS rather than passing them.
+META = D["_meta"]["counts"]
 
 # ---------------------------------------------------------------- pinned
 # The option surface dash declares TODAY, copied from the two syntax blocks
@@ -412,25 +418,50 @@ for tok in re.findall(r"\{cmdab:([^}]*)\}", HELPTXT):
     for spelling in (mn, full):
         if (spelling, full) not in DOC:
             DOC.append((spelling, full))
+# How many spellings the help documents, before any is set aside: the
+# Stata section below holds it to the count measured on 24sep2026, so a
+# change to the help's markup that this regex no longer reads fails there
+# instead of running no cases.
+N_DOC = len(DOC)
+# `dash build' options.  The one-line command cannot carry them: measured
+# 24sep2026, `scatter mpg weight, nobr(1) name(zqab)' is rc 0 with the note
+# "ignoring unsupported option(s): nobr()", and so is filterpos(top).  They
+# are sent to dash build instead (A4b, after the loop), whose syntax
+# refuses an option it does not declare.
+A4_BUILD = {"nobrowser": "", "filterposition": "top"}
+DOC_BUILD = [(s, f) for s, f in DOC if f in A4_BUILD]
+DOC = [(s, f) for s, f in DOC if f not in A4_BUILD]
 def doc_cmd(spelling, full):
     """A documented spelling must be ACCEPTED; the value only has to be legal.
     A spelling the help invented (mlacolor) has no fixture value, and must not
-    be sent bare, which would make it look like a flag option."""
+    be sent bare, which would make it look like a flag option.  A real flag
+    (colordiscrete) is sent bare: given a value, the one-line command
+    ignores it with a note."""
     if full == "name":
         return "scatter mpg weight, " + spelling + "(zqab)"
     if full == "saving":
         return "scatter mpg weight, " + spelling + "(" + TMPSAV + ") name(zqab)"
     if full == "scheme":
         return "scatter mpg weight, " + spelling + "(s2color) name(zqab)"
+    if is_flag(full):
+        return "scatter mpg weight, " + spelling + " name(zqab)"
     v = value_of(full)
     if v is None:
         v = "1"
     return "scatter mpg weight, " + spelling + "(" + v + ") name(zqab)"
 
+# Accepted means RECORDED, under the full name, as A1 means it.  This was
+# mode "rconly", and the one-line command returns rc 0 for any option at all
+# -- measured 24sep2026, `scatter mpg weight, zzzz(1) name(zqab)' is rc 0,
+# spec written, "ignoring unsupported option(s): zzzz()" -- so no A4 case
+# could fail.  The spec must now hold the option under its full name.
 for spelling, full in DOC:
     add("A4", "dash.sthlp documents " + spelling + "() for " + full + "()",
-        doc_cmd(spelling, full), keys="", optname=spelling + "->" + full,
-        mode="rconly")
+        doc_cmd(spelling, full), keys=("" if full == "name" else full),
+        optname=spelling + "->" + full)
+# The documented names are candidates too: mlabangle, mlabformat and hover
+# are in neither the fixture nor the pinned lists above.
+CAND = sorted(set(CAND) | {f for _, f in DOC if f != "name"})
 
 # ---- A5/A6: plot types -------------------------------------------------
 for name in sorted(PTS):
@@ -446,10 +477,24 @@ for name in sorted(PTS):
             ptype=name, optname=name)
 
 # ---- A7: collision prefixes -------------------------------------------
+# null is the fixture's "no candidates" / "not resolved" (24 of 61 entries
+# on 24sep2026), and reads as none here.  A MISSING key read the same way
+# through r.get(...) or [], so a key renamed in the fixture dropped every
+# case from this group in silence; and a collision recorded without a
+# resolution was skipped.  Both are counted as malformed, and the Stata
+# section below requires none.
+A7_BAD = []
 for ab in sorted(RES):
     r    = RES[ab]
-    cand = r.get("stata_accepted_prefix_in_context_of") or []
-    tgt  = r.get("stata_resolves_to")
+    if ("stata_accepted_prefix_in_context_of" not in r
+            or "stata_resolves_to" not in r):
+        A7_BAD.append(ab + ":key-missing")
+        continue
+    cand = r["stata_accepted_prefix_in_context_of"] or []
+    tgt  = r["stata_resolves_to"]
+    if len(cand) > 1 and not tgt:
+        A7_BAD.append(ab + ":unresolved")
+        continue
     if len(cand) > 1 and tgt:
         add("A7", ab + "() is legal for " + str(len(cand)) +
             " twoway options; twoway picks " + tgt,
@@ -531,6 +576,33 @@ sfi.Macro.setGlobal("ZQA_EXP_PTFAIL",
 sfi.Macro.setGlobal("ZQA_FIXDATE", D["_meta"]["run_date"])
 sfi.Macro.setGlobal("ZQA_NOPT", str(len(OPTS)))
 sfi.Macro.setGlobal("ZQA_NPT", str(len(PTS)))
+
+# ---------------------------------------------------------------- sizes
+# The number of cases each group must run.  ZQA_BUILT_<g> is what was built
+# here, which the driver must match; ZQA_EXPN_<g> is the same number from a
+# source other than the loop that built it wherever there is one -- the
+# fixture's _meta.counts for A1, A3 and A5, and the pinned lists above for
+# R1 and for R2 and R3 together.  Elsewhere it is the built count.
+BUILT = {}
+for c in CASES:
+    BUILT[c["g"]] = BUILT.get(c["g"], 0) + 1
+EXPN = dict(BUILT)
+EXPN["A1"] = META["options"]
+EXPN["A3"] = META["dash_mismaps"]
+EXPN["A5"] = META["plottypes"]
+EXPN["R1"] = len(DASH_PLOT_KEYS) + len(DASH_GRAPH_KEYS)
+for g in ("A1", "A2", "A3", "A4", "A5", "A6", "A7", "R1", "R2", "R3", "R4"):
+    sfi.Macro.setGlobal("ZQA_BUILT_" + g, str(BUILT.get(g, 0)))
+    sfi.Macro.setGlobal("ZQA_EXPN_" + g, str(EXPN.get(g, 0)))
+sfi.Macro.setGlobal("ZQA_EXPN_R23", str(len(MATA_OPT_ALIAS)))
+sfi.Macro.setGlobal("ZQA_NDOC", str(N_DOC))
+sfi.Macro.setGlobal("ZQA_A7_BAD", " ".join(A7_BAD))
+sfi.Macro.setGlobal("ZQA_A7_NBAD", str(len(A7_BAD)))
+sfi.Macro.setGlobal("ZQA_A4B_N", str(len(DOC_BUILD)))
+for n, (s, f) in enumerate(DOC_BUILD, start=1):
+    sfi.Macro.setGlobal("ZQA_A4B_S%d" % n, s)
+    sfi.Macro.setGlobal("ZQA_A4B_F%d" % n, f)
+    sfi.Macro.setGlobal("ZQA_A4B_V%d" % n, A4_BUILD[f])
 end
 
 // ----------------------------------------------------------------
@@ -690,6 +762,87 @@ else display as text "A8 PASS: full KPI option names still work"
 capture quietly dash clear
 
 // ----------------------------------------------------------------
+// A4b -- the dash build options dash.sthlp documents with an abbreviation
+//
+// nobr:owser and filterpos:ition belong to dash build, and the one-line
+// command ignores both with a note and rc 0 (see A4 above), so they are
+// sent to dash build, whose -syntax- refuses an option it does not declare:
+// the control below, nobrowserz, is r(198).
+// ----------------------------------------------------------------
+local n_A4b = 0
+local f_A4b = 0
+local zqa_nb = ${ZQA_A4B_N}
+forvalues j = 1/`zqa_nb' {
+    local sp  "${ZQA_A4B_S`j'}"
+    local v   "${ZQA_A4B_V`j'}"
+    local tok = cond("`v'" == "", "`sp'", "`sp'(`v')")
+    capture quietly dash clear
+    quietly dash scatter mpg weight, name(zqab)
+    capture quietly dash build, saving("${ZQA_TMPSAV}") replace `tok'
+    local rc = _rc
+    local n_A4b = `n_A4b' + 1
+    if `rc' != 0 {
+        display as error "A4b FAIL rc: dash.sthlp documents `sp'() for ${ZQA_A4B_F`j'}() and dash build refuses `tok' (rc=`rc')"
+        local f_A4b = `f_A4b' + 1
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' A4b(`sp')"'
+    }
+}
+capture quietly dash clear
+quietly dash scatter mpg weight, name(zqab)
+capture quietly dash build, saving("${ZQA_TMPSAV}") replace nobrowserz
+local rc = _rc
+if `rc' != 198 {
+    display as error "A4b FAIL control: dash build, nobrowserz gave rc=`rc', not 198"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' A4b(control)"'
+}
+capture quietly dash clear
+
+// ----------------------------------------------------------------
+// Sizes -- every group ran every case its source holds
+//
+// The per-group counts were only displayed, so a group whose source had
+// emptied -- a fixture key renamed, the help's {cmdab:} markup changed --
+// ran no cases and passed.  Each group must now be non-empty, must have
+// run every case built for it, and must match its source where the source
+// states a size: the fixture's _meta.counts for A1 (options), A3
+// (dash_mismaps) and A5 (plottypes), the pinned lists above for R1 and for
+// R2 and R3 together.  And dash.sthlp documents 88 spellings, measured
+// 24sep2026 from its 75 {cmdab:} tokens (the KPI and layout ones set
+// aside) -- A4 runs the one-line ones and A4b the dash build ones.  A help
+// file that documents another abbreviation changes that count on purpose;
+// one whose markup this parser no longer reads fails here.
+// ----------------------------------------------------------------
+foreach g in A1 A2 A3 A4 A5 A6 A7 R1 R2 R3 R4 {
+    capture {
+        assert `n_`g'' > 0
+        assert `n_`g'' == ${ZQA_BUILT_`g'}
+        assert `n_`g'' == ${ZQA_EXPN_`g'}
+    }
+    if _rc {
+        display as error "SIZE FAIL: `g' ran `n_`g'' cases; ${ZQA_BUILT_`g'} were built and its source holds ${ZQA_EXPN_`g'}"
+        local nfail = `nfail' + 1
+        local faillist `"`faillist' size(`g')"'
+    }
+}
+if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
+    display as error "SIZE FAIL: R2 and R3 ran `=`n_R2' + `n_R3'' cases for ${ZQA_EXPN_R23} short forms"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' size(R2+R3)"'
+}
+if ${ZQA_NDOC} != 88 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (88 measured); A4 ran `n_A4' and A4b `n_A4b'"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' size(A4)"'
+}
+if ${ZQA_A7_NBAD} != 0 {
+    display as error "SIZE FAIL: abbrev_resolution entries A7 could not read: ${ZQA_A7_BAD}"
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' size(A7)"'
+}
+
+// ----------------------------------------------------------------
 // Report
 // ----------------------------------------------------------------
 local rcfail  : list sort rcfail
@@ -709,6 +862,7 @@ display as text "------------------------------------------------------------"
 foreach g in A1 A2 A3 A4 A5 A6 A7 R1 R2 R3 R4 {
     display as text "   `g' : `f_`g'' / `n_`g''"
 }
+display as text "   A4b: `f_A4b' / `n_A4b'"
 
 display as text ""
 display as text "------------------------------------------------------------"

@@ -87,8 +87,10 @@
 *!           quoted string and an unbalanced parenthesis cannot pass as, or
 *!           past, the graph's qualifier.
 *!   HC1-22  Adversarial, injection: markup in the qualifier never reaches
-*!           the saved page raw, and Python in it is refused by Stata's own
-*!           expression parser, r(133), before any Python runs.
+*!           the saved page raw, nor any model of the page's document read
+*!           back as BokehJS reads it (the same markup as a title is found
+*!           there: the control), and Python in it is refused by Stata's
+*!           own expression parser, r(133), before any Python runs.
 *!   HC1-23  Adversarial, exhaustion: a qualifier 200 parentheses deep
 *!           draws, one of 501 terms is r(130) ("expression too long"), and
 *!           both finish in bounded time.
@@ -764,9 +766,9 @@ dash clear
 _hc_logged 13 dash scatter mpg weight, zqunknownopt(zq_secret_value_13) name(hc13)
 local rc = r(rc)
 local lf "`r(logfile)'"
-cert_file_has "`lf'", needle("dash: ignoring unsupported option(s): zqunknownopt()")
+cert_log_has "`lf'", needle("dash: ignoring unsupported option(s): zqunknownopt()")
 local named = r(found)
-cert_file_has "`lf'", needle("zq_secret_value_13)")
+cert_log_has "`lf'", needle("zq_secret_value_13)")
 local echoed_cmd = r(found)
 // the note line is the only place the name appears besides the command
 // echo; the value must not be in any line that is not the echoed command
@@ -801,7 +803,7 @@ _hc_key hc14a title
 local t14 `"`r(value)'"'
 _hc_logged 14 dash scatter mpg weight, titel(zqT14) name(hc14b)
 local rcb = r(rc)
-cert_file_has "`r(logfile)'", needle("dash: ignoring unsupported option(s): titel()")
+cert_log_has "`r(logfile)'", needle("dash: ignoring unsupported option(s): titel()")
 local named = r(found)
 _hc_key hc14b title
 local t14b `"`r(value)'"'
@@ -830,9 +832,13 @@ capture erase "`out15'"
 _hc_logged 15 dash scatter mpg weight, legend(garbage) xscale(bogus) saving("`out15'")
 local rc = r(rc)
 local lf "`r(logfile)'"
-cert_file_has "`lf'", needle("dash: legend() sub-option(s) not implemented and ignored: garbage")
+// Each warning reaches the log after the path to dash_render.py, so the
+// column it wraps at depends on where the checkout lives: searched as the
+// file's bytes, both needles failed from a checkout path of 210 characters
+// (measured 24sep2026).  cert_log_has undoes the wrap.
+cert_log_has "`lf'", needle("dash: legend() sub-option(s) not implemented and ignored: garbage")
 local nl = r(found)
-cert_file_has "`lf'", needle("dash: xscale() sub-option(s) not implemented and ignored: bogus")
+cert_log_has "`lf'", needle("dash: xscale() sub-option(s) not implemented and ignored: bogus")
 local nx = r(found)
 capture confirm file "`out15'"
 local fx = _rc
@@ -954,7 +960,7 @@ foreach t in contour contourline heatmap rpcap rpspike {
     dash clear
     _hc_logged 19b dash `t' `a', name(hc19)
     local drc = r(rc)
-    cert_file_has "`r(logfile)'", needle("'`t'' is a twoway plot type dash does not draw")
+    cert_log_has "`r(logfile)'", needle("'`t'' is a twoway plot type dash does not draw")
     if `twrc' != 0 | `drc' != 198 | !r(found) local bad19 `"`bad19' [`t': twoway `twrc' dash `drc']"'
 }
 capture {
@@ -1111,6 +1117,43 @@ else display as text "HC1-21 PASS: IF, a quoted if, a quoted ||, and an unbalanc
 // through the renderer's whitelist, and Stata refuses code in it
 // ================================================================
 local bad22 ""
+// The page's text as the browser gets it.  Bokeh HTML-escapes the
+// document JSON it embeds, so markup inside any model reaches the file as
+// &lt;script&gt; and the raw search below could never have found it there
+// (measured 24sep2026: a title of </script><script>alert(1)</script> is
+// in the page escaped once, raw nowhere).  The document is read back the
+// way BokehJS reads it -- the application/json block unescaped, then
+// parsed -- and every string in it, keys included, is searched.
+// _hc_decoded(page, needle, n, ndoc): sets local n to the number of
+// strings holding needle and local ndoc to the number of documents read.
+python:
+import html as _hc_html
+import json as _hc_json
+import re as _hc_re
+from sfi import Macro as _hc_Macro
+def _hc_decoded(page_local, needle_local, n_local, ndoc_local):
+    with open(_hc_Macro.getLocal(page_local), encoding="utf-8") as fh:
+        page = fh.read()
+    needle = _hc_Macro.getLocal(needle_local)
+    blocks = _hc_re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, _hc_re.S)
+    docs = [d for b in blocks
+            for d in _hc_json.loads(_hc_html.unescape(b)).values()]
+    n, todo = 0, list(docs)
+    while todo:
+        x = todo.pop()
+        if isinstance(x, dict):
+            todo.extend(x.keys())
+            todo.extend(x.values())
+        elif isinstance(x, list):
+            todo.extend(x)
+        elif isinstance(x, str) and needle in x:
+            n += 1
+    _hc_Macro.setLocal(n_local, str(n))
+    _hc_Macro.setLocal(ndoc_local, str(len(docs)))
+end
+local nd22 "<script>alert(1)"
 local out22 "`c(tmpdir)'dash_hc1_22.html"
 capture erase "`out22'"
 dash clear
@@ -1119,12 +1162,37 @@ local rca = _rc
 capture confirm file "`out22'"
 local fa = _rc
 local raw = -1
+local dec = -1
+local ndoc = -1
 if `fa' == 0 {
     cert_file_has "`out22'", needle("<script>alert(1)")
     local raw = r(found)
+    // The qualifier is a filter: it reaches no model of the document.
+    capture noisily python: _hc_decoded("out22", "nd22", "dec", "ndoc")
 }
-if `rca' != 0 | `fa' != 0 | `raw' != 0 {
-    local bad22 "`bad22' [markup: rc=`rca' file=`fa' raw=`raw']"
+if `rca' != 0 | `fa' != 0 | `raw' != 0 | `ndoc' != 1 | `dec' != 0 {
+    local bad22 "`bad22' [markup: rc=`rca' file=`fa' raw=`raw' documents=`ndoc' in the document=`dec']"
+}
+// The control: the same markup as a title does reach a model, and the
+// same reading finds it there -- once, in one document -- while the raw
+// page still holds it only escaped.
+local out22t "`c(tmpdir)'dash_hc1_22t.html"
+capture erase "`out22t'"
+dash clear
+capture noisily dash scatter mpg weight, title("</script><script>alert(1)</script>") saving("`out22t'")
+local rct = _rc
+capture confirm file "`out22t'"
+local ft = _rc
+local rawt = -1
+local dect = -1
+local ndoct = -1
+if `ft' == 0 {
+    cert_file_has "`out22t'", needle("<script>alert(1)")
+    local rawt = r(found)
+    capture noisily python: _hc_decoded("out22t", "nd22", "dect", "ndoct")
+}
+if `rct' != 0 | `ft' != 0 | `rawt' != 0 | `ndoct' != 1 | `dect' != 1 {
+    local bad22 "`bad22' [title control: rc=`rct' file=`ft' raw=`rawt' documents=`ndoct' in the document=`dect']"
 }
 // Python in the qualifier: -syntax- parses the expression and refuses the
 // function, r(133), before anything reaches Python; nothing is run
@@ -1142,7 +1210,7 @@ if `"`bad22'"' != "" {
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-22"'
 }
-else display as text "HC1-22 PASS: markup in the qualifier never reaches the page raw, and code in it is refused before Python, r(133)"
+else display as text "HC1-22 PASS: markup in the qualifier reaches neither the page raw nor its document, where a title's does, and code in it is refused before Python, r(133)"
 
 // ================================================================
 // HC1-23 -- adversarial, exhaustion: deep and long qualifiers are

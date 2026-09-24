@@ -158,8 +158,15 @@ def test_generated_file_compiles(dr_module, auto_df):
         }],
     )
     source = _build_app(dr_module, auto_df, spec)
-    # Should not raise SyntaxError
-    compile(source, "<generated>", "exec")
+    try:
+        code = compile(source, "<generated>", "exec")
+    except SyntaxError as exc:
+        pytest.fail("P4-57: the generated app is not valid Python: %s" % exc)
+    # ...and the module it compiles to defines the entry point bokeh serve
+    # calls -- its code object, not the name, which the module-level call
+    # to it would put in co_names by itself.
+    assert "make_document" in {c.co_name for c in code.co_consts
+                               if isinstance(c, types.CodeType)}
 
 
 # ---------------------------------------------------------------------------
@@ -1039,6 +1046,21 @@ class TestServerXlineYline:
         assert "height" in source and "width" in source
 
 
+def _both_figures(dr_module, tmp_path, df, plot, **graph_options):
+    """(saved figure, served figure) for one graph of one layer: the saved
+    page's DashRenderer figure and the generated app's, from its
+    make_document on a fresh Document."""
+    from bokeh.models import Plot
+    go = {"name": "g1"}
+    go.update(graph_options)
+    spec = _make_spec_json(graphs=[{"plots": [plot], "graph_options": go}])
+    r, _ = _ql_saved(dr_module, tmp_path, spec, df)
+    doc, _ = _ql_served(dr_module, tmp_path, spec, df)
+    served = [f for root in doc.roots for f in root.select({"type": Plot})]
+    assert len(served) == 1, served
+    return r.figures["g1"], served[0]
+
+
 class TestServerLogScale:
     """Server-mode xscale(log) and yscale(log) must produce log-axis figures."""
 
@@ -1052,25 +1074,37 @@ class TestServerLogScale:
         assert "x_axis_type" in source, "xscale(log) must produce x_axis_type in server app"
         assert "log" in source
 
-    def test_yscale_log_generates_y_axis_type(self, dr_module, auto_df):
-        """yscale(log) in graph options must generate y_axis_type='log' in server source."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "yscale": "log"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "y_axis_type" in source, "yscale(log) must produce y_axis_type in server app"
-        assert "log" in source
+    def test_yscale_log_draws_a_log_y_axis_in_both_modes(
+            self, dr_module, auto_df, tmp_path):
+        """yscale(log) gives a log y axis and leaves x linear, in both modes.
 
-    def test_both_log_scales(self, dr_module, auto_df):
-        """Both xscale and yscale log must both appear in server source."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "xscale": "log", "yscale": "log"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "x_axis_type" in source
-        assert "y_axis_type" in source
+        This asserted that "y_axis_type" and "log" appeared in the generated
+        app, which they do for every spec -- the code that reads yscale()
+        is written out whether or not a graph asks for it -- and no served
+        test drew a figure with yscale(log) (WP-24 scan)."""
+        from bokeh.models import LinearScale, LogScale
+        scatter = {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                   "options": {}}
+        for mode, fig in zip(("saved", "served"), _both_figures(
+                dr_module, tmp_path, auto_df, scatter, yscale="log")):
+            assert isinstance(fig.y_scale, LogScale), (mode, fig.y_scale)
+            assert isinstance(fig.x_scale, LinearScale), (mode, fig.x_scale)
+
+    def test_both_log_scales_draw_two_log_axes_in_both_modes(
+            self, dr_module, auto_df, tmp_path):
+        """xscale(log) with yscale(log): both axes log, in both modes -- the
+        shape BUG-SCALE-1 got wrong on the saved page, where the figure was
+        rebuilt for one axis and lost the other.  This asserted the two
+        axis-type words appeared in the generated app, which they always
+        do."""
+        from bokeh.models import LogScale
+        scatter = {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                   "options": {}}
+        for mode, fig in zip(("saved", "served"), _both_figures(
+                dr_module, tmp_path, auto_df, scatter,
+                xscale="log", yscale="log")):
+            assert isinstance(fig.x_scale, LogScale), (mode, fig.x_scale)
+            assert isinstance(fig.y_scale, LogScale), (mode, fig.y_scale)
 
     def test_log_scale_is_conditional_in_generated_code(self, dr_module, auto_df):
         """Generated code must use a runtime conditional for log scale (xscale/yscale check)."""
@@ -1148,15 +1182,29 @@ class TestServerPcarrowPcbarrow:
         assert "x_range" in source or "xrange" in source, \
             "xrange option must appear in server-mode generated code"
 
-    def test_server_yrange_sets_range(self, dr_module, auto_df):
-        """yrange in server mode must generate y_range.start/end code."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "yrange": "1000 5000"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "y_range" in source or "yrange" in source, \
-            "yrange option must appear in server-mode generated code"
+    @pytest.mark.parametrize("given,bounds", [
+        ("range(10 40)", lambda df: (10.0, 40.0)),
+        # range(0) extends the axis to 0 and keeps the data's own top.
+        ("range(0)", lambda df: (0.0, float(df["mpg"].max()))),
+    ], ids=["both_ends", "one_end"])
+    def test_yscale_range_bounds_the_y_axis_in_both_modes(
+            self, dr_module, auto_df, tmp_path, given, bounds):
+        """yscale(range()) bounds the y axis, in both modes.
+
+        This asserted that "y_range" or "yrange" appeared in the generated
+        app for a spec carrying a ``yrange`` key -- a key dash.ado never
+        writes and neither renderer reads (test_axis_options.py pins that
+        it is gone), in text written out for every spec.  The option a
+        user types is yscale(range()); no served test drew it (WP-24)."""
+        from bokeh.models import Range1d
+        scatter = {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                   "options": {}}
+        want = bounds(auto_df)
+        for mode, fig in zip(("saved", "served"), _both_figures(
+                dr_module, tmp_path, auto_df, scatter, yscale=given)):
+            assert isinstance(fig.y_range, Range1d), (mode, fig.y_range)
+            assert (float(fig.y_range.start), float(fig.y_range.end)) == want, (
+                mode, fig.y_range.start, fig.y_range.end, want)
 
 
 class TestServerLegendLabelOverrides:
@@ -1286,35 +1334,39 @@ class TestServerLinePlotOpts:
         assert "'lpattern'" in source or '"lpattern"' in source, \
             "server-mode line must read 'lpattern' option from opts"
 
-    def test_spike_lwidth_code_present(self, dr_module, auto_df):
-        """spike server code must read 'lwidth' option."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "spike", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "'lwidth'" in source or '"lwidth"' in source, \
-            "server-mode spike must read 'lwidth' option from opts"
+    @pytest.mark.parametrize("ptype,glyph,opts,attr", [
+        ("spike", "Segment", {"lwidth": "thick"}, "line_width"),
+        ("spike", "Segment", {"lpattern": "dash"}, "line_dash"),
+        ("bar", "VBar", {"lwidth": "thick"}, "line_width"),
+    ], ids=["spike_lwidth", "spike_lpattern", "bar_lwidth"])
+    def test_the_line_option_reaches_the_served_glyph(
+            self, dr_module, auto_df, tmp_path, ptype, glyph, opts, attr):
+        """The option changes the served glyph, and to what the saved page
+        draws.
 
-    def test_spike_lpattern_code_present(self, dr_module, auto_df):
-        """spike server code must read 'lpattern' option."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "spike", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "'lpattern'" in source or '"lpattern"' in source, \
-            "server-mode spike must read 'lpattern' option from opts"
+        These asserted that the words 'lwidth' and 'lpattern' appeared in
+        the generated app, which they do for any spec -- GlyphMapper is
+        copied into it whole -- and no served test set either option on a
+        spike or a bar (WP-24 scan)."""
+        from bokeh.models import GlyphRenderer
 
-    def test_bar_lwidth_code_present(self, dr_module, auto_df):
-        """bar server code must read 'lwidth' option."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "bar", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "'lwidth'" in source or '"lwidth"' in source, \
-            "server-mode bar must read 'lwidth' option from opts"
+        def _value(fig):
+            got = [getattr(r.glyph, attr) for r in fig.renderers
+                   if isinstance(r, GlyphRenderer)
+                   and type(r.glyph).__name__ == glyph]
+            assert len(got) == 1, (glyph, got)
+            v = got[0]
+            return list(v) if isinstance(v, (list, tuple)) else v
+
+        plain = {"type": ptype, "yvar": "mpg", "xvar": "weight", "options": {}}
+        styled = dict(plain, options=dict(opts))
+        s0, v0 = _both_figures(dr_module, tmp_path, auto_df, plain)
+        s1, v1 = _both_figures(dr_module, tmp_path, auto_df, styled)
+        assert _value(v1) != _value(v0), (
+            f"{ptype} {opts}: the served {glyph}'s {attr} is the default "
+            f"{_value(v0)!r} with the option given")
+        assert _value(v1) == _value(s1), (
+            f"{ptype} {opts}: served {_value(v1)!r}, saved {_value(s1)!r}")
 
     def test_scatter_msymbol_code_present(self, dr_module, auto_df):
         """scatter server code must read 'msymbol' option."""
@@ -1814,18 +1866,23 @@ class TestServerNamedColors:
                 except OSError:
                     pass
 
-    def test_mcolor_named_navy_translates(self, dr_module, auto_df):
-        """mcolor(navy) must produce fill_color=#1a476f on scatter renderer."""
+    def test_mcolor_named_colour_translates(self, dr_module, auto_df):
+        """mcolor(magenta) must produce fill_color=#ff00ff on scatter renderer.
+
+        This was navy, s2color's own first colour: the marker is navy with
+        mcolor() ignored, and the test passed with it taken away (measured
+        24sep2026).  Magenta is in no s2color slot.
+        """
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                       "options": {"mcolor": "navy"}}],
+                       "options": {"mcolor": "magenta"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
         colors = [getattr(getattr(r, 'glyph', None), 'fill_color', None)
                   for r in renderers if r is not None]
-        assert "#1a476f" in colors, \
-            "server-mode scatter mcolor(navy) must produce fill_color=#1a476f"
+        assert "#ff00ff" in colors, \
+            "server-mode scatter mcolor(magenta) must produce fill_color=#ff00ff"
 
     def test_lcolor_named_red_translates(self, dr_module, auto_df):
         """lcolor(red) must produce line_color=#ff0000 on line renderer."""
@@ -1841,16 +1898,50 @@ class TestServerNamedColors:
             "server-mode line lcolor(red) must produce line_color=#ff0000"
 
     def test_bgcolor_named_color_in_server_app(self, dr_module, auto_df):
-        """bgcolor(navy) in server app must set border_fill_color=#1a476f on figure."""
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                       "options": {}}],
-            "graph_options": {"name": "g1", "bgcolor": "navy"},
-        }])
-        source = _build_app(dr_module, auto_df, spec)
-        # The generated source must contain the navy hex value via _resolve_color
-        assert "#1a476f" in source or "bgcolor" in source, \
-            "bgcolor(navy) must resolve to #1a476f in generated server app"
+        """bgcolor(navy) in server app must set border_fill_color=#1a476f on figure.
+
+        This asserted `"#1a476f" in source or "bgcolor" in source', true of
+        every generated app: its own code handles bgcolor.  The served
+        figure's border is read now, beside the same app with no bgcolor(),
+        whose border is the scheme's #eaf2f3 (measured 24sep2026) -- so
+        navy, a series colour and never a border one, comes only from the
+        option.
+        """
+        from bokeh.document import Document
+        from bokeh.models import Plot
+        borders = {}
+        for bg in ("", "navy"):
+            go = {"name": "g1"}
+            if bg:
+                go["bgcolor"] = bg
+            spec = _make_spec_json(graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": go,
+            }])
+            spec_path, data_path = _write_temp_files(auto_df, spec)
+            out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py",
+                                                delete=False)
+            out_f.close()
+            try:
+                dr_module.ServerAppBuilder(spec_path, data_path).build(
+                    out_f.name)
+                app_spec = importlib.util.spec_from_file_location(
+                    "_ta2_bg_" + (bg or "none"), out_f.name)
+                app_mod = importlib.util.module_from_spec(app_spec)
+                app_spec.loader.exec_module(app_mod)
+                doc = Document()
+                app_mod.make_document(doc)
+                borders[bg] = [p.border_fill_color for p in doc.models
+                               if isinstance(p, Plot)]
+            finally:
+                for p in (spec_path, data_path, out_f.name):
+                    try:
+                        os.unlink(p)
+                    except OSError:
+                        pass
+        assert borders["navy"] == ["#1a476f"], borders
+        assert borders[""] and "#1a476f" not in borders[""], borders
 
 
 class TestServerMfcolorNamed:
@@ -1887,18 +1978,22 @@ class TestServerMfcolorNamed:
                 try: os.unlink(p)
                 except OSError: pass
 
-    def test_mfcolor_named_navy_applied(self, dr_module, auto_df):
-        """mfcolor(navy) must produce fill_color=#1a476f on scatter renderer."""
+    def test_mfcolor_named_colour_applied(self, dr_module, auto_df):
+        """mfcolor(magenta) must produce fill_color=#ff00ff on scatter renderer.
+
+        This was navy, the marker's default: it passed with mfcolor() taken
+        away (measured 24sep2026).  Magenta is in no s2color slot.
+        """
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                       "options": {"mfcolor": "navy"}}],
+                       "options": {"mfcolor": "magenta"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
         colors = [getattr(getattr(r, 'glyph', None), 'fill_color', None)
                   for r in renderers if r is not None]
-        assert "#1a476f" in colors, \
-            "server-mode scatter mfcolor(navy) must produce fill_color=#1a476f"
+        assert "#ff00ff" in colors, \
+            "server-mode scatter mfcolor(magenta) must produce fill_color=#ff00ff"
 
     def test_mlabposition_in_server_scatter_source(self, dr_module, auto_df):
         """mlabposition option must be referenced in generated server scatter mlabel code."""
@@ -2614,17 +2709,64 @@ class TestServerFitCIFilterRecompute:
         _assert_served_layer_refits(dr_module, auto_df, "rscatter")
 
 
-    def test_pci_registered_in_graph_sources(self, dr_module, auto_df):
-        """A-93: pci must register its source in graph_sources so the filter callback updates it."""
+    def test_a_filter_move_leaves_a_pci_segment_where_it_was(
+            self, dr_module, auto_df, tmp_path):
+        """A-93: the served filter callback must handle a pci layer.
+
+        This asserted that the generated app contained
+        ``graph_sources[gname] = `` -- text the generator writes for every
+        spec, pci or not, so it could not fail.  And the rule it stood for
+        has changed: pci draws the coordinates it is given, which no filter
+        and no qualifier reaches (twoway draws them wherever the data are).
+        So after a dropdown move the scatter beside it draws the rows the
+        move keeps and the pci segment is exactly where it was.
+        """
+        from bokeh.models import GlyphRenderer, Plot, Select
         spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "pci", "y1var": "mpg", "x1var": "weight",
-                       "y2var": "price", "x2var": "length", "options": {}}],
+            "plots": [
+                {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                 "options": {}, "if_expr": "", "in_expr": ""},
+                {"type": "pci", "values": [[20.0, 3000.0, 30.0, 4000.0]],
+                 "options": {}, "if_expr": "", "in_expr": ""}],
             "graph_options": {"name": "g1"},
-        }])
-        src = self._get_source(dr_module, auto_df, spec, "_tpci_reg")
-        # pci must register in graph_sources so the standard replacement loop updates it
-        assert "graph_sources[gname] = " in src or "graph_sources[gname]=" in src, \
-            "pci must set graph_sources[gname] so filter callback updates raw data"
+            "if_expr": "", "in_expr": "",
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
+            "theme": "", "title": "", "subtitle": "", "registry": "g1",
+            "level": "95", "formats": {}})
+        doc, _ = _ql_served(dr_module, tmp_path, spec, auto_df)
+
+        def _layers():
+            out = {}
+            for root in doc.roots:
+                for fig in root.select({"type": Plot}):
+                    for r in fig.renderers:
+                        if isinstance(r, GlyphRenderer):
+                            out.setdefault(type(r.glyph).__name__, []).append(
+                                {k: [float(x) for x in v]
+                                 for k, v in r.data_source.data.items()
+                                 if k != "index"})
+            return out
+
+        segment = {"x0": [3000.0], "y0": [20.0], "x1": [4000.0], "y1": [30.0]}
+        before = _layers()
+        assert before["Segment"] == [segment], before.get("Segment")
+        sel = [m for root in doc.roots for m in root.select({"type": Select})]
+        assert len(sel) == 1, sel
+        w = sel[0]
+        pick = [v for v, lab in w.options if lab == "1"]
+        assert pick, w.options
+        w.value = pick[0]
+        for key in ("value", "value_throttled"):
+            for cb in list(w._callbacks.get(key, [])):
+                cb("value", None, pick[0])
+        after = _layers()
+        n_foreign = int((auto_df["foreign"] == 1).sum())
+        assert 0 < n_foreign < len(auto_df)
+        assert [len(s["weight"]) for s in after["Scatter"]] == [n_foreign], (
+            "the move changed nothing, so the check below proves nothing")
+        assert after["Segment"] == [segment], (
+            f"a filter move moved the pci segment: {after['Segment']}")
 
     def test_pcscatter_registered_in_agg_sources(self, dr_module, auto_df):
         """A-94: pcscatter must register its source in agg_sources for filter updates."""
@@ -2982,18 +3124,57 @@ class TestServerByFaceting:
             "graph_options": {"name": "g1", "by": "foreign"},
         }])
         source = _build_app(dr_module, auto_df, spec)
-        compile(source, "<generated_by>", "exec")
+        try:
+            code = compile(source, "<generated_by>", "exec")
+        except SyntaxError as exc:
+            pytest.fail("a by() app is not valid Python: %s" % exc)
+        assert "make_document" in {c.co_name for c in code.co_consts
+                                   if isinstance(c, types.CodeType)}
+
+    @staticmethod
+    def _facets(dr_module, df, spec, tag):
+        """``{panel title: rows its glyphs draw}`` from the served document."""
+        from bokeh.document import Document
+        from bokeh.models import GlyphRenderer, Plot
+        spec_path, data_path = _write_temp_files(df, spec)
+        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+        out_f.close()
+        try:
+            dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
+            app_spec = importlib.util.spec_from_file_location(tag, out_f.name)
+            app_mod = importlib.util.module_from_spec(app_spec)
+            app_spec.loader.exec_module(app_mod)
+            doc = Document()
+            app_mod.make_document(doc)
+            return {p.title.text: [max((len(v) for v in r.data_source.data.values()),
+                                       default=0)
+                                   for r in p.renderers
+                                   if isinstance(r, GlyphRenderer)]
+                    for p in doc.models if isinstance(p, Plot)}
+        finally:
+            for _p in (spec_path, data_path, out_f.name):
+                try:
+                    os.unlink(_p)
+                except OSError:
+                    pass
 
     def test_by_creates_facet_figures(self, dr_module, auto_df):
-        """by(foreign) → generated code creates facet figure entries."""
+        """by(foreign) -> make_document draws one figure per group, each with
+        that group's rows alone.
+
+        This asserted `"g1__by__0" in source or "__by__" in source or
+        "facet" in source.lower()', which the generated app's own code
+        satisfies whatever the spec asks for.
+        """
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1", "by": "foreign"},
         }])
-        source = _build_app(dr_module, auto_df, spec)
-        # Should contain facet-keyed figure references
-        assert "g1__by__0" in source or "__by__" in source or "facet" in source.lower(), \
-            "Generated source should contain facet figure references"
+        facets = self._facets(dr_module, auto_df, spec, "_by_figs")
+        counts = auto_df["foreign"].value_counts()
+        assert len(facets) == len(counts) == 2, facets
+        assert sorted(facets.values()) == sorted([n] for n in counts.tolist()), (
+            f"each panel must draw its own group's rows: {facets}")
 
     def test_by_doc_has_roots(self, dr_module, auto_df):
         """by(foreign) → make_document produces a doc with roots."""
@@ -3022,17 +3203,22 @@ class TestServerByFaceting:
                     pass
 
     def test_by_facet_labels_in_source(self, dr_module, auto_df):
-        """by(foreign) → facet group labels appear in generated source."""
+        """by(foreign) -> each panel is titled by its group, and holds that
+        group's rows.
+
+        This asserted `"by" in source.lower() or ...' of the generated
+        source, which holds for any app at all.  foreign has no value
+        label here, so each panel is titled by its value, as twoway's by()
+        titles it.
+        """
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1", "by": "foreign"},
         }])
-        source = _build_app(dr_module, auto_df, spec)
-        # The source should contain references to the facet group values
-        # (either as labels in figure titles or as group identifiers)
-        assert "by" in source.lower() or "facet" in source.lower() or \
-               "g1__by__" in source, \
-            "Generated source should reference facet groups"
+        facets = self._facets(dr_module, auto_df, spec, "_by_labels")
+        counts = auto_df["foreign"].value_counts()
+        assert facets == {"%d" % g: [int(n)] for g, n in counts.items()}, (
+            f"panels and their rows: {facets}")
 
     def test_by_with_histogram_compiles(self, dr_module, auto_df):
         """by(foreign) with histogram → generated source compiles."""
@@ -3041,16 +3227,49 @@ class TestServerByFaceting:
             "graph_options": {"name": "g1", "by": "foreign"},
         }])
         source = _build_app(dr_module, auto_df, spec)
-        compile(source, "<generated_by_hist>", "exec")
+        try:
+            code = compile(source, "<generated_by_hist>", "exec")
+        except SyntaxError as exc:
+            pytest.fail("a by() histogram app is not valid Python: %s" % exc)
+        assert "make_document" in {c.co_name for c in code.co_consts
+                                   if isinstance(c, types.CodeType)}
 
-    def test_by_total_in_source(self, dr_module, auto_df):
-        """by(foreign) with by_total=1 → 'Total' appears in generated source."""
+    @pytest.mark.parametrize("flag,total", [("1", True), ("0", False)])
+    def test_the_by_total_key_adds_a_total_panel_in_both_modes(
+            self, dr_module, auto_df, tmp_path, flag, total):
+        """graph_options["by_total"] == "1" adds the Total panel, in both
+        modes.  dash.ado writes the total as by()'s own sub-option; this
+        key is what a spec written by hand may carry, and both renderers
+        honour it.  This used to assert only that the word "Total" appeared
+        in the generated app -- which it does for every by() graph, since
+        the facet code that names the panel is written out either way."""
+        from bokeh.models import GlyphRenderer, Plot
         spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "by": "foreign", "by_total": "1"},
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign", "by_total": flag},
         }])
-        source = _build_app(dr_module, auto_df, spec)
-        assert "Total" in source, "by_total=1 should produce a 'Total' facet in generated code"
+
+        def _panels(roots):
+            out = {}
+            for root in roots:
+                for fig in root.select({"type": Plot}):
+                    rows = [len(r.data_source.data["weight"])
+                            for r in fig.renderers
+                            if isinstance(r, GlyphRenderer)
+                            and type(r.glyph).__name__ == "Scatter"]
+                    if rows:
+                        out[fig.title.text if fig.title else ""] = rows
+            return out
+
+        r, _ = _ql_saved(dr_module, tmp_path, spec, auto_df)
+        doc, _ = _ql_served(dr_module, tmp_path, spec, auto_df)
+        for mode, panels in (("saved", _panels([r._last_layout_root])),
+                             ("served", _panels(doc.roots))):
+            assert ("Total" in panels) is total, (mode, panels)
+            assert len(panels) == (3 if total else 2), (mode, panels)
+            if total:
+                assert panels["Total"] == [len(auto_df)], (mode, panels)
 
     def test_by_total_suboption_in_raw_string(self, dr_module, auto_df):
         """by('foreign, total') in raw string → Total facet in generated source."""
@@ -3257,7 +3476,13 @@ class TestServerLpolyFpfit:
     # second one that could drift from it.
 
     def test_fpfit_generates_valid_app(self, dr_module, auto_df):
-        """fpfit must produce compilable server app source."""
+        """fpfit must produce compilable server app source.
+
+        A structural guard, deliberately: ONE fractional-polynomial fit --
+        GlyphMapper's, copied in -- and no second `_compute_fpfit' in the
+        app.  A dead or identical second copy draws the same curve, so no
+        drawing can show it; the drawing itself is test_mode_parity.py's
+        [fpfit] case."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "fpfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1"},
@@ -3268,7 +3493,11 @@ class TestServerLpolyFpfit:
         assert "_compute_fpfit" not in source
 
     def test_fpfitci_generates_valid_app(self, dr_module, auto_df):
-        """fpfitci must produce compilable server app source."""
+        """fpfitci must produce compilable server app source.
+
+        A structural guard, deliberately, as the test above: one fit and
+        one band (_fp_stdp), GlyphMapper's.  The drawing is
+        test_mode_parity.py's [fpfitci] and [fpfitci at level(90)]."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "fpfitci", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1"},
@@ -4853,8 +5082,15 @@ class TestCLIServeFlagsAccepted:
         out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
         out_f.close()
         try:
-            # Must not raise
-            dr_module.main(spec_path, data_path, out_f.name, "server")
+            # Must not raise -- and what it accepted it acted on: the file
+            # (created empty above) now holds Python defining the entry
+            # point bokeh serve calls.
+            assert dr_module.main(spec_path, data_path, out_f.name,
+                                  "server") is None
+            with open(out_f.name, encoding="utf-8") as fh:
+                tree = ast.parse(fh.read())
+            assert "make_document" in {
+                n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try: os.unlink(_p)
@@ -4889,47 +5125,19 @@ class TestPathInjectionHardening:
 
     The fix moves path values from raw r"..." Python string literals
     (vulnerable to " in path) to _dash_json_str-escaped regular "..." strings.
-    We test:
-      (a) dash_render.py main() accepts paths with special chars
-      (b) Paths with double-quotes produce a safe output (no crash)
-      (c) dash.ado source shows _dash_json_str escaping pattern
+    That fix is in dash.ado, and is certified by running it:
+    test_render_locate.cscript LOC-17 hands _dash_do_render a renderer in a
+    directory, and an output file, each named with a Python payload, and
+    requires the page written and nothing run.  Two tests here used to read
+    dash.ado for the escaping helper's name and for r"`...'" in its
+    sys.argv lines; measured (WP-24), with the renderer's path interpolated
+    raw again the payload ran and both stayed green.  They were removed for
+    LOC-17; the rule that every macro inside a python: literal is an
+    escaped one is test_cscript_hygiene.py's structural guard
+    (test_no_untrusted_macro_is_inlined_into_python_source), which fails on
+    both raw interpolations.  What remains here is the renderer's half:
+    dash_render.py main() writing to paths it is handed.
     """
-
-    def _source_ado(self):
-        """Return the dash.ado source text."""
-        import os
-        ado_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "dash.ado"
-        )
-        with open(ado_path) as fh:
-            return fh.read()
-
-    def test_ado_uses_json_str_escaping_for_spec(self, dr_module, auto_df):
-        """BUG-SEC-1a: dash.ado must use _dash_json_str to escape spec path."""
-        src = self._source_ado()
-        assert "_dash_json_str" in src, \
-            "dash.ado must call _dash_json_str to escape file paths before Python interpolation"
-        # Verify the old unsafe pattern (r"...macro...") is not present for spec/data/output
-        import re
-        # Count occurrences of r"`...' in python: sys.argv lines (should be zero after fix)
-        unsafe_argv = re.findall(r'python: sys\.argv.*?r"`[^"\']+\'', src)
-        assert not unsafe_argv, (
-            "dash.ado must not use r\"...macro...\" in sys.argv Python lines; "
-            "use _dash_json_str-escaped values in regular double-quoted strings instead. "
-            f"Found: {unsafe_argv}"
-        )
-
-    def test_ado_uses_escaped_vars_in_argv(self, dr_module, auto_df):
-        """BUG-SEC-1b: dash.ado sys.argv lines must use _py_* escaped locals, not raw macros."""
-        src = self._source_ado()
-        # The escaped locals should be present in the argv construction
-        assert "_py_spec'" in src or "_py_master'" in src, \
-            "dash.ado must use _py_spec (or _py_master) escaped local in Python sys.argv"
-        assert "_py_data'" in src, \
-            "dash.ado must use _py_data escaped local in Python sys.argv"
-        assert "_py_output'" in src or "_py_serve'" in src, \
-            "dash.ado must use _py_output (or _py_serve) escaped local in Python sys.argv"
 
     def test_main_accepts_path_with_spaces(self, dr_module, auto_df):
         """BUG-SEC-1c: main() must accept paths with spaces without crashing."""
@@ -4980,98 +5188,324 @@ class TestPathInjectionHardening:
 # walks the JSON string char-by-char handling \" escape sequences.
 # ================================================================
 
-class TestIfExprQuoteHandling:
-    """Regression suite for BUG-PARSE-1: if_expr containing quotes must not be truncated.
+#: A dataset whose `make' holds the texts hostile string literals name,
+#: each followed by the DECOY that a mis-reading of that literal would
+#: select instead.  Every row's weight is distinct, so the x values a layer
+#: draws name the rows it drew.
+_QL_MAKES = [
+    ("C:\\", 0),                  # 0  a literal ending in a backslash
+    ("C:", 0),                    # 1    decoy: the backslash dropped
+    ('x"y', 0),                   # 2  a double quote, held by `"..."'
+    ("x", 0),                     # 3    decoy: cut at the inner quote
+    ("a\\u0022b", 0),             # 4  backslash-u text, eight characters
+    ('a"b', 0),                   # 5    decoy: \u0022 read as an escape
+    ("n\\n", 0),                  # 6  backslash-n text
+    ("n\n", 0),                   # 7    decoy: \n read as a newline
+    ('q","in_expr":"1/5', 0),     # 8  JSON's own punctuation
+    ('\\"', 0),                   # 9  a backslash, then a quote
+    ("a~=b", 0),                  # 10 Stata's not-equals, as text
+    ("a!=b", 0),                  # 11   decoy: ~= rewritten in the literal
+    ('say `"hi"\' now', 0),       # 12 compound quotes nested in the text
+    ("a,b", 0),                   # 13 a comma, inside inlist()
+    ("AMC", 1), ("BMW", 1), ("Audi", 1), ("VW", 1),       # 14-17
+]
+_QL_FOREIGN = {14, 15, 16, 17}
 
-    The Mata fix (_dash_json_get_str) and the dash.ado change to use it
-    are tested here via:
-      (a) dash_parse.mata source inspection (contains the fix)
-      (b) dash.ado source inspection (calls _dash_json_get_str)
-      (c) dash_render.py: if_expr is passed through without truncation
-          when it contains quoted strings
+#: (id, the qualifier as dash.ado stores it -- Stata's own text, compound
+#: quotes and all, which is what the renderer receives -- and the rows
+#: Stata's `count if' selects on _QL_MAKES).  Stata's string literals have
+#: no escape character: "C:\" is three characters and "n\n" three more.
+#: test_qualifier_literals.cscript runs the same shapes through Stata
+#: itself, whose count is the oracle there.
+_QL_CASES = [
+    ("backslash_last", 'make == "C:\\" | foreign == 1', {0} | _QL_FOREIGN),
+    ("compound_quote", 'make == `"x"y"\' | foreign == 1', {2} | _QL_FOREIGN),
+    ("backslash_u_text", 'make == "a\\u0022b" | foreign == 1',
+     {4} | _QL_FOREIGN),
+    ("backslash_n_text", 'make == "n\\n" | foreign == 1', {6} | _QL_FOREIGN),
+    ("json_punctuation", 'make == `"q","in_expr":"1/5"\' | foreign == 1',
+     {8} | _QL_FOREIGN),
+    ("backslash_quote", 'make == `"\\""\' | foreign == 1', {9} | _QL_FOREIGN),
+    ("tilde_equals_text", 'make == "a~=b" | foreign == 1',
+     {10} | _QL_FOREIGN),
+    ("nested_compound", 'make == `"say `"hi"\' now"\' | foreign == 1',
+     {12} | _QL_FOREIGN),
+    ("not_equal_compound", 'make != `"x"y"\' & foreign == 0',
+     set(range(14)) - {2}),
+    ("inlist_literals", 'inlist(make, "C:\\", `"x"y"\', "a,b")', {0, 2, 13}),
+]
+_QL_IDS = [c[0] for c in _QL_CASES]
+
+
+def _ql_frame():
+    n = len(_QL_MAKES)
+    return pd.DataFrame({
+        "make": [m for m, _ in _QL_MAKES],
+        "foreign": [float(f) for _, f in _QL_MAKES],
+        "mpg": [float(10 + i) for i in range(n)],
+        "weight": [float(2000 + 50 * i) for i in range(n)],
+    })
+
+
+def _ql_weights(rows):
+    return sorted(float(2000 + 50 * i) for i in rows)
+
+
+def _ql_spec(qualifier, kpi=False, filt=""):
+    """One scatter qualified as dash.ado writes a one-segment command: the
+    qualifier on the plot AND promoted to the graph (``_dash_plot``), and on
+    a KPI when *kpi*."""
+    plot = {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+            "options": {}, "if_expr": qualifier, "in_expr": ""}
+    kpis = []
+    if kpi:
+        # sum(weight), not count(): a decoy row is one row too, so a count
+        # cannot tell the row the literal names from the one a mis-reading
+        # of it names; their weights differ.
+        kpis = [{"name": "k1", "stat": "sum", "var": "weight", "fmt": "%9.0f",
+                 "title": "W", "subtitle": "", "color": "", "bgcolor": "",
+                 "update": "filter", "if_expr": qualifier, "in_expr": ""}]
+    return {
+        "graphs": [{"plots": [plot], "graph_options": {"name": "g1"},
+                    "if_expr": qualifier, "in_expr": ""}],
+        "kpis": kpis,
+        "build_options": {
+            "layout": "auto", "link": "", "filter": filt, "theme": "",
+            "scheme": "", "session_scheme": "", "title": "", "subtitle": "",
+            "registry": "g1" + (" k1" if kpi else ""), "tabs": "",
+            "filter_position": "top", "level": "95", "formats": {}},
+    }
+
+
+def _ql_write(tmp_path, spec, df=None, labels=None):
+    """Spec and data files, with `make' flagged a string column the way
+    jsonio flags one (variableIsString).  *labels* is
+    ``(valueLabels, valueLabelNames)`` when the data carry value labels."""
+    df = _ql_frame() if df is None else df
+    value_labels, label_names = labels or ({}, {})
+    sp = os.path.join(str(tmp_path), "spec.json")
+    dp = os.path.join(str(tmp_path), "data.json")
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    cols = list(df.columns)
+    with open(dp, "w", encoding="utf-8") as fh:
+        json.dump({"StataJSON": {
+            "variableNames": cols,
+            "variableLabels": {c: c for c in cols},
+            "valueLabels": value_labels, "valueLabelNames": label_names,
+            "variableIsString": {c: c == "make" for c in cols},
+            "variableTypeIsString": {c: c == "make" for c in cols},
+            "values": df.to_dict(orient="records"),
+        }}, fh)
+    return sp, dp
+
+
+def _ql_scatter(roots):
+    """(rows the source carries, x values drawn through the view) for the
+    one scatter layer under *roots*."""
+    from bokeh.models import GlyphRenderer, Plot
+    found = []
+    for root in roots:
+        for fig in root.select({"type": Plot}):
+            for r in fig.renderers:
+                if (isinstance(r, GlyphRenderer)
+                        and type(r.glyph).__name__ == "Scatter"):
+                    found.append(r)
+    assert len(found) == 1, f"expected one scatter layer, found {len(found)}"
+    r = found[0]
+    xs = [float(v) for v in r.data_source.data["weight"]]
+    filt = getattr(r.view, "filter", None)
+    kind = type(filt).__name__ if filt is not None else ""
+    if kind == "BooleanFilter":
+        keep = [i for i, b in enumerate(list(filt.booleans)[:len(xs)]) if b]
+    elif kind == "IndexFilter":
+        keep = [i for i in filt.indices if 0 <= i < len(xs)]
+    else:
+        keep = list(range(len(xs)))
+    return len(xs), sorted(xs[i] for i in keep)
+
+
+def _ql_saved(dr, tmp_path, spec, df=None):
+    """(renderer, warning texts) from the saved-page renderer."""
+    import warnings as _w
+    sp, dp = _ql_write(tmp_path, spec, df)
+    with _w.catch_warnings(record=True) as caught:
+        _w.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    return r, [str(x.message) for x in caught]
+
+
+def _ql_served(dr, tmp_path, spec, df=None, labels=None):
+    """(document, warning texts) from the generated server app, run the way
+    ``bokeh serve`` runs it: its make_document on a fresh Document."""
+    import warnings as _w
+    from bokeh.document import Document
+    sp, dp = _ql_write(tmp_path, spec, df, labels)
+    ap = os.path.join(str(tmp_path), "app.py")
+    with _w.catch_warnings(record=True) as built:
+        _w.simplefilter("always")
+        dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "_ql_app"}
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_ql_app.py", "exec"), ns)
+    with _w.catch_warnings(record=True) as caught:
+        _w.simplefilter("always")
+        doc = Document()
+        ns["make_document"](doc)
+    return doc, [str(x.message) for x in list(built) + list(caught)]
+
+
+def _ql_app_ns(dr, tmp_path, spec, df=None):
+    """The generated app's namespace -- everything it defines -- without its
+    curdoc attach, so a test can call its helpers and handlers directly."""
+    import warnings as _w
+    sp, dp = _ql_write(tmp_path, spec, df)
+    ap = os.path.join(str(tmp_path), "app.py")
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "_ql_app_ns"}
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_ql_app_ns.py", "exec"), ns)
+    return ns
+
+
+def _ql_kpi_value(divs):
+    import re as _re
+    for d in divs:
+        m = _re.search(r'id="kpi_val_k1"[^>]*>([^<]*)<', d.text or "")
+        if m:
+            return m.group(1).strip()
+    raise AssertionError("no KPI card k1 was drawn")
+
+
+class TestIfExprQuoteHandling:
+    """Regression suite for BUG-PARSE-1: a qualifier holding a quoted string
+    selects the rows Stata selects.
+
+    BUG-PARSE-1 was dash.ado cutting the qualifier at the first quote of
+    its JSON value; its fix is ``_dash_json_get_str``.  These tests used
+    to assert that name appeared in dash.ado and dash_parse.mata -- which
+    stayed green while the function decoded no escape at all (BUGS.md,
+    "``_dash_json_get_str`` has never decoded a single JSON escape").  The
+    Stata half is now driven end to end by test_qualifier_literals.cscript:
+    the immediate render and ``dash build`` run on hostile quoted and
+    escaped qualifiers, and the rows each mode draws are held to Stata's
+    own ``count if``.  The decoder itself is JSE-28 and P1B-27..30.
+
+    This class is the renderer half, in both modes: what either renderer
+    does with the qualifier dash.ado hands it.  Converting the tests found
+    that it did the wrong thing -- the translation to a pandas query kept
+    every literal as Python source, so Stata's "C:\\" was an unterminated
+    Python string, "a\\u0022b" and "n\\n" were read as Python escapes, a
+    compound-quoted literal ended at its first inner quote, and the saved
+    renderer and the served callback rewrote ``~=`` inside a literal.  Each
+    either drew every row with a "filter skipped" warning or, worse,
+    silently drew the wrong rows (measured 24sep2026 at 68327a8).
     """
 
-    def _source_mata(self):
-        import os
-        p = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "dash_parse.mata"
-        )
-        with open(p) as fh:
-            return fh.read()
+    @pytest.mark.parametrize("label,qualifier,rows", _QL_CASES, ids=_QL_IDS)
+    def test_the_saved_page_draws_the_rows_stata_selects(
+            self, dr_module, tmp_path, label, qualifier, rows):
+        r, warned = _ql_saved(dr_module, tmp_path, _ql_spec(qualifier))
+        carried, drawn = _ql_scatter([r._last_layout_root])
+        assert not [m for m in warned if "skipped" in m], (label, warned)
+        assert drawn == _ql_weights(rows), (
+            f"{label}: `if {qualifier}' drew the rows at x={drawn} on the "
+            f"saved page; Stata selects x={_ql_weights(rows)}")
+        # The graph's own qualifier (promoted by _dash_plot) restricts the
+        # rows the page carries, not only the ones the layer draws.
+        assert carried == len(rows), (label, carried, len(rows))
 
-    def _source_ado(self):
-        import os
-        p = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "dash.ado"
-        )
-        with open(p) as fh:
-            return fh.read()
+    @pytest.mark.parametrize("label,qualifier,rows", _QL_CASES, ids=_QL_IDS)
+    def test_the_served_app_draws_the_rows_stata_selects(
+            self, dr_module, tmp_path, label, qualifier, rows):
+        doc, warned = _ql_served(dr_module, tmp_path, _ql_spec(qualifier))
+        carried, drawn = _ql_scatter(doc.roots)
+        assert not [m for m in warned if "skipped" in m], (label, warned)
+        assert drawn == _ql_weights(rows), (
+            f"{label}: `if {qualifier}' drew the rows at x={drawn} in the "
+            f"served app; Stata selects x={_ql_weights(rows)}")
+        assert carried == len(rows), (label, carried, len(rows))
 
-    def test_dash_parse_contains_json_get_str(self, dr_module, auto_df):
-        """BUG-PARSE-1a: dash_parse.mata must define _dash_json_get_str."""
-        src = self._source_mata()
-        assert "_dash_json_get_str" in src, (
-            "dash_parse.mata must define _dash_json_get_str for JSON-safe if_expr extraction"
-        )
+    @pytest.mark.parametrize("label,qualifier,rows", _QL_CASES, ids=_QL_IDS)
+    def test_a_kpi_sums_the_rows_stata_selects_in_both_modes(
+            self, dr_module, tmp_path, label, qualifier, rows):
+        from bokeh.models import Div
+        spec = _ql_spec(qualifier, kpi=True)
+        r, _ = _ql_saved(dr_module, tmp_path, spec)
+        saved = _ql_kpi_value(r.kpi_divs.values())
+        doc, _ = _ql_served(dr_module, tmp_path, spec)
+        served = _ql_kpi_value([d for root in doc.roots
+                                for d in root.select({"type": Div})])
+        want = "%.0f" % sum(_ql_weights(rows))
+        assert (saved, served) == (want, want), (
+            f"{label}: `dash kpi sum(weight) if {qualifier}' reads saved "
+            f"{saved!r}, served {served!r}; Stata sums {want}")
 
-    def test_dash_parse_handles_escaped_quotes(self, dr_module, auto_df):
-        """BUG-PARSE-1b: _dash_json_get_str implementation must handle backslash-quote."""
-        src = self._source_mata()
-        # The function must check for backslash escape sequences
-        assert 'ch == "\\"' in src or "ch == " + repr("\\") in src or r'ch == "\"' in src or "backslash" in src.lower() or "escape" in src.lower(), (
-            "_dash_json_get_str must handle JSON escape sequences (backslash handling)"
-        )
+    @pytest.mark.parametrize("label,qualifier,rows", _QL_CASES, ids=_QL_IDS)
+    def test_a_filter_move_keeps_the_graphs_qualifier_when_served(
+            self, dr_module, tmp_path, label, qualifier, rows):
+        """The served filter callback applies the graph's qualifier again
+        after every move, through its own copy of the translation; a
+        qualifier it cannot read would let the move bring back every row
+        the qualifier excluded."""
+        from bokeh.models import RangeSlider
+        doc, _ = _ql_served(dr_module, tmp_path,
+                            _ql_spec(qualifier, filt="mpg, type(range)"))
+        sliders = [m for root in doc.roots
+                   for m in root.select({"type": RangeSlider})]
+        assert len(sliders) == 1, sliders
+        w = sliders[0]
+        lo, hi = 10.0, 21.0            # mpg 10..21: rows 0..11
+        w.value = (lo, hi)
+        for key in ("value", "value_throttled"):
+            for cb in list(w._callbacks.get(key, [])):
+                cb("value", None, (lo, hi))
+        _carried, drawn = _ql_scatter(doc.roots)
+        kept = {i for i in rows if lo <= 10 + i <= hi}
+        assert drawn == _ql_weights(kept), (
+            f"{label}: after the move the served scatter drew x={drawn}; "
+            f"the qualifier and the range keep x={_ql_weights(kept)}")
 
-    def test_ado_uses_json_get_str_for_if_expr(self, dr_module, auto_df):
-        """BUG-PARSE-1c: dash.ado must call _dash_json_get_str for if_expr extraction."""
-        src = self._source_ado()
-        assert "_dash_json_get_str" in src, (
-            "dash.ado must call _dash_json_get_str instead of naive strpos/substr for if_expr"
-        )
-
-    def test_ado_no_naive_strpos_for_if_expr(self, dr_module, auto_df):
-        """BUG-PARSE-1d: dash.ado must not use naive strpos pattern for if_expr extraction."""
-        src = self._source_ado()
-        # The old pattern: strpos(`"`after_if'"', `"""') - should be gone
-        assert 'strpos(`"`after_if' not in src, (
-            "dash.ado must not use old naive strpos-based if_expr extraction; "
-            "it truncates values containing escaped quotes"
-        )
-
-    def test_renderer_passes_if_expr_with_quoted_string(self, dr_module, auto_df):
-        """BUG-PARSE-1e: DashRenderer must accept if_expr containing JSON-escaped quotes.
-
-        The Python-side renderer handles if_expr values directly from the spec dict.
-        Verify that a spec with a quoted if_expr is processed without truncation.
-        """
-        import pandas as pd, numpy as np, json, tempfile, os
-        # Build a spec where graph_options has an if_expr with a quoted string.
-        # _make_spec_json returns a dict; set if_expr directly then pass dict
-        # to _write_temp_files (which calls json.dump internally).
-        spec_dict = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                       "options": {}}],
-            "graph_options": {"name": "g1"},
-        }])
-        # Set if_expr containing a quoted string (json.dump will produce \" inside)
-        spec_dict["graphs"][0]["graph_options"]["if_expr"] = 'foreign == 1'
-
-        spec_path, data_path = _write_temp_files(auto_df, spec_dict)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False)
-        out_f.close()
-        try:
-            dr_module.main(spec_path, data_path, out_f.name, "standalone")
-            assert os.path.exists(out_f.name), \
-                "main() must produce output for spec with if_expr"
-            with open(out_f.name) as fh:
-                html = fh.read()
-            assert len(html) > 100, "output HTML must be non-trivial"
-        finally:
-            for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+    @pytest.mark.parametrize("qualifier", [
+        # A backslash does not escape Stata's quote, so the text after the
+        # first literal is code, not data -- and code the whitelist refuses.
+        # `@os' is the payload pandas itself would run: measured, its
+        # python engine resolves @os from the calling module and calls
+        # os.system before it raises, so only dash's own guard stands here.
+        'make == "x\\" | @os.system("touch SENTINEL") | "y"',
+        # A compound literal closed early, the same payload behind it.
+        'make == `"a"\' | @os.system("touch SENTINEL") | `"b"\'',
+        # An unterminated literal is not completed into a valid one.
+        'make == "AMC',
+    ], ids=["backslash_breakout", "compound_breakout", "unterminated"])
+    def test_a_literal_cannot_become_code_in_either_mode(
+            self, dr_module, tmp_path, qualifier):
+        """CLAUDE.md rule 18, injection: whatever a literal holds, the
+        translation either reads it as data or refuses the qualifier, which
+        is skipped with a warning -- every row drawn, nothing run."""
+        sentinel = os.path.join(str(tmp_path), "SENTINEL")
+        q = qualifier.replace("SENTINEL", sentinel)
+        r, saved_warned = _ql_saved(dr_module, tmp_path, _ql_spec(q))
+        doc, served_warned = _ql_served(dr_module, tmp_path, _ql_spec(q))
+        assert not os.path.exists(sentinel), "the qualifier ran code"
+        all_rows = _ql_weights(range(len(_QL_MAKES)))
+        assert _ql_scatter([r._last_layout_root])[1] == all_rows
+        assert _ql_scatter(doc.roots)[1] == all_rows
+        assert [m for m in saved_warned if "skipped" in m], saved_warned
+        assert [m for m in served_warned if "skipped" in m], served_warned
 
 
 # ================================================================
@@ -5093,19 +5527,18 @@ class TestGraphQualifierPropagation:
 
     We test the Python-side half:
       (a) DashRenderer._apply_graph_filter reads top-level if_expr from graph spec
-      (b) DashRenderer filters data when graph spec has if_expr
-      (c) Generated server code falls back to g.get('if_expr')
-      (d) dash.ado source calls _dash_json_get_str for if_expr promotion
-    """
+      (b) an empty top-level if_expr leaves every row
+      (c) both modes draw only the rows a top-level if_expr selects
 
-    def _source_ado(self):
-        import os
-        p = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "dash.ado"
-        )
-        with open(p) as fh:
-            return fh.read()
+    (c) replaces two tests that read source text -- one asserted that the
+    generated app contained ``g.get('if_expr')``, one that dash.ado named
+    ``_dash_json_get_str`` -- and a third that rendered a top-level
+    qualifier and asserted only that the page was longer than 100 bytes,
+    which it is whether or not anything was filtered.  The Stata half,
+    dash.ado promoting a one-segment qualifier to the graph, is
+    test_json_escaping.cscript JSE-20 (stored whole at the graph level) and
+    test_qualifier_literals.cscript (the rows each mode draws).
+    """
 
     def test_renderer_apply_graph_filter_uses_top_level_if_expr(self, dr_module, auto_df):
         """BUG-QUAL-1a: _apply_graph_filter must read if_expr from top-level graph spec."""
@@ -5129,55 +5562,27 @@ class TestGraphQualifierPropagation:
         assert len(filtered) == len(auto_df), \
             "_apply_graph_filter with empty if_expr must return full dataset"
 
-    def test_server_code_falls_back_to_top_level_if_expr(self, dr_module, auto_df):
-        """BUG-QUAL-1c: generated server code must fall back to g.get('if_expr')."""
-        source = _build_app(dr_module, auto_df, _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                       "options": {}}],
-            "graph_options": {"name": "g1"},
-            "if_expr": "foreign == 1",
-        }]))
-        # The generated code must read if_expr from g (top level) as fallback
-        assert "g.get('if_expr')" in source or 'g.get("if_expr")' in source, (
-            "generated server code must fall back to g.get('if_expr') "
-            "when graph_options.if_expr is empty (BUG-QUAL-1 fix)"
-        )
-
-    def test_ado_promotes_if_expr_to_graph_level(self, dr_module, auto_df):
-        """BUG-QUAL-1d: dash.ado must use _dash_json_get_str to promote if_expr to graph level."""
-        src = self._source_ado()
-        # After the fix, _dash_plot calls _dash_json_get_str to extract if_expr
-        # from plots_json and then sets it at graph level
-        assert "_dash_json_get_str" in src, \
-            "dash.ado must call _dash_json_get_str for if_expr promotion"
-        # The old hard-coded empty string for if_expr must be gone
-        assert '"if_expr":"","in_expr":""' not in src, (
-            "dash.ado must not hard-code empty strings for if_expr/in_expr in graph_json"
-        )
-
-    def test_renderer_graph_with_if_expr_filters_data(self, dr_module, auto_df):
-        """BUG-QUAL-1e: standalone render with top-level if_expr must filter output."""
-        import tempfile, os, json
-        spec_dict = _make_spec_json(graphs=[{
+    def test_a_top_level_qualifier_draws_only_its_rows_in_both_modes(
+            self, dr_module, auto_df, tmp_path):
+        """BUG-QUAL-1c: the qualifier dash.ado promotes sits at the graph's
+        top level, beside graph_options -- where neither renderer looked
+        before the fix.  No plot and no graph_options carries one here, so
+        only the top-level key can restrict the rows."""
+        spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
                        "options": {}}],
             "graph_options": {"name": "g1"},
             "if_expr": "foreign == 1",
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec_dict)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False)
-        out_f.close()
-        try:
-            dr_module.main(spec_path, data_path, out_f.name, "standalone")
-            assert os.path.exists(out_f.name), \
-                "main() must produce output when graph has top-level if_expr"
-            with open(out_f.name) as fh:
-                html = fh.read()
-            assert len(html) > 100, "output HTML must be non-trivial"
-        finally:
-            for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+        want = sorted(float(w) for w in
+                      auto_df.loc[auto_df["foreign"] == 1, "weight"])
+        assert 0 < len(want) < len(auto_df)
+        r, saved_warned = _ql_saved(dr_module, tmp_path, spec, auto_df)
+        doc, served_warned = _ql_served(dr_module, tmp_path, spec, auto_df)
+        saved = _ql_scatter([r._last_layout_root])
+        served = _ql_scatter(doc.roots)
+        assert saved == (len(want), want), (saved, want, saved_warned)
+        assert served == (len(want), want), (served, want, served_warned)
 
 
 # ================================================================
@@ -5645,91 +6050,56 @@ class TestUnsafeTokenRegexWordBoundaries:
         assert pattern.search("eval('1==1')"), \
             "word-boundary \\b must block 'eval(...)'"
 
-    def test_unsafe_by_uses_word_boundary_not_backspace(self, dr_module, auto_df):
-        """BUG-REGEX-1d: generated _UNSAFE_BY pattern must contain \\b not backspace."""
-        src = _build_app(dr_module, auto_df, _make_spec_json(
-            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                                "options": {}}],
-                     "graph_options": {"name": "g1", "by": "foreign"}}]
-        ))
-        # Find the _UNSAFE_BY lines (may span multiple lines)
-        unsafe_by_block = ""
-        in_block = False
-        for line in src.splitlines():
-            if "_UNSAFE_BY" in line and "compile" in line:
-                in_block = True
-            if in_block:
-                unsafe_by_block += line + "\n"
-                if ")" in line and in_block and len(unsafe_by_block) > 20:
-                    break
-        assert "\x08" not in unsafe_by_block, \
-            "_UNSAFE_BY pattern must not contain backspace (\\x08); use \\b word boundary"
-        assert r"\b" in unsafe_by_block, \
-            "_UNSAFE_BY pattern must contain \\b word-boundary markers"
+    @pytest.mark.parametrize("given,kept", [
+        ("eval", False), ("exec", False), ("open, total", False),
+        ("getattr", False),
+        ("evaluate", True), ("execution", True), ("reopened", True),
+        ("x_open", True),
+    ])
+    def test_the_unsafe_by_words_match_only_whole_words_in_both_modes(
+            self, dr_module, auto_df, tmp_path, given, kept):
+        """BUG-REGEX-1d: by()'s injection words are refused as whole words
+        only, by the renderer's _dash_parse_by and by the served app's copy
+        -- whose pattern the app writes out again, which is where the
+        backspace bytes of BUG-REGEX lived: a pattern of backspaces refuses
+        nothing, and one without word boundaries refuses `evaluate'.
+
+        This read the generated app's text for the pattern's spelling; the
+        spelling was right while nothing asked the pattern a question.  No
+        other test hands by() a whole injection word, or a name holding one
+        (WP-24 scan)."""
+        ns = _ql_app_ns(dr_module, tmp_path, _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1", "by": "foreign"},
+        }], build_options={"layout": "auto", "registry": "g1"}), auto_df)
+        want = given.split(",")[0].strip() if kept else ""
+        saved = dr_module._dash_parse_by(given)[0]
+        served = ns["_dash_parse_by"](given)[0]
+        assert (saved, served) == (want, want), (
+            f"by({given}): saved read {saved!r}, served read {served!r}; "
+            f"want {want!r}")
 
 
 # ---------------------------------------------------------------------------
 # BUG-IQUAL: Immediate render jsonio qualifier wrongly pre-filters multi-plot data
 # ---------------------------------------------------------------------------
 
-class TestImmediateRenderExportsEveryRow:
-    """BUG-14's fix is an ABSENCE, and nothing asserted it.
-
-    `_dash_render_immediate' used to pass the FIRST plot's if/in qualifier to
-    `jsonio out', so a two-layer command with different qualifiers exported
-    only the rows the first layer wanted and the second drew from a frame
-    that no longer held its rows. The fix was to export everything and let
-    the renderer apply each layer's qualifier.
-
-    The four tests that guarded it built a DashRenderer and read its frame.
-    None of them read dash.ado, so re-adding the qualifier to the export
-    would have left all four green: the defect is in the Stata half and the
-    tests only ever exercised the Python half.
-    """
-
-    @staticmethod
-    def _immediate_jsonio_call():
-        import os
-        import re as _re
-        with open(os.path.join(os.path.dirname(__file__), "..", "dash.ado"),
-                  encoding="utf-8") as fh:
-            src = fh.read()
-        i = src.index("program define _dash_render_immediate")
-        j = src.index("\nend", i)
-        body = src[i:j]
-        k = body.index("jsonio out")
-        # The command continues while the line ends with ///
-        out, rest = [], body[k:].split("\n")
-        for line in rest:
-            out.append(line)
-            if not line.rstrip().endswith("///"):
-                break
-        return " ".join(out)
-
-    def test_the_call_was_found(self):
-        """Guards the guard: a moved call would make the check vacuous."""
-        call = self._immediate_jsonio_call()
-        assert call.startswith("jsonio out"), call
-        assert "filenm(" in call, call
-
-    def test_the_export_carries_no_qualifier(self):
-        import re as _re
-        call = self._immediate_jsonio_call()
-        assert not _re.search(r"\bif\b", call), (
-            f"_dash_render_immediate exports with an `if' qualifier, so a "
-            f"second plot layer with a different qualifier draws from a "
-            f"frame that no longer holds its rows: {call}"
-        )
-        assert not _re.search(r"\bin\b(?!lm)", call), (
-            f"_dash_render_immediate exports with an `in' qualifier: {call}"
-        )
-
-
 class TestImmediateRenderQualifierHandling:
     """Regression tests for BUG-IQUAL: immediate render must not pre-filter
     jsonio with the first plot's qualifier when multiple plots have different
     if/in expressions.  The renderer must receive all rows and apply per-graph
-    filtering itself via _apply_graph_filter."""
+    filtering itself via _apply_graph_filter.
+
+    These are the renderer's half.  BUG-IQUAL's fix is in dash.ado -- the
+    export no longer carries the first layer's qualifier -- and re-adding
+    it leaves every test here green, because they build the spec by hand.
+    That half is test_qualifier_literals.cscript QL-14: the two-layer
+    command, run on the immediate route, each layer holding the rows its
+    own qualifier selects.  A class that read the jsonio line out of
+    dash.ado for an `if' stood in for it; measured (WP-24), the qualifier
+    re-added through a macro left it green and fails QL-14.
+    """
 
     def _make_multi_qualifier_spec(self, if1: str, if2: str) -> dict:
         """Build a graph spec where two scatter plots have different if_expr."""
@@ -6345,26 +6715,25 @@ class TestFilterPerSourceOrigData:
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
             renderer.render()
-            if not renderer.filter_callbacks:
-                return
+            # Each of these used to `return' green.  Each holds (measured
+            # 24sep2026); one that did not would be the defect itself.
+            assert renderer.filter_callbacks, "no filter callback was built"
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
             orig_jsons = cb_args.get("all_graph_sources_orig", [])
-            if len(srcs) < 2:
-                return
             g2_src = renderer.sources.get("g2")
-            if g2_src is None:
-                return
-            for src, orig_model in zip(srcs, orig_jsons):
-                if src is g2_src:
-                    orig = orig_model.data
-                    assert "price" in orig, (
-                        "g2 source orig_json must contain 'price' (g2's y-column)"
-                    )
-                    assert "mpg" not in orig, (
-                        "g2 source orig_json must NOT contain 'mpg' (g1-only column) — "
-                        "this was the pre-fix corruption vector"
-                    )
+            assert g2_src is not None, "g2 has no source"
+            g2_origs = [o for s, o in zip(srcs, orig_jsons) if s is g2_src]
+            assert len(g2_origs) == 1, (
+                "g2's source is not among the sources the filter updates")
+            orig = g2_origs[0].data
+            assert "price" in orig, (
+                "g2 source orig_json must contain 'price' (g2's y-column)"
+            )
+            assert "mpg" not in orig, (
+                "g2 source orig_json must NOT contain 'mpg' (g1-only column) -- "
+                "this was the pre-fix corruption vector"
+            )
         finally:
             for _p in (spec_path, data_path):
                 try:
@@ -6450,39 +6819,64 @@ class TestBug21ExcludeSemantics:
         except SyntaxError as exc:
             pytest.fail(f"Generated server app has syntax error: {exc}")
 
-    def test_make_filter_cb_accepts_trig_widget(self, dr_module, auto_df):
-        """BUG-21b: _make_filter_cb in generated source must accept _trig_widget param."""
-        spec = self._make_server_spec_two_widgets()
-        source = _build_app(dr_module, auto_df, spec)
-        assert "_trig_widget" in source, (
-            "Generated _make_filter_cb must accept _trig_widget parameter"
-        )
+    @pytest.mark.parametrize("moved", ["the_widget_that_excludes_g1",
+                                       "the_widget_that_excludes_nothing"])
+    def test_a_move_skips_only_the_graphs_its_own_widget_excludes(
+            self, dr_module, auto_df, tmp_path, moved):
+        """BUG-21b/c/d: the graphs a move leaves alone are the MOVED widget's
+        exclude() list -- not every widget's.
 
-    def test_excl_uses_trig_widget_not_all_widgets_loop(self, dr_module, auto_df):
-        """BUG-21c: excl must come from _trig_widget._dash_exclude, not a loop over all widgets."""
+        These read the generated app for the parameter name `_trig_widget',
+        for the absence of a loop that unioned the lists, and for the
+        per-widget wiring call.  Every served exclude test had ONE widget,
+        where the moved widget's list and the union are the same list, so
+        nothing could tell (WP-24 scan).  Here widget A excludes g1 and
+        widget B excludes nothing: moving B must narrow both graphs, and
+        moving A must narrow g2 alone.
+        """
+        from bokeh.models import GlyphRenderer, Plot, RangeSlider, Select
         spec = self._make_server_spec_two_widgets()
-        source = _build_app(dr_module, auto_df, spec)
-        # The buggy pattern: iterating over _all_widgets to build excl union
-        assert "for w in _all_widgets:" not in source.split("def _on_filter_change")[1].split("return _on_filter_change")[0] or \
-            "excl.extend(getattr(w, '_dash_exclude'" not in source, (
-            "BUG-21: Generated code must NOT build excl by looping over _all_widgets"
-        )
+        doc, _ = _ql_served(dr_module, tmp_path, spec, auto_df)
 
-    def test_per_widget_callback_wired(self, dr_module, auto_df):
-        """BUG-21d: Each widget must get its own callback bound via _make_filter_cb(w, ...)."""
-        spec = self._make_server_spec_two_widgets()
-        source = _build_app(dr_module, auto_df, spec)
-        # Per-widget wiring: _make_filter_cb called inside a for-loop over filter_widgets.
-        # The generated code iterates filter_widgets and calls _make_filter_cb(... w ...) per widget.
-        # Accept either inline ("_make_filter_cb(w,") or multi-line ("_make_filter_cb(\n...w,").
-        has_per_widget = (
-            "_make_filter_cb(w," in source
-            or "_cb_for_w = _make_filter_cb(" in source
-        )
-        assert has_per_widget, (
-            "BUG-21d: Per-widget callback must be created by calling _make_filter_cb "
-            "with w as triggering widget inside the wiring loop"
-        )
+        def _rows():
+            out = {}
+            for root in doc.roots:
+                for fig in root.select({"type": Plot}):
+                    n = [len(r.data_source.data["weight"])
+                         for r in fig.renderers
+                         if isinstance(r, GlyphRenderer)
+                         and type(r.glyph).__name__ == "Scatter"]
+                    if n:
+                        out[fig.title.text if fig.title else ""] = n[0]
+            return out
+
+        def _fire(w, value):
+            w.value = value
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, value)
+
+        n = len(auto_df)
+        assert _rows() == {"G1": n, "G2": n}, _rows()
+        if moved == "the_widget_that_excludes_g1":
+            w = [m for root in doc.roots for m in root.select({"type": Select})]
+            assert len(w) == 1, w
+            pick = [v for v, lab in w[0].options if lab == "1"]
+            _fire(w[0], pick[0])
+            kept = int((auto_df["foreign"] == 1).sum())
+            want = {"G1": n, "G2": kept}
+        else:
+            w = [m for root in doc.roots
+                 for m in root.select({"type": RangeSlider})]
+            assert len(w) == 1, w
+            lo = float(auto_df["mpg"].median())
+            hi = float(auto_df["mpg"].max())
+            _fire(w[0], (lo, hi))
+            kept = int(((auto_df["mpg"] >= lo) & (auto_df["mpg"] <= hi)).sum())
+            want = {"G1": kept, "G2": kept}
+        assert 0 < kept < n
+        assert _rows() == want, (
+            f"after moving {moved.replace('_', ' ')}: {_rows()}, want {want}")
 
     def test_excluding_widget_skips_target_graph(self, dr_module, auto_df):
         """BUG-21e: Widget with exclude(g1) must have _dash_exclude=['g1'];
@@ -6732,42 +7126,79 @@ class TestServerFilterPreservesDerivedColumns:
             }
         )
 
-    def test_generated_source_has_orig_src_data_snapshot(self, dr_module, auto_df):
-        """BUG-32-1a: generated server source must create _orig_src_data snapshot."""
-        spec = self._make_jitter_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            src = builder._generate_app_source(5006)
-            assert "_orig_src_data" in src, (
-                "generated server source must create _orig_src_data snapshot "
-                "to preserve derived columns during filter callbacks"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+    @pytest.mark.parametrize("opts,column", [
+        ({"mlabel": "foreign"}, "__mlabel__foreign"),
+        ({"colorvar": "foreign", "colordiscrete": "colordiscrete"},
+         "_cvar_foreign_bin"),
+    ], ids=["marker_labels", "colour_bins"])
+    def test_a_derived_column_keeps_each_kept_rows_value_after_a_move(
+            self, dr_module, auto_df, tmp_path, opts, column):
+        """BUG-32-1a/1b: a column the layer source derives -- the marker-label
+        text, the colour bin -- is not a frame column, so after a filter
+        move it is taken from the pre-move snapshot, row by row: every kept
+        row keeps its own value, and every column keeps one value per row.
 
-    def test_generated_callback_uses_snapshot_for_derived_cols(self, dr_module, auto_df):
-        """BUG-32-1b: generated _make_filter_cb must reference _orig_src_data for non-df columns."""
-        spec = self._make_jitter_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            src = builder._generate_app_source(5006)
-            assert "_orig_src_data" in src, "_orig_src_data must be in generated source"
-            # The callback must use _orig_src_data in the filter loop
-            assert "_snap" in src or "_orig_src_data.get" in src, (
-                "_make_filter_cb must use _orig_src_data snapshot for derived column selection"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+        These read the generated app for the snapshot's NAME.  The one
+        behavioural BUG-32 test (below) uses jitter, whose offsets now live
+        in a source that is redrawn rather than snapshot-subset, so nothing
+        moved a filter under a layer that carries such a column (WP-24
+        scan)."""
+        import warnings as _w
+        from bokeh.models import GlyphRenderer, Plot, RangeSlider
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": dict(opts), "if_expr": "", "in_expr": ""}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "", "in_expr": "",
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "price, type(range)",
+            "theme": "", "title": "", "subtitle": "", "registry": "g1",
+            "level": "95", "formats": {}})
+        labels = ({"origin": {"0": "Domestic", "1": "Foreign"}},
+                  {"foreign": "origin"})
+        doc, _ = _ql_served(dr_module, tmp_path, spec, auto_df, labels)
+
+        def _layer():
+            found = [r.data_source for root in doc.roots
+                     for fig in root.select({"type": Plot})
+                     for r in fig.renderers
+                     if isinstance(r, GlyphRenderer)
+                     and type(r.glyph).__name__ == "Scatter"
+                     and column in r.data_source.data]
+            assert len(found) == 1, found
+            return found[0]
+
+        before = dict(_layer().data)
+        value_of = dict(zip([int(i) for i in before["index"]],
+                            list(before[column])))
+        assert len(set(value_of.values())) > 1, value_of
+        w = [m for root in doc.roots for m in root.select({"type": RangeSlider})]
+        assert len(w) == 1, w
+        lo = float(auto_df["price"].median())
+        hi = float(auto_df["price"].max())
+        w[0].value = (lo, hi)
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            for key in ("value", "value_throttled"):
+                for cb in list(w[0]._callbacks.get(key, [])):
+                    cb("value", None, (lo, hi))
+        after = dict(_layer().data)
+        kept = [int(i) for i in auto_df.index[
+            (auto_df["price"] >= lo) & (auto_df["price"] <= hi)]]
+        assert 0 < len(kept) < len(auto_df)
+        assert not [str(m.message) for m in caught
+                    if "same length" in str(m.message)], caught
+        assert {k: len(v) for k, v in after.items()} == \
+            {k: len(kept) for k in after}, (
+            f"after the move the columns hold "
+            f"{ {k: len(v) for k, v in after.items()} } values; "
+            f"{len(kept)} rows are kept")
+        assert sorted(int(i) for i in after["index"]) == kept
+        assert [after[column][j] for j in range(len(kept))] == \
+            [value_of[int(i)] for i in after["index"]], (
+            f"{column} lost its rows' own values after the move")
+        if column == "__mlabel__foreign":
+            assert set(after[column]) <= {"Domestic", "Foreign"}, after[column]
 
     def test_generated_callback_handles_index_column(self, dr_module, auto_df):
         """BUG-32-1c: generated callback must repopulate 'index' from _gdf.index, not blank it."""
@@ -6831,23 +7262,36 @@ class TestServerFilterPreservesDerivedColumns:
             doc = Document()
             app_mod.make_document(doc)
             # Find filter widget and trigger it
+            from bokeh.models import GlyphRenderer
             all_models = list(doc.models)
             fw = next(
                 (m for m in all_models
                  if isinstance(m, Select) and getattr(m, "_dash_var", "") == "foreign"),
                 None,
             )
-            if fw is None:
-                return  # no filter widget built — nothing to check
-            # Pick a non-"All" option if available
+            # This returned green when the widget was missing.  It is built
+            # (measured 24sep2026); a missing one is a failure.
+            assert fw is not None, "the foreign filter widget was not built"
+            srcs = [m.data_source for m in all_models
+                    if isinstance(m, GlyphRenderer)
+                    and type(m.glyph).__name__ == "Scatter"]
+            assert len(srcs) == 1, srcs
             non_all = [v for v, _l in fw.options if v != "__all__"]
-            new_val = non_all[0] if non_all else "__all__"
-            old_val = fw.value
-            # Fire the callback without warnings about column length mismatch
+            assert non_all, fw.options
+            new_val = non_all[0]
+            want = int((auto_df["foreign"] == float(new_val)).sum())
+            # The callback reads the widget's value, not its arguments: the
+            # value itself is set, as a browser sets it.  Called by hand with
+            # a new value, it refiltered on the unchanged "All".
             with warnings.catch_warnings(record=True) as w_list:
                 warnings.simplefilter("always")
-                for cb_desc in fw._callbacks.get("value", []):
-                    cb_desc("value", old_val, new_val)
+                fw.value = new_val
+            lengths = {k: len(v) for k, v in srcs[0].data.items()}
+            assert {"_x_jit", "_y_jit"} <= set(lengths), lengths
+            assert set(lengths.values()) == {want}, (
+                "BUG-32: after foreign=%s every column, derived ones "
+                "included, must hold the %d rows kept; got %r"
+                % (new_val, want, lengths))
             length_warnings = [w for w in w_list
                                 if "same length" in str(w.message).lower()]
             assert not length_warnings, (
@@ -6894,40 +7338,27 @@ class TestServerFilterReappliesGraphQualifiers:
             }
         )
 
-    def test_generated_source_has_graph_qualifiers_dict(self, dr_module, auto_df):
-        """BUG-33-1a: generated source must create _graph_qualifiers dict."""
-        spec = self._make_qualified_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            src = builder._generate_app_source(5006)
-            assert "_graph_qualifiers" in src, (
-                "generated server source must create _graph_qualifiers to persist "
-                "per-graph qualifier metadata for filter callbacks"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+    def test_a_graphs_if_holds_after_a_move(self, dr_module, tmp_path):
+        """BUG-33, the `if' half: after a filter move the served graph still
+        draws only the rows its own `if' selects, of those the move keeps.
 
-    def test_generated_callback_accepts_graph_qualifiers(self, dr_module, auto_df):
-        """BUG-33-1b: _make_filter_cb must accept _gquals and _gfac_to_orig params."""
-        spec = self._make_qualified_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            src = builder._generate_app_source(5006)
-            assert "_gquals" in src or "_graph_qualifiers" in src, (
-                "_make_filter_cb must reference graph qualifiers for reapplication"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+        Replaces BUG-33-1a and 1b, which asserted that the names
+        _graph_qualifiers and _gquals appeared in the generated app.  A
+        callback that never reapplies the qualifier still carries both
+        names: with the reapplication removed (WP-24 mutation cb4) both
+        passed, and this fails."""
+        df = self._ordered_frame()
+        doc, _ = _ql_served(dr_module, tmp_path,
+                            self._ordered_spec(if_expr="foreign == 1"), df)
+        assert self._drawn(doc) == sorted(df.loc[df["foreign"] == 1,
+                                                 "weight"])
+        self._move_range(doc, 3500.0, 5000.0)
+        want = sorted(df.loc[(df["foreign"] == 1) & (df["price"] >= 3500.0)
+                             & (df["price"] <= 5000.0), "weight"])
+        assert 0 < len(want) < int((df["foreign"] == 1).sum())
+        assert self._drawn(doc) == want, (
+            f"after the move the served graph drew x={self._drawn(doc)}; "
+            f"the rows with foreign == 1 that the range keeps are x={want}")
 
     def test_make_document_with_qualified_graph_does_not_crash(self, dr_module, auto_df):
         """BUG-33-1c: make_document with if_expr graph must not raise."""
@@ -6954,12 +7385,24 @@ class TestServerFilterReappliesGraphQualifiers:
                     pass
 
     def test_filter_callback_does_not_reintroduce_qualified_out_rows(self, dr_module, auto_df):
-        """BUG-33-1d: filter callback must not expand qualified graph source beyond if_expr rows."""
+        """BUG-33-1d: filter callback must not expand qualified graph source beyond if_expr rows.
+
+        This had never checked anything.  It filtered on rep78, which the
+        fixture data does not carry -- "dash: filter(rep78): the variable is
+        not in the data; no widget was built" -- and returned green when the
+        widget was missing; the module-level graph_sources it read next is
+        empty too (both measured 24sep2026).  The data now carries rep78,
+        the source is found in the document, and the widget's value is set
+        as a browser sets it: the callback reads the value, not its
+        arguments.
+        """
         import importlib.util as _ilu
         from bokeh.document import Document
-        from bokeh.models import Select
+        from bokeh.models import GlyphRenderer, Select
+        df = auto_df.assign(
+            rep78=(np.arange(len(auto_df)) % 5 + 1).astype(float))
         spec = self._make_qualified_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
+        spec_path, data_path = _write_temp_files(df, spec)
         out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
         out_f.close()
         try:
@@ -6977,25 +7420,29 @@ class TestServerFilterReappliesGraphQualifiers:
                  if isinstance(m, Select) and getattr(m, "_dash_var", "") == "rep78"),
                 None,
             )
-            if fw is None:
-                return  # filter widget not built — skip
-            # Find the g1 source
-            g1_srcs = app_mod.graph_sources.get("g1", [])
-            if not g1_srcs:
-                return
-            g1_src = g1_srcs[-1] if isinstance(g1_srcs, list) else g1_srcs
-            # Record initial row count (should be only foreign==1 rows)
-            initial_n = len(g1_src.data.get("mpg", []))
-            # Trigger filter callback with "__all__" (no filter) — must stay within if_expr
-            old_val = fw.value
-            for cb_desc in fw._callbacks.get("value", []):
-                cb_desc("value", old_val, "__all__")
-            after_n = len(g1_src.data.get("mpg", []))
-            assert after_n <= initial_n or initial_n == 0, (
-                f"BUG-33: after filter callback, g1 source has {after_n} rows but should "
-                f"be bounded by initial if_expr-filtered count ({initial_n}). "
-                "Graph qualifier was not reapplied."
-            )
+            assert fw is not None, "the rep78 filter widget was not built"
+            g1_srcs = [m.data_source for m in all_models
+                       if isinstance(m, GlyphRenderer)
+                       and type(m.glyph).__name__ == "Scatter"]
+            assert len(g1_srcs) == 1, g1_srcs
+            g1_src = g1_srcs[0]
+            qualified = df["foreign"] == 1
+            # The qualifier applies from the start ...
+            assert len(g1_src.data["mpg"]) == int(qualified.sum())
+            # ... and is reapplied when a filter moves: rep78 == 2 among
+            # the foreign cars, not among all of them.
+            want = int((qualified & (df["rep78"] == 2)).sum())
+            assert want != int((df["rep78"] == 2).sum()), (
+                "the data cannot tell a reapplied qualifier from a lost one")
+            fw.value = "2"
+            assert len(g1_src.data["mpg"]) == want, (
+                f"BUG-33: rep78 == 2 left {len(g1_src.data['mpg'])} rows in g1; "
+                f"{want} of them satisfy the graph's `if foreign == 1'")
+            # "All" is the full qualified set again, never the whole data.
+            fw.value = "__all__"
+            assert len(g1_src.data["mpg"]) == int(qualified.sum()), (
+                "BUG-33: choosing All brought back rows the graph's qualifier "
+                "excludes")
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try:
@@ -7003,23 +7450,220 @@ class TestServerFilterReappliesGraphQualifiers:
                 except OSError:
                     pass
 
-    def test_generated_source_has_safe_g_cb_in_callback(self, dr_module, auto_df):
-        """BUG-33-1e: generated callback body must contain AST validator for qualifier reapplication."""
-        spec = self._make_qualified_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            src = builder._generate_app_source(5006)
-            assert "_safe_g_cb" in src or "_ALLOW_CB" in src, (
-                "generated filter callback must contain AST whitelist guard for "
-                "graph qualifier reapplication"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+    @staticmethod
+    def _move_range(doc, lo, hi):
+        from bokeh.models import RangeSlider
+        sliders = [m for root in doc.roots
+                   for m in root.select({"type": RangeSlider})]
+        assert len(sliders) == 1, sliders
+        w = sliders[0]
+        w.value = (lo, hi)
+        for key in ("value", "value_throttled"):
+            for cb in list(w._callbacks.get(key, [])):
+                cb("value", None, (lo, hi))
+
+    @staticmethod
+    def _drawn(doc):
+        from bokeh.models import GlyphRenderer, Plot
+        return sorted(float(v) for root in doc.roots
+                      for fig in root.select({"type": Plot})
+                      for r in fig.renderers
+                      if isinstance(r, GlyphRenderer)
+                      and type(r.glyph).__name__ == "Scatter"
+                      for v in r.data_source.data["weight"])
+
+    def _ordered_spec(self, if_expr="", in_expr=""):
+        return _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}, "if_expr": "", "in_expr": ""}],
+            "graph_options": {"name": "g1"},
+            "if_expr": if_expr, "in_expr": in_expr,
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "price, type(range)",
+            "theme": "", "title": "", "subtitle": "", "registry": "g1",
+            "level": "95", "formats": {}})
+
+    @staticmethod
+    def _ordered_frame(n=20):
+        return pd.DataFrame({
+            "mpg": [10.0 + i for i in range(n)],
+            "weight": [2000.0 + 50 * i for i in range(n)],
+            "price": [3000.0 + 100 * i for i in range(n)],
+            "foreign": [float(i % 2) for i in range(n)],
+        })
+
+    def test_a_graphs_in_counts_observations_after_a_move(
+            self, dr_module, tmp_path):
+        """BUG-33, the `in' half: after a filter move the graph's `in 3/8'
+        still names observations 3 to 8 of the data, as twoway and the
+        initial draw read it -- not the 3rd to 8th rows the move left.
+
+        Measured 24sep2026 (WP-24): the served callback applied the graph's
+        `in' with its own iloc over the FILTERED frame, so moving price to
+        3500..5000 drew the rows at x = 2350..2600 where observations 3..8
+        that the range keeps are x = 2250, 2300, 2350."""
+        df = self._ordered_frame()
+        doc, _ = _ql_served(dr_module, tmp_path,
+                            self._ordered_spec(in_expr="3/8"), df)
+        assert self._drawn(doc) == [2100.0, 2150.0, 2200.0, 2250.0,
+                                    2300.0, 2350.0]
+        self._move_range(doc, 3500.0, 5000.0)
+        obs = df.iloc[2:8]
+        want = sorted(obs.loc[(obs["price"] >= 3500.0)
+                              & (obs["price"] <= 5000.0), "weight"])
+        assert want == [2250.0, 2300.0, 2350.0]
+        assert self._drawn(doc) == want, (
+            f"after the move the served graph drew x={self._drawn(doc)}; "
+            f"observations 3..8 that the range keeps are x={want}")
+
+    @pytest.mark.parametrize("qual", [
+        {"in_expr": "3/12"},
+        {"if_expr": "mpg >= 16"},
+    ], ids=["in", "if"])
+    def test_a_by_panels_qualifier_holds_after_a_move(
+            self, dr_module, tmp_path, qual):
+        """BUG-33 in a by() graph: after a move every panel still draws the
+        rows of its own level that the graph's qualifier and the move both
+        keep.  The callback finds a panel's qualifier through
+        _gfac_to_orig (panel name -> graph name); no unlinked move reached
+        that lookup before (WP-24), and `in' counts observations of the
+        data, not rows of a panel."""
+        from bokeh.models import GlyphRenderer, Plot
+        df = self._ordered_frame()
+        spec = self._ordered_spec(**qual)
+        spec["graphs"][0]["graph_options"]["by"] = "foreign"
+        doc, _ = _ql_served(dr_module, tmp_path, spec, df)
+
+        def panels():
+            out = []
+            for root in doc.roots:
+                for fig in root.select({"type": Plot}):
+                    xs = sorted(float(v) for r in fig.renderers
+                                if isinstance(r, GlyphRenderer)
+                                and type(r.glyph).__name__ == "Scatter"
+                                for v in r.data_source.data["weight"])
+                    if xs:
+                        out.append(xs)
+            return sorted(out)
+
+        if "in_expr" in qual:
+            owned = df.iloc[2:12]
+        else:
+            owned = df[df["mpg"] >= 16]
+
+        def want(rows):
+            return sorted(sorted(rows.loc[rows["foreign"] == lvl, "weight"])
+                          for lvl in (0.0, 1.0))
+
+        assert panels() == want(owned)
+        self._move_range(doc, 3500.0, 4200.0)
+        kept = owned[(owned["price"] >= 3500.0) & (owned["price"] <= 4200.0)]
+        assert 0 < len(kept) < len(owned)
+        assert panels() == want(kept), (
+            f"after the move the panels drew {panels()}; the rows of each "
+            f"level the qualifier and the range keep are {want(kept)}")
+
+    def test_a_qualifier_too_deep_to_parse_does_not_break_a_move(
+            self, dr_module, tmp_path):
+        """CLAUDE.md rule 18, resource exhaustion: a graph qualifier the
+        whitelist cannot even parse is refused at the first draw (WP-20)
+        and must be refused again after a move -- the move still applies.
+
+        Measured 24sep2026 (WP-24): the callback's own whitelist caught
+        SyntaxError only, so 50,000 `~' raised MemoryError ("Parser stack
+        overflowed") out of the callback on every move, and the move never
+        reached the graph: it kept all 20 rows where the range keeps 15."""
+        df = self._ordered_frame()
+        doc, warned = _ql_served(dr_module, tmp_path, self._ordered_spec(
+            if_expr="~" * 50000 + "foreign"), df)
+        assert [m for m in warned if "skipped" in m], warned
+        assert len(self._drawn(doc)) == len(df)
+        self._move_range(doc, 3500.0, 5000.0)
+        want = sorted(df.loc[(df["price"] >= 3500.0)
+                             & (df["price"] <= 5000.0), "weight"])
+        assert self._drawn(doc) == want, (
+            f"after the move the served graph drew {len(self._drawn(doc))} "
+            f"rows; the range keeps {len(want)}")
+
+    def test_an_in_bound_too_long_for_int_does_not_break_a_move(
+            self, dr_module, tmp_path):
+        """CLAUDE.md rule 18, resource exhaustion: an `in' bound of 5,000
+        digits reads as past the data's end at the first draw (WP-20's
+        bound) and must read so again after a move.
+
+        Measured 24sep2026 (WP-24): the callback's own int() raised
+        ValueError ("Exceeds the limit (4300 digits) for integer string
+        conversion") out of every move, while the first draw drew
+        observations 3 to 20."""
+        df = self._ordered_frame()
+        doc, _ = _ql_served(dr_module, tmp_path, self._ordered_spec(
+            in_expr="3/" + "9" * 5000), df)
+        assert self._drawn(doc) == sorted(df["weight"].iloc[2:])
+        self._move_range(doc, 3500.0, 5000.0)
+        obs = df.iloc[2:]
+        want = sorted(obs.loc[(obs["price"] >= 3500.0)
+                              & (obs["price"] <= 5000.0), "weight"])
+        assert self._drawn(doc) == want, (
+            f"after the move the served graph drew {len(self._drawn(doc))} "
+            f"rows; observations 3 on that the range keeps are {len(want)}")
+
+    def test_the_filter_callback_does_not_run_a_hostile_qualifier(
+            self, dr_module, auto_df, tmp_path):
+        """BUG-33-1e: the qualifier the served filter callback applies again
+        after a move passes the callback's whitelist before DataFrame.query.
+
+        This asserted that the whitelist's NAME appeared in the generated
+        app.  The callback's whitelist was then emitted text of its own, not
+        the shared _validate_if_expr; since WP-24 the callback reads the
+        qualifier through _dash_layer_frame, as the first draw does.  Either
+        way a name in the source proves nothing about the route the
+        callback takes, so running the callback is the only proof that it
+        guards.  The build refuses this qualifier and warns; the raw text
+        still travels with the graph to the callback.  The payload is one
+        pandas' python engine runs by itself -- measured, it resolves @os
+        from the calling module and calls os.system -- so only dash's guard
+        stands between the qualifier and a shell.  CLAUDE.md rule 18,
+        injection.
+        """
+        from bokeh.models import GlyphRenderer, Plot, RangeSlider
+        marker = os.path.join(str(tmp_path), "BUG33_RAN")
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+            "if_expr": "@os.system('touch %s') == 0" % marker,
+        }], build_options={
+            "layout": "auto", "link": "", "filter": "price, type(range)",
+            "theme": "", "title": "", "subtitle": "", "registry": "g1",
+            "level": "95", "formats": {}})
+        doc, warned = _ql_served(dr_module, tmp_path, spec, auto_df)
+        assert not os.path.exists(marker), "the build ran the qualifier"
+        assert [m for m in warned if "skipped" in m], warned
+        sliders = [m for root in doc.roots
+                   for m in root.select({"type": RangeSlider})]
+        assert len(sliders) == 1, sliders
+        w = sliders[0]
+        lo = float(auto_df["price"].quantile(0.25))
+        hi = float(auto_df["price"].max())
+        w.value = (lo, hi)
+        for key in ("value", "value_throttled"):
+            for cb in list(w._callbacks.get(key, [])):
+                cb("value", None, (lo, hi))
+        assert not os.path.exists(marker), (
+            "the served filter callback handed the qualifier to "
+            "DataFrame.query, which ran it")
+        kept = sorted(float(v) for v in auto_df.loc[
+            (auto_df["price"] >= lo) & (auto_df["price"] <= hi), "weight"])
+        drawn = sorted(float(v) for root in doc.roots
+                       for fig in root.select({"type": Plot})
+                       for r in fig.renderers
+                       if isinstance(r, GlyphRenderer)
+                       and type(r.glyph).__name__ == "Scatter"
+                       for v in r.data_source.data["weight"])
+        assert 0 < len(kept) < len(auto_df)
+        assert drawn == kept, (
+            "after the move the refused qualifier must leave the rows the "
+            f"range keeps: drew {len(drawn)}, the range keeps {len(kept)}")
 
 
 # ---------------------------------------------------------------------------
@@ -8301,27 +8945,62 @@ class TestDropdownSentinelCollision:
     # BUG-37-1e: generated server uses per-widget sentinel in callback
     # ------------------------------------------------------------------
 
-    def test_server_callback_uses_widget_sentinel_attribute(self, dr_module, auto_df):
-        """BUG-37-1e: generated server filter callback must read _dash_sentinel from widget."""
+    def test_the_served_callback_filters_on_the_widgets_own_sentinel(
+            self, dr_module, tmp_path):
+        """BUG-37-1e: when the data hold the literal "__all__", the served
+        recompute takes the WIDGET's sentinel for "no filter" -- so choosing
+        the data's own "__all__" category keeps its rows, and choosing the
+        sentinel keeps every row.
+
+        This read the generated app for the sentinel attribute's name and
+        for the absence of a hard-coded '__all__'.  The widget's sentinel
+        was checked (the test above) but nothing moved it, and the mask
+        helper's own test uses the default sentinel only, so a mask that
+        compared with a hard-coded '__all__' passed every test (WP-24)."""
+        from bokeh.models import GlyphRenderer, Plot, Select
+        df = pd.DataFrame({
+            "make": ["__all__", "A", "B", "__all__", "A", "B"],
+            "mpg": [15.0, 19.0, 23.0, 27.0, 31.0, 35.0],
+            "weight": [2000.0, 2400.0, 2800.0, 3200.0, 3600.0, 4000.0],
+        })
         spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
             "graph_options": {"name": "g1"},
         }], build_options={
-            "layout": "auto", "link": "", "filter": "foreign, type(dropdown)",
-            "theme": "default", "title": "T", "subtitle": "",
-            "registry": "g1", "mode": "server", "port": "5006",
-        })
-        source = _build_app(dr_module, auto_df, spec)
-        assert "_dash_sentinel" in source, (
-            "Generated server callback must read '_dash_sentinel' attribute from widget"
-        )
-        assert "_w_sentinel" in source, (
-            "Generated server callback must use per-widget '_w_sentinel' variable"
-        )
-        # Hard-coded '__all__' check must not appear in the callback comparison
-        assert "w.value != '__all__'" not in source, (
-            "Generated server callback must not hard-code '__all__' in value check"
-        )
+            "layout": "auto", "link": "", "filter": "make, type(dropdown)",
+            "theme": "", "title": "", "subtitle": "", "registry": "g1",
+            "level": "95", "formats": {}})
+        doc, _ = _ql_served(dr_module, tmp_path, spec, df)
+        sel = [m for root in doc.roots for m in root.select({"type": Select})]
+        assert len(sel) == 1, sel
+        w = sel[0]
+        sentinel = getattr(w, "_dash_sentinel", "__all__")
+        assert sentinel != "__all__", (
+            "the data hold '__all__', so the widget's sentinel must differ")
+
+        def _drawn():
+            return sorted(float(v) for root in doc.roots
+                          for fig in root.select({"type": Plot})
+                          for r in fig.renderers
+                          if isinstance(r, GlyphRenderer)
+                          and type(r.glyph).__name__ == "Scatter"
+                          for v in r.data_source.data["weight"])
+
+        def _fire(value):
+            w.value = value
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, value)
+
+        _fire("__all__")
+        assert _drawn() == [2000.0, 3200.0], (
+            f"choosing the data's '__all__' drew x={_drawn()}; its two rows "
+            f"are x=2000 and x=3200")
+        _fire(sentinel)
+        assert _drawn() == sorted(df["weight"].tolist()), (
+            f"choosing the sentinel ({sentinel!r}) drew x={_drawn()}; it "
+            f"filters nothing")
 
 
 # ===========================================================================
@@ -8889,41 +9568,77 @@ class TestProxiedRateLimiterBucket:
         )
 
     # ------------------------------------------------------------------
-    # BUG-41-1e: HealthHandler.prepare uses _client_ip_from_request
+    # BUG-41-1e/1f: /health and make_document key their budgets through
+    # the helper.  These read the app's text for the helper's call and for
+    # the absence of the old inline reads; the keying itself was driven by
+    # nothing -- the helper was tested on its own, and every test that went
+    # through /health or make_document either sent no forwarded header or
+    # refused everyone (WP-24 scan).  Now each is driven with one peer and
+    # two forwarded clients: untrusted, the two share the peer's budget
+    # (keying on the header would let a forged one escape it); trusted, the
+    # second has a budget of its own (keying on the peer would not).
     # ------------------------------------------------------------------
 
-    def test_health_handler_uses_helper(self, dr_module, auto_df):
-        """BUG-41-1e: _HealthHandler.prepare must call _client_ip_from_request."""
-        src = self._build_source(dr_module, auto_df)
-        # Verify source text — _HealthHandler.prepare must call the helper
-        assert "_client_ip_from_request(self.request)" in src, (
-            "_HealthHandler.prepare should use _client_ip_from_request(self.request)"
-        )
-        # Ensure the old bare remote_ip pattern is gone from HealthHandler
-        import re
-        health_section = re.search(
-            r"class _HealthHandler.*?def get\(", src, re.DOTALL
-        )
-        if health_section:
-            section_text = health_section.group(0)
-            assert "self.request.remote_ip" not in section_text, (
-                "_HealthHandler.prepare should not use self.request.remote_ip directly"
-            )
+    @staticmethod
+    def _matrix():
+        """The served-app drivers test_adversarial_matrix.py already has."""
+        _here = os.path.dirname(os.path.abspath(__file__))
+        if _here not in sys.path:
+            sys.path.insert(0, _here)
+        from test_adversarial_matrix import _Req, _health, _session, _texts
+        return _Req, _health, _session, _texts
 
-    # ------------------------------------------------------------------
-    # BUG-41-1f: make_document uses _client_ip_from_request (not inline)
-    # ------------------------------------------------------------------
+    def _served_ns(self, dr_module, auto_df, tmp_path):
+        """The generated app's namespace, without its curdoc attach."""
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }], build_options={"layout": "auto", "registry": "g1"})
+        return _ql_app_ns(dr_module, tmp_path, spec, auto_df)
 
-    def test_make_document_uses_helper(self, dr_module, auto_df):
-        """BUG-41-1f: make_document must call _client_ip_from_request, not inline IP."""
-        src = self._build_source(dr_module, auto_df)
-        assert "_client_ip_from_request(_req)" in src, (
-            "make_document should use _client_ip_from_request(_req) helper"
-        )
-        # The old inline 'getattr(_req, 'remote_ip', None) or ...' must not appear
-        assert "getattr(_req, 'remote_ip'" not in src, (
-            "make_document should not inline IP extraction; use _client_ip_from_request"
-        )
+    @pytest.mark.parametrize("trusted", [False, True],
+                             ids=["untrusted", "trusted"])
+    def test_health_keys_its_budget_through_the_helper(
+            self, dr_module, auto_df, tmp_path, monkeypatch, trusted):
+        """BUG-41-1e: /health's budget is the helper's key."""
+        _Req, _health, _session, _texts = self._matrix()
+        ns = self._served_ns(dr_module, auto_df, tmp_path)
+        monkeypatch.setitem(ns, "_TRUST_FORWARDED_FOR", trusted)
+        monkeypatch.setitem(ns, "_HEALTH_LIMITER", ns["_RateLimiter"](
+            3, 10, 100, what="/health request"))
+        peer = "10.7.7.9"
+        spent = [_health(ns, _Req(peer, **{
+            "X-Forwarded-For": "203.0.113.5"}))[0] for _ in range(4)]
+        assert spent == [200, 200, 200, 429], spent
+        other = _health(ns, _Req(peer, **{
+            "X-Forwarded-For": "203.0.113.6"}))[0]
+        assert other == (200 if trusted else 429), (
+            f"trusted={trusted}: a second forwarded client behind the same "
+            f"peer got {other}")
+
+    @pytest.mark.parametrize("trusted", [False, True],
+                             ids=["untrusted", "trusted"])
+    def test_make_document_keys_its_budget_through_the_helper(
+            self, dr_module, auto_df, tmp_path, monkeypatch, trusted):
+        """BUG-41-1f: a session's budget is the helper's key."""
+        _Req, _health, _session, _texts = self._matrix()
+        ns = self._served_ns(dr_module, auto_df, tmp_path)
+        monkeypatch.setitem(ns, "_TRUST_FORWARDED_FOR", trusted)
+        monkeypatch.setitem(ns, "_SESSION_LIMITER", ns["_RateLimiter"](
+            2, 10, 100, what="session"))
+        peer = "10.7.7.10"
+
+        def refused(xff):
+            doc = _session(ns, _Req(peer, **{"X-Forwarded-For": xff}))
+            return "429" in _texts(doc)
+
+        assert [refused("203.0.113.5") for _ in range(3)] == \
+            [False, False, True]
+        other = refused("203.0.113.6")
+        assert other is (not trusted), (
+            f"trusted={trusted}: a second forwarded client behind the same "
+            f"peer was {'refused' if other else 'served'}")
 
 
 # ===========================================================================
@@ -9360,7 +10075,8 @@ class TestStandaloneSliderStringColumn:
 # side now does the same -- outside quotes and parentheses, as the renderer
 # now does too (_dash_filter_split on both sides).
 #
-# BUG-45-1a  dash.ado's filter groups end at a ";" as at a "||"
+# BUG-45-1a  dash.ado's filter groups end at a ";" as at a "||" -- run by
+#            test_help_claims_3.cscript HC3-11b since WP-24 (see below)
 # BUG-45-1b  Standalone render with semicolon filter builds both widgets
 # BUG-45-1c  "||"-separated filter still works (regression)
 # BUG-45-1d  Single filter (no separator) still works (regression)
@@ -9369,48 +10085,17 @@ class TestStandaloneSliderStringColumn:
 class TestSemicolonFilterSerialization:
     """BUG-45: semicolon-separated filter specs must all reach the Python renderer."""
 
-    # ------------------------------------------------------------------
-    # BUG-45-1a: dash.ado contains semicolon normalization
-    # ------------------------------------------------------------------
-
-    def test_ado_contains_semicolon_normalization(self):
-        """BUG-45-1a: on the Stata side a ';' separates filter groups as
-        '||' does, so every group's variable is serialised.
-
-        This used to AND three substrings -- 'subinstr', '";"' and '"||"' --
-        matched anywhere in a 2,600-line file. `subinstr' occurs nine times
-        and `"||"' occurs again on the very next line, in the loop that
-        CONSUMES the normalised string, so deleting the normalisation left
-        all three present and the test green. It then read the one statement
-        that converted ';' to '||' -- everywhere, so a ';' or '||' inside a
-        label() split the group too (label("A;B") stopped dash build with
-        "too few quotes" r(132), measured at 4ede074).  That loop is gone:
-        dash build reads the groups through _dash_filter_refusal, whose
-        _dash_filter_split ends a group at a ';' or '||' outside quotes and
-        parentheses.  These are the statements that make it so; the
-        behaviour is built end to end by test_help_claims_3.cscript HC3-11
-        (a top-level ';' builds both widgets) and HC3-03 (a label keeps its
-        ';').
-        """
-        import re as _re
-        with open(os.path.join(_DASH_DIR, "dash.ado"), encoding="utf-8") as f:
-            ado_text = f.read()
-        body = ado_text[ado_text.index("program define _dash_prepare_spec"):]
-        body = body[:body.index("\nend\n")]
-        assert '_dash_filter_refusal(st_local("filter")' in body, (
-            "dash build no longer reads the filter() groups through "
-            "_dash_filter_refusal")
-        assert "foreach _fvar of local _fvars" in body, (
-            "dash build no longer serialises every group's variable")
-        with open(os.path.join(_DASH_DIR, "dash_parse.mata"),
-                  encoding="utf-8") as f:
-            mata = f.read()
-        fn = mata[mata.index("string rowvector _dash_filter_split("):]
-        fn = fn[:fn.index("\n}\n")]
-        assert _re.search(r'if \(ch == ";"\) w = 1', fn), (
-            "_dash_filter_split no longer ends a filter group at ';', so "
-            "only the first of several semicolon-separated filters is "
-            "built:\n" + fn)
+    # BUG-45-1a (test_ado_contains_semicolon_normalization) read the
+    # statements of _dash_prepare_spec and _dash_filter_split and said
+    # HC3-11 built the behaviour end to end.  HC3-11 could not fail on it:
+    # its second filter is weight, which its graphs draw, so weight was
+    # exported whatever became of the second group.  The source test itself
+    # stayed green when dash build checked every group's variable but
+    # exported only the first group's (WP-24, measured by mutation).
+    # test_help_claims_3.cscript HC3-11b builds a second group whose
+    # variable no graph draws -- trunk, and the abbreviation tru -- and
+    # requires its widget on the page; it fails on that mutation and on a
+    # _dash_filter_split that no longer ends a group at ';'.
 
     # ------------------------------------------------------------------
     # BUG-45-1b: standalone render with semicolon filter builds both widgets
@@ -9681,9 +10366,15 @@ class TestServeUniqueAppPath:
     invocations ran concurrently.  Fix: use Stata tempfile to generate a unique
     base path per invocation.
 
-    Regression tests verify (a) the fixed constant is gone from dash.ado, and
-    (b) the ServerAppBuilder itself can write to distinct caller-supplied paths
-    without interference — i.e. the Python layer does not impose any fixed name.
+    The fix is dash.ado's, and is certified by running it:
+    test_serve_launch.cscript SRV-19 runs dash serve with the renderer
+    stubbed to record its arguments, and requires the app file it is
+    handed to be a tempfile of the session.  A test here used to read
+    _dash_serve's text for `tempfile ... serve_app'; measured (WP-24), a
+    COMMENT in _dash_serve satisfied it, so with the tempfile line deleted
+    and the fixed name restored it stayed green.  It was removed for SRV-19.
+    What remains here is the renderer's half: ServerAppBuilder writes to
+    whatever path it is handed and imposes no fixed name of its own.
     """
 
     def _simple_spec(self):
@@ -9701,39 +10392,6 @@ class TestServeUniqueAppPath:
                 "subtitle": "", "registry": "",
                 "mode": "server", "port": "5006",
             },
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-47-1a: dash.ado no longer contains the fixed constant filename
-    # ------------------------------------------------------------------
-    def test_BUG_47_1a_the_served_app_path_is_a_tempfile(self):
-        """`dash serve' must name its app file with tempfile, not a constant.
-
-        This used to assert only that one literal -- 'dash_serve_app.py' --
-        was absent from dash.ado, so any OTHER fixed filename reintroduced
-        the race and left the test green. It asserts the positive property
-        now: the path comes from `tempfile' and nothing assigns a literal to
-        it.
-        """
-        import re as _re
-        ado_path = os.path.join(os.path.dirname(__file__), "..", "dash.ado")
-        with open(ado_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
-        # Anchored on the end of the line: `program define _dash_serve_spec'
-        # comes FIRST in the file, so a bare index() reads the wrong body.
-        m = _re.search(r"^program define _dash_serve\s*$", content,
-                       _re.MULTILINE)
-        assert m, "program _dash_serve not found"
-        i = m.start()
-        j = content.index("\nend", i)
-        body = content[i:j]
-        assert _re.search(r"tempfile\s+[^\n]*serve_app", body), (
-            "_dash_serve does not take its app path from tempfile, so two "
-            "sessions serving at once overwrite each other's file"
-        )
-        bad = _re.findall(r'local\s+serve_app\w*\s*[=]?\s*"[^"`]+"', body)
-        assert not bad, (
-            f"a literal filename is assigned to the served app path: {bad}"
         )
 
     # ------------------------------------------------------------------
@@ -10012,21 +10670,55 @@ class TestTimeoutUnitConsistency:
     # ------------------------------------------------------------------
     # BUG-49-1c: dash_render.py argparse help says 'minutes'
     # ------------------------------------------------------------------
-    def test_BUG_49_1c_argparse_help_says_minutes(self):
-        """CLI --timeout argument help text must say 'minutes'."""
-        render_path = os.path.join(os.path.dirname(__file__), "..", "dash_render.py")
-        with open(render_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
+    def test_BUG_49_1c_argparse_help_says_minutes(self, tmp_path):
+        """--timeout is described in minutes where a user reads it: the
+        --help of dash_render.py and the --help of the app it generates.
+
+        This read the 400 characters after '"--timeout"' in dash_render.py's
+        TEXT: any "minutes" in that window passed it -- a comment, or the
+        next option's help -- and the app's own --timeout, emitted from the
+        same file with other quotes, was never read (WP-24).  Each program
+        is now asked for its help, and its --timeout entry read."""
         import re
-        # Find the --timeout argparse block
-        m = re.search(r"\"--timeout\".*?add_argument", content, re.DOTALL)
-        # Find the help string near '--timeout'
-        idx = content.find('"--timeout"')
-        assert idx != -1, "--timeout argument not found in dash_render.py"
-        snippet = content[idx: idx + 400]
-        assert "minutes" in snippet, (
-            "dash_render.py --timeout help text must say 'minutes' (BUG-49 regression)"
-        )
+        import subprocess
+        import warnings
+
+        def _entry(text):
+            m = re.search(r"^\s*--timeout TIMEOUT\s+(.*?)(?=^\s*-|\Z)",
+                          text, re.M | re.S)
+            assert m, text
+            return " ".join(m.group(1).split())
+
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cli = subprocess.run(
+            [sys.executable, os.path.join(root, "dash_render.py"), "--help"],
+            capture_output=True, text=True, timeout=120)
+        assert cli.returncode == 0, cli.stderr
+        entry = _entry(cli.stdout)
+        assert "minutes" in entry and "second" not in entry, entry
+
+        _here = os.path.dirname(os.path.abspath(__file__))
+        for _p in (root, _here):
+            if _p not in sys.path:
+                sys.path.insert(0, _p)
+        from conftest import make_spec as _ms, make_data_json as _md
+        sp, dp, ap = (str(tmp_path / n) for n in ("s.json", "d.json",
+                                                  "app.py"))
+        with open(sp, "w") as fh:
+            json.dump(_ms([{"type": "scatter", "yvar": "mpg",
+                            "xvar": "weight", "options": {}}]), fh)
+        with open(dp, "w") as fh:
+            json.dump(_md(pd.DataFrame({"mpg": [1.0, 2.0],
+                                        "weight": [3.0, 4.0]})), fh)
+        import dash_render as _dr
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _dr.ServerAppBuilder(sp, dp).build(ap)
+        app = subprocess.run([sys.executable, ap, "--help"],
+                             capture_output=True, text=True, timeout=120)
+        assert app.returncode == 0, app.stderr
+        entry = _entry(app.stdout)
+        assert "minutes" in entry and "second" not in entry, entry
 
     # ------------------------------------------------------------------
     # BUG-49-1d: runtime multiplies timeout by 60 (minutes → seconds)

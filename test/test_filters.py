@@ -193,22 +193,33 @@ class TestBuildRange:
 # ================================================================
 class TestFilterSecurity:
     def test_no_raw_user_interpolation_in_js(self, auto_df, cds):
-        """P2-55: CustomJS does not directly interpolate user-controlled values."""
-        # A malicious variable name attempt should be safely handled
+        """P2-55: CustomJS does not directly interpolate user-controlled values.
+
+        This caught ``(ValueError, KeyError)`` around its assertion and
+        passed, so a builder that raised on the name counted as a pass that
+        nobody looked at.  Measured 24sep2026: the builder refuses nothing --
+        a filter() name is refused before it gets here, by
+        ``_dash_parse_filter_raw`` (test_filter_label.py) -- and needs to
+        refuse nothing, because every filter's callback is the one fixed
+        script.  The name reaches the widget title, which Bokeh renders as
+        text, and never the code.
+        """
         malicious_varname = "foreign; DROP TABLE users;"
-        # build_dropdown should either raise a ValueError or sanitize the name
-        try:
-            widget, callback = FilterBuilder.build_dropdown(
-                malicious_varname, cds, auto_df, {},
-                exclude_names=[], all_figure_names=["s1"]
-            )
-            # If it doesn't raise, verify the JS code doesn't contain raw injection
-            if callback is not None and hasattr(callback, "code"):
-                js_code = callback.code
-                # The literal injection string should NOT appear verbatim in JS
-                assert "DROP TABLE" not in js_code
-        except (ValueError, KeyError):
-            pass  # Raising is the safest behavior
+        widget, callback = FilterBuilder.build_dropdown(
+            malicious_varname, cds, auto_df, {},
+            exclude_names=[], all_figure_names=["s1"]
+        )
+        _w, benign = FilterBuilder.build_dropdown(
+            "foreign", cds, auto_df, {},
+            exclude_names=[], all_figure_names=["s1"]
+        )
+        from dash_render import _FILTER_JS
+        assert callback.code == _FILTER_JS == benign.code, (
+            "the callback's code depends on the variable name")
+        assert "DROP TABLE" not in callback.code
+        assert widget.title == malicious_varname, widget.title
+        # No column has that name, so there is nothing to choose but "All".
+        assert [v for v, _label in widget.options] == ["__all__"]
 
     def test_filter_values_are_text_and_never_code(self, auto_df, cds):
         """P2-55, restated by WP-20: a filter value holding markup reaches
@@ -436,9 +447,20 @@ class TestParseFilterRaw:
             "render() must create filter widgets from build_options['filter'] "
             "raw string; previously got 0 because it only looked at 'filters' (plural)"
         )
-        assert "Select" in str(type(r.filter_widgets[0])) or \
-               "select" in html_str.lower(), \
+        # The widget itself, and the one the saved page's document holds:
+        # "select" is a word the page's embedded BokehJS carries on every
+        # page, so the page-text half made this pass whatever widget was
+        # built (measured 24sep2026).
+        assert isinstance(r.filter_widgets[0], Select), \
             "Expected a dropdown (Select) widget for foreign filter"
+        import html as _html
+        import re as _re
+        block = _re.search(r'<script type="application/json"[^>]*>(.*?)</script>',
+                           html_str, _re.DOTALL)
+        assert block, "the saved page carries no Bokeh document"
+        doc_text = _html.unescape(block.group(1))
+        assert doc_text.count('"name":"Select"') == 1, \
+            "the saved page's document holds no Select widget"
 
 
     def test_filter_widget_created_for_non_linked_graph(self):

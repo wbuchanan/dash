@@ -458,12 +458,21 @@ class TestTheShippedListIsOneList:
         assert set(dr._THEME_SCHEME_MAP.values()) <= set(SHIPPED)
 
     def test_dash_ado_agrees(self):
+        """A structural guard over dash.ado's text, deliberately: two lists
+        of the same names, one in each language, held equal -- a name one
+        side ships and the other's gate refuses shows in neither side's
+        own tests (test_custom_scheme.cscript CS-12 runs one direction)."""
         block = _ado_block()
+        # This skipped while Owner C's _dash_shipped_schemes had not landed.
+        # It has (dash.ado carries both sentinels, measured 24sep2026), so a
+        # skip now means only that someone edited a comment -- and it hid
+        # the list from the one check that holds dash.ado to the parser.
         if block is None:
-            pytest.skip(
+            pytest.fail(
                 "dash.ado has no `// BEGIN shipped schemes (WP-17)' / "
-                "`// END shipped schemes (WP-17)' sentinels yet: Owner C's "
-                "_dash_shipped_schemes has not landed")
+                "`// END shipped schemes (WP-17)' sentinels around "
+                "_dash_shipped_schemes, so its scheme list cannot be "
+                "checked against SchemeParser._BUILTIN_NAMES")
         schemes = _ado_list(block, "_dash_schemes")
         themes = _ado_list(block, "_dash_themes")
         assert schemes == [s.lower() for s in schemes], schemes

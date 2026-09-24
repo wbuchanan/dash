@@ -674,7 +674,11 @@ class TestWhatIsActiveWhenThePageOpens:
         else:
             models = _served_models(_served(tmp_path, spec)[0])
         bars = [m for m in models if isinstance(m, (Plot, GridPlot))]
-        assert len(bars) >= 5
+        # The "by() graph in a tab" corpus draws exactly six toolbar-bearing
+        # models in each mode -- three GridPlots and three figures (measured
+        # 24sep2026) -- and the two modes must match.  `>= 5' passed if a
+        # bar went missing.
+        assert len(bars) == 6, [type(m).__name__ for m in bars]
         for m in bars:
             for attr in _ACTIVE:
                 assert getattr(m.toolbar, attr) == "auto", (

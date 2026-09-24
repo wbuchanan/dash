@@ -137,10 +137,15 @@ class TestTheLegendOptionsNowReachIt:
     def test_off_is_matched_as_a_word(self, tmp_path):
         """legend(pos(6) off) was compared for exact equality with 'off'."""
         figs = _figs(tmp_path, _TWO, {"legend": "pos(6) off"})
+        # The two-series graph draws one legend; all() over an empty legend
+        # list is vacuously True, so a graph that drew none would pass this
+        # "hidden" check (measured 24sep2026: one legend).
+        assert len(figs[0].legend) == 1
         assert all(not l.visible for l in figs[0].legend)
 
     def test_plain_off_still_works(self, tmp_path):
         figs = _figs(tmp_path, _TWO, {"legend": "off"})
+        assert len(figs[0].legend) == 1
         assert all(not l.visible for l in figs[0].legend)
 
     def test_a_clock_position_is_applied(self, tmp_path):
@@ -174,4 +179,5 @@ class TestTheLegendOptionsNowReachIt:
     def test_on_is_not_a_placement(self, tmp_path):
         """The standalone renderer removed 'on' from the map as a bug."""
         figs = _figs(tmp_path, _TWO, {"legend": "on"})
+        assert len(figs[0].legend) == 1
         assert all(l.visible for l in figs[0].legend)

@@ -88,4 +88,21 @@ class TestThePlotTypesSection:
 
     def test_the_syntax_and_the_differences_point_to_it(self):
         text = _help()
-        assert text.count("{help dash##plottypes:") >= 2
+        # Measured 24sep2026: three links, one each in the Syntax (the
+        # {it:plottype} line), the differences (item 5, the plot types it
+        # refuses) and the marker-label sections.  The count >= 2 this
+        # replaced still passed with the Syntax's link deleted, since the
+        # other two made two; each link is now placed in its section.
+        link = "{help dash##plottypes:"
+        where, section = {}, "(before any marker)"
+        for ln in text.split("\n"):
+            m = re.match(r"\{marker ([a-z_]+)\}", ln)
+            if m:
+                section = m.group(1)
+            if link in ln:
+                where[section] = where.get(section, 0) + ln.count(link)
+        assert where == {"syntax": 1, "differences": 1,
+                         "marker_labels": 1}, (
+            f"links to the Plot types section, by the section that holds "
+            f"them: {where}; the Syntax and the differences must each "
+            f"point to it (re-measure if a link was added on purpose)")

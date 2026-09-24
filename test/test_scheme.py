@@ -8,6 +8,7 @@ import sys
 import os
 import math
 import tempfile
+import warnings
 import numpy as np
 import pandas as pd
 import pytest
@@ -162,9 +163,18 @@ class TestSymbolAndPatternCycles:
 
     def test_s1mono_uses_diverse_line_patterns(self):
         sp = SchemeParser("s1mono")
-        # Should have at least 3 distinct patterns
+        # s1mono writes fifteen different `linepattern p#line' entries,
+        # solid through longdash_3dot, and the ground truth extracted from
+        # Stata's own files (fixtures/scheme_truth.json) holds fifteen
+        # distinct dash lists for them.  The old floor of three let a
+        # translation that merged two patterns into one pass (24sep2026).
+        import json
+        with open(os.path.join(os.path.dirname(__file__), "fixtures",
+                               "scheme_truth.json"), encoding="utf-8") as fh:
+            truth = json.load(fh)["s1mono"]["p_line_dash_patterns"]
+        assert len({tuple(p) for p in truth}) == 15
         distinct = {tuple(p) for p in sp.p_line_patterns}
-        assert len(distinct) >= 3
+        assert len(distinct) == 15, sp.p_line_patterns
 
 
 # ============================================================
@@ -316,13 +326,24 @@ class TestApplyToFigure:
             assert axis.axis_label_text_font_size == sp.axis_title_font_size
 
     def test_apply_does_not_crash_with_legend(self):
+        """A legend on the figure neither stops the scheme's styling nor is
+        lost to it (measured 24sep2026: apply_to_figure leaves the legend
+        alone; its colours are set by the separate legend chrome step)."""
         from bokeh.plotting import figure
         from bokeh.models import ColumnDataSource
         sp = SchemeParser("s2color")
         fig = figure(width=400, height=300)
         src = ColumnDataSource({"x": [1, 2], "y": [3, 4]})
-        fig.circle("x", "y", source=src, legend_label="test")
-        sp.apply_to_figure(fig)  # should not crash
+        fig.scatter("x", "y", source=src, legend_label="test")
+        assert sp.apply_to_figure(fig) is None
+        assert fig.background_fill_color == sp.plotregion_color
+        assert fig.border_fill_color == sp.background_color
+        for axis in list(fig.xaxis) + list(fig.yaxis):
+            assert axis.axis_label_text_font_size == sp.axis_title_font_size
+        assert len(fig.legend) == 1
+        labels = [getattr(i.label, "value", i.label)
+                  for i in fig.legend[0].items]
+        assert labels == ["test"], labels
 
 
 # ============================================================
@@ -361,22 +382,61 @@ class TestCssBlock:
         assert sp.background_color in css or "background-color" in css
 
     def test_xss_escaped_in_css(self):
-        # Craft a custom scheme with an XSS attempt in a color value
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".scheme",
-            dir=os.getcwd(), delete=False
-        ) as f:
-            f.write("label xss\n")
-            f.write("color background  white\n")
-            f.write("color plotregion  white\n")
-            f.write("color heading     black\n")
-            name = os.path.basename(f.name)
+        # A custom .scheme file is user input -- the help invites one from
+        # the working directory -- and css_block() writes its colours and
+        # sizes into a <style> element.  This file used to hold no payload
+        # at all (background white, plotregion white, heading black), so
+        # its `"<script>" not in css' could not fail, and '<' is stopped by
+        # html.escape anyway.  The live vector is a value carrying '{', '}'
+        # or ';', which html.escape leaves alone and which closes dash's
+        # rule and opens the file's own: translate_mcolor passed any 4- or
+        # 7-character '#...' string until its fullmatch check, '#}a{b;c'
+        # and '#;}{' among them (measured 24sep2026).  Each payload must be
+        # refused, so the page chrome is byte-identical to the one the same
+        # file draws without the payload lines -- a scheme holding only
+        # `color text white', which also proves the file IS read and its
+        # values DO reach the CSS.
+        payload = [
+            "color background  #}a{b;c\n",
+            "color heading     <script>alert(1)</script>\n",
+            "color legend      #;}{\n",
+            "gsize heading     1}x{\n",
+        ]
+        control = ["label xss\n", "color text        white\n"]
+        names = []
         try:
-            sp = SchemeParser(name)
-            css = sp.css_block()
+            for lines in (control + payload, control):
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".scheme",
+                    dir=os.getcwd(), delete=False
+                ) as f:
+                    f.writelines(lines)
+                    names.append(os.path.basename(f.name))
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                css = SchemeParser(names[0]).css_block()
+            clean = SchemeParser(names[1]).css_block()
             assert "<script>" not in css
+            assert ".db-kpi-card" in clean and "color: #ffffff;" in clean, (
+                "positive control: the file's own `color text white' must "
+                f"reach the KPI card rule, got {clean!r}"
+            )
+            assert css == clean, (
+                "a payload value reached the CSS, or changed it:\n"
+                f"with payload:    {css!r}\nwithout payload: {clean!r}"
+            )
+            # Exactly the four rules and eight declarations css_block
+            # writes: an extra brace or semicolon is a rule the scheme
+            # file opened.
+            assert (css.count("{"), css.count("}"), css.count(";")) == (
+                4, 4, 8), css
+            # The three colour payloads are refused aloud, not dropped.
+            said = " ".join(str(w.message) for w in caught)
+            for bad in ("#}a{b;c", "<script>alert(1)</script>", "#;}{"):
+                assert f"colour '{bad}'" in said, (bad, said)
         finally:
-            os.unlink(os.path.join(os.getcwd(), name))
+            for name in names:
+                os.unlink(os.path.join(os.getcwd(), name))
 
 
 # ============================================================

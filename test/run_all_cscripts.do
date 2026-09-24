@@ -1564,6 +1564,111 @@ else {
 }
 
 // ----------------------------------------------------------------
+// 60. test_bug_regressions.cscript (WP-24: the regression tests three closed BUGS.md entries lacked)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_bug_regressions.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_bug_regressions.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_bug_regressions.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_bug_regressions.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_bug_regressions.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 61. test_program_coverage.cscript (WP-24 AC-24.3, GAPS L7: dash_setup end to end, display formats)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_program_coverage.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_program_coverage.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+capture program drop ssc
+capture program drop jsonio
+capture program drop _pc_fail
+capture program drop _pc_setup
+capture program drop _pc_said
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_program_coverage.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_program_coverage.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_program_coverage.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 62. test_qualifier_literals.cscript (WP-24: a qualifier's string literals select the rows Stata selects)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_qualifier_literals.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_qualifier_literals.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_qualifier_literals.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_qualifier_literals.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_qualifier_literals.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
+// 63. test_mata_library_guard.cscript (WP-24: the Mata library guard refuses a library missing any function dash calls, and mends one it can)
+// ----------------------------------------------------------------
+display as text "[ RUN ] test_mata_library_guard.cscript"
+cd "`testdir'"
+capture noisily {
+    do "test_mata_library_guard.cscript"
+}
+local rc = _rc
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_mata_library_guard.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_mata_library_guard.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_mata_library_guard.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local n_total = `n_pass' + `n_fail' + `n_skip'

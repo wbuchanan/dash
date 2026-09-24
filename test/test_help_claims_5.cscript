@@ -242,7 +242,7 @@ foreach o in mlg mlabg mlabgap {
     mata: st_local("_mlg", strofreal(strpos(st_global("dash_json_hc1"), ///
         char(34) + "mlg" + char(34)) > 0))
     assert `_gap' == 1 & `_mlg' == 0
-    cert_file_has "`logfile'", needle("ignoring unsupported")
+    cert_log_has "`logfile'", needle("ignoring unsupported")
     assert r(found) == 0
 }
 capture dash clear
@@ -255,7 +255,7 @@ dash scatter mpg weight, name(hc2)
 capture erase "`page'"
 _hc5_run `"dash build, saving("`page'") replace nobrowser mlabel(make)"' "`logfile'"
 assert r(rc) == 198
-cert_file_has "`logfile'", needle("option mlabel() not allowed")
+cert_log_has "`logfile'", needle("option mlabel() not allowed")
 assert r(found) == 1
 capture confirm file "`page'"
 assert _rc != 0
@@ -278,7 +278,7 @@ local y12 = r(y)
 foreach v in 13 2.5 03 abc {
     _hc5_run `"twoway scatter y x, mlabel(lab) mlabposition(`v') `frame' nodraw"' "`logfile'"
     assert r(rc) == 0
-    cert_file_has "`logfile'", needle("named style `v' not found in class clockdir")
+    cert_log_has "`logfile'", needle("named style `v' not found in class clockdir")
     assert r(found) == 1
     _hc5_svg `"twoway scatter y x, mlabel(lab) mlabposition(`v') `frame'"' "`svg'"
     assert r(rc) == 0
@@ -289,7 +289,7 @@ foreach v in 13 2.5 03 abc {
     capture erase "`page'"
     _hc5_run `"dash scatter y x, mlabel(lab) mlabposition(`v') saving("`page'")"' "`logfile'"
     assert r(rc) == 0
-    cert_file_has "`logfile'", needle("mlabposition(`v') is not a recognised clock position; using 12 (above).")
+    cert_log_has "`logfile'", needle("mlabposition(`v') is not a recognised clock position; using 12 (above).")
     assert r(found) == 1
 }
 display "HC5-03 PASS: twoway notes 13, 2.5, 03 and abc and draws each at 12 o'clock; dash builds each and names it, using 12"
@@ -430,17 +430,31 @@ display "HC5-07 PASS: twoway titles Domestic, 3 / Three / 4 (not 4.00) / 14610; 
 capture erase "`page'"
 _hc5_run `"dash scatter mpg weight, by(foreign, rows(2) holes(1) compact cols(2) total) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_file_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
 assert r(found) == 1
-cert_file_has "`logfile'", needle("ignored: rows(2) holes(1) compact cols")
+cert_log_has "`logfile'", needle("ignored: rows(2) holes(1) compact cols")
 assert r(found) == 0
+// ... and nothing after compact.  The note joins what it drops with one
+// blank, in the order written, so any fourth name -- total as much as
+// cols() -- follows "compact " (24sep2026: total was never checked, and a
+// note ending "compact total" passed both needles above).
+local hc5by "by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact "
+cert_log_has "`logfile'", needle("`hc5by'")
+assert r(found) == 0
+// The control for that needle: a fourth name dash does not implement is
+// named after compact, from the same warning, so the needle can be found.
+capture erase "`page'"
+_hc5_run `"dash scatter mpg weight, by(foreign, rows(2) holes(1) compact colfirst) saving("`page'")"' "`logfile'"
+assert r(rc) == 0
+cert_log_has "`logfile'", needle("`hc5by'colfirst")
+assert r(count) == 1
 capture dash clear
 dash scatter mpg weight, by(foreign, rows(2) holes(1) compact) name(hc8)
 local app "`c(tmpdir)'dash_hc5_app.py"
 capture erase "`app'"
 _hc5_run `"dash build, saving("`app'") replace server"' "`logfile'"
 assert r(rc) == 0
-cert_file_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
 assert r(found) == 1
 capture erase "`app'"
 capture dash clear
@@ -468,7 +482,7 @@ assert r(x) > `tail_x' + 500
 capture erase "`page'"
 _hc5_run `"dash pcarrow y1 x1 y2 x2, mlabel(lab) headlabel saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_file_has "`logfile'", needle("ignoring unsupported option(s): headlabel()")
+cert_log_has "`logfile'", needle("ignoring unsupported option(s): headlabel()")
 assert r(found) == 1
 cert_file_has "`page'", needle(`""name":"LabelSet""')
 assert r(found) == 1
@@ -493,7 +507,7 @@ foreach tt in pcarrow pcbarrow {
     _hc5_run `"twoway `tt' mpg weight turn length, mlabel(zq) mlabangle(400)"' "`logfile'"
     capture graph drop _all
     assert r(rc) == 0
-    cert_file_has "`logfile'", needle("textangle must be between -360.000 and 360.000")
+    cert_log_has "`logfile'", needle("textangle must be between -360.000 and 360.000")
     assert r(found) == 1
     _hc5_svg `"twoway `tt' mpg weight turn length, mlabel(zq) mlabangle(400) legend(off)"' "`svg'"
     assert r(rc) == 0
@@ -506,7 +520,7 @@ foreach tt in pcarrow pcbarrow {
     capture erase "`page'"
     _hc5_run `"dash `tt' mpg weight turn length, mlabel(zq) mlabangle(400) saving("`page'")"' "`logfile'"
     assert r(rc) == 0
-    cert_file_has "`logfile'", needle("mlabangle(400) is not a recognised angle; using horizontal.")
+    cert_log_has "`logfile'", needle("mlabangle(400) is not a recognised angle; using horizontal.")
     assert r(found) == 1
 }
 display "HC5-10 PASS: twoway prints the range, returns rc 0 and draws the arrows without labels; dash builds and names the angle"
@@ -558,7 +572,7 @@ capture erase "`page'"
 _hc5_run `"dash scatter mpg weight if foreign == 1, saving("`page'")"' "`logfile'"
 assert r(rc) == 134
 // Every observation of mpg, weight and the qualifier's own foreign.
-cert_file_has "`logfile'", needle("would embed 222 values (74 observations x 3 variables)")
+cert_log_has "`logfile'", needle("would embed 222 values (74 observations x 3 variables)")
 assert r(found) == 1
 capture confirm file "`page'"
 assert _rc != 0
@@ -578,7 +592,7 @@ dash scatter mpg weight, name(hc14)
 tempfile hc14s hc14d
 _hc5_run `"_dash_serve_spec, specpath("`hc14s'") datapath("`hc14d'")"' "`logfile'"
 assert r(rc) == 134
-cert_file_has "`logfile'", needle("set global dash_max_cells to a higher value (at most 20,000,000)")
+cert_log_has "`logfile'", needle("set global dash_max_cells to a higher value (at most 20,000,000)")
 assert r(found) == 1
 capture confirm file "`hc14d'"
 assert _rc != 0
@@ -593,9 +607,9 @@ dash scatter mpg weight, name(hc15)
 capture erase "`page'"
 _hc5_run `"dash build, saving("`page'") replace nobrowser layout(11 11)"' "`logfile'"
 assert r(rc) == 198
-cert_file_has "`logfile'", needle("layout() asks for a grid of 121 cells, more than the 100 graphs and KPI cards one dashboard draws.")
+cert_log_has "`logfile'", needle("layout() asks for a grid of 121 cells, more than the 100 graphs and KPI cards one dashboard draws.")
 assert r(found) == 1
-cert_file_has "`logfile'", needle("set global dash_max_graphs to a higher value (at most 1,000)")
+cert_log_has "`logfile'", needle("set global dash_max_graphs to a higher value (at most 1,000)")
 assert r(found) == 1
 global dash_max_graphs 121
 _hc5_run `"dash build, saving("`page'") replace nobrowser layout(11 11)"' "`logfile'"
@@ -687,12 +701,20 @@ generate str4 lab = "ZQAB"
 _hc5_run `"twoway scatter y x, mlabel(lab) mlabangle(abc) `frame'"' "`logfile'"
 capture graph drop _all
 assert r(rc) == 0
-cert_file_has "`logfile'", needle("named style abc not found in class anglestyle")
+cert_log_has "`logfile'", needle("named style abc not found in class anglestyle")
 assert r(found) == 1
+// The label must be drawn for "horizontal" to mean anything: _hc5_text()
+// is "" when no <text> holds ZQAB, and "" holds no rotate( either, so a
+// picture without the label, or no picture at all (the export's rc was not
+// read), passed as horizontal until 24sep2026.
 _hc5_svg `"twoway scatter y x, mlabel(lab) mlabangle(abc) `frame'"' "`svg'"
-mata: st_local("_rot", strofreal(strpos(_hc5_text(st_local("svg"), "ZQAB"), "rotate(") > 0))
-assert `_rot' == 0
+assert r(rc) == 0
+mata: _hc5_el = _hc5_text(st_local("svg"), "ZQAB")
+mata: st_local("_lab", strofreal(_hc5_el != ""))
+mata: st_local("_rot", strofreal(strpos(_hc5_el, "rotate(") > 0))
+assert `_lab' == 1 & `_rot' == 0
 _hc5_svg `"twoway scatter y x, mlabel(lab) mlabangle(45) `frame'"' "`svg'"
+assert r(rc) == 0
 mata: st_local("_rot", strofreal(strpos(_hc5_text(st_local("svg"), "ZQAB"), "rotate(-45") > 0))
 assert `_rot' == 1
 display "HC5-20 PASS: twoway notes mlabangle(abc) and draws horizontal; mlabangle(45) rotates counter-clockwise"

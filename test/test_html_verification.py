@@ -22,6 +22,7 @@ import os
 import json
 import re
 import tempfile
+from html import unescape as _html_unescape
 
 import numpy as np
 import pytest
@@ -29,8 +30,9 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dash_render import DashRenderer, GlyphMapper, OptionTranslator
 
+from bokeh.document import Document
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, GlyphRenderer
 
 
 # ============================================================
@@ -111,6 +113,53 @@ def _bokeh_model_json(html_str: str) -> dict:
     return json.loads(m.group(1))
 
 
+def _page_document(html_str: str) -> Document:
+    """The page's one embedded Bokeh document, read back as models.
+
+    A needle searched in the page text cannot fail here: the saved page
+    inlines BokehJS, and a page with no colorvar() and no yaxis(2) holds
+    "LinearColorMapper" 7 times, "ColorBar" 22, "extra_y_ranges" 9,
+    "Range1d" 47 and "LinearAxis" 14 (measured 24sep2026).  The models
+    the page embeds are what it draws.  Bokeh HTML-escapes the block, so
+    it is unescaped before it is read, as test_layout_tabs.py does.
+    """
+    blocks = re.findall(r'<script type="application/json" id="[^"]+">'
+                        r'\s*(.*?)\s*</script>', html_str, re.DOTALL)
+    docs = [d for b in blocks for d in json.loads(_html_unescape(b)).values()]
+    assert len(docs) == 1, f"{len(docs)} embedded Bokeh documents, not 1"
+    return Document.from_json(docs[0])
+
+
+def _page_figure(html_str: str):
+    """The one figure the page's document holds (its .document is the doc)."""
+    figs = [m for m in _page_document(html_str).models
+            if type(m).__name__ == "figure"]
+    assert len(figs) == 1, f"{len(figs)} figures in the page, not 1"
+    return figs[0]
+
+
+def _layers(fig) -> list:
+    """The figure's drawn layers, its GlyphRenderers, in drawing order.
+
+    Not a count of glyph models: each fig.scatter() writes three Scatter
+    models (its glyph, nonselection and muted glyphs), so one scatter
+    layer is three "Scatter" objects in the JSON (measured 24sep2026).
+    """
+    return [r for r in fig.renderers if isinstance(r, GlyphRenderer)]
+
+
+def _spec_value(v):
+    """A decoded glyph property's plain value.
+
+    Bokeh 3.9 writes a glyph's fixed colour or alpha as {"type": "value",
+    "value": ...}, which reads back as a Value; an overlay's alpha is a
+    plain number, and a mapped colour is a Field, returned as it is.
+    """
+    if isinstance(v, dict):
+        return v.get("value")
+    return getattr(v, "value", v)
+
+
 def _walk_json(obj, matches=None):
     """Recursively walk a JSON structure; yield all dicts."""
     if matches is None:
@@ -187,16 +236,27 @@ def _find_color_value(model_json: dict, hex_lower: str) -> bool:
 
 def _find_alpha_value(model_json: dict, attr_name: str, approx: float,
                       tol: float = 0.02) -> bool:
-    """Return True if any glyph has *attr_name* within *tol* of *approx*."""
-    raw_str = json.dumps(model_json)
-    raw = json.loads(raw_str)
-    for d in _walk_json(raw):
-        attrs = d.get("attributes", {})
-        if attr_name in attrs:
-            val = attrs[attr_name]
-            if isinstance(val, (int, float)):
-                if abs(float(val) - approx) <= tol:
-                    return True
+    """Return True if any glyph has *attr_name* within *tol* of *approx*.
+
+    A glyph is what a GlyphRenderer draws.  This read the plain numbers of
+    every model in the JSON and never saw one: Bokeh 3.9 writes a glyph's
+    alpha as {"type": "value", "value": 0.5}.  What it found was the 0.5
+    fill_alpha of the box-zoom and box-select BoxAnnotations and the
+    lasso's PolyAnnotation, which every page carries, so a page with no
+    alpha option at all passed ALP-10 (measured 24sep2026).  It now reads
+    the document back and looks at the renderers' glyphs only -- not
+    their nonselection or muted glyphs, whose alphas are 0.1 and 0.2.
+    """
+    for doc_json in model_json.values():
+        for r in Document.from_json(doc_json).models:
+            glyph = getattr(r, "glyph", None) \
+                if isinstance(r, GlyphRenderer) else None
+            if glyph is None or attr_name not in glyph.properties():
+                continue
+            val = _spec_value(getattr(glyph, attr_name))
+            if isinstance(val, (int, float)) and not isinstance(val, bool) \
+                    and abs(float(val) - approx) <= tol:
+                return True
     return False
 
 
@@ -296,8 +356,9 @@ class TestAlphaTransparency:
     def test_parse_color_alpha_no_pct(self):
         """ALP-03: 'navy' → ('#1a476f', None)."""
         color, alpha = OptionTranslator.parse_color_alpha("navy")
-        assert color is not None
-        assert alpha is None
+        # The pair the docstring names -- `color is not None' held for any
+        # colour at all.  #1a476f is Stata's color-navy.style.
+        assert (color, alpha) == ("#1a476f", None)
 
     def test_parse_color_alpha_hex_with_pct(self):
         """ALP-04: '#ff0000%75' → ('#ff0000', 0.75)."""
@@ -346,6 +407,14 @@ class TestAlphaTransparency:
         model = _bokeh_model_json(html)
         found = _find_alpha_value(model, "fill_alpha", 0.5)
         assert found, "fill_alpha≈0.5 not found in Bokeh JSON model"
+        # The same page without the %50 draws the scheme's own 0.8, and the
+        # helper must not find 0.5 there.  It did (the overlays' 0.5) until
+        # it read the glyphs alone, 24sep2026.
+        ctl = _bokeh_model_json(_render([{"type": "scatter", "yvar": "y",
+                                          "xvar": "x",
+                                          "options": {"mcolor": "navy"}}]))
+        assert not _find_alpha_value(ctl, "fill_alpha", 0.5), \
+            "fill_alpha 0.5 found in a page drawn without %50"
 
     def test_fcolor_alpha_applied_to_bar(self):
         """ALP-11: fcolor(red%70) → fill_alpha≈0.7 on bar glyph."""
@@ -405,11 +474,19 @@ class TestAlphaTransparency:
         fig = figure()
         src = ColumnDataSource({"x": [1.0], "y": [1.0]})
         gm = GlyphMapper()
-        # Default fill_alpha after map_scatter is 0.7; if malpha=200 were applied
-        # it would be 2.0 which Bokeh would clamp/reject. Since we validate range,
-        # it should stay at the default ≈0.7.
+        # Ignored means the scheme's default stays, on the fill and the
+        # outline alike.  `<= 1.0' alone let an out-of-range malpha be
+        # applied in any in-range form: clamped to 1.0 (fully opaque) it
+        # passed.  Measured 24sep2026: the default is 0.8, not 0.7, and
+        # Bokeh 3.9 neither clamps nor rejects an alpha of 2.0, so the
+        # ceiling does catch the raw 2.0 and is kept.
+        base = gm.map_scatter(figure(), src, "y", "x", {})
         r = gm.map_scatter(fig, src, "y", "x", {"malpha": "200"})
         assert r.glyph.fill_alpha <= 1.0
+        # A default of 1.0 would hide a clamp from the checks below.
+        assert base.glyph.fill_alpha < 1.0 and base.glyph.line_alpha < 1.0
+        assert r.glyph.fill_alpha == base.glyph.fill_alpha
+        assert r.glyph.line_alpha == base.glyph.line_alpha
 
 
 # ============================================================
@@ -499,16 +576,44 @@ class TestColorvar:
 
     def test_colorvar_html_contains_linearcolormapper(self):
         """CV-07: full render with colorvar(grp) embeds LinearColorMapper in JSON."""
+        from bokeh.models import LinearColorMapper
         html = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
                          "options": {"colorvar": "grp"}}])
-        # Bokeh 3.x uses lowercase "name" in JSON, 2.x uses PascalCase "type"
-        assert "linearcolormapper" in html.lower() or "LinearColorMapper" in html
+        # Read from the page's document.  The text search this was
+        # ("linearcolormapper" in the page, any case) could not fail: the
+        # inlined BokehJS holds the name 7 times in a page with no
+        # colorvar() (measured 24sep2026).  One mapper, spanning grp's own
+        # range, 0 to 2, and colouring the layer, fill and outline, by grp
+        # -- not merely present.
+        fig = _page_figure(html)
+        mappers = [m for m in fig.document.models
+                   if isinstance(m, LinearColorMapper)]
+        assert len(mappers) == 1, f"{len(mappers)} LinearColorMappers"
+        assert (mappers[0].low, mappers[0].high) == (0.0, 2.0)
+        layers = _layers(fig)
+        assert len(layers) == 1, f"{len(layers)} layers, not 1"
+        for prop in ("fill_color", "line_color"):
+            spec = getattr(layers[0].glyph, prop)
+            assert getattr(spec, "field", None) == "grp", (prop, spec)
+            assert getattr(spec.transform, "id", None) == mappers[0].id, prop
+
 
     def test_colorvar_html_contains_colorbar(self):
         """CV-08: full render with colorvar(grp) embeds ColorBar in JSON."""
+        from bokeh.models import ColorBar
         html = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
                          "options": {"colorvar": "grp"}}])
-        assert "colorbar" in html.lower() or "ColorBar" in html
+        # Read from the page's document: "ColorBar" is in the inlined
+        # BokehJS 22 times in a page with no colorvar() (measured
+        # 24sep2026).  One bar, on the right, keyed to the layer's mapper.
+        fig = _page_figure(html)
+        bars = [m for m in fig.document.models if isinstance(m, ColorBar)]
+        assert len(bars) == 1, f"{len(bars)} ColorBars"
+        assert bars[0] in fig.right
+        mapped = _layers(fig)[0].glyph.fill_color
+        assert bars[0].color_mapper.id == getattr(
+            getattr(mapped, "transform", None), "id", None)
+
 
     def test_colorvar_palette_viridis_default(self):
         """CV-09: LinearColorMapper uses Viridis palette by default."""
@@ -546,14 +651,28 @@ class TestColorvar:
 class TestDualAxisJsonVerification:
     def test_extra_y_range_in_html(self):
         """DAX-V1: yaxis(2) → extra_y_ranges entry appears in Bokeh JSON."""
+        from bokeh.models import Range1d
         html = _render([
             {"type": "scatter", "yvar": "y", "xvar": "x", "options": {}},
             {"type": "line", "yvar": "y2", "xvar": "x", "options": {"yaxis": "2"}},
         ])
-        assert "extra_y_ranges" in html or "Range1d" in html
+        # Read from the page's document: "extra_y_ranges" (9 times) and
+        # "Range1d" (47) are in the inlined BokehJS of a page with no
+        # yaxis(2) (measured 24sep2026), so the text search this was could
+        # not fail.  The one extra range, and the yaxis(2) layer on it.
+        fig = _page_figure(html)
+        assert list(fig.extra_y_ranges) == ["y2"], dict(fig.extra_y_ranges)
+        assert isinstance(fig.extra_y_ranges["y2"], Range1d)
+        assert [(type(r.glyph).__name__, r.y_range_name)
+                for r in _layers(fig)] == [("Scatter", "default"),
+                                           ("Line", "y2")]
+
 
     def test_secondary_y_renderer_count(self):
-        """DAX-V2: figure with primary + secondary scatter → at least 2 Scatter models."""
+        """DAX-V2: figure with primary + secondary scatter -> both layers drawn.
+
+        Two scatter layers, the second on the y2 range: 6 Scatter models.
+        """
         html = _render([
             {"type": "scatter", "yvar": "y", "xvar": "x", "options": {}},
             {"type": "scatter", "yvar": "y2", "xvar": "x",
@@ -561,15 +680,39 @@ class TestDualAxisJsonVerification:
         ])
         model = _bokeh_model_json(html)
         scatters = _find_type(model, "Scatter")
-        assert len(scatters) >= 2, f"Expected ≥2 Scatter models, found {len(scatters)}"
+        # Exactly three per layer (glyph, nonselection, muted): the floor
+        # of 2 this was is met by ONE scatter layer, which writes three,
+        # so the secondary layer could be missing (measured 24sep2026:
+        # 3 models for one layer, 6 for these two).
+        assert len(scatters) == 6, f"Expected 6 Scatter models, found {len(scatters)}"
+        # The layers themselves: both drawn, the second on the y2 range.
+        assert [(type(r.glyph).__name__, r.y_range_name)
+                for r in _layers(_page_figure(html))] == [
+                    ("Scatter", "default"), ("Scatter", "y2")]
+
 
     def test_linear_axis_on_right(self):
         """DAX-V3: yaxis(2) → a LinearAxis model exists in the JSON."""
+        from bokeh.models import LinearAxis
         html = _render([
             {"type": "line", "yvar": "y2", "xvar": "x",
              "options": {"yaxis": "2"}},
         ])
-        assert "LinearAxis" in html
+        # Read from the page's document: "LinearAxis" is in the inlined
+        # BokehJS 14 times in a page with no yaxis(2), whose own figure
+        # has a LinearAxis on its left (measured 24sep2026).  The one this
+        # test names is on the RIGHT, reading the y2 range the layer draws.
+        # That is dash.sthlp's promise ("a right-hand y axis"), not twoway's
+        # for a LONE yaxis(2) layer: twoway draws that layer's one axis on
+        # the left, where dash draws a left axis and a right one (measured
+        # 24sep2026 from graph export svg; BUGS.md, open).
+        fig = _page_figure(html)
+        assert [a.y_range_name for a in fig.right
+                if isinstance(a, LinearAxis)] == ["y2"]
+        assert "y2" in fig.extra_y_ranges
+        assert [(type(r.glyph).__name__, r.y_range_name)
+                for r in _layers(fig)] == [("Line", "y2")]
+
 
 
 # ============================================================
@@ -583,7 +726,26 @@ class TestSchemeHtmlVerification:
             [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
             build_opts={"scheme": "s2color"},
         )
-        assert "<style>" in html
+        # `"<style>" in html' could not fail: Bokeh's own page template
+        # writes a <style> (its `html, body' rule) into every page, with the
+        # scheme's block or without it (measured 24sep2026).  The scheme's
+        # block is the one carrying s2color's rules: `color background
+        # ltbluishgray' (rgb 234 242 243) on the body and `color heading
+        # dknavy' (rgb 30 45 83) on the title, from Stata's own style files.
+        bg = re.compile(r"body\s*\{\s*background-color:\s*#eaf2f3\s*;")
+        head = re.compile(r"\.db-title\s*\{\s*color:\s*#1e2d53\s*;")
+
+        def _styles(h):
+            return re.findall(r"<style>(.*?)</style>", h, re.DOTALL)
+        assert any(bg.search(s) and head.search(s) for s in _styles(html)), \
+            "s2color's rules are in no <style> element"
+        # stcolor's page, background white, has neither rule: they are the
+        # scheme's, not text every page carries.
+        ctl = _render(
+            [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            build_opts={"scheme": "stcolor"},
+        )
+        assert not any(bg.search(s) or head.search(s) for s in _styles(ctl))
 
     def test_sj_css_differs_from_s2color(self):
         """SCH-V2: sj and s2color produce different CSS blocks."""
@@ -609,6 +771,25 @@ class TestSchemeHtmlVerification:
         model = _bokeh_model_json(html)
         raw = json.dumps(model).lower()
         assert "#ffffff" in raw or "white" in raw
+        # The search above cannot fail: every page's JSON holds "white"
+        # twice, the box-zoom and box-select overlays' handle fill, and an
+        # s2color page holds "#ffffff" not once -- Bokeh leaves out a value
+        # equal to its default, and white is the default plot background
+        # (measured 24sep2026).  So the colours are read back from the
+        # page's document: s2color's white `color plotregion' inside its
+        # ltbluishgray `color background', #eaf2f3 -- a page with no scheme
+        # applied is white on white.  s1rcolor's page, black on black, is
+        # the control that the reading sees a scheme's colours.
+        fig = _page_figure(html)
+        assert (fig.background_fill_color, fig.border_fill_color) == (
+            "#ffffff", "#eaf2f3"), (fig.background_fill_color,
+                                    fig.border_fill_color)
+        ctl = _page_figure(_render(
+            [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            build_opts={"scheme": "s1rcolor"},
+        ))
+        assert (ctl.background_fill_color, ctl.border_fill_color) == (
+            "#000000", "#000000")
 
 
 # ============================================================
@@ -616,13 +797,28 @@ class TestSchemeHtmlVerification:
 # ============================================================
 
 class TestColorHexInJson:
-    def test_mcolor_navy_hex_in_scatter_json(self):
-        """COL-V1: mcolor(navy) → navy hex #1a476f in Bokeh JSON."""
+    def test_mcolor_named_hex_in_scatter_json(self):
+        """COL-V1: mcolor(magenta) -> its hex #ff00ff in Bokeh JSON.
+
+        This set navy and found #1a476f, which s2color's own navy markers
+        put in the model whatever mcolor() said (measured 24sep2026: it
+        passed with the option taken away).  Magenta is in no s2color slot,
+        and the control below shows it absent until the option asks.
+        """
+        base = _bokeh_model_json(_render([{"type": "scatter", "yvar": "y",
+                                           "xvar": "x", "options": {}}]))
+        assert not _find_color_value(base, "#ff00ff")
         html = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
-                         "options": {"mcolor": "navy"}}])
+                         "options": {"mcolor": "magenta"}}])
         model = _bokeh_model_json(html)
-        found = _find_color_value(model, "#1a476f")
-        assert found, "#1a476f (navy) not in Bokeh JSON model"
+        found = _find_color_value(model, "#ff00ff")
+        assert found, "#ff00ff (magenta) not in Bokeh JSON model"
+        # ...and it is the marker's colour, fill and outline.
+        layers = _layers(_page_figure(html))
+        assert len(layers) == 1, f"{len(layers)} layers, not 1"
+        glyph = layers[0].glyph
+        assert (_spec_value(glyph.fill_color),
+                _spec_value(glyph.line_color)) == ("#ff00ff", "#ff00ff")
 
     def test_lcolor_red_hex_in_line_json(self):
         """COL-V2: lcolor(red) → red hex in Bokeh JSON."""
@@ -647,12 +843,31 @@ class TestColorHexInJson:
         assert "#c10534" in raw  # Stata cranberry
 
     def test_mcolor_alpha_hex_still_present(self):
-        """COL-V4: mcolor(navy%50) → navy hex in JSON (alpha separate from color)."""
+        """COL-V4: mcolor(magenta%50) -> the marker is #ff00ff, and the 50%
+        is its alpha, not part of its colour.
+
+        This was navy%50 and looked for #1a476f anywhere in the model, where
+        s2color's navy markers put it whatever mcolor() said (measured
+        24sep2026).  The glyph carrying the colour is read instead, with the
+        alpha beside it: the default marker is drawn at 0.8.
+        """
         html = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
-                         "options": {"mcolor": "navy%50"}}])
+                         "options": {"mcolor": "magenta%50"}}])
         model = _bokeh_model_json(html)
-        raw = json.dumps(model).lower()
-        assert "#1a476f" in raw
+        marks = [d["attributes"] for d in _walk_json(model)
+                 if d.get("name") == "Scatter"
+                 and (d.get("attributes", {}).get("fill_color") or {})
+                 .get("value") == "#ff00ff"]
+        assert marks, "no marker is drawn in #ff00ff"
+        assert [a["fill_alpha"]["value"] for a in marks] == \
+            [pytest.approx(0.5)] * len(marks), marks
+        # The drawn layer itself: one, magenta fill and outline, at 0.5.
+        layers = _layers(_page_figure(html))
+        assert len(layers) == 1, f"{len(layers)} layers, not 1"
+        glyph = layers[0].glyph
+        assert (_spec_value(glyph.fill_color),
+                _spec_value(glyph.line_color)) == ("#ff00ff", "#ff00ff")
+        assert _spec_value(glyph.fill_alpha) == pytest.approx(0.5)
 
     def test_n_rows_match_filter(self):
         """COL-V5: in_expr='1/10' filter → exactly 10 data points in CDS."""

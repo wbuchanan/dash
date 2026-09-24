@@ -43,6 +43,77 @@ do "../dash.ado"
 // directory, so this path is bare while the dash sources above are "../".
 do "cert_helpers.do"
 
+// The KPI cards of a saved dashboard, read back from its Bokeh document.
+//
+// A text search of the page cannot tell a card from the library: the page
+// inlines the whole of BokehJS.  Measured 24sep2026 on each case's scatter
+// built with NO KPI: 21.3 occurs 14 times, "div" in quotes 8 times and kpi
+// once on P2-76's, and 74 occurs 107 times on P2-77b's -- every value and
+// structure check below used to pass without a card.  So the document is
+// decoded the way BokehJS decodes it -- the page's one application/json
+// block, unescaped (its unescape undoes these six entities) and parsed --
+// and handed to Document.from_json, as test_conformance.cscript C-03 does.
+// A card is the markup _dash_kpi_card_html writes into a Div:
+//     <div class="db-kpi-card" ...><div ...>title</div>
+//     <div id="kpi_val_<name>" ...>value</div>...
+// _e2k_read(path, p) sets, for the caller's asserts:
+//     `p'_ndiv        the Div models in the document
+//     `p'_n           the value divs, id="kpi_val_<name>" -- one per card
+//     `p'_names       their names, sorted
+//     `p'_val_<name>  the text of a card's value div
+//     `p'_ncard       the value divs inside a db-kpi-card, after its title
+//     `p'_title_<name> that card's title text
+//     `p'_styled      1 when every such card's Div carries a stylesheet with
+//                     the .db-kpi-card rule the scheme styles it by, else 0
+python:
+import html as _e2k_html
+import json as _e2k_json
+import re as _e2k_re
+from sfi import Macro as _e2k_Macro
+from bokeh.document import Document as _e2k_Document
+from bokeh.models import Div as _e2k_Div
+
+
+def _e2k_unescape(text):
+    ents = {"amp": "&", "lt": "<", "gt": ">", "quot": chr(34),
+            "#x27": chr(39), "#x60": chr(96)}
+    return _e2k_re.sub(r"&(amp|lt|gt|quot|#x27|#x60);",
+                       lambda m: ents[m.group(1)], text)
+
+
+def _e2k_read(path, p):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    blocks = _e2k_re.findall(
+        r'<script type="application/json" id="[^"]+">\s*(.*?)\s*</script>',
+        page, _e2k_re.S)
+    docs = [d for b in blocks
+            for d in _e2k_json.loads(_e2k_unescape(b)).values()]
+    if len(docs) != 1:
+        raise RuntimeError("%s holds %d Bokeh documents" % (path, len(docs)))
+    divs = [m for m in _e2k_Document.from_json(docs[0]).models
+            if isinstance(m, _e2k_Div)]
+    names, ncard, styled = [], 0, 1
+    for d in divs:
+        for nm, val in _e2k_re.findall(
+                r'<div id="kpi_val_([^"]*)"[^>]*>([^<]*)</div>', d.text):
+            names.append(nm)
+            _e2k_Macro.setLocal(p + "_val_" + nm, _e2k_html.unescape(val))
+        for title, nm in _e2k_re.findall(
+                r'<div class="db-kpi-card"[^>]*><div[^>]*>([^<]*)</div>'
+                r'<div id="kpi_val_([^"]*)"', d.text):
+            ncard += 1
+            _e2k_Macro.setLocal(p + "_title_" + nm, _e2k_html.unescape(title))
+            if not any(".db-kpi-card" in (getattr(s, "css", "") or "")
+                       for s in d.stylesheets):
+                styled = 0
+    _e2k_Macro.setLocal(p + "_ndiv", str(len(divs)))
+    _e2k_Macro.setLocal(p + "_n", str(len(names)))
+    _e2k_Macro.setLocal(p + "_names", " ".join(sorted(names)))
+    _e2k_Macro.setLocal(p + "_ncard", str(ncard))
+    _e2k_Macro.setLocal(p + "_styled", str(styled if ncard else 0))
+end
+
 // ================================================================
 // P2-76 — dash kpi mean(mpg) + build → HTML contains formatted mean value
 // ================================================================
@@ -79,9 +150,15 @@ assert _rc == 0
 // is safe.  It must stay strtrim()'d (above): %9.1f right-aligns in nine
 // columns, so Stata's own : display gives "     21.3", while the card holds
 // the value stripped, and the leading blanks would never be found.
-cert_file_has "`outpath'", needle("`expected_mean'")
-local found_mean = r(found)
-assert `found_mean' == 1
+//
+// That search found 21.3 in the inlined BokehJS on any page (14 times on
+// this scatter without a KPI, measured 24sep2026), so it is replaced by the
+// card itself: the page holds one card, k1's, and its value div reads the
+// mean exactly as Stata's %9.1f writes it.
+python: _e2k_read(r"`outpath'", "k76")
+assert `k76_n' == 1
+assert "`k76_names'" == "k1"
+assert "`k76_val_k1'" == "`expected_mean'"
 display "P2-76 PASS: formatted mean value '`expected_mean'' found in HTML"
 
 // ================================================================
@@ -95,15 +172,19 @@ display "P2-76 PASS: formatted mean value '`expected_mean'' found in HTML"
 // Title "Avg MPG" should appear in the KPI card Div.
 cert_file_has "`outpath'", needle("Avg MPG")
 local found_title = r(found)
-// Bokeh Div widget emits "Div" in the document JSON.  The quote characters
-// are part of the needle: Bokeh writes the model name quoted, and a bare
-// div would also match every <div> of the surrounding page template.
-cert_file_has "`outpath'", needle(`""div""') lower
-local found_kpi_div = r(found)
-cert_file_has "`outpath'", needle("kpi") lower
-local found_kpi_div = max(`found_kpi_div', r(found))
 assert `found_title' == 1
-assert `found_kpi_div' == 1
+// The Div half was "div" in quotes OR kpi, lower-cased.  Measured 24sep2026
+// on this scatter built with no KPI, the first occurs 8 times and the second
+// once, all in the inlined BokehJS, so the OR held on any page.  The card's
+// structure is read from the document instead (_e2k_read, above): the page
+// holds one Div model, the card; its markup is the db-kpi-card box with the
+// title "Avg MPG" above k1's value; and the Div carries the scheme's
+// .db-kpi-card rule as a stylesheet -- a Bokeh 3 Div renders in a shadow
+// root, so that rule is what styles it.
+assert `k76_ndiv' == 1
+assert `k76_ncard' == 1
+assert "`k76_title_k1'" == "Avg MPG"
+assert `k76_styled' == 1
 display "P2-77 PASS: KPI card title and Div structure found in HTML"
 
 // ----------------------------------------------------------------
@@ -129,9 +210,16 @@ dash build, saving("`outpath2'") replace
 // if the file cannot be opened, so a dashboard that was never written is
 // reported as an unreadable file rather than as a value that is absent from
 // it -- this second build has no confirm file of its own.
-cert_file_has "`outpath2'", needle("`expected_count'")
-local found_count = r(found)
-assert `found_count' == 1
+//
+// 74 occurs 107 times on this scatter built with no KPI (measured
+// 24sep2026: 102 in the inlined BokehJS, 5 in the document), so that search
+// could not fail; the card is read back instead, and its value div must
+// read the count as %9.0fc writes it.  The open() in _e2k_read stops the script on a
+// page that was never written, as cert_file_has did.
+python: _e2k_read(r"`outpath2'", "k77")
+assert `k77_n' == 1
+assert "`k77_names'" == "k2"
+assert "`k77_val_k2'" == "`expected_count'"
 display "P2-77b PASS: count KPI value '`expected_count'' found in HTML"
 
 // ----------------------------------------------------------------
@@ -152,6 +240,21 @@ cert_file_has "`p278f'", needle("kpi_val_k1__by__")
 assert r(found) == 0
 cert_file_has "`p278f'", needle("kpi_val_k1")
 assert r(found) == 1
+// Those two cannot see a split under any other name: nothing writes
+// kpi_val_k1__by__ now (card ids come only from _dash_kpi_card_html, as
+// kpi_val_<name>), and kpi_val_k1 is also the start of kpi_val_k1_0.  The
+// cards are counted instead: this page holds exactly one, k1's -- and, the
+// control, the same page with a second KPI holds two, so the count is of
+// cards and not a constant.
+python: _e2k_read(r"`p278f'", "k78")
+assert `k78_n' == 1
+assert "`k78_names'" == "k1"
+dash kpi mean(price), title("K2") name(k2)
+capture noisily dash build, saving("`p278f'") replace nobrowser
+assert _rc == 0
+python: _e2k_read(r"`p278f'", "k78b")
+assert `k78b_n' == 2
+assert "`k78b_names'" == "k1 k2"
 display "P2-78 PASS: a by() graph named filter leaves the default KPI one card"
 
 // ----------------------------------------------------------------

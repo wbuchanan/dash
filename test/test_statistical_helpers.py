@@ -1319,6 +1319,16 @@ class TestTheServedAppCarriesEveryName:
         names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
         wanted = {n for n in names if hasattr(dr, n) and not hasattr(builtins, n)
                   and not inspect.ismodule(getattr(dr, n))}
+        # The set must actually have been collected: an empty or tiny
+        # `wanted' makes `wanted - defined' empty and the check below pass
+        # having verified nothing.  GlyphMapper references 63 module-level
+        # names the app must carry (measured 24sep2026); a handful of them
+        # are load-bearing and named explicitly so a broken walk cannot
+        # slip through as a vacuous pass.
+        assert len(wanted) >= 40, sorted(wanted)
+        for critical in ("SchemeParser", "ColumnDataSource", "OptionTranslator",
+                         "_dash_warn_once", "_N_BOOT_DEFAULT"):
+            assert critical in wanted, (critical, sorted(wanted))
         spec = {"graphs": [{"plots": [{"type": "scatter", "yvar": "y", "xvar": "x",
                                         "options": {}}],
                             "graph_options": {"name": "g1"}}],

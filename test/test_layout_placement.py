@@ -123,3 +123,7 @@ class TestPlacementIsHonoured:
         r = _render(tmp_path, "1 4", ["s1", "s2", "s3", "s4"])
         pos = _positions(r)
         assert {p[0] for p in pos.values()} == {0}
+        # All four, in registration order: one row holding fewer passed
+        # the line above.
+        assert pos == {"s1": (0, 0), "s2": (0, 1), "s3": (0, 2),
+                       "s4": (0, 3)}, pos

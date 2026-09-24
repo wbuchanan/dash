@@ -20,6 +20,12 @@ A layer may be legitimately empty -- an `if' qualifier that selects no rows,
 or a smoother whose optional package is absent -- so the report fires only
 when the graph's own data is non-empty, and the optional-package layers warn
 for themselves already.
+
+Since a2c7502 the rule is one function both renderers run,
+_dash_note_empty_layer: scatteri, pci and pcarrowi draw from their own values
+and are never reported; a function drawn empty is reported whatever the
+data, in the form without a count ("dash: graph 'g1' plot 2 (function) drew
+nothing."); every other layer as above.
 """
 import json
 import os
@@ -45,11 +51,20 @@ _DF = pd.DataFrame({
 })
 
 
-def _render(plots, graph_options=None):
+def _render_full(plots, graph_options=None, graph_keys=None):
+    """Render; return the renderer and the warnings' messages.
+
+    *graph_keys* go on the graph itself, beside "plots" -- where dash.ado
+    writes the graph's qualifier ("if_expr", "in_expr") and where the saved
+    renderer reads it (_apply_graph_filter).  Inside graph_options only the
+    served app reads a qualifier.
+    """
     td = tempfile.mkdtemp()
-    spec = {"graphs": [{"name": "g1",
-                        "graph_options": dict(graph_options or {}, name="g1"),
-                        "options": {}, "plots": plots}],
+    graph = {"name": "g1",
+             "graph_options": dict(graph_options or {}, name="g1"),
+             "options": {}, "plots": plots}
+    graph.update(graph_keys or {})
+    spec = {"graphs": [graph],
             "kpis": [], "build_options": {"layout": "auto", "level": "95"}}
     sp, dp = os.path.join(td, "s.json"), os.path.join(td, "d.json")
     with open(sp, "w") as fh:
@@ -57,10 +72,15 @@ def _render(plots, graph_options=None):
     with open(dp, "w") as fh:
         json.dump({"variableNames": list(_DF.columns),
                    "values": _DF.to_dict("records")}, fh)
+    renderer = dr.DashRenderer(sp, dp)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        dr.DashRenderer(sp, dp).render()
-    return [str(w.message) for w in caught]
+        renderer.render()
+    return renderer, [str(w.message) for w in caught]
+
+
+def _render(plots, graph_options=None, graph_keys=None):
+    return _render_full(plots, graph_options, graph_keys)[1]
 
 
 def _empty_reports(msgs):
@@ -91,6 +111,23 @@ class TestALayerThatDrawsNothingIsNamed:
         assert _empty_reports(msgs), (
             f"a rejected function expression drew nothing in silence: {msgs}"
         )
+        # Since a2c7502 a function is reported in the form without a count:
+        # it draws from its own grid and never read the 6 observations.
+        assert _empty_reports(msgs) == [
+            "dash: graph 'g1' plot 2 (function) drew nothing."], msgs
+
+    def test_a_rejected_function_is_reported_when_no_row_is_selected(self):
+        """The positive control for the qualifier test below: the same graph
+        and the same qualifier, and the report still runs.  A function drawn
+        empty is reported whatever the data (since a2c7502); the scatter,
+        plot 1, drew from no rows and is not."""
+        msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
+                         "options": {}},
+                        {"type": "function", "expr": "__import__('os')",
+                         "options": {}}],
+                       graph_keys={"if_expr": "y > 1000"})
+        assert _empty_reports(msgs) == [
+            "dash: graph 'g1' plot 2 (function) drew nothing."], msgs
 
     def test_the_report_names_the_observation_count(self):
         msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
@@ -119,9 +156,17 @@ class TestAnOrdinaryGraphIsSilent:
 
     def test_a_qualifier_that_selects_no_rows_is_not_reported(self):
         """An empty selection is the user's own doing, not a broken layer."""
-        msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
-                         "options": {}}],
-                       graph_options={"if_expr": "y > 1000"})
+        # The qualifier sat inside graph_options until 24sep2026, which the
+        # saved renderer never reads: all 6 rows drew and the empty
+        # selection was never exercised (measured: the source held 6 rows).
+        # At the graph level, where dash.ado writes it, it selects none.
+        renderer, msgs = _render_full(
+            [{"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}],
+            graph_keys={"if_expr": "y > 1000"})
+        rows = {k: len(v) for k, v in renderer.sources["g1"].data.items()}
+        assert rows and not any(rows.values()), (
+            f"the qualifier selected rows, so nothing here is empty: {rows}"
+        )
         assert not _empty_reports(msgs), (
             f"an if() that matches nothing was reported as a broken layer: "
             f"{msgs}"

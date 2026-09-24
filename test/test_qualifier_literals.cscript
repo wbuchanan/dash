@@ -1,0 +1,466 @@
+*! test_qualifier_literals.cscript  v1.0
+*! Certification script for a qualifier holding string literals, run as the
+*! user types it: the immediate render (dash <plot> ..., saving()) and the
+*! named route (name() then dash build / dash serve), in both render modes.
+*!
+*! WHY THIS EXISTS
+*!
+*! BUGS.md "Immediate render parser truncates valid `if' string expressions
+*! containing quotes" (BUG-PARSE-1): dash.ado cut the qualifier out of its
+*! JSON at the first quote character, the escaped \" of a string literal
+*! included.  Its fix is _dash_json_get_str, which reads the value escapes
+*! and all; dash.ado reads the qualifier of a one-segment command back with
+*! it and promotes it to the graph (_dash_plot).  The regression tests for
+*! that fix, in test_server.py, asserted that the NAME _dash_json_get_str
+*! appeared in dash.ado and dash_parse.mata -- and stayed green while the
+*! function decoded no escape at all (BUGS.md, "_dash_json_get_str has
+*! never decoded a single JSON escape").  JSE-28 and P1B-27..30 now test
+*! the decoder; this script tests what the user sees: the rows drawn.
+*!
+*! Written this way, the regression test found the renderer's half broken
+*! (measured 24sep2026 at 68327a8, auto.dta with hostile makes, Stata's own
+*! count the oracle).  Both renderers translated the qualifier into a
+*! pandas query and kept every literal as Python source, so:
+*!
+*!     make == "C:\" | foreign == 1          Stata 23 rows, dash all 74
+*!     make == `"x"y"' | foreign == 1        Stata 23 rows, dash all 74
+*!     make != `"x"y"' & foreign == 1        Stata 22 rows, dash all 74
+*!     make == "a\u0022b" | foreign == 1     Stata 23 rows, dash 22, silently
+*!     make == "n\n" | foreign == 1          Stata 23 rows, dash 22, silently
+*!
+*! and the by(foreign) form of the third drew two panels where Stata draws
+*! one.  "C:\" was an unterminated Python string, the compound literal ended
+*! at its inner quote -- each skipped with a warning, every row drawn --
+*! and "a\u0022b" and "n\n" were read as Python escapes and selected the
+*! rows of other makes without a word.  Stata's string literals have no
+*! escape character; the translation now reads them by Stata's rules.
+*!
+*! Every case checks, against Stata's own `count if' / `levelsof':
+*!   * the rows each scatter draws through its view (rowid is the x, so the
+*!     x values name the rows);
+*!   * the rows its source carries (the graph's promoted qualifier restricts
+*!     them -- a promotion that read the qualifier wrong leaves 74);
+*!   * that nothing says a qualifier was skipped.
+*! The data carry DECOYS: for each hostile make, the make a mis-reading of
+*! its literal would select instead, so a wrong reading cannot draw the
+*! right number of rows by accident.
+*!
+*! Tests: QL-01 through QL-14
+*!
+*! Usage:  do test/test_qualifier_literals.cscript
+*! Version: 1.0  24sep2026
+
+cscript "a qualifier's string literals select the rows Stata selects" adodir ".."
+
+// `cscript' drops every global macro, the runner's $dash_nobrowser with them;
+// set it again before this script builds a dashboard (test_cscript_hygiene.py).
+global dash_nobrowser 1
+
+capture which jsonio
+if _rc != 0 {
+    display as error "SKIP: jsonio not installed. Run dash_setup first."
+    exit 222
+}
+if "`c(python_exec)'" == "" {
+    display as error "SKIP: Python not available."
+    exit 222
+}
+
+do "../dash_parse.mata"
+do "../dash.ado"
+do "cert_helpers.do"
+
+_dash_find_render
+global QL_RENDER `"`r(fn)'"'
+
+// ----------------------------------------------------------------
+// The data: auto, with rowid as the x, and hostile makes -- each written
+// with char() so this file stays ASCII and holds no literal it tests --
+// beside their decoys.  Rows 1-12 of auto are all domestic.
+// ----------------------------------------------------------------
+qui sysuse auto, clear
+gen long rowid = _n
+mata: st_sstore(1,  "make", "C:" + char(92))                          // C:\
+mata: st_sstore(2,  "make", "C:")                                     //   decoy
+mata: st_sstore(3,  "make", "x" + char(34) + "y")                     // x"y
+mata: st_sstore(4,  "make", "x")                                      //   decoy
+mata: st_sstore(5,  "make", "a" + char(92) + "u0022b")                // a\u0022b
+mata: st_sstore(6,  "make", "a" + char(34) + "b")                     //   decoy
+mata: st_sstore(7,  "make", "n" + char(92) + "n")                     // n\n
+mata: st_sstore(8,  "make", "n" + char(10))                           //   decoy
+mata: st_sstore(9,  "make", "q" + char(34) + "," + char(34) + "in_expr" + char(34) + ":" + char(34) + "1/5")
+mata: st_sstore(10, "make", char(92) + char(34))                      // \"
+mata: st_sstore(11, "make", "a~=b")
+mata: st_sstore(12, "make", "a!=b")                                   //   decoy
+assert foreign == 0 in 1/12
+
+// Helpers.  The saved page is read back from the file dash wrote; the named
+// route's two modes are DashRenderer and the generated app's make_document
+// on a fresh Document, with the renderer dash itself uses, loaded by path
+// and registered while used (ServerAppBuilder copies helpers from its own
+// source through sys.modules).  Results come back as globals.  No
+// backslash, backtick or dollar sign is written in the block, and every
+// call's value is assigned: a python block echoes a bare expression's value.
+python:
+import base64 as _ql_b64
+import html as _ql_html
+import importlib.util as _ql_il
+import json as _ql_json
+import re as _ql_re
+import sys as _ql_sys
+import warnings as _ql_w
+from sfi import Macro as _ql_M
+
+def _ql_dr():
+    name = "_ql_dash_render"
+    if name not in _ql_sys.modules:
+        spec = _ql_il.spec_from_file_location(name, _ql_M.getGlobal("QL_RENDER"))
+        mod = _ql_il.module_from_spec(spec)
+        _ql_sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    return _ql_sys.modules[name]
+
+def _ql_view_rows(n, kind, values):
+    if kind == "BooleanFilter":
+        return [i for i, b in enumerate(list(values)[:n]) if b]
+    if kind == "IndexFilter":
+        return [int(i) for i in values if 0 <= int(i) < n]
+    return list(range(n))
+
+def _ql_models(roots):
+    from bokeh.models import GlyphRenderer, Plot
+    panels, carried, drawn = 0, 0, []
+    for root in roots:
+        for fig in root.select({"type": Plot}):
+            hit = False
+            for r in fig.renderers:
+                if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter":
+                    hit = True
+                    xs = [float(v) for v in r.data_source.data["rowid"]]
+                    f = getattr(r.view, "filter", None)
+                    kind = type(f).__name__ if f is not None else ""
+                    vals = []
+                    if kind == "BooleanFilter":
+                        vals = f.booleans
+                    elif kind == "IndexFilter":
+                        vals = f.indices
+                    carried += len(xs)
+                    drawn += [xs[i] for i in _ql_view_rows(len(xs), kind, vals)]
+            panels += 1 if hit else 0
+    return panels, carried, " ".join(str(int(v)) for v in sorted(drawn))
+
+def _ql_kpi(roots):
+    from bokeh.models import Div
+    for root in roots:
+        for d in root.select({"type": Div}):
+            m = _ql_re.search('id="kpi_val_[^"]*"[^>]*>([^<]*)<', d.text or "")
+            if m:
+                return m.group(1).strip()
+    return "none"
+
+def _ql_modes():
+    dr = _ql_dr()
+    sp, dp, ap = (_ql_M.getGlobal(k) for k in ("QL_SPEC", "QL_DATA", "QL_APP"))
+    msgs = []
+    with _ql_w.catch_warnings(record=True) as caught:
+        _ql_w.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        page = r.render()
+        built = dr.ServerAppBuilder(sp, dp).build(ap)
+    msgs += [str(x.message) for x in caught]
+    with open(ap, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':" + chr(10) + "    make_document(curdoc())"
+    assert attach in src, "the generated app's curdoc attach moved"
+    ns = {"__name__": "_ql_app"}
+    with _ql_w.catch_warnings():
+        _ql_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "_ql_app.py", "exec"), ns)
+    from bokeh.document import Document
+    with _ql_w.catch_warnings(record=True) as caught:
+        _ql_w.simplefilter("always")
+        doc = Document()
+        made = ns["make_document"](doc)
+    msgs += [str(x.message) for x in caught]
+    for tag, roots in (("SAVED", [r._last_layout_root]), ("SERVED", doc.roots)):
+        p, c, d = _ql_models(roots)
+        _ql_M.setGlobal("QL_" + tag + "_PANELS", str(p))
+        _ql_M.setGlobal("QL_" + tag + "_CARRIED", str(c))
+        _ql_M.setGlobal("QL_" + tag + "_DRAWN", d)
+        _ql_M.setGlobal("QL_" + tag + "_KPI", _ql_kpi(roots))
+    _ql_M.setGlobal("QL_SKIPPED", str(sum(1 for m in msgs if "skipped" in m)))
+
+def _ql_arr(v):
+    if isinstance(v, list):
+        return v
+    if isinstance(v, dict) and v.get("type") == "ndarray":
+        a = v.get("array")
+        if isinstance(a, list):
+            return a
+        if isinstance(a, dict) and a.get("type") == "bytes":
+            import numpy as np
+            return list(np.frombuffer(_ql_b64.b64decode(a["data"]),
+                                      dtype=v.get("dtype", "float64")))
+    return []
+
+def _ql_page():
+    with open(_ql_M.getGlobal("QL_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    m = _ql_re.search('<script type="application/json"[^>]*>(.*?)</script>', page, _ql_re.S)
+    docs = _ql_json.loads(_ql_html.unescape(m.group(1)))
+    objs, stack = {}, [docs]
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if v.get("type") == "object" and "id" in v and "name" in v:
+                objs[v["id"]] = v
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    def ref(v):
+        return objs.get(v["id"], v) if isinstance(v, dict) and "id" in v else v
+    panels, carried, drawn, layers = 0, 0, [], []
+    for o in objs.values():
+        if o["name"] not in ("Figure", "Plot"):
+            continue
+        hit = False
+        for rr in o.get("attributes", {}).get("renderers", []):
+            g = ref(rr)
+            a = g.get("attributes", {})
+            if g.get("name") != "GlyphRenderer" or ref(a.get("glyph", {})).get("name") != "Scatter":
+                continue
+            hit = True
+            data = dict((k, v) for k, v in ref(a.get("data_source", {})).get("attributes", {}).get("data", {}).get("entries", []))
+            xs = [float(x) for x in _ql_arr(data.get("rowid"))]
+            view = ref(a.get("view", {}))
+            f = ref(view.get("attributes", {}).get("filter", {})) if isinstance(view, dict) else {}
+            kind = f.get("name", "") if isinstance(f, dict) else ""
+            fa = f.get("attributes", {}) if isinstance(f, dict) else {}
+            vals = _ql_arr(fa.get("booleans" if kind == "BooleanFilter" else "indices", []))
+            mine = [xs[i] for i in _ql_view_rows(len(xs), kind, vals)]
+            carried += len(xs)
+            drawn += mine
+            layers.append(" ".join(str(int(v)) for v in sorted(mine)))
+        panels += 1 if hit else 0
+    _ql_M.setGlobal("QL_PAGE_PANELS", str(panels))
+    _ql_M.setGlobal("QL_PAGE_CARRIED", str(carried))
+    _ql_M.setGlobal("QL_PAGE_DRAWN", " ".join(str(int(v)) for v in sorted(drawn)))
+    # Each scatter layer's rows, in the order the figure draws them.
+    for k, rows in enumerate(layers):
+        _ql_M.setGlobal("QL_PAGE_LAYER" + str(k + 1), rows)
+    _ql_M.setGlobal("QL_PAGE_NLAYERS", str(len(layers)))
+end
+
+// One command with its output captured to a log: r(rc), r(log).  Run from
+// a program, so the log holds what the command printed and not its text.
+capture program drop _ql_run
+program define _ql_run, rclass
+    version 16.0
+    args cmdtext
+    local logfile "`c(tmpdir)'dash_ql_run.log"
+    local ls = c(linesize)
+    set linesize 255
+    capture log close _qllog
+    capture erase "`logfile'"
+    quietly log using "`logfile'", name(_qllog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    quietly log close _qllog
+    set linesize `ls'
+    return scalar rc  = `rc'
+    return local  log "`logfile'"
+end
+
+// ----------------------------------------------------------------
+// The qualifiers, as typed.  Stata reads no escape inside a literal: "C:\"
+// is C, : and a backslash, "n\n" is three characters, and a compound
+// literal is the only kind that holds a double quote.
+//
+// Not here: a compound literal NESTED in another, make == `"say `"hi"' now"',
+// which twoway accepts and dash's splitter refuses before any of this runs
+// ("unterminated quotation in the plot specification", r(198); measured
+// 24sep2026, and the same for title(`"a `"b"' c"')).  That is the parser's
+// defect, not this path's; the renderer's handling of such a literal is
+// test_server.py TestIfExprQuoteHandling[nested_compound].
+// ----------------------------------------------------------------
+local q1  `"make == "C:\" | foreign == 1"'
+local q2  `"make == `"x"y"' | foreign == 1"'
+local q3  `"make == "a\u0022b" | foreign == 1"'
+local q4  `"make == "n\n" | foreign == 1"'
+local q5  `"make == `"q","in_expr":"1/5"' | foreign == 1"'
+local q6  `"make == `"\""' | foreign == 1"'
+local q7  `"make == "a~=b" | foreign == 1"'
+local q8  `"make != `"x"y"' & foreign == 1"'
+local q9  `"inlist(make, "C:\", `"x"y"', "a~=b")"'
+local nq 9
+
+// QL-01..QL-09 -- each qualifier through the immediate route, whose saved
+// page is the only mode it has, and through name() and the build's export
+// in both modes.
+forvalues j = 1/`nq' {
+    local id = string(`j', "%02.0f")
+    quietly count if `q`j''
+    local n = r(N)
+    quietly levelsof rowid if `q`j'', local(want)
+    local want : list retokenize want
+    assert `n' > 0 & `n' < _N
+
+    // The immediate route: dash <plot> if ..., saving().
+    tempfile p`j'
+    global QL_PAGE "`p`j''.html"
+    _ql_run `"dash scatter mpg rowid if `q`j'', saving("`p`j''.html")"'
+    local rc = r(rc)
+    cert_file_has "`r(log)'", needle("skipped")
+    local sk = r(found)
+    assert `rc' == 0
+    python: _ql_page()
+    display as text "  QL-`id' [" `"`q`j''"' "]  Stata: `n' rows"
+    display as text "    immediate: carried $QL_PAGE_CARRIED, drew [$QL_PAGE_DRAWN], skipped `sk'"
+    assert "$QL_PAGE_DRAWN" == "`want'"
+    assert "$QL_PAGE_CARRIED" == "`n'"
+    assert `sk' == 0
+
+    // The named route: registered, exported as dash build and dash serve
+    // export it, drawn by both renderers.
+    capture dash clear
+    dash scatter mpg rowid if `q`j'', name(ql`j')
+    tempfile s`j' d`j' a`j'
+    _dash_prepare_spec, specpath("`s`j''") datapath("`d`j''")
+    global QL_SPEC "`s`j''"
+    global QL_DATA "`d`j''"
+    global QL_APP  "`a`j''"
+    python: _ql_modes()
+    display as text "    saved:  carried $QL_SAVED_CARRIED, drew [$QL_SAVED_DRAWN]"
+    display as text "    served: carried $QL_SERVED_CARRIED, drew [$QL_SERVED_DRAWN], skipped $QL_SKIPPED"
+    assert "$QL_SAVED_DRAWN" == "`want'" & "$QL_SERVED_DRAWN" == "`want'"
+    assert "$QL_SAVED_CARRIED" == "`n'" & "$QL_SERVED_CARRIED" == "`n'"
+    assert "$QL_SKIPPED" == "0"
+    capture erase "`p`j''.html"
+    capture dash clear
+    display "QL-`id' PASS: both routes, both modes, draw the `n' rows Stata selects"
+}
+
+// QL-10 -- by(): the qualifier leaves one level, so Stata draws one panel.
+// A graph-level qualifier read wrong drew a second, empty-by-qualifier panel
+// of the 52 domestic cars.
+quietly count if `q8'
+local n11 = r(N)
+quietly levelsof rowid if `q8', local(want11)
+local want11 : list retokenize want11
+tempfile p11
+global QL_PAGE "`p11'.html"
+_ql_run `"dash scatter mpg rowid if `q8', by(foreign) saving("`p11'.html")"'
+assert r(rc) == 0
+python: _ql_page()
+display as text "  QL-10 immediate: $QL_PAGE_PANELS panel(s), drew [$QL_PAGE_DRAWN]"
+assert "$QL_PAGE_PANELS" == "1"
+assert "$QL_PAGE_DRAWN" == "`want11'"
+capture dash clear
+dash scatter mpg rowid if `q8', by(foreign) name(ql11)
+tempfile s11 d11 a11
+_dash_prepare_spec, specpath("`s11'") datapath("`d11'")
+global QL_SPEC "`s11'"
+global QL_DATA "`d11'"
+global QL_APP  "`a11'"
+python: _ql_modes()
+display as text "  QL-10 named: saved $QL_SAVED_PANELS panel(s), served $QL_SERVED_PANELS"
+assert "$QL_SAVED_PANELS" == "1" & "$QL_SERVED_PANELS" == "1"
+assert "$QL_SAVED_DRAWN" == "`want11'" & "$QL_SERVED_DRAWN" == "`want11'"
+capture erase "`p11'.html"
+capture dash clear
+display "QL-10 PASS: by() draws the one panel the qualifier leaves, in both routes"
+
+// QL-11 -- a KPI's qualifier holding the same literals: both modes show
+// Stata's sum of rowid over the rows it selects (sum, not count, so a
+// decoy row cannot give the right number).
+local nk = 0
+foreach j of numlist 1 2 3 4 8 {
+    quietly summarize rowid if `q`j'', meanonly
+    local ks = strtrim(string(r(sum), "%12.0f"))
+    capture dash clear
+    dash scatter mpg rowid, name(qlg`j')
+    dash kpi sum(rowid) if `q`j'', title("S") fmt(%12.0f) name(qlk`j')
+    tempfile s d a
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global QL_SPEC "`s'"
+    global QL_DATA "`d'"
+    global QL_APP  "`a'"
+    python: _ql_modes()
+    display as text "  QL-11 [" `"`q`j''"' "]  KPI saved $QL_SAVED_KPI, served $QL_SERVED_KPI, Stata `ks'"
+    assert "$QL_SAVED_KPI" == "`ks'" & "$QL_SERVED_KPI" == "`ks'"
+    local ++nk
+}
+assert `nk' == 5
+capture dash clear
+display "QL-11 PASS: a KPI's literal qualifier gives Stata's value in both modes"
+
+// QL-12 -- dash build itself, end to end, prints no skip for any of them.
+capture dash clear
+forvalues j = 1/`nq' {
+    dash scatter mpg rowid if `q`j'', name(qb`j')
+}
+tempfile h13
+_ql_run `"dash build, saving("`h13'.html") replace nobrowser"'
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("skipped")
+assert r(found) == 0
+confirm file "`h13'.html"
+capture erase "`h13'.html"
+capture dash clear
+display "QL-12 PASS: dash build applies all nine qualifiers and reports nothing skipped"
+
+// QL-13 -- a literal cannot carry code out of its quotes (CLAUDE.md rule
+// 18).  The backslash does not escape the quote, so what follows "x\" is
+// code -- the @-reference pandas itself would run (measured: its python
+// engine calls os.system before it raises).  Stata reads it as code too
+// and refuses the command, "unknown function @os.system()", r(133), before
+// dash writes a page; the renderer's own refusal of the same text in a
+// spec is test_server.py TestIfExprQuoteHandling, both modes.  Nothing may
+// run and no page may be written.
+local ql_sent "`c(tmpdir)'ql13_executed"
+capture erase "`ql_sent'"
+local q13 `"make == "x\" | @os.system("touch `ql_sent'") | "y""'
+tempfile p13
+capture erase "`p13'.html"
+_ql_run `"dash scatter mpg rowid if `q13', saving("`p13'.html")"'
+local rc13 = r(rc)
+display as text "  QL-13 rc `rc13'"
+assert `rc13' != 0
+capture confirm file "`p13'.html"
+assert _rc != 0
+capture confirm file "`ql_sent'"
+assert _rc != 0
+capture dash clear
+display "QL-13 PASS: a literal's backslash does not let the text after it run"
+
+// QL-14 -- two layers, each with its own qualifier holding a literal, on
+// the immediate route: each layer draws the rows ITS qualifier selects.
+// The route exports every observation and leaves the qualifiers to the
+// renderer; it used to export only the rows the FIRST layer's qualifier
+// kept (BUGS.md BUG-IQUAL), so the second layer drew from a frame without
+// its rows.  A test_server.py class read the jsonio line out of dash.ado
+// for an `if', and stayed green with the qualifier re-added through a
+// macro (measured, WP-24); this runs the command, and the second layer
+// then draws nothing.
+local q14b `"foreign == 0 & make != "C:\""'
+quietly levelsof rowid if `q8', local(w14a)
+local w14a : list retokenize w14a
+quietly levelsof rowid if `q14b', local(w14b)
+local w14b : list retokenize w14b
+tempfile p14
+global QL_PAGE "`p14'.html"
+_ql_run `"dash (scatter mpg rowid if `q8') (scatter mpg rowid if `q14b'), saving("`p14'.html")"'
+assert r(rc) == 0
+python: _ql_page()
+display as text "  QL-14 layers: $QL_PAGE_NLAYERS; layer 2 drew [$QL_PAGE_LAYER2]"
+assert "$QL_PAGE_NLAYERS" == "2"
+assert "$QL_PAGE_LAYER1" == "`w14a'"
+assert "$QL_PAGE_LAYER2" == "`w14b'"
+capture erase "`p14'.html"
+capture dash clear
+display "QL-14 PASS: each layer draws the rows its own qualifier selects"
+
+capture dash clear
+macro drop QL_*
+display ""
+display "All qualifier-literal tests PASSED."

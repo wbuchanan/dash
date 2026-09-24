@@ -575,6 +575,12 @@ def pins(cscript_source):
 
 
 class TestThePinnedLists:
+    """Structural guards over test_help_examples.cscript's pin lists,
+    deliberately.  A pin decides how the Stata suite treats a help example
+    it cannot simply run; a pin that names nothing the help holds, a kind
+    with no handler, or an example left without a pin is an example the
+    suite skips or misjudges without saying so, and the suite stays green.
+    Only reading the pins against the help and the handlers can see that."""
 
     def test_every_pin_line_was_parsed(self, pins, cscript_source):
         """Guards the guard: a pin this file cannot read is checked by

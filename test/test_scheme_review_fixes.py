@@ -449,14 +449,24 @@ class TestNumericGsize:
         assert any(m.startswith("dash scheme:") and "gsize k" in m
                    for m in msgs), msgs
 
-    def test_every_rendered_size_is_a_valid_bokeh_font_size(self):
-        """What the guard is for: the string reaches a FontSize property."""
+    @pytest.mark.parametrize("raw, want", [
+        ("0.00001", "9pt"), ("0.0001", "9pt"), ("6.0", "17.28pt"),
+        ("3.8194", "11pt"), ("1e20", "9pt"),
+    ])
+    def test_every_rendered_size_is_a_valid_bokeh_font_size(self, raw, want):
+        """What the guard is for: the string reaches a FontSize property.
+
+        Bokeh refuses a scientific form ("2.88e-05pt", "1e+20pt") with a
+        ValueError; each value here is the one measured 24sep2026, and a
+        FontSize takes it unchanged.
+        """
         from bokeh.models import Title
-        for raw in ("0.00001", "0.0001", "6.0", "3.8194", "1e20"):
-            sp = self._parser(gsize__k=raw)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                Title(text_font_size=sp._gsize("gsize k", "9pt"))
+        sp = self._parser(gsize__k=raw)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            size = sp._gsize("gsize k", "9pt")
+        assert size == want
+        assert Title(text_font_size=size).text_font_size == want
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +496,11 @@ class TestAxisLineWidth:
         name = _user_scheme(tmp_path, monkeypatch, "axis.scheme",
                             ["linewidth axisline 0.6"])
         fig = _fig(tp._spec([plot_for("scatter")], {"scheme": name}), mode)
-        for ax in list(fig.xaxis) + list(fig.yaxis):
+        # One x axis and one y axis: the loop below passed a figure with
+        # no axes at all, having checked nothing (24sep2026).
+        axes = list(fig.xaxis) + list(fig.yaxis)
+        assert len(axes) == 2, axes
+        for ax in axes:
             assert ax.axis_line_width == pytest.approx(3.0, abs=0.02)
 
 
@@ -561,7 +575,11 @@ class TestHostileSchemeValues:
         lg = _legend(fig)
         # No usable clock: the legend stays inside, as a bare scheme's does.
         assert _side_of(fig, lg) == "center"
-        for grid in list(fig.xgrid) + list(fig.ygrid):
+        # One grid per axis: the loop passed a figure with no grids, having
+        # checked the refused width on nothing (24sep2026).
+        grids = list(fig.xgrid) + list(fig.ygrid)
+        assert len(grids) == 2, grids
+        for grid in grids:
             assert grid.grid_line_width == pytest.approx(0.8)
 
 
@@ -590,10 +608,20 @@ def _card_via_python(cfg, fmt):
 
 
 def _card_via_node(cfg, fmt):
-    """The template evaluated by node, when node is installed."""
+    """The template evaluated by node.
+
+    Node is the only REAL JavaScript evaluation of the template --
+    _card_via_python is a regex rewrite into Python -- so a missing node is
+    a failure, as in test_filter_exclude._node.  This returned None and the
+    caller skipped the comparison without a word, so on a machine without
+    node the JS rebuild went unchecked and the test still passed
+    (24sep2026).
+    """
     node = shutil.which("node")
     if node is None:
-        return None
+        pytest.fail("node is not installed; the KPI card's JavaScript "
+                    "rebuild cannot be run (a silent skip here would hide "
+                    "an untested template)")
     harness = (
         "const k = " + json.dumps(cfg) + ";\n"
         "const fmt = " + json.dumps(fmt) + ";\n"
@@ -638,9 +666,7 @@ def test_the_js_rebuild_equals_the_initial_card(kpi):
     cfg = r._kpi_callback_config(kpi["name"], kpi)
     assert 'id="kpi_val_' in initial
     assert _card_via_python(cfg, fmt) == initial
-    via_node = _card_via_node(cfg, fmt)
-    if via_node is not None:
-        assert via_node == initial
+    assert _card_via_node(cfg, fmt) == initial
 
 
 def test_the_carried_name_is_escaped():

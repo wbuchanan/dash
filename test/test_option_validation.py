@@ -54,8 +54,12 @@ _ADO = os.path.join(_HERE, "..", "dash.ado")
 _BEGIN = "// BEGIN option-validation table (WP-15)"
 _END = "// END option-validation table (WP-15)"
 
+# scheme since WP-17: the table's `scheme=scheme' (a shipped scheme, a
+# theme or a .scheme file in the working directory).  Checked against the
+# branches _dash_validate_value really has (_validator_kinds below): a kind
+# the chain has no branch for would pass every value unvalidated.
 KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
-         "varlist", "byvarlist", "format"}
+         "varlist", "byvarlist", "format", "scheme"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
@@ -80,13 +84,18 @@ xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvar
 """
 CONTRACT_KPI_RULES = "fmt=format"
 
-GRAPH_OPTIONS = {"xsize", "ysize", "aspectratio", "hover", "by"}
+# The contract's five, and scheme, the graph rule WP-17 added.
+GRAPH_OPTIONS = {"xsize", "ysize", "aspectratio", "hover", "by", "scheme"}
 KPI_OPTIONS = {"fmt"}
 
 # option=kind[,p1[,p2[,p3]]][@type1|type2]
+# The kind is any word.  It listed the kinds this file knew, so a rule of
+# any other kind was never parsed and the kind check could not fail: the
+# real rule `scheme=scheme' was invisible to every test here (measured
+# 24sep2026: 42 rules parsed, 43 tokens in the table).
 _TOKEN = re.compile(
     r"(?<![\w`'\"])([a-z][a-z0-9]*)="
-    r"(num|int|pos|style|istyle|enum|numlist|var|varlist|byvarlist|format)"
+    r"([a-z]+)"
     r"((?:,[^\s\"'`@]*)?)((?:@[a-z0-9|]+)?)(?![\w])")
 
 
@@ -96,13 +105,24 @@ def _ado():
 
 
 def _parse_rules(text):
-    """``[(option, kind, (p1, p2, ...), (type, ...)), ...]`` from rule text."""
+    """``[(option, kind, (p1, p2, ...), (type, ...)), ...]`` from rule text.
+
+    Stata comments are dropped first: the table's own header spells the
+    grammar as ``option=kind[,p1...]``, which is not a rule."""
+    text = re.sub(r"(?m)(^|\s)//.*$", r"\1", text)
     out = []
     for opt, kind, params, types in _TOKEN.findall(text):
         ps = tuple(params[1:].split(",")) if params else ()
         ts = tuple(types[1:].split("|")) if types else ()
         out.append((opt, kind, ps, ts))
     return out
+
+
+def _unparse(rule):
+    """A parsed rule written back as its table token."""
+    opt, kind, ps, ts = rule
+    return (f"{opt}={kind}" + ("," + ",".join(ps) if ps else "")
+            + ("@" + "|".join(ts) if ts else ""))
 
 
 def _table_block():
@@ -114,10 +134,48 @@ def _table_block():
 
 
 _BLOCK = _table_block()
-_needs_table = pytest.mark.skipif(
-    _BLOCK is None,
-    reason="dash.ado has no option-validation table yet: the WP-15 "
-           "sentinel comments are absent (Owner A's part of the work)")
+
+
+@pytest.fixture
+def _the_table():
+    """Fails -- it used to SKIP -- a test that reads the table when the
+    WP-15 sentinel comments are gone.  The skip dates from before the
+    table existed; since it shipped, a lost sentinel skipped three classes
+    and three more tests (36 in all, measured 24sep2026) and emptied the
+    parametrize below, without a failure anywhere
+    (test_the_table_sentinels_are_there guards too)."""
+    if _BLOCK is None:
+        pytest.fail(f"dash.ado has lost the option-validation table's "
+                    f"sentinel comments ({_BEGIN!r} ... {_END!r})")
+
+
+_needs_table = pytest.mark.usefixtures("_the_table")
+
+
+def _table_tokens():
+    """Every whitespace-separated token of the ``local plot`` and ``local
+    graph`` lines of _dash_option_rules, continuations joined: what
+    _dash_validate_opts reads, whether or not _TOKEN can parse it."""
+    body = _program_body(_ado(), "_dash_option_rules") or ""
+    joined = re.sub(r"///[^\n]*\n", " ", body)
+    toks = []
+    for m in re.finditer(r"^\s*local\s+(?:plot|graph)\s+(.*)$", joined,
+                         re.M):
+        toks += m.group(1).split()
+    return toks
+
+
+def _validator_kinds():
+    """The kinds _dash_validate_value's else-if chain has a branch for:
+    ``if "`kind'" == "x"`` and ``inlist("`kind'", "x", ...)`` heads at the
+    chain's indent (the nested tests inside a branch are not heads)."""
+    body = _program_body(_ado(), "_dash_validate_value") or ""
+    kinds = set()
+    for cond in re.findall(r"^    (?:else )?if (.*)\{\s*$", body, re.M):
+        kinds |= set(re.findall(r'"`kind\'"\s*==\s*"(\w+)"', cond))
+        for args in re.findall(r'inlist\("`kind\'",\s*([^)]*)\)', cond):
+            kinds |= set(re.findall(r'"(\w+)"', args))
+    return kinds
 
 
 def _is_number(s):
@@ -135,6 +193,14 @@ def _is_integer(s):
 # ---------------------------------------------------------------------------
 # (a) The table in dash.ado
 # ---------------------------------------------------------------------------
+
+def test_the_table_sentinels_are_there():
+    """Not skippable: every class below reads the table between these two
+    comments, and the parametrize over its rules is empty without them."""
+    assert _BLOCK is not None, (
+        f"dash.ado has lost {_BEGIN!r} or {_END!r}")
+    assert _parse_rules(_BLOCK), "no rule parsed between the sentinels"
+
 
 @_needs_table
 class TestTheTableIsWellFormed:
@@ -157,6 +223,18 @@ class TestTheTableIsWellFormed:
     def test_every_kind_is_one_the_validator_knows(self):
         rules = _parse_rules(_BLOCK)
         assert len(rules) >= 40
+        # Every token _dash_validate_opts reads is a rule parsed here -- the
+        # exact count, from the table itself (which may carry more than the
+        # contract): a token _TOKEN cannot read is a rule no test checks.
+        tokens = _table_tokens()
+        assert len(tokens) >= 40, tokens
+        assert len(rules) == len(tokens), (
+            f"{len(tokens)} tokens in the table, {len(rules)} parsed: "
+            f"{sorted(set(tokens) - {_unparse(r) for r in rules})}")
+        # KINDS is the chain's own list, and every rule names one of them.
+        assert KINDS == _validator_kinds(), (
+            f"_dash_validate_value branches on {sorted(_validator_kinds())}"
+            f", this file says {sorted(KINDS)}")
         bad = [r for r in rules if r[1] not in KINDS]
         assert not bad, bad
 
@@ -281,6 +359,10 @@ class TestTheNewProgramsKeepTheirConstraints:
         "foreach gk in", "foreach gkey in", "sreturn clear", "mata:",
     ])
     def test_it_contains_no_forbidden_text(self, program, forbidden):
+        """A structural guard over dash.ado's text, deliberately: the
+        validators' charter (no `sreturn clear', no hand-kept graph-key
+        list, no Mata but the echo) is a property of their source; the
+        refusals themselves run in test_option_validation.cscript."""
         body = _program_body(_ado(), program) or ""
         # Validation is Stata's; Mata holds character-level helpers only
         # (dash_parse.mata's charter).  _dash_say is one: WP-20 routes every
@@ -292,6 +374,9 @@ class TestTheNewProgramsKeepTheirConstraints:
         assert forbidden not in body, f"{program} contains {forbidden!r}"
 
     def test_the_only_mata_in_the_validator_is_the_echo(self):
+        """A structural guard over dash.ado's text, deliberately (the
+        charter above): validation is Stata's, and the one Mata call is the
+        echo, _dash_say, whose behaviour is P20-02..06."""
         body = _program_body(_ado(), "_dash_validate_value") or ""
         calls = re.findall(r"mata:\s*(\w+)\(", body)
         assert calls, "the refusals no longer echo through _dash_say"
@@ -299,6 +384,9 @@ class TestTheNewProgramsKeepTheirConstraints:
 
     @pytest.mark.parametrize("program", PROGRAMS)
     def test_it_has_no_syntax_line(self, program):
+        """A structural guard over dash.ado's text, deliberately: the
+        validators take positional arguments, never `syntax', which would
+        re-parse the user's value (the charter above)."""
         body = _program_body(_ado(), program) or ""
         lines = [ln for ln in body.split("\n")
                  if re.match(r"^\s*syntax\b", ln)]
@@ -1113,8 +1201,13 @@ _FIXTURE = os.path.join(_HERE, "fixtures", "value_truth.json")
 _DASH_ONLY = {"jseed", "malpha", "lalpha", "falpha", "colornlevels",
               "colpalette", "colorcuts", "colorvar", "hover"}
 # Options whose refusal is dash's own and documented as such (dash.sthlp,
-# "Option values"): twoway accepts every value of these silently.
-_DELIBERATE = {"jitterseed", "xaxis"}
+# "Option values"): twoway accepts every value of these silently.  And
+# scheme, which these tests never saw until _TOKEN read every kind
+# (24sep2026): twoway draws s2color under "(note: scheme nonsense not
+# found, using s2color)", rc 0 (the fixture's scheme_1), where dash refuses
+# the name -- its own rule, documented in "Option values" and in "Stata
+# scheme support" (a dashboard is a file you look at later).
+_DELIBERATE = {"jitterseed", "xaxis", "scheme"}
 
 
 def _fixture():
@@ -1136,6 +1229,9 @@ class TestTheOracleFixtureIsInStep:
 
     @_needs_table
     def test_every_twoway_option_in_the_table_was_probed(self):
+        """A structural guard, deliberately: every rule in dash.ado's table
+        rests on a measured twoway probe in the fixture, so a new rule
+        cannot be added with nothing behind it."""
         probed = {p["option"] for p in _fixture()["twoway"]}
         for opt, _kind, _ps, _ts in _parse_rules(_BLOCK):
             if opt not in _DASH_ONLY:
@@ -1144,7 +1240,11 @@ class TestTheOracleFixtureIsInStep:
     @_needs_table
     def test_a_style_kind_rests_on_twoway_s_note(self):
         """twoway printed `named style ... not found` and drew (rc 0) for a
-        word in every option the table calls a style."""
+        word in every option the table calls a style.
+
+        A structural guard, deliberately: it ties dash.ado's table to
+        twoway's measured behaviour (the fixture) without running Stata;
+        each rule's own behaviour runs in test_option_validation.cscript."""
         fx = _fixture()
         for opt, kind, _ps, _ts in _parse_rules(_BLOCK):
             if kind not in ("style", "istyle"):
@@ -1158,7 +1258,11 @@ class TestTheOracleFixtureIsInStep:
     @_needs_table
     def test_a_refusing_kind_rests_on_a_twoway_refusal(self):
         """Where twoway has the option, it refused at least one probe, or
-        the refusal is dash's own and documented."""
+        the refusal is dash's own and documented.
+
+        A structural guard, deliberately, as the test above: the table
+        against the twoway fixture; the refusals themselves run in
+        test_option_validation.cscript."""
         fx = _fixture()
         for opt, kind, _ps, _ts in _parse_rules(_BLOCK):
             if kind in ("style", "istyle") or opt in _DASH_ONLY | _DELIBERATE:

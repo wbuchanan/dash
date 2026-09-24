@@ -76,12 +76,21 @@
 *! and the guard is driven by redefining it, which is what
 *! test_render_locate.cscript does for the renderer locator.
 *!
-*! Tests: ENV-01 through ENV-16
+*! Tests: ENV-01 through ENV-23.  ENV-17..19 run the three routes with no
+*! Python; ENV-20..21 cut the ado-path through $S_ADO so the Mata guard cannot
+*! repair, and restore it before asserting; ENV-22 runs the guard over a
+*! library file that is found but does not load completely; ENV-23a/b leave
+*! part of the library in memory, which is repaired from the file where one
+*! is found and refused by name where none is.
 *!
 *! Usage:  do test/test_env_guards.cscript
 *! Version: 1.0  22sep2026
 
 cscript "dash verifies its own environment" adodir ".."
+
+// `cscript' drops every global macro; ENV-17..19 run dash build and dash
+// serve, so the browser is kept shut after it (test_cscript_hygiene.py).
+global dash_nobrowser 1
 
 qui sysuse auto, clear
 do "../dash_parse.mata"
@@ -117,6 +126,173 @@ real scalar _env_code_has(string scalar fn, string scalar needle)
     }
     fclose(fh)
     return(n)
+}
+
+// The logical lines of an ado or do file: `///' continuations joined, a
+// trailing ` //' comment cut, comment lines dropped -- the unit a command is
+// written in, so a probe split over two lines is one line here.  The
+// markers are built from char(47) rather than typed.
+string colvector _env_logical(string scalar fn)
+{
+    real scalar      fh, p
+    string scalar    line, t, cur, c2, c3
+    string colvector out
+    c2  = char(47) + char(47)
+    c3  = c2 + char(47)
+    out = J(0, 1, "")
+    cur = ""
+    fh  = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        t = strtrim(line)
+        if (cur == "" & (substr(t, 1, 2) == c2 | substr(t, 1, 1) == "*")) continue
+        if (strlen(t) >= 3 & substr(t, -3, 3) == c3) {
+            cur = cur + substr(t, 1, strlen(t) - 3) + " "
+            continue
+        }
+        t = cur + t
+        cur = ""
+        p = strpos(t, " " + c2)
+        if (p) t = strtrim(substr(t, 1, p - 1))
+        out = out \ t
+    }
+    if (cur != "") out = out \ strtrim(cur)
+    fclose(fh)
+    return(out)
+}
+
+// How many logical lines of fn decide whether PYTHON is available by
+// running it: a captured `python query', or a captured `python:' whose
+// statement is `pass' or nothing -- with capture in any abbreviation, and
+// quietly and noisily in any abbreviation and order around it, a colon
+// after a prefix or not.  A captured `python: import <package>' asks about
+// a PACKAGE, which only an import can answer, and is not counted.
+real scalar _env_probe_count(string scalar fn)
+{
+    string colvector l
+    string scalar    pre, rx_all, rx_cap
+    real scalar      i, n
+    pre    = "(?:cap|capt|captu|captur|capture|qui|quie|quiet|quietl|quietly|n|no|noi|nois|noisi|noisil|noisily)"
+    rx_all = "^(?:" + pre + "(?:\s*:\s*|\s+))+python(?:\s+query\b|\s*:\s*(?:pass)?\s*" + char(36) + ")"
+    rx_cap = "^(?:(?:qui|quie|quiet|quietl|quietly|n|no|noi|nois|noisi|noisil|noisily)(?:\s*:\s*|\s+))*(?:cap|capt|captu|captur|capture)(?:\s*:\s*|\s+)"
+    l = _env_logical(fn)
+    n = 0
+    for (i = 1; i <= rows(l); i++) {
+        if (ustrregexm(l[i], rx_all) & ustrregexm(l[i], rx_cap)) n = n + 1
+    }
+    return(n)
+}
+
+// Writes the scanner's own control file: eleven probes that must each be
+// counted once, in the spellings the old single-needle check let through,
+// then five lines that must not be -- a package import, an uncaptured
+// `python query', a captured `python which', a comment and a display.
+void _env_probe_ctl(string scalar fn)
+{
+    real scalar   fh
+    string scalar c2, c3
+    c2 = char(47) + char(47)
+    c3 = c2 + char(47)
+    fh = fopen(fn, "w")
+    fput(fh, "capture python query")
+    fput(fh, "cap python query")
+    fput(fh, "    capture quietly python query")
+    fput(fh, "qui cap python query")
+    fput(fh, "capture noisily python query")
+    fput(fh, "capt n python query")
+    fput(fh, "capture python: pass")
+    fput(fh, "cap python:pass")
+    fput(fh, "capture python:")
+    fput(fh, "capture quietly: python query")
+    fput(fh, "capture python: " + c3)
+    fput(fh, "    pass")
+    fput(fh, "capture python: " + c3)
+    fput(fh, "    import packaging")
+    fput(fh, "python query")
+    fput(fh, "capture python which bokeh")
+    fput(fh, c2 + " capture python query")
+    fput(fh, `"display "capture python query""')
+    fclose(fh)
+}
+
+// A logical line's command is w: its first word -- or, for w "python", a
+// python line behind any capture/quietly/noisily prefix, so a captured
+// python: site counts as a python: site.
+real scalar _env_is_cmd(string scalar line, string rowvector tk,
+                        string scalar w)
+{
+    if (w != "python") return(tk[1] == w)
+    return(ustrregexm(line, "^(?:(?:cap|capt|captu|captur|capture|qui|quie|quiet|quietl|quietly|n|no|noi|nois|noisi|noisil|noisily)(?:\s*:\s*|\s+))*python\b"))
+}
+
+// Where a guard stands in a program, for ENV-12 and ENV-13: the ordinal,
+// among program prog's logical lines, of the first whose command is w
+// (_env_is_cmd); 0 when the program has none, -1 when fn defines no
+// program prog.
+real scalar _env_first_in(string scalar fn, string scalar prog, string scalar w)
+{
+    string colvector l
+    string rowvector tk
+    string scalar    cur
+    real scalar      i, k, found
+    l     = _env_logical(fn)
+    cur   = ""
+    found = -1
+    k     = 0
+    for (i = 1; i <= rows(l); i++) {
+        tk = tokens(subinstr(subinstr(l[i], ",", " "), ":", " : "))
+        if (cols(tk) == 0) continue
+        // Padded, as Mata's & evaluates both sides: tk[2] and tk[3] exist.
+        tk = tk, J(1, 2, "")
+        if (tk[1] == "program" & tk[2] != "" &
+            !anyof(("drop", "dir", "list"), tk[2])) {
+            cur = (tk[2] == "define" & tk[3] != "") ? tk[3] : tk[2]
+            if (cur == prog) {
+                found = 0
+                k     = 0
+            }
+            continue
+        }
+        if (tk[1] == "end") {
+            cur = ""
+            continue
+        }
+        if (cur != prog) continue
+        k = k + 1
+        if (found == 0 & _env_is_cmd(l[i], tk, w)) found = k
+    }
+    return(found)
+}
+
+// The programs of fn holding a logical line whose command is w, in order.
+string scalar _env_progs_with(string scalar fn, string scalar w)
+{
+    string colvector l
+    string rowvector tk
+    string scalar    cur, out
+    real scalar      i
+    l   = _env_logical(fn)
+    cur = ""
+    out = ""
+    for (i = 1; i <= rows(l); i++) {
+        tk = tokens(subinstr(subinstr(l[i], ",", " "), ":", " : "))
+        if (cols(tk) == 0) continue
+        // Padded, as Mata's & evaluates both sides: tk[2] and tk[3] exist.
+        tk = tk, J(1, 2, "")
+        if (tk[1] == "program" & tk[2] != "" &
+            !anyof(("drop", "dir", "list"), tk[2])) {
+            cur = (tk[2] == "define" & tk[3] != "") ? tk[3] : tk[2]
+            continue
+        }
+        if (tk[1] == "end") {
+            cur = ""
+            continue
+        }
+        if (cur != "" & _env_is_cmd(l[i], tk, w) &
+            !strpos(" " + out + " ", " " + cur + " ")) {
+            out = strtrim(out + " " + cur)
+        }
+    }
+    return(out)
 }
 end
 
@@ -185,6 +361,79 @@ display "ENV-06 PASS: no Python gives r(198), not a raw Python error"
 assert r(said) == 1
 display "ENV-07 PASS: the message names dash_setup, as the jsonio one does"
 
+// ================================================================
+// ENV-17..19 -- with no Python, every route stops before Python runs
+// ================================================================
+// ENV-06..07 call the guard directly and ENV-12 counts its call sites, so
+// neither sees WHERE a caller calls it.  Measured under WP-24: with
+// _dash_do_render's guard moved after the renderer has run, and with
+// `dash serve' announcing its server before the guard, ENV-01..16 all
+// passed.  With the probe still answering "no Python", each route must end
+// at r(198) before the renderer runs.  The renderer found here is a stub
+// that only leaves a mark when it is run, first on the ado-path ($S_ADO is
+// the path itself, and it is put back before anything is asserted), so no
+// route can start a real server or write a real dashboard even if a guard
+// regresses.  The results are asserted after the real probe is back (below),
+// so a failure here cannot leave "no Python" stubbed in for the next script.
+local e17_done 0
+capture which jsonio
+if _rc == 0 {
+    local e17_done 1
+    tempfile env17b
+    local env17dir "`env17b'_r"
+    mata: mkdir(st_local("env17dir"))
+    tempname env17fh
+    file open `env17fh' using "`env17dir'/dash_render.py", write text replace
+    file write `env17fh' "import os" _n
+    file write `env17fh' `"open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ran.txt"), "w").write("ran")"' _n
+    file close `env17fh'
+    mata: st_local("_env_sado", st_global("S_ADO"))
+    local lg17 "`c(tmpdir)'dash_env17.log"
+    capture erase "`lg17'"
+    tempname lf17
+    tempfile e17out
+    // Stata hands a tempfile's name out again once the do-file that held it
+    // has ended, and the scripts before this one in the runner leave pages
+    // behind under such names plus .html: under the runner a page left by
+    // test_registry_collision.cscript was read as this build's, and ENV-18
+    // failed (measured 24sep2026; alone, the script passed).  So the pages
+    // an earlier script would leave are planted here, and cleared, as every
+    // check of a file's absence must clear its path first.
+    foreach sfx in ".html" "_i.html" {
+        tempname sf17
+        file open `sf17' using "`e17out'`sfx'", write text replace
+        file write `sf17' "a page an earlier script left" _n
+        file close `sf17'
+        capture erase "`e17out'`sfx'"
+    }
+    capture erase "`env17dir'/ran.txt"
+    quietly log using "`lg17'", replace text name(`lf17')
+    mata: st_global("S_ADO", char(96) + char(34) + st_local("env17dir") + char(34) + char(39) + ";" + st_local("_env_sado"))
+    capture dash clear
+    capture noisily dash scatter mpg weight, name(e17)
+    capture noisily dash serve, port(5098) timeout(1) nobrowser
+    local e17s = _rc
+    capture noisily dash build, saving("`e17out'.html") replace nobrowser
+    local e17b = _rc
+    capture noisily dash scatter mpg weight, saving("`e17out'_i.html") replace
+    local e17i = _rc
+    mata: st_global("S_ADO", st_local("_env_sado"))
+    quietly log close `lf17'
+    capture dash clear
+    capture confirm file "`env17dir'/ran.txt"
+    local e17ran = (_rc == 0)
+    capture confirm file "`e17out'.html"
+    local e17wb = (_rc == 0)
+    capture confirm file "`e17out'_i.html"
+    local e17wi = (_rc == 0)
+    capture erase "`env17dir'/ran.txt"
+    capture erase "`env17dir'/dash_render.py"
+    capture rmdir "`env17dir'"
+    mata: st_local("e17ann", strofreal(_env_log_has(st_local("lg17"), "starting Bokeh Server")))
+    mata: st_local("e17said", strofreal(_env_log_has(st_local("lg17"), "Python is required but is not available")))
+    capture erase "`lg17'"
+}
+
 // Put the real probe back.  Re-`do'ing dash.ado over the programs already
 // in memory is r(110), so the body is restated here; ENV-01..05 above
 // exercised the shipped one before it was stubbed.
@@ -195,6 +444,23 @@ program define _dash_python_ok, rclass
     local probe = strtrim(`"`probe'"')
     return scalar ok = cond(`"`probe'"' == "", 0, 1)
 end
+
+if `e17_done' {
+    assert `e17s' == 198
+    assert `e17ann' == 0
+    display "ENV-17 PASS: dash serve stops at r(198) before it announces a server"
+    assert `e17b' == 198
+    assert `e17wb' == 0
+    display "ENV-18 PASS: dash build stops at r(198) and writes nothing"
+    assert `e17i' == 198
+    assert `e17wi' == 0
+    assert `e17ran' == 0
+    assert `e17said' == 1
+    display "ENV-19 PASS: the one-line form stops too; no route ran the renderer"
+}
+else {
+    display "ENV-17..19 SKIP: jsonio not installed"
+}
 
 
 // ================================================================
@@ -224,17 +490,48 @@ display "ENV-09 PASS: a reload (run rc=`_env_reload') is not mistaken for a fail
 mata: st_local("_env_py", strofreal(_env_code_has("../dash.ado", ///
     "_dash_require_python")))
 assert `_env_py' >= 3
+
+// The count is today's exactly (the definition and two calls, measured
+// 24sep2026), and still it cannot see WHERE the calls stand: the guard
+// moved below the python: lines it protects, or a third program running
+// python: with no guard, leaves it at 3.  So dash.ado is read program by
+// program.  The programs holding a python: line -- captured or not -- are
+// _dash_do_render and _dash_serve, and in each the guard comes before the
+// first of them.  A new python: site fails the first assert until it is
+// named here, guarded.
+mata: st_local("_env_pyprogs", _env_progs_with("../dash.ado", "python"))
+display "ENV-12: programs running python: `_env_pyprogs'"
+assert "`_env_pyprogs'" == "_dash_do_render _dash_serve"
+foreach _env_p of local _env_pyprogs {
+    mata: st_local("_env_g", strofreal(_env_first_in("../dash.ado", "`_env_p'", "_dash_require_python")))
+    mata: st_local("_env_y", strofreal(_env_first_in("../dash.ado", "`_env_p'", "python")))
+    assert `_env_g' > 0 & `_env_g' < `_env_y'
+}
 display "ENV-12 PASS: the Python guard is defined and called at both python: sites"
 
 mata: st_local("_env_mt", strofreal(_env_code_has("../dash.ado", ///
     "_dash_require_mata")))
 assert `_env_mt' >= 2
+
+// The same for the Mata guard (a definition and one call): dash's one entry
+// point calls it before it routes to any subcommand.
+mata: st_local("_env_m", strofreal(_env_first_in("../dash.ado", "dash", "_dash_require_mata")))
+foreach _env_w in _dash_kpi _dash_build _dash_clear _dash_serve _dash_plot {
+    mata: st_local("_env_r", strofreal(_env_first_in("../dash.ado", "dash", "`_env_w'")))
+    assert `_env_r' > 0
+    assert `_env_m' > 0 & `_env_m' < `_env_r'
+}
 display "ENV-13 PASS: the Mata guard is defined and called"
 
 
 // ================================================================
 // ENV-14..16 — availability is probed by configuration, not by execution
 // ================================================================
+// ENV-14 and ENV-15 stay floors, deliberately.  Each file reads
+// c(python_exec) on exactly one code line (measured 24sep2026), so removing
+// that read fails the floor as an exact count would; a second read would
+// not be a defect.  Where the decision is made is ENV-06 and ENV-16's
+// business.
 mata: st_local("_env_cfg", strofreal(_env_code_has("../dash.ado", "python_exec")))
 assert `_env_cfg' >= 1
 display "ENV-14 PASS: dash.ado reads c(python_exec)"
@@ -248,6 +545,21 @@ display "ENV-15 PASS: dash_setup.ado reads c(python_exec)"
 mata: st_local("_env_q", strofreal(_env_code_has("../dash_setup.ado", ///
     "capture python query")))
 assert `_env_q' == 0
+
+// That searched one spelling in one file: cap python query, capture
+// quietly python query and capture python: pass make the same decision and
+// passed it, and dash.ado was not read at all.  _env_probe_count reads both
+// files by logical line and counts every captured `python query' and every
+// captured `python:' with nothing or pass after it; a captured
+// `python: import <package>' asks about a package and is not counted.  Its
+// control file holds eleven probes it must count and five lines it must not.
+tempfile _env_ctl
+mata: _env_probe_ctl(st_local("_env_ctl"))
+mata: st_local("_env_ctln", strofreal(_env_probe_count(st_local("_env_ctl"))))
+assert `_env_ctln' == 11
+mata: st_local("_env_q1", strofreal(_env_probe_count("../dash.ado")))
+mata: st_local("_env_q2", strofreal(_env_probe_count("../dash_setup.ado")))
+assert `_env_q1' == 0 & `_env_q2' == 0
 display "ENV-16 PASS: no availability decision is made by running Python"
 
 
@@ -271,16 +583,8 @@ capture mata: mata describe _dash_split_segs()
 assert _rc == 0
 display "ENV-11 PASS: the functions are present again after the repair"
 
-// The genuine failure -- a tree with dash.ado and no dash_parse.mata
-// anywhere to repair from -- is NOT asserted here.  A certification script
-// cannot reliably take its own package off the ado-path: under
-// run_all_cscripts.do the directory is on it twice (the runner prepends it
-// and `cscript ... adodir ".."' adds it again), so removing one copy leaves
-// the other and the guard repairs, as it should.
-//
-// That branch was verified by hand instead, against three staged trees, and
-// the results are in this script's header: with dash_parse.mata absent, or
-// unable to compile, `dash scatter mpg weight' now prints
+// With dash_parse.mata absent, or unable to compile, `dash scatter mpg
+// weight' prints
 //
 //     dash: dash's Mata library could not be loaded.
 //           Missing: _dash_check_utf8() ... _dash_split_segs()
@@ -289,7 +593,185 @@ display "ENV-11 PASS: the functions are present again after the repair"
 //
 // and returns r(198), where before it gave "<istmt>: 3499
 // _dash_check_utf8() not found" -- or, for a partial break, rc 0 and
-// "graph 'b1' registered".
+// "graph 'b1' registered".  That was verified by hand against staged trees;
+// ENV-20..21 now assert the branch.
+
+
+// ================================================================
+// ENV-20..21 -- a library the guard cannot repair
+// ================================================================
+// This used to say a certification script cannot take its own package off
+// the ado-path, because under the runner the directory is on it twice.
+// $S_ADO IS the ado-path, whatever is on it: cutting it to Stata's own
+// BASE and SITE takes every copy off at once, and putting the saved value
+// back restores it exactly.  It is put back before anything is asserted.
+// Measured under WP-24, without these: the report deleted, or the list of
+// functions checked after a repair cut to _dash_check_utf8 alone, left
+// ENV-01..19 green.
+
+// ENV-20: nothing to repair from.
+mata: st_local("_env_sado", st_global("S_ADO"))
+local lg20 "`c(tmpdir)'dash_env20.log"
+capture erase "`lg20'"
+tempname lf20
+quietly log using "`lg20'", replace text name(`lf20')
+mata: st_global("S_ADO", "BASE;SITE")
+capture mata: mata clear
+capture noisily _dash_require_mata
+local e20rc = _rc
+mata: st_global("S_ADO", st_local("_env_sado"))
+quietly log close `lf20'
+
+// ENV-21: a library that loads but lacks one function dash calls.  The copy
+// renames _dash_split_segs, which nothing inside the library calls, so the
+// rest compiles and only that one is missing after the guard's repair.
+tempfile e21b
+local e21dir "`e21b'_m"
+mata: mkdir(st_local("e21dir"))
+// Copied in Mata, where a line is a value: the library's own text holds
+// quotes and backticks that a macro round trip would parse.
+mata:
+_e21fi = fopen("../dash_parse.mata", "r")
+_e21fo = fopen(st_local("e21dir") + "/dash_parse.mata", "w")
+while ((_e21l = fget(_e21fi)) != J(0, 0, "")) {
+    fput(_e21fo, subinstr(_e21l, "void _dash_split_segs(", "void _dash_zz_renamed("))
+}
+fclose(_e21fi)
+fclose(_e21fo)
+end
+local lg21 "`c(tmpdir)'dash_env21.log"
+capture erase "`lg21'"
+tempname lf21
+quietly log using "`lg21'", replace text name(`lf21')
+mata: st_global("S_ADO", "BASE;SITE;" + char(96) + char(34) + st_local("e21dir") + char(34) + char(39))
+capture mata: mata clear
+capture noisily _dash_require_mata
+local e21rc = _rc
+capture mata: mata describe _dash_check_utf8()
+local e21loaded = (_rc == 0)
+mata: st_global("S_ADO", st_local("_env_sado"))
+quietly log close `lf21'
+capture erase "`e21dir'/dash_parse.mata"
+capture rmdir "`e21dir'"
+
+// The real library back, and a log reader with it (`mata clear' took both).
+// The log is read at the runner's line width, so a needle is kept to the
+// start of a line: the full Missing list of ENV-20 wraps.
+capture mata: mata clear
+quietly capture run "../dash_parse.mata"
+do "cert_helpers.do"
+mata:
+real scalar _env_line_is(string scalar fn, string scalar want)
+{
+    real scalar   fh, hit
+    string scalar line
+    hit = 0
+    fh = fopen(fn, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strtrim(line) == want) hit = 1
+    }
+    fclose(fh)
+    return(hit)
+}
+end
+cert_file_has "`lg20'", needle("could not be loaded")
+local e20said = r(found)
+cert_file_has "`lg20'", needle("Missing: _dash_check_utf8()")
+local e20named = r(found)
+mata: st_local("e21named", strofreal(_env_line_is(st_local("lg21"), "Missing: _dash_split_segs()")))
+// ENV-22 reads the same log: the copy was found and loaded, so the report
+// may not say the library is nowhere to be found.
+cert_file_has "`lg21'", needle("is not on the ado-path")
+local e22nopath = r(found)
+cert_file_has "`lg21'", needle("was found but did not load completely")
+local e22found = r(found)
+cert_file_has "`lg21'", needle("an older or damaged copy")
+local e22why = r(found)
+capture erase "`lg20'"
+capture erase "`lg21'"
+
+assert `e20rc' == 198
+assert `e20said' == 1
+assert `e20named' == 1
+display "ENV-20 PASS: with no library to load from, the guard reports it: r(198), naming what is missing"
+
+assert `e21loaded' == 1
+assert `e21rc' == 198
+assert `e21named' == 1
+display "ENV-21 PASS: a repair that loads a library lacking one function reports exactly that one"
+
+assert `e22nopath' == 0
+assert `e22found' == 1
+assert `e22why' == 1
+display "ENV-22 PASS: a copy that was found and loaded but lacks a function is named as an older or damaged copy, not as a library that is not on the ado-path"
+
+
+// ================================================================
+// ENV-23 -- a library that is in memory only in part
+// ================================================================
+// Measured 24sep2026 under WP-24: the guard's first, cheap check asked for
+// one function, _dash_check_utf8, and took the library for whole when that
+// one was there.  With a library in memory only in part -- a copy whose
+// compile stopped half way, or a function defined by hand -- the check
+// passed and the first command died in Mata with r(3499), naming an
+// internal function: `dash scatter mpg weight, name(x)' after `mata clear'
+// and a lone _dash_check_utf8 said "_dash_split_segs() not found".  The
+// check now asks for every function (0.13 ms a command, measured); a part
+// library is repaired from the file where there is one, and refused by name
+// where there is none.
+
+// ENV-23a: the real library is on the ado-path, and repairs the part.
+capture mata: mata clear
+mata:
+void _dash_check_utf8(string scalar s) {}
+end
+local lg23 "`c(tmpdir)'dash_env23.log"
+capture erase "`lg23'"
+tempname lf23
+quietly log using "`lg23'", replace text name(`lf23')
+capture noisily dash scatter mpg weight, name(env23)
+local e23rc = _rc
+quietly log close `lf23'
+capture mata: mata describe _dash_split_segs()
+local e23whole = (_rc == 0)
+local reg23 "${dash_graph_registry}"
+local e23reg : list posof "env23" in reg23
+
+// ENV-23b: nothing to repair from.
+capture mata: mata clear
+mata:
+void _dash_check_utf8(string scalar s) {}
+end
+local lg23b "`c(tmpdir)'dash_env23b.log"
+capture erase "`lg23b'"
+tempname lf23b
+quietly log using "`lg23b'", replace text name(`lf23b')
+mata: st_global("S_ADO", "BASE;SITE")
+capture noisily _dash_require_mata
+local e23brc = _rc
+mata: st_global("S_ADO", st_local("_env_sado"))
+quietly log close `lf23b'
+
+// The real library and the log readers back before anything is asserted.
+capture mata: mata clear
+quietly capture run "../dash_parse.mata"
+do "cert_helpers.do"
+cert_file_has "`lg23'", needle("3499")
+local e23crash = r(found)
+cert_file_has "`lg23b'", needle("Missing: _dash_comma_pos()")
+local e23bnamed = r(found)
+capture erase "`lg23'"
+capture erase "`lg23b'"
+capture dash clear
+
+assert `e23rc' == 0
+assert `e23crash' == 0
+assert `e23whole' == 1
+assert `e23reg' > 0
+display "ENV-23a PASS: a library in memory only in part is repaired from the file on the ado-path, and the command runs"
+assert `e23brc' == 198
+assert `e23bnamed' == 1
+display "ENV-23b PASS: a library in memory only in part, with nothing to repair it from, is refused by name, r(198), not r(3499) at the first call"
 
 display ""
 display "All environment guard tests PASSED."

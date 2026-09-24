@@ -577,7 +577,11 @@ class TestTheServedDocument:
     def test_figures_keep_their_toolbars_as_on_the_saved_page(self, tmp_path):
         spec = _spec(["g1", "g2"], layout="bs")
         r, _, _ = _saved(tmp_path, spec)
-        for fig, *_ in _served_grid(_served(tmp_path, spec)).children:
+        children = _served_grid(_served(tmp_path, spec)).children
+        # g1 and g2 both reach the grid: an empty grid ran the loop zero
+        # times and asserted nothing (measured 24sep2026: two children).
+        assert len(children) == 2, [c[0].title.text for c in children]
+        for fig, *_ in children:
             assert fig.toolbar_location is not None
             assert (fig.toolbar_location
                     == r.figures[fig.title.text].toolbar_location)
