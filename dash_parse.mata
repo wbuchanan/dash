@@ -2114,6 +2114,7 @@ void _dash_extract_qual_vars(string scalar json_str,
     string rowvector keys, reserved, toks, found
     string scalar    val
     real rowvector   b, keep, v, sep
+    real matrix      sp
     real scalar      pos, local_pos, orig_pos, n, k, t, comma_pos, c1
     transmorphic     seen
 
@@ -2148,6 +2149,34 @@ void _dash_extract_qual_vars(string scalar json_str,
             }
             if (pos > n) break
             if (b[pos] != 34) continue
+            if (k == 2) {
+                // An if: the names outside its string literals, and only
+                // those.  Every name-like word of the value was taken, a
+                // literal's included, and the callers keep each word
+                // `confirm variable' accepts -- an abbreviation among them
+                // -- so `if make != "d"' exported displacement, and a KPI's
+                // `if make != "t h"' headroom, into the data the renderer
+                // reads, where each counted against the embedded-data
+                // limit (measured 24sep2026; test_qualifier_literals.cscript
+                // QL-21).  The value is decoded, so the scanner sees the
+                // literal's quotes the escapes stood for.
+                val = _dash_qual_json_text(b, pos)
+                sp  = _dash_qual_name_spans(val)
+                if (rows(sp) == 0) continue
+                toks = J(1, rows(sp), "")
+                for (t = 1; t <= rows(sp); t++) {
+                    toks[t] = substr(val, sp[t, 1], sp[t, 2])
+                }
+                keep = J(1, cols(toks), 0)
+                for (t = 1; t <= cols(toks); t++) {
+                    if (anyof(reserved, toks[t])) continue
+                    if (asarray_contains(seen, toks[t])) continue
+                    asarray(seen, toks[t], 1)
+                    keep[t] = 1
+                }
+                if (any(keep)) found = found, select(toks, keep)
+                continue
+            }
             val = _dash_qual_str(b, pos)
             if (k == 1) {
                 // Only tokenize before the first comma to avoid option
@@ -2193,6 +2222,236 @@ void _dash_extract_qual_vars(string scalar json_str,
     }
 
     st_local(out_macro, invtokens(found))
+}
+
+
+// ------------------------------------------------------------
+// _dash_qual_json_text(b, pos) -- one JSON string value, decoded.
+//
+// As _dash_qual_str, but each escape becomes the character it stands for,
+// so that a qualifier's string literals -- whose quotes the registry holds
+// as \" and whose compound quotes' backtick and apostrophe as ` and
+// ' -- can be told from the names around them.  b holds the bytes of
+// the whole JSON text and b[pos] the value's opening quote; pos is left one
+// past the closing quote.  A \uXXXX that is half of a surrogate pair, which
+// is no character, becomes a blank.  Linear: the text is never longer than
+// its escaped form, so it is written into a vector of that length.
+// ------------------------------------------------------------
+string scalar _dash_qual_json_text(real rowvector b, real scalar pos)
+{
+    real rowvector v, o, h, u
+    real scalar    n, i, e, m, j, k, c, cp, d
+
+    n = cols(b)
+    i = pos + 1
+    while (i <= n) {
+        if (b[i] == 34) break
+        i = i + (b[i] == 92 ? 2 : 1)
+    }
+    e   = min((i, n + 1))
+    m   = e - pos - 1
+    j   = pos + 1
+    pos = e + 1
+    if (m <= 0) return("")
+    v = b[|j \ e - 1|]
+    o = J(1, m, 32)
+    k = 0
+    j = 1
+    while (j <= m) {
+        c = v[j]
+        if (c == 92 & j < m) {
+            c = v[j + 1]
+            if (c == 117 & j + 5 <= m) {
+                h = v[|j + 2 \ j + 5|]
+                if (all((h :>= 48 :& h :<= 57) :| (h :>= 65 :& h :<= 70) :|
+                        (h :>= 97 :& h :<= 102))) {
+                    cp = 0
+                    for (d = 1; d <= 4; d++) {
+                        cp = cp * 16 + (h[d] <= 57 ? h[d] - 48 :
+                                        (h[d] <= 70 ? h[d] - 55 : h[d] - 87))
+                    }
+                    if (cp < 128) {
+                        o[++k] = cp
+                    }
+                    else if (cp >= 55296 & cp <= 57343) {
+                        o[++k] = 32
+                    }
+                    else {
+                        u = ascii(uchar(cp))
+                        o[|k + 1 \ k + cols(u)|] = u
+                        k = k + cols(u)
+                    }
+                    j = j + 6
+                    continue
+                }
+            }
+            if      (c == 98)  o[++k] = 8
+            else if (c == 102) o[++k] = 12
+            else if (c == 110) o[++k] = 10
+            else if (c == 114) o[++k] = 13
+            else if (c == 116) o[++k] = 9
+            else               o[++k] = c
+            j = j + 2
+            continue
+        }
+        o[++k] = c
+        j++
+    }
+    if (k == 0) return("")
+    return(char(o[|1 \ k|]))
+}
+
+
+// ------------------------------------------------------------
+// _dash_qual_name_spans(s) -- where the names of an if-expression are.
+//
+// One row per name, (first byte, length), in order.  A name is one Stata
+// would read as a variable: outside every string literal, plain ("...",
+// which ends at the next double quote) or compound (`"..."', which may
+// nest); not a function -- a name followed at once by "(": measured
+// 24sep2026, `count if abs (mpg) > 20' is "abs not found", r(111), so a
+// blank makes it a name again; not next to a period -- the letter of the
+// missing value .a, a time-series operator's L. and its operand; and not
+// one of the names Stata reserves, which are never variables (_n, _N,
+// _pi, _b, _se, ...).  A number, with the letters and periods after its
+// first digit (3e3, 3.5e+3), is passed over.  A byte of 128 or more is part
+// of a name: Stata names may hold Unicode letters.  Two passes, counting
+// then writing, so no row is appended one at a time: linear in s.
+// ------------------------------------------------------------
+real matrix _dash_qual_name_spans(string scalar s)
+{
+    real rowvector   b
+    real matrix      sp
+    real scalar      n, i, j, c, depth, k, isname, pass
+    string rowvector reserved
+
+    reserved = ("_all", "_b", "_coef", "_cons", "_n", "_N", "_pi",
+                "_pred", "_rc", "_se", "_skip", "byte", "double",
+                "float", "int", "long", "strL", "if", "in", "using",
+                "with")
+    b  = ascii(s)
+    n  = cols(b)
+    sp = J(0, 2, .)
+    for (pass = 1; pass <= 2; pass++) {
+        k = 0
+        i = 1
+        while (i <= n) {
+            c = b[i]
+            if (c == 96 & i < n) {
+                if (b[i + 1] == 34) {
+                    depth = 1
+                    i = i + 2
+                    while (i <= n) {
+                        if (depth == 0) break
+                        if (b[i] == 96 & i < n) {
+                            if (b[i + 1] == 34) {
+                                depth++
+                                i = i + 2
+                                continue
+                            }
+                        }
+                        if (b[i] == 34 & i < n) {
+                            if (b[i + 1] == 39) {
+                                depth--
+                                i = i + 2
+                                continue
+                            }
+                        }
+                        i++
+                    }
+                    continue
+                }
+            }
+            if (c == 34) {
+                i++
+                while (i <= n) {
+                    if (b[i] == 34) break
+                    i++
+                }
+                i++
+                continue
+            }
+            if (c >= 48 & c <= 57) {
+                while (i <= n) {
+                    c = b[i]
+                    if (!(c >= 128 | (c >= 48 & c <= 57) |
+                          (c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
+                          c == 95 | c == 46)) break
+                    i++
+                }
+                continue
+            }
+            if (c >= 128 | (c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
+                c == 95) {
+                j = i
+                while (j <= n) {
+                    c = b[j]
+                    if (!(c >= 128 | (c >= 48 & c <= 57) |
+                          (c >= 65 & c <= 90) | (c >= 97 & c <= 122) |
+                          c == 95)) break
+                    j++
+                }
+                isname = 1
+                if (i > 1) {
+                    if (b[i - 1] == 46) isname = 0
+                }
+                if (j <= n) {
+                    if (b[j] == 40 | b[j] == 46) isname = 0
+                }
+                if (isname) {
+                    if (anyof(reserved, substr(s, i, j - i))) isname = 0
+                }
+                if (isname) {
+                    k++
+                    if (pass == 2) sp[k, .] = (i, j - i)
+                }
+                i = j
+                continue
+            }
+            i++
+        }
+        if (pass == 1) sp = J(k, 2, .)
+    }
+    return(sp)
+}
+
+
+// ------------------------------------------------------------
+// _dash_qual_expand(s) -- an if-expression with each variable it
+// abbreviates written out.
+//
+// As Stata reads it against the data in memory, which is the data it was
+// just evaluated against when a graph or KPI is registered: `dis > 100' is
+// `displacement > 100' (count if dis > 100 is 60, measured 24sep2026).  The
+// renderer evaluates a qualifier against the exported columns, which carry
+// full names, so an abbreviation named no column there: the qualifier was
+// skipped with a warning and every row drawn (test_qualifier_literals
+// QL-22).  Only the names _dash_qual_name_spans finds are read; a name that
+// is no variable -- a scalar, a name `set varabbrev off' leaves unexpanded
+// -- and every string literal are left as typed.  The pieces are joined
+// once, at the end: adding each to a growing string would be quadratic.
+// ------------------------------------------------------------
+string scalar _dash_qual_expand(string scalar s)
+{
+    real matrix      sp
+    real scalar      k, m, idx, from, abbrev
+    string rowvector part
+
+    sp     = _dash_qual_name_spans(s)
+    abbrev = (c("varabbrev") == "on")
+    part   = J(1, 2 * rows(sp) + 1, "")
+    m      = 0
+    from   = 1
+    for (k = 1; k <= rows(sp); k++) {
+        idx = _st_varindex(substr(s, sp[k, 1], sp[k, 2]), abbrev)
+        if (idx < .) {
+            part[++m] = substr(s, from, sp[k, 1] - from)
+            part[++m] = st_varname(idx)
+            from      = sp[k, 1] + sp[k, 2]
+        }
+    }
+    part[++m] = substr(s, from, .)
+    return(invtokens(part[|1 \ m|], ""))
 }
 
 

@@ -91,6 +91,8 @@ _BS = "test/test_served_bs_layout.py::TestAdversarialServedBs::"
 _TW = "test/test_twoway_option_parity.py::TestAdversarialTwowayOptions::"
 # The renderer's text boxes, read as Stata reads them (24sep2026).
 _TBX = "test/test_textbox_multiline.py::TestTextboxAdversarial::"
+# T3r (24sep2026): a qualifier's logical operators.
+_LOGIC = "test/test_qualifier_logic.py::TestAdversarialLogicalOperators::"
 
 SURFACES = {
     # `dash <plot> varlist, ...' -- the plot-type token and the varlist.
@@ -177,6 +179,9 @@ SURFACES = {
             # A plot's or the graph's qualifier that closes its quote and
             # writes name() and saving(): text, naming and writing nothing.
             "test_json_escaping.cscript:JSE-47",
+            # Stata's logical operators read by the renderer (T3r,
+            # 24sep2026): a look-alike ! or ~ is not an operator.
+            _LOGIC + "test_a_lookalike_operator_is_not_read_as_one",
         ],
         "injection": [
             "test/test_axis_options.py::TestIfQualifierWhitelistIsNotWeakened::test_hostile_expressions_are_rejected",
@@ -192,6 +197,8 @@ SURFACES = {
             # the sample the rows, a weight and start() are judged over.
             "test_json_escaping.cscript:JSE-48",
             "test_json_escaping.cscript:JSE-66",
+            # A payload under ! or ~ still meets the whitelist (T3r).
+            _LOGIC + "test_a_payload_behind_a_not_does_not_run",
         ],
         "exhaustion": [
             _M + "TestIfQualifierExhaustion::test_a_run_of_negations_is_skipped_not_raised",
@@ -203,6 +210,11 @@ SURFACES = {
             # A literal of 20,000 apostrophes, stored whole and applied in
             # bounded time.
             "test_json_escaping.cscript:JSE-49",
+            # The logic reader is one pass, bounded in both modes (T3r).
+            _LOGIC + "test_a_qualifier_past_the_bound_is_refused_in_bounded_time",
+            _LOGIC + "test_a_long_operand_under_many_operators_costs_linear_memory",
+            _LOGIC + "test_a_long_name_is_read_in_linear_time",
+            _LOGIC + "test_redundant_parentheses_cost_nothing",
         ],
     },
     # jitter(), level(), bin(), n(), bwidth(), bands(), xsize() ...

@@ -318,6 +318,13 @@ COVERAGE = {
         "_dash_link_refusal": ("test_json_escaping.cscript:JSE-56",),
         # e2e: a program's own arguments and the user's text between them,
         # read by value -- a title, a qualifier and values holding "'.
+        # e2e: a qualifier's names outside its literals are exported, each
+        # under its full name, and its abbreviations are written out when it
+        # is registered -- both modes then draw Stata's rows.
+        "_dash_qual_json_text": ("test_qualifier_literals.cscript:QL-21",),
+        "_dash_qual_name_spans": ("test_qualifier_literals.cscript:QL-21",
+                                  "test_qualifier_literals.cscript:QL-22"),
+        "_dash_qual_expand": ("test_qualifier_literals.cscript:QL-22",),
         "_dash_text_args": ("test_json_escaping.cscript:JSE-42",
                             "test_json_escaping.cscript:JSE-46",
                             "test_json_escaping.cscript:JSE-47"),

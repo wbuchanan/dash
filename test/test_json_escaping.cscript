@@ -504,7 +504,10 @@ display "JSE-17 PASS: dash build applies the qualifier and reports nothing skipp
 // value of 1,000,000 characters) and listed names by searching the whole
 // list for every word (quadratic in the words); only its stop at the first
 // escape kept a long escaped qualifier from paying for either.  The text is
-// kept in Mata, never in a macro.
+// kept in Mata, never in a macro.  A literal's words are not names since
+// 24sep2026: they were read as names too, and a word that named or
+// abbreviated a variable exported it (test_qualifier_literals.cscript
+// QL-21), so the reader returns make and foreign and none of the 30,000.
 mata: _jse_q18 = "{" + char(34) + "if_expr" + char(34) + ":" + char(34) + ///
     invtokens("make == " + char(92) + char(34) + "w" :+ strofreal(1..30000) :+ ///
     char(92) + char(34), " | ") + " | foreign == 1" + char(34) + "}"
@@ -520,9 +523,8 @@ mata: mata drop _jse_q18
 local jse_n18 : word count `jse_v18'
 display as text "  `jse_l18' characters read in `jse_t18' s; `jse_n18' words"
 assert `jse_l18' > 600000
-assert `: list posof "foreign" in jse_v18' > 0
-assert `: list posof "make" in jse_v18' == 1
-assert `jse_n18' == 30002
+assert `jse_n18' == 2
+assert "`jse_v18'" == "make foreign"
 assert `jse_t18' < 30
 display "JSE-18 PASS: a 620,000-character qualifier is read whole in bounded time"
 

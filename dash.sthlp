@@ -143,6 +143,17 @@ For plot types, marker/line/axis options, and {it:if}/{it:in} qualifiers,
 See {manhelp twoway G-2:graph twoway} for the full reference.
 
 {pstd}
+A qualifier is evaluated against the data in memory when the graph or KPI
+is registered, as {cmd:twoway} evaluates it when it draws: an invalid one
+stops the command with {cmd:twoway}'s own message and return code, and
+nothing is registered.  A variable it abbreviates is written out in full
+then.  The dashboard applies the qualifier to the rows it draws, and one
+difference from Stata remains there: a missing value compared with {cmd:>}
+or {cmd:>=} is false, where Stata puts a missing value above every number
+-- {cmd:if rep78 > 3} keeps the 29 cars rated above 3, where Stata also
+keeps the 5 with no rating.
+
+{pstd}
 This help file documents only the features that differ from or extend
 {cmd:twoway}.
 

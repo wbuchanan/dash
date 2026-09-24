@@ -3649,7 +3649,12 @@ time"; `test/test_json_escaping.cscript` JSE-42 to JSE-70).  A served
 filter move keeps a raw layer's own `if` and `in`, and clears a brushed
 selection as the saved page does, since 24sep2026 (BUGS.md, "The served
 app dropped a layer's own if() and in() at the first filter move";
-`test/test_mode_parity.py` TestALayersOwnQualifierAfterAMove).
+`test/test_mode_parity.py` TestALayersOwnQualifierAfterAMove).  The
+renderer reads `!x` and `~x` on a numeric column as Stata does, and a
+qualifier is stored with its abbreviations written out, since 24sep2026
+(BUGS.md, "The renderer skipped `if !x' and `if ~x' on a numeric column"
+and "A qualifier that abbreviates a variable is skipped by the renderer";
+`test/test_qualifier_literals.cscript` QL-16 to QL-22).
 
 ### Verification, measured
 

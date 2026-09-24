@@ -45,11 +45,16 @@
 *! its literal would select instead, so a wrong reading cannot draw the
 *! right number of rows by accident.
 *!
-*! Tests: QL-01 through QL-15 (QL-15, added in WP-24's second round, is
-*! QL-14's twin for an `in' qualifier)
+*! Tests: QL-01 through QL-22 (QL-15, added in WP-24's second round, is
+*! QL-14's twin for an `in' qualifier; QL-16..QL-19, 24sep2026, Stata's
+*! logical operators: !, ~, a number standing for true, a blank inside
+*! != and <=, and a chain of comparisons; QL-20..QL-22, 24sep2026, what
+*! dash.ado does with a qualifier: refuses an invalid one at the command,
+*! as twoway does, exports only the variables it names outside its string
+*! literals, and writes out each variable it abbreviates)
 *!
 *! Usage:  do test/test_qualifier_literals.cscript
-*! Version: 1.1  24sep2026
+*! Version: 1.2  24sep2026
 
 cscript "a qualifier's string literals select the rows Stata selects" adodir ".."
 
@@ -502,6 +507,409 @@ assert "$QL_PAGE_CARRIED" == "`=3 * _N'"
 capture erase "`p15'.html"
 capture dash clear
 display "QL-15 PASS: each layer draws the observations its own in range selects, from an export of every observation"
+
+// ----------------------------------------------------------------
+// QL-16..QL-19 -- Stata's logical operators (24sep2026).  The renderer
+// wrote `!' and `~' as pandas' `~', which cannot invert a number, so
+// `if !foreign' was skipped and all 74 cars drawn where Stata selects 52;
+// a bare `if foreign' was handed to pandas, which indexed the frame by
+// its values and drew observation 1 fifty-two times and observation 2
+// twenty-two times, without a word; `foreign & rep78 == 3' was skipped;
+// a blank inside `! =' or `< =', which Stata reads, was refused; and a
+// chain of comparisons was read as Python chains it, where Stata ranks
+// != > < <= >= == and evaluates left to right (`mpg > 20 < 1' is
+// `(mpg > 20) < 1').  Stata's own count is the oracle for every case;
+// test_qualifier_logic.py holds the rest of the rules, case by case.
+// ----------------------------------------------------------------
+local l1  `"!foreign"'
+local l2  `"~foreign"'
+local l3  `"!foreign == 1"'
+local l4  `"!!foreign"'
+local l5  `"foreign"'
+local l6  `"foreign & rep78 == 3"'
+local l7  `"!foreign | rep78 == 5"'
+local l8  `"foreign ! = 1"'
+local l9  `"mpg < = 20"'
+local l10 `"mpg > 20 < 1"'
+local l11 `"!(foreign == 1) & !(rep78 == 3)"'
+local nl 11
+
+// QL-16 -- each through the immediate route and through name() and the
+// build's export in both modes, as QL-01..QL-09.
+local ql16 = 0
+forvalues j = 1/`nl' {
+    quietly count if `l`j''
+    local n = r(N)
+    quietly levelsof rowid if `l`j'', local(want)
+    local want : list retokenize want
+    assert `n' > 0 & `n' < _N
+    tempfile p
+    global QL_PAGE "`p'.html"
+    capture erase "`p'.html"
+    _ql_run `"dash scatter mpg rowid if `l`j'', saving("`p'.html")"'
+    local rc = r(rc)
+    local lg `"`r(log)'"'
+    cert_log_has "`lg'", needle("filter skipped")
+    local sk = r(found)
+    assert `rc' == 0
+    python: _ql_page()
+    display as text "  QL-16 [" `"`l`j''"' "]  Stata: `n' rows"
+    display as text "    immediate: carried $QL_PAGE_CARRIED, drew [$QL_PAGE_DRAWN], skipped `sk'"
+    assert "$QL_PAGE_DRAWN" == "`want'"
+    assert "$QL_PAGE_CARRIED" == "`n'"
+    assert `sk' == 0
+    capture dash clear
+    dash scatter mpg rowid if `l`j'', name(qll`j')
+    tempfile s d a
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global QL_SPEC "`s'"
+    global QL_DATA "`d'"
+    global QL_APP  "`a'"
+    python: _ql_modes()
+    display as text "    saved:  carried $QL_SAVED_CARRIED, drew [$QL_SAVED_DRAWN]"
+    display as text "    served: carried $QL_SERVED_CARRIED, drew [$QL_SERVED_DRAWN], skipped $QL_SKIPPED"
+    assert "$QL_SAVED_DRAWN" == "`want'" & "$QL_SERVED_DRAWN" == "`want'"
+    assert "$QL_SAVED_CARRIED" == "`n'" & "$QL_SERVED_CARRIED" == "`n'"
+    assert "$QL_SKIPPED" == "0"
+    capture erase "`p'.html"
+    capture dash clear
+    local ++ql16
+}
+assert `ql16' == `nl'
+display "QL-16 PASS: both routes, both modes, draw the rows Stata selects for all `nl' logical qualifiers"
+
+// QL-17 -- a KPI under the same qualifiers: both cards read Stata's sum of
+// rowid over the rows it selects.
+local nk = 0
+foreach j of numlist 1 3 5 6 9 {
+    quietly summarize rowid if `l`j'', meanonly
+    local ks = strtrim(string(r(sum), "%12.0f"))
+    capture dash clear
+    dash scatter mpg rowid, name(qlkg`j')
+    dash kpi sum(rowid) if `l`j'', title("S") fmt(%12.0f) name(qlkk`j')
+    tempfile s d a
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global QL_SPEC "`s'"
+    global QL_DATA "`d'"
+    global QL_APP  "`a'"
+    python: _ql_modes()
+    display as text "  QL-17 [" `"`l`j''"' "]  KPI saved $QL_SAVED_KPI, served $QL_SERVED_KPI, Stata `ks'"
+    assert "$QL_SAVED_KPI" == "`ks'" & "$QL_SERVED_KPI" == "`ks'"
+    local ++nk
+}
+assert `nk' == 5
+capture dash clear
+display "QL-17 PASS: a KPI under a logical qualifier gives Stata's value in both modes"
+
+// QL-18 -- by(foreign): each qualifier leaves one level of foreign, so
+// twoway draws one panel.  Skipped, `if !foreign' drew two; read by its
+// values, `if foreign' drew one panel of two domestic cars, repeated.
+foreach j of numlist 1 5 {
+    quietly levelsof rowid if `l`j'', local(want)
+    local want : list retokenize want
+    tempfile p
+    global QL_PAGE "`p'.html"
+    capture erase "`p'.html"
+    _ql_run `"dash scatter mpg rowid if `l`j'', by(foreign) saving("`p'.html")"'
+    assert r(rc) == 0
+    python: _ql_page()
+    display as text "  QL-18 [" `"`l`j''"' "] immediate: $QL_PAGE_PANELS panel(s), drew [$QL_PAGE_DRAWN]"
+    assert "$QL_PAGE_PANELS" == "1"
+    assert "$QL_PAGE_DRAWN" == "`want'"
+    capture dash clear
+    dash scatter mpg rowid if `l`j'', by(foreign) name(qlby`j')
+    tempfile s d a
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global QL_SPEC "`s'"
+    global QL_DATA "`d'"
+    global QL_APP  "`a'"
+    python: _ql_modes()
+    display as text "    named: saved $QL_SAVED_PANELS panel(s), served $QL_SERVED_PANELS"
+    assert "$QL_SAVED_PANELS" == "1" & "$QL_SERVED_PANELS" == "1"
+    assert "$QL_SAVED_DRAWN" == "`want'" & "$QL_SERVED_DRAWN" == "`want'"
+    capture erase "`p'.html"
+    capture dash clear
+}
+display "QL-18 PASS: by() draws the one panel a logical qualifier leaves, in both routes"
+
+// QL-19 -- dash build itself, end to end: nothing it prints says one of
+// the eleven was skipped.  The control is a qualifier the renderer does
+// skip -- a subscript, which its whitelist refuses (JSE-17) -- so the same
+// build and search find the words where they are.
+capture dash clear
+forvalues j = 1/`nl' {
+    dash scatter mpg rowid if `l`j'', name(qlv`j')
+}
+tempfile h19
+capture erase "`h19'.html"
+_ql_run `"dash build, saving("`h19'.html") replace nobrowser"'
+local rc19 = r(rc)
+local lg19 `"`r(log)'"'
+assert `rc19' == 0
+cert_log_has "`lg19'", needle("filter skipped")
+assert r(found) == 0
+confirm file "`h19'.html"
+capture erase "`h19'.html"
+capture dash clear
+dash scatter mpg rowid if mpg > mpg[1], name(qlvctl)
+_ql_run `"dash build, saving("`h19'.html") replace nobrowser"'
+local rc19c = r(rc)
+local lg19c `"`r(log)'"'
+assert `rc19c' == 0
+cert_log_has "`lg19c'", needle("filter skipped")
+assert r(found) == 1
+capture erase "`h19'.html"
+capture dash clear
+display "QL-19 PASS: dash build applies all eleven logical qualifiers and reports nothing skipped"
+
+// ----------------------------------------------------------------
+// QL-20 -- an invalid qualifier is refused at the command, with twoway's
+// own message and return code, and nothing is registered or written, on
+// every route that registers one.  The maintainer chose this (24sep2026):
+// the qualifier is evaluated against the data in memory when the graph or
+// KPI is registered, as twoway evaluates it when it draws.  -syntax-
+// evaluates the qualifier it parses, and a KPI's summarize evaluates its
+// own, so this held at 2df1900 already; the form that did not, a
+// qualifier after the plot groups, was dropped whole at c0200c0 (BUGS.md)
+// and is read by -syntax- since 68327a8.  No test held any of it.  The
+// oracle is twoway itself -- a KPI's, summarize -- run first on the same
+// text, its first line of output the message dash must print.
+// ----------------------------------------------------------------
+mata:
+string scalar _ql_first_line(string scalar path)
+{
+    real scalar   fh
+    string scalar line
+    fh = fopen(path, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strtrim(line) != "") {
+            fclose(fh)
+            return(strtrim(line))
+        }
+    }
+    fclose(fh)
+    return("")
+}
+end
+local b1 `"if nosuch > 1"'
+local b2 `"if mpg >"'
+local b3 `"if "a""'
+local b4 `"in 1/100"'
+local b5 `"in 0/5"'
+local b6 `"if m > 1"'
+local nb 6
+local ql20 = 0
+forvalues j = 1/`nb' {
+    // twoway, then dash, on each route: the plot's own qualifier, a plot
+    // group's, the graph's after the groups, the one-line form, a function
+    // layer's, and a KPI's (held to summarize).
+    local tw1 `"twoway scatter mpg rowid `b`j'', nodraw"'
+    local da1 `"dash scatter mpg rowid `b`j'', name(ql20a)"'
+    local tw2 `"twoway (scatter mpg rowid `b`j'') (line mpg rowid), nodraw"'
+    local da2 `"dash (scatter mpg rowid `b`j'') (line mpg rowid), name(ql20b)"'
+    local tw3 `"twoway (scatter mpg rowid) (line mpg rowid) `b`j'', nodraw"'
+    local da3 `"dash (scatter mpg rowid) (line mpg rowid) `b`j'', name(ql20c)"'
+    tempfile p20
+    capture erase "`p20'.html"
+    local tw4 `"twoway scatter mpg rowid `b`j'', nodraw"'
+    local da4 `"dash scatter mpg rowid `b`j'', saving("`p20'.html")"'
+    local tw5 `"twoway function y = x `b`j'', range(0 1) nodraw"'
+    local da5 `"dash function y = x `b`j'', range(0 1) name(ql20f)"'
+    local tw6 `"summarize price `b`j''"'
+    local da6 `"dash kpi mean(price) `b`j'', title("K") name(ql20k)"'
+    forvalues r = 1/6 {
+        _ql_run `"`tw`r''"'
+        local trc = r(rc)
+        mata: st_local("tmsg", _ql_first_line(st_global("r(log)")))
+        capture dash clear
+        _ql_run `"`da`r''"'
+        local drc = r(rc)
+        mata: st_local("dmsg", _ql_first_line(st_global("r(log)")))
+        mata: st_local("same", strofreal(st_local("tmsg") == st_local("dmsg")))
+        local reg "${dash_graph_registry}"
+        mata: _dash_say("txt", "", "  QL-20 [" + st_local("b`j'") + "] route `r': twoway rc `trc' [" + st_local("tmsg") + "], dash rc `drc' [" + st_local("dmsg") + "], registry [" + st_local("reg") + "]", "")
+        assert `trc' != 0
+        assert `drc' == `trc'
+        // A malformed expression (case 2) is worded by whichever of
+        // Stata's parsers reads it: -syntax- says "invalid syntax", and
+        // twoway's parse of a qualifier after the groups or on a function
+        // layer, and -syntax- reading a KPI's, say "mpg> invalid name"
+        // (measured 24sep2026, the same r(198) on every route).  Either is
+        // Stata's own; every other message is twoway's to the letter.
+        if `j' == 2 {
+            mata: st_local("same", strofreal(anyof(("invalid syntax", "mpg> invalid name"), st_local("dmsg"))))
+        }
+        assert `same' == 1
+        assert "`reg'" == ""
+        if `r' == 4 {
+            capture confirm file "`p20'.html"
+            assert _rc != 0
+        }
+        local ++ql20
+    }
+}
+// And under set varabbrev off, where an abbreviation is no name at all.
+set varabbrev off
+_ql_run `"twoway scatter mpg rowid if dis > 100, nodraw"'
+local trc = r(rc)
+mata: st_local("tmsg", _ql_first_line(st_global("r(log)")))
+capture dash clear
+_ql_run `"dash scatter mpg rowid if dis > 100, name(ql20v)"'
+local drc = r(rc)
+mata: st_local("dmsg", _ql_first_line(st_global("r(log)")))
+set varabbrev on
+mata: _dash_say("txt", "", "  QL-20 varabbrev off: twoway rc `trc' [" + st_local("tmsg") + "], dash rc `drc' [" + st_local("dmsg") + "]", "")
+assert `trc' == 111 & `drc' == 111
+mata: assert(st_local("tmsg") == st_local("dmsg"))
+assert "${dash_graph_registry}" == ""
+assert `ql20' == 6 * `nb'
+capture dash clear
+display "QL-20 PASS: an invalid qualifier stops every route with twoway's own message and code, and nothing is registered"
+
+// ----------------------------------------------------------------
+// QL-21 -- only the variables a qualifier names outside its string
+// literals are exported.  dash.ado took every name-like word of the
+// qualifier, a literal's included, and kept each that `confirm variable'
+// accepts -- an abbreviation among them: `if make != "d"' exported
+// displacement (d abbreviates it) and a KPI's `if make != "t h"' headroom,
+// into the data file the renderer reads, where each counted against the
+// embedded-data limit: with dash_max_cells at 250 the graph was refused,
+// "would embed 296 values (74 observations x 4 variables)", r(134), where
+// `if make != "x"' built (measured 24sep2026 at 2df1900).  The control
+// names displacement outside a literal, so the check can see it.
+// ----------------------------------------------------------------
+python:
+def _ql_exported(name):
+    with open(_ql_M.getGlobal("QL_DATA"), encoding="utf-8") as fh:
+        text = fh.read()
+    _ql_M.setGlobal("QL_HAS", "1" if chr(34) + name + chr(34) in text else "0")
+
+def _ql_stored(gname):
+    v = _ql_json.loads(_ql_M.getGlobal("dash_json_" + gname))
+    for part in _ql_M.getGlobal("QL_PATH").split():
+        v = v[int(part)] if part.isdigit() else v[part]
+    _ql_M.setGlobal("QL_STORED_OK", "1" if v == _ql_M.getGlobal("QL_WANT") else "0")
+end
+local e1 `"dash scatter mpg rowid if make != "d", name(ql21a)"'
+local e2 `"dash scatter mpg rowid if make != `"d"', name(ql21b)"'
+local e3 `"dash (scatter mpg rowid) (line mpg rowid) if make != "d", name(ql21c)"'
+local e4 `"dash (scatter mpg rowid if make != "d") (line mpg rowid), name(ql21d)"'
+local e5 `"dash kpi mean(price) if make != "t h", title("K") name(ql21k)"'
+local e6 `"dash scatter mpg rowid if make != "x" & displacement > 0, name(ql21z)"'
+forvalues j = 1/6 {
+    capture dash clear
+    if `j' == 5 {
+        dash scatter mpg rowid, name(ql21g)
+    }
+    `e`j''
+    tempfile s d
+    _dash_prepare_spec, specpath("`s'") datapath("`d'")
+    global QL_DATA "`d'"
+    python: _ql_exported("displacement")
+    local hd = $QL_HAS
+    python: _ql_exported("headroom")
+    local hh = $QL_HAS
+    mata: _dash_say("txt", "", "  QL-21 [" + st_local("e`j'") + "]: displacement exported `hd', headroom `hh'", "")
+    if `j' < 6 {
+        assert `hd' == 0 & `hh' == 0
+    }
+    else {
+        assert `hd' == 1
+    }
+}
+// The embedded-data limit counts what is exported: three variables here,
+// on the build and on the one-line route alike.
+global dash_max_cells 250
+capture dash clear
+dash scatter mpg rowid if make != "d", name(ql21m)
+tempfile h21
+capture erase "`h21'.html"
+_ql_run `"dash build, saving("`h21'.html") replace nobrowser"'
+local rc21a = r(rc)
+capture erase "`h21'.html"
+_ql_run `"dash scatter mpg rowid if make != "d", saving("`h21'.html")"'
+local rc21b = r(rc)
+capture erase "`h21'.html"
+global dash_max_cells ""
+display as text "  QL-21 under dash_max_cells 250: build rc `rc21a', one-line rc `rc21b'"
+assert `rc21a' == 0 & `rc21b' == 0
+capture dash clear
+display "QL-21 PASS: a word inside a qualifier's string literal is not exported, nor counted against the data limit"
+
+// ----------------------------------------------------------------
+// QL-22 -- a variable the qualifier abbreviates is written out when the
+// graph or KPI is registered, as Stata read it against the data then.
+// The renderer evaluates the qualifier against the exported columns, which
+// carry full names, so `if dis > 100' named no column there: skipped with
+// a warning, every row drawn, where Stata's count selects 60 (BUGS.md, "A
+// qualifier that abbreviates a variable is skipped by the renderer";
+// measured 24sep2026).  A literal holding the same letters stays as typed.
+// ----------------------------------------------------------------
+quietly count if displacement > 100
+local n22 = r(N)
+quietly levelsof rowid if displacement > 100, local(want22)
+local want22 : list retokenize want22
+assert `n22' == 60
+local a1 `"dis > 100"'
+local a2 `"make != "dis" & dis > 100"'
+forvalues j = 1/2 {
+    // The immediate route.
+    tempfile p
+    global QL_PAGE "`p'.html"
+    capture erase "`p'.html"
+    _ql_run `"dash scatter mpg rowid if `a`j'', saving("`p'.html")"'
+    local rc = r(rc)
+    cert_log_has "`r(log)'", needle("filter skipped")
+    local sk = r(found)
+    assert `rc' == 0
+    python: _ql_page()
+    display as text "  QL-22 [" `"`a`j''"' "] immediate: carried $QL_PAGE_CARRIED, skipped `sk'"
+    assert "$QL_PAGE_DRAWN" == "`want22'" & `sk' == 0
+    capture erase "`p'.html"
+    // The named route, the plot's own qualifier and the graph's after the
+    // groups, in both modes; and what is stored.
+    mata: st_global("QL_WANT", ("`j'" == "1" ? "" : "make != " + char(34) + "dis" + char(34) + " & ") + "displacement > 100")
+    forvalues g = 1/2 {
+        capture dash clear
+        if `g' == 1 {
+            dash scatter mpg rowid if `a`j'', name(ql22a)
+            global QL_PATH "plots 0 if_expr"
+        }
+        else {
+            dash (scatter mpg rowid) (line mpg rowid) if `a`j'', name(ql22a)
+            global QL_PATH "if_expr"
+        }
+        python: _ql_stored("ql22a")
+        tempfile s d a
+        _dash_prepare_spec, specpath("`s'") datapath("`d'")
+        global QL_SPEC "`s'"
+        global QL_DATA "`d'"
+        global QL_APP  "`a'"
+        python: _ql_modes()
+        display as text "    form `g': stored as written out $QL_STORED_OK, skipped $QL_SKIPPED"
+        assert "$QL_STORED_OK" == "1"
+        assert "$QL_SAVED_DRAWN" == "`want22'" & "$QL_SERVED_DRAWN" == "`want22'"
+        assert "$QL_SKIPPED" == "0"
+    }
+}
+// A KPI: its qualifier is stored written out, and both cards read Stata's
+// sum over the rows it selects.
+quietly summarize rowid if price > 5000, meanonly
+local ks = strtrim(string(r(sum), "%12.0f"))
+capture dash clear
+dash scatter mpg rowid, name(ql22g)
+dash kpi sum(rowid) if pri > 5000, title("S") fmt(%12.0f) name(ql22k)
+mata: assert(st_global("dash_kpi_ql22k__if") == "price > 5000")
+tempfile s d a
+_dash_prepare_spec, specpath("`s'") datapath("`d'")
+global QL_SPEC "`s'"
+global QL_DATA "`d'"
+global QL_APP  "`a'"
+python: _ql_modes()
+display as text "  QL-22 KPI if pri > 5000: saved $QL_SAVED_KPI, served $QL_SERVED_KPI, Stata `ks'"
+assert "$QL_SAVED_KPI" == "`ks'" & "$QL_SERVED_KPI" == "`ks'"
+capture dash clear
+display "QL-22 PASS: an abbreviated variable in a qualifier is written out at registration and both modes draw Stata's rows"
 
 capture dash clear
 macro drop QL_*

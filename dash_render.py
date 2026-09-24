@@ -10936,6 +10936,14 @@ def _stata_if_to_pandas(expr: str) -> str:
         return expr
     out, _literals = _mask_string_literals(str(expr))
 
+    # A blank inside a two-character operator: Stata reads `x ! = 1',
+    # `x ~ = 1', `m < = 20' and `m > = 20' as !=, ~=, <= and >= (52, 52,
+    # 38 and 39 of auto's cars, measured 24sep2026 with the console
+    # binary), where Python refuses them and the qualifier was skipped.
+    # `x ! == 1' stays as written: Stata refuses it, r(198), and so does
+    # the parser.  First, so that the idioms below see `x <= .'.
+    out = re.sub(r"([!~<>])[ \t]+=(?!=)", r"\1=", out)
+
     # inlist(x, a, b, ...) -> ((x == a) | (x == b) | ...)
     def _inlist(m):
         parts = [p.strip() for p in m.group(1).split(",")]
@@ -10974,19 +10982,218 @@ def _stata_if_to_pandas(expr: str) -> str:
                  lambda m: f"({m.group(1).strip()} != {m.group(1).strip()})",
                  out)
 
-    # Stata's missing idioms against the sort-last dot.
-    out = re.sub(r"([A-Za-z_]\w*)\s*<\s*\.(?!\d)", r"(\1 == \1)", out)
-    out = re.sub(r"([A-Za-z_]\w*)\s*<=\s*\.(?!\d)", r"(\1 == \1)", out)
-    out = re.sub(r"([A-Za-z_]\w*)\s*!=\s*\.(?!\d)", r"(\1 == \1)", out)
-    out = re.sub(r"([A-Za-z_]\w*)\s*~=\s*\.(?!\d)", r"(\1 == \1)", out)
-    out = re.sub(r"([A-Za-z_]\w*)\s*==\s*\.(?!\d)", r"(\1 != \1)", out)
-    out = re.sub(r"([A-Za-z_]\w*)\s*>=\s*\.(?!\d)", r"(\1 != \1)", out)
-    out = re.sub(r"([A-Za-z_]\w*)\s*>\s*\.(?!\d)", r"(\1 != \1)", out)
+    # Stata's missing idioms against the sort-last dot.  A name is matched
+    # from its first character only, (?<!\w): without that anchor each
+    # pattern restarted at every character of a long name and gave the
+    # rest back one character at a time -- quadratic, 3.2 s for a name of
+    # 8,000 characters and hours for one of a million (measured 24sep2026,
+    # test_qualifier_logic.py) -- and it rewrote the tail of a name: for a
+    # variable named e-acute x, `x < .' became e-acute `(x == x)', a call.
+    # A name is Stata's: a letter or underscore, Unicode included, then
+    # letters, digits and underscores.
+    _nm = r"(?<!\w)([^\W\d]\w*)"
+    out = re.sub(_nm + r"\s*<\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(_nm + r"\s*<=\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(_nm + r"\s*!=\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(_nm + r"\s*~=\s*\.(?!\d)", r"(\1 == \1)", out)
+    out = re.sub(_nm + r"\s*==\s*\.(?!\d)", r"(\1 != \1)", out)
+    out = re.sub(_nm + r"\s*>=\s*\.(?!\d)", r"(\1 != \1)", out)
+    out = re.sub(_nm + r"\s*>\s*\.(?!\d)", r"(\1 != \1)", out)
 
-    # Stata's ~= is !=, and its ! is a logical not; leave != alone.
+    # Stata's ~= is !=, and its ! and ~ are a logical not, which
+    # _stata_logic_to_pandas reads with the rest of the logic.
     out = out.replace("~=", "!=")
-    out = re.sub(r"!(?!=)", "~", out)
+    out = _stata_logic_to_pandas(out)
     return _unmask_string_literals(out, _literals)
+
+
+def _stata_logic_to_pandas(expr: str) -> str:
+    """Stata's logical operators, precedence and truth, as a pandas query.
+
+    *expr* is a qualifier after :func:`_stata_if_to_pandas`' other
+    rewrites: its string literals masked, its functions and missing idioms
+    written as comparisons, ``~=`` written ``!=``.  Three rules of Stata's
+    are made explicit here, measured 24sep2026 with the console binary on
+    auto (test_qualifier_logic.py holds each case to Stata's rows):
+
+    * A number is true when it is not zero, and a missing value is not
+      zero.  ``!x`` is true exactly where x == 0 and ``if foreign`` keeps
+      the foreign cars.  pandas' ``~`` cannot invert a float, so ``if
+      !foreign`` was skipped and drew 74 cars where Stata draws 52; a
+      bare ``foreign`` was handed to ``DataFrame.query``, which indexed the
+      frame BY ITS VALUES and drew observation 1 fifty-two times and
+      observation 2 twenty-two times, without a word; ``foreign & rep78 ==
+      3`` was skipped.  A number wherever a true/false value belongs --
+      under ``!``, beside ``&`` or ``|``, or as the whole qualifier -- is
+      written ``(x != 0)``: NaN != 0 is true, as Stata's missing is.
+    * ``!`` binds tighter than anything, so ``!foreign == 1`` is
+      ``(!foreign) == 1``; a sign right after it (``!-x``, ``~+x``) is
+      Stata's r(198), "invalid syntax", and stays a ``!``, which no parser
+      accepts, so the qualifier is refused aloud.
+    * The relational operators are not one level, as Python's are, and
+      they do not chain: from tightest to loosest they are ``!=``, ``>``,
+      ``<``, ``<=``, ``>=``, ``==``, then ``&``, then ``|``, each left to
+      right -- ``10 < mpg < 20`` is ``(10 < mpg) < 20``, true for every car,
+      where Python chains it to ``10 < mpg and mpg < 20``.  Every
+      comparison and every group of ``&`` or ``|`` is written inside its
+      own parentheses, so pandas -- which reads ``&`` and ``|`` as ``and``
+      and ``or`` -- sees Stata's grouping.
+
+    The input is read by Stata's grammar for what the whitelist can pass:
+    names, numbers, masked literals, parentheses, ``! ~ - +``, the six
+    comparisons, ``&`` and ``|``.  Anything else -- a function call, an
+    attribute, a subscript, a Python keyword, arithmetic, a character the
+    grammar has not got -- is not Stata's qualifier as the renderer can
+    evaluate it, and the text comes back as before, its nots spelled ``~``,
+    for ``_validate_if_expr`` to refuse.  The output holds only the
+    input's own tokens, parentheses, ``~`` and comparisons with 0, so it
+    adds nothing to what the whitelist sees.  One pass over the tokens, no
+    recursion; a tree deeper than ``_IF_EXPR_MAX_DEPTH`` -- the
+    whitelist's own bound -- comes back behind a ``!`` so that it cannot
+    parse, where a flat chain of comparisons, which Python reads as one
+    node, would otherwise pass the bound.  Redundant parentheses are not
+    part of the tree, so ``((((!g))))`` costs nothing.
+
+    Args:
+        expr: The masked, rewritten qualifier.
+
+    Returns:
+        The pandas query, or *expr* with its nots spelled ``~`` when it is
+        not the grammar above.
+    """
+    import keyword as _keyword
+    fallback = re.sub(r"!(?!=)", "~", expr)
+    # Tokens.  A literal is its \x01<i>\x01 placeholder by now; a number is
+    # written in ASCII digits, as Stata writes one.  No two quantifiers of
+    # the number pattern can take the same digit, so a long run of digits
+    # that fails it is given back once, not once per digit.
+    token = re.compile(
+        r"(?P<ws>[ \t]+)"
+        r"|(?P<lit>\x01[0-9]+\x01)"
+        r"|(?P<num>(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?"
+        r"(?![\w.]))"
+        r"|(?P<name>[^\W\d]\w*)"
+        r"|(?P<op>==|!=|<=|>=|[<>&|!~()+\-])")
+    toks = []
+    i, n = 0, len(expr)
+    while i < n:
+        m = token.match(expr, i)
+        if m is None:
+            return fallback
+        i = m.end()
+        if m.lastgroup == "ws":
+            continue
+        if m.lastgroup == "name" and _keyword.iskeyword(m.group()):
+            return fallback
+        toks.append((m.lastgroup, m.group()))
+    # Stata's precedence for the binary operators, loosest first.
+    prec = {"|": 1, "&": 2, "==": 3, ">=": 4, "<=": 5, "<": 6, ">": 7,
+            "!=": 8}
+    # One shunting-yard pass.  A node is [kind, text, left, right]; its
+    # children are created before it, so nodes are in post-order.
+    nodes, depth = [], []
+    out, ops = [], []
+    expect_operand = True
+    last = ""
+    for pos in range(len(toks) + 1):
+        kind, text = toks[pos] if pos < len(toks) else ("op", "")
+        if expect_operand and pos < len(toks):
+            if kind in ("name", "num", "lit"):
+                nodes.append(["atom", text, -1, -1])
+                depth.append(1)
+                out.append(len(nodes) - 1)
+                expect_operand = False
+            elif text in ("!", "~"):
+                ops.append(("u", "!"))
+            elif text in ("-", "+"):
+                if last in ("!", "~"):
+                    # !-x: Stata's r(198).  Spelt !, nothing parses it.
+                    return re.sub(r"~", "!", expr)
+                ops.append(("u", text))
+            elif text == "(":
+                ops.append(("(", ""))
+            else:
+                return fallback
+            last = text
+            continue
+        if pos < len(toks) and (kind != "op" or text in ("!", "~", "(",
+                                                          "-", "+")):
+            # Two operands in a row, a call, a postfix !, arithmetic.
+            return fallback
+        if expect_operand:
+            return fallback                  # the text ends on an operator
+        closing = text in (")", "")
+        while ops and ops[-1][0] != "(":
+            top = ops[-1]
+            if not closing and top[0] == "b" and prec[top[1]] < prec[text]:
+                break
+            ops.pop()
+            if top[0] == "u":
+                a, b = out.pop(), -1
+                d = depth[a] + 1
+            else:
+                if len(out) < 2:
+                    return fallback
+                b, a = out.pop(), out.pop()
+                d = max(depth[a], depth[b]) + 1
+            if d > _IF_EXPR_MAX_DEPTH:
+                return "!" + fallback
+            nodes.append([top[0], top[1], a, b])
+            depth.append(d)
+            out.append(len(nodes) - 1)
+        if text == ")":
+            if not ops:
+                return fallback
+            ops.pop()
+        elif text == "":
+            if ops or len(out) != 1:
+                return fallback
+        else:
+            ops.append(("b", text))
+            expect_operand = True
+        last = text
+    # Which nodes are true/false values already, children first.
+    is_bool = []
+    for kind, text, a, b in nodes:
+        is_bool.append(kind == "b" or (kind == "u" and (
+            text == "!" or (text == "+" and is_bool[a]))))
+    # The query, written once from the root down with an explicit stack,
+    # so its cost is the length of what it writes: "truth" asks for a
+    # true/false value, "code" for the node as it is, "text" is written.
+    # A chain of one of & or | is written flat, as it was typed: nesting
+    # it would add a level of parentheses per term, and Python refuses
+    # more than 200.
+    pieces = []
+    tasks = [("truth", out[0])]
+    while tasks:
+        what, k = tasks.pop()
+        if what == "text":
+            pieces.append(k)
+            continue
+        kind, text, a, b = nodes[k]
+        if what == "truth" and not is_bool[k]:
+            tasks += [("text", " != 0)"), ("code", k), ("text", "(")]
+        elif kind == "atom":
+            pieces.append(text)
+        elif kind == "u":
+            tasks += [("truth" if text == "!" else "code", a),
+                      ("text", "~" if text == "!" else text)]
+        elif text in ("&", "|"):
+            terms = [b]
+            while nodes[a][0] == "b" and nodes[a][1] == text:
+                terms.append(nodes[a][3])
+                a = nodes[a][2]
+            terms.append(a)
+            seq = [("text", ")")]
+            for j, t in enumerate(terms):
+                seq.append(("truth", t))
+                seq.append(("text", " " + text + " " if j < len(terms) - 1
+                            else "("))
+            tasks += seq
+        else:
+            tasks += [("text", ")"), ("code", b), ("text", " " + text + " "),
+                      ("code", a), ("text", "(")]
+    return "".join(pieces)
 
 
 #: The deepest ``if`` expression tree the whitelist passes on to pandas.
@@ -16322,6 +16529,155 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                 break
 
 
+def _dash_if_unknown_name(expr, columns):
+    """The name a refused qualifier asks for that the data lack, or None.
+
+    Only a qualifier the whitelist refuses for that reason alone: one that
+    parses, holds nothing but the node types ``_validate_if_expr`` permits
+    and is no deeper than its bound.  Anything else is refused for its
+    syntax, and says so.  The first unknown name in the text is the one
+    named, as Stata names the first (``count if nosuch == 1 & other == 1``
+    is "nosuch not found", r(111)); the name is echoed into a warning, so
+    one longer than Stata's 32 characters is cut.
+
+    Args:
+        expr:    The translated qualifier the whitelist refused.
+        columns: The frame's column names.
+
+    Returns:
+        The unknown name as it should be shown, or None.
+    """
+    if "@" in expr:
+        return None
+    try:
+        tree = _ast.parse(expr, mode="eval")
+    except (SyntaxError, RecursionError, MemoryError, ValueError):
+        return None
+    col_set = frozenset(str(c) for c in columns)
+    first = None
+    stack = [(tree, 0)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > _IF_EXPR_MAX_DEPTH or \
+                type(node) not in _IF_EXPR_ALLOWED_NODES:
+            return None
+        if isinstance(node, _ast.Name) and node.id not in col_set \
+                and node.id not in _IF_EXPR_SAFE_NAMES:
+            key = (node.lineno, node.col_offset)
+            if first is None or key < first[0]:
+                first = (key, node.id)
+        stack.extend((child, depth + 1)
+                     for child in _ast.iter_child_nodes(node))
+    if first is None:
+        return None
+    name = first[1]
+    return name if len(name) <= 32 else name[:32] + "..."
+
+
+def _dash_if_type_problem(expr, frame):
+    """Why Stata would refuse a qualifier the whitelist passed, or None.
+
+    Stata's expressions are typed: text beside a number -- compared with
+    one, under ``!`` or ``-``, beside ``&`` or ``|`` -- is r(109), "type
+    mismatch" (measured 24sep2026: ``!make``, ``make & foreign``, ``-make``,
+    ``make == 1`` and ``foreign == "a"`` on auto).  pandas is not: it
+    compares text with a number and answers False for every row, so the
+    translation of ``!make``, ``~(make != 0)``, selected nothing without a
+    word.  And a minus sign before a true/false value, which Stata reads as
+    -1 or 0, pandas reads as a logical not: ``-(foreign == 1)`` would draw
+    the domestic cars.  The whitelist admits no arithmetic to say it with,
+    so that is refused too.
+
+    The query is read with pandas' own precedence -- ``&`` and ``|`` are its
+    ``and`` and ``or``, looser than a comparison -- and each column's type
+    is the frame's: text when its dtype is a string dtype, or an object
+    column whose first value that is not missing is text.
+
+    Args:
+        expr:  A translated qualifier that ``_validate_if_expr`` passed.
+        frame: The DataFrame it is about to select from.
+
+    Returns:
+        The reason, or None when there is none.
+    """
+    import io as _io
+    import tokenize as _tokenize
+    try:
+        toks = []
+        for tok in _tokenize.generate_tokens(_io.StringIO(expr).readline):
+            if tok.type == _tokenize.OP and tok.string in ("&", "|"):
+                toks.append((_tokenize.NAME,
+                             "and" if tok.string == "&" else "or"))
+            else:
+                toks.append((tok.type, tok.string))
+        tree = _ast.parse(_tokenize.untokenize(toks).strip(), mode="eval")
+    except (SyntaxError, ValueError, RecursionError, MemoryError,
+            _tokenize.TokenError):
+        return None
+    # Children before parents, without recursion.
+    order, stack = [], [(tree.body, False)]
+    while stack:
+        node, done = stack.pop()
+        if done:
+            order.append(node)
+            continue
+        stack.append((node, True))
+        stack.extend((child, False) for child in _ast.iter_child_nodes(node))
+    kinds = {}
+    for node in order:
+        kind = "num"
+        if isinstance(node, _ast.Name) and node.id in frame.columns:
+            col = frame[node.id]
+            if isinstance(col, pd.DataFrame):
+                col = col.iloc[:, 0]
+            dt = col.dtype
+            if (pd.api.types.is_numeric_dtype(dt)
+                    or pd.api.types.is_bool_dtype(dt)
+                    or pd.api.types.is_datetime64_any_dtype(dt)
+                    or pd.api.types.is_timedelta64_dtype(dt)):
+                kind = "num"
+            elif dt == object:
+                kind = "num"
+                for v in col:
+                    if v is None or (isinstance(v, float) and v != v):
+                        continue
+                    kind = "str" if isinstance(v, str) else "num"
+                    break
+            elif pd.api.types.is_string_dtype(dt):
+                kind = "str"
+        elif isinstance(node, _ast.Constant):
+            kind = "str" if isinstance(node.value, (str, bytes)) else "num"
+        elif isinstance(node, (_ast.Compare, _ast.BoolOp, _ast.BinOp)):
+            parts = ([node.left] + list(node.comparators)
+                     if isinstance(node, _ast.Compare)
+                     else list(node.values) if isinstance(node, _ast.BoolOp)
+                     else [node.left, node.right])
+            if isinstance(node, _ast.Compare):
+                # A true/false value is Stata's 0 or 1, a number.
+                for left, op, right in zip(parts, node.ops, parts[1:]):
+                    pair = (kinds.get(id(left)), kinds.get(id(right)))
+                    if (not isinstance(op, (_ast.In, _ast.NotIn))
+                            and set(pair) <= {"str", "num", "bool"}
+                            and (pair[0] == "str") != (pair[1] == "str")):
+                        return "type mismatch"
+            elif any(kinds.get(id(p)) == "str" for p in parts):
+                return "type mismatch"
+            kind = "bool"
+        elif isinstance(node, _ast.UnaryOp):
+            inner = kinds.get(id(node.operand))
+            if inner == "str":
+                return "type mismatch"
+            if isinstance(node.op, _ast.USub) and inner == "bool":
+                return "a minus sign before a true/false value is not " \
+                       "supported"
+            kind = ("bool" if isinstance(node.op, (_ast.Invert, _ast.Not))
+                    else inner if isinstance(node.op, _ast.UAdd) else "num")
+        elif isinstance(node, (_ast.Tuple, _ast.List)):
+            kind = "other"
+        kinds[id(node)] = kind
+    return None
+
+
 def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
     """Return the rows of *frame* that an ``if``/``in`` qualifier selects.
 
@@ -16377,10 +16733,28 @@ def _dash_qualified_frame(frame, if_expr, in_expr, where="", copy=True):
         # make "a!=b" (measured 24sep2026).
         pandas_expr = _stata_if_to_pandas(_if)
         _label = (" " + where) if where else ""
+        # The reason a qualifier is not applied, in Stata's words where
+        # Stata has them: a name the data lack is "variable X not found"
+        # (it was "invalid syntax (<unknown>, line 1)", Python's words for
+        # a parse error), and text where Stata wants a number is "type
+        # mismatch" -- where pandas would compare the text with 0 and
+        # select no row without a word (24sep2026).  The whitelist alone
+        # decides; the two readers only name its reason, or find the type
+        # error it does not look for.  Stata's own values -- `if _n <= 10'
+        # is ten cars in Stata (measured 24sep2026) -- are not variables,
+        # and are named as what they are.
         if not _validate_if_expr(pandas_expr, out.columns):
+            _unknown = _dash_if_unknown_name(pandas_expr, out.columns)
+            _why = ("invalid syntax (<unknown>, line 1)" if not _unknown
+                    else f"{_unknown} is not supported in a qualifier"
+                    if _unknown in ("_n", "_N", "_pi", "_rc", "_b", "_se",
+                                    "_cons", "_coef")
+                    else f"variable {_unknown} not found")
+        else:
+            _why = _dash_if_type_problem(pandas_expr, out)
+        if _why:
             warnings.warn(
-                f"dash:{_label} if_expr filter skipped -- invalid syntax "
-                f"(<unknown>, line 1)",
+                f"dash:{_label} if_expr filter skipped -- {_why}",
                 stacklevel=2,
             )
         else:
@@ -20099,6 +20473,9 @@ class ServerAppBuilder:
                          # the graph level only -- a per-plot or per-KPI
                          # `if' was not read at all when served.
                          "_validate_if_expr", "_dash_qualified_frame",
+                         # ... and the two that name why a qualifier is
+                         # not applied, in the same words in both modes.
+                         "_dash_if_unknown_name", "_dash_if_type_problem",
                          # A layer's `in' counts the dataset's observations,
                          # not the rows the graph's qualifier left.
                          "_dash_layer_frame",
@@ -20370,8 +20747,10 @@ class ServerAppBuilder:
                     # The two masking helpers come WITH _stata_if_to_pandas:
                     # it calls them, and a copied function whose callees stay
                     # behind raises NameError on the served page rather than
-                    # here, where it would be noticed.
+                    # here, where it would be noticed.  So does the reader of
+                    # Stata's logical operators (24sep2026).
                     _mask_string_literals, _unmask_string_literals,
+                    _stata_logic_to_pandas,
                     _stata_if_to_pandas, _stata_expr_to_python):
             out += _textwrap.dedent(
                 _inspect.getsource(_fn)).rstrip("\n").split("\n")

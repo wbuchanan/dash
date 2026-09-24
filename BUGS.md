@@ -2034,11 +2034,11 @@
   - Suggested fix: When no layer is on the first y axis, draw the second one alone, on the left, as twoway does.
   - Resolution: Not fixed: it stays open because WP-24 changed tests only, and dash.sthlp documents today's drawing.
 
-- [ ] Title: A qualifier that abbreviates a variable is skipped by the renderer, and every row is drawn
+- [x] Title: A qualifier that abbreviates a variable is skipped by the renderer, and every row is drawn
   - File Names and Line Numbers: dash_render.py at a2c7502: `_stata_if_to_pandas` and `_dash_qualified_frame` (the qualifier is evaluated against the exported columns, which carry each variable's full name)
   - Description: Measured 24sep2026 by WP-24 on a2c7502 and on the WP-24 tree alike: `sysuse auto; dash scatter mpg weight if dis > 100, saving(...)' returns rc 0 with "if_expr filter skipped -- invalid syntax", and the page draws all 74 cars where Stata's `count if displacement > 100' selects 60.  Stata reads `dis' as displacement; dash.ado exports displacement under its full name and hands the renderer the qualifier as written, so the name it asks for is not a column.
   - Suggested fix: Expand each abbreviated variable of a qualifier to its full name in dash.ado, outside the qualifier's string literals, before the qualifier is written to the spec.
-  - Resolution: Not fixed: it stays open because it predates WP-24 and is a change to how dash.ado writes a qualifier, outside test integrity; test/test_program_coverage.cscript PC-31 holds only that such a command draws, with rc 0, on both routes.
+  - Resolution: Fixed 24sep2026: a qualifier is stored with each variable it abbreviates written out, outside its string literals, when the graph or KPI is registered (`_dash_qual_expand', from `_dash_process_segment', `_dash_graph_qualifier' and `_dash_kpi'), as Stata read it against the data then; `set varabbrev off' is honoured, and a scalar or any other name that is no variable is left as typed.  Certified by test/test_qualifier_literals.cscript QL-22 -- `if dis > 100' and `if make != "dis" & dis > 100' draw Stata's 60 rows in both modes, on the immediate route and as a plot's and a graph's qualifier, and a KPI's `if pri > 5000' gives Stata's sum -- each of whose three sites reverted fails it; PC-31 still holds that such a command draws, with rc 0, on both routes.
 
 - [ ] Title: A function layer naming a function Stata does not have draws nothing, where twoway refuses the command
   - File Names and Line Numbers: dash_render.py at 7c28802: `GlyphMapper.map_function` (9378; its name check at 9452 raises "Unsafe name in function expression") and `_dash_report_empty_layer` (16290)
@@ -2231,3 +2231,75 @@
   - Description: Measured 24sep2026: on auto, `scatter mpg rep78' stays at 69 rows after a move to Foreign, where Stata's `count if foreign == 1 & !missing(rep78)' is 21 and the served app draws 21, and it carries no brush script.
   - Suggested fix: Register the cleaned copy with the filter and brush scripts, as the open entry for line, area and bar layers suggests for their copies.
   - Resolution: Not fixed: it stays open because it is a change to the saved page's filter script, the same mechanism as the open line, area and bar entry.
+
+- [x] Title: The renderer skipped `if !x' and `if ~x' on a numeric column, and drew every row
+  - File Names and Line Numbers: dash_render.py at 2df1900: `_stata_if_to_pandas' (10877-10879, which wrote Stata's ! as pandas' ~), `_dash_qualified_frame' (16209-16218)
+  - Description: Reported 23sep2026 at c0200c0 and measured 24sep2026 at 2df1900 on sysuse auto: `if !foreign' and `if ~foreign' failed in pandas ("ufunc 'invert' not supported"), so the qualifier was skipped with a warning and both modes drew 74 cars, where Stata's count selects 52.  Stata's not is defined on numbers: nonzero is true, and so is missing, so !x is true exactly where x == 0; ! binds tighter than any comparison (`!foreign == 1' is `(!foreign) == 1'), and a sign right after it (`!-x') is Stata's r(198).
+  - Suggested fix: Translate a not on a numeric operand as ~(x != 0), with Stata's precedence.
+  - Resolution: Fixed: `_stata_logic_to_pandas' reads the qualifier's logic in one pass by Stata's precedence and truth, and writes a number wherever a true/false value belongs as (x != 0), which is true for a missing value, as in Stata.  Certified by test/test_qualifier_logic.py `TestEachModeDrawsStatasRows' (36 not-cases in both modes), `TestAKpiSumsStatasRows', `TestAFilterMoveKeepsTheQualifier' and `TestTheTranslation', and test/test_qualifier_literals.cscript QL-16 to QL-19, each failing with the fix reverted (74 carried where Stata selects 52; a KPI 2775 where Stata sums 1378; two panels where twoway draws one).
+
+- [x] Title: A bare number as the qualifier indexed the frame by its values, and a number beside & or | was skipped
+  - File Names and Line Numbers: dash_render.py at 2df1900: `_stata_if_to_pandas', `_dash_qualified_frame' (16209-16218)
+  - Description: Measured 24sep2026 on auto: `if foreign' was handed to DataFrame.query, which indexed the frame by its values: both modes drew observation 1 fifty-two times and observation 2 twenty-two times, without a word, where Stata selects the 22 foreign cars; `if rep78' was skipped (Stata: all 74, missing being true), and `if foreign & rep78 == 3' was skipped (Stata: 3).
+  - Suggested fix: Write a number that stands for true or false as (x != 0).
+  - Resolution: Fixed by `_stata_logic_to_pandas'.  Certified by test/test_qualifier_logic.py's truth cases and test/test_qualifier_literals.cscript QL-16 and QL-18.
+
+- [x] Title: A blank inside != , ~= , <= or >= made the renderer refuse a qualifier Stata reads
+  - File Names and Line Numbers: dash_render.py at 2df1900: `_stata_if_to_pandas' (10836)
+  - Description: Measured 24sep2026 on auto: Stata reads `foreign ! = 1', `foreign ~ = 1', `mpg < = 20' and `mpg > = 20' as the two-character operators -- 52, 52, 38 and 39 cars -- where Python refused them and the qualifier was skipped, every row drawn.  `x ! == 1' is Stata's r(198), and stays refused.
+  - Suggested fix: Close the blank before the translation reads the operators.
+  - Resolution: Fixed.  Certified by test/test_qualifier_logic.py's spaced cases and test/test_qualifier_literals.cscript QL-16.
+
+- [x] Title: The renderer read a chain of comparisons as Python chains it
+  - File Names and Line Numbers: dash_render.py at 2df1900: `_stata_if_to_pandas'
+  - Description: Measured 24sep2026 on auto: Stata ranks the comparisons != > < <= >= == and evaluates each level left to right, so `10 < mpg < 20' is `(10 < mpg) < 20', true for every car (74), `mpg == 22 > 0' selects none and `mpg > 20 < 1' 38; the renderer read them as Python's chains and drew 35, 5 and 0.
+  - Suggested fix: Put each comparison in its own parentheses, grouped by Stata's precedence.
+  - Resolution: Fixed by `_stata_logic_to_pandas'.  Certified by test/test_qualifier_logic.py's chain cases and test/test_qualifier_literals.cscript QL-16 (`mpg > 20 < 1').
+
+- [x] Title: Text beside a number in a qualifier selected nothing, without a word
+  - File Names and Line Numbers: dash_render.py at 2df1900: `_dash_qualified_frame' (16209-16218)
+  - Description: Measured 24sep2026 on auto: `!make', `make & foreign' and `-make' failed in pandas with pandas' words, and `make == 1' and `foreign == "a"' selected no row and said nothing; Stata refuses each, "type mismatch", r(109).  A minus before a true/false value, `-(foreign == 1)', which Stata reads as -1 or 0, pandas read as a logical not and drew the 52 domestic cars where Stata's qualifier holds the 22 foreign ones.
+  - Suggested fix: Check each operand's type against the frame, as Stata's expressions are typed, and refuse aloud what Stata refuses.
+  - Resolution: Fixed: `_dash_if_type_problem' refuses a mismatch with "type mismatch", and a minus before a true/false value, which the whitelist has no arithmetic to compute, is refused aloud.  Certified by test/test_qualifier_logic.py `TestATypeMismatchIsRefusedAloud' and `TestAMinusBeforeATrueFalseValueIsRefused'.
+
+- [x] Title: A qualifier naming a column the data lack was reported as "invalid syntax (<unknown>, line 1)"
+  - File Names and Line Numbers: dash_render.py at 2df1900: `_dash_qualified_frame' (16209-16218)
+  - Description: Reported 23sep2026 at c0200c0 and measured 24sep2026 at 2df1900: a qualifier naming a variable the data lack -- a spec written by hand, or data changed between registration and build -- was skipped with "invalid syntax (<unknown>, line 1)", Python's words for a parse error; Stata's `count if nosuch == 1' says "nosuch not found", r(111).
+  - Suggested fix: Name the variable.
+  - Resolution: Fixed: `_dash_if_unknown_name' names the first unknown name, as Stata names the first, in both modes: "variable nosuch not found"; Stata's own values (_n, _N, _pi, ...) are named as not supported in a qualifier.  Certified by test/test_qualifier_logic.py `TestAnUnknownVariableIsNamed', all eight of whose tests fail with the fix reverted.
+
+- [x] Title: The renderer's missing-value idioms took quadratic time in a name's length and rewrote a name's tail
+  - File Names and Line Numbers: dash_render.py at 2df1900: `_stata_if_to_pandas' (10869-10875)
+  - Description: Measured 24sep2026: the `x < .' family of patterns restarted at every character of a long name and gave the rest back one character at a time -- 3.2 s for a name of 8,000 characters, 45 s for 30,000, hours for a million -- and matched a name's tail: for a variable named e-acute x, `x < .' became e-acute `(x == x)', a call.
+  - Suggested fix: Anchor each pattern at a name's first character.
+  - Resolution: Fixed.  Certified by test/test_qualifier_logic.py::TestAdversarialLogicalOperators::test_a_long_name_is_read_in_linear_time (45 s and 77 s against a 5 s bound with the fix reverted) and `TestAMissingIdiomReadsAWholeName' (CLAUDE.md rule 18).
+
+- [x] Title: A compound-quoted literal and a backslash in a literal were misread by the renderer
+  - File Names and Line Numbers: dash_render.py at c0200c0: `_stata_if_to_pandas'
+  - Description: Reported 23sep2026 at c0200c0: a compound-quoted string literal in a qualifier was skipped as "invalid syntax", and a backslash inside a literal was read as a Python escape (a SyntaxWarning), so a literal holding backslash-n compared against a newline.  Re-measured 24sep2026 in both modes: both were already fixed at 2df1900, by 7c28802 (WP-24's `_mask_string_literals' and `_unmask_string_literals'); on auto, `make == `"AMC Concord"'' draws 1 car in both modes.
+  - Suggested fix: Read a literal by Stata's rules, which have no escape character.
+  - Resolution: Fixed by 7c28802.  Held by test/test_server.py `TestIfExprQuoteHandling' and test/test_qualifier_literals.cscript QL-01 to QL-09; the SyntaxWarning, which no test held, by test/test_qualifier_logic.py `TestABackslashInALiteralIsText', which fails on c0200c0's renderer.
+
+- [x] Title: An invalid qualifier was reported to reach the renderer's whitelist instead of failing at the command
+  - File Names and Line Numbers: dash.ado at 2df1900: the varpart parsers' -syntax- [if] [in] (`_dash_parse_varpart_std' 1181 and its siblings), `_dash_graph_qualifier' (1307), `_dash_kpi''s summarize (4598)
+  - Description: Reported 23sep2026 at c0200c0: "dash never evaluates a qualifier at registration, as twoway does".  Not reproduced: measured 24sep2026 with the console binary, at c0200c0 and at 2df1900, an invalid qualifier on a plot, on the one-line form, on a function or scatteri layer, or on a KPI stops the command with twoway's own return code, and nothing is registered -- "nosuch not found" r(111), "invalid syntax" r(198), "type mismatch" r(109), "observation numbers out of range" r(198), "'0' invalid observation number" r(198), "m ambiguous abbreviation" r(111) -- and, measured on this tree, "dis not found" r(111) under set varabbrev off.  -syntax- evaluates the qualifier it parses, and a KPI's summarize its own.  The one form that registered at c0200c0, `dash (scatter mpg weight) (line mpg weight) if nosuch > 1', did so because that qualifier was dropped whole (the entry "A qualifier written after the parenthesised plot groups was dropped in silence", fixed by 68327a8); it never reached the renderer.  A malformed expression is worded by whichever of Stata's parsers reads it -- "invalid syntax" or "mpg> invalid name", both r(198).  No test held any of these refusals.
+  - Suggested fix: Keep the refusal at registration (the maintainer's choice, 24sep2026) and hold it with a test.
+  - Resolution: Held: test/test_qualifier_literals.cscript QL-20 runs each invalid qualifier through twoway -- a KPI's through summarize -- and through every dash route that registers one -- a plot's, a plot group's, the graph's after the groups, the one-line form, a function layer's and a KPI's -- and requires twoway's return code and message, and nothing registered or written; run against c0200c0's dash.ado it fails on the qualifier after the groups (rc 0, the graph registered).
+
+- [x] Title: A word inside a qualifier's string literal was exported as a variable
+  - File Names and Line Numbers: dash_parse.mata at 2df1900: `_dash_extract_qual_vars' (2009; every name-like word of the if_expr value, a literal's included); dash.ado at 2df1900: `_dash_render_immediate' (4172-4178), `_dash_prepare_spec' (5044-5050 for a KPI, 5083-5089 for a graph), each keeping a word `capture confirm variable' accepts, an abbreviation included
+  - Description: Reported 23sep2026 at c0200c0 and measured 24sep2026 at 2df1900: `dash scatter mpg weight if make != "d", name(g1)' then `dash build' handed jsonio `mpg weight make d', and jsonio wrote the displacement column into the data file the renderer reads -- d abbreviates displacement; a KPI's `if make != "t h"' exported headroom (h).  The column counted against the embedded-data limit: with `global dash_max_cells 250' the command was refused, "this dashboard would embed 296 values (74 observations x 4 variables)", r(134), on the build and on the one-line route, where `if make != "x"' built.  Neither the saved page nor the served app embedded the extra column.
+  - Suggested fix: Read only the names outside a qualifier's string literals.
+  - Resolution: Fixed: `_dash_extract_qual_vars' decodes an if_expr (`_dash_qual_json_text') and reads only the names `_dash_qual_name_spans' finds outside every plain and compound literal -- not a function, a missing-value letter, a time-series operator or a name Stata reserves.  Certified by test/test_qualifier_literals.cscript QL-21 (a plot's, a plot group's, the graph's and a KPI's qualifier, plain and compound literals, and the data limit on both routes), which fails with the extractor reverted, and test/test_json_escaping.cscript JSE-18, whose 30,000 literals' words are no longer names.
+
+- [ ] Title: A missing value in a qualifier's comparison follows pandas, not Stata
+  - File Names and Line Numbers: dash_render.py: `_stata_if_to_pandas' and the pandas query `_dash_qualified_frame' runs
+  - Description: Measured 24sep2026 on auto, before and after the logical-operator fix alike: Stata sorts a missing value above every number, so `if rep78 > 3' selects 34 cars (29 with a value above 3 and the 5 missing), where both modes draw 29 -- pandas compares NaN false; `if !(rep78 > 3)' draws 45 where Stata selects 40, `if -rep78 > 0' draws 0 where Stata selects 5, and a comparison of two variables that are both missing differs too.  `if x > .' reads as "x is missing" (5 cars) where Stata selects none, and `. > x' and `. == x' are skipped where Stata selects 69 and 5.
+  - Suggested fix: Give each comparison operand Stata's order -- a missing value above every number -- inside the whitelist's grammar, and rewrite inrange() to be safe with it.
+  - Resolution: Not fixed: it stays open because it changes what every comparison means in the renderer's translation, beyond the four items reported, and inrange() must be rewritten with it; it is the most consequential of the qualifier divergences left.
+
+- [ ] Title: The renderer's qualifier reading differs from Stata's in five smaller ways
+  - File Names and Line Numbers: dash_render.py: `_stata_if_to_pandas', `_validate_if_expr' (the whitelist), `_dash_qualified_frame'; for dates, the saved renderer's date columns
+  - Description: Measured 24sep2026: missing(s) is never true for text, where Stata's is true for an empty string (3 of 3); a qualifier with no variable (`if 1', `if 2 == 2') is skipped, where Stata keeps every row or none; a unary + is refused by the whitelist, where Stata evaluates it; a qualifier deeper than 300 levels (2,000 nots) is refused, where Stata selects 6 rows; and on a saved page a %td qualifier is skipped ("year must be in 1..9999") where the served app applies it and Stata selects 5 rows.
+  - Suggested fix: Take each in turn, with a test held to Stata's count.
+  - Resolution: Not fixed: it stays open because each is a separate change to the translation or the whitelist, found while measuring the reported items and outside them.

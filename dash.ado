@@ -226,7 +226,7 @@ program define _dash_require_mata
         _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
         _dash_kpi_pctile _json_escape _dash_path_badchar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
-        _dash_option_names ///
+        _dash_option_names _dash_qual_expand ///
         _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
         _dash_text_args _dash_undrawn_plottype
 
@@ -1368,6 +1368,9 @@ program define _dash_graph_qualifier
     // a copy through them expanded a macro in it again (JSE-66).
     mata: st_local("_gi", strtrim(regexr(st_local("if"), "^[ ]*if", "")))
     mata: st_local("_gn", strtrim(regexr(st_local("in"), "^[ ]*in", "")))
+    // Its abbreviations written out, as a plot's are in
+    // _dash_process_segment (QL-22).
+    mata: st_local("_gi", _dash_qual_expand(st_local("_gi")))
     c_local _gq_if : copy local _gi
     c_local _gq_in : copy local _gn
 end
@@ -3139,6 +3142,13 @@ program define _dash_process_segment, rclass
     // them (measured 24sep2026; test_json_escaping.cscript JSE-44).
     mata: st_local("if_expr", strtrim(regexr(st_local("if_cl"), "^[ ]*if[ ]+", "")))
     mata: st_local("in_expr", strtrim(regexr(st_local("in_cl"), "^[ ]*in[ ]+", "")))
+    // Each variable the qualifier abbreviates is written out, as Stata
+    // read it against the data in memory: -syntax- has just evaluated it
+    // there.  The renderer evaluates the qualifier against the exported
+    // columns, which carry full names, so `if dis > 100' named no column
+    // and was skipped, every row drawn (measured 24sep2026;
+    // test_qualifier_literals.cscript QL-22).  Literals are left as typed.
+    mata: st_local("if_expr", _dash_qual_expand(st_local("if_expr")))
 
     // ---- parse options (clear stale sreturn values first) ----
     // The varpart parsers sreturn the weight TYPE in s(_weight) and the
@@ -4419,6 +4429,9 @@ program define _dash_render_immediate
     // serialisation paths, one of them incomplete.
     local _qualvars ""
     mata: _dash_extract_qual_vars(`"`json_spec'"', "_qualvars")
+    // The names outside the qualifier's string literals
+    // (_dash_extract_qual_vars), each already written out in full when the
+    // graph was registered (_dash_qual_expand).
     foreach _qv of local _qualvars {
         capture confirm variable `_qv'
         if _rc == 0 {
@@ -4935,8 +4948,9 @@ program define _dash_kpi
     // stores it, but the renderer recomputes from the full frame, so
     // without these `dash kpi mean(mpg) if foreign==1` displayed the
     // UNCONDITIONAL mean.
+    // Its abbreviations written out, as a graph's are (QL-22).
     mata: st_global("dash_kpi_" + st_local("name") + "__if", ///
-        strtrim(regexr(st_local("if"), "^[ ]*if[ ]+", "")))
+        _dash_qual_expand(strtrim(regexr(st_local("if"), "^[ ]*if[ ]+", ""))))
     mata: st_global("dash_kpi_" + st_local("name") + "__in", ///
         strtrim(regexr(st_local("in"), "^[ ]*in[ ]+", "")))
 
