@@ -30,13 +30,16 @@
 *! they did not -- and costs nothing.  A real launch was verified by hand
 *! against this fix; see the BUGS.md entry.
 *!
-*! Tests: SRV-01 through SRV-19 (SRV-17 to SRV-19, added by ROADMAP WP-24,
+*! Tests: SRV-01 through SRV-20 (SRV-17 to SRV-20, added by ROADMAP WP-24,
 *! drive `dash serve' with a graph registered, against a stub renderer that
 *! starts no server; SRV-19 checks the app file it is handed is a tempfile
-*! of this session, BUG-47)
+*! of this session, BUG-47; SRV-20, added in WP-24's second round, is the
+*! serve-side twin of test_render_locate.cscript LOC-17 -- the renderer
+*! path dash serve runs is handed to Python as data, BUG-SEC-1.  SRV-20
+*! runs before SRV-19, which does not restore the real locator.)
 *!
 *! Usage:  do test/test_serve_launch.cscript
-*! Version: 1.1  24sep2026
+*! Version: 1.2  24sep2026
 
 cscript "dash serve accepts its own options" adodir ".."
 
@@ -375,6 +378,125 @@ capture erase "`srvstub'/dash_render.py"
 capture rmdir "`srvstub'"
 macro drop SRV_STUB SRV17_*
 dash clear
+
+// ================================================================
+// SRV-20 -- the renderer path dash serve runs is handed to Python as data
+// ================================================================
+// The serve-side twin of test_render_locate.cscript LOC-17.  BUGS.md
+// BUG-SEC-1: _dash_do_render and _dash_serve wrote the renderer path and
+// the output path into python: lines; a double quote in either ended the
+// literal and the rest ran as Python.  LOC-17 runs the immediate route's
+// _dash_do_render with payload paths; nothing ran dash serve, whose own
+// interpolation (dash.ado ~5481, `runpy.run_path("`_py_render'", ...)') is
+// a SECOND copy of the same idiom.  This drives `dash serve' whole against
+// a renderer whose DIRECTORY name is a Python payload -- whose double quote
+// would end the literal the path is interpolated into -- located through
+// the real _dash_find_render (findfile off S_ADO, as LOC-10/11 do), so the
+// located path is the locator's own answer, escaped by _dash_json_str and
+// handed to runpy.run_path.  Measured 24sep2026: with `_py_render'
+// replaced by `render_py' (the pre-fix raw form), the quote in the path
+// ends run_path's string argument, the rest is read as code, and the
+// payload's touch runs -- dash serve creates the sentinel and returns
+// r(7102) (run_path then fails on the non-path second argument).  SRV-20
+// requires serve rc 0 AND the sentinel absent, as LOC-17 requires its
+// render rc 0 and its sentinel absent.  With the escaping the quote is
+// written \" inside the literal, run_path is given the whole path as one
+// string, opens the stub there and runs it -- which records its arguments
+// and starts no server -- rc 0, nothing touched.  So `dash serve' runs
+// whole (options, spec, browser decision, the handoff) and no server can
+// start; the stub's record proves the payload PATH reached Python as the
+// string runpy executed, not as code.  The spec, data and app paths dash
+// serve also interpolates are session tempfiles, escaped by the same
+// _dash_json_str; the renderer path is the one the locator's answer
+// controls, as in LOC-17.
+//
+// This runs BEFORE SRV-19, which replaces _dash_find_render with a
+// stand-in and does not restore it.
+global dash_nobrowser 1
+tempfile s20base
+// The payload, appended to the directory name: x, a double quote to end
+// run_path's string argument, then `,__import__("os").system("touch
+// s20_sent") or"y' -- so raw, the path splits into two arguments to
+// run_path, the second `system(...) or "y<...>/dash_render.py"', and the
+// system() runs the touch before run_path fails on a non-dict second
+// argument.  Measured 24sep2026 (probe): raw, the sentinel is created and
+// the call is r(7102); escaped, run_path is given the whole path as one
+// string, opens the stub there and runs it, rc 0, nothing touched.  Built
+// with char() so this file holds no unescaped quote of its own, and with
+// no "/" so it is one directory name.
+mata: st_local("_s20p", "x" + char(34) + ",__import__(" + char(34) + "os" + char(34) + ").system(" + char(34) + "touch s20_sent" + char(34) + ") or" + char(34) + "y")
+local s20dir `"`s20base'`_s20p'"'
+global SRV20_DIR "`s20dir'"
+// The stub writes its record beside itself, so its path need carry no
+// quote of its own; read back from the same directory (a value in Mata,
+// so its quotes cannot break anything).
+global SRV20_REC `"`s20dir'/argv.jsonl"'
+capture erase "$SRV20_REC"
+mata: mkdir(st_local("s20dir"))
+mata: st_local("_s20made", strofreal(direxists(st_local("s20dir"))))
+assert `_s20made' == 1
+tempname s20fh
+file open `s20fh' using `"`s20dir'/dash_render.py"', write text replace
+file write `s20fh' "import json, os, sys" _n
+file write `s20fh' `"_p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "argv.jsonl")"' _n
+file write `s20fh' `"with open(_p, "a", encoding="utf-8") as _fh:"' _n
+file write `s20fh' "    _fh.write(json.dumps([__file__] + sys.argv) + chr(10))" _n
+file close `s20fh'
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(sv20)
+mata: st_local("_s20sado", st_global("S_ADO"))
+// The payload directory first on the ado-path, in the compound-quoted form
+// $S_ADO writes a directory in (LOC-11).
+local here20 "`c(pwd)'"
+quietly cd "`c(tmpdir)'"
+capture erase "s20_sent"
+mata: st_global("S_ADO", char(96) + char(34) + st_local("s20dir") + char(34) + char(39) + ";" + st_global("S_ADO"))
+capture noisily _dash_find_render
+local s20frc = _rc
+local s20fn `"`r(fn)'"'
+capture noisily dash serve, port(5099) timeout(1) nobrowser
+local s20rc = _rc
+mata: st_global("S_ADO", st_local("_s20sado"))
+capture confirm file "s20_sent"
+local s20ran = (_rc == 0)
+capture erase "s20_sent"
+quietly cd "`here20'"
+display as text "  SRV-20 locator rc `s20frc', serve rc `s20rc', payload ran `s20ran'"
+assert `s20frc' == 0
+assert strpos(`"`s20fn'"', "s20") > 0
+assert `s20rc' == 0
+assert `s20ran' == 0
+global SRV20_OUT ""
+global SRV20_NRUN ""
+python:
+import json as _s20_json
+import os as _s20_os
+from sfi import Macro as _s20_M
+with open(_s20_M.getGlobal("SRV20_REC"), encoding="utf-8") as _s20_fh:
+    _s20_runs = [_s20_json.loads(_l) for _l in _s20_fh if _l.strip()]
+_s20_M.setGlobal("SRV20_NRUN", str(len(_s20_runs)))
+_s20_out = ""
+if _s20_runs:
+    _a = _s20_runs[0][1:]
+    _s20_out = _a[_a.index("--output") + 1] if "--output" in _a else ""
+_s20_M.setGlobal("SRV20_OUT", _s20_out)
+end
+display as text "  SRV-20 stub runs: ${SRV20_NRUN}; app path handed over: [${SRV20_OUT}]"
+// The stub ran exactly once -- so the payload path reached Python as the
+// string runpy executed, not as code -- and was handed a real .py path
+// (a session tempfile), not the payload.
+assert "${SRV20_NRUN}" == "1"
+assert `"${SRV20_OUT}"' != ""
+mata: st_local("_s20outok", strofreal(strpos(st_global("SRV20_OUT"), "s20_sent") == 0))
+assert `_s20outok' == 1
+capture erase "$SRV20_REC"
+capture erase `"`s20dir'/dash_render.py"'
+capture erase `"`s20dir'/argv.jsonl"'
+capture rmdir `"`s20dir'"'
+macro drop SRV20_*
+dash clear
+display "SRV-20 PASS: dash serve hands the renderer path to Python as data; a quote-and-code path runs nothing"
 
 // ================================================================
 // SRV-19 -- dash serve writes its app to a tempfile of this session

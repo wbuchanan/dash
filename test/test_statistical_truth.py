@@ -421,8 +421,8 @@ class TestFpfitAgainstStata:
 
     def test_help_no_longer_documents_them(self):
         help_path = os.path.join(_HERE, "..", "dash.sthlp")
-        if not os.path.exists(help_path):
-            pytest.skip("dash.sthlp not found")
+        # The help ships with the package: missing is a defect, not a skip.
+        assert os.path.exists(help_path), "dash.sthlp not found"
         text = open(help_path, encoding="utf-8", errors="replace").read()
         low = text.lower()
         # The help used to introduce the bwidth()/degree() synopt block with

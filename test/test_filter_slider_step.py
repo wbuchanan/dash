@@ -172,21 +172,48 @@ class TestAClockFilterIsUsable:
 class TestACalendarFilterStepsInWholeDays:
     """A fraction of a day is not a value a %td variable can take."""
 
+    #: kind -> (span of the fixture's 120 periods, in days; the step): a
+    #: hundredth of the span rounded to whole days, at least one.  Measured
+    #: 24sep2026.
+    _STEPS = {"td": (119.0, 1), "tw": (836.0, 8), "tm": (3621.0, 36),
+              "tq": (10865.0, 109), "th": (21731.0, 217)}
+
     @pytest.mark.parametrize("kind", ["td", "tw", "tm", "tq", "th"])
     def test_the_step_is_a_whole_number_of_days(self, kind):
+        """Whole days, and the hundredth of the span that makes them.
+
+        ``step >= 1'' and ``step == int(step)'' held for any whole step:
+        measured 24sep2026, all five passed with a fiftieth of the span
+        (2, 17, 72, 217 and 435 days).  Each step is pinned, with the span
+        it is a hundredth of.
+        """
         dr = _render(_calendar_values(kind), "%" + kind)
-        step = float(dr.filter_widgets[0].step)
-        assert step >= 1.0, f"{kind}: step {step} is less than a day"
-        assert step == int(step), f"{kind}: step {step} is not whole days"
+        w = dr.filter_widgets[0]
+        span, want = self._STEPS[kind]
+        assert type(w).__name__ == "DateRangeSlider", type(w).__name__
+        assert _span_days(w) == span, (kind, _span_days(w))
+        step = float(w.step)
+        assert step == want == max(1, round(span / 100.0)), (
+            f"{kind}: step {step} for a {span:.0f}-day span")
 
     def test_a_long_monthly_series_is_not_stepped_one_day_at_a_time(self):
+        """The hundred notches the numeric path gives, in whole days.
+
+        ``step > 1'' let the step fall anywhere above a day: measured
+        24sep2026, it passed with a step of 4 days -- 905 notches, a
+        thousandth of the span instead of a hundredth.  The span is 2010m1
+        to 2019m12, 3621 days; a hundredth of it is 36.21, a whole 36 days,
+        100.6 notches (measured the same day).
+        """
         dr = _render(_MONTHLY, "%tm")
         w = dr.filter_widgets[0]
-        assert _span_days(w) > 1000, _span_days(w)
-        assert float(w.step) > 1.0, (
-            f"a {_span_days(w):.0f}-day span stepped one day at a time needs "
-            f"{_span_days(w):.0f} drags to cross"
+        assert type(w).__name__ == "DateRangeSlider", type(w).__name__
+        assert _span_days(w) == 3621.0, _span_days(w)
+        assert float(w.step) == 36.0, (
+            f"a {_span_days(w):.0f}-day span stepped {w.step} days at a time "
+            f"has {_notches(w):.1f} notches"
         )
+        assert _notches(w) == pytest.approx(100.0, abs=1.0)
 
     def test_a_short_daily_series_still_steps_one_day(self):
         """Flooring must not coarsen a range that is already fine."""
@@ -197,6 +224,12 @@ class TestACalendarFilterStepsInWholeDays:
 class TestTheNumericPathIsUnchanged:
 
     def test_a_numeric_range_still_gets_a_hundredth_of_the_span(self):
+        """A hundredth of the DATA's span, 1760 to 4840.
+
+        This compared the step with the widget's own bounds, so bounds and a
+        step wrong together passed: measured 24sep2026, it passed with the
+        widget spanning 0 to 4840 at a step of 48.4.
+        """
         df = pd.DataFrame({"mpg": np.linspace(12.0, 41.0, 20),
                            "weight": np.linspace(1760.0, 4840.0, 20)})
         spec = make_spec([{"type": "scatter", "yvar": "mpg",
@@ -219,5 +252,6 @@ class TestTheNumericPathIsUnchanged:
                 os.unlink(p)
             except OSError:
                 pass
-        assert float(w.step) == pytest.approx(
-            (float(w.end) - float(w.start)) / 100.0)
+        assert type(w).__name__ == "RangeSlider", type(w).__name__
+        assert (float(w.start), float(w.end)) == (1760.0, 4840.0)
+        assert float(w.step) == pytest.approx((4840.0 - 1760.0) / 100.0)

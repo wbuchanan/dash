@@ -482,9 +482,10 @@ program define _dash_validate_path
     // and control characters (tab=9, newline=10, CR=13) checked via strpos+char() to
     // avoid the "too few quotes" crash that occurs when a compound-quoted macro value
     // contains a backtick.
-    // Parentheses are NOT rejected: every shell call site quotes the path
-    // ("shell open \"`saving_path'\""), inside which ( and ) are literal, and
-    // rejecting them broke every Windows path under "Program Files (x86)".
+    // Parentheses are NOT rejected: the one shell call site, _dash_open_page,
+    // quotes the path (in single quotes on a Mac and Unix, double on
+    // Windows), inside which ( and ) are literal, and rejecting them broke
+    // every Windows path under "Program Files (x86)".
     // The characters that genuinely matter inside double quotes are handled
     // below; the rest are kept as defence in depth since paths rarely contain
     // them.
@@ -3723,6 +3724,88 @@ program define _dash_dashboard_browser, rclass
 end
 
 // ================================================================
+// _dash_open_page , path(string) [os(string) dryrun]  -- open a saved page
+// in the system's browser: the one opener the one-line form and `dash
+// build' share, once their decider has said a window is wanted.
+//
+// r(cmd) is the shell command: open '<path>' on a Mac, xdg-open '<path>'
+// on Unix, start "" "<path>" on Windows, where start reads its first
+// quoted argument as a window title.  r(os) is the platform it is for,
+// os() or, when that is omitted, this machine's.  r(opened) is 1 when the
+// command went to the shell.  dryrun builds and returns the command and
+// runs nothing, and so does a set $dash_nobrowser, whichever caller asks.
+//
+// The two callers each carried their own three shell lines, and the
+// Windows line ran only where Stata reports Windows, so no test ran it;
+// the checks read dash.ado's text and passed with that branch unable to
+// run at all.  With the platform an argument and dryrun, each platform's
+// command is checked on any machine (test_serve_browser.cscript SB-13..20).
+//
+// The path is quoted for the shell that reads it, and built and run by
+// value: in Mata, then through _stata() with macro expansion off, since a
+// `$' or a backquote in the text `shell' is given is expanded again first
+// (measured 24sep2026: shell `c' ran a single-quoted /tmp/q$PROBEGz.html
+// as /tmp/q.html).  bash, which Stata's shell runs on a Mac and Unix, takes
+// everything inside single quotes as written but the apostrophe itself,
+// which is written '\''.  cmd.exe takes & ; and spaces inside double
+// quotes as written, but a double quote there would end the argument; no
+// Windows file name can hold one, so such a path is refused.  So is a line
+// break, which would end the command, and a platform other than the three
+// Stata reports.  The callers pass paths _dash_validate_path has already
+// cleared; these refusals hold the program to itself.
+// ================================================================
+program define _dash_open_page, rclass
+    version 16.0
+    syntax , PATH(string) [OS(string) DRYrun]
+
+    // A Mac is a Mac whichever binary runs.  The console binary reports
+    // c(os) as "Unix" (c(machine_type) "Mac (Apple Silicon)", measured
+    // 23sep2026), and dash ran xdg-open there, which macOS does not have --
+    // "/bin/bash: xdg-open: command not found", no window, and no word of
+    // where the file went.  os() is measured by its length, never read
+    // inside quotes before it is known to be one of the three.
+    local _op_osl : length local os
+    if `_op_osl' == 0 {
+        local os "`c(os)'"
+        if "`c(os)'" == "MacOSX" | substr("`c(machine_type)'", 1, 3) == "Mac" {
+            local os "MacOSX"
+        }
+    }
+    mata: st_local("_op_known", strofreal(anyof(("MacOSX", "Unix", "Windows"), st_local("os"))))
+    if `_op_known' == 0 {
+        display as error "dash: cannot open a page on that platform; os() is MacOSX, Unix or Windows."
+        exit 198
+    }
+    mata: st_local("_op_nl", strofreal(strpos(st_local("path"), char(10)) + strpos(st_local("path"), char(13)) > 0))
+    if `_op_nl' {
+        display as error "dash: a path holding a line break cannot be handed to the shell; the page was not opened."
+        exit 198
+    }
+
+    if "`os'" == "Windows" {
+        mata: st_local("_op_dq", strofreal(strpos(st_local("path"), char(34)) > 0))
+        if `_op_dq' {
+            display as error "dash: a Windows path cannot hold a double quote; the page was not opened."
+            exit 198
+        }
+        mata: st_local("cmd", "start " + char(34) + char(34) + " " + char(34) + st_local("path") + char(34))
+    }
+    else {
+        local _op_prog = cond("`os'" == "MacOSX", "open", "xdg-open")
+        mata: st_local("cmd", st_local("_op_prog") + " " + char(39) + subinstr(st_local("path"), char(39), char(39) + char(92) + char(39) + char(39), .) + char(39))
+    }
+
+    local opened 0
+    if "`dryrun'" == "" & "${dash_nobrowser}" == "" {
+        mata: st_local("_op_rc", strofreal(_stata("shell " + st_local("cmd"), 0, 1)))
+        local opened 1
+    }
+    return local os "`os'"
+    return local cmd : copy local cmd
+    return scalar opened = `opened'
+end
+
+// ================================================================
 // _dash_register_graph  — store named graph in global registry
 // ================================================================
 // ================================================================
@@ -4173,23 +4256,14 @@ program define _dash_render_immediate
     // here, and is therefore NOT on either _dash_pending list: the note
     // used to say "ignoring unsupported option(s): nodraw()" for an option
     // this line had just applied.
-    // The opener: a Mac is a Mac whichever binary runs.  The console binary
-    // reports c(os) as "Unix" (c(machine_type) "Mac (Apple Silicon)",
-    // measured 23sep2026), and this ran xdg-open there, which macOS does not
-    // have -- "/bin/bash: xdg-open: command not found", no window, and no
-    // word of where the file went.
-    local _dash_mac = ("`c(os)'" == "MacOSX" | substr("`c(machine_type)'", 1, 3) == "Mac")
     if "`open_browser'" == "1" {
         _dash_browser_wanted, spec(`"`json_spec'"')
         local open_browser = r(open)
     }
     if "`open_browser'" == "1" {
-        // On Windows, `start` treats its first quoted argument as the window
-        // title, not the file path.  Supply an empty title ("") so the second
-        // quoted argument is interpreted as the target file.
-        if `_dash_mac'                        shell open        "`saving_path'"
-        if "`c(os)'" == "Windows"             shell start "" "`saving_path'"
-        if "`c(os)'" == "Unix" & !`_dash_mac' shell xdg-open "`saving_path'"
+        // The one opener, shared with dash build: the platform's command,
+        // a Mac known by its machine type as well (see _dash_open_page).
+        _dash_open_page, path(`"`saving_path'"')
     }
     else {
         // Shown as written: braces are legal in a file name (P20-07).
@@ -5276,13 +5350,9 @@ program define _dash_build
         // help has always said it does -- the rule `dash serve' uses.
         _dash_dashboard_browser, `nobrowser'
         if r(open) {
-            // A Mac by its machine type as well: the console binary reports
-            // c(os) "Unix" and ran xdg-open, which macOS does not have (see
-            // _dash_render_immediate).
-            local _dash_mac = ("`c(os)'" == "MacOSX" | substr("`c(machine_type)'", 1, 3) == "Mac")
-            if `_dash_mac'                        shell open        "`saving'"
-            if "`c(os)'" == "Windows"             shell start "" "`saving'"
-            if "`c(os)'" == "Unix" & !`_dash_mac' shell xdg-open "`saving'"
+            // The one opener, shared with the one-line form (see
+            // _dash_open_page).
+            _dash_open_page, path(`"`saving'"')
         }
     }
 end

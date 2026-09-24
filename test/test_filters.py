@@ -9,13 +9,16 @@ Run with:  pytest test/test_filters.py -v
 """
 import sys
 import os
+import html
 import json
+import re
+import tempfile
 import numpy as np
 import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from dash_render import FilterBuilder, DashRenderer
+from dash_render import FilterBuilder, DashRenderer, _FILTER_JS
 
 from bokeh.models import ColumnDataSource, Select, Slider, RangeSlider
 
@@ -57,93 +60,238 @@ def figures(cds):
 
 
 # ================================================================
+# The saved page's document
+# ================================================================
+# The page inlines all of BokehJS, so its text holds every model and class
+# name whatever the dashboard draws; what the page shows is the Bokeh
+# document it embeds, which these read.
+
+def _saved_page(spec, data_json):
+    """Render *spec* over *data_json*; ``(renderer, the saved page)``."""
+    paths = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+    try:
+        with open(paths[0], "w") as f:
+            json.dump(spec, f)
+        with open(paths[1], "w") as f:
+            json.dump(data_json, f)
+        r = DashRenderer(*paths)
+        page = r.render()
+    finally:
+        for p in paths:
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+    return r, page
+
+
+def _document_models(page):
+    """Every model in the document the saved page embeds, by id.
+
+    Bokeh writes the document as JSON inside ``<script
+    type="application/json">`` with the markup characters escaped, and
+    writes each model in full once -- ``{"type": "object", "name": ...,
+    "id": ..., "attributes": {...}}`` -- and as ``{"id": ...}`` wherever
+    else it is referred to.
+    """
+    blocks = re.findall(r'<script type="application/json"[^>]*>(.*?)</script>',
+                        page, re.DOTALL)
+    assert len(blocks) == 1, "the page carries %d documents" % len(blocks)
+    models = {}
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and "id" in node:
+                models[node["id"]] = node
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(json.loads(html.unescape(blocks[0])))
+    return models
+
+
+def _named(models, name):
+    return [m for m in models.values() if m.get("name") == name]
+
+
+def _args(script):
+    """A CustomJS model's args; Bokeh writes a dict as a map."""
+    a = script["attributes"]["args"]
+    assert a.get("type") == "map", a
+    return dict(a["entries"])
+
+
+def _ids(refs):
+    return [r["id"] for r in refs]
+
+
+def _drawn_sources(models):
+    """``{figure title: [the source each of its glyph renderers draws]}``."""
+    out = {}
+    for fig in _named(models, "Figure"):
+        title = models[fig["attributes"]["title"]["id"]]["attributes"]["text"]
+        out[title] = [models[r["id"]]["attributes"]["data_source"]["id"]
+                      for r in fig["attributes"].get("renderers", [])
+                      if models[r["id"]].get("name") == "GlyphRenderer"]
+    return out
+
+
+def _three_graph_page(auto_df, filter_raw):
+    """Graphs s1, s2 and k1, unlinked (each draws its own source), and the
+    ``filter()`` string dash.ado writes; the saved page's models."""
+    graphs = [{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                          "options": {}}],
+               "graph_options": {"name": n, "title": n},
+               "if_expr": "", "in_expr": ""} for n in ("s1", "s2", "k1")]
+    spec = {"graphs": graphs, "kpis": [], "build_options": {
+        "layout": "auto", "link": "", "theme": "", "title": "",
+        "subtitle": "", "registry": "s1 s2 k1", "filter": filter_raw}}
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from conftest import make_data_json
+    _r, page = _saved_page(spec, make_data_json(auto_df))
+    models = _document_models(page)
+    drawn = _drawn_sources(models)
+    # One glyph per graph, each from a source of its own, so a source names
+    # its graph.
+    assert sorted(drawn) == ["k1", "s1", "s2"], drawn
+    assert all(len(v) == 1 for v in drawn.values()), drawn
+    assert len({v[0] for v in drawn.values()}) == 3, drawn
+    return models, {k: v[0] for k, v in drawn.items()}
+
+
+# ================================================================
 # P2-48 — dropdown widget options match sorted unique values
 # ================================================================
 class TestBuildDropdown:
     def test_options_match_sorted_unique_values(self, auto_df, cds, figures):
-        """P2-48: dropdown options list matches sorted unique values."""
+        """P2-48: dropdown options list matches sorted unique values.
+
+        It looked for "0.0", "0" or 0.0 among the values, and for "1.0",
+        "1" or 1.0, so a list in any order, with repeats or with values of
+        its own, passed -- and foreign's data order is already sorted, so no
+        ordering could fail it.  Measured 24sep2026: it passed with the
+        options in the order the data first shows them, and with every
+        repeat kept.  It now pins the whole list, "All" first, for foreign
+        and for mpg, whose data order (18 21 24 30 16 28) is not its sorted
+        order.
+        """
         widget, _ = FilterBuilder.build_dropdown(
             "foreign", cds, auto_df, {},
             exclude_names=[], all_figure_names=["s1", "s2"]
         )
         assert isinstance(widget, Select)
-        # Options should include "All" + sorted unique values
-        option_values = [o[0] if isinstance(o, (list, tuple)) else o
-                         for o in widget.options]
-        # Unique foreign values are 0.0 and 1.0
-        assert "0.0" in option_values or "0" in option_values or 0.0 in option_values
-        assert "1.0" in option_values or "1" in option_values or 1.0 in option_values
+        assert [tuple(o) for o in widget.options] == [
+            ("__all__", "All"), ("0", "0"), ("1", "1")]
+        widget, _ = FilterBuilder.build_dropdown(
+            "mpg", cds, auto_df, {},
+            exclude_names=[], all_figure_names=["s1", "s2"]
+        )
+        assert [tuple(o) for o in widget.options] == [("__all__", "All")] + [
+            (v, v) for v in ("16", "18", "21", "24", "28", "30")]
 
     # ----------------------------------------------------------------
     # P2-49 — dropdown uses valueLabels for display text
     # ----------------------------------------------------------------
     def test_options_use_value_labels(self, auto_df, cds, figures, value_labels):
-        """P2-49: dropdown uses valueLabels for option display text."""
+        """P2-49: dropdown uses valueLabels for option display text.
+
+        It passed when either label appeared anywhere among the options, so
+        a label on the wrong code passed: measured 24sep2026 with the labels
+        reversed, 0 reading Foreign and 1 Domestic.  Each code is now pinned
+        to its own label.
+        """
         widget, _ = FilterBuilder.build_dropdown(
             "foreign", cds, auto_df, value_labels,
             exclude_names=[], all_figure_names=["s1", "s2"]
         )
-        # Options may be (value, label) tuples or just strings
-        option_labels = []
-        for opt in widget.options:
-            if isinstance(opt, (list, tuple)):
-                option_labels.append(opt[1])
-            else:
-                option_labels.append(str(opt))
-
-        combined = " ".join(option_labels)
-        assert "Domestic" in combined or "Foreign" in combined, (
-            f"Value labels not found in options: {widget.options}"
+        assert [tuple(o) for o in widget.options] == [
+            ("__all__", "All"), ("0", "Domestic"), ("1", "Foreign")], (
+            f"Value labels not on their codes: {widget.options}"
         )
 
     # ----------------------------------------------------------------
     # P2-50 — "All" option always present as first entry
     # ----------------------------------------------------------------
     def test_all_option_present_first(self, auto_df, cds, figures):
-        """P2-50: 'All' option is the first entry in the dropdown."""
+        """P2-50: 'All' option is the first entry in the dropdown.
+
+        It accepted a first label that merely held "all", or an empty one:
+        measured 24sep2026, it passed with the first option's label empty.
+        The first option is now pinned, and the dropdown must open on it, so
+        the page opens with nothing filtered out.
+        """
         widget, _ = FilterBuilder.build_dropdown(
             "foreign", cds, auto_df, {},
             exclude_names=[], all_figure_names=["s1", "s2"]
         )
-        first_option = widget.options[0]
-        if isinstance(first_option, (list, tuple)):
-            first_label = first_option[1]
-        else:
-            first_label = str(first_option)
-        assert "all" in first_label.lower() or first_label == "", (
-            f"First option '{first_label}' should be 'All'"
+        assert tuple(widget.options[0]) == ("__all__", "All"), (
+            f"First option {widget.options[0]!r} should be 'All'"
         )
+        assert widget.value == "__all__", widget.value
 
     # ----------------------------------------------------------------
     # P2-51 — dropdown CustomJS references correct CDSView for each non-excluded figure
     # ----------------------------------------------------------------
-    def test_callback_references_non_excluded_figures(self, auto_df, cds):
-        """P2-51: dropdown CustomJS is created for non-excluded figures."""
-        widget, callback = FilterBuilder.build_dropdown(
-            "foreign", cds, auto_df, {},
-            exclude_names=["k1"], all_figure_names=["s1", "s2", "k1"]
-        )
-        # The callback should have been generated (not None)
-        assert callback is not None
-        # The callback code should NOT reference k1
-        cb_code = callback.code if hasattr(callback, "code") else str(callback)
-        # Since k1 is excluded, its source should not appear in the JS
-        # (implementation detail: the callback is parameterized)
-        assert widget is not None
+    def test_callback_references_non_excluded_figures(self, auto_df):
+        """P2-51: dropdown CustomJS is created for non-excluded figures.
+
+        This built the dropdown alone and asserted that the callback and the
+        widget were not None.  The builder ignores exclude_names -- render()
+        wires every callback's targets -- so it passed whatever render() did
+        with a graph's source (measured 24sep2026: it passed with render()
+        leaving every graph out of the callback).  It now reads the saved
+        page's one filter callback: it lists the sources s1 and s2 draw
+        from, each once, in the order they were registered, and with no
+        exclude() it lists k1's too.
+        """
+        models, src = _three_graph_page(
+            auto_df, "foreign, type(dropdown) exclude(k1)")
+        [script] = [m for m in _named(models, "CustomJS")
+                    if m["attributes"]["code"] == _FILTER_JS]
+        assert _ids(_args(script)["all_graph_sources"]) == [src["s1"],
+                                                            src["s2"]]
+        models, src = _three_graph_page(auto_df, "foreign, type(dropdown)")
+        [script] = [m for m in _named(models, "CustomJS")
+                    if m["attributes"]["code"] == _FILTER_JS]
+        assert _ids(_args(script)["all_graph_sources"]) == [
+            src["s1"], src["s2"], src["k1"]]
 
     # ----------------------------------------------------------------
     # P2-52 — excluded graphs do NOT appear in dropdown CustomJS callback
     # ----------------------------------------------------------------
-    def test_excluded_graph_not_in_callback(self, auto_df, cds):
-        """P2-52: excluded names are absent from filter callback targets."""
-        widget, callback = FilterBuilder.build_dropdown(
-            "foreign", cds, auto_df, {},
-            exclude_names=["k1"], all_figure_names=["s1", "s2", "k1"]
-        )
-        if callback is not None and hasattr(callback, "args"):
-            # The args dict should NOT contain k1 as a key
-            arg_keys = list(callback.args.keys())
-            assert "k1" not in arg_keys, f"Excluded 'k1' found in callback args: {arg_keys}"
+    def test_excluded_graph_not_in_callback(self, auto_df):
+        """P2-52: excluded names are absent from filter callback targets.
+
+        This asserted that "k1" was not a key of the dropdown callback's
+        args, whose keys are the filter script's fixed parameter names
+        (source, orig_source, ...), so no exclude() could ever put it there;
+        and it asserted nothing at all when the callback was None.  Measured
+        24sep2026: it passed with render() ignoring exclude() altogether.
+
+        It now reads the saved page's filter callback.  The script writes
+        every source in all_graph_sources, and then its `source' unless that
+        is listed there or in excluded_sources; k1's source must be none of
+        those it writes and must be listed as protected.  s1's and s2's are
+        listed as written, so the reader sees the sources it looks for.
+        test_filter_exclude.py runs the script itself and shows k1 keeping
+        its rows.
+        """
+        models, src = _three_graph_page(
+            auto_df, "foreign, type(dropdown) exclude(k1)")
+        [script] = [m for m in _named(models, "CustomJS")
+                    if m["attributes"]["code"] == _FILTER_JS]
+        args = _args(script)
+        listed = _ids(args["all_graph_sources"])
+        protected = _ids(args["excluded_sources"])
+        written = set(listed)
+        if args["source"]["id"] not in listed + protected:
+            written.add(args["source"]["id"])
+        assert listed == [src["s1"], src["s2"]], (listed, src)
+        assert src["k1"] not in written, (written, src)
+        assert protected == [src["k1"]], (protected, src)
 
 
 # ================================================================
@@ -163,12 +311,22 @@ class TestBuildSlider:
         assert abs(widget.end   - expected_max) < 0.01
 
     def test_slider_initial_value_at_min(self, auto_df, cds):
-        """Slider initial value should be at or near the minimum."""
+        """Slider initial value should be at or near the minimum.
+
+        At the minimum a one-sided slider (rows with mpg >= the handle)
+        keeps every row, so the page opens with nothing filtered out; any
+        higher and rows are hidden before anyone touches it.  This accepted
+        anything in the lowest tenth of the span: measured 24sep2026, it
+        passed with the handle a twentieth of the way up, at 16.7, which
+        hides the car at 16 mpg.  The handle is now pinned to the minimum.
+        """
         widget, _ = FilterBuilder.build_slider(
             "mpg", cds, auto_df,
             exclude_names=[], all_figure_names=["s1"]
         )
-        assert widget.value <= widget.start + (widget.end - widget.start) * 0.1
+        assert (widget.start, widget.value) == (16.0, 16.0), (
+            widget.start, widget.value)
+        assert float(auto_df["mpg"].min()) == 16.0
 
 
 # ================================================================
@@ -203,6 +361,14 @@ class TestFilterSecurity:
         refuse nothing, because every filter's callback is the one fixed
         script.  The name reaches the widget title, which Bokeh renders as
         text, and never the code.
+
+        The builder is half the path: render() wires every callback before
+        the page is written, and a name spliced into the script there passed
+        every assertion on the builder's callback (measured 24sep2026).  So
+        the name also goes through render(), as the data column a filter is
+        over -- render() takes any column the data holds -- and every script
+        in the saved page's document is the fixed one; the name is in the
+        document, as the dropdown's title.
         """
         malicious_varname = "foreign; DROP TABLE users;"
         widget, callback = FilterBuilder.build_dropdown(
@@ -213,13 +379,27 @@ class TestFilterSecurity:
             "foreign", cds, auto_df, {},
             exclude_names=[], all_figure_names=["s1"]
         )
-        from dash_render import _FILTER_JS
         assert callback.code == _FILTER_JS == benign.code, (
             "the callback's code depends on the variable name")
         assert "DROP TABLE" not in callback.code
         assert widget.title == malicious_varname, widget.title
         # No column has that name, so there is nothing to choose but "All".
         assert [v for v, _label in widget.options] == ["__all__"]
+
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from conftest import make_data_json, make_spec
+        spec = make_spec([{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}])
+        spec["build_options"]["filters"] = [
+            {"varname": malicious_varname, "type": "dropdown",
+             "exclude": [], "label": ""}]
+        df = auto_df.rename(columns={"foreign": malicious_varname})
+        _r, page = _saved_page(spec, make_data_json(df))
+        models = _document_models(page)
+        assert [m["attributes"]["code"]
+                for m in _named(models, "CustomJS")] == [_FILTER_JS]
+        assert [m["attributes"]["title"]
+                for m in _named(models, "Select")] == [malicious_varname]
 
     def test_filter_values_are_text_and_never_code(self, auto_df, cds):
         """P2-55, restated by WP-20: a filter value holding markup reaches
@@ -230,6 +410,13 @@ class TestFilterSecurity:
         (bokeh 3.8.0 and 3.9.0), so the escaping only put the entities on
         screen -- a value label ``Men's'' read ``Men&#x27;s''.  The label is
         now raw; test_label_sinks.py pins that text rendering.
+
+        The code was checked with ``"<script>" not in callback.code'', which
+        a value spliced into it in any escaped form -- ``&lt;script&gt;``,
+        ``\\u003cscript\\u003e`` -- passes: measured 24sep2026 with the
+        options html-escaped into the builder's script.  The script is now
+        the fixed one, byte for byte, in the builder and in the saved page's
+        document, and the value is in the document as the option it is.
         """
         # Create a dataset with a potentially dangerous category value
         danger_df = pd.DataFrame({
@@ -247,7 +434,26 @@ class TestFilterSecurity:
         assert not any("&lt;" in l for l in labels), "escaped twice"
         # The callback is the fixed filter script; the value is data in its
         # args, never spliced into its code.
-        assert "<script>" not in callback.code
+        assert callback.code == _FILTER_JS
+
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from conftest import make_data_json, make_spec
+        spec = make_spec([{"type": "scatter", "yvar": "y", "xvar": "y",
+                           "options": {}}])
+        spec["build_options"]["filters"] = [
+            {"varname": "cat", "type": "dropdown", "exclude": [], "label": ""}]
+        data = make_data_json(danger_df)
+        for key in ("variableTypeIsString", "variableIsString"):
+            data["StataJSON"][key]["cat"] = True
+        _r, page = _saved_page(spec, data)
+        models = _document_models(page)
+        assert [m["attributes"]["code"]
+                for m in _named(models, "CustomJS")] == [_FILTER_JS]
+        assert [m["attributes"]["options"]
+                for m in _named(models, "Select")] == [[
+                    ["__all__", "All"],
+                    ["<script>alert(1)</script>", "<script>alert(1)</script>"],
+                    ["normal", "normal"]]]
 
 
 # ================================================================
@@ -288,7 +494,13 @@ class TestSliderEdgeCases:
         assert widget.disabled is True
 
     def test_slider_constant_data_does_not_crash(self):
-        """Regression: build_slider with all-identical values must not crash."""
+        """Regression: build_slider with all-identical values must not crash.
+
+        ``end > start'' held for a widget that opens with every row hidden:
+        measured 24sep2026, it passed with the handle at the end, 3001,
+        which keeps no row of weight 3000.  The widget is pinned as built:
+        the value, then one unit, stepping by 1, the handle on the value.
+        """
         const_cds = ColumnDataSource({"weight": [3000.0, 3000.0, 3000.0]})
         widget, callback = FilterBuilder.build_slider(
             "weight", const_cds, pd.DataFrame({"weight": [3000.0] * 3}),
@@ -296,10 +508,16 @@ class TestSliderEdgeCases:
         )
         assert isinstance(widget, Slider)
         # end must be strictly greater than start for Bokeh
-        assert widget.end > widget.start
+        assert (widget.start, widget.end, widget.value, widget.step) == (
+            3000.0, 3001.0, 3000.0, 1), widget
 
     def test_range_slider_constant_data_does_not_crash(self):
-        """Regression: build_range with all-identical values must not crash."""
+        """Regression: build_range with all-identical values must not crash.
+
+        Pinned as built, as the slider above is: ``end > start'' passed a
+        range that opens on (15001, 15001), keeping no row (measured
+        24sep2026).
+        """
         const_cds = ColumnDataSource({"price": [15000.0] * 5})
         widget, callback = FilterBuilder.build_range(
             "price", const_cds, pd.DataFrame({"price": [15000.0] * 5}),
@@ -307,7 +525,9 @@ class TestSliderEdgeCases:
         )
         assert isinstance(widget, RangeSlider)
         # end must be strictly greater than start for Bokeh
-        assert widget.end > widget.start
+        assert (widget.start, widget.end, tuple(widget.value),
+                widget.step) == (15000.0, 15001.0, (15000.0, 15001.0), 1), (
+            widget)
 
 
 # ================================================================
@@ -514,11 +734,20 @@ class TestParseFilterRaw:
                 except OSError: pass
 
         r.render()
-        assert len(r.filter_widgets) >= 1, (
+        # One dropdown over foreign, whose callback writes the graph's own
+        # source.  ``>= 1'' passed however many widgets were built (measured
+        # 24sep2026: it passed with every filter built twice).
+        assert [(type(w).__name__, w.title, [tuple(o) for o in w.options])
+                for w in r.filter_widgets] == [
+            ("Select", "foreign", [("__all__", "All"), ("0", "0"),
+                                   ("1", "1")])], (
             "render() must create filter widgets for non-linked graphs; "
             "filter variable 'foreign' must be included in the CDS data "
             "even when link() is not specified (Bug 7)"
         )
+        [cb] = r.filter_callbacks
+        assert [s is r.sources["g1"] for s in cb.args["all_graph_sources"]] \
+            == [True], "the filter does not write the unlinked graph's source"
 
 
 class TestFilterVarMissingFromData:
@@ -610,11 +839,19 @@ class TestFilterVarMissingFromData:
         """
         r = self._build_renderer_with_data(include_foreign=True)
         r.render()
-        assert len(r.filter_widgets) >= 1, (
+        # Exactly the one dropdown over foreign, and its one callback writing
+        # the linked graph's source: ``>= 1'' passed with every filter built
+        # twice (measured 24sep2026).
+        assert [(type(w).__name__, [tuple(o) for o in w.options])
+                for w in r.filter_widgets] == [
+            ("Select", [("__all__", "All"), ("0", "0"), ("1", "1")])], (
             "Filter widget must be created when filter variable 'foreign' "
             "is present in the data JSON.  Got 0 widgets — the filter "
             "variable must be included in the jsonio serialization."
         )
+        [cb] = r.filter_callbacks
+        assert [s is r.sources["s1"] for s in cb.args["all_graph_sources"]] \
+            == [True], "the filter does not write the graph's source"
 
     def test_filter_widget_absent_when_var_missing_from_data(self):
         """Filter widget is silently skipped when filter var missing from data.
@@ -737,8 +974,16 @@ class TestFilterCallbackNoBooleanFilterClass:
         The new source.data replacement approach stores original data in
         orig_data on each callback.  No IndexFilter instances should appear in
         filter callback args (they are no longer needed for Bokeh 3.x renders).
+
+        The snapshot check ran with ONE filter, so "every callback holds the
+        same snapshot" was true of its one callback by construction:
+        measured 24sep2026, it passed with render() giving each callback a
+        copy of its own.  Three filters now, one of each type so that every
+        builder's callback is wired, and the saved page's document is read
+        too: its three filter scripts name one snapshot between them, which
+        holds every row.  (test_filter_payload_size.py measures what a copy
+        per filter costs.)
         """
-        import tempfile, json, os
         from bokeh.models import IndexFilter
         n = 6
         var_names = ["mpg", "weight", "foreign"]
@@ -755,7 +1000,9 @@ class TestFilterCallbackNoBooleanFilterClass:
             "build_options": {
                 "layout": "auto", "link": "", "theme": "default",
                 "title": "", "subtitle": "", "registry": "s1",
-                "filter": "foreign, type(dropdown)",
+                # Three filter() options, joined as dash.ado joins them.
+                "filter": "foreign, type(dropdown) || weight, type(range) "
+                          "|| mpg, type(slider)",
             }
         }
         data_json = {"StataJSON": {
@@ -765,22 +1012,11 @@ class TestFilterCallbackNoBooleanFilterClass:
             "variableTypeIsString": {v: False for v in var_names},
             "values": vals,
         }}
-        sp_fd, sp = tempfile.mkstemp(suffix=".json")
-        dp_fd, dp = tempfile.mkstemp(suffix=".json")
-        op_fd, op = tempfile.mkstemp(suffix=".html")
-        try:
-            with os.fdopen(sp_fd, "w") as f: json.dump(spec, f)
-            with os.fdopen(dp_fd, "w") as f: json.dump(data_json, f)
-            os.close(op_fd)
-            r = DashRenderer(sp, dp, op)
-            r.render()
-        finally:
-            for p in (sp, dp, op):
-                try: os.unlink(p)
-                except OSError: pass
+        r, page = _saved_page(spec, data_json)
 
-        # Render must produce at least one filter callback
-        assert len(r.filter_callbacks) > 0, "Expected at least one filter callback after render"
+        assert [type(w).__name__ for w in r.filter_widgets] == [
+            "Select", "RangeSlider", "Slider"]
+        assert len(r.filter_callbacks) == 3
 
         # Every callback must have orig_source populated. It is a shared
         # ColumnDataSource, not a JSON string: a string is written into the
@@ -814,12 +1050,26 @@ class TestFilterCallbackNoBooleanFilterClass:
                             "Filter callback args list must NOT contain IndexFilter instances"
                         )
 
-
-
         assert len(_seen) == 1, (
             "each callback holds its own snapshot, so the dataset is written "
             "into the document once per filter"
         )
+
+        models = _document_models(page)
+        scripts = [m for m in _named(models, "CustomJS")
+                   if m["attributes"]["code"] == _FILTER_JS]
+        assert len(scripts) == 3, len(scripts)
+        snapshots = {_args(s)["orig_source"]["id"] for s in scripts}
+        assert len(snapshots) == 1, (
+            "the page's three filter scripts read %d snapshots" % len(snapshots))
+        data = dict(models[snapshots.pop()]["attributes"]["data"]["entries"])
+        assert data["__dash_row__"] == list(range(n)), data
+        assert data["mpg"] == [18.0 + i for i in range(n)], data
+        # The reader finds models by name -- the three scripts above -- and
+        # finds no IndexFilter anywhere in the document.
+        assert _named(models, "IndexFilter") == []
+
+
 class TestFilterWiringPrimarySourceOnly:
     """Regression tests for Bug: filter IndexFilter wired to computed-glyph renderers.
 
@@ -890,9 +1140,15 @@ class TestFilterWiringPrimarySourceOnly:
         fsource = r.sources.get("s1")
         assert fsource is not None, "Expected source 's1' to exist"
 
-        # Every filter callback must have orig_source populated from fsource
-        import json as _json
-        assert len(r.filter_callbacks) > 0, "Expected at least one filter callback"
+        # Every filter callback must have orig_source populated from fsource.
+        # ``> 0'' callbacks passed however many were built, and the snapshot
+        # was checked by its column NAMES only (``len(orig)'' counts
+        # columns): measured 24sep2026, this passed with every filter built
+        # twice, and with a snapshot holding the first five rows of ten.  One
+        # callback now, and a snapshot holding the source's data, every row.
+        assert len(r.filter_callbacks) == 1, len(r.filter_callbacks)
+        assert sorted(fsource.data) == [
+            "__dash_row__", "foreign", "mpg", "weight"], list(fsource.data)
         for cb in r.filter_callbacks:
             assert hasattr(cb, "args"), "Callback must have args"
             assert "orig_source" in cb.args, (
@@ -904,10 +1160,14 @@ class TestFilterWiringPrimarySourceOnly:
             assert isinstance(orig, dict) and len(orig) > 0, (
                 "orig_source must carry a non-empty snapshot"
             )
-            # orig_data must contain the same columns as the source
+            # orig_data must hold the source's columns, with its data
             for col in fsource.data:
                 assert col in orig, (
                     f"orig_source must contain column '{col}' from fsource"
+                )
+                assert [float(v) for v in orig[col]] == [
+                    float(v) for v in fsource.data[col]], (
+                    f"orig_source's '{col}' is not the source's data"
                 )
 
         # No IndexFilter instances should appear in callback args
@@ -1067,12 +1327,19 @@ class TestValueLabelPipelineRegression:
 
     def test_no_raw_numeric_values_in_labels(self):
         """BF-10c: raw numeric codes ('0', '1') must not appear as displayed
-        labels when value labels are defined for the variable."""
+        labels when value labels are defined for the variable.
+
+        The loop below ran over whatever categories the dropdown listed, so
+        a dropdown listing none passed it: measured 24sep2026 with no
+        category built.  The labels it walks are now pinned first.
+        """
         for key in ("origin", "foreign"):
             r = self._make_render(key)
             labels = self._option_labels(r)
+            assert labels == ["All", "Domestic", "Foreign"], (key, labels)
             # Exclude the hidden value portion — only check display labels
             non_all = [l for l in labels if l != "All"]
+            assert len(non_all) == 2, non_all
             for lbl in non_all:
                 assert lbl not in ("0", "1", "0.0", "1.0"), (
                     f"Raw numeric code '{lbl}' must not appear as a display label "
@@ -1271,21 +1538,33 @@ class TestFilterEdgeCases:
         assert "All" in labels, f"Expected 'All' option, got: {labels}"
 
     def test_fc02_slider_all_identical_values(self):
-        """FC-02: build_slider with all-identical values creates widget without crash."""
+        """FC-02: build_slider with all-identical values creates widget without crash.
+
+        ``end > start'' passed a widget whose handle hid every row (measured
+        24sep2026, the handle at the end); it is pinned as built.
+        """
         src = self._src({"weight": [2500.0, 2500.0, 2500.0, 2500.0]})
         widget, _ = FilterBuilder.build_slider("weight", src)
         # Must not crash; slider end must be > start (expanded by 1.0)
-        assert widget.end > widget.start, (
-            f"Slider end ({widget.end}) must be > start ({widget.start}) for constant data"
+        assert (widget.start, widget.end, widget.value, widget.step) == (
+            2500.0, 2501.0, 2500.0, 1), (
+            f"Slider {widget.start}..{widget.end} at {widget.value} for "
+            f"constant data"
         )
 
     def test_fc03_range_single_unique_value(self):
-        """FC-03: build_range with one unique value must not collapse to zero range."""
+        """FC-03: build_range with one unique value must not collapse to zero range.
+
+        ``end > start'' passed a range that opened on (5001, 5001), keeping
+        no row (measured 24sep2026); it is pinned as built.
+        """
         src = self._src({"price": [5000.0, 5000.0, 5000.0]})
         widget, _ = FilterBuilder.build_range("price", src)
         start, end = widget.start, widget.end
-        assert end > start, (
-            f"RangeSlider end ({end}) must be > start ({start}) for single-value data"
+        assert (start, end, tuple(widget.value), widget.step) == (
+            5000.0, 5001.0, (5000.0, 5001.0), 1), (
+            f"RangeSlider {start}..{end} at {widget.value} for single-value "
+            f"data"
         )
 
     def test_fc04_dropdown_many_unique_categories(self):
@@ -1339,6 +1618,12 @@ class TestFilterEdgeCases:
 # Owned by S13 (linking, filters and KPI correctness).  The test is written
 # here, before the fix, per project rule 8.
 
+
+class _TheLineFilterIsInert(AssertionError):
+    """The recorded defect and nothing else: only the one check the strict
+    xfail below expects to fail raises it."""
+
+
 class TestFilterReachesTheRenderedSource:
 
     def _sources_behind_glyphs(self, fig):
@@ -1390,22 +1675,39 @@ class TestFilterReachesTheRenderedSource:
 
     @pytest.mark.xfail(
         strict=True,
+        raises=_TheLineFilterIsInert,
         reason="S13: map_line builds a derived sorted ColumnDataSource, but "
                "render() passes self.sources to the filter callback, so "
                "dragging a filter on a line chart changes nothing on screen. "
                "Reproduced in a browser on a real sp500 dashboard.",
     )
     def test_line_filter_updates_the_rendered_source(self):
+        """The mark had no raises=, so ANY exception was the expected
+        failure: measured 24sep2026, this stayed XFAIL -- green -- with
+        render() raising on a line plot, and with no filter callback built
+        at all (an IndexError on the first line).  Now only the defect's own
+        check raises what the mark names, and a precondition that does not
+        hold fails the test outright.  Measured the same day: the line draws
+        from a source of three columns (index, x, y) that neither the
+        callback's all_graph_sources nor its agg_sources holds.
+        """
         dr = self._build("line")
+        assert len(dr.filter_callbacks) == 1, len(dr.filter_callbacks)
         cb = dr.filter_callbacks[0]
+        assert cb.code == _FILTER_JS
+        # What the script writes: every listed graph source, and every
+        # aggregate source it recomputes.
         targets = {id(s) for s in cb.args["all_graph_sources"]}
-        rendered = set()
-        for fig in dr.figures.values():
-            rendered |= self._sources_behind_glyphs(fig)
-        assert targets & rendered, (
-            "the filter callback updates no source that any glyph renders "
-            "from — the filter is inert on screen"
-        )
+        targets |= {id(s) for s in cb.args["agg_sources"]}
+        [fig] = dr.figures.values()
+        lines = [r for r in fig.renderers
+                 if type(getattr(r, "glyph", None)).__name__ == "Line"]
+        assert len(lines) == 1, "the graph draws %d lines" % len(lines)
+        rendered = self._sources_behind_glyphs(fig)
+        if not targets & rendered:
+            raise _TheLineFilterIsInert(
+                "the filter callback updates no source that any glyph "
+                "renders from -- the filter is inert on screen")
 
 
 class TestTheFilterReadsTheWholeDataset:

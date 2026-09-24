@@ -212,9 +212,11 @@ class TestNamedPlacementLayout:
         assert dr._compute_grid(3, "1 3") == (1, 3)
 
     def test_auto_still_works(self):
+        """Four items in ceil(sqrt(4)) = 2 columns, so 2 rows.  "rows >= 1
+        and cols >= 1" passed any grid at all, four in one row included."""
         _, dr = _render(_THREE, "auto")
         rows, cols = dr._compute_grid(4, "auto")
-        assert rows >= 1 and cols >= 1
+        assert (rows, cols) == (2, 2)
 
 
 # ======================================================================
@@ -562,10 +564,11 @@ class TestTabsWorkUnderEveryLayout:
     @pytest.mark.parametrize("layout", ["auto", "bs", "2 1"])
     def test_the_tab_titles_reach_the_document(self, layout):
         out, _ = _render(_THREE, layout, tabs="Alpha: s1 / Beta: s2 s3")
-        assert "Alpha" in out and "Beta" in out, layout
-        # Both words are in the inlined BokehJS of a page with no tabs, so
-        # the line above cannot fail; the titles of the page's Tabs model
-        # can.
+        # The titles of the page's Tabs model, read from its document.  The
+        # words in the page text are no witness: both are in the inlined
+        # BokehJS of every page, under auto, bs and "2 1" alike, tabs() or
+        # not (measured 24sep2026), so `"Alpha" in out and "Beta" in out',
+        # which stood here, could not fail and is gone.
         assert _tab_titles(out) == ["Alpha", "Beta"], layout
 
     @pytest.mark.parametrize("layout", ["auto", "bs", "2 1"])

@@ -309,6 +309,18 @@
       }
     }
   },
+  "brush": {
+    "_scope": "in 1/30: the rows a brush of the first thirty rows of sysuse auto selects -- indices 0..29 of test/fixtures/data/auto.csv, which holds sysuse auto's mpg and weight in Stata's row order (its first thirty mpg values are the ones this run printed: 22 17 22 20 15 18 26 20 16 19 14 14 21 29 16 22 22 24 19 30 18 16 17 28 21 12 12 14 22 14)",
+    "measured": "24 Sep 2026, StataNow 19.5 MP (born 12 Aug 2026), batch mode: arch -arm64 /usr/local/bin/stata-mp -b do on a probe do-file that ran each command below and wrote r() with %21.17g straight after it. The mean agrees with kpi_pctile_truth.json's in30 scope.",
+    "mean": {
+      "cmd": "sysuse auto ; summarize mpg in 1/30 -> r(mean)",
+      "value": 19.333333333333332
+    },
+    "count": {
+      "cmd": "sysuse auto ; summarize mpg in 1/30 -> r(N)",
+      "value": 30
+    }
+  },
   "count_semantics": {
     "warning": "'count' is ambiguous. summarize's r(N) counts observations with a NON-MISSING value of the variable; the -count- command counts observations that satisfy if/in regardless of missingness. They agree for mpg (no missing) but will not agree for rep78 (5 missing). dash kpi count() currently uses summarize r(N), i.e. the non-missing count.",
     "all_summarize_r_N": {

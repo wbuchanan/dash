@@ -82,8 +82,12 @@ do "../dash_parse.mata"
 do "../dash.ado"
 
 // cert_file_has: asks whether a file holds a string, from Mata, where the
-// file's text is a value and never macro text.  Loaded from this directory,
-// as the runner runs every script from it.
+// file's text is a value and never macro text.  cert_log_has asks the same
+// of a Stata log with the log's wrapping undone: every log below is
+// searched with it, since Stata breaks a log line at c(linesize), anywhere,
+// and where a message breaks depends on what precedes it on its line (a
+// path, a name) and on the linesize the log was written at.  Loaded from
+// this directory, as the runner runs every script from it.
 do "cert_helpers.do"
 
 // How many globals does the registry still hold for `name'?  Counted in
@@ -101,8 +105,9 @@ end
 
 // dash build to a page of its own under c(tmpdir), keeping what it
 // printed: r(rc), r(page) and r(log).  The page is erased first, so a page
-// an earlier run left cannot answer a check of this one.  cert_file_has is
-// rclass, so a caller copies these into locals before its first check.
+// an earlier run left cannot answer a check of this one.  cert_file_has and
+// cert_log_has are rclass, so a caller copies these into locals before its
+// first check.
 capture program drop _reg_build
 program define _reg_build, rclass
     syntax name(name=tag) [, *]
@@ -155,19 +160,6 @@ real scalar _reg_item_globals(string scalar nm)
         }
     }
     return(n)
-}
-
-real scalar _reg_log_has(string scalar fn, string scalar needle)
-{
-    real scalar   fh, found
-    string scalar line
-    found = 0
-    fh = fopen(fn, "r")
-    while ((line = fget(fh)) != J(0,0,"")) {
-        if (strpos(strlower(line), strlower(needle))) found = 1
-    }
-    fclose(fh)
-    return(found)
 }
 end
 
@@ -360,8 +352,16 @@ local r16b = _rc
 quietly log close `r16f'
 assert `r16a' == 198
 assert `r16b' == 198
-mata: st_local("_reg_g", strofreal(_reg_log_has("`r16g'", "dash: graph name '_all' is the word link(_all) uses for every graph")))
-mata: st_local("_reg_k", strofreal(_reg_log_has("`r16g'", "dash kpi: name '_all' is the word link(_all) uses for every graph")))
+// Each refusal once, in its own words, on its logical line: cert_log_has
+// rejoins what Stata's log wraps at c(linesize), and lower keeps the
+// case-insensitive match of the line-by-line reader this used, which did
+// not see a refusal the log had broken, though dash printed it -- at
+// linesize 50 the graph's breaks inside "uses", the KPI card's before "for
+// every graph", and link(_all g2)'s before "alone" (measured 24sep2026).
+cert_log_has "`r16g'", needle("dash: graph name '_all' is the word link(_all) uses for every graph") lower
+local _reg_g = r(count)
+cert_log_has "`r16g'", needle("dash kpi: name '_all' is the word link(_all) uses for every graph") lower
+local _reg_k = r(count)
 assert `_reg_g' == 1
 assert `_reg_k' == 1
 assert "${dash_graph_registry}" == ""
@@ -374,8 +374,8 @@ local r16c = _rc
 quietly log close `r16f'
 set linesize `r16ls'
 assert `r16c' == 198
-mata: st_local("_reg_l", strofreal(_reg_log_has("`r16g'", "link(_all) links every graph; give it alone")))
-assert `_reg_l' == 1
+cert_log_has "`r16g'", needle("link(_all) links every graph; give it alone") lower
+assert r(count) == 1
 capture noisily dash build, saving("`out4'.html") replace nobrowser link(_all)
 assert _rc == 0
 display "REG-16 PASS: _all is refused as a graph or KPI name, and link(_all) beside names is refused for what it is"
@@ -455,6 +455,26 @@ display "REG-17 PASS: name()'s text splits into the name and a replace flag by o
 // HTML-escaped inside Bokeh's document, so its value is "&gt;21.2973&lt;".
 
 // ---- REG-18 -- a graph named like a KPI's field is a graph ----
+// The build log is searched with cert_log_has (see cert_helpers.do above).
+// The control first, through the same build and the same search, or the
+// absence below proves nothing: an entry that does hold both -- set by
+// hand, as REG-15 sets it, on a_stat -- is reported in those words, on one
+// line of the log (measured 24sep2026: rc 0, one line).
+dash clear
+dash scatter price weight, name(a_stat) title("Graph a_stat")
+global dash_kpi_a_stat      "1"
+global dash_kpi_a_stat__sta "mean"
+global dash_kpi_a_stat__var "mpg"
+global dash_kpi_a_stat__val "21"
+global dash_kpi_a_stat__dsp "21"
+global dash_kpi_a_stat__tit "forced"
+global dash_kpi_a_stat__upd "filter"
+_reg_build r17ctl
+local rc17c = r(rc)
+local lg "`r(log)'"
+assert `rc17c' == 0
+cert_log_has "`lg'", needle("registered as both")
+assert r(count) == 1
 foreach r17o in kpi_first graph_first {
     dash clear
     if "`r17o'" == "kpi_first" {
@@ -479,7 +499,7 @@ foreach r17o in kpi_first graph_first {
     assert r(rc) == 0
     local pg "`r(page)'"
     local lg "`r(log)'"
-    cert_file_has "`lg'", needle("registered as both")
+    cert_log_has "`lg'", needle("registered as both")
     assert r(found) == 0
     cert_file_has "`pg'", needle("Graph a_stat")
     assert r(found) == 1
@@ -578,6 +598,21 @@ assert r(found) == 1
 display "REG-21 PASS: replacing KPI a leaves KPI a_b's globals and card in place"
 
 // ---- REG-22 -- ... and a graph registered after a_b builds ----
+// "Traceback" is searched for with cert_log_has too, and needs a control
+// of its own, through the same build and the same search: a graph whose
+// JSON is cut short dies in the renderer with a JSONDecodeError, and its
+// traceback is in the log (measured 24sep2026: rc 7102, the word on one
+// line).  REG-23 and REG-27 search their logs for the same word the same
+// way.
+dash clear
+dash scatter price weight, name(g2) title("Graph g2")
+mata: st_global("dash_json_g2", substr(st_global("dash_json_g2"), 1, 40))
+_reg_build r21ctl
+local rc21c = r(rc)
+local lg "`r(log)'"
+assert `rc21c' == 7102
+cert_log_has "`lg'", needle("Traceback")
+assert r(count) == 1
 dash clear
 dash kpi mean(mpg), title(A) name(a)
 dash kpi mean(price), title(AB) name(a_b)
@@ -587,7 +622,7 @@ _reg_build r21
 assert r(rc) == 0
 local pg "`r(page)'"
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("Traceback")
+cert_log_has "`lg'", needle("Traceback")
 assert r(found) == 0
 cert_file_has "`pg'", needle("Graph g2")
 assert r(found) == 1
@@ -609,7 +644,8 @@ _reg_build r22
 assert r(rc) == 0
 local pg "`r(page)'"
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("Traceback")
+// Searched as REG-22 searches it, whose control sees a traceback.
+cert_log_has "`lg'", needle("Traceback")
 assert r(found) == 0
 cert_file_has "`pg'", needle("Graph a")
 assert r(found) == 1
@@ -741,9 +777,11 @@ foreach r26r in "g1 ghost" "ghost g1" {
     local pg "`r(page)'"
     local lg "`r(log)'"
     assert `rc26' == 198
-    cert_file_has "`lg'", needle("dash build: registry entry 'ghost' holds neither a graph nor a KPI")
-    assert r(found) == 1
-    cert_file_has "`lg'", needle("Traceback")
+    // One report, and it is this -- on its logical line, whatever Stata's
+    // wrapping did to it; and no traceback, searched as REG-22 searches.
+    cert_log_has "`lg'", needle("dash build: registry entry 'ghost' holds neither a graph nor a KPI")
+    assert r(count) == 1
+    cert_log_has "`lg'", needle("Traceback")
     assert r(found) == 0
     capture confirm file "`pg'"
     assert _rc != 0
@@ -771,8 +809,8 @@ foreach r27v in legacy marker {
     local pg "`r(page)'"
     local lg "`r(log)'"
     assert `rc27' == 198
-    cert_file_has "`lg'", needle("dash build: registry entry 'k1' holds a KPI with no statistic or variable")
-    assert r(found) == 1
+    cert_log_has "`lg'", needle("dash build: registry entry 'k1' holds a KPI with no statistic or variable")
+    assert r(count) == 1
     capture confirm file "`pg'"
     assert _rc != 0
 }
@@ -947,16 +985,28 @@ program define _reg_refused
     local rc = _rc
     quietly log close _regref
     set linesize `ls'
-    mata: st_local("said", strofreal(_reg_log_has("`lg'", st_local("msg"))))
+    // The refusal, once, on its logical line: cert_log_has rejoins what
+    // Stata's log wraps at c(linesize), and lower keeps the case-insensitive
+    // match of the line-by-line reader this used.  That reader called a
+    // refusal the log had broken no refusal, though dash printed it -- at
+    // linesize 60 a graph's and a KPI card's break at "to overwrite", at 20
+    // "option name() not allowed" and "option nam() not allowed" break too
+    // -- and did not see a note printed after a long line's worth of text
+    // (measured 24sep2026).
+    cert_log_has "`lg'", needle(`"`msg'"') lower
+    local said = (r(count) == 1)
     if `said' != 1 & `"`msg2'"' != "" {
-        mata: st_local("said", strofreal(_reg_log_has("`lg'", st_local("msg2"))))
+        cert_log_has "`lg'", needle(`"`msg2'"') lower
+        local said = (r(count) == 1)
     }
     // A refused second name() is refused before the note that names the
-    // options dash does not honour, which used to call it "name()".
-    if "`kind'" == "twice" {
-        mata: st_local("noted", strofreal(_reg_log_has("`lg'", "ignoring unsupported option")))
-        if `noted' == 1 local said 0
-    }
+    // options dash does not honour, which used to call it "name()".  The
+    // note's count is kept in REG_NOTED for the control in REG-32, whose
+    // NAME() option is noted, through this same log and search, before its
+    // refusal.
+    cert_log_has "`lg'", needle("ignoring unsupported option") lower
+    global REG_NOTED = r(count)
+    if "`kind'" == "twice" & ${REG_NOTED} != 0 local said 0
     mata: st_local("same", strofreal(_reg_same("`nm'")))
     local why ""
     if `rc' != 198 local why "`why' rc=`rc'"
@@ -1059,6 +1109,12 @@ _reg_refused graph g1 `"dash scatter price weight, name(g1) text(20 3000 "name(a
 _reg_refused graph g1 `"dash scatter price weight, name(g1) ytitle("name(a, replace)") legend(label(1 "name(b, replace)"))"'
 _reg_refused graph g1 `"dash scatter price weight if make != "name(a, replace)", name(g1)"'
 _reg_refused graph g1 `"dash scatter price weight, name(g1) NAME(x, replace)"'
+// The control for the note a second name() must not print (REG-33 and
+// REG-37..41 look for it through this same log and search): this NAME() is
+// noted, once, before g1 is refused (measured 24sep2026).
+if "${REG_NOTED}" != "1" {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | NAME() was not noted, or the note not seen: [" + st_global("REG_NOTED") + "]")
+}
 _reg_refused graph k1 `"dash scatter price weight, name(k1) title("name(k1, replace)")"'
 _reg_still_g1
 if "${dash_kpi_k1}" != "1" | "${dash_kpi_k1__var}" != "mpg" {
@@ -1344,7 +1400,8 @@ _reg_build r42
 assert r(rc) == 0
 local pg "`r(page)'"
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("registered as both")
+// Searched as REG-18 searches it, whose control sees the warning.
+cert_log_has "`lg'", needle("registered as both")
 assert r(found) == 0
 cert_file_has "`pg'", needle(`"kpi_val_g1\""')
 assert r(found) == 1
@@ -1370,8 +1427,8 @@ _reg_build r43
 assert r(rc) == 0
 local pg "`r(page)'"
 local lg "`r(log)'"
-cert_file_has "`lg'", needle("dash build: 'b1' is registered as both a graph and a KPI; drawing the KPI.")
-assert r(found) == 1
+cert_log_has "`lg'", needle("dash build: 'b1' is registered as both a graph and a KPI; drawing the KPI.")
+assert r(count) == 1
 cert_file_has "`pg'", needle("&gt;forced&lt;")
 assert r(found) == 1
 cert_file_has "`pg'", needle("Graph b1")
@@ -1379,7 +1436,7 @@ assert r(found) == 0
 display "REG-43 PASS: AC-04.3 -- the build names b1, the entry it skips the graph of, and draws its KPI card"
 
 dash clear
-macro drop REG_BAD REG_SEEN
+macro drop REG_BAD REG_SEEN REG_NOTED
 capture program drop _reg_fresh
 capture program drop _reg_refused
 capture program drop _reg_replaced

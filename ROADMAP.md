@@ -466,6 +466,20 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 > (LOC-01..09, runner #31), `test_theme_escaping.cscript` (THM-01..09,
 > runner #32).
 
+> **Mutation-checked by WP-24** (24sep2026, `a2c7502`).  Each fix was
+> reverted on a copy of the tree; nine reverts left the committed suite
+> green and each now fails a new test: the tamper warning removed
+> (test_installed_layout.py INST-07, strengthened), the locator's failure
+> branch silenced or its beside-dash.ado candidate returned unconfirmed
+> (test_render_locate.cscript LOC-10, LOC-11), `dash serve` announcing a
+> server before it failed (LOC-12, test_env_guards.cscript ENV-17), the
+> served app's fallback notice removed or naming s2color
+> (test_scheme_fallback_provenance.py FBP-10/11, FBP-06), and B3's
+> limitation paragraph deleted (INST-18).  AC-05.1 had only a model of an
+> install: LOC-13..16 run a real `net install` into a scratch PLUS, and
+> INST-01/02/12 cover all twenty shipped schemes, not fourteen.  AC-05.4
+> (adoupdate) is held only by reading dash.pkg.
+
 > **User story.** As a user who installed `dash` with `net install`, I want
 > `scheme(stcolor)` to give me stcolor — not a fallback that looks like
 > nothing Stata ships.
@@ -571,6 +585,16 @@ should land:
 > New: `test/test_setup_honesty.cscript` (HON-01..18, runner #33), plus seven
 > version-context cases in `test_setup_python_gate.cscript`.
 
+> **Mutation-checked by WP-24** (24sep2026, `a2c7502`).  Nine reverts
+> left the committed suite green -- nothing ran `dash_setup` itself -- and
+> each now fails a case of test_setup_honesty.cscript HON-19..25, which run
+> it with pip replaced by a recorder: a Python below the minimum counted
+> (HON-19), a package below its minimum reported (HON-20), pip's output
+> shown and nothing called OK without packaging (HON-21), `pkg>=min` and
+> the `--user` retry handed to pip (HON-22), and the check of its own files
+> (HON-23..25).  test_program_coverage.cscript PC-15..26 run it end to end,
+> in a sandbox that starts no process.  TR-06.9 is comments only.
+
 > **User story.** As a new user, if setup did not fully succeed I want to be
 > told that — not to see "All dependencies are satisfied" and discover the
 > problem later inside a Python traceback.
@@ -657,6 +681,19 @@ should land:
 > New: `test/test_env_guards.cscript` (ENV-01..16, runner #34), plus a new
 > class in `test_cscript_hygiene.py` covering the two shipped `.ado` files.
 
+> **Mutation-checked by WP-24** (24sep2026, `a2c7502`).  Three reverts
+> left the committed suite green and each now fails a new case: the Python
+> guard moved after the renderer (test_env_guards.cscript ENV-19), an
+> unrepairable library not reported (ENV-20), and the library check cut to
+> one function (ENV-21); ENV-17 also catches WP-05's revert, `dash serve`
+> announcing a server before the guard stops it.  AC-07.3 held only in a
+> fresh session: a partly compiled library already in memory passed the
+> check, which asked for one function, and its list lacked
+> `_dash_path_badchar`.  WP-24 fixed both -- every function dash.ado calls
+> is checked, a part library is repaired from the file, and one that cannot
+> be is refused by name (ENV-22, ENV-23, test_mata_library_guard.cscript
+> MLG-01..06, test_program_coverage.cscript PC-30).
+
 > **User story.** As a user without Python linked, I want `dash` to tell me to
 > run `dash_setup` — the way it already does for `jsonio` — instead of
 > handing me a raw Stata Python error.
@@ -742,6 +779,19 @@ should land:
 > output (7ddbc08) also caught `_dash_serve`'s deliberately extension-less
 > tempfile, so every `dash serve` aborted with r(7102) until WP-23 fixed the
 > launch route (GAPS.md C1, C2; BUGS.md).
+
+> **Mutation-checked by WP-24** (24sep2026, `a2c7502`).  Five reverts left
+> the committed suite green and each now fails a new case: a wrong escape
+> digit for 0x10 (test_json_escaping.cscript JSE-38, all 31 control bytes
+> round-tripped through Python's json), a caller that does not read the
+> validated path back (JSE-39..41, one per route), and the refusal's
+> message changed (test_utf8_validation.cscript UTF-13).  JSE-03/04 could
+> never fail -- their needles were control bytes Stata drops from a
+> do-file -- and compare the whole escaped text now.  Two things did not
+> hold, and WP-24 fixed both: `dash build, saving() server` still refused
+> any `..` in the path, so `my..report.py` was refused where
+> `my..report.html` was built (test_path_validation.cscript PV-20), and a
+> double quote in saving() gave r(132) instead of dash's message (PV-21).
 
 > **User story.** As a user pasting text from the web into `title()`, I want
 > either a clean `dash` error or a correct dashboard — never a raw Python
@@ -3587,7 +3637,10 @@ criteria (measured by this package; WP-01's and WP-04's re-run on the
 WP-23 tree), but several of the tests their plans name were written under
 other names or not at all, so heading them DONE waits on WP-24's
 AC-to-test mapping; WP-03's C1 and C2 are closed here, and its AC-03.4 has
-no regression test (BUGS.md, the "file not found" entry).
+no regression test (BUGS.md, the "file not found" entry).  *Since then:*
+WP-24 mapped every acceptance criterion of WP-01 to WP-04 to a test that
+goes red when the criterion is broken, and all four are DONE; AC-03.4 is
+held by `test/test_bug_regressions.cscript` BR-02.
 
 ### Verification, measured
 
@@ -3595,9 +3648,9 @@ Certification 59/59 passed, 0 failed, 0 skipped (nine new scripts: test_help_cla
 
 ---
 
-## WP-24 · Test integrity
+## WP-24 · Test integrity — DONE
 
-**Gaps closed:** L3, L4, L5, L6, L7, L9 · **Severity:** S1/S2 · **Effort:** M · **Depends on:** —
+**Gaps closed:** L3, L4, L5, L6, L7, L9 · **Severity:** S1/S2 · **Effort:** M (delivered as L) · **Depends on:** —
 
 > **User story.** As a maintainer, I want a green suite to mean the code
 > works.
@@ -3609,55 +3662,155 @@ Certification 59/59 passed, 0 failed, 0 skipped (nine new scripts: test_help_cla
   (CLAUDE.md rule 4).
 - **BR-24.3** Every fixed defect has a regression test (CLAUDE.md rule 8).
 
-### Technical requirements
+### What was measured before any test changed
 
-- **TR-24.1 (L3, highest severity here).** Test `_dash_check_utf8` with real
-  invalid UTF-8. Its only two callers
-  (`test_ado_loads.cscript:94`, `test_mata_autoload.cscript:52`) pass `""`, so
-  the rejection branch (`dash_parse.mata:149-153`) and all of `_is_utf8` have
-  **never executed**. Delivered jointly with WP-08.
-- **TR-24.2 (L5).** Fix the three tests that cannot fail:
-  `test_filter_label.py:155-161` (returns green on any exception; its
-  `dr.render() if False else None` at `:159` is dead code, so the render it
-  claims to inspect never runs), `test_options.py:260-262` (catches
-  `AssertionError`), `test_filters.py:209-211`.
-- **TR-24.3 (L5).** Give the 19 no-assertion tests real assertions, starting
-  with `test_resource_limits.py:206`
-  (`test_a_power_tower_does_not_hang_the_served_app` — no assertion, no
-  timeout). The eleven honest "does not crash" cases may stay, renamed to say
-  so.
-- **TR-24.4 (L6).** Replace the vacuous pass conditions:
-  `test_conformance.cscript:126-146` string-matches `"drew nothing"` in a log;
-  `test_every_plot_type_draws.py:77-95` derives its parametrization from a
-  regex over the display string at `dash.ado:940-944`. Drive both from the
-  dispatch table.
-- **TR-24.5 (L4).** Replace name-existence assertions with behavioural ones —
-  `_dash_json_get_str` is covered only by `assert "_dash_json_get_str" in src`
-  (`test_server.py:4694-4712`), although it *is* the fix for a parsing bug.
-  Give it hostile-JSON tests. Same for
-  `test_paired_coordinate_plots.py:139,151` and `test_serve_options.py:71-157`.
-- **TR-24.6 (L7).** Add direct tests for `_dash_formats_json`,
-  `_dash_date_fmts_swap` and `_dash_date_fmts_restore` — never named in any
-  test file — and add them to the existence loop at
-  `test_ado_loads.cscript:69-77`. Add a `dash_setup` execution test (75
-  textual hits, zero invocations).
-- **TR-24.7 (L9).** Add the six missing bug-regression tests
-  (`BUGS.md:341, 359, 383, 395, 413, 431`), two of which are security fixes.
+24sep2026, at `68327a8` and `a2c7502`, StataNow 19.5 with the console binary.
+A test was judged by breaking what it names -- the product behaviour, on a
+copy of the tree -- and running it:
 
-### Acceptance criteria
+| Question | Measured |
+|---|---|
+| Tests that verify nothing (TR-24.2, TR-24.3, L5) | 23 of 4367 test functions at `a2c7502` (GAPS.md counted 19 of 2340 when written); the three TR-24.2 names could not fail, and `test_options.py`'s claim was false -- nothing clamps an out-of-range RGB, Stata notes it and draws the default.  A scan for AC-24.2's shapes found 30: 23 with no verification, 5 handlers that swallow a failure, 1 refusal never asserted, 1 AssertionError caught.  Four more returned green when a precondition failed; BUG-33's regression test had never asserted anything (its data lacked the variable it filtered on) and BUG-32's re-filtered on "All" |
+| Source-text tests (TR-24.5, L4) | 481 reviewed: 46 were the only coverage of their behaviour, 89 deliberate structural guards, 205 duplicated by a behavioural test, 141 not source tests.  `_dash_json_get_str`'s regression test asserted only that its name was in the source |
+| Vacuous pass conditions (TR-24.4, L6) | C-03's "drew nothing" line scan passed with the report reworded, and with a layer drawing nothing and its report silenced; `test_every_plot_type_draws.py`, parametrized by a regex over a display string, passed with rscatter drawn blank and dropped from that string.  `cert_file_has` searched 32,768-character pieces alone, so each of its 423 calls in 37 scripts could miss a needle across a piece boundary, and log searches failed from a 212-character checkout path.  The same shapes -- floors, needles the inlined BokehJS carries on every page, absence checks with no control, loops that could run zero times, a skip where a failure belonged -- were found throughout the certification scripts and pytest files |
+| Untested programs and functions (TR-24.6, L7) | Instrumented, the certification suite entered 61 of 63 ado programs (`dash_setup`'s body never: HON-14/15 stop at its syntax line) and 52 of 55 Mata functions; pytest executed 434 of 440 renderer functions, and skipping each function's body was caught for 436 of 453 -- 5 were genuinely unchecked.  The existence loop GAPS L7 cites listed 22 of 56 programs, not all but three |
+| Bug regressions (TR-24.7, L9) | Three closed BUGS.md entries had no test that could fail: the fills of `comprehensive_demo.do`, the "file not found" note, `ylabel(#5, grid)` |
+| The fixes of WP-01..WP-08 (the test plan) | WP-01..04: nine fix parts no committed test caught.  WP-05..08: of 108 mutations, 78 caught, 4 equivalent, 26 missed |
 
-- **AC-24.1** Every test fails when its subject is reverted (mutation-checked
-  for the ones this package touches).
-- **AC-24.2** No test catches `AssertionError` or returns green on a bare
-  `except Exception`.
-- **AC-24.3** Every `program define` and every Mata function has at least one
-  behavioural test.
-- **AC-24.4** Every `BUGS.md` entry names a regression test.
+### Technical requirements, as delivered
 
-### Test plan
+- **TR-24.1** Delivered by WP-08 (`test_utf8_validation.cscript` UTF-01..12)
+  and tightened here: UTF-13 runs every sequence of GAPS A9's table through
+  the gate for r(198) and "non-UTF-8" (with the message reduced to "invalid
+  input", UTF-01..12 had passed); UTF-10 holds exactly 2,245 fixture
+  sequences and exits 601 on a missing fixture, which was a skip; UTF-11
+  names the program each of the six gates sits in.
+- **TR-24.2 / TR-24.3** All 23 tests with no verification, and the three
+  that could not fail, assert what they name.  `test_rgb_clamps_at_255` was
+  replaced by three tests of what Stata does.  `test/test_test_integrity.py`
+  enforces AC-24.2 over every test file: an AssertionError caught; a broad
+  handler that returns, passes or continues; a handler that skips a try's
+  assertions; no verification; a return before verifying; an assert that
+  cannot be false.  Each rule is tested against its own examples; the
+  allowlist is empty.
+- **TR-24.4** C-03 and C-04 read the saved page's document; C-01's corpus
+  is the renderer's own list of plot types; C-00 tests the readers.
+  `test_every_plot_type_draws.py` is parametrized by `_dash_plot_type_names()`,
+  held equal to the Mata table.  `cert_helpers.do` reads files whole, and
+  `cert_log_has` searches a log with its wrapped lines re-joined, as the
+  four scripts that keep a log reader of their own now do too.  Beyond the two the
+  plan named, every vacuous condition found was replaced, in two rounds,
+  each change shown red under a break its old form passed: in
+  `test_server.py` five loops that never ran, 24 `roots > 0` and
+  `len(html) > 100` floors and six product-state skips; in
+  `test_html_output.py` checks of canvas text that is never in a page, of
+  escaped markup, of pages with no document, and some forty needles BokehJS
+  carries on every page; floors, one-letter needles and value checks in the
+  filter, KPI, glyph, layout, scheme, security, resource-limit, serve and
+  help files, read now from what the page or the app draws; and skips over a
+  missing committed fixture made failures.
+- **TR-24.5** Every source-text test that was the only coverage of its
+  behaviour runs the code: `_dash_json_get_str` has 43 behavioural cases
+  and `test_qualifier_literals.cscript` QL-01..15; the paired-coordinate
+  checks are P1A-56; `test_serve_options.cscript` [6/7] and [7/7] run
+  `_dash_serve_spec`; the Windows browser commands, which ran only on
+  Windows, go through one opener, `_dash_open_page`, that returns its
+  command without running it (`test_serve_browser.cscript` SB-13..20);
+  `dash_setup`'s eight are held by runs of `dash_setup` itself; the layout
+  and websocket-origin checks drive both modes and a live server.  The
+  structural guards that remain say so in their docstrings.
+- **TR-24.6** `test_program_coverage.cscript` PC-01..11 and PC-31 test the
+  three programs L7 names with ordinary, edge, hostile and abbreviated input
+  on both routes; PC-15..26 run `dash_setup` end to end in a sandbox that
+  starts no process (`test/setup_sandbox.py`, itself tested), as do
+  `test_setup_honesty.cscript` HON-19..28.  All three programs are in the
+  existence loop.
+- **TR-24.7** `test_bug_regressions.cscript` BR-01..03 and
+  `test_bug_regressions.py`; `CLOSED_WITHOUT_A_TEST` is empty.
 
-This package is tests. Verify by mutation: revert each fix from WP-01 … WP-08
-in a scratch branch and confirm the suite goes red.
+Defects found on the way and fixed test-first, each with a BUGS.md entry
+naming its test: `inrange()` with a missing bound selected no rows, in both
+modes; both renderers read a qualifier's string literals as Python source,
+and the served filter callback re-applied a graph's qualifier with a private
+copy of that code; the Mata library check named 22 of the 23 functions
+dash.ado called, checked one while the library was in memory, and could not
+repair a partly loaded library; a date format holding a quote, backtick or
+dollar sign was lost or refused on every render, a failing jsonio left dates
+`%12.0g`, and a variable a qualifier abbreviates is read by its stored name;
+`saving()` refused a `..` inside a file name on the server route, and a
+double quote gave r(132); `BOKEH_ALLOW_WS_ORIGIN` replaced the served app's
+origin list without a word -- the launcher now says so, and warns when it
+admits every site.  The browser opener, rewritten to be testable, now hands
+the shell a single-quoted path it no longer expands.  In the tests
+themselves, `cert_file_has` missed a needle across a 32,768-character piece;
+log checks depended on the checkout's path; `test_security_surface.py` failed
+when run alone; the `dash_setup` sandbox blocked a package but not its cached
+submodules, so PC-18 could not see BUG-50's own break; and an absence check
+read a page an earlier script had left under a reused tempfile name.
+
+### Acceptance
+
+- **AC-24.1** Every test this package changed or added was run against a
+  break of its subject and failed there, each recorded with the old test's
+  result under the same break (WP-01..08's are summarised in their own
+  records above).
+- **AC-24.2** `test/test_test_integrity.py`, empty allowlist.
+- **AC-24.3** `test/program_coverage_map.py` names the behavioural test of
+  each of the 123 ado programs and Mata functions, and
+  `test/function_test_map.py` that of each of the 467 renderer
+  functions, every one measured to fail when its function's body is
+  skipped; their guards fail on a unit with no test, a stale entry, a
+  missing test, or dead code becoming reachable.  One unit has no test by
+  design: `_dash_graph_opts_to_json`, uncalled and broken, which WP-26
+  removes.
+- **AC-24.4** Every closed BUGS.md entry names a test that exists
+  (`test_tracking_documents.py`); none is listed as without one.
+
+### Found on the way, not fixed
+
+Each measured and recorded as an open BUGS.md entry saying why it stays
+open (a product change outside test integrity): a saved page's filter
+leaves line, tsline, area, bar, spike, dropline and connected layers as
+they were; the one-line form overwrites an existing file named by
+`saving()` without `replace`, and ignores `replace` -- the one to fix first;
+a qualifier that abbreviates a variable, or holds a subscript or a function
+call, is skipped by the renderer and every row drawn; a function layer
+naming an unknown function draws nothing where twoway refuses it; nested
+compound quotes are refused; an lfit of a variable with no spread draws a
+sloped segment; an empty dataset is reported as missing its variables;
+`xline()`/`yline()` ignore the scheme; `filterposition(left)` prints Bokeh's
+W-1005; the one-line form ignores `by()`'s `cols()`; `#N` ticks fall where
+Bokeh puts them; `gsize text` is read by nothing (a strict xfail); a linked
+`by()` graph with a line layer logs Bokeh's E-1024; a column name holding
+markup gets no tooltip; a lone `yaxis(2)` draws two axes; a range layer with
+no second y variable is misreported.  Whether dash should refuse
+`BOKEH_ALLOW_WS_ORIGIN=*` outright, or treat its origins as additions, is a
+policy choice left to the maintainer (WP-20 pinned the variable as the
+operator's).  Concurrent Stata sessions (up to eighteen) once rewrote the
+console binary's settings file without its Python lines, and every script
+then skipped: the runner counts skips, and no more than three sessions now
+run at once.
+
+Left in the tests, deliberately: a few checks in `test_html_output.py` look
+in the page for a colour or title no default carries, which fails when the
+option is ignored but not when it lands on the wrong property; four floors
+that sit beside an exact check of the same scan.  Noted, not measured
+further: `%tb` business-calendar formats are not treated as dates by either
+side; the uncalled `_dash_kv_json` refuses a backtick (WP-26 removes it);
+`DashRenderer._kpi_update_modes` is written and never read.
+
+### Verification, measured
+
+Certification 63/63 passed, 0 failed, 0 skipped, in one session (four new
+scripts: test_bug_regressions, test_program_coverage, test_qualifier_literals
+and test_mata_library_guard).  pytest 14804 passed, 8 xfailed, 0 failed, 0
+skipped -- the 68 skips before were per-script checks run over scripts they
+do not apply to, which are no longer generated.  The eight xfails are the
+open BUGS.md entries they name: the served app's date gap (five), the saved
+page's line filter, the constant-x lfit and `gsize text`.  Each part ran its
+new tests against its base first; every test that pins a fix failed there.
+The first part was committed at `7c28802` after its own full runs
+(certification 63/63, pytest 14753 passed).
 
 ---
 
@@ -3721,6 +3874,18 @@ test must be red.
 ## WP-26 · Dead code removal
 
 **Gaps closed:** N, N1, M3 · **Severity:** S3 · **Effort:** S · **Depends on:** WP-09, WP-10
+
+> **Changed by WP-24** (24sep2026).  `_json_escape` is no longer dead:
+> `_dash_formats_json` escapes each display format with it, and
+> `_dash_require_mata` checks for it, so TR-26.3 must leave it (its
+> `_html_escape` half still has no caller).  `_dash_graph_opts_to_json` is
+> broken as well as dead -- it reads its own empty `g_*` locals and returns
+> `{}` whatever its caller holds.  `test/function_test_map.py` lists the
+> renderer functions nothing reaches (`DEAD`, 10) and those only tests
+> reach (`TEST_ONLY`, 13); its guard fails when one becomes reachable, and
+> each is this package's to delete or keep.  TR-26.4's `map_pci` is reached
+> only by tests too, although the static call graph counts the `"pci"`
+> entry of the dispatch table and the list leaves it out.
 
 > **User story.** As the next person to audit this codebase, I want what I
 > read to be what runs.

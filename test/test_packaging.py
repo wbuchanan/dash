@@ -34,6 +34,7 @@ import importlib.util
 import itertools
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -416,7 +417,13 @@ class TestNoUnsuppressableBrowserWindow:
     would silently come back.
     """
 
-    _LAUNCHERS = ("shell open", "shell start", "shell xdg-open")
+    #: A Stata command that hands a line to the operating system: shell,
+    #: its synonyms and `!', after any prefix; or Mata's stata()/_stata()
+    #: given one.  Read from code lines only.
+    _SHELL = re.compile(
+        r"^\s*(?:(?:capture|cap|quietly|qui|noisily|noi)\s+)*"
+        r"(?:(?:shell|xshell|winexec|unix)\b|!)"
+        r"|\b_?stata\(\s*\"(?:shell|xshell|winexec|unix)\b")
     #: The programs that decide whether a window opens: the one-line form's
     #: and the one `dash build' and `dash serve' share.  Each must read the
     #: switches (test_each_decision_reads_the_switches).
@@ -428,35 +435,73 @@ class TestNoUnsuppressableBrowserWindow:
         with open(path, encoding="utf-8") as fh:
             return fh.read().splitlines()
 
-    def test_every_launcher_call_sits_inside_a_guard(self):
-        """Each launcher sits beside a call to a decision program.
+    @staticmethod
+    def _code(line):
+        """A line's code: nothing of a comment line, and a trailing //
+        comment cut."""
+        stripped = line.strip()
+        if stripped.startswith("//") or stripped.startswith("*"):
+            return ""
+        return line.split(" //", 1)[0]
 
-        This looked for the global's own name above the launcher.  The
-        decision now lives in programs -- `dash build' and `dash serve'
-        share _dash_dashboard_browser, since `dash serve' was found reading
-        its nobrowser option alone -- so a launcher must sit beside a call
-        to one, and the next test checks what each one reads.  A comment
-        naming the global no longer passes for a guard.
+    def test_every_launcher_call_sits_inside_a_guard(self):
+        """One program hands a page to the shell, only when asked to, and
+        each of its callers decides first.
+
+        A structural guard over dash.ado's text, deliberately: the opener
+        runs a platform's command (`open', `xdg-open', `start'), and a
+        certification run cannot open windows to show that it would not.
+        The behaviour is held by the opener's own cases --
+        test_serve_browser.cscript SB-18 (dryrun runs nothing) and SB-20
+        ($dash_nobrowser runs nothing) -- and test_help_claims_2.cscript
+        HC2-31..36.  This counted six shell lines, the three platforms'
+        openers on each of the two paths, until both paths went through
+        _dash_open_page (WP-24); a shell line anywhere else, an opener
+        reached without its switches read, or a caller that no decision
+        guards now fails it.
         """
         lines = self._ado_lines()
-        unguarded = []
-        launchers = 0
+        shells, calls, prog = [], [], None
+        # Logical lines: a line ending in /// continues on the next, and a
+        # `!' there is an expression's not, not a command (measured: the
+        # layout check's `!regexm(' continuations).
+        logical, cur, first = [], "", None
         for i, line in enumerate(lines):
-            code = line.split("//", 1)[0]
-            if not any(l in code for l in self._LAUNCHERS):
+            if first is None:
+                first = i
+            raw = line.rstrip()
+            if raw.endswith("///"):
+                cur += self._code(raw[:-3]) + " "
                 continue
-            launchers += 1
-            # Look back for the decision that guards it, in code.
-            window = "\n".join(l.split("//", 1)[0]
-                               for l in lines[max(0, i - 12):i])
+            logical.append((first, cur + self._code(line)))
+            cur, first = "", None
+        for i, code in logical:
+            m = re.match(r"program define (\w+)", lines[i])
+            if m:
+                prog = m.group(1)
+            if self._SHELL.search(code):
+                shells.append((prog, i))
+            if re.match(r"^\s*_dash_open_page\b", code):
+                calls.append(i)
+        # Exactly one line hands anything to the operating system, in the
+        # opener.
+        assert [p for p, _ in shells] == ["_dash_open_page"], (
+            "dash.ado hands a line to the shell outside _dash_open_page: "
+            + ", ".join(f"{p} (line {i + 1})" for p, i in shells))
+        # ...and it runs only when neither dryrun nor $dash_nobrowser says
+        # not to: the `if' it sits in reads both.
+        (_, at), = shells
+        guard = next(self._code(lines[j]) for j in range(at - 1, at - 6, -1)
+                     if self._code(lines[j]).strip().startswith("if "))
+        assert "dryrun" in guard and "${dash_nobrowser}" in guard, guard
+        # Two callers -- the one-line form and dash build -- each just after
+        # the decision that guards it.
+        assert len(calls) == 2, [c + 1 for c in calls]
+        unguarded = []
+        for i in calls:
+            window = "\n".join(self._code(l) for l in lines[max(0, i - 12):i])
             if not any(d in window for d in self._DECIDERS):
-                unguarded.append(f"dash.ado:{i + 1}: {line.strip()}")
-        # The scan found them all: three platforms' openers on each of the
-        # two paths (the one-line form; dash build and dash serve), 6 as
-        # measured 24sep2026.  A launcher the needles do not match -- `!'
-        # is Stata's shorthand for shell -- would not be counted, and none
-        # found passed the check below.
-        assert launchers == 6, f"{launchers} browser launchers found"
+                unguarded.append(f"dash.ado:{i + 1}: {lines[i].strip()}")
         assert not unguarded, (
             "a browser launcher runs with nothing able to suppress it:\n"
             + "\n".join(unguarded)
@@ -482,14 +527,60 @@ class TestNoUnsuppressableBrowserWindow:
                 f"{name} does not read nodraw")
         assert "`nobrowser'" in self._program_body("_dash_dashboard_browser")
 
+    def _declared_options(self, name):
+        """Every option token program *name*'s first ``syntax [, ///``
+        block declares, as written (``TABS(string asis)`` is ``TABS``).
+        Read from the raw lines: _program_body drops ``//`` comments, and
+        with them the ``///`` continuations the block is made of."""
+        import re
+
+        lines = self._ado_lines()
+        start = next(i for i, l in enumerate(lines)
+                     if re.match(r"program define %s\s*(,|$)"
+                                 % re.escape(name), l))
+        end = next(i for i in range(start + 1, len(lines))
+                   if lines[i].strip() == "end")
+        body = "\n".join(lines[start:end])
+        m = re.search(r"^\s*syntax \[, ///\n(.*?)^\s*\]\s*$", body,
+                      re.MULTILINE | re.DOTALL)
+        assert m, f"no multi-line syntax block in {name}"
+        found = []
+        for line in m.group(1).splitlines():
+            code = line.replace("///", " ")
+            code = re.sub(r"\([^)]*\)", " ", code)
+            found += re.findall(r"[A-Za-z_][A-Za-z0-9_]*", code)
+        return found
+
     def test_the_build_command_accepts_nobrowser(self):
-        path = os.path.join(REPO_ROOT, "dash.ado")
-        with open(path, encoding="utf-8") as fh:
-            src = fh.read()
-        assert "NOBRowser" in src, (
-            "dash build has no nobrowser option, so a batch do-file cannot "
-            "stop it opening a window"
-        )
+        """``dash build`` declares ``nobrowser`` and hands it to the
+        decision that opens the window.
+
+        A structural guard over dash.ado, deliberately: whether Stata's
+        ``syntax`` takes the option needs Stata, and the certification
+        scripts run it -- test_serve_options.cscript [7/7] asserts rc 0 for
+        ``dash build, ... nobrowser``, as do the 22 scripts whose builds
+        pass it, and test_serve_browser.cscript SB-02 shows the decision
+        keeps the window shut for it.  This looked for ``NOBRowser``
+        anywhere in dash.ado, where _dash_dashboard_browser,
+        _dash_prepare_spec and _dash_serve_spec declare it too: with the
+        option deleted from _dash_build's own syntax, and with _dash_build
+        no longer passing it on, it passed (measured 24sep2026).  Now it
+        reads _dash_build's own syntax block and its own call."""
+        import re
+
+        declared = self._declared_options("_dash_build")
+        # The reader sees the options around it (a pattern that stopped
+        # matching would find nothing and pass the check below it).
+        assert "SAVing" in declared and "REPLACE" in declared, declared
+        assert declared.count("NOBRowser") == 1, (
+            f"dash build has no nobrowser option, so a batch do-file cannot "
+            f"stop it opening a window: {declared}")
+        code = "\n".join(l for l in self._program_body("_dash_build")
+                         .splitlines() if not l.lstrip().startswith("*"))
+        assert re.search(r"^\s*_dash_dashboard_browser, `nobrowser'\s*$",
+                         code, re.MULTILINE), (
+            "dash build no longer hands its nobrowser option to the "
+            "decision that opens the window")
 
     def test_the_global_switch_is_honoured_on_both_paths(self):
         path = os.path.join(REPO_ROOT, "dash.ado")

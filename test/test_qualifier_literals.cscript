@@ -45,10 +45,11 @@
 *! its literal would select instead, so a wrong reading cannot draw the
 *! right number of rows by accident.
 *!
-*! Tests: QL-01 through QL-14
+*! Tests: QL-01 through QL-15 (QL-15, added in WP-24's second round, is
+*! QL-14's twin for an `in' qualifier)
 *!
 *! Usage:  do test/test_qualifier_literals.cscript
-*! Version: 1.0  24sep2026
+*! Version: 1.1  24sep2026
 
 cscript "a qualifier's string literals select the rows Stata selects" adodir ".."
 
@@ -459,6 +460,48 @@ assert "$QL_PAGE_LAYER2" == "`w14b'"
 capture erase "`p14'.html"
 capture dash clear
 display "QL-14 PASS: each layer draws the rows its own qualifier selects"
+
+// QL-15 -- QL-14's twin for an `in' qualifier: three layers on the
+// immediate route, each with its own range, each drawing the rows ITS
+// range selects -- Stata's `levelsof rowid in ...' is the oracle, and
+// rowid is _n, so the x values name the observations.  An `in' is a
+// position in the data, so it reads right only against every observation
+// in their order.  Measured 24sep2026 with the export cut by the first
+// layer's range (jsonio run on `in 3/20'): the three sources carried 54
+// rows, not 222; the first layer, its range applied again to the 18 rows
+// left, drew rowid 5 to 20; and the second and third drew nothing.  QL-14
+// holds only `if' qualifiers, so it stayed green under that cut, and so
+// did test_server.py's TestImmediateRenderQualifierHandling, which builds
+// its spec by hand.  Each layer's source must carry every observation,
+// 3 x 74.
+quietly levelsof rowid in 3/20, local(w15a)
+local w15a : list retokenize w15a
+quietly levelsof rowid in 41/60, local(w15b)
+local w15b : list retokenize w15b
+quietly levelsof rowid in -15/L, local(w15c)
+local w15c : list retokenize w15c
+tempfile p15
+global QL_PAGE "`p15'.html"
+// A tempfile's name is handed out again once its do-file ends, and an
+// earlier script may have left a page under it: cleared, so a command that
+// wrote nothing cannot be read through a stale page.
+capture erase "`p15'.html"
+_ql_run `"dash (scatter mpg rowid in 3/20) (scatter mpg rowid in 41/60) (scatter mpg rowid in -15/L), saving("`p15'.html")"'
+assert r(rc) == 0
+confirm file "`p15'.html"
+python: _ql_page()
+display as text "  QL-15 layers: $QL_PAGE_NLAYERS, carrying $QL_PAGE_CARRIED rows in all"
+display as text "    in 3/20  drew [$QL_PAGE_LAYER1]"
+display as text "    in 41/60 drew [$QL_PAGE_LAYER2]"
+display as text "    in -15/L drew [$QL_PAGE_LAYER3]"
+assert "$QL_PAGE_NLAYERS" == "3"
+assert "$QL_PAGE_LAYER1" == "`w15a'"
+assert "$QL_PAGE_LAYER2" == "`w15b'"
+assert "$QL_PAGE_LAYER3" == "`w15c'"
+assert "$QL_PAGE_CARRIED" == "`=3 * _N'"
+capture erase "`p15'.html"
+capture dash clear
+display "QL-15 PASS: each layer draws the observations its own in range selects, from an export of every observation"
 
 capture dash clear
 macro drop QL_*

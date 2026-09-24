@@ -95,6 +95,79 @@ def app_module():
     return ns
 
 
+def _launch_as_script(src, monkeypatch, *flags):
+    """Run the generated app as ``python app.py *flags`` does -- its own
+    ``__main__`` block: parse the flags, apply them, build the server,
+    start it -- with bokeh's Server replaced by a recorder whose loop
+    returns at once, so nothing listens.  Returns the app's namespace as
+    the launcher left it."""
+    import warnings
+    import bokeh.server.server as bss
+
+    class _Loop:
+        def add_callback(self, *a):
+            pass
+
+        def call_later(self, *a):
+            pass
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    class _Server:
+        def __init__(self, apps, **kw):
+            self.io_loop = _Loop()
+
+        def start(self):
+            pass
+
+        def show(self, *a):
+            pass
+
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(bss, "Server", _Server)
+    monkeypatch.setattr(sys, "argv", ["app.py", *flags])
+    ns = {"__name__": "__main__"}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src, "app.py", "exec"), ns)
+    return ns
+
+
+def _open_sessions(ns, peer, forwarded):
+    """Open one session through the app's make_document for each address
+    in *forwarded*, every request coming from *peer* with that address in
+    X-Forwarded-For; return, per session, whether it was admitted (a
+    refused session's document is the one 429 Div)."""
+    import warnings
+    from bokeh.document import Document
+    from bokeh.models import Div
+    admitted = []
+    for xff in forwarded:
+        req = _Req(peer, **{"X-Forwarded-For": xff})
+
+        class _Doc(Document):
+            session_context = property(
+                lambda self, _r=req: types.SimpleNamespace(request=_r))
+
+        doc = _Doc()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ns["make_document"](doc)
+        refused = [r for r in doc.roots
+                   if isinstance(r, Div) and "429" in r.text]
+        # Admitted is the dashboard itself: roots, none of them the 429.
+        assert doc.roots and (not refused or len(doc.roots) == 1), (
+            [type(r).__name__ for r in doc.roots])
+        admitted.append(not refused)
+    return admitted
+
+
 class TestTheHeaderIsNotTrustedByDefault:
 
     def test_the_flag_exists_and_is_off(self, app_module):
@@ -194,11 +267,61 @@ class TestTrustingItIsStillPossible:
             "a forwarded value and a real peer address share a bucket key"
         )
 
-    def test_the_launcher_can_turn_it_on(self, app_module):
-        """A real proxy deployment must not have to edit the file."""
-        import inspect
-        src = app_module.get("__dash_source__")
-        assert src is None or "--trust-forwarded-for" in src
+    def test_the_launcher_can_turn_it_on(self, app_module, monkeypatch):
+        """A real proxy deployment must not have to edit the file: with
+        ``--trust-forwarded-for`` the session limiter keys on the forwarded
+        address, and without it on the peer.
+
+        This asserted ``src is None or "--trust-forwarded-for" in src`` --
+        src is never None, and the flag's name is in the argparse
+        declaration whatever the flag does.  Measured 24sep2026: with the
+        launcher's ``if _a.trust_xff:`` branch made a no-op, so the flag
+        parsed and changed nothing, it passed, and so did the three tests
+        above, which set ``_TRUST_FORWARDED_FOR`` themselves.  Now the app
+        runs as the script a user launches (bokeh's Server replaced by a
+        recorder, so nothing listens) and six sessions open through
+        make_document from ONE peer on behalf of two forwarded clients,
+        with a budget of two sessions a client.
+        """
+        forwarded = ["198.51.100.7"] * 3 + ["198.51.100.8"] * 3
+        trusted = _launch_as_script(
+            app_module["__dash_source__"], monkeypatch,
+            "--trust-forwarded-for", "--sessions-per-client", "2")
+        assert trusted["_TRUST_FORWARDED_FOR"] is True
+        assert _open_sessions(trusted, PEER, forwarded) == [
+            True, True, False, True, True, False], (
+            "with the flag, each forwarded client should have a budget of "
+            "its own")
+        assert sorted(trusted["_SESSION_LIMITER"]._store) == [
+            "xff:198.51.100.7", "xff:198.51.100.8"]
+
+        untrusted = _launch_as_script(
+            app_module["__dash_source__"], monkeypatch,
+            "--sessions-per-client", "2")
+        assert untrusted["_TRUST_FORWARDED_FOR"] is False
+        assert _open_sessions(untrusted, PEER, forwarded) == [
+            True, True, False, False, False, False], (
+            "without the flag, every request is the peer's and shares its "
+            "one budget")
+        assert list(untrusted["_SESSION_LIMITER"]._store) == [PEER]
+
+    def test_the_launcher_flag_keys_health_on_the_forwarded_address(
+            self, app_module, monkeypatch):
+        """/health's limiter derives its key the same way: with the flag,
+        a second forwarded client behind a peer whose first client spent
+        its 600 probes is answered; without it, it is refused with the
+        first."""
+        for flags, second in ((("--trust-forwarded-for",), None),
+                              ((), 429)):
+            ns = _launch_as_script(app_module["__dash_source__"],
+                                   monkeypatch, *flags)
+            first = [_health_status(ns, PEER, **{
+                "X-Forwarded-For": "198.51.100.7"}) for _ in range(601)]
+            assert first.count(None) == 600 and first[-1] == 429, (
+                flags, first.count(None), first[-1])
+            got = _health_status(ns, PEER, **{
+                "X-Forwarded-For": "198.51.100.8"})
+            assert got == second, (flags, got)
 
 
 class TestAForwardedTokenIsOneBoundedKeyPerAddress:
@@ -603,9 +726,10 @@ class TestAFullTableStillServesNewClients:
         assert list(lim._store) == [newcomer]
 
 
-def _health_status(ns, remote_ip):
+def _health_status(ns, remote_ip, **headers):
     """What ``_HealthHandler.prepare`` does with a request from
-    ``remote_ip``: the status it set, or None when it let it through."""
+    ``remote_ip`` carrying ``headers``: the status it set, or None when it
+    let it through."""
     seen = {}
 
     class _Handler(ns["_HealthHandler"]):
@@ -619,7 +743,7 @@ def _health_status(ns, remote_ip):
             seen["finished"] = True
 
     handler = object.__new__(_Handler)
-    handler.request = _Req(remote_ip)
+    handler.request = _Req(remote_ip, **headers)
     handler.prepare()
     return seen.get("status")
 

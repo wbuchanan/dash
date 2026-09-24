@@ -28,10 +28,10 @@ process start being recorded and not run.  ``restore()`` undoes everything,
 and is safe to call twice.
 
 The states dash_setup reacts to are simulated without touching the
-environment: a package is made unimportable by ``sys.modules[name] = None``
-(the import system's own "halted" marker), a package version by a fake
-``.dist-info`` directory first on ``sys.path``, the interpreter's version by
-``sys.version``.  ``unblock_on_install`` lets a recorded ``pip install``
+environment: a package, and each submodule of it already imported, is made
+unimportable by ``sys.modules[name] = None`` (the import system's own
+"halted" marker), a package version by a fake ``.dist-info`` directory
+first on ``sys.path``, the interpreter's version by ``sys.version``.  ``unblock_on_install`` lets a recorded ``pip install``
 lift the block, which is what a successful install would do.
 """
 import asyncio
@@ -221,17 +221,27 @@ class _Sandbox:
 
     # -- simulated states -------------------------------------------------
     def block(self, name):
-        if name not in self.saved_modules:
-            self.saved_modules[name] = sys.modules.get(name, _MISSING)
-        sys.modules[name] = None
+        # The package and every submodule of it already imported: the
+        # import system looks a dotted name up in sys.modules before it
+        # looks at the name's parent, so with the package alone blocked,
+        # `from packaging.version import Version' still succeeded from the
+        # cache (measured 24sep2026; test_setup_sandbox.py).
+        keys = [name] + [k for k in list(sys.modules)
+                         if k.startswith(name + ".")]
+        for key in keys:
+            if key not in self.saved_modules:
+                self.saved_modules[key] = sys.modules.get(key, _MISSING)
+            sys.modules[key] = None
 
     def unblock(self, name):
-        if name in self.saved_modules:
-            old = self.saved_modules.pop(name)
+        # The package and the submodules block() took with it.
+        for key in [k for k in list(self.saved_modules)
+                    if k == name or k.startswith(name + ".")]:
+            old = self.saved_modules.pop(key)
             if old is _MISSING:
-                sys.modules.pop(name, None)
+                sys.modules.pop(key, None)
             else:
-                sys.modules[name] = old
+                sys.modules[key] = old
 
     def fake_dist(self, name, version):
         root = tempfile.mkdtemp(prefix="dash_fake_dist_", dir=self.workdir)
@@ -284,7 +294,8 @@ PREIMPORT = ("packaging", "packaging.version", "numpy", "pandas", "bokeh")
 def install(block=(), unblock_on_install=(), fake=(), pyversion=None):
     """Close both install doors, then set up the simulated state.
 
-    block              names made unimportable (``sys.modules[name] = None``)
+    block              names made unimportable, with each submodule
+                       already imported (``sys.modules[name] = None``)
     unblock_on_install names whose block a recorded ``pip install`` lifts
     fake               ``(name, version)`` pairs of fake distributions
     pyversion          a replacement ``sys.version`` (its first word is what

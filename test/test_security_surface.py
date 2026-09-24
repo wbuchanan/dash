@@ -144,6 +144,7 @@ class TestAColourMustBeAColour:
         path validator -- correctly -- refuses to read one from anywhere
         else.
         """
+        import warnings
         monkeypatch.chdir(tmp_path)
         p = tmp_path / "evil.scheme"
         p.write_text(
@@ -151,14 +152,34 @@ class TestAColourMustBeAColour:
             "color heading #%d{e;f\n"
             "color legend #000000\n"
         )
-        css = dr.SchemeParser("evil").css_style_element()
-        body = re.search(r"body \{([^}]*)\}", css)
-        assert body, "the body rule is no longer in the stylesheet"
-        assert "{" not in body.group(1), (
-            f"a scheme value closed dash's own CSS rule: {body.group(1)!r}"
-        )
-        # And nothing outside the known rules is emitted.
-        assert css.count("{") == css.count("}")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            css = dr.SchemeParser("evil").css_style_element()
+        # The sheet is read rule by rule.  This matched `body \{([^}]*)\}',
+        # which ends at the payload's own `}', so the body rule never held a
+        # `{'; and '#}a{b;c' adds one brace of each kind, so the brace
+        # count balanced.  Measured 24sep2026: with `color background'
+        # taken raw -- `body { background-color: #}a{b;c; }' in the sheet --
+        # it passed; with the hex check gone it failed only on the heading
+        # payload's unmatched brace.
+        sheet = css.split("<style>\n", 1)[1].split("</style>", 1)[0]
+        rules = [re.fullmatch(r"  (\S+) \{ ([^{}]*) \}", ln)
+                 for ln in sheet.splitlines()]
+        assert rules and all(rules), f"a line is not one whole rule: {sheet}"
+        decl = {m.group(1): m.group(2) for m in rules}
+        assert list(decl) == ["body", ".db-title", ".db-subtitle",
+                              ".db-kpi-card"], sheet
+        # Each hostile value was refused, said so, and its default drawn.
+        assert decl["body"] == "background-color: #d9e8f0;", decl["body"]
+        assert decl[".db-title"].split(";")[0] == "color: #000000", (
+            decl[".db-title"])
+        notes = [str(w.message) for w in caught
+                 if "is not a colour dash recognises" in str(w.message)]
+        assert len(notes) == 2 and "#}a{b;c" in notes[0] \
+            and "#%d{e;f" in notes[1], notes
+        # The control: the scheme's real colour lands in its rule.
+        assert decl[".db-kpi-card"].split(";")[0] == \
+            "background-color: #000000", decl[".db-kpi-card"]
 
 
 # ---------------------------------------------------------------------------
@@ -398,16 +419,34 @@ class TestTheFunctionExpressionWhitelist:
     )
 
     def test_nothing_executes_standalone(self, tmp_path):
-        from bokeh.plotting import figure
+        # The whitelist alone: the escape is a comprehension, so if
+        # validation is skipped it reaches eval, where the empty builtins
+        # then raise -- the eval-spy sees the CALL either way, so a
+        # disabled whitelist fails this even though no marker is written.
+        # Measured 24sep2026: the marker never appears whether the whitelist
+        # is on or off (empty builtins block it), so the old
+        # ``assert not marker.exists()`` alone could not fail.
         marker = tmp_path / "FN_STANDALONE"
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            dr.GlyphMapper().map_function(
-                figure(), self._ESCAPE % str(marker), (0.0, 1.0), 5, {})
+        called, n = TestTheFunctionExpressionWhitelist._draw_with_eval_spy(
+            self._ESCAPE % str(marker))
+        assert not called, "the __subclasses__ escape reached eval()"
+        assert n == 0
         assert not marker.exists(), (
             f"a function expression wrote {marker}: the __subclasses__ escape "
             f"ran through the empty-builtins namespace"
         )
+        # Positive control: the identical escape DOES write when eval'd with
+        # real builtins, so the absence above is the sandbox working, not an
+        # inert payload.
+        ctl = tmp_path / "FN_CONTROL"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            eval(compile(dr._ast.parse(self._ESCAPE % str(ctl), mode="eval"),
+                         "<control>", "eval"),
+                 {"__builtins__": __builtins__}, {})
+        assert ctl.exists(), (
+            "the escape wrote nothing even with real builtins, so the marker "
+            "check proves nothing about the sandbox")
 
     def test_nothing_executes_served(self, tmp_path):
         marker = tmp_path / "FN_SERVED"
@@ -420,10 +459,26 @@ class TestTheFunctionExpressionWhitelist:
                        {"type": "function",
                         "expr": self._ESCAPE % str(marker), "options": {}}]),
             _sec_df())
-        _served_function_points(mod)
+        assert _served_function_points(mod) == 0, (
+            "the served app drew from the escape expression")
         assert not marker.exists(), (
             f"the served app wrote {marker} from a function expression"
         )
+        # Positive control: the identical escape writes when eval'd with real
+        # builtins, so the served absence is the sandbox, not an inert
+        # payload.  (The served app's own two guards, whitelist and empty
+        # builtins, must both fail for the marker to appear; the served
+        # 0-points check above and TestTheServedAppRefuses... cover the
+        # whitelist.)
+        ctl = tmp_path / "FN_SERVED_CONTROL"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            eval(compile(dr._ast.parse(self._ESCAPE % str(ctl), mode="eval"),
+                         "<control>", "eval"),
+                 {"__builtins__": __builtins__}, {})
+        assert ctl.exists(), (
+            "the escape wrote nothing even with real builtins, so the served "
+            "marker check proves nothing")
 
     def test_a_bool_power_tower_draws_empty_and_does_not_hang(self):
         """The gap's resource half: bool constants must not defeat the float
@@ -586,19 +641,58 @@ class TestTheIfQualifierWhitelist:
 
     def test_a_hostile_per_graph_if_does_not_execute_when_served(self, tmp_path):
         """The served app copies _dash_qualified_frame; a graph-level `if'
-        with an injection must leave the dashboard intact and run nothing."""
-        marker = tmp_path / "IF_SERVED"
-        payload = "__import__('pathlib').Path(%r).touch() or mpg > 0" % str(marker)
+        with an injection must leave the dashboard intact and run nothing.
+
+        The payload was ``__import__('pathlib').Path(m).touch() or mpg > 0``
+        and the check ``assert not m.exists()``.  Measured 24sep2026:
+        ``DataFrame.query(engine='python')`` refuses ``__import__`` itself
+        ("'__import__' is not a supported function"), so the marker is never
+        written whether the served whitelist is on or off -- the check could
+        not fail.  A ``@name`` reference is what the whitelist uniquely
+        stops: query resolves ``@name`` from the frame and CALLS it.  This
+        now sets a sentinel in the served module and asserts the served
+        ``@`` qualifier never calls it, with the whitelist bypassed as the
+        control that it is the whitelist doing the stopping."""
+        from bokeh.document import Document
         mod = _build_served_module(
             tmp_path,
             _sec_spec([{"type": "scatter", "yvar": "y", "xvar": "x",
-                        "options": {}}], if_expr=payload),
+                        "options": {}}],
+                      if_expr="@_r5_served_if_sentinel()"),
             _sec_df())
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            from bokeh.document import Document
-            mod.make_document(Document())
-        assert not marker.exists(), "a served if qualifier executed"
+        fired = []
+        mod._r5_served_if_sentinel = lambda: fired.append(1) or True
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                doc = Document()
+                mod.make_document(doc)
+        finally:
+            saved_sentinel = mod._r5_served_if_sentinel
+            del mod._r5_served_if_sentinel
+        assert not fired, "a served graph-level @ if qualifier was executed"
+        # The dashboard is intact: the scatter still drew, both rows.
+        from bokeh.models import ColumnDataSource
+        drew = max((len(s.data.get("x", []))
+                    for s in doc.select({"type": ColumnDataSource})),
+                   default=0)
+        assert drew == len(_sec_df()), (
+            f"the refused qualifier changed the dashboard: {drew} rows drawn")
+        # Positive control: bypass the served whitelist and the SAME sentinel
+        # is called -- so it is the whitelist, not luck, that stopped it.
+        mod._r5_served_if_sentinel = saved_sentinel
+        saved_val = mod._validate_if_expr
+        mod._validate_if_expr = lambda e, c: True
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                mod.make_document(Document())
+        finally:
+            mod._validate_if_expr = saved_val
+            del mod._r5_served_if_sentinel
+        assert fired, (
+            "with the served whitelist bypassed the @ payload still did not "
+            "run, so this proves nothing about the whitelist")
 
 
 # ---------------------------------------------------------------------------

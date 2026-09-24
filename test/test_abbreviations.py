@@ -46,16 +46,18 @@ FIXTURE    = os.path.join(HERE, "fixtures", "abbrev_truth.json")
 # ============================================================
 @pytest.fixture(scope="module")
 def truth():
-    if not os.path.exists(FIXTURE):
-        pytest.skip("fixtures/abbrev_truth.json missing; run "
-                    "scripts/extract_abbrev_truth.do to build it")
+    # Committed (test_fixtures_are_committed.py): missing is a defect, and
+    # a skip here passed every check below that reads it.
+    assert os.path.exists(FIXTURE), (
+        "fixtures/abbrev_truth.json is missing; run "
+        "scripts/extract_abbrev_truth.do to build it")
     with open(FIXTURE) as fh:
         return json.load(fh)
 
 
 def _read(path):
-    if not os.path.exists(path):
-        pytest.skip("%s not found" % os.path.basename(path))
+    # dash.ado and dash.sthlp ship with the package: missing is a defect.
+    assert os.path.exists(path), "%s not found" % os.path.basename(path)
     with open(path, encoding="utf-8", errors="replace") as fh:
         return fh.read()
 
@@ -534,16 +536,28 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     folds = _folds(bodies["_dash_parse_plot_opts"])
     assert ("mlg", "mlabgap") in folds and ("pbgc", "plotbgcolor") in folds
     assert ("pbgc", "plotbgcolor") in _folds(bodies["_dash_parse_graph_opts"])
-    # Exactly 10 programs declare options with -syntax- (measured 24sep2026:
+    # Exactly 11 programs declare options with -syntax- (measured 24sep2026:
     # _dash_do_render, the two parsers, _dash_limit, _dash_browser_wanted,
     # _dash_dashboard_browser, _dash_kpi, _dash_prepare_spec, _dash_build,
-    # _dash_serve_spec).  ">= 6" let four of them drop out of every
-    # whole-file scan below -- a `program' written without `define' does.
+    # _dash_serve_spec, and _dash_open_page, the one browser opener, since
+    # WP-24).  ">= 6" let four of them drop out of every whole-file scan
+    # below -- a `program' written without `define' does.
     with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
     assert len(with_syntax) >= 6
-    assert len(with_syntax) == 10, with_syntax
-    lines = [ln.strip() for ln in bodies["_dash_parse_plot_opts"].split("\n")]
-    assert sum(1 for ln in lines if ln.startswith("//")) >= 20
+    assert len(with_syntax) == 11, with_syntax
+    assert "_dash_open_page" in with_syntax, with_syntax
+    # The comment lines the duplicate-block scan reads, per parser: 85 in
+    # the plot parser and 63 in the graph parser (measured 24sep2026).  It
+    # was ">= 20", for the plot parser alone, and the plot parser split in
+    # two -- its second half moved into a program of its own, a pasted
+    # duplicate comment block with it -- still showed the scan 38 comment
+    # lines: every check below passed on the half they could see.  A parser
+    # that gains or loses comments moves these on purpose.
+    comments = {prog: sum(1 for ln in body.split("\n")
+                          if ln.strip().startswith("//"))
+                for prog, body in bodies.items()}
+    assert comments == {"_dash_parse_plot_opts": 85,
+                        "_dash_parse_graph_opts": 63}, comments
 
 
 def test_no_comment_block_is_repeated_in_a_parser():

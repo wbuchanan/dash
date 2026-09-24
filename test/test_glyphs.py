@@ -468,11 +468,15 @@ class TestMapLfit:
         """P1B-49: lfit renders a line with the correct OLS slope and intercept."""
         renderer = gm.map_lfit(fig, known_cds, "y", "x", {})
         assert isinstance(renderer, GlyphRenderer)
-        # The rendered y values should satisfy y = 2x + 1 at the endpoints
+        # The rendered y values should satisfy y = 2x + 1 at every point
         y_data = list(renderer.data_source.data["y"])
         x_data = list(renderer.data_source.data["x"])
-        assert len(x_data) >= 2
-        # Check first and last predicted values
+        # twoway lfit evaluates the fit at n() points over the observed
+        # range, 100 by default (_gs_x_create.ado; test_fit_grid_parity.py).
+        # ">= 2" passed a line drawn through its two ends alone, which puts
+        # 2 points where twoway puts 100 (measured 24sep2026: 100 here).
+        assert len(x_data) == 100
+        assert (x_data[0], x_data[-1]) == (1.0, 5.0)
         for xi, yi in zip(x_data, y_data):
             expected = 2.0 * xi + 1.0
             assert abs(yi - expected) < 0.01, (
@@ -518,18 +522,27 @@ class TestMapLfit:
         assert x_fit.max() == pytest.approx(x_data.max())
 
     def test_qfit_has_3_coefficients(self, fig, cds, gm):
-        """P1B-50: qfit uses a degree-2 polynomial (3 coefficients)."""
+        """P1B-50: qfit uses a degree-2 polynomial (3 coefficients).
+
+        Read off what is drawn: the line is the least-squares quadratic of
+        the data (twoway qfit is `regress y x x^2'), evaluated at twoway's
+        100 points over the observed range.  This used to check a Line glyph
+        with ">= 3" points, which a straight-line fit passed."""
         renderer = gm.map_qfit(fig, cds, "mpg", "weight", {})
-        # The renderer should have '_qfit_coeffs' metadata or produce a curved line
-        # We verify indirectly: the y values on the fit curve must be non-linear
         y_data = np.array(renderer.data_source.data["y"])
         x_data = np.array(renderer.data_source.data["x"])
-        assert len(x_data) >= 3
-        # A purely linear fit over the same range would have constant 2nd diff ~= 0
-        # For a quadratic fit the 2nd differences need not be zero
-        # Just verify the glyph is a Line renderer and no error occurred
         from bokeh.models.glyphs import Line
         assert isinstance(renderer.glyph, Line)
+        assert len(x_data) == 100
+        x_obs = np.asarray(cds.data["weight"], dtype=float)
+        y_obs = np.asarray(cds.data["mpg"], dtype=float)
+        quad = np.polyval(np.polyfit(x_obs, y_obs, 2), x_data)
+        line = np.polyval(np.polyfit(x_obs, y_obs, 1), x_data)
+        np.testing.assert_allclose(y_data, quad, rtol=0, atol=1e-8)
+        # ... and the x^2 term is visible: on this fixture the quadratic
+        # and the straight-line fit part by 2.87 mpg (measured 24sep2026),
+        # so a degree-1 fit cannot pass the check above.
+        assert np.max(np.abs(quad - line)) > 1.0
 
 
 # ----------------------------------------------------------------
@@ -558,10 +571,13 @@ class TestMapHistogram:
         assert isinstance(renderer.glyph, Quad)
 
     def test_histogram_default_bins(self, fig, cds, gm):
-        """P1B-52: default bin count is reasonable (10–20 bins)."""
+        """P1B-52: default bin count is Stata's: min(sqrt(N), 10*log10(N)),
+        truncated -- 8 for the fixture's 74 observations, as Stata draws 8
+        for auto's mpg (_stata_bin_count; test/fixtures/stat_truth.json).
+        "5 <= n_bins <= 50" passed the rule rounded (9) as well."""
         renderer = gm.map_histogram(fig, cds, "mpg", {})
         n_bins = len(renderer.data_source.data["top"])
-        assert 5 <= n_bins <= 50, f"Expected 5-50 bins, got {n_bins}"
+        assert n_bins == 8, f"Expected Stata's 8 bins for N=74, got {n_bins}"
 
     def test_histogram_bin_option(self, fig, cds, gm):
         """P1B-52: bin() option sets number of bins."""
@@ -894,16 +910,22 @@ class TestFillOptions:
         assert abs(r.glyph.fill_alpha - 0.6) < 0.01
 
     def test_fintensity_clamped_max(self, fig, std_cds):
-        """fintensity values > 100 are clamped to 1.0."""
+        """fintensity values > 100 are clamped to 1.0.
+
+        Exactly 1.0: "<= 1.0" passed any alpha at all below it -- 150 read
+        modulo 100 as 0.5, say."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "150"})
-        assert r.glyph.fill_alpha <= 1.0
+        assert r.glyph.fill_alpha == 1.0
 
     def test_fintensity_clamped_min(self, fig, std_cds):
-        """fintensity values < 0 are clamped to 0.0."""
+        """fintensity values < 0 are clamped to 0.0.
+
+        Exactly 0.0: ">= 0.0" passed any alpha at all above it -- -10 read
+        as its magnitude, 0.1, say."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "-10"})
-        assert r.glyph.fill_alpha >= 0.0
+        assert r.glyph.fill_alpha == 0.0
 
     def test_fcolor_invalid_ignored(self, fig, std_cds):
         """Invalid fcolor value does not raise; fill_color unchanged."""
@@ -922,16 +944,28 @@ def _get_labelsets(fig):
     return [r for r in fig.center if isinstance(r, LabelSet)]
 
 
+def _assert_labels_each_point(ls, src, col):
+    """*ls* writes the string column *col* of *src* at each row's (x, y):
+    the text a LabelSet draws is the column it names, of the source it
+    holds, drawn as it is."""
+    assert ls.source is src
+    assert (ls.x, ls.y, ls.text) == ("x", "y", col)
+
+
 class TestMlabelOption:
     """Tests for _apply_mlabel_opts() wired into map_scatter()."""
 
     def test_mlabel_adds_labelset(self, fig, std_cds):
-        """mlabel option adds a LabelSet to the figure."""
+        """mlabel option adds a LabelSet to the figure.
+
+        One, writing the label column at each point of the scatter's own
+        source: ">= 1" passed the labels drawn twice over."""
         gm = GlyphMapper()
         std_cds.data["label"] = [f"pt{i}" for i in range(len(std_cds.data["y"]))]
         gm.map_scatter(fig, std_cds, "y", "x", {"mlabel": "label"})
         label_sets = _get_labelsets(fig)
-        assert len(label_sets) >= 1, "mlabel should add a LabelSet to fig.center"
+        assert len(label_sets) == 1, "mlabel should add one LabelSet to fig.center"
+        _assert_labels_each_point(label_sets[0], std_cds, "label")
 
     def test_mlabel_missing_var_no_labelset(self, fig, std_cds):
         """mlabel with non-existent column adds no LabelSet (silently ignored)."""
@@ -1027,7 +1061,9 @@ class TestMlabelOnNonScatter:
         src = self._cds_with_label(std_df)
         gm.map_bar(fig, src, "y", "x", {"mlabel": "lbl"})
         ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1, "mlabel on bar should add a LabelSet"
+        # One, at each bar's top: ">= 1" passed the labels drawn twice.
+        assert len(ls) == 1, "mlabel on bar should add one LabelSet"
+        _assert_labels_each_point(ls[0], src, "lbl")
 
     def test_no_mlabel_on_spike(self, fig, std_df):
         from bokeh.models import LabelSet
@@ -1043,7 +1079,9 @@ class TestMlabelOnNonScatter:
         src = self._cds_with_label(std_df)
         gm.map_dot(fig, src, "y", "x", {"mlabel": "lbl"})
         ls = [r for r in fig.center if isinstance(r, LabelSet)]
-        assert len(ls) >= 1
+        # One, at each dot: ">= 1" passed the labels drawn twice.
+        assert len(ls) == 1
+        _assert_labels_each_point(ls[0], src, "lbl")
 
 
 class TestMlabelOnRangePlots:
@@ -1691,7 +1729,14 @@ class TestMapMspline:
         n_output = len(result[0].data_source.data["x_sp"])
         knots = gm.map_mband(figure(), cds, "mpg", "weight", {})
         k = len(knots[0].data_source.data["x_mb"])
-        assert k >= 2
+        # Nine: on 74 observations Stata draws 9 bands by default
+        # (_mband_default_bands: round(min(sqrt(N), 10*log10(N)))), and
+        # every one of them holds observations of this fixture (measured
+        # 24sep2026).  "k >= 2" passed with the band rule wrong for both
+        # layers at once -- the documented max(10, round(10*log10(N))) gives
+        # 19 bands, 18 of them non-empty here, and 188 points fit the
+        # formula below as well as 89 do.
+        assert k == 9
         assert n_output == (k - 1) * 10 + k, (
             f"{k} knots: expected {(k - 1) * 10 + k} points, got {n_output}")
 
@@ -1886,21 +1931,39 @@ class TestLegendLabelCoverage:
         assert "mpg" in _legend_items(fig)
 
     def test_function_legend(self, fig, gm):
-        """map_function must create a legend entry."""
-        gm.map_function(fig, "x", (0.0, 1.0), 50, {})
-        assert len(_legend_items(fig)) >= 1
+        """map_function must create a legend entry.
+
+        One, for the line the function draws: ">= 1" passed the entry
+        added twice."""
+        r = gm.map_function(fig, "x", (0.0, 1.0), 50, {})
+        r = r[0] if isinstance(r, list) else r
+        assert len(_legend_items(fig)) == 1
+        items = [it for leg in fig.legend for it in leg.items]
+        assert items[0].renderers == [r]
 
 
 class TestMlabwidth:
     """mlabwidth option in _apply_mlabel_opts must not crash."""
 
     def test_mlabwidth_does_not_crash(self, fig, gm):
-        """Providing mlabwidth must not raise an exception."""
+        """Providing mlabwidth must not raise an exception -- and changes
+        nothing.  dash does not honour mlabwidth(): dash.sthlp lists it as
+        unsupported, the parser names it as ignored, and a Bokeh LabelSet
+        cannot wrap.  The labels are the ones drawn without it; this used
+        to assert "len(fig.renderers) >= 0", which nothing can fail."""
         df = pd.DataFrame({"y": [1.0, 2.0, 3.0], "x": [1.0, 2.0, 3.0], "lbl": ["a", "b", "c"]})
         src = ColumnDataSource(df)
-        # Should complete without error
         gm._apply_mlabel_opts(fig, src, {"mlabel": "lbl", "mlabwidth": "20"}, "x", "y")
-        assert len(fig.renderers) >= 0  # just verifies no exception
+        plain = figure()
+        gm._apply_mlabel_opts(plain, src, {"mlabel": "lbl"}, "x", "y")
+        (with_w,) = _get_labelsets(fig)
+        (without,) = _get_labelsets(plain)
+        keys = ("x", "y", "text", "source", "text_font_size", "text_color",
+                "x_offset", "y_offset", "text_align", "text_baseline",
+                "angle")
+        assert ({k: getattr(with_w, k) for k in keys}
+                == {k: getattr(without, k) for k in keys})
+        assert fig.renderers == []
 
     def test_mlabwidth_label_still_created(self, fig, gm):
         """LabelSet must still be added to the figure when mlabwidth is present."""
@@ -1909,7 +1972,9 @@ class TestMlabwidth:
         src = ColumnDataSource(df)
         gm._apply_mlabel_opts(fig, src, {"mlabel": "lbl", "mlabwidth": "15"}, "x", "y")
         label_sets = [c for c in fig.center if isinstance(c, LabelSet)]
-        assert len(label_sets) >= 1
+        # One: ">= 1" passed the labels drawn twice.
+        assert len(label_sets) == 1
+        _assert_labels_each_point(label_sets[0], src, "lbl")
 
 
 class TestMarkerGenericOption:
@@ -2201,10 +2266,18 @@ class TestNewPlotTypes:
         })
 
     def test_map_pci_adds_renderers(self, fig, pc_cds):
-        """map_pci() adds at least one renderer (segment) to the figure."""
+        """map_pci() adds one renderer, a Segment from (x1, y1) to (x2, y2)
+        of each observation.  ">= 1" passed the segments drawn twice."""
+        from bokeh.models.glyphs import Segment
         gm = GlyphMapper(OptionTranslator())
         gm.map_pci(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        assert len(fig.renderers) >= 1
+        (r,) = fig.renderers
+        assert isinstance(r.glyph, Segment)
+        d = r.data_source.data
+        g = r.glyph
+        assert [[float(v) for v in d[c]] for c in (g.x0, g.y0, g.x1, g.y1)] \
+            == [[float(v) for v in pc_cds.data[c]]
+                for c in ("x1", "y1", "x2", "y2")]
 
     def test_map_pci_delegates_to_pcspike(self, fig, pc_cds):
         """map_pci and map_pcspike produce the same number of renderers."""
@@ -2261,7 +2334,10 @@ class TestNewPlotTypes:
         gm.map_mband(fig, xy_cds, "y", "x", {})
         line_rs = [r for r in fig.renderers
                    if isinstance(r, GlyphRenderer) and isinstance(r.glyph, Line)]
-        assert len(line_rs) >= 1
+        # One line through the cross medians, and nothing else drawn:
+        # ">= 1" passed it drawn twice.
+        assert len(line_rs) == 1 and fig.renderers == line_rs
+        assert (line_rs[0].glyph.x, line_rs[0].glyph.y) == ("x_mb", "y_mb")
 
     def test_map_mband_fewer_points_than_raw(self, fig, xy_cds):
         """map_mband() produces ≤ n_raw data points (band aggregation)."""
@@ -2453,11 +2529,23 @@ class TestNewPlotTypes:
                 except OSError: pass
         figs = r._build_figures()
         assert "g1" in figs
-        # Must have at least one renderer — previously zero due to missing _RANGE_TYPES entry
-        assert len(figs["g1"].renderers) >= 1, (
-            "rscatter must add at least one renderer; check that 'rscatter' "
+        # Previously zero renderers, due to a missing _RANGE_TYPES entry.
+        # Exactly one, a Scatter of both ends of each range -- (x, y1) and
+        # (x, y2), read from the yvar1/yvar2 keys the docstring names:
+        # ">= 1" passed a renderer that drew one end only, or two of them.
+        from bokeh.models.glyphs import Scatter
+        assert len(figs["g1"].renderers) == 1, (
+            "rscatter must add one renderer; check that 'rscatter' "
             "is in _RANGE_TYPES in _build_figures"
         )
+        (rr,) = figs["g1"].renderers
+        assert isinstance(rr.glyph, Scatter)
+        d = rr.data_source.data
+        drawn = sorted(zip((float(v) for v in d[rr.glyph.x]),
+                           (float(v) for v in d[rr.glyph.y])))
+        assert drawn == sorted([(float(i), float(i)) for i in range(1, 11)]
+                               + [(float(i), float(i + 5))
+                                  for i in range(1, 11)])
 
     def test_mband_in_dispatch(self):
         """mband dispatches via _add_glyph standard dispatch."""
@@ -2999,7 +3087,12 @@ class TestLowessConstantX:
         r = result if not isinstance(result, list) else result
         cds = r.data_source
         x_data = list(cds.data.get("x_lw", []))
-        assert len(x_data) > 0, "Normal lowess should produce non-empty data"
+        # twoway lowess smooths at every observation: one fitted point per
+        # row, at the row's own x.  "> 0" passed a curve missing all but
+        # one of them.
+        assert [float(v) for v in x_data] == src.data["x"], (
+            "Normal lowess should draw a point at each of the 8 observations")
+        assert len(cds.data["y_lw"]) == 8
 
 
 # ================================================================

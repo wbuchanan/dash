@@ -494,6 +494,18 @@ def _matrix_gaps(roadmap):
                                             re.M)}
 
 
+def _matrix_rows(roadmap):
+    """The body rows of ROADMAP.md's traceability matrix: its table's
+    lines after the header and the rule, read as table lines and nothing
+    more, so they count what _matrix_gaps should have read."""
+    part = roadmap.split("## Traceability matrix", 1)[1]
+    part = part.split("\n## ", 1)[0]
+    table = [ln for ln in part.split("\n") if ln.startswith("|")]
+    assert len(table) > 2 and table[0].startswith("| Gap |") and \
+        set(table[1]) <= set("|-: "), table[:2]
+    return table[2:]
+
+
 def _status(title):
     """The status part of a gap heading's title, or ''."""
     parts = title.split(_DASH)
@@ -608,6 +620,17 @@ def _git(*args):
 class TestEveryGapHasAStatus:
 
     def test_every_gap_in_the_matrix_has_one_heading(self, docs):
+        # Every row of the matrix is read: one gap id per body row.  A row
+        # the reader cannot read -- an id outside A-N, a bold id, a doubled
+        # blank -- was a gap this never looked for, and a matrix read as
+        # nothing had no gap to miss.  Measured 24sep2026: a row "| O1 |
+        # ... |" added to the matrix, with no heading in GAPS.md, passed.
+        rows = _matrix_rows(_read("ROADMAP.md"))
+        assert len(docs["matrix"]) == len(rows), (
+            "the matrix has %d rows and %d gaps were read from it: %s"
+            % (len(rows), len(docs["matrix"]),
+               [r[:40] for r in rows
+                if not re.match(r"^\| ([A-N]\d{0,2}) \|", r)]))
         missing = sorted(docs["matrix"] - set(docs["gaps"]))
         assert not missing, "gaps with no GAPS.md heading: %s" % missing
         assert not docs["dupes"], "gaps with two headings: %s" % docs["dupes"]

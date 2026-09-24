@@ -62,6 +62,13 @@
 *!          abbreviation, a repeated name and four hundred names refused
 *!          r(103) as twoway refuses them; SMCL refused and echoed as text;
 *!          nothing registered.
+*!   TP-13  the other side of twoway's minimums, and clwidth()'s ceiling
+*!          (WP-24's second round): a spelling one letter short of the
+*!          minimum is not the option -- mlaban(), sor(), xoverhan and
+*!          yoverhan named as typed, mlab() read as mlabel(), in comma mode
+*!          and after the paren-mode comma, as twoway reads each -- and
+*!          clwidth() and lwidth() take 0 and 10000 and refuse -0.001 and
+*!          10000.001, where twoway draws them.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -101,6 +108,7 @@ local logfile "`c(tmpdir)'dash_twoway_option_parity.log"
 // Helpers
 // ----------------------------------------------------------------
 capture mata: mata drop _ztp_has()
+capture mata: mata drop _ztp_hasval()
 mata:
 // Does the registered spec for graph `g' carry the quoted key `key'?
 real scalar _ztp_has(string scalar g, string scalar key)
@@ -108,6 +116,14 @@ real scalar _ztp_has(string scalar g, string scalar key)
     string scalar js
     js = st_global("dash_json_" + g)
     return(strpos(js, char(34) + key + char(34) + ":") > 0)
+}
+// ... with the string value `val'?
+real scalar _ztp_hasval(string scalar g, string scalar key, string scalar val)
+{
+    string scalar js, q
+    js = st_global("dash_json_" + g)
+    q  = char(34)
+    return(strpos(js, q + key + q + ":" + q + val + q) > 0)
 }
 end
 
@@ -120,6 +136,12 @@ end
 
 // Run one dash command under a named log; r(rc) is its return code and
 // r(note) whether the log carries the ignoring note at all.
+// Both searches read the log with cert_log_has, which undoes Stata's
+// wrapping at the column (cert_helpers.do): they used cert_file_has, which
+// reads the bytes, so a note or a name split across a wrapped line was
+// "absent" -- an absence check that could not see what it looked for
+// (changed with TP-13, 24sep2026; every TP case passes either way on this
+// tree, where no note here reaches the column).
 capture program drop _ztp_run
 program define _ztp_run, rclass
     args cmdtext logpath
@@ -130,7 +152,7 @@ program define _ztp_run, rclass
     capture noisily `cmdtext'
     local rc = _rc
     log close _ztplog
-    cert_file_has "`logpath'", needle("ignoring unsupported")
+    cert_log_has "`logpath'", needle("ignoring unsupported")
     return scalar note = r(found)
     return scalar rc   = `rc'
 end
@@ -139,7 +161,7 @@ end
 capture program drop _ztp_logged
 program define _ztp_logged, rclass
     args logpath needle
-    cert_file_has "`logpath'", needle(`"`needle'"')
+    cert_log_has "`logpath'", needle(`"`needle'"')
     return scalar found = r(found)
 end
 
@@ -823,6 +845,209 @@ if `bad' {
     local faillist "`faillist' TP-12"
 }
 else display as text "TP-12 PASS: hostile mlabel() values on mspline are refused as twoway refuses them, echoed as text, and register nothing"
+
+// ----------------------------------------------------------------
+// TP-13 -- the other side of twoway's minimums, and clwidth()'s ceiling.
+// ----------------------------------------------------------------
+// test_twoway_option_parity.py reads dash.ado's -syntax- statements for
+// each F3 option's minimum abbreviation (the plot parser's ten, the graph
+// parser's xoverhangs and yoverhangs) and its rule table for clwidth()'s
+// bounds.  TP-02 to TP-06 run the minimums; but the other side of a
+// minimum -- the spelling one letter shorter, which twoway does NOT take
+// as the option -- was run for cl() alone, never after the paren-mode
+// comma, and clwidth()'s 10000 ceiling nowhere (WP-24's first round).
+// Measured 24sep2026: with mlaban( rewritten to mlabangle( before
+// _dash_parse_plot_opts's -syntax- runs, with xoverhan read as xoverhangs
+// before _dash_parse_graph_opts's, and with the rule written
+// clwidth=style,0,100000 -- which still holds the text the source test
+// looks for -- test_twoway_option_parity.py and TP-01 to TP-12 all stayed
+// green.  Every expectation below is twoway's, asked in this run.
+local bad = 0
+
+// TP-13a -- comma mode, the plot parser.  Each row: the minimum, the
+// spelling one letter shorter, and what dash must make of the minimum --
+// a key in the spec (an option it draws) or its full name in the note (one
+// it declares and does not draw).  twoway takes the minimum (rc 0) and
+// refuses the shorter one, "option ... not allowed", r(198) (measured
+// 24sep2026, each on scatter with mlabel(make)); dash names what twoway
+// refuses as typed, as TP-07 does, and neither records the option nor
+// names its full name.  The minimum is run first, on the same command:
+// the control that shows the key and the note can be seen.
+local n13 = 0
+foreach row in "mlabang(45) mlaban(45) key mlabangle" ///
+               "sort(mpg) sor(mpg) note sort()" ///
+               "xoverhang xoverhan note xoverhangs()" ///
+               "yoverhang yoverhan note yoverhangs()" {
+    local ++n13
+    tokenize `"`row'"'
+    local mn "`1'"
+    local sh "`2'"
+    local kind "`3'"
+    local what "`4'"
+    // The shorter spelling as dash's note writes an unknown option: its
+    // name and "()".
+    local shn "`sh'"
+    local pp = strpos("`sh'", "(")
+    if `pp' local shn = substr("`sh'", 1, `pp' - 1)
+    local shn "`shn'()"
+    capture twoway scatter mpg weight, mlabel(make) `mn' nodraw
+    local tw_mn = _rc
+    capture twoway scatter mpg weight, mlabel(make) `sh' nodraw
+    local tw_sh = _rc
+    if `tw_mn' != 0 | `tw_sh' != 198 {
+        display as error "TP-13a FAIL `mn'/`sh': the twoway oracle gives r(`tw_mn') for the minimum and r(`tw_sh') for the shorter spelling, not rc 0 and r(198)"
+        local bad = 1
+        continue
+    }
+    // The minimum: taken.
+    _ztp_run `"dash scatter mpg weight, mlabel(make) `mn' name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    if "`kind'" == "key" _ztp_has zqtp `what'
+    else                 _ztp_logged "`logfile'" "`what'"
+    local took = r(found)
+    if `drc' != 0 | `took' != 1 {
+        display as error "TP-13a FAIL `mn': the minimum is not taken as the option (rc `drc', `kind' `what' seen = `took')"
+        local bad = 1
+    }
+    // One letter shorter: not the option, and named as typed.
+    _ztp_run `"dash scatter mpg weight, mlabel(make) `sh' name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    local dnote = r(note)
+    _ztp_logged "`logfile'" "`shn'"
+    local named = r(found)
+    if "`kind'" == "key" _ztp_has zqtp `what'
+    else                 _ztp_logged "`logfile'" "`what'"
+    local took = r(found)
+    if `drc' != 0 | `dnote' != 1 | `named' != 1 | `took' != 0 {
+        display as error "TP-13a FAIL `sh': twoway r(198) -- dash rc `drc', note `dnote', `shn' named `named', taken as `what' `took'"
+        local bad = 1
+    }
+    else display as text "TP-13a `sh': not `what' -- named `shn', as twoway refuses it"
+}
+assert `n13' == 4
+// mlab() is mlabel()'s own abbreviation in twoway, and one letter short of
+// mlabf, mlabt and mlabv: mlab(pos) draws pos's labels, rc 0, and
+// mlab(heading) is r(111), no variable heading (measured 24sep2026).  So
+// dash must read it as mlabel() and never as mlabformat(),
+// mlabtextstyle() or mlabvposition().  The controls: mlabf(%9.2f)
+// records mlabformat, and mlabt(heading) and mlabv(pos) are named in the
+// note by their full names.
+_ztp_run `"dash scatter mpg weight, mlabf(%9.2f) name(zqtp)"' "`logfile'"
+local c1 = r(rc)
+_ztp_has zqtp mlabformat
+local c1k = r(found)
+_ztp_run `"dash scatter mpg weight, mlabel(make) mlabt(heading) mlabv(pos) name(zqtp)"' "`logfile'"
+local c2 = r(rc)
+_ztp_logged "`logfile'" "mlabtextstyle()"
+local c2t = r(found)
+_ztp_logged "`logfile'" "mlabvposition()"
+local c2v = r(found)
+if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 1 | `c2v' != 1 {
+    display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v'"
+    local bad = 1
+}
+capture twoway scatter mpg weight, mlab(pos) nodraw
+local tw_p = _rc
+_ztp_run `"dash scatter mpg weight, mlab(pos) name(zqtp)"' "`logfile'"
+local drc = r(rc)
+local dnote = r(note)
+mata: st_local("_zv", strofreal(_ztp_hasval("zqtp", "mlabel", "pos")))
+_ztp_has zqtp mlabformat
+local fk = r(found)
+if `tw_p' != 0 | `drc' != 0 | `dnote' != 0 | `_zv' != 1 | `fk' != 0 {
+    display as error "TP-13a FAIL mlab(pos): twoway r(`tw_p'); dash rc `drc', a note `dnote', mlabel=pos `_zv', mlabformat key `fk'"
+    local bad = 1
+}
+capture twoway scatter mpg weight, mlab(heading) nodraw
+local tw_h = _rc
+_ztp_run `"dash scatter mpg weight, mlab(heading) name(zqtp)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "mlabel()"
+local named = r(found)
+_ztp_logged "`logfile'" "mlabtextstyle()"
+local tsn = r(found)
+if `tw_h' != 111 | `drc' != `tw_h' | `named' != 1 | `tsn' != 0 | "${dash_graph_registry}" != "" {
+    display as error "TP-13a FAIL mlab(heading): twoway r(`tw_h'); dash rc `drc', mlabel() named `named', mlabtextstyle() named `tsn', registry [${dash_graph_registry}]"
+    local bad = 1
+}
+else display as text "TP-13a mlab(): read as mlabel(), as twoway reads it -- never mlabformat(), mlabtextstyle() or mlabvposition()"
+
+// TP-13b -- after the paren-mode comma, the graph parser: xoverhang and
+// yoverhang are taken (TP-06 ran yoverhangs only by its full name there),
+// xoverhan and yoverhan are refused by twoway, r(198), and named as typed
+// by dash (measured 24sep2026).
+local n13b = 0
+foreach row in "xoverhang xoverhangs() 0" "yoverhang yoverhangs() 0" ///
+               "xoverhan xoverhangs() 198" "yoverhan yoverhangs() 198" {
+    local ++n13b
+    tokenize "`row'"
+    local o "`1'"
+    local full "`2'"
+    local want "`3'"
+    capture twoway (scatter mpg weight) (line mpg weight), `o' nodraw
+    local tw_rc = _rc
+    _ztp_run `"dash (scatter mpg weight) (line mpg weight), `o' name(zqtp)"' "`logfile'"
+    local drc = r(rc)
+    local dnote = r(note)
+    _ztp_logged "`logfile'" "`full'"
+    local fulln = r(found)
+    _ztp_logged "`logfile'" "`o'()"
+    local asis = r(found)
+    if `tw_rc' != `want' {
+        display as error "TP-13b FAIL `o': the twoway oracle gives r(`tw_rc'), not r(`want')"
+        local bad = 1
+    }
+    else if `want' == 0 & (`drc' != 0 | `dnote' != 1 | `fulln' != 1) {
+        display as error "TP-13b FAIL `o': the minimum is not named `full' (rc `drc', note `dnote', named `fulln')"
+        local bad = 1
+    }
+    else if `want' == 198 & (`drc' != 0 | `dnote' != 1 | `asis' != 1 | `fulln' != 0) {
+        display as error "TP-13b FAIL `o': twoway r(198) -- dash rc `drc', note `dnote', named as typed `asis', named `full' `fulln'"
+        local bad = 1
+    }
+    else display as text "TP-13b `o': r(`tw_rc') in twoway; dash names " cond(`want', "`o'()", "`full'")
+}
+assert `n13b' == 4
+
+// TP-13c -- clwidth() has lwidth()'s bounds, both ends.  On line, which
+// draws the connecting line, twoway draws 0 and 10000 and refuses -0.001
+// and 10000.001, "gm_linewidth must be between 0.000 and 1.0e+04", r(198),
+// for clwidth() and lwidth() alike (measured 24sep2026; nodraw would not
+// ask, the bound is checked when drawn).  dash's rc must be twoway's, a
+// refusal must name the option, and the two options must agree.
+local n13c = 0
+foreach v in -0.001 0 10000 10000.001 {
+    foreach o in clwidth lwidth {
+        local ++n13c
+        capture graph drop _all
+        capture twoway line mpg weight, `o'(`v')
+        local tw_`o' = _rc
+        capture graph drop _all
+        _ztp_run `"dash (line mpg weight, `o'(`v')), name(zqtp)"' "`logfile'"
+        local d_`o' = r(rc)
+        local nm_`o' = 1
+        if `d_`o'' == 198 {
+            _ztp_logged "`logfile'" "`o'()"
+            local nm_`o' = r(found)
+        }
+    }
+    local wantv = cond(`v' < 0 | `v' > 10000, 198, 0)
+    if `tw_clwidth' != `wantv' | `tw_lwidth' != `wantv' {
+        display as error "TP-13c FAIL `v': the twoway oracle gives clwidth r(`tw_clwidth') and lwidth r(`tw_lwidth'), not r(`wantv')"
+        local bad = 1
+    }
+    else if `d_clwidth' != `tw_clwidth' | `d_lwidth' != `tw_lwidth' | `nm_clwidth' != 1 | `nm_lwidth' != 1 {
+        display as error "TP-13c FAIL `v': twoway r(`wantv') -- dash clwidth rc `d_clwidth' (named `nm_clwidth'), lwidth rc `d_lwidth' (named `nm_lwidth')"
+        local bad = 1
+    }
+    else display as text "TP-13c `v': r(`wantv') for clwidth() and lwidth(), in twoway and dash"
+}
+assert `n13c' == 8
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TP-13"
+}
+else display as text "TP-13 PASS: a spelling one letter short of twoway's minimum is not the option, in either parser, and clwidth() stops at lwidth()'s ceiling, as in twoway"
 
 // ----------------------------------------------------------------
 // Summary

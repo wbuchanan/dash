@@ -287,13 +287,28 @@ string scalar _u8_code_sites(string scalar fn, string scalar needle)
 // 1 if any line of a captured log contains needle.
 real scalar _u8_log_has(string scalar fn, string scalar needle)
 {
-    real scalar   fh, found
-    string scalar line
+    // A log's logical lines: Stata wraps a line at the column, anywhere --
+    // mid-word included -- and goes on with "> "; a physical line comes
+    // back from fget() in 32,768-character pieces.  Each is searched
+    // re-joined, as cert_helpers.do's _cert_log_count does (WP-24: read
+    // line by line, a needle the wrap split was not found).
+    real scalar   fh, found, piece
+    string scalar line, full
     found = 0
+    full  = ""
+    piece = 0
     fh = fopen(fn, "r")
-    while ((line = fget(fh)) != J(0,0,"")) {
-        if (strpos(line, needle)) found = 1
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (piece | substr(line, 1, 2) == "> ") {
+            full = full + (piece ? line : substr(line, 3, .))
+        }
+        else {
+            if (strpos(full, needle)) found = 1
+            full = line
+        }
+        piece = (strlen(line) == 32768)
     }
+    if (strpos(full, needle)) found = 1
     fclose(fh)
     return(found)
 }

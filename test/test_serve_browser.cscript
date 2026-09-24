@@ -24,10 +24,16 @@
 *! serve, the script asserts the stub is what _dash_find_render resolves;
 *! `timeout(1)' stops a real server within a minute should that ever fail.
 *!
-*! Tests: SB-01 through SB-12
+*! THE OPENER.  When a window is wanted, the one-line form and `dash build'
+*! both open the saved page through _dash_open_page, which takes the
+*! platform as an argument and, under dryrun, returns the command it would
+*! run and runs nothing -- so Windows's command, which runs only where Stata
+*! reports Windows, is checked here on any machine (SB-13..20).
+*!
+*! Tests: SB-01 through SB-20
 *!
 *! Usage:  do test/test_serve_browser.cscript
-*! Version: 1.0  23sep2026
+*! Version: 1.1  24sep2026
 
 cscript "dash serve honours the browser settings" adodir ".."
 
@@ -198,6 +204,265 @@ _dash_find_render
 assert strpos(`"`r(fn)'"', "_serve_stub") == 0
 confirm file `"`r(fn)'"'
 display "SB-12 PASS: the stub is gone; dash_render.py resolves to the real renderer"
+
+// ================================================================
+// SB-13..20 -- the one opener, _dash_open_page
+// ================================================================
+// dash opens a saved page from two places, the one-line form and `dash
+// build'.  Each carried its own three shell lines, and Windows's -- `shell
+// start "" "<path>"' -- ran only where Stata reports Windows, so nothing
+// ran it: the only checks read dash.ado's text (test_server.py's BUG-40
+// class), and they passed with the Windows branch unable to run at all
+// ("windows" for "Windows") and with the path handed to start unquoted
+// (measured 24sep2026).  Both callers now go through _dash_open_page,
+// which takes the platform as os() and, under dryrun, returns the command
+// it would run in r(cmd) and runs nothing, so each platform's command is
+// checked here on any machine.
+//
+// The paths are assembled in Mata, where a string is a value, and are
+// absolute paths that do not exist.  The hostile one holds both quotes,
+// spaces, two semicolons and an ampersand, and a command -- `open
+// SB_INJECTED' -- that the shell runs if the quoting fails.  On a Mac or
+// Unix the path is single-quoted, the one quoting in which nothing but the
+// apostrophe itself is special, and each apostrophe is written '\''; on
+// Windows it is double-quoted after start's empty title, and a path holding
+// a double quote, which no Windows file name can, is refused: that quote
+// would end the argument.
+//
+// What ran is read from stubs: open, xdg-open and start, first on PATH
+// (set through Python's os.environ, which the shell Stata starts
+// inherits), each writing its own name and then every argument it was
+// given, one to a line, to opened.log beside it.  SB-13 checks the shell
+// runs the stubs before anything here may reach one, the global is dropped
+// only after that, and SB-19 is the control that shows a run is seen.  On
+// Windows start is a cmd builtin that cannot be stubbed, so there the
+// commands (SB-14..17) are checked and the rest is skipped, saying so.
+mata:
+// The first line of a file, or "" when it cannot be read.
+string scalar _sb_line1(string scalar fn)
+{
+    string scalar t
+    real scalar   k
+    if (!_cert_read(fn, t)) return("")
+    k = strpos(t, char(10))
+    return(k ? substr(t, 1, k - 1) : t)
+}
+// The whole of a file, or "(none)" when there is none.
+string scalar _sb_whole(string scalar fn)
+{
+    string scalar t
+    if (!_cert_read(fn, t)) return("(none)")
+    return(t)
+}
+end
+
+mata:
+_sb_q  = char(39)
+_sb_dq = char(34)
+_sb_bs = char(92)
+_sb_nl = char(10)
+// P: an ordinary path.  H: the hostile one.  W: a hostile Windows path
+// (an apostrophe, spaces, a semicolon, an ampersand; no double quote).
+_sb_P = "/dash_sb_nowhere/page.html"
+_sb_H = "/dash_sb_nowhere/it" + _sb_q + "s a " + _sb_dq + "dash" + _sb_dq + "; open SB_INJECTED; echo " + _sb_q + "x & y.html"
+_sb_W = "C:" + _sb_bs + "Users" + _sb_bs + "o" + _sb_q + "brien" + _sb_bs + "my dash; v1 & v2" + _sb_bs + "page.html"
+// The commands, written out rather than computed: H single-quoted, each
+// apostrophe closing the quotes, given escaped, and reopening them.
+_sb_Pq = _sb_q + _sb_P + _sb_q
+_sb_Hq = _sb_q + "/dash_sb_nowhere/it" + _sb_q + _sb_bs + _sb_q + _sb_q + "s a " + _sb_dq + "dash" + _sb_dq + "; open SB_INJECTED; echo " + _sb_q + _sb_bs + _sb_q + _sb_q + "x & y.html" + _sb_q
+_sb_want = ("open " + _sb_Pq, "xdg-open " + _sb_Pq, "start " + _sb_dq + _sb_dq + " " + _sb_dq + _sb_P + _sb_dq,
+            "open " + _sb_Hq, "xdg-open " + _sb_Hq, "start " + _sb_dq + _sb_dq + " " + _sb_dq + _sb_W + _sb_dq)
+// What each stub writes when that command reaches the shell.
+_sb_log = ("CALL open" + _sb_nl + "ARG[" + _sb_P + "]" + _sb_nl,
+           "CALL xdg-open" + _sb_nl + "ARG[" + _sb_P + "]" + _sb_nl,
+           "CALL start" + _sb_nl + "ARG[]" + _sb_nl + "ARG[" + _sb_P + "]" + _sb_nl,
+           "CALL open" + _sb_nl + "ARG[" + _sb_H + "]" + _sb_nl,
+           "CALL xdg-open" + _sb_nl + "ARG[" + _sb_H + "]" + _sb_nl,
+           "CALL start" + _sb_nl + "ARG[]" + _sb_nl + "ARG[" + _sb_W + "]" + _sb_nl)
+st_local("sb_P", _sb_P)
+st_local("sb_H", _sb_H)
+st_local("sb_W", _sb_W)
+end
+// The six calls, as (platform, path) pairs, in _sb_want's order.
+local sb_os   "MacOSX Unix Windows MacOSX Unix Windows"
+local sb_path "sb_P sb_P sb_P sb_H sb_H sb_W"
+
+local sb_stubs = ("`c(os)'" != "Windows")
+local sbo "`c(tmpdir)'dash_sb_opener"
+if `sb_stubs' {
+    capture mkdir "`sbo'"
+    capture erase "`sbo'/opened.log"
+    foreach f in open xdg-open start {
+        capture erase "`sbo'/`f'"
+        tempname sh
+        file open `sh' using "`sbo'/`f'", write text replace
+        file write `sh' "#!/bin/sh" _n
+        file write `sh' "d=" (char(36)) "(dirname " (char(34)) (char(36)) "0" (char(34)) ")" _n
+        file write `sh' "printf 'CALL %s\n' '`f'' >> " (char(34)) (char(36)) "d/opened.log" (char(34)) _n
+        file write `sh' "for a in " (char(34)) (char(36)) "@" (char(34)) "; do printf 'ARG[%s]\n' " (char(34)) (char(36)) "a" (char(34)) " >> " (char(34)) (char(36)) "d/opened.log" (char(34)) "; done" _n
+        file write `sh' "exit 0" _n
+        file close `sh'
+        shell chmod 755 "`sbo'/`f'"
+    }
+    // The first python call of a runner session can fail whatever it is;
+    // spend it here.  The directory is read with sfi, never written into
+    // the Python source.
+    capture python: pass
+    python: import os as _sb_os, sfi as _sb_sfi
+    python: _sb_path0 = _sb_os.environ.get("PATH", "")
+    python: _sb_os.environ["PATH"] = _sb_sfi.Macro.getLocal("sbo") + _sb_os.pathsep + _sb_path0
+}
+
+capture noisily {
+    // ---- SB-13 -- the guard: the shell runs the three stubs ----
+    if `sb_stubs' {
+        local sb_guard 1
+        foreach f in open xdg-open start {
+            capture erase "`sbo'/which.txt"
+            shell command -v `f' > "`sbo'/which.txt" 2>&1
+            mata: st_local("sb_which", _sb_line1(st_local("sbo") + "/which.txt"))
+            if `"`sb_which'"' != "`sbo'/`f'" local sb_guard 0
+        }
+        assert `sb_guard' == 1
+        display "SB-13 PASS: the shell runs the stub open, xdg-open and start"
+        // Only now may a call reach a shell with nothing but dryrun, or the
+        // opener's own refusal, to stop it.
+        macro drop dash_nobrowser
+        capture erase "`sbo'/opened.log"
+    }
+    else {
+        display "SB-13 SKIP: start is a cmd builtin on Windows and cannot be stubbed"
+    }
+
+    // ---- SB-14..15 -- each platform's command, dry ----
+    // Calls 1-3 are the ordinary path (SB-14), 4-6 the hostile ones (SB-15).
+    forvalues i = 1/6 {
+        local o : word `i' of `sb_os'
+        local pl : word `i' of `sb_path'
+        _dash_open_page, path(`"``pl''"') os(`o') dryrun
+        mata: st_local("sb_same", strofreal(st_global("r(cmd)") == _sb_want[`i']))
+        if `sb_same' != 1 {
+            mata: printf("{err}call %s on %s: r(cmd) is <%s>, expected <%s>\n", st_local("i"), st_local("o"), st_global("r(cmd)"), _sb_want[`i'])
+        }
+        assert `sb_same' == 1
+        assert "`r(os)'" == "`o'"
+        assert r(opened) == 0
+        if `i' == 3 {
+            display "SB-14 PASS: an ordinary path is one quoted argument to open on a Mac, to xdg-open on Unix, and to start after its empty title on Windows"
+        }
+    }
+    display "SB-15 PASS: a path holding quotes, spaces, semicolons and an ampersand is one quoted argument on each platform"
+
+    // ---- SB-16 -- what cannot be one argument is refused ----
+    // Each refusal is made dry and, where the stubs are on, wet as well:
+    // SB-18 then shows none of them reached a shell.
+    local sb_modes "dryrun"
+    if `sb_stubs' local sb_modes "dryrun wet"
+    local nl = char(10)
+    local cr = char(13)
+    foreach m in `sb_modes' {
+        local d = cond("`m'" == "dryrun", "dryrun", "")
+        // A double quote on Windows would end start's quoted argument.  No
+        // command comes back for a refused path (read by value: the last
+        // one returned held quotes).
+        capture _dash_open_page, path(`"`sb_H'"') os(Windows) `d'
+        assert _rc == 198
+        mata: st_local("sb_none", strofreal(st_global("r(cmd)") == ""))
+        assert `sb_none' == 1
+        // A line break would end the command at the shell.
+        capture _dash_open_page, path("/dash_sb_nowhere/a`nl'b.html") os(MacOSX) `d'
+        assert _rc == 198
+        capture _dash_open_page, path("/dash_sb_nowhere/a`cr'b.html") os(Unix) `d'
+        assert _rc == 198
+        // A platform dash does not know.
+        capture _dash_open_page, path(`"`sb_P'"') os(Linux) `d'
+        assert _rc == 198
+        // No path.
+        capture _dash_open_page, path("") os(MacOSX) `d'
+        assert _rc == 198
+    }
+    display "SB-16 PASS: a double quote on Windows, a line break, an unknown platform and no path are each refused, r(198)"
+
+    // ---- SB-17 -- with no os(), the platform is this machine's ----
+    // A Mac is a Mac whichever binary runs: the console binary reports
+    // c(os) "Unix" (c(machine_type) "Mac (Apple Silicon)", measured
+    // 23sep2026), and dash ran xdg-open there, which a Mac does not have.
+    local sb_here = cond("`c(os)'" == "MacOSX" | substr("`c(machine_type)'", 1, 3) == "Mac", "MacOSX", "`c(os)'")
+    _dash_open_page, path(`"`sb_P'"') dryrun
+    assert "`r(os)'" == "`sb_here'"
+    local k = cond("`sb_here'" == "MacOSX", 1, cond("`sb_here'" == "Unix", 2, 3))
+    mata: st_local("sb_same", strofreal(st_global("r(cmd)") == _sb_want[`k']))
+    assert `sb_same' == 1
+    assert r(opened) == 0
+    display "SB-17 PASS: with no os() the opener is this machine's (`c(os)', `c(machine_type)': `sb_here')"
+
+    if `sb_stubs' {
+        // ---- SB-18 -- dry, nothing ran ----
+        capture confirm file "`sbo'/opened.log"
+        if _rc == 0 {
+            mata: printf("{err}the stubs recorded: %s\n", _sb_whole(st_local("sbo") + "/opened.log"))
+        }
+        assert _rc != 0
+        display "SB-18 PASS: nothing reached a shell: not the dry runs, and not a refused call made without dryrun"
+
+        // ---- SB-19 -- the control: without dryrun, each command runs ----
+        // and the opener is handed the path whole, as one argument (start:
+        // its empty title, then the path), once, and nothing else runs.
+        forvalues i = 1/6 {
+            local o : word `i' of `sb_os'
+            local pl : word `i' of `sb_path'
+            capture erase "`sbo'/opened.log"
+            _dash_open_page, path(`"``pl''"') os(`o')
+            assert r(opened) == 1
+            mata: st_local("sb_same", strofreal(_sb_whole(st_local("sbo") + "/opened.log") == _sb_log[`i']))
+            if `sb_same' != 1 {
+                mata: printf("{err}call %s on %s: the stubs recorded <%s>, expected <%s>\n", st_local("i"), st_local("o"), _sb_whole(st_local("sbo") + "/opened.log"), _sb_log[`i'])
+            }
+            assert `sb_same' == 1
+        }
+        display "SB-19 PASS: without dryrun each command reaches the shell, and the opener gets the path whole, once, with nothing injected"
+
+        // ---- SB-20 -- $dash_nobrowser keeps every opening shut ----
+        // Any non-empty value, as for the deciders (HC2-32).  The command
+        // is still built and returned.
+        foreach v in 1 0 {
+            global dash_nobrowser `v'
+            forvalues i = 1/6 {
+                local o : word `i' of `sb_os'
+                local pl : word `i' of `sb_path'
+                capture erase "`sbo'/opened.log"
+                _dash_open_page, path(`"``pl''"') os(`o')
+                assert r(opened) == 0
+                mata: st_local("sb_same", strofreal(st_global("r(cmd)") == _sb_want[`i']))
+                assert `sb_same' == 1
+                capture confirm file "`sbo'/opened.log"
+                assert _rc != 0
+            }
+        }
+        macro drop dash_nobrowser
+        display "SB-20 PASS: with \$dash_nobrowser set, to 1 or to 0, the opener builds its command and runs nothing"
+    }
+    else {
+        display "SB-18..20 SKIP: start is a cmd builtin on Windows and cannot be stubbed"
+    }
+}
+local rc_op = _rc
+
+// Restore, whatever happened above: PATH, the stubs, the suite's setting.
+global dash_nobrowser 1
+if `sb_stubs' {
+    python: _sb_os.environ["PATH"] = _sb_path0
+    foreach f in open xdg-open start opened.log which.txt {
+        capture erase "`sbo'/`f'"
+    }
+    capture rmdir "`sbo'"
+}
+capture mata: mata drop _sb_line1() _sb_whole()
+capture mata: mata drop _sb_q _sb_dq _sb_bs _sb_nl _sb_P _sb_H _sb_W _sb_Pq _sb_Hq _sb_want _sb_log
+if `rc_op' {
+    display as error "test_serve_browser: an opener check above failed (rc=`rc_op')"
+    exit `rc_op'
+}
 
 display ""
 display "All serve-browser tests PASSED."

@@ -10,13 +10,18 @@ Run with:  pytest test/test_html_output.py -v
 """
 import sys
 import os
+import base64
+import gzip
 import json
 import tempfile
 import re
 from html import unescape as _unescape
+from html.parser import HTMLParser
 import numpy as np
 import pandas as pd
 import pytest
+import bokeh
+from bokeh import models as bkm
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dash_render import DashRenderer
@@ -51,16 +56,32 @@ def _extract_model_json(html: str) -> str:
     Bokeh document, so tests can search the model data without matching
     strings that appear inside the JS library itself.
 
-    Returns an empty string if no JSON block is found.
+    Fails when the page has no such block.  It returned "" then, and an
+    absence check run on "" passed whatever the page drew: measured
+    24sep2026, a page with its document cut out passed the "LogScale",
+    "output_backend" and "webgl" absence checks alike.
     """
-    m = re.search(r'<script[^>]+type=["\']application/json["\'][^>]*>', html)
-    if not m:
-        return ""
-    start = m.end()
-    end = html.find("</script>", start)
-    if end == -1:
-        return html[start:]
+    _tag, start, end = _document_span(html)
     return html[start:end]
+
+
+def _document_span(html: str) -> tuple:
+    """``(tag start, content start, content end)`` of the page's
+    ``<script type="application/json">`` block, the one Bokeh writes its
+    document into; fails when the page has none."""
+    m = re.search(r'<script[^>]+type=["\']application/json["\'][^>]*>', html)
+    assert m, "the page embeds no Bokeh document (no application/json block)"
+    end = html.find("</script>", m.end())
+    assert end != -1, "the page's Bokeh document block is never closed"
+    return m.start(), m.end(), end
+
+
+def _outside_document(html: str) -> str:
+    """The page with its embedded document cut out: the markup the browser
+    parses as HTML, and BokehJS's code.  Text the document carries is
+    escaped there as a whole, so it is never markup; text found here is."""
+    tag, _start, end = _document_span(html)
+    return html[:tag] + html[end:]
 
 
 def _figure_colors(html: str, prop: str) -> list:
@@ -117,19 +138,11 @@ def _page_models(html: str) -> dict:
     return out
 
 
-def _figure_glyphs(html: str) -> list:
-    """For each figure in the page's document, in order, the glyph type of
-    each visible renderer it holds with at least one row of data -- what
-    the page draws, panel by panel.
+def _doc_models(html: str) -> dict:
+    """``{id: model}`` for every model in the page's embedded document.
 
-    A renderer anywhere in the document is not enough: one a legend item or
-    a hover tool still refers to is written into the document though no
-    figure draws it.  Measured 24sep2026: a scatter taken off its figure
-    left "Plot has no renderers" and its red Scatter glyph in the document,
-    through the legend.  Nor is a renderer with no rows: a refused function
-    expression leaves its Line on the figure, drawing nothing.  A model is
-    written out once and referred to by id after that, so every reference
-    is resolved by id.
+    A model is written out once and referred to by ``{"id": ...}`` after
+    that, so every reader resolves its references through this table.
     """
     doc = json.loads(_unescape(_extract_model_json(html)))
     byid = {}
@@ -145,33 +158,250 @@ def _figure_glyphs(html: str) -> list:
                 walk(v)
 
     walk(doc)
+    return byid
+
+
+def _column(col) -> list:
+    """One ColumnDataSource column as a list.  Bokeh writes a column as a
+    list, or as an ndarray: base64 bytes, gzipped when that is smaller,
+    with its dtype, byte order and shape."""
+    if isinstance(col, list):
+        return col
+    if isinstance(col, dict) and col.get("type") == "ndarray":
+        arr = col.get("array")
+        if isinstance(arr, list):
+            return arr
+        if isinstance(arr, dict) and arr.get("type") == "bytes":
+            raw = base64.b64decode(arr["data"])
+            if raw[:2] == b"\x1f\x8b":
+                raw = gzip.decompress(raw)
+            dt = np.dtype(col["dtype"]).newbyteorder(
+                "<" if col.get("order", "little") == "little" else ">")
+            return np.frombuffer(raw, dtype=dt).reshape(
+                col.get("shape") or [-1]).tolist()
+    raise AssertionError("a column the reader cannot decode: %r" % (col,))
+
+
+def _figure_layers(html: str) -> list:
+    """For each figure in the page's document, in order, each layer it
+    draws: ``{"glyph": model name, "props": the glyph's attributes,
+    "data": {column: list}, "shown": the source rows its view keeps,
+    "rows": how many}`` for every visible GlyphRenderer on the figure that
+    draws at least one row.
+
+    A renderer anywhere in the document is not enough: one a legend item or
+    a hover tool still refers to is written into the document though no
+    figure draws it.  Measured 24sep2026: a scatter taken off its figure
+    left "Plot has no renderers" and its red Scatter glyph in the document,
+    through the legend.  Nor is a renderer with no rows: a refused function
+    expression leaves its Line on the figure, drawing nothing.  Nor is its
+    source's size: linked by() panels share one source of every row, and
+    each panel's view keeps its own group's.
+    """
+    byid = _doc_models(html)
 
     def resolve(ref):
         return byid.get(ref.get("id"), {}) if isinstance(ref, dict) else {}
 
-    def rows(source):
-        # A column is written as a list, or as an ndarray with its shape.
-        data = resolve(source).get("attributes", {}).get("data", {})
-        n = 0
-        for _name, col in (data.get("entries", []) if isinstance(data, dict)
-                           else []):
-            if isinstance(col, list):
-                n = max(n, len(col))
-            elif isinstance(col, dict) and col.get("shape"):
-                n = max(n, int(col["shape"][0]))
-        return n
+    def kept(view, n):
+        flt = resolve(resolve(view).get("attributes", {}).get("filter"))
+        name, fa = flt.get("name", "AllIndices"), flt.get("attributes", {})
+        if name == "AllIndices":
+            return list(range(n))
+        if name == "BooleanFilter":
+            return [i for i, b in enumerate(_column(fa.get("booleans", [])))
+                    if b]
+        if name == "IndexFilter":
+            return [int(i) for i in _column(fa.get("indices", []))]
+        raise AssertionError("a view filter the reader cannot apply: %s"
+                             % name)
 
     out = []
     for fig in [m for m in byid.values() if m["name"] == "Figure"]:
-        drawn = []
+        layers = []
         for ref in fig.get("attributes", {}).get("renderers", []):
             r = resolve(ref)
             attrs = r.get("attributes", {})
-            if r.get("name") == "GlyphRenderer" and attrs.get("visible", True) \
-                    and rows(attrs.get("data_source")):
-                drawn.append(resolve(attrs.get("glyph")).get("name"))
-        out.append(drawn)
+            if r.get("name") != "GlyphRenderer" \
+                    or not attrs.get("visible", True):
+                continue
+            src = resolve(attrs.get("data_source")).get(
+                "attributes", {}).get("data", {})
+            data = {k: _column(v) for k, v in
+                    (src.get("entries", []) if isinstance(src, dict) else [])}
+            shown = kept(attrs.get("view"),
+                         max((len(v) for v in data.values()), default=0))
+            if shown:
+                glyph = resolve(attrs.get("glyph"))
+                layers.append({"glyph": glyph.get("name"),
+                               "props": glyph.get("attributes", {}),
+                               "data": data, "shown": shown,
+                               "rows": len(shown)})
+        out.append(layers)
     return out
+
+
+def _figure_glyphs(html: str) -> list:
+    """For each figure in the page's document, in order, the glyph type of
+    each layer it draws (``_figure_layers``) -- what the page draws, panel
+    by panel."""
+    return [[layer["glyph"] for layer in fig] for fig in _figure_layers(html)]
+
+
+def _only_layer(html: str, glyph: str) -> dict:
+    """The one layer the page draws, on its one figure: a *glyph*."""
+    drawn = _figure_glyphs(html)
+    assert drawn == [[glyph]], drawn
+    return _figure_layers(html)[0][0]
+
+
+#: A glyph property the document does not write (see ``_values``).
+_ABSENT = object()
+
+
+def _values(layer: dict, prop: str, default=None) -> list:
+    """The value a layer's glyph gives *prop* at each row it draws.
+
+    Bokeh writes a glyph property as a column (``{"type": "field",
+    "field": name}``), a constant (``{"type": "value", "value": v}``, or
+    the bare value), or not at all when it keeps Bokeh's own default --
+    *default*, which the caller takes from Bokeh (``bkm.VBar().bottom``).
+    """
+    spec = layer["props"].get(prop, _ABSENT)
+    if spec is _ABSENT:
+        return [default] * layer["rows"]
+    if isinstance(spec, dict) and spec.get("type") == "field":
+        column = layer["data"][spec["field"]]
+        return [column[i] for i in layer["shown"]]
+    if isinstance(spec, dict) and spec.get("type") == "value":
+        return [spec["value"]] * layer["rows"]
+    return [spec] * layer["rows"]
+
+
+def _figure_models(html: str, attr: str) -> list:
+    """For each figure in the page's document, in order, the model its
+    *attr* refers to -- ``x_range``, ``y_range``, ``title`` -- as
+    ``(name, attributes)``; ``(None, {})`` where it refers to none."""
+    byid = _doc_models(html)
+    out = []
+    for fig in [m for m in byid.values() if m["name"] == "Figure"]:
+        ref = fig.get("attributes", {}).get(attr)
+        mod = byid.get(ref.get("id"), {}) if isinstance(ref, dict) else {}
+        out.append((mod.get("name"), mod.get("attributes", {})))
+    return out
+
+
+def _figure_titles(html: str) -> list:
+    """Each figure's title text, in order; None where it has none."""
+    return [attrs.get("text") for _name, attrs
+            in _figure_models(html, "title")]
+
+
+def _grid_cells(html: str) -> list:
+    """``(title, row, column)`` of each figure a GridPlot in the page's
+    document places, in order: where each panel is drawn."""
+    byid = _doc_models(html)
+    out = []
+    for grid in [m for m in byid.values() if m["name"] == "GridPlot"]:
+        for child in grid.get("attributes", {}).get("children", []):
+            fig = byid.get(child[0].get("id"), {})
+            if fig.get("name") == "Figure":
+                title = byid.get(fig.get("attributes", {}).get(
+                    "title", {}).get("id"), {}).get("attributes", {})
+                out.append((title.get("text"), child[1], child[2]))
+    return out
+
+
+def _text_homes(html: str, needle: str) -> list:
+    """Every string in the page's document that holds *needle*, in document
+    order, as ``(model, attribute, string)``: the model the string belongs
+    to and the attribute it is the value of."""
+    doc = json.loads(_unescape(_extract_model_json(html)))
+    out = []
+
+    def walk(node, model, attr):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and "name" in node:
+                model = node["name"]
+            for k, v in node.items():
+                walk(v, model, attr if k == "attributes" else k)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, model, attr)
+        elif isinstance(node, str) and needle in node:
+            out.append((model, attr, node))
+
+    walk(doc, None, None)
+    return out
+
+
+class _TagsAndText(HTMLParser):
+    """The elements an HTML fragment opens and the text it shows."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tags, self.text = [], []
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.append(tag)
+
+    def handle_data(self, data):
+        self.text.append(data)
+
+
+def _markup(fragment: str) -> tuple:
+    """``(elements, text)`` of an HTML fragment as a browser parses it: the
+    tags it opens, in order, and its text with entities decoded.  A Div's
+    text is HTML to BokehJS, so this is what a Div shows."""
+    p = _TagsAndText()
+    p.feed(fragment)
+    p.close()
+    return p.tags, "".join(p.text)
+
+
+def _header_divs(html: str) -> list:
+    """Each Div in the page's document, in order, read by ``_markup``."""
+    return [_markup(div.get("text", ""))
+            for div in _page_models(html).get("Div", [])]
+
+
+def _page_scripts(html: str) -> list:
+    """``(attributes, body)`` of each <script> element in the page, in
+    order; an element ends at the first ``</script>``, as HTML parsing
+    ends it."""
+    return re.findall(r"<script\b([^>]*)>(.*?)</script>", html, re.S)
+
+
+def _inlined_bokehjs(html: str) -> list:
+    """The bodies of the page's inline copies of BokehJS itself: a <script>
+    with no src that holds Bokeh's bundle and declares the version of the
+    bokeh that wrote the page."""
+    stamp = re.compile(r'\bversion\s*=\s*"%s"' % re.escape(bokeh.__version__))
+    return [body for attrs, body in _page_scripts(html)
+            if "src=" not in attrs
+            and body.lstrip().startswith("/* BEGIN bokeh.min.js */")
+            and len(stamp.findall(body)) == 1]
+
+
+def _assert_drawn_as_text(html: str, payload: str, model: str) -> None:
+    """*payload* reaches the page as the text of exactly one *model* -- a
+    Title or a Label, which BokehJS draws on the canvas, where text is
+    never markup -- and nowhere else: in no Div, HTMLTitle or HTMLLabel,
+    whose text BokehJS renders as HTML, and not in the page's own markup.
+
+    The page text cannot show this.  The document is escaped as a whole on
+    its way into the page, so the payload is never in the page text,
+    whether dash draws it as text or as live markup: measured 24sep2026, a
+    graph title also drawn as an HTMLTitle, and a note drawn as an
+    HTMLLabel, both passed ``payload not in html``.
+    """
+    homes = _text_homes(html, payload)
+    assert homes == [(model, "text", payload)], homes
+    markup = _outside_document(html)
+    # What is read is the page's own markup: its Bokeh root element is here.
+    assert re.search(r'<div id="[^"]+" data-root-id="[^"]+"', markup), \
+        "the page's own markup has no Bokeh root element"
+    assert payload not in markup, "the payload is live in the page's markup"
 
 
 def _drawn_glyphs(html: str) -> list:
@@ -271,16 +501,26 @@ class TestHtmlStructure:
         """Bokeh embeds plot data as JSON in the HTML output."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # Bokeh model JSON is embedded as application/json or similar
-        has_json = '"type"' in html and '"attributes"' in html
-        assert has_json, "HTML should contain Bokeh model JSON"
+        # The scatter's twenty rows, read from the page's embedded document.
+        # This looked for '"type"' and '"attributes"' in the page text:
+        # BokehJS spells '"type"' itself and every document -- its toolbar
+        # alone -- spells both, so a page whose sources carried no rows at
+        # all passed (measured 24sep2026).
+        pts = _only_layer(html, "Scatter")
+        assert _values(pts, "x") == [float(i) for i in range(1, 21)]
+        assert _values(pts, "y") == [float(i) for i in range(1, 21)]
 
     def test_html_not_empty(self):
         """Rendered HTML is not empty for any standard plot type."""
-        for ptype in ["scatter", "line", "bar", "spike"]:
+        # Not empty is a page that draws its plot, all twenty rows.  This
+        # was len(html) > 1000, which a page inlining 1.6 MB of BokehJS
+        # passes drawing nothing (measured 24sep2026).
+        for ptype, glyph in (("scatter", "Scatter"), ("line", "Line"),
+                             ("bar", "VBar"), ("spike", "Segment")):
             spec, data = _single_graph_spec(ptype, {"yvar": "y", "xvar": "x"})
-            html = _render_to_html(spec, data)
-            assert len(html) > 1000, f"{ptype}: HTML is suspiciously short"
+            drawn = [[(layer["glyph"], layer["rows"]) for layer in fig]
+                     for fig in _figure_layers(_render_to_html(spec, data))]
+            assert drawn == [[(glyph, 20)]], (ptype, drawn)
 
 
 # ================================================================
@@ -301,7 +541,11 @@ class TestScatterHtmlOutput:
         """scatter HTML output is non-trivial."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert len(html) > 500
+        # One figure drawing all twenty points.  len(html) > 500 passed on
+        # a page drawing nothing: the inlined BokehJS is 1.6 MB.
+        drawn = [[(layer["glyph"], layer["rows"]) for layer in fig]
+                 for fig in _figure_layers(html)]
+        assert drawn == [[("Scatter", 20)]], drawn
 
 
 class TestLineHtmlOutput:
@@ -532,11 +776,13 @@ class TestScatteriHtmlOutput:
             {"values": [[7.0, 13.0], [42.0, 99.0]]},
         )
         html = _render_to_html(spec, data)
-        # y-values 7.0 and 42.0 must appear in the model JSON data
-        assert "7.0" in html or "7," in html, \
-            "scatteri y-value 7.0 must be embedded in Bokeh model JSON"
-        assert "42.0" in html or "42," in html, \
-            "scatteri y-value 42.0 must be embedded in Bokeh model JSON"
+        # Each (y, x) pair is a point of the drawn scatter, read from the
+        # document.  "7.0" and "42.0" were looked for in the page text,
+        # where BokehJS carries both (18 and 1 copies, measured 24sep2026),
+        # so a scatteri that drew no point, or swapped x and y, passed.
+        pts = _only_layer(html, "Scatter")
+        assert _values(pts, "y") == [7.0, 42.0]
+        assert _values(pts, "x") == [13.0, 99.0]
 
 
 class TestPcspikeHtmlOutput:
@@ -604,8 +850,9 @@ class TestXssInHtmlOutput:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["title"] = "<script>alert(1)</script>"
         html = _render_to_html(spec, data)
-        assert "<script>alert(1)</script>" not in html, \
-            "Raw <script> injection must not appear in rendered HTML"
+        # The title is the figure's Title -- canvas text -- and live markup
+        # nowhere.  "not in html" alone could not fail on the document.
+        _assert_drawn_as_text(html, "<script>alert(1)</script>", "Title")
 
     def test_html_contains_csp_meta(self):
         """HTML output includes Content-Security-Policy meta tag."""
@@ -767,9 +1014,10 @@ class TestGraphOptionsInHtml:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["title"] = "<script>alert(2)</script>"
         html = _render_to_html(spec, data)
-        # The raw <script> tag must not appear literally outside a JSON string
-        # (Bokeh encodes it safely in its JSON model)
-        assert "<script>alert(2)</script>" not in html
+        # Bokeh escapes the whole document on its way into the page, so the
+        # literal tag is never in the page text whatever model carries it;
+        # the document is read instead (see _assert_drawn_as_text).
+        _assert_drawn_as_text(html, "<script>alert(2)</script>", "Title")
 
 
 # ================================================================
@@ -840,14 +1088,29 @@ class TestPlotOptionsInHtml:
         assert "#55752f" in html, "fcolor(forest_green) should produce #55752f"
 
     def test_combined_mcolor_and_lcolor_in_scatter_html(self):
-        """mcolor and lcolor options both appear in scatter HTML JSON."""
+        """mcolor() and lcolor() together on a scatter: the markers are
+        mcolor()'s, fill and outline, and lcolor() leaves them alone.
+
+        This said both options "appear", set lcolor(navy) -- s2color's
+        first series colour, which the page carries with the option ignored
+        -- and checked only the red.  lcolor() colours a layer's lines and
+        a scatter draws none: twoway leaves every marker as drawn without
+        it (twoway's SVG, 23sep2026, as recorded in dash_render.py
+        _apply_marker_opts).  So lcolor() is magenta, which no s2color slot
+        uses, and it must reach no model at all.
+        """
         spec, data = _single_graph_spec(
             "scatter", {"yvar": "y", "xvar": "x"},
-            options={"mcolor": "red", "lcolor": "navy"},
+            options={"mcolor": "red", "lcolor": "magenta"},
         )
         html = _render_to_html(spec, data)
-        assert "#ff0000" in html, "mcolor(red) hex should appear"
-        assert "Scatter" in _drawn_glyphs(html)
+        pts = _only_layer(html, "Scatter")
+        assert _values(pts, "fill_color") == ["#ff0000"] * 20
+        assert _values(pts, "line_color") == ["#ff0000"] * 20
+        # The reader finds a colour where one is: red, on the markers only.
+        assert {m for m, _a, _s in _text_homes(html, "#ff0000")} \
+            == {"Scatter"}
+        assert _text_homes(html, "#ff00ff") == []
 
 
 # ================================================================
@@ -1060,15 +1323,24 @@ class TestColorRenderingAllPlotTypes:
 class TestAdversarialPlotOptions:
     """Security-focused adversarial tests for plot-level option inputs."""
 
+    # The four below checked that something was drawn, and not the fallback
+    # or the cap each names, so a refusal that drew any other colour or
+    # marker, and a raised cap, passed.  Each refusal is also named.
+
     def test_injection_in_mcolor_produces_valid_html(self):
         """Injection attempt in mcolor is rejected; render uses default color."""
         spec, data = _single_graph_spec(
             "scatter", {"yvar": "y", "xvar": "x"},
             options={"mcolor": "'; import os; os.system('id')"},
         )
-        html = _render_to_html(spec, data)
-        assert len(html) > 500, "Render must succeed despite invalid mcolor"
-        assert "Scatter" in _drawn_glyphs(html)
+        with pytest.warns(UserWarning, match=re.escape(
+                "mcolor('; import os; os.system('id')) is not a recognised "
+                "colour; using the scheme's default")):
+            html = _render_to_html(spec, data)
+        # The scheme's first series colour, fill and outline.
+        pts = _only_layer(html, "Scatter")
+        assert _values(pts, "fill_color") == _values(pts, "line_color") \
+            == ["#1a476f"] * 20
         # Injected string must NOT appear literally in output HTML
         assert "os.system" not in html
 
@@ -1078,9 +1350,12 @@ class TestAdversarialPlotOptions:
             "line", {"yvar": "y", "xvar": "x"},
             options={"lcolor": "__import__('os').system('id')"},
         )
-        html = _render_to_html(spec, data)
-        assert len(html) > 500, "Render must succeed despite invalid lcolor"
-        assert "Line" in _drawn_glyphs(html)
+        with pytest.warns(UserWarning, match=re.escape(
+                "lcolor(__import__('os').system('id')) is not a recognised "
+                "colour; using the scheme's default")):
+            html = _render_to_html(spec, data)
+        assert _values(_only_layer(html, "Line"), "line_color") \
+            == ["#1a476f"] * 20
 
     def test_invalid_msymbol_falls_back_to_default(self):
         """Invalid msymbol value falls back to default circle marker."""
@@ -1088,16 +1363,25 @@ class TestAdversarialPlotOptions:
             "scatter", {"yvar": "y", "xvar": "x"},
             options={"msymbol": "'; import os'"},
         )
-        html = _render_to_html(spec, data)
-        assert "Scatter" in _drawn_glyphs(html)
+        with pytest.warns(UserWarning, match=re.escape(
+                "msymbol('; import os') is not a recognised marker symbol; "
+                "using the scheme's default")):
+            html = _render_to_html(spec, data)
+        # The document leaves the marker out at Bokeh's default, a circle.
+        assert _values(_only_layer(html, "Scatter"), "marker",
+                       bkm.Scatter().marker) == ["circle"] * 20
 
     def test_huge_histogram_bin_count_is_bounded(self):
         """Extremely large bin count is capped to prevent resource exhaustion."""
         spec, data = _single_graph_spec("histogram", {"var": "y"},
                                         options={"bin": "99999999"})
-        html = _render_to_html(spec, data)
-        assert len(html) > 500, "Histogram must render with large bin count"
-        assert "Quad" in _drawn_glyphs(html)
+        with pytest.warns(UserWarning, match=re.escape(
+                "histogram bin count 99999999 exceeds the 1000 limit; "
+                "using 1000 bins")):
+            html = _render_to_html(spec, data)
+        # The renderer's cap, 1000 bins (_histogram_grid's _MAX_BINS).
+        assert _only_layer(html, "Quad")["rows"] == 1000, \
+            "Histogram must render its large bin count capped at 1000"
 
     def test_extreme_msize_does_not_crash(self):
         """Extremely large msize value must not crash the renderer."""
@@ -1124,7 +1408,11 @@ class TestAdversarialPlotOptions:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["title"] = "Ünïcödé tïtlé: 中文 日本語 한국어"
         html = _render_to_html(spec, data)
-        assert len(html) > 500, "Render must succeed with unicode title"
+        # Drawn, and drawn as written: len(html) > 500 could not fail.
+        assert _figure_titles(html) \
+            == [spec["graphs"][0]["graph_options"]["title"]], \
+            "Render must draw the unicode title as given"
+        assert _figure_glyphs(html) == [["Scatter"]]
 
     def test_null_byte_in_option_value_does_not_crash(self):
         """Null byte in mcolor option value must not crash the renderer."""
@@ -1141,8 +1429,8 @@ class TestAdversarialPlotOptions:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["note"] = "<script>alert('xss')</script>"
         html = _render_to_html(spec, data)
-        assert "<script>alert('xss')</script>" not in html, \
-            "Raw XSS payload must not appear unescaped in note output"
+        # The note is a Label -- canvas text -- and live markup nowhere.
+        _assert_drawn_as_text(html, "<script>alert('xss')</script>", "Label")
 
 
 # ================================================================
@@ -1153,18 +1441,26 @@ class TestAdversarialPlotOptions:
 class TestHtmlModelDataContent:
     """Verify the Bokeh model JSON in rendered HTML contains actual plot data."""
 
+    #: y is not x here, so a scatter drawn with the two swapped is seen.
+    _X = [float(i) for i in range(1, 21)]
+    _Y = [float(100 + i) for i in range(1, 21)]
+
+    def _points(self):
+        """The one layer a scatter of _Y on _X draws, read from the
+        document.  "1.0" and "20.0" were looked for in the page text,
+        where BokehJS carries each (37 and 14 copies, measured 24sep2026),
+        so a scatter whose source held no rows at all passed."""
+        spec, _ = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        return _only_layer(_render_to_html(spec, _make_data_json(
+            {"y": self._Y, "x": self._X})), "Scatter")
+
     def test_scatter_html_contains_x_data(self):
         """Scatter HTML embeds x-axis data values in the Bokeh JSON model."""
-        spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
-        html = _render_to_html(spec, data)
-        # x values 1-20 should appear somewhere in the JSON data
-        assert "1.0" in html or "1," in html, "x data values must be embedded"
+        assert _values(self._points(), "x") == self._X
 
     def test_scatter_html_contains_y_data(self):
         """Scatter HTML embeds y-axis data values in the Bokeh JSON model."""
-        spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
-        html = _render_to_html(spec, data)
-        assert "20.0" in html or "20," in html, "y data values must be embedded"
+        assert _values(self._points(), "y") == self._Y
 
     def test_mcolor_hex_in_html(self):
         """mcolor(red) produces #ff0000 hex in the Bokeh model JSON."""
@@ -1256,13 +1552,22 @@ class TestBgcolorPlotbgcolor:
         assert before != ["#1a476f"], before
 
     def test_plotbgcolor_named_color_translates(self):
-        """plotbgcolor(ltblue) must translate and appear in HTML."""
+        """plotbgcolor(ltblue) must translate and appear in HTML.
+
+        This checked only that a Scatter was drawn, so it passed with the
+        colour ignored.  Stata's color-ltblue.style sets rgb "173 216 230"
+        (read 24sep2026), and the plot region must be that colour -- which
+        it is not without the option.
+        """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        before = _figure_colors(_render_to_html(spec, data),
+                                "background_fill_color")
         spec["graphs"][0]["graph_options"]["plotbgcolor"] = "ltblue"
         html = _render_to_html(spec, data)
-        # ltblue translates to some hex; just verify no crash and HTML valid
-        assert "Scatter" in _drawn_glyphs(html), \
-            "plotbgcolor with named color must not crash rendering"
+        assert _figure_colors(html, "background_fill_color") == ["#add8e6"], \
+            "plotbgcolor(ltblue) must set background_fill_color #add8e6"
+        assert before != ["#add8e6"], before
+        assert _figure_glyphs(html) == [["Scatter"]]
 
     def test_bgcolor_invalid_no_crash(self):
         """bgcolor with invalid value must not crash — renders normally."""
@@ -1288,31 +1593,61 @@ class TestXrangeYrange:
         # dead read is what made the axis range look implemented.
         spec["graphs"][0]["graph_options"]["xscale"] = "range(-37 99)"
         html = _render_to_html(spec, data)
-        # -37 is not in the data (1-20), so must come from the x_range
-        assert "-37" in html, "xrange start=-37 must appear in Bokeh model JSON"
+        # The x axis's own range, read from the document, and the y axis
+        # left to the data.  "-37" was looked for in the page text: it
+        # passed with the range drawn on the y axis instead, and a page
+        # carries "-37" whenever one of its UUIDs has a group beginning 37
+        # -- 12 of 500 pages drawn with no range at all (measured 24sep2026).
+        assert [(name, attrs.get("start", bkm.Range1d().start),
+                 attrs.get("end"))
+                for name, attrs in _figure_models(html, "x_range")] \
+            == [("Range1d", -37.0, 99.0)]
+        assert [name for name, _a in _figure_models(html, "y_range")] \
+            == ["DataRange1d"]
 
     def test_yrange_embeds_unique_end_value(self):
         """yrange(0 9999) must embed 9999 in model JSON (unique sentinel not in data)."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["yscale"] = "range(0 9999)"
         html = _render_to_html(spec, data)
-        # 9999 is not in the data (1-20), so must come from the y_range
-        assert "9999" in html, "yrange end=9999 must appear in Bokeh model JSON"
+        # Read from the document: "9999" is in the page's BokehJS (8
+        # copies, measured 24sep2026), so the page text passed with the
+        # range ignored.  The document leaves out a start of 0, Bokeh's
+        # own default for Range1d.start.
+        assert [(name, attrs.get("start", bkm.Range1d().start),
+                 attrs.get("end"))
+                for name, attrs in _figure_models(html, "y_range")] \
+            == [("Range1d", 0, 9999.0)]
+        assert [name for name, _a in _figure_models(html, "x_range")] \
+            == ["DataRange1d"]
 
     def test_xrange_invalid_ignores_gracefully(self):
-        """xrange with non-numeric values must not crash — renders normally."""
+        """xrange with non-numeric values must not crash -- renders normally.
+
+        This set the graph option "xrange", which nothing reads (the dead
+        key above), so no change to the renderer could fail it.  The range
+        is xscale(range()): one that is not numbers leaves the axis on the
+        data, and the scatter drawn.
+        """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
-        spec["graphs"][0]["graph_options"]["xrange"] = "bad_value"
+        spec["graphs"][0]["graph_options"]["xscale"] = "range(bad_value)"
         html = _render_to_html(spec, data)
-        assert "Scatter" in _drawn_glyphs(html), \
-            "invalid xrange must fall back gracefully"
+        assert [name for name, _a in _figure_models(html, "x_range")] \
+            == ["DataRange1d"]
+        assert _figure_glyphs(html) == [["Scatter"]]
 
     def test_yrange_invalid_ignores_gracefully(self):
-        """yrange with non-numeric values must not crash."""
+        """yrange with non-numeric values must not crash.
+
+        As above: "yrange" is a key nothing reads, and len(html) > 500
+        could not fail on a page that inlines BokehJS.
+        """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
-        spec["graphs"][0]["graph_options"]["yrange"] = "bad"
+        spec["graphs"][0]["graph_options"]["yscale"] = "range(bad)"
         html = _render_to_html(spec, data)
-        assert len(html) > 500, "invalid yrange must still produce HTML"
+        assert [name for name, _a in _figure_models(html, "y_range")] \
+            == ["DataRange1d"]
+        assert _figure_glyphs(html) == [["Scatter"]]
 
 
 # ================================================================
@@ -1348,21 +1683,53 @@ class TestLogScaleHtml:
         """Without xscale/yscale, HTML must NOT contain LogScale in model JSON."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # With INLINE resources the Bokeh JS bundle is embedded in the HTML and
-        # contains "LogScale" as a class definition.  Search only within the
-        # Bokeh model JSON block (the <script type="application/json"> tag).
-        model_json = _extract_model_json(html)
-        assert "LogScale" not in model_json, \
+        # The page's BokehJS defines "LogScale", so the page text cannot
+        # say; this read the document block as a string, and a page with no
+        # block read as "" and passed.  The figure's own scales, from the
+        # parsed document, and no LogScale model anywhere in it...
+        models = _page_models(html)
+        assert [(f["x_scale"]["name"], f["y_scale"]["name"])
+                for f in models["Figure"]] == [("LinearScale", "LinearScale")]
+        assert "LogScale" not in models, \
             "default figure must not have LogScale in Bokeh model JSON"
+        # ...by a reader that finds one where one is drawn.
+        spec["graphs"][0]["graph_options"]["xscale"] = "log"
+        assert len(_page_models(_render_to_html(spec, data))
+                   .get("LogScale", [])) == 1
 
 
 # ================================================================
 # Backend selection and visual rendering confirmation tests
 # ================================================================
 
+def _large_scatter_spec() -> tuple:
+    """A scatter of 10 001 rows, one past _WEBGL_THRESHOLD, which the
+    renderer draws with WebGL."""
+    n = 10_001
+    data_json = _make_data_json({
+        "y": [float(i % 100) for i in range(n)],
+        "x": [float(i) for i in range(n)],
+    })
+    spec, _ = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+    return spec, data_json
+
+
+def _figure_backends(html: str) -> list:
+    """Each figure's output_backend as the document writes it; None where
+    it writes none, which Bokeh does at its default, "canvas"."""
+    return [f.get("output_backend") for f in _page_models(html)["Figure"]]
+
+
 class TestOutputBackendAndVisualMarkers:
     """Verify the correct Bokeh output backend is embedded in the model JSON,
-    and that actual rendering-relevant attributes are present."""
+    and that actual rendering-relevant attributes are present.
+
+    Every check here was a page-text search that could not fail: the
+    page's BokehJS spells "output_backend" and '"top"', and every
+    document's toolbar spells '"renderers"', '"fill_color"', '"line_color"'
+    and '"fill_alpha"' (measured 24sep2026 on a page drawing nothing).  The
+    figure and its glyphs are read from the parsed document instead.
+    """
 
     def test_canvas_backend_omits_output_backend_key(self):
         """Bokeh omits output_backend from JSON for the default canvas backend.
@@ -1370,19 +1737,24 @@ class TestOutputBackendAndVisualMarkers:
         of output_backend key and presence of renderers in model JSON."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # With INLINE resources the Bokeh JS bundle may contain "output_backend"
-        # as a property schema string.  Check only the Bokeh model JSON block.
-        model_json = _extract_model_json(html)
-        assert "output_backend" not in model_json, \
-            "Default canvas backend must not appear as output_backend in model JSON"
-        # Plot model must still be fully present with renderers
-        assert '"renderers"' in html, "Model JSON must contain renderers on canvas"
+        # The figure writes no output_backend -- the key Bokeh leaves out at
+        # its default, canvas -- and draws its scatter.  This searched the
+        # document block as a string: a page with no block read as "" and
+        # passed.
+        assert ["output_backend" in f for f in _page_models(html)["Figure"]] \
+            == [False]
+        assert bkm.Plot().output_backend == "canvas"
+        assert _figure_glyphs(html) == [["Scatter"]]
+        # The reader sees the key where it is written: 10 001 rows.
+        assert _figure_backends(_render_to_html(*_large_scatter_spec())) \
+            == ["webgl"]
 
     def test_model_json_contains_glyph_renderers_key(self):
         """Bokeh model JSON must contain 'renderers' key showing glyph renderers list."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert '"renderers"' in html, \
+        # The figure's renderers: one GlyphRenderer, drawing the scatter.
+        assert _figure_glyphs(html) == [["Scatter"]], \
             "Bokeh model JSON must contain 'renderers' array for glyph renderer list"
 
     def test_scatter_model_has_glyph_fill_color(self):
@@ -1390,41 +1762,50 @@ class TestOutputBackendAndVisualMarkers:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"},
                                         options={"mcolor": "red"})
         html = _render_to_html(spec, data)
-        assert '"fill_color"' in html, \
-            "Scatter glyph model must contain fill_color attribute"
-        assert "ff0000" in html.lower(), \
-            "Red fill_color (#ff0000) must be present in model JSON"
+        # The markers' own fill, not "ff0000" anywhere: red on the outline
+        # alone passed that.
+        assert _values(_only_layer(html, "Scatter"), "fill_color") \
+            == ["#ff0000"] * 20, "Scatter glyph fill_color must be #ff0000"
 
     def test_line_model_has_line_color_attribute(self):
         """Line model JSON must embed line_color attribute."""
         spec, data = _single_graph_spec("line", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        assert '"line_color"' in html, \
-            "Line glyph model must contain line_color attribute"
+        # The line's own colour: s2color's first series colour, navy
+        # (Stata's color-navy.style, rgb "26 71 111").
+        assert _values(_only_layer(html, "Line"), "line_color") \
+            == ["#1a476f"] * 20, "Line glyph line_color must be the scheme's"
 
     def test_histogram_model_has_fill_and_top(self):
         """Histogram model JSON must embed both fill_color and data arrays."""
         spec, data = _single_graph_spec("histogram", {"var": "y"})
         html = _render_to_html(spec, data)
-        assert '"fill_color"' in html, "Histogram Quad must have fill_color"
-        assert '"top"' in html, "Histogram Quad must have 'top' data key"
+        bars = _only_layer(html, "Quad")
+        # y is 1..20.  Stata's default bin count, min(sqrt(N), 10*log10(N))
+        # truncated (dash_render.py _stata_bin_count, checked against Stata
+        # there), is 4, and its default height is the density: numpy's
+        # histogram of the same four bins.  '"top"' was looked for in the
+        # page text, where BokehJS spells it 67 times.
+        dens, edges = np.histogram(np.arange(1.0, 21.0), bins=4, density=True)
+        assert _values(bars, "top") == pytest.approx(dens.tolist())
+        assert _values(bars, "left") == pytest.approx(edges[:-1].tolist())
+        assert _values(bars, "right") == pytest.approx(edges[1:].tolist())
+        assert _values(bars, "fill_color") == ["#1a476f"] * 4
 
     def test_all_plot_types_produce_renderers_in_json(self):
         """Every basic plot type must produce a non-empty 'renderers' array in model JSON."""
         types_and_keys = [
-            ("scatter", {"yvar": "y", "xvar": "x"}),
-            ("line",    {"yvar": "y", "xvar": "x"}),
-            ("bar",     {"yvar": "y", "xvar": "x"}),
-            ("spike",   {"yvar": "y", "xvar": "x"}),
-            ("area",    {"yvar": "y", "xvar": "x"}),
+            ("scatter", {"yvar": "y", "xvar": "x"}, "Scatter"),
+            ("line",    {"yvar": "y", "xvar": "x"}, "Line"),
+            ("bar",     {"yvar": "y", "xvar": "x"}, "VBar"),
+            ("spike",   {"yvar": "y", "xvar": "x"}, "Segment"),
+            ("area",    {"yvar": "y", "xvar": "x"}, "VArea"),
         ]
-        for ptype, keys in types_and_keys:
+        for ptype, keys, glyph in types_and_keys:
             spec, data = _single_graph_spec(ptype, keys)
-            html = _render_to_html(spec, data)
-            assert '"renderers"' in html, \
-                f"{ptype}: Bokeh model JSON must contain renderers key"
-            assert len(html) > 2000, \
-                f"{ptype}: HTML must be substantial (got {len(html)} chars)"
+            drawn = [[(layer["glyph"], layer["rows"]) for layer in fig]
+                     for fig in _figure_layers(_render_to_html(spec, data))]
+            assert drawn == [[(glyph, 20)]], (ptype, drawn)
 
     def test_rarea_varea_glyph_has_fill_attributes(self):
         """rarea VArea glyph model must have fill_color and fill_alpha attributes."""
@@ -1432,8 +1813,11 @@ class TestOutputBackendAndVisualMarkers:
             "rarea", extra_keys={"yvar1": "lo", "yvar2": "hi", "xvar": "x"}
         )
         html = _render_to_html(spec, data)
-        assert '"fill_color"' in html, "VArea glyph must have fill_color in model"
-        assert '"fill_alpha"' in html, "VArea glyph must have fill_alpha in model"
+        band = _only_layer(html, "VArea")
+        # The band's own fill: the scheme's first series colour at the 0.5
+        # alpha map_rarea gives it (the renderer's value, pinned here).
+        assert _values(band, "fill_color") == ["#1a476f"] * 20
+        assert _values(band, "fill_alpha") == [0.5] * 20
 
 
 class TestWebglBackendLargeData:
@@ -1441,60 +1825,81 @@ class TestWebglBackendLargeData:
 
     def _large_data_spec(self):
         """Build a scatter spec with 10 001 rows to trigger webgl threshold."""
-        n = 10_001
-        data_json = _make_data_json({
-            "y": [float(i % 100) for i in range(n)],
-            "x": [float(i) for i in range(n)],
-        })
-        spec, _ = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
-        return spec, data_json
+        return _large_scatter_spec()
 
     def test_large_dataset_uses_webgl_backend(self):
         """Datasets > 10 000 rows must embed output_backend='webgl' in model JSON."""
         spec, data = self._large_data_spec()
         html = _render_to_html(spec, data)
-        assert "webgl" in html, \
+        # The figure's own backend.  "webgl" in the page text could not
+        # fail: the page's BokehJS spells it 56 times (measured 24sep2026).
+        assert _figure_backends(html) == ["webgl"], \
             "Large dataset (>10 000 rows) must set output_backend='webgl' in Bokeh model JSON"
 
     def test_small_dataset_does_not_use_webgl(self):
         """Datasets <= 10 000 rows must NOT embed output_backend='webgl'."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # With INLINE resources the Bokeh JS bundle contains "webgl" as an enum
-        # value in its type definitions.  Search only the model JSON block.
-        model_json = _extract_model_json(html)
-        assert "webgl" not in model_json, \
+        # Nothing in the parsed document asks for webgl.  This searched the
+        # block as a string, and a page with no block read as "" and passed.
+        assert _figure_backends(html) == [None]
+        assert _text_homes(html, "webgl") == [], \
             "Small dataset must not use webgl backend in Bokeh model JSON"
+        # The reader finds it where it is written, on the figure alone.
+        big = _render_to_html(*self._large_data_spec())
+        assert _text_homes(big, "webgl") \
+            == [("Figure", "output_backend", "webgl")]
 
     def test_webgl_model_still_has_renderers(self):
         """webgl-backend model must still contain renderers in the JSON."""
         spec, data = self._large_data_spec()
         html = _render_to_html(spec, data)
-        assert '"renderers"' in html, \
-            "webgl-backend model must still contain renderers key"
+        # The figure draws its scatter, every row.  '"renderers"' is in
+        # every document's toolbar, drawn or not.
+        drawn = [[(layer["glyph"], layer["rows"]) for layer in fig]
+                 for fig in _figure_layers(html)]
+        assert drawn == [[("Scatter", 10_001)]], \
+            "webgl-backend model must still draw its renderers"
 
 
 class TestBokehJsBundleInHtml:
-    """Verify the Bokeh JavaScript bundle is referenced in rendered HTML."""
+    """Verify the Bokeh JavaScript bundle is referenced in rendered HTML.
+
+    "bokeh" and "<script" were looked for in the page text, where the
+    page's own embed script spells both: a page that fetched BokehJS from
+    Bokeh's CDN passed (measured 24sep2026) -- a script the page's own
+    Content-Security-Policy, script-src 'unsafe-inline' 'unsafe-eval' and
+    no source, does not allow.  And 'application/json' is a string
+    BokehJS itself carries.
+    """
 
     def test_html_contains_bokeh_script_reference(self):
         """Rendered HTML must include a reference to the Bokeh JS library."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # Bokeh inlines its JS or references it via CDN — either way 'bokeh' appears in <script>
-        has_bokeh_js = "bokeh" in html.lower() and "<script" in html.lower()
-        assert has_bokeh_js, \
-            "HTML must reference the Bokeh JS library via <script> tag"
+        # BokehJS inlined whole, once, and no script fetched from elsewhere.
+        assert len(_inlined_bokehjs(html)) == 1, \
+            "HTML must inline the Bokeh JS library in a <script> tag"
+        assert [attrs for attrs, _b in _page_scripts(html) if "src=" in attrs] \
+            == []
 
     def test_html_contains_bokeh_json_model_block(self):
         """Rendered HTML must contain the application/json model block with Bokeh objects."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         html = _render_to_html(spec, data)
-        # Bokeh embeds model as application/json script or inline JSON
-        has_model = ('"type"' in html and '"attributes"' in html) or \
-                    'application/json' in html
-        assert has_model, \
-            "HTML must contain the Bokeh model JSON block (type + attributes)"
+        # One block, holding one document of this bokeh; the page's root
+        # element names that document's root, the embed script reads the
+        # block by its id, and the document draws the scatter.
+        blocks = re.findall(r'<script type="application/json" id="([^"]+)"',
+                            html)
+        assert len(blocks) == 1, blocks
+        (body,) = json.loads(_unescape(_extract_model_json(html))).values()
+        assert body["version"] == bokeh.__version__
+        roots = [root["id"] for root in body["roots"]]
+        assert re.findall(r'<div id="[^"]+" data-root-id="([^"]+)"', html) \
+            == roots
+        assert "document.getElementById('%s').textContent" % blocks[0] in html
+        assert _figure_glyphs(html) == [["Scatter"]]
 
     def test_all_plot_types_include_bokeh_bundle(self):
         """Every standard plot type must include the Bokeh JS bundle in HTML."""
@@ -1507,8 +1912,10 @@ class TestBokehJsBundleInHtml:
         for ptype, keys in plot_configs:
             spec, data = _single_graph_spec(ptype, keys)
             html = _render_to_html(spec, data)
-            assert "bokeh" in html.lower() and "<script" in html.lower(), \
+            assert len(_inlined_bokehjs(html)) == 1, \
                 f"{ptype}: HTML must include Bokeh JS bundle"
+            assert [a for a, _b in _page_scripts(html) if "src=" in a] == [], \
+                ptype
 
 
 class TestNewOptionHtml:
@@ -1540,9 +1947,15 @@ class TestNewOptionHtml:
             options={},
         )
         html_def = _render_to_html(spec2, data2)
-        # Both should have the same default line_color (unchanged by mfcolor)
-        assert '"line_color"' in html_mfc, "model must still have line_color key"
-        assert "#ff0000" in html_mfc, "mfcolor must appear as fill_color"
+        # Both outlines read from their pages' Scatter.  This built the
+        # default page and never read it: it asserted '"line_color"', which
+        # every document's toolbar spells, and red somewhere in the page.
+        mfc = _only_layer(html_mfc, "Scatter")
+        assert _values(mfc, "fill_color") == ["#ff0000"] * 20, \
+            "mfcolor must appear as fill_color"
+        assert _values(mfc, "line_color") \
+            == _values(_only_layer(html_def, "Scatter"), "line_color") \
+            == ["#1a476f"] * 20, "mfcolor must leave the outline alone"
 
     def test_bar_base_nonzero_in_html(self):
         """bar with base(10) must have bottom!=0 reflected in Bokeh model JSON."""
@@ -1552,8 +1965,10 @@ class TestNewOptionHtml:
             options={"base": "10"},
         )
         html = _render_to_html(spec, data)
-        assert "10" in html, \
-            "bar base(10) must embed value 10 in Bokeh model JSON"
+        # The bars' own bottom.  "10" in the page text could not fail: the
+        # page carries it hundreds of times (measured 24sep2026).
+        assert _values(_only_layer(html, "VBar"), "bottom") == [10.0] * 20, \
+            "bar base(10) must set the bars' bottom to 10"
 
     def test_bar_default_base_zero(self):
         """bar without base option must have bottom=0 in Bokeh model JSON."""
@@ -1563,8 +1978,11 @@ class TestNewOptionHtml:
             options={},
         )
         html = _render_to_html(spec, data)
-        assert '"bottom"' in html or "bottom" in html, \
-            "bar must include bottom attribute in Bokeh model"
+        # The document leaves bottom out at Bokeh's own default, 0.  The
+        # word "bottom" is in the page's BokehJS 587 times.
+        assert _values(_only_layer(html, "VBar"), "bottom",
+                       bkm.VBar().bottom) == [0] * 20, \
+            "bar must stand on 0 without base()"
 
     def test_spike_base_nonzero_in_html(self):
         """spike with base(5) must have y0 values != 0 in model JSON."""
@@ -1574,9 +1992,12 @@ class TestNewOptionHtml:
             options={"base": "5"},
         )
         html = _render_to_html(spec, data)
-        # The CDS will contain y0 values all equal to 5.0
-        assert "5.0" in html or '"y0"' in html, \
-            "spike base(5) must embed y0 values in model JSON"
+        # Every spike runs from 5 to its y: the Segment's y0 and y1.  "5.0"
+        # and '"y0"' are both in the page's BokehJS.
+        spikes = _only_layer(html, "Segment")
+        assert _values(spikes, "y0") == [5.0] * 20, \
+            "spike base(5) must start every spike at 5"
+        assert _values(spikes, "y1") == [float(i) for i in range(1, 21)]
 
     def test_area_base_nonzero_in_html(self):
         """area with base(3) must have lower boundary = 3 in model JSON."""
@@ -1586,8 +2007,12 @@ class TestNewOptionHtml:
             options={"base": "3"},
         )
         html = _render_to_html(spec, data)
-        assert "3.0" in html or '"y1"' in html, \
-            "area base(3) must embed y1 baseline values in model JSON"
+        # The area's lower edge is 3 all along: the VArea's y1.  "3.0" and
+        # '"y1"' are both in the page's BokehJS.
+        band = _only_layer(html, "VArea")
+        assert _values(band, "y1") == [3.0] * 20, \
+            "area base(3) must put the lower boundary at 3"
+        assert _values(band, "y2") == [float(i) for i in range(1, 21)]
 
     def test_bfcolor_bar_fill_in_html(self):
         """bar with bfcolor(red) must embed #ff0000 as fill_color in Bokeh JSON."""
@@ -1615,7 +2040,15 @@ class TestNewOptionHtml:
 
 
 class TestLineWidthPatternHtml:
-    """lwidth and lpattern options must appear in the Bokeh model JSON in rendered HTML."""
+    """lwidth and lpattern options must appear in the Bokeh model JSON in rendered HTML.
+
+    Each looked in the page text, where nothing could fail: every
+    document's toolbar overlays spell '"line_width"' and '"line_dash"'
+    (a dashed box-zoom outline), and the page's BokehJS carries "2.5" 31
+    times and "3.5" 35 times (measured 24sep2026).  The glyph's own
+    width and dash are read from the document.  The widths and the dash
+    pattern are dash's translations, pinned.
+    """
 
     def test_lwidth_thick_in_line_html(self):
         """line with lwidth(thick) must have line_width > default in Bokeh JSON."""
@@ -1625,12 +2058,12 @@ class TestLineWidthPatternHtml:
             options={"lwidth": "thick"},
         )
         html = _render_to_html(spec, data)
-        assert '"line_width"' in html, \
-            "line_width attribute must be present in Bokeh model JSON"
-        # thick = 2.5 in OptionTranslator; default is 1.5
-        # Confirm a value > 1.5 appears (the model embeds it numerically)
-        assert "2.5" in html, \
-            "lwidth(thick)=2.5 must appear in Bokeh model JSON"
+        # thick is 2.5, where the scheme draws the same line 1.5 wide.
+        assert _values(_only_layer(html, "Line"), "line_width") \
+            == [2.5] * 20, "lwidth(thick)=2.5 must be the line's width"
+        spec["graphs"][0]["plots"][0]["options"] = {}
+        assert _values(_only_layer(_render_to_html(spec, data), "Line"),
+                       "line_width") == [1.5] * 20
 
     def test_lpattern_dash_in_line_html(self):
         """line with lpattern(dash) must have line_dash in Bokeh model JSON."""
@@ -1640,8 +2073,9 @@ class TestLineWidthPatternHtml:
             options={"lpattern": "dash"},
         )
         html = _render_to_html(spec, data)
-        assert '"line_dash"' in html, \
-            "line_dash attribute must be present in Bokeh model JSON for dash pattern"
+        assert _values(_only_layer(html, "Line"), "line_dash",
+                       bkm.Line().line_dash) == [[8, 4]] * 20, \
+            "lpattern(dash) must dash the line"
 
     def test_lwidth_applied_to_spike(self):
         """spike with lwidth(vthick) must embed line_width=3.5 in Bokeh JSON."""
@@ -1651,8 +2085,8 @@ class TestLineWidthPatternHtml:
             options={"lwidth": "vthick"},
         )
         html = _render_to_html(spec, data)
-        assert "3.5" in html, \
-            "lwidth(vthick)=3.5 must appear in spike glyph Bokeh model JSON"
+        assert _values(_only_layer(html, "Segment"), "line_width") \
+            == [3.5] * 20, "lwidth(vthick)=3.5 must be the spikes' width"
 
     def test_lwidth_applied_to_bar(self):
         """bar with lwidth(thick) must embed line_width=2.5 in Bokeh JSON."""
@@ -1662,8 +2096,8 @@ class TestLineWidthPatternHtml:
             options={"lwidth": "thick"},
         )
         html = _render_to_html(spec, data)
-        assert "2.5" in html, \
-            "lwidth(thick)=2.5 must appear in bar glyph Bokeh model JSON"
+        assert _values(_only_layer(html, "VBar"), "line_width") \
+            == [2.5] * 20, "lwidth(thick)=2.5 must be the bars' outline width"
 
     def test_lwidth_applied_to_histogram(self):
         """histogram with lwidth(thick) must embed line_width=2.5 in Bokeh JSON."""
@@ -1673,8 +2107,8 @@ class TestLineWidthPatternHtml:
             options={"lwidth": "thick"},
         )
         html = _render_to_html(spec, data)
-        assert "2.5" in html, \
-            "lwidth(thick)=2.5 must appear in histogram quad Bokeh model JSON"
+        assert _values(_only_layer(html, "Quad"), "line_width") \
+            == [2.5] * 4, "lwidth(thick)=2.5 must be the bins' outline width"
 
     def test_lpattern_applied_to_histogram(self):
         """histogram with lpattern(dash) must have line_dash in Bokeh JSON."""
@@ -1684,8 +2118,9 @@ class TestLineWidthPatternHtml:
             options={"lpattern": "dash"},
         )
         html = _render_to_html(spec, data)
-        assert '"line_dash"' in html, \
-            "lpattern(dash) must produce line_dash in histogram quad Bokeh model JSON"
+        assert _values(_only_layer(html, "Quad"), "line_dash",
+                       bkm.Quad().line_dash) == [[8, 4]] * 4, \
+            "lpattern(dash) must dash the bins' outlines"
 
 
 class TestXlineYlineHtml:
@@ -1808,7 +2243,17 @@ class TestByFacetingHtmlOutput:
         """by(grp) with by_total=1 → HTML contains 'Total' panel."""
         spec, data = _by_facet_spec("grp", extra_gopts={"by_total": "1"})
         html = _render_to_html(spec, data)
-        assert "Total" in html, "Total facet label not found in HTML"
+        # A third panel, titled Total, drawing all twenty rows after each
+        # group's ten -- read from the document.  "Total" in the page text
+        # found the title alone (the one copy on the page, measured
+        # 24sep2026), so a Total panel drawing one group's rows passed.
+        assert _figure_titles(html) == ["Group A", "Group B", "Total"], \
+            "Total facet label not found in HTML"
+        layers = _figure_layers(html)
+        assert [[(layer["glyph"], layer["rows"]) for layer in fig]
+                for fig in layers] \
+            == [[("Scatter", 10)], [("Scatter", 10)], [("Scatter", 20)]]
+        assert _values(layers[2][0], "x") == [float(i) for i in range(1, 21)]
 
     def test_by_with_multiple_plot_layers(self):
         """by(grp) with scatter+line → each facet has both glyph types."""
@@ -1823,24 +2268,40 @@ class TestByFacetingHtmlOutput:
         panels = [sorted(p) for p in _figure_glyphs(html)]
         assert panels == [["Line", "Scatter"], ["Line", "Scatter"]], panels
 
+    # The four below asserted a page length, which a page inlining 1.6 MB
+    # of BokehJS passes drawing nothing.  Each now reads the panels it
+    # names from the document.
+
     def test_by_html_non_empty(self):
         """by(grp) → HTML output is non-trivial."""
         spec, data = _by_facet_spec("grp")
         html = _render_to_html(spec, data)
-        assert len(html) > 1000, f"HTML too short: {len(html)} chars"
+        # Two panels, each drawing its group's ten rows.
+        assert [[(layer["glyph"], layer["rows"]) for layer in fig]
+                for fig in _figure_layers(html)] \
+            == [[("Scatter", 10)], [("Scatter", 10)]]
 
     def test_by_nonexistent_var_still_renders(self):
         """by(nonexistent) → HTML still renders (falls back to no faceting)."""
         spec, data = _by_facet_spec("nonexistent")
         html = _render_to_html(spec, data)
-        assert len(html) > 500, "HTML should still render without faceting"
+        # No faceting: one untitled panel drawing all twenty rows.
+        assert [[(layer["glyph"], layer["rows"]) for layer in fig]
+                for fig in _figure_layers(html)] == [[("Scatter", 20)]], \
+            "HTML should still render without faceting"
+        assert _figure_titles(html) == [None]
 
     def test_by_link_renders_valid_html(self):
         """by() + link() in render() → produces valid HTML (no longer raises)."""
         spec, data = _by_facet_spec("grp")
         spec["build_options"]["link"] = "fig1"  # match the graph name
         html = _render_to_html(spec, data)
-        assert len(html) > 1000, "by()+link() must produce non-trivial HTML"
+        # Both panels, each drawing its group.
+        assert _figure_titles(html) == ["Group A", "Group B"]
+        assert [[(layer["glyph"], layer["rows"]) for layer in fig]
+                for fig in _figure_layers(html)] \
+            == [[("Scatter", 10)], [("Scatter", 10)]], \
+            "by()+link() must draw both panels"
 
     def test_by_cols_suboption_produces_html(self):
         """by('grp, cols(1)') → renders valid HTML (suboption parsing works)."""
@@ -1848,7 +2309,13 @@ class TestByFacetingHtmlOutput:
         # Set by with cols suboption in the raw string
         spec["graphs"][0]["graph_options"]["by"] = "grp, cols(1)"
         html = _render_to_html(spec, data)
-        assert len(html) > 1000
+        # cols(1) stacks the two panels in one column...
+        assert _grid_cells(html) == [("Group A", 0, 0), ("Group B", 1, 0)]
+        assert _figure_glyphs(html) == [["Scatter"], ["Scatter"]]
+        # ...where by(grp) alone sets them side by side.
+        spec["graphs"][0]["graph_options"]["by"] = "grp"
+        assert _grid_cells(_render_to_html(spec, data)) \
+            == [("Group A", 0, 0), ("Group B", 0, 1)]
 
 
 # ================================================================
@@ -1959,13 +2426,16 @@ class TestBuildSubtitleInHtml:
         spec["build_options"]["title"] = "Safe Title"
         spec["build_options"]["subtitle"] = "<b>bold</b>"
         html = _render_to_html(spec, data)
-        # Text content must be present somewhere in the HTML
-        assert "bold" in html, (
-            "Subtitle text content 'bold' must appear in the rendered HTML."
-        )
-        # Raw unescaped tag must NOT appear as inline HTML
-        assert "<b>bold</b>" not in html, (
-            "Subtitle '<b>bold</b>' must not appear as raw unescaped HTML "
+        # The header is two Divs, whose text BokehJS renders as HTML, so
+        # each is parsed as the browser parses it: the title an <h2>, the
+        # subtitle a <p> whose text reads "<b>bold</b>" -- escaped once,
+        # opening no <b>.  The page text could not show this: Bokeh escapes
+        # the document as a whole, so "<b>bold</b>" was absent from the
+        # page whether or not dash escaped the subtitle, and "bold" is a
+        # word the page's BokehJS carries 20 times (measured 24sep2026).
+        assert _header_divs(html) == [(["h2"], "Safe Title"),
+                                      (["p"], "<b>bold</b>")], (
+            "Subtitle '<b>bold</b>' must reach its Div escaped, as text "
             "(html.escape() must be applied to prevent XSS injection)."
         )
 
@@ -1975,4 +2445,7 @@ class TestBuildSubtitleInHtml:
         spec["build_options"]["title"] = "Title Only"
         spec["build_options"]["subtitle"] = ""
         html = _render_to_html(spec, data)
-        assert "Title Only" in html, "Title must still appear when subtitle is empty."
+        # One header Div, the title's.  This checked only that the title
+        # was on the page, so an empty subtitle element passed.
+        assert _header_divs(html) == [(["h2"], "Title Only")], \
+            "Title must appear alone when subtitle is empty."

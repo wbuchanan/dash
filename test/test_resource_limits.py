@@ -25,6 +25,7 @@ follows: a bad option value is REPORTED and the default used, never fatal,
 and never unbounded.
 """
 import os
+import re
 import subprocess
 import sys
 import warnings
@@ -105,15 +106,48 @@ class TestMbandBandsIsBounded:
             "the same option to 1000, so the two modes disagreed"
         )
 
-    def test_the_two_modes_use_the_same_limit(self):
-        """The server's clamp is the contract; standalone must match it."""
-        import inspect
-        srv = inspect.getsource(dr.ServerAppBuilder)
-        assert "1000" in srv, "the server's bands clamp moved"
-        std = inspect.getsource(dr.GlyphMapper.map_mband)
-        assert "hi=" in std, (
-            "map_mband reads bands() with no upper bound"
-        )
+    @pytest.mark.parametrize("bands, drawn, noted", [
+        ("1000", 1000, False), ("1001", 37, True)])
+    def test_the_two_modes_use_the_same_limit(self, tmp_path, bands, drawn,
+                                              noted):
+        """The server's bound is the contract; standalone must match it:
+        bands(1000) is drawn in both modes, and bands(1001) in neither --
+        each says so and draws Stata's default instead.
+
+        This read ``"1000" in`` the builder's source and ``"hi=" in``
+        map_mband's.  The builder's text holds no bands bound at all --
+        its "1000" was in 10000 (the limiter's key cap), 1000000 and a
+        comment's xlabel(2000(1000)4000) -- and any ``hi=`` passed.
+        Measured 24sep2026: with map_mband's bound raised to 10,000 (both
+        modes run it; the served app copies it), and with the served app
+        given its own ``_MAX_MBANDS = 10000``, it passed.  Now both modes
+        draw the band medians of 5,000 distinct x, at the bound and one
+        past it: bands(1000) is 1,000 knots in each; bands(1001) is outside
+        [1, 1000], so each notes it and uses the default rule,
+        round(min(10*log10(5000), sqrt(5000))) = 37 bands."""
+        from bokeh.models import GlyphRenderer
+        n = 5000
+        df = pd.DataFrame({"x": np.arange(n, dtype=float),
+                           "y": np.sin(np.arange(n) / 50.0)})
+        spec = _spec([_graph("g1", [{"type": "mband", "yvar": "y",
+                                     "xvar": "x",
+                                     "options": {"bands": bands}}])])
+
+        def knots(models):
+            return [len(m.data_source.data["x_mb"]) for m in models
+                    if isinstance(m, GlyphRenderer)
+                    and "x_mb" in m.data_source.data]
+
+        r, _html, msgs = _standalone(tmp_path, spec, df)
+        doc, built, session, _src = _served(tmp_path, spec, df)
+        saved = knots(r.figures["g1"].renderers)
+        served = knots(doc.select({"type": GlyphRenderer}))
+        assert saved == served == [drawn], (saved, served)
+        note = "mband option bands(%s) is outside [1.0, 1000.0]" % bands
+        assert len(_named(msgs, note)) == int(noted), msgs
+        assert len(_named(built + session, note)) == int(noted), (
+            built, session)
+        assert dr._MAX_MBANDS == 1000
 
     def test_an_ordinary_band_count_still_works(self, gm, src):
         r = gm.map_mband(figure(), src, "mpg", "weight", {"bands": "4"})
@@ -496,6 +530,21 @@ def _named(msgs, *needles):
     return [m for m in msgs if all(n in m for n in needles)]
 
 
+def _fire(widget, value):
+    """Set a served widget and run the app's own change callbacks, the way
+    Bokeh does after a browser event (a slider's are under
+    ``value_throttled``); a callback reads ``widget.value``, so the value is
+    set first.  Fails if the widget has no callback to run."""
+    widget.value = value
+    cbs = [cb for key in ("value", "value_throttled")
+           for cb in list(widget._callbacks.get(key, []))]
+    assert cbs, f"no change callback on the {type(widget).__name__}"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for cb in cbs:
+            cb("value", None, value)
+
+
 class TestTheLimitsTable:
     """One table: a default, a ceiling nothing moves, and the global."""
 
@@ -565,8 +614,16 @@ class TestAnOversizedDatasetIsRefused:
                        "more than the 100", "keep, drop, sample or collapse",
                        "set global dash_max_cells", "at most 20,000,000"):
             assert needle in msg, (needle, msg)
-        assert "if" not in msg.split("Reduce")[1].split(",")[0], (
-            "an if qualifier does not reduce what is exported")
+        # The whole advice, word by word.  This read only the words between
+        # "Reduce" and the advice's first comma -- " the data in memory
+        # first (keep" -- so advice to add an if qualifier anywhere after
+        # "keep," passed (measured 24sep2026).  The reader sees the advice
+        # it checks: keep and collapse are words of it.
+        advice = msg.split("Reduce", 1)[1]
+        words = re.findall(r"[A-Za-z]+", advice)
+        assert "keep" in words and "collapse" in words, words
+        assert "if" not in words and "qualifier" not in advice, (
+            "an if qualifier does not reduce what is exported: " + advice)
 
     def test_the_saved_renderer_refuses_before_drawing(self, tmp_path):
         spec = _spec([_graph("g1")], limits={"cells": 10})
@@ -724,14 +781,36 @@ class TestADropdownOnAContinuousVariable:
         assert cb_specs and all(s[0]["type"] == "range" for s in cb_specs)
 
     def test_the_served_app_draws_a_range_and_says_so_at_build(self, tmp_path):
+        """The served twin of the test above: a RangeSlider, the note at
+        build, and a recompute that filters by a range.
+
+        The range type was checked only in the app's text
+        (``"'type': 'range'" in src``), and the served recompute does not
+        read that text: it filters by each widget's own type
+        (_dash_frame_filter_mask).  Measured 24sep2026: with the
+        RangeSlider's type set to "dropdown" -- its [lo, hi] compared as a
+        category, every row dropped at the first move -- this passed.  Now
+        the slider is moved, as a browser moves it, and the graph must
+        hold the rows inside the range."""
+        from bokeh.models import GlyphRenderer
         spec = _spec([_graph("g1")], build={"filter": "x, type(dropdown)"},
                      limits={"filter_options": 5})
-        doc, built, _, src = _served(tmp_path, spec, _frame(12))
-        assert list(doc.select({"type": RangeSlider}))
+        doc, built, _, _src = _served(tmp_path, spec, _frame(12))
+        sliders = list(doc.select({"type": RangeSlider}))
+        assert len(sliders) == 1, sliders
         assert not list(doc.select({"type": Select}))
         assert _named(built, "filter(x) has 12 distinct values",
                       "type(range)")
-        assert "'type': 'range'" in src
+        scatters = [r for r in doc.select({"type": GlyphRenderer})
+                    if type(r.glyph).__name__ == "Scatter"]
+        assert len(scatters) == 1, scatters
+        data = scatters[0].data_source.data
+        # Before the move: every row, as the unfiltered graph draws it.
+        assert sorted(data["x"]) == [float(i) for i in range(12)]
+        _fire(sliders[0], (3.0, 7.0))
+        data = scatters[0].data_source.data
+        assert sorted(data["x"]) == [3.0, 4.0, 5.0, 6.0, 7.0], (
+            f"the served range [3, 7] kept x = {sorted(data['x'])}")
 
     def test_a_saved_string_dropdown_lists_its_first_values(self, tmp_path):
         spec = _spec([_graph("g1")], build={"filter": "s, type(dropdown)"},
@@ -803,13 +882,27 @@ class TestByOnAHighCardinalityVariable:
             "may never reach the user")
 
     def test_the_served_count_is_of_the_qualified_rows(self, tmp_path):
-        # 12 groups overall, 3 inside the qualifier: no warning, 3 panels.
+        """12 groups overall, 3 inside the qualifier: no note, 3 panels.
+
+        The note's absence was read as "groups, more than", words no check
+        in this file finds present -- the hole test_resource_limits.cscript
+        RL-08 had.  Measured 24sep2026: with the served build counting the
+        UNQUALIFIED rows, and the note reworded to "has 12 groups; the 4
+        one graph draws are the first 4 in sort order" (which every
+        positive check here still reads), this passed while the note
+        fired.  Now the absence is of the note's own opening, for any
+        count, and the same graph without its qualifier is the positive
+        control: the reader finds that note there."""
         spec = _spec([_graph("g1", by="g", if_expr="g < 3")],
                      limits={"by_groups": 4})
         doc, built, _, _ = _served(tmp_path, spec, _frame(24, groups=12))
-        assert not _named(built, "groups, more than")
         figs = [m for m in _walk(doc) if type(m).__name__ == "figure"]
         assert len(figs) == 3
+        assert not _named(built, "by(g) on graph 'g1' has"), built
+        spec = _spec([_graph("g1", by="g")], limits={"by_groups": 4})
+        _doc, built, _, _ = _served(tmp_path, spec, _frame(24, groups=12))
+        assert len(_named(built, "by(g) on graph 'g1' has 12 groups")) == 1, (
+            built)
 
 
 def _widest_rows(namespace, monkeypatch=None):
@@ -1038,7 +1131,13 @@ class TestTheSizeWarningGivesAdviceThatWorks:
             600_000, 2, "dashboard"))
         assert len(msgs) == 1, msgs
         assert "keep, drop, sample or collapse" in msgs[0]
-        assert "qualifier" not in msgs[0]
+        # No if, by word, as well as no "qualifier": this read only the
+        # word, so "..., or keep fewer observations with if" passed
+        # (measured 24sep2026).  "in" cannot be read so: "in memory" is
+        # part of the advice.  The same reader finds "keep" and "collapse".
+        words = re.findall(r"[A-Za-z]+", msgs[0])
+        assert "keep" in words and "collapse" in words, words
+        assert "qualifier" not in msgs[0] and "if" not in words, msgs[0]
         assert "roughly 29 MB" in msgs[0], msgs[0]      # 1.2e6 cells x 24
 
     def test_a_small_dataset_is_not_reported(self):

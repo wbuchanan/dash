@@ -9,6 +9,7 @@ Run with:  pytest test/test_scheme_integration.py -v
 import sys
 import os
 import json
+import re
 import tempfile
 import pytest
 
@@ -151,6 +152,43 @@ class TestSchemeLoadedInInit:
 # SI-05 – 07: apply_to_figure called in _make_figure
 # ============================================================
 
+#: What Stata's shipped schemes declare, read from its own files
+#: (ado/base/s/scheme-*.scheme and ado/base/style/color-*.style, 24sep2026):
+#: the graph region (`color background') and the plot region (`color
+#: plotregion').  s2color: ltbluishgray "234 242 243" and white; sj
+#: includes s2mono: gs15 "240 240 240" and white; s1color and s1mono:
+#: white and white; economist: ebg "198 211 223" for both.
+#:
+#: White is also Bokeh's own default for both regions, and the BokehJS a
+#: saved page inlines holds "white" and "#ffffff" whatever the scheme
+#: (measured 24sep2026, in an economist page: its colour table, its model
+#: defaults, its CSS), so a check that finds white proves nothing: every
+#: test below reads a colour no default gives, from the figure or the
+#: page's own stylesheet.
+_STATA_REGIONS = {
+    "s2color":   ("#eaf2f3", "#ffffff"),
+    "sj":        ("#f0f0f0", "#ffffff"),
+    "s1color":   ("#ffffff", "#ffffff"),
+    "s1mono":    ("#ffffff", "#ffffff"),
+    "economist": ("#c6d3df", "#c6d3df"),
+}
+
+
+def _head_styles(html_str):
+    """The text of each <style> element in the page's <head>."""
+    head = re.search(r"<head>(.*?)</head>", html_str, re.S)
+    assert head, "the page has no <head>"
+    return re.findall(r"<style>(.*?)</style>", head.group(1), re.S)
+
+
+def _body_backgrounds(html_str):
+    """Every `body { background-color: ... }' rule the head's stylesheets
+    set, in order."""
+    return [m for s in _head_styles(html_str)
+            for m in re.findall(r"\bbody\s*\{\s*background-color:\s*([^;}]+);",
+                                s)]
+
+
 class TestApplyToFigureInMakeFigure:
     def _get_fig(self, scheme="s2color"):
         dr = _make_renderer(scheme=scheme)
@@ -158,22 +196,31 @@ class TestApplyToFigureInMakeFigure:
         return list(figs.values())[0]
 
     def test_s2color_sets_white_background(self):
-        """SI-05: s2color scheme sets white background_fill_color on figure."""
+        """SI-05: s2color scheme sets white background_fill_color on figure
+        -- its plot region -- and its graph region, the figure's border,
+        ltbluishgray.  White alone is Bokeh's default, so it could not show
+        the scheme was applied."""
         fig = self._get_fig("s2color")
-        # s2color background is white
-        assert fig.background_fill_color in ("#ffffff", "#FFFFFF", "white")
+        assert (fig.border_fill_color, fig.background_fill_color) \
+            == _STATA_REGIONS["s2color"]
 
     def test_sj_scheme_sets_white_background(self):
-        """SI-06: sj scheme also sets white background_fill_color."""
+        """SI-06: sj scheme also sets white background_fill_color, and its
+        own graph region, s2mono's gs15."""
         fig = self._get_fig("sj")
-        assert fig.background_fill_color in ("#ffffff", "#FFFFFF", "white")
+        assert (fig.border_fill_color, fig.background_fill_color) \
+            == _STATA_REGIONS["sj"]
 
     def test_scheme_sets_grid_properties(self):
-        """SI-07: apply_to_figure sets grid line properties."""
+        """SI-07: apply_to_figure sets grid line properties.
+
+        s2color draws the major grid of the y axis alone
+        (draw_major_vgrid yes, draw_major_hgrid no), in ltbluishgray
+        (major_grid); Bokeh draws both, in #e5e5e5, so "some grid colour is
+        set", which this was, held with the scheme never applied."""
         fig = self._get_fig("s2color")
-        # Grid should have some color set (not None)
-        grid_colors = [g.grid_line_color for g in fig.grid]
-        assert any(c is not None for c in grid_colors)
+        assert [g.grid_line_color for g in fig.xgrid] == [None]
+        assert [g.grid_line_color for g in fig.ygrid] == ["#eaf2f3"]
 
 
 # ============================================================
@@ -182,25 +229,49 @@ class TestApplyToFigureInMakeFigure:
 
 class TestCssBlockInHtml:
     def test_html_contains_style_tag(self):
-        """SI-08: rendered HTML contains a <style> tag from scheme.css_block()."""
+        """SI-08: rendered HTML contains a <style> tag from
+        scheme.css_block(): the block whole, in a stylesheet of the page's
+        head.  Bokeh's own page template has a <style> of its own, so "a
+        <style> tag", which this was, was always there."""
         html_str = _render("s2color")
-        assert "<style>" in html_str
+        css = SchemeParser("s2color").css_block()
+        assert [s for s in _head_styles(html_str) if css in s], \
+            _head_styles(html_str)
 
     def test_html_contains_scheme_background_color(self):
-        """SI-09: rendered HTML contains scheme background color in CSS."""
+        """SI-09: rendered HTML contains scheme background color in CSS.
+
+        The page's stylesheet sets the body to s2color's graph region,
+        ltbluishgray -- one rule, holding that colour.  This asserted
+        "#ffffff" or "white" anywhere in the page, which every page holds
+        in its inlined BokehJS whatever the scheme."""
         html_str = _render("s2color")
-        # s2color background is white
-        assert "#ffffff" in html_str.lower() or "white" in html_str.lower()
+        assert _body_backgrounds(html_str) == [_STATA_REGIONS["s2color"][0]]
 
     def test_sj_html_different_from_s2color_html(self):
-        """SI-10: different schemes produce different HTML (CSS differs)."""
-        html_s2 = _render("s2color")
-        html_sj = _render("sj")
-        # The two HTML documents should differ (scheme CSS differs)
-        assert html_s2 != html_sj
+        """SI-10: different schemes produce different HTML (CSS differs).
+
+        The stylesheets differ, in the graph region each sets.  The whole
+        pages always differed, the ids Bokeh gives every model with them."""
+        assert _body_backgrounds(_render("s2color")) == ["#eaf2f3"]
+        assert _body_backgrounds(_render("sj")) == ["#f0f0f0"]
 
     def test_html_renders_without_error_all_schemes(self):
-        """SI-11: all built-in schemes render to HTML without error."""
-        for scheme in ("s2color", "s1color", "s1mono", "economist", "sj"):
+        """SI-11: all built-in schemes render to HTML without error -- a
+        page holding the figure, styled with that scheme's graph region.
+        "len(html) > 100" passed any page at all, one with no figure in it
+        included."""
+        from bokeh.document import Document
+        from bokeh.models import Plot
+        import html as _html
+        for scheme, (bg, _plot) in _STATA_REGIONS.items():
             html_str = _render(scheme)
-            assert len(html_str) > 100, f"Empty HTML for scheme '{scheme}'"
+            assert _body_backgrounds(html_str) == [bg], scheme
+            blocks = re.findall(
+                r'<script type="application/json" id="[^"]+">\s*(.*?)\s*'
+                r'</script>', html_str, re.S)
+            docs = [Document.from_json(d) for b in blocks
+                    for d in json.loads(_html.unescape(b)).values()]
+            plots = [p for d in docs for p in d.select({"type": Plot})]
+            assert len(plots) == 1, (scheme, len(plots))
+            assert plots[0].border_fill_color == bg, scheme

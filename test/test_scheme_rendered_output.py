@@ -122,17 +122,18 @@ def _fixture():
 def _truth(scheme, key, *aliases):
     """The fixture's value of *key* for *scheme*.
 
-    A key the extractor does not write yet -- the WP-16 additions land
-    concurrently -- skips the case with the key named, so the reason is
-    precise and the skip disappears the moment the fixture carries it.
+    A key the fixture lacks fails the case, naming the key.  While WP-16's
+    additions to the extractor were landing it skipped instead; WP-16 is
+    done and the fixture carries every key these cases read (24sep2026), so
+    a missing one is a fixture that lost it, and a skip would pass the case
+    unjudged.
     """
     entry = _fixture()[scheme]
     for k in (key,) + aliases:
         if k in entry and entry[k] is not None:
             return entry[k]
-    pytest.skip(f"test/fixtures/scheme_truth.json[{scheme!r}] has no "
-                f"{key!r} yet (added to the extractor by WP-16 Owner A); "
-                f"this case cannot be judged until it is regenerated")
+    pytest.fail(f"test/fixtures/scheme_truth.json[{scheme!r}] has no "
+                f"{key!r}; regenerate the fixture")
 
 
 def _size_pt(entry):

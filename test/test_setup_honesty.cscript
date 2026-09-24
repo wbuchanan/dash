@@ -56,11 +56,15 @@
 *! for exactly the length of each run, so it can reach pip and install
 *! nothing (WP-24: the helpers alone left the body's wiring untested).
 *!
-*! Tests: HON-01 through HON-25.  HON-19..25 run dash_setup itself with pip
+*! Tests: HON-01 through HON-28.  HON-19..25 run dash_setup itself with pip
 *! replaced by a recorder, so nothing is installed (see the section header).
+*! HON-26..28 run it in test/setup_sandbox.py's sandbox, for the order of its
+*! steps (packaging before the packages that need it) and for what it leaves
+*! alone (scipy and statsmodels) -- claims test_server.py and
+*! test_help_claims_8.py held by reading dash_setup.ado's text.
 *!
 *! Usage:  do test/test_setup_honesty.cscript
-*! Version: 1.0  21sep2026
+*! Version: 1.1  24sep2026
 
 cscript "dash_setup does not claim success it did not achieve" adodir ".."
 
@@ -81,13 +85,28 @@ do "cert_helpers.do"
 mata:
 real scalar _hon_log_has(string scalar fn, string scalar needle)
 {
-    real scalar   fh, found
-    string scalar line
+    // A log's logical lines: Stata wraps a line at the column, anywhere --
+    // mid-word included -- and goes on with "> "; a physical line comes
+    // back from fget() in 32,768-character pieces.  Each is searched
+    // re-joined, as cert_helpers.do's _cert_log_count does (WP-24: read
+    // line by line, a needle the wrap split was not found).
+    real scalar   fh, found, piece
+    string scalar line, full
     found = 0
+    full  = ""
+    piece = 0
     fh = fopen(fn, "r")
-    while ((line = fget(fh)) != J(0,0,"")) {
-        if (strpos(strlower(line), strlower(needle))) found = 1
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (piece | substr(line, 1, 2) == "> ") {
+            full = full + (piece ? line : substr(line, 3, .))
+        }
+        else {
+            if (strpos(strlower(full), strlower(needle))) found = 1
+            full = line
+        }
+        piece = (strlen(line) == 32768)
     }
+    if (strpos(strlower(full), strlower(needle))) found = 1
     fclose(fh)
     return(found)
 }
@@ -442,7 +461,7 @@ end
 // the cases below would measure the recorder rather than the command.
 // (A program cannot be defined inside braces, hence the early exit.)
 if !`_hon_live' {
-    display "HON-19..25 SKIP: jsonio, packaging, bokeh, numpy and pandas must all be present to run dash_setup without installing"
+    display "HON-19..28 SKIP: jsonio, packaging, bokeh, numpy and pandas must all be present to run dash_setup without installing"
     foreach p in _hon_summary _hon_gate _hon_files _hon_run_setup _hon_reload _hon_has {
         capture program drop `p'
     }
@@ -602,7 +621,171 @@ assert `h25ok' == 0
 assert `"`h25calls'"' == ""
 display "HON-25 PASS: dash_setup fails when its own renderer can read no scheme"
 
+
+// ================================================================
+// HON-26..28 -- the order of the steps, and what setup leaves alone
+// ================================================================
+// test_server.py's BUG-50 class read dash_setup.ado's text for these: the
+// packaging guard's position before the package loop, a flag's name, a
+// comment's absence; and test_help_claims_8.py read it for the names scipy
+// and statsmodels.  What those were written to hold is behaviour, so it is
+// held here, running dash_setup in test/setup_sandbox.py's sandbox as
+// test_program_coverage.cscript PC-15..26 do: every process start is
+// recorded and none is made, sys.executable and PATH lead to recording
+// stubs, and the recorded pip calls are compared, IN ORDER, with the ones
+// expected.
+//
+// A module is made missing by putting None in sys.modules, and measured
+// 24sep2026 that is not enough for packaging: with packaging alone blocked,
+// `from packaging.version import Version' still succeeds -- the submodule
+// is in the module cache -- so PC-18 and HON-21, which block packaging
+// alone, passed with an uncaptured version import put before the guard,
+// which is BUG-50 itself.  HON-26 blocks packaging.version as well, as a
+// machine without packaging has neither.
+//
+// jsonio must be found, or setup would reach for SSC; the helper refuses
+// to start without it, as _hon_run_setup does.
+python: import os as _hon_os, sys as _hon_sys
+python: _hon_sys.path.insert(0, _hon_os.getcwd())
+python: import setup_sandbox
+
+// One run.  $HON_SB_SPEC is the sandbox's state (setup_sandbox.install's
+// arguments, as JSON) and $HON_SB_EXPECT the pip argument vectors expected,
+// in order.  r(rc) is dash_setup's return code, r(match) 1 when the
+// recorded process starts are exactly $HON_SB_EXPECT and no PATH stub ran,
+// r(log) the log; $HON_SB_WHY says what was recorded when r(match) is 0.
+// Python is put back, and shown put back, on every path.
+capture program drop _hon_sb_setup
+program define _hon_sb_setup, rclass
+    capture which jsonio
+    if _rc {
+        display as error "_hon_sb_setup: jsonio is not on the ado-path; dash_setup would install it"
+        exit 459
+    }
+    local lg "`c(tmpdir)'dash_hon_sb.log"
+    capture erase "`lg'"
+    python: import setup_sandbox; setup_sandbox.stata_install("HON_SB_SPEC")
+    if "`pc_sb_ok'" != "1" {
+        mata: printf("{err}the sandbox refused to install: %s\n", st_local("pc_sb_why"))
+        exit 9
+    }
+    local rc = -1
+    capture noisily {
+        capture log close _honsb
+        quietly log using "`lg'", text replace name(_honsb)
+        capture noisily dash_setup
+        local rc = _rc
+        quietly log close _honsb
+    }
+    local brc = _rc
+    capture log close _honsb
+    python: import setup_sandbox; setup_sandbox.stata_verdict("HON_SB_EXPECT")
+    python: import setup_sandbox; setup_sandbox.restore()
+    python: import setup_sandbox; setup_sandbox.stata_restored()
+    mata: st_global("HON_SB_WHY", st_local("pc_sb_mwhy"))
+    if "`pc_sb_clean'" != "1" {
+        display as error "_hon_sb_setup: the sandbox did not restore Python"
+        exit 9
+    }
+    if `brc' != 0 {
+        exit `brc'
+    }
+    return scalar rc = `rc'
+    return scalar match = `pc_sb_match'
+    return local log "`lg'"
+end
+
+// ---- HON-26: packaging absent and not installable (BUG-50) ----
+// dash_setup must not stop before its checks: pip is asked for packaging
+// once, before anything else, and every version is then reported as not
+// verified -- none OK -- with one warning.  Measured: an uncaptured version
+// import before the guard stops the run here at a ModuleNotFoundError,
+// before pip is asked for anything.
+global HON_SB_SPEC `"{"block": ["packaging", "packaging.version"]}"'
+global HON_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"]]"'
+_hon_sb_setup
+local h26rc = r(rc)
+local h26m = r(match)
+local h26log "`r(log)'"
+if `h26m' != 1 {
+    mata: printf("{err}HON-26: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h26m' == 1
+assert `h26rc' == 0
+foreach p in "packaging .......... missing" "packaging .......... could not install" ///
+    "(not verified against 3.0)" "(not verified against 1.23)" ///
+    "(not verified against 1.5)" "dash_setup complete, with 1 warning(s)." {
+    cert_log_has "`h26log'", needle("`p'")
+    assert r(count) == 1
+}
+foreach p in "bokeh ............. OK" "numpy ............. OK" "pandas ............. OK" ///
+    "All dependencies are satisfied" {
+    cert_log_has "`h26log'", needle("`p'")
+    assert r(found) == 0
+}
+display "HON-26 PASS: without packaging, pip is asked for it once, no version is OK, and the run ends with one warning"
+
+// ---- HON-27: packaging before the packages whose versions it compares ----
+// packaging and bokeh both missing, both installable: pip must be asked
+// for packaging FIRST, then for bokeh>=3.0, and each package's version is
+// then verified -- OK, not "not verified", which is what a comparison made
+// before packaging was there reports.  The absence below is shown readable
+// by HON-26, where the same line is there.
+global HON_SB_SPEC `"{"block": ["packaging", "bokeh"], "unblock_on_install": ["packaging", "bokeh"]}"'
+global HON_SB_EXPECT `"[["PYTHON", "-m", "pip", "install", "packaging"], ["PYTHON", "-m", "pip", "install", "bokeh>=3.0"]]"'
+_hon_sb_setup
+local h27rc = r(rc)
+local h27m = r(match)
+local h27log "`r(log)'"
+if `h27m' != 1 {
+    mata: printf("{err}HON-27: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h27m' == 1
+assert `h27rc' == 0
+foreach p in "packaging .......... missing" "bokeh ............. missing" ///
+    "bokeh ............. OK (version" "numpy ............. OK (version" ///
+    "pandas ............. OK (version" ///
+    "dash_setup complete. All dependencies are satisfied." {
+    cert_log_has "`h27log'", needle("`p'")
+    assert r(count) == 1
+}
+foreach p in "not verified against" "retrying with --user" "warning(s)" {
+    cert_log_has "`h27log'", needle("`p'")
+    assert r(found) == 0
+}
+display "HON-27 PASS: pip is asked for packaging before bokeh, and every version is then verified OK"
+
+// ---- HON-28: scipy and statsmodels are neither checked nor installed ----
+// No plot type needs either (dash_setup.sthlp).  With both missing, setup
+// names neither, asks pip for nothing, and succeeds; the package lines in
+// the same log show the reader sees what setup does check.
+global HON_SB_SPEC `"{"block": ["scipy", "statsmodels"]}"'
+global HON_SB_EXPECT "[]"
+_hon_sb_setup
+local h28rc = r(rc)
+local h28m = r(match)
+local h28log "`r(log)'"
+if `h28m' != 1 {
+    mata: printf("{err}HON-28: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h28m' == 1
+assert `h28rc' == 0
+foreach p in "bokeh ............. OK (version" "numpy ............. OK (version" ///
+    "pandas ............. OK (version" ///
+    "dash_setup complete. All dependencies are satisfied." {
+    cert_log_has "`h28log'", needle("`p'")
+    assert r(count) == 1
+}
+foreach p in "scipy" "statsmodels" {
+    cert_log_has "`h28log'", needle("`p'") lower
+    assert r(found) == 0
+}
+display "HON-28 PASS: with scipy and statsmodels missing, setup names neither, installs nothing, and succeeds"
+
+macro drop HON_SB_SPEC HON_SB_EXPECT HON_SB_WHY
+
 capture erase "`c(tmpdir)'dash_hon_setup.log"
+capture erase "`c(tmpdir)'dash_hon_sb.log"
 capture erase "`lg23'"
 capture erase "`lg24'"
 
@@ -612,6 +795,7 @@ capture program drop _hon_files
 capture program drop _hon_run_setup
 capture program drop _hon_reload
 capture program drop _hon_has
+capture program drop _hon_sb_setup
 set linesize `_hon_ls'
 
 display ""

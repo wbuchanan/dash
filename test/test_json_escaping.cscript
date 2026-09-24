@@ -1028,17 +1028,40 @@ capture dash clear
 
 // JSE-33 -- SMCL in a literal.  Registered and applied, never echoed: dash
 // prints nothing of it, and {stata dash clear} clears nothing.
+//
+// Each log is searched with cert_log_has, which rejoins what Stata's log
+// wraps at c(linesize), anywhere: whether an echo of the literal wraps, and
+// where, depends on what precedes it on its line -- a path, a name -- and a
+// search of the raw lines does not see "example.com" broken across two.
+// The control first, through the same run and the same search, or the
+// absence below proves nothing: the literal echoed the way dash echoes
+// user text (_dash_say, which shows it as typed), behind 230 characters
+// standing in for a path, so the log breaks the line inside "example.com"
+// (measured 24sep2026: "...{browse http://exam" / "> ple.com}{stata ...").
+// It is seen on one logical line, and not on any raw one -- so the control
+// does try the wrapped case.
 local j2_L4 "{err}{browse http://example.com}{stata dash clear}"
+global J2_ECHO `"`j2_L4'"'
+_j2_run `"mata: _dash_say("txt", 230 * "p" + " ", st_global("J2_ECHO"), "")"'
+assert r(rc) == 0
+local j2_lg33 "`r(log)'"
+cert_log_has "`j2_lg33'", needle("example.com")
+local j2_seen33 = r(count)
+cert_file_has "`j2_lg33'", needle("example.com")
+local j2_raw33 = r(found)
+display as text "  the control's echo -- logical lines: `j2_seen33'  raw lines: `j2_raw33'"
+assert `j2_seen33' == 1 & `j2_raw33' == 0
+macro drop J2_ECHO
 quietly count if make != "`j2_L4'" & foreign == 1
 local j2_n33 = r(N)
 _j2_run `"dash scatter mpg weight if make != "`j2_L4'" & foreign == 1, name(jse33)"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("example.com")
+cert_log_has "`r(log)'", needle("example.com")
 assert r(found) == 0
 tempfile j2_s33 j2_d33 j2_a33
 _j2_run `"_dash_prepare_spec, specpath("`j2_s33'") datapath("`j2_d33'")"'
 assert r(rc) == 0
-cert_file_has "`r(log)'", needle("example.com")
+cert_log_has "`r(log)'", needle("example.com")
 assert r(found) == 0
 assert "${dash_graph_registry}" == "jse33"
 global J2_SPEC "`j2_s33'"

@@ -8,7 +8,7 @@ Tests:
   P4-58  Generated file contains make_document function
   P4-59  Generated file contains __main__ block
   P4-60  Generated file contains Server and allow_websocket_origin
-  P4-61  make_document callable — adds at least one root to Document
+  P4-61  make_document builds the figure and the KPI card the spec describes
   P4-62  Filter callback recomputes histogram CDS when data is filtered
   P4-63  Filter callback recomputes lfit CDS when data is filtered
   P4-64  Filter callback updates filter-mode KPI Div.text
@@ -146,6 +146,88 @@ def _build_app(dr_module, df, spec_dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Document readers.  A test reads what a dashboard DRAWS from its document:
+# the served app's (make_document on a fresh Document) or the saved page's
+# embedded one.  Not the page's text -- the page inlines BokehJS, which
+# names every model class whatever the dashboard holds -- and not a count
+# of roots, which the layout column every document carries keeps at 1
+# whether or not anything was drawn (WP-24, measured 24sep2026).
+# ---------------------------------------------------------------------------
+
+def _page_document(html_str):
+    """The saved page's one embedded Bokeh document, read back as models.
+    Bokeh HTML-escapes the JSON block, so it is unescaped first."""
+    import html as _html
+    import re as _re
+    from bokeh.document import Document
+    blocks = _re.findall(r'<script type="application/json" id="[^"]+">'
+                         r'\s*(.*?)\s*</script>', html_str, _re.S)
+    docs = [d for b in blocks for d in json.loads(_html.unescape(b)).values()]
+    assert len(docs) == 1, f"{len(docs)} embedded Bokeh documents, not 1"
+    return Document.from_json(docs[0])
+
+
+def _glyph_layers(roots):
+    """``[(figure, GlyphRenderer)]`` for every layer drawn under *roots*.
+    Model.select walks a set, so callers must not rely on the order."""
+    from bokeh.models import GlyphRenderer, Plot
+    out = []
+    for root in roots:
+        for fig in root.select({"type": Plot}):
+            out.extend((fig, r) for r in fig.renderers
+                       if isinstance(r, GlyphRenderer))
+    return out
+
+
+def _drawn_values(renderer, column):
+    """The values of *column* a layer draws: its source's rows that the
+    view's filter keeps.  A filter this cannot read fails the test rather
+    than reading as "every row"."""
+    vals = [float(v) for v in renderer.data_source.data[column]]
+    filt = getattr(renderer.view, "filter", None)
+    kind = type(filt).__name__
+    if kind == "AllIndices":
+        keep = range(len(vals))
+    elif kind == "BooleanFilter":
+        keep = [i for i, b in enumerate(list(filt.booleans)[:len(vals)]) if b]
+    elif kind == "IndexFilter":
+        keep = [i for i in filt.indices if 0 <= i < len(vals)]
+    else:
+        raise AssertionError(f"a view filter the reader cannot read: {kind}")
+    return [vals[i] for i in keep]
+
+
+def _saved_page(dr_module, df, spec):
+    """``(page text, warning texts)`` from the saved-page renderer."""
+    import warnings as _w
+    spec_path, data_path = _write_temp_files(df, spec)
+    try:
+        with _w.catch_warnings(record=True) as caught:
+            _w.simplefilter("always")
+            page = dr_module.DashRenderer(spec_path, data_path).render()
+    finally:
+        for _p in (spec_path, data_path):
+            try:
+                os.unlink(_p)
+            except OSError:
+                pass
+    return page, [str(c.message) for c in caught]
+
+
+def _panel_curves(roots, xcol, ycol):
+    """``{panel title: [(x, y), ...]}`` for the one layer of each figure
+    whose source carries *xcol* -- a computed line's own columns."""
+    out = {}
+    for fig, r in _glyph_layers(roots):
+        if xcol in r.data_source.data:
+            title = fig.title.text if fig.title is not None else ""
+            assert title not in out, f"two {xcol} layers in panel {title!r}"
+            out[title] = list(zip(_drawn_values(r, xcol),
+                                  _drawn_values(r, ycol)))
+    return out
+
+
+# ---------------------------------------------------------------------------
 # P4-57: Generated file compiles without syntax error
 # ---------------------------------------------------------------------------
 
@@ -219,12 +301,20 @@ def test_generated_contains_server_and_websocket_origin(dr_module, auto_df):
 
 
 # ---------------------------------------------------------------------------
-# P4-61: make_document callable — adds at least one root to Document
+# P4-61: make_document builds the figure and the KPI card the spec describes
 # ---------------------------------------------------------------------------
 
 def test_make_document_callable(dr_module, auto_df):
-    """P4-61: Importing and calling make_document does not raise; doc has roots."""
+    """P4-61: make_document builds the dashboard the spec describes.
+
+    This asserted ``len(doc.roots) > 0``.  The app adds one layout column
+    for every document, so the count is 1 with the scatter drawn from no
+    rows and no KPI card at all (WP-24, measured 24sep2026).  It now
+    reads the document: the one figure, titled "Scatter", draws the 30
+    (weight, mpg) points, and the KPI card holds mpg's mean in its
+    %9.1f -- computed from the data, not the spec's stale "21.0"."""
     from bokeh.document import Document
+    from bokeh.models import Div
 
     spec = _make_spec_json(
         graphs=[{
@@ -253,7 +343,16 @@ def test_make_document_callable(dr_module, auto_df):
 
         doc = Document()
         app_mod.make_document(doc)
-        assert len(doc.roots) > 0, "make_document must add at least one root to Document"
+        assert len(doc.roots) == 1, doc.roots
+        layers = _glyph_layers(doc.roots)
+        assert [(f.title.text, type(r.glyph).__name__) for f, r in layers] \
+            == [("Scatter", "Scatter")], layers
+        _fig, r = layers[0]
+        assert sorted(zip(_drawn_values(r, "weight"), _drawn_values(r, "mpg"))) \
+            == sorted(zip(auto_df["weight"], auto_df["mpg"])), (
+            "the served scatter does not draw the data's 30 points")
+        card = _ql_kpi_value(list(doc.select({"type": Div})))
+        assert card == "%.1f" % auto_df["mpg"].mean(), card
     finally:
         os.unlink(spec_path)
         os.unlink(data_path)
@@ -2968,16 +3067,13 @@ class TestServerHistogramOptions:
 class TestServerRareaOptions:
     """rarea in server mode must apply fcolor/fintensity."""
 
-    def test_rarea_fcolor_applied(self, dr_module):
-        """rarea fcolor appears in generated source."""
-        rdf = _range_data()
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "rarea", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
-                       "options": {"fcolor": "#ff0000"}}],
-            "graph_options": {"name": "g1"},
-        }])
-        source = _build_app(dr_module, rdf, spec)
-        assert "#ff0000" in source, "rarea fcolor must appear in generated app source"
+    # test_rarea_fcolor_applied, which asserted only that "#ff0000" appeared
+    # in the generated source, was removed here: with fcolor's application
+    # deleted from _apply_fill_opts the option still reaches the source
+    # (it rides in the base64 spec) so the test stayed green while the band
+    # drew the scheme's #1a476f (WP-24, measured 24sep2026).  Its
+    # behavioural twin, test_rarea_fcolor_applied_functional below, reads
+    # the served glyph's fill_color and fails under that break.
 
     def test_rarea_fcolor_applied_functional(self, dr_module):
         """rarea with fcolor(#ff0000) must set fill_color in rendered doc."""
@@ -3177,7 +3273,14 @@ class TestServerByFaceting:
             f"each panel must draw its own group's rows: {facets}")
 
     def test_by_doc_has_roots(self, dr_module, auto_df):
-        """by(foreign) → make_document produces a doc with roots."""
+        """by(foreign) -> make_document's one root holds both panels, each
+        drawing its own group's (weight, mpg) points.
+
+        This asserted ``len(doc.roots) > 0``: the layout column is a root
+        whether or not any panel was built -- with the graph drawn from no
+        rows it is still the one root (WP-24, measured 24sep2026).  The
+        panels are read from the root itself, not from the document's
+        model set, so a panel that is built but never placed fails too."""
         from bokeh.document import Document
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
@@ -3194,7 +3297,17 @@ class TestServerByFaceting:
             app_spec.loader.exec_module(app_mod)
             doc = Document()
             app_mod.make_document(doc)
-            assert len(doc.roots) > 0, "Document must have at least one root"
+            assert len(doc.roots) == 1, doc.roots
+            panels = {}
+            for fig, r in _glyph_layers(doc.roots[:1]):
+                panels.setdefault(fig.title.text, []).append(sorted(zip(
+                    _drawn_values(r, "weight"), _drawn_values(r, "mpg"))))
+            want = {"%d" % g: [sorted(zip(sub["weight"], sub["mpg"]))]
+                    for g, sub in auto_df.groupby("foreign")}
+            assert len(want) == 2
+            assert panels == want, (
+                f"the root's panels drew {sorted(panels)}; by(foreign) "
+                f"draws one panel per group, {sorted(want)}")
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try:
@@ -3369,24 +3482,31 @@ class TestServerNewPlotTypes:
         assert "rscatter" in source, "rscatter must appear in generated server app code"
 
     def test_mband_make_document_runs(self, dr_module, auto_df):
-        """mband make_document() must produce a document with figures."""
-        from bokeh.document import Document
+        """mband make_document() draws twoway's median-band line.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with the mband drawn from no rows (WP-24, measured
+        24sep2026).  The served line is held to twoway's own rule, as
+        stat_truth.json records it (reproduced there for every probe):
+        B = round(min(10*log10(N), sqrt(N))) equal-width bands on x, and
+        the median of x and of y in each non-empty band, in x order --
+        5 bands for these 30 rows."""
+        import math
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "mband", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1"},
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        import tempfile, importlib.util
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_tmmband", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
-        doc = Document()
-        app_mod.make_document(doc)
-        assert len(doc.roots) > 0, "mband make_document must produce at least one root"
+        doc, _ = _exec_doc(dr_module, auto_df, spec, "_tmmband")
+        x = auto_df["weight"].to_numpy()
+        y = auto_df["mpg"].to_numpy()
+        bands = int(round(min(10 * math.log10(len(x)), math.sqrt(len(x)))))
+        lo, width = x.min(), (x.max() - x.min()) / bands
+        band = np.minimum(np.floor((x - lo) / width) + 1, bands)
+        want = [(float(np.median(x[band == b])), float(np.median(y[band == b])))
+                for b in range(1, bands + 1) if (band == b).any()]
+        assert bands == len(want) == 5, (bands, want)
+        assert _panel_curves(doc.roots, "x_mb", "y_mb") == {"": want}, (
+            "the served mband is not twoway's median-band line")
 
 
 class TestServerPlotregionLwidth:
@@ -3538,42 +3658,54 @@ class TestServerLpolyFpfit:
     # ------------------------------------------------------------------
 
     def test_lpoly_make_document_runs(self, dr_module, auto_df):
-        """lpoly make_document() must produce a document with figures."""
-        from bokeh.document import Document
+        """lpoly make_document() draws the saved page's lpoly curve.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with the curve drawn from no rows (WP-24, measured
+        24sep2026).  The served curve must be the saved one, point for
+        point: lpoly's default grid is min(N, 50) = 30 equally spaced
+        points from the least x to the greatest, and 21 of them hold at
+        least two observations in their window -- the other 9 are gaps,
+        Stata's null rule (measured).  The saved lpoly is held to Stata's
+        own in test_statistical_truth.py."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1"},
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_tm_lpoly", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
-        doc = Document()
-        app_mod.make_document(doc)
-        assert len(doc.roots) > 0
+        doc, _ = _exec_doc(dr_module, auto_df, spec, "_tm_lpoly")
+        served = _panel_curves(doc.roots, "x_lp", "y_lp")
+        page, _ = _saved_page(dr_module, auto_df, spec)
+        saved = _panel_curves(_page_document(page).roots, "x_lp", "y_lp")
+        assert list(served) == [""] and len(served[""]) == 21, served
+        grid = np.linspace(auto_df["weight"].min(), auto_df["weight"].max(), 30)
+        assert all(np.isclose(grid, px).any() for px, _py in served[""]), (
+            "a served lpoly point is off lpoly's default grid")
+        np.testing.assert_allclose(served[""], saved[""], rtol=1e-12,
+                                   err_msg="served lpoly is not the saved one")
 
     def test_fpfit_make_document_runs(self, dr_module, auto_df):
-        """fpfit make_document() must produce a document with figures."""
-        from bokeh.document import Document
+        """fpfit make_document() draws the saved page's fpfit curve.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with the curve drawn from no rows (WP-24, measured
+        24sep2026).  twoway fpfit predicts at every distinct x, sorted
+        (twoway__fpfit_serset; stat_truth.json), and the served curve must
+        be the saved one there -- which test_statistical_truth.py holds to
+        Stata's."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "fpfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1"},
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_tm_fpfit", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
-        doc = Document()
-        app_mod.make_document(doc)
-        assert len(doc.roots) > 0
+        doc, _ = _exec_doc(dr_module, auto_df, spec, "_tm_fpfit")
+        served = _panel_curves(doc.roots, "x_fp", "y_fp")
+        page, _ = _saved_page(dr_module, auto_df, spec)
+        saved = _panel_curves(_page_document(page).roots, "x_fp", "y_fp")
+        assert list(served) == [""], served
+        assert [px for px, _py in served[""]] == \
+            sorted(auto_df["weight"].unique().tolist()), (
+            "the served fpfit is not predicted at every distinct x")
+        np.testing.assert_allclose(served[""], saved[""], rtol=1e-12,
+                                   err_msg="served fpfit is not the saved one")
 
     # ------------------------------------------------------------------
     # Regression: faceted lpoly must use bwidth/degree from options
@@ -3683,43 +3815,59 @@ class TestServerLpolyFpfit:
         assert with_opt != plain, "degree(2) changed nothing in the served panels"
 
     def test_lpoly_faceted_make_document_runs(self, dr_module, auto_df):
-        """lpoly with by() must produce a valid document with custom bwidth/degree."""
-        from bokeh.document import Document
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
-                       "options": {"bwidth": "0.4", "degree": "1"}}],
-            "graph_options": {"name": "g1", "by": "foreign"},
-        }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_tm_lpoly_fac", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
-        doc = Document()
-        app_mod.make_document(doc)
-        assert len(doc.roots) > 0
+        """lpoly with by() and a custom bwidth/degree: each panel draws what
+        twoway draws with those options.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with the options ignored or no panel built (WP-24,
+        measured 24sep2026).  bwidth() is in x units: 0.4 lb holds fewer
+        than two observations in every window, so Stata's null rule draws
+        nothing in either panel -- and a panel that fell back to the
+        default bandwidth would draw a curve.  The positive control:
+        bwidth(800) degree(1) draws in both panels, the saved page's
+        curves point for point, so the reader does see a drawn curve."""
+        def _served_and_saved(options, tag):
+            spec = _make_spec_json(graphs=[{
+                "plots": [{"type": "lpoly", "yvar": "mpg", "xvar": "weight",
+                           "options": options}],
+                "graph_options": {"name": "g1", "by": "foreign"},
+            }])
+            doc, _ = _exec_doc(dr_module, auto_df, spec, tag)
+            page, _ = _saved_page(dr_module, auto_df, spec)
+            return (_panel_curves(doc.roots, "x_lp", "y_lp"),
+                    _panel_curves(_page_document(page).roots, "x_lp", "y_lp"))
+
+        served, saved = _served_and_saved({"bwidth": "0.4", "degree": "1"},
+                                          "_tm_lpoly_fac")
+        assert served == saved == {"0": [], "1": []}, (served, saved)
+        wide, wide_saved = _served_and_saved({"bwidth": "800", "degree": "1"},
+                                             "_tm_lpoly_fac_w")
+        assert sorted(wide) == ["0", "1"] and all(wide.values()), wide
+        for panel in ("0", "1"):
+            np.testing.assert_allclose(wide[panel], wide_saved[panel],
+                                       rtol=1e-12, err_msg=panel)
 
     def test_fpfit_faceted_make_document_runs(self, dr_module, auto_df):
-        """fpfit with by() must produce a valid document."""
-        from bokeh.document import Document
+        """fpfit with by(): each panel draws its own group's fit, at every
+        distinct x of that group, as the saved page draws it.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with no panel built (WP-24, measured 24sep2026)."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "fpfit", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1", "by": "foreign"},
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        builder = dr_module.ServerAppBuilder(spec_path, data_path)
-        builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_tm_fpfit_fac", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
-        doc = Document()
-        app_mod.make_document(doc)
-        assert len(doc.roots) > 0
+        doc, _ = _exec_doc(dr_module, auto_df, spec, "_tm_fpfit_fac")
+        served = _panel_curves(doc.roots, "x_fp", "y_fp")
+        page, _ = _saved_page(dr_module, auto_df, spec)
+        saved = _panel_curves(_page_document(page).roots, "x_fp", "y_fp")
+        groups = {"%d" % g: sorted(sub["weight"].unique().tolist())
+                  for g, sub in auto_df.groupby("foreign")}
+        assert sorted(served) == sorted(groups) == ["0", "1"], served
+        for panel, xs in groups.items():
+            assert [px for px, _py in served[panel]] == xs, panel
+            np.testing.assert_allclose(served[panel], saved[panel],
+                                       rtol=1e-12, err_msg=panel)
 
 
 # ================================================================
@@ -3800,9 +3948,19 @@ class TestServerAxisAngle:
         assert "major_label_orientation" in source
 
     def test_angle_make_document_runs(self, dr_module, auto_df):
-        """P4-79: make_document() must run without error when xlabel has angle()."""
+        """P4-79: xlabel(0 20 40, angle(45)) -- the served x axis labels
+        the three ticks asked for, turned 45 degrees.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with angle() ignored (WP-24, measured 24sep2026).
+        twoway's angle(45) turns the labels 45 degrees counter-clockwise;
+        Bokeh's major_label_orientation is that angle in radians, and the
+        saved page draws pi/4 (test_graph_options.py's TestAxisLabelAngle).
+        The y axis, asked nothing, keeps its labels level: the control."""
+        import math
         import tempfile, importlib.util
         from bokeh.document import Document
+        from bokeh.models import Plot
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1", "xlabel": "0 20 40, angle(45)"},
@@ -3818,7 +3976,14 @@ class TestServerAxisAngle:
             app_spec.loader.exec_module(app_mod)
             doc = Document()
             app_mod.make_document(doc)
-            assert len(doc.roots) > 0
+            figs = [m for m in doc.select({"type": Plot})]
+            assert len(figs) == 1, figs
+            (xaxis,), (yaxis,) = figs[0].xaxis, figs[0].yaxis
+            assert xaxis.major_label_orientation == pytest.approx(math.pi / 4), (
+                f"angle(45) served as {xaxis.major_label_orientation!r}")
+            assert list(xaxis.ticker.ticks) == [0.0, 20.0, 40.0], xaxis.ticker
+            assert yaxis.major_label_orientation == "horizontal", (
+                yaxis.major_label_orientation)
         finally:
             import os
             for p in (spec_path, data_path, out_f.name):
@@ -3997,30 +4162,47 @@ class TestServerLegendColsRows:
         assert "nrows" in source
 
     def test_legend_cols_make_document_runs(self, dr_module, auto_df):
-        """make_document() must complete without error when legend has cols()."""
+        """make_document() lays the served legend out in the columns
+        legend(cols()) asks for.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with cols() ignored (WP-24, measured 24sep2026).  It
+        asked for cols(2), which is s2color's own legend_cols -- the legend
+        has two columns whether or not the option arrives -- so it asks for
+        three.  Stata treats cols() and rows() as alternatives: rows goes
+        back to "auto".  (``top`` is not a legend() sub-option; dash names
+        it as ignored.)  The control is the same graph with no cols(),
+        whose legend has the scheme's two."""
         import tempfile, importlib.util
         from bokeh.document import Document
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "legend": "top cols(2)"},
-        }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm_leg_cols", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            assert len(doc.roots) > 0
-        finally:
-            import os
-            for p in (spec_path, data_path, out_f.name):
-                try: os.unlink(p)
-                except OSError: pass
+        from bokeh.models import Legend
+
+        def _legends(legend_opt, tag):
+            spec = _make_spec_json(graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1", "legend": legend_opt},
+            }])
+            spec_path, data_path = _write_temp_files(auto_df, spec)
+            out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+            out_f.close()
+            try:
+                builder = dr_module.ServerAppBuilder(spec_path, data_path)
+                builder.build(out_f.name)
+                app_spec = importlib.util.spec_from_file_location(tag, out_f.name)
+                app_mod = importlib.util.module_from_spec(app_spec)
+                app_spec.loader.exec_module(app_mod)
+                doc = Document()
+                app_mod.make_document(doc)
+                return [(lg.ncols, lg.nrows) for lg in doc.select({"type": Legend})]
+            finally:
+                import os
+                for p in (spec_path, data_path, out_f.name):
+                    try: os.unlink(p)
+                    except OSError: pass
+
+        assert _legends("top cols(3)", "_tm_leg_cols") == [(3, "auto")]
+        assert _legends("", "_tm_leg_none") == [(2, "auto")]
 
 
 # ================================================================
@@ -4041,7 +4223,15 @@ class TestServerMsangle:
             "msangle option must produce angle-related code in server source"
 
     def test_msangle_make_document_runs(self, dr_module, auto_df):
-        """make_document() must run without error when scatter has msangle."""
+        """msangle(30) turns the served markers 30 degrees.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with msangle() ignored (WP-24, measured 24sep2026).
+        Bokeh's marker angle is in radians and counter-clockwise, as
+        Stata's is in degrees; the saved page draws 30 degrees as
+        0.5236 radians, and an unturned marker is 0 -- measured, the
+        control that the reader tells the two apart."""
+        import math
         import tempfile, importlib.util
         from bokeh.document import Document
         spec = _make_spec_json(graphs=[{
@@ -4060,7 +4250,19 @@ class TestServerMsangle:
             app_spec.loader.exec_module(app_mod)
             doc = Document()
             app_mod.make_document(doc)
-            assert len(doc.roots) > 0
+            layers = _glyph_layers(doc.roots)
+            assert [type(r.glyph).__name__ for _f, r in layers] == ["Scatter"]
+            glyph = layers[0][1].glyph
+            assert glyph.angle == pytest.approx(math.radians(30)), glyph.angle
+            assert glyph.angle_units == "rad"
+            assert len(_drawn_values(layers[0][1], "weight")) == len(auto_df)
+            plain = dict(spec)
+            plain["graphs"] = [{"plots": [{"type": "scatter", "yvar": "mpg",
+                                           "xvar": "weight", "options": {}}],
+                                "graph_options": {"name": "g1"}}]
+            _doc, (unturned,) = _exec_doc(dr_module, auto_df, plain,
+                                          "_tm_msangle_0")
+            assert unturned.glyph.angle == 0.0, unturned.glyph.angle
         finally:
             import os
             for p in (spec_path, data_path, out_f.name):
@@ -4213,9 +4415,18 @@ class TestRateLimiterEnforcement:
 
     def test_make_document_adds_429_div_when_rate_limited(self, dr_module, auto_df):
         """BUG-RL-3b: make_document must add a 429 Div and return early when blocked.
-        Updated for BUG-48: replace _SESSION_LIMITER (not _LIMITER) to force a block."""
+        Updated for BUG-48: replace _SESSION_LIMITER (not _LIMITER) to force a block.
+
+        This asserted ``len(roots) > 0`` and that SOME Div read "429": a
+        make_document that added the refusal and then built the whole
+        dashboard passed both (WP-24, measured 24sep2026).  Returning early
+        is what it names, so the refusal is the document's one model with
+        a layout -- no figure, no layout column.  The fake session is
+        handed to the document as Bokeh's own session_context property
+        reads it, a callable; this used to replace that property on the
+        Document CLASS, for every document the worker built afterwards."""
         from bokeh.document import Document
-        from bokeh.models import Div as BkDiv
+        from bokeh.models import Div as BkDiv, LayoutDOM, Plot
         app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
 
         # BUG-48 fix: make_document uses _SESSION_LIMITER; replace that to force block
@@ -4233,32 +4444,31 @@ class TestRateLimiterEnforcement:
                     remote_ip = "10.1.1.1"
                     headers = {}
 
-            doc._session_context = _FakeSessionContext()
-            type(doc).session_context = property(lambda self: self._session_context)
+            doc._session_context = lambda: _FakeSessionContext
+            assert doc.session_context.request.remote_ip == "10.1.1.1"
 
             app_mod.make_document(doc)
 
-            # The 429 response may be wrapped in a Column layout or bare Div
-            roots = doc.roots
-            assert len(roots) > 0, \
-                "Blocked make_document must add at least one root"
-            # Search for a Div containing "429" anywhere in the root tree
-            from bokeh.models import Column as BkColumn
-            def _has_429(node):
-                if isinstance(node, BkDiv) and "429" in node.text:
-                    return True
-                if isinstance(node, BkColumn):
-                    return any(_has_429(c) for c in node.children)
-                return False
-            assert any(_has_429(r) for r in roots), \
-                "Blocked make_document must produce a root containing '429'"
+            assert len(doc.roots) == 1 and isinstance(doc.roots[0], BkDiv), (
+                doc.roots)
+            assert "429 Too Many Requests" in doc.roots[0].text, (
+                doc.roots[0].text)
+            assert list(doc.select({"type": LayoutDOM})) == [doc.roots[0]], (
+                "a refused session built more than its refusal")
+            assert not list(doc.select({"type": Plot}))
         finally:
             app_mod._SESSION_LIMITER = original_session_limiter
             app_mod._LIMITER = original_limiter
 
     def test_make_document_proceeds_normally_when_allowed(self, dr_module, auto_df):
         """BUG-RL-4: make_document must build the full dashboard when not rate-limited.
-        Updated for BUG-48: set _SESSION_LIMITER permissive (not just _LIMITER)."""
+        Updated for BUG-48: set _SESSION_LIMITER permissive (not just _LIMITER).
+
+        This asserted ``len(doc.roots) > 0`` and no 429 root: a
+        make_document that returned early with any other root passed
+        (WP-24, measured 24sep2026).  The full dashboard is its one
+        figure drawing the 30 points, no refusal anywhere in it -- and the
+        session counted once, against its own client's address."""
         from bokeh.document import Document
         from bokeh.models import Div as BkDiv
         app_mod = _load_app_module(dr_module, auto_df, self._minimal_spec())
@@ -4277,17 +4487,22 @@ class TestRateLimiterEnforcement:
                 remote_ip = "10.2.2.2"
                 headers = {}
 
-        doc._session_context = _FakeSessionContext()
-        type(doc).session_context = property(lambda self: self._session_context)
+        doc._session_context = lambda: _FakeSessionContext
 
         try:
             app_mod.make_document(doc)
 
-            assert len(doc.roots) > 0, \
-                "make_document must add dashboard roots when not rate-limited"
-            bad = [r for r in doc.roots if isinstance(r, BkDiv) and "429" in r.text]
+            assert len(doc.roots) == 1, doc.roots
+            layers = _glyph_layers(doc.roots)
+            assert [type(r.glyph).__name__ for _f, r in layers] == ["Scatter"]
+            assert sorted(zip(_drawn_values(layers[0][1], "weight"),
+                              _drawn_values(layers[0][1], "mpg"))) == \
+                sorted(zip(auto_df["weight"], auto_df["mpg"]))
+            bad = [d for d in doc.select({"type": BkDiv}) if "429" in d.text]
             assert not bad, \
                 "No 429 Div should appear when the request is within the rate limit"
+            assert {k: len(v) for k, v in permissive_limiter._store.items()} \
+                == {"10.2.2.2": 1}, permissive_limiter._store
         finally:
             app_mod._SESSION_LIMITER = original_session_limiter
             app_mod._LIMITER = original_limiter
@@ -4450,10 +4665,15 @@ def _build_function_app(dr_module, expr, x_range="0 10"):
     return _build_app(dr_module, df, spec)
 
 
-def _exec_function_app(dr_module, expr):
+def _exec_function_app(dr_module, expr, accepted=None):
     """Build a server app with *expr* as the function expression and run make_document.
 
-    Returns the Bokeh Document; raises if make_document raises.
+    Returns the Bokeh Document; raises if make_document raises.  With a
+    list for *accepted*, the app's own ``_floats_only`` -- which its
+    map_function calls only once the AST whitelist has ACCEPTED the
+    expression, right before compiling it -- is wrapped to record each
+    call, so the served validator's verdict is read in the served code
+    (test_server_function_security.py counts it the same way).
     """
     import pandas as pd, numpy as np, importlib.util, tempfile, os
     from bokeh.document import Document
@@ -4473,6 +4693,13 @@ def _exec_function_app(dr_module, expr):
         app_spec = importlib.util.spec_from_file_location("_tfe", out_f.name)
         app_mod = importlib.util.module_from_spec(app_spec)
         app_spec.loader.exec_module(app_mod)
+        if accepted is not None:
+            _real = app_mod._floats_only
+
+            def _counted(tree):
+                accepted.append(tree)
+                return _real(tree)
+            app_mod._floats_only = _counted
         doc = Document()
         app_mod.make_document(doc)
         return doc
@@ -4628,11 +4855,34 @@ class TestServerFunctionExpressionOperators:
 
         The validator detects the unsafe expression, the try/except swallows the error,
         and the dashboard loads without the function plot.  This is correct behavior.
+
+        This asserted only ``doc is not None``, which make_document's return
+        guarantees whatever the validator does: with the whitelist call
+        deleted from map_function it stayed green (WP-24, measured
+        24sep2026).  The served validator must REFUSE the expression -- it
+        never reaches _floats_only, so it is never compiled or evaluated --
+        and the figure loads with its function layer empty.  The control is
+        a plain expression, which the same count sees accepted once and the
+        same reader sees drawn at all 20 points.
         """
-        # This must complete without raising — the bad expr is silently skipped
-        doc = _exec_function_app(dr_module, "os.system('id')")
-        # Document must have loaded (other roots may still be present)
-        assert doc is not None, "make_document must not crash for an unsafe expression"
+        from bokeh.models import Plot
+        accepted = []
+        doc = _exec_function_app(dr_module, "os.system('id')", accepted)
+        assert accepted == [], (
+            "the served validator accepted os.system('id'); only its "
+            "evaluation failing would keep it from running")
+        assert len(doc.roots) == 1, doc.roots
+        assert len(list(doc.select({"type": Plot}))) == 1
+        layers = _glyph_layers(doc.roots)
+        assert [len(r.data_source.data["x_fn"]) for _f, r in layers] == [0], (
+            "the refused expression's layer was not drawn empty")
+
+        control = []
+        doc = _exec_function_app(dr_module, "x + 1", control)
+        assert len(control) == 1, control
+        (_fig, r), = _glyph_layers(doc.roots)
+        assert _drawn_values(r, "y_fn") == [v + 1 for v in _drawn_values(r, "x_fn")]
+        assert len(r.data_source.data["x_fn"]) == 20
 
 
 # ================================================================
@@ -5158,24 +5408,51 @@ class TestPathInjectionHardening:
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
-    def test_main_accepts_path_with_backslash_on_posix(self, dr_module, auto_df):
-        """BUG-SEC-1d: main() must handle backslashes in path correctly on POSIX."""
-        import tempfile, os, sys
+    def test_main_accepts_path_with_backslash_on_posix(self, dr_module, auto_df,
+                                                       tmp_path):
+        """BUG-SEC-1d: main() must handle backslashes in path correctly on POSIX.
+
+        The path this used had no backslash in it -- a NamedTemporaryFile
+        name -- so it passed whatever main() did with one (WP-24).  On
+        POSIX a backslash is an ordinary character of a file name.  The
+        spec and data files now sit in a directory whose name holds one,
+        and the page is written to a name holding two, one of them last
+        before the extension: main() must read and write exactly those
+        paths -- not a path with the backslashes dropped, doubled or read
+        as separators -- and the page must be the dashboard."""
+        import os, sys
         if sys.platform == "win32":
             pytest.skip("Backslash is path separator on Windows; test only on POSIX")
-        # A path that happens to have a backslash in the filename is unusual on POSIX
-        # but should not cause Python injection.  Test with a normal path via main().
-        spec_path, data_path = _write_temp_files(auto_df, _make_spec_json())
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False)
-        out_f.close()
-        try:
-            # Just verify it doesn't crash — backslash risk is in the Stata layer
-            dr_module.main(spec_path, data_path, out_f.name, "standalone")
-            assert os.path.exists(out_f.name)
-        finally:
-            for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+        spec = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        in_dir = tmp_path / "in\\put"
+        in_dir.mkdir()
+        spec_path = str(in_dir / "spec.json")
+        data_path = str(in_dir / "data.json")
+        with open(spec_path, "w", encoding="utf-8") as fh:
+            json.dump(spec, fh)
+        with open(data_path, "w", encoding="utf-8") as fh:
+            fh.write(_make_data_json(auto_df))
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        out_path = str(out_dir / "a\\b\\.html")
+        assert out_path.count("\\") == 2 and spec_path.count("\\") == 1
+
+        dr_module.main(spec_path, data_path, out_path, "standalone")
+
+        assert sorted(os.listdir(out_dir)) == ["a\\b\\.html"], (
+            f"main() wrote {sorted(os.listdir(out_dir))}, not the path it "
+            f"was handed")
+        assert sorted(os.listdir(tmp_path)) == ["in\\put", "out"]
+        with open(out_path, encoding="utf-8") as fh:
+            page = fh.read()
+        layers = _glyph_layers(_page_document(page).roots)
+        assert [type(r.glyph).__name__ for _f, r in layers] == ["Scatter"]
+        assert sorted(_drawn_values(layers[0][1], "weight")) == \
+            sorted(auto_df["weight"])
 
 
 # ================================================================
@@ -5706,21 +5983,41 @@ class TestDualLogScale:
                 try: os.unlink(_p)
                 except OSError: pass
 
+    # The three tests below searched the saved page's TEXT: "LogScale" in
+    # it, or "log" in it, or "LogScale" at least twice.  The page inlines
+    # BokehJS, which names LogScale 9 times on a page with no log axis at
+    # all, and "log" is in any page (WP-24, measured 24sep2026) -- so all
+    # three passed with both options ignored.  They read the scales of the
+    # figure the page's embedded document holds; the control is the same
+    # graph with neither option, linear on both axes.
+    def _page_scales(self, dr_module, df, graph_opts):
+        """((x scale, x axis), (y scale, y axis)) type names of the one
+        figure in the saved page's document."""
+        renderer = self._make_renderer(dr_module, df, graph_opts)
+        doc = _page_document(renderer.render())
+        figs = [f for f, _r in _glyph_layers(doc.roots)]
+        assert len(figs) == 1, figs
+        fig = figs[0]
+        (xaxis,), (yaxis,) = fig.xaxis, fig.yaxis
+        return ((type(fig.x_scale).__name__, type(xaxis).__name__),
+                (type(fig.y_scale).__name__, type(yaxis).__name__))
+
+    def test_linear_axes_without_either_option(self, dr_module, auto_df):
+        """The control for BUG-SCALE-1a..1c: no xscale()/yscale(), no log."""
+        assert self._page_scales(dr_module, auto_df, {}) == (
+            ("LinearScale", "LinearAxis"), ("LinearScale", "LinearAxis"))
+
     def test_xscale_log_only(self, dr_module, auto_df):
         """BUG-SCALE-1a: xscale(log) alone must produce log x-axis."""
-        from bokeh.models import LogScale
-        renderer = self._make_renderer(dr_module, auto_df, {"xscale": "log"})
-        html = renderer.render()
-        # If xscale(log) works, the generated JSON should contain "LogScale"
-        assert "LogScale" in html or "log" in html.lower(), \
-            "xscale(log) must produce a LogScale x-axis in the rendered HTML"
+        assert self._page_scales(dr_module, auto_df, {"xscale": "log"}) == (
+            ("LogScale", "LogAxis"), ("LinearScale", "LinearAxis")), (
+            "xscale(log) must make the saved figure's x axis, and only it, log")
 
     def test_yscale_log_only(self, dr_module, auto_df):
         """BUG-SCALE-1b: yscale(log) alone must produce log y-axis."""
-        renderer = self._make_renderer(dr_module, auto_df, {"yscale": "log"})
-        html = renderer.render()
-        assert "LogScale" in html or "log" in html.lower(), \
-            "yscale(log) must produce a LogScale y-axis in the rendered HTML"
+        assert self._page_scales(dr_module, auto_df, {"yscale": "log"}) == (
+            ("LinearScale", "LinearAxis"), ("LogScale", "LogAxis")), (
+            "yscale(log) must make the saved figure's y axis, and only it, log")
 
     def test_dual_log_scale_both_axes(self, dr_module, auto_df):
         """BUG-SCALE-1c: xscale(log) yscale(log) must produce log scale on BOTH axes.
@@ -5728,15 +6025,11 @@ class TestDualLogScale:
         Before the fix, the second bokeh_figure() call overrode the first so the
         x-axis reverted to linear.  After the fix, both axes are set in one call.
         """
-        renderer = self._make_renderer(dr_module, auto_df, {"xscale": "log", "yscale": "log"})
-        html = renderer.render()
-        # Count LogScale occurrences — dual-log needs at least 2
-        log_count = html.count("LogScale")
-        assert log_count >= 2, (
-            f"xscale(log) yscale(log) must produce 2 LogScale instances in the HTML "
-            f"(one per axis), got {log_count}. "
-            "This is BUG-SCALE-1: second figure re-creation must not overwrite x-axis type."
-        )
+        got = self._page_scales(dr_module, auto_df,
+                                {"xscale": "log", "yscale": "log"})
+        assert got == (("LogScale", "LogAxis"), ("LogScale", "LogAxis")), (
+            f"xscale(log) yscale(log) drew {got}.  This is BUG-SCALE-1: "
+            "the second figure re-creation must not overwrite the x-axis type.")
 
     def test_make_figure_single_recreation_for_both_log(self, dr_module, auto_df):
         """BUG-SCALE-1d: _make_figure must set both axis types before creating the figure.
@@ -5981,74 +6274,104 @@ class TestUnsafeTokenRegexWordBoundaries:
     """Regression tests for BUG-REGEX: _UNSAFE_G and _UNSAFE_BY in generated
     server source must use \\b word-boundary markers, not backspace bytes."""
 
-    def test_unsafe_g_uses_word_boundary_not_backspace(self, dr_module, auto_df):
-        """BUG-REGEX-1a: generated server if_expr guard must use AST whitelist
-        (not the old regex-backspace approach); _UNSAFE_G must not appear."""
-        src = _build_app(dr_module, auto_df, _make_spec_json(
-            graphs=[{"plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
-                                "options": {}}],
-                     "graph_options": {"name": "g1", "if_expr": "mpg > 15"}}]
-        ))
-        # The old broken pattern used a regex with backspace bytes.
-        # The fixed code uses an AST whitelist (_safe_g function).
-        # Verify the generated code no longer uses the old _UNSAFE_G regex
-        # approach AND that the AST whitelist is present.
-        for line in src.splitlines():
-            if "_UNSAFE_G" in line and "compile" in line:
-                assert "\x08" not in line, \
-                    "_UNSAFE_G pattern must not contain backspace (\x08)"
-                break
-        # The AST guard must be present in the generated code
-        assert "_safe_g" in src or "_ALLOWED_G" in src, \
-            "Generated server code must use AST whitelist for if_expr validation"
+    def test_unsafe_g_uses_word_boundary_not_backspace(self, dr_module, auto_df,
+                                                       tmp_path):
+        """BUG-REGEX-1a: the served if_expr guard refuses an exact injection
+        token but admits a column whose name merely contains one.
 
-    def test_unsafe_g_blocks_bare_eval(self, dr_module, auto_df):
-        """BUG-REGEX-1b: _UNSAFE_G in generated source must block 'eval(...)' expression."""
-        import importlib.util, tempfile, os
-        from bokeh.document import Document
-        spec = _make_spec_json(graphs=[{
-            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
-            "graph_options": {"name": "g1", "if_expr": "eval('1==1')"},
-        }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_trx1", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
-            doc = Document()
-            # Must not crash and must not have called eval() (filter blocked)
-            app_mod.make_document(doc)
-            assert len(doc.roots) > 0
-        finally:
-            for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+        This walked ``src`` for a line holding both ``_UNSAFE_G`` and
+        ``compile`` and, on that line, asserted no backspace byte.  The
+        served app carries no ``_UNSAFE_G`` at all now -- the guard is the
+        shared AST whitelist -- so the loop ran zero times and asserted
+        nothing; only ``"_safe_g" in src`` remained, a spelling (WP-24,
+        measured 24sep2026: 0 matching lines).  The property BUG-REGEX
+        names -- a whole word, not a run of backspaces, and not a substring
+        match -- is asked of the served guard itself: it must refuse
+        ``eval(...)`` and admit a column literally named ``evaluate``."""
+        ns = _ql_app_ns(dr_module, tmp_path, _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }]), auto_df)
+        guard = ns["_validate_if_expr"]
+        cols = ["mpg", "weight", "evaluate"]
+        assert guard("evaluate > 5", cols) is True, (
+            "the served guard refused a column named 'evaluate' -- it is "
+            "matching 'eval' as a substring, not as a whole word")
+        assert guard("eval('1==1')", cols) is False, (
+            "the served guard admitted eval(...)")
+        assert guard("__import__('os')", cols) is False
 
-    def test_unsafe_g_allows_evaluate_variable_name(self, dr_module, auto_df):
+    def test_unsafe_g_blocks_bare_eval(self, dr_module, auto_df, tmp_path):
+        """BUG-REGEX-1b: the served guard REFUSES an eval(...) if_expr -- the
+        graph draws every row and warns skipped -- and ADMITS a real one.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies whether the qualifier ran or not (WP-24, measured
+        24sep2026).  A drawn-rows check alone cannot tell a guard refusal
+        from a query that raised (both leave the rows unfiltered and warn),
+        so the served guard's own verdict on the eval expression is read too
+        -- False, refused before query -- as the function-plot security tests
+        read theirs.  The control, a valid ``foreign == 1``, is admitted and
+        draws its 16 rows: the guard is not simply refusing everything."""
+        ns = _ql_app_ns(dr_module, tmp_path, _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }]), auto_df)
+        cols = list(auto_df.columns)
+        assert ns["_validate_if_expr"]("eval('1==1')", cols) is False, (
+            "the served guard admitted eval(...); only a query error would "
+            "then keep it from running")
+
+        def _served(if_expr):
+            spec = _make_spec_json(graphs=[{
+                "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                           "options": {}}],
+                "graph_options": {"name": "g1", "if_expr": if_expr},
+            }])
+            doc, warned = _ql_served(dr_module, tmp_path, spec, auto_df)
+            (_fig, r), = _glyph_layers(doc.roots)
+            return len(_drawn_values(r, "weight")), warned
+
+        drawn, warned = _served("eval('1==1')")
+        assert drawn == len(auto_df) and [m for m in warned if "skipped" in m], (
+            drawn, warned)
+        control, cwarned = _served("foreign == 1")
+        assert control == int((auto_df["foreign"] == 1).sum()), control
+        assert not [m for m in cwarned if "skipped" in m], cwarned
+
+    def test_unsafe_g_allows_evaluate_variable_name(self, dr_module, auto_df,
+                                                    tmp_path):
         """BUG-REGEX-1c: _UNSAFE_G must NOT block variable names containing 'eval' as substring.
 
         With backspace chars instead of word boundaries, 'evaluate' would not be blocked
-        (backspace-eval-backspace doesn't match 'evaluate'). With real \b, 'evaluate'
+        (backspace-eval-backspace doesn't match 'evaluate'). With real \\b, 'evaluate'
         is also not blocked because the 'e' after 'eval' prevents the word-boundary match.
         Both scenarios should allow 'evaluate' as a valid column name in df.query.
-        """
-        # This test verifies the regex compiled from the generated string actually works
-        import re
-        # Simulate the pattern that should be in the generated source
-        pattern = re.compile(
-            r'[;`$\\]|import\s|__|\beval\b|\bexec\b|\bopen\b'
-            r'|\bgetattr\b|\bsetattr\b|\bhasattr\b|\bdelattr\b'
-        )
-        # 'evaluate' contains 'eval' as substring but not at word boundary
-        assert not pattern.search("evaluate > 5"), \
-            "word-boundary \\b must not block 'evaluate' (not an exact 'eval' token)"
-        # 'eval(...)' must be blocked
-        assert pattern.search("eval('1==1')"), \
-            "word-boundary \\b must block 'eval(...)'"
+
+        This compiled a pattern typed into the test itself and asked THAT the
+        question, so it passed whatever the product's guard did (WP-24).  The
+        served app's own guard is asked instead -- _validate_if_expr from the
+        app's namespace, as BUG-REGEX-1a reads it -- and the qualifier is run
+        end to end through df.query: a served graph ``if evaluate > 5`` over
+        data holding an ``evaluate`` column draws exactly the rows it selects,
+        with no "skipped" warning, while ``eval('1==1')`` is still refused."""
+        df = auto_df.assign(evaluate=np.arange(len(auto_df), dtype=float))
+        spec = _ql_spec("evaluate > 5")
+        guard = _ql_app_ns(dr_module, tmp_path, spec, df)["_validate_if_expr"]
+        cols = list(df.columns)
+        assert guard("evaluate > 5", cols) is True, (
+            "the served guard refused a column named 'evaluate'")
+        assert guard("eval('1==1')", cols) is False, (
+            "the served guard admitted eval(...)")
+        doc, warned = _ql_served(dr_module, tmp_path, spec, df)
+        want = sorted(df.loc[df["evaluate"] > 5, "weight"])
+        assert 0 < len(want) < len(df)
+        assert _ql_scatter(doc.roots)[1] == want, (
+            "the served graph did not draw exactly the rows `evaluate > 5' "
+            "selects")
+        assert not [m for m in warned if "skipped" in m], warned
 
     @pytest.mark.parametrize("given,kept", [
         ("eval", False), ("exec", False), ("open, total", False),
@@ -6162,17 +6485,26 @@ class TestImmediateRenderQualifierHandling:
                 except OSError: pass
 
     def test_renderer_multi_qualifier_spec_renders_without_crash(self, dr_module, auto_df):
-        """BUG-IQUAL-1c: multi-plot spec with different per-plot qualifiers must render."""
+        """BUG-IQUAL-1c: a two-plot graph, each plot with its own qualifier and
+        no top-level one, draws every row into the shared source and lets each
+        plot's own view select its rows.
+
+        This asserted ``len(html) > 100``, true of any page (WP-24, measured
+        24sep2026).  BUG-IQUAL was the source being PRE-FILTERED by the first
+        plot's qualifier, so the check that matters is the shared source
+        carrying all 30 rows, with the two plots drawing their own qualifiers'
+        rows (foreign==1 -> 16, foreign==0 -> 14) through their views."""
         spec = self._make_multi_qualifier_spec("foreign==1", "foreign==0")
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            html = renderer.render()
-            assert len(html) > 100, "rendered HTML must be non-trivial"
-        finally:
-            for _p in (spec_path, data_path):
-                try: os.unlink(_p)
-                except OSError: pass
+        doc = _page_document(_saved_page(dr_module, auto_df, spec)[0])
+        layers = _glyph_layers(doc.roots)
+        assert [type(r.glyph).__name__ for _f, r in layers] == ["Scatter", "Scatter"]
+        assert {r.data_source.id for _f, r in layers} == \
+            {layers[0][1].data_source.id}, "the two plots must share one source"
+        assert len(next(iter(layers[0][1].data_source.data.values()))) == \
+            len(auto_df), "the shared source was pre-filtered; it must hold all rows"
+        drawn = sorted(len(_drawn_values(r, "weight")) for _f, r in layers)
+        assert drawn == sorted([int((auto_df["foreign"] == 1).sum()),
+                                int((auto_df["foreign"] == 0).sum())]), drawn
 
     def test_full_data_available_when_no_toplevel_filter(self, dr_module, auto_df):
         """BUG-IQUAL-1d: when top-level if_expr is empty, renderer df must have all rows."""
@@ -6223,39 +6555,51 @@ class TestFilterCallbackExcludeAlignment:
         return spec
 
     def test_filter_specs_count_matches_built_widgets(self, dr_module, auto_df):
-        """BUG-CBEXCL-1a: filter_specs_json length must equal the number of built widgets."""
+        """BUG-CBEXCL-1a: the filter callback carries exactly the specs whose
+        widgets were built -- foreign, not the missing variable.
+
+        This searched the page text for ``"filter_specs_json": "[...]"`` and,
+        under ``if m:``, checked the array.  The regex never matched: the page
+        embeds the callback in Bokeh's HTML-escaped document JSON, where the
+        key reads ``&quot;filter_specs_json&quot;`` and the value's own quotes
+        are escaped again, so ``m`` was None and the body never ran (WP-24,
+        measured 24sep2026).  The callback's ``filter_specs_json`` argument is
+        read from the document instead -- decoded, not text-matched -- and its
+        widgets counted, so a missing-var spec that slipped through would be
+        seen."""
+        from bokeh.models import CustomJS, Select
         spec = self._make_mixed_filter_spec(dr_module, auto_df)
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            html = renderer.render()
-            # foreign is the only built filter — filter_specs_json must have 1 entry
-            import re as _re
-            # The filter_specs_json in the rendered HTML is an array like [{"varname":...}]
-            m = _re.search(r'"filter_specs_json"\s*:\s*"(\[.*?\])"', html)
-            if m:
-                fs = json.loads(m.group(1).replace('\\"', '"').replace('\\\\', '\\'))
-                assert len(fs) == 1, \
-                    f"filter_specs must have 1 entry (not {len(fs)}); missing_var must be excluded"
-                assert fs[0]["varname"] == "foreign", \
-                    "only the successfully-built filter spec must appear in filter_specs"
-        finally:
-            for _p in (spec_path, data_path):
-                try: os.unlink(_p)
-                except OSError: pass
+        doc = _page_document(_saved_page(dr_module, auto_df, spec)[0])
+        cbs = [m for m in doc.select({"type": CustomJS})
+               if "filter_specs_json" in m.args]
+        assert len(cbs) == 1, cbs
+        fs = json.loads(cbs[0].args["filter_specs_json"])
+        assert [s["varname"] for s in fs] == ["foreign"], (
+            f"filter_specs carried {[s['varname'] for s in fs]}; the missing "
+            f"variable must be excluded")
+        # The dropdown widgets the page built, each titled by its variable.
+        widget_vars = sorted(w.title for w in doc.select({"type": Select}))
+        assert widget_vars == ["foreign"], (
+            f"the page built dropdown widgets for {widget_vars}; a widget for "
+            f"the missing variable must not be built")
+        assert widget_vars == sorted(s["varname"] for s in fs), (
+            "filter_specs and the built widgets are not in 1:1 correspondence")
 
     def test_render_with_missing_filter_var_does_not_crash(self, dr_module, auto_df):
-        """BUG-CBEXCL-1b: render must not crash when first filter var is missing."""
+        """BUG-CBEXCL-1b: when the first filter var is missing, render still
+        builds the dashboard -- the scatter and the surviving foreign widget.
+
+        This asserted ``len(html) > 100``, true of any page (WP-24, measured
+        24sep2026).  A ``does not crash`` guard, kept as one, but made to see
+        that render produced the dashboard: the g1 scatter drawing all 30
+        rows and the one foreign dropdown, with missing_var dropped."""
+        from bokeh.models import Select
         spec = self._make_mixed_filter_spec(dr_module, auto_df)
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            html = renderer.render()
-            assert len(html) > 100, "rendered HTML must be non-trivial"
-        finally:
-            for _p in (spec_path, data_path):
-                try: os.unlink(_p)
-                except OSError: pass
+        doc = _page_document(_saved_page(dr_module, auto_df, spec)[0])
+        (_fig, r), = _glyph_layers(doc.roots)
+        assert type(r.glyph).__name__ == "Scatter"
+        assert len(_drawn_values(r, "weight")) == len(auto_df)
+        assert sorted(w.title for w in doc.select({"type": Select})) == ["foreign"]
 
     def test_built_filter_callback_count_equals_valid_filter_specs(self, dr_module, auto_df):
         """BUG-CBEXCL-1c: number of filter callbacks must equal number of built widgets."""
@@ -6587,17 +6931,23 @@ class TestFilterUpdatesAllSources:
                 except OSError: pass
 
     def test_two_graph_unlinked_render_does_not_crash(self, dr_module, auto_df):
-        """BUG-MTSRC-1d: two-graph unlinked dashboard with filter must render without crash."""
+        """BUG-MTSRC-1d: an unlinked two-graph dashboard with a filter renders
+        both graphs, each on its own source, and the shared filter widget.
+
+        This asserted ``len(html_out) > 100``, true of any page (WP-24,
+        measured 24sep2026).  A ``does not crash`` guard, kept as one, made
+        to see the two figures (each drawing its 30 rows into a separate
+        source, since unlinked) and the one foreign dropdown."""
+        from bokeh.models import Select
         spec = self._make_two_graph_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            html_out = renderer.render()
-            assert len(html_out) > 100, "rendered HTML must be non-trivial"
-        finally:
-            for _p in (spec_path, data_path):
-                try: os.unlink(_p)
-                except OSError: pass
+        doc = _page_document(_saved_page(dr_module, auto_df, spec)[0])
+        layers = _glyph_layers(doc.roots)
+        assert len(layers) == 2, layers
+        assert len({r.data_source.id for _f, r in layers}) == 2, (
+            "unlinked graphs must not share a source")
+        assert all(len(_drawn_values(r, "weight")) == len(auto_df)
+                   for _f, r in layers)
+        assert sorted(w.title for w in doc.select({"type": Select})) == ["foreign"]
 
 
 # ---------------------------------------------------------------------------
@@ -6750,24 +7100,25 @@ class TestFilterPerSourceOrigData:
         )
 
     def test_render_with_different_schema_does_not_crash(self, dr_module, auto_df):
-        """BUG-29-1f: two-graph unlinked dashboard with different schemas must render without crash."""
+        """BUG-29-1f: two unlinked graphs with different columns render, each
+        drawing its own y column into its own source.
+
+        This asserted ``len(html_out) > 100`` and ``"all_graph_sources_orig"
+        in html_out`` -- both true of any two-graph filtered page, whether or
+        not the per-source snapshots were correct (WP-24, measured
+        24sep2026).  It reads the document: g1 draws mpg, g2 draws price,
+        each from a source carrying only its own columns -- the schema
+        separation BUG-29 was about."""
         spec = self._make_different_schema_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            html_out = renderer.render()
-            assert len(html_out) > 100, "rendered HTML must be non-trivial"
-            # Verify per-source orig data is embedded in the HTML
-            assert "all_graph_sources_orig" in html_out, (
-                "rendered HTML must embed the all_graph_sources_orig "
-                "callback arg"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+        doc = _page_document(_saved_page(dr_module, auto_df, spec)[0])
+        # g1's source must hold mpg and not price; g2's the reverse -- the
+        # per-source schema separation BUG-29 was about.  (Both also carry
+        # the filter column, foreign, and Bokeh's __dash_row__.)
+        got = sorted(sorted({"mpg", "price"} & set(r.data_source.data))
+                     for _f, r in _glyph_layers(doc.roots))
+        assert got == [["mpg"], ["price"]], (
+            f"the two graphs' sources carry y-columns {got}; g1 must hold mpg "
+            f"only and g2 price only")
 
 
 # ---------------------------------------------------------------------------
@@ -7013,29 +7364,22 @@ class TestBug22MultiLayerSources:
         )
 
     def test_two_layer_graph_make_document(self, dr_module, auto_df):
-        """BUG-22d: make_document must succeed for a two-layer graph with a filter widget."""
-        import importlib.util as _ilu
-        from bokeh.document import Document
+        """BUG-22d: make_document draws BOTH layers of the two-layer graph.
 
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies with one layer, or none (WP-24, measured 24sep2026).
+        BUG-22 was graph_sources keeping only the last layer, so the check
+        that matters is that the served graph draws its scatter AND its line,
+        each from a source of all 30 rows -- and the foreign dropdown."""
+        from bokeh.models import Select
         spec = self._make_two_layer_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name, port=5006)
-
-            app_spec_obj = _ilu.spec_from_file_location("_bug22_app", out_f.name)
-            app_mod = _ilu.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
-
-            doc = Document()
-            app_mod.make_document(doc)  # must not raise
-            assert len(doc.roots) > 0, "Document must have at least one root widget/figure"
-        finally:
-            os.unlink(spec_path)
-            os.unlink(data_path)
-            os.unlink(out_f.name)
+        doc, _ = _exec_doc(dr_module, auto_df, spec, "_bug22_app")
+        layers = _glyph_layers(doc.roots)
+        assert sorted(type(r.glyph).__name__ for _f, r in layers) == \
+            ["Line", "Scatter"], layers
+        assert all(len(_drawn_values(r, "weight")) == len(auto_df)
+                   for _f, r in layers)
+        assert [w.title for w in doc.select({"type": Select})] == ["foreign"]
 
     def test_filter_callback_updates_all_layer_sources(self, dr_module, auto_df):
         """BUG-22e: Filter callback invocation on a 2-layer graph must not raise.
@@ -7220,9 +7564,17 @@ class TestServerFilterPreservesDerivedColumns:
                     pass
 
     def test_make_document_with_filter_does_not_raise(self, dr_module, auto_df):
-        """BUG-32-1d: make_document with jitter+filter must not raise."""
+        """BUG-32-1d: make_document draws the jittered scatter and its derived
+        offset columns for every row.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies whether the jitter columns were built or not (WP-24,
+        measured 24sep2026).  jitter() adds the derived _x_jit/_y_jit that
+        BUG-32 could blank; the served scatter must carry both, one value per
+        row, over all 30 rows, and the foreign dropdown."""
         import importlib.util as _ilu
         from bokeh.document import Document
+        from bokeh.models import Select
         spec = self._make_jitter_spec()
         spec_path, data_path = _write_temp_files(auto_df, spec)
         out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
@@ -7235,7 +7587,14 @@ class TestServerFilterPreservesDerivedColumns:
             app_spec_obj.loader.exec_module(app_mod)
             doc = Document()
             app_mod.make_document(doc)
-            assert len(doc.roots) > 0, "make_document must add roots"
+            (_fig, r), = _glyph_layers(doc.roots)
+            assert type(r.glyph).__name__ == "Scatter"
+            data = r.data_source.data
+            assert {"_x_jit", "_y_jit"} <= set(data), (
+                f"jitter's derived columns are missing: {sorted(data)}")
+            assert {len(v) for v in data.values()} == {len(auto_df)}, (
+                "every column, jitter's included, must hold one value per row")
+            assert [w.title for w in doc.select({"type": Select})] == ["foreign"]
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try:
@@ -7361,7 +7720,13 @@ class TestServerFilterReappliesGraphQualifiers:
             f"the rows with foreign == 1 that the range keeps are x={want}")
 
     def test_make_document_with_qualified_graph_does_not_crash(self, dr_module, auto_df):
-        """BUG-33-1c: make_document with if_expr graph must not raise."""
+        """BUG-33-1c: make_document draws only the graph's if_expr rows.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies whether the qualifier was applied or not (WP-24, measured
+        24sep2026).  The served graph (if foreign==1) must draw the 16
+        foreign rows; the control, the same graph with no qualifier, draws
+        all 30, so the reader sees the qualifier do the reducing."""
         import importlib.util as _ilu
         from bokeh.document import Document
         spec = self._make_qualified_spec()
@@ -7376,13 +7741,24 @@ class TestServerFilterReappliesGraphQualifiers:
             app_spec_obj.loader.exec_module(app_mod)
             doc = Document()
             app_mod.make_document(doc)
-            assert len(doc.roots) > 0, "make_document must add roots"
+            (_fig, r), = _glyph_layers(doc.roots)
+            assert len(_drawn_values(r, "weight")) == \
+                int((auto_df["foreign"] == 1).sum()), (
+                "the served graph did not restrict to its if foreign==1 rows")
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try:
                     os.unlink(_p)
                 except OSError:
                     pass
+        # Control: the same graph with no qualifier draws every row.
+        plain = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _doc, (control,) = _exec_doc(dr_module, auto_df, plain, "_bug33_ctl")
+        assert len(_drawn_values(control, "weight")) == len(auto_df)
 
     def test_filter_callback_does_not_reintroduce_qualified_out_rows(self, dr_module, auto_df):
         """BUG-33-1d: filter callback must not expand qualified graph source beyond if_expr rows.
@@ -7686,13 +8062,22 @@ class TestLinkedGraphQualifierView:
     _make_figure() so only qualified rows are rendered.
     """
 
-    def _make_linked_qualified_spec(self) -> dict:
-        """Two linked graphs: g1 has if_expr='foreign == 1', g2 has no qualifier."""
+    def _make_linked_qualified_spec(self, if_expr="foreign == 1") -> dict:
+        """Two linked graphs: g1 has *if_expr*, g2 has no qualifier.
+
+        The qualifier sits at g1's top level, beside graph_options, which is
+        where dash.ado writes it (_dash_plot promotes it there) and the only
+        place the saved renderer's _apply_graph_filter reads it.  This helper
+        used to put it INSIDE graph_options, which the saved renderer never
+        reads: every test in this class ran on an unqualified g1 -- g1's view
+        was the default AllIndices, drawing all 30 rows (WP-24, measured
+        24sep2026), and the BUG-34 fix was never exercised."""
         return _make_spec_json(
             graphs=[
                 {"plots": [{"type": "scatter", "yvar": "mpg",
                             "xvar": "weight", "options": {}}],
-                 "graph_options": {"name": "g1", "if_expr": "foreign == 1"}},
+                 "graph_options": {"name": "g1"},
+                 "if_expr": if_expr, "in_expr": ""},
                 {"plots": [{"type": "scatter", "yvar": "price",
                             "xvar": "weight", "options": {}}],
                  "graph_options": {"name": "g2"}},
@@ -7705,44 +8090,60 @@ class TestLinkedGraphQualifierView:
         )
 
     def test_render_linked_qualified_does_not_crash(self, dr_module, auto_df):
-        """BUG-34-1a: rendering linked graphs with if_expr must not raise."""
+        """BUG-34-1a: two linked graphs render on one shared source holding
+        every row.
+
+        This asserted ``len(html_out) > 100``, true of any page (WP-24,
+        measured 24sep2026).  A ``does not crash`` guard, kept as one, made
+        non-vacuous by reading the document: g1 draws mpg and g2 price, both
+        from the single shared ColumnDataSource of all rows (the linked
+        contract -- the per-graph view that masks the qualifier is 1b/1c's,
+        the shared full-row source 1e's)."""
         spec = self._make_linked_qualified_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            html_out = renderer.render()
-            assert len(html_out) > 100, "rendered HTML must be non-trivial"
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+        doc = _page_document(_saved_page(dr_module, auto_df, spec)[0])
+        by_y = {(r.glyph.y.field if hasattr(r.glyph.y, "field") else r.glyph.y): r
+                for _f, r in _glyph_layers(doc.roots)}
+        assert set(by_y) == {"mpg", "price"}, list(by_y)
+        assert len({r.data_source.id for r in by_y.values()}) == 1, (
+            "linked graphs must share one source")
+        assert len(next(iter(by_y["mpg"].data_source.data.values()))) == \
+            len(auto_df), "the shared linked source must hold every row"
+
+    @staticmethod
+    def _layer_drawing(doc, ycol):
+        """The one layer of the saved document that draws *ycol*."""
+        found = [r for _f, r in _glyph_layers(doc.roots)
+                 if getattr(r.glyph.y, "field", r.glyph.y) == ycol]
+        assert len(found) == 1, (ycol, found)
+        return found[0]
 
     def test_linked_qualified_graph_has_cdsview(self, dr_module, auto_df):
-        """BUG-34-1b: g1 figure must have CDSView with BooleanFilter when if_expr is set."""
-        from bokeh.models import CDSView
-        spec = self._make_linked_qualified_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
-            g1_fig = renderer.figures.get("g1")
-            assert g1_fig is not None, "g1 figure must be built"
-            # Find renderers that have a view (CDSView)
-            views = [r.view for r in g1_fig.renderers
-                     if hasattr(r, "view") and r.view is not None
-                     and isinstance(r.view, CDSView)]
-            assert len(views) > 0, (
-                "g1 (if_expr='foreign == 1') must have a CDSView on its renderers "
-                "to mask qualified-out rows when using shared linked source"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+        """BUG-34-1b: g1 figure must have CDSView with BooleanFilter when if_expr is set.
+
+        This asserted only ``isinstance(r.view, CDSView)``.  Every
+        GlyphRenderer has one -- Bokeh gives each a default CDSView whose
+        filter is AllIndices -- so it held with no qualifier view at all
+        (measured: g1 drew all 30 rows) and would hold with a view that kept
+        the wrong rows (WP-24, 24sep2026).  What the view is FOR is read
+        instead, from the saved page's document: g1's filter is a
+        BooleanFilter, and the rows g1 draws through it over the shared
+        source are exactly the foreign == 1 rows.  The control is the same
+        linked pair with no qualifier, whose g1 draws every row."""
+        doc = _page_document(_saved_page(
+            dr_module, auto_df, self._make_linked_qualified_spec())[0])
+        g1 = self._layer_drawing(doc, "mpg")
+        assert type(g1.view.filter).__name__ == "BooleanFilter", (
+            f"g1's view filter is {type(g1.view.filter).__name__}")
+        want = sorted(auto_df.loc[auto_df["foreign"] == 1, "weight"])
+        assert 0 < len(want) < len(auto_df)
+        assert sorted(_drawn_values(g1, "weight")) == want, (
+            "g1's view does not keep exactly its foreign == 1 rows")
+
+        plain = _page_document(_saved_page(
+            dr_module, auto_df, self._make_linked_qualified_spec(if_expr=""))[0])
+        assert sorted(_drawn_values(self._layer_drawing(plain, "mpg"),
+                                    "weight")) == sorted(auto_df["weight"]), (
+            "control: an unqualified linked g1 must draw every row")
 
     def test_unqualified_linked_graph_has_no_qualifier_view(self, dr_module, auto_df):
         """BUG-34-1c: g2 (no if_expr) must not have a CDSView forced by qualifier."""
@@ -7771,21 +8172,23 @@ class TestLinkedGraphQualifierView:
                     pass
 
     def test_linked_qualified_html_contains_both_graphs(self, dr_module, auto_df):
-        """BUG-34-1d: rendered HTML must contain glyphs for both g1 and g2."""
-        spec = self._make_linked_qualified_spec()
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        try:
-            renderer = dr_module.DashRenderer(spec_path, data_path)
-            html_out = renderer.render()
-            assert "mpg" in html_out and "price" in html_out, (
-                "rendered HTML must reference both g1 (mpg) and g2 (price) variables"
-            )
-        finally:
-            for _p in (spec_path, data_path):
-                try:
-                    os.unlink(_p)
-                except OSError:
-                    pass
+        """BUG-34-1d: the saved page draws both g1 and g2.
+
+        This searched the page for "mpg" and "price", which its embedded data
+        carries whether or not either graph is drawn (WP-24, 24sep2026).
+        Read from the page's document instead: one layer draws g1's mpg,
+        through its foreign == 1 view, and one draws g2's price, unqualified,
+        over every row."""
+        doc = _page_document(_saved_page(
+            dr_module, auto_df, self._make_linked_qualified_spec())[0])
+        g1 = self._layer_drawing(doc, "mpg")
+        g2 = self._layer_drawing(doc, "price")
+        n_foreign = int((auto_df["foreign"] == 1).sum())
+        assert 0 < n_foreign < len(auto_df)
+        assert len(_drawn_values(g1, "weight")) == n_foreign, (
+            "g1 does not draw its foreign == 1 rows")
+        assert sorted(_drawn_values(g2, "weight")) == sorted(
+            auto_df["weight"]), "g2 does not draw every row"
 
     def test_shared_source_covers_all_rows(self, dr_module, auto_df):
         """BUG-34-1e: the shared linked source must contain all rows (not filtered)."""
@@ -7859,8 +8262,11 @@ class TestMixedFilterSpecAlignment:
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
             renderer.render()
-            if not renderer.filter_callbacks:
-                pytest.skip("No filter callbacks built (nothing to test)")
+            # This SKIPPED when no callback was built, so a regression that
+            # stopped building it reported a skip, not a failure.  The valid
+            # filter (foreign) builds one (measured 24sep2026, WP-24).
+            assert renderer.filter_callbacks, (
+                "no filter callback was built for the valid filter (foreign)")
             cb_args = renderer.filter_callbacks[0].args
             filter_specs = json.loads(cb_args["filter_specs_json"])
             varnames = [fs["varname"] for fs in filter_specs]
@@ -7883,12 +8289,14 @@ class TestMixedFilterSpecAlignment:
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
             renderer.render()
-            if not renderer.filter_callbacks:
-                pytest.skip("No filter callbacks built (nothing to test)")
+            # Was a skip when no callback was built (WP-24); foreign builds one.
+            assert renderer.filter_callbacks, (
+                "no filter callback was built for the valid filter (foreign)")
             cb_args = renderer.filter_callbacks[0].args
             filter_specs = json.loads(cb_args["filter_specs_json"])
             all_widgets  = cb_args.get("all_widgets", [])
-            assert len(all_widgets) == len(filter_specs), (
+            # Pinned to the one valid filter: two empty lists are equal too.
+            assert len(all_widgets) == len(filter_specs) == 1, (
                 f"all_widgets ({len(all_widgets)}) must equal filter_specs "
                 f"({len(filter_specs)}) — misalignment causes wrong spec/widget pairing"
             )
@@ -7934,11 +8342,16 @@ class TestMixedFilterSpecAlignment:
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
             renderer.render()
-            if not renderer.filter_callbacks:
-                pytest.skip("No filter callbacks built (nothing to test)")
+            # Was a skip when no callback was built (WP-24); foreign builds one.
+            assert renderer.filter_callbacks, (
+                "no filter callback was built for the valid filter (foreign)")
             cb_args = renderer.filter_callbacks[0].args
             filter_specs = json.loads(cb_args["filter_specs_json"])
             all_widgets  = cb_args.get("all_widgets", [])
+            # The zip below runs once per spec; with none it would check
+            # nothing.  The one built spec is foreign's.
+            assert [s["varname"] for s in filter_specs] == ["foreign"], filter_specs
+            assert len(all_widgets) == 1, all_widgets
             # Each spec varname must be present in the first source's data
             src_data_keys = set(next(iter(renderer.sources.values())).data.keys())
             for i, (spec_item, widget) in enumerate(zip(filter_specs, all_widgets)):
@@ -7959,18 +8372,30 @@ class TestMixedFilterSpecAlignment:
     # ------------------------------------------------------------------
 
     def test_render_with_valid_plus_missing_filter_does_not_crash(self, dr_module, auto_df):
-        """BUG-FSALIGN-1f: rendering with mixed valid/missing filter vars must not raise."""
+        """BUG-FSALIGN-1f: with one valid and one missing filter var, render
+        builds the scatter and the surviving foreign dropdown.
+
+        This asserted ``html_out`` was truthy, which any non-empty string is
+        (WP-24, measured 24sep2026).  A ``does not raise`` guard, kept as one
+        (it fails the test on any exception), made to see that render
+        produced the dashboard -- the g1 scatter over all 30 rows and the one
+        foreign widget, the missing column dropped."""
+        from bokeh.models import Select
         spec = self._make_mixed_filter_spec("totallymissingcolumn")
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
             try:
-                html_out = renderer.render()
-                assert html_out, "render() must return non-empty HTML"
+                page = renderer.render()
             except Exception as exc:
                 pytest.fail(
                     f"BUG-FSALIGN-1f: render() raised with mixed filter vars: {exc!r}"
                 )
+            doc = _page_document(page)
+            (_fig, r), = _glyph_layers(doc.roots)
+            assert len(_drawn_values(r, "weight")) == len(auto_df)
+            assert sorted(w.title for w in doc.select({"type": Select})) == \
+                ["foreign"], "only the valid filter's widget must be built"
         finally:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
@@ -7981,27 +8406,40 @@ class TestMixedFilterSpecAlignment:
     # ------------------------------------------------------------------
 
     def test_valid_filter_widget_callback_fires_without_error(self, dr_module, auto_df):
-        """BUG-FSALIGN-1g: the surviving valid filter widget's callback must be
-        invocable (no misalignment crash) even when another spec was skipped."""
+        """BUG-FSALIGN-1g: the surviving filter's spec and widget stay paired
+        when another filter's spec was skipped.
+
+        The callback reads its i-th spec beside its i-th widget, so a
+        misalignment is a spec naming one variable beside another's widget.
+        This compared the two lists' lengths -- equal at 0 and 0, and equal
+        with the spec relabelled -- and built a mock widget it never used
+        (WP-24, 24sep2026).  The one spec must name foreign, a dropdown
+        with its sentinel, and the one widget must be foreign's Select,
+        opening on that sentinel over foreign's values.  (Running the
+        script itself is test_filters.py's.)"""
         spec = self._make_mixed_filter_spec("missingvar")
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
             renderer.render()
-            if not renderer.filter_callbacks:
-                pytest.skip("No filter callbacks built (nothing to test)")
-            cb = renderer.filter_callbacks[0]
-            cb_args = cb.args
-            # Simulate a widget value-change: build a mock 'cb_obj' with .value
-            import types as _types
-            mock_widget = _types.SimpleNamespace(value="1")
-            # Simulate the JS callback by exercising alignment integrity:
+            # Was a skip when no callback was built (WP-24); foreign builds one.
+            assert renderer.filter_callbacks, (
+                "no filter callback was built for the valid filter (foreign)")
+            cb_args = renderer.filter_callbacks[0].args
             filter_specs = json.loads(cb_args["filter_specs_json"])
-            all_widgets  = cb_args.get("all_widgets", [])
-            assert len(filter_specs) == len(all_widgets), (
-                "BUG-FSALIGN-1g: spec/widget misalignment detected — "
-                f"specs={len(filter_specs)}, widgets={len(all_widgets)}"
-            )
+            all_widgets = cb_args.get("all_widgets", [])
+            assert filter_specs == [{"varname": "foreign", "type": "dropdown",
+                                     "sentinel": "__all__"}], (
+                "BUG-FSALIGN-1g: the surviving spec is not foreign's: "
+                f"{filter_specs}")
+            assert len(all_widgets) == 1, all_widgets
+            (w,) = all_widgets
+            assert type(w).__name__ == "Select" and w.title == "foreign", (
+                f"the surviving widget is {type(w).__name__} {w.title!r}")
+            assert w.value == "__all__"
+            values = sorted(auto_df["foreign"].dropna().unique())
+            assert [v for v, _label in w.options] == (
+                ["__all__"] + [str(int(v)) for v in values]), w.options
         finally:
             for _p in (spec_path, data_path):
                 try: os.unlink(_p)
@@ -8580,12 +9018,17 @@ class TestKpiColorCssInjectionHardening:
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
             renderer.render()
-            if not renderer.filter_callbacks:
-                pytest.skip("No filter callbacks built (nothing to test)")
+            # Both of these were skips, so a regression that stopped building
+            # the filter callback, or stopped handing it the KPI's config,
+            # reported a skip rather than a failure.  The foreign dropdown
+            # builds one callback carrying kpi1's config (measured 24sep2026,
+            # WP-24).
+            assert renderer.filter_callbacks, (
+                "no filter callback was built for the foreign dropdown")
             cb_args = renderer.filter_callbacks[0].args
             kpi_config = json.loads(cb_args["kpi_config_json"])
-            if not kpi_config:
-                pytest.skip("No KPI config in callback (nothing to test)")
+            assert [k.get("name") for k in kpi_config] == ["kpi1"], (
+                f"the filter callback carries no config for kpi1: {kpi_config!r}")
             kpi_color = kpi_config[0].get("color", "")
             assert '"' not in kpi_color and "onmouseover" not in kpi_color, (
                 f"kpi_config color must not contain injected content; "
@@ -9321,54 +9764,36 @@ class TestQualifierMissingColumnGraceful:
 
     def test_server_make_document_if_expr_filters_when_col_present(
             self, dr_module, auto_df):
-        """BUG-39-1e: server make_document applies if_expr filter when col is in data."""
-        from bokeh.document import Document
-        # Include 'foreign' in data — the filter should limit glyph source rows.
+        """BUG-39-1e: server make_document draws only the if_expr rows when
+        the qualifier's column is in the data.
+
+        This walked ``doc.roots`` one level deep for the figure's renderers,
+        but the figures sit inside a GridPlot two levels down, so that walk
+        found none and the ``if glyph_renderers:`` body -- the only check of
+        the row count -- never ran; the earlier ``n_renderers >= 1`` used a
+        deep walk and passed whatever the filter did (WP-24, measured
+        24sep2026).  The layer is read from the document properly now: it
+        draws the 16 foreign==1 (weight, mpg) points, and the control -- the
+        same graph with no qualifier -- draws all 30, so the reader sees the
+        qualifier do the reducing."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1", "if_expr": "foreign == 1"},
         }])
-        spec_path, data_path = _write_temp_files(auto_df, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b39e", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            # The rendered graph should have fewer rows than the full dataset
-            # because the if_expr filter (foreign==1) is applied.
-            n_foreign = int((auto_df["foreign"] == 1).sum())
-            n_total = len(auto_df)
-            n_renderers = _count_glyph_renderers(doc)
-            assert n_renderers >= 1, "Expected at least one renderer"
-            # Verify source row count is limited by filter (not full 30 rows)
-            # Inspect the first ColumnDataSource reachable from the document.
-            renderers_list = []
-            for root in doc.roots:
-                if hasattr(root, "renderers"):
-                    renderers_list.extend(root.renderers)
-                elif hasattr(root, "children"):
-                    for child in root.children:
-                        if hasattr(child, "renderers"):
-                            renderers_list.extend(child.renderers)
-            glyph_renderers = [
-                r for r in renderers_list
-                if hasattr(r, "data_source") and hasattr(r, "glyph")
-            ]
-            if glyph_renderers:
-                src_len = len(glyph_renderers[0].data_source.data.get("mpg", []))
-                assert src_len == n_foreign, (
-                    f"Expected {n_foreign} rows in source (foreign==1 filter), "
-                    f"got {src_len} (total={n_total})"
-                )
-        finally:
-            for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+        doc, _ = _exec_doc(dr_module, auto_df, spec, "_b39e")
+        (_fig, r), = _glyph_layers(doc.roots)
+        want = auto_df.loc[auto_df["foreign"] == 1]
+        assert 0 < len(want) < len(auto_df)
+        assert sorted(zip(_drawn_values(r, "weight"), _drawn_values(r, "mpg"))) \
+            == sorted(zip(want["weight"], want["mpg"])), (
+            "the served graph did not draw exactly the foreign==1 rows")
+        plain = _make_spec_json(graphs=[{
+            "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
+            "graph_options": {"name": "g1"},
+        }])
+        _doc, (control,) = _exec_doc(dr_module, auto_df, plain, "_b39e_ctl")
+        assert len(_drawn_values(control, "weight")) == len(auto_df), (
+            "the control graph without a qualifier must draw every row")
 
 
 # ===========================================================================
@@ -9378,73 +9803,31 @@ class TestQualifierMissingColumnGraceful:
 # The fix adds an empty title ("") so the second quoted argument is used
 # as the target file path.
 #
-# BUG-40-1a  dash.ado immediate-render: shell start "" present
-# BUG-40-1b  dash.ado immediate-render: shell start "<path>" (no title) absent
-# BUG-40-1c  dash.ado dash build: shell start "" present
-# BUG-40-1d  dash.ado dash build: shell start "<path>" (no title) absent
+# The four tests that stood here (TestWindowsBrowserStartQuoting, BUG-40-1a
+# to 1d) read dash.ado's text for `shell start ""', `shell open' and `shell
+# xdg-open'.  The Windows line ran only where Stata reports Windows, so no
+# test ran it, and those checks passed with the Windows branch unable to run
+# at all ("windows" for "Windows") and with the path handed to start
+# unquoted (measured 24sep2026).  Both callers now open the page through
+# dash.ado's _dash_open_page, which takes the platform as os() and, under
+# dryrun, returns the command it would run without running it.  Their
+# claims are held by what runs, in test_serve_browser.cscript:
+#   BUG-40-1a/1c  start "" "<path>" on Windows: SB-14 (the whole command for
+#                 an ordinary path), SB-15 (for a path holding an apostrophe,
+#                 spaces, a semicolon and an ampersand) and SB-16 (a path
+#                 with a double quote, which would end start's argument, is
+#                 refused).  That both callers open through the one opener:
+#                 test_help_claims_2.cscript HC2-30 (dash build) and HC2-34a
+#                 (the one-line form), each of which fails with that
+#                 caller's call removed (measured 24sep2026).
+#   BUG-40-1b     no start without its empty title: SB-14 and SB-15 compare
+#                 the whole command, not a pattern.
+#   BUG-40-1d     open on a Mac and xdg-open on Unix: SB-14 and SB-15, SB-17
+#                 (a Mac known by its machine type as well, as the console
+#                 binary reports Unix), and SB-19, where each command runs
+#                 against a stub and the opener is handed the path whole,
+#                 once, with nothing injected.
 # ===========================================================================
-
-class TestWindowsBrowserStartQuoting:
-    """BUG-40: Windows shell start must include empty title to avoid path-as-title."""
-
-    _ADO_PATH = os.path.join(_DASH_DIR, "dash.ado")
-
-    @classmethod
-    def _ado_text(cls):
-        with open(cls._ADO_PATH, "r", encoding="utf-8") as fh:
-            return fh.read()
-
-    # ------------------------------------------------------------------
-    # BUG-40-1a: immediate-render path has shell start ""
-    # ------------------------------------------------------------------
-
-    def test_immediate_render_has_empty_title(self):
-        """BUG-40-1a: immediate-render Windows open uses 'shell start \"\"'."""
-        text = self._ado_text()
-        assert 'shell start ""' in text, (
-            'dash.ado should contain \'shell start ""\' for Windows browser open'
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-40-1b: no bare shell start "<path>" (missing empty title)
-    # ------------------------------------------------------------------
-
-    def test_no_bare_start_command(self):
-        """BUG-40-1b: 'shell start \"`' (no empty title) must not appear in dash.ado."""
-        text = self._ado_text()
-        # Match the old incorrect pattern: shell start immediately followed
-        # by a quote+backtick (the path macro).  An empty title would put
-        # the empty-string token between 'start' and the path.
-        import re
-        bad_pattern = re.compile(r'\bshell\s+start\s+"[^"]*`')
-        assert bad_pattern.search(text) is None, (
-            "dash.ado still contains 'shell start \"<path>' pattern "
-            "(missing empty title); Windows open will fail"
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-40-1c: dash-build path contains shell start ""
-    # ------------------------------------------------------------------
-
-    def test_dash_build_has_empty_title(self):
-        """BUG-40-1c: dash build Windows open also uses 'shell start \"\"'."""
-        text = self._ado_text()
-        # Count occurrences — both immediate-render and dash-build must use it
-        count = text.count('shell start ""')
-        assert count >= 2, (
-            f"Expected at least 2 occurrences of 'shell start \"\"' "
-            f"(one per Windows open site), found {count}"
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-40-1d: regression — macOS and Unix open commands unchanged
-    # ------------------------------------------------------------------
-
-    def test_mac_unix_open_commands_unchanged(self):
-        """BUG-40-1d: macOS 'shell open' and Unix 'shell xdg-open' still present."""
-        text = self._ado_text()
-        assert "shell open" in text, "macOS 'shell open' missing from dash.ado"
-        assert "shell xdg-open" in text, "Unix 'shell xdg-open' missing from dash.ado"
 
 
 # ===========================================================================
@@ -9742,48 +10125,33 @@ class TestByFallbackOnAllMissingFacets:
     # ------------------------------------------------------------------
 
     def test_server_source_zero_rows_all_missing(self, dr_module, auto_df):
-        """BUG-42-1d: server make_document source has 0 rows when all by() keys missing."""
-        from bokeh.document import Document
+        """BUG-42-1d: server make_document draws nothing when every by() key
+        is missing -- not the full ungrouped dataset.
+
+        This walked ``doc.roots`` one level deep for glyph renderers, but the
+        figures sit inside a GridPlot two levels down, so the walk found none
+        and the ``for gr in glyph_renderers:`` loop -- the only assertion --
+        ran zero times (WP-24, measured 24sep2026: the full 30 rows would
+        have passed just as silently).  The layers are read from the document
+        properly now: there is at least one, and each draws 0 rows.  The
+        control -- the same by() over real values -- draws 30 rows across its
+        panels, so an empty draw is a real absence, not an empty document."""
         df_na = auto_df.copy()
         df_na["foreign"] = float("nan")
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}],
             "graph_options": {"name": "g1", "by": "foreign"},
         }])
-        spec_path, data_path = _write_temp_files(df_na, spec)
-        out_f = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
-        out_f.close()
-        try:
-            builder = dr_module.ServerAppBuilder(spec_path, data_path)
-            builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b42d", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
-            doc = Document()
-            app_mod.make_document(doc)
-            # All glyph renderers should have empty (zero-length) data sources
-            renderers_list = []
-            for root in doc.roots:
-                if hasattr(root, "renderers"):
-                    renderers_list.extend(root.renderers)
-                elif hasattr(root, "children"):
-                    for child in root.children:
-                        if hasattr(child, "renderers"):
-                            renderers_list.extend(child.renderers)
-            glyph_renderers = [
-                r for r in renderers_list
-                if hasattr(r, "data_source") and hasattr(r, "glyph")
-            ]
-            for gr in glyph_renderers:
-                row_count = len(next(iter(gr.data_source.data.values()), []))
-                assert row_count == 0, (
-                    f"Expected 0-row source when all by() keys are missing, "
-                    f"got {row_count} rows"
-                )
-        finally:
-            for _p in (spec_path, data_path, out_f.name):
-                try: os.unlink(_p)
-                except OSError: pass
+        doc, _ = _exec_doc(dr_module, df_na, spec, "_b42d")
+        layers = _glyph_layers(doc.roots)
+        assert layers, "no glyph layer was drawn at all"
+        assert [len(r.data_source.data["mpg"]) for _f, r in layers] \
+            == [0] * len(layers), (
+            "an all-missing by() drew rows; the ungrouped data leaked in")
+        _doc, _ = _exec_doc(dr_module, auto_df, spec, "_b42d_ctl")
+        assert sum(len(r.data_source.data["mpg"])
+                   for _f, r in _glyph_layers(_doc.roots)) == len(auto_df), (
+            "the control by() over real values must draw the rows")
 
     # ------------------------------------------------------------------
     # BUG-42-1e: partial missing still produces groups for present values
@@ -10435,9 +10803,15 @@ class TestServeUniqueAppPath:
         try:
             dr_module.ServerAppBuilder(sp1, dp1).build(out_a.name)
             dr_module.ServerAppBuilder(sp2, dp2).build(out_b.name)
-            # Both files should exist and be non-empty
-            assert os.path.getsize(out_a.name) > 0, "File A is empty"
-            assert os.path.getsize(out_b.name) > 0, "File B is empty"
+            # Each file is a real server app -- it defines make_document --
+            # not merely non-empty (getsize > 0 passed on any byte).
+            def _defines_make_document(path):
+                with open(path, encoding="utf-8") as fh:
+                    tree = ast.parse(fh.read())
+                return "make_document" in {n.name for n in tree.body
+                                           if isinstance(n, ast.FunctionDef)}
+            assert _defines_make_document(out_a.name), "File A is not an app"
+            assert _defines_make_document(out_b.name), "File B is not an app"
             # Overwriting B must not affect A
             mtime_a_before = os.path.getmtime(out_a.name)
             _time.sleep(0.05)
@@ -10481,8 +10855,14 @@ class TestServeUniqueAppPath:
     # BUG-47-1e: Generated app is importable from a uniquely-named path
     # ------------------------------------------------------------------
     def test_BUG_47_1e_generated_app_importable_from_unique_path(self, dr_module, auto_df):
-        """make_document must work correctly when the .py file has an
-        unusual (unique / tempfile-style) name rather than 'dash_serve_app'."""
+        """make_document draws the dashboard when the .py file has an unusual
+        (unique / tempfile-style) name rather than 'dash_serve_app'.
+
+        This asserted ``len(doc.roots) > 0``, which the layout column
+        satisfies even from an empty draw (WP-24, measured 24sep2026).  The
+        served scatter is read: all 30 (weight, mpg) points, from an app
+        whose filename is a Stata tempfile style ST_99999.* -- so the fixed
+        name is gone and the unique one still runs."""
         import importlib.util as _ilu
         from bokeh.document import Document as _Doc
         spec = self._simple_spec()
@@ -10499,7 +10879,11 @@ class TestServeUniqueAppPath:
             ispec.loader.exec_module(mod)
             doc = _Doc()
             mod.make_document(doc)
-            assert len(doc.roots) > 0, "make_document produced no roots"
+            (_fig, r), = _glyph_layers(doc.roots)
+            assert type(r.glyph).__name__ == "Scatter"
+            assert sorted(zip(_drawn_values(r, "weight"),
+                              _drawn_values(r, "mpg"))) == \
+                sorted(zip(auto_df["weight"], auto_df["mpg"]))
         finally:
             for p in (sp, dp, out.name):
                 try:
@@ -10777,123 +11161,85 @@ class TestTimeoutUnitConsistency:
     # BUG-49-1e: no 'seconds' reference near timeout in any primary file
     # ------------------------------------------------------------------
     def test_BUG_49_1e_no_seconds_claim_near_timeout_in_sthlp(self):
-        """Verify the sthlp timeout synopt block no longer contains 'seconds'."""
+        """The sthlp timeout() synopt description must not say 'seconds'.
+
+        This searched ``(timeout\\(.*?{p_end})`` non-greedily.  The first
+        ``timeout(`` in the file is in the `dash serve' SYNTAX diagram, and
+        ``.*?{p_end}`` from there stops at the next ``{p_end}`` -- the
+        "Clear registry" heading two blocks down -- so the span it captured
+        never reached the synopt description at all.  "seconds" is not in
+        that span whatever the description says, and the whole thing was
+        also under ``if m:``, vacuous had the match failed (WP-24, measured
+        24sep2026: the synopt flipped to 'seconds' left this green while
+        1a caught it).
+
+        The description is now matched where it lives: from the ``{synopt:``
+        that names timeout to that entry's own ``{p_end}``, across the
+        wrapped continuation line.  The match is asserted (never vacuous),
+        and the positive control shows a 'seconds' in that block would be
+        seen -- so the absence check is real."""
         sthlp_path = os.path.join(os.path.dirname(__file__), "..", "dash.sthlp")
         with open(sthlp_path, "r", encoding="utf-8") as fh:
             content = fh.read()
         import re
-        m = re.search(r"(timeout\(.*?{p_end})", content, re.DOTALL)
-        if m:
-            blurb = m.group(1)
-            assert "seconds" not in blurb, (
-                "timeout() synopt in dash.sthlp must not say 'seconds' (BUG-49 regression)"
-            )
+        m = re.search(r"\{synopt:[^}]*timeout.*?\{p_end\}", content, re.DOTALL)
+        assert m, "no timeout() synopt entry found in dash.sthlp"
+        blurb = m.group(0)
+        assert "seconds" not in blurb, (
+            "timeout() synopt in dash.sthlp must not say 'seconds' (BUG-49 "
+            f"regression). Matched text: {blurb!r}"
+        )
+        # Positive control: a 'seconds' inside this very block is caught by
+        # the same search, so the assertion above is not vacuously true.
+        injected = content.replace(blurb, blurb.replace("minutes", "seconds"), 1)
+        control = re.search(r"\{synopt:[^}]*timeout.*?\{p_end\}", injected,
+                            re.DOTALL)
+        assert control and "seconds" in control.group(0), (
+            "the synopt search cannot see a 'seconds' in the timeout block")
 
 
 # ---------------------------------------------------------------------------
 # BUG-50 Regression tests — dash_setup aborts before dep checks when packaging absent
 # ---------------------------------------------------------------------------
-class TestDashSetupPackagingOrder:
-    """BUG-50: dash_setup.ado imported `packaging.version.Version` inside the
-    per-package loop (line ~82) but only installed `packaging` AFTER the loop
-    (line ~100-106).  On fresh environments, the first loop iteration raised
-    ModuleNotFoundError and exited dash_setup early.
-
-    Fix: moved the `packaging` install guard BEFORE the foreach loop so the
-    module is always available when version comparisons run.
-
-    Regression tests verify the static code structure ensures packaging is
-    installed before it is used.
-    """
-
-    # ------------------------------------------------------------------
-    # BUG-50-1a: packaging install guard appears before foreach loop
-    # ------------------------------------------------------------------
-    def test_BUG_50_1a_packaging_guard_before_foreach(self):
-        """packaging install guard must appear before the foreach loop in dash_setup.ado."""
-        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
-        with open(setup_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
-        pkg_guard_idx = content.find("import packaging")
-        foreach_idx = content.find("foreach pkg of local pkg_list")
-        assert pkg_guard_idx != -1, "packaging import not found in dash_setup.ado"
-        assert foreach_idx != -1, "foreach pkg loop not found in dash_setup.ado"
-        assert pkg_guard_idx < foreach_idx, (
-            "packaging install guard must come BEFORE the foreach loop "
-            "(BUG-50 regression: packaging was installed after it was used)"
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-50-1b: from packaging.version import appears after packaging guard
-    # ------------------------------------------------------------------
-    def test_BUG_50_1b_version_import_after_packaging_guard(self):
-        """from packaging.version import Version must appear AFTER the packaging guard."""
-        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
-        with open(setup_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
-        guard_idx = content.find("import packaging")
-        version_import_idx = content.find("from packaging.version import Version")
-        assert guard_idx != -1, "packaging guard not found in dash_setup.ado"
-        assert version_import_idx != -1, "from packaging.version import not found in dash_setup.ado"
-        assert guard_idx < version_import_idx, (
-            "'from packaging.version import Version' must come AFTER the packaging "
-            "install guard (BUG-50 regression)"
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-50-1c: pkg_has_packaging flag guards the version comparison block
-    # ------------------------------------------------------------------
-    def test_BUG_50_1c_version_gate_guarded_by_flag(self):
-        """The version-comparison block must be gated on pkg_has_packaging flag."""
-        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
-        with open(setup_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
-        assert "pkg_has_packaging" in content, (
-            "dash_setup.ado must use a pkg_has_packaging flag to guard version "
-            "comparisons when packaging installation fails (BUG-50 regression)"
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-50-1d: packaging is NOT installed after the foreach loop (old location gone)
-    # ------------------------------------------------------------------
-    def test_BUG_50_1d_old_post_loop_packaging_install_removed(self):
-        """The old post-loop packaging install block must no longer exist after the loop."""
-        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
-        with open(setup_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
-        foreach_idx = content.find("foreach pkg of local pkg_list")
-        # Find end of the foreach block (the closing "}")
-        # We look for the packaging install AFTER the foreach loop ends
-        loop_end = content.find("\n    }", foreach_idx)
-        if loop_end == -1:
-            loop_end = len(content)
-        after_loop = content[loop_end:]
-        # The old location was a comment "packaging module needed for version
-        # comparisons above" followed by capture python: import packaging
-        # Verify this comment/pattern no longer exists after the loop
-        assert "packaging module needed for version comparisons above" not in after_loop, (
-            "Old post-loop packaging install comment found after the foreach loop — "
-            "the guard should now be BEFORE the loop (BUG-50 regression)"
-        )
-
-    # ------------------------------------------------------------------
-    # BUG-50-1e: packaging install guard is present and well-formed
-    # ------------------------------------------------------------------
-    def test_BUG_50_1e_packaging_guard_is_well_formed(self):
-        """The packaging guard must have both capture check and install fallback."""
-        setup_path = os.path.join(os.path.dirname(__file__), "..", "dash_setup.ado")
-        with open(setup_path, "r", encoding="utf-8") as fh:
-            content = fh.read()
-        foreach_idx = content.find("foreach pkg of local pkg_list")
-        pre_loop = content[:foreach_idx]
-        assert "capture python: import packaging" in pre_loop, (
-            "packaging guard must include 'capture python: import packaging' before the loop"
-        )
-        assert 'pip", "install", "packaging"' in pre_loop or \
-               'pip install packaging' in pre_loop or \
-               '"packaging"' in pre_loop, (
-            "packaging guard must include a pip install step before the loop"
-        )
+# dash_setup.ado imported `packaging.version.Version` inside the per-package
+# loop but only installed `packaging` AFTER the loop, so on a fresh
+# environment the first iteration raised ModuleNotFoundError and dash_setup
+# stopped early.  The fix installs packaging BEFORE the loop, and the version
+# comparisons fall back when it cannot be installed.
+#
+# The five tests that stood here (TestDashSetupPackagingOrder, BUG-50-1a to
+# 1e) read dash_setup.ado's text: where `import packaging' first occurs, a
+# flag's name, a comment's absence.  Each passed with the behaviour it names
+# broken (measured 24sep2026 on scratch copies): the guard moved after the
+# loop behind a comment naming the import; an uncaptured `import
+# packaging.version' before the guard, which none of the five saw; the flag
+# ignored; the old post-loop install back without its comment; the guard's
+# install kept but never run, or run whether packaging was there or not.
+# dash_setup now runs in a sandbox that records pip and installs nothing
+# (test/setup_sandbox.py), and each claim is held by what it does:
+#   BUG-50-1a  the guard runs before the loop: test_setup_honesty.cscript
+#              HON-27 (packaging and bokeh missing: pip is asked for
+#              packaging first) and test_program_coverage.cscript PC-15
+#              (every version OK, which a comparison made before the guard
+#              reports as not verified); both fail with the guard moved.
+#   BUG-50-1b  nothing imports packaging.version before the guard: HON-26
+#              (packaging absent, its submodule too: setup does not stop,
+#              one pip call, every version not verified).  PC-18 and HON-21
+#              block packaging alone, and measured, an uncaptured `from
+#              packaging.version import Version' before the guard -- BUG-50
+#              itself -- passes both, the submodule being in the module
+#              cache; it fails HON-26.  `import packaging.version' fails all
+#              three.
+#   BUG-50-1c  the version comparison waits on the guard's verdict: PC-18
+#              and HON-21 (with the flag ignored the gate reports OK, which
+#              they refuse); and setup does not stop when packaging is
+#              absent, HON-26 (fails with the flag ignored and the gate's
+#              capture gone).
+#   BUG-50-1d  packaging is asked for once, never again after the loop:
+#              PC-18, HON-21 and HON-26 compare the whole list of pip calls.
+#   BUG-50-1e  the guard checks and installs: PC-15 and HON-28 (packaging
+#              present, no pip call) and PC-18, HON-21, HON-26 (missing, one
+#              pip call).
 
 
 class TestTheServerDispatchesThroughTheSharedTable:

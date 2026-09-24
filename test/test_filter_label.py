@@ -163,6 +163,35 @@ def _document_widget_titles(page):
     return titles
 
 
+def _document_strings_holding(page, needle):
+    """``(model, attribute)`` for every string in the Bokeh document embedded
+    in *page* that contains *needle*, one entry per string, in document
+    order: a model's attribute values are searched to any depth -- a
+    ColumnDataSource's data, a script's code and args, a widget's options --
+    and each hit is charged to the innermost model holding it."""
+    m = re.search(r'<script type="application/json"[^>]*>(.*?)</script>',
+                  page, re.DOTALL)
+    assert m, "the page carries no Bokeh document"
+    hits = []
+
+    def walk(node, owner):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and "name" in node:
+                for attr, value in (node.get("attributes") or {}).items():
+                    walk(value, (node["name"], attr))
+                return
+            for v in node.values():
+                walk(v, owner)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, owner)
+        elif isinstance(node, str) and needle in node:
+            hits.append(owner)
+
+    walk(json.loads(html.unescape(m.group(1))), None)
+    return hits
+
+
 class TestTheLabelIsNotAnInjectionVector:
     """It reaches a widget title that is rendered into the document."""
 
@@ -240,6 +269,21 @@ class TestTheLabelIsNotAnInjectionVector:
         # as text -- so the absence above is escaping at work and not a
         # title that never arrived.
         assert _document_widget_titles(page) == [want], raw
+        # And the title is the ONLY place in the document that holds it.
+        # Bokeh escapes the markup characters of the JSON it embeds, so the
+        # page-text checks above see a payload only where it reached the
+        # page outside the document: inside it, a label in an HTML sink --
+        # a Div's text, which BokehJS sets as innerHTML -- or spliced into a
+        # script's code passed them all (measured 24sep2026, both).  Every
+        # string holding the payload's call is found, wherever it sits; the
+        # third payload's label is its apostrophe alone, and its call is in
+        # the refused groups, so nothing in the document holds it.
+        where = _document_strings_holding(page, "alert(1)")
+        assert where == ([(self._WIDGET[ftype], "title")]
+                         if "alert(1)" in label else []), (raw, where)
+        # The reader finds the label itself, the apostrophe too, where it is.
+        assert (self._WIDGET[ftype], "title") in _document_strings_holding(
+            page, label), raw
 
 
 class TestTheTitleIsNotDoubleEscaped:

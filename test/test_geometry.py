@@ -45,8 +45,10 @@ _FIXTURE = os.path.join(_HERE, "fixtures", "geometry_truth.json")
 
 @pytest.fixture(scope="module")
 def truth():
-    if not os.path.exists(_FIXTURE):
-        pytest.skip("geometry_truth.json is missing")
+    # Committed (test_fixtures_are_committed.py): missing is a defect, and
+    # a skip here passed every check below that reads it.
+    assert os.path.exists(_FIXTURE), (
+        "test/fixtures/geometry_truth.json is missing")
     with open(_FIXTURE) as fh:
         return json.load(fh)
 

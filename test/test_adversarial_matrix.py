@@ -41,25 +41,30 @@ surface, this note is wrong and rule 19 applies.
 """
 import argparse
 import ast
+import base64
+import html as _htmllib
 import io
 import json
 import math
 import os
 import re
+import socket
+import struct
 import subprocess
 import sys
 import tempfile
 import time
 import tokenize
 import types
+import urllib.request
 import warnings
-from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
 import pytest
 from bokeh.document import Document
-from bokeh.models import ColumnDataSource, Div, RangeSlider, Select
+from bokeh.models import (ColumnDataSource, Div, GridPlot, Label, Legend,
+                          LegendItem, Plot, RangeSlider, Select, Title)
 from bokeh.plotting import figure
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -991,6 +996,75 @@ def _unthrottled(model, attr):
     return cbs[0]
 
 
+def _page_blocks(page):
+    """The raw text of the document blocks a saved page embeds, as the page
+    carries them -- HTML-escaped by Bokeh.  file_html (every layout but bs)
+    writes a ``<script type="application/json">`` block; components()
+    (layout(bs)) writes the JS string ``const docs_json = '...'``, whose
+    backslashes are doubled (test_layout_tabs.py reads them the same way)."""
+    blocks = re.findall(r'<script type="application/json" id="[^"]+">'
+                        r'\s*(.*?)\s*</script>', page, re.S)
+    blocks += [m.group(1).replace("\\\\", "\\") for m in
+               re.finditer(r"const docs_json = '(.*?)';", page, re.S)]
+    return blocks
+
+
+def _page_document(page):
+    """The one Bokeh document a saved page embeds, read back as models.
+
+    Not the page text: the page inlines BokehJS, which names every model and
+    class, and it HTML-escapes the document it embeds -- measured 24sep2026,
+    a legend label of 20,000 "<b>" and a title of 25,000 "<i>x</i>" are on
+    the page only as ``&lt;b&gt;`` and ``&lt;i&gt;``, so a check that
+    "<b><b>" is absent from the page cannot fail whatever the label became.
+    """
+    docs = [d for b in _page_blocks(page)
+            for d in json.loads(_htmllib.unescape(b)).values()]
+    assert len(docs) == 1, f"{len(docs)} embedded Bokeh documents, not 1"
+    return Document.from_json(docs[0])
+
+
+def _text_of(value):
+    """A text property's plain string: Bokeh writes a LegendItem label as
+    {"value": ...}, which reads back as a Value or a dict."""
+    if isinstance(value, dict):
+        return value.get("value")
+    return getattr(value, "value", value)
+
+
+def _strings_in(value):
+    """Every string a property value holds, through dicts, lists, tuples,
+    object arrays and Value wrappers; a model it refers to is left to
+    ``doc.select``, which visits every model."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from _strings_in(v)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            yield from _strings_in(v)
+    elif isinstance(value, np.ndarray):
+        if value.dtype == object:
+            for v in value.tolist():
+                yield from _strings_in(v)
+    elif isinstance(getattr(value, "value", None), str):
+        yield value.value
+
+
+def _holding(doc, needle):
+    """Sorted ``(model type, property)`` for every property of every model
+    in *doc* whose value holds *needle* -- defaults included, so nothing a
+    model draws is skipped."""
+    out = []
+    for m in doc.select({}):
+        for name, value in m.properties_with_values(
+                include_defaults=True).items():
+            if any(needle in s for s in _strings_in(value)):
+                out.append((type(m).__name__, name))
+    return sorted(out)
+
+
 # ===========================================================================
 # 4. if / in qualifiers
 # ===========================================================================
@@ -1238,13 +1312,34 @@ class TestSchemeIncludes:
                                                             monkeypatch):
         """The scheme travels into the generated app as ``repr`` of its
         property dict: a value carrying Python, JavaScript or a quote must
-        come out as a string literal and nothing else."""
+        come out as a string literal and nothing else -- in the source, and
+        when the app runs.
+
+        The source is read token by token, as before.  The app is now also
+        RUN -- imported and a session opened -- in the directory the payload
+        writes its marker to.  Measured 24sep2026: this test asserted the
+        marker absent without ever running the app, and its payload called
+        ``os.system('touch_pwned')``, a command that does not exist, so it
+        could leave no marker even when executed; an app that spliced the
+        carried value into code it runs at import (exec of
+        ``['<value>']``) passed it.  The payload now writes the marker from
+        Python, and the first assertion shows that it does whenever it is
+        executed in the context it is written to break out of.
+        """
         monkeypatch.chdir(tmp_path)
-        payload = "x'];__import__('os').system('touch_pwned')#"
+        marker = tmp_path / "pwned_marker"
+        payload = "x'];open('pwned_marker','w').close()#"
+        heading = '"</script><script>alert(1)</script>'
+        # The check can see an execution: closed into the list literal it
+        # breaks out of, the payload leaves the marker.
+        exec("_dash_probe = ['" + payload + "']", {})
+        assert marker.exists()
+        marker.unlink()
         (tmp_path / "hostile.scheme").write_text(
             "#include s2color\n"
             "color background %s\n"
-            "color heading \"</script><script>alert(1)</script>\n" % payload)
+            "color heading %s\n"
+            "color plotregion #abcdef\n" % (payload, heading))
         spec = make_spec([dict(_SCATTER)])
         spec["build_options"]["scheme"] = "hostile"
         src = _app_source(tmp_path, spec)
@@ -1254,10 +1349,24 @@ class TestSchemeIncludes:
             if tok.type not in (tokenize.STRING, tokenize.COMMENT):
                 code_only.append(tok.string)
         code = " ".join(code_only)
-        assert "touch_pwned" not in code
-        assert "__import__('os')" not in code
+        assert "_SCHEME_PROPS" in code   # the reader sees the code tokens
+        assert "pwned_marker" not in code
+        assert "alert(1)" not in code
         assert payload in src  # carried, as a literal
-        assert not (tmp_path / "touch_pwned").exists()
+        # Run: the app imported and a session opened, here.
+        ns = _load_app(src, "hostile_scheme")
+        doc = _session(ns)
+        assert not marker.exists(), "a scheme value was executed"
+        # The values reached the running app, as the text written ...
+        props = ns["_DASH_SCHEME"]._props
+        assert props["color background"] == payload
+        assert props["color heading"] == heading
+        # ... and no model of the served document holds either, where a
+        # colour from the same file does reach it (the reader can see it).
+        assert _holding(doc, "#abcdef") == [("figure",
+                                             "background_fill_color")]
+        assert _holding(doc, "pwned_marker") == []
+        assert _holding(doc, "alert(1)") == []
 
 
 # ===========================================================================
@@ -1435,6 +1544,27 @@ def _two_graph_spec(layout, limits=None):
     return spec
 
 
+def _three_graph_spec(layout):
+    """g1, g2 and g3, drawing mpg, price and foreign against weight, so each
+    figure is known by its y-axis title."""
+    spec = _two_graph_spec(layout)
+    spec["graphs"].append({
+        "plots": [{"type": "scatter", "yvar": "foreign", "xvar": "weight",
+                   "options": {}}],
+        "graph_options": {"name": "g3"}, "if_expr": "", "in_expr": ""})
+    spec["build_options"]["registry"] = "g1 g2 g3"
+    return spec
+
+
+def _grid_cells(doc):
+    """``[(row, col, y-axis title), ...]`` of the one GridPlot in *doc*,
+    sorted: where each figure sits, known by the variable it draws."""
+    grids = list(doc.select({"type": GridPlot}))
+    assert len(grids) == 1, f"{len(grids)} grids, not 1"
+    return sorted((r, c, str(m.yaxis[0].axis_label))
+                  for m, r, c in grids[0].children)
+
+
 class TestLayoutGridBound:
     """The saved page pads its grid to rows x cols cells.  Measured 23sep2026:
     a 4000 x 4000 grid of two graphs peaked at 1.5 GB, growing with the
@@ -1503,28 +1633,56 @@ class TestLayoutGridBound:
         names = ["g1", "g2"]
         assert r._compute_grid(names, layout) == r._compute_grid(names, "auto")
 
-    def test_the_served_app_reads_the_grid_with_the_same_rule(self, tmp_path):
-        src = _app_source(tmp_path, _two_graph_spec("2 1"))
-        assert "_dash_grid_dims(layout_opt)" in src
-        assert "int(parts[0])" not in src
-
+    # A zero is read as one in either place: a zero-column grid would
+    # divide by zero where the saved page fills its rows.  "2 0" and "0 0"
+    # were not here, so a reader that clamped the rows alone passed
+    # (measured 24sep2026: the saved render of layout(2 0) then raised
+    # ZeroDivisionError).
     @pytest.mark.parametrize("layout,dims", [
         ("2 3", (2, 3)), ("  2 \t 3 ", (2, 3)), ("0 5", (1, 5)),
+        ("2 0", (2, 1)), ("0 0", (1, 1)),
         ("999999999 1", (999999999, 1)), ("1234567890 1", None),
         ("2 3 4", None), ("2", None), ("auto", None), ("bs", None),
         ("g1:1,1", None), ("", None), (None, None)])
     def test_grid_dims(self, layout, dims):
         assert dr._dash_grid_dims(layout) == dims
 
-    @pytest.mark.parametrize("layout", [
-        "2 3", "0 5", "10 10", "g1:1,1 g2:3,4", "g1:0,0 g2:0,1",
-        "999999999 1", "1234567890 1"] + _LAX)
-    def test_the_measure_is_never_smaller_than_the_grid(self, layout):
-        """Whatever the grid reader builds, the cell count measured first."""
-        dims = dr._dash_grid_dims(layout)
-        if dims is not None:
-            cells = dr._dash_layout_cells(layout)
-            assert cells is not None and cells >= dims[0] * dims[1]
+    @pytest.mark.parametrize("layout,cells", [
+        ("2 3", 6), ("0 5", 5), ("2 0", 2), ("10 10", 100),
+        ("g1:1,1 g2:3,4", 12), ("g1:0,0 g2:0,1", 2),
+        ("999999999 1", 999999999), ("1234567890 1", 10 ** 18)]
+        + [(lax, None) for lax in _LAX])
+    def test_the_measure_is_never_smaller_than_the_grid(self, layout, cells,
+                                                        tmp_path):
+        """Whatever the grid reader builds, the cell count measured first.
+
+        The measure (``_dash_layout_cells``) is what ``_dash_cap_spec`` holds
+        to the graphs limit before either mode builds anything; the grid is
+        what the saved page's reader (``_compute_grid``: ``_dash_grid_dims``
+        for rows and columns, ``_dash_placement_map`` for placements) builds
+        from the same text.  They are the same number, or the measure says
+        the text is larger than any limit (an index too long to read, which
+        the cap draws as auto) or has no size of its own (auto is drawn).
+
+        This used to compare the two only where ``_dash_grid_dims`` read the
+        text -- three of its thirteen layouts -- and asked only that the
+        measure be no smaller: a measure one row and one column short for
+        every placement grid passed it (24sep2026)."""
+        assert dr._dash_layout_cells(layout) == cells
+        sp, dp = _write_inputs(tmp_path, _two_graph_spec(layout))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(sp, dp)
+        names = ["g1", "g2"]
+        auto = r._compute_grid(names, "auto")
+        rows, cols = r._compute_grid(names, layout)
+        if cells is None:
+            assert (rows, cols) == auto
+        elif cells == 10 ** 18:
+            assert cells > dr._DASH_LIMITS["graphs"][1]
+            assert (rows, cols) == auto
+        else:
+            assert rows * cols == cells
 
     def test_both_modes_are_bounded(self, tmp_path):
         spec = _two_graph_spec("99999 99999")
@@ -1642,6 +1800,36 @@ class TestALayoutThatCannotBeReadIsReported:
             "bs: g1=12 g9", "bs: g1=12 g9", {"g1"}, "x")
         assert got == "bs: g1=12 g9" and "g9 is not a registered" in problem
 
+    @pytest.mark.parametrize("layout,spec_of,cells", [
+        ("2 0", _two_graph_spec, [(0, 0, "mpg"), (1, 0, "price")]),
+        ("0 3", _three_graph_spec,
+         [(0, 0, "mpg"), (0, 1, "price"), (0, 2, "foreign")]),
+    ])
+    def test_a_zero_in_a_grid_is_one_in_both_modes(self, layout, spec_of,
+                                                   cells, tmp_path):
+        """layout(R C) with a zero in it, read the same way by both modes.
+
+        dash.ado refuses both (its grid form wants each number at least 1),
+        so they reach the renderer only in a spec that did not come through
+        it.  ``_dash_grid_dims`` reads each 0 as 1: layout(2 0) is 2 x 1 and
+        layout(0 3) is 1 x 3.  The served template once read the grid with
+        ``int()``, and a check that its source held the text
+        ``_dash_grid_dims(layout_opt)`` was all that guarded it -- a reading
+        that ignored that call's result passed.  Measured 24sep2026 on such a
+        reading: layout(2 0) served an empty grid, no figure placed, and
+        layout(0 3) fell through to the automatic 2 x 2 (the third figure at
+        row 1, column 0).  layout(0 2) could not tell them apart: the
+        automatic grid of two graphs is 1 x 2.  Each mode's own document is
+        read: the saved page's embedded one, and a served session's."""
+        spec = spec_of(layout)
+        page, _msgs = _render(tmp_path, spec)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            served = _session(_load_app(_app_source(tmp_path, spec),
+                                        "zero_grid"))
+        assert _grid_cells(_page_document(page)) == cells
+        assert _grid_cells(served) == cells
+
     @pytest.mark.parametrize("layout", ["nosuch:1,1", "g1:1,1 nosuch:2,2",
                                         "g1:1,1 junk"])
     def test_both_modes_draw_the_same_grid(self, layout, tmp_path):
@@ -1688,11 +1876,38 @@ class TestARepeatedLayoutNameIsPlacedOnce:
         assert rows == [[("g1", 4), ("g2", 6)]]
 
     def test_the_saved_page_embeds_a_repeated_item_once(self, tmp_path):
-        spec = _two_graph_spec("bs: " + "g1=6 " * 2000 + "g2=6")
-        html, _msgs = _render(tmp_path, spec)
-        # Each embedded root is one <div ... data-root-id=...>.
-        assert html.count("data-root-id") <= 4
-        assert len(html) < 5_000_000
+        """2,000 repeats of g1 make the page one placement of g1 makes.
+
+        Each embedded root is one ``<div id=... data-root-id=...>``, and the
+        page has exactly two -- g1 at its first place, then g2 -- each a
+        root of the page's one document, each element id once.  Then the
+        whole page: with its generated ids set aside it is the page of
+        layout(bs: g1=6 g2=6), character for character (measured 24sep2026:
+        equal, and two renders of one layout are equal too).  This used to
+        allow up to four roots, where the page has two: a reader that kept
+        a repeated name's first two places -- g1's div twice, one element
+        id on two elements -- passed it."""
+        page, msgs = _render(tmp_path, _two_graph_spec(
+            "bs: " + "g1=6 " * 2000 + "g2=6"))
+        said = [m for m in msgs if "placed more than once" in m]
+        assert len(said) == 1, msgs
+        assert said[0].endswith(
+            "g1 is placed more than once; its first place is kept."), said
+        divs = re.findall(r'<div id="([^"]+)" data-root-id="([^"]+)"', page)
+        doc = _page_document(page)
+        roots = {r.id: str(r.yaxis[0].axis_label) for r in doc.roots}
+        assert [roots.get(rid) for _eid, rid in divs] == ["mpg", "price"]
+        assert len({eid for eid, _rid in divs}) == 2
+        once_dir = tmp_path / "once"
+        once_dir.mkdir()
+        once, _ = _render(once_dir, _two_graph_spec("bs: g1=6 g2=6"))
+
+        def _ids_aside(text):
+            text = re.sub(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-"
+                          r"[0-9a-f]{12}", "UUID", text)
+            return re.sub(r"\bp\d{4,}\b", "PID", text)
+
+        assert _ids_aside(page) == _ids_aside(once)
 
     def test_the_served_grid_places_it_once(self, tmp_path):
         from bokeh.models import GridBox
@@ -1744,14 +1959,32 @@ class TestHostileSpec:
 
     def test_a_deeply_nested_spec_fails_before_anything_is_written(
             self, tmp_path):
-        sp = tmp_path / "deep.json"
-        sp.write_text("[" * 200000 + "]" * 200000)
+        """200,000 nested lists are refused by the JSON reader as the spec
+        is read -- a RecursionError "while decoding a JSON array", in a
+        hundredth of a second (measured 24sep2026) -- and no page is
+        written.
+
+        This used to accept any of RecursionError, ValueError, TypeError
+        and AttributeError: a main() that could render nothing at all
+        (DashRenderer called without its data: TypeError) passed it, and so
+        did a reader that swallowed the refusal and failed later on a list
+        (AttributeError).  The same data and output path render a valid
+        spec first, so the page that is absent is one main() writes."""
         dp = tmp_path / "data.json"
         dp.write_text(json.dumps(make_data_json(_DF)))
         out = tmp_path / "out.html"
+        good = tmp_path / "good.json"
+        good.write_text(json.dumps(make_spec([dict(_SCATTER)])))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            dr.main(str(good), str(dp), str(out))
+        assert out.stat().st_size > 0
+        out.unlink()
+        sp = tmp_path / "deep.json"
+        sp.write_text("[" * 200000 + "]" * 200000)
         t0 = time.monotonic()
-        with pytest.raises((RecursionError, ValueError, TypeError,
-                            AttributeError)):
+        with pytest.raises(RecursionError,
+                           match="while decoding a JSON array"):
             dr.main(str(sp), str(dp), str(out))
         assert time.monotonic() - t0 < 30
         assert not out.exists()
@@ -1846,15 +2079,18 @@ class TestHealthEndpoint:
     def test_trusted_rotating_keys_share_the_first_contact_budget(
             self, fresh_limiters, monkeypatch):
         """Trusted, each forged address is a new key -- and every new key
-        is charged to ONE first-contact window, so the cycle gets no more
-        than one client's 600."""
+        is charged to ONE first-contact window, so the cycle gets one
+        client's 600: the first 600 answered, the other 900 refused, on a
+        clock that stands still.  This asked only for at most 600 answered
+        and at least 900 refused, so a first-contact window of 300 -- or of
+        none, every trusted client refused -- passed it (24sep2026)."""
         ns = fresh_limiters.ns
         monkeypatch.setitem(ns, "_TRUST_FORWARDED_FOR", True)
         statuses = [_health(ns, _Req("10.7.7.8", **{
             "X-Forwarded-For": "198.18.%d.%d" % (i // 256, i % 256)}))[0]
             for i in range(1500)]
-        assert statuses.count(200) <= ns["_HEALTH_LIMIT_RPM"]
-        assert statuses.count(429) >= 900
+        assert ns["_HEALTH_LIMIT_RPM"] == 600
+        assert statuses == [200] * 600 + [429] * 900
 
 
 class _ServerRecorder:
@@ -1865,10 +2101,172 @@ class _ServerRecorder:
         type(self).calls.append(kw)
 
 
+def _free_port():
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+class _LiveApp:
+    """The generated app running itself -- ``python app.py --port P``, the
+    launcher ``dash serve`` runs -- with ``BOKEH_ALLOW_WS_ORIGIN`` unset
+    unless *env* sets it (``{port}`` in a value is the app's port).
+
+    Stopped on every path.  test_server_serves.py's _Launched raises out of
+    ``__enter__`` when the app exits early or never answers, and a context
+    manager whose ``__enter__`` raises gets no ``__exit__``, so an app still
+    starting was left running; here a failure while starting stops the
+    process before it propagates.  The app's output goes to a file, not a
+    pipe that a chatty app could fill and stall on, and is quoted when the
+    app will not start.  ``--show`` is never passed: no browser opens."""
+
+    def __init__(self, app_path, env=None):
+        self.app = app_path
+        self.env = dict(env or {})
+        self.port = None
+        self.proc = None
+        self._log = None
+        self._log_path = app_path + ".log"
+
+    def __enter__(self):
+        self.port = _free_port()
+        env = {k: v for k, v in os.environ.items()
+               if k != "BOKEH_ALLOW_WS_ORIGIN"}
+        env.update({k: v.format(port=self.port) for k, v in self.env.items()})
+        try:
+            self._log = open(self._log_path, "w", encoding="utf-8")
+            self.proc = subprocess.Popen(
+                [sys.executable, self.app, "--port", str(self.port)],
+                cwd=os.path.dirname(self.app), env=env,
+                stdout=self._log, stderr=subprocess.STDOUT)
+            deadline = time.monotonic() + 60
+            while not self._answers():
+                if self.proc.poll() is not None:
+                    raise AssertionError(
+                        "the app exited early:\n" + self._tail())
+                if time.monotonic() > deadline:
+                    raise AssertionError(
+                        "the app never answered:\n" + self._tail())
+                time.sleep(0.2)
+        except BaseException:
+            self._stop()
+            raise
+        return self
+
+    def __exit__(self, *exc):
+        self._stop()
+        return False
+
+    def _answers(self):
+        try:
+            with urllib.request.urlopen(
+                    "http://127.0.0.1:%d/health" % self.port,
+                    timeout=5) as r:
+                return r.status == 200
+        except OSError:          # refused, reset, or an HTTP error status
+            return False
+
+    def _stop(self):
+        if self.proc is not None and self.proc.poll() is None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait(timeout=15)
+        if self._log is not None and not self._log.closed:
+            self._log.close()
+
+    def _tail(self):
+        self._log.flush()
+        with open(self._log_path, encoding="utf-8", errors="replace") as fh:
+            return fh.read()[-3000:]
+
+    def session(self, origin):
+        """``(status, first message type)`` for a browser's websocket
+        handshake sent with *origin* -- the page fetched for its session
+        token, then ``/ws`` asked to upgrade with the Bokeh subprotocol and
+        that token, as BokehJS asks.  ``(101, "ACK")`` is a session opened;
+        a refusal is its status and None.  Measured 24sep2026 on this app:
+        an origin it allows is answered 101 and then the server's ACK, one
+        it does not is answered 403 before any upgrade."""
+        with urllib.request.urlopen("http://127.0.0.1:%d/" % self.port,
+                                    timeout=10) as r:
+            page = r.read().decode("utf-8", "replace")
+        token = re.search(r'"token":\s*"([^"]+)"', page)
+        assert token, "the served page carries no session token"
+        key = base64.b64encode(os.urandom(16)).decode("ascii")
+        request = ("GET /ws HTTP/1.1\r\n"
+                   "Host: 127.0.0.1:%d\r\n"
+                   "Upgrade: websocket\r\n"
+                   "Connection: Upgrade\r\n"
+                   "Sec-WebSocket-Key: %s\r\n"
+                   "Sec-WebSocket-Version: 13\r\n"
+                   "Sec-WebSocket-Protocol: bokeh, %s\r\n"
+                   "Origin: %s\r\n\r\n") % (self.port, key, token.group(1),
+                                            origin)
+        with socket.create_connection(("127.0.0.1", self.port),
+                                      timeout=10) as s:
+            s.sendall(request.encode("utf-8"))
+            buf = b""
+            while b"\r\n\r\n" not in buf:
+                chunk = s.recv(4096)
+                assert chunk, "the connection closed inside the response"
+                buf += chunk
+            head, _, buf = buf.partition(b"\r\n\r\n")
+            status = re.match(rb"HTTP/1\.[01] (\d{3}) ", head)
+            assert status, head[:200]
+            if int(status.group(1)) != 101:
+                return int(status.group(1)), None
+
+            def _take(n):
+                nonlocal buf
+                while len(buf) < n:
+                    chunk = s.recv(4096)
+                    assert chunk, "the connection closed inside a frame"
+                    buf += chunk
+                out, buf = buf[:n], buf[n:]
+                return out
+
+            # The server's first frame, unmasked: the ACK message's header.
+            b0, b1 = _take(2)
+            assert b0 & 0x0F == 1, "the first frame is not text: %r" % b0
+            size = b1 & 0x7F
+            if size == 126:
+                size = struct.unpack(">H", _take(2))[0]
+            elif size == 127:
+                size = struct.unpack(">Q", _take(8))[0]
+            return 101, json.loads(_take(size))["msgtype"]
+
+
+@pytest.fixture(scope="class")
+def live_app(tmp_path_factory):
+    """One served app, running itself with no BOKEH_ALLOW_WS_ORIGIN."""
+    tmp = tmp_path_factory.mktemp("live_origin")
+    _app_source(tmp, make_spec([dict(_SCATTER)]))
+    with _LiveApp(os.path.join(str(tmp), "app.py")) as app:
+        yield app
+
+
+def _launcher_said(app):
+    """What a running _LiveApp's launcher has written to its console."""
+    with open(app._log_path, encoding="utf-8") as fh:
+        return fh.read()
+
+
 class TestSessionOrigin:
     """The websocket Origin check.  The served app passes Bokeh an
     allowlist; Bokeh lower-cases the Origin's host:port and matches it with
-    ``check_allowlist``.  Nothing tested either half before."""
+    ``check_allowlist``.  Nothing tested either half before.
+
+    The origins are sent to the app running itself, as ``dash serve`` runs
+    it, in the handshake a browser makes (``_LiveApp.session``).  They used
+    to be matched in the test process: the allowlist ``_dash_server_app``
+    handed a stand-in Server, run through Bokeh's ``check_allowlist`` after
+    the test had lower-cased the origin itself.  Measured 24sep2026, both
+    of these passed that: a launcher that added ``*`` to the allowlist it
+    started (``_dash_server_app`` untouched), and an origin check that no
+    longer lower-cased what it was sent."""
 
     @pytest.fixture
     def allowlist(self, served_app, monkeypatch):
@@ -1882,31 +2280,37 @@ class TestSessionOrigin:
     def test_the_default_allowlist_is_loopback_on_the_port(self, allowlist):
         assert sorted(allowlist) == ["127.0.0.1:5006", "localhost:5006"]
 
+    # {P} is the live app's port, {Q} the port after it.
+    @pytest.mark.serve
     @pytest.mark.parametrize("origin", [
-        "http://evil.example:5006",
-        "http://localhost:5006.evil.example",
-        "http://localhost.evil.example:5006",
-        "http://127.0.0.1.nip.io:5006",
-        "http://localhost:5007",
+        "http://evil.example:{P}",
+        "http://localhost:{P}.evil.example",
+        "http://localhost.evil.example:{P}",
+        "http://127.0.0.1.nip.io:{P}",
+        "http://localhost:{Q}",
         "http://localhost",
-        "http://0.0.0.0:5006",
-        "http://[::1]:5006",
+        "http://0.0.0.0:{P}",
+        "http://[::1]:{P}",
         "null",
-        "http://localhost:5006@evil.example",
-        "http://evil.example/#localhost:5006",
-        "http://\u217cocalhost:5006",          # Roman numeral fifty: a homoglyph
+        "http://localhost:{P}@evil.example",
+        "http://evil.example/#localhost:{P}",
+        "http://\u217cocalhost:{P}",          # Roman numeral fifty: a homoglyph
     ])
-    def test_a_foreign_origin_is_refused(self, allowlist, origin):
-        from bokeh.server.util import check_allowlist
-        host = urlparse(origin).netloc.lower()
-        assert not check_allowlist(host, allowlist), origin
+    def test_a_foreign_origin_is_refused(self, live_app, origin):
+        sent = origin.format(P=live_app.port, Q=live_app.port + 1)
+        assert live_app.session(sent) == (403, None), sent
+        # The same handshake from loopback opens a session: the refusal is
+        # the origin check's, not an app that opens none.
+        assert live_app.session(
+            "http://localhost:%d" % live_app.port) == (101, "ACK")
 
-    @pytest.mark.parametrize("origin", ["http://localhost:5006",
-                                        "http://127.0.0.1:5006",
-                                        "http://LOCALHOST:5006"])
-    def test_loopback_is_accepted(self, allowlist, origin):
-        from bokeh.server.util import check_allowlist
-        assert check_allowlist(urlparse(origin).netloc.lower(), allowlist)
+    @pytest.mark.serve
+    @pytest.mark.parametrize("origin", ["http://localhost:{P}",
+                                        "http://127.0.0.1:{P}",
+                                        "http://LOCALHOST:{P}"])
+    def test_loopback_is_accepted(self, live_app, origin):
+        sent = origin.format(P=live_app.port)
+        assert live_app.session(sent) == (101, "ACK"), sent
 
     def test_an_operator_origin_is_added_literally(self, served_app,
                                                    monkeypatch):
@@ -1918,16 +2322,74 @@ class TestSessionOrigin:
         assert "dash.example.org:5006" in kw["allow_websocket_origin"]
         assert "*" not in kw["allow_websocket_origin"]
 
-    def test_bokeh_lets_the_environment_replace_it(self, monkeypatch):
+    @pytest.mark.serve
+    def test_bokeh_lets_the_environment_replace_it(self, live_app, tmp_path,
+                                                   monkeypatch):
         """Pinned third-party behaviour (BR-20.3): Bokeh's websocket handler
         uses BOKEH_ALLOW_WS_ORIGIN, when it is set, INSTEAD of the app's
-        allowlist.  An operator who sets it owns the origin policy."""
+        allowlist.  An operator who sets it owns the origin policy.
+
+        What the code promises, read 24sep2026 in bokeh 3.9's
+        ``WSHandler.check_origin``: when the setting is non-empty,
+        ``allowed_hosts = set(settings.allowed_ws_origin())`` replaces
+        ``self.application.websocket_origins`` -- the list the app passed --
+        where Bokeh's own ``bokeh serve`` documentation (the docstring of
+        bokeh/command/subcommands/serve.py) speaks of "additional hosts".
+        So the app is run with the variable naming one origin: that origin
+        opens a session, and loopback -- the app's own allowlist -- is
+        refused.
+        This used to read the setting in the test process and find the
+        word ``allowed_ws_origin`` in Bokeh's source; a Bokeh that extended
+        the allowlist instead, and a launcher that dropped the variable,
+        both passed it (24sep2026)."""
         from bokeh.settings import settings
-        monkeypatch.setenv("BOKEH_ALLOW_WS_ORIGIN", "evil.example:5006")
-        assert "evil.example:5006" in (settings.allowed_ws_origin() or [])
-        import inspect
-        from bokeh.server.views.ws import WSHandler
-        assert "allowed_ws_origin" in inspect.getsource(WSHandler.check_origin)
+        monkeypatch.setenv("BOKEH_ALLOW_WS_ORIGIN", "a.example:1,b.example:2")
+        assert settings.allowed_ws_origin() == ["a.example:1", "b.example:2"]
+        # Without the variable (the class's app): loopback opens a session
+        # and the origin about to be allowed is refused -- both answers can
+        # be told apart, and the variable is what changes them.
+        assert live_app.session(
+            "http://evil.example:%d" % live_app.port) == (403, None)
+        assert live_app.session(
+            "http://localhost:%d" % live_app.port) == (101, "ACK")
+        _app_source(tmp_path, make_spec([dict(_SCATTER)]))
+        with _LiveApp(os.path.join(str(tmp_path), "app.py"),
+                      {"BOKEH_ALLOW_WS_ORIGIN": "evil.example:{port}"}) as app:
+            p = app.port
+            assert app.session("http://evil.example:%d" % p) == (101, "ACK")
+            assert app.session("http://localhost:%d" % p) == (403, None)
+            assert app.session("http://127.0.0.1:%d" % p) == (403, None)
+            assert app.session("http://evil.example:%d" % (p + 1)) == (
+                403, None)
+            said = _launcher_said(app)
+        # The launcher verifies the variable at start (CLAUDE.md rule 15)
+        # and says what it does, naming what it admits; it used to say
+        # nothing, and the page at the address it printed stayed blank
+        # (24sep2026).  Looked for by its own "dash: " opening: Bokeh's
+        # refusals name the variable and the origin too.  The app without
+        # the variable says nothing of it.
+        note = [ln for ln in said.splitlines()
+                if ln.startswith("dash: BOKEH_ALLOW_WS_ORIGIN")]
+        assert len(note) == 1, said
+        assert "instead of" in note[0], note
+        assert ("evil.example:%d" % p) in note[0], note
+        assert "any web site" not in said, said
+        assert "dash: BOKEH_ALLOW_WS_ORIGIN" not in _launcher_said(live_app)
+
+    @pytest.mark.serve
+    def test_a_star_in_the_environment_is_warned_of(self, tmp_path):
+        """BOKEH_ALLOW_WS_ORIGIN=* admits every origin -- Bokeh's rule, the
+        operator's to choose (above) -- so any web site the user visits
+        while the dashboard runs can open a session with it and read what
+        it draws.  The launcher says so, prominently, at start; it said
+        nothing (measured 24sep2026)."""
+        _app_source(tmp_path, make_spec([dict(_SCATTER)]))
+        with _LiveApp(os.path.join(str(tmp_path), "app.py"),
+                      {"BOKEH_ALLOW_WS_ORIGIN": "*"}) as app:
+            assert app.session("http://attacker.example") == (101, "ACK")
+            said = _launcher_said(app)
+        assert "dash: BOKEH_ALLOW_WS_ORIGIN" in said, said
+        assert "any web site can open a session" in said, said
 
     def test_the_refusal_page_carries_no_request_data(self, fresh_limiters,
                                                       monkeypatch):
@@ -2139,34 +2601,91 @@ class TestTextPlotOptionBounds:
 
     def test_a_legend_order_of_a_hundred_thousand_keys_is_bounded(self,
                                                                  tmp_path):
+        """order() of 100,000 keys -- 0, 1, 2 over and over -- is read in
+        bounded time and drawn as twoway draws it, from the graph's own two
+        keys.
+
+        twoway draws every key order() lists, a repeat as often as it is
+        listed, and drops a number that is no key.  Measured 24sep2026 in
+        Stata 19.5 on (scatter mpg weight) (scatter price weight), counting
+        the key labels in the exported SVG: order(1 2 1 2) drew each key
+        twice, and this very list drew 33,333 of each -- 66,666 entries,
+        after more than ten minutes; dash takes 2 s.  The entries are
+        references to the two keys the graph has, not 66,666 keys of their
+        own.  This used to check only that a page came back: a renderer
+        that built a new key for every listed number (66,666 LegendItem
+        models on the page, rendered in 15 s) passed it, and so did one
+        that dropped the order in silence."""
         spec = make_spec([dict(_SCATTER), dict(_SCATTER2)])
         spec["graphs"][0]["graph_options"]["legend"] = (
             "order(" + " ".join(str(i % 3) for i in range(100000)) + ")")
         t0 = time.monotonic()
-        html, _msgs = _render(tmp_path, spec)
+        page, _msgs = _render(tmp_path, spec)
         assert time.monotonic() - t0 < 30
-        assert "<html" in html.lower()
+        doc = _page_document(page)
+        legends = list(doc.select({"type": Legend}))
+        assert len(legends) == 1, legends
+        items = list(legends[0].items)
+        assert [_text_of(it.label) for it in items] == ["mpg",
+                                                         "price"] * 33333
+        assert len(list(doc.select({"type": LegendItem}))) == 2
+        assert len({it.id for it in items}) == 2
 
     def test_a_long_legend_label_is_escaped_once(self, tmp_path):
+        """label(1 "...") of 20,000 "<b>" becomes key 1's label as written,
+        held once, and escaped once on the page.
+
+        A legend label is text BokehJS draws, so the model carries the raw
+        text, and the page's only escaping is Bokeh's own, of the document
+        it embeds: the label is on the page once, as 20,000 ``&lt;b&gt;``.
+        This used to check that "<b><b>" was not on the page -- it never
+        is, since the page escapes its document -- and that the page was
+        under 3.2 MB: a label escaped before it reached the model (drawn as
+        ``&lt;b&gt;``, on the page as ``&amp;lt;b&amp;gt;``) passed it, and
+        so did a label that was dropped (24sep2026)."""
         text = "<b>" * 20000
         spec = make_spec([dict(_SCATTER), dict(_SCATTER2)])
         spec["graphs"][0]["graph_options"]["legend"] = 'label(1 "%s")' % text
         t0 = time.monotonic()
-        html, _msgs = _render(tmp_path, spec)
+        page, _msgs = _render(tmp_path, spec)
         assert time.monotonic() - t0 < 30
-        assert "<b><b>" not in html
-        assert len(html) < 2_000_000 + 20 * len(text)
+        doc = _page_document(page)
+        legends = list(doc.select({"type": Legend}))
+        assert len(legends) == 1, legends
+        assert [_text_of(it.label) for it in legends[0].items] == [
+            text, "price"]
+        assert _holding(doc, text) == [("LegendItem", "label")]
+        (block,) = _page_blocks(page)
+        assert block.count("&lt;b&gt;" * 20000) == 1
+        assert "&amp;lt;b&amp;gt;" not in block
 
 
 class TestGraphTextBounds:
 
     def test_a_long_title_is_drawn_once_in_bounded_time(self, tmp_path):
-        text = "<i>x</i>" * 25000   # 200,000 characters
+        """A 200,000-character title and note are each drawn once, as
+        written: the title by the figure's Title, the note by one Label.
+
+        This used to check that "<i>x</i><i>x</i>" was not on the page --
+        it never is, since the page HTML-escapes the document it embeds --
+        and that the page was under 6 MB, room for eight copies of each: a
+        title escaped before it reached its model, and a title drawn a
+        second time, both passed it (24sep2026).  The note now has a text
+        of its own, so each text is known by what holds it."""
+        title = "<i>x</i>" * 25000   # 200,000 characters
+        note = "<u>y</u>" * 25000
         spec = make_spec([dict(_SCATTER)])
-        spec["graphs"][0]["graph_options"]["title"] = text
-        spec["graphs"][0]["graph_options"]["note"] = text
+        spec["graphs"][0]["graph_options"]["title"] = title
+        spec["graphs"][0]["graph_options"]["note"] = note
         t0 = time.monotonic()
-        html, _msgs = _render(tmp_path, spec)
+        page, _msgs = _render(tmp_path, spec)
         assert time.monotonic() - t0 < 30
-        assert "<i>x</i><i>x</i>" not in html
-        assert len(html) < 2_000_000 + 20 * len(text)
+        doc = _page_document(page)
+        assert [t.text for t in doc.select({"type": Title})] == [title]
+        assert [lb.text for lb in doc.select({"type": Label})] == [note]
+        assert _holding(doc, title) == [("Title", "text")]
+        assert _holding(doc, note) == [("Label", "text")]
+        (block,) = _page_blocks(page)
+        assert block.count(_htmllib.escape(title, quote=False)) == 1
+        assert block.count(_htmllib.escape(note, quote=False)) == 1
+        assert "&amp;lt;" not in block

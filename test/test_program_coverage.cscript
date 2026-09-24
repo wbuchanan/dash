@@ -626,12 +626,15 @@ program define _pc_setup, rclass
     return scalar ncalls = `pc_sb_n'
 end
 
-// Does the setup log hold a phrase?  Searched in Mata, by value.
+// Does the setup log hold a phrase?  Searched in Mata, by value, in the
+// log's logical lines: Stata wraps a line at the column, anywhere, so a
+// phrase is looked for with the wrapped pieces re-joined.  r(found) is -1
+// when the log cannot be read.
 capture program drop _pc_said
 program define _pc_said, rclass
     args phrase
-    mata: st_local("n", strofreal(_cert_file_has(st_global("PC_SETUP_LOG"), st_local("phrase"), 0)))
-    return scalar found = `n'
+    mata: st_local("n", strofreal(_cert_log_count(st_global("PC_SETUP_LOG"), st_local("phrase"), 0)))
+    return scalar found = cond(`n' < 0, -1, `n' > 0)
 end
 global PC_SETUP_LOG "`c(tmpdir)'pc_setup.log"
 
@@ -724,6 +727,8 @@ _pc_setup
 local rc = r(rc)
 local match = r(match)
 if `match' != 1 {
+    // _pc_setup leaves what the sandbox recorded in $PC_SB_WHY.
+    mata: st_global("PC_WHY", st_global("PC_SB_WHY"))
     _pc_fail PC-18
 }
 assert `rc' == 0
@@ -747,6 +752,8 @@ _pc_setup
 local rc = r(rc)
 local match = r(match)
 if `match' != 1 {
+    // _pc_setup leaves what the sandbox recorded in $PC_SB_WHY.
+    mata: st_global("PC_WHY", st_global("PC_SB_WHY"))
     _pc_fail PC-19
 }
 assert `rc' == 198
@@ -771,6 +778,8 @@ _pc_setup
 local rc = r(rc)
 local match = r(match)
 if `match' != 1 {
+    // _pc_setup leaves what the sandbox recorded in $PC_SB_WHY.
+    mata: st_global("PC_WHY", st_global("PC_SB_WHY"))
     _pc_fail PC-20
 }
 assert `rc' == 0

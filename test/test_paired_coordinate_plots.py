@@ -90,13 +90,28 @@ def _vars(ptype):
             "y2var": "y2", "x2var": "x2", "options": {}}
 
 
+def _drawn(fig):
+    """``[(glyph type, rows)]`` for each renderer of *fig*: what it draws,
+    and from how many rows of its source."""
+    return [(type(r.glyph).__name__,
+             max((len(v) for v in r.data_source.data.values()), default=0))
+            for r in fig.renderers]
+
+
 class TestEveryPairedCoordinateTypeDraws:
+    #: What each draws from _DATA's two observations (measured 24sep2026):
+    #: one Segment, a segment per observation; pcscatter one Scatter, a
+    #: marker at each end of each, four.  ">= 1" renderer passed a layer
+    #: drawn twice, or drawn from no rows.
+    DRAWN = {"pcspike": [("Segment", 2)], "pcarrow": [("Segment", 2)],
+             "pcbarrow": [("Segment", 2)], "pcscatter": [("Scatter", 4)]}
+
     @pytest.mark.parametrize("ptype", ["pcspike", "pcarrow", "pcbarrow",
                                        "pcscatter"])
     def test_a_four_variable_type_draws(self, ptype):
         fig = _render(_vars(ptype))
-        assert len(fig.renderers) >= 1, (
-            f"`dash {ptype} y1 x1 y2 x2' draws nothing and says nothing"
+        assert _drawn(fig) == self.DRAWN[ptype], (
+            f"`dash {ptype} y1 x1 y2 x2' draws {_drawn(fig)}"
         )
 
     def test_pci_draws_from_literal_coordinates(self):
@@ -104,8 +119,8 @@ class TestEveryPairedCoordinateTypeDraws:
         fig = _render({"type": "pci",
                        "values": [[20.0, 3000.0, 30.0, 4000.0]],
                        "options": {}})
-        assert len(fig.renderers) >= 1, (
-            "`dash pci 20 3000 30 4000' draws nothing and says nothing"
+        assert _drawn(fig) == [("Segment", 1)], (
+            "`dash pci 20 3000 30 4000' draws %r" % _drawn(fig)
         )
 
     def test_pci_puts_the_segment_where_stata_does(self):
@@ -139,5 +154,13 @@ class TestEveryPairedCoordinateTypeDraws:
                      "options": {}}, quiet=False)
 
     def test_no_values_draws_nothing_without_raising(self):
+        """A pci with no records renders, and draws nothing: its layer's one
+        Segment holds no row (measured 24sep2026).  The control first,
+        through the same reader: one record draws one segment.  This used
+        to assert `isinstance(len(fig.renderers), int)', which every figure
+        passes -- one with a segment drawn from nowhere included."""
+        one = _render({"type": "pci", "values": [[1.0, 1.0, 2.0, 2.0]],
+                       "options": {}})
+        assert _drawn(one) == [("Segment", 1)]
         fig = _render({"type": "pci", "values": [], "options": {}})
-        assert isinstance(len(fig.renderers), int)
+        assert _drawn(fig) == [("Segment", 0)]

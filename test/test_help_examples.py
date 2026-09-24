@@ -235,7 +235,18 @@ class TestEveryExampleStartsAParagraph:
         assert hx.rendered_problems(self.GOOD, 4) == []
 
     def test_fewer_example_lines_than_the_file_has_fails(self):
-        assert hx.rendered_problems(self.GOOD, 5)
+        assert hx.rendered_problems(self.GOOD, 5) == [
+            "4 example lines rendered as lines of their own; the file has 5"]
+
+    def test_more_example_lines_than_the_file_has_fails(self):
+        """As many lines render with the prompt as the file has example
+        lines, no more either: a line written ``{input}. dash ...`` renders
+        with the prompt, and neither the reader nor the plain scan (both
+        look for ``{cmd:.``) sees it, so it would never run.  Until
+        24sep2026 rendered_problems() failed only too few lines, and a
+        comparison of ``<`` for its ``!=`` passed every other test here."""
+        assert hx.rendered_problems(self.GOOD, 3) == [
+            "4 example lines rendered as lines of their own; the file has 3"]
 
 
 # ---------------------------------------------------------------------------
@@ -879,6 +890,51 @@ class TestTheJudge:
     ])
     def test_a_warning_a_sub_option_note_or_a_traceback_is_flagged(self, line):
         assert len(hx.judge(line + "\n", 0, 0, [])) == 1
+
+    #: What Bokeh 3.9 logs to stderr when it finds the document it is saving
+    #: broken, measured 24sep2026 (a glyph naming a column its source lacks,
+    #: a figure with no renderers, a layout with no children): Python
+    #: logging's basic format, LEVEL:logger:message.  The first is 265
+    #: characters, so a Stata log at linesize 255 shows it wrapped, and it
+    #: is given here as the log shows it.
+    BOKEH_ERROR = ("ERROR:bokeh.core.validation.check:E-1001 (BAD_COLUMN_NAME): "
+                   "Glyph refers to nonexistent column name. This could either "
+                   "be due to a misspelling or typo, or due to an expected "
+                   "column being missing. : y='b' [no close matches] "
+                   "{renderer: GlyphRenderer(id='p1046', ...)}")
+    BOKEH_LOGGED = [
+        BOKEH_ERROR[:255] + "\n> " + BOKEH_ERROR[255:],
+        "WARNING:bokeh.core.validation.check:W-1000 (MISSING_RENDERERS): "
+        "Plot has no renderers: figure(id='p1053', ...)",
+        "WARNING:bokeh.core.validation.check:W-1002 (EMPTY_LAYOUT): Layout "
+        "has no children: Column(id='p1087', ...)",
+    ]
+
+    @pytest.mark.parametrize("logged", BOKEH_LOGGED)
+    def test_a_line_bokeh_logs_is_flagged(self, logged):
+        """help_examples.FLAGGED's LEVEL:logger: pattern.  Its "Warning:"
+        pattern is case-sensitive and never matched these (24sep2026): an
+        example whose page Bokeh logged as broken was judged clean, and
+        with the LEVEL:logger: pattern taken out every test here passed."""
+        whole = hx.log_lines(logged)[0]
+        assert hx.judge(logged + "\n", 0, 0, []) == [
+            "prints a logged warning or error: " + whole]
+
+    def test_a_logged_line_the_help_shows_is_not_flagged(self):
+        """The control: the pattern flags what the help does not show, not
+        the words themselves."""
+        line = self.BOKEH_LOGGED[1]
+        assert hx.judge(line + "\n", 0, 0, [line]) == []
+
+    def test_a_line_logged_below_warning_is_not_flagged(self):
+        """INFO is no problem: the pattern names WARNING, ERROR and
+        CRITICAL -- an INFO line in the same format is not flagged, and a
+        CRITICAL one is."""
+        info = "INFO:bokeh.server.server:Starting Bokeh server"
+        critical = "CRITICAL:bokeh.server.server:Cannot start Bokeh server"
+        assert hx.judge(info + "\n", 0, 0, []) == []
+        assert hx.judge(critical + "\n", 0, 0, []) == [
+            "prints a logged warning or error: " + critical]
 
 
 class TestSavedFileAndRegisteredName:

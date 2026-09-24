@@ -2184,7 +2184,7 @@ Stata's `c(python_exec)` is `/opt/anaconda3/bin/python3` (bokeh 3.8.0, pandas
 **A green pytest run does not prove the Stata path works against the libraries
 it actually loads.**
 
-### L3. The UTF-8 guard's rejection branch has never executed — S1, READ, CLOSED by 7ddbc08 (WP-08's test_utf8_validation.cscript)
+### L3. The UTF-8 guard's rejection branch has never executed — S1, READ, CLOSED by 7ddbc08 and WP-24 (WP-08's test_utf8_validation.cscript, and WP-24's UTF-13 and exact gates)
 
 `_dash_check_utf8` is called by exactly two tests
 (`test_ado_loads.cscript:94`, `test_mata_autoload.cscript:52`) and **both pass
@@ -2199,9 +2199,18 @@ designated enforcement point.
 `test/fixtures/utf8_cases.txt` against Python's own decoder (UTF-01 to
 UTF-10) and runs `_dash_check_utf8` itself on a UTF-16 surrogate, which it
 rejects (UTF-12).  Re-run 23sep2026 at `4ede074`: passed.  The traceability
-matrix gives L3 to WP-24 (with WP-08); nothing is left for WP-24 here.
+matrix gives L3 to WP-24 (with WP-08).
 
-### L4. Tests that assert a name exists rather than a behaviour — S2, READ
+**Tightened by WP-24** (24sep2026).  Measured: with the gate's message
+reduced to "invalid input" UTF-01..12 all passed, and with its exit code
+changed UTF-01..12 did; a fixture cut to its comments was a skip; a gate
+moved from one program to another, or commented out with `*`, still counted
+six.  UTF-13 runs every sequence of A9's table through the gate for r(198)
+and "non-UTF-8"; UTF-10 holds exactly 2,245 fixture sequences and exits 601
+on a missing fixture; UTF-11 names the program each of the six gates sits
+in.
+
+### L4. Tests that assert a name exists rather than a behaviour — S2, READ, CLOSED by WP-24
 
 `_dash_json_get_str` — added *as the fix* for the "immediate render truncates
 quoted `if` expressions" bug — is covered only by
@@ -2214,7 +2223,25 @@ which parse `dash.ado` as a string.
 all coverage is `ServerAppBuilder` text/AST inspection. So ~420 "server" tests
 prove the generated *source* is right and 17 prove it *runs*.
 
-### L5. Three tests cannot fail — S2, READ
+**Closed by WP-24** (24sep2026).  Every test that reads source text was
+classified -- 481 of them: 46 were the only coverage of their behaviour, 89
+deliberate structural guards (each now says so in its docstring), 205
+duplicated by a behavioural test, 141 not source tests at all.  All 46 run
+the code now: `_dash_json_get_str` has 43 behavioural cases and
+`test_qualifier_literals.cscript` QL-01..15; the paired-coordinate checks
+are `test_parser.cscript` P1A-56; `test_serve_options.cscript` [6/7] and
+[7/7] run `_dash_serve_spec`; the Windows browser commands run through one
+opener, `_dash_open_page`, whose command each platform's case reads
+without running it (`test_serve_browser.cscript` SB-13..20); `dash_setup`'s
+eight source checks are held by runs of `dash_setup` itself in a sandbox
+(`test_setup_honesty.cscript` HON-19..28, `test_program_coverage.cscript`
+PC-15..26); the layout and websocket-origin checks of
+`test_adversarial_matrix.py` drive both modes and a live server.  Of
+`test_server.py`'s 39 app-source tests, 35 had a behavioural twin, 2 are
+structural guards, and the other 2 now run the app: a filter move leaves a
+pci segment where it was, and `by_total` adds its panel in both modes.
+
+### L5. Three tests cannot fail — S2, READ, CLOSED by WP-24
 
 - `test_filter_label.py:155-161`, `test_a_payload_does_not_reach_the_document`:
   wraps the render in `except Exception: return`, so any exception is green;
@@ -2231,7 +2258,17 @@ notably `test_resource_limits.py:206`
 `test_a_power_tower_does_not_hang_the_served_app`, a resource-exhaustion test
 with no assertion and no timeout.
 
-### L6. Pass conditions that go vacuously green on a wording change — S2, READ
+**Closed by WP-24** (24sep2026).  Measured at `a2c7502`: 23 of 4367 test
+functions verified nothing (the count above predates the suite's growth),
+and the `if False` line is gone.  All 23, and the three above, assert what
+they name, each shown to fail under a break of its subject;
+`test_options.py`'s claim was false -- nothing clamps an out-of-range RGB --
+and three tests of what Stata does replace it.  `test/test_test_integrity.py`
+fails a test that catches AssertionError, swallows an exception, verifies
+nothing, returns before verifying or asserts what cannot be false, with an
+empty allowlist.
+
+### L6. Pass conditions that go vacuously green on a wording change — S2, READ, CLOSED by WP-24
 
 `test_conformance.cscript:126-146` (C-03) detects failure by string-matching
 `"drew nothing"` in a Stata log. `test_every_plot_type_draws.py:77-95` derives
@@ -2239,17 +2276,43 @@ its parametrization from a regex over the display string at `dash.ado:940-944`;
 reflow that message and a type silently drops out, and the `>= 30` guard at
 `:139` would not notice losing one or two.
 
-### L7. Untested programs and functions — S2, READ
+**Closed by WP-24** (24sep2026).  C-03 and C-04 read the saved page's
+document, C-01's corpus is the renderer's own list of plot types, and C-00
+tests the readers; `test_every_plot_type_draws.py` is parametrized by
+`_dash_plot_type_names()`, held equal to the Mata table.  The same shapes
+were found throughout and replaced with checks of what the page or the app
+draws: floors made exact, needles that the inlined BokehJS carries on every
+page read from the document instead, absence checks given controls, loops
+that could run zero times guarded, a skip where a failure belonged made a
+failure.  `cert_file_has` searched 32,768-character pieces alone and log
+searches depended on the checkout's path; `cert_helpers.do` reads files
+whole and `cert_log_has` searches a log's logical lines.
+
+### L7. Untested programs and functions — S2, READ, CLOSED by WP-24
 
 Never named in any test file: `_dash_formats_json` (`dash.ado:1266`),
 `_dash_date_fmts_swap` (`:1309`), `_dash_date_fmts_restore` (`:1322`). These
 three are also the only three omitted from the existence loop at
 `test_ado_loads.cscript:69-77`. Format strings are user-supplied and flow into
-the spec JSON.
+the spec JSON.  (Corrected by WP-24: the loop listed 22 of the 56 programs
+then, not all but these three.)
 
 **`dash_setup` itself is never executed** — 75 textual hits, zero invocations.
 
 `dash serve`'s happy path: zero coverage (see C2).
+
+**Closed by WP-24** (24sep2026).  Instrumented, the certification suite
+entered 61 of 63 ado programs (`dash_setup`'s body never) and 52 of 55 Mata
+functions, and pytest executed 434 of 440 renderer functions.
+`test_program_coverage.cscript` PC-01..11 and PC-31 test the three programs
+with ordinary, edge, hostile and abbreviated input on both routes -- they
+lost a hostile date format, and a failing jsonio left dates `%12.0g`, both
+fixed -- and PC-15..26 run `dash_setup` end to end in a sandbox that starts
+no process.  `test/program_coverage_map.py` names the behavioural test of
+every ado program and Mata function, and `test/function_test_map.py` that of
+every renderer function, each measured to fail when the function's body is
+skipped; their guards fail on a unit with no test.  `dash serve`'s happy
+path is C2's, closed by WP-23.
 
 ### L8. Dead test assets — S3, MEASURED
 
@@ -2275,7 +2338,7 @@ colordis colorv mlabg mlabp mlabs xt yt`. The fixture is a **stale pre-fix
 record, not current behaviour**, and should say so — otherwise the next
 auditor re-reports 25 resolved items as live gaps.
 
-### L9. Bug-regression convention — S3, READ
+### L9. Bug-regression convention — S3, READ, CLOSED by WP-24
 
 `BUGS.md` holds 73 entries, all `[x]`. 67 name a regression test in their
 Resolution; **six do not** (`BUGS.md:341, 359, 383, 395, 413, 431`), two of
@@ -2293,8 +2356,13 @@ them.  Three closed entries have no covering test at all and say so:
 `dash build`, and `ylabel(#5, grid)`.
 `test/test_tracking_documents.py` now fails any closed entry that names no
 existing test, except those three, which it lists by name
-(`CLOSED_WITHOUT_A_TEST`).  L9 stays open, and WP-24's, until those three
-have tests.
+(`CLOSED_WITHOUT_A_TEST`).
+
+**Closed by WP-24** (24sep2026): `test/test_bug_regressions.cscript` BR-01
+(the fills, in both modes), BR-02 (no "file not found" on `dash build`, the
+one-line form or `dash serve`; WP-03's AC-03.4) and BR-03 (`ylabel(#5,
+grid)` against twoway), with `test/test_bug_regressions.py`, each failing
+with its fix reverted.  `CLOSED_WITHOUT_A_TEST` is empty.
 
 ### L10. Auth bypass — not a gap — standing note (WP-20)
 

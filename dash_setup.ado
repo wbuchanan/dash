@@ -2,7 +2,8 @@
 *! Installs and verifies all dependencies required by the dash command.
 *!
 *! Dependencies checked:
-*!   - Python (via c(python_exec); python query reports the version)
+*!   - Python (via c(python_exec); its version, read from sys.version,
+*!     is checked against the minimum)
 *!   - Python packages: bokeh, numpy, pandas (all required; no plot type
 *!                      needs scipy or statsmodels, see section 3)
 *!   - Stata package: jsonio (auto-installed from SSC if missing)
@@ -49,9 +50,9 @@ program define dash_setup
     // and the certification suite has already paid for that mistake: the
     // first python call of a session returns a nonzero rc under the runner
     // on a machine where dash renders Bokeh output seconds later, so nine
-    // scripts skipped and the runner printed ALL TESTS PASSED.  `python
-    // query' is still used below, to REPORT the version, which is what it
-    // is for.
+    // scripts skipped and the runner printed ALL TESTS PASSED.  The
+    // version is read below, from sys.version, once Python is known to be
+    // configured.
     if `"`c(python_exec)'"' == "" {
         display as error "Python is not available to Stata."
         display as error "Please install Python 3.8+ and link it to Stata:"
@@ -65,8 +66,8 @@ program define dash_setup
 
     // Retrieve Python version string and compare it to the minimum.
     //
-    // `python query' succeeds for ANY linked Python, 3.6 included, and this
-    // step used to read the version only to print it.  dash_setup.sthlp says
+    // Any linked Python answers, 3.6 included, and this step used to read
+    // the version only to print it.  dash_setup.sthlp says
     // this step verifies Python 3.8+, so it now does: a user on 3.7 was told
     // "OK (version 3.7.9)" and sent on to fail later inside bokeh, with a
     // message about neither Python nor dash.

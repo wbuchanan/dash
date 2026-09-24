@@ -232,14 +232,33 @@ _F3_NOT_TWOWAY = ("xreverse", "yreverse", "xalternate", "yalternate",
 
 
 class TestTheDeclarations:
+    """Structural guards over dash.ado's -syntax- declarations and rule
+    table, which pytest cannot run (they are Stata).  Each reads the
+    declared minimum, or a rule's bound, out of the source.
+
+    A declaration that matches twoway's minimum does not by itself prove
+    dash behaves like twoway: the option could be rewritten to another name
+    before -syntax- sees it (measured 24sep2026: with `mlaban(' rewritten
+    to `mlabangle(', or `xoverhan' to `xoverhangs', ahead of the parser,
+    every test here stayed green), and the clwidth ceiling read here is
+    never exercised at its edge.  The behaviour -- twoway's minimum taken
+    as the option, the spelling one letter shorter refused and named as
+    typed, and clwidth()/lwidth() drawn at 0 and 10000 and refused past
+    them -- is measured against twoway in test_twoway_option_parity.cscript
+    TP-02..TP-06 and TP-13, which those four mutations each fail."""
+
     @pytest.mark.parametrize("name,minimum", sorted(_F3_PLOT.items()))
     def test_the_plot_parser_declares_it_with_twoways_minimum(self, name,
                                                              minimum):
+        """Structural: the declared minimum, read from the source (see the
+        class docstring).  The behaviour is the cscript's TP-13."""
         assert _declared("_dash_parse_plot_opts").get(name) == minimum
 
     @pytest.mark.parametrize("name,minimum", sorted(_F3_GRAPH.items()))
     def test_the_graph_parser_declares_it_with_twoways_minimum(self, name,
                                                               minimum):
+        """Structural: the declared minimum, read from the source (see the
+        class docstring).  The behaviour is the cscript's TP-13b."""
         assert _declared("_dash_parse_graph_opts").get(name) == minimum
 
     @pytest.mark.parametrize("name", _F3_NOT_TWOWAY)
@@ -280,6 +299,10 @@ class TestTheDeclarations:
              "rconnected", "rscatter", "pcscatter", "pccapsym", "scatteri"])
 
     def test_clwidth_has_lwidths_bounds(self):
+        """Structural: the rule's bounds, read from the source (see the
+        class docstring).  The ceiling is exercised at its edge -- 10000
+        drawn, 10000.001 refused, for clwidth() and lwidth() alike -- in
+        the cscript's TP-13c."""
         rules = _program_body(_ado(), "_dash_option_rules")
         assert "clwidth=style,0,10000" in rules
 

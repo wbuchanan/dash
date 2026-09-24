@@ -175,6 +175,34 @@ class TestTheSimulatedStates:
         sb.restore()
         assert importlib.import_module("colorsys") is colorsys
 
+    def test_a_blocked_package_blocks_its_cached_submodules_too(self):
+        """The import system looks a dotted name up in sys.modules before
+        it looks at the name's parent, so blocking a package alone left
+        every submodule already imported importable: with packaging
+        blocked, `from packaging.version import Version' still succeeded
+        from the cache, and test_program_coverage.cscript PC-18 could not
+        see a dash_setup that imports the submodule before its guard
+        (measured 24sep2026).  The submodules are blocked with the package
+        and come back with it, the same objects."""
+        import html
+        import html.parser
+        sb.install(block=("html",))
+        with pytest.raises(ImportError):
+            importlib.import_module("html.parser")
+        with pytest.raises(ImportError):
+            exec("from html.parser import HTMLParser", {})
+        sb.restore()
+        assert importlib.import_module("html.parser") is html.parser
+        assert sys.modules["html"] is html
+
+    def test_a_recorded_install_lifts_the_submodules_too(self):
+        import html.parser
+        sb.install(block=("html",), unblock_on_install=("html",))
+        with pytest.raises(ImportError):
+            importlib.import_module("html.parser")
+        subprocess.run([sys.executable, "-m", "pip", "install", "html"])
+        assert importlib.import_module("html.parser") is html.parser
+
     def test_a_recorded_install_lifts_the_block(self):
         sb.install(block=("colorsys",), unblock_on_install=("colorsys",))
         with pytest.raises(ImportError):

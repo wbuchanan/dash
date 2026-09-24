@@ -1129,6 +1129,16 @@ CORPUS = [
           {"xlabel": "minmax", "ylabel": ", format(%9.0fc)"}),
     _case("xlabel with labelled ticks and an angle", [_sc()], None,
           {"xlabel": '2000 "two" 4000 "four", angle(45)'}),
+    # No served test asserted a y-axis label angle (WP-24): the entry above
+    # turns the x axis only, and test_help_claims_7.py compares the served
+    # ylabel() axis with the served ylabel2() axis, so a served-only fault
+    # common to both was invisible.  Measured 24sep2026 with every served
+    # y axis reset to "horizontal" after it is labelled: the whole corpus,
+    # test_help_claims_7.py and test_graph_options.py's TestAxisLabelAngle
+    # stayed green, and this entry fails.  Parity alone passes when both
+    # modes drop the angle, so TestTheYLabelAngleEntry pins the value.
+    _case("ylabel(, angle(vertical))", [_sc()], None,
+          {"ylabel": ", angle(vertical)"}),
     _case("xtick()", [_sc()], None, {"xtick": "2500 3500"}),
     _case("xscale(log)", [_sc()], None, {"xscale": "log"}),
     _case("legend(off)", [_sc(), plot_for("lfit")], None, {"legend": "off"}),
@@ -1936,6 +1946,9 @@ class TestTheCorpusIsComplete:
          lambda s: bool(s["build_options"].get("title"))),
         ("legend()", lambda s: any(g["graph_options"].get("legend")
                                    for g in s["graphs"])),
+        ("a y-axis label angle",
+         lambda s: any("angle(" in str(g["graph_options"].get("ylabel", ""))
+                       for g in s["graphs"])),
         ("yaxis(2)", lambda s: any(p.get("options", {}).get("yaxis") == "2"
                                    for g in s["graphs"] for p in g["plots"])),
         ("level()", lambda s: s["build_options"].get("level") != "95"),
@@ -2154,3 +2167,43 @@ class TestTheTabsEntryBuildsTwoTabs:
         doc, _warns = _served(self._spec())
         got = [c for root in doc.roots for c in _tab_contents(root)]
         assert got == self._WANT
+
+
+# ---------------------------------------------------------------------------
+# The "ylabel(, angle(vertical))" corpus entry draws vertical y labels
+# ---------------------------------------------------------------------------
+
+class TestTheYLabelAngleEntry:
+    """The entry's own value, in both modes.  The parity checks compare the
+    two modes with each other, so they pass when both drop the angle; this
+    pins what the entry exists for.  angle(vertical) is Stata's anglestyle
+    vertical, 90 degrees (anglestyle-vertical.style; the reader is
+    test_twoway_option_parity.py's TestTheAnglestyleReader), which a Bokeh
+    axis draws as a major_label_orientation of pi/2 -- the y labels read
+    upwards, as twoway draws them.  The control: the bare scatter entry's
+    y axis reads "horizontal" through the same profile, so the reader
+    tells the two apart."""
+
+    @staticmethod
+    def _axes(entry):
+        case = next(p for p in CORPUS if p.values[0] == entry)
+        pair = _render_pair(*case.values)
+        out = {}
+        for side in ("std", "srv"):
+            figs = pair[side]["figures"]
+            assert len(figs) == 1, (entry, side, len(figs))
+            out[side] = figs[0]["axes"]
+        return out
+
+    def test_both_modes_turn_the_y_labels_vertical(self):
+        for side, axes in self._axes("ylabel(, angle(vertical))").items():
+            assert [a["orientation"] for a in axes["y"]] == [
+                _num(math.pi / 2)], (side, axes["y"])
+            # ylabel() turns the y axis alone.
+            assert [a["orientation"] for a in axes["x"]] == [
+                "horizontal"], (side, axes["x"])
+
+    def test_the_control_reads_horizontal_without_the_option(self):
+        for side, axes in self._axes("scatter").items():
+            assert [a["orientation"] for a in axes["y"]] == [
+                "horizontal"], (side, axes["y"])

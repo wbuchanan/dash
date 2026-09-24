@@ -1234,6 +1234,14 @@ It is not an access control: a client that is not a browser can omit the
 header or forge an accepted one.  There is no password.
 
 {pstd}
+Bokeh's environment variable {cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set,
+replaces that allow-list: Bokeh admits the origins it names {it:instead of}
+{cmd:localhost}, {cmd:127.0.0.1} and {cmd:--allow-websocket-origin}.  The
+app says so when it starts, naming them, and warns when the variable holds
+{cmd:*}, which lets any website open a session with your dashboard.  Unset
+it to have the app's own list apply.
+
+{pstd}
 So the generated app is a single-user tool.  It embeds every observation of
 the variables the dashboard uses, and anything that can reach the port can
 read them.  If you open it beyond loopback, put it behind something that

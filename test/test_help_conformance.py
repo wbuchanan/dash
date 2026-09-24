@@ -555,14 +555,33 @@ class TestTheParsersFoundSomething:
             "a {synopt} row of the KPI statistic table was read as an "
             "option: the exclusion of the table no longer holds")
 
+    # The floors these were ("at least 120", "at least 20", "at least 3", ...)
+    # told a reader that found something from one that found nothing, and
+    # no more: a reader that lost part of what it reads cleared them.  Each
+    # count below was measured 24sep2026, with the break each floor let
+    # through; a change to dash.ado or the help that moves one moves it on
+    # purpose, and is re-measured here.
+
     def test_the_ado_parser_finds_the_whole_surface(self):
-        assert len(_ado_declarations()) >= 120
+        # 167 options.  _dash_kpi's syntax moved into a helper program,
+        # _dash_kpi left calling it, took the two options only it declares
+        # out of the scan: 165, above "120", and the check that every
+        # dash-only option is documented no longer saw them.  (The plot
+        # parser alone declares 90 options no other program does.)
+        assert len(_ado_declarations()) == 167
 
     def test_the_ignored_list_was_found(self):
-        assert len(_ignored_options()) >= 20
+        # 44 names, all of them in the plot parser's list (the graph
+        # parser's 23 are among them).  The plot parser initialising
+        # `_dash_unknown' at its top, before that list, ended the scan of
+        # the parser there: 23, above "20".
+        assert len(_ignored_options()) == 44
 
     def test_the_unsupported_section_was_found(self):
-        assert len(_unsupported_section()) >= 3
+        # 44 names.  A blank line inside the first grouped entry of the
+        # Unsupported section ended that entry after its first line: 37,
+        # above "3".
+        assert len(_unsupported_section()) == 44
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -573,8 +592,12 @@ class TestTheParsersFoundSomething:
     def test_the_entry_parser_cuts_the_help_into_entries(self):
         entries = _help_entries()
         defs = [t for k, _, t in entries if k == "definition"]
-        assert len(defs) >= 150, (
-            f"only {len(defs)} definition entries cut out of dash.sthlp")
+        # 317 definition entries.  The six rows of the second-axis table
+        # written as {p2col:} rows, which the cutter starts no entry at,
+        # left 311 -- above "150", with those rows read as prose.
+        assert len(defs) == 317, (
+            f"{len(defs)} definition entries cut out of dash.sthlp, 317 "
+            f"measured 24sep2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (
@@ -583,7 +606,11 @@ class TestTheParsersFoundSomething:
 
     def test_the_fold_scan_finds_the_aliases(self):
         aliases = _fold_aliases()
-        assert len(aliases) >= 10, f"only {len(aliases)} folds found"
+        # 12 aliases.  One fold written in plain quotes rather than
+        # compound ones -- `if "`xla2'" != "" ...' -- is no fold the scan
+        # reads: 11, above "10", and the check that the help names xla2()
+        # beside xlabel2() never asked about it.
+        assert len(aliases) == 12, f"{len(aliases)} folds found, 12 measured"
         assert aliases.get("mlg") == {"mlabgap"}
         assert aliases.get("bins") == {"bin"}
         assert {"bwidth", "barwidth"} <= aliases.get("bw", set()), (
@@ -616,7 +643,10 @@ class TestTheParsersFoundSomething:
 
     def test_the_synonym_claims_were_found(self):
         claims = {(a, b) for a, b, _ in _help_synonym_claims()}
-        assert len(claims) >= 8, f"only {len(claims)} synonym claims read"
+        # 12 claims.  One written "Also {cmd:yti2()}" rather than
+        # "Synonym: {cmd:yti2()}" is no claim the reader takes: 11, above
+        # "8", and never checked against what dash takes.
+        assert len(claims) == 12, f"{len(claims)} synonym claims read, 12 measured"
         assert ("pbgc", "plotbgcolor") in claims
         assert ("plotr", "plotregion") in claims
 
@@ -821,8 +851,13 @@ class TestKpiStatisticsAreDocumented:
 
     def test_the_list_was_found(self):
         """Guards the guard below: a moved `valid_stats' list must fail
-        here rather than let the table check pass on nothing."""
-        assert len(self._valid_stats()) >= 10
+        here rather than let the table check pass on nothing.
+
+        All 15 statistics (measured 24sep2026).  The list continued on a
+        second `local valid_stats "`valid_stats' ..."' line -- p25, p50 and
+        p75 added there -- read 12, above the "10" this was, and the table
+        check never asked about the three."""
+        assert len(self._valid_stats()) == 15
 
     def test_every_accepted_statistic_is_in_the_table(self):
         """A help-to-code consistency guard, deliberately over text: every
@@ -871,4 +906,9 @@ class TestInternalLinksResolve:
         assert not dupes, f"duplicate {{marker}} names: {sorted(dupes)}"
 
     def test_the_reference_scan_found_something(self):
-        assert len(re.findall(r"dash##[a-z_0-9]+", _help_text())) >= 10
+        # 60 links to 27 markers (measured 24sep2026).  A link whose marker
+        # is written with a capital -- {help dash##Scheme:...}, to no
+        # marker at all -- is no link the scan reads: 59, above the "10"
+        # this was, and the dead link passed the check above.
+        refs = re.findall(r"dash##[a-z_0-9]+", _help_text())
+        assert len(refs) == 60 and len(set(refs)) == 27

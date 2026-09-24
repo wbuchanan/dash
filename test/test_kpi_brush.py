@@ -34,6 +34,7 @@ format, and a second copy would drift — exactly the failure that
 """
 import json
 import os
+import re
 import sys
 import tempfile
 
@@ -88,14 +89,36 @@ def _render(*, update, var="mpg", filters=None, link=""):
     return out, dr
 
 
-def _n_selection_callbacks(dr):
-    n = 0
+def _selection_callbacks(dr):
+    """``[(event, CustomJS)]``: every callback on the selection of every
+    source the renderer drew from, each source once.
+
+    This counted the KEYS of ``js_property_callbacks'' -- the events -- so
+    a callback on the wrong event counted as one: measured 24sep2026, the
+    ``> 0'' checks below passed with the brush callback attached to
+    ``line_indices'', which a box or lasso selection of markers never
+    changes, so no card followed a brush."""
+    out, seen = [], set()
     for src in dr.sources.values():
-        sel = getattr(src, "selected", None)
-        if sel is None:
+        if id(src) in seen:
             continue
-        n += len(getattr(sel, "js_property_callbacks", {}) or {})
-    return n
+        seen.add(id(src))
+        sel = getattr(src, "selected", None)
+        for event, cbs in (getattr(sel, "js_property_callbacks", {})
+                           or {}).items():
+            for cb in (cbs if isinstance(cbs, list) else [cbs]):
+                out.append((event, cb))
+    return out
+
+
+def _n_selection_callbacks(dr):
+    return len(_selection_callbacks(dr))
+
+
+def _brush_kpis(dr):
+    """``[(event, [KPI names in the callback's configuration])]``."""
+    return [(event, [k["name"] for k in json.loads(cb.args["kpi_config_json"])])
+            for event, cb in _selection_callbacks(dr)]
 
 
 _RANGE_FILTER = [{"varname": "weight", "type": "range", "exclude": [],
@@ -105,15 +128,17 @@ _RANGE_FILTER = [{"varname": "weight", "type": "range", "exclude": [],
 class TestABrushKpiCanActuallyRecompute:
 
     def test_a_selection_callback_is_attached(self):
+        """One callback, on the selection's indices, recomputing k1.  (It
+        was ``> 0'' of the events: see _selection_callbacks.)"""
         _, dr = _render(update="brush")
-        assert _n_selection_callbacks(dr) > 0, (
+        assert _brush_kpis(dr) == [("change:indices", ["k1"])], (
             "update(brush) attaches no selection callback, so the card can "
-            "never recompute"
+            "never recompute: %s" % _brush_kpis(dr)
         )
 
     def test_both_gets_a_selection_callback_too(self):
         _, dr = _render(update="both", filters=_RANGE_FILTER)
-        assert _n_selection_callbacks(dr) > 0
+        assert _brush_kpis(dr) == [("change:indices", ["k1"])], _brush_kpis(dr)
 
     def test_both_is_still_in_the_filter_callback(self):
         """The fix must not trade one mode for the other."""
@@ -131,13 +156,19 @@ class TestABrushKpiCanActuallyRecompute:
 
         update(brush) removed the KPI from the filter callback AND attached
         no selection callback, so both counts were zero.
+
+        ``n_filter + n_brush > 0'' passed with the brush callback on an
+        event a brush never changes (see _selection_callbacks).  The card
+        recomputes on a brush, and -- update(brush), not both -- not on a
+        filter move.
         """
         _, dr = _render(update="brush", filters=_RANGE_FILTER)
         n_filter = len(json.loads(
             dr.filter_callbacks[0].args["kpi_config_json"]))
-        n_brush = _n_selection_callbacks(dr)
-        assert n_filter + n_brush > 0, (
-            "the card recomputes on neither filters nor brushing"
+        assert n_filter == 0, n_filter
+        assert _brush_kpis(dr) == [("change:indices", ["k1"])], (
+            "the card recomputes on neither filters nor brushing: %s"
+            % _brush_kpis(dr)
         )
 
     def test_the_variable_reaches_the_brushed_source(self):
@@ -165,28 +196,42 @@ class TestTheArithmeticIsNotDuplicated:
         )
 
 
-class TestTheEmptySelectionFallback:
-    """Matches the server: no selection means all rows, not no rows."""
-
-    def test_the_brush_js_falls_back_to_every_row(self):
-        js = dash_render._BRUSH_JS
-        assert "indices" in js
-        assert ("length === 0" in js or "length == 0" in js
-                or "!idx" in js), (
-            "with nothing selected the card must show the statistic over "
-            "every row, as the server path does"
-        )
+# The empty-selection fallback -- no selection means all rows, not no rows,
+# as the server path does -- is held by
+# TestTheShippedBrushJsActuallyComputes::test_clearing_the_selection_restores_every_row,
+# which runs the shipped brush code with nothing selected.  The source-text
+# test that stood here (TestTheEmptySelectionFallback::
+# test_the_brush_js_falls_back_to_every_row: "length === 0" in _BRUSH_JS) is
+# removed.  Measured 24sep2026: with the fallback deleted both failed, and
+# with it disabled but its text left in place (`if (idx.length === 0 &&
+# false)') the text test passed and the running one failed.
 
 
 class TestTheDocumentedTableIsNowTrue:
 
     def test_the_help_still_claims_standalone_brush_support(self):
-        """If someone later documents it away, this fails and asks why."""
+        """If someone later documents it away, this fails and asks why.
+
+        A structural guard over dash.sthlp's text, which is what it is
+        about.  It checked only that the row's label was there, so the row
+        could say No for the saved page and pass: measured 24sep2026 with
+        the saved page's cell set to No.  It now reads the row's two cells,
+        under the header that says which column is which.  That the claim is
+        true -- a saved page's card follows a brush -- is
+        TestTheShippedBrushJsActuallyComputes here, and, against Stata's
+        number, test_kpi_values.py's TestBrushUpdateIsRealOrDocumentedAsAbsent.
+        """
         path = os.path.join(_HERE, "..", "dash.sthlp")
         with open(path, encoding="utf-8", errors="replace") as fh:
-            text = fh.read()
-        assert "Brush/lasso KPI update" in text, (
-            "the comparison table no longer mentions brush updating"
+            lines = [line.strip() for line in fh]
+        assert ("{col 5}{it:Feature}{col 38}{it:Saved page}"
+                "{col 59}{it:Served app}") in lines, (
+            "the comparison table's header no longer puts the saved page in "
+            "column 38")
+        rows = [line for line in lines if "Brush/lasso KPI update" in line]
+        assert rows == ["{col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes"], (
+            "the comparison table no longer says brushing updates a KPI "
+            "card on the saved page and in the served app: %s" % rows
         )
 
 
@@ -273,7 +318,15 @@ class TestTheShippedBrushJsActuallyComputes:
         )
 
     def test_the_title_survives_the_rebuild(self):
+        """The rebuilt card is the card the page opened with, but for its
+        number.  ``"T" in out'' -- the title is T -- held with the title in
+        the subtitle's place: measured 24sep2026 with the rebuild writing
+        each into the other's slot."""
         _, dr = _render(update="brush")
         out = self._run(self._cfg(dr), list(enumerate(_df()["mpg"])), "mpg",
                         [0, 1])
-        assert "T" in out
+        [card] = [d.text for d in dr.kpi_divs.values()]
+        value = r'(id="kpi_val_k1"[^>]*>)[^<]*<'
+        assert re.subn(value, r"\1<", out) == (re.sub(value, r"\1<", card), 1), (
+            out, card)
+        assert '>T</div><div id="kpi_val_k1"' in out, out

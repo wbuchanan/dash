@@ -327,7 +327,12 @@ class TestTheAvailabilityGuardIsReliable:
             f"silently skips"
         )
 
-    def test_a_probe_that_must_run_python_retries(self, cscript):
+    # Only the scripts that run an import probe (13, pinned by
+    # TestTheChecksReachEveryScript): the others were 50 skips of this test.
+    @pytest.mark.parametrize(
+        "path", [p for p in _CSCRIPTS if _import_probes(_read(p))[0]],
+        ids=_name)
+    def test_a_probe_that_must_run_python_retries(self, path):
         """Checking for a package can only be done by importing it.
 
         The first python call of a session fails under the runner whatever it
@@ -335,12 +340,11 @@ class TestTheAvailabilityGuardIsReliable:
         ask its real question afterwards -- otherwise a machine with bokeh
         installed reports bokeh missing and the script skips.
         """
-        path, src = cscript
+        src = _read(path)
         # `cap python: import bokeh' is a probe as much as the spelled-out
         # form, and counts toward the warm-up and retry the same way.
         probes, bad = _import_probes(src)
-        if not probes:
-            pytest.skip("this script runs no import probe")
+        assert probes, _name(path)
         assert not bad, (
             f"{_name(path)} line(s) {bad}: an import probe with no "
             f"warm-up and no retry; the first python call of the "
@@ -361,18 +365,21 @@ class TestTheAvailabilityGuardIsReliable:
         hit = _ANY_CAPTURED_PY.search(code)
         assert not hit, f"{_RUNNER}: {hit.group(0) if hit else ''}"
 
+    # Only the scripts that can skip for want of Python (45, pinned by
+    # TestTheChecksReachEveryScript): the others were 18 skips of this test.
+    # Either wording: seven scripts say "SKIP: no Python is linked to this
+    # Stata." and were skipped here while this read only "SKIP: Python not
+    # available".
+    @pytest.mark.parametrize(
+        "path", [p for p in _CSCRIPTS if _SKIPS_FOR_PYTHON.search(_read(p))],
+        ids=_name)
     def test_a_script_that_needs_python_says_so_through_the_setting(self,
-                                                                    cscript):
+                                                                    path):
         """A lint over the certification scripts' text, deliberately: a
         script that can skip for want of Python decides it from
         c(python_exec), which is configuration -- the no-Python state
         cannot be produced in a test (see the module docstring)."""
-        path, src = cscript
-        # Either wording: seven scripts say "SKIP: no Python is linked to
-        # this Stata." and were skipped here while this read only "SKIP:
-        # Python not available".
-        if not _SKIPS_FOR_PYTHON.search(src):
-            pytest.skip("this script does not depend on Python")
+        src = _read(path)
         assert "c(python_exec)" in src, (
             f"{_name(path)} reports Python as unavailable without consulting "
             f"Stata's Python configuration"

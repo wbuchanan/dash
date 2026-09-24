@@ -1462,11 +1462,14 @@ class TestTheDependenciesAreOneList:
         assert pkgs == ["bokeh", "numpy", "pandas"]
         assert set(mins) == set(pkgs)
 
-    def test_neither_package_is_named_in_setups_code(self):
-        code = "\n".join(ln.split("//", 1)[0] for ln in
-                         _read(_SETUP_ADO).splitlines()
-                         if not ln.lstrip().startswith(("*", "//")))
-        assert "scipy" not in code and "statsmodels" not in code
+    # test_neither_package_is_named_in_setups_code stood here.  It looked for
+    # the words scipy and statsmodels in dash_setup.ado's code, and passed
+    # with setup checking and pip-installing scipy again under a name built
+    # from pieces ("sci" + "py"); test_program_coverage.cscript passed that
+    # too (measured 24sep2026).  What it held -- setup neither checks nor
+    # installs either -- is held by running setup:
+    # test_setup_honesty.cscript HON-28 (both missing: neither is named, pip
+    # is asked for nothing, and the run succeeds).
 
     def test_every_file_states_the_same_minimums(self):
         py, mins, _p = _setup_minimums()
@@ -1552,27 +1555,49 @@ class TestDashSetupHelpMatchesTheAdo:
         assert "via {cmd:python query}" not in help_
 
     def test_the_steps_are_the_ados_steps(self):
+        """The help's list of steps names each one dash_setup takes.
+
+        A structural guard over dash_setup.sthlp's text, deliberately: the
+        claim here is what the help says.  What the ado does is held by
+        running it in a sandbox that records pip and SSC and installs
+        nothing.  This test used to read dash_setup.ado's text for it, and
+        passed with dash's own files never checked, the --user retry never
+        run, the minimum overwritten before pip saw it, and `, replace'
+        dropped from the SSC install with the words left in a comment (each
+        measured 24sep2026 on a scratch copy).  Each of those fails:
+        the --user retry and the minimum reaching pip,
+        test_program_coverage.cscript PC-19 and test_setup_honesty.cscript
+        HON-22; jsonio from `ssc install jsonio, replace', PC-23; dash's own
+        files, PC-15 and HON-25; packaging first, HON-27.
+        """
         help_ = _flat(_read(_SETUP_HELP))
-        ado = _read(_SETUP_ADO)
-        assert "_dash_setup_check_files" in ado
         for words in ("{cmd:packaging}", "{cmd:dash_render.py}",
                       "{cmd:--user}", "r(198)"):
             assert words in help_, words
-        assert '"pip", "install", "--user", "`_spec\'"' in ado
-        assert 'local _spec "`pkg\'>=`min_`pkg\'\'"' in ado
-        assert "ssc install jsonio, replace" in ado
 
     def test_a_package_below_its_minimum_is_unmet_not_a_warning(self):
         """The help said setup "warns when it is below 3.0; it does not
         refuse to continue".  The ado counts it as a failure, and the
-        summary then exits r(198) (HC8-19)."""
-        ado = _read(_SETUP_ADO)
-        i = ado.index('else if "`verdict\'" == "below" {')
-        j = ado.index('else if "`verdict\'" == "unverified"', i)
-        assert "local n_fail = `n_fail' + 1" in ado[i:j]
+        summary then exits r(198) (HC8-19).
+
+        That the ado counts it is held by running it:
+        test_program_coverage.cscript PC-21 (bokeh 2.4.3: r(198), "Unmet:
+        bokeh 2.4.3 (needs 3.0)", nothing installed) and
+        test_setup_honesty.cscript HON-20.  This test used to read the
+        counter's line in dash_setup.ado, and passed with the count undone
+        on the line after it (measured 24sep2026 on a scratch copy).  What
+        is left is a structural guard over the help's text: the old words
+        are gone, and the words that replaced them are there -- the control
+        that shows the reader reads the passages they stood in."""
         help_ = _flat(_read(_SETUP_HELP))
         assert "it does not refuse to continue" not in help_
         assert "Tornado may be absent" not in help_
+        assert ("An installed package below its minimum is reported, with "
+                "the command that upgrades it, and counted as unmet.") in help_
+        assert ("Tornado is installed with Bokeh, which depends on it, so no "
+                "separate installation is needed") in help_
+        assert ("one below 3.0 is reported as an unmet requirement -- it is "
+                "not upgraded for you -- and the run ends with r(198).") in help_
 
     def test_it_installs_only_what_is_missing(self):
         """Every pip and SSC install in dash_setup.ado sits in the branch a

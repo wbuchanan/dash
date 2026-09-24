@@ -53,20 +53,56 @@ def _program_body(src: str, name: str) -> str:
     return m.group(1)
 
 
+def _stata_code(body: str) -> str:
+    """*body* with its comments dropped: ``/* */`` blocks, lines that start
+    with ``*`` and ``//`` to the end of a line (``//`` after a blank or at
+    the start, so the ``//`` of a URL in a string stays)."""
+    body = re.sub(r"/\*.*?\*/", " ", body, flags=re.DOTALL)
+    return "\n".join(re.sub(r"(^|\s)//.*$", "", line)
+                     for line in body.splitlines()
+                     if not line.lstrip().startswith("*"))
+
+
+#: One option as `syntax` declares it: a name, then its argument spec in
+#: parentheses if it takes one -- ``SAVing(string)``, ``TABS(string asis)``.
+_OPTION = r"([A-Za-z_][A-Za-z0-9_]*)(?:\([^)]*\))?"
+
+
 def _syntax_options(body: str) -> set:
-    """The option names a program's first `syntax` block declares."""
-    m = re.search(r"^\s*syntax \[, ///(.*?)^\s*\]\s*$", body,
+    """The option names a program's first `syntax` block declares: every
+    option on every line, lower-cased.
+
+    This took only the option written last before each line's ``///``, so
+    a line declaring two gave one (measured 24sep2026: ``FOO(string)``
+    written before ``CSV`` on _dash_build's line, and ``TItle(string)``
+    before ``PORT(string)`` on _dash_serve_spec's, were both unseen, and
+    the tests below passed).  Now every line must be read in full --
+    options, the ``*`` catch-all, blanks and its ``///`` -- or this fails
+    naming it, and no option may be declared twice.
+    """
+    m = re.search(r"^\s*syntax \[, ///\n(.*?)^\s*\]\s*$", body,
                   re.MULTILINE | re.DOTALL)
     assert m, "no multi-line syntax block found"
-    names = set()
-    for tok in re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^)]*\))?\s*///",
-                          m.group(1)):
-        names.add(tok.lower())
-    return names
+    names = []
+    for line in m.group(1).splitlines():
+        assert line.rstrip().endswith("///"), (
+            f"a syntax line that does not continue: {line!r}")
+        code = line.rstrip()[:-3]
+        unread = re.sub(_OPTION + r"|\*", " ", code)
+        assert not unread.strip(), (
+            f"text in a syntax line this does not read as an option: "
+            f"{line!r}")
+        names += [t.lower() for t in re.findall(_OPTION, code)]
+    assert len(names) == len(set(names)), f"an option declared twice: {names}"
+    return set(names)
 
 
 # Options that belong to one command only and are deliberately not shared.
 _PREPARE_ONLY = {"cmdname", "specpath", "datapath", "inherit"}
+# Options every dash build has; a reader that finds them has read the list
+# (one that had stopped matching would find nothing, and a set difference
+# of nothing passes).
+_ANCHORS = {"saving", "replace", "nobrowser", "csv"}
 # `filter()` is pre-extracted from `0` by _dash_extract_filters and passed
 # separately, so _dash_build never declares it.
 _PASSED_SEPARATELY = {"filter"}
@@ -85,6 +121,8 @@ class TestTheBuildSurfaceIsShared:
         src = _read_ado()
         build = _syntax_options(_program_body(src, "_dash_build"))
         prep = _syntax_options(_program_body(src, "_dash_prepare_spec"))
+        # The reader sees both lists: options every build has, in each.
+        assert _ANCHORS <= build and _ANCHORS <= prep, (build, prep)
         missing = build - prep
         assert not missing, (
             f"_dash_build accepts {sorted(missing)} but _dash_prepare_spec "
@@ -149,13 +187,17 @@ class TestServeDoesNotEnumerateTheBuildSurface:
     def test_serve_spec_declares_only_its_own_options(self):
         """A structural guard, deliberately, the other half of the catch-all
         rule above: a build option declared here again would be a second
-        list to drift."""
+        list to drift.
+
+        Exactly its own five, not a subset of them: a subset held for a
+        list the reader had read none of (see _syntax_options for the
+        option it did not see)."""
         body = _program_body(_read_ado(), "_dash_serve_spec")
         declared = _syntax_options(body)
-        assert declared <= {"specpath", "datapath", "port", "nobrowser",
+        assert declared == {"specpath", "datapath", "port", "nobrowser",
                             "timeout"}, (
-            f"_dash_serve_spec declares build options {sorted(declared)}; "
-            f"it should forward them untouched instead"
+            f"_dash_serve_spec declares {sorted(declared)}; it should declare "
+            f"its own five and forward every build option untouched"
         )
 
     def test_serve_spec_asks_prepare_spec_to_inherit(self):
@@ -193,13 +235,22 @@ class TestTheHardcodedMasterJsonIsGone:
         one dashboard.
         """
         src = _read_ado()
-        assemblers = [
-            name for name in re.findall(
-                r"^program define (\S+?)(?:,|\s*$)", src, re.MULTILINE)
-            if '"build_options"' in _program_body(src, name.rstrip(","))
-            or '"build_options":' in _program_body(src, name.rstrip(","))
-        ]
+        names = re.findall(r"^program define (\S+?)(?:,|\s*$)", src,
+                           re.MULTILINE)
+        # Every program is read, once: as many names as definitions.
+        assert len(names) == len(set(names)) == len(
+            re.findall(r"^program define\b", src, re.MULTILINE)), names
+        # A program assembles build_options when its CODE names the key, in
+        # any spelling -- "build_options":, a key held in a local, a python
+        # dict -- which is why the word is searched for, comments dropped.
+        # This looked for the key in double quotes, so a program writing it
+        # from `local _k build_options' and "`_k'": went unseen, and its
+        # subset check held for no writer at all (measured 24sep2026: a
+        # second writer in _dash_build, spelled so, passed).
+        assemblers = sorted(n for n in names
+                            if re.search(r"\bbuild_options\b",
+                                         _stata_code(_program_body(src, n))))
         # _dash_render_immediate has its own single-graph spec with no
         # registry, no KPIs and no filters; it is a different document.
-        assert set(assemblers) <= {"_dash_prepare_spec",
-                                   "_dash_render_immediate"}, assemblers
+        assert assemblers == ["_dash_prepare_spec",
+                              "_dash_render_immediate"], assemblers

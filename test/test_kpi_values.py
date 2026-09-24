@@ -30,8 +30,11 @@ Every expected value here comes from ``test/fixtures/kpi_truth.json``, measured
 in Stata with the command recorded beside it.
 """
 import json
+import math
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -50,15 +53,22 @@ from conftest import make_spec, make_data_json
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_truth.json")
 
-pytestmark = pytest.mark.skipif(
-    not os.path.exists(_FIXTURE),
-    reason="test/fixtures/kpi_truth.json is missing",
-)
-
 
 @pytest.fixture(scope="module")
 def truth():
-    with open(_FIXTURE) as fh:
+    """Stata's measured numbers.
+
+    The fixture is part of the repository, so a missing one is a broken
+    checkout and fails every test that compares with Stata.  The module was
+    marked to skip whole when it was missing: measured 24sep2026, with the
+    file moved away all 56 tests skipped -- the 30 that never read it too
+    -- and the run exited 0, so every comparison with Stata could vanish
+    from a run that reported no failure.
+    """
+    assert os.path.exists(_FIXTURE), (
+        "test/fixtures/kpi_truth.json is missing: the KPI cards cannot be "
+        "compared with Stata")
+    with open(_FIXTURE, encoding="utf-8") as fh:
         return json.load(fh)
 
 
@@ -77,21 +87,26 @@ _AUTO_CSV = os.path.join(_HERE, "fixtures", "data", "auto.csv")
 
 @pytest.fixture(scope="module")
 def auto():
-    """sysuse auto's mpg and weight, at full precision."""
-    if not os.path.exists(_AUTO_CSV):
-        pytest.skip("test/fixtures/data/auto.csv is missing")
+    """sysuse auto's mpg and weight, at full precision.
+
+    Part of the repository too: missing, it fails rather than skips (it
+    skipped, like the fixture above).
+    """
+    assert os.path.exists(_AUTO_CSV), "test/fixtures/data/auto.csv is missing"
     # float, not int64: make_data_json emits raw values and numpy ints are
     # not JSON-serialisable. Stata stores these as numerics anyway.
     return pd.read_csv(_AUTO_CSV).astype(float)
 
 
 def _render_kpi(df, *, stat, var, if_expr="", fmt="", extra_cols=None,
-                filters=None):
+                filters=None, update=""):
     plots = [{"type": "scatter", "yvar": var, "xvar": var, "options": {}}]
     spec = make_spec(plots)
     kpi = {"name": "k1", "stat": stat, "var": var, "title": "T", "fmt": fmt}
     if if_expr:
         kpi["if_expr"] = if_expr
+    if update:
+        kpi["update"] = update
     spec["kpis"] = [kpi]
     spec["build_options"]["registry"] = "k1 g1"
     if filters:
@@ -135,17 +150,55 @@ class TestQualifiedKpiShowsTheConditionalStatistic:
         assert f"{want:.4f}" in _card_text(dr), _card_text(dr)[:300]
 
     def test_a_qualified_mean_shows_the_conditional_value(self, truth, auto):
-        """The card shows 21.2973 where Stata reports 24.7727."""
+        """The card shows 21.2973 where Stata reports 24.7727.
+
+        This compared the card with pandas' mean over a stand-in for foreign
+        (weight < 3000), built without the value labels Stata gives foreign,
+        so it held dash to pandas on data no Stata user has: measured
+        24sep2026, it passed with the renderer decoding a labelled variable
+        into its labels before the qualifier ran, which leaves `foreign==1'
+        matching nothing on real data.  It now uses sysuse auto's own
+        foreign -- test/fixtures/kpi_pctile_truth.json holds the column,
+        with mpg and weight row for row as auto.csv has them -- with its
+        value labels, the qualifier as Stata's command writes it, and
+        compares the card with Stata's own display of summarize mpg if
+        foreign==1 at %9.4f.
+        """
+        with open(os.path.join(_HERE, "fixtures", "kpi_pctile_truth.json"),
+                  encoding="utf-8") as fh:
+            stata_auto = json.load(fh)["auto"]
+        assert [float(v) for v in stata_auto["mpg"]] == list(auto["mpg"])
+        assert [float(v) for v in stata_auto["weight"]] == list(auto["weight"])
         df = auto.copy()
-        df["foreign"] = np.where(df["weight"] < 3000, 1.0, 0.0)
-        sub = df.loc[df["foreign"] == 1.0, "mpg"]
-        want = float(sub.mean())
-        dr = _render_kpi(df, stat="mean", var="mpg", if_expr="foreign == 1",
-                         fmt="%9.4f", extra_cols=["foreign"])
+        df["foreign"] = [float(v) for v in stata_auto["foreign"]]
+        spec = make_spec([{"type": "scatter", "yvar": "mpg", "xvar": "mpg",
+                           "options": {}}])
+        spec["kpis"] = [{"name": "k1", "stat": "mean", "var": "mpg",
+                         "title": "T", "fmt": "%9.4f", "if_expr": "foreign==1"}]
+        spec["build_options"]["registry"] = "k1 g1"
+        data = make_data_json(df, {"origin": {"0": "Domestic", "1": "Foreign"}},
+                              {"foreign": "origin"})
+        paths = [tempfile.mkstemp(s)[1] for s in (".json", ".json", ".html")]
+        try:
+            with open(paths[0], "w") as f:
+                json.dump(spec, f)
+            with open(paths[1], "w") as f:
+                json.dump(data, f)
+            dr = DashRenderer(*paths)
+            dr.render()
+        finally:
+            for p in paths:
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
         text = _card_text(dr)
-        assert f"{want:.4f}" in text, (
-            f"the card shows the unconditional mean; expected {want:.4f}, "
-            f"card was: {text[:300]}"
+        shown = re.findall(r'id="kpi_val_k1"[^>]*>([^<]*)<', text)
+        want = truth["anchor"]["as_displayed_9_4f"]
+        assert want["value"] == "24.7727", want
+        assert [s.strip() for s in shown] == [want["value"]], (
+            f"the card shows {shown}; Stata's `{want['cmd']}' displays "
+            f"{want['value']}; card was: {text[:300]}"
         )
 
     def test_the_qualifier_reaches_the_renderer_at_all(self, auto):
@@ -334,22 +387,34 @@ class TestKpisUnderFiltering:
         )
 
     @pytest.mark.parametrize("stat", ["p25", "p75", "median", "iqr"])
-    def test_the_callback_uses_statas_percentile_rule(self, auto, stat):
-        """Not merely non-zero -- the same rule as the initial render."""
+    def test_the_callback_uses_statas_percentile_rule(self, truth, auto, stat):
+        """Not merely non-zero -- the same rule as the initial render.
+
+        The assertion ran only where pandas' rule and Stata's give different
+        numbers, and on mpg they give the same p25 (18) and median (20), so
+        those two cases asserted nothing: measured 24sep2026, both passed
+        with the callback's percentile branches removed, reading 0.  Every
+        case now compares the callback with Stata's own number (summarize,
+        detail), and the guard keeps cases that tell the rules apart (p75 is
+        25 in Stata and 24.75 in pandas; iqr 7 and 6.75).
+        """
         col = auto["mpg"].dropna()
         got = self._js_kpi(stat, col.tolist())
+        scope = truth["kpi_stats"]["all"]
+        stata = {s: float(scope[s]["value"])
+                 for s in ("p25", "p75", "median", "iqr")}
+        assert got == stata[stat], (
+            f"{stat}: the callback computes {got}; Stata's "
+            f"`{scope[stat]['cmd']}' gives {stata[stat]}"
+        )
         pandas_rule = {
             "p25": float(col.quantile(0.25)),
             "p75": float(col.quantile(0.75)),
             "median": float(col.median()),
             "iqr": float(col.quantile(0.75) - col.quantile(0.25)),
-        }[stat]
-        stata_rule = DashRenderer._kpi_statistic(col, stat)
-        if stata_rule != pytest.approx(pandas_rule):
-            assert got == pytest.approx(stata_rule), (
-                f"{stat}: the callback used pandas' rule ({pandas_rule}) "
-                f"rather than Stata's ({stata_rule})"
-            )
+        }
+        assert {s for s in stata if pandas_rule[s] != stata[s]} == {
+            "p75", "iqr"}, pandas_rule
 
     @staticmethod
     def _js_format(cfg_entry, value):
@@ -415,34 +480,162 @@ class TestKpisUnderFiltering:
             f"would show {from_js!r} for the same number"
         )
 
-    def test_the_javascript_uses_statas_percentile_rule(self):
-        """The callback must not reintroduce pandas' rule in JavaScript."""
-        js = dash_render._FILTER_JS
-        assert "dash_pctl" in js, (
-            "the KPI recompute has no Stata-percentile helper, so a filtered "
-            "p25 will disagree with the initial render"
-        )
+    def test_the_javascript_uses_statas_percentile_rule(self, truth, auto):
+        """The callback must not reintroduce pandas' rule in JavaScript.
+
+        This asserted that the name ``dash_pctl'' was in the script, which
+        holds whatever rule the function computes: measured 24sep2026, it
+        passed with dash_pctl interpolating linearly, numpy's and pandas'
+        default.  It now runs the shipped recompute under node for every
+        percentile of mpg the fixture holds -- Stata's summarize, detail --
+        and compares each card value with Stata's.  Six of the eleven tell
+        the two rules apart (p75 is 25 in Stata, 24.75 interpolated), which
+        the last assertion confirms, so a linear rule cannot pass.
+        """
+        scope = truth["kpi_stats"]["all"]
+        mpg = auto["mpg"].dropna()
+        stats = ("p1", "p5", "p10", "p25", "p50", "p75", "p90", "p95", "p99",
+                 "median", "iqr")
+        want = {s: float((scope.get(s) or scope["_also"][s])["value"])
+                for s in stats}
+        got = {s: self._js_kpi(s, mpg.tolist()) for s in stats}
+        assert got == want, {s: (got[s], want[s]) for s in stats
+                             if got[s] != want[s]}
+        type7 = truth["percentile_definition"]["do_not_use_these"][
+            "numpy_pandas_default_type7"]
+        assert float(type7["all_p75_type7"]["value"]) == 24.75 != got["p75"]
+        linear = {s: float(np.percentile(mpg, float(s[1:])))
+                  for s in stats if s.startswith("p")}
+        linear["median"] = float(np.percentile(mpg, 50))
+        linear["iqr"] = float(np.percentile(mpg, 75) - np.percentile(mpg, 25))
+        assert {s for s in stats if linear[s] != want[s]} == {
+            "p10", "p75", "p90", "p95", "p99", "iqr"}
 
 
 # ======================================================================
 # update(brush)
 # ======================================================================
 
+def _help_table_cells(feature):
+    """``(saved page, served app)``: the two cells of *feature*'s row in
+    dash.sthlp's comparison of the two modes (Server Mode)."""
+    with open(os.path.join(_HERE, "..", "dash.sthlp"), encoding="utf-8",
+              errors="replace") as fh:
+        lines = [line.strip() for line in fh]
+    # The header names the columns: column 38 is the saved page's.
+    assert ("{col 5}{it:Feature}{col 38}{it:Saved page}"
+            "{col 59}{it:Served app}") in lines
+    rows = [line for line in lines
+            if line.startswith("{col 5}" + feature + "{col 38}")]
+    assert len(rows) == 1, (feature, rows)
+    m = re.fullmatch(r"\{col 5\}" + re.escape(feature)
+                     + r"\{col 38\}(.*?)\{col 59\}(.*)", rows[0])
+    assert m, rows[0]
+    return m.group(1), m.group(2)
+
+
+# BokehJS runs a CustomJS body as a strict-mode function whose parameters are
+# its args' names, then cb_obj and cb_data.  The selection callback's args
+# are the source brushed, the KPI configuration and the card Divs.
+_RUN_SELECTION = r"""
+"use strict";
+const divs = RAW.divs.map((t) => ({text: t}));
+new Function("brush_source", "kpi_config_json", "kpi_divs", "cb_obj",
+             "cb_data", '"use strict";\n' + RAW.code)(
+    {data: RAW.data}, RAW.kpi_config_json, divs, {indices: RAW.indices}, {});
+process.stdout.write(JSON.stringify(divs.map((d) => d.text)));
+"""
+
+
+def _plain(v):
+    """One value as BokehJS holds it: a missing number is null."""
+    if isinstance(v, (float, np.floating)):
+        return None if math.isnan(float(v)) else float(v)
+    if isinstance(v, np.integer):
+        return int(v)
+    return v
+
+
+def _brushed_cards(dr, indices):
+    """Each card's value text after rows *indices* are selected, by the
+    selection callback the saved page attaches, run as the page runs it;
+    None when the page attaches no selection callback."""
+    cbs = []
+    for src in dr.sources.values():
+        for lst in (src.selected.js_property_callbacks or {}).values():
+            cbs.extend(lst if isinstance(lst, list) else [lst])
+    if not cbs:
+        return None
+    assert len(cbs) == 1, "the page attaches %d selection callbacks" % len(cbs)
+    [cb] = cbs
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    payload = {
+        "data": {str(c): [_plain(v) for v in col]
+                 for c, col in cb.args["brush_source"].data.items()},
+        "kpi_config_json": cb.args["kpi_config_json"],
+        "divs": [d.text for d in cb.args["kpi_divs"]],
+        "indices": [int(i) for i in indices],
+        "code": cb.code,
+    }
+    with tempfile.NamedTemporaryFile("w", suffix=".cjs", delete=False,
+                                     encoding="utf-8") as fh:
+        fh.write("const RAW = " + json.dumps(payload) + ";\n" + _RUN_SELECTION)
+        path = fh.name
+    try:
+        res = subprocess.run([node, path], capture_output=True, text=True,
+                             timeout=60)
+        assert res.returncode == 0, (
+            "the page's selection callback failed under node:\n"
+            + res.stderr[:1500])
+        texts = json.loads(res.stdout)
+    finally:
+        os.unlink(path)
+    return [v for t in texts
+            for v in re.findall(r'id="kpi_val_[^"]*"[^>]*>([^<]*)<', t)]
+
+
 class TestBrushUpdateIsRealOrDocumentedAsAbsent:
 
-    def test_the_help_and_the_code_agree(self):
-        """_kpi_update_modes is assigned and never read."""
-        src = open(os.path.join(_HERE, "..", "dash_render.py")).read()
-        code = "\n".join(l.split("#", 1)[0] for l in src.splitlines())
-        implemented = code.count("_kpi_update_modes") >= 2
-        help_path = os.path.join(_HERE, "..", "dash.sthlp")
-        text = open(help_path, encoding="utf-8", errors="replace").read()
-        claims_yes = "update(brush)" in text and "brush" in text
-        if not implemented:
-            assert "not supported" in text or "standalone" in text, (
-                "update(brush) has no implementation and the help does not "
-                "say so"
-            )
+    def test_the_help_and_the_code_agree(self, truth, auto):
+        """dash.sthlp says whether a saved page's card follows a brush, and
+        the saved page must do what it says.
+
+        This counted ``_kpi_update_modes'' in dash_render.py -- an attribute
+        assigned once and read by nothing, so the count said "not
+        implemented" -- and then asserted that the help said "not supported"
+        or "standalone", and the help says "standalone" in many places: it
+        could not fail.  Measured 24sep2026, it passed with the page's
+        selection callbacks never attached, and with the help's saved-page
+        cell for brushing set to No.
+
+        It now reads that cell -- the "Brush/lasso KPI update" row of the
+        comparison table -- and brushes the first thirty rows of sysuse auto
+        on a saved page, running the selection callback the page attaches.
+        A "Yes" must give Stata's mean of those rows (summarize mpg in 1/30),
+        and a "No" no callback at all.  What the served app's cell claims is
+        held by test_help_claims_4.py's TestTheUpdateModes::
+        test_the_served_app, which brushes the same thirty rows.
+        """
+        saved, _served = _help_table_cells("Brush/lasso KPI update")
+        assert saved in ("Yes", "No"), saved
+        want = float(truth["brush"]["mean"]["value"])
+        dr = _render_kpi(auto, stat="mean", var="mpg", fmt="%20.10f",
+                         update="brush")
+        cards = _brushed_cards(dr, range(30))
+        if saved == "Yes":
+            assert cards is not None, (
+                "the help says a saved page's card follows a brush; the page "
+                "attaches no selection callback")
+            assert len(cards) == 1, cards
+            assert float(cards[0]) == pytest.approx(want, rel=1e-9), (
+                "after brushing rows 1-30 the card shows %s; Stata's `%s' "
+                "gives %r" % (cards[0], truth["brush"]["mean"]["cmd"], want))
+        else:
+            assert cards is None, (
+                "the help says a saved page's card does not follow a brush; "
+                "the page follows one: %s" % cards)
 
 
 # ======================================================================

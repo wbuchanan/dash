@@ -60,8 +60,11 @@ COVERAGE = {
         # e2e: side-title spellings land in the graph's JSON at every level.
         "_dash_parse_graph_opts": ("test_alias_semantics.cscript:AS-06",
                                    "test_parser.cscript:P1A-36"),
+        # TP-13: twoway's minimum abbreviations both ways, and clwidth()'s
+        # bounds, measured against twoway.
         "_dash_parse_plot_opts": ("test_parser.cscript:P1A-34",
-                                  "test_parser.cscript:P1A-35"),
+                                  "test_parser.cscript:P1A-35",
+                                  "test_twoway_option_parity.cscript:TP-13"),
         "_dash_parse_varpart_std": ("test_parser.cscript:P1A-31",
                                     "test_varlist_expansion.cscript:V2-01"),
         "_dash_parse_varpart_1v": ("test_parser.cscript:P1A-43",),
@@ -150,6 +153,11 @@ COVERAGE = {
         "_dash_dashboard_browser": ("test_serve_browser.cscript:SB-01",
                                     "test_serve_browser.cscript:SB-03",
                                     "test_serve_browser.cscript:SB-05"),
+        # Each platform's command, ordinary and hostile paths, by dryrun;
+        # stub openers receive the path whole; dash build reaches it.
+        "_dash_open_page": ("test_serve_browser.cscript:SB-14",
+                            "test_serve_browser.cscript:SB-19",
+                            "test_help_claims_2.cscript:HC2-30"),
         # e2e: the superseded item's globals are gone, a neighbour's kept.
         "_dash_drop_item": ("test_registry_collision.cscript:REG-05",
                             "test_registry_collision.cscript:REG-13",
@@ -162,9 +170,13 @@ COVERAGE = {
                                      "test_registry_collision.cscript:REG-40"),
         "_dash_register_graph": ("test_varlist_expansion.cscript:V2-08",
                                  "test_registry_collision.cscript:REG-01"),
+        # QL-14/15: each layer's own if and in select its rows, and the
+        # export carries every row they need.
         "_dash_render_immediate": ("test_varlist_expansion.cscript:V2-09",
                                    "test_varlist_expansion.cscript:V2-07",
-                                   "test_json_escaping.cscript:JSE-08"),
+                                   "test_json_escaping.cscript:JSE-08",
+                                   "test_qualifier_literals.cscript:QL-14",
+                                   "test_qualifier_literals.cscript:QL-15"),
         "_dash_clear": ("test_clear_registry.cscript:CLR-01",
                         "test_clear_registry.cscript:CLR-04"),
         # e2e: the card's value in the page.
@@ -179,8 +191,11 @@ COVERAGE = {
                              "test_export.cscript:EXP-04",
                              "test_adversarial.cscript:P20-14"),
         # e2e: a real dash serve, ended by timeout(1).
+        # SRV-20: the renderer's path, holding a payload, reaches Python
+        # as data (the serve-side twin of LOC-17).
         "_dash_serve": ("test_help_claims_4.cscript:HC4-19",
-                        "test_serve_browser.cscript:SB-02"),
+                        "test_serve_browser.cscript:SB-02",
+                        "test_serve_launch.cscript:SRV-20"),
     },
     "dash_setup.ado": {
         # e2e: every branch this machine can reach, installing nothing.
