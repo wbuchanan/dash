@@ -14650,6 +14650,75 @@ def _dash_own_redrawn_views(figures, redrawn_ids):
     return out
 
 
+# ---- An unlinked layer's source, after a filter move (served) ----------------
+#
+# An unlinked layer draws from a ColumnDataSource of its own rows: the graph's
+# qualifier, the by() panel's group, the layer's own if()/in() -- counted over
+# the whole dataset at the first draw (_dash_layer_frame) -- and without the
+# rows whose plotted variables are missing (_dash_layer_source).  The served
+# recompute used to write into it every row the move kept for the graph or
+# panel, so a layer's own qualifier was lost at the first move: measured
+# 24sep2026 on sysuse auto, `(scatter mpg weight in 40/60) (lfit mpg weight
+# in 40/60)' with the dropdown on Foreign drew all 22 foreign cars where
+# Stata's `count if foreign == 1 in 40/60' and the saved page give 8.  A
+# column the layer derives -- the marker-label text, a colour bin -- was
+# taken from the source's snapshot at the ROW LABEL, read as a position, so
+# under any qualifier its values belonged to other rows and the column came
+# out shorter than the rest (Bokeh: "columns must be of the same length").
+# The saved page's callback (_FILTER_JS) filters each source's own snapshot
+# by row identity; this does the same when served.
+
+def _dash_refresh_unlinked(source, frame, snapshot):
+    """Write one filter move's rows into an unlinked layer's source: the rows
+    of its own that *frame* keeps, by identity.
+
+    The rows a source was built with are its ``index`` column (row labels)
+    in the snapshot taken before any move; they already carry the layer's
+    own if()/in(), counted over the whole dataset once, at the first draw.
+    A move keeps those of them that *frame* holds, in the source's own
+    order, so a qualifier, a by() panel's group and a dropped missing value
+    all survive it.  A column of *frame* is read from *frame*; a column the
+    layer derived (the marker-label text, a colour bin) is read from the
+    snapshot at the row's own position, so every column keeps one value per
+    row.  A source built without row labels (a graph's placeholder) is
+    written with *frame*'s rows, as before.
+
+    Args:
+        source:   The layer's ColumnDataSource.
+        frame:    The rows the move keeps for this source's graph or panel:
+                  the dataset masked by every active filter, a by() panel's
+                  group and the graph's if()/in(), indexed by row label.
+        snapshot: ``{column: values}`` the source held before any move.
+
+    Returns:
+        The data written.
+    """
+    snapshot = snapshot or {}
+    ids = snapshot.get("index")
+    if ids is None:
+        rows, pos = frame, None
+    else:
+        keep = pd.Index(ids).isin(frame.index)
+        pos = [int(p) for p in np.flatnonzero(keep)]
+        rows = frame.loc[[ids[p] for p in pos]]
+    labels = rows.index.tolist()
+    new_data = {}
+    for col in list(source.data):
+        if col == 'index':
+            new_data[col] = labels
+        elif col in rows.columns:
+            new_data[col] = rows[col].tolist()
+        else:
+            orig = snapshot.get(col, [])
+            n = len(orig)
+            # Without row labels the source is the dataset in order, and a
+            # label is its position (the placeholder's case, unchanged).
+            at = pos if pos is not None else labels
+            new_data[col] = [orig[i] if 0 <= i < n else None for i in at]
+    source.data = new_data
+    return new_data
+
+
 def _dash_facet_cols(gopts, n_panels):
     """cols(#) from by() first, then the by_cols key, then ceil(sqrt(n)) --
     and never more columns than there are panels.
@@ -20112,6 +20181,8 @@ class ServerAppBuilder:
                          # A link group's source and views after a move.
                          "_dash_view_positions", "_dash_linked_views",
                          "_dash_refresh_linked", "_dash_own_redrawn_views",
+                         # An unlinked layer's own rows after a move.
+                         "_dash_refresh_unlinked",
                          "_dash_parse_tabs", "_dash_tab_panels",
                          "_dash_header_fragments", "_dash_header_models",
                          # layout(bs): the saved page's reader of the rows
@@ -21869,12 +21940,16 @@ class ServerAppBuilder:
             "    # ---- Build figures: one call per graph, or per by() panel ----",
             "    _facet_map = {}         # gname -> [(panel_key, label)]",
             "    _facet_group_vals = {}  # panel_key -> (by_vars, group_key)",
+            "    # The rows each graph or panel shows, by its key: what a",
+            "    # selection cleared on one of its sources counts (_brush_rows).",
+            "    _owner_rows = {}",
             "    for g in graphs:",
             "        go = g.get('graph_options', {})",
             "        gname = go.get('name', '')",
             "        _g_if = (go.get('if_expr') or g.get('if_expr') or '').strip()",
             "        _g_in = (go.get('in_expr') or g.get('in_expr') or '').strip()",
             "        g_df = _dash_qualified_frame(df, _g_if, _g_in, 'graph %r' % gname)",
+            "        _owner_rows[gname] = g_df.index",
             "        # One parser for both render modes.  It rejects an",
             "        # injection pattern by returning no variables.  The",
             "        # sub-options dash does not implement were named when",
@@ -21894,6 +21969,7 @@ class ServerAppBuilder:
             "        work_df = g_df if _bmissing else g_df.dropna(subset=by_vars)",
             "        if work_df.empty:",
             "            # Every by() value is missing: one empty panel, as saved.",
+            "            _owner_rows[gname] = work_df.index",
             "            figures[gname] = _dash_figure_for(g, gname, work_df)",
             "            continue",
             "        if gname not in linked_names:",
@@ -21926,6 +22002,7 @@ class ServerAppBuilder:
             "            else:",
             "                graph_sources[_fname] = [ColumnDataSource(",
             "                    {_v: _gdf[_v].tolist() for _v in _gvars})]",
+            "            _owner_rows[_fname] = _gdf.index",
             "            figures[_fname] = _dash_figure_for(",
             "                g, _fname, _gdf, _fac_label=_label)",
             "            _entries.append((_fname, _label))",
@@ -22064,6 +22141,21 @@ class ServerAppBuilder:
             "        for _s in (_gs_list if isinstance(_gs_list, list) else [_gs_list]):",
             "            _orig_src_data[id(_s)] = {c: list(v) for c, v in _s.data.items()}",
             "",
+            "    # The rows a brushed source counts when nothing is selected, by",
+            "    # id(): its graph's or panel's rows, and for the link group's",
+            "    # source every row -- the rows the saved page's source holds,",
+            "    # whose brush script counts that source whole (_BRUSH_JS).  A",
+            "    # move writes them afresh before it clears the selection; only",
+            "    # when a card follows the brush, since nothing else reads them.",
+            "    _brush_on = any(k.get('update', 'filter') in ('brush', 'both')",
+            "                    for k in kpi_defs)",
+            "    _brush_rows: dict = {}",
+            "    for _bgn, _bsl in graph_sources.items():",
+            "        for _bs in (_bsl if isinstance(_bsl, list) else [_bsl]):",
+            "            if _bgn in _owner_rows:",
+            "                _brush_rows[id(_bs)] = _owner_rows[_bgn]",
+            "    _brush_rows[id(shared_source)] = df.index",
+            "",
             "    # The views over the link group's ONE source, with the rows each",
             "    # owns -- a by() panel's, a qualified graph's or layer's -- read",
             "    # now, while the source holds every row.  A move writes the",
@@ -22135,31 +22227,44 @@ class ServerAppBuilder:
             "                if _in_cb or _if_cb:",
             "                    _gdf = _dash_layer_frame(_df_ref, _gdf, _if_cb, _in_cb,",
             "                                             'graph %r' % _orig_gn_cb)",
+            "                # What a selection cleared below counts: the rows this",
+            "                # graph or panel showed before any move that the move",
+            "                # keeps -- a by() Total panel's never hold a missing",
+            "                # by() value, which _gdf does.",
+            "                if _brush_on:",
+            "                    _own_rows = _owner_rows.get(gname)",
+            "                    _kept_rows = (_gdf.index if _own_rows is None",
+            "                                  else _own_rows.intersection(fdf.index))",
             "                for src in srcs:",
+            "                    if _brush_on:",
+            "                        _brush_rows[id(src)] = _kept_rows",
             "                    if id(src) in _redrawn:",
             "                        # A mapper-built source; the redraw below",
             "                        # refreshes it from the filtered frame.",
             "                        continue",
-            "                    new_data = {}",
-            "                    # Row indices of filtered rows in _df_ref.",
-            "                    # _df_ref always has a RangeIndex so these are valid",
-            "                    # positional offsets into original source arrays.",
-            "                    _src_idx = _gdf.index.tolist()",
-            "                    # Original (pre-filter) snapshot for this source, used to",
-            "                    # restore derived columns (_x_jit etc.) by row index.",
-            "                    _snap = _orig_src_data.get(id(src), {})",
-            "                    for col in src.data:",
-            "                        if col in _gdf.columns:",
-            "                            new_data[col] = _gdf[col].tolist()",
-            "                        elif col == 'index':",
-            "                            new_data[col] = _src_idx",
-            "                        else:",
-            "                            # Derived column: select from original snapshot by row index.",
-            "                            # Preserves _x_jit/_y_jit and other columns not in _df_ref.",
-            "                            _orig_col = _snap.get(col, [])",
-            "                            n_orig = len(_orig_col)",
-            "                            new_data[col] = [_orig_col[i] for i in _src_idx if 0 <= i < n_orig]",
-            "                    src.data = new_data",
+            "                    # The rows of its OWN that the move keeps, by",
+            "                    # identity against the snapshot taken before any",
+            "                    # move, as the saved page's callback filters each",
+            "                    # source.  This wrote every row _gdf holds, so a",
+            "                    # layer's own if()/in() was lost at the first move",
+            "                    # -- (scatter mpg weight in 40/60) drew all 22",
+            "                    # foreign cars where Stata and the saved page draw",
+            "                    # 8 -- and it read a derived column (the marker-",
+            "                    # label text) at the row label as a position, so",
+            "                    # under any qualifier the labels named other rows",
+            "                    # (measured 24sep2026).",
+            "                    _dash_refresh_unlinked(",
+            "                        src, _gdf, _orig_src_data.get(id(src), {}))",
+            "                    # A selection names positions in the rows it",
+            "                    # was made on; these are other rows now.  It",
+            "                    # stayed, and after a move to Foreign a brush",
+            "                    # of observations 1-3 lit up 2, 4 and 6 and an",
+            "                    # update(brush) card kept 21.3333, where the",
+            "                    # saved page clears it and the card reads 23.4",
+            "                    # (measured 24sep2026).  Cleared after the",
+            "                    # data, as the saved page does; the brush",
+            "                    # callback then counts _brush_rows.",
+            "                    src.selected.indices = []",
             "            # 2b. The link group's source, once: every row the filters",
             "            # keep, and each view over it -- a by() panel, a graph or a",
             "            # layer with its own if()/in() -- recounted from the rows it",
@@ -22168,10 +22273,13 @@ class ServerAppBuilder:
             "            # draws from it; a member exclude() names shares it, and is",
             "            # filtered with the group, in both modes.",
             "            if _shared_hit:",
+            "                if _brush_on:",
+            "                    _brush_rows[id(_shared)] = fdf.index",
             "                _dash_refresh_linked(",
             "                    _shared, fdf, _linked_views,",
             "                    snapshot=_orig_src_data.get(id(_shared), {}),",
             "                    pos_of=_shared_pos)",
+            "                _shared.selected.indices = []",
             "            # 3. Recompute aggregated sources",
             "            for key, agg in _agg_srcs.items():",
             "                gname = key[0]",
@@ -22183,7 +22291,17 @@ class ServerAppBuilder:
             "                if gname in _fgvals:",
             "                    _bvs_a, _gkey_a = _fgvals[gname]",
             "                    if _gkey_a is None:",
-            "                        agg_fdf = fdf",
+            "                        # The Total panel: its own rows the move",
+            "                        # keeps.  fdf holds a missing by() value,",
+            "                        # which Total never draws (by(), missing",
+            "                        # aside): a Total lfit after a move was",
+            "                        # fitted on it, 29.4709 at weight 1800",
+            "                        # where Stata's regress on the panel's 5",
+            "                        # rows and the saved page give 29.5622",
+            "                        # (measured 24sep2026).",
+            "                        _own_a = _owner_rows.get(gname)",
+            "                        agg_fdf = (fdf if _own_a is None",
+            "                                   else fdf[fdf.index.isin(_own_a)])",
             "                    else:",
             "                        _fmask_a = mask.copy()",
             "                        if len(_bvs_a) == 1:",
@@ -22212,6 +22330,9 @@ class ServerAppBuilder:
             "                    for _vf in _redrawn_views.get(id(_live), ()):",
             "                        _vf.indices = None",
             "                    _live.data = dict(_new.data)",
+            "                    # Its rows are new too: a selection on them (a",
+            "                    # jittered scatter's) is cleared, as in step 2.",
+            "                    _live.selected.indices = []",
             "                if len(_fresh) != len(agg['sources']):",
             "                    warnings.warn(",
             "                        'dash: %s layer %d redrew %d source(s) where %d were '",
@@ -22280,7 +22401,18 @@ class ServerAppBuilder:
             "            # so the mapping is by row identity, as the standalone",
             "            # path does it.",
             "            if not indices:",
-            "                sel_df = _df_ref",
+            "                # Nothing selected: every row the brushed graph or",
+            "                # panel shows, as the saved page's brush script",
+            "                # counts its brushed source whole (_BRUSH_JS) --",
+            "                # after a move, the rows the filters keep.  This",
+            "                # counted the whole frame: a brush cleared on a",
+            "                # graph `if foreign == 1' read 21.5 where the saved",
+            "                # page reads 23.4, Stata's mean over the graph's",
+            "                # rows, and so would every selection a move clears",
+            "                # (measured 24sep2026).",
+            "                _own = _brush_rows.get(id(_src))",
+            "                sel_df = (_df_ref if _own is None",
+            "                          else _df_ref[_df_ref.index.isin(_own)])",
             "            else:",
             "                _ids = _src.data.get('index')",
             "                if _ids is None:",

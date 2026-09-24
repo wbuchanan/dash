@@ -1702,6 +1702,93 @@ def _move_case(name, move, plots=None, go=None, graphs=None, kpis=None,
     return pytest.param(name, spec, action, oracle, id=name)
 
 
+def _own(name, move, plots, truth, go=None, graphs=None, if_expr="",
+         labels=None, fit=None, parity=True):
+    return {"name": name, "move": move, "plots": plots, "go": go,
+            "graphs": graphs, "if_expr": if_expr, "truth": truth,
+            "labels": labels, "fit": fit, "parity": parity}
+
+
+#: A layer's OWN if()/in() in an UNLINKED graph, after a filter move.  The
+#: served recompute wrote every row the move kept for the graph into each
+#: layer's source, so the layer's qualifier was lost at the first move:
+#: measured 24sep2026 on sysuse auto, `(scatter mpg weight in 40/60) (lfit
+#: mpg weight in 40/60)' with the dropdown on Foreign drew all 22 foreign
+#: cars where Stata's `count if foreign == 1 in 40/60' and the saved page
+#: give 8 (the lfit, redrawn, was already right).  And a column the layer
+#: derives -- the marker-label text -- was read at the row label as a
+#: position, so under any qualifier the labels named other rows and the
+#: column came out shorter than the rest.
+#:
+#: ``truth`` is ``{figure: {glyph: observations}}``: the observations Stata
+#: selects, measured with the console binary on _DF's ten observations
+#: (24sep2026, `count if ... in ...' and `list obs weight if ... in ...',
+#: quoted per entry).  ``labels`` are the texts Stata writes at them (rep,
+#: in data order); ``fit`` is ``(figure, glyph, x ends, y ends)`` from
+#: `regress mpg weight' on those rows.  An entry with ``parity`` is also in
+#: MOVE_CORPUS, compared whole with the saved renderer.
+_OWN_QUALIFIER_MOVES = [
+    # count if foreign == 1 in 3/8: 3, observations 4, 6 and 8; regress
+    # mpg weight on them: 29.8918 at weight 1800, 18.9792 at 3100.
+    _own("a scatter and an lfit, each with its own in, dropdown", _MOVES[0],
+         [plot_for("scatter", in_expr="3/8"), plot_for("lfit", in_expr="3/8")],
+         {0: {0: [4, 6, 8]}},
+         fit=(0, 1, (1800.0, 3100.0), (29.8918, 18.9792))),
+    # count if mpg > 18 & price >= 4500 & price <= 11385: 4 (4, 5, 8, 10).
+    _own("a scatter with its own if, range", _MOVES[1],
+         [plot_for("scatter", if_expr="mpg > 18")], {0: {0: [4, 5, 8, 10]}}),
+    # count if mpg > 18 & price >= 4500 in 2/9: 3 (4, 5, 8).
+    _own("a scatter with its own if and in, slider", _MOVES[2],
+         [plot_for("scatter", if_expr="mpg > 18", in_expr="2/9")],
+         {0: {0: [4, 5, 8]}}),
+    # The graph's `if mpg > 18' and a range: count if mpg > 18 & price >=
+    # 4500 & price <= 11385 in 3/8: 3 (4, 5, 8); without the in: 4.
+    _own("a scatter with its own in beside a plain one, under the graph's "
+         "if, range", _MOVES[1],
+         [plot_for("scatter", in_expr="3/8"), plot_for("scatter")],
+         {0: {0: [4, 5, 8], 1: [4, 5, 8, 10]}}, if_expr="mpg > 18"),
+    # The graph's `in 2/9': count if foreign == 1 & mpg > 20 in 2/9: 2
+    # (4, 8).
+    _own("a scatter with its own if, under the graph's in, dropdown",
+         _MOVES[0], None, {0: {0: [4, 8]}},
+         graphs=[("g1", [plot_for("scatter", if_expr="mpg > 20")], None,
+                  {"in_expr": "2/9"})]),
+    # by(foreign): count if foreign == 0 & price >= 4500 & price <= 11385
+    # in 3/8: 2 (5, 7); foreign == 1: 2 (4, 8).
+    _own("a scatter with its own in, under by(), range", _MOVES[1],
+         [plot_for("scatter", in_expr="3/8")],
+         {0: {0: [5, 7]}, 1: {0: [4, 8]}}, go={"by": "foreign"}),
+    # by(rep), every group kept by the move: count if foreign == 1 & mpg >
+    # 18 & rep == 3: 1 (6); rep == 4: 2 (8, 10); rep == 5: 1 (4).
+    _own("a scatter with its own if, under by(), dropdown", _MOVES[0],
+         [plot_for("scatter", if_expr="mpg > 18")],
+         {0: {0: [6]}, 1: {0: [8, 10]}, 2: {0: [4]}}, go={"by": "rep"}),
+    # The graph's `if mpg > 18', labelled: list obs weight rep if mpg > 18
+    # & price >= 4500 & price <= 11385 gives 4, 5, 8, 10 with rep 5, 4, 4,
+    # 4.  The labels were read at the row label as a position: served
+    # '4', '3' beside four markers, the column two long where the rest
+    # are four.
+    _own("a labelled scatter under the graph's if, range", _MOVES[1],
+         [plot_for("scatter", {"mlabel": "rep"})], {0: {0: [4, 5, 8, 10]}},
+         if_expr="mpg > 18", labels=["5", "4", "4", "4"]),
+    # Its own if on a range layer: count if mpg > 18 & price >= 4500 &
+    # price <= 11385: 4 (4, 5, 8, 10).
+    _own("an rspike with its own if, range", _MOVES[1],
+         [plot_for("rspike", if_expr="mpg > 18")], {0: {0: [4, 5, 8, 10]}}),
+    # count if foreign == 1 in 3/8: 3 (4, 6, 8).
+    _own("a dot plot with its own in, dropdown", _MOVES[0],
+         [plot_for("dot", in_expr="3/8")], {0: {0: [4, 6, 8]}}),
+    # Labelled, with its own in: list obs weight rep if foreign == 1 in
+    # 3/8 gives 4, 6, 8 with rep 5, 3, 4.  Not compared whole with the
+    # saved page: its LabelSet has no view, so it labels every row of the
+    # graph's source -- ten labels beside six markers before any move --
+    # a saved-page defect of its own; its markers are held to Stata below.
+    _own("a labelled scatter with its own in, dropdown", _MOVES[0],
+         [plot_for("scatter", {"mlabel": "rep"}, in_expr="3/8")],
+         {0: {0: [4, 6, 8]}}, labels=["5", "3", "4"], parity=False),
+]
+
+
 MOVE_CORPUS = [
     *[_move_case(f"{t}, {m[0]}", m, [plot_for(t)])
       for t in _MOVED_LAYERS for m in _MOVES],
@@ -1752,6 +1839,11 @@ MOVE_CORPUS = [
                graphs=[("g1", [_sc()], {"by": "foreign"},
                         {"if_expr": "price > 4500"}), ("g2", [_sc()])],
                bo={"link": "g1 g2"}),
+    # A layer's OWN if()/in() in an unlinked graph, after a move: the entries
+    # of _OWN_QUALIFIER_MOVES, where Stata's rows are written down.
+    *[_move_case(e["name"], e["move"], e["plots"], e["go"],
+                 graphs=e["graphs"], if_expr=e["if_expr"])
+      for e in _OWN_QUALIFIER_MOVES if e["parity"]],
 ]
 
 
@@ -1813,6 +1905,90 @@ class TestAFilterMoveAgrees:
         after, _ = _served_after_move(spec, action)
         assert _diff(before["figures"], after) or "function" in name, (
             f"{name}: the move left every figure unchanged")
+
+
+#: _DF's observation number (1-based) by weight, which no two share.
+_OBS_OF_WEIGHT = {float(w): i + 1 for i, w in enumerate(_DF["weight"])}
+
+
+def _observations(glyph):
+    """The observations a glyph profile draws, read from its x (a range
+    layer's x0), sorted."""
+    coord = glyph["coords"].get("x") or glyph["coords"].get("x0")
+    assert coord and coord[0] == "weight", glyph["coords"]
+    return sorted(_OBS_OF_WEIGHT[float(w)] for w in coord[1])
+
+
+def _own_spec(entry):
+    _, filt, action, oracle = entry["move"]
+    spec = _spec(entry["plots"], {"filter": filt}, entry["go"],
+                 entry["graphs"], None, entry["if_expr"])
+    return spec, action, oracle
+
+
+@pytest.mark.parametrize("entry", _OWN_QUALIFIER_MOVES,
+                         ids=[e["name"] for e in _OWN_QUALIFIER_MOVES])
+class TestALayersOwnQualifierAfterAMove:
+    """After a filter move each layer draws the observations Stata selects
+    for it: its own if()/in() -- the in counted over the whole dataset --
+    with the graph's qualifier, its by() group and the move's rows.  Both
+    modes, held to Stata's answer (``_OWN_QUALIFIER_MOVES``); the parity
+    entries are compared whole with the saved renderer in
+    ``TestAFilterMoveAgrees`` as well."""
+
+    def _check(self, figs, entry, mode):
+        name = entry["name"]
+        assert len(figs) == len(entry["truth"]), (
+            f"{name}: {mode} drew {len(figs)} figure(s)")
+        for fi, layers in entry["truth"].items():
+            glyphs = figs[fi]["glyphs"]
+            for gi, want in layers.items():
+                got = _observations(glyphs[gi])
+                assert got == want, (
+                    f"{name}: {mode} figure {fi} glyph {gi} draws "
+                    f"observations {got}; Stata selects {want}")
+        if entry["fit"]:
+            fi, gi, xs, ys = entry["fit"]
+            c = figs[fi]["glyphs"][gi]["coords"]
+            got = ((c["x"][1][0], c["x"][1][-1]), (c["y"][1][0], c["y"][1][-1]))
+            assert got == (xs, ys), (
+                f"{name}: {mode} fitted line ends at {got}; Stata's regress "
+                f"on the rows gives {(xs, ys)}")
+
+    def test_the_served_app(self, entry):
+        spec, action, _ = _own_spec(entry)
+        srv, _ = _served_after_move(spec, action)
+        self._check(srv, entry, "the served app")
+        if entry["labels"] is not None:
+            (lab,) = [a for a in srv[0]["annotations"]
+                      if a["kind"] == "LabelSet"]
+            assert lab["texts"] == entry["labels"], (
+                f"{entry['name']}: served labels {lab['texts']}; Stata "
+                f"writes {entry['labels']}")
+
+    def test_the_saved_page(self, entry):
+        """The saved renderer given the move's rows as an ``if``: its own
+        oracle for a move (TestAFilterMoveAgrees)."""
+        spec, _, oracle = _own_spec(entry)
+        std, _ = _saved_with_qualifier(spec, oracle)
+        self._check(std, entry, "the saved page")
+        if entry["labels"] is not None and entry["parity"]:
+            (lab,) = [a for a in std[0]["annotations"]
+                      if a["kind"] == "LabelSet"]
+            assert lab["texts"] == entry["labels"], lab["texts"]
+
+    def test_the_move_changes_what_the_layer_draws(self, entry):
+        """Guards the guard: before the move the served layers draw other
+        observations, so the comparisons above are of the move's work (a
+        by() panel the move leaves as it was may draw the same)."""
+        spec, _, _ = _own_spec(entry)
+        before = _render_pair("own-before:" + entry["name"], spec)
+        same = [(fi, gi) for fi, layers in entry["truth"].items()
+                for gi, want in layers.items()
+                if _observations(
+                    before["srv"]["figures"][fi]["glyphs"][gi]) == want]
+        assert len(same) < sum(len(v) for v in entry["truth"].values()), (
+            f"{entry['name']}: the move changed no layer's rows: {same}")
 
 
 # ---------------------------------------------------------------------------

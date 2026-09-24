@@ -741,14 +741,20 @@ SURFACES = {
             _M + "TestWidgetValuesFromTheClient::test_out_of_range_selection_indices_are_dropped",
             "test/test_filter_exclude.py::TestTheServedAppLeavesAnExcludedGraphAlone::test_whatever_order_the_graphs_came_in",
             "test/test_served_linked_views.py::TestEachServedViewShowsItsOwnRows::test_after_one_move",
+            # T5 (24sep2026): no widget value widens a layer's own
+            # if()/in(), and no selection outlives the rows it named.
+            "test/test_served_filter_move.py::TestAdversarialFilterMoves::test_no_widget_value_widens_a_layers_own_rows",
+            "test/test_served_filter_move.py::TestAdversarialFilterMoves::test_a_selection_cannot_outlive_the_rows_it_named",
         ],
         "injection": [
             _M + "TestWidgetValuesFromTheClient::test_a_value_is_never_evaluated_or_reflected",
+            "test/test_served_filter_move.py::TestAdversarialFilterMoves::test_a_value_is_data_not_a_qualifier",
         ],
         "exhaustion": [
             "test/test_served_throttle.py::TestAFloodOfFilterChangesIsThrottled::test_a_thousand_select_changes_run_at_most_burst_recomputes",
             "test/test_served_throttle.py::TestTheBrushIsThrottled::test_a_thousand_selections_run_at_most_burst_and_the_last_wins",
             "test/test_served_linked_views.py::TestTheSharedSourceHoldsEveryFilteredRowOnce::test_written_once_per_move",
+            "test/test_served_filter_move.py::TestAdversarialFilterMoves::test_a_move_over_many_rows_is_linear",
         ],
     },
     # The served app's own command line (python app.py --port ...).

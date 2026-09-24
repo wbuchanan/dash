@@ -375,6 +375,7 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  '_dash_reference_lines': 'test/test_axis_options.py::TestReferenceLines::test_suboptions_are_applied',
  '_dash_refresh_linked': 'test/test_served_linked_views.py::TestRefreshLinked::test_a_column_the_frame_lacks_is_carried_by_row',
  '_dash_refresh_linked.<locals>._point': 'test/test_served_linked_views.py::TestRefreshLinked::test_no_view_ever_points_past_the_source',
+ '_dash_refresh_unlinked': 'test/test_served_filter_move.py::TestTheUnlinkedRefresh::test_it_writes_the_rows_of_its_own_that_the_move_keeps',
  '_dash_refuse_oversized': 'test/test_resource_limits.py::TestAnOversizedDatasetIsRefused::test_over_the_limit_the_message_says_what_and_how',
  '_dash_report_empty_layer': 'test/test_immediate_dashboards.py::TestTheReportHelpers::test_a_name_is_shown_as_text',
  '_dash_report_suboptions': 'test/test_axis_options.py::TestAxisScale::test_unsupported_scale_suboptions_are_reported',

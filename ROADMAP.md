@@ -3645,7 +3645,11 @@ holding an apostrophe after a double quote is stored as typed, and user
 text is expanded once, where the user typed it, since 24sep2026 (BUGS.md,
 "Any dash command holding a double quote followed by an apostrophe
 stopped at the entry" and "dash expanded macros in user text a second
-time"; `test/test_json_escaping.cscript` JSE-42 to JSE-70).
+time"; `test/test_json_escaping.cscript` JSE-42 to JSE-70).  A served
+filter move keeps a raw layer's own `if` and `in`, and clears a brushed
+selection as the saved page does, since 24sep2026 (BUGS.md, "The served
+app dropped a layer's own if() and in() at the first filter move";
+`test/test_mode_parity.py` TestALayersOwnQualifierAfterAMove).
 
 ### Verification, measured
 
