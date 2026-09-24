@@ -22,9 +22,10 @@
 *! _dash_graph_opts_to_json never -- and dash_setup only by
 *! test_setup_honesty's HON-14/15, which its syntax line refuses: its body
 *! never ran.  Of 55 Mata functions 52 ran; _html_escape, _dash_json_esc
-*! and _dash_html_esc never did.  test/program_coverage_map.py names the
-*! test that exercises every unit and test_program_coverage_map.py holds it
-*! to the sources.
+*! and _dash_html_esc never did.  WP-26 deleted those five, which nothing
+*! called (24sep2026; test_no_orphans.py now fails on a unit nothing
+*! calls).  test/program_coverage_map.py names the test that exercises
+*! every unit and test_program_coverage_map.py holds it to the sources.
 *!
 *! WHAT THIS SCRIPT HOLDS
 *!
@@ -38,7 +39,9 @@
 *!   PC-14      the sandbox dash_setup runs in (test/setup_sandbox.py)
 *!   PC-15..26  dash_setup end to end, through every branch this machine
 *!              can reach, installing nothing
-*!   PC-27..29  the never-executed escape helpers and _dash_kv_json
+*!   PC-28      _json_escape, read back by JSON as the original.  PC-27
+*!              and PC-29 tested _html_escape, _dash_html_esc and
+*!              _dash_kv_json, and went with them (WP-26)
 *!   PC-30      the Mata library check names _dash_path_badchar, which
 *!              dash.ado calls and the check left out
 *!   PC-31      a variable named by an abbreviation -- in a qualifier, or
@@ -899,42 +902,20 @@ assert "`pc_sb_clean'" == "1"
 
 
 // ================================================================
-// PC-27 -- _html_escape and _dash_html_esc (no caller; WP-26)
-// ================================================================
-mata:
-_e = J(0, 1, .)
-_e = _e \ (_html_escape("<a href=" + char(34) + "x" + char(34) + ">&'") == "&lt;a href=&quot;x&quot;&gt;&amp;&#39;")
-_e = _e \ (_html_escape("") == "")
-_e = _e \ (_html_escape("plain 100%") == "plain 100%")
-// & first: an entity is escaped once, never twice.
-_e = _e \ (_html_escape("&lt;") == "&amp;lt;")
-// UTF-8 and macro characters are kept as they are.
-_e = _e \ (_html_escape("caf" + char(195) + char(169) + char(96) + char(36)) == "caf" + char(195) + char(169) + char(96) + char(36))
-_e = _e \ (_html_escape("</script><script>alert(1)</script>") == "&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;")
-_dash_html_esc("<b>" + char(34) + "'", "pc25")
-_e = _e \ (st_local("pc25") == "&lt;b&gt;&quot;&#39;")
-st_local("pc25ok", strofreal(all(_e)))
-st_local("pc25n", strofreal(rows(_e)))
-end
-assert `pc25ok' == 1
-display "PC-27 PASS: _html_escape escapes & < > quote and apostrophe once each and keeps everything else (`pc25n' checks)"
-
-
-// ================================================================
-// PC-28 -- _dash_json_esc (no caller; WP-26): _json_escape into a local,
-//          valid JSON for every byte below 0x20 and the macro characters
+// PC-28 -- _json_escape: every byte below 0x20 and the three characters a
+//          macro could misread (backtick, dollar, apostrophe) escaped, and
+//          the text read back by JSON as the original.  It went through
+//          _dash_json_esc, which WP-26 deleted with _html_escape and
+//          _dash_html_esc (PC-27) and _dash_kv_json (PC-29): nothing called
+//          them (24sep2026).
 // ================================================================
 mata:
 _s = "a" + char(34) + "b" + char(92) + "c" + char(96) + char(36) + char(39)
 for (_c = 1; _c <= 31; _c++) _s = _s + char(_c)
-_dash_json_esc(_s, "pc26")
-st_local("pc26same", strofreal(st_local("pc26") == _json_escape(_s)))
 st_global("PC26_RAW", _s)
-st_global("PC26_ESC", st_local("pc26"))
-_dash_json_esc("", "pc26e")
-st_local("pc26empty", strofreal(st_local("pc26e") == ""))
+st_global("PC26_ESC", _json_escape(_s))
+st_local("pc26empty", strofreal(_json_escape("") == ""))
 end
-assert `pc26same' == 1
 assert `pc26empty' == 1
 python: _pc_M.setLocal("pc26rt", str(int(_pc_json.loads(chr(34) + _pc_M.getGlobal("PC26_ESC") + chr(34)) == _pc_M.getGlobal("PC26_RAW"))))
 assert "`pc26rt'" == "1"
@@ -942,23 +923,7 @@ assert "`pc26rt'" == "1"
 mata: st_local("pc26raw", strofreal(regexm(st_global("PC26_ESC"), "[" + char(1) + "-" + char(31) + char(96) + char(36) + char(39) + "]")))
 assert `pc26raw' == 0
 macro drop PC26_RAW PC26_ESC
-display "PC-28 PASS: _dash_json_esc writes _json_escape's text, which JSON reads back as the original"
-
-
-// ================================================================
-// PC-29 -- _dash_kv_json (no caller; WP-26): one key:value fragment
-// ================================================================
-_dash_kv_json title "A b" pc27
-assert `"`pc27'"' == `""title":"A b""'
-_dash_kv_json title "" pc27
-assert `"`pc27'"' == ""
-mata: st_local("pc27v", "a" + char(34) + "q" + char(92) + "b{bf:x}<" + char(39))
-_dash_kv_json k `"`pc27v'"' pc27
-mata: st_global("PC27_FRAG", st_local("pc27"))
-python: _pc_M.setLocal("pc27rt", str(int(_pc_json.loads("{" + _pc_M.getGlobal("PC27_FRAG") + "}") == {"k": "a" + chr(34) + "q" + chr(92) + "b{bf:x}<" + chr(39)})))
-assert "`pc27rt'" == "1"
-macro drop PC27_FRAG
-display "PC-29 PASS: _dash_kv_json writes a fragment JSON reads back, and nothing for an empty value"
+display "PC-28 PASS: _json_escape writes text JSON reads back as the original, with no raw control byte, backtick, dollar or apostrophe"
 
 
 // ================================================================

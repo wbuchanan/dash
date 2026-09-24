@@ -3,11 +3,15 @@
 regen_dashboards.py
 Regenerate all four example dashboard HTML files from the current dash_render.py.
 
-Usage:  /Users/billy/anaconda3/bin/python3 regen_dashboards.py
+Usage:  python3 scripts/regen_dashboards.py
 """
 
 import sys, os, json, math, tempfile
-sys.path.insert(0, os.path.dirname(__file__))
+# The package root: dash_render.py is imported from it, and the example
+# pages are written there, as they were before this script moved to
+# scripts/ (WP-26, 24sep2026; the root's *.html are ignored by .gitignore).
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _ROOT)
 
 import numpy as np
 import pandas as pd
@@ -399,7 +403,7 @@ def regen_kelly22ex(out_path):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    base = os.path.dirname(__file__)
+    base = _ROOT
     print("Regenerating dashboards...")
     regen_scatter(         os.path.join(base, "scatter.html"))
     regen_dashboard(       os.path.join(base, "dashboard.html"))

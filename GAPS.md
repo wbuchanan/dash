@@ -2482,12 +2482,20 @@ checkout at the start of the 23sep2026 session still listed the
 `.ultraplan` reorganisation, the archive directory and a modified
 `REMAINING.md`, `CLAUDE.md` and `test/conftest.py`.
 
-### M3. Development artefacts in the package root — S3, READ
+### M3. Development artefacts in the package root — S3, READ, CLOSED by WP-26
 
 `regen_bootstrap_examples.py`, `regen_comprehensive.py`, `regen_dashboards.py`
 and eight generated `*.html` files (1.2–2.0 MB each, ~13 MB total) sit
 alongside the shippable sources. They are not in `dash.pkg`, so they do not
 ship, but they dominate the repository.
+
+**Closed by WP-26** (24sep2026): the three `regen_*.py` scripts are in
+`scripts/`, and still write the example pages to the package root.  The
+pages -- eleven on this machine -- were never in the repository:
+`.gitignore`'s `*.html` has always dropped them, so they cluttered only the
+working tree.  `test/test_packaging.py` now fails when git tracks a file in
+the root that neither ships nor is one of the repository's documents or
+configuration.
 
 ### M4. Duplicated source blocks — S3, CLOSED by WP-23
 
@@ -2529,7 +2537,7 @@ finds its tenth member.
 
 ---
 
-## N. Dead code — S3, READ
+## N. Dead code — S3, READ, CLOSED by WP-26
 
 | Item | Location | Evidence |
 |---|---|---|
@@ -2543,7 +2551,23 @@ finds its tenth member.
 | The ambiguity branch in `_expand_plottype_str` | `dash_parse.mata:225` | **Unreachable.** Brute-forcing every prefix of all 38 plot-type names gives a maximum hit count of 1: the `strlen(name) >= strlen(minab)` gate at `:218` structurally suppresses the longer candidate in every colliding pair. The comment "or an ambiguous prefix" describes nothing that can happen. |
 | 15 `.do` files, 9 PNG fixtures | `test/` | See L8. |
 
-### N1. Stale file headers — S3, READ
+**Closed by WP-26** (24sep2026).  Deleted: `_dash_graph_opts_to_json`,
+`_dash_kv_json`, `_html_escape`, `_dash_json_esc`, `_dash_html_esc` and
+`map_pci`, and two more that only tests called, `_dash_imm_gettoken` and
+`_dash_pc_immediate` (their tests now call `_dash_imm_next` and
+`_dash_immediate`, what production runs); `_json_escape` stays, used since
+WP-24.  The `"sc"`, `"li"` and `"hist"` aliases are gone from both modes.
+The ambiguity branch is gone: measured in Stata, no prefix of the table's
+40 rows reaches two, and twoway itself has no ambiguous plot type (of 209
+prefixes of 45 names, 127 are "not a twoway plot type", 82 resolve to one).
+`#include` and the other scheme-parser branches are kept and now tested
+against Stata's drawing, which found four open defects (BUGS.md).  The
+renderer's DEAD list (10) is deleted and its TEST_ONLY list (13) is down to
+four test seams kept on purpose.  The 15 `.do` files and the PNGs were
+closed by WP-25 (L8).  `test/test_no_orphans.py` and
+`test/test_function_test_map.py` fail when an uncalled definition returns.
+
+### N1. Stale file headers — S3, READ, CLOSED by WP-26
 
 `dash_parse.mata`'s header **lists `_dash_json_esc` and `_dash_html_esc` as
 "Public API (called from dash.ado)"** at lines 34-35. Both are dead. The same
@@ -2553,6 +2577,12 @@ option prefixes now. `dash.ado:14-16` repeats the same stale architecture
 claim. The Public API list also omits four functions that *are* called:
 `_dash_extract_filters`, `_dash_extract_qual_vars`, `_dash_option_names`,
 `_dash_path_badchar`.
+
+**Closed by WP-26** (24sep2026): measured, the list omitted eight of the 27
+functions dash.ado calls, not four, and named two it does not call beside
+the dead pair.  It is now exactly `_dash_require_mata`'s `_needed` list;
+neither header claims the expansion; three caller notes name every caller.
+Held by `test/test_file_headers.py`.
 
 ---
 

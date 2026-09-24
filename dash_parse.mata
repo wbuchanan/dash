@@ -1,79 +1,32 @@
 *! dash_parse.mata  v2.0
 *! Mata utilities for the dash command.
 *!
-*! This version delegates ALL option parsing to Stata's syntax command.
-*! Mata is responsible only for:
-*!   1. Character-level helpers  (UTF-8 validation, JSON/HTML escaping)
-*!   2. Plot-segment splitting   (|| flat syntax and () paren syntax)
-*!   3. Option-key abbreviation expansion (pre-processing before syntax)
-*!   4. JSON variable extraction (used by _dash_build / _dash_serve)
+*! Options are parsed by Stata's -syntax-, where dash.ado declares twoway's
+*! options with twoway's minimum abbreviations; nothing here rewrites an
+*! option word.  This library reads by value what must not be parsed as
+*! Stata code, and checks what -syntax- cannot:
+*!   1. character-level helpers: JSON escaping, a program's arguments read
+*!      by value, UTF-8 validation, user text echoed as text, a saving()
+*!      path, a KPI's percentile, a layout() grid;
+*!   2. plot types: twoway's abbreviations, the types dash refuses by name,
+*!      and the immediate values of scatteri, pci and pcarrowi;
+*!   3. the command line split into plot segments, at || or (), and the
+*!      comma that starts the options;
+*!   4. the variables a spec names, in its plots and in its qualifiers;
+*!   5. filter(), link() and the registry, and the option names a segment
+*!      holds.
 *!
-*! Public API (called from dash.ado via mata: statements)
-*!   _dash_check_utf8(s)
-*!       Validate UTF-8.  Calls exit(198) on failure.
+*! Public API: the functions dash.ado calls, which are the list
+*! _dash_require_mata checks (`_needed' in dash.ado).  Every other function
+*! here is reached from these, call by call.  test/test_file_headers.py
+*! holds this list to `_needed', and test/test_no_orphans.py holds every
+*! function to a caller.
 *!
-*!   _dash_say(style, before, value, after)
-*!       Print before + value + after as one line in SMCL style "err",
-*!       "txt" or "res", every character shown as written (_dash_smcl_text).
-*!
-*!   _dash_is_digits(s, maxlen)
-*!       1 when s is 1..maxlen ASCII digits and nothing else.
-*!
-*!   _dash_layout_cells(layout)
-*!       Cells an explicit layout() grid asks for, or missing.
-*!
-*!   _dash_layout_refusal(layout, registry)
-*!       "" when dash build can draw layout() as written, else the refusal.
-*!
-*!   _dash_filter_refusal(filter, registry, vars_out)
-*!       "" when every filter() group names a variable and only registered
-*!       exclude() names, the variables then in vars_out; else the refusal.
-*!
-*!   _dash_filter_setvars(filter, names)
-*!       filter with each group's variable replaced by the next of names.
-*!
-*!   _dash_split_segs(input)
-*!       Split the raw command line into plot segments + graph-opts string.
-*!       Sets in the *caller's* local-macro environment:
-*!           _n_segs          : number of plot segments (string of integer)
-*!           _seg_1 .. _seg_N : full text of each segment (incl. plot type)
-*!           _graph_opts_raw  : graph-level option text (may be empty)
-*!
-*!   _dash_expand_plottype(abbrev, out_macro)
-*!       Expand a plot-type abbreviation; store full name in out_macro.
-*!       Stores "" if the abbreviation is unrecognised.
-*!
-*!   _dash_undrawn_plottype(name)
-*!       "contour" or "contourline" when name is one of the twoway plot
-*!       types dash refuses by name, else "".
-*!
-*!   _dash_immediate(vals, w)
-*!       Read the immediate values of scatteri (w = 2) or of pci and
-*!       pcarrowi (w = 4) as twoway reads them, into the caller's locals
-*!       _pci_json, _pci_err, _pci_bad, _pci_left, _pci_hasleft,
-*!       _pci_stop, _pci_n, _pci_nlab.
-*!
-*!   _dash_pc_immediate(vals)
-*!       _dash_immediate(vals, 4).
-*!
-*!   _dash_has_name_opt(s)
-*!       1 when the option text s holds a name() option (spelled name or
-*!       nam) at the top level: a second name(), which dash.ado refuses.
-*!
-*!   _dash_spec_types_in(s, allowed)
-*!       1 when the graph spec s names a plot type and every type it names
-*!       is a word of allowed: a graph that needs no data.
-*!
-*!   _dash_comma_pos(input, out_macro)
-*!       Position (1-based) of the first top-level comma, or "0".
-*!
-*!
-*!   _dash_extract_vars(json_str, out_macro)
-*!       Extract variable-name tokens from a plot-spec JSON string.
-*!       Used by _dash_build and _dash_serve to collect the jsonio varlist.
-*!
-*!   _dash_json_esc(s, out_macro)   — JSON-escape s, store in out_macro
-*!   _dash_html_esc(s, out_macro)   — HTML-escape s, store in out_macro
+*!   _json_escape(s)
+*!       s escaped for a JSON string: the backslash, the double quote and
+*!       every byte below 0x20, and the backtick, dollar sign and
+*!       apostrophe written as JSON escapes (backslash u 0060, 0024 and
+*!       0027), so the result can be expanded inside compound quotes.
 *!
 *!   _dash_json_str_args()
 *!       dash.ado's _dash_json_str: its `0' read by value, the text
@@ -83,19 +36,104 @@
 *!       A program's `0' read by value: its first nlead and last ntail
 *!       arguments (dash's own words) into _dash_a1, _dash_a2, ..., their
 *!       count into _dash_na, and the one user text between them, less one
-*!       pair of enclosing quotes, into _dash_txt.
+*!       pair of enclosing quotes, into _dash_txt.  With optnum, a last
+*!       argument that is all digits is taken as one more.
+*!
+*!   _dash_path_badchar(path)
+*!       The byte value of the first shell-hazardous character in path --
+*!       the double quote, backtick, dollar sign, semicolon, &, |, <, >,
+*!       tab, LF or CR -- or 0.
+*!
+*!   _dash_check_utf8(s)
+*!       Refuses s, r(198), unless it is well-formed UTF-8.
+*!
+*!   _dash_say(style, before, value, after)
+*!       Print before + value + after as one line in SMCL style "err",
+*!       "txt" or "res", every character shown as written.
+*!
+*!   _dash_is_digits(s, maxlen)
+*!       1 when s is 1..maxlen ASCII digits and nothing else.
+*!
+*!   _dash_kpi_pctile(stat, numname, whyname)
+*!       A KPI statistic read as a percentile, p#: why it is or is not one
+*!       into the local whyname, and its number into numname.
+*!
+*!   _dash_layout_cells(layout)
+*!       Cells an explicit layout() grid asks for, or missing.
+*!
+*!   _dash_layout_refusal(layout, registry)
+*!       "" when dash build can draw layout() as written, else the refusal.
+*!
+*!   _dash_expand_plottype(abbrev, out_macro)
+*!       The plot type abbrev names, abbreviated as twoway allows, into
+*!       out_macro; "" when it names no type dash draws.
+*!
+*!   _dash_undrawn_plottype(name)
+*!       name, lower case, when it is a twoway plot type dash refuses by
+*!       name -- contour, contourline, heatmap, rpcap, rpspike -- else "".
+*!
+*!   _dash_immediate(vals, w)
+*!       Read the immediate values of scatteri (w = 2) or of pci and
+*!       pcarrowi (w = 4) as twoway reads them, into the caller's locals
+*!       _pci_json, _pci_err, _pci_bad, _pci_left, _pci_hasleft,
+*!       _pci_stop, _pci_n, _pci_nlab.
+*!
+*!   _dash_comma_pos(input, out_macro)
+*!       Position (1-based) of the first comma outside quotes and
+*!       parentheses, or "0", into out_macro.
+*!
+*!   _dash_split_segs(input)
+*!       Split the raw command line into plot segments, into the caller's
+*!       locals _n_segs, _seg_1 .. _seg_N (each with its plot type),
+*!       _graph_opts_raw and _graph_qual_raw.
+*!
+*!   _dash_extract_vars(json_str, out_macro)
+*!       The variables the plots of a spec name, blank-separated, into
+*!       out_macro.
+*!
+*!   _dash_extract_qual_vars(json_str, out_macro)
+*!       The names a spec's "by" and "if_expr" hold, each once, into
+*!       out_macro.
+*!
+*!   _dash_qual_expand(s)
+*!       The if-expression s with each variable it abbreviates written out.
+*!
+*!   _dash_extract_filters(filter_out, cmd_out)
+*!       Every filter() in the caller's `0': the groups, joined with
+*!       " || ", into the local filter_out, and `0' without them into
+*!       cmd_out.
+*!
+*!   _dash_filter_refusal(filter, registry, vars_out)
+*!       "" when every filter() group names a variable and only registered
+*!       exclude() names, the variables then in vars_out; else the refusal.
+*!
+*!   _dash_link_refusal(link, registry)
+*!       "" when link() is _all alone or names only registered graphs,
+*!       else the refusal.
+*!
+*!   _dash_filter_setvars(filter, names)
+*!       filter with each group's variable replaced by the next of names.
 *!
 *!   _dash_json_get_str(json_str, key, out_macro)
-*!       Extract a JSON string field value by key, correctly handling \"
-*!       escape sequences inside the value.  Used by _dash_render_immediate.
+*!       The string value of key in json_str, its escapes decoded, into
+*!       out_macro; "" when json_str has no such key.
 *!
 *!   _dash_item_globals(name, out_macro)
 *!       The globals one registry item owns that Stata holds, by exact name:
 *!       dash_json_<name>, dash_spec_<name>, dash_kpi_<name> and
-*!       dash_kpi_<name>__<field> for each of _dash_kpi_fields().
+*!       dash_kpi_<name>__<field> for each field _dash_kpi_fields() lists.
 *!
-*!   _dash_kpi_fields()
-*!       The fields a KPI keeps in dash_kpi_<name>__<field>.
+*!   _dash_option_names(in_macro, out_macro)
+*!       The option names in the option text held by the local in_macro,
+*!       blank-separated, into out_macro.
+*!
+*!   _dash_has_name_opt(s)
+*!       1 when the option text s holds a name() option (spelled name or
+*!       nam) at the top level: a second name(), which dash.ado refuses.
+*!
+*!   _dash_spec_types_in(s, allowed)
+*!       1 when the graph spec s names a plot type and every type it names
+*!       is a word of allowed: a graph that needs no data.
 *!
 *! Version: 2.0  27mar2026
 
@@ -150,24 +188,9 @@ string scalar _json_escape(string scalar s) {
     return(out)
 }
 
-// HTML escaping for text embedded in HTML output
-string scalar _html_escape(string scalar s) {
-    string scalar out
-    out = subinstr(s,  "&",  "&amp;",  .)
-    out = subinstr(out, "<",  "&lt;",   .)
-    out = subinstr(out, ">",  "&gt;",   .)
-    out = subinstr(out, char(34), "&quot;", .)
-    out = subinstr(out, "'",  "&#39;",  .)
-    return(out)
-}
-
-// Stata-accessible wrappers
-void _dash_json_esc(string scalar s, string scalar out_macro) {
-    st_local(out_macro, _json_escape(s))
-}
-void _dash_html_esc(string scalar s, string scalar out_macro) {
-    st_local(out_macro, _html_escape(s))
-}
+// _html_escape and the wrappers _dash_json_esc and _dash_html_esc were
+// removed here (WP-26, 24sep2026): nothing called the wrappers, and
+// nothing but _dash_html_esc called _html_escape (GAPS.md N).
 
 // _dash_json_str_args() -- dash.ado's _dash_json_str, read and escaped by
 // value.
@@ -816,8 +839,8 @@ string scalar _dash_layout_refusal(string scalar layout, string scalar registry)
 
 string scalar _expand_plottype_str(string scalar name) {
     string matrix tbl
-    string scalar full, minab, hit
-    real scalar   i, nhits
+    string scalar full, minab
+    real scalar   i
 
     // (full name, minimum abbreviation).  Minimums are MEASURED against real
     // twoway -- see scripts/extract_abbrev_truth.do and
@@ -886,19 +909,26 @@ string scalar _expand_plottype_str(string scalar name) {
     if (name == "mbands") return("mband")
     if (name == "fn") return("function")
 
-    nhits = 0
-    hit   = ""
+    // A name is the one row whose full name it begins and whose minimum it
+    // reaches: no name reaches two rows, so the first it reaches is the
+    // only one.  This counted the rows a name reached and refused one that
+    // reached two, "an ambiguous prefix", which nothing could reach (WP-26
+    // TR-26.6, measured 24sep2026 at 480159f): each of the 186 prefixes of
+    // the 40 names reached at most one row.  Nor has twoway an ambiguous
+    // plot type to refuse.  Of the 209 prefixes of the 45 plot-type names
+    // probed (these 40 and the five dash refuses by name) it took each as
+    // the one type whose minimum it reaches, or refused it, "s is not a
+    // twoway plot type", r(198) -- s, r, pc, rc and every other prefix of
+    // two names that reaches neither minimum among them -- which is what
+    // dash's "unrecognised plot type" says.  test_parser.cscript P1A-76 and
+    // test_no_orphans.py fail when a row lets a name reach two.
     for (i = 1; i <= rows(tbl); i++) {
         full  = tbl[i,1]
         minab = tbl[i,2]
         if (strlen(name) >= strlen(minab) &
-            substr(full, 1, strlen(name)) == name) {
-            nhits = nhits + 1
-            hit   = full
-        }
+            substr(full, 1, strlen(name)) == name) return(full)
     }
-    if (nhits == 1) return(hit)
-    return("")   // unrecognised, or an ambiguous prefix
+    return("")   // no plot type dash draws
 }
 
 void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
@@ -1131,14 +1161,9 @@ real scalar _dash_imm_next(string scalar s, real rowvector b, real scalar i,
     i   = j
     return(1)
 }
-
-// _dash_imm_next for one call, reading the bytes itself.
-real scalar _dash_imm_gettoken(string scalar s, real scalar i,
-                               real scalar mode, string scalar txt,
-                               string scalar raw)
-{
-    return(_dash_imm_next(s, ascii(s), i, mode, txt, raw))
-}
+// _dash_imm_gettoken(s, i, mode, txt, raw), this with ascii(s) read at
+// each call, was removed here (WP-26, 24sep2026): only a test called it.
+// _dash_imm_records reads the bytes once and calls this.
 
 // s without the blanks (char 32, and nothing else) around it.
 string scalar _dash_imm_trim(string scalar s)
@@ -1438,48 +1463,28 @@ void _dash_immediate(string scalar vals, real scalar w)
     st_local("_pci_nlab",    strofreal(nl))
 }
 
-// The same for four coordinates, the name WP-22 gave pcarrowi's entry.
-void _dash_pc_immediate(string scalar vals)
-{
-    _dash_immediate(vals, 4)
-}
+// _dash_pc_immediate(vals), the entry WP-22 gave pcarrowi, was removed
+// here (WP-26, 24sep2026): since c036fb6 dash.ado reads pci and pcarrowi
+// through _dash_immediate(vals, 4), and only tests called it.
 
 // ============================================================
-// 3. OPTION-KEY ABBREVIATION EXPANSION
+// 3. OPTION WORDS ARE NOT REWRITTEN HERE
 // ============================================================
-
-// Expand a single option-key abbreviation to its full name.
-// Returns the original key if no match (passes through unknown options).
-// _expand_optkey was removed here.  dash used to declare every option in
-// lowercase -- which tells Stata's syntax to permit NO abbreviation -- and then
-// fake abbreviation with a fixed lookup table.  That table accepted exactly one
-// short form per option, rejected every other prefix Stata accepts, and mapped
-// eight abbreviations to the WRONG option: xl and yl went to xline/yline where
-// Stata sends them to xlabel/ylabel, and m, mlc, mls, mlp and mlw were likewise
-// mis-routed.  The syntax declarations in dash.ado now carry Stata's own
-// measured minimum abbreviations, so Stata resolves prefixes itself and option
-// words pass through this file untouched.
-
-
-// Expand all option-key abbreviations in an options string.
-// Input  example: "mc(red) ms(oh) title("My Graph")"
-// Output example: "mcolor(red) msymbol(oh) title(My Graph)"
 //
-// Algorithm: scan character by character.
-//   • At depth 0: accumulate a "word" buffer until we hit ( or whitespace/end.
-//     When we hit '(' the accumulated word is an option key → expand it.
-//     When we hit whitespace/end without '(' it is a bare flag option → expand it.
-//   • At depth > 0 (inside parentheses): copy verbatim (it is an option value).
-//   • Inside double-quoted strings: copy verbatim.
-//   • Inside compound-quoted strings `"..."': copy verbatim.
-//
-// Note: Values inside parentheses are copied without modification so that
-// variable names, expressions, and quoted strings are preserved exactly.
-// _dash_expand_opts_str was removed here together with _expand_optkey.
-// With option keys no longer rewritten, it was a verified identity function --
+// Stata's -syntax- resolves option keys: dash.ado's declarations carry
+// Stata's own measured minimum abbreviations, so option words pass
+// through this file untouched.  Two functions that rewrote them were
+// removed from here.  dash used to declare every option in lowercase --
+// which tells -syntax- to permit NO abbreviation -- and _expand_optkey
+// faked abbreviation with a fixed lookup table.  That table accepted
+// exactly one short form per option, rejected every other prefix Stata
+// accepts, and mapped eight abbreviations to the WRONG option: xl and yl
+// went to xline/yline where Stata sends them to xlabel/ylabel, and m, mlc,
+// mls, mlp and mlw were likewise mis-routed.  _dash_expand_opts_str, which
+// applied it to an option string, was then a verified identity function --
 // it returned its input unchanged for nested parentheses, quoted values
-// containing commas, repeated whitespace, bare flags and the empty string --
-// so every call site now passes the raw option text straight to -syntax-.
+// containing commas, repeated whitespace, bare flags and the empty string
+// -- so every call site passes the raw option text straight to -syntax-.
 
 
 
@@ -1958,7 +1963,8 @@ void _dash_split_segs(string scalar input) {
 
 
 // ============================================================
-// 6. JSON VARIABLE EXTRACTOR  (used by _dash_build / _dash_serve)
+// 6. JSON VARIABLE EXTRACTOR  (used by _dash_prepare_spec and
+//    _dash_render_immediate)
 // ============================================================
 //
 // Scans a plot-spec JSON string and collects all "yvar", "xvar",
@@ -2456,7 +2462,7 @@ string scalar _dash_qual_expand(string scalar s)
 
 
 // ============================================================
-// 6.  FILTER EXTRACTION
+// 7.  FILTER EXTRACTION
 //     _dash_extract_filters(filter_out, cmd_out)
 //
 // Scans Stata's `0' local for ALL occurrences of filter(...)
@@ -2468,7 +2474,8 @@ string scalar _dash_qual_expand(string scalar s)
 //                the caller can pass it back to -syntax- without
 //                triggering the "option may not be repeated" error.
 //
-// Called from _dash_build BEFORE syntax runs.
+// Called from _dash_build, _dash_serve_spec and _dash_prepare_spec,
+// before -syntax- reads the command.
 // ============================================================
 void _dash_extract_filters(string scalar filter_out,
                             string scalar cmd_out) {
@@ -2593,7 +2600,7 @@ void _dash_extract_filters(string scalar filter_out,
 
 
 // ============================================================
-// 6b. FILTER GROUPS
+// 7b. FILTER GROUPS
 //     _dash_filter_split(s, groups)
 //     _dash_filter_items(group)
 //     _dash_filter_refusal(filter, registry, vars_out)
@@ -2852,7 +2859,7 @@ string scalar _dash_filter_setvars(string scalar filter, string scalar names) {
 
 
 // ============================================================
-// 7.  JSON STRING VALUE EXTRACTOR
+// 8.  JSON STRING VALUE EXTRACTOR
 //     _dash_json_get_str(json_str, key, out_macro)
 //
 // Extracts the value of a JSON string field named `key` from
@@ -2875,7 +2882,7 @@ string scalar _dash_filter_setvars(string scalar filter, string scalar names) {
 //   out_macro  : Stata local into which the decoded value is stored
 //                (empty string if the key is not found)
 //
-// Called from _dash_render_immediate in dash.ado.
+// Called from _dash_plot and _dash_render_immediate in dash.ado.
 // ============================================================
 void _dash_json_get_str(string scalar json_str,
                         string scalar key,

@@ -1861,7 +1861,9 @@ class TestALayoutThatCannotBeReadIsReported:
     def test_a_bootstrap_spec_is_read_whole_or_said(self, layout, needle):
         got, msgs = self._capped(layout)
         assert len(msgs) == 1 and needle in msgs[0], msgs
-        assert dr.DashRenderer._is_bootstrap_layout(got)
+        # The test both modes run (DashRenderer._is_bootstrap_layout only
+        # delegated to it, and WP-26 deleted it, 24sep2026).
+        assert dr._dash_is_bs_layout(got)
 
     @pytest.mark.parametrize("layout", [
         "auto", "", "2 1", " 2  1 ", "g1:1,2 g2:1,1", "g1:0,0 g2:0,1",

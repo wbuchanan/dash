@@ -4,7 +4,9 @@ AC-24.3 and CLAUDE.md rule 4.
 
 Read by test/test_function_test_map.py, which fails when dash_render.py
 gains a function this map does not name, when an entry names a test that
-does not exist, or when a DEAD or TEST_ONLY function becomes reachable.
+does not exist, when a DEAD or TEST_ONLY function becomes reachable, when a
+function only tests reach is not a seam TEST_ONLY keeps on purpose, or when
+DEAD holds anything (WP-26 emptied it).
 
 Keys are ``co_qualname``s: ``GlyphMapper.map_scatter``, a nested
 ``_dash_build_hover.<locals>._band``, and ``app:make_document`` for a
@@ -34,7 +36,6 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  'DashRenderer._assemble_layout': 'test/test_server.py::TestPathInjectionHardening::test_main_accepts_path_with_backslash_on_posix',
  'DashRenderer._assemble_layout.<locals>._gopts_of': 'test/test_mode_parity.py::TestTheTwoModesAgree::test_same_document_tree',
  'DashRenderer._assert_every_graph_was_placed': 'test/test_layout_facets.py::TestNoGraphVanishes::test_the_guard_fires_when_a_figure_is_genuinely_unplaced',
- 'DashRenderer._auto_bs_layout': 'test/test_geometry.py::TestBootstrapLayout::test_a_wide_panel_gets_its_own_row',
  'DashRenderer._build_figures': 'test/test_pipeline_integration.py::TestPipelineScatteri::test_scatteri_renders_inline_coords',
  'DashRenderer._build_filter_widgets': 'test/test_filter_widget_data.py::TestADashboardOfKpisAlone::test_the_filter_recomputes_the_card_in_both_modes',
  'DashRenderer._build_kpi_html': 'test/test_kpi.py::TestKpiInitialValueComputed::test_kpi_count_formatted_with_comma',
@@ -45,11 +46,9 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  'DashRenderer._collect_graph_vars': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
  'DashRenderer._collect_plot_vars': 'test/test_pipeline_integration.py::TestCollectGraphVarsConsistency::test_collect_plot_vars_returns_correct_vars',
  'DashRenderer._compute_grid': 'test/test_server.py::TestLayoutZeroColumnsCrash::test_compute_grid_two_zero',
- 'DashRenderer._compute_kpi_stat': 'test/test_kpi.py::TestJsHelpers::test_dcount_js_logic',
  'DashRenderer._compute_kpi_stat_on_df': 'test/test_kpi.py::TestKpiInitialValueComputed::test_kpi_raw_numeric_spec_value_is_formatted',
  'DashRenderer._csv_button': 'test/test_immediate_dashboards.py::TestADashboardOfImmediateGraphsAloneIsDrawn::test_the_csv_download_is_offered_on_it',
  'DashRenderer._default_grid_cols': 'test/test_layout.py::TestAutoLayout::test_auto_1_graph',
- 'DashRenderer._df': 'test/test_kpi.py::TestJsHelpers::test_dcount_js_logic',
  'DashRenderer._effective_kpi_fmt': 'test/test_kpi.py::TestKpiInitialValueComputed::test_kpi_raw_numeric_spec_value_is_formatted',
  'DashRenderer._expand_by_groups': 'test/test_server.py::TestByFallbackOnAllMissingFacets::test_expand_by_groups_all_missing_returns_empty_df',
  'DashRenderer._facet_label': 'test/test_dates.py::TestFacetAndMarkerLabels::test_a_by_facet_on_a_date_reads_as_a_date',
@@ -57,7 +56,6 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  'DashRenderer._format_date_value': 'test/test_dates.py::TestFacetAndMarkerLabels::test_a_by_facet_on_a_date_reads_as_a_date',
  'DashRenderer._format_kpi_value': 'test/test_kpi.py::TestKpiFormatting::test_fmt_9_0fc_no_decimals',
  'DashRenderer._head_of_file_html': 'test/test_scheme_review_fixes.py::TestBootstrapPageWithWidgets::test_a_page_without_widgets_is_unchanged',
- 'DashRenderer._is_bootstrap_layout': 'test/test_layout.py::TestBootstrapLayout::test_is_bootstrap_layout_auto_is_false',
  'DashRenderer._kpi_callback_config': 'test/test_scheme_review_fixes.py::test_the_carried_name_is_escaped',
  'DashRenderer._kpi_column': 'test/test_kpi.py::TestJsHelpers::test_dcount_js_logic',
  'DashRenderer._kpi_js_number_format': 'test/test_help_claims_4.py::TestACardKeepsItsFormatWhenAFilterMoves::test_the_saved_page',
@@ -69,9 +67,6 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  'DashRenderer._make_figure_body': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
  'DashRenderer._make_kpi_div': 'test/test_kpi.py::TestKpiDivHtml::test_div_contains_subtitle',
  'DashRenderer._make_source': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
- 'DashRenderer._parse_axis_label_opt': 'test/test_graph_options.py::TestParseAxisLabelOpt::test_comma_separated',
- 'DashRenderer._parse_bs_layout': 'test/test_layout.py::TestBootstrapLayout::test_parse_bs_layout_explicit',
- 'DashRenderer._parse_by_raw': 'test/test_graph_options.py::TestParseByRaw::test_empty_string',
  'DashRenderer._parse_filter_raw': 'test/test_filters.py::TestParseFilterRaw::test_empty_string_returns_empty_list',
  'DashRenderer._parse_fmt': 'test/test_filter_widget_data.py::TestADashboardOfKpisAlone::test_the_filter_recomputes_the_card_in_both_modes',
  'DashRenderer._parse_link_and_filters': 'test/test_linking.py::TestLinkedBrushing::test_a_semicolon_does_not_create_a_second_link_group',
@@ -110,14 +105,12 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  'GlyphMapper._compute_lpoly_fit': 'test/test_help_claims_6.py::TestLpolyAtEveryDegree::test_the_estimator',
  'GlyphMapper._cross_medians': 'test/test_statistical_helpers.py::TestCrossMediansAgainstStata::test_tenths_each_in_their_own_band',
  'GlyphMapper._default_lpoly_bwidth': 'test/test_help_claims_6.py::TestDefaultBandwidth::test_the_rule_is_the_one_the_help_writes_down',
- 'GlyphMapper._fit_fp2': 'test/test_statistical_helpers.py::TestFpFitAndPrediction::test_no_model_for_a_constant_x',
  'GlyphMapper._fitci_std_for': 'test/test_statistical_truth.py::TestFitciBandTypes::test_band_matches_the_plotted_serset',
  'GlyphMapper._fp_design': 'test/test_statistical_helpers.py::TestFpDesign::test_a_repeated_power_multiplies_by_the_log',
  'GlyphMapper._fp_fit': 'test/test_statistical_helpers.py::TestFpFitAndPrediction::test_the_prediction_is_the_design_times_beta_on_raw_x',
  'GlyphMapper._fp_plot_grid': 'test/test_statistical_helpers.py::TestFpPlotGrid::test_an_x_whose_higher_y_row_left_the_sample_stays',
  'GlyphMapper._fp_prepare': 'test/test_statistical_helpers.py::TestFpPrepare::test_a_constant_x_cannot_be_fitted',
  'GlyphMapper._fp_stdp': 'test/test_statistical_helpers.py::TestFpFitAndPrediction::test_stdp_is_the_quadratic_form_of_the_covariance',
- 'GlyphMapper._fp_transform': 'test/test_glyphs.py::TestLpolyFpfit::test_fp_transform_log',
  'GlyphMapper._histogram_grid': 'test/test_statistical_defaults.py::TestHistogramDefaults::test_explicit_density_is_honoured',
  'GlyphMapper._hover_tool': 'test/test_glyphs.py::TestMapLine::test_line_lpattern_applied',
  'GlyphMapper._immediate_labels': 'test/test_varlist_expansion.py::test_scatteri_labels_attach_to_their_own_points',
@@ -168,7 +161,6 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  'GlyphMapper.map_pcarrowi': 'test/test_pccapsym_pcarrowi.py::TestMapPcarrowi::test_a_malformed_record_is_named',
  'GlyphMapper.map_pcbarrow': 'test/test_glyphs.py::TestLegendLabelCoverage::test_pcbarrow_legend',
  'GlyphMapper.map_pccapsym': 'test/test_pccapsym_pcarrowi.py::TestMapPccapsym::test_a_repeated_variable_is_one_column',
- 'GlyphMapper.map_pci': 'test/test_glyphs.py::TestNewPlotTypes::test_map_pci_adds_renderers',
  'GlyphMapper.map_pci_literal': 'test/test_immediate_values.py::TestPciDrawsItsRecords::test_a_malformed_record_is_named',
  'GlyphMapper.map_pcscatter': 'test/test_glyphs.py::TestNewPlotTypes::test_map_pcscatter_adds_scatter_renderer',
  'GlyphMapper.map_pcspike': 'test/test_glyphs.py::TestLegendLabelCoverage::test_pcspike_legend',
@@ -504,97 +496,47 @@ FUNCTIONS = {'DashRenderer.__init__': 'test/test_packaging.py::test_dashrenderer
  'main': 'test/test_server.py::TestCLIServeFlagsAccepted::test_main_raises_on_serve_mode'}
 
 
-#: Functions nothing calls in either mode and no test runs -- WP-26's to
-#: remove, not a test's to cover.  Evidence: never executed by the whole
-#: suite, standalone or served (scripts/fncov/run_fncov.sh, measured at
-#: 68327a8 and again at a2c7502), and no code that runs in either mode
-#: refers to them (scripts/fncov/fncov_reach.py, which
-#: test_function_test_map.py re-checks on every run).
-DEAD = {
-    "DashRenderer._axis_label": (
-        "WP-26: never executed; its def is its only mention in "
-        "dash_render.py.  Axis titles come from _dash_axis_labels, in both "
-        "modes."),
-    "DashRenderer._df_for_source": (
-        "WP-26: never executed; its def is its only mention.  A layer's own "
-        "qualifier is applied through a CDSView (_dash_layer_source), not a "
-        "re-read of the shared source."),
-    "DashRenderer._legend_key": (
-        "WP-26: never executed; its def is its only mention.  A wrapper of "
-        "_dash_legend_key, which _dash_legend_entries calls in both modes."),
-    "DashRenderer._move_legend": (
-        "WP-26: never executed; its def is its only mention.  A wrapper of "
-        "_dash_move_legend, which _dash_apply_legend calls in both modes."),
-    "DashRenderer._parse_axis_spec": (
-        "WP-26: never executed; its def is its only mention.  A wrapper of "
-        "_dash_parse_axis_spec, which the axis helpers call in both modes."),
-    "DashRenderer._layer_drew_anything": (
-        "WP-26: never executed since a2c7502, which replaced its one call "
-        "(the saved render loop) with _dash_note_empty_layer; its def is its "
-        "only mention.  A wrapper of _dash_layer_drew_anything."),
-    "_extract_finite": (
-        "WP-26: never executed; besides its def it is named only in the "
-        "served app's copy list (ServerAppBuilder._glyph_layer_lines), so "
-        "every generated app carries it and none calls it.  Its callers "
-        "moved to _dash_finite_column."),
-    "app:_compute_rscatter": (
-        "WP-26: _generate_app_source writes it into every app and nothing "
-        "in the app calls it -- never executed, its def its only mention. "
-        "rscatter is drawn through GlyphMapper.map_rscatter."),
-    "app:_compute_pcscatter": (
-        "WP-26: written into every app, called by nothing in it -- never "
-        "executed, its def its only mention.  pcscatter is drawn through "
-        "GlyphMapper.map_pcscatter."),
-    "app:_resolve_color": (
-        "WP-26: written into every app, called by nothing in it -- never "
-        "executed; its other mention is a comment.  Colours go through "
-        "_dash_graph_color and _resolve_kpi_color."),
-}
+#: Functions nothing calls in either mode and no test runs.  Empty: WP-26
+#: (24sep2026) deleted the ten WP-24 listed here -- DashRenderer's
+#: _axis_label, _df_for_source, _legend_key, _move_legend, _parse_axis_spec
+#: and _layer_drew_anything, the module-level _extract_finite, and the served
+#: app's own _compute_rscatter, _compute_pcscatter and _resolve_color --
+#: each never executed by the whole suite in either mode (run_fncov.sh, at
+#: 68327a8 and a2c7502) and referred to by no code that runs
+#: (fncov_reach.py, re-run before the deletion).  A function nothing calls is
+#: deleted, not listed: test_function_test_map.py fails while this holds one.
+DEAD = {}
 
-#: Functions only tests call: executed by the suite, but no code that runs
-#: in either mode reaches them (scripts/fncov/fncov_reach.py; and with
-#: DASH_FNCOV_CALLERS=1 nothing but a test module ever called them).  Each
-#: has its test in FUNCTIONS; WP-26 removes them or moves them to the tests.
+#: Functions only tests call, KEPT ON PURPOSE, each with the reason.  No code
+#: that runs in either mode reaches them (scripts/fncov/fncov_reach.py), so
+#: test_function_test_map.py fails when one becomes reachable -- and fails
+#: for any OTHER function only tests reach: delete it, or keep it here with
+#: the reason.  WP-26 (24sep2026) deleted the other nine WP-24 listed --
+#: DashRenderer's _auto_bs_layout, _is_bootstrap_layout, _parse_bs_layout,
+#: _parse_by_raw and _parse_axis_label_opt (pure delegates of functions
+#: both modes run), _compute_kpi_stat and the `_df' property it read (a
+#: second copy of _compute_kpi_stat_on_df, over the whole frame), and
+#: GlyphMapper's _fit_fp2 and _fp_transform (a fallback and a power no fit
+#: runs) -- and pointed their tests at the production functions.  Each kept
+#: one has its test in FUNCTIONS too.
 TEST_ONLY = {
     "DashRenderer._build_figures": (
-        "WP-26: a test seam -- its docstring says render() never calls it; "
-        "13 test files do.  A thin wrapper of _build_sources_and_figures."),
+        "WP-26 keeps it: a test seam (its docstring).  render() never calls "
+        "it; twelve test files build the figures through it without "
+        "assembling a page.  It runs the one implementation render() runs, "
+        "_build_sources_and_figures, with the arguments render() gives it."),
     "DashRenderer._setup_sources": (
-        "WP-26: a test seam, _build_figures' twin (its docstring: 'nothing "
-        "outside the tests called this one').  Five test files call it."),
-    "DashRenderer._compute_kpi_stat": (
-        "WP-26: only tests call it (test_kpi.py, test_kpi_values.py); "
-        "render() computes every card through _compute_kpi_stat_on_df."),
-    "DashRenderer._df": (
-        "WP-26: a property 'settable for testing' (its comment); render() "
-        "reads self.df, and only tests and the test-only _compute_kpi_stat "
-        "read _df."),
-    "DashRenderer._auto_bs_layout": (
-        "WP-26: a wrapper only tests call; both modes reach "
-        "_dash_auto_bs_layout through _dash_parse_bs_layout."),
-    "DashRenderer._is_bootstrap_layout": (
-        "WP-26: a wrapper only tests call; both modes call "
-        "_dash_is_bs_layout directly."),
-    "DashRenderer._parse_bs_layout": (
-        "WP-26: a wrapper only tests call; both modes call "
-        "_dash_parse_bs_layout directly."),
-    "DashRenderer._parse_by_raw": (
-        "WP-26: a wrapper only tests call; both modes call _dash_parse_by "
-        "directly."),
-    "DashRenderer._parse_axis_label_opt": (
-        "WP-26: a wrapper only tests call; the axis helpers call "
-        "_dash_parse_axis_label_opt directly."),
-    "GlyphMapper._fit_fp2": (
-        "WP-26: only tests call it; fpfit and fpfitci fit through _fp_fit "
-        "and _predict_fp2."),
-    "GlyphMapper._fp_transform": (
-        "WP-26: only tests call it; the fractional-polynomial design is "
-        "_fp_design's."),
+        "WP-26 keeps it: _build_figures' twin and the seam under it (its "
+        "docstring); three test files call it, and test_layout_tabs.py "
+        "reads its source.  The arguments are the ones render() gives."),
     "_dash_plot_type_names": (
-        "WP-26: the parity guards' plot-type name set; only tests call it, "
-        "and every generated app carries a copy (its copy list) that no app "
-        "code calls."),
+        "WP-26 keeps it: the parity guards' oracle -- every plot type the "
+        "dispatch tables and _DASH_LITERAL_TYPES name, read from the tables "
+        "both modes run (test_every_plot_type_draws.py, test_mode_parity.py "
+        "TestTheCorpusIsComplete, the help-file checks).  No mode calls it; "
+        "WP-26 took it off the served app's copy list, which nothing in the "
+        "app called."),
     "_dash_plot_type_names.<locals>._Probe.__getattr__": (
-        "WP-26: the probe mapper _dash_plot_type_names reads the dispatch "
-        "tables with; test-only with it."),
+        "WP-26 keeps it with _dash_plot_type_names: the probe mapper that "
+        "function reads the dispatch tables with, test-only with it."),
 }

@@ -9,10 +9,8 @@ cases that exercise it.  This file holds that map to the sources:
   whose unit is gone;
 * every reference must name a case its script really shows as
   ``"<id> PASS"`` (itself or through the helper that closes its cases), or
-  a script that names the unit, so an entry cannot point at nothing;
-* the units the map calls uncalled -- the dead helpers GAPS.md N lists --
-  must stay uncalled: once shipped code calls one, it is live and needs a
-  live unit's tests;
+  a script that names the unit, so an entry cannot point at nothing, and
+  every unit has one;
 * every Mata function dash.ado calls is in the list _dash_require_mata
   checks after it reloads the library.  _dash_path_badchar was not, so a
   library without it passed and the first saving() ended in r(3499)
@@ -225,8 +223,8 @@ class TestTheMapCoversEveryUnit:
         assert not missing, (
             f"{f} defines {missing} and test/program_coverage_map.py has no "
             f"entry for them: name the certification case that exercises "
-            f"each (write one if none does), or, for a unit nothing calls, "
-            f"list it in UNCALLED with the reason")
+            f"each (write one if none does).  A unit nothing calls is dead "
+            f"code: delete it (test_no_orphans.py)")
 
     @pytest.mark.parametrize("f", _SOURCES)
     def test_no_entry_names_a_unit_that_is_gone(self, units, f):
@@ -238,29 +236,13 @@ class TestTheMapCoversEveryUnit:
     def test_the_map_names_no_other_file(self):
         assert set(pcm.COVERAGE) == set(_SOURCES)
 
-    def test_every_unit_has_a_test_unless_nothing_calls_it(self):
+    def test_every_unit_has_a_test(self):
+        """No exemption: the uncalled units the map once excused with an
+        empty entry (its UNCALLED list) were deleted by WP-26, and
+        test_no_orphans.py fails on a unit nothing calls."""
         bare = sorted(u for entries in pcm.COVERAGE.values()
-                      for u, refs in entries.items()
-                      if not refs and u not in pcm.UNCALLED)
+                      for u, refs in entries.items() if not refs)
         assert not bare, f"units with no test reference: {bare}"
-
-    def test_every_uncalled_unit_is_in_the_map(self):
-        known = {u for entries in pcm.COVERAGE.values() for u in entries}
-        assert set(pcm.UNCALLED) <= known, sorted(set(pcm.UNCALLED) - known)
-        for u, note in pcm.UNCALLED.items():
-            assert note.get("why"), u
-            assert set(note.get("callers", ())) <= set(pcm.UNCALLED), u
-            # A unit that names it only to drop it must be one that exists
-            # and drops Mata functions: never a way to hide a real call.
-            for d in note.get("dropped_by", ()):
-                assert d in known, (u, d)
-                src = [f for f in _SOURCES if d in _units(
-                    os.path.join(_ROOT, f))]
-                assert src, (u, d)
-                a, b = _units(os.path.join(_ROOT, src[0]))[d]
-                body = "\n".join(_read(os.path.join(_ROOT, src[0]))
-                                 .split("\n")[a - 1:b])
-                assert re.search(r"\bmata\s+drop\b", body), (u, d)
 
 
 # ---------------------------------------------------------------------------
@@ -335,59 +317,6 @@ class TestEveryReferenceIsATest:
         assert not _shows_case(helper, "HC6-0")
         # An id as an argument is not a case where no helper displays PASS.
         assert not _shows_case("_t HC6-06\n", "HC6-06")
-
-
-# ---------------------------------------------------------------------------
-# The uncalled units stay uncalled
-# ---------------------------------------------------------------------------
-
-class TestTheUncalledUnitsHaveNoCaller:
-
-    @staticmethod
-    def _occurrences(name):
-        """``[(file, line, code)]`` of every code line outside the unit's own
-        definition that names it."""
-        word = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(name)
-                          + r"(?![A-Za-z0-9_])")
-        out = []
-        for f in _SOURCES:
-            text = _read(os.path.join(_ROOT, f))
-            spans = _units(os.path.join(_ROOT, f))
-            own = spans.get(name)
-            for n, code in _code_lines(text):
-                if not word.search(code):
-                    continue
-                if own and n == own[0]:
-                    continue
-                out.append((f, n, code, spans))
-        return out
-
-    @pytest.mark.parametrize("name", sorted(pcm.UNCALLED))
-    def test_no_shipped_code_calls_it(self, name):
-        allowed = (set(pcm.UNCALLED[name].get("callers", ()))
-                   | set(pcm.UNCALLED[name].get("dropped_by", ())))
-        callers = []
-        for f, n, code, spans in self._occurrences(name):
-            inside = [u for u, (a, b) in spans.items() if a <= n <= b]
-            if inside and set(inside) <= allowed:
-                continue
-            callers.append(f"{f}:{n}: {code.strip()}")
-        assert not callers, (
-            f"{name} is listed as uncalled, but shipped code calls it:\n"
-            + "\n".join(callers) + "\nA live unit needs a live unit's "
-            "tests: take it out of UNCALLED and give it its tests.")
-
-    def test_the_detector_sees_a_caller(self, tmp_path, monkeypatch):
-        """The check above finds a call written in a program body."""
-        ado = tmp_path / "dash.ado"
-        ado.write_text("program define a\n    _dash_kv_json k v o\nend\n"
-                       "program define _dash_kv_json\n    args k v o\nend\n",
-                       encoding="utf-8")
-        for f in ("dash_setup.ado", "dash_parse.mata"):
-            (tmp_path / f).write_text("", encoding="utf-8")
-        monkeypatch.setattr(sys.modules[__name__], "_ROOT", str(tmp_path))
-        hits = [(f, n) for f, n, _c, _s in self._occurrences("_dash_kv_json")]
-        assert hits == [("dash.ado", 2)]
 
 
 # ---------------------------------------------------------------------------

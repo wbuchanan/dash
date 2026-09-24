@@ -3,8 +3,8 @@
 Regenerate all four Bootstrap-layout example HTML files.
 
 Uses the same 30-observation sample data as test_example_simulation.py.
-Run from the dash/ directory:
-    /Users/billy/anaconda3/bin/python3 regen_bootstrap_examples.py
+Run from anywhere; it writes the pages to the package root:
+    python3 scripts/regen_bootstrap_examples.py
 """
 
 import json
@@ -12,7 +12,11 @@ import os
 import tempfile
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
+# The package root: dash_render.py is imported from it, and the example
+# pages are written there, as they were before this script moved to
+# scripts/ (WP-26, 24sep2026; the root's *.html are ignored by .gitignore).
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _ROOT)
 from dash_render import DashRenderer
 
 # ---------------------------------------------------------------------------
@@ -97,7 +101,7 @@ def render(spec: dict, out_name: str) -> None:
         renderer = DashRenderer(spec_path, data_path, out_path)
         html = renderer.render()
 
-        dest = os.path.join(os.path.dirname(__file__), out_name)
+        dest = os.path.join(_ROOT, out_name)
         with open(dest, "w", encoding="utf-8") as f:
             f.write(html)
 

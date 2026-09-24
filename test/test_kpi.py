@@ -114,12 +114,18 @@ def renderer_with_data(auto_df, tmp_path):
 
 # ================================================================
 # P2-33 — mean(mpg) computed correctly
+#
+# These, the two formatting tests below and TestJsHelpers called
+# _compute_kpi_stat, a copy of the three lines of _compute_kpi_stat_on_df
+# over the renderer's whole frame that only tests called.  WP-26 deleted
+# it (24sep2026); render() computes every card with _compute_kpi_stat_on_df,
+# so each asks that, on the same frame, the same question.
 # ================================================================
 class TestKpiStatistics:
     def test_mean_mpg(self, renderer_with_data, auto_df):
         """P2-33: mean(mpg) matches pandas mean."""
         r = renderer_with_data
-        result = r._compute_kpi_stat("mean", "mpg")
+        result = r._compute_kpi_stat_on_df(r.df, "mean", "mpg")
         expected = auto_df["mpg"].mean()
         assert abs(result - expected) < 0.01
 
@@ -129,7 +135,7 @@ class TestKpiStatistics:
     def test_sum_price(self, renderer_with_data, auto_df):
         """P2-34: sum(price) matches pandas sum."""
         r = renderer_with_data
-        result   = r._compute_kpi_stat("sum", "price")
+        result   = r._compute_kpi_stat_on_df(r.df, "sum", "price")
         expected = auto_df["price"].sum()
         assert abs(result - expected) < 1.0
 
@@ -139,7 +145,7 @@ class TestKpiStatistics:
     def test_count_mpg(self, renderer_with_data, auto_df):
         """P2-35: count(mpg) equals number of non-missing observations."""
         r = renderer_with_data
-        result   = r._compute_kpi_stat("count", "mpg")
+        result   = r._compute_kpi_stat_on_df(r.df, "count", "mpg")
         expected = auto_df["mpg"].notna().sum()
         assert result == expected
 
@@ -149,7 +155,7 @@ class TestKpiStatistics:
     def test_dcount_rep78(self, renderer_with_data, auto_df):
         """P2-36: dcount(rep78) returns number of distinct non-missing values."""
         r = renderer_with_data
-        result   = r._compute_kpi_stat("dcount", "rep78")
+        result   = r._compute_kpi_stat_on_df(r.df, "dcount", "rep78")
         expected = auto_df["rep78"].dropna().nunique()
         assert result == expected
 
@@ -159,12 +165,12 @@ class TestKpiStatistics:
     def test_min_price(self, renderer_with_data, auto_df):
         """P2-37: min(price) correct."""
         r = renderer_with_data
-        assert abs(r._compute_kpi_stat("min", "price") - auto_df["price"].min()) < 0.01
+        assert abs(r._compute_kpi_stat_on_df(r.df, "min", "price") - auto_df["price"].min()) < 0.01
 
     def test_max_price(self, renderer_with_data, auto_df):
         """P2-37: max(price) correct."""
         r = renderer_with_data
-        assert abs(r._compute_kpi_stat("max", "price") - auto_df["price"].max()) < 0.01
+        assert abs(r._compute_kpi_stat_on_df(r.df, "max", "price") - auto_df["price"].max()) < 0.01
 
     # ----------------------------------------------------------------
     # P2-38 — median(mpg)
@@ -172,7 +178,7 @@ class TestKpiStatistics:
     def test_median_mpg(self, renderer_with_data, auto_df):
         """P2-38: median(mpg) correct."""
         r = renderer_with_data
-        result   = r._compute_kpi_stat("median", "mpg")
+        result   = r._compute_kpi_stat_on_df(r.df, "median", "mpg")
         expected = auto_df["mpg"].median()
         assert abs(result - expected) < 0.01
 
@@ -182,14 +188,14 @@ class TestKpiStatistics:
     def test_p25_mpg(self, renderer_with_data, auto_df):
         """P2-39: p25(mpg) correct."""
         r = renderer_with_data
-        result   = r._compute_kpi_stat("p25", "mpg")
+        result   = r._compute_kpi_stat_on_df(r.df, "p25", "mpg")
         expected = auto_df["mpg"].quantile(0.25)
         assert abs(result - expected) < 0.5
 
     def test_p75_mpg(self, renderer_with_data, auto_df):
         """P2-39: p75(mpg) correct."""
         r = renderer_with_data
-        result   = r._compute_kpi_stat("p75", "mpg")
+        result   = r._compute_kpi_stat_on_df(r.df, "p75", "mpg")
         expected = auto_df["mpg"].quantile(0.75)
         assert abs(result - expected) < 0.5
 
@@ -199,7 +205,7 @@ class TestKpiStatistics:
     def test_sd_mpg(self, renderer_with_data, auto_df):
         """P2-40: sd(mpg) correct (ddof=1, matching Stata)."""
         r = renderer_with_data
-        result   = r._compute_kpi_stat("sd", "mpg")
+        result   = r._compute_kpi_stat_on_df(r.df, "sd", "mpg")
         expected = auto_df["mpg"].std(ddof=1)
         assert abs(result - expected) < 0.01
 
@@ -211,7 +217,7 @@ class TestKpiFormatting:
     def test_fmt_9_1f_produces_one_decimal(self, renderer_with_data):
         """P2-41: fmt(%9.1f) applied to mean gives 1 decimal place."""
         r = renderer_with_data
-        value = r._compute_kpi_stat("mean", "mpg")
+        value = r._compute_kpi_stat_on_df(r.df, "mean", "mpg")
         formatted = r._format_kpi_value(value, "%9.1f")
         # Should have exactly one decimal place
         assert "." in formatted
@@ -219,7 +225,8 @@ class TestKpiFormatting:
         assert len(decimal_part) == 1
 
     def test_fmt_9_0fc_no_decimals(self, renderer_with_data):
-        value = renderer_with_data._compute_kpi_stat("count", "mpg")
+        value = renderer_with_data._compute_kpi_stat_on_df(
+            renderer_with_data.df, "count", "mpg")
         formatted = renderer_with_data._format_kpi_value(value, "%9.0fc")
         assert "." not in formatted
         # The whole value: "." is not in an empty string either.  74 rows,
@@ -363,14 +370,16 @@ class TestKpiUpdateMode:
 # P2-46 — dcount JS implementation: Set([1,1,2,3]) has size 3
 # ================================================================
 class TestJsHelpers:
+    # Both injected their frame through the renderer's `_df' property and
+    # read it back with _compute_kpi_stat; the property and the method were
+    # test-only and WP-26 deleted them (24sep2026).  The frame is handed to
+    # _compute_kpi_stat_on_df, which render() runs, instead.
+
     def test_dcount_js_logic(self, renderer_with_data):
-        """P2-46: _compute_kpi_stat('dcount',...) uses set-based distinct count."""
+        """P2-46: dcount is a set-based distinct count."""
         df = pd.DataFrame({"rep78": [1.0, 1.0, 2.0, 3.0]})
-        # Inject df temporarily
-        orig = renderer_with_data._df
-        renderer_with_data._df = df
-        result = renderer_with_data._compute_kpi_stat("dcount", "rep78")
-        renderer_with_data._df = orig
+        result = renderer_with_data._compute_kpi_stat_on_df(
+            df, "dcount", "rep78")
         assert result == 3
 
     # ----------------------------------------------------------------
@@ -379,10 +388,7 @@ class TestJsHelpers:
     def test_median_sorted_array(self, renderer_with_data):
         """P2-47: median of [1,2,3,4,5] = 3.0."""
         df = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0, 5.0]})
-        orig = renderer_with_data._df
-        renderer_with_data._df = df
-        result = renderer_with_data._compute_kpi_stat("median", "x")
-        renderer_with_data._df = orig
+        result = renderer_with_data._compute_kpi_stat_on_df(df, "median", "x")
         assert abs(result - 3.0) < 0.001
 
 
@@ -727,8 +733,9 @@ class TestKpiVarKeyInAllVars:
     """Bug 14 regression: render() collected KPI variables via kpi.get('varname')
     but dash.ado emits 'var' not 'varname'.  When a KPI references a variable
     that appears nowhere in any graph plot, the variable would be absent from
-    self.df, causing _compute_kpi_stat() to fail silently and fall back to the
-    Stata-precomputed display value rather than Python-recomputed value.
+    self.df, causing _compute_kpi_stat() (since deleted by WP-26) to fail
+    silently and fall back to the Stata-precomputed display value rather
+    than Python-recomputed value.
 
     The fix: in the all_vars collection loop, use
         kpi.get("var") or kpi.get("varname", "")
@@ -740,7 +747,8 @@ class TestKpiVarKeyInAllVars:
 
         Graph plots use only 'y' and 'x'.  The KPI references 'z' exclusively.
         Before the fix, 'z' would be absent from all_vars and therefore absent
-        from self.df, causing _compute_kpi_stat to return None / fall back.
+        from self.df, causing the card's recompute to return None / fall
+        back.
         """
         import json, os, tempfile
         from dash_render import DashRenderer

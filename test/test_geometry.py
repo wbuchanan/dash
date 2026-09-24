@@ -392,8 +392,12 @@ class TestBootstrapLayout:
         assert len(kpi_cells) == 4, self._emitted(html_text)
 
     def test_a_wide_panel_gets_its_own_row(self):
-        """And does not push every other graph onto a row of its own."""
-        rows = DashRenderer._auto_bs_layout(
+        """And does not push every other graph onto a row of its own.
+
+        The rule itself, _dash_auto_bs_layout, which both modes run; this
+        called DashRenderer._auto_bs_layout, a test-only delegate of it
+        that WP-26 deleted (24sep2026)."""
+        rows = dash_render._dash_auto_bs_layout(
             ["wide", "a", "b"], [],
             figures={"wide": _FakeFig(5.0), "a": _FakeFig(1.0),
                      "b": _FakeFig(1.0)})

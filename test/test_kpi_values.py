@@ -241,8 +241,9 @@ class TestPercentileKpisUseStatasRule:
     def test_no_kpi_path_uses_pandas_quantile(self):
         """The correct implementation already existed in the file."""
         import inspect
+        # _compute_kpi_stat stood here too, a test-only copy of
+        # _compute_kpi_stat_on_df that WP-26 deleted (24sep2026).
         for fn in (DashRenderer._kpi_statistic,
-                   DashRenderer._compute_kpi_stat,
                    DashRenderer._compute_kpi_stat_on_df):
             src = inspect.getsource(fn)
             assert ".quantile(" not in src, (

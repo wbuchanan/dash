@@ -29,6 +29,13 @@ whether an assertion depends on it, from reading the case.
 
 No pytest file runs Stata: the Python suite reads dash.ado and
 dash_parse.mata as text at most, so none of these units is executed by it.
+
+WP-26 (24sep2026) deleted the units nothing called -- _dash_kv_json and
+_dash_graph_opts_to_json in dash.ado, _html_escape, _dash_json_esc,
+_dash_html_esc, _dash_imm_gettoken and _dash_pc_immediate in
+dash_parse.mata -- and the UNCALLED list that exempted them from having
+a caller; test_no_orphans.py now fails on any unit nothing calls, so every
+entry here is a live unit with at least one test.
 """
 
 #: file -> {unit: (reference, ...)}.  Order follows the source files.
@@ -58,8 +65,6 @@ COVERAGE = {
                                 "test_path_validation.cscript:PV-04"),
         "_dash_json_str": ("test_json_escaping.cscript:JSE-01",
                            "test_json_escaping.cscript:JSE-27"),
-        # no caller (UNCALLED); direct.
-        "_dash_kv_json": ("test_program_coverage.cscript:PC-29",),
         # e2e: side-title spellings land in the graph's JSON at every level.
         "_dash_parse_graph_opts": ("test_alias_semantics.cscript:AS-06",
                                    "test_parser.cscript:P1A-36"),
@@ -123,8 +128,6 @@ COVERAGE = {
         # e2e: the option keys in a segment's JSON.
         "_dash_plot_opts_to_json": ("test_parser.cscript:P1A-52",
                                     "test_parser.cscript:P1A-47"),
-        # no caller (UNCALLED), and no test: it cannot do what it says.
-        "_dash_graph_opts_to_json": (),
         # e2e: "weight":"aweight","wexp":"price" in the plot's options.
         "_dash_seg_weight_s": ("test_statistical_options.cscript:SO-01",
                                "test_statistical_options.cscript:SO-02"),
@@ -228,10 +231,6 @@ COVERAGE = {
         # e2e: through _dash_json_str_args; direct in PC-28.
         "_json_escape": ("test_json_escaping.cscript:JSE-01",
                          "test_program_coverage.cscript:PC-28"),
-        # no caller but _dash_html_esc (UNCALLED); direct.
-        "_html_escape": ("test_program_coverage.cscript:PC-27",),
-        "_dash_json_esc": ("test_program_coverage.cscript:PC-28",),
-        "_dash_html_esc": ("test_program_coverage.cscript:PC-27",),
         # e2e: _dash_json_str is this function's one caller.
         "_dash_json_str_args": ("test_json_escaping.cscript:JSE-01",
                                 "test_json_escaping.cscript:JSE-27"),
@@ -255,20 +254,21 @@ COVERAGE = {
                                "test_echo_text.cscript:ECH-09"),
         "_dash_is_name": ("test_echo_text.cscript:ECH-10",),
         "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",),
-        # e2e: through _dash_expand_plottype, every abbreviation.
-        "_expand_plottype_str": ("test_parser.cscript:P1A-40",
+        # P1A-76: every prefix of every name, direct, and no prefix that
+        # reaches two rows; e2e through _dash_expand_plottype.
+        "_expand_plottype_str": ("test_parser.cscript:P1A-76",
+                                 "test_parser.cscript:P1A-40",
                                  "test_parser.cscript:P1A-57"),
         "_dash_expand_plottype": ("test_parser.cscript:P1A-40",
                                   "test_parser.cscript:P1A-57"),
         "_dash_undrawn_plottype": ("test_parser.cscript:P1A-58",
                                    "test_parser.cscript:P1A-59"),
-        # e2e: _dash_imm_gettoken's asserted tokens, quotes and compound
-        # quotes among them, are made by these four.
+        # e2e: _dash_imm_next's asserted tokens, quotes and compound quotes
+        # among them, are made by these three; direct for _dash_imm_next.
         "_dash_imm_dq_end": ("test_parser.cscript:P1A-67",),
         "_dash_imm_cq_at": ("test_parser.cscript:P1A-67",),
         "_dash_imm_cq_end": ("test_parser.cscript:P1A-67",),
         "_dash_imm_next": ("test_parser.cscript:P1A-67",),
-        "_dash_imm_gettoken": ("test_parser.cscript:P1A-67",),
         # e2e: _dash_imm_number's asserted numbers are made by these three.
         "_dash_imm_trim": ("test_parser.cscript:P1A-67",),
         "_dash_imm_numchars": ("test_parser.cscript:P1A-67",),
@@ -280,9 +280,9 @@ COVERAGE = {
         "_dash_imm_echo": ("test_parser.cscript:P1A-67",),
         "_dash_imm_records": ("test_parser.cscript:P1A-67",),
         "_dash_immediate": ("test_parser.cscript:P1A-60",
-                            "test_adversarial.cscript:P20-35"),
-        "_dash_pc_immediate": ("test_adversarial.cscript:P22-02",
-                               "test_parser.cscript:P1A-67"),
+                            "test_parser.cscript:P1A-67",
+                            "test_adversarial.cscript:P20-35",
+                            "test_adversarial.cscript:P22-02"),
         # e2e: the scanner step every splitter takes; quotes, compound
         # quotes and an unterminated quote.
         "_dash_quote_step": ("test_parser_integrity.cscript:P1B-02",
@@ -353,43 +353,3 @@ COVERAGE = {
     },
 }
 
-
-#: Units no shipped code calls, as measured -- never executed by the
-#: certification suite before test_program_coverage.cscript.  GAPS.md N
-#: lists them and ROADMAP WP-26 TR-26.1..3 deletes them.  ``callers`` are
-#: the only units allowed to name one (themselves uncalled), and
-#: ``dropped_by`` the units that name one only to drop it -- the reload in
-#: _dash_require_mata drops every function the library defines before it
-#: runs the file again (test_env_guards.cscript ENV-23), which is not a
-#: call;
-#: test_program_coverage_map.py fails the moment any other code calls one,
-#: because a live unit needs the tests a live unit has.
-UNCALLED = {
-    "_dash_graph_opts_to_json": {
-        "callers": (),
-        "why": "No test: it reads the g_* locals of its own scope, which "
-               "are always empty -- a program cannot see its caller's "
-               "locals -- so it writes {} whatever the caller holds "
-               "(measured 24sep2026: g_title set in the calling program, "
-               "{} returned).  The graph JSON is assembled inline in "
-               "_dash_plot.  WP-26 TR-26.1 deletes it.",
-    },
-    "_dash_kv_json": {
-        "callers": (),
-        "why": "Tested as written (PC-29); WP-26 TR-26.2 deletes it.",
-    },
-    "_dash_json_esc": {
-        "callers": (),
-        "why": "Tested as written (PC-28); WP-26 TR-26.3 deletes it.",
-    },
-    "_dash_html_esc": {
-        "callers": (),
-        "why": "Tested as written (PC-27); WP-26 TR-26.3 deletes it.",
-    },
-    "_html_escape": {
-        "callers": ("_dash_html_esc",),
-        "dropped_by": ("_dash_require_mata",),
-        "why": "Called only by _dash_html_esc; tested as written (PC-27); "
-               "WP-26 TR-26.3 deletes it.",
-    },
-}

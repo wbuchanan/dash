@@ -11,11 +11,19 @@
 *!   dash serve [, <serve_opts>]
 *!
 *! Architecture (v2.0):
-*!   - Mata handles ONLY segment splitting (|| / () syntax) and option-key
-*!     abbreviation expansion.
-*!   - ALL option parsing uses Stata's built-in -syntax- command, which
-*!     provides correct varlist/if/in handling and unambiguous option matching.
-*!   - JSON assembly is done in Stata using string concatenation after parsing.
+*!   - Every option is parsed by Stata's -syntax-.  twoway's options are
+*!     declared with twoway's own minimum abbreviations, so -syntax-
+*!     resolves a prefix as twoway does; nothing rewrites an option word
+*!     before it.
+*!   - dash_parse.mata reads, by value, what must not be parsed as Stata
+*!     code -- the command line split into plot segments, user text, the
+*!     immediate values of scatteri, pci and pcarrowi, qualifiers and
+*!     filter() groups -- and checks what -syntax- cannot, among them the
+*!     plot type, UTF-8, layout(), link(), a KPI's percentile and a
+*!     saving() path.  Its header lists every function dash.ado calls.
+*!   - The spec is JSON assembled in Stata by string concatenation, every
+*!     text in it escaped in Mata (_dash_json_str, _json_escape); the
+*!     immediate values' records are written by dash_parse.mata.
 *!
 *! Author:  (see dash.sthlp)
 *! Version: 2.0  27mar2026
@@ -270,12 +278,12 @@ program define _dash_require_mata
         // A function already defined stops `run' at its definition, r(3000),
         // so over a library in memory in part the file would define nothing
         // it lacks.  What is there is dropped first -- the library's own
-        // names only, which are _dash_* and the five below
+        // names only, which are _dash_* and the four below
         // (test_program_coverage_map.py holds the list to dash_parse.mata),
         // and only when there is a file to load it back from.
         capture mata: mata drop _dash_*()
-        foreach f in _expand_plottype_str _first_comma_pos _html_escape ///
-                _is_utf8 _json_escape {
+        foreach f in _expand_plottype_str _first_comma_pos _is_utf8 ///
+                _json_escape {
             capture mata: mata drop `f'()
         }
         capture run `"`_src'"'
@@ -601,23 +609,6 @@ program define _dash_json_str
     // quotes.
     mata: _dash_json_str_args()
     c_local `_dash_jsn' `"`_dash_jsv'"'
-end
-
-
-// ================================================================
-// _dash_kv_json  — emit one JSON key:value pair fragment
-// Sets c_local `out_macro' = `"\"key\":\"escaped_val\""'
-// Only emits if val is non-empty (or force=1 passed).
-// ================================================================
-program define _dash_kv_json
-    version 16.0
-    args key val out_macro
-    if `"`val'"' == "" {
-        c_local `out_macro' ""
-        exit
-    }
-    _dash_json_str `"`val'"' _esc
-    c_local `out_macro' `""`key'":"`_esc'""'
 end
 
 
@@ -2663,38 +2654,6 @@ end
 
 
 // ================================================================
-// _dash_graph_opts_to_json
-//
-// Build the "graph_options" JSON object from g_* locals.
-// Clears g_* locals from the caller context when done.
-// Returns JSON via c_local `out_macro'.
-// ================================================================
-program define _dash_graph_opts_to_json, rclass
-    version 16.0
-    args out_macro
-
-    local parts ""
-    local nparts = 0
-
-    foreach key in name saving title subtitle note caption               ///
-                   xtitle ytitle xlabel ylabel xline yline legend by     ///
-                   xscale yscale aspectratio scheme plotregion graphregion ///
-                   bgcolor plotbgcolor link filter                        ///
-                   ytitle2 xtitle2 ylabel2 xlabel2 yscale2 xscale2 {
-        local val `"`g_`key''"'
-        if `"`val'"' != "" {
-            _dash_json_str `"`val'"' _jv
-            if `nparts' > 0 local parts `"`parts',"'
-            local parts `"`parts'"`key'":"`_jv'""'
-            local nparts = `nparts' + 1
-        }
-    }
-
-    c_local `out_macro' `"{`parts'}"'
-end
-
-
-// ================================================================
 // _dash_seg_weight_s  -- put a segment's weight into s() (WP-18)
 //
 // _dash_process_segment is rclass, so it cannot sreturn; this sclass
@@ -2844,14 +2803,11 @@ program define _dash_process_segment, rclass
         local opts_raw ""
     }
 
-    // ---- pre-expand option abbreviations ----
-    local opts_exp ""
-    if `: length local opts_raw' {
-        // Option keys used to be rewritten here by Mata before -syntax- saw
-        // them.  That pre-pass is gone: dash.ado now declares Stata's own
-        // measured minimum abbreviations, so Stata resolves prefixes itself.
-        local opts_exp : copy local opts_raw
-    }
+    // ---- the option text is handed to -syntax- as typed ----
+    // Option keys used to be rewritten here by Mata before -syntax- saw
+    // them, into an `opts_exp' copy.  That pre-pass is gone: dash.ado
+    // declares Stata's own measured minimum abbreviations, so Stata
+    // resolves prefixes itself, and opts_raw is what -syntax- reads.
 
     // ---- parse varlist + if/in using type-appropriate syntax program ----
     // Determine varpart syntax group for this plot type, by its family
@@ -3269,8 +3225,8 @@ program define _dash_process_segment, rclass
     // A weight-only segment goes through the parser and the validation
     // too, so the weight keys are in s() for the JSON writer and the flag
     // rules run on every segment; the parser takes an empty option list.
-    if `: length local opts_exp' | `"`_seg_weight'"' != "" {
-        _dash_parse_plot_opts , `macval(opts_exp)'
+    if `: length local opts_raw' | `"`_seg_weight'"' != "" {
+        _dash_parse_plot_opts , `macval(opts_raw)'
         // A second name() in this option list: -syntax- binds the first to
         // NAMe() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.
@@ -3687,8 +3643,7 @@ program define _dash_plot
 
     // ---- Parse graph-level opts from paren-mode suffix (if any) ----
     if `: length local gopts_raw' {
-        local gopts_exp : copy local gopts_raw
-        _dash_parse_graph_opts , `macval(gopts_exp)'
+        _dash_parse_graph_opts , `macval(gopts_raw)'
         // A second name() in the options after the comma, and whether they
         // gave one at all: a group's name() is then a second one too.
         mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))

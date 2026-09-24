@@ -2422,9 +2422,11 @@ display "P20-36 PASS: 20,000 scatteri points, 20,000 pci segments and a 200,000-
 // ================================================================
 // `pcarrowi #y1 #x1 #y2 #x2 [(#clockpos)] ["label"] ...' carries numbers,
 // clock positions and free text, which dash.ado reads token by token in
-// Mata (_dash_pc_immediate) and writes into the spec as JSON, and which the
-// renderer draws.  The three cases CLAUDE.md rule 18 asks for, against
-// that surface's own guards.
+// Mata (_dash_immediate, four coordinates a record) and writes into the
+// spec as JSON, and which the renderer draws.  The three cases CLAUDE.md
+// rule 18 asks for, against that surface's own guards.  They called
+// _dash_pc_immediate, the same reader under the name WP-22 gave it; only
+// tests called that name, and WP-26 deleted it (24sep2026).
 
 // P22-01 -- tokens spelled to pass for a coordinate or a clock position:
 // SMCL, a hex literal, digits followed by letters, full-width and
@@ -2476,7 +2478,7 @@ end
 // The characters a command line cannot carry, straight into the encoder.
 // The expected escapes are built from char(92), never typed as backslashes.
 mata: _p2202s = "0 0 0 1 " + char(34) + "a" + char(1) + char(96) + char(36) + char(39) + char(92) + "b" + char(34)
-mata: _dash_pc_immediate(_p2202s)
+mata: _dash_immediate(_p2202s, 4)
 mata: _p2202bs = char(92)
 mata: _p2202w = "[[0,0,0,1," + char(34) + "a" + _p2202bs + "u0001" + _p2202bs + "u0060" + _p2202bs + "u0024" + _p2202bs + "u0027" + _p2202bs + _p2202bs + "b" + char(34) + ",null]]"
 mata: st_local("p2202m", strofreal(st_local("_pci_json") == _p2202w))
@@ -2506,7 +2508,7 @@ display "P22-02 PASS: a pcarrowi label cannot leave its JSON string, reach the p
 mata: _p2203 = ("0 0 0 1 " * 20000) + char(34) + ("x" * 200000) + char(34)
 timer clear 22
 timer on 22
-mata: _dash_pc_immediate(_p2203)
+mata: _dash_immediate(_p2203, 4)
 timer off 22
 quietly timer list 22
 local p2203t = r(t22)

@@ -16,6 +16,11 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dash_render import DashRenderer
+# The parsers both render modes call: DashRenderer's _parse_axis_label_opt
+# and _parse_by_raw only delegated to them (the latter dropping the list
+# of unimplemented sub-options), only tests called them, and WP-26
+# deleted them (24sep2026).
+from dash_render import _dash_parse_axis_label_opt, _dash_parse_by
 
 
 # ================================================================
@@ -373,39 +378,40 @@ class TestXlabelYlabel:
 
 
 # ================================================================
-# TestParseAxisLabelOpt — unit tests for _parse_axis_label_opt()
+# TestParseAxisLabelOpt -- unit tests for _dash_parse_axis_label_opt()
 # ================================================================
 
 class TestParseAxisLabelOpt:
-    """Unit tests for DashRenderer._parse_axis_label_opt() static method."""
+    """Unit tests for _dash_parse_axis_label_opt(), the numlist reader of
+    xlabel() and ylabel() both render modes run."""
 
     def test_pure_numeric(self):
         """Space-separated numbers parse to ticks with empty labels dict."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("0 2 4 6 8")
+        ticks, labels = _dash_parse_axis_label_opt("0 2 4 6 8")
         assert ticks == [0.0, 2.0, 4.0, 6.0, 8.0]
         assert labels == {}
 
     def test_comma_separated(self):
         """Comma-separated values parse correctly."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("1,3,5")
+        ticks, labels = _dash_parse_axis_label_opt("1,3,5")
         assert ticks == [1.0, 3.0, 5.0]
 
     def test_labeled_ticks(self):
         """'value \"label\"' pairs parse to ticks with labels dict."""
-        ticks, labels = DashRenderer._parse_axis_label_opt('0 "Zero" 5 "Five"')
+        ticks, labels = _dash_parse_axis_label_opt('0 "Zero" 5 "Five"')
         assert ticks == [0.0, 5.0]
         assert labels["0.0"] == "Zero"
         assert labels["5.0"] == "Five"
 
     def test_empty_string(self):
         """Empty string returns empty ticks and labels."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("")
+        ticks, labels = _dash_parse_axis_label_opt("")
         assert ticks == []
         assert labels == {}
 
     def test_mixed_valid_invalid(self):
         """Non-numeric bare tokens are silently skipped."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("0 foo 5")
+        ticks, labels = _dash_parse_axis_label_opt("0 foo 5")
         assert 0.0 in ticks
         assert 5.0 in ticks
         # 'foo' should not appear as a tick
@@ -413,30 +419,30 @@ class TestParseAxisLabelOpt:
 
     def test_negative_values(self):
         """Negative tick values are parsed correctly."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("-5 0 5")
+        ticks, labels = _dash_parse_axis_label_opt("-5 0 5")
         assert ticks == [-5.0, 0.0, 5.0]
 
     def test_float_values(self):
         """Floating-point tick values are parsed correctly."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("0.5 1.5 2.5")
+        ticks, labels = _dash_parse_axis_label_opt("0.5 1.5 2.5")
         assert ticks == pytest.approx([0.5, 1.5, 2.5])
 
     def test_single_value(self):
         """Single tick value is parsed into a list with one element."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("42")
+        ticks, labels = _dash_parse_axis_label_opt("42")
         assert ticks == [42.0]
         assert labels == {}
 
     def test_single_quoted_label(self):
         """Single-quoted labels are also parsed."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("1 'One' 2 'Two'")
+        ticks, labels = _dash_parse_axis_label_opt("1 'One' 2 'Two'")
         assert ticks == [1.0, 2.0]
         assert labels["1.0"] == "One"
         assert labels["2.0"] == "Two"
 
     def test_output_ticks_sorted(self):
         """Output ticks are always sorted ascending regardless of input order."""
-        ticks, labels = DashRenderer._parse_axis_label_opt("10 2 5")
+        ticks, labels = _dash_parse_axis_label_opt("10 2 5")
         assert ticks == [2.0, 5.0, 10.0]
 
 
@@ -921,15 +927,15 @@ class TestByFaceting:
 
 
 # ================================================================
-# P6-22: _parse_by_raw unit tests
+# P6-22: by() parser unit tests (_dash_parse_by)
 # ================================================================
 
 class TestParseByRaw:
-    """Unit tests for DashRenderer._parse_by_raw()."""
+    """Unit tests for _dash_parse_by(): varlist, cols(), total, missing."""
 
     def test_simple_varname(self):
         """P6-22a: 'foreign' → varlist='foreign', defaults."""
-        varlist, by_cols, by_total, by_missing = DashRenderer._parse_by_raw("foreign")
+        varlist, by_cols, by_total, by_missing = _dash_parse_by("foreign")[:4]
         assert varlist == "foreign"
         assert by_cols == 0
         assert by_total is False
@@ -937,28 +943,28 @@ class TestParseByRaw:
 
     def test_varname_with_cols(self):
         """P6-22b: 'foreign, cols(3)' → by_cols=3."""
-        varlist, by_cols, by_total, by_missing = DashRenderer._parse_by_raw("foreign, cols(3)")
+        varlist, by_cols, by_total, by_missing = _dash_parse_by("foreign, cols(3)")[:4]
         assert varlist == "foreign"
         assert by_cols == 3
 
     def test_varname_with_total(self):
         """P6-22c: 'foreign, total' → by_total=True."""
-        varlist, by_cols, by_total, by_missing = DashRenderer._parse_by_raw("foreign, total")
+        varlist, by_cols, by_total, by_missing = _dash_parse_by("foreign, total")[:4]
         assert varlist == "foreign"
         assert by_total is True
         assert by_missing is False
 
     def test_varname_with_missing(self):
         """P6-22d: 'foreign, missing' → by_missing=True."""
-        varlist, by_cols, by_total, by_missing = DashRenderer._parse_by_raw("foreign, missing")
+        varlist, by_cols, by_total, by_missing = _dash_parse_by("foreign, missing")[:4]
         assert varlist == "foreign"
         assert by_missing is True
 
     def test_all_suboptions(self):
         """P6-22e: 'rep78, cols(2) total missing' → all flags set."""
-        varlist, by_cols, by_total, by_missing = DashRenderer._parse_by_raw(
+        varlist, by_cols, by_total, by_missing = _dash_parse_by(
             "rep78, cols(2) total missing"
-        )
+        )[:4]
         assert varlist == "rep78"
         assert by_cols == 2
         assert by_total is True
@@ -966,14 +972,14 @@ class TestParseByRaw:
 
     def test_multi_var(self):
         """P6-22f: 'foreign rep78' (no comma) → multi-var varlist, no subopts."""
-        varlist, by_cols, by_total, by_missing = DashRenderer._parse_by_raw("foreign rep78")
+        varlist, by_cols, by_total, by_missing = _dash_parse_by("foreign rep78")[:4]
         assert varlist == "foreign rep78"
         assert by_cols == 0
         assert by_total is False
 
     def test_empty_string(self):
         """P6-22g: empty string → empty varlist, all defaults."""
-        varlist, by_cols, by_total, by_missing = DashRenderer._parse_by_raw("")
+        varlist, by_cols, by_total, by_missing = _dash_parse_by("")[:4]
         assert varlist == ""
         assert by_cols == 0
 

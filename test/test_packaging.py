@@ -403,6 +403,38 @@ def test_pkg_manifest_lists_every_runtime_file():
     )
 
 
+#: What the package root may hold besides the files dash.pkg ships: the
+#: manifests, the repository's documents and its build configuration.
+#: Development scripts go in scripts/ and examples in examples/: three
+#: regen_*.py scripts sat in the root beside the shipped sources until WP-26
+#: (TR-26.9, 24sep2026) moved them to scripts/.
+_ROOT_ALSO = frozenset({
+    "dash.pkg", "stata.toc", ".gitignore", "Makefile", "pyproject.toml",
+    "AGENTS.md", "BUGS.md", "CLAUDE.md", "GAPS.md", "REMAINING.md",
+    "ROADMAP.md",
+})
+
+
+def test_the_package_root_holds_only_what_ships_and_the_repositorys_own():
+    """Every file git tracks in the package root is one dash.pkg ships, or
+    one of the manifests, documents and configuration named above."""
+    import subprocess
+
+    p = subprocess.run(["git", "-C", REPO_ROOT, "ls-files"],
+                       capture_output=True, text=True)
+    if p.returncode != 0:
+        pytest.skip("not a git working tree")
+    shipped = {d for d in parse_pkg_files() if "/" not in d}
+    assert "dash.ado" in shipped and "dash_render.py" in shipped
+    root = sorted(f for f in p.stdout.splitlines()
+                  if "/" not in f and os.path.exists(os.path.join(REPO_ROOT, f)))
+    stray = [f for f in root if f not in shipped and f not in _ROOT_ALSO]
+    assert not stray, (
+        "the package root holds files that neither ship nor belong to the "
+        "repository's documents or configuration; move them to scripts/ or "
+        "examples/: " + ", ".join(stray))
+
+
 class TestNoUnsuppressableBrowserWindow:
     """``dash build`` opened a browser window and there was no way to stop it.
 

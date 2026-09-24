@@ -481,12 +481,17 @@ class TestAServedComputedLayerRecomputesWhenAFilterMoves:
 
 class TestAnUnimplementedBySuboptionIsNamed:
     """``_parse_by_raw`` matched cols(), total and missing and discarded the
-    rest of Stata's by_option grammar without a word."""
+    rest of Stata's by_option grammar without a word.
+
+    Asked of ``_dash_parse_by``, the parser both modes run, which names the
+    rest.  These called DashRenderer._parse_by_raw, a test-only delegate of
+    it (dropping the list of unimplemented sub-options) that WP-26 deleted
+    (24sep2026)."""
 
     def _warnings_for(self, by_raw):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            dr.DashRenderer._parse_by_raw(by_raw)
+            dr._dash_parse_by(by_raw)
         return [str(w.message) for w in caught if "by()" in str(w.message)]
 
     @pytest.mark.parametrize("by_raw,names", [
@@ -516,7 +521,7 @@ class TestAnUnimplementedBySuboptionIsNamed:
         assert len(got) == 1 and "rows(3)" in got[0] and "cols" not in got[0]
 
     def test_the_parsed_values_are_unchanged(self):
-        assert dr.DashRenderer._parse_by_raw("foreign, cols(2) rows(3) total") \
+        assert dr._dash_parse_by("foreign, cols(2) rows(3) total")[:4] \
                == ("foreign", 2, True, False)
 
     def test_the_served_app_warns_the_same_way(self, tmp_path):

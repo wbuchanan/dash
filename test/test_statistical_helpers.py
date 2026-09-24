@@ -572,11 +572,13 @@ class TestFpFitAndPrediction:
         ((-0.5, 3.0), lambda x: 1 + 0.9 * x ** -0.5 - 0.05 * x ** 3),
     ])
     def test_a_noise_free_fp2_model_is_found(self, p, build):
+        # A last line asked the same of _fit_fp2, a test-only wrapper of
+        # _fp_fit that WP-26 deleted (24sep2026); the first assertion is it,
+        # of the function fpfit runs.
         y = build(self.x)
         fit = GM._fp_fit(self.x, y)
         assert (fit["p1"], fit["p2"]) == p
         np.testing.assert_allclose(GM._predict_fp2(self.x, fit), y, rtol=0, atol=1e-8)
-        assert GM._fit_fp2(self.x, y)[:2] == p
 
     def test_the_prediction_is_the_design_times_beta_on_raw_x(self):
         y = 1 + np.log(self.x) + _RNG.normal(0, 0.1, len(self.x))
@@ -597,10 +599,27 @@ class TestFpFitAndPrediction:
         assert fit["df"] == len(self.x) - 3
 
     def test_no_model_for_a_constant_x(self):
-        assert GM._fp_fit(np.full(6, 2.0), np.arange(6.0)) is None
-        p1, p2, beta = GM._fit_fp2(np.full(6, 2.0), np.arange(6.0))
-        assert (p1, p2) == (1.0, 2.0)
-        np.testing.assert_allclose(beta, [2.5, 0.0, 0.0])
+        """No model, and nothing drawn.  Measured 24sep2026 on x = 2 for six
+        observations and y = 0..5: `fracpoly regress y x' is r(498),
+        "unable to identify optimal powers", and `twoway fpfit y x' and
+        `twoway fpfitci y x' are rc 0 with the note "fracpoly could not fit
+        model" and a serset of one observation whose fit (and band) is
+        missing.  This also asked _fit_fp2, which answered a flat line at
+        the mean of y (powers 1 2, beta [2.5, 0, 0]) that no render drew;
+        WP-26 deleted it, and the same rows go through the mappers."""
+        x, y = np.full(6, 2.0), np.arange(6.0)
+        assert GM._fp_fit(x, y) is None
+        src = ColumnDataSource({"x": x.tolist(), "y": y.tolist()})
+        r = GM().map_fpfit(figure(), src, "y", "x", {})
+        assert list(r.data_source.data["y_fp"]) == []
+        line, band = GM().map_fpfitci(figure(), src, "y", "x", {})
+        assert list(line.data_source.data["y_fp"]) == []
+        assert list(band.data_source.data["y_lower"]) == []
+        # The control: the same y over a varying x is fitted and drawn.
+        ok = ColumnDataSource({"x": (x + np.arange(6.0)).tolist(),
+                               "y": y.tolist()})
+        assert len(GM().map_fpfit(figure(), ok, "y", "x", {})
+                   .data_source.data["y_fp"]) > 0
 
 
 class TestFpPlotGrid:

@@ -2357,3 +2357,33 @@
   - Description: Found 24sep2026 by the WP-25 date work: `pd.DataFrame(records)' raises OverflowError on an integer too large for int64, so a hand-written or corrupted data file holding one stops the render with a traceback in both modes.
   - Suggested fix: Read the file with `json.loads(..., parse_int=float)'.
   - Resolution: Not fixed: it stays open because it is a change to both loaders, outside the date conversion; dash.ado never writes such a number.
+
+- [x] Title: dash_parse.mata's header listed dead functions as its public API and left out eight that dash.ado calls; both headers said Mata expands option abbreviations
+  - File Names and Line Numbers: at 480159f: dash_parse.mata's header (4-9, the architecture claim; 11-99, the Public API list) and its section 3 (1446-1482); dash.ado's header (13-18); dash_parse.mata's caller notes for `_dash_extract_vars' (1966), `_dash_extract_filters' (2476) and `_dash_json_get_str' (2883), and its two sections numbered 6
+  - Description: Measured 24sep2026 by WP-26 (GAPS.md N1).  The Public API list named `_dash_json_esc' and `_dash_html_esc', which nothing called, and `_dash_pc_immediate' and `_dash_kpi_fields', which dash.ado does not call, and left out 8 of the 27 functions dash.ado calls (GAPS.md counted 4): `_dash_extract_filters', `_dash_extract_qual_vars', `_dash_option_names', `_dash_path_badchar', `_dash_kpi_pctile', `_json_escape', `_dash_link_refusal' and `_dash_qual_expand'.  Both headers said Mata performs "option-key abbreviation expansion", removed with `_expand_optkey' -- -syntax- resolves option prefixes -- and section 3 still described the removed rewriters as present.  Three caller notes named one caller where there are two or three, and dash.ado still copied the option text into `opts_exp' and `gopts_exp', identity copies left from the removed pass whose names say "expanded".
+  - Suggested fix: Make the Public API list equal `_needed', test that it stays so, and correct the notes.
+  - Resolution: Fixed: the list is exactly `_needed''s 27 names in file order; neither header claims the expansion; section 3 is a short history note; the caller notes name every caller; the sections are numbered once; the identity copies are gone.  Certified by test/test_file_headers.py, which fails when the list and `_needed' diverge, when a header names a function that is not there, or when either repeats the abbreviation claim -- each shown failing on a scratch copy with the divergence put back.
+
+- [ ] Title: A bare graphsize stands in for a missing graphsize x or y, where Stata reads it for no graph's size
+  - File Names and Line Numbers: dash_render.py: `SchemeParser._init_properties''s `_gs_both' (3596-3600), and its comment that Stata "treats the bare form as a square default"
+  - Description: Found 24sep2026 by WP-26's TR-26.7, measured with the console binary: on Stata's s2color with its graphsize lines removed, a scheme holding `graphsize 3', or the bare form beside only `graphsize x' or only `graphsize y', fails in twoway with r(198); `#include s2color' followed by `graphsize 3' draws 5.5 x 4 in, the bare line changing nothing.  dash sizes those graphs (3,3), (6,3) and (3,3).
+  - Suggested fix: Read `graphsize x' and `graphsize y' with no bare fallback (a missing one is already handled) and correct the comment.
+  - Resolution: Not fixed: it stays open because WP-26 keeps and tests the branch rather than changing what it draws; test/test_scheme_consumption.py pins it as a strict xfail.
+
+- [ ] Title: A directive above an #include survives it, where Stata lets the included scheme overwrite it
+  - File Names and Line Numbers: dash_render.py: `SchemeParser._parse_file''s #include handling (3185-3190)
+  - Description: Found 24sep2026 by WP-26's TR-26.7, measured with the console binary: a scheme holding `color p1 red' and then `#include s2color' strokes the first series #1A476F in Stata -- the later line wins -- where dash keeps it red.
+  - Suggested fix: Apply the included scheme's keys at the #include line, so that later lines win in both directions.
+  - Resolution: Not fixed: it stays open because it changes how every custom scheme is read, beyond keeping the branch; test/test_scheme_consumption.py pins it as a strict xfail.
+
+- [ ] Title: An #include that resolves nowhere is skipped in silence, where Stata draws s2color in its place and says so
+  - File Names and Line Numbers: dash_render.py: `SchemeParser._parse_file' (3189-3190); dash.sthlp (about 2542), which documents the silent skip
+  - Description: Found 24sep2026 by WP-26's TR-26.7, measured with the console binary: `#include w26nosuch' prints "(note: scheme w26nosuch not found, using s2color)", returns rc 0 and draws s2color at 5.5 x 4 in.  dash draws the second and third series #000000, sets no size and says nothing.
+  - Suggested fix: Include dash's s2color in its place and warn in Stata's words, restating dash.sthlp's sentence and test_help_claims_8.py's test of it.
+  - Resolution: Not fixed: it stays open because it changes a documented behaviour; test/test_scheme_consumption.py pins it as a strict xfail.
+
+- [ ] Title: A user's color p# or linepattern p# after #include s2color does not reach markers, bars or connected lines
+  - File Names and Line Numbers: schemes/s2color.scheme (69-117, 145-159) and the other 19 shipped schemes; dash_render.py: `SchemeParser.default_color' and the pattern readers (3486-3505, 3542)
+  - Description: Found 24sep2026 by WP-26's TR-26.7, measured with the console binary: a scheme holding `#include s2color' and then `color p1 red' draws scatter markers, connected lines and bar outlines #FF0000 in Stata, where dash keeps them #1a476f and the connecting lines solid under the matching linepattern -- the shipped files spell out every `p#mark', `p#bar' and `p#line' key, so a user's p# key shadows nothing.
+  - Suggested fix: Have the scheme extractor write only the keys Stata's own file declares, and have the parser follow the p#stub, pstub, p#, p chain itself.
+  - Resolution: Not fixed: it stays open because it changes the shipped scheme files and the parser's key chain, beyond keeping the branches; test/test_scheme_consumption.py pins it as two strict xfails.

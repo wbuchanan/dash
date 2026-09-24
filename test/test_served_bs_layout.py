@@ -181,10 +181,14 @@ class TestIsBsLayout:
     def test_anything_else(self, value):
         assert dr._dash_is_bs_layout(value) is False
 
-    @pytest.mark.parametrize("value", ["bs", "BS: g1=6", "auto", "", "2 2"])
-    def test_the_renderer_asks_the_same_question(self, value):
-        assert (DashRenderer._is_bootstrap_layout(value)
-                is dr._dash_is_bs_layout(value))
+    # test_the_renderer_asks_the_same_question stood here, and in the two
+    # classes below test_the_renderer_wrapper_runs_the_same_rule and
+    # test_the_renderer_wrapper_runs_the_same_reader: each held one of
+    # DashRenderer's static methods _is_bootstrap_layout, _auto_bs_layout
+    # and _parse_bs_layout equal to the module-level function it delegated
+    # to.  Only tests called the three, and WP-26 deleted them (24sep2026),
+    # so the three tested nothing that runs; the rules themselves are this
+    # file's other tests.
 
 
 class TestAutoBsLayout:
@@ -236,12 +240,6 @@ class TestAutoBsLayout:
 
     def test_nothing_to_lay_out(self):
         assert dr._dash_auto_bs_layout([], []) == [[]]
-
-    def test_the_renderer_wrapper_runs_the_same_rule(self):
-        args = (["k1", "g1", "g2"], ["k1"],
-                {"g1": types.SimpleNamespace(aspect_ratio=3.0)})
-        assert (DashRenderer._auto_bs_layout(*args)
-                == dr._dash_auto_bs_layout(*args))
 
 
 class TestParseBsLayout:
@@ -296,12 +294,6 @@ class TestParseBsLayout:
         repeats made an 18.1 MB page of duplicate element ids."""
         assert dr._dash_parse_bs_layout("bs: g1=6 g1=6", ["g1"], []) == [
             [("g1", 6)]]
-
-    def test_the_renderer_wrapper_runs_the_same_reader(self):
-        for layout in ("bs", "bs: k1=3 / g1=8 g2=6", "bs: g2"):
-            args = (layout, ["k1", "g1", "g2"], ["k1"], None)
-            assert (DashRenderer._parse_bs_layout(*args)
-                    == dr._dash_parse_bs_layout(*args))
 
 
 class TestBsGridCells:

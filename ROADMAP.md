@@ -4011,7 +4011,7 @@ test must be red.
 
 ---
 
-## WP-26 · Dead code removal
+## WP-26 · Dead code removal — DONE
 
 **Gaps closed:** N, N1, M3 · **Severity:** S3 · **Effort:** S · **Depends on:** WP-09, WP-10
 
@@ -4082,6 +4082,47 @@ test must be red.
 
 Add a static test asserting zero orphaned `program define` / Mata function
 definitions, so this cannot re-accumulate.
+
+### Done, measured (24sep2026)
+
+- **TR-26.1, TR-26.2** `_dash_graph_opts_to_json` and `_dash_kv_json`
+  deleted: named only at their own definitions in every source.  PC-29,
+  which tested nothing but `_dash_kv_json`, went with it.
+- **TR-26.3** `_dash_json_esc`, `_dash_html_esc` and `_html_escape`
+  deleted, `_json_escape` kept (WP-24's note); PC-27 went, PC-28 now tests
+  `_json_escape` itself.  Beyond the list, `_dash_imm_gettoken` (a test
+  wrapper since c036fb6) and `_dash_pc_immediate` (pcarrowi's entry until
+  c036fb6) had no production caller; deleted, their tests pointed at
+  `_dash_imm_next` and `_dash_immediate`, the paths production runs.
+- **TR-26.4, TR-26.5** `map_pci` and the `"sc"`, `"li"`, `"hist"` aliases
+  deleted in both modes; a hand-written spec naming an alias now draws
+  nothing with the same note in both (`TestAnAliasIsNotAPlotType`).
+- **TR-26.6** Removed.  Measured in Stata: of the 186 distinct prefixes of
+  the table's 40 rows none reaches two, and twoway has no notion of an
+  ambiguous plot type (209 prefixes of 45 names: 127 refused as "not a
+  twoway plot type", 82 resolved to one).  P1A-76 and
+  `TestNoPlotTypePrefixReachesTwoRows` fail if a prefix ever reaches two.
+- **TR-26.7** All four kept and each tested through a custom scheme file
+  against Stata's drawing; `color plineplot` and `linepattern p#` agree,
+  and a bare `graphsize` and `#include` show four defects, pinned as strict
+  xfails (BUGS.md).
+- **TR-26.8** dash_parse.mata's header lists exactly the 27 functions
+  dash.ado calls -- it omitted eight, not four, and named two it does not
+  call -- and neither header claims the option-key expansion; three caller
+  notes and a duplicated section number are corrected, and dash.ado's two
+  identity copies of the option text (`opts_exp`, `gopts_exp`) are gone.
+- **TR-26.9** The `regen_*.py` scripts are in `scripts/`; the generated
+  pages were never tracked (`.gitignore`'s `*.html`).
+- The renderer's DEAD list is deleted and TEST_ONLY holds four test seams
+  kept on purpose: `_build_figures`, `_setup_sources` and
+  `_dash_plot_type_names` with its probe.  The wrappers only tests called
+  are deleted and their tests call the production functions; two tests
+  whose expected values were never Stata's (a non-positive `x`, a constant
+  `x` under fpfit) were measured and corrected.
+- **Test plan** `test/test_no_orphans.py` (every program and Mata function
+  has a caller and is reachable from `dash` or `dash_setup`),
+  `test/test_file_headers.py`, and test_function_test_map.py's new checks
+  (whatever nothing runs is listed as kept, and nothing is listed dead).
 
 ---
 

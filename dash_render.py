@@ -2108,36 +2108,11 @@ def _extract_region_lwidth(val: str) -> float | None:
         return None
 
 
-def _extract_finite(
-    source: "ColumnDataSource", varname: str, allow_datetime: bool = False,
-    view=None,
-) -> "np.ndarray":
-    """Return a float array of non-None, non-NaN values from a CDS column.
-
-    Used by filter builders and distribution mappers to get clean numeric
-    arrays from a ColumnDataSource column before computing min/max/std.
-
-    Args:
-        source:  ColumnDataSource containing the data.
-        varname: Column name to extract.
-        allow_datetime: When True, a datetime64 column is converted to epoch
-            milliseconds -- the representation Bokeh itself transports
-            datetimes in -- so slider bounds can be computed from it.  The
-            default is False so no existing caller changes behaviour.
-        view: Optional CDSView whose mask restricts the rows read.  The
-            distribution layers pass their own view so a qualified histogram
-            or kdensity describes the rows the user asked for.  The filter
-            widgets deliberately do NOT: a slider's bounds come from the whole
-            column, not from whatever a layer happens to be showing.
-
-    Returns:
-        1-D numpy float array with None and NaN values removed.
-    """
-    col = source.data.get(varname, [])
-    sel = GlyphMapper._view_mask(view, len(col))
-    if sel is not None:
-        col = list(np.asarray(col, dtype=object)[sel])
-    return _dash_finite_column(col, allow_datetime)
+# _extract_finite stood here: a source column's finite values, left a
+# wrapper of _dash_finite_column once the filter widgets moved to that and
+# the distribution layers to GlyphMapper's own masks (_masked,
+# _layer_weights).  Nothing called it in either mode, though the served app
+# carried a copy; deleted by WP-26 (24sep2026).
 
 
 # ===========================================================================
@@ -7272,15 +7247,13 @@ class GlyphMapper:
     # Standard FP powers used by Stata (Royston & Altman, 1994)
     _FP_POWERS = (-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0)
 
-    @staticmethod
-    def _fp_transform(x: "np.ndarray", p: float) -> "np.ndarray":
-        """Apply a single FP transformation: x^p (p==0 → ln x)."""
-        with np.errstate(divide="ignore", invalid="ignore"):
-            if p == 0.0:
-                result = np.where(x > 0, np.log(x), np.nan)
-            else:
-                result = np.where(x > 0, np.power(x.astype(float), p), np.nan)
-        return result
+    # _fp_transform (one power of x, NaN where x <= 0) and _fit_fp2 (the
+    # powers and coefficients of _fp_fit, or a flat line at the mean of y
+    # when no model fits) stood here.  Only tests called them: fpfit and
+    # fpfitci build the design with _fp_design on the x _fp_prepare has
+    # made positive, and draw NOTHING when _fp_fit finds no model -- the
+    # flat line was a fallback no render ever drew.  Deleted by WP-26
+    # (24sep2026); their tests are _fp_design's, _fp_fit's and map_fpfit's.
 
     @staticmethod
     def _fp_prepare(x: "np.ndarray") -> "tuple[float, float]":
@@ -7423,19 +7396,6 @@ class GlyphMapper:
         if len(grid) > _FP_GRID_MAX:
             return np.linspace(float(grid[0]), float(grid[-1]), _FP_GRID_MAX)
         return grid.astype(float)
-
-    @classmethod
-    def _fit_fp2(
-        cls,
-        x: "np.ndarray",
-        y: "np.ndarray",
-    ) -> "tuple[float, float, np.ndarray]":
-        """``(p1, p2, beta)`` of :meth:`_fp_fit` -- the powers Stata picks
-        and the coefficients on the prepared design."""
-        fit = cls._fp_fit(x, y)
-        if fit is None:
-            return 1.0, 2.0, np.array([float(np.mean(y)), 0.0, 0.0])
-        return fit["p1"], fit["p2"], fit["beta"]
 
     @classmethod
     def _predict_fp2(cls, x_grid: "np.ndarray", fit: dict) -> "np.ndarray":
@@ -8738,37 +8698,12 @@ class GlyphMapper:
         self._apply_line_opts(r, options)
         return [r]
 
-    def map_pci(
-        self,
-        fig: Any,
-        source: ColumnDataSource,
-        y1var: str,
-        x1var: str,
-        y2var: str,
-        x2var: str,
-        options: dict[str, str],
-        view=None,
-        color_idx: int = 0,
-    ) -> list:
-        """Add paired-coordinate line segments to *fig*.
-
-        ``twoway pci`` draws a straight line from ``(x1var, y1var)`` to
-        ``(x2var, y2var)`` for each observation.  Implemented identically to
-        :meth:`map_pcspike` — both use Bokeh ``Segment`` glyphs.
-
-        Args:
-            fig:     Bokeh Figure object.
-            source:  Shared ColumnDataSource.
-            y1var:   Name of the start y variable.
-            x1var:   Name of the start x variable.
-            y2var:   Name of the end y variable.
-            x2var:   Name of the end x variable.
-            options: Translated plot-level options dict.
-
-        Returns:
-            List with the single Segment GlyphRenderer.
-        """
-        return self.map_pcspike(fig, source, y1var, x1var, y2var, x2var, options, view=view, color_idx=color_idx)
+    # map_pci stood here: pci read from four VARIABLES, a delegate of
+    # map_pcspike reached only through the "pci" entry of
+    # _dash_pc_dispatch -- an entry neither render loop ever looked up,
+    # since both branch on "pci" first and draw the records dash.ado writes
+    # through map_pci_literal below.  Only tests called it; deleted by
+    # WP-26 (TR-26.4, 24sep2026) with its table entry.
 
     def map_pci_literal(
         self,
@@ -13197,7 +13132,7 @@ _DASH_RANGE_TYPES = frozenset({
     "rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
     "rcapsym", "tsrline", "rscatter",
 })
-_DASH_UNIVARIATE_TYPES = frozenset({"histogram", "hist", "kdensity"})
+_DASH_UNIVARIATE_TYPES = frozenset({"histogram", "kdensity"})
 # pcscatter belongs here: it takes four variables, exactly as the other
 # three do.  Left out, it fell through to no branch at all and drew an empty
 # plot region with rc 0 and no warning.  pccapsym (WP-22) takes the same
@@ -13812,8 +13747,6 @@ def _dash_axis_labels(plots, graph_opts, var_labels, seen=None, key=""):
     go, vl = graph_opts or {}, var_labels or {}
     p0 = plots[0] if plots else {}
     ptype = str(p0.get("type", "") or "").lower()
-    if ptype == "hist":
-        ptype = "histogram"
     if ptype in _DASH_UNIVARIATE_TYPES:
         var = p0.get("var", "") or p0.get("yvar", "")
         if ptype == "kdensity":
@@ -17173,12 +17106,21 @@ def _dash_glyph_dispatch(mapper):
 
     Returns ``(dispatch, range_dispatch)``.  Adding a plot type means adding
     a line here and nothing else: both render modes read this table.
+
+    Every key is a full plot-type name.  The aliases ``sc``, ``li`` and
+    ``hist`` stood here too, and nothing that runs reached them: dash.ado
+    expands a spelling to the full name (``_expand_plottype_str``) before
+    it writes a spec, and no test or document named one.  Removed by WP-26
+    (TR-26.5, 24sep2026), with every other place that accepted ``hist``
+    (``_DASH_UNIVARIATE_TYPES``, the saved page's linked-source set, the
+    axis titles' re-spelling and the served app's two), so a spec naming
+    one draws nothing and says "no glyph mapper" in both modes.  Measured
+    on the code before: both modes drew all three as the full type,
+    without a word.
     """
     dispatch = {
         "scatter":    mapper.map_scatter,
-        "sc":         mapper.map_scatter,
         "line":       mapper.map_line,
-        "li":         mapper.map_line,
         "connected":  mapper.map_connected,
         "area":       mapper.map_area,
         "bar":        mapper.map_bar,
@@ -17193,7 +17135,6 @@ def _dash_glyph_dispatch(mapper):
         "fpfit":      mapper.map_fpfit,
         "fpfitci":    mapper.map_fpfitci,
         "histogram":  mapper.map_histogram,
-        "hist":       mapper.map_histogram,
         "kdensity":   mapper.map_kdensity,
         "dot":        mapper.map_dot,
         "dropline":   mapper.map_dropline,
@@ -17216,12 +17157,16 @@ def _dash_glyph_dispatch(mapper):
 
 
 def _dash_pc_dispatch(mapper):
-    """Plot-type name to GlyphMapper method, for paired-coordinate plots."""
+    """Plot-type name to GlyphMapper method, for paired-coordinate plots.
+
+    pci is not here: it is a literal type (``_DASH_LITERAL_TYPES``), which
+    both render loops branch on by name before any table and draw through
+    ``map_pci_literal``.  Its entry here named ``map_pci``, which nothing
+    that runs reached (WP-26, TR-26.4)."""
     return {
         "pcspike":   mapper.map_pcspike,
         "pcarrow":   mapper.map_pcarrow,
         "pcbarrow":  mapper.map_pcbarrow,
-        "pci":       mapper.map_pci,
         "pcscatter": mapper.map_pcscatter,
         "pccapsym":  mapper.map_pccapsym,
     }
@@ -17230,13 +17175,18 @@ def _dash_pc_dispatch(mapper):
 def _dash_plot_type_names(mapper=None):
     """Every canonical plot-type name dash draws, derived from the tables.
 
-    The dispatch tables carry aliases (``sc``, ``li``, ``hist``) that
-    ``dash.ado`` never writes, because its Mata expander emits the full name
-    before a spec is written; an alias maps to a method named for the full
-    name, so keeping only the keys whose method carries their own name drops
-    the aliases.  The literal types are added from ``_DASH_LITERAL_TYPES``.
-    Both renderers and the parity guard read this, so a plot type cannot be
-    added to the code without the guard asking for a corpus entry.
+    A key counts when the method it maps to is named for it (``map_<key>``),
+    so an entry pointing a name at another type's method -- the ``sc``,
+    ``li`` and ``hist`` aliases the tables carried until WP-26 -- is not a
+    plot type of its own.  The literal types are added from
+    ``_DASH_LITERAL_TYPES``.
+
+    Neither renderer calls this, and the served app does not carry it: it
+    is the parity guards' oracle (test_every_plot_type_draws.py,
+    test_mode_parity.py's TestTheCorpusIsComplete and the help-file
+    checks), read from the same tables both modes dispatch through, so a
+    plot type cannot be added to the code without the guards asking for a
+    corpus entry.  Kept on purpose for them (WP-26, 24sep2026).
     """
     class _Probe:
         def __getattr__(self, name):
@@ -17585,7 +17535,10 @@ class DashRenderer:
             self.date_vars[col] = kind
 
     # ------------------------------------------------------------------
-    # _df property — convenience alias for self.df, settable for testing
+    # The resource limits.  A `_df' property stood here too, an alias of
+    # self.df "settable for testing" that only the test-only
+    # _compute_kpi_stat and two tests read; both deleted by WP-26
+    # (24sep2026) -- the tests hand their frame to _compute_kpi_stat_on_df.
     # ------------------------------------------------------------------
 
     @property
@@ -17594,19 +17547,6 @@ class DashRenderer:
         without ``__init__``."""
         lim = getattr(self, "limits", None)
         return lim if isinstance(lim, dict) else _dash_limits({})
-
-    @property
-    def _df(self) -> pd.DataFrame:
-        """Return the loaded dataset DataFrame."""
-        return self.df
-
-    @_df.setter
-    def _df(self, value: pd.DataFrame) -> None:
-        self.df = value
-        # The mapper's view of the data in memory moves with it (lowess
-        # adjust and lpoly's grid read it).
-        if getattr(self, "mapper", None) is not None:
-            self.mapper.dataset = value
 
     # ------------------------------------------------------------------
     # KPI statistic computation
@@ -17727,31 +17667,16 @@ class DashRenderer:
             return float(_stata_percentile(srt, _p))
         raise ValueError(f"Unknown KPI statistic: '{stat}'")
 
-    def _compute_kpi_stat(self, stat: str, varname: str) -> float:
-        """Compute a summary statistic from self._df.
-
-        Args:
-            stat:    One of: mean, sum, count, dcount, min, max, median,
-                     sd, p25, p50, p75.
-            varname: Column name in self._df.
-
-        Returns:
-            Computed statistic as a float.
-
-        Raises:
-            ValueError: If stat is unknown or varname not in DataFrame.
-        """
-        col = self._df[varname].dropna()
-        col = self._kpi_column(col, stat, varname)
-        return self._kpi_statistic(col, stat)
-
     def _compute_kpi_stat_on_df(
         self, df: "pd.DataFrame", stat: str, varname: str
     ) -> float:
         """Compute a KPI statistic on an arbitrary DataFrame.
 
-        Identical to :meth:`_compute_kpi_stat` but operates on *df* instead
-        of ``self._df``.  Used for per-facet KPI computation.
+        ``render()`` computes every card's initial value here, on the rows
+        the card's own if/in qualifier keeps.  ``_compute_kpi_stat``, the
+        same three lines over the whole frame (a missing variable a
+        KeyError where this raises ValueError), stood beside it; only tests
+        called it, and WP-26 deleted it (24sep2026) and pointed them here.
 
         Args:
             df:      DataFrame to compute the statistic on.
@@ -17939,15 +17864,6 @@ class DashRenderer:
         except (AttributeError, TypeError):
             return list(range(len(frame)))
 
-    @staticmethod
-    def _df_for_source(source: ColumnDataSource) -> pd.DataFrame:
-        """Return a DataFrame view of a ColumnDataSource's columns.
-
-        Used to re-filter a shared source for a single plot layer that carries
-        its own if/in qualifier, without disturbing the other layers.
-        """
-        return pd.DataFrame({k: list(v) for k, v in source.data.items()})
-
     def _apply_graph_filter(
         self,
         graph_spec: dict,
@@ -17969,27 +17885,6 @@ class DashRenderer:
         """
         return _dash_qualified_frame(self.df, graph_spec.get("if_expr", ""),
                                      graph_spec.get("in_expr", ""))
-
-    @staticmethod
-    def _parse_by_raw(by_raw: str) -> "tuple[str, int, bool, bool]":
-        """Parse a ``by()`` option value string into its components.
-
-        Handles the Stata syntax ``varlist [, cols(#) total missing]`` where
-        the Mata parser passes the entire content of ``by(...)`` as a single
-        string.
-
-        Args:
-            by_raw: Raw string from ``graph_options["by"]``, e.g.
-                    ``"foreign, cols(2) total"`` or just ``"foreign"``.
-
-        Returns:
-            A 4-tuple ``(varlist, by_cols, by_total, by_missing)`` where
-            *varlist* is the space-separated variable name(s), *by_cols* is
-            the requested column count (0 = auto), and *by_total* /
-            *by_missing* are boolean flags.
-        """
-        varlist, by_cols, by_total, by_missing, _unsup = _dash_parse_by(by_raw)
-        return varlist, by_cols, by_total, by_missing
 
     @staticmethod
     def _parse_filter_raw(raw: str) -> "list[dict]":
@@ -18115,22 +18010,6 @@ class DashRenderer:
     _FIT_TYPES = _DASH_FIT_TYPES
     _CI_TYPES = _DASH_CI_TYPES
 
-    def _legend_key(self, plot: dict) -> str:
-        """The legend key Stata would write for one plot layer.
-
-        Stata labels a data series with the variable LABEL, not the variable
-        name -- ``scatter mpg weight`` keys read "Mileage (mpg)".  dash
-        labelled every series with the raw y-variable name, so a scatter and
-        its fit line collided into a single merged key.
-
-        Args:
-            plot: One plot spec.
-
-        Returns:
-            The key text.
-        """
-        return _dash_legend_key(plot, getattr(self, "variable_labels", {}))
-
     def _rebuild_legend(self, fig, plot_renderers: list, graph_opts: dict
                         ) -> None:
         """Stata's legend keys, Stata's rule for drawing one, and every
@@ -18143,11 +18022,6 @@ class DashRenderer:
             _dash_scheme_chrome(self.scheme),
             getattr(self, "_reported_subopts", None),
             graph_opts.get("name", ""))
-
-    @staticmethod
-    def _move_legend(fig, legend, side: str) -> None:
-        """Move an existing Legend into a side panel; see _dash_move_legend."""
-        _dash_move_legend(fig, legend, side)
 
     def _resolve_aspect_ratio(self, graph_opts: dict) -> "float | None":
         """Return Bokeh's width/height ratio for this figure.
@@ -18208,22 +18082,6 @@ class DashRenderer:
         if len(kinds) > 1 or None in kinds:
             return None
         return kinds.pop()
-
-    def _axis_label(self, varname: str) -> str:
-        """Return the axis label for *varname*, using variable labels if available."""
-        return self.variable_labels.get(varname, varname)
-
-    @staticmethod
-    def _parse_axis_spec(raw: str) -> dict:
-        """Parse Stata's full ``axis_label`` grammar; see
-        ``_dash_parse_axis_spec``, which both render modes run."""
-        return _dash_parse_axis_spec(raw)
-
-    @staticmethod
-    def _parse_axis_label_opt(raw: str) -> "tuple[list[float], dict[str, str]]":
-        """Parse the numlist form of xlabel()/ylabel(); see
-        ``_dash_parse_axis_label_opt``."""
-        return _dash_parse_axis_label_opt(raw)
 
     def _apply_nonselection_dimming(self, fig) -> None:
         """Dim a linked figure's non-selected points to dash's own alpha.
@@ -18570,8 +18428,9 @@ class DashRenderer:
             elif ptype.lower() == "pci":
                 # An immediate list too, one record per segment, as
                 # pcarrowi's: `pci 20 3000 30 4000' is [[20,3000,30,4000]].
-                # map_pci delegated to map_pcspike, which wants variable
-                # names, so nothing was ever drawn.
+                # The map_pci this replaced (deleted by WP-26) delegated to
+                # map_pcspike, which wants variable names, so nothing was
+                # ever drawn.
                 self.mapper.map_pci_literal(fig, plot.get("values", []),
                                             popts, color_idx=pi)
             elif ptype.lower() == "pcarrowi":
@@ -18693,23 +18552,6 @@ class DashRenderer:
 
         return fig
 
-    @staticmethod
-    def _layer_drew_anything(renderers: list) -> bool:
-        """Did this plot layer put any data on the figure?
-
-        Kept as a method because callers and tests name it, but the answer
-        comes from the module-level ``_dash_layer_drew_anything`` that the
-        generated server app runs too -- one implementation, so a layer that
-        is reported empty when saved is reported empty when served.
-
-        Args:
-            renderers: The renderers this layer added, in order.
-
-        Returns:
-            True if any of them carries at least one value.
-        """
-        return _dash_layer_drew_anything(renderers)
-
     def _add_glyph(
         self,
         fig: Any,
@@ -18800,36 +18642,12 @@ class DashRenderer:
                    stylesheets=[InlineStyleSheet(css=self.scheme.css_block())])
 
     # ------------------------------------------------------------------
-    # Bootstrap layout helpers
+    # Bootstrap layout helpers.  The rows and spans are read by the
+    # module-level _dash_is_bs_layout, _dash_auto_bs_layout and
+    # _dash_parse_bs_layout, which both render modes call; the three
+    # static methods that only delegated to them, and that only tests
+    # called, were deleted by WP-26 (24sep2026).
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _is_bootstrap_layout(layout_opt: str) -> bool:
-        """Return True when *layout_opt* requests a Bootstrap grid layout;
-        see ``_dash_is_bs_layout``, the test both render modes run."""
-        return _dash_is_bs_layout(layout_opt)
-
-    @staticmethod
-    def _auto_bs_layout(
-        all_names: "list[str]",
-        kpi_names: "list[str]",
-        figures: "dict | None" = None,
-    ) -> "list[list[tuple[str, int]]]":
-        """Generate an automatic Bootstrap layout; see
-        ``_dash_auto_bs_layout``, the rule both render modes run."""
-        return _dash_auto_bs_layout(all_names, kpi_names, figures)
-
-    @staticmethod
-    def _parse_bs_layout(
-        layout_opt: str,
-        all_names: "list[str]",
-        kpi_names: "list[str]",
-        figures: "dict | None" = None,
-    ) -> "list[list[tuple[str, int]]]":
-        """Parse a Bootstrap layout string into rows of ``(name, col_span)``
-        pairs; see ``_dash_parse_bs_layout``, the one reader both render
-        modes run."""
-        return _dash_parse_bs_layout(layout_opt, all_names, kpi_names, figures)
 
     @staticmethod
     def _head_of_file_html(page: str) -> str:
@@ -19318,6 +19136,14 @@ class DashRenderer:
         phases; the two drifted, and since nothing outside the tests called
         this one, the behaviours it had and render() lacked never shipped.
 
+        A test seam, kept on purpose (WP-26, 24sep2026): render() does not
+        call it.  It hands the one implementation the arguments render()
+        hands it -- the spec's graphs and KPIs, and link() and filter()
+        read by :meth:`_parse_link_and_filters` -- so a test can build the
+        sources and figures without assembling a page.  Three test files
+        call it and twelve call :meth:`_build_figures` (counted 24sep2026);
+        test/function_test_map.py lists both in TEST_ONLY.
+
         Returns:
             ``{graph name: ColumnDataSource}``.
         """
@@ -19333,7 +19159,8 @@ class DashRenderer:
         """Build the dashboard's Bokeh figures.
 
         A thin wrapper over :meth:`_build_sources_and_figures`; see
-        :meth:`_setup_sources` for why the wrappers exist.
+        :meth:`_setup_sources` for why the wrappers exist.  A test seam,
+        kept on purpose with it (WP-26): render() does not call it.
 
         Returns:
             ``{figure key: Figure}``.  A faceted graph contributes one entry
@@ -19514,7 +19341,7 @@ class DashRenderer:
                     kvar = kpi.get("var") or kpi.get("varname", "")
                     if kvar and kvar not in linked_vars and kvar in self.df.columns:
                         linked_vars.append(kvar)
-            _AGG_TYPES_RENDER = frozenset({"histogram", "hist", "kdensity"})
+            _AGG_TYPES_RENDER = frozenset({"histogram", "kdensity"})
             for g in graphs:
                 gname = g.get("graph_options", {}).get("name", "")
                 if gname in link_names:
@@ -20736,7 +20563,10 @@ class ServerAppBuilder:
                          # The strings of a text, read as Stata reads
                          # them: the lines and the sub-option comma.
                          "_textbox_lines", "_textbox_string_end",
-                         "_extract_finite", "_apply_jitter",
+                         # _extract_finite was listed here, and nothing in
+                         # the app called it (WP-26 deleted it, 24sep2026):
+                         # its callers had moved to _dash_finite_column.
+                         "_apply_jitter",
                          # The one float reader of a column, a date in
                          # milliseconds (24sep2026): GlyphMapper's masks
                          # and the axis helpers call it.
@@ -20800,8 +20630,9 @@ class ServerAppBuilder:
                          # by(): one parser, one panel-label rule.
                          "_dash_by_tokens", "_dash_parse_by",
                          "_dash_facet_label", "_dash_stata_date_text",
-                         # The plot-type name set the parity guard reads.
-                         "_dash_plot_type_names",
+                         # _dash_plot_type_names is NOT copied: the parity
+                         # guards read it from dash_render.py, and nothing
+                         # in the app called its copy (WP-26, 24sep2026).
                          # The legend, whole: keys, rule, every sub-option,
                          # and the scheme's chrome for it.
                          "_dash_move_legend", "_dash_scheme_chrome",
@@ -21468,30 +21299,12 @@ class ServerAppBuilder:
             "# uses, so one keyword means one size in both modes.",
             "_SIZE_MAP = %r" % (dict(OptionTranslator._SIZE_MAP),),
             "",
-            "# Stata colour name / hex / 'R G B' triplet -> CSS hex.  At module",
-            "# scope because the KPI card builder below needs it too, and two",
-            "# copies of a colour table is how the modes drifted in the first",
-            "# place.",
-            "_SCOLOR = " + repr(dict(OptionTranslator._COLOR_MAP)),
-            "import re as _re_clr",
-            "",
-            "",
-            "def _resolve_color(c):",
-            "    if not c or not isinstance(c, str): return ''",
-            "    c = c.strip()",
-            "    if _re_clr.fullmatch(r'#[0-9a-fA-F]{6}', c): return c",
-            "    named = _SCOLOR.get(c.lower())",
-            "    if named: return named",
-            "    # RGB triplet '255 0 128'",
-            "    parts = c.split()",
-            "    if len(parts) == 3:",
-            "        try:",
-            "            r,g,b = [int(x) for x in parts]",
-            "            if all(0 <= v <= 255 for v in (r,g,b)):",
-            "                return '#{:02x}{:02x}{:02x}'.format(r,g,b)",
-            "        except ValueError: pass",
-            "    return ''",
-            "",
+            # _resolve_color and its own colour table (_SCOLOR, read through
+            # `import re as _re_clr') were written here, and nothing in the
+            # app called them: every colour goes through the saved
+            # renderer's readers, copied in by name (_dash_graph_color,
+            # _resolve_kpi_color, OptionTranslator).  Deleted by WP-26
+            # (24sep2026).
             "",
             "# A KPI colour lands inside style=\"...color:{c};\", where",
             "# html.escape does NOT stop a CSS *property* injection: ';', '('",
@@ -21946,33 +21759,11 @@ class ServerAppBuilder:
             # here: textual copies no call site reached (the layers are
             # drawn and redrawn through GlyphMapper), all three blind to a
             # weight.  Deleted with WP-18's other dead statistical copies.
-            "def _compute_rscatter(df, yvar1, yvar2, xvar):",
-            '    """Return stacked source dict for rscatter (two y-vars over same x)."""',
-            "    try:",
-            "        if yvar1 not in df.columns or yvar2 not in df.columns or xvar not in df.columns:",
-            "            return {'x': [], 'y': []}",
-            "        xs = np.concatenate([df[xvar].values, df[xvar].values])",
-            "        ys = np.concatenate([df[yvar1].values, df[yvar2].values])",
-            "        mask = ~(np.isnan(xs.astype(float)) | np.isnan(ys.astype(float)))",
-            "        return {'x': xs[mask].tolist(), 'y': ys[mask].tolist()}",
-            "    except Exception:",
-            "        return {'x': [], 'y': []}",
-            "",
-            "",
-            "def _compute_pcscatter(df, y1var, x1var, y2var, x2var):",
-            '    """Return stacked source dict for pcscatter (two paired coord sets)."""',
-            "    try:",
-            "        cols = [c for c in [y1var, x1var, y2var, x2var] if c in df.columns]",
-            "        if len(cols) != 4:",
-            "            return {'x': [], 'y': []}",
-            "        clean = df[cols].dropna()",
-            "        xs = np.concatenate([clean[x1var].values, clean[x2var].values])",
-            "        ys = np.concatenate([clean[y1var].values, clean[y2var].values])",
-            "        return {'x': xs.tolist(), 'y': ys.tolist()}",
-            "    except Exception:",
-            "        return {'x': [], 'y': []}",
-            "",
-            "",
+            # _compute_rscatter and _compute_pcscatter followed them, as
+            # WP-26 (24sep2026): written into every app and called by
+            # nothing in it -- rscatter and pcscatter are drawn, and
+            # redrawn after a filter move, by GlyphMapper.map_rscatter and
+            # map_pcscatter.
             "def _compute_kpi(df, stat, varname):",
             '    """Compute a KPI statistic from df[varname]. Returns float.',
             "",
@@ -22178,8 +21969,6 @@ class ServerAppBuilder:
             "        saved renderer's: literal, function, pc, range, else.",
             '        """',
             "        ptype = str(plot.get('type', '') or '').lower()",
-            "        if ptype == 'hist':",
-            "            ptype = 'histogram'",
             "        opts = plot.get('options', {})",
             "        yvar = plot.get('yvar', '') or plot.get('var', '')",
             "        xvar = plot.get('xvar', '')",
@@ -22373,7 +22162,8 @@ class ServerAppBuilder:
             "        # bgcolor / plotbgcolor — figure background colors",
             "        # Every colour through _dash_graph_color, the reader the saved",
             "        # figure uses: an unknown name is named, the scheme's kept.",
-            "        # _resolve_color returned '' for it without a word.",
+            "        # The app's own _resolve_color, which this replaced (deleted",
+            "        # by WP-26), returned '' for it without a word.",
             "        _raw_bgc = go.get('bgcolor', '')",
             "        if _raw_bgc:",
             "            _bgc_resolved = _dash_graph_color('bgcolor', _raw_bgc)",
@@ -22429,15 +22219,12 @@ class ServerAppBuilder:
             "        # layer's renderers begin lets the legend be built once, below,",
             '        # instead of threading a label through every call.',
             '        for pi, plot in enumerate(plots):',
-            "            # Lower-cased, and `hist' accepted, exactly as the",
-            "            # facet chains below and the saved renderer do.  The",
-            "            # three tables disagreed about what a type is called;",
-            "            # nothing reaches this through dash.ado today, but a",
-            "            # spec written by hand or by a future caller would",
-            "            # have drawn under by() and not without it.",
+            "            # Lower-cased, exactly as _dash_draw_layer and the saved",
+            "            # renderer read it.  `hist' was re-spelled `histogram'",
+            "            # here and there until WP-26 (TR-26.5): dash.ado writes",
+            "            # the full name, the shared tables no longer carry an",
+            "            # alias, and an alias is a type neither mode draws.",
             "            ptype = str(plot.get('type', '') or '').lower()",
-            "            if ptype == 'hist':",
-            "                ptype = 'histogram'",
             "            yvar = plot.get('yvar', '') or plot.get('var', '')",
             "            xvar = plot.get('xvar', '')",
             "            y1var = plot.get('yvar1', '')",

@@ -178,9 +178,10 @@ class TestTheFamiliesAreNamedOnce:
         assert set(fams["_pt_range"]) == set(dr._DASH_RANGE_TYPES)
         assert set(fams["_pt_pc"]) == set(dr._DASH_PC_TYPES)
         assert set(fams["_pt_literal"]) == set(dr._DASH_LITERAL_TYPES)
-        # The renderer's univariate set also carries the alias "hist",
-        # which dash.ado never writes: the Mata table expands it first.
-        assert set(fams["_pt_univar"]) == set(dr._DASH_UNIVARIATE_TYPES) - {"hist"}
+        # Exactly: the renderer's univariate set carried the alias "hist"
+        # too, which dash.ado never writes (the Mata table expands it
+        # first), until WP-26 removed every alias (24sep2026).
+        assert set(fams["_pt_univar"]) == set(dr._DASH_UNIVARIATE_TYPES)
 
     def test_every_member_is_a_type_dash_draws(self):
         drawn = dr._dash_plot_type_names()

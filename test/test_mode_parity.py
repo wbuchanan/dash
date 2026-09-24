@@ -2009,7 +2009,9 @@ def _mata_expanded_types():
               encoding="utf-8") as fh:
         src = fh.read()
     k = src.index("string scalar _expand_plottype_str")
-    block = src[k:src.index("nhits = 0", k)]
+    # To the function's closing brace: the "nhits = 0" this stopped at went
+    # with the unreachable ambiguity count (WP-26 TR-26.6, 24sep2026).
+    block = src[k:src.index("\n}\n", k)]
     names = [full for full, _ in re.findall(r'\("([a-z]+)","([a-z]+)"\)',
                                               block)]
     assert len(names) >= 30, "the Mata plot-type table was not found"
@@ -2136,6 +2138,62 @@ class TestTheCorpusIsComplete:
     def test_every_cross_cutting_feature_has_an_entry(self, feature, present):
         assert any(present(p.values[1]) for p in _every_case()), (
             f"no corpus entry exercises {feature}")
+
+
+class TestAnAliasIsNotAPlotType:
+    """``sc``, ``li`` and ``hist`` draw nothing, and say so, in both modes.
+
+    The shared dispatch table carried the three as aliases of scatter, line
+    and histogram, and the saved page's univariate set and the served app's
+    two re-spellings accepted ``hist``.  dash.ado never writes one: it
+    expands a spelling to the full name (``_expand_plottype_str``) before it
+    writes a spec -- test_parser.cscript and test_abbreviations.cscript
+    certify the expansion -- so only a spec written by hand names one, and
+    no test or document did.  Measured on the code before WP-26
+    (24sep2026): both modes drew all three as the full type, without a
+    word.  WP-26 removed them (TR-26.5): such a layer draws nothing and is
+    named in the same words in both modes, and the rest of its graph is
+    drawn.  Not corpus entries: TestTheCorpusIsComplete refuses a type the
+    code does not draw, which is the point here.
+    """
+
+    @pytest.mark.parametrize("alias,full", [
+        ("sc", "scatter"), ("li", "line"), ("hist", "histogram")])
+    def test_the_same_note_and_nothing_drawn(self, alias, full):
+        name = "an alias: " + alias
+        layer = dict(plot_for(full), type=alias)
+        pair = _render_pair(name, _spec([plot_for("scatter"), layer]))
+        note = "no glyph mapper for plot type %r" % (alias,)
+        for mode in ("std", "srv"):
+            assert [w for w in pair[mode]["warnings"] if note in w], (
+                f"{mode} did not refuse `{alias}': {pair[mode]['warnings']}")
+        assert pair["std"]["warnings"] == pair["srv"]["warnings"], (
+            f"warnings differ\n  standalone {pair['std']['warnings']}"
+            f"\n  server     {pair['srv']['warnings']}")
+        # The scatter layer is drawn, and nothing else, the same way twice.
+        for mode in ("std", "srv"):
+            (fig,) = pair[mode]["figures"]
+            assert [g["type"] for g in fig["glyphs"]] == ["Scatter"], (
+                mode, fig["glyphs"])
+        diffs = _diff(pair["std"]["figures"], pair["srv"]["figures"])
+        assert not diffs, _explain(name, "figures", diffs)
+
+    def test_the_tables_hold_full_names_only(self):
+        """The control, on the tables themselves: every key names the
+        method it dispatches to, so no entry is another type's alias."""
+        class _Probe:
+            def __getattr__(self, attr):
+                if attr.startswith("map_"):
+                    return attr
+                raise AttributeError(attr)
+
+        std, rng = dr._dash_glyph_dispatch(_Probe())
+        pc = dr._dash_pc_dispatch(_Probe())
+        for table in (std, rng, pc):
+            for key, method in table.items():
+                assert method == "map_" + key, (key, method)
+        assert not {"sc", "li", "hist"} & set(std)
+        assert "hist" not in dr._DASH_UNIVARIATE_TYPES
 
 
 class TestAggregateLayersStartFromTheSameNumbers:

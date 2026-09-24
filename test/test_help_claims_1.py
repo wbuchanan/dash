@@ -318,15 +318,16 @@ def _mata_table():
 
 def _dash_spellings():
     """{spelling: plot type} dash's table takes: any prefix at least as long
-    as the row's minimum that no other row also takes, as the Mata loop
-    reads it; and the twoway spellings it maps by name."""
+    as a row's minimum, the first row that takes it, as the Mata loop reads
+    it (no prefix is taken by two rows: test_no_orphans.py); and the twoway
+    spellings it maps by name."""
     rows = _mata_table()
     out = {}
     for full, _mn in rows:
         for k in range(1, len(full) + 1):
             p = full[:k]
             hits = [f for f, m in rows if len(p) >= len(m) and f.startswith(p)]
-            if len(hits) == 1:
+            if hits:
                 out[p] = hits[0]
     mata = _read(_MATA)
     body = mata[mata.index("string scalar _expand_plottype_str("):]

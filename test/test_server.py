@@ -3609,7 +3609,9 @@ class TestServerLpolyFpfit:
         }])
         source = _build_app(dr_module, auto_df, spec)
         compile(source, "<generated>", "exec")
-        assert "def _fit_fp2(" in source and "def _fp_prepare(" in source
+        # _fp_fit is the fit map_fpfit runs.  This named _fit_fp2, a
+        # test-only wrapper of it that WP-26 deleted (24sep2026).
+        assert "def _fp_fit(" in source and "def _fp_prepare(" in source
         assert "_compute_fpfit" not in source
 
     def test_fpfitci_generates_valid_app(self, dr_module, auto_df):
@@ -3624,7 +3626,8 @@ class TestServerLpolyFpfit:
         }])
         source = _build_app(dr_module, auto_df, spec)
         compile(source, "<generated>", "exec")
-        assert "def _fit_fp2(" in source and "def _fp_stdp(" in source
+        # _fp_fit, as above; this named the deleted _fit_fp2 too.
+        assert "def _fp_fit(" in source and "def _fp_stdp(" in source
         assert "_compute_fpfit" not in source
 
     def test_lpoly_bwidth_in_generated_source(self, dr_module, auto_df):
@@ -10254,9 +10257,11 @@ class TestLayoutZeroColumnsCrash:
 # ===========================================================================
 # BUG-44 — Standalone slider/range filters crash on string variables.
 #
-# _extract_finite calls np.array([...], dtype=float) which raises ValueError
+# _extract_finite called np.array([...], dtype=float), which raises ValueError
 # for string columns.  The fix adds an is_numeric_dtype guard in
-# _build_filter_widgets before calling build_slider/build_range.
+# _build_filter_widgets before calling build_slider/build_range.  (The
+# widgets read a column through _dash_finite_column since; _extract_finite
+# was left uncalled and WP-26 deleted it, 24sep2026.)
 #
 # BUG-44-1a  Standalone slider on string column emits warning, does not raise
 # BUG-44-1b  Standalone range on string column emits warning, does not raise

@@ -17,6 +17,11 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dash_render import DashRenderer
+# The bs-layout rules, called directly: DashRenderer's static methods of
+# the same job only delegated to these, only tests called them, and WP-26
+# deleted them (24sep2026).
+from dash_render import (_dash_auto_bs_layout, _dash_is_bs_layout,
+                         _dash_parse_bs_layout)
 
 
 # ================================================================
@@ -374,35 +379,35 @@ class TestLayoutOverflow:
 class TestBootstrapLayout:
     """Tests for Bootstrap grid layout (layout(bs ...) option)."""
 
-    # ---- BS-01: _is_bootstrap_layout detects bs prefix ----
+    # ---- BS-01: _dash_is_bs_layout detects bs prefix ----
     def test_is_bootstrap_layout_bs(self):
-        assert DashRenderer._is_bootstrap_layout("bs") is True
+        assert _dash_is_bs_layout("bs") is True
 
     def test_is_bootstrap_layout_bs_colon(self):
-        assert DashRenderer._is_bootstrap_layout("bs: k1=3 k2=3") is True
+        assert _dash_is_bs_layout("bs: k1=3 k2=3") is True
 
     def test_is_bootstrap_layout_BS_upper(self):
-        assert DashRenderer._is_bootstrap_layout("BS") is True
+        assert _dash_is_bs_layout("BS") is True
 
     def test_is_bootstrap_layout_auto_is_false(self):
-        assert DashRenderer._is_bootstrap_layout("auto") is False
+        assert _dash_is_bs_layout("auto") is False
 
     def test_is_bootstrap_layout_grid_is_false(self):
-        assert DashRenderer._is_bootstrap_layout("2 2") is False
+        assert _dash_is_bs_layout("2 2") is False
 
     def test_is_bootstrap_layout_empty_is_false(self):
-        assert DashRenderer._is_bootstrap_layout("") is False
+        assert _dash_is_bs_layout("") is False
 
-    # ---- BS-02: _auto_bs_layout generates rows ----
+    # ---- BS-02: _dash_auto_bs_layout generates rows ----
     def test_auto_bs_layout_single_item(self):
-        rows = DashRenderer._auto_bs_layout(["g1"], [])
+        rows = _dash_auto_bs_layout(["g1"], [])
         assert len(rows) >= 1
         assert rows[0][0][0] == "g1"
         # One graph fills its row.
         assert rows == [[("g1", 12)]], rows
 
     def test_auto_bs_layout_kpis_first_row(self):
-        rows = DashRenderer._auto_bs_layout(["k1", "k2", "g1", "g2"], ["k1", "k2"])
+        rows = _dash_auto_bs_layout(["k1", "k2", "g1", "g2"], ["k1", "k2"])
         # First row should contain KPIs
         first_row_names = [name for name, _ in rows[0]]
         assert "k1" in first_row_names
@@ -410,7 +415,7 @@ class TestBootstrapLayout:
 
     def test_auto_bs_layout_spans_sum_le_12_per_row(self):
         names = ["k1", "k2", "k3", "k4", "g1", "g2", "g3", "g4"]
-        rows = DashRenderer._auto_bs_layout(names, ["k1", "k2", "k3", "k4"])
+        rows = _dash_auto_bs_layout(names, ["k1", "k2", "k3", "k4"])
         # Every item placed once, so the loop below has a layout to read:
         # an empty one passed it.
         assert sorted(n for row in rows for n, _ in row) == sorted(names)
@@ -419,16 +424,16 @@ class TestBootstrapLayout:
             assert total_span <= 12, f"Row spans {total_span} exceed 12: {row}"
 
     def test_auto_bs_layout_spans_are_valid(self):
-        rows = DashRenderer._auto_bs_layout(["g1", "g2", "g3"], [])
+        rows = _dash_auto_bs_layout(["g1", "g2", "g3"], [])
         assert sorted(n for row in rows for n, _ in row) == ["g1", "g2", "g3"]
         for row in rows:
             for name, span in row:
                 assert 1 <= span <= 12, f"Invalid span {span} for {name}"
 
-    # ---- BS-03: _parse_bs_layout explicit spec ----
+    # ---- BS-03: _dash_parse_bs_layout explicit spec ----
     def test_parse_bs_layout_explicit(self):
         all_names = ["k1", "k2", "s1", "s2"]
-        rows = DashRenderer._parse_bs_layout(
+        rows = _dash_parse_bs_layout(
             "bs: k1=3 k2=3 / s1=6 s2=6",
             all_names,
             ["k1", "k2"],
@@ -439,7 +444,7 @@ class TestBootstrapLayout:
 
     def test_parse_bs_layout_auto_fallback(self):
         all_names = ["k1", "s1"]
-        rows = DashRenderer._parse_bs_layout("bs", all_names, ["k1"])
+        rows = _dash_parse_bs_layout("bs", all_names, ["k1"])
         assert len(rows) >= 1
         assert all(isinstance(r, list) for r in rows)
         # Bare `bs' is the automatic layout: the card's row, then the
@@ -448,7 +453,7 @@ class TestBootstrapLayout:
 
     def test_parse_bs_layout_unknown_names_dropped(self):
         all_names = ["s1", "s2"]
-        rows = DashRenderer._parse_bs_layout(
+        rows = _dash_parse_bs_layout(
             "bs: s1=6 __evil__=6 / s2=12",
             all_names,
             [],
@@ -460,7 +465,7 @@ class TestBootstrapLayout:
 
     def test_parse_bs_layout_spans_clamped(self):
         all_names = ["s1", "s2"]
-        rows = DashRenderer._parse_bs_layout(
+        rows = _dash_parse_bs_layout(
             "bs: s1=99 / s2=0",
             all_names,
             [],
@@ -474,7 +479,7 @@ class TestBootstrapLayout:
 
     def test_parse_bs_layout_unplaced_names_appended(self):
         all_names = ["k1", "s1", "s2"]
-        rows = DashRenderer._parse_bs_layout(
+        rows = _dash_parse_bs_layout(
             "bs: k1=6",
             all_names,
             ["k1"],

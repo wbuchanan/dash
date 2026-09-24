@@ -10,12 +10,13 @@ have a unit test."  ``test/function_test_map.py`` holds the names:
   limiter; keyed ``app:<qualname>``).  The app's other functions are copies
   of dash_render.py's, written by ``inspect.getsource``, and are the same
   entries.
-* ``DEAD`` lists the functions nothing calls in either mode and no test
-  runs, each with the evidence -- for WP-26 (dead code removal), not for a
-  test.
-* ``TEST_ONLY`` lists the functions only tests call: no code that runs in
-  either mode reaches them.  Each has a test, so each is in ``FUNCTIONS``
-  too; the list is WP-26's, which removes them or moves them to the tests.
+* ``DEAD`` listed the functions nothing calls in either mode and no test
+  runs, each with the evidence, for WP-26 (dead code removal) -- which
+  deleted all ten (24sep2026).  It stays, empty: a function nothing calls
+  is deleted, not listed.
+* ``TEST_ONLY`` lists the functions only tests call, KEPT ON PURPOSE, each
+  with the reason: the two test seams and the parity guards' plot-type
+  oracle WP-26 kept.  Each has a test, so each is in ``FUNCTIONS`` too.
 
 This file keeps the map honest on every ordinary run, in a second or two:
 
@@ -26,7 +27,13 @@ This file keeps the map honest on every ordinary run, in a second or two:
   ``test_every_named_test_exists``;
 * a ``DEAD`` or ``TEST_ONLY`` function that code which runs in either mode
   has started to reach fails ``test_dead_and_test_only_stay_unreachable``:
-  it needs a behavioural test (and a ``FUNCTIONS`` entry) now.
+  it needs a behavioural test (and a ``FUNCTIONS`` entry) now;
+* a function that no code which runs in either mode reaches, and that
+  ``TEST_ONLY`` does not keep with a reason -- one only its tests call, or
+  one nothing calls at all -- fails
+  ``test_what_nothing_runs_is_kept_on_purpose`` (WP-26): delete it, or keep
+  it in ``TEST_ONLY`` with the reason;
+* anything in ``DEAD`` fails ``test_nothing_is_listed_dead``.
 
 Whether each named test really executes its function is MEASURED, not
 checked here: ``scripts/fncov/run_fncov.sh`` runs the whole suite under a
@@ -108,7 +115,7 @@ def test_every_function_has_an_entry(universe):
         "%d function(s) in dash_render.py (or the app it generates) have no "
         "entry in test/function_test_map.py -- write a behavioural test for "
         "each and name it in FUNCTIONS (CLAUDE.md rule 4), or, if nothing "
-        "calls it, list it in DEAD with the evidence:\n  %s"
+        "calls it, delete it (WP-26):\n  %s"
         % (len(missing), "\n  ".join(missing)))
 
 
@@ -121,13 +128,48 @@ def test_no_entry_is_stale(universe):
 
 
 def test_the_three_lists_agree():
-    """DEAD has no test; TEST_ONLY has one, so it is in FUNCTIONS too."""
+    """DEAD has no test; TEST_ONLY has one, so it is in FUNCTIONS too, and
+    each kept function says why it is kept."""
     assert not sorted(set(FUNCTIONS) & set(DEAD))
     assert not sorted(set(TEST_ONLY) - set(FUNCTIONS))
     assert not sorted(set(TEST_ONLY) & set(DEAD))
     for key, why in list(DEAD.items()) + list(TEST_ONLY.items()):
         assert "WP-26" in why and len(why) > 40, (
             "%s: say why, and for WP-26" % key)
+    for key, why in TEST_ONLY.items():
+        assert "keep" in why, (
+            "%s: TEST_ONLY holds what is kept on purpose; say that it is "
+            "kept, and why" % key)
+
+
+def test_nothing_is_listed_dead():
+    """WP-26 deleted every function DEAD listed (24sep2026).  A function
+    nothing calls is deleted too, not parked here (BR-26.1: every
+    definition has a caller or a test)."""
+    assert not DEAD, (
+        "DEAD lists %s: delete each (WP-26, BR-26.1)" % sorted(DEAD))
+
+
+def test_what_nothing_runs_is_kept_on_purpose(universe):
+    """Every function no code that runs in either mode reaches is one
+    TEST_ONLY keeps, with its reason.
+
+    WP-26: a function only its tests call -- a wrapper of the function
+    production runs, a second copy of it, a fallback no render takes -- is
+    false assurance, a test of code that never runs; so it is deleted and
+    its tests pointed at what runs, or kept here with the reason.  The
+    reachability is ``fncov_reach``'s name-based call graph, which errs
+    only towards "reachable", so what it reports unreached no code that
+    runs refers to.  A function nothing calls at all, test or code, fails
+    here as well as in ``test_every_function_has_an_entry``."""
+    unreached = universe["everything"] - universe["reach"]
+    loose = sorted(unreached - set(TEST_ONLY) - set(DEAD))
+    assert not loose, (
+        "no code that runs in either mode reaches %d function(s) -- only "
+        "tests call them, or nothing does.  Delete each and point its tests "
+        "at the function production runs, or, if it is a test seam kept on "
+        "purpose, list it in TEST_ONLY with the reason:\n  %s"
+        % (len(loose), "\n  ".join(loose)))
 
 
 _DEFS = {}

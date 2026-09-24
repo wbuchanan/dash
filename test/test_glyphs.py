@@ -2265,12 +2265,24 @@ class TestNewPlotTypes:
             "x": np.linspace(0, 10, n).tolist(),
         })
 
+    @staticmethod
+    def _pci_records(pc_cds):
+        """The fixture's segments as the records dash.ado writes for twoway
+        pci: one [y1, x1, y2, x2] per segment."""
+        return [list(r) for r in zip(*(pc_cds.data[c]
+                                       for c in ("y1", "x1", "y2", "x2")))]
+
+    # These two called map_pci, pci read from four variables, which no
+    # render reached; WP-26 deleted it (TR-26.4, 24sep2026).  Both modes
+    # draw pci through map_pci_literal, from the records dash.ado writes,
+    # so the same coordinates are handed to it as records.
+
     def test_map_pci_adds_renderers(self, fig, pc_cds):
-        """map_pci() adds one renderer, a Segment from (x1, y1) to (x2, y2)
-        of each observation.  ">= 1" passed the segments drawn twice."""
+        """map_pci_literal() adds one renderer, a Segment from (x1, y1) to
+        (x2, y2) of each record.  ">= 1" passed the segments drawn twice."""
         from bokeh.models.glyphs import Segment
         gm = GlyphMapper(OptionTranslator())
-        gm.map_pci(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        gm.map_pci_literal(fig, self._pci_records(pc_cds), {})
         (r,) = fig.renderers
         assert isinstance(r.glyph, Segment)
         d = r.data_source.data
@@ -2280,11 +2292,12 @@ class TestNewPlotTypes:
                 for c in ("x1", "y1", "x2", "y2")]
 
     def test_map_pci_delegates_to_pcspike(self, fig, pc_cds):
-        """map_pci and map_pcspike produce the same number of renderers."""
+        """map_pci_literal and map_pcspike produce the same number of
+        renderers: twoway pci is an immediate pcspike."""
         gm = GlyphMapper(OptionTranslator())
         fig2 = figure()
-        gm.map_pcspike(fig,  pc_cds, "y1", "x1", "y2", "x2", {})
-        gm.map_pci(    fig2, pc_cds, "y1", "x1", "y2", "x2", {})
+        gm.map_pcspike(fig, pc_cds, "y1", "x1", "y2", "x2", {})
+        gm.map_pci_literal(fig2, self._pci_records(pc_cds), {})
         assert len(fig.renderers) == len(fig2.renderers)
 
     def test_map_pcscatter_adds_scatter_renderer(self, fig, pc_cds):
@@ -2699,30 +2712,47 @@ class TestLpolyFpfit:
         xg, yf = gm._compute_lpoly_fit(x, y, n_grid=50)
         assert len(xg) == 50 and len(yf) == 50
 
+    # The four below called _fit_fp2 and _fp_transform, which only tests
+    # called; WP-26 deleted both (24sep2026).  fpfit and fpfitci fit with
+    # _fp_fit and build each power's column with _fp_design, on the x
+    # _fp_prepare has made positive, so the same inputs are asked of those,
+    # with the same expected values -- except the last, whose NaN was an
+    # answer for a path no fit takes; it asserts what fracpoly does instead.
+
     def test_fit_fp2_returns_valid_powers(self):
         gm = GlyphMapper()
         x = np.linspace(1, 10, 20)
         y = 3 * x ** 0.5
-        p1, p2, c = gm._fit_fp2(x, y)
-        assert p1 in GlyphMapper._FP_POWERS
-        assert p2 in GlyphMapper._FP_POWERS
-        assert len(c) == 3
+        fit = gm._fp_fit(x, y)
+        assert fit["p1"] in GlyphMapper._FP_POWERS
+        assert fit["p2"] in GlyphMapper._FP_POWERS
+        assert len(fit["beta"]) == 3
 
     def test_fp_transform_sqrt(self):
+        """x^0.5 is the design's first power column at p1 = 0.5."""
         x = np.array([1.0, 4.0, 9.0])
-        r = GlyphMapper._fp_transform(x, 0.5)
+        r = GlyphMapper._fp_design(x, 0.5, 1.0)[:, 1]
         np.testing.assert_allclose(r, [1.0, 2.0, 3.0])
 
     def test_fp_transform_log(self):
+        """Power 0 is ln x (fracgen.ado), the column at p1 = 0."""
         x = np.array([1.0, np.e])
-        r = GlyphMapper._fp_transform(x, 0.0)
+        r = GlyphMapper._fp_design(x, 0.0, 1.0)[:, 1]
         np.testing.assert_allclose(r, [0.0, 1.0])
 
     def test_fp_transform_nonpositive_nan(self):
+        """No power is ever taken of a non-positive x.  _fp_transform
+        answered NaN for one, a value no fit computes: the fit shifts x
+        first, as fracpoly does (frac_xo.ado; TestFpPrepare).  Measured
+        24sep2026: `fracpoly regress y x, degree(2)' on x = -1, 0, 1 (three
+        times each) generates its powers of X = (x+2), e(fp_shft) 2 and
+        e(fp_sfac) 1 -- so -1, 0 and 1 reach the power as 1, 2 and 3."""
         x = np.array([-1.0, 0.0, 1.0])
-        r = GlyphMapper._fp_transform(x, 0.5)
-        assert np.isnan(r[0]) and np.isnan(r[1])
-        assert r[2] == pytest.approx(1.0)
+        shift, scale = GlyphMapper._fp_prepare(x)
+        assert (shift, scale) == (2.0, 1.0)
+        xx = (x + shift) / scale
+        r = GlyphMapper._fp_design(xx, 0.5, 1.0)[:, 1]
+        np.testing.assert_allclose(r, np.sqrt([1.0, 2.0, 3.0]))
 
     def test_lpoly_end_to_end(self):
         import json, os, tempfile
